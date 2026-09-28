@@ -8,6 +8,8 @@ from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 
+from .common_accounts import sgi_test_payable
+
 
 @tagged('post_install', '-at_install')
 class TestExpansionKpis(TransactionCase):
@@ -27,12 +29,13 @@ class TestExpansionKpis(TransactionCase):
         cls.customer_a = cls.env['res.partner'].create({'name': 'Cliente EX-A'})
         cls.customer_b = cls.env['res.partner'].create({'name': 'Cliente EX-B'})
         cls.supplier = cls.env['res.partner'].create({'name': 'Proveedor EX'})
+        sgi_test_payable(cls.env, cls.supplier)
         cls.period = date(2041, 6, 1)
         cls.period_end = date(2041, 6, 30)
 
     def _indicator(self, mode):
         return self.Indicator.create({
-            'code': 'TEX-%s' % mode[:6].upper(),
+            'code': 'TEX-%s' % mode.upper(),
             'name': 'KPI %s' % mode, 'calc_mode': mode})
 
     def _invoice(self, move_type, partner, amount, when, account=None,
@@ -101,14 +104,21 @@ class TestExpansionKpis(TransactionCase):
                      'concentracion_productos', 'pedidos_cancelados',
                      'entregas_completas'):
             ind = self.Indicator.create({
-                'code': 'TEX0-%s' % mode[:5].upper(),
+                # Modo completo: con mode[:5] «clientes_nuevos» y
+                # «clientes_reactivados» chocaban en TEX0-CLIEN.
+                'code': 'TEX0-%s' % mode.upper(),
                 'name': 'KPI vacío %s' % mode, 'calc_mode': mode})
             self.assertIsNone(
                 ind._sgi_compute_value(date(2043, 1, 1), date(2043, 1, 31)),
                 "Modo %s debe quedar pendiente sin datos." % mode)
 
     def test_06_dso_cartera(self):
-        # 300 pendientes de cobro con 900 netos facturados en 90 días → 30 días.
+        # 300 pendientes de cobro con 900 facturados en 90 días → 30 días.
+        # La cartera es el saldo contable de clientes al cierre: se suma la
+        # línea base preexistente de la BD (copia de producción), como en
+        # test_07. Lo cobrado DESPUÉS del cierre sigue contando en el periodo.
+        ind = self._indicator('dso_cartera')
+        base0 = ind._sgi_receivable_balance(self.period_end)
         self._invoice('out_invoice', self.customer_a, 600.0, self.period)
         self._invoice('out_invoice', self.customer_b, 300.0, self.period)
         moves = self.env['account.move'].search([
@@ -118,9 +128,17 @@ class TestExpansionKpis(TransactionCase):
         self.env['account.payment.register'].with_context(
             active_model='account.move', active_ids=moves.ids).create(
             {'payment_date': self.period}).action_create_payments()
-        ind = self._indicator('dso_cartera')
         value = ind._calc_dso_cartera(self.period, self.period_end)
-        self.assertEqual(value, 30.0)
+        self.assertEqual(value, round((base0 + 300.0) / 900.0 * 90.0, 1))
+        # Un cobro del mes siguiente no cambia la foto del cierre.
+        late = self.env['account.move'].search([
+            ('move_type', '=', 'out_invoice'),
+            ('partner_id', '=', self.customer_b.id),
+            ('invoice_date', '=', self.period)])
+        self.env['account.payment.register'].with_context(
+            active_model='account.move', active_ids=late.ids).create(
+            {'payment_date': date(2041, 7, 15)}).action_create_payments()
+        self.assertEqual(ind._calc_dso_cartera(self.period, self.period_end), value)
 
     def test_07_cartera_vencida(self):
         # La cartera abierta NO es acotada al periodo: el esperado se calcula

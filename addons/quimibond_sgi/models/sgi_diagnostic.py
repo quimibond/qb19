@@ -1,69 +1,132 @@
 # -*- coding: utf-8 -*-
 """Diagnóstico del SGI: el módulo se audita a sí mismo.
 
-Un wizard del Jefe MAST que corre las verificaciones de configuración y
+Una corrida del Jefe MAST que ejecuta las verificaciones de configuración y
 adopción que de otro modo requieren revisar modelo por modelo: dueños de
 proceso, responsables de KPI, validación de mediciones, difusión documental,
 política, riesgos, CAPA, NCs fuera del flujo, presupuestos sin aprobar,
 fuentes apagadas, embudo de reclamaciones y ajustes clave. Solo lectura:
 reporta y dice dónde se arregla cada cosa.
+
+Desde 19.0.47.1.0 cada hallazgo es una fila de `sgi.diagnostic.line` y el
+menú abre la lista nativa (buscar, filtrar por nivel, agrupar por sección);
+antes era un HTML armado a mano en un wizard.
 """
 from dateutil.relativedelta import relativedelta
-from markupsafe import Markup, escape
 
 from odoo import models, fields, api
+
+LEVELS = [('bad', 'Falla'), ('warn', 'Aviso'), ('ok', 'Bien')]
+_LEVEL_ORDER = {'bad': 0, 'warn': 1, 'ok': 2}
+
+
+class SgiDiagnosticLine(models.TransientModel):
+    _name = 'sgi.diagnostic.line'
+    _description = "Hallazgo del diagnóstico del SGI"
+    _order = 'sequence, id'
+
+    diagnostic_id = fields.Many2one(
+        'sgi.diagnostic', string="Diagnóstico", required=True, ondelete='cascade', index=True)
+    sequence = fields.Integer(default=10)
+    section = fields.Char(string="Sección", required=True)
+    level = fields.Selection(LEVELS, string="Nivel", required=True)
+    text = fields.Text(string="Hallazgo", required=True)
+    fix = fields.Char(string="Dónde se arregla")
 
 
 class SgiDiagnostic(models.TransientModel):
     _name = 'sgi.diagnostic'
     _description = "Diagnóstico de configuración y adopción del SGI"
 
-    result = fields.Html(string="Resultado", readonly=True, sanitize=False)
+    date = fields.Date(string="Fecha", default=fields.Date.context_today, readonly=True)
+    line_ids = fields.One2many('sgi.diagnostic.line', 'diagnostic_id', string="Hallazgos")
+    bad_count = fields.Integer(string="Fallas", compute='_compute_counts')
+    warn_count = fields.Integer(string="Avisos", compute='_compute_counts')
+    ok_count = fields.Integer(string="En orden", compute='_compute_counts')
+    summary = fields.Text(string="Resumen", compute='_compute_summary')
+
+    @api.depends('line_ids.level')
+    def _compute_counts(self):
+        for rec in self:
+            rec.bad_count = len(rec.line_ids.filtered(lambda l: l.level == 'bad'))
+            rec.warn_count = len(rec.line_ids.filtered(lambda l: l.level == 'warn'))
+            rec.ok_count = len(rec.line_ids.filtered(lambda l: l.level == 'ok'))
+
+    @api.depends('date', 'line_ids.section', 'line_ids.text', 'line_ids.fix')
+    def _compute_summary(self):
+        """Texto plano con lo mismo que la lista (para el chatter, el log y las
+        pruebas): «Diagnóstico del <fecha>» y una línea por hallazgo."""
+        for rec in self:
+            parts = ["Diagnóstico del %s. Solo lectura: nada se modifica; "
+                     "cada punto dice dónde se arregla." % rec.date]
+            section = None
+            for line in rec.line_ids:
+                if line.section != section:
+                    section = line.section
+                    parts.append("== %s ==" % section)
+                parts.append("[%s] %s%s" % (
+                    dict(LEVELS)[line.level], line.text,
+                    (" — %s" % line.fix) if line.fix else ""))
+            rec.summary = "\n".join(parts)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            if not rec.line_ids:
+                rec._sgi_fill()
+        return records
+
+    def _sgi_fill(self):
+        """Corre las verificaciones y deja una fila por hallazgo."""
+        self.ensure_one()
+        self.line_ids.unlink()
+        rows = self._sgi_build_report()
+        self.env['sgi.diagnostic.line'].create([
+            dict(row, diagnostic_id=self.id, sequence=seq * 10)
+            for seq, row in enumerate(rows, start=1)])
+        return self.line_ids
 
     @api.model
-    def default_get(self, fields_list):
-        res = super().default_get(fields_list)
-        if 'result' in fields_list:
-            res['result'] = self._sgi_build_report()
-        return res
+    def action_run(self):
+        """Menú Diagnóstico del SGI: corre el diagnóstico y abre la lista
+        nativa de hallazgos (fallas primero, agrupadas por sección)."""
+        diag = self.create({})
+        action = self.env['ir.actions.act_window']._for_xml_id(
+            'quimibond_sgi.sgi_diagnostic_line_action')
+        action['domain'] = [('diagnostic_id', '=', diag.id)]
+        action['context'] = {
+            'search_default_group_section': 1,
+            'default_diagnostic_id': diag.id,
+        }
+        action['name'] = action['display_name'] = (
+            "Diagnóstico del SGI (%s: %d fallas, %d avisos)" % (
+                diag.date, diag.bad_count, diag.warn_count))
+        return action
 
     def action_refresh(self):
         self.ensure_one()
-        self.result = self._sgi_build_report()
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'sgi.diagnostic',
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'new',
-        }
+        self._sgi_fill()
+        return True
 
     # ------------------------------------------------------------------
     # Construcción del reporte
     # ------------------------------------------------------------------
-    _ICONS = {'ok': '✔', 'warn': '⚠', 'bad': '✖'}
-    _COLORS = {'ok': '#1e7d3c', 'warn': '#9a6a00', 'bad': '#b3372b'}
-
     def _sgi_line(self, level, text, fix=None):
-        icon = self._ICONS[level]
-        color = self._COLORS[level]
-        fix_html = (
-            Markup(' <span style="color:#888">— %s</span>') % fix if fix else Markup(''))
-        return Markup(
-            '<li style="margin:3px 0"><span style="color:%s;font-weight:bold">%s</span> %s%s</li>'
-        ) % (color, icon, escape(text), fix_html)
+        """Un hallazgo: nivel (bad / warn / ok), texto y dónde se arregla."""
+        assert level in _LEVEL_ORDER
+        return {'level': level, 'text': text, 'fix': fix or False}
 
     @api.model
     def _sgi_build_report(self):
+        """Lista de dicts (section, level, text, fix) en el orden del reporte."""
         env = self.env
         today = fields.Date.context_today(self)
         sections = []
 
         def section(title, lines):
-            if lines:
-                sections.append(
-                    Markup('<h4 style="margin:14px 0 4px">%s</h4><ul style="margin:0;padding-left:6px;list-style:none">%s</ul>')
-                    % (escape(title), Markup('').join(lines)))
+            for line in lines:
+                sections.append(dict(line, section=title))
 
         # ---- 1. Procesos -------------------------------------------------
         lines = []
@@ -350,7 +413,4 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line('ok', "Ajustes clave configurados."))
         section("Ajustes clave", lines)
 
-        header = Markup(
-            '<p style="color:#666;margin:0 0 6px">Diagnóstico del %s. Solo lectura: '
-            'nada se modifica; cada punto dice dónde se arregla.</p>') % today
-        return header + Markup('').join(sections)
+        return sections

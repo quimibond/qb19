@@ -25,6 +25,7 @@ SGI_ROLE_SELECTION = [
     ('aprueba', "Aprueba"),
     ('participa', "Participa"),
     ('informa', "Se entera"),
+    ('escala', "Escala"),
 ]
 
 
@@ -134,6 +135,10 @@ class SgiActivityRole(models.Model):
         help="Rol que no es de un puesto fijo. «Dueño del proceso» se resuelve "
              "al dueño del proceso; los demás no se resuelven a un puesto (no "
              "cuentan para «puesto sin persona» ni para adherencia).")
+    after_days = fields.Integer(
+        string="Escala a los (días hábiles)",
+        help="Solo para «Escala»: días hábiles después del plazo de la actividad "
+             "en que se avisa a este destino. Puede haber varios niveles.")
     condition = fields.Char(
         string="Condición",
         help="Solo para quien aprueba o se entera: cuándo aplica, ej. «arriba "
@@ -179,11 +184,23 @@ class SgiActivityRole(models.Model):
         """Un ejecutor (o participante) condicionado es otra actividad: así
         cada actividad tiene un solo ejecutor y se mide limpio."""
         for role in self:
-            if (role.condition or '').strip() and role.role not in ('aprueba', 'informa'):
+            if (role.condition or '').strip() and role.role not in ('aprueba', 'informa', 'escala'):
                 raise ValidationError(
                     "«%s» tiene condición («%s»). La condición solo va en quien "
                     "aprueba o se entera; si según el caso lo hace otro puesto, "
                     "parte la actividad en dos." % (role.display_name, role.condition))
+
+    @api.constrains('role', 'after_days')
+    def _check_after_days(self):
+        for role in self:
+            if role.role == 'escala' and role.after_days <= 0:
+                raise ValidationError(
+                    "«%s» escala: indica a los cuántos días hábiles (after_days)."
+                    % role.display_name)
+            if role.role != 'escala' and role.after_days:
+                raise ValidationError(
+                    "«%s»: los días de escalamiento solo van en el rol «Escala»."
+                    % role.display_name)
 
     def _sgi_target_label(self):
         self.ensure_one()

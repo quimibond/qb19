@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- NC-6: correo al proveedor con el enlace del portal. -->
+    <record id="mail_template_sgi_nc_supplier" model="mail.template">
+        <field name="name">SGI: No conformidad a proveedor (portal)</field>
+        <field name="model_id" ref="quality.model_quality_alert"/>
+        <field name="subject">No conformidad {{ object.sgi_folio or '' }} — {{ object.company_id.name or 'Quimibond' }}</field>
+        <field name="email_to">{{ ctx.get('sgi_supplier_email') }}</field>
+        <field name="body_html" type="html">
+<div>
+    <p>Estimado proveedor,</p>
+    <p>Registramos una no conformidad en material suministrado por ustedes:</p>
+    <ul>
+        <li><b>Folio:</b> <t t-out="object.sgi_folio or ''"/></li>
+        <li><b>Producto:</b> <t t-out="object.product_id.display_name or object.product_tmpl_id.display_name or ''"/></li>
+        <li><b>Lote(s):</b> <t t-out="', '.join(object.lot_ids.mapped('name')) or 'sin lote'"/></li>
+        <li><b>Desviación:</b> <t t-out="object.sgi_deviation or object.description or ''"/></li>
+        <li><b>Respuesta antes del:</b> <t t-out="object.sgi_supplier_due_date or ''"/></li>
+    </ul>
+    <p>Por favor conteste la causa y la acción correctiva directamente en el portal:</p>
+    <p><a t-att-href="object.get_portal_url()" style="padding:8px 16px;background:#875A7B;color:#fff;text-decoration:none;border-radius:4px;">Contestar la no conformidad</a></p>
+    <p>Gracias.</p>
+</div>
+        </field>
+    </record>
+</odoo>

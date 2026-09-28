@@ -17,4 +17,11 @@
         <field name="use_date_range" eval="True"/>
         <field name="number_increment">1</field>
     </record>
+    <record id="sgi_seq_machine_sheet" model="ir.sequence">
+        <field name="name">Ficha de proceso por máquina (SGI)</field>
+        <field name="code">sgi.machine.sheet</field>
+        <field name="prefix">FPM-</field>
+        <field name="padding">4</field>
+        <field name="number_increment">1</field>
+    </record>
 </odoo>

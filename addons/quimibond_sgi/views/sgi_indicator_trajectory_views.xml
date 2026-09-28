@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_indicator_view_form_trajectory" model="ir.ui.view">
+        <field name="name">sgi.indicator.form.trajectory</field>
+        <field name="model">sgi.indicator</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_indicator_view_form"/>
+        <field name="arch" type="xml">
+            <field name="target_objective" position="attributes">
+                <attribute name="invisible">direction == 'range'</attribute>
+                <attribute name="string">Meta final</attribute>
+            </field>
+            <field name="target_acceptable" position="attributes">
+                <attribute name="invisible">direction == 'range'</attribute>
+                <attribute name="string">Aceptable (meta final)</attribute>
+            </field>
+            <field name="target_acceptable" position="after">
+                <field name="range_min" invisible="direction != 'range'"
+                       required="direction == 'range'"/>
+                <field name="range_max" invisible="direction != 'range'"
+                       required="direction == 'range'"/>
+                <field name="range_tolerance" invisible="direction != 'range'"/>
+            </field>
+            <field name="baseline_value" position="before">
+                <field name="baseline_date"/>
+            </field>
+            <xpath expr="//notebook/page[1]" position="before">
+                <page string="Trayectoria" name="trajectory" invisible="direction == 'range'">
+                    <div class="alert alert-info mb-2" role="alert">
+                        Los escalones trimestrales se interpolan entre el arranque
+                        («Arranque desde» y «Valor de arranque») y la meta final
+                        («Llegar a la meta el»). El aceptable de cada escalón guarda la
+                        misma distancia que el de la meta final. Corregir un trimestre a
+                        mano exige motivo, queda en el chatter y se respeta al regenerar.
+                        Cada medición se evalúa contra el escalón de su trimestre.
+                    </div>
+                    <button name="action_generate_trajectory" type="object"
+                            string="Generar trayectoria" class="btn-primary mb-2"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <field name="has_trajectory" invisible="1"/>
+                    <field name="step_ids" context="{'default_indicator_id': id}">
+                        <list editable="bottom" decoration-info="manual">
+                            <field name="name"/>
+                            <field name="date_from" column_invisible="1"/>
+                            <field name="objective"/>
+                            <field name="acceptable"/>
+                            <field name="manual"/>
+                            <field name="reason"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_measure_view_form_trajectory" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.form.trajectory</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_measure_view_form"/>
+        <field name="arch" type="xml">
+            <field name="target_objective" position="attributes">
+                <attribute name="invisible">direction == 'range'</attribute>
+            </field>
+            <field name="target_acceptable" position="attributes">
+                <attribute name="invisible">direction == 'range'</attribute>
+            </field>
+            <field name="target_acceptable" position="after">
+                <field name="direction" invisible="1"/>
+                <field name="range_min" invisible="direction != 'range'"/>
+                <field name="range_max" invisible="direction != 'range'"/>
+            </field>
+        </field>
+    </record>
+</odoo>

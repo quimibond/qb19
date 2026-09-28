@@ -11,6 +11,8 @@ from dateutil.relativedelta import relativedelta
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
+from .common_users import assert_locked, sgi_test_user
+
 
 @tagged('post_install', '-at_install')
 class TestOla1RootCause(TransactionCase):
@@ -335,14 +337,14 @@ class TestOla1AuditFinding(TransactionCase):
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         cls.proc = cls.env['sgi.process'].search([], limit=1)
         cls.clause = cls.env['sgi.norm.clause'].search([], limit=1)
+        cls.sgi_user = sgi_test_user(cls.env)
 
     def test_01_major_finding_blocks_close_without_nc(self):
         audit = self.env['sgi.audit'].create({'audit_type': 'interna'})
         self.env['sgi.audit.finding'].create({
             'audit_id': audit.id, 'finding_type': 'nc_mayor',
             'description': 'Hallazgo grave', 'process_id': self.proc.id})
-        with self.assertRaises(UserError):
-            audit.action_close()
+        assert_locked(self, audit.with_user(self.sgi_user).action_close)
 
     def test_02_generate_nc_prefills_and_unblocks(self):
         audit = self.env['sgi.audit'].create({'audit_type': 'interna'})

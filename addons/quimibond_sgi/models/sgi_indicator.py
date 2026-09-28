@@ -9,7 +9,7 @@ CALC_MODES = [
     ('otif_ventas', "OTIF ventas (embarques a tiempo)"),
     ('otd_compras', "OTD compras (recepciones a tiempo)"),
     ('produccion_vs_programado', "Producido vs programado"),
-    ('reproceso', "Reproceso"),
+    ('reproceso', "Reproceso (kg de órdenes de reproceso vs kg procesados)"),
     ('desperdicio', "Desperdicio (subproducto SALDO TEJIDO D)"),
     ('desperdicio_scrap', "Desperdicio (por desechos / scrap)"),
     ('calidad_pq', "Calidad PQ (rollos revisados sin defecto)"),
@@ -22,16 +22,17 @@ CALC_MODES = [
     ('plantilla_rh', "Cobertura de plantilla"),
     ('presupuesto_ventas', "Cumplimiento de presupuesto de ventas"),
     ('crecimiento_ventas', "Crecimiento anual de ventas (vs año anterior)"),
-    ('inventario_diferencia', "Diferencia de inventario físico vs sistema"),
+    ('inventario_diferencia', "Diferencia de inventario (valor ajustado vs valor del inventario)"),
     ('inventario_ciclico', "Diferencia de inventario cíclico (ajustes)"),
     ('ots_atendidas', "Órdenes de trabajo atendidas (mantenimiento)"),
     ('requisiciones', "Requisiciones atendidas (aprobaciones de compra)"),
     ('embarques_sin_error', "Embarques sin error (sin devolución de cliente)"),
     ('produccion_vs_capacidad', "Producido vs capacidad instalada"),
-    ('consumo_energia', "Consumo de energía (facturado por el proveedor)"),
+    ('consumo_energia', "Consumo de energía (pesos por tonelada procesada)"),
     ('compras_sin_devolucion', "Compras sin devolución a proveedor (proxy de errores en OC)"),
     ('capacitacion', "Capacitación (competencias vigentes vs requeridas)"),
     ('satisfaccion_cliente', "Satisfacción del cliente (encuesta)"),
+    ('configurable', "Fórmula configurable (numerador y denominador en la ficha)"),
     # Plan de expansión comercial (indicadores EX-*)
     ('margen_ventas', "Margen sobre órdenes de venta"),
     ('compras_vs_ventas', "Compras vs ventas facturadas"),
@@ -49,6 +50,13 @@ CALC_MODES = [
     ('pedidos_cancelados', "Pedidos de venta cancelados"),
     ('entregas_completas', "Entregas completas a la primera (sin backorder)"),
     ('dpo_pagos', "Días de pago a proveedores (DPO)"),
+    # I-3 (2026-09-24): definiciones aprobadas en «Lógica de indicadores».
+    ('desperdicio_kg', "Desperdicio: kg a desperdicio ÷ hilo y fibra consumidos (3 meses)"),
+    ('margen_ebitda', "Margen EBITDA contable (12 meses móviles)"),
+    ('compras_mp_vs_ventas', "Compras de materia prima vs ingresos (3 meses móviles)"),
+    # Genéricos (P-1): sirven a cualquier actividad o entregable del SGI.
+    ('actividad_a_tiempo', "Actividad del SGI: % a tiempo"),
+    ('entregable_completo', "Entregable del SGI: % completo"),
 ]
 
 
@@ -61,6 +69,12 @@ class SgiIndicator(models.Model):
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True)
     process_id = fields.Many2one('sgi.process', string="Proceso")
+    # Estructura vigente = proceso activo. Guardado para poder filtrar los
+    # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
+    sgi_process_active = fields.Boolean(
+        related='process_id.active', store=True, string="Proceso vigente",
+        help="El proceso al que pertenece está activo. Sin proceso o con el "
+             "proceso archivado, queda pendiente de proceso nuevo.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
     responsible_id = fields.Many2one('res.users', string="Responsable")
     objective_id = fields.Many2one('sgi.objective', string="Objetivo integral")
@@ -108,7 +122,7 @@ class SgiIndicator(models.Model):
         'otif_ventas': "Inventario → entregas a clientes: embarques a tiempo vs total.",
         'otd_compras': "Inventario → recepciones de compras: recibidas a tiempo vs total.",
         'produccion_vs_programado': "Fabricación → órdenes de producción: producido vs programado.",
-        'reproceso': "Fabricación → órdenes de reproceso del periodo.",
+        'reproceso': "Fabricación → kg producidos por las órdenes de los tipos de reproceso (parámetro rework_picking_type_ids) ÷ kg de hilo y fibra consumidos en el periodo. Solo líneas en kg.",
         'desperdicio': "Fabricación → byproduct SALDO (categoría de desperdicio) vs producción.",
         'desperdicio_scrap': "Inventario → desechos (scrap) del periodo.",
         'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
@@ -121,15 +135,16 @@ class SgiIndicator(models.Model):
         'plantilla_rh': "Empleados → puestos cubiertos vs plantilla autorizada.",
         'presupuesto_ventas': "Ventas → facturación real vs presupuesto de ventas APROBADO del periodo (importe en moneda de la compañía; nunca cantidades mezcladas). Sin presupuesto aprobado, cae al parámetro de Ajustes.",
         'crecimiento_ventas': "Contabilidad → facturación neta timbrada del periodo vs el mismo periodo del año anterior (variación %).",
-        'inventario_diferencia': "Inventario → ajustes de inventario físico vs sistema.",
+        'inventario_diferencia': "Valuación → |valor de los ajustes de inventario del periodo| ÷ valor del inventario al cierre (capas de valuación, moneda de la compañía).",
         'inventario_ciclico': "Inventario → ajustes de conteos cíclicos.",
         'ots_atendidas': "Mantenimiento → solicitudes cerradas (etapa terminada) en el periodo vs creadas en el periodo.",
         'requisiciones': "Aprobaciones → requisiciones de compra aprobadas en el periodo vs solicitadas.",
         'embarques_sin_error': "Inventario → embarques a clientes del periodo sin devolución ligada vs total.",
         'produccion_vs_capacidad': "Fabricación → producción real del periodo vs la capacidad instalada configurada en Ajustes (prorrateada por días si el periodo no es mensual).",
-        'consumo_energia': "Contabilidad → total facturado del periodo por el proveedor de energía configurado en Ajustes.",
+        'consumo_energia': "Contabilidad → facturado del periodo por el proveedor de energía (Ajustes) ÷ toneladas de hilo y fibra consumidas en órdenes (misma base que MA-05). Pesos por tonelada.",
         'compras_sin_devolucion': "PROXY (a validar por MAST): órdenes de compra confirmadas del periodo sin devolución a proveedor vs total. No mide directamente los 'errores en OC'; MAST debe validar la definición antes de fiarse del dato.",
         'capacitacion': "Empleados → competencias del puesto vigentes (certificación al día) vs requeridas.",
+        'configurable': "Fórmula de la pestaña Fórmula: numerador ÷ denominador, cada uno con modelo, filtro, campo de fecha, agregación, factor y ventana.",
         'satisfaccion_cliente': "Encuestas → respuestas de la Encuesta de Satisfacción del Cliente (promedio 1-5 → %).",
         'margen_ventas': "Ventas → margen de las órdenes confirmadas del periodo vs su subtotal (moneda de la compañía). Depende de la calidad de los costos capturados: úsese como tendencia.",
         'compras_vs_ventas': "Contabilidad → facturas de proveedor netas del periodo vs facturación neta de clientes (sin impuestos, moneda de la compañía).",
@@ -147,6 +162,9 @@ class SgiIndicator(models.Model):
         'pedidos_cancelados': "Ventas → pedidos cancelados del periodo vs pedidos confirmados más cancelados.",
         'entregas_completas': "Inventario → entregas a clientes del periodo que NO generaron backorder (completas a la primera).",
         'dpo_pagos': "Contabilidad → saldo pendiente a proveedores al medir vs compras netas de los últimos 90 días, por 90 (aproximación: estado de pago actual).",
+        'desperdicio_kg': "Inventario → kg que entran a las ubicaciones de desperdicio (órdenes y ajustes) ÷ kg de hilo y fibra consumidos en órdenes, en los últimos 3 meses.",
+        'margen_ebitda': "Contabilidad → (ingresos − costo de ventas − gastos de operación) ÷ ingresos, últimos 12 meses; sin depreciación, sin otros ingresos ni gastos financieros.",
+        'compras_mp_vs_ventas': "Contabilidad → facturas de proveedor de materia prima (menos notas de crédito) ÷ ingresos (cuentas de ingreso), últimos 3 meses.",
     }
 
     @api.depends('calc_mode')
@@ -158,9 +176,11 @@ class SgiIndicator(models.Model):
     monthly_budget = fields.Float(string="Presupuesto mensual",
                                   help="Meta mensual para el cálculo de presupuesto de ventas.")
     nc_on_red = fields.Boolean(
-        string="Generar NC en rojo", default=False,
-        help="Actívese indicador por indicador cuando el dato ya se validó contra "
-             "el Excel F-P-A10-03. Una medición roja validada creará una NC automática.")
+        string="NC automática", default=False,
+        help="Con el indicador oficial, abre una no conformidad por persistencia "
+             "(I-5): dos periodos seguidos en rojo, o uno solo si el indicador es "
+             "crítico. Nunca con muestra chica ni sin dato, y no duplica la NC "
+             "mientras la anterior siga abierta.")
     active = fields.Boolean(default=True)
 
     measure_ids = fields.One2many('sgi.indicator.measure', 'indicator_id', string="Mediciones")
@@ -178,10 +198,15 @@ class SgiIndicator(models.Model):
         "La clave de indicador debe ser única.",
     )
 
-    @api.depends('measure_ids.period_date', 'measure_ids.value', 'measure_ids.semaphore')
+    @api.depends('measure_ids.period_date', 'measure_ids.value', 'measure_ids.semaphore',
+                 'measure_ids.state')
     def _compute_last_measure(self):
+        # «Sin dato» y «pendiente» no son un valor: el último valor es el de
+        # la última medición con dato (I-2: el cero no distingue «sin dato»).
         for indicator in self:
-            last = indicator.measure_ids.sorted('period_date', reverse=True)[:1]
+            last = indicator.measure_ids.filtered(
+                lambda m: m.state in ('capturado', 'validado')
+            ).sorted('period_date', reverse=True)[:1]
             indicator.last_measure_id = last.id
             indicator.last_value = last.value if last else 0.0
             indicator.last_semaphore = last.semaphore if last else False
@@ -358,10 +383,6 @@ class SgiIndicator(models.Model):
         done_qty = sum(scheduled.filtered(lambda m: m.state == 'done').mapped('qty_produced'))
         return round(done_qty / planned * 100.0, 2)
 
-    def _calc_reproceso(self, date_from, date_to):
-        # Sin fuente confiable todavía (ver README). Captura manual.
-        return None
-
     def _calc_cierre_nc(self, date_from, date_to):
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
         Alert = self.env['quality.alert']
@@ -449,17 +470,34 @@ class SgiIndicator(models.Model):
                     "presupuesto configurado en Ajustes.")
         return ''
 
-    def _sgi_net_invoiced(self, date_from, date_to):
+    def _sgi_net_invoiced(self, date_from, date_to, taxed=False):
         """Facturación neta timbrada del periodo: ventas timbradas (out_invoice)
-        menos notas de crédito (out_refund), sin impuestos. amount_untaxed_signed
-        ya trae las notas de crédito en negativo, así que la suma es neta."""
+        menos notas de crédito (out_refund), sin impuestos (``taxed=True``: con
+        impuestos, para compararla con la cartera, que sí los lleva).
+        amount_*_signed ya trae las notas de crédito en negativo, así que la
+        suma es neta."""
         moves = self.env['account.move'].search([
             ('move_type', 'in', ('out_invoice', 'out_refund')),
             ('state', '=', 'posted'),
             ('company_id', '=', self._sgi_kpi_company().id),
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
-        return sum(moves.mapped('amount_untaxed_signed'))
+        return sum(moves.mapped('amount_total_signed' if taxed else 'amount_untaxed_signed'))
+
+    def _sgi_receivable_balance(self, date_to):
+        """Saldo de las cuentas de clientes (asset_receivable) al cierre del
+        periodo: la foto contable real de la cartera a esa fecha, con IVA,
+        incluidas las facturas que se cobraron después. Antes se sumaba el
+        saldo pendiente HOY de las facturas de entonces, y medido semanas
+        después ya no traía lo cobrado en el mes siguiente (EX-07 daba 35
+        días en agosto contra 51 reales)."""
+        groups = self.env['account.move.line']._read_group([
+            ('account_id.account_type', '=', 'asset_receivable'),
+            ('company_id', '=', self._sgi_kpi_company().id),
+            ('parent_state', '=', 'posted'),
+            ('date', '<=', date_to),
+        ], [], ['balance:sum'])
+        return groups[0][0] if groups else 0.0
 
     def _calc_crecimiento_ventas(self, date_from, date_to):
         """Variación % de la facturación neta del periodo contra el mismo periodo
@@ -572,28 +610,6 @@ class SgiIndicator(models.Model):
             return self.env['res.partner']
         return self.env['res.partner'].browse(int(param)).exists()
 
-    def _calc_consumo_energia(self, date_from, date_to):
-        """Total facturado del periodo por el proveedor de energía (facturas de
-        proveedor menos notas de crédito, sin impuestos). Sin proveedor
-        configurado devuelve None: la medición queda PENDIENTE con la nota que
-        pide configurarlo (un 0 "capturado" pintaría verde un KPI lower_better
-        sin haber medido nada)."""
-        partner = self._sgi_energy_partner()
-        if not partner:
-            return None
-        moves = self.env['account.move'].search([
-            ('move_type', 'in', ('in_invoice', 'in_refund')),
-            ('state', '=', 'posted'),
-            ('company_id', '=', self._sgi_kpi_company().id),
-            ('partner_id', 'child_of', partner.id),
-            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
-        ])
-        total = 0.0
-        for move in moves:
-            total += move.amount_untaxed if move.move_type == 'in_invoice' \
-                else -move.amount_untaxed
-        return round(total, 2)
-
     def _note_consumo_energia(self, date_from, date_to):
         if not self._sgi_energy_partner():
             return ("Configure el proveedor de energía en Ajustes para medir este "
@@ -701,10 +717,6 @@ class SgiIndicator(models.Model):
             return ''
         method = getattr(self, '_note_%s' % self.calc_mode, None)
         return method(date_from, date_to) if method else ''
-
-    def _calc_inventario_diferencia(self, date_from, date_to):
-        # Requiere conteos físicos registrados; captura manual (README).
-        return None
 
     def _calc_inventario_ciclico(self, date_from, date_to):
         """Diferencia de inventario cíclico: |cantidad ajustada| en el periodo
@@ -846,18 +858,14 @@ class SgiIndicator(models.Model):
         return round(credit / gross * 100.0, 2)
 
     def _calc_dso_cartera(self, date_from, date_to):
-        """DSO por countback simple: cartera de clientes pendiente sobre la
-        facturación neta de los últimos 90 días, por 90. Aproximación: usa el
-        estado de pago AL MOMENTO de medir (Odoo no guarda la foto histórica);
-        medido por el cron pocos días después del cierre, el sesgo es pequeño."""
-        receivable = sum(self.env['account.move'].search([
-            ('move_type', 'in', ('out_invoice', 'out_refund')),
-            ('state', '=', 'posted'),
-            ('invoice_date', '<=', date_to),
-            ('payment_state', 'in', ('not_paid', 'partial')),
-        ]).mapped('amount_residual_signed'))
+        """DSO por countback simple: saldo contable de clientes al cierre del
+        periodo (con IVA) sobre la facturación neta con IVA de los últimos 90
+        días, por 90. Ambos lados con impuestos: antes la cartera los traía y
+        las ventas no, y eso inflaba el resultado un 16 %. Solo la compañía
+        del KPI (antes sumaba la cartera de todo el grupo: 134 días)."""
+        receivable = self._sgi_receivable_balance(date_to)
         sales_90 = self._sgi_net_invoiced(
-            date_to - relativedelta(days=89), date_to)
+            date_to - relativedelta(days=89), date_to, taxed=True)
         if sales_90 <= 0:
             return None
         return round(receivable / sales_90 * 90.0, 1)
@@ -1113,6 +1121,8 @@ class SgiIndicatorMeasure(models.Model):
         'notas_credito': ('account.move', [('move_type', '=', 'out_refund'), ('state', '=', 'posted')], 'invoice_date', False),
         'clientes_reactivados': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
         'pedidos_cancelados': ('sale.order', [('state', 'in', ('sale', 'cancel'))], 'date_order', True),
+        # desperdicio_kg, margen_ebitda y compras_mp_vs_ventas guardan sus
+        # registros en la medición (sgi_indicator_i3.py).
         # requisiciones, embarques_sin_error, consumo_energia,
         # compras_sin_devolucion y capacitacion no caben en un dominio de fecha
         # simple (categoría/proveedor dinámicos, relación de devolución, o foto de
@@ -1349,42 +1359,6 @@ class SgiIndicatorMeasure(models.Model):
                         locked.mapped('indicator_id.name')))
         return super().write(vals)
 
-    def action_recompute_value(self):
-        """Recalcula el valor con el modo ACTUAL del indicador (deuda B.16:
-        el cron solo crea la medición faltante, así que cambiar el calc_mode
-        de un KPI no re-medía los periodos ya generados). Solo mediciones no
-        validadas: la validada es evidencia."""
-        for measure in self:
-            indicator = measure.indicator_id
-            if measure.state == 'validado':
-                raise UserError(
-                    "La medición de %s ya está validada (es evidencia): pide "
-                    "al Jefe MAST regresarla a pendiente antes de recalcular."
-                    % indicator.code)
-            if indicator.calc_mode == 'manual':
-                raise UserError(
-                    "El indicador %s es de captura manual: no hay nada que "
-                    "recalcular." % indicator.code)
-            date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
-            value = indicator._sgi_compute_value(date_from, date_to)
-            note = indicator._sgi_compute_note(date_from, date_to)
-            if value is None:
-                vals = {'state': 'pendiente'}
-                if note:
-                    vals['note'] = note
-                measure.write(vals)
-                measure_label = "sin dato calculable: queda pendiente de captura"
-            else:
-                vals = {'value': value, 'state': 'capturado'}
-                if note:
-                    vals['note'] = note
-                measure.write(vals)
-                measure_label = "valor recalculado: %s" % value
-            indicator.message_post(
-                body="Medición de %s recalculada con el modo «%s» — %s." % (
-                    measure.period_date, indicator.calc_mode, measure_label))
-        return True
-
     def action_capture(self):
         self.write({'state': 'capturado'})
 
@@ -1430,7 +1404,9 @@ class SgiIndicatorMeasure(models.Model):
             vals = {
                 'title': "Indicador incumplido: %s" % indicator.code,
                 'sgi_origin_type': 'indicador',
-                'sgi_process_id': indicator.process_id.id,
+                # Sin proceso si el suyo está archivado (pendiente de proceso
+                # nuevo): la NC no se cuelga de un proceso sustituido.
+                'sgi_process_id': indicator.process_id.id if indicator.sgi_process_active else False,
                 'sgi_deviation': deviation,
                 'sgi_indicator_measure_id': measure.id,
             }

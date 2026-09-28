@@ -1,0 +1,507 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ====== Pantalla «Mi procedimiento»: solo vistas nativas ======
+         Kanban y listas dentro del formulario; los botones son acciones de
+         objeto, así que las migas de pan regresan solas. -->
+    <!-- ====== Vistas compartidas de sgi.activity.role para «Mi procedimiento» ======
+         Las usan la pantalla de Inicio y las pestañas de la ficha del empleado,
+         del empleado público y del puesto (kanban_view_ref / list_view_ref). -->
+    <record id="sgi_activity_role_view_kanban_mp" model="ir.ui.view">
+        <field name="name">sgi.activity.role.kanban.mp</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <!-- 54.1.0: tarjeta compacta agrupada por cadencia. Arriba lo que
+                 se lee de un vistazo (estado, cuándo, qué, dónde en Odoo);
+                 el «cómo» siempre visible; el resto del procedimiento se
+                 despliega con «Más detalle» (Bootstrap collapse; el kanban
+                 no abre la tarjeta al hacer clic en un data-bs-toggle). -->
+            <kanban create="0" delete="0" quick_create="0" default_group_by="cadence" group_create="0"
+                    group_delete="0" group_edit="0" records_draggable="0" class="o_sgi_mp_kanban">
+                <field name="mp_status"/>
+                <field name="mp_can_go"/>
+                <field name="mp_instruction_id"/>
+                <field name="mp_external"/>
+                <field name="cadence"/>
+                <templates>
+                    <t t-name="card" class="flex-column p-2">
+                        <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                            <field name="mp_status" widget="badge"
+                                   decoration-success="mp_status == 'al_dia'"
+                                   decoration-danger="mp_status == 'atrasada'"
+                                   decoration-muted="mp_status == 'sin_medir'"/>
+                            <field name="role" widget="badge"
+                                   decoration-success="role == 'ejecuta'"
+                                   decoration-warning="role == 'aprueba'"/>
+                            <span class="ms-auto text-muted small"><field name="mp_number"/></span>
+                        </div>
+                        <div class="fw-bold lh-sm"><field name="mp_name"/></div>
+                        <div class="text-muted small mb-1">
+                            <field name="process_id"/>
+                            <t t-if="record.activity_when.raw_value"> · <field name="activity_when"/></t>
+                            <t t-if="record.mp_status_detail.raw_value"> · <field name="mp_status_detail"/></t>
+                        </div>
+                        <div t-if="record.mp_how.raw_value" class="small"><field name="mp_how"/></div>
+                        <div t-if="record.mp_where.raw_value" class="small text-muted mt-1">
+                            <i class="fa fa-map-marker me-1" title="Dónde"/><field name="mp_where"/>
+                        </div>
+                        <t t-set="more" t-value="record.mp_check_against.raw_value or record.mp_done.raw_value or record.mp_on_fail.raw_value or record.mp_inputs.raw_value or record.mp_outputs.raw_value or record.mp_related.raw_value or record.mp_escalates.raw_value"/>
+                        <div t-if="more" class="mt-1">
+                            <a role="button" class="small text-decoration-none" data-bs-toggle="collapse"
+                               t-attf-href="#o_sgi_mp_more_{{record.id.raw_value}}" aria-expanded="false">
+                                <i class="fa fa-caret-down me-1" title="Más detalle"/>Más detalle
+                            </a>
+                            <div class="collapse small mt-1 o_sgi_mp_more" t-attf-id="o_sgi_mp_more_{{record.id.raw_value}}">
+                                <div t-if="record.mp_check_against.raw_value"><b>Contra qué se revisa:</b> <field name="mp_check_against"/></div>
+                                <div t-if="record.mp_done.raw_value"><b>Terminada cuando:</b> <field name="mp_done"/></div>
+                                <div t-if="record.mp_on_fail.raw_value"><b>Si no se puede:</b> <field name="mp_on_fail"/></div>
+                                <div t-if="record.mp_inputs.raw_value"><b>Recibe:</b> <field name="mp_inputs"/></div>
+                                <div t-if="record.mp_outputs.raw_value"><b>Entrega:</b> <field name="mp_outputs"/></div>
+                                <div t-if="record.mp_related.raw_value"><b>Conforme a:</b> <field name="mp_related"/></div>
+                                <div t-if="record.mp_escalates.raw_value"><b>Si se atora, escala a:</b> <field name="mp_escalates"/></div>
+                            </div>
+                        </div>
+                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                            <button t-if="record.mp_can_go.raw_value" type="object" name="action_mp_go"
+                                    class="btn btn-primary btn-sm">
+                                <i class="fa fa-play me-1" title="Ir a hacerlo"/>Ir a hacerlo
+                            </button>
+                            <a t-elif="record.mp_external.raw_value" role="button" aria-disabled="true" class="btn btn-outline-secondary btn-sm disabled">
+                                <i class="fa fa-external-link me-1" title="Sistema externo"/>Se hace en <field name="mp_external"/>
+                            </a>
+                            <button t-if="record.mp_instruction_id.raw_value" type="object" name="action_mp_instruction"
+                                    class="btn btn-outline-secondary btn-sm" title="Ver instructivo">
+                                <i class="fa fa-book me-1" title="Instructivo"/>Instructivo
+                            </button>
+                            <button type="object" name="action_open_activity" class="btn btn-link btn-sm text-muted"
+                                    title="Ver actividad">
+                                <i class="fa fa-file-text-o" title="Actividad"/>
+                            </button>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_list_mp_received" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.mp.received</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0">
+                <field name="process_id"/>
+                <field name="mp_number" string="Numeral"/>
+                <field name="mp_name" string="Actividad"/>
+                <field name="after_days" string="Escala a los (días hábiles)"/>
+                <button name="action_open_activity" type="object" string="Ver actividad" icon="fa-file-text-o"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_list_mp_short" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.mp.short</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0">
+                <field name="role" widget="badge"/>
+                <field name="process_id"/>
+                <field name="mp_number" string="Numeral"/>
+                <field name="mp_name" string="Actividad"/>
+                <field name="condition" optional="show"/>
+                <button name="action_open_activity" type="object" string="Ver actividad" icon="fa-file-text-o"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_my_procedure_view_form" model="ir.ui.view">
+        <field name="name">sgi.my.procedure.form</field>
+        <field name="model">sgi.my.procedure</field>
+        <field name="arch" type="xml">
+            <form string="Mi procedimiento" create="0" delete="0">
+                <header>
+                    <button name="action_sign" type="object" string="Firmar leído y entendido"
+                            class="btn-primary" icon="fa-pencil"
+                            invisible="not is_me or ack_state != 'pendiente'"
+                            confirm="Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora."/>
+                    <button name="action_open_doc" type="object" string="Ver revisión vigente" icon="fa-file-pdf-o"
+                            invisible="not doc_id"/>
+                    <button name="action_print" type="object" string="Imprimir PDF" icon="fa-print"
+                            invisible="not job_id"/>
+                    <button name="action_publish" type="object" string="Publicar revisión" icon="fa-upload"
+                            invisible="not can_publish or not job_id"
+                            confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
+                    <button name="action_precheck" type="object" string="Revisión previa" icon="fa-stethoscope"
+                            invisible="not can_publish"/>
+                    <button name="action_publish_all" type="object" string="Publicar todos los puestos" icon="fa-users"
+                            invisible="not can_publish"
+                            confirm="Se publica «Mi procedimiento» de TODOS los puestos con roles y personas: revisión nueva solo donde cambió el contenido, y cada revisión nueva deja pendiente el acuse de sus empleados. ¿Continuar?"/>
+                    <field name="ack_state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <!-- 54.1.0: la pantalla se lee como una ficha de persona: quién
+                         es y qué puesto tiene arriba, y CADA lista (actividades,
+                         escalamientos, acuses, documentos, pendientes, EPP) es un
+                         botón inteligente que la abre; aquí solo queda lo que es
+                         de la persona y del puesto. «Ver como» solo aparece a
+                         quien puede elegir. -->
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_show_all" type="object" class="oe_stat_button" icon="fa-list-ol">
+                            <field name="activity_count" widget="statinfo" string="Actividades"/>
+                        </button>
+                        <button name="action_show_late" type="object" class="oe_stat_button text-danger"
+                                icon="fa-exclamation-circle" invisible="late_count == 0">
+                            <field name="late_count" widget="statinfo" string="Atrasadas"/>
+                        </button>
+                        <button name="action_show_ok" type="object" class="oe_stat_button text-success"
+                                icon="fa-check-circle" invisible="ok_count == 0">
+                            <field name="ok_count" widget="statinfo" string="Al día"/>
+                        </button>
+                        <button name="action_show_unmeasured" type="object" class="oe_stat_button"
+                                icon="fa-circle-o" invisible="unmeasured_count == 0">
+                            <field name="unmeasured_count" widget="statinfo" string="Sin medir"/>
+                        </button>
+                        <button name="action_show_received" type="object" class="oe_stat_button"
+                                icon="fa-level-up" invisible="received_count == 0">
+                            <field name="received_count" widget="statinfo" string="Escalamientos"/>
+                        </button>
+                        <button name="action_show_short" type="object" class="oe_stat_button"
+                                icon="fa-user-o" invisible="short_count == 0">
+                            <field name="short_count" widget="statinfo" string="Participa"/>
+                        </button>
+                        <button name="action_show_acks" type="object" class="oe_stat_button text-warning"
+                                icon="fa-pencil-square-o" invisible="pending_ack_count == 0">
+                            <field name="pending_ack_count" widget="statinfo" string="Firmas pendientes"/>
+                        </button>
+                        <button name="action_show_documents" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o" invisible="document_count == 0">
+                            <field name="document_count" widget="statinfo" string="Documentos"/>
+                        </button>
+                        <button name="action_focus_pending" type="object" class="oe_stat_button"
+                                icon="fa-tasks" invisible="pending_count == 0">
+                            <field name="pending_count" widget="statinfo" string="Acciones"/>
+                        </button>
+                        <button name="action_show_nc" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-triangle" invisible="nc_count == 0">
+                            <field name="nc_count" widget="statinfo" string="NC a contestar"/>
+                        </button>
+                        <button name="action_show_measures" type="object" class="oe_stat_button"
+                                icon="fa-calculator" invisible="measure_count == 0">
+                            <field name="measure_count" widget="statinfo" string="Mediciones"/>
+                        </button>
+                        <button name="action_show_indicators" type="object" class="oe_stat_button"
+                                icon="fa-tachometer" invisible="indicator_count == 0">
+                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
+                        </button>
+                        <button name="action_show_legal" type="object" class="oe_stat_button"
+                                icon="fa-balance-scale" invisible="legal_count == 0">
+                            <field name="legal_count" widget="statinfo" string="Legales"/>
+                        </button>
+                        <button name="action_show_doc_reviews" type="object" class="oe_stat_button"
+                                icon="fa-refresh" invisible="doc_review_count == 0">
+                            <field name="doc_review_count" widget="statinfo" string="Doc. por revisar"/>
+                        </button>
+                        <button name="action_show_epp" type="object" class="oe_stat_button"
+                                icon="fa-shield" invisible="epp_count == 0">
+                            <field name="epp_count" widget="statinfo" string="EPP"/>
+                        </button>
+                        <button name="action_open_obligations" type="object" class="oe_stat_button"
+                                icon="fa-list-ul" invisible="not has_obligations">
+                            <div class="o_stat_info"><span class="o_stat_text">Obligaciones</span></div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Firmado" bg_color="text-bg-success" invisible="ack_state != 'leido'"/>
+                    <widget name="web_ribbon" title="Por firmar" bg_color="text-bg-warning" invisible="ack_state != 'pendiente'"/>
+                    <field name="can_pick" invisible="1"/>
+                    <field name="can_publish" invisible="1"/>
+                    <field name="is_me" invisible="1"/>
+                    <field name="doc_id" invisible="1"/>
+                    <field name="has_user" invisible="1"/>
+                    <field name="has_obligations" invisible="1"/>
+                    <field name="epp_pending_sign" invisible="1"/>
+                    <field name="allowed_employee_ids" invisible="1"/>
+                    <field name="allowed_job_ids" invisible="1"/>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="employee_id" readonly="not can_pick" placeholder="Empleado"
+                                   domain="[('id', 'in', allowed_employee_ids)]"
+                                   widget="many2one_avatar_employee"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h1>
+                        <h3>
+                            <field name="job_id" readonly="not can_pick" placeholder="Puesto"
+                                   domain="[('id', 'in', allowed_job_ids)]"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                        </h3>
+                    </div>
+                    <div class="d-flex flex-wrap gap-4 text-muted mb-2">
+                        <span invisible="not boss_id"><i class="fa fa-user-o me-1" title="Mi jefe"/>Jefe: <field name="boss_id" class="d-inline" options="{'no_open': True}"/></span>
+                        <span invisible="not department_id"><i class="fa fa-building-o me-1" title="Área"/><field name="department_id" class="d-inline" options="{'no_open': True}"/></span>
+                        <span invisible="not family_id"><i class="fa fa-users me-1" title="Familia de puestos"/><field name="family_id" class="d-inline" options="{'no_open': True}"/></span>
+                        <span invisible="not ack_label"><i class="fa fa-pencil me-1" title="Firma"/><field name="ack_label" class="d-inline"/></span>
+                        <span invisible="not epp_label" class="text-warning"><i class="fa fa-shield me-1" title="EPP"/><field name="epp_label" class="d-inline"/></span>
+                    </div>
+                    <group>
+                        <field name="process_ids" widget="many2many_tags" options="{'no_create': True}" string="Procesos"/>
+                        <field name="job_employee_ids" widget="many2many_tags" options="{'no_create': True}"
+                               invisible="employee_id" string="Personas en el puesto"/>
+                    </group>
+                    <group string="EPP requerido por el puesto (S03-01)" invisible="not epp_required">
+                        <field name="epp_required" nolabel="1" readonly="1" colspan="2"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_my_procedure_check_view_form" model="ir.ui.view">
+        <field name="name">sgi.my.procedure.check.form</field>
+        <field name="model">sgi.my.procedure.check</field>
+        <field name="arch" type="xml">
+            <form string="Revisión previa a publicar" create="0" delete="0">
+                <sheet>
+                    <p class="text-muted">Lo que conviene limpiar antes de publicar «Mi procedimiento» para toda la planta. Un empleado en un puesto duplicado sin roles abre su procedimiento y lo ve vacío.</p>
+                    <group>
+                        <field name="ready_count"/>
+                    </group>
+                    <notebook>
+                        <page string="Puestos duplicados" name="duplicados">
+                            <field name="duplicate_job_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" default_order="name">
+                                    <field name="name"/>
+                                    <field name="no_of_employee" string="Personas"/>
+                                    <field name="sgi_role_count" string="Roles"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Empleados sin puesto" name="sin_puesto">
+                            <field name="no_job_employee_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="department_id"/>
+                                    <field name="parent_id" string="Jefe"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Empleados en un puesto sin roles" name="sin_roles">
+                            <field name="job_without_roles_employee_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" default_order="job_id, name">
+                                    <field name="name"/>
+                                    <field name="job_id"/>
+                                    <field name="department_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Puestos con roles pero sin personas" name="sin_personas">
+                            <field name="roles_without_people_job_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0" default_order="name">
+                                    <field name="name"/>
+                                    <field name="sgi_role_count" string="Roles"/>
+                                    <field name="sgi_family_id"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ====== Lista de roles del puesto agrupados por cadencia (vista secundaria) ====== -->
+    <record id="sgi_activity_role_view_list_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.my.procedure</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="arch" type="xml">
+            <list string="Mi procedimiento" create="0" edit="0" delete="0"
+                  default_order="cadence, role, process_id, activity_id">
+                <field name="cadence"/>
+                <field name="role" widget="badge"
+                       decoration-success="role == 'ejecuta'"
+                       decoration-warning="role == 'aprueba'"
+                       decoration-info="role == 'participa'"/>
+                <field name="process_id"/>
+                <field name="activity_id"/>
+                <field name="activity_when" string="Cuándo"/>
+                <field name="activity_menu_id" string="Dónde en Odoo" optional="show"/>
+                <field name="condition" optional="hide"/>
+                <button name="action_open_activity" type="object" string="Ver actividad"
+                        icon="fa-external-link" class="btn-link"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- hr.job: pestaña SGI → botones de «Mi procedimiento» -->
+    <record id="sgi_hr_job_view_form_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.hr.job.form.my.procedure</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_job_view_form_roles"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sgi_roles']//button[@name='action_sgi_view_roles']" position="before">
+                <div class="mb-2">
+                    <button name="action_sgi_open_my_procedure" type="object"
+                            string="Ver su procedimiento" icon="fa-eye"
+                            class="btn-primary me-1"/>
+                    <button name="action_sgi_print_my_procedure" type="object"
+                            string="Imprimir «Mi procedimiento»" icon="fa-print"
+                            class="btn-secondary me-1"/>
+                    <button name="action_sgi_publish_my_procedure" type="object"
+                            string="Publicar revisión (archiva el PDF y pide acuses)"
+                            icon="fa-upload" class="btn-primary me-1"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
+                    <button name="action_sgi_open_my_procedure_doc" type="object"
+                            string="Ver revisión vigente" icon="fa-file-pdf-o"
+                            class="btn-link" invisible="not sgi_my_procedure_doc_id"/>
+                    <field name="sgi_my_procedure_doc_id" invisible="1"/>
+                    <field name="sgi_my_procedure_stale" invisible="1"/>
+                    <span class="text-warning ms-2" invisible="not sgi_my_procedure_stale or not sgi_my_procedure_doc_id">
+                        <i class="fa fa-exclamation-triangle"/> Las actividades cambiaron desde la última revisión publicada.
+                    </span>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- hr.employee: botón «Mi procedimiento» (imprime el de su puesto) -->
+    <record id="sgi_hr_employee_view_form_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.hr.employee.form.my.procedure</field>
+        <field name="model">hr.employee</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_employee_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_my_procedure" type="object" class="oe_stat_button"
+                        icon="fa-eye" invisible="not job_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Ver su procedimiento</span>
+                        <field name="sgi_my_procedure_ack_state" class="o_stat_text"/>
+                    </div>
+                </button>
+                <button name="action_sgi_print_my_procedure" type="object" class="oe_stat_button"
+                        icon="fa-print" invisible="not job_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Imprimir PDF</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- «Mis actividades» de Inicio: todos los roles del puesto (y de su
+         familia), no solo «ejecuta». -->
+    <record id="sgi_process_activity_view_search_my_procedure" model="ir.ui.view">
+        <field name="name">sgi.process.activity.search.my.procedure</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_activity_view_search"/>
+        <field name="arch" type="xml">
+            <filter name="my_activities" position="attributes">
+                <attribute name="domain">['|', '|', ('responsible_job_ids.employee_ids.user_id', '=', uid), ('role_ids.job_id.employee_ids.user_id', '=', uid), ('role_ids.family_id.job_ids.employee_ids.user_id', '=', uid)]</attribute>
+            </filter>
+        </field>
+    </record>
+
+    <!-- ====== Mi equipo: lista nativa sobre hr.employee.public ====== -->
+    <record id="sgi_my_team_view_list" model="ir.ui.view">
+        <field name="name">sgi.my.team.list</field>
+        <field name="model">hr.employee.public</field>
+        <field name="arch" type="xml">
+            <list string="Mi equipo" create="0" delete="0" default_order="name"
+                  decoration-danger="sgi_mp_late > 0"
+                  decoration-warning="sgi_mp_late == 0 and sgi_mp_acks_pending > 0">
+                <field name="name"/>
+                <field name="job_id"/>
+                <field name="department_id" optional="show"/>
+                <field name="parent_id" string="Jefe" optional="show"/>
+                <field name="sgi_mp_late" sum="Atrasadas"/>
+                <field name="sgi_mp_ok" optional="show"/>
+                <field name="sgi_mp_unmeasured" optional="hide"/>
+                <field name="sgi_mp_total" optional="show"/>
+                <field name="sgi_mp_acks_pending" sum="Firmas pendientes"/>
+                <field name="sgi_mp_ack_state" widget="badge"
+                       decoration-success="sgi_mp_ack_state == 'leido'"
+                       decoration-warning="sgi_mp_ack_state == 'pendiente'"/>
+                <button name="action_sgi_open_my_procedure" type="object"
+                        string="Ver su procedimiento" icon="fa-eye"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- 54.4.0: Mi equipo abre en organigrama (vista nativa hierarchy, la
+         misma del organigrama de Empleados): quién reporta a quién, con el
+         estado SGI de cada persona en su tarjeta. -->
+    <record id="sgi_my_team_view_hierarchy" model="ir.ui.view">
+        <field name="name">sgi.my.team.hierarchy</field>
+        <field name="model">hr.employee.public</field>
+        <field name="arch" type="xml">
+            <hierarchy child_field="child_ids" parent_field="parent_id" icon="fa-users" draggable="0">
+                <field name="name"/>
+                <field name="job_id"/>
+                <field name="avatar_128"/>
+                <field name="sgi_mp_late"/>
+                <field name="sgi_mp_total"/>
+                <field name="sgi_mp_acks_pending"/>
+                <field name="sgi_mp_ack_state"/>
+                <templates>
+                    <t t-name="hierarchy-box">
+                        <div class="d-flex align-items-center gap-2 pb-1">
+                            <field name="avatar_128" widget="image" class="o_hierarchy_avatar" options="{'size': [40, 40]}"/>
+                            <div class="min-w-0">
+                                <div class="fw-bold text-truncate"><field name="name"/></div>
+                                <div class="text-muted small text-truncate"><field name="job_id"/></div>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-1 small">
+                            <span t-if="record.sgi_mp_late.raw_value" class="badge text-bg-danger"
+                                  title="Actividades atrasadas">
+                                <i class="fa fa-exclamation-circle me-1"/><field name="sgi_mp_late"/> atrasadas
+                            </span>
+                            <span t-elif="record.sgi_mp_total.raw_value" class="badge text-bg-success" title="Actividades al día">
+                                <i class="fa fa-check-circle me-1"/>al día
+                            </span>
+                            <span t-if="record.sgi_mp_acks_pending.raw_value" class="badge text-bg-warning"
+                                  title="Firmas de lectura pendientes">
+                                <i class="fa fa-pencil me-1"/><field name="sgi_mp_acks_pending"/> firmas
+                            </span>
+                            <span t-if="record.sgi_mp_ack_state.raw_value == 'pendiente'" class="badge text-bg-light"
+                                  title="Mi procedimiento sin firmar">sin firmar</span>
+                            <span t-if="record.sgi_mp_ack_state.raw_value == 'sin_publicar'" class="badge text-bg-light"
+                                  title="Mi procedimiento sin publicar">sin publicar</span>
+                        </div>
+                    </t>
+                </templates>
+            </hierarchy>
+        </field>
+    </record>
+
+    <record id="sgi_my_team_view_search" model="ir.ui.view">
+        <field name="name">sgi.my.team.search</field>
+        <field name="model">hr.employee.public</field>
+        <field name="arch" type="xml">
+            <search string="Mi equipo">
+                <field name="name"/>
+                <field name="job_id"/>
+                <field name="department_id"/>
+                <field name="parent_id" string="Jefe"/>
+                <filter name="with_late" string="Con atrasadas" domain="[('sgi_mp_late', '>', 0)]"/>
+                <filter name="with_acks" string="Con firmas pendientes" domain="[('sgi_mp_acks_pending', '>', 0)]"/>
+                <filter name="mp_pending" string="Mi procedimiento sin firmar" domain="[('sgi_mp_ack_state', '=', 'pendiente')]"/>
+                <filter name="mp_unpublished" string="Mi procedimiento sin publicar" domain="[('sgi_mp_ack_state', '=', 'sin_publicar')]"/>
+                <separator/>
+                <filter name="my_department" string="Mi departamento"
+                        domain="[('department_id.member_ids.user_id', '=', uid)]"/>
+                <group>
+                    <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_department" string="Departamento" context="{'group_by': 'department_id'}"/>
+                    <filter name="group_parent" string="Jefe" context="{'group_by': 'parent_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
+              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_procedure_action_mine"
+              sequence="15"/>
+    <menuitem id="menu_sgi_my_team" name="Mi equipo"
+              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_team_action_mine"
+              sequence="16"/>
+</odoo>

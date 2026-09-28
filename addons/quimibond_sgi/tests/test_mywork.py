@@ -4,11 +4,18 @@ from datetime import date
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestMyWork(TransactionCase):
     """El ciclo del empleado en «Mi trabajo»: ver qué me toca, entender de
     dónde viene, hacerlo y marcarlo terminado."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        sgi_hide_real_documents(cls.env)
 
     def test_01_action_line_done_and_origin(self):
         risk = self.env['sgi.risk'].create({

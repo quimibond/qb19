@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.66.0: PDF bilingüe de especificaciones del producto (F-P-D01-08). -->
+    <record id="action_report_ficha_specs" model="ir.actions.report">
+        <field name="name">Especificaciones del producto / Product specs (PDF)</field>
+        <field name="model">qb.producto.ficha</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_capacidad_costeo.report_ficha_specs</field>
+        <field name="report_file">qb_capacidad_costeo.report_ficha_specs</field>
+        <field name="print_report_name">'Especificaciones - %s' % (object.default_code or object.product_id.name)</field>
+        <field name="binding_model_id" ref="model_qb_producto_ficha"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_ficha_specs">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Especificaciones del producto<br/><small>Product specs</small></h2>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:25%"><strong>Nombre del artículo / Name</strong></td><td><span t-field="o.product_id.name"/></td>
+                                <td style="width:25%"><strong>Ficha técnica / Technical data card</strong></td><td><span t-field="o.default_code"/></td></tr>
+                            <tr><td><strong>Fecha / Date</strong></td><td><span t-field="o.fecha_emision"/></td>
+                                <td><strong>Revisión / Version</strong></td><td><span t-out="o.revision or ''"/></td></tr>
+                            <tr><td><strong>Composición / Composition</strong></td><td><span t-out="o.composicion or ''"/></td>
+                                <td><strong>Color</strong></td><td><span t-out="o.color or ''"/></td></tr>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Características / Characteristics</th><th>Dirección / Direction</th><th>Unidades / Units</th><th>Especificaciones / Specs</th><th>Tolerancia</th><th>Métodos / Method</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="o.spec_lines('especificacion')" t-as="l">
+                                    <td><span t-out="l.name"/></td>
+                                    <td><span t-out="dict(l._fields['direction'].selection).get(l.direction)"/></td>
+                                    <td><span t-out="l.unit or ''"/></td>
+                                    <td><span t-out="l.value or ''"/></td>
+                                    <td><span t-out="l.tolerance or ''"/></td>
+                                    <td><span t-out="l.method or ''"/></td>
+                                </tr>
+                                <tr t-if="not o.spec_lines('especificacion')"><td colspan="6" class="text-muted">Sin renglones de especificación: cárgalos en la ficha.</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="row" style="font-size:10px;">
+                            <div class="col-6">
+                                <strong>Instrucciones de cuidado / Instructions of care</strong>
+                                <ul class="mb-1">
+                                    <li><span t-out="'☑' if o.cuidado_lavado else '☐'"/> Lavado ciclo normal a 30 °C / Machine wash 30 °C</li>
+                                    <li><span t-out="'☑' if o.cuidado_blanqueo else '☐'"/> Blanqueo / Bleach</li>
+                                    <li><span t-out="'☑' if o.cuidado_secado else '☐'"/> Secado ciclo normal / Tumble dry normal</li>
+                                    <li><span t-out="'☑' if o.cuidado_planchado else '☐'"/> Planchado a temperatura baja 150 °C / Iron</li>
+                                    <li><span t-out="'☑' if o.cuidado_lavado_seco else '☐'"/> Lavado en seco ciclo normal / Dry clean</li>
+                                </ul>
+                            </div>
+                            <div class="col-6">
+                                <strong>Principal uso del textil / Main use of textile</strong>
+                                <p><span t-out="o.uso_principal or '—'"/></p>
+                                <p><span t-out="'☑' if o.aprobado_desarrollos else '☐'"/> Aprobado desarrollos / Development approved</p>
+                            </div>
+                        </div>
+                        <p t-if="o.notas" style="font-size:10px;"><span t-field="o.notas"/></p>
+                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
+                            Formato controlado del SGI: F-P-D01-08 · PNTQ
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Ficha técnica completa de D&D (F-P-D01-24): datos generales y secciones. -->
+    <record id="action_report_ficha_dyd" model="ir.actions.report">
+        <field name="name">Ficha técnica de D&amp;D completa (PDF)</field>
+        <field name="model">qb.producto.ficha</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_capacidad_costeo.report_ficha_dyd</field>
+        <field name="report_file">qb_capacidad_costeo.report_ficha_dyd</field>
+        <field name="print_report_name">'Ficha DyD - %s' % (object.default_code or object.product_id.name)</field>
+        <field name="binding_model_id" ref="model_qb_producto_ficha"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_ficha_dyd">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Ficha técnica de producto · Diseño y desarrollo</h2>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td><strong>Artículo</strong></td><td><span t-field="o.product_id.name"/> (<span t-field="o.default_code"/>)</td>
+                                <td><strong>Emisión / Revisión / Último cambio</strong></td><td><span t-field="o.fecha_emision"/> · <span t-out="o.revision or ''"/> · <span t-field="o.fecha_ultimo_cambio"/></td></tr>
+                            <tr><td><strong>Familia</strong></td><td><span t-out="o.familia or ''"/></td><td><strong>Dibujo</strong></td><td><span t-out="o.dibujo or ''"/></td></tr>
+                            <tr><td><strong>Composición total</strong></td><td><span t-out="o.composicion or ''"/></td><td><strong>Peso</strong></td><td><span t-out="'%.0f g/m²' % o.gramaje_g_m2 if o.gramaje_g_m2 else ''"/></td></tr>
+                            <tr><td><strong>Color</strong></td><td><span t-out="o.color or ''"/></td><td><strong>Ancho</strong></td><td><span t-out="'%.2f m' % o.ancho_m if o.ancho_m else ''"/></td></tr>
+                            <tr><td><strong>Tacto</strong></td><td><span t-out="o.tacto or ''"/></td><td><strong>Ruta de proceso</strong></td><td><span t-out="o.ruta_proceso or ''"/></td></tr>
+                            <tr><td><strong>Descripción</strong></td><td colspan="3"><span t-out="o.descripcion or ''"/></td></tr>
+                        </table>
+                        <t t-foreach="[('tejido', 'Tejido'), ('tenido', 'Teñido'), ('acabado', 'Acabado'), ('tintoreria', 'Tintorería'), ('presentacion', 'Presentación')]" t-as="sec">
+                            <t t-set="lines" t-value="o.spec_lines(sec[0])"/>
+                            <t t-if="lines">
+                                <h5><span t-out="sec[1]"/></h5>
+                                <table class="table table-sm table-bordered" style="font-size:10px;">
+                                    <thead><tr><th>Característica</th><th>Unidad</th><th>Valor</th><th>Tolerancia o factor</th><th>Observaciones</th></tr></thead>
+                                    <tbody>
+                                        <tr t-foreach="lines" t-as="l">
+                                            <td><span t-out="l.name"/><t t-if="l.direction != 'na'"> (<span t-out="dict(l._fields['direction'].selection).get(l.direction)"/>)</t></td>
+                                            <td><span t-out="l.unit or ''"/></td><td><span t-out="l.value or ''"/></td>
+                                            <td><span t-out="l.tolerance or ''"/></td><td><span t-out="l.note or ''"/></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </t>
+                        </t>
+                        <table class="table table-sm mt-4" style="font-size:9px;">
+                            <tr>
+                                <td class="text-center" style="border-top:1px solid #000;">Jefe de manufactura<br/><span t-out="o.firma_manufactura_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Jefe de calidad<br/><span t-out="o.firma_calidad_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Supervisor de inspección, enrollado y empaque<br/><span t-out="o.firma_inspeccion_id.name or ''"/></td>
+                            </tr>
+                            <tr>
+                                <td class="text-center" style="border-top:1px solid #000;">Diseño y desarrollo de producto<br/><span t-out="o.firma_dyd_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Dirección de operaciones<br/><span t-out="o.firma_operaciones_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Administrador de ventas y marketing<br/><span t-out="o.firma_ventas_id.name or ''"/></td>
+                            </tr>
+                        </table>
+                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
+                            Formato controlado del SGI: F-P-D01-24 (secciones F-P-D01-05 acabado · F-P-D01-33 tintorería) · PNTQ
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

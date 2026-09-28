@@ -245,7 +245,7 @@ class StockPicking(models.Model):
         """ Validación con tolerancia técnica para industria textil """
         for rec in self:
             op_name = _normalize_text(rec.picking_type_id.name)
-            if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO', 'EMBARCAR']) or 'DEVOLUCION PRODUCCION' in op_name:
+            if any(kw in op_name for kw in ['FORMACI', 'DESPERDICIO']) or 'DEVOLUCION PRODUCCION' in op_name:
 
                 total_scanned = sum(rec.move_line_ids.mapped('quantity'))
                 total_demanded = sum(rec.move_ids.mapped('product_uom_qty'))

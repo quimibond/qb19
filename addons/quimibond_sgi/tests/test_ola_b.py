@@ -11,9 +11,16 @@ from datetime import date
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError
 
+from .common_users import assert_locked, sgi_test_user
+
 
 @tagged('post_install', '-at_install')
 class TestOlaBIncident(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.sgi_user = sgi_test_user(cls.env)
 
     def _incident(self, severity, **vals):
         base = {'name': 'Incidente OLA B', 'severity': severity,
@@ -42,8 +49,7 @@ class TestOlaBIncident(TransactionCase):
             'date_commit': date.today(), 'date_done': date.today()})
         inc.action_set_investigacion()
         # Sin IPER ligado -> no cierra.
-        with self.assertRaises(UserError):
-            inc.action_set_cerrado()
+        assert_locked(self, inc.with_user(self.sgi_user).action_set_cerrado)
         # Con IPER -> cierra.
         iper = self.env['sgi.risk'].create({
             'name': 'Peligro X', 'instrument': 'iper',

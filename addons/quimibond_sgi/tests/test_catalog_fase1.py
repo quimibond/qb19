@@ -338,7 +338,7 @@ class TestCatalogFase1(TransactionCase):
                                               'relative': 'jefe_del_solicitante'}]}]}
         result = self.Process.load_payload(payload)
         self.assertTrue(result['ok'], result['errors'])
-        self.assertFalse(result['warnings'])
+        self.assertFalse([w for w in result['warnings'] if w['kind'] != 'spec'])
 
     def test_43_zero_employee_job_and_vacancy(self):
         empty = self._jobs('COORDINADOR VACANTE QA')

@@ -4,6 +4,8 @@ from datetime import date
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
+from .common_users import assert_locked, sgi_test_user
+
 
 @tagged('post_install', '-at_install')
 class TestEmergency(TransactionCase):
@@ -17,6 +19,7 @@ class TestEmergency(TransactionCase):
             'responsible_id': cls.env.user.id,
             'drill_frequency_months': 6,
         })
+        cls.sgi_user = sgi_test_user(cls.env)
 
     def test_01_folios(self):
         self.assertTrue(self.plan.folio.startswith('PE-'))
@@ -35,12 +38,10 @@ class TestEmergency(TransactionCase):
     def test_03_drill_close_lock(self):
         drill = self.env['sgi.emergency.drill'].create({'plan_id': self.plan.id})
         # Sin resultado ni participantes -> bloqueado.
-        with self.assertRaises(UserError):
-            drill.action_set_realizado()
+        assert_locked(self, drill.with_user(self.sgi_user).action_set_realizado)
         drill.write({'result': 'no_satisfactorio', 'participants_count': 25})
         # No satisfactorio sin hallazgos ni acciones -> bloqueado.
-        with self.assertRaises(UserError):
-            drill.action_set_realizado()
+        assert_locked(self, drill.with_user(self.sgi_user).action_set_realizado)
         drill.findings = "Ruta de evacuación obstruida."
         self.env['sgi.action.line'].create({
             'drill_id': drill.id, 'name': 'Despejar ruta',

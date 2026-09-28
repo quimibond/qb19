@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_machine_sheet" model="ir.actions.report">
+        <field name="name">Ficha técnica de proceso por máquina</field>
+        <field name="model">sgi.machine.sheet</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_machine_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_machine_sheet_document</field>
+        <field name="print_report_name">'Ficha proceso - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_sgi_machine_sheet"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_machine_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Ficha técnica de control de proceso</h2>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td><strong>Artículo</strong></td><td><span t-out="doc.product_id.display_name"/></td>
+                                <td><strong>Máquina</strong></td><td><span t-out="doc.workcenter_id.name"/></td></tr>
+                            <tr><td><strong>Fecha</strong></td><td><span t-field="doc.date"/></td>
+                                <td><strong>Área</strong></td><td><span t-field="doc.area"/> · Rev. <span t-out="doc.revision"/> · <span t-field="doc.state"/></td></tr>
+                        </table>
+                        <h5>Materia prima</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Fibra</th><th>Disposición del hilo</th><th>Tipo de hilo</th><th>Título</th><th>Torsión</th><th>cm/vta – long. (m)</th><th>% de hilo</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.yarn_line_ids" t-as="y">
+                                    <td><span t-field="y.fiber"/></td><td><span t-out="y.feed or ''"/></td><td><span t-out="y.yarn_type or ''"/></td>
+                                    <td><span t-out="y.title or ''"/></td><td><span t-out="y.twist or ''"/></td><td><span t-out="y.consumption or ''"/></td>
+                                    <td><span t-out="'%g' % y.pct"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="font-size:10px;"><strong>Poleas:</strong>
+                            1: <span t-out="doc.pulley_1 or '—'"/> · 2: <span t-out="doc.pulley_2 or '—'"/> ·
+                            3: <span t-out="doc.pulley_3 or '—'"/> · 4: <span t-out="doc.pulley_4 or '—'"/>
+                            <t t-if="doc.yarn_note"><br/><strong>Obs.:</strong> <span t-out="doc.yarn_note"/></t>
+                        </p>
+                        <t t-foreach="[('maquina', 'Datos de máquina', doc.machine_note), ('tela', 'Datos de tela acondicionada', doc.fabric_note)]" t-as="section">
+                            <h5><span t-out="section[1]"/></h5>
+                            <table class="table table-sm table-bordered" style="font-size:10px;">
+                                <thead><tr><th>Condición</th><th>Especificación</th><th>Tolerancia (±)</th><th>Unidad</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="doc.param_line_ids.filtered(lambda p: p.section == section[0])" t-as="p">
+                                        <td><span t-out="p.name"/></td><td><span t-out="p.spec or ''"/></td>
+                                        <td><span t-out="p.tolerance or ''"/></td><td><span t-out="p.unit or ''"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p t-if="section[2]" style="font-size:10px;"><strong>Obs.:</strong> <span t-out="section[2]"/></p>
+                        </t>
+                        <table class="table table-sm mt-4" style="font-size:10px;">
+                            <tr>
+                                <td class="text-center" style="border-top:1px solid #000;">Laboratorista de tejido<br/><span t-out="doc.lab_user_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Mecánico de tejido<br/><span t-out="doc.mechanic_user_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Jefe técnico de tejido y acabado<br/><span t-out="doc.approved_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Jefe de ingeniería de procesos<br/><span t-out="doc.engineering_by_id.name or ''"/></td>
+                            </tr>
+                        </table>
+                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
+                            Formato controlado del SGI: <span class="fw-bold" t-out="doc.sgi_format_info()"/> · PNTQ
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

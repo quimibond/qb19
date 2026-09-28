@@ -238,28 +238,6 @@
         </field>
     </record>
 
-    <!-- Acción global de líneas (importación base_import del Excel de MAST). -->
-    <record id="sgi_sales_budget_line_action" model="ir.actions.act_window">
-        <field name="name">Líneas de presupuesto de ventas</field>
-        <field name="res_model">sgi.sales.budget.line</field>
-        <field name="view_mode">list,form,pivot,graph</field>
-        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Importa o captura las líneas del presupuesto</p>
-            <p>Para cargar el 2026 desde el Excel, usa <b>Favoritos → Importar registros</b>.
-            Columnas esperadas:</p>
-            <ul>
-                <li><b>Presupuesto</b> (budget_id) — el presupuesto del mercado y año</li>
-                <li><b>Producto</b> (product_id) — por referencia interna o nombre</li>
-                <li><b>Cliente</b> (partner_id) — opcional; vacío = presupuesto global del producto para el mercado</li>
-                <li><b>Unidad</b> (uom_id) — opcional; por defecto la unidad de venta del producto</li>
-                <li><b>Mes</b> (date) — primer día del mes (AAAA-MM-01)</li>
-                <li><b>Cantidad presupuestada</b> (qty_budget) — en la unidad de la línea</li>
-                <li><b>Importe presupuestado</b> (amount_budget) — en moneda de la compañía</li>
-            </ul>
-        </field>
-    </record>
-
     <!-- ============ PRESUPUESTO: FICHA / LISTA / SEARCH ============ -->
     <record id="sgi_sales_budget_view_form" model="ir.ui.view">
         <field name="name">sgi.sales.budget.form</field>

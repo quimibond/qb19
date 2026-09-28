@@ -55,13 +55,22 @@ class SgiProcess(models.Model):
         help="Documentos vigentes que este proceso reemplaza. Al poner en "
              "vigor el procedimiento del proceso se ofrece marcarlos "
              "obsoletos.")
+    # PR-1 (53.1.0): quién sustituyó a este proceso al archivarlo por «replaces».
+    # Una carga futura mueve al sucesor lo que se quede colgado aquí.
+    replaced_by_id = fields.Many2one(
+        'sgi.process', string="Sustituido por", copy=False, index=True,
+        domain="[('id', '!=', id), ('active', '=', True)]",
+        help="Proceso que tomó el lugar de este al archivarlo. La carga lo "
+             "llena con «replaces»; en un proceso archivado sin sucesor se "
+             "captura a mano y la siguiente carga mueve al sucesor lo que "
+             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).")
     owner_valid = fields.Boolean(
         string="Dueño válido", compute='_compute_owner_valid',
         help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
              "nadie recibe los avisos del proceso y la salud se pinta en rojo.")
 
-    in_flow_ids = fields.One2many('sgi.process.flow', 'to_process_id', string="Entradas")
-    out_flow_ids = fields.One2many('sgi.process.flow', 'from_process_id', string="Salidas")
+    in_flow_ids = fields.One2many('sgi.process.flow', 'to_process_id', string="Flujos de entrada")
+    out_flow_ids = fields.One2many('sgi.process.flow', 'from_process_id', string="Flujos de salida")
 
     # Ficha del proceso: todo lo ligado, navegable desde un solo lugar.
     linked_document_ids = fields.One2many(
@@ -90,6 +99,8 @@ class SgiProcess(models.Model):
     document_count = fields.Integer(string="# Documentos", compute='_compute_counts')
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
     risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
+    flow_count = fields.Integer(string="# Conexiones", compute='_compute_flow_count',
+                                help="Entregables que recibe de otros procesos más los que entrega.")
 
     _code_company_uniq = models.Constraint(
         'unique(code, company_id)',
@@ -259,6 +270,40 @@ class SgiProcess(models.Model):
             process.document_count = doc_counts.get(process.id, 0)
             process.indicator_count = ind_counts.get(process.id, 0)
             process.risk_count = risk_counts.get(process.id, 0)
+
+    @api.depends('in_flow_ids', 'out_flow_ids')
+    def _compute_flow_count(self):
+        for process in self:
+            process.flow_count = len(process.in_flow_ids) + len(process.out_flow_ids)
+
+    def action_open_flows(self):
+        """Botón «Conexiones»: los flujos que entran y salen del proceso."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Conexiones — %s" % (self.code or self.name),
+            'res_model': 'sgi.process.flow',
+            'view_mode': 'list,form',
+            'domain': ['|', ('from_process_id', '=', self.id), ('to_process_id', '=', self.id)],
+            'context': {'default_from_process_id': self.id},
+        }
+
+    def action_print_risk_matrix(self):
+        """DIR-2 (52.0.0): matriz de riesgos del proceso en PDF."""
+        return self.env.ref('quimibond_sgi.action_report_risk_matrix').report_action(self)
+
+    def action_print_master_list(self):
+        """DOC-3 (51.0.0): lista maestra de documentos del proceso en PDF."""
+        return self.env.ref('quimibond_sgi.action_report_master_list').report_action(self)
+
+    def _sgi_master_list_documents(self):
+        """Documentos controlados del proceso para la lista maestra: vigentes
+        y en piloto, por tipo y clave."""
+        self.ensure_one()
+        return self.env['documents.document'].sudo().search(
+            [('sgi_is_controlled', '=', True), ('sgi_process_id', '=', self.id),
+             ('sgi_state', 'in', ('vigente', 'piloto'))],
+            order='sgi_doc_type, sgi_code, name')
 
     def action_open_documents(self):
         self.ensure_one()

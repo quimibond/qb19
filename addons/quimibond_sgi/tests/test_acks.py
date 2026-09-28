@@ -3,6 +3,8 @@
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import ValidationError
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestDocsAndAcks(TransactionCase):
@@ -10,6 +12,7 @@ class TestDocsAndAcks(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         cls.Doc = cls.env['documents.document']
         cls.job = cls.env['hr.job'].create({'name': 'Inspector de Calidad SGI'})
         cls.emp1 = cls.env['hr.employee'].create({'name': 'Emp Uno', 'job_id': cls.job.id})
@@ -33,13 +36,14 @@ class TestDocsAndAcks(TransactionCase):
         doc1 = self._new_doc(sgi_is_controlled=True, sgi_doc_type='procedimiento',
                              sgi_code='P-C11', sgi_state='vigente')
         self.assertEqual(doc1.sgi_state, 'vigente')
+        # Revisión nueva de la misma clave: va por arriba de la anterior.
         doc2 = self._new_doc(sgi_is_controlled=True, sgi_doc_type='procedimiento',
-                             sgi_code='P-C11', sgi_state='vigente')
+                             sgi_code='P-C11', sgi_state='vigente', sgi_revision=1)
         self.assertEqual(doc2.sgi_state, 'vigente')
         self.assertEqual(doc1.sgi_state, 'obsoleto')
 
     def test_04_generate_acks_idempotent(self):
-        doc = self._new_doc(sgi_is_controlled=True, sgi_doc_type='procedimiento',
+        doc = self._new_doc(sgi_is_controlled=True, sgi_doc_type='instructivo',
                             sgi_code='IT-P-C11-01', sgi_state='vigente',
                             sgi_job_ids=[(6, 0, [self.job.id])])
         doc.action_generate_acks()
@@ -52,7 +56,7 @@ class TestDocsAndAcks(TransactionCase):
         self.assertEqual(len(doc.sgi_ack_ids), 2)
 
     def test_05_mark_read(self):
-        doc = self._new_doc(sgi_is_controlled=True, sgi_doc_type='procedimiento',
+        doc = self._new_doc(sgi_is_controlled=True, sgi_doc_type='formato',
                             sgi_code='F-P-G05-01', sgi_state='vigente',
                             sgi_job_ids=[(6, 0, [self.job.id])])
         doc.action_generate_acks()

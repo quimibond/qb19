@@ -12,6 +12,9 @@ class ObligationCommon(AccountTestInvoicingCommon):
     def setUpClass(cls):
         super().setUpClass()
         cls.company = cls.env.company
+        # El espejo en actividades viene apagado desde 3.2.0; los tests lo prueban encendido
+        # salvo test_mirror_off_*, que lo apagan a propósito.
+        cls.company.obligation_activity_mirror = True
         Users = cls.env['res.users'].with_context(no_reset_password=True)
         # Con acceso a facturas: la actividad espejo se agenda sobre el documento
         # ancla solo si el dueño puede leerlo (mail.activity lo exige).

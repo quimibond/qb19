@@ -4,6 +4,13 @@ La memoria de Quimibond (correo de 52 buzones con adjuntos, pendientes y
 señales de demanda extraídas) vive en Supabase. Este módulo la muestra dentro
 de Odoo sin copiar correos: en cada contacto, la pestaña **Memoria**.
 
+> **Desde 1.3.0 la pestaña está apagada** (decisión del CEO, 2026-09-24): solo
+> la ve el grupo **Ver pestaña Memoria** (Ajustes → Usuarios → privilegio
+> *Memoria*), que nace sin miembros. Todo lo demás sigue: el cron nocturno de
+> dueños aprendidos, `memoria_owner_user_id` en el contacto (lo usa
+> `qb_obligation` como dueño por defecto) y los Buzones (memoria). Para volver
+> a verla, agrega tu usuario al grupo; no hace falta desplegar nada.
+
 | Sección | Qué muestra | De dónde |
 |---|---|---|
 | Resumen | Hilos en 90 días, cuántos esperan respuesta nuestra, último correo, contactos conocidos | `threads`, `contacts` |

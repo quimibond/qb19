@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- P-3: presupuesto de gastos (app Presupuestos) ligado al presupuesto
+         de ventas del SGI. La vista base se busca por modelo y no por xmlid
+         para no depender del nombre interno de account_budget. -->
+    <record id="sgi_budget_analytic_view_form" model="ir.ui.view">
+        <field name="name">sgi.budget.analytic.form</field>
+        <field name="model">budget.analytic</field>
+        <field name="inherit_id" model="ir.ui.view"
+               search="[('model', '=', 'budget.analytic'), ('type', '=', 'form'), ('mode', '=', 'primary')]"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group name="sgi_budget" string="SGI">
+                    <field name="sgi_sales_budget_id"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

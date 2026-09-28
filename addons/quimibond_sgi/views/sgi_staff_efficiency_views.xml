@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_staff_efficiency_view_form" model="ir.ui.view">
+        <field name="name">sgi.staff.efficiency.form</field>
+        <field name="model">sgi.staff.efficiency</field>
+        <field name="arch" type="xml">
+            <form string="Eficiencias de personal">
+                <header>
+                    <button name="action_load_employees" type="object" string="Cargar empleados del área" invisible="state != 'borrador'" icon="fa-users"/>
+                    <button name="action_compute_efficiency" type="object" string="Calcular eficiencia desde órdenes de trabajo"
+                            invisible="state != 'borrador'" icon="fa-cogs"
+                            help="Tiempo esperado / tiempo real registrado por cada empleado en las órdenes de trabajo del mes. Propone el % (tope 2 %)."/>
+                    <button name="action_close" type="object" string="Cerrar" class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_reopen" type="object" string="Reabrir" invisible="state != 'cerrado'" groups="hr.group_hr_manager"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="period_date" readonly="state != 'borrador'"/>
+                            <field name="department_id" readonly="state != 'borrador'"/>
+                            <field name="company_id" invisible="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="prepared_by_id" readonly="state != 'borrador'"/>
+                            <field name="received_by_id" readonly="state != 'borrador'"/>
+                            <field name="employee_count"/>
+                            <field name="amount_total"/>
+                        </group>
+                    </group>
+                    <div class="text-muted mb-2">
+                        Criterios: A asistencia 5.5 % · O y L orden y limpieza 2 % · E eficiencia 2 % · PQ calidad 2 %,
+                        sobre el salario mensual (salario diario × 30).
+                    </div>
+                    <field name="line_ids" readonly="state != 'borrador'">
+                        <list editable="bottom">
+                            <field name="employee_id"/>
+                            <field name="job_id"/>
+                            <field name="wage_daily"/>
+                            <field name="attendance_pct"/>
+                            <field name="housekeeping_pct"/>
+                            <field name="efficiency_pct"/>
+                            <field name="quality_pct"/>
+                            <field name="total_pct" sum="Total"/>
+                            <field name="amount" sum="A pagar"/>
+                            <field name="efficiency_ratio" optional="show"/>
+                            <field name="real_minutes" optional="hide"/>
+                            <field name="expected_minutes" optional="hide"/>
+                            <field name="note" optional="show"/>
+                            <field name="currency_id" column_invisible="1"/>
+                        </list>
+                    </field>
+                    <group><field name="note" nolabel="1" placeholder="Observaciones"/></group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_staff_efficiency_view_list" model="ir.ui.view">
+        <field name="name">sgi.staff.efficiency.list</field>
+        <field name="model">sgi.staff.efficiency</field>
+        <field name="arch" type="xml">
+            <list string="Eficiencias de personal">
+                <field name="name"/>
+                <field name="period_date"/>
+                <field name="department_id"/>
+                <field name="employee_count"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="prepared_by_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'cerrado'"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_staff_efficiency_line_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.staff.efficiency.line.pivot</field>
+        <field name="model">sgi.staff.efficiency.line</field>
+        <field name="arch" type="xml">
+            <pivot string="Eficiencias por empleado">
+                <field name="employee_id" type="row"/>
+                <field name="sheet_id" type="col"/>
+                <field name="total_pct" type="measure"/>
+                <field name="amount" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_staff_efficiency_line_view_list" model="ir.ui.view">
+        <field name="name">sgi.staff.efficiency.line.list</field>
+        <field name="model">sgi.staff.efficiency.line</field>
+        <field name="arch" type="xml">
+            <list string="Calificaciones">
+                <field name="sheet_id"/>
+                <field name="employee_id"/>
+                <field name="job_id"/>
+                <field name="department_id"/>
+                <field name="attendance_pct"/>
+                <field name="housekeeping_pct"/>
+                <field name="efficiency_pct"/>
+                <field name="quality_pct"/>
+                <field name="total_pct"/>
+                <field name="amount" sum="Total"/>
+                <field name="currency_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_staff_efficiency_view_search" model="ir.ui.view">
+        <field name="name">sgi.staff.efficiency.search</field>
+        <field name="model">sgi.staff.efficiency</field>
+        <field name="arch" type="xml">
+            <search string="Eficiencias de personal">
+                <field name="name"/>
+                <field name="department_id"/>
+                <filter name="open" string="Abiertas" domain="[('state', '=', 'borrador')]"/>
+                <filter name="closed" string="Cerradas" domain="[('state', '=', 'cerrado')]"/>
+                <group>
+                    <filter name="group_period" string="Mes" context="{'group_by': 'period_date:month'}"/>
+                    <filter name="group_department" string="Área" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_staff_efficiency_action" model="ir.actions.act_window">
+        <field name="name">Eficiencias de personal</field>
+        <field name="res_model">sgi.staff.efficiency</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Abre la hoja de eficiencias del mes</p>
+            <p>Una hoja por mes y área con la calificación de cada empleado (asistencia, orden y limpieza, eficiencia,
+            calidad) y el monto del incentivo. Sustituye los Excel F-P-A01-32 y F-P-A01-34. La eficiencia se propone
+            desde las órdenes de trabajo del mes.</p>
+        </field>
+    </record>
+
+    <record id="sgi_staff_efficiency_line_action" model="ir.actions.act_window">
+        <field name="name">Análisis de eficiencias</field>
+        <field name="res_model">sgi.staff.efficiency.line</field>
+        <field name="view_mode">pivot,list</field>
+    </record>
+
+    <menuitem id="menu_hr_sgi_staff_efficiency" name="Eficiencias de personal (SGI)"
+              parent="hr.menu_hr_root" sequence="72"
+              groups="hr.group_hr_user"/>
+    <menuitem id="menu_sgi_staff_efficiency" name="Hojas mensuales" parent="menu_hr_sgi_staff_efficiency"
+              action="sgi_staff_efficiency_action" sequence="10"/>
+    <menuitem id="menu_sgi_staff_efficiency_analysis" name="Análisis por empleado" parent="menu_hr_sgi_staff_efficiency"
+              action="sgi_staff_efficiency_line_action" sequence="20"/>
+</odoo>

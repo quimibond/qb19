@@ -66,3 +66,7 @@ access_qb_costeo_familia_mgr,qb.costeo.familia.mgr,model_qb_costeo_familia,mrp.g
 access_qb_familia_producto_user,qb.familia.producto.user,model_qb_familia_producto,base.group_user,1,0,0,0
 access_qb_familia_producto_mgr,qb.familia.producto.mgr,model_qb_familia_producto,mrp.group_mrp_manager,1,1,1,1
 access_qb_familia_carga_user,qb.familia.carga.user,model_qb_familia_carga,base.group_user,1,0,0,0
+access_qb_producto_ficha_spec_user,qb.producto.ficha.spec.user,model_qb_producto_ficha_spec,base.group_user,1,0,0,0
+access_qb_producto_ficha_spec_mgr,qb.producto.ficha.spec.mgr,model_qb_producto_ficha_spec,mrp.group_mrp_manager,1,1,1,1
+access_qb_producto_ficha_spec_sys,qb.producto.ficha.spec.sys,model_qb_producto_ficha_spec,base.group_system,1,1,1,1
+access_qb_producto_ficha_spec_sales,qb.producto.ficha.spec.sales,model_qb_producto_ficha_spec,sales_team.group_sale_salesman,1,1,1,0

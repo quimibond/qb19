@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 56.0.0: etiquetas de equipo de medición (F-P-C03-01 calibrado,
+         F-P-C03-02 fuera de servicio) desde la calibración. -->
+    <record id="action_report_calibration_label" model="ir.actions.report">
+        <field name="name">Etiqueta: equipo calibrado</field>
+        <field name="model">sgi.calibration</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_calibration_label_document</field>
+        <field name="report_file">quimibond_sgi.report_calibration_label_document</field>
+        <field name="print_report_name">'Etiqueta calibrado - %s' % (object.equipment_id.name)</field>
+        <field name="binding_model_id" ref="model_sgi_calibration"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_out_of_service_label" model="ir.actions.report">
+        <field name="name">Etiqueta: FUERA DE SERVICIO</field>
+        <field name="model">sgi.calibration</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_out_of_service_label_document</field>
+        <field name="report_file">quimibond_sgi.report_out_of_service_label_document</field>
+        <field name="print_report_name">'Etiqueta fuera de servicio - %s' % (object.equipment_id.name)</field>
+        <field name="binding_model_id" ref="model_sgi_calibration"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="sgi_calibration_label_box">
+        <div style="width:90mm; border:2px solid #000; padding:4mm; margin:6mm auto; font-size:11px; page-break-inside:avoid;">
+            <div class="d-flex justify-content-between" style="font-size:9px;">
+                <span>Productora de No Tejidos Quimibond S.A. de C.V.</span>
+                <span>Clave: <span t-out="label_code"/> · Área: Calidad</span>
+            </div>
+            <h4 class="text-center my-1" t-att-style="'letter-spacing:1px;' + ('color:#b00;' if out_of_service else '')"><span t-out="label_title"/></h4>
+            <table class="table table-sm table-bordered mb-1" style="font-size:11px;">
+                <tr><td style="width:45%"><strong>Código</strong></td><td><span t-out="cal.equipment_id.serial_no or cal.equipment_id.name"/></td></tr>
+                <tr><td><strong>Nombre del equipo o instrumento</strong></td><td><span t-out="cal.equipment_id.name"/></td></tr>
+                <t t-if="not out_of_service">
+                    <tr><td><strong>Fecha de calibración</strong></td><td><span t-field="cal.date"/></td></tr>
+                    <tr><td><strong>Fecha próxima de calibración</strong></td><td><span t-field="cal.next_date"/></td></tr>
+                    <tr><td><strong>Certificado</strong></td><td><span t-out="cal.certificate_ref or '—'"/></td></tr>
+                </t>
+                <t t-else="">
+                    <tr><td><strong>Desde</strong></td><td><span t-field="cal.date"/></td></tr>
+                    <tr><td><strong>Observaciones</strong></td><td><span t-out="cal.notes or 'Fuera de tolerancia: NO USAR hasta nueva calibración conforme.'"/></td></tr>
+                </t>
+                <tr><td><strong>Firma Vo.Bo.</strong></td><td style="height:9mm;"></td></tr>
+            </table>
+        </div>
+    </template>
+
+    <template id="report_calibration_label_document">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <t t-foreach="docs" t-as="cal">
+                        <t t-call="quimibond_sgi.sgi_calibration_label_box">
+                            <t t-set="label_code" t-value="'F-P-C03-01'"/>
+                            <t t-set="label_title" t-value="'EQUIPO O INSTRUMENTO CALIBRADO'"/>
+                            <t t-set="out_of_service" t-value="False"/>
+                        </t>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_out_of_service_label_document">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <t t-foreach="docs" t-as="cal">
+                        <t t-call="quimibond_sgi.sgi_calibration_label_box">
+                            <t t-set="label_code" t-value="'F-P-C03-02'"/>
+                            <t t-set="label_title" t-value="'FUERA DE SERVICIO'"/>
+                            <t t-set="out_of_service" t-value="True"/>
+                        </t>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

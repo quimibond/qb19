@@ -8,6 +8,8 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tools import mute_logger
 
+from .common_calendar import sgi_test_calendar
+
 
 @tagged('post_install', '-at_install')
 class TestStructure(TransactionCase):
@@ -26,6 +28,7 @@ class TestStructure(TransactionCase):
         cls.Deliverable = cls.env['sgi.deliverable']
         cls.p_ven = cls.Process.create({'code': 'XV', 'name': 'Ventas X'})
         cls.p_pla = cls.Process.create({'code': 'XP', 'name': 'Planeación X'})
+        sgi_test_calendar(cls.env)
 
     def _act(self, process, name, job=None, **vals):
         return self.Activity.create(dict({
@@ -150,13 +153,14 @@ class TestStructure(TransactionCase):
         b = self._act(self.p_pla, 'Recibe', job=self.job_b,
                       input_ids=[(0, 0, {'deliverable_id': d.id, 'max_days': 2})])
         link = a.out_link_ids
-        a.measure_last_date = datetime(2026, 9, 14, 10, 0)    # lunes
+        # Semana sin festivos en México (la del 14-sep trae el 16).
+        a.measure_last_date = datetime(2026, 10, 5, 10, 0)    # lunes
         b.measure_last_date = datetime(2026, 9, 1, 10, 0)
-        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 9, 16, 12, 0)), ('fluye', 2.0))
-        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 9, 21, 12, 0)), ('atorado', 5.0),
+        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 10, 7, 12, 0)), ('fluye', 2.0))
+        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 10, 12, 12, 0)), ('atorado', 5.0),
                          "Fin de semana no cuenta: 5 días hábiles > 2.")
-        b.measure_last_date = datetime(2026, 9, 15, 10, 0)
-        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 9, 21, 12, 0)), ('fluye', 0.0))
+        b.measure_last_date = datetime(2026, 10, 6, 10, 0)
+        self.assertEqual(link._sgi_chain_verdict(datetime(2026, 10, 12, 12, 0)), ('fluye', 0.0))
         self.assertIn('Con plazo (2 días hábiles)', b._sgi_sentence())
 
     def test_08_sentence_and_responsibilities(self):
@@ -170,6 +174,10 @@ class TestStructure(TransactionCase):
         self.assertIn('Ejecuta: PUESTO ESTRUCTURA A.', sentence)
         self.assertIn('Se entera: PUESTO ESTRUCTURA B.', sentence)
         self.assertIn('Entrega: Programa semanal.', sentence)
+        html = act._sgi_sentence_html()
+        self.assertIn('<b>Ejecuta:</b> PUESTO ESTRUCTURA A.', html, "El PDF lleva la etiqueta en negritas.")
+        self.assertIn('<b>Se entera:</b> PUESTO ESTRUCTURA B.', html)
+        self.assertIn('<b>Entrega:</b> Programa semanal.', html)
         table = dict(self.p_pla._sgi_responsibilities_by_job())
         self.assertIn('PUESTO ESTRUCTURA A', table)
         self.assertEqual(table['PUESTO ESTRUCTURA A'][0][1], [act])
@@ -316,6 +324,52 @@ class TestStructure(TransactionCase):
         self.assertFalse(self.Process.load_payload(payload)['changes'], "Una sola vez.")
         missing = {'processes': [{'code': 'XN', 'name': 'Nuevo', 'replaces': ['NO-EXISTE']}]}
         self.assertFalse(self.Process.load_payload(missing, dry_run=True)['ok'])
+
+    def test_15b_replaces_archives_flows_and_adopts_kpis_and_risks(self):
+        old = self.Process.create({'code': 'X-VIEJO2', 'name': 'Ventas viejo 2'})
+        self._act(old, 'Actividad vieja 2')
+        flow = self.env['sgi.process.flow'].create({
+            'name': 'Pedido confirmado', 'from_process_id': old.id,
+            'to_process_id': self.p_pla.id})
+        kpi = self.env['sgi.indicator'].create({
+            'code': 'XV-VIEJO', 'name': 'KPI viejo', 'calc_mode': 'manual',
+            'process_id': old.id})
+        risk = self.env['sgi.risk'].create({
+            'name': 'Riesgo viejo', 'instrument': 'ryo', 'process_id': old.id,
+            'eval_probability': '2', 'eval_impact': '2'})
+        self.assertTrue(kpi.sgi_process_active)
+        payload = {'processes': [{'code': 'XN2', 'name': 'Nuevo 2',
+                                  'replaces': ['X-VIEJO2']}]}
+        dry = self.Process.load_payload(payload, dry_run=True)
+        self.assertTrue(dry['ok'], dry['errors'])
+        self.assertEqual(dry['summary']['archived'].get('flow'), 1)
+        self.assertEqual(dry['summary']['moved'].get('indicator'), 1)
+        self.assertEqual(dry['summary']['moved'].get('risk'), 1)
+        self.assertTrue(flow.active, "Con dry_run solo se reporta.")
+        self.assertEqual(kpi.process_id, old)
+        result = self.Process.load_payload(payload)
+        self.assertTrue(result['ok'], result['errors'])
+        new = self.Process.search([('code', '=', 'XN2')])
+        self.assertFalse(flow.active, "Sus flujos se archivan con él.")
+        self.assertIn('X-VIEJO2', flow.inactive_reason)
+        self.assertEqual(kpi.process_id, new, "Sus indicadores pasan al nuevo.")
+        self.assertEqual(risk.process_id, new, "Sus riesgos pasan al nuevo.")
+        self.assertTrue(kpi.sgi_process_active)
+
+    def test_15c_pending_new_process(self):
+        """Indicadores y riesgos de un proceso archivado siguen activos y
+        quedan «pendientes de proceso nuevo»."""
+        old = self.Process.create({'code': 'X-VIEJO3', 'name': 'Viejo 3'})
+        kpi = self.env['sgi.indicator'].create({
+            'code': 'XV-PEND', 'name': 'KPI pendiente', 'calc_mode': 'manual',
+            'process_id': old.id})
+        orphan = self.env['sgi.indicator'].create({
+            'code': 'XV-SINPROC', 'name': 'KPI sin proceso', 'calc_mode': 'manual'})
+        old.active = False
+        self.assertTrue(kpi.active, "El indicador no se archiva.")
+        pending = self.env['sgi.indicator'].search([('sgi_process_active', '=', False)])
+        self.assertIn(kpi, pending)
+        self.assertIn(orphan, pending)
 
     def test_16_commitment_date_stamp(self):
         partner = self.env['res.partner'].create({'name': 'Cliente X'})

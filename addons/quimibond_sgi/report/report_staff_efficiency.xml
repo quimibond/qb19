@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_staff_efficiency" model="ir.actions.report">
+        <field name="name">Eficiencias de personal</field>
+        <field name="model">sgi.staff.efficiency</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_staff_efficiency_document</field>
+        <field name="report_file">quimibond_sgi.report_staff_efficiency_document</field>
+        <field name="print_report_name">'%s' % (object.name)</field>
+        <field name="binding_model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_staff_efficiency_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center"><span t-out="'Concentrado de eficiencias del personal' if doc.department_id else 'Eficiencias de personal'"/></h2>
+                        <p class="text-center text-muted">
+                            Mes: <span t-out="doc.period_date.strftime('%m/%Y')"/>
+                            <t t-if="doc.department_id"> · Área: <span t-out="doc.department_id.name"/></t>
+                            · Criterios: A asistencia 5.5 % · O y L 2 % · E eficiencia 2 % · PQ calidad 2 %
+                        </p>
+                        <table class="table table-sm table-bordered" style="font-size:9px;">
+                            <thead><tr><th>Núm.</th><th>Nombre</th><th>Puesto</th><th>Área</th><th>A 5.5 %</th><th>O y L 2 %</th><th>E 2 %</th><th>PQ 2 %</th><th>Salario diario</th><th>Salario mensual</th><th>Total %</th><th>A pagar</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="l">
+                                    <td><span t-out="l.employee_id.registration_number or l.employee_id.id"/></td>
+                                    <td><span t-out="l.employee_id.name"/></td>
+                                    <td><span t-out="l.job_id.name or ''"/></td>
+                                    <td><span t-out="l.department_id.name or ''"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % l.attendance_pct"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % l.housekeeping_pct"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % l.efficiency_pct"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % l.quality_pct"/></td>
+                                    <td class="text-end"><span t-field="l.wage_daily"/></td>
+                                    <td class="text-end"><span t-field="l.wage_monthly"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % l.total_pct"/></td>
+                                    <td class="text-end"><span t-field="l.amount"/></td>
+                                </tr>
+                            </tbody>
+                            <tfoot><tr><th colspan="11" class="text-end">Total</th><th class="text-end"><span t-field="doc.amount_total"/></th></tr></tfoot>
+                        </table>
+                        <table class="table table-sm mt-4" style="font-size:10px; width:60%;">
+                            <tr><td class="text-center" style="border-top:1px solid #000;">Elaboró · Jefe de área<br/><span t-out="doc.prepared_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Recibió · Coordinador de RH<br/><span t-out="doc.received_by_id.name or ''"/></td></tr>
+                        </table>
+                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
+                            Formato controlado del SGI: <span class="fw-bold" t-out="doc.sgi_format_info()"/> · PNTQ
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

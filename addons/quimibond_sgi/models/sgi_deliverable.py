@@ -14,11 +14,14 @@ Menos texto, más piezas que se conectan:
   proceso se calculan solos (``_sgi_sync_connections``).
 """
 import re
-from datetime import timedelta
+
+from markupsafe import Markup
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
+
+from .sgi_calendar import sgi_business_days
 
 RE_STAGE = re.compile(r'^\s*([A-Za-z0-9]+(?:\.[0-9]+)*)[\.\)\-:]?\s+(.+?)\s*$')
 
@@ -34,7 +37,7 @@ class SgiProcessStage(models.Model):
     code = fields.Char(string="Letra", help="A, B, C… (opcional).")
     name = fields.Char(string="Etapa", required=True)
     activity_ids = fields.One2many('sgi.process.activity', 'stage_id', string="Actividades")
-    activity_count = fields.Integer(compute='_compute_activity_count', string="Actividades")
+    activity_count = fields.Integer(compute='_compute_activity_count', string="Núm. de actividades")
     company_id = fields.Many2one(
         related='process_id.company_id', store=True, index=True, string="Empresa")
 
@@ -413,7 +416,7 @@ class SgiProcessDeliverables(models.Model):
             for role in act.role_ids:
                 target = role._sgi_target_label()
                 by_target.setdefault(target, {}).setdefault(role.role, []).append(act)
-        order = ['ejecuta', 'aprueba', 'participa', 'informa']
+        order = ['ejecuta', 'aprueba', 'participa', 'informa', 'escala']
         return [
             (target, [(labels[r], roles[r]) for r in order if r in roles])
             for target, roles in sorted(by_target.items())
@@ -551,21 +554,8 @@ class SgiActivityLinkDeliverable(models.Model):
         taken = to.measure_last_date
         if taken and taken >= delivered:
             return ('fluye', 0.0)
-        waited = sgi_business_days(delivered, now)
+        waited = sgi_business_days(self.env, delivered, now, self.company_id)
         return ('atorado' if waited > self.max_days else 'fluye', float(waited))
-
-
-def sgi_business_days(start, end):
-    """Días hábiles (lunes a viernes) completos entre dos fechas."""
-    if not start or not end or end <= start:
-        return 0
-    day, last = start.date(), end.date()
-    count = 0
-    while day < last:
-        day += timedelta(days=1)
-        if day.weekday() < 5:
-            count += 1
-    return count
 
 
 class SgiActivityDeliverables(models.Model):
@@ -664,33 +654,50 @@ class SgiActivityDeliverables(models.Model):
         deliverables.exists()._sgi_sync_connections()
         return res
 
-    def _sgi_sentence(self):
-        """La actividad como una frase del procedimiento, armada de sus piezas
-        (en vez de un párrafo redactado a mano)."""
+    def _sgi_sentence_parts(self):
+        """Piezas de la frase del procedimiento: lista de (etiqueta, texto).
+        La etiqueta («Ejecuta», «Aprueba», «Recibe»…) va en negritas en el PDF;
+        sin etiqueta (None) el texto se imprime tal cual («Automática.»)."""
         self.ensure_one()
         roles = {}
         for role in self.role_ids:
             label = role._sgi_target_label()
             if role.condition:
                 label = "%s (%s)" % (label, role.condition)
+            if role.role == 'escala' and role.after_days:
+                label = "%s a los %d días hábiles" % (label, role.after_days)
             roles.setdefault(role.role, []).append(label)
         parts = []
         if roles.get('ejecuta'):
-            parts.append("Ejecuta: %s." % ", ".join(roles['ejecuta']))
+            parts.append(("Ejecuta", ", ".join(roles['ejecuta'])))
         elif self.automation_level_current == 'automatico':
-            parts.append("Automática.")
-        for key, label in (('aprueba', "Aprueba"), ('participa', "Participa"), ('informa', "Se entera")):
+            parts.append((None, "Automática"))
+        for key, label in (('aprueba', "Aprueba"), ('participa', "Participa"), ('informa', "Se entera"),
+                           ('escala', "Si se atora, escala a")):
             if roles.get(key):
-                parts.append("%s: %s." % (label, ", ".join(roles[key])))
+                parts.append((label, ", ".join(roles[key])))
         if self.input_ids:
-            parts.append("Recibe: %s." % ", ".join(
+            parts.append(("Recibe", ", ".join(
                 "%s (%d días hábiles)" % (line.deliverable_id.name, line.max_days)
                 if line.max_days else line.deliverable_id.name
-                for line in self.input_ids))
+                for line in self.input_ids)))
         if self.output_deliverable_ids:
-            parts.append("Entrega: %s." % ", ".join(self.output_deliverable_ids.mapped('name')))
+            parts.append(("Entrega", ", ".join(self.output_deliverable_ids.mapped('name'))))
         if self.related_procedure_id:
-            parts.append("Conforme a %s." % (self.related_procedure_id.sgi_code or self.related_procedure_id.name))
+            parts.append(("Conforme a", self.related_procedure_id.sgi_code or self.related_procedure_id.name))
         if self.instruction_id:
-            parts.append("Instructivo %s." % (self.instruction_id.sgi_code or self.instruction_id.name))
-        return " ".join(parts)
+            parts.append(("Instructivo", self.instruction_id.sgi_code or self.instruction_id.name))
+        return parts
+
+    def _sgi_sentence(self):
+        """La actividad como una frase del procedimiento, armada de sus piezas
+        (en vez de un párrafo redactado a mano). Texto plano."""
+        return " ".join(
+            "%s: %s." % (label, text) if label else "%s." % text
+            for label, text in self._sgi_sentence_parts())
+
+    def _sgi_sentence_html(self):
+        """La misma frase para el PDF: cada etiqueta en negritas."""
+        return Markup(" ").join(
+            Markup("<b>%s:</b> %s.") % (label, text) if label else Markup("%s.") % text
+            for label, text in self._sgi_sentence_parts())

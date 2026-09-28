@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 56.0.0 (DOC-3): lista maestra de información documentada de todo el
+         SGI (F-P-G01-03) desde Documentos: clave, título, revisión, área,
+         responsable y estado. -->
+    <record id="sgi_document_master_list_view_list" model="ir.ui.view">
+        <field name="name">documents.document.list.sgi.master.list</field>
+        <field name="model">documents.document</field>
+        <field name="priority">40</field>
+        <field name="arch" type="xml">
+            <list string="Lista maestra de documentos" create="false" default_order="sgi_code">
+                <field name="sgi_code"/>
+                <field name="name" string="Título"/>
+                <field name="sgi_doc_type_id" optional="show"/>
+                <field name="sgi_revision_label" string="Rev."/>
+                <field name="sgi_area_id" optional="show"/>
+                <field name="sgi_process_id" optional="show"/>
+                <field name="sgi_owner_id" string="Responsable"/>
+                <field name="sgi_issue_date" optional="show"/>
+                <field name="sgi_next_review_date" optional="hide"/>
+                <field name="sgi_state" widget="badge" decoration-success="sgi_state == 'vigente'"
+                       decoration-warning="sgi_state == 'borrador'" decoration-muted="sgi_state == 'obsoleto'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_document_master_list_action" model="ir.actions.act_window">
+        <field name="name">Lista maestra de documentos (DOC-3)</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sgi_is_controlled', '=', True)]</field>
+        <field name="context">{'search_default_sgi_vigente': 1, 'search_default_group_area': 1, 'sgi_master_list': 1}</field>
+        <field name="view_id" ref="sgi_document_master_list_view_list"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin documentos controlados</p>
+            <p>La lista maestra sale en vivo de Documentos: cada documento controlado con su clave, revisión,
+            área, responsable y estado. Sustituye el Excel F-P-G01-03. Imprímela con Acción → Lista maestra.</p>
+        </field>
+    </record>
+
+    <record id="action_report_master_list_all" model="ir.actions.report">
+        <field name="name">Lista maestra de documentos (F-P-G01-03)</field>
+        <field name="model">documents.document</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_master_list_all_document</field>
+        <field name="report_file">quimibond_sgi.report_master_list_all_document</field>
+        <field name="print_report_name">'Lista maestra de documentos'</field>
+        <field name="binding_model_id" ref="documents.model_documents_document"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_master_list_all_document">
+        <t t-call="web.html_container">
+            <t t-set="documents" t-value="docs.filtered('sgi_is_controlled').sorted(lambda d: (d.sgi_code or '', d.name or ''))"/>
+            <t t-call="web.external_layout">
+                <div class="page">
+                    <h2 class="text-center">Lista de información documentada</h2>
+                    <p class="text-muted text-center">
+                        <span t-out="len(documents)"/> documento(s) · impresa el
+                        <span t-out="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y')"/>
+                    </p>
+                    <table class="table table-sm table-bordered" style="font-size:9px;">
+                        <thead><tr><th>Clave</th><th>Título del documento</th><th>Tipo</th><th>No. revisión</th><th>Área</th><th>Proceso</th><th>Responsable</th><th>Estado</th><th>Emisión</th></tr></thead>
+                        <tbody>
+                            <tr t-foreach="documents" t-as="d">
+                                <td><span t-out="d.sgi_code or ''"/></td>
+                                <td><span t-out="d.name"/></td>
+                                <td><span t-out="d.sgi_doc_type_id.name or dict(d._fields['sgi_doc_type'].selection).get(d.sgi_doc_type, '')"/></td>
+                                <td><span t-out="d.sgi_revision_label or ''"/></td>
+                                <td><span t-out="d.sgi_area_id.name or ''"/></td>
+                                <td><span t-out="d.sgi_process_id.code or d.sgi_process_id.name or ''"/></td>
+                                <td><span t-out="d.sgi_owner_id.name or ''"/></td>
+                                <td><span t-field="d.sgi_state"/></td>
+                                <td><span t-field="d.sgi_issue_date"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
+                        Formato controlado del SGI: F-P-G01-03 · PNTQ
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

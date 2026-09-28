@@ -314,9 +314,11 @@ class SgiProcessProcedure(models.Model):
             'type': 'ir.actions.act_window',
             'name': "%s — %s" % (name or "Actividades", self.name),
             'res_model': 'sgi.process.activity',
-            'view_mode': 'list,kanban,form',
+            # 54.1.0: las actividades se capturan aquí (botón «Actividades» de
+            # la ficha), con lista editable, kanban, diagrama y organigrama.
+            'view_mode': 'list,kanban,sgi_diagram,hierarchy,form',
             'domain': [('process_id', '=', self.id)] + (extra_domain or []),
-            'context': {'default_process_id': self.id},
+            'context': {'default_process_id': self.id, 'search_default_process_id': self.id},
         }
 
     def action_view_red_activities(self):
@@ -1147,9 +1149,11 @@ class SgiProcessActivity(models.Model):
             return {}
         since = start if Model._fields[date_field].type == 'date' \
             else datetime.combine(start, datetime.min.time())
+        # Por día y no por «:week»: la semana de read_group depende del idioma
+        # (es_MX y en_US empiezan en domingo). La semana del SGI es ISO: lunes.
         groups = Model._read_group(
             domain + [(date_field, '>=', since)],
-            [user_field, '%s:week' % date_field], ['__count'])
+            [user_field, '%s:day' % date_field], ['__count'])
         expected = self._sgi_executor_jobs()
         generic_ids = self._sgi_generic_user_ids()
         system_ids = {SUPERUSER_ID}
@@ -1176,6 +1180,7 @@ class SgiProcessActivity(models.Model):
             else:
                 klass = 'otro_puesto'
             week = week.date() if isinstance(week, datetime) else week
+            week = week - timedelta(days=week.weekday())   # lunes de su semana ISO
             row_key = (week, user.id or False, klass)
             if row_key in merged:
                 merged[row_key]['count'] += count
@@ -1272,8 +1277,11 @@ class SgiProcessActivity(models.Model):
             lambda: self.search(
                 ['|', ('measure_model_id', '!=', False),
                  ('measure_method', '!=', False)])._sgi_measure(),
-            lambda: self.env['sgi.activity.link'].search(
-                [])._sgi_evaluate_chain(),
+            # Solo la estructura vigente: una liga que toca una actividad
+            # archivada (proceso sustituido) ya no se evalúa ni avisa.
+            lambda: self.env['sgi.activity.link'].search([
+                ('from_activity_id.active', '=', True),
+                ('to_activity_id.active', '=', True)])._sgi_evaluate_chain(),
         )
         for step in steps:
             try:

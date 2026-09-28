@@ -36,7 +36,7 @@ completo se deshace y se reporta.
 import json
 import logging
 
-from odoo import models, api, Command
+from odoo import models, api, fields, Command
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
@@ -58,16 +58,25 @@ _LEGACY_KEYS = {
     'flows': "«flows» ya no existe: los flujos entre procesos salen de «inputs»/«outputs».",
 }
 _ACTIVITY_TEXT_FIELDS = (
-    'name', 'description', 'odoo_ref', 'note', 'responsible_role')
+    'name', 'description', 'odoo_ref', 'note', 'responsible_role',
+    'check_against', 'how_steps', 'done_criteria', 'on_fail')
 _INDICATOR_FIELDS = (
     'name', 'uom', 'direction', 'target_objective', 'target_acceptable',
-    'frequency', 'calc_mode', 'monthly_budget', 'nc_on_red', 'formula', 'source')
+    'frequency', 'calc_mode', 'monthly_budget', 'nc_on_red', 'formula', 'source',
+    'baseline_value', 'target_date', 'status', 'measure_from', 'critical',
+    'baseline_date', 'range_min', 'range_max', 'range_tolerance')
+_DIRECTIONS = {'up': 'higher_better', 'down': 'lower_better',
+               'higher_better': 'higher_better', 'lower_better': 'lower_better',
+               'range': 'range'}
 
 # Llaves válidas de cada nivel del JSON. Una llave que no está aquí es error:
 # una llave que se ignora en silencio es como se perdieron los indicadores de
 # C2 (venían dentro del proceso). (llaves, {llave: (tipo, sub-esquema)}).
-_KEYS_ROLE = ({'role', 'job', 'job_id', 'family', 'relative', 'condition'}, {})
-_KEYS_INPUT = ({'code', 'days'}, {})
+_KEYS_ROLE = ({'role', 'job', 'job_id', 'family', 'relative', 'condition', 'after_days'}, {})
+_KEYS_INPUT = ({'code', 'days', 'applies_domain', 'applies_note', 'match',
+                'due_field', 'offset_days'}, {})
+_KEYS_WHERE = ({'channel', 'menu', 'external_system', 'location', 'workcenter', 'place'}, {})
+_KEYS_DUE = ({'weekday', 'business_day'}, {})
 _KEYS_MEASURE = ({'method', 'proxy', 'deliverable', 'justification', 'sample_cadence',
                   'cadence'}, {})
 _KEYS_AUTOMATION = ({'current', 'target', 'method'}, {})
@@ -77,21 +86,24 @@ _KEYS_ACTIVITY = ({
     'note', 'responsible_role', 'stage', 'section', 'block', 'value_class',
     'cadence', 'roles', 'inputs', 'outputs', 'instruction', 'related_procedure',
     'formats', 'evidence', 'measure', 'automation',
+    'check_against', 'where', 'how_steps', 'done_criteria', 'on_fail', 'due',
     'links_to',             # anterior: error propio
 }, {'roles': (list, _KEYS_ROLE), 'inputs': (list, _KEYS_INPUT),
+    'where': (dict, _KEYS_WHERE), 'due': (dict, _KEYS_DUE),
     'measure': (dict, _KEYS_MEASURE), 'automation': (dict, _KEYS_AUTOMATION),
     'evidence': (list, _KEYS_EVIDENCE)})
 _KEYS_PROCESS = ({
     'code', 'name', 'purpose', 'scope', 'env_aspects', 'process_type', 'type',
     'owner', 'owner_job', 'owner_employee_id', 'parent', 'replaced_documents',
-    'replaces', 'activities',
+    'replaces', 'activities', 'state', 'publish',
     'inputs', 'outputs', 'start_trigger', 'end_trigger',   # anteriores
 }, {'activities': (list, _KEYS_ACTIVITY)})
 _KEYS_FAMILY = ({'code', 'name', 'jobs'}, {})
 _KEYS_DELIVERABLE = ({'code', 'name', 'document', 'model', 'domain', 'date_field',
-                      'user_field', 'acceptance_criteria'}, {})
+                      'user_field', 'acceptance_criteria', 'complete_domain',
+                      'complete_criteria'}, {})
 _KEYS_INDICATOR = ({'code', 'process', 'responsible', 'responsible_employee_id',
-                    *_INDICATOR_FIELDS}, {})
+                    'target', 'unit', 'activity', 'deliverable', *_INDICATOR_FIELDS}, {})
 _KEYS_PAYLOAD = ({
     'dry_run', 'company_id', 'archive_missing', 'families', 'deliverables',
     'processes', 'activities', 'indicators',
@@ -264,6 +276,7 @@ class _SgiLoader:
         self.activities = {}    # (process code, number) -> sgi.process.activity
         self.job_cache = {}
         self.replaces = []      # (código del proceso nuevo, [códigos que sustituye])
+        self.publish = []       # códigos de proceso a publicar al final
         self.family_cache = {}
 
     # ------------------------------------------------------------------
@@ -303,7 +316,10 @@ class _SgiLoader:
                 proc, activities_by_process.get(code), archive_missing)
         self._load_proxies()
         self._load_replaces()
+        self._relink_dangling()
         self._load_indicators(payload.get('indicators') or [])
+        self._report_spec_gaps()
+        self._load_publish()
 
     def _savepoint(self, fn, kind, key):
         """Corre fn en su savepoint; un error de la base o de validación se
@@ -422,6 +438,13 @@ class _SgiLoader:
             vals['parent_id'] = parent.id
         if proc.get('replaces'):
             self.replaces.append((code, proc['replaces']))
+        if 'state' in proc:
+            if proc['state'] not in ('borrador', 'piloto'):
+                raise ValidationError("«state» va en borrador o piloto; para vigente "
+                                      "usa «publish»: true.")
+            vals['state'] = proc['state']
+        if proc.get('publish'):
+            self.publish.append(code)
         if 'replaced_documents' in proc:
             docs = []
             for doc_code in proc['replaced_documents'] or []:
@@ -487,20 +510,35 @@ class _SgiLoader:
         return [self._resolve_deliverable(code, what).id for code in codes or []]
 
     def _resolve_inputs(self, items):
-        """«inputs»: ["C2-PEDIDO"] o [{"code": "C2-PEDIDO", "days": 2}].
-        Devuelve [(entregable id, plazo en días hábiles)] en orden."""
+        """«inputs»: ["C2-PEDIDO"] o [{"code": "C2-PEDIDO", "days": 2,
+        "applies_domain": "[...]", "applies_note": "...", "match": "sale_id",
+        "due_field": "scheduled_date", "offset_days": -2}].
+        Devuelve [(entregable id, {max_days, applies_domain, applies_note,
+        match_path, due_field, offset_days})] en orden."""
         out, seen = [], set()
         for item in items or []:
             code, days = (item.get('code'), item.get('days') or 0) if isinstance(item, dict) \
                 else (item, 0)
+            extra = item if isinstance(item, dict) else {}
             if isinstance(days, bool) or not isinstance(days, int) or days < 0:
                 raise ValidationError("Recibe %s: «days» debe ser un entero de días "
                                       "hábiles (0 = sin plazo)." % code)
+            offset = extra.get('offset_days') or 0
+            if isinstance(offset, bool) or not isinstance(offset, int):
+                raise ValidationError("Recibe %s: «offset_days» debe ser un entero de "
+                                      "días hábiles (negativo = antes)." % code)
             deliverable = self._resolve_deliverable(code, "Recibe")
             if deliverable.id in seen:
                 raise ValidationError("Recibe %s dos veces." % code)
             seen.add(deliverable.id)
-            out.append((deliverable.id, days))
+            out.append((deliverable.id, {
+                'max_days': days,
+                'applies_domain': extra.get('applies_domain') or False,
+                'applies_note': extra.get('applies_note') or False,
+                'match_path': extra.get('match') or False,
+                'due_field': extra.get('due_field') or False,
+                'offset_days': offset,
+            }))
         return out
 
     def _activity_vals(self, process, item, index):
@@ -513,6 +551,10 @@ class _SgiLoader:
                 process, stage_text).id if stage_text else False
         if 'links_to' in item:
             raise ValidationError(_LEGACY_KEYS['links_to'])
+        if 'where' in item:
+            vals.update(self._where_vals(item['where'] or {}))
+        if 'due' in item:
+            vals.update(self._due_vals(item['due'] or {}))
         if 'outputs' in item:
             vals['output_deliverable_ids'] = self._resolve_deliverables(item['outputs'], key, "Entrega")
         Activity = self.Activity
@@ -662,7 +704,9 @@ class _SgiLoader:
                     vals['odoo_model_id'] = model.id if model else False
                 for src, dst, default in (('domain', 'measure_domain', '[]'),
                                           ('date_field', 'measure_date_field', 'create_date'),
-                                          ('user_field', 'measure_user_field', False)):
+                                          ('user_field', 'measure_user_field', False),
+                                          ('complete_domain', 'complete_domain', False),
+                                          ('complete_criteria', 'complete_criteria', False)):
                     if src in item:
                         vals[dst] = item[src] or default
                 deliverable = Deliverable.search([('code', '=', key),
@@ -775,13 +819,13 @@ class _SgiLoader:
         """Comandos para dejar los roles exactamente como el payload."""
         wanted = []
         for seq, role in enumerate(item.get('roles') or [], start=1):
-            if role.get('role') not in ('ejecuta', 'aprueba', 'participa', 'informa'):
+            if role.get('role') not in ('ejecuta', 'aprueba', 'participa', 'informa', 'escala'):
                 raise ValidationError("Rol «%s» inválido (ejecuta, aprueba, participa, "
-                                      "informa)." % role.get('role'))
+                                      "informa, escala)." % role.get('role'))
             target, target_key = self._role_target(role, key)
             wanted.append((target_key, dict(
                 target, role=role['role'], condition=role.get('condition') or False,
-                sequence=seq * 10)))
+                after_days=role.get('after_days') or 0, sequence=seq * 10)))
         current = {(r.role,) + r._sgi_target_key(): r for r in activity.role_ids} \
             if activity else {}
         commands, touched = [], False
@@ -789,6 +833,7 @@ class _SgiLoader:
             existing = current.pop((vals['role'],) + target_key, None)
             if existing:
                 changed = _diff(existing, {'condition': vals['condition'],
+                                           'after_days': vals['after_days'],
                                            'sequence': vals['sequence']})
                 if changed:
                     commands.append(Command.update(existing.id, changed))
@@ -842,22 +887,75 @@ class _SgiLoader:
         # restricción de «exactamente un ejecutor» corre aquí dentro.
         activity.flush_recordset()
 
+    def _where_vals(self, where):
+        """«where»: dónde se hace. Lo que no viene queda vacío (declarativo)."""
+        from .sgi_activity_spec import SGI_EXEC_CHANNELS
+        channel = where.get('channel')
+        if channel not in dict(SGI_EXEC_CHANNELS):
+            raise ValidationError("«where.channel» es obligatorio y va entre: %s." % (
+                ', '.join(dict(SGI_EXEC_CHANNELS))))
+        vals = {'exec_channel': channel, 'odoo_menu_id': False, 'external_system': False,
+                'location_id': False, 'workcenter_id': False, 'place_note': False}
+        if where.get('menu'):
+            menu = self.env.ref(where['menu'], raise_if_not_found=False)
+            if not menu or menu._name != 'ir.ui.menu':
+                raise ValidationError("«where.menu»: el menú %s no existe." % where['menu'])
+            vals['odoo_menu_id'] = menu.id
+        if where.get('external_system'):
+            vals['external_system'] = where['external_system']
+        if where.get('location'):
+            location = self.env['stock.location'].search([
+                ('complete_name', '=', where['location']),
+                ('company_id', 'in', [self.company.id, False])], limit=1)
+            if not location:
+                raise ValidationError("«where.location»: la ubicación %s no existe."
+                                      % where['location'])
+            vals['location_id'] = location.id
+        if where.get('workcenter'):
+            workcenter = self.env['mrp.workcenter'].search([
+                ('code', '=', where['workcenter']),
+                ('company_id', 'in', [self.company.id, False])], limit=1)
+            if not workcenter:
+                raise ValidationError("«where.workcenter»: el centro de trabajo %s no "
+                                      "existe." % where['workcenter'])
+            vals['workcenter_id'] = workcenter.id
+        if where.get('place'):
+            vals['place_note'] = where['place']
+        return vals
+
+    def _due_vals(self, due):
+        """«due»: {"weekday": 0-6} o {"business_day": 1-23}."""
+        vals = {'due_weekday': False, 'due_business_day': 0}
+        if 'weekday' in due and due['weekday'] is not None:
+            day = due['weekday']
+            if isinstance(day, bool) or not isinstance(day, int) or not 0 <= day <= 6:
+                raise ValidationError("«due.weekday» va de 0 (lunes) a 6 (domingo).")
+            vals['due_weekday'] = str(day)
+        if 'business_day' in due and due['business_day'] is not None:
+            day = due['business_day']
+            if isinstance(day, bool) or not isinstance(day, int) or not 1 <= day <= 23:
+                raise ValidationError("«due.business_day» va de 1 a 23.")
+            vals['due_business_day'] = day
+        return vals
+
     def _inputs_commands(self, activity, item):
         """Comandos para dejar los «recibe» exactamente como vienen (con su
         plazo); vacío si ya están así."""
         wanted = self._resolve_inputs(item['inputs'])
         current = activity.input_ids if activity else self.env['sgi.activity.input']
-        if [(line.deliverable_id.id, line.max_days) for line in current] == wanted:
+        keys = ('max_days', 'applies_domain', 'applies_note', 'match_path',
+                'due_field', 'offset_days')
+        if [(line.deliverable_id.id, {k: line[k] for k in keys}) for line in current] == wanted:
             return []
         by_deliverable = {line.deliverable_id.id: line for line in current}
         cmds = []
-        for seq, (deliverable_id, days) in enumerate(wanted, start=1):
+        for seq, (deliverable_id, extra) in enumerate(wanted, start=1):
             line = by_deliverable.pop(deliverable_id, None)
             if line:
-                cmds.append(Command.update(line.id, {'max_days': days, 'sequence': seq * 10}))
+                cmds.append(Command.update(line.id, dict(extra, sequence=seq * 10)))
             else:
-                cmds.append(Command.create({'deliverable_id': deliverable_id,
-                                            'max_days': days, 'sequence': seq * 10}))
+                cmds.append(Command.create(dict(extra, deliverable_id=deliverable_id,
+                                                sequence=seq * 10)))
         cmds.extend(Command.delete(line.id) for line in by_deliverable.values())
         return cmds
 
@@ -925,9 +1023,15 @@ class _SgiLoader:
         return process
 
     def _load_replaces(self):
-        """«replaces»: el proceso nuevo archiva a los que sustituye y a sus
-        actividades (una sola vez; con dry_run solo se reporta) y lo deja
-        dicho en su chatter. Las actividades archivadas conservan su texto."""
+        """«replaces»: el proceso nuevo archiva a los que sustituye junto con
+        sus actividades, sus ligas y sus flujos, y adopta sus indicadores,
+        riesgos y documentos (una sola vez; con dry_run solo se reporta).
+        Todo queda en el reporte y en el chatter del proceso archivado. Nada
+        se borra: lo archivado conserva su texto. Los documentos conservan su
+        estado (los sustituidos se vuelven obsoletos al publicar el nuevo,
+        regla 5 de 45.0.0). El proceso viejo recuerda a su sucesor
+        (`replaced_by_id`) para que ninguna carga futura deje nada colgado
+        (PR-1, 53.1.0)."""
         for code, olds in self.replaces:
             new = self.processes.get(code)
             if not new:
@@ -951,11 +1055,123 @@ class _SgiLoader:
                             old_code, act.legacy_number or act.number), 'archived')
                     if acts:
                         acts.write({'active': False})
-                    old.write({'active': False})
+                    reason = "Proceso %s sustituido por %s." % (old_code, code)
+                    ends = ['|', ('from_process_id', '=', old.id),
+                            ('to_process_id', '=', old.id)]
+                    # Ligas y flujos que tocan al proceso viejo: se archivan con
+                    # su motivo (las calculadas lo exigen).
+                    for model, kind in (('sgi.activity.link', 'link'),
+                                        ('sgi.process.flow', 'flow')):
+                        conns = self.env[model].with_context(sgi_connection_sync=True).search(
+                            [('active', '=', True)] + ends)
+                        for conn in conns:
+                            self.report.change(kind, "%s/%s" % (old_code, conn.name), 'archived')
+                        if conns:
+                            conns.write({'active': False, 'inactive_reason': reason})
+                    # Indicadores y riesgos activos: pasan al proceso nuevo
+                    # (un indicador que el payload asigna a otro proceso se
+                    # reubica después, en «indicators»).
+                    for model, kind, label in (('sgi.indicator', 'indicator', 'code'),
+                                               ('sgi.risk', 'risk', 'folio')):
+                        recs = self.env[model].search([('process_id', '=', old.id)])
+                        for rec in recs:
+                            self.report.change(kind, "%s → %s: %s" % (
+                                old_code, code, rec[label] or rec.name), 'moved')
+                        if recs:
+                            recs.write({'process_id': new.id})
+                    self._move_documents(old, new, old_code, code)
+                    old.write({'active': False, 'replaced_by_id': new.id})
                     if not self.report.dry_run:
                         old.message_post(body="Sustituido por %s — %s." % (
                             new.code, new.name))
             self._savepoint(run, 'process', code)
+
+    def _move_documents(self, old, new, old_code, code, note=''):
+        """Documentos controlados del proceso viejo → el nuevo, clave por clave
+        (una clave con todas sus revisiones viaja junta: la restricción de
+        familia no permite partirla). Lo que no pueda moverse queda en el
+        reporte como advertencia, nunca a medias."""
+        Document = self.env['documents.document'].with_context(active_test=False)
+        docs = Document.search([('sgi_process_id', '=', old.id), ('sgi_is_controlled', '=', True)])
+        by_code = {}
+        for doc in docs:
+            key = doc.sgi_code or doc.id
+            by_code[key] = by_code.get(key, Document) | doc
+        for key, group in sorted(by_code.items(), key=lambda item: str(item[0])):
+            try:
+                with self.env.cr.savepoint():
+                    group.write({'sgi_process_id': new.id})
+            except ValidationError as exc:
+                self.report.warn('document', "%s/%s" % (old_code, key),
+                                 "no se pudo mover a %s: %s" % (code, str(exc).splitlines()[0]))
+                continue
+            for doc in group:
+                self.report.change('document', "%s → %s: %s%s" % (
+                    old_code, code, doc.sgi_code or doc.name, note), 'moved')
+        return docs
+
+    def _relink_dangling(self):
+        """PR-1: nada colgado en procesos archivados. Lo que siga apuntando a
+        un proceso archivado con sucesor (indicadores, riesgos abiertos,
+        documentos) se mueve al sucesor y se reporta; si el proceso archivado
+        no tiene sucesor, queda como advertencia del reporte."""
+        archived = self.Process.search([('active', '=', False), ('company_id', '=', self.company.id)])
+        for old in archived:
+            successor = old.replaced_by_id
+            while successor and not successor.active and successor.replaced_by_id:
+                successor = successor.replaced_by_id
+            indicators = self.env['sgi.indicator'].search([('process_id', '=', old.id)])
+            risks = self.env['sgi.risk'].search([('process_id', '=', old.id), ('state', '!=', 'cerrado')])
+            docs = self.env['documents.document'].search(
+                [('sgi_process_id', '=', old.id), ('sgi_is_controlled', '=', True),
+                 ('sgi_state', 'in', ('vigente', 'piloto'))])
+            if not (indicators or risks or docs):
+                continue
+            if not successor or not successor.active:
+                self.report.warn('process', old.code, "archivado sin sucesor con %d indicador(es), "
+                                 "%d riesgo(s) y %d documento(s) vigentes colgados: asigna «Sustituido "
+                                 "por» o reubícalos." % (len(indicators), len(risks), len(docs)))
+                continue
+
+            def run(old=old, successor=successor, indicators=indicators, risks=risks):
+                for model, recs, label in (('indicator', indicators, 'code'), ('risk', risks, 'folio')):
+                    for rec in recs:
+                        self.report.change(model, "%s → %s: %s (colgado)" % (
+                            old.code, successor.code, rec[label] or rec.name), 'moved')
+                    if recs:
+                        recs.write({'process_id': successor.id})
+                self._move_documents(old, successor, old.code, successor.code, note=' (colgado)')
+            self._savepoint(run, 'process', old.code)
+
+    def _report_spec_gaps(self):
+        """Lo que le falta a cada proceso cargado, agrupado por faltante."""
+        for code, process in self.processes.items():
+            acts = process.procedure_activity_ids.filtered('active')
+            by_code = {}
+            for gap in acts.spec_gap_ids:
+                by_code.setdefault((gap.severity, gap.code), []).append(
+                    gap.activity_id.number or gap.activity_id.name)
+            for (severity, gap_code), numbers in sorted(by_code.items()):
+                self.report.warn('spec', code, "%s %s (%d): %s" % (
+                    "✖" if severity == 'error' else "⚠", gap_code, len(numbers),
+                    ", ".join(sorted(numbers))))
+            for indicator in process.indicator_ids:
+                problems = indicator._sgi_spec_problems()
+                if problems:
+                    self.report.warn('spec', code, "✖ indicador %s: %s" % (
+                        indicator.code, ", ".join(problems)))
+
+    def _load_publish(self):
+        for code in self.publish:
+            process = self.processes.get(code)
+            if not process:
+                continue
+
+            def run(process=process, code=code):
+                if process.state != 'vigente':
+                    process.action_sgi_publish()
+                    self.report.change('process', code, 'updated', ['state'])
+            self._savepoint(run, 'publish', code)
 
     def _load_indicators(self, indicators):
         Indicator = self.env['sgi.indicator'].with_context(active_test=False)
@@ -966,10 +1182,34 @@ class _SgiLoader:
             def run(item=item, key=key):
                 if not key:
                     raise ValidationError("Indicador sin «code».")
-                vals = {name: item[name] for name in _INDICATOR_FIELDS if name in item}
+                vals = {name: (item[name] if item[name] is not None else False)
+                        for name in _INDICATOR_FIELDS if name in item}
+                if vals.get('target_date'):
+                    vals['target_date'] = fields.Date.to_date(vals['target_date'])
+                if 'target' in item:
+                    vals['target_objective'] = item['target'] or 0.0
+                if 'unit' in item:
+                    vals['uom'] = item['unit'] or False
+                if 'direction' in vals:
+                    if vals['direction'] not in _DIRECTIONS:
+                        raise ValidationError("«direction» va en up o down.")
+                    vals['direction'] = _DIRECTIONS[vals['direction']]
                 if 'process' in item:
                     vals['process_id'] = self._find_process(item['process']).id \
                         if item['process'] else False
+                # Modos genéricos: la actividad («C2.17» o «PROC:NUM») y el
+                # entregable (por código) que mide el indicador.
+                if 'activity' in item:
+                    vals['activity_id'] = self._find_activity(
+                        item['activity'], item.get('process')).id if item['activity'] else False
+                if 'deliverable' in item:
+                    deliverable = self.env['sgi.deliverable'].search([
+                        ('code', '=', item['deliverable']),
+                        ('company_id', '=', self.company.id)], limit=1) \
+                        if item['deliverable'] else self.env['sgi.deliverable']
+                    if item['deliverable'] and not deliverable:
+                        raise ValidationError("Entregable «%s» no existe." % item['deliverable'])
+                    vals['deliverable_id'] = deliverable.id
                 if item.get('responsible_employee_id') and item.get('responsible'):
                     raise ValidationError("Indica «responsible» o «responsible_employee_id», "
                                           "no los dos.")

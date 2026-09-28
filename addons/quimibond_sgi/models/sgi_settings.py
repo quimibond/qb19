@@ -21,6 +21,24 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.nc_escalation_days_external',
         help="Las NC de auditoría externa y reclamaciones de cliente escalan más "
              "rápido que las internas.")
+    sgi_nc_days_containment = fields.Integer(
+        string="Plazo de contención de una NC (días hábiles)",
+        config_parameter='quimibond_sgi.nc_days_containment')
+    sgi_nc_days_root_cause = fields.Integer(
+        string="Plazo de causa raíz de una NC (días hábiles)",
+        config_parameter='quimibond_sgi.nc_days_root_cause')
+    sgi_nc_days_plan = fields.Integer(
+        string="Plazo del plan de acción de una NC (días hábiles)",
+        config_parameter='quimibond_sgi.nc_days_plan')
+    sgi_nc_escalation_mast_days = fields.Integer(
+        string="Días vencido un plazo de NC antes de escalar a MAST",
+        config_parameter='quimibond_sgi.nc_escalation_mast_days')
+    sgi_nc_days_supplier_response = fields.Integer(
+        string="Días hábiles para que el proveedor conteste una NC (portal)",
+        config_parameter='quimibond_sgi.nc_days_supplier_response')
+    sgi_nc_effectiveness_days = fields.Integer(
+        string="Días para verificar la eficacia tras la última correctiva",
+        config_parameter='quimibond_sgi.nc_effectiveness_days')
     sgi_doc_review_notice_days = fields.Integer(
         string="Primer aviso de revisión documental (días)",
         config_parameter='quimibond_sgi.doc_review_notice_days')
@@ -94,6 +112,12 @@ class ResConfigSettings(models.TransientModel):
         help="KPI CO-02 (Requisiciones): categoría de aprobación que cuenta como "
              "requisición de compra. Déjalo vacío para detectar automáticamente "
              "la(s) categoría(s) de tipo compra; configúralo solo si hay varias.")
+    sgi_supplier_critical_categ_ids = fields.Many2many(
+        'product.category', string="Categorías de proveedores críticos",
+        help="Materia prima y maquila: solo los proveedores que entregan productos de "
+             "estas categorías (o los marcados como críticos en el contacto) entran a "
+             "la evaluación trimestral. Vacío = la categoría de materia prima más las "
+             "que se llaman «maquila».")
     sgi_production_monthly_capacity = fields.Float(
         string="Capacidad instalada mensual de producción",
         config_parameter='quimibond_sgi.production_monthly_capacity',
@@ -167,6 +191,9 @@ class ResConfigSettings(models.TransientModel):
         categ_name = Param.get_param('quimibond_sgi.waste_subproduct_category', 'SubProducto')
         categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
         res['sgi_waste_categ_id'] = categ.id or False
+        raw_critical = Param.get_param('quimibond_sgi.supplier_critical_categ_ids', '') or ''
+        res['sgi_supplier_critical_categ_ids'] = [(6, 0, self.env['product.category'].browse(
+            [int(x) for x in raw_critical.split(',') if x.strip().isdigit()]).exists().ids)]
         cat_id = int(Param.get_param('quimibond_sgi.purchase_approval_category_id', '0') or 0)
         res['sgi_purchase_approval_category_id'] = (
             cat_id if cat_id and self.env['approval.category'].browse(cat_id).exists()
@@ -195,6 +222,8 @@ class ResConfigSettings(models.TransientModel):
                             self.sgi_waste_categ_id.name)
         Param.set_param('quimibond_sgi.purchase_approval_category_id',
                         self.sgi_purchase_approval_category_id.id or 0)
+        Param.set_param('quimibond_sgi.supplier_critical_categ_ids',
+                        ",".join(str(i) for i in self.sgi_supplier_critical_categ_ids.ids))
         Param.set_param('quimibond_sgi.energy_partner_id',
                         self.sgi_energy_partner_id.id or 0)
         Param.set_param('quimibond_sgi.satisfaction_survey_id',

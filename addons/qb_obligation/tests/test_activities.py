@@ -34,6 +34,29 @@ class TestActivities(ObligationCommon):
         self.assertEqual(ob.activity_id, act, 'misma actividad, resumen sin el prefijo')
         self.assertFalse(act.summary.startswith('Por confirmar'))
 
+    def test_mirror_off_no_activity_and_removes_existing(self):
+        """Espejo apagado (default de producción): la obligación abierta no crea actividad;
+        las que existían se quitan sin descartar la obligación; al encenderlo vuelven."""
+        self._configure()
+        inv = self._invoice(self.cliente, 1000.0)
+        ob = self._promise_on(inv)
+        act = ob.activity_id
+        self.assertTrue(act, 'con el espejo encendido hay actividad')
+        self.company.obligation_activity_mirror = False
+        self._run()
+        self.assertFalse(act.exists(), 'la actividad se quitó')
+        self.assertEqual(ob.state, 'confirmed', 'quitar la actividad no descarta la obligación')
+        self.assertFalse(ob.activity_id)
+        inv2 = self._invoice(self.cliente2, 500.0)
+        ob2 = self._promise_on(inv2)
+        self.assertFalse(ob2.activity_id, 'apagado: una obligación nueva no crea actividad')
+        self.assertFalse(inv2.activity_ids)
+        ob2.write({'date_deadline': fields.Date.from_string('2026-06-30')})
+        self.assertFalse(ob2.activity_id)
+        self.company.obligation_activity_mirror = True
+        self._run()
+        self.assertTrue(ob.activity_id and ob2.activity_id, 'encendido: el cron las vuelve a crear')
+
     def test_activity_falls_back_when_owner_cannot_read_anchor(self):
         """Dueño sin acceso a la factura: la actividad va al contacto, no revienta."""
         self._configure()

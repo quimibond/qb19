@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Solicitud de desarrollo en el proyecto FT (56.0.0): hereda la ficha de
+         Proyecto (módulo ajeno), nunca una vista propia. -->
+    <record id="sgi_project_view_form_dev_request" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.sgi.dev.request</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Solicitud de desarrollo" name="sgi_dev_request" invisible="not sgi_is_ft">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted">Formato <field name="sgi_dev_format_code" readonly="1" class="oe_inline fw-bold"/></span>
+                        <div>
+                            <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"/>
+                            <button name="action_sgi_dev_print" type="object" string="Imprimir solicitud" class="btn-primary" icon="fa-print"/>
+                        </div>
+                    </div>
+                    <group>
+                        <group string="Datos generales">
+                            <field name="sgi_dev_type"/>
+                            <field name="sgi_dev_date"/>
+                            <field name="sgi_dev_requester"/>
+                            <field name="partner_id" string="Cliente"/>
+                            <field name="sgi_dev_customer_property"/>
+                        </group>
+                        <group string="Volumen y precio">
+                            <field name="sgi_dev_sample_m"/>
+                            <field name="sgi_dev_sample_kg"/>
+                            <label for="sgi_dev_volume"/>
+                            <div class="o_row">
+                                <field name="sgi_dev_volume"/>
+                                <field name="sgi_dev_volume_uom"/>
+                            </div>
+                            <field name="sgi_dev_target_price"/>
+                            <field name="sgi_dev_currency_id" invisible="1"/>
+                            <field name="sgi_dev_norms"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="sgi_dev_use" placeholder="Qué es el producto y para qué lo va a usar el cliente"/>
+                        <field name="sgi_dev_spec" placeholder="Especificación que entregó el cliente (o referencia a su hoja técnica)"/>
+                    </group>
+                    <field name="sgi_dev_line_ids">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="direction"/>
+                            <field name="unit"/>
+                            <field name="value"/>
+                            <field name="tolerance"/>
+                            <field name="method"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
+                    <group>
+                        <group>
+                            <field name="sgi_dev_packaging"/>
+                            <field name="sgi_dev_other"/>
+                        </group>
+                        <group string="Firmas">
+                            <field name="sgi_dev_prepared_by_id"/>
+                            <field name="sgi_dev_approved_by_id"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="sgi_is_ft"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Memoria del contacto',
-    'version': '19.0.1.2.0',
+    'version': '19.0.1.3.0',
     'license': 'LGPL-3',
     'category': 'Sales/CRM',
     'summary': 'Pestaña Memoria en cada contacto: hilos de correo, pendientes detectados, demanda y contactos, desde la memoria en Supabase.',
@@ -32,11 +32,16 @@ cada empresa (y cada tipo de pendiente) y lo escribe en el contacto como
 "Encargado (memoria)", con la evidencia. La persona detrás de cada buzón
 compartido se define en Contactos → Configuración → Buzones (memoria). Las
 obligaciones usan ese encargado como dueño por defecto.
+
+Desde 1.3.0 la pestaña Memoria está oculta: solo la ve el grupo "Ver pestaña
+Memoria" (privilegio Memoria), que nace sin miembros. El cron de dueños
+aprendidos y el resto del módulo siguen funcionando sin la pestaña.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'depends': ['base', 'mail', 'contacts'],
     'data': [
+        'security/qb_memoria_security.xml',
         'security/ir.model.access.csv',
         'data/ir_cron_data.xml',
         'views/res_partner_views.xml',

@@ -3,6 +3,8 @@ from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import ValidationError
 from odoo.tools import mute_logger
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestSgiFormatMap(TransactionCase):
@@ -10,7 +12,14 @@ class TestSgiFormatMap(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        sgi_hide_real_documents(cls.env)
         cls.Map = cls.env['sgi.format.map']
+        # Los mapeos son noupdate y MAST los edita en producción: la prueba
+        # fija los de venta y compra que valida.
+        cls.Map.search([('model_name', '=', 'sale.order')]).write(
+            {'sgi_code': 'F-P-A28-12', 'sgi_code_alt': 'F-P-A28-06'})
+        cls.Map.search([('model_name', '=', 'purchase.order')]).write(
+            {'sgi_code': 'F-P-A02-03'})
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente Formato'})
         cls.product = cls.env['product.product'].create({
             'name': 'Tela de prueba', 'type': 'consu', 'list_price': 10.0,
@@ -50,10 +59,10 @@ class TestSgiFormatMap(TransactionCase):
         self.assertEqual(order.sgi_format_info(), "F-P-A28-12 · Rev. 04")
 
     def test_02_clave_sin_documento_vigente(self):
-        # La OC está mapeada (F-P-A02-01) pero no cargamos su documento en el
-        # test: debe degradar a la clave sola, sin excepción.
+        # La OC está mapeada (F-P-A02-03; la 01 es la Requisición) pero no
+        # cargamos su documento en el test: degrada a la clave sola.
         po = self.env['purchase.order'].create({'partner_id': self.partner.id})
-        self.assertEqual(po.sgi_format_info(), "F-P-A02-01")
+        self.assertEqual(po.sgi_format_info(), "F-P-A02-03")
 
     def test_03_venta_clave_por_estado(self):
         order = self._new_sale()

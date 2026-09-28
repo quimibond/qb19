@@ -2,7 +2,9 @@
 from datetime import date
 
 from odoo.tests import TransactionCase, tagged
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError
+
+from .common_users import assert_locked, sgi_test_user
 
 
 @tagged('post_install', '-at_install')
@@ -12,6 +14,7 @@ class TestIncident(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.Incident = cls.env['sgi.incident']
+        cls.sgi_user = sgi_test_user(cls.env)
 
     def _new_incident(self, **vals):
         base = {'name': 'Resbalón en almacén', 'severity': 'leve',
@@ -22,8 +25,7 @@ class TestIncident(TransactionCase):
     def test_01_close_requires_scat(self):
         incident = self._new_incident()
         incident.action_set_investigacion()
-        with self.assertRaises(UserError):
-            incident.action_set_cerrado()
+        assert_locked(self, incident.with_user(self.sgi_user).action_set_cerrado)
         # Completa las 3 capas SCAT.
         incident.write({
             'immediate_causes': 'Piso mojado sin señalización',
@@ -50,8 +52,7 @@ class TestIncident(TransactionCase):
             'responsible_id': self.env.user.id,
             'date_commit': date.today(),
         })
-        with self.assertRaises(UserError):
-            incident.action_set_cerrado()
+        assert_locked(self, incident.with_user(self.sgi_user).action_set_cerrado)
         incident.action_line_ids.write({'date_done': date.today(), 'progress': '100'})
         incident.action_set_cerrado()
         self.assertEqual(incident.state, 'cerrado')

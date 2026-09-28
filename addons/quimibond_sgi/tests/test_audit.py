@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from odoo.tests import TransactionCase, tagged
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError
+
+from .common_users import assert_locked, sgi_test_user
 
 
 @tagged('post_install', '-at_install')
@@ -13,6 +15,7 @@ class TestAudit(TransactionCase):
         cls.Audit = cls.env['sgi.audit']
         cls.user = cls.env['res.users'].create({
             'name': 'Auditor Uno', 'login': 'sgi_auditor_test'})
+        cls.sgi_user = sgi_test_user(cls.env)
         cls.employee = cls.env['hr.employee'].create({
             'name': 'Dueño Proceso', 'user_id': cls.user.id})
         cls.process = cls.env['sgi.process'].create({
@@ -48,8 +51,7 @@ class TestAudit(TransactionCase):
             'process_id': self.other_process.id,
             'description': 'Hallazgo sin disposición',
         })
-        with self.assertRaises(UserError):
-            audit.action_close()
+        assert_locked(self, audit.with_user(self.sgi_user).action_close)
 
     def test_04_generate_nc_links_alert(self):
         audit = self.Audit.create({
