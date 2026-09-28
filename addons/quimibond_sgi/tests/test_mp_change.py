@@ -148,6 +148,9 @@ class TestMpChange(TransactionCase):
         kanban = self.env['sgi.activity.role'].get_view(
             self.env.ref('quimibond_sgi.sgi_activity_role_view_kanban_mp').id, 'kanban')['arch']
         self.assertIn('on_create="quimibond_sgi.sgi_activity_change_action_new"', kanban)
+        listing = self.env['sgi.activity.role'].get_view(
+            self.env.ref('quimibond_sgi.sgi_activity_role_view_list_my_procedure').id, 'list')['arch']
+        self.assertIn('js_class="sgi_my_activities_list"', listing, "56.6.2: «Nuevo» también en la lista.")
         opened = self.env['sgi.activity.change'].with_user(self.user_emp).with_context(
             **action['context']).action_sgi_new_from_context()
         proposal = self.env['sgi.activity.change'].browse(opened['res_id'])

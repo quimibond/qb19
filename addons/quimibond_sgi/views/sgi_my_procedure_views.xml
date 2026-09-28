@@ -321,7 +321,9 @@
         <field name="name">sgi.activity.role.list.my.procedure</field>
         <field name="model">sgi.activity.role</field>
         <field name="arch" type="xml">
-            <list string="Mi procedimiento" create="0" edit="0" delete="0"
+            <!-- 56.6.2: «Nuevo» abre la propuesta de actividad nueva, igual
+                 que el kanban (js_class sgi_my_activities_list). -->
+            <list string="Mi procedimiento" create="1" edit="0" delete="0" js_class="sgi_my_activities_list"
                   default_order="cadence, role, process_id, activity_id">
                 <field name="cadence"/>
                 <field name="role" widget="badge"
