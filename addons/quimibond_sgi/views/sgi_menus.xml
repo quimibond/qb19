@@ -50,6 +50,9 @@
               sequence="12"/>
     <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina" parent="menu_sgi_processes"
               action="sgi_machine_sheet_action" sequence="45"/>
+    <menuitem id="menu_sgi_approvals_native" name="Aprobaciones del SGI" parent="menu_sgi_processes"
+              action="sgi_activity_role_action_approval" sequence="47"
+              groups="quimibond_sgi.group_sgi_manager"/>
 
     <!-- 3. Mejora (todos): lo que salió mal y lo que se hace para que no
          vuelva. -->
