@@ -1768,6 +1768,31 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### Documentos del puesto, proponer cambios y aviso sin empleado (56.2.0)
+
+- **Documentos que aplican al puesto.** Salían vacíos para todos: solo se
+  contaban los documentos que nombran al puesto en `sgi_job_ids`, y en
+  producción solo lo hacen los propios «Mi procedimiento» (excluidos). Ahora
+  `hr.job._sgi_mp_document_records()` junta, de las actividades activas donde
+  el puesto tiene rol (directo o por familia), el instructivo, los formatos
+  referenciados y el procedimiento relacionado, más los que nombran al
+  puesto; solo vigentes. Lo usan la ficha del empleado, la pantalla (pestaña
+  **Documentos**) y el PDF.
+- **Proponer cambio.** Cada tarjeta y renglón de actividad trae «Proponer
+  cambio» y el encabezado «Proponer nueva actividad». El asistente
+  (`sgi.mp.change.wizard`) prellena cómo está hoy la actividad y pide la
+  propuesta, el motivo y un adjunto; crea la solicitud en la categoría marcada
+  `sgi_is_mp_change` («Proponer cambio a mi procedimiento (SGI)», la marca el
+  `post-migrate` 56.2.0) con referencia `<proceso> / <numeral> <actividad>`,
+  dueño el usuario y `sgi_activity_id`, y la envía. Si faltan aprobadores
+  (jefe directo sin usuario) queda en borrador con el motivo en el chatter.
+  Al aprobarse, cada Jefe MAST y SGI recibe la actividad «Aplicar cambio
+  aprobado y republicar» en la actividad del procedimiento (o en el proceso si
+  es nueva). `sgi.process.activity` gana chatter para eso.
+- **Sin empleado ligado.** «Mi procedimiento» ya no truena ni abre vacía: muestra
+  «Tu usuario no está ligado a un empleado».
+- Pruebas en `tests/test_mp_change.py`.
+
 ### Puesto vacío al abrir desde Mi equipo (56.1.1)
 
 «Ver su procedimiento» desde Mi equipo abría la pantalla con **Puesto vacío y

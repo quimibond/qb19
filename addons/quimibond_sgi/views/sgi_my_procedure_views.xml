@@ -73,6 +73,10 @@
                                     class="btn btn-outline-secondary btn-sm" title="Ver instructivo">
                                 <i class="fa fa-book me-1" title="Instructivo"/>Instructivo
                             </button>
+                            <button type="object" name="action_mp_propose_change" class="btn btn-link btn-sm"
+                                    title="Proponer cambio a esta actividad">
+                                <i class="fa fa-lightbulb-o me-1" title="Proponer cambio"/>Proponer cambio
+                            </button>
                             <button type="object" name="action_open_activity" class="btn btn-link btn-sm text-muted"
                                     title="Ver actividad">
                                 <i class="fa fa-file-text-o" title="Actividad"/>
@@ -127,6 +131,8 @@
                             confirm="Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora."/>
                     <button name="action_open_doc" type="object" string="Ver revisión vigente" icon="fa-file-pdf-o"
                             invisible="not doc_id"/>
+                    <button name="action_propose_new_activity" type="object" string="Proponer nueva actividad"
+                            icon="fa-lightbulb-o" invisible="not job_id"/>
                     <button name="action_print" type="object" string="Imprimir PDF" icon="fa-print"
                             invisible="not job_id"/>
                     <button name="action_publish" type="object" string="Publicar revisión" icon="fa-upload"
@@ -140,6 +146,12 @@
                     <field name="ack_state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <field name="no_employee" invisible="1"/>
+                    <div class="alert alert-warning" role="alert" invisible="not no_employee">
+                        <i class="fa fa-user-times me-1" title="Sin empleado"/>
+                        <strong>Tu usuario no está ligado a un empleado.</strong>
+                        Pide a RH que te ligue en tu ficha de empleado para ver tu procedimiento.
+                    </div>
                     <!-- 54.1.0: la pantalla se lee como una ficha de persona: quién
                          es y qué puesto tiene arriba, y CADA lista (actividades,
                          escalamientos, acuses, documentos, pendientes, EPP) es un
@@ -250,6 +262,19 @@
                     <group string="EPP requerido por el puesto (S03-01)" invisible="not epp_required">
                         <field name="epp_required" nolabel="1" readonly="1" colspan="2"/>
                     </group>
+                    <notebook invisible="not job_id">
+                        <page string="Documentos" name="documentos">
+                            <field name="document_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="sgi_code" string="Clave"/>
+                                    <field name="name"/>
+                                    <field name="sgi_doc_type" string="Tipo"/>
+                                    <field name="sgi_revision_label" string="Rev."/>
+                                    <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -327,6 +352,8 @@
                 <field name="condition" optional="hide"/>
                 <button name="action_open_activity" type="object" string="Ver actividad"
                         icon="fa-external-link" class="btn-link"/>
+                <button name="action_mp_propose_change" type="object" string="Proponer cambio"
+                        icon="fa-lightbulb-o" class="btn-link"/>
             </list>
         </field>
     </record>

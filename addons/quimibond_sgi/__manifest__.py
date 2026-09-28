@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.56.1.1',
+    'version': '19.0.56.2.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -145,6 +145,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_sign_elearning_views.xml',
         'views/sgi_catalog_views.xml',
         'views/sgi_my_procedure_views.xml',
+        'views/sgi_mp_change_views.xml',
         'views/sgi_structure_views.xml',
         'views/sgi_coa_views.xml',
         # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el

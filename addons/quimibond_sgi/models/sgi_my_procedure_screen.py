@@ -149,7 +149,6 @@ class SgiMyProcedureMixin(models.AbstractModel):
     def _compute_sgi_mp_lists(self):
         Role = self.env['sgi.activity.role'].sudo()
         Ack = self.env['sgi.document.ack'].sudo()
-        Doc = self.env['documents.document'].sudo()
         Epp = self.env['sgi.epp.delivery'].sudo()
         me = self.env.user.employee_id.sudo()
         for rec in self:
@@ -160,10 +159,8 @@ class SgiMyProcedureMixin(models.AbstractModel):
             rec.sgi_mp_received_role_ids = lists['received'].ids
             rec.sgi_mp_short_role_ids = lists['short'].ids
             rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
-            rec.sgi_mp_document_ids = _sgi_readable(Doc.search(
-                [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
-                 ('sgi_doc_type', '!=', 'mi_procedimiento')],
-                order='sgi_doc_type, sgi_code, name'), rec.env) if job else False
+            rec.sgi_mp_document_ids = _sgi_readable(
+                job._sgi_mp_document_records(), rec.env) if job else False
             rec.sgi_mp_epp_text = (job.sgi_epp_required or False) if job else False
             if emp:
                 rec.sgi_mp_ack_ids = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code').ids
@@ -493,10 +490,8 @@ class SgiMyProcedure(models.TransientModel):
             acks = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code') if emp else Ack
             wiz.ack_ids = acks.ids
             wiz.pending_ack_count = len(acks.filtered(lambda a: a.state == 'pendiente'))
-            wiz.document_ids = _sgi_readable(Doc.search(
-                [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
-                 ('sgi_doc_type', '!=', 'mi_procedimiento')],
-                order='sgi_doc_type, sgi_code, name'), wiz.env) if job else False
+            wiz.document_ids = _sgi_readable(
+                job._sgi_mp_document_records(), wiz.env) if job else False
             # --- EPP del puesto y responsivas del empleado
             wiz.epp_required = job.sgi_epp_required or False
             deliveries = env['sgi.epp.delivery'].sudo().search(
@@ -654,11 +649,11 @@ class SgiMyProcedure(models.TransientModel):
     @api.model
     def action_open_mine(self):
         """Inicio → Mi procedimiento: la pantalla del puesto del usuario."""
+        # 56.2.0: sin empleado ligado la pantalla abre con el aviso
+        # «Tu usuario no está ligado a un empleado» (campo no_employee), en
+        # vez de un error o una pantalla vacía.
         me = self._sgi_mp_my_employee()
-        if not me and not self._sgi_mp_is_admin():
-            raise UserError(
-                "Tu usuario no tiene empleado ligado. Pide a RH que lo capture en tu ficha.")
-        wiz = self.create({'employee_id': me.id if me else False})
+        wiz = self.create({'employee_id': me.id} if me else {})
         return {
             'type': 'ir.actions.act_window',
             'name': "Mi procedimiento",

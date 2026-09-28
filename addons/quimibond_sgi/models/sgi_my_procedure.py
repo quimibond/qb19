@@ -261,14 +261,29 @@ class HrJobMyProcedure(models.Model):
         data['hash'] = self._sgi_my_procedure_hash(data)
         return data
 
+    def _sgi_mp_document_records(self):
+        """Documentos vigentes que aplican al puesto (56.2.0): los que usan
+        las actividades activas donde el puesto tiene rol, directo o por su
+        familia (instructivo, formatos referenciados y procedimiento
+        relacionado, que incluye el instructivo de cada tarjeta), más los
+        documentos que nombran al puesto. Antes solo contaban estos últimos y
+        en producción casi ninguno lo hace: la lista salía vacía."""
+        self.ensure_one()
+        Doc = self.env['documents.document'].sudo()
+        roles = self.env['sgi.activity.role'].sudo().search(self._sgi_roles_domain())
+        activities = roles.activity_id.filtered('active')
+        docs = activities.instruction_id | activities.format_document_ids | activities.related_procedure_id
+        docs |= Doc.search([('sgi_job_ids', 'in', self.ids), ('sgi_doc_type', '!=', 'mi_procedimiento')])
+        if not docs:
+            return Doc
+        return Doc.search([('id', 'in', docs.ids), ('sgi_state', '=', 'vigente')],
+                          order='sgi_doc_type, sgi_code, name')
+
     def _sgi_mp_documents(self):
         """Documentos vigentes que aplican al puesto (para el PDF y la huella;
         la pantalla los muestra con una lista nativa)."""
         self.ensure_one()
-        docs = self.env['documents.document'].sudo().search(
-            [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.ids),
-             ('sgi_doc_type', '!=', 'mi_procedimiento')],
-            order='sgi_doc_type, sgi_code, name')
+        docs = self._sgi_mp_document_records()
         return [{
             'doc': doc, 'code': doc.sgi_code or '', 'name': doc.name or '',
             'type': dict(doc._fields['sgi_doc_type'].selection).get(doc.sgi_doc_type, ''),
