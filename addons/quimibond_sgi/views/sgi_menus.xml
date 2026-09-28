@@ -43,17 +43,17 @@
     </record>
     <!-- 54.0.0: cada entrada abre su acción y el diagrama es una vista más
          del selector (mapa · kanban · lista · organigrama · ficha). -->
-    <menuitem id="menu_sgi_process_map" name="Mapa de procesos" parent="menu_sgi_processes"
+    <menuitem id="menu_sgi_process_map" name="ANEXO 2 Mapeo de procesos" parent="menu_sgi_processes"
               action="sgi_process_action" sequence="5"/>
     <menuitem id="menu_sgi_activities" name="Actividades" parent="menu_sgi_processes"
               action="sgi_process_activity_action" sequence="7"/>
-    <menuitem id="menu_sgi_analysis_who" name="Quién hace qué"
+    <menuitem id="menu_sgi_analysis_who" name="ANEXO 4 Matriz de responsabilidades"
               parent="menu_sgi_processes" action="sgi_activity_exec_stat_action_who"
               sequence="10"/>
     <menuitem id="menu_sgi_jobs_roles" name="Puestos y procesos"
               parent="menu_sgi_processes" action="sgi_hr_job_action_roles"
               sequence="12"/>
-    <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina" parent="menu_sgi_processes"
+    <menuitem id="menu_sgi_machine_sheets" name="F-IT-P-P01-08-05 Ficha técnica de control de proceso por máquina" parent="menu_sgi_processes"
               action="sgi_machine_sheet_action" sequence="45"/>
     <menuitem id="menu_sgi_approvals_native" name="Aprobaciones del SGI" parent="menu_sgi_processes"
               action="sgi_activity_role_action_approval" sequence="47"
@@ -62,31 +62,31 @@
     <!-- 3. Mejora (todos): lo que salió mal y lo que se hace para que no
          vuelva. -->
     <menuitem id="menu_sgi_improvement_group" name="Mejora" parent="menu_sgi_root" sequence="30"/>
-    <menuitem id="menu_sgi_nc" name="No conformidades" parent="menu_sgi_improvement_group"
+    <menuitem id="menu_sgi_nc" name="F-P-G05-01 Solicitud de no conformidad" parent="menu_sgi_improvement_group"
               action="sgi_nc_board_action" sequence="10"/>
-    <menuitem id="menu_sgi_complaints" name="Reclamaciones de cliente" parent="menu_sgi_improvement_group"
+    <menuitem id="menu_sgi_complaints" name="F-P-A28-19 / A28-01 Reclamaciones de cliente" parent="menu_sgi_improvement_group"
               action="sgi_complaint_action" sequence="15"/>
-    <menuitem id="menu_sgi_nc_all_actions" name="Acciones"
+    <menuitem id="menu_sgi_nc_all_actions" name="F-P-G05-02 Control de acciones correctivas"
               parent="menu_sgi_improvement_group" action="sgi_action_line_action_all"
               sequence="20"/>
-    <menuitem id="menu_sgi_internal_complaints" name="Quejas y sugerencias"
+    <menuitem id="menu_sgi_internal_complaints" name="F-P-A10-04 Quejas y sugerencias"
               parent="menu_sgi_improvement_group" action="sgi_internal_complaint_action"
               sequence="25"/>
-    <menuitem id="menu_sgi_improvements" name="Mejoras" parent="menu_sgi_improvement_group"
+    <menuitem id="menu_sgi_improvements" name="F-P-A10-02 Mejora continua" parent="menu_sgi_improvement_group"
               action="sgi_improvement_action" sequence="26"/>
-    <menuitem id="menu_sgi_lessons" name="Lecciones aprendidas"
+    <menuitem id="menu_sgi_lessons" name="ANEXO 14 Bitácora de experiencias adquiridas"
               parent="menu_sgi_improvement_group" action="sgi_nc_lessons_action" sequence="27"/>
     <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_improvement_group"
               sequence="30"/>
-    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
+    <menuitem id="menu_sgi_audit_list" name="F-P-G03-07 Reporte de auditoría" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="10"/>
-    <menuitem id="menu_sgi_audit_programs" name="Programa de auditorías"
+    <menuitem id="menu_sgi_audit_programs" name="F-P-G03-01 Programa de auditorías"
               parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="20"/>
     <menuitem id="menu_sgi_safety" name="Seguridad y ambiente" parent="menu_sgi_improvement_group"
               sequence="35"/>
-    <menuitem id="menu_sgi_incidents" name="Incidentes SST"
+    <menuitem id="menu_sgi_incidents" name="F-P-S02-01 Investigación de incidentes y accidentes"
               parent="menu_sgi_safety" action="sgi_incident_action" sequence="10"/>
-    <menuitem id="menu_sgi_emergency_plans" name="Planes de emergencia"
+    <menuitem id="menu_sgi_emergency_plans" name="DAT P-A14-02 Plan de emergencias"
               parent="menu_sgi_safety" action="sgi_emergency_plan_action" sequence="20"/>
     <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
               parent="menu_sgi_safety" action="sgi_emergency_drill_action" sequence="30"/>
@@ -98,17 +98,17 @@
          disponible desde su botón. -->
     <menuitem id="menu_sgi_dashboard_health" name="Tablero de dirección" parent="menu_sgi_direction"
               action="sgi_direction_board_action_open" sequence="5"/>
-    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la Dirección"
+    <menuitem id="menu_sgi_mgmt_review" name="IT-P-A10-01 Revisión por la dirección"
               parent="menu_sgi_direction" action="sgi_management_review_action" sequence="10"/>
-    <menuitem id="menu_sgi_policy" name="Política integral" parent="menu_sgi_direction"
+    <menuitem id="menu_sgi_policy" name="ANEXO 9 Política integral" parent="menu_sgi_direction"
               action="sgi_policy_action" sequence="15"/>
-    <menuitem id="menu_sgi_objectives" name="Objetivos integrales" parent="menu_sgi_direction"
+    <menuitem id="menu_sgi_objectives" name="ANEXO 6 Objetivos integrales" parent="menu_sgi_direction"
               action="sgi_objective_action" sequence="20"/>
-    <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_direction"
+    <menuitem id="menu_sgi_risks" name="F-P-C09-02 Matriz de riesgos y oportunidades" parent="menu_sgi_direction"
               action="sgi_risk_action" sequence="25"/>
-    <menuitem id="menu_sgi_legal" name="Requisitos legales" parent="menu_sgi_direction"
+    <menuitem id="menu_sgi_legal" name="DAT P-E02-01 Matriz de trámites legales y ambientales" parent="menu_sgi_direction"
               action="sgi_legal_requirement_action" sequence="30"/>
-    <menuitem id="menu_sgi_interested_parties" name="Partes interesadas"
+    <menuitem id="menu_sgi_interested_parties" name="DAT P-G01-06 Matriz de partes interesadas"
               parent="menu_sgi_direction" action="sgi_interested_party_action" sequence="35"/>
     <menuitem id="menu_sgi_satisfaction" name="Satisfacción del cliente"
               parent="menu_sgi_direction" action="sgi_satisfaction_action" sequence="40"/>
@@ -123,9 +123,9 @@
     <menuitem id="menu_sgi_documental" name="Documentos" parent="menu_sgi_admin" sequence="10"/>
     <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
               action="sgi_document_action" sequence="10"/>
-    <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_documental"
+    <menuitem id="menu_sgi_doc_changes" name="F-P-G01-06 Solicitud de creación y modificación de documentación" parent="menu_sgi_documental"
               action="sgi_doc_change_board_action" sequence="20" groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_master_list" name="Lista maestra" parent="menu_sgi_documental"
+    <menuitem id="menu_sgi_master_list" name="F-P-G01-03 Lista de información documentada" parent="menu_sgi_documental"
               action="sgi_document_master_list_action" sequence="12"/>
     <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_documental"
               action="sgi_migration_action" sequence="30" groups="quimibond_sgi.group_sgi_manager"/>
@@ -134,7 +134,7 @@
 
     <!-- 5.2 Indicadores, fórmulas y mediciones -->
     <menuitem id="menu_sgi_admin_indicators" name="Indicadores" parent="menu_sgi_admin" sequence="20"/>
-    <menuitem id="menu_sgi_indicators" name="Indicadores y fórmulas" parent="menu_sgi_admin_indicators"
+    <menuitem id="menu_sgi_indicators" name="F-P-A10-03 Indicadores" parent="menu_sgi_admin_indicators"
               action="sgi_indicator_action" sequence="10"/>
     <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_admin_indicators"
               action="sgi_measure_action" sequence="20"/>

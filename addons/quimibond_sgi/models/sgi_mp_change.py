@@ -26,6 +26,7 @@ MP_APPLY_SUMMARY = "Revisar cambio aplicado y republicar"
 MP_FIELDS = (
     'name', 'description', 'how_steps', 'instruction_id', 'format_document_ids',
     'related_procedure_id', 'measure_cadence', 'due_weekday', 'due_business_day',
+    'due_month', 'due_day',
     'exec_channel', 'odoo_menu_id', 'external_system', 'place_note',
     'check_against', 'done_criteria', 'on_fail',
 )
@@ -213,6 +214,8 @@ class SgiActivityChange(models.Model):
     measure_cadence = fields.Selection(_activity_selection('measure_cadence'), string="Cadencia esperada")
     due_weekday = fields.Selection(_activity_selection('due_weekday'), string="Vence el (semanal)")
     due_business_day = fields.Integer(string="Vence el día hábil (mensual)")
+    due_month = fields.Selection(_activity_selection('due_month'), string="Vence en el mes")
+    due_day = fields.Integer(string="Vence el día")
     exec_channel = fields.Selection(_activity_selection('exec_channel'), string="Dónde se hace")
     odoo_menu_id = fields.Many2one('ir.ui.menu', string="Menú de Odoo")
     external_system = fields.Char(string="Sistema externo")

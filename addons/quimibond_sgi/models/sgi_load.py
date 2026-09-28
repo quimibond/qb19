@@ -76,7 +76,7 @@ _KEYS_ROLE = ({'role', 'job', 'job_id', 'family', 'relative', 'condition', 'afte
 _KEYS_INPUT = ({'code', 'days', 'applies_domain', 'applies_note', 'match',
                 'due_field', 'offset_days'}, {})
 _KEYS_WHERE = ({'channel', 'menu', 'external_system', 'location', 'workcenter', 'place'}, {})
-_KEYS_DUE = ({'weekday', 'business_day'}, {})
+_KEYS_DUE = ({'weekday', 'business_day', 'month', 'day'}, {})
 _KEYS_MEASURE = ({'method', 'proxy', 'deliverable', 'justification', 'sample_cadence',
                   'cadence'}, {})
 _KEYS_AUTOMATION = ({'current', 'target', 'method'}, {})
@@ -924,8 +924,9 @@ class _SgiLoader:
         return vals
 
     def _due_vals(self, due):
-        """«due»: {"weekday": 0-6} o {"business_day": 1-23}."""
-        vals = {'due_weekday': False, 'due_business_day': 0}
+        """«due»: {"weekday": 0-6}, {"business_day": 1-23} o, para trimestral,
+        semestral y anual, {"month": 1-12, "day": 1-31}."""
+        vals = {'due_weekday': False, 'due_business_day': 0, 'due_month': False, 'due_day': 0}
         if 'weekday' in due and due['weekday'] is not None:
             day = due['weekday']
             if isinstance(day, bool) or not isinstance(day, int) or not 0 <= day <= 6:
@@ -936,6 +937,13 @@ class _SgiLoader:
             if isinstance(day, bool) or not isinstance(day, int) or not 1 <= day <= 23:
                 raise ValidationError("«due.business_day» va de 1 a 23.")
             vals['due_business_day'] = day
+        if due.get('month') is not None or due.get('day') is not None:
+            month, day = due.get('month'), due.get('day')
+            for value, low, high, key in ((month, 1, 12, 'month'), (day, 1, 31, 'day')):
+                if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+                    raise ValidationError("«due.%s» va de %d a %d (y se dan los dos: mes y día)."
+                                          % (key, low, high))
+            vals.update(due_month=str(month), due_day=day)
         return vals
 
     def _inputs_commands(self, activity, item):

@@ -79,3 +79,6 @@ from . import sgi_business_line
 from . import sgi_doc_change_sign
 from . import sgi_sign_builder
 from . import sgi_my_procedure_sign
+from . import sgi_external_doc
+from . import sgi_hse_records
+from . import sgi_checklist

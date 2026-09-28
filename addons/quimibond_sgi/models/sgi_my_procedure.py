@@ -79,7 +79,7 @@ class SgiActivityRoleCadence(models.Model):
     activity_when = fields.Char(string="Cuándo", compute='_compute_activity_when')
 
     @api.depends('activity_id.measure_cadence', 'activity_id.due_weekday',
-                 'activity_id.due_business_day')
+                 'activity_id.due_business_day', 'activity_id.due_month', 'activity_id.due_day')
     def _compute_activity_when(self):
         Job = self.env['hr.job']
         for role in self:
@@ -143,6 +143,10 @@ class HrJobMyProcedure(models.Model):
                 and activity.due_business_day:
             return ((1, activity.due_business_day),
                     "Día hábil %d del mes" % activity.due_business_day)
+        # 56.20.0: trimestral, semestral y anual con mes y día.
+        months = activity._sgi_due_months() if activity.due_day else []
+        if months:
+            return ((2, months[0] * 100 + activity.due_day), "Cada %s" % activity._sgi_due_label())
         return ((9, 0), "")
 
     def _sgi_mp_role_label(self, role):

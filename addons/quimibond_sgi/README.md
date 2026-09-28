@@ -2439,3 +2439,57 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
 - Los demás documentos ya se firman al cambiar por el cambio documental
   (56.17.0), que incluye la versión nueva en el PDF firmado.
 - Pruebas: `tests/test_my_procedure_sign.py`.
+
+### 19.0.56.20.0 — Menús con claves, vencimientos largos, orígenes de NC y acta administrativa
+
+- **Menús con las claves del Dropbox** en el XML (23 menús renombrados a mano
+  en producción el 28-sep): los menús no son `noupdate` y el update les
+  habría regresado el nombre anterior. Ej.: «ANEXO 2 Mapeo de procesos»,
+  «F-P-G05-01 Solicitud de no conformidad», «IT-P-A10-01 Revisión por la
+  dirección».
+- Revisado antes de instalar: `sgi.process.activity` no tiene registros en
+  XML (las actividades se capturan en pantalla o por la carga por API), así
+  que el update no pisa «Cómo» ni ningún otro texto; ninguna migración
+  pendiente (56.2.0 a 56.20.0) toca actividades salvo 56.16.0, que solo
+  agrega equipo y mercado si están vacíos (C2.04, C2.08 y la etapa E de C2).
+  Nada archiva actividades en el update: solo la carga por API con
+  `archive_missing` o un proceso sustituido.
+- **Vencimiento por mes y día** para cadencias trimestral, semestral y anual
+  (`due_month` + `due_day`): el mes es el del primer periodo del año y se
+  repite cada 3, 6 o 12 meses; el día se recorta al fin de mes. Lo respetan
+  el validador (plazo, cadencia que no corresponde, falta mes o día), la
+  frase «Vence el…», el «cuándo» de Mi procedimiento, la medición a tiempo,
+  la carga por API (`due: {"month", "day"}`) y las propuestas de cambio.
+- **Orígenes de NC**: Incidente/accidente SST (las NC de incidentes nacen con
+  él; `post-migrate` 56.20.0 corrige las que ya existían), Emergencia real,
+  Scorecard de cliente (plazo de cliente externo), Recorrido de la Comisión
+  de Seguridad e Higiene y Riesgo u oportunidad.
+- **Acción administrativa (S4.32)**: al marcarla en la NC se crea una
+  actividad al Coordinador de RH (`quimibond_sgi.rh_user_id`; si no, Jefe
+  MAST) para levantar el acta; una por NC.
+- Pruebas: `tests/test_due_long.py`, `tests/test_nc_origins.py`.
+
+### 19.0.56.21.0 — Documento externo y pantallas para lo que seguía en papel
+
+- **Documento externo (E2.36)**: en los documentos de tipo «Documento
+  externo», emisor, revisión del emisor, fecha de recepción y proceso dueño
+  (el «Proceso SGI» del documento). Plazo de implantación de 10 días hábiles
+  desde la recepción (`quimibond_sgi.external_doc_days`); el cron de
+  vencimientos documentales avisa al dueño del proceso 2 días hábiles antes y
+  al vencer. Menú Administración SGI → Documentos → Documentos externos.
+- **Estudios de higiene y exámenes médicos por trabajador (E2.31, E2.32)**:
+  `sgi.health.record` con tipo, fecha, vigencia, vencimiento, resultado y
+  PDF; pestaña «Salud ocupacional» en el empleado. Datos de salud: solo RH y
+  el Jefe MAST. El cron de competencias avisa a RH 30 días antes y al vencer
+  (solo el más reciente de cada estudio por trabajador).
+- **Recorrido de la Comisión de Seguridad e Higiene (E2.29)**: acta con
+  integrantes, adjuntos y hallazgos; cada hallazgo se corrige en el momento,
+  queda sin acción con motivo o genera su NC (origen «Recorrido de la
+  Comisión de Seguridad e Higiene»). No se cierra con hallazgos sin resolver.
+- **Checklists de planta y unidades (S5.15, S5.16, S5.20)**: plantilla con
+  puntos a revisar, equipos o unidades y frecuencia (diaria L-V o semanal los
+  lunes). El cron diario crea una solicitud de mantenimiento preventivo por
+  equipo con la hoja de puntos (Bien / Falla / No aplica); de las fallas sale
+  un correctivo con un botón. Menús en Mejora → Seguridad y ambiente y la
+  plantilla en Configuración.
+- Pruebas: `tests/test_external_doc.py`, `tests/test_hse_records.py`.

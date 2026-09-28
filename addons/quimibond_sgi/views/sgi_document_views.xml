@@ -77,6 +77,26 @@
                             <field name="sgi_disposition" invisible="not sgi_retention_years"/>
                         </group>
                     </group>
+                    <!-- 56.21.0 (E2.36): documento externo. -->
+                    <group string="Documento externo" invisible="sgi_doc_type != 'externo'">
+                        <group>
+                            <field name="sgi_ext_issuer"/>
+                            <field name="sgi_ext_issuer_revision"/>
+                            <field name="sgi_ext_received_date"/>
+                        </group>
+                        <group>
+                            <field name="sgi_ext_deadline"/>
+                            <field name="sgi_ext_implemented_date"/>
+                            <field name="sgi_ext_state" widget="badge"
+                                   decoration-success="sgi_ext_state == 'implantado'"
+                                   decoration-warning="sgi_ext_state == 'por_implantar'"
+                                   decoration-danger="sgi_ext_state == 'vencido'"/>
+                        </group>
+                        <div class="text-muted" colspan="2">
+                            El <b>Proceso SGI</b> de arriba es el proceso dueño: su responsable
+                            recibe el aviso para implantarlo en 10 días hábiles desde la recepción.
+                        </div>
+                    </group>
                     <group string="Archivo" invisible="sgi_doc_type == 'formulario_odoo'">
                         <field name="type" widget="radio" options="{'horizontal': true}"
                                string="Tipo de archivo"/>
