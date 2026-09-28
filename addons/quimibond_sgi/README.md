@@ -1816,6 +1816,9 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   Al aprobarse, cada Jefe MAST y SGI recibe la actividad «Aplicar cambio
   aprobado y republicar» en la actividad del procedimiento (o en el proceso si
   es nueva). `sgi.process.activity` gana chatter para eso.
+- 56.3.2: el asistente ya no truena al abrirse («Falta el valor requerido
+  para Cómo propones que quede»): propuesta y motivo son obligatorios en la
+  vista y al enviar, no en el modelo, porque el registro se crea al abrir.
 - **Sin empleado ligado.** «Mi procedimiento» ya no truena ni abre vacía: muestra
   «Tu usuario no está ligado a un empleado».
 - Pruebas en `tests/test_mp_change.py`.

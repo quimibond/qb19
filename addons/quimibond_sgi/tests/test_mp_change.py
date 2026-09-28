@@ -2,6 +2,7 @@
 """56.2.0: documentos del puesto desde sus actividades, «Proponer cambio» /
 «Proponer nueva actividad» hacia Aprobaciones con aviso a MAST al aprobarse,
 y aviso cuando el usuario no está ligado a un empleado."""
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
@@ -87,6 +88,9 @@ class TestMpChange(TransactionCase):
         wizard = self.env['sgi.mp.change.wizard'].browse(action['res_id']).with_user(self.user_emp)
         self.assertEqual(wizard.change_type, 'agregar')
         self.assertEqual(wizard.process_id, self.process, "Un solo proceso: queda elegido.")
+        # 56.3.2: abre vacío y no deja enviar sin propuesta ni motivo.
+        with self.assertRaises(UserError):
+            wizard.action_submit()
         wizard.write({'proposal': 'Registrar la merma', 'reason': 'No se mide hoy'})
         request = self.env['approval.request'].browse(wizard.action_submit()['res_id'])
         self.assertEqual(request.reference, 'ZMPC / Nueva actividad')
