@@ -1790,6 +1790,8 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   atrasados; «Ver pendientes» abre su lista y «Pendientes del equipo» junta a
   todo el equipo agrupado por persona. El organigrama muestra el mismo
   semáforo. Filtros Con atrasadas, Con pendientes por vencer y Al día.
+- 56.3.1: `pending_late` se etiqueta «Pendientes atrasados»; con «Atrasadas»
+  chocaba con `late_count` (actividades atrasadas) y el build salía amarillo.
 - Los criterios de cada tipo son los mismos que tenían los botones; se buscan
   una vez por tipo para todas las personas. Pruebas en `tests/test_my_pending.py`.
 

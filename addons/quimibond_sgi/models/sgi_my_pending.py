@@ -206,7 +206,7 @@ class SgiMyProcedurePending(models.TransientModel):
     _inherit = 'sgi.my.procedure'
 
     pending_total = fields.Integer(string="Mis pendientes", compute='_compute_pending_summary')
-    pending_late = fields.Integer(string="Atrasadas", compute='_compute_pending_summary')
+    pending_late = fields.Integer(string="Pendientes atrasados", compute='_compute_pending_summary')
 
     @api.depends('employee_id')
     @api.depends_context('uid')
