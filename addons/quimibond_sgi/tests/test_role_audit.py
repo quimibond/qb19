@@ -141,3 +141,62 @@ class TestRoleAudit(TransactionCase):
         self.assertIn(self.mine, self.env['sgi.indicator'].search([('last_semaphore', '=', 'rojo')]))
         self.assertTrue(self.env['documents.document']._fields['sgi_ack_count'].store)
         self.assertTrue(self.env['sgi.indicator']._fields['spec_missing'].store)
+
+    def test_08_accion_terminada_exige_100_y_fecha_pasada(self):
+        """3.6 (como Usuario SGI): terminar pone 100 %; no se puede terminar en
+        el futuro ni con avance menor a 100 %."""
+        from datetime import timedelta
+        from odoo import fields as ofields
+        from odoo.exceptions import ValidationError
+        today = ofields.Date.today()
+        risk = self.env['sgi.risk'].create({'name': 'Riesgo acción', 'instrument': 'ryo',
+                                            'eval_probability': '1', 'eval_impact': '1'})
+        line = self.env['sgi.action.line'].create({
+            'risk_id': risk.id, 'name': 'Acción propia', 'responsible_id': self.user.id,
+            'date_commit': today})
+        mine = line.with_user(self.user)
+        with self.assertRaises(ValidationError):
+            mine.write({'date_done': today + timedelta(days=30)})
+        with self.assertRaises(ValidationError):
+            mine.write({'date_done': today, 'progress': '0'})
+        mine.write({'date_done': today})
+        self.assertEqual((line.progress, line.state), ('100', 'terminada'))
+        mine.write({'date_done': False})
+        self.assertEqual(line.progress, '50', "Reabrir la regresa a 50 %.")
+
+    def test_09_programa_de_auditorias_sin_auditor_no_se_aprueba(self):
+        """4.4: el programa no se aprueba con auditorías internas sin auditor
+        líder, y solo MAST lo aprueba (el Usuario SGI ni el auditor)."""
+        from odoo.exceptions import AccessError, UserError
+        process = self.env['sgi.process'].create({'code': 'ZROLA', 'name': 'Proceso auditado'})
+        program = self.env['sgi.audit.program'].create({'year': 2098, 'line_ids': [
+            (0, 0, {'process_id': process.id, 'planned_month': '10'})]})
+        with self.assertRaises((AccessError, UserError)):
+            program.with_user(self.user).action_approve()
+        with self.assertRaises(UserError):
+            program.with_user(self.mast).action_approve()
+        program.line_ids.lead_auditor_id = self.mast
+        program.with_user(self.mast).action_approve()
+        self.assertEqual(program.state, 'aprobado')
+
+    def test_10_indicador_que_no_calcula_guarda_el_motivo(self):
+        """6.1: el cron guarda por qué no calculó y avisa al responsable; el
+        aviso se cierra solo cuando vuelve a calcular. 6.5: el «NC sin
+        acción» se cierra al cancelar o al registrar acción."""
+        Cron = self.env['sgi.cron']
+        indicator = self.env['sgi.indicator'].create({
+            'code': 'ZROL-CFG', 'name': 'Configurable sin fórmula', 'calc_mode': 'configurable',
+            'responsible_id': self.user.id, 'target_objective': 1.0, 'target_acceptable': 0.5})
+        Cron._sgi_generate_measures(indicator, date(2045, 1, 1), date(2045, 1, 1), date(2045, 1, 31),
+                                    date(2045, 2, 5), "01/2045")
+        self.assertIn(indicator.calc_status, ('sin_formula', 'sin_datos', 'error'))
+        self.assertTrue(indicator.calc_message)
+        notice = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.indicator'), ('res_id', '=', indicator.id),
+            ('summary', '=', 'Indicador ZROL-CFG no calculó')])
+        self.assertEqual(notice.user_id, self.user, "Avisa al responsable.")
+        self.assertIn(indicator, self.env['sgi.indicator'].with_user(self.user).search(
+            [('calc_status', 'in', ('error', 'sin_formula', 'sin_datos'))]), "El usuario lo filtra.")
+        indicator.calc_status = 'ok'
+        Cron._sgi_close_resolved_activities()
+        self.assertFalse(notice.exists() and self.env['mail.activity'].search([('id', '=', notice.id)]))

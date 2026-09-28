@@ -27,6 +27,10 @@
                        decoration-warning="source_type == 'manual'"/>
                 <field name="source_info" optional="hide"/>
                 <field name="calc_mode" optional="hide"/>
+                <field name="calc_status" widget="badge" optional="show"
+                       decoration-success="calc_status == 'ok'"
+                       decoration-danger="calc_status in ('error', 'sin_formula', 'sin_datos')"
+                       decoration-muted="calc_status in ('manual', 'antes')"/>
                 <field name="nc_on_red" readonly="1"/>
                 <field name="critical" widget="boolean_toggle" optional="hide"/>
             </list>
@@ -69,6 +73,14 @@
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nombre del indicador"/></h1>
                         <h3><field name="code" placeholder="VE-01"/></h3>
+                    </div>
+                    <div class="alert alert-danger mb-3" role="alert"
+                         invisible="calc_status not in ('error', 'sin_formula', 'sin_datos')">
+                        <b>El último cálculo no dio valor:</b>
+                        <field name="calc_status" class="d-inline" readonly="1"/> —
+                        <field name="calc_message" class="d-inline" readonly="1"/>
+                        (<field name="calc_checked" class="d-inline" readonly="1"/>).
+                        Corrígelo y pulsa «Recalcular ahora».
                     </div>
                     <group>
                         <group string="Clasificación">
@@ -166,6 +178,7 @@
                 <filter name="mine" string="Mis indicadores"
                         domain="[('responsible_id', '=', uid)]"/>
                 <filter name="red" string="En rojo" domain="[('last_semaphore', '=', 'rojo')]"/>
+                <filter name="no_calc" string="No calcula" domain="[('calc_status', 'in', ('error', 'sin_formula', 'sin_datos'))]"/>
                 <separator/>
                 <filter name="vigentes" string="De procesos vigentes"
                         domain="[('sgi_process_active', '=', True)]"/>

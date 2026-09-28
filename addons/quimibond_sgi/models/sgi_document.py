@@ -105,6 +105,11 @@ class DocumentsDocument(models.Model):
     sgi_job_ids = fields.Many2many('hr.job', 'sgi_document_job_rel', 'document_id', 'job_id',
                                    string="Puestos a los que aplica")
     sgi_next_review_date = fields.Date(string="Próxima revisión")
+    # 5.2 DOC-2 (56.11.0): cuándo y por qué quedó obsoleto.
+    sgi_obsolete_date = fields.Date(string="Obsoleto desde", readonly=True, copy=False)
+    sgi_obsolete_reason = fields.Char(string="Motivo de obsolescencia", readonly=True, copy=False)
+    sgi_replaced_by_process_id = fields.Many2one(
+        'sgi.process', string="Lo sustituye el proceso", readonly=True, copy=False, index=True)
     sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto")
 
     # --- Retención y disposición de registros (ISO 7.5.3; clientes IATF
@@ -613,6 +618,8 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        if vals.get('sgi_state') == 'obsoleto' and 'sgi_obsolete_date' not in vals:
+            vals = dict(vals, sgi_obsolete_date=fields.Date.context_today(self))
         if vals.get('sgi_state') in ('piloto', 'vigente'):
             self._sgi_check_procedure_measures(vals['sgi_state'])
         if vals.get('sgi_state') == 'vigente' and len(self) > 1:

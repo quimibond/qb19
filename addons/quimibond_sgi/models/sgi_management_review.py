@@ -306,7 +306,7 @@ class SgiManagementReview(models.Model):
         Partner = self.env['res.partner']
         counts = []
         for key, label in (('acreditado', "Acreditados"), ('condicionado', "Condicionados"),
-                           ('baja', "Baja")):
+                           ('baja', "Baja"), ('sin_datos', "Sin datos")):
             counts.append("%s: %d" % (label, Partner.search_count([
                 ('sgi_supplier_class', '=', key)])))
         return "Proveedores por clase — %s." % ", ".join(counts)

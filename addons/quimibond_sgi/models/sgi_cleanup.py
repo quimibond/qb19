@@ -159,8 +159,10 @@ class SgiProcessCleanup(models.Model):
             docs = process.replaced_document_ids.filtered(lambda d: d.sgi_state == 'vigente')
             if not docs:
                 continue
+            reason = "Lo sustituye el proceso %s, que entró en vigor." % process.display_name
             for doc in docs:
-                doc.sudo().write({'sgi_state': 'obsoleto'})
+                doc.sudo().write({'sgi_state': 'obsoleto', 'sgi_obsolete_reason': reason,
+                                  'sgi_replaced_by_process_id': process.id})
                 doc.message_post(body=(
                     "Obsoleto: lo sustituye el proceso %s, que entró en vigor." % process.display_name))
             process.message_post(body=(

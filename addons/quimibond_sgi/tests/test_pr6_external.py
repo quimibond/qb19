@@ -117,6 +117,10 @@ class TestPr6External(TransactionCase):
         self.assertEqual(len(lines.filtered(lambda l: l.process_id == p2)), 1)
         program.action_suggest_lines()
         self.assertEqual(len(program.line_ids), 3, "Idempotente.")
+        # 4.4 (56.9.0): sin auditor líder no se aprueba.
+        with self.assertRaises(UserError):
+            program.action_approve()
+        program.line_ids.write({'lead_auditor_id': self.env.user.id})
         program.action_approve()
         with self.assertRaises(UserError):
             program.action_suggest_lines()
@@ -196,3 +200,38 @@ class TestPr6External(TransactionCase):
         self.assertEqual(deliverable.odoo_model_id.model, 'survey.user_input')
         self.assertIn("('survey_id', '=', %d)" % survey.id, deliverable.measure_domain)
         self.assertEqual(deliverable.measure_date_field, 'end_datetime')
+
+    # ---- 9.1 (56.14.0): sin datos no es «Baja» --------------------------
+    def test_08_evaluacion_sin_datos_no_es_baja(self):
+        supplier = self.env['res.partner'].create({
+            'name': 'Proveedor sin entregas PR6', 'is_company': True, 'supplier_rank': 1})
+        ev = self.env['sgi.supplier.eval'].create({
+            'partner_id': supplier.id, 'date_from': date.today() - timedelta(days=90),
+            'date_to': date.today() + timedelta(days=1)})
+        self.assertFalse(ev.otd_has_data, "Sin recepciones no hay OTD.")
+        self.assertIsNone(ev._sgi_compute_otd(), "Sin datos devuelve None, no 0.")
+        self.assertEqual(ev.supplier_class, 'sin_datos')
+        self.assertEqual(ev.score, 100.0, "Sin OTD la calificación es solo la calidad.")
+        # El recálculo (botón y cron trimestral) y aplicar al contacto dejan
+        # «Sin datos», no «Baja».
+        ev.action_recompute()
+        ev.action_apply_to_partner()
+        self.assertEqual(supplier.sgi_supplier_class, 'sin_datos')
+        self.assertNotEqual(supplier.sgi_supplier_class, 'baja')
+        # Un Usuario SGI (no admin) la lee como «Sin datos».
+        ev_user = ev.with_user(self.buyer)
+        self.assertEqual(ev_user.supplier_class, 'sin_datos')
+        self.assertFalse(ev_user.otd_has_data)
+        self.assertEqual(supplier.with_user(self.buyer).sgi_supplier_class, 'sin_datos')
+        self.assertIn(ev, self.env['sgi.supplier.eval'].with_user(self.buyer).search(
+            [('supplier_class', '=', 'sin_datos')]))
+        # Con NC en el periodo la calidad sí clasifica aunque no haya entregas.
+        self.env['quality.alert'].create({
+            'title': 'NC sin entregas', 'team_id': self.team_int.id, 'partner_id': supplier.id})
+        self.env['quality.alert'].create({
+            'title': 'NC sin entregas 2', 'team_id': self.team_int.id, 'partner_id': supplier.id})
+        ev.action_recompute()
+        self.assertFalse(ev.otd_has_data)
+        self.assertEqual(ev.nc_count, 2)
+        self.assertEqual(ev.supplier_class, ev._sgi_class_from_score(ev.score))
+        self.assertNotEqual(ev.supplier_class, 'sin_datos')

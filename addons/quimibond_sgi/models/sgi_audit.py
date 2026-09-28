@@ -56,6 +56,22 @@ class SgiAuditProgram(models.Model):
             program.name = "Programa de auditorías %s" % (program.year or '')
 
     def action_approve(self):
+        """4.4: solo MAST aprueba, y cada auditoría interna del programa
+        lleva su auditor líder (en 2026 las 14 líneas estaban sin auditor)."""
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise UserError("Solo el Jefe MAST aprueba el programa de auditorías.")
+        for program in self:
+            missing = program.line_ids.filtered(
+                lambda line: line.audit_type == 'interna' and not line.lead_auditor_id)
+            if missing:
+                raise UserError(
+                    "El programa %s tiene %d auditoría(s) interna(s) sin auditor líder: %s. "
+                    "Asigna el auditor líder de cada una antes de aprobar." % (
+                        program.year, len(missing), ", ".join(
+                            "%s (%s)" % (line.process_id.code or line.process_id.name or '—',
+                                         dict(line._fields['planned_month'].selection).get(
+                                             line.planned_month, line.planned_month))
+                            for line in missing)))
         for program in self:
             program.state = 'aprobado'
             manager_id = self.env['sgi.cron']._sgi_manager_user_id()

@@ -2162,3 +2162,159 @@ los faltantes de procesos archivados y liga los acuses existentes. Reglas
 nuevas: objetivo sin indicador = «sin dato»; la evaluación trimestral solo
 toma proveedores críticos (contacto marcado o categorías de Ajustes →
 Categorías de proveedores críticos; vacío = materia prima + «maquila»).
+
+### 19.0.56.8.0 — Bloque 2: permisos
+
+- **2.1 PERM-1** (desde 48.0.0): el Auditor SGI lee todo el SGI y la
+  evidencia; escribe hallazgos y, para conducir la auditoría, la auditoría,
+  su checklist y el programa (sin borrar). En 56.7.0 recibió menús de lectura
+  de Documentos, Indicadores y acuses y el permiso de la pantalla Mi
+  procedimiento.
+- **2.2 PERM-2**: `post-migrate` 56.8.0 deja **solo a Areli**
+  (mas@quimibond.com) como miembro directo de Jefe MAST y SGI; los demás
+  miembros directos (hoy Darío Manríquez y Sergio González) pasan a Usuario
+  SGI. Dirección de Operaciones (Jorge) y Administrador SGI lo siguen
+  teniendo por herencia. `res.groups._sgi_enforce_mast_members`.
+- **2.3**: el mismo script retira los grupos heredados «SGI» (295) y «SGI
+  admin» (296): sin privilegio y sin xmlid de un módulo. Sus miembros ya
+  tenían los grupos nuevos (quien no, recibe Usuario SGI); su único permiso
+  era de lectura sobre el modelo de Studio `x_emp_activity` (0 registros);
+  sus reglas se archivan. `res.groups._sgi_retire_legacy_groups`.
+- Pruebas: `tests/test_perm_groups.py` (incluye abrir Mi procedimiento como
+  Usuario SGI tras el cambio de grupo).
+
+
+### 19.0.56.9.0 — Bloque 3: no conformidades y acciones
+
+- **3.1–3.5** ya estaban (NC-1 a NC-5, 49.0.0): plazos por etapa con
+  escalamiento, contención, eficacia a 90 días, cancelación con motivo y
+  aprobación de MAST, y migración de las etapas estándar. Las etapas de
+  `quality.alert.stage` no tienen «archivar» en Odoo; las estándar quedan en
+  los equipos de planta y las del SGI en los equipos SGI.
+- **3.6**: una acción terminada exige **100 % de avance** y **fecha de término
+  hoy o antes** (`_sgi_check_done`). Poner la fecha sin decir el avance lo
+  sube a 100 %; quitarla lo regresa a 50 %. `post-migrate` 56.9.0 reabre las
+  terminadas con fecha futura (en producción, la acción 63) y sube a 100 %
+  las terminadas con fecha pasada. Prueba: `test_role_audit.test_08` como
+  Usuario SGI.
+
+### 19.0.56.10.0 — Bloque 4: auditorías
+
+- **4.1 AU-1, 4.2 AU-2, 4.3 AU-3** ya estaban (50.0.0): checklist generado de
+  las actividades del proceso con «Ver registros», respuestas que crean su
+  hallazgo, independencia del auditor por su puesto e informe F-P-G03-07
+  archivado al cerrar.
+- **4.4**: el programa de auditorías **no se aprueba** si alguna auditoría
+  interna no tiene auditor líder (el mensaje dice cuáles), y solo lo aprueba
+  el Jefe MAST (antes el auditor también podía). En producción los programas
+  2026 y 2027 tienen 14 líneas cada uno sin auditor: MAST los asigna.
+- **4.5**: `test_audit_pr3.test_09` recorre programa → auditoría → checklist →
+  hallazgo → NC sobre el proceso real C2 de la copia de producción (en una
+  base vacía, sobre el de prueba), como auditor y como MAST.
+  `test_role_audit.test_09`: el Usuario SGI no aprueba el programa.
+
+### 19.0.56.11.0 — Bloque 5: documentos y requisitos legales
+
+- **5.1 DOC-1, 5.3 DOC-3, 5.4 DIR-1** ya estaban (51.0.0): publicación en un
+  paso al aprobar el cambio documental, lista maestra en PDF por proceso y
+  global, requisitos legales con responsable obligatorio, evaluaciones
+  (resultado, evidencia, siguiente fecha), aviso 60 días antes, «no cumple»
+  abre NC y matriz legal en PDF. En producción: 25 requisitos y 0
+  evaluaciones (captura de MAST).
+- **5.2 DOC-2**: al pasar un proceso a vigente, sus documentos sustituidos
+  quedan obsoletos **con fecha, motivo y el proceso que los sustituye**
+  (`sgi_obsolete_date`, `sgi_obsolete_reason`, `sgi_replaced_by_process_id`,
+  visibles en la ficha). Cualquier paso a obsoleto guarda la fecha.
+  `post-migrate` 56.11.0 llena la fecha de los que ya estaban obsoletos.
+  Pruebas: `test_cleanup_45.test_04` y `test_09` (C2 real con sus 3
+  procedimientos sustituidos; se omite si la copia no los tiene o C2 aún no
+  cumple para vigente).
+
+### 19.0.56.12.0 — Bloque 6: indicadores, actividades y crons
+
+- **6.1**: cada indicador guarda **por qué no calculó**: `calc_status`
+  (Calcula, Manual, Antes de «medir desde», Sin fórmula o sin fuente, Sin
+  datos en el periodo, Error de cálculo), `calc_message` y `calc_checked`.
+  Lo llenan el cron y «Recalcular ahora». Un error ya no se pierde en el log:
+  se guarda y avisa al responsable (o a MAST) con una actividad «Indicador X
+  no calculó», que se cierra sola cuando vuelve a calcular. Filtro «No
+  calcula» y aviso rojo en la ficha. De los 23 señalados, 17 nunca han medido
+  porque se crearon después de la corrida del 1-sep: «Recalcular ahora» los
+  mide sin esperar al 1-oct y deja su motivo.
+- **6.2 / 6.3**: 11 entradas `no_match` y 77 actividades
+  `odoo_measured_manual` son **captura de MAST** (qué entregable y qué
+  campo liga cada una); la pantalla «Faltantes de especificación» las lista.
+- **6.4 REG-2** ya estaba (53.0.0): una encuesta puede ser el entregable.
+- **6.5**: el cierre automático corre a diario (56.7.0) y ahora también
+  cierra «NC sin acción» (la NC ya tiene acción, cerró o se canceló) y
+  «Procedimiento vivo cambió» (ya revisado o ya no vigente), y quita sus
+  duplicados; ese aviso ya no se duplica al crearse.
+- **6.6**: `post-migrate` 56.12.0 escalona los crons diarios de 06:05 a
+  07:20 hora de México, 5 minutos uno tras otro (antes 10 arrancaban a las
+  20:44 UTC y las mediciones semanales a la misma hora que las mensuales).
+  «Mediciones semanales» sigue revisándose a diario porque mide la semana
+  pasada una sola vez (se pone al corriente si un día falla). «Resumen
+  semanal por correo» se queda **apagado** (archivado, no se borra).
+- Pruebas: `test_role_audit.test_10` (como Usuario SGI filtra los que no
+  calculan).
+
+### 19.0.56.13.0 — Bloque 7: migración de formatos
+
+- **7.4**: la lista de Migración de formatos (Administración SGI →
+  Documentos → Migración de formatos) es **editable en lote**
+  (`multi_edit`): con el filtro «Sin clasificar» MAST selecciona los
+  renglones y asigna la clase (A, C, D…), el destino o el estado a todos a la
+  vez. En producción hay 169 sin clasificar (94 pendientes).
+- **7.5 DOC-5** ya estaba (53.0.0): el instructivo de una actividad puede ser
+  un artículo de Knowledge que se congela como revisión del documento
+  controlado.
+- **7.1 (42 clase A), 7.2 (19 clase C), 7.3 (5 clase D)**: cada formato es
+  un formulario, un reporte o una liga que MAST debe definir uno por uno (qué
+  campos, en qué operación de Odoo, a qué actividad). La infraestructura está
+  (`sgi.format.map`, puntos de calidad, `sgi_odoo_menu_id`, clave de formato
+  en pantalla y PDF); falta la definición de cada formato, empezando por C4
+  (11), S4 (14) y C5 (8).
+
+### 19.0.56.14.0 — Bloques 8 y 9: dirección, proveedores, clientes y firmas
+
+- **8.1 DIR-2, 8.2 DIR-3, 8.4 PER-3** ya estaban (52.0.0): riesgos con
+  semáforo y reevaluación enero/julio, informe de revisión por la dirección
+  con las entradas de 9.3 y acuerdos como acciones, matriz de competencias.
+- **8.3 DIR-4**: el tablero de dirección muestra hasta **12** indicadores:
+  los oficiales de nivel dirección; si no hay (hoy los 93 están en prueba),
+  los de nivel dirección en cualquier estado con un aviso; si tampoco hay,
+  un aviso de cómo marcarlos. Prueba: `test_pr5_direction.test_05` (como
+  usuario de Dirección).
+- **9.1 NC-6**: un proveedor **sin recepciones con fecha compromiso** ya no
+  sale «baja»: su OTD queda «sin datos» (`otd_has_data`), la calificación usa
+  solo calidad y la clase es **«Sin datos»** (si tuvo NC en el periodo, la
+  clase sale de la calidad). `post-migrate` 56.14.0 recalcula las
+  evaluaciones con OTD 0 y aplica la clase al proveedor si es su evaluación
+  más reciente. Ojo: en producción la mayoría de los OTD 0 revisados son
+  atraso real (recibido días o meses después del compromiso); esos siguen en
+  «baja» con la regla actual. Prueba: `test_pr6_external.test_08` (como
+  Usuario SGI).
+- **9.2 NC-7, 9.3 AU-4, 9.4 AU-5, 9.5 DOC-4, 9.6 REG-1** ya estaban (53.0.0).
+
+### 19.0.56.15.0 — Bloque 10: limpieza y deuda técnica
+
+- **10.1**: se retira `sgi.employer.obligation` (0 registros en producción):
+  modelo, vistas, acción, menú Dirección → Obligaciones patronales, accesos y
+  el paso del cron legal que agregó 56.7.0. `pre-migrate` 56.15.0 borra sus
+  vistas, acción, menú y xmlids antes de cargar los XML; la tabla vacía la
+  limpia Odoo. Las obligaciones viven en `qb_obligation` (398). Ligar las
+  actividades de S4 a `qb.obligation` es captura (qué obligación cubre cada
+  actividad).
+- **10.3**: los 223 roles de actividades archivadas ya no cuentan en ningún
+  cálculo: conteos del puesto y de la familia, «Actividades SGI» del puesto,
+  «Ver sus actividades» y el conteo de puestos del SIPOC (que ahora también
+  cuenta los puestos por familia). No se borra ningún rol.
+- **10.4 PR-1** ya estaba (53.1.0). **10.5**: `sgi.activity.spec.gap` solo
+  se regenera cuando cambió el conjunto de faltantes; se deja así.
+- **Pendiente por decisión** (no se tocó): 10.2 (`responsible_role` y los
+  campos de flujo; `prev/next_activity_ids`, `flow_parent_id` y
+  `responsible_job_ids` son cálculos vivos de los eslabones, no legado),
+  10.6 (campos heredados sin datos), 10.7 (ficha de máquina vs. ficha técnica
+  de Consolti, campos de Studio en empleados) y 10.8 (partir el módulo en
+  2027).
+- Pruebas: `tests/test_cleanup_b10.py` (conteos como Usuario SGI).

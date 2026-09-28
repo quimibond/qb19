@@ -57,6 +57,7 @@ from . import sgi_epp
 from . import sgi_my_procedure_screen
 from . import sgi_structure
 from . import sgi_cleanup
+from . import sgi_groups_cleanup
 from . import sgi_direction_board
 from . import sgi_supplier_nc
 from . import sgi_instruction_knowledge

@@ -68,6 +68,9 @@
                             <field name="sgi_revision_legacy" invisible="not sgi_revision_legacy"/>
                             <field name="sgi_issue_date"/>
                             <field name="sgi_next_review_date"/>
+                            <field name="sgi_obsolete_date" invisible="not sgi_obsolete_date"/>
+                            <field name="sgi_obsolete_reason" invisible="not sgi_obsolete_reason"/>
+                            <field name="sgi_replaced_by_process_id" invisible="not sgi_replaced_by_process_id"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
                             <field name="sgi_retention_years"/>
@@ -369,7 +372,9 @@
         <field name="name">sgi.migration.formatos.list</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <list string="Migración de formatos"
+            <!-- 7.4 (56.13.0): multi_edit: MAST selecciona varios renglones y
+                 asigna la clase (o el destino, o el estado) a todos de una vez. -->
+            <list string="Migración de formatos" multi_edit="1"
                   decoration-success="sgi_migration_state in ('migrado', 'baja')"
                   decoration-info="sgi_migration_state == 'en_curso'"
                   decoration-muted="sgi_migration_state == 'na'">

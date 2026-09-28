@@ -367,15 +367,14 @@ class SgiProcessProcedure(models.Model):
                      "vigente %s. Queda <b>pendiente de revisión documental</b>: "
                      "el PDF impreso ya no coincide con la revisión aprobada." % (
                          doc.sgi_revision_label or ''))
-            user_id = doc.sgi_owner_id.id or self.env['sgi.cron']._sgi_manager_user_id()
-            if user_id:
-                doc.activity_schedule(
-                    'mail.mail_activity_data_todo',
-                    summary="Procedimiento vivo cambió: revisar %s" % (
-                        doc.sgi_code or doc.name),
-                    note="Genere una nueva revisión controlada del procedimiento o "
-                         "confirme que el cambio no la amerita.",
-                    user_id=user_id)
+            Cron = self.env['sgi.cron']
+            user_id = doc.sgi_owner_id.id or Cron._sgi_manager_user_id()
+            # 6.5: sin duplicados (antes, 3 iguales por documento) y se cierra
+            # sola al revisar (ver sgi.cron._sgi_close_resolved_activities).
+            Cron._sgi_schedule(
+                doc, "Procedimiento vivo cambió: revisar %s" % (doc.sgi_code or doc.name),
+                "Genera una nueva revisión controlada del procedimiento o confirma que el "
+                "cambio no la amerita.", user_id)
 
     def write(self, vals):
         res = super().write(vals)

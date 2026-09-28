@@ -303,7 +303,10 @@ class SgiDiagram(models.AbstractModel):
         activities = self.env['sgi.process.activity'].search_count(
             [('process_id', '=', process.id), ('active', '=', True)])
         indicators = self.env['sgi.indicator'].search_count([('process_id', '=', process.id)])
-        jobs = self.env['sgi.activity.role'].search([('process_id', '=', process.id)]).job_id
+        # Solo roles de actividades activas (los de archivadas siguen en la base).
+        roles = self.env['sgi.activity.role'].search(
+            [('process_id', '=', process.id), ('activity_active', '=', True)])
+        jobs = roles.job_id | roles.family_id.job_ids
         center = self._process_item(process, meta=[
             {'icon': 'fa-list-ol', 'label': "Actividades", 'value': activities},
             {'icon': 'fa-tachometer', 'label': "Indicadores", 'value': indicators},

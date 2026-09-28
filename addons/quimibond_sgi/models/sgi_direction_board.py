@@ -11,6 +11,7 @@ E1-02 se mide con el modo `acuerdos_rxd`: acuerdos cumplidos a tiempo.
 from odoo import api, fields, models
 
 _SEM = {'verde': 'V', 'amarillo': 'A', 'rojo': 'R'}
+_BOARD_LIMIT = 12
 
 
 class SgiIndicatorLevel(models.Model):
@@ -64,18 +65,41 @@ class SgiDirectionBoard(models.TransientModel):
     delayed_process_ids = fields.Many2many(
         'sgi.process', string="Procesos con más atrasos", compute='_compute_board')
     indicator_count = fields.Integer(compute='_compute_board')
+    indicator_note = fields.Char(string="Nota de indicadores", compute='_compute_board')
     red_count = fields.Integer(compute='_compute_board')
+
+    def _sgi_board_indicators(self, Indicator):
+        """Indicadores del tablero (máximo _BOARD_LIMIT) y nota para Dirección.
+
+        1. Los oficiales de nivel dirección.
+        2. Si no hay oficiales, los de nivel dirección en cualquier estado (en
+           prueba incluidos), con una nota que lo dice: antes se caía a TODOS
+           los oficiales y, sin oficiales, Dirección veía el tablero vacío.
+        3. Si tampoco hay de nivel dirección, nada, con una nota clara."""
+        indicators = Indicator.search(
+            [('status', '=', 'oficial'), ('level', '=', 'direccion')],
+            order='code', limit=_BOARD_LIMIT)
+        if indicators:
+            return indicators, False
+        indicators = Indicator.search(
+            [('level', '=', 'direccion')], order='code', limit=_BOARD_LIMIT)
+        if indicators:
+            return indicators, (
+                "Aún no hay indicadores oficiales de nivel dirección: se muestran los "
+                "de nivel dirección en cualquier estado (incluye los que están en prueba).")
+        return indicators, (
+            "No hay indicadores de nivel dirección. Marca el nivel «Dirección» en la "
+            "ficha de los indicadores que deba ver Dirección (máximo %d)." % _BOARD_LIMIT)
 
     @api.depends('date')
     def _compute_board(self):
         Indicator = self.env['sgi.indicator'].sudo()
         for board in self:
             board.objective_ids = self.env['sgi.objective'].sudo().search([]).ids
-            indicators = Indicator.search([('status', '=', 'oficial'), ('level', '=', 'direccion')], order='code')
-            if not indicators:
-                indicators = Indicator.search([('status', '=', 'oficial')], order='code')
+            indicators, note = board._sgi_board_indicators(Indicator)
             board.indicator_ids = indicators.ids
             board.indicator_count = len(indicators)
+            board.indicator_note = note
             reds = self.env['sgi.indicator.measure'].sudo().search(
                 [('semaphore', '=', 'rojo'), ('state', '!=', 'pendiente')], order='period_date desc')
             reds = reds.filtered(lambda m: m.plan_required and not m.plan_done)
