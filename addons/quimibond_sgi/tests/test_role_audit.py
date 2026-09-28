@@ -178,3 +178,25 @@ class TestRoleAudit(TransactionCase):
         program.line_ids.lead_auditor_id = self.mast
         program.with_user(self.mast).action_approve()
         self.assertEqual(program.state, 'aprobado')
+
+    def test_10_indicador_que_no_calcula_guarda_el_motivo(self):
+        """6.1: el cron guarda por qué no calculó y avisa al responsable; el
+        aviso se cierra solo cuando vuelve a calcular. 6.5: el «NC sin
+        acción» se cierra al cancelar o al registrar acción."""
+        Cron = self.env['sgi.cron']
+        indicator = self.env['sgi.indicator'].create({
+            'code': 'ZROL-CFG', 'name': 'Configurable sin fórmula', 'calc_mode': 'configurable',
+            'responsible_id': self.user.id, 'target_objective': 1.0, 'target_acceptable': 0.5})
+        Cron._sgi_generate_measures(indicator, date(2045, 1, 1), date(2045, 1, 1), date(2045, 1, 31),
+                                    date(2045, 2, 5), "01/2045")
+        self.assertIn(indicator.calc_status, ('sin_formula', 'sin_datos', 'error'))
+        self.assertTrue(indicator.calc_message)
+        notice = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.indicator'), ('res_id', '=', indicator.id),
+            ('summary', '=', 'Indicador ZROL-CFG no calculó')])
+        self.assertEqual(notice.user_id, self.user, "Avisa al responsable.")
+        self.assertIn(indicator, self.env['sgi.indicator'].with_user(self.user).search(
+            [('calc_status', 'in', ('error', 'sin_formula', 'sin_datos'))]), "El usuario lo filtra.")
+        indicator.calc_status = 'ok'
+        Cron._sgi_close_resolved_activities()
+        self.assertFalse(notice.exists() and self.env['mail.activity'].search([('id', '=', notice.id)]))

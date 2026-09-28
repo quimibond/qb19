@@ -2229,3 +2229,31 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
   Pruebas: `test_cleanup_45.test_04` y `test_09` (C2 real con sus 3
   procedimientos sustituidos; se omite si la copia no los tiene o C2 aún no
   cumple para vigente).
+
+### 19.0.56.12.0 — Bloque 6: indicadores, actividades y crons
+
+- **6.1**: cada indicador guarda **por qué no calculó**: `calc_status`
+  (Calcula, Manual, Antes de «medir desde», Sin fórmula o sin fuente, Sin
+  datos en el periodo, Error de cálculo), `calc_message` y `calc_checked`.
+  Lo llenan el cron y «Recalcular ahora». Un error ya no se pierde en el log:
+  se guarda y avisa al responsable (o a MAST) con una actividad «Indicador X
+  no calculó», que se cierra sola cuando vuelve a calcular. Filtro «No
+  calcula» y aviso rojo en la ficha. De los 23 señalados, 17 nunca han medido
+  porque se crearon después de la corrida del 1-sep: «Recalcular ahora» los
+  mide sin esperar al 1-oct y deja su motivo.
+- **6.2 / 6.3**: 11 entradas `no_match` y 77 actividades
+  `odoo_measured_manual` son **captura de MAST** (qué entregable y qué
+  campo liga cada una); la pantalla «Faltantes de especificación» las lista.
+- **6.4 REG-2** ya estaba (53.0.0): una encuesta puede ser el entregable.
+- **6.5**: el cierre automático corre a diario (56.7.0) y ahora también
+  cierra «NC sin acción» (la NC ya tiene acción, cerró o se canceló) y
+  «Procedimiento vivo cambió» (ya revisado o ya no vigente), y quita sus
+  duplicados; ese aviso ya no se duplica al crearse.
+- **6.6**: `post-migrate` 56.12.0 escalona los crons diarios de 06:05 a
+  07:20 hora de México, 5 minutos uno tras otro (antes 10 arrancaban a las
+  20:44 UTC y las mediciones semanales a la misma hora que las mensuales).
+  «Mediciones semanales» sigue revisándose a diario porque mide la semana
+  pasada una sola vez (se pone al corriente si un día falla). «Resumen
+  semanal por correo» se queda **apagado** (archivado, no se borra).
+- Pruebas: `test_role_audit.test_10` (como Usuario SGI filtra los que no
+  calculan).

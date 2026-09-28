@@ -615,6 +615,34 @@ class SgiCron(models.AbstractModel):
         pending = set(self.env['sgi.indicator.measure'].sudo().search([
             ('indicator_id', 'in', acts.mapped('res_id')), ('state', '=', 'pendiente')]).indicator_id.ids)
         closed += _close(acts.filtered(lambda a: a.res_id not in pending), "la medición ya se capturó")
+        # NC sin acción: la NC ya tiene acción con avance, o ya cerró o se canceló.
+        acts = _open('quality.alert', "NC sin acción: ")
+        alerts = self.env['quality.alert'].sudo().browse(acts.mapped('res_id')).exists()
+        still = set(alerts.filtered(
+            lambda a: not (a.stage_id.sgi_is_closing_stage or a.stage_id.sgi_is_cancel_stage)
+            and not a.sgi_action_line_ids.filtered(lambda line: line.progress != '0')).ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in still), "la NC ya tiene acción o cerró")
+        # Procedimiento vivo cambió: ya se revisó (sin divergencia) o el
+        # documento ya no está vigente. Duplicados: queda uno por documento.
+        acts = _open('documents.document', "Procedimiento vivo cambió: ")
+        docs = self.env['documents.document'].sudo().browse(acts.mapped('res_id')).exists()
+        dirty = set(docs.filtered(lambda d: d.sgi_procedure_dirty and d.sgi_state == 'vigente').ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in dirty), "el procedimiento ya se revisó")
+        seen = set()
+        duplicates = Activity
+        for activity in _open('documents.document', "Procedimiento vivo cambió: ").sorted('id'):
+            key = (activity.res_id, activity.user_id.id, activity.summary)
+            if key in seen:
+                duplicates |= activity
+            seen.add(key)
+        closed += _close(duplicates, "aviso repetido")
+        # Indicador X no calculó: ya calcula (o ya es manual).
+        acts = _open('sgi.indicator', "Indicador ")
+        acts = acts.filtered(lambda a: a.summary.endswith(" no calculó"))
+        indicators = self.env['sgi.indicator'].sudo().browse(acts.mapped('res_id')).exists()
+        failing = set(indicators.filtered(
+            lambda i: i.calc_status in ('error', 'sin_formula', 'sin_datos')).ids)
+        closed += _close(acts.filtered(lambda a: a.res_id not in failing), "el indicador ya calcula")
         # Eslabón atorado: <eslabón>: ya ningún eslabón con ese nombre está atorado.
         prefix = "Eslabón atorado: "
         acts = _open('sgi.process', prefix)
@@ -658,9 +686,22 @@ class SgiCron(models.AbstractModel):
             if not measure:
                 # Antes de «medir desde» no hay dato confiable: no se crea.
                 if not indicator._sgi_measurable_on(date_to):
+                    indicator._sgi_set_calc('antes', "Mide desde el %s." % indicator.measure_from)
                     return
-                vals = dict(indicator._sgi_measure_vals(date_from, date_to),
-                            indicator_id=indicator.id, period_date=period_date)
+                # 6.1: el motivo queda en el indicador; si truena, el error
+                # también (y avisa al responsable) en vez de perderse en el log.
+                try:
+                    with self.env.cr.savepoint():
+                        measure_vals = indicator._sgi_measure_vals(date_from, date_to)
+                except Exception as error:
+                    indicator._sgi_set_calc('error', str(error)[:250])
+                    self._sgi_calc_notice(indicator, 'error', str(error)[:250], manager_id)
+                    return
+                status, reason = indicator._sgi_calc_diagnose(measure_vals)
+                indicator._sgi_set_calc(status, reason)
+                if status in ('sin_formula', 'sin_datos'):
+                    self._sgi_calc_notice(indicator, status, reason, manager_id)
+                vals = dict(measure_vals, indicator_id=indicator.id, period_date=period_date)
                 measure = Measure.create(vals)
                 if measure.state == 'pendiente':
                     user_id = indicator.responsible_id.id or manager_id
@@ -676,6 +717,15 @@ class SgiCron(models.AbstractModel):
 
         self._sgi_for_each(indicators, _process, "medición de indicadores")
         return True
+
+    @api.model
+    def _sgi_calc_notice(self, indicator, status, reason, manager_id):
+        """Aviso al responsable (o a MAST) de que el indicador no calculó.
+        Uno por indicador: se cierra solo cuando vuelve a calcular."""
+        label = dict(indicator._fields['calc_status'].selection).get(status, status)
+        self._sgi_schedule(
+            indicator, "Indicador %s no calculó" % (indicator.code or indicator.name),
+            "%s: %s" % (label, reason or ''), indicator.responsible_id.id or manager_id)
 
     @api.model
     def _sgi_schedule_deadline(self, anchor, measure, summary, note, user_id, deadline):

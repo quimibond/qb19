@@ -437,6 +437,9 @@ class SgiIndicatorFormula(models.Model):
             period = fields.Date.to_date(period_date) if period_date else indicator._sgi_default_period()
             date_from, date_to = indicator._sgi_period_bounds(period)
             vals = indicator._sgi_measure_vals(date_from, date_to)
+            if save:
+                # 6.1: «Recalcular ahora» también deja el motivo si no calcula.
+                indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
             result = {
                 'code': indicator.code, 'period_date': fields.Date.to_string(period),
                 'value': vals.get('value'), 'state': vals.get('state'),
