@@ -128,7 +128,7 @@ class SgiCshInspection(models.Model):
     notes = fields.Text(string="Acta / observaciones generales")
     attachment_ids = fields.Many2many('ir.attachment', string="Acta firmada (PDF) y fotos")
     finding_ids = fields.One2many('sgi.csh.finding', 'inspection_id', string="Hallazgos")
-    finding_count = fields.Integer(compute='_compute_counts', string="Hallazgos")
+    finding_count = fields.Integer(compute='_compute_counts', string="Número de hallazgos")
     nc_count = fields.Integer(compute='_compute_counts', string="NC")
     state = fields.Selection([
         ('borrador', "En captura"),
