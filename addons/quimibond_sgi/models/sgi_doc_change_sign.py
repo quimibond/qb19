@@ -29,21 +29,13 @@ from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
-# Hoja de firmas (última página del PDF de la solicitud): posiciones como
-# fracción de la hoja carta, iguales a report/report_doc_change.xml
-# (margen superior 10 mm, renglones de 55 mm desde los 45 mm).
-_PAGE_MM = 279.4
+# Hoja de firmas (última página del PDF de la solicitud): mismas medidas que
+# report/report_doc_change.xml; las cajas las pone sgi.sign.builder._sgi_box.
 _SIGN_ROWS = (
     ('elaboro', "Elaboró", 'quimibond_sgi.sgi_sign_role_elaboro'),
     ('reviso', "Revisó", 'quimibond_sgi.sgi_sign_role_reviso'),
     ('aprobo', "Aprobó", 'quimibond_sgi.sgi_sign_role_aprobo'),
 )
-
-
-def _sign_box(index):
-    top = 45.0 + 55.0 * index + 12.0
-    return {'posX': 0.50, 'posY': round(top / _PAGE_MM, 4),
-            'width': 0.42, 'height': round(28.0 / _PAGE_MM, 4)}
 
 
 class ApprovalCategorySign(models.Model):
@@ -163,9 +155,7 @@ class ApprovalRequestSign(models.Model):
     def _sgi_render_doc_change_pdf(self):
         """PDF del F-P-G01-06 con su hoja de firmas al final."""
         self.ensure_one()
-        pdf, _fmt = self.env['ir.actions.report'].sudo()._render_qweb_pdf(
-            'quimibond_sgi.action_report_doc_change', res_ids=self.ids)
-        return pdf
+        return self.env['sgi.sign.builder']._sgi_render_pdf('quimibond_sgi.action_report_doc_change', self)
 
     def _sgi_sign_pdf(self):
         """(PDF a firmar, página de la hoja de firmas): la solicitud y, si la
@@ -192,10 +182,6 @@ class ApprovalRequestSign(models.Model):
         writer.write(out)
         return out.getvalue(), len(writer.pages)
 
-    def _sgi_sign_item_type(self):
-        item_type = self.env.ref('sign.sign_item_type_signature', raise_if_not_found=False)
-        return item_type or self.env['sign.item.type'].sudo().search([('item_type', '=', 'signature')], limit=1)
-
     def _sgi_send_to_sign(self):
         """Crea la plantilla (PDF + hoja de firmas) y la solicitud en Sign."""
         for req in self:
@@ -205,10 +191,7 @@ class ApprovalRequestSign(models.Model):
                 if attachment:
                     req.sgi_change_attachment_id = attachment
             pdf, sign_page = req._sgi_sign_pdf()
-            name = "F-P-G01-06 %s.pdf" % (req.name or req.id)
-            file = self.env['ir.attachment'].sudo().create({
-                'name': name, 'datas': base64.b64encode(pdf), 'mimetype': 'application/pdf'})
-            item_type = req._sgi_sign_item_type()
+            builder = self.env['sgi.sign.builder']
             # Una persona que ocupa dos papeles firma una sola vez (su primer
             # papel), pero en todas sus cajas.
             role_xmlids = {key: xmlid for key, _label, xmlid in _SIGN_ROWS}
@@ -217,24 +200,13 @@ class ApprovalRequestSign(models.Model):
                 if user.partner_id not in role_of:
                     role_of[user.partner_id] = self.env.ref(role_xmlids[key])
                     order.append(user.partner_id)
-            items = []
-            for index, (_key, _label, user) in enumerate(signers):
-                items.append((0, 0, dict(_sign_box(index), **{
-                    'type_id': item_type.id, 'responsible_id': role_of[user.partner_id].id,
-                    'page': sign_page, 'required': True, 'alignment': 'center'})))
-            template = self.env['sign.template'].sudo().create({
-                'name': "Cambio documental %s" % (req.name or ''),
-                'document_ids': [(0, 0, {'attachment_id': file.id, 'sign_item_ids': items})],
-            })
-            request = self.env['sign.request'].sudo().create({
-                'template_id': template.id,
-                'reference': "F-P-G01-06 %s" % (req.name or ''),
-                'subject': "Firma del cambio documental %s" % (req.name or ''),
-                'reference_doc': 'approval.request,%d' % req.id,
-                'request_item_ids': [(0, 0, {'partner_id': partner.id, 'role_id': role_of[partner].id,
-                                             'mail_sent_order': seq})
-                                     for seq, partner in enumerate(order, start=1)],
-            })
+            template = builder._sgi_template(
+                "Cambio documental %s" % (req.name or ''), pdf, sign_page,
+                [(index, role_of[user.partner_id]) for index, (_k, _l, user) in enumerate(signers)])
+            request = builder._sgi_request(
+                template, "F-P-G01-06 %s" % (req.name or ''),
+                "Firma del cambio documental %s" % (req.name or ''), req,
+                [(partner, role_of[partner]) for partner in order])
             req.sudo().write({'sgi_sign_request_id': request.id, 'sgi_sign_archived': False})
             req.message_post(body=Markup("Enviado a firma en Sign: %s.") % ", ".join(
                 "%s (%s)" % (user.name, label) for _k, label, user in signers))

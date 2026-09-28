@@ -10,4 +10,8 @@
     <record id="sgi_sign_role_aprobo" model="sign.item.role">
         <field name="name">SGI · Aprobó</field>
     </record>
+    <!-- 56.18.0: acuses de lectura y responsivas de EPP. -->
+    <record id="sgi_sign_role_empleado" model="sign.item.role">
+        <field name="name">SGI · Empleado</field>
+    </record>
 </odoo>

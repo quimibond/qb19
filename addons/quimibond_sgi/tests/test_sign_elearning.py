@@ -18,7 +18,9 @@ class TestSignElearning(TransactionCase):
         })
         cls.employee.user_id = cls.user
 
-    def test_send_sign_requests_requires_template(self):
+    def test_send_sign_requests_without_pending(self):
+        """56.18.0: ya no hace falta plantilla hecha a mano; sin acuses
+        pendientes solo avisa. Enviar a firma es solo de MAST."""
         doc = self.env['documents.document'].create({
             'name': "Procedimiento de prueba Sign",
             'type': 'binary',
@@ -26,8 +28,10 @@ class TestSignElearning(TransactionCase):
             'sgi_doc_type': 'procedimiento',
             'sgi_code': 'P-G99',
         })
+        result = doc.action_sgi_send_sign_requests()
+        self.assertEqual(result['params']['type'], 'info')
         with self.assertRaises(UserError):
-            doc.action_sgi_send_sign_requests()
+            doc.with_user(self.user).action_sgi_send_sign_requests()
 
     def test_sync_crons_run_empty(self):
         """Los crons de sincronización y el digest corren sin datos sin
