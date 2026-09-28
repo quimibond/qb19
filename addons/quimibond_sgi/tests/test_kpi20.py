@@ -9,6 +9,8 @@ from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 
+from .common_accounts import sgi_test_payable
+
 
 @tagged('post_install', '-at_install')
 class TestKpi20Step1(TransactionCase):
@@ -310,13 +312,19 @@ class TestKpi20Step2(TransactionCase):
 
     def test_02_consumo_energia(self):
         partner = self.env['res.partner'].create({'name': 'CFE KPI'})
+        sgi_test_payable(self.env, partner)
         self.Param.set_param('quimibond_sgi.energy_partner_id', partner.id)
         # 5000 facturado - 500 nota de crédito = 4500 neto en 2040-06.
         self._post_bill(partner, 5000.0, date(2040, 6, 10))
         self._post_bill(partner, 500.0, date(2040, 6, 20), refund=True)
         ind = self._indicator('consumo_energia', direction='lower_better')
+        # Desde P-21 el valor es pesos por tonelada procesada: sin kg de hilo y
+        # fibra consumidos en el periodo no hay valor (TestIndicatorP21 cubre
+        # el cociente); el facturado neto queda en el numerador.
         value = ind._calc_consumo_energia(date(2040, 6, 1), date(2040, 6, 30))
-        self.assertEqual(value, 4500.0)
+        self.assertIsNone(value)
+        detail = ind._detail_consumo_energia(date(2040, 6, 1), date(2040, 6, 30))
+        self.assertEqual(detail['numerator'], 4500.0)
         # Evidencia: las facturas del proveedor en el periodo.
         measure = self._measure(ind, date(2040, 6, 1))
         action = measure.action_view_evidence()
@@ -339,7 +347,7 @@ class TestKpi20Step2(TransactionCase):
             date(2040, 7, 5), '06/2040')
         measure = self.Measure.search(
             [('indicator_id', '=', ind.id), ('period_date', '=', date(2040, 6, 1))])
-        self.assertEqual(measure.state, 'pendiente')
+        self.assertEqual(measure.state, 'sin_dato', "Automático sin dato: gris, no pendiente de captura.")
         self.assertFalse(measure.semaphore)
         self.assertIn('proveedor de energía', measure.note or '')
 

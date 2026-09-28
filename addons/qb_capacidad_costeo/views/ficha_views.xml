@@ -91,6 +91,102 @@
                         </group>
                     </group>
                     <field name="notas" placeholder="Notas técnicas, tolerancias, observaciones de calidad..."/>
+                    <!-- 1.66.0: secciones de D&amp;D (F-P-D01-24/05/33/08). -->
+                    <div class="d-flex justify-content-end mb-2">
+                        <button name="action_cargar_renglones" type="object" string="Cargar renglones estándar"
+                                class="btn-secondary" icon="fa-list"/>
+                        <button name="action_print_specs" type="object" string="Especificaciones del producto (PDF)"
+                                class="btn-primary ms-2" icon="fa-print"/>
+                    </div>
+                    <notebook>
+                        <page string="Datos generales D&amp;D" name="generales">
+                            <group>
+                                <group>
+                                    <field name="dibujo"/>
+                                    <field name="tacto"/>
+                                    <field name="ruta_proceso"/>
+                                    <field name="uso_principal"/>
+                                </group>
+                                <group>
+                                    <field name="revision"/>
+                                    <field name="fecha_emision"/>
+                                    <field name="fecha_ultimo_cambio"/>
+                                    <field name="aprobado_desarrollos"/>
+                                </group>
+                            </group>
+                            <field name="descripcion" placeholder="Descripción del producto"/>
+                            <group string="Instrucciones de cuidado / Instructions of care">
+                                <group>
+                                    <field name="cuidado_lavado"/>
+                                    <field name="cuidado_blanqueo"/>
+                                    <field name="cuidado_secado"/>
+                                </group>
+                                <group>
+                                    <field name="cuidado_planchado"/>
+                                    <field name="cuidado_lavado_seco"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Tejido / Teñido / Acabado" name="proceso">
+                            <field name="spec_line_ids" context="{'default_section': 'acabado'}"
+                                   domain="[('section', 'in', ('tejido', 'tenido', 'acabado', 'presentacion'))]">
+                                <list editable="bottom" default_group_by="section">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="section"/>
+                                    <field name="name"/>
+                                    <field name="direction" optional="hide"/>
+                                    <field name="unit"/>
+                                    <field name="value"/>
+                                    <field name="tolerance"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Tintorería" name="tintoreria">
+                            <field name="spec_line_ids" context="{'default_section': 'tintoreria'}"
+                                   domain="[('section', '=', 'tintoreria')]">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="section" column_invisible="1"/>
+                                    <field name="name"/>
+                                    <field name="unit"/>
+                                    <field name="value"/>
+                                    <field name="tolerance"/>
+                                    <field name="note"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Especificaciones (cliente)" name="especificacion">
+                            <field name="spec_line_ids" context="{'default_section': 'especificacion'}"
+                                   domain="[('section', '=', 'especificacion')]">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="section" column_invisible="1"/>
+                                    <field name="name"/>
+                                    <field name="direction"/>
+                                    <field name="unit"/>
+                                    <field name="value"/>
+                                    <field name="tolerance"/>
+                                    <field name="method"/>
+                                    <field name="en_coa"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Firmas" name="firmas">
+                            <group>
+                                <group>
+                                    <field name="firma_manufactura_id"/>
+                                    <field name="firma_calidad_id"/>
+                                    <field name="firma_inspeccion_id"/>
+                                </group>
+                                <group>
+                                    <field name="firma_dyd_id"/>
+                                    <field name="firma_operaciones_id"/>
+                                    <field name="firma_ventas_id"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

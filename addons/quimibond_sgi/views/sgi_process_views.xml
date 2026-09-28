@@ -75,6 +75,10 @@
                 <field name="name"/>
                 <field name="from_process_id"/>
                 <field name="to_process_id"/>
+                <filter name="vigentes" string="Mapa vigente"
+                        domain="[('deliverable_id', '!=', False), ('from_process_id.active', '=', True), ('to_process_id.active', '=', True)]"
+                        help="Solo los flujos calculados de entregables entre procesos activos."/>
+                <separator/>
                 <filter name="con_modelo" string="Viven en Odoo"
                         domain="[('odoo_model_id', '!=', False)]"/>
                 <filter name="documentales" string="Documentales (sin modelo)"
@@ -91,18 +95,6 @@
                             context="{'group_by': 'to_process_id'}"/>
                 </group>
             </search>
-        </field>
-    </record>
-
-    <record id="sgi_process_flow_action" model="ir.actions.act_window">
-        <field name="name">Flujos entre procesos</field>
-        <field name="res_model">sgi.process.flow</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_process_flow_view_search"/>
-        <field name="context">{'search_default_group_from': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Cada flecha del mapa de procesos es una entrega real</p>
-            <p>Un flujo dice <b>qué</b> entrega un proceso a otro, <b>con qué formato</b> y <b>cuándo se acepta</b>. Si el entregable vive en Odoo (pedido, OF, remisión, inspección…), el botón <i>Ver registros</i> abre las entregas reales; los flujos sin modelo son entregables documentales. No se capturan: salen solos de lo que cada actividad recibe y entrega (catálogo de entregables).</p>
         </field>
     </record>
 
@@ -194,10 +186,11 @@
         </field>
     </record>
 
-    <!-- Ficha del proceso: 3 botones y 4 pestañas (Ficha, Actividades,
-         Conexiones, Documentos). La pestaña Actividades la agrega
-         sgi_process_procedure_views.xml ANTES de «Conexiones»
-         (page name="entradas_salidas": no cambiar el nombre). -->
+    <!-- Ficha del proceso (54.1.0): botones inteligentes para todo lo que es
+         lista de otros registros y dos pestañas: Ficha y Procedimiento.
+         TODA la ficha vive aquí: un módulo no hereda sus propias vistas
+         (las herencias guardadas en la base se revalidan contra el padre
+         nuevo antes de recargarse y tiraron dos builds, 2026-09-25). -->
     <record id="sgi_process_view_form" model="ir.ui.view">
         <field name="name">sgi.process.form</field>
         <field name="model">sgi.process</field>
@@ -212,21 +205,77 @@
                             confirm="Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?"/>
                     <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_sgi_request_change" type="object"
+                            string="Pedir un cambio" icon="fa-pencil-square-o"/>
+                    <button name="action_sgi_register_finding" type="object"
+                            string="Registrar hallazgo" icon="fa-flag"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <!-- Los PDF (procedimiento, lista maestra, matriz de riesgos)
+                         viven en el menú Imprimir (⚙) de la ficha: binding_model_id
+                         en report/. -->
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <!-- 54.0.0 / 54.1.0: todo lo que es una lista de otros registros
+                         (actividades, indicadores, riesgos, documentos, NC,
+                         conexiones, ligas) es un botón inteligente con su conteo,
+                         como en cualquier ficha de Odoo. Las pestañas quedan para
+                         lo que se captura aquí: la ficha y el texto del
+                         procedimiento. -->
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_sgi_view_diagram" type="object" class="oe_stat_button"
+                                icon="fa-sitemap" invisible="not id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Diagrama</span>
+                            </div>
+                        </button>
                         <button name="action_view_activities" type="object" class="oe_stat_button"
                                 icon="fa-list-ol">
                             <field name="activity_count" widget="statinfo" string="Actividades"/>
                         </button>
                         <button name="action_view_red_activities" type="object" class="oe_stat_button"
                                 icon="fa-times-circle" invisible="activity_red_count == 0">
-                            <field name="activity_red_count" widget="statinfo" string="En rojo"/>
+                            <field name="activity_red_count" widget="statinfo" string="Sin evidencia"/>
+                        </button>
+                        <button name="action_open_indicators" type="object" class="oe_stat_button"
+                                icon="fa-tachometer">
+                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
+                        </button>
+                        <button name="action_open_red_kpis" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-circle" invisible="red_kpi_count == 0">
+                            <field name="red_kpi_count" widget="statinfo" string="KPI en rojo"/>
+                        </button>
+                        <button name="action_open_risks" type="object" class="oe_stat_button"
+                                icon="fa-bolt">
+                            <field name="risk_count" widget="statinfo" string="Riesgos"/>
+                        </button>
+                        <button name="action_open_high_risks" type="object" class="oe_stat_button"
+                                icon="fa-fire" invisible="open_high_risk_count == 0">
+                            <field name="open_high_risk_count" widget="statinfo" string="Riesgos altos"/>
+                        </button>
+                        <button name="action_open_documents" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o">
+                            <field name="document_count" widget="statinfo" string="Documentos"/>
+                        </button>
+                        <button name="action_open_flows" type="object" class="oe_stat_button"
+                                icon="fa-exchange">
+                            <field name="flow_count" widget="statinfo" string="Conexiones"/>
+                        </button>
+                        <button name="action_view_chain" type="object" class="oe_stat_button"
+                                icon="fa-link" invisible="chain_link_count == 0">
+                            <field name="chain_link_count" widget="statinfo" string="Ligas"/>
                         </button>
                         <button name="action_open_ncs" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-triangle" invisible="nc_count == 0">
                             <field name="nc_count" widget="statinfo" string="NC abiertas"/>
+                        </button>
+                        <button name="action_open_overdue_actions" type="object" class="oe_stat_button"
+                                icon="fa-clock-o" invisible="overdue_action_count == 0">
+                            <field name="overdue_action_count" widget="statinfo" string="Acciones vencidas"/>
+                        </button>
+                        <button name="action_view_spec_gaps" type="object" class="oe_stat_button"
+                                icon="fa-wrench" invisible="spec_error_count == 0 and spec_warning_count == 0">
+                            <field name="spec_error_count" widget="statinfo" string="Faltantes"/>
                         </button>
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
@@ -235,33 +284,31 @@
                             invisible="owner_valid or not active or not id"/>
                     <field name="active" invisible="1"/>
                     <field name="owner_valid" invisible="1"/>
+                    <field name="spec_warning_count" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Nombre del proceso"/></h1>
                         <h3><field name="code" placeholder="Clave (C6, S2…)"/></h3>
                     </div>
+                    <!-- El estado siempre en la misma forma y lugar: una línea arriba -->
+                    <div class="mb-2" invisible="not id">
+                        <field name="health" widget="badge" nolabel="1" class="d-inline me-2"
+                               decoration-success="health == 'verde'"
+                               decoration-warning="health == 'amarillo'"
+                               decoration-danger="health == 'rojo'"/>
+                        <field name="structure_status" nolabel="1" readonly="1" class="d-inline text-muted"/>
+                    </div>
                     <group>
-                        <group>
+                        <group string="Quién y dónde">
                             <field name="process_type"/>
                             <field name="owner_id" string="Dueño" widget="many2one_avatar_employee"/>
                             <field name="parent_id"/>
+                            <field name="department_id"/>
+                            <field name="replaced_by_id" invisible="active" readonly="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
-                        <group>
-                            <field name="health" widget="badge"
-                                   decoration-success="health == 'verde'"
-                                   decoration-warning="health == 'amarillo'"
-                                   decoration-danger="health == 'rojo'"/>
+                        <group string="Cómo va">
                             <field name="measure_real_pct" widget="progressbar"/>
                             <field name="measure_adherence_avg"/>
-                            <label for="spec_error_count" string="Especificación"/>
-                            <div class="o_row">
-                                <button name="action_view_spec_gaps" type="object" class="btn-link p-0">
-                                    <field name="spec_error_count" class="text-danger"/> que bloquean ·
-                                    <field name="spec_warning_count"/> advertencias
-                                </button>
-                            </div>
-                            <field name="channel_odoo_pct" widget="progressbar"/>
-                            <field name="channel_manual_pct" widget="progressbar"/>
                             <field name="odoo_measured_pct" widget="progressbar"/>
                         </group>
                     </group>
@@ -269,11 +316,25 @@
                         <page string="Ficha" name="ficha">
                             <field name="purpose" placeholder="Para qué existe este proceso…"/>
                             <group>
+                                <group string="Recibe">
+                                    <field name="input_deliverable_ids" widget="many2many_tags" nolabel="1" colspan="2"/>
+                                </group>
+                                <group string="Entrega">
+                                    <field name="output_deliverable_ids" widget="many2many_tags" nolabel="1" colspan="2"/>
+                                </group>
+                            </group>
+                            <group>
                                 <group>
-                                    <field name="input_deliverable_ids" widget="many2many_tags"/>
+                                    <field name="job_ids" widget="many2many_tags"
+                                           string="Puestos que participan"/>
+                                    <field name="odoo_model_ids" string="Se opera en Odoo con"
+                                           widget="many2many_tags" readonly="1"/>
                                 </group>
                                 <group>
-                                    <field name="output_deliverable_ids" widget="many2many_tags"/>
+                                    <field name="replaced_document_ids" widget="many2many_tags"
+                                           options="{'no_create': True}"/>
+                                    <field name="channel_odoo_pct" widget="progressbar"/>
+                                    <field name="channel_manual_pct" widget="progressbar"/>
                                 </group>
                             </group>
                             <group string="Texto de la versión anterior"
@@ -283,41 +344,6 @@
                                 <field name="inputs" readonly="1" invisible="not inputs"/>
                                 <field name="outputs" readonly="1" invisible="not outputs"/>
                             </group>
-                            <group>
-                                <group>
-                                    <field name="department_id"/>
-                                    <field name="job_ids" widget="many2many_tags"
-                                           string="Puestos que participan"/>
-                                </group>
-                                <group>
-                                    <field name="odoo_model_ids" string="Se opera en Odoo con"
-                                           widget="many2many_tags" readonly="1"/>
-                                    <field name="replaced_document_ids" widget="many2many_tags"
-                                           options="{'no_create': True}"/>
-                                </group>
-                            </group>
-                            <separator string="Indicadores"/>
-                            <field name="indicator_ids" readonly="1">
-                                <list decoration-danger="last_semaphore == 'rojo'"
-                                      decoration-warning="last_semaphore == 'amarillo'"
-                                      decoration-success="last_semaphore == 'verde'">
-                                    <field name="code"/>
-                                    <field name="name"/>
-                                    <field name="responsible_id" widget="many2one_avatar_user"/>
-                                    <field name="target_objective" optional="show"/>
-                                    <field name="last_value"/>
-                                    <field name="last_semaphore" column_invisible="1"/>
-                                </list>
-                            </field>
-                            <separator string="Riesgos y oportunidades"/>
-                            <field name="risk_ids" readonly="1">
-                                <list>
-                                    <field name="instrument"/>
-                                    <field name="name"/>
-                                    <field name="state" widget="badge"/>
-                                    <field name="next_review_date" optional="show"/>
-                                </list>
-                            </field>
                             <separator string="Subprocesos" invisible="not child_ids"/>
                             <field name="child_ids" readonly="1" invisible="not child_ids">
                                 <list>
@@ -327,61 +353,45 @@
                                 </list>
                             </field>
                         </page>
-                        <page string="Conexiones" name="entradas_salidas">
-                            <separator string="Recibe de otros procesos"/>
-                            <field name="in_flow_ids" readonly="1">
-                                <list>
-                                    <field name="from_process_id" string="Lo entrega"/>
-                                    <field name="name" string="Entregable"/>
-                                    <field name="document_id" optional="hide"/>
-                                    <field name="acceptance_criteria" optional="show"/>
-                                    <field name="odoo_model_id" optional="hide"/>
-                                    <button name="action_view_records" type="object"
-                                            string="Ver registros" icon="fa-external-link"
-                                            invisible="not odoo_model_id"/>
-                                </list>
-                            </field>
-                            <separator string="Entrega a otros procesos"/>
-                            <field name="out_flow_ids" readonly="1">
-                                <list>
-                                    <field name="name" string="Entregable"/>
-                                    <field name="to_process_id" string="Lo recibe"/>
-                                    <field name="document_id" optional="hide"/>
-                                    <field name="acceptance_criteria" optional="show"/>
-                                    <field name="odoo_model_id" optional="hide"/>
-                                    <button name="action_view_records" type="object"
-                                            string="Ver registros" icon="fa-external-link"
-                                            invisible="not odoo_model_id"/>
-                                </list>
-                            </field>
-                            <separator string="Ligas entre actividades"/>
-                            <field name="chain_link_ids" readonly="1">
-                                <list decoration-danger="chain_state == 'atorado'"
-                                      decoration-info="is_cross_process">
-                                    <field name="from_activity_id"/>
-                                    <field name="name" string="Entregable"/>
-                                    <field name="to_activity_id"/>
-                                    <field name="is_cross_process" optional="hide"/>
-                                    <field name="chain_state" widget="badge"
-                                           decoration-success="chain_state == 'fluye'"
-                                           decoration-danger="chain_state == 'atorado'"/>
-                                    <field name="lag_days" optional="show"/>
-                                </list>
-                            </field>
-                        </page>
-                        <page string="Documentos" name="documentos">
-                            <field name="linked_document_ids" readonly="1">
-                                <list default_order="sgi_doc_type_id, sgi_code"
-                                      decoration-muted="sgi_state == 'obsoleto'">
-                                    <field name="sgi_code"/>
+                        <page string="Procedimiento" name="procedimiento">
+                            <!-- Las actividades se capturan desde el botón «Actividades»
+                                 (lista editable, kanban, diagrama, organigrama). Aquí
+                                 queda lo que arma el PDF del procedimiento: etapas,
+                                 texto, responsabilidades y firmas. -->
+                            <div class="mb-2">
+                                <span class="text-muted"><field name="measure_method_summary" class="d-inline"/></span>
+                            </div>
+                            <field name="stage_ids" context="{'default_process_id': id}">
+                                <list editable="bottom" string="Etapas">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="code" string="Letra"/>
                                     <field name="name"/>
-                                    <field name="sgi_doc_type_id"/>
-                                    <field name="sgi_revision"/>
-                                    <field name="sgi_state" widget="badge"
-                                           decoration-success="sgi_state == 'vigente'"
-                                           decoration-warning="sgi_state == 'piloto'"/>
+                                    <field name="activity_count"/>
                                 </list>
                             </field>
+                            <separator string="Texto del procedimiento (sale en el PDF)"/>
+                            <group>
+                                <field name="scope" placeholder="A qué áreas aplica…"/>
+                                <field name="env_aspects"/>
+                                <field name="norm_ids" widget="many2many_tags"/>
+                            </group>
+                            <field name="job_responsibility_ids">
+                                <list string="Responsabilidades" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="job_id"/>
+                                    <field name="responsibilities"/>
+                                </list>
+                            </field>
+                            <group string="Firmas">
+                                <group>
+                                    <field name="doc_owner_id"/>
+                                    <field name="doc_approver_id"/>
+                                </group>
+                                <group>
+                                    <field name="doc_vobo_id"/>
+                                </group>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
@@ -433,17 +443,4 @@
             <p>Edite fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
     </record>
 
-    <record id="sgi_process_action_panel" model="ir.actions.act_window">
-        <field name="name">Panel de procesos</field>
-        <field name="res_model">sgi.process</field>
-        <field name="view_mode">kanban,form</field>
-        <field name="domain">[('parent_id', '!=', False)]</field>
-        <field name="context">{'search_default_group_parent': 1}</field>
-        <field name="search_view_id" ref="sgi_process_view_search"/>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Panel de salud de procesos</p>
-            <p>Los procesos agrupados por macroproceso. El semáforo se calcula solo:
-            <b>rojo</b> = riesgo alto abierto, o NC abiertas con KPI en rojo;
-            <b>amarillo</b> = alguna NC, acción vencida o KPI en rojo;
-            <b>verde</b> = nada abierto. La tarjeta muestra el porqué del color.</p></field>
-    </record>
 </odoo>

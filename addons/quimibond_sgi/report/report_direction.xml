@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- DIR-2 (52.0.0): matriz de riesgos por proceso. -->
+    <record id="action_report_risk_matrix" model="ir.actions.report">
+        <field name="name">Matriz de riesgos del proceso</field>
+        <field name="model">sgi.process</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_risk_matrix_document</field>
+        <field name="report_file">quimibond_sgi.report_risk_matrix_document</field>
+        <field name="print_report_name">'Matriz de riesgos - %s' % (object.code or object.name)</field>
+        <field name="binding_model_id" ref="model_sgi_process"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_risk_matrix_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Matriz de riesgos y oportunidades</h2>
+                        <h4 class="text-center"><span t-out="doc.code"/> · <span t-out="doc.name"/></h4>
+                        <p class="text-muted">Dueño del proceso: <span t-out="doc.owner_id.name or '—'"/></p>
+                        <t t-set="risks" t-value="doc.risk_ids.filtered(lambda r: r.state != 'cerrado')"/>
+                        <p t-if="not risks" class="text-muted">Sin riesgos abiertos en este proceso.</p>
+                        <table t-if="risks" class="table table-sm table-bordered" style="font-size:9px;">
+                            <thead>
+                                <tr>
+                                    <th>Folio</th><th>Aspecto / peligro</th><th>Instrumento</th><th>P</th><th>I</th>
+                                    <th>Nivel</th><th>Semáforo</th><th>Residual</th><th>Estado</th>
+                                    <th>Última eval.</th><th>Próxima</th><th>Acciones abiertas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="risks" t-as="r">
+                                    <td><span t-out="r.folio or ''"/></td>
+                                    <td><span t-out="r.name"/></td>
+                                    <td><span t-field="r.instrument"/></td>
+                                    <td><span t-out="r.eval_probability or ''"/></td>
+                                    <td><span t-out="r.eval_impact or ''"/></td>
+                                    <td><span t-out="r.score"/> <span t-field="r.attention_level"/></td>
+                                    <td><span t-field="r.semaphore"/></td>
+                                    <td><span t-out="r.residual_score or ''"/></td>
+                                    <td><span t-field="r.state"/></td>
+                                    <td><span t-field="r.last_eval_date"/></td>
+                                    <td><span t-field="r.next_review_date"/></td>
+                                    <td>
+                                        <span t-out="len(r.action_line_ids.filtered(lambda l: not l.date_done))"/>
+                                        <span t-if="r.high_without_action" class="text-danger"> (alto sin acción)</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- PER-3 (52.0.0): matriz de competencias puesto × persona por área. -->
+    <record id="action_report_competence_matrix" model="ir.actions.report">
+        <field name="name">Matriz de competencias (SGI)</field>
+        <field name="model">hr.department</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_competence_matrix_document</field>
+        <field name="report_file">quimibond_sgi.report_competence_matrix_document</field>
+        <field name="print_report_name">'Matriz de competencias - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="hr.model_hr_department"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_competence_matrix_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Matriz de competencias</h2>
+                        <h4 class="text-center"><span t-out="doc.complete_name or doc.name"/></h4>
+                        <t t-set="rows" t-value="doc._sgi_competence_matrix()"/>
+                        <p t-if="not rows" class="text-muted">Sin empleados activos en el área.</p>
+                        <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
+                            <thead>
+                                <tr>
+                                    <th>Persona</th><th>Puesto</th><th>Mi procedimiento</th>
+                                    <th>Instructivos leídos</th><th>Cursos terminados</th><th>Competencias</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="rows" t-as="row">
+                                    <td><span t-out="row['employee'].name"/></td>
+                                    <td><span t-out="row['job']"/></td>
+                                    <td><span t-out="row['procedure']"/></td>
+                                    <td><span t-out="row['instructions']"/></td>
+                                    <td><span t-out="row['courses']"/></td>
+                                    <td><span t-out="row['skills']"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

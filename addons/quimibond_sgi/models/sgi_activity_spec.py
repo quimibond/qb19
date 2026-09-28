@@ -239,7 +239,7 @@ class SgiActivitySpec(models.Model):
             add('no_done', "Falta el criterio de terminado (una frase de sí o no).")
         if not (self.on_fail or '').strip() and not escala:
             add('no_on_fail', "Falta qué hacer si no se puede cumplir, o un rol «Escala».")
-        timed_input = any(line.max_days for line in self.input_ids)
+        timed_input = any(line.max_days or line.due_field for line in self.input_ids)
         periodic = bool(self.due_weekday or self.due_business_day)
         external_start = self.block == 'inicial' and self.input_ids and not any(
             line.deliverable_id.producer_activity_ids for line in self.input_ids)
@@ -288,7 +288,7 @@ class SgiActivitySpec(models.Model):
                                  "actividades para medir cada una.")
         output = self._sgi_output_deliverable()
         if output and output.odoo_model_id:
-            for line in self.input_ids.filtered('max_days'):
+            for line in self.input_ids.filtered(lambda l: l.max_days or l.due_field):
                 model = line.deliverable_id.odoo_model_id
                 if model and model != output.odoo_model_id and not line.match_path:
                     add('no_match', "«%s» (%s) no se liga con la salida (%s): falta "
@@ -300,7 +300,11 @@ class SgiActivitySpec(models.Model):
         """Reescribe los faltantes solo si cambiaron."""
         Gap = self.env['sgi.activity.spec.gap'].sudo()
         for act in self.exists():
-            wanted = [(code, SGI_GAP_SEVERITY[code], msg) for code, msg in act._sgi_spec_problems()]
+            # Un proceso archivado (o una actividad inactiva) no tiene faltantes
+            # que atender: no se le generan y los que tenía se borran.
+            live = act.active and act.process_id.active
+            wanted = [(code, SGI_GAP_SEVERITY[code], msg) for code, msg in act._sgi_spec_problems()] \
+                if live else []
             current = [(g.code, g.severity, g.message) for g in act.sudo().spec_gap_ids]
             if sorted(wanted) != sorted(current):
                 act.sudo().spec_gap_ids.unlink()
@@ -323,11 +327,10 @@ class SgiActivitySpec(models.Model):
             self._sgi_refresh_spec_gaps()
         return res
 
-    def _sgi_sentence(self):
-        """La frase del procedimiento, con dónde, cómo, cuándo está terminada
+    def _sgi_sentence_parts(self):
+        """Las piezas del procedimiento más dónde, cómo, cuándo está terminada
         y qué hacer si falla."""
-        text = super()._sgi_sentence()
-        parts = [text] if text else []
+        parts = super()._sgi_sentence_parts()
         where = []
         if self.exec_channel:
             where.append(dict(SGI_EXEC_CHANNELS)[self.exec_channel])
@@ -342,20 +345,20 @@ class SgiActivitySpec(models.Model):
         if self.place_note:
             where.append(self.place_note)
         if where:
-            parts.append("Dónde: %s." % " — ".join(where))
+            parts.append(("Dónde", " — ".join(where)))
         if self.check_against:
-            parts.append("Contra: %s." % self.check_against)
+            parts.append(("Contra", self.check_against))
         if self.how_steps:
-            parts.append("Cómo: %s." % " ".join(self.how_steps.split()).rstrip('.'))
+            parts.append(("Cómo", " ".join(self.how_steps.split()).rstrip('.')))
         if self.done_criteria:
-            parts.append("Terminada cuando: %s." % self.done_criteria.strip().rstrip('.'))
+            parts.append(("Terminada cuando", self.done_criteria.strip().rstrip('.')))
         if self.due_weekday and self.measure_cadence == 'semanal':
-            parts.append("Vence cada %s." % dict(SGI_WEEKDAYS)[self.due_weekday].lower())
+            parts.append((None, "Vence cada %s" % dict(SGI_WEEKDAYS)[self.due_weekday].lower()))
         if self.due_business_day and self.measure_cadence == 'mensual':
-            parts.append("Vence el día hábil %d del mes." % self.due_business_day)
+            parts.append((None, "Vence el día hábil %d del mes" % self.due_business_day))
         if self.on_fail:
-            parts.append("Si no se puede: %s." % self.on_fail.strip().rstrip('.'))
-        return " ".join(parts)
+            parts.append(("Si no se puede", self.on_fail.strip().rstrip('.')))
+        return parts
 
     # ------------------------------------------------------------------
     # Medición: aplicables, hechas, completas, a tiempo, vencidas abiertas
@@ -415,6 +418,53 @@ class SgiActivityInputSpec(models.Model):
         help="Campo de la salida que apunta al registro de esta entrada, cuando son "
              "modelos distintos (ej. «sale_id» si la salida es un stock.picking y la "
              "entrada un sale.order). Mismo modelo: no hace falta.")
+    # P-4: el vencimiento sale de una fecha del propio registro (la fecha
+    # programada de la entrega) y no de «días después de que llegó».
+    due_field = fields.Char(
+        string="Vence según el campo",
+        help="Campo de fecha del registro de esta entrada contra el que vence la "
+             "actividad (ej. «scheduled_date» de la entrega). Con esto el plazo "
+             "no son días desde que llegó sino esa fecha más el margen.")
+    offset_days = fields.Integer(
+        string="Margen (días hábiles)",
+        help="Días hábiles que se suman a «Vence según el campo». Negativo = antes: "
+             "-2 vence dos días hábiles antes de la fecha programada.")
+
+    @api.constrains('due_field', 'deliverable_id')
+    def _check_due_field(self):
+        for line in self.filtered('due_field'):
+            model = line.deliverable_id.odoo_model_id.model
+            if not model or model not in self.env:
+                raise ValidationError(
+                    "«Vence según el campo» de %s necesita que el entregable «%s» "
+                    "tenga modelo de Odoo." % (line.activity_id.display_name,
+                                                line.deliverable_id.name))
+            field = self.env[model]._fields.get(line.due_field.strip())
+            if field is None or field.type not in ('date', 'datetime'):
+                raise ValidationError(
+                    "«Vence según el campo» de %s: «%s» no es un campo de fecha de %s." % (
+                        line.activity_id.display_name, line.due_field, model))
+
+    def _sgi_has_deadline(self):
+        self.ensure_one()
+        return bool(self.max_days or self.due_field)
+
+    def _sgi_due(self, record, in_date):
+        """Fecha (date) en que vence la actividad para ``record`` (un registro
+        de la entrada): la fecha del campo «vence según» más el margen, o la
+        fecha de llegada (``in_date``) más los días hábiles del plazo. None si
+        el registro no trae la fecha."""
+        self.ensure_one()
+        company = self.activity_id.company_id
+        if self.due_field:
+            base = record[self.due_field.strip()]
+            if not base:
+                return None
+            return sgi_add_business_days(self.env, base, self.offset_days, company)
+        base = record[in_date]
+        if not base:
+            return None
+        return sgi_add_business_days(self.env, base, self.max_days, company)
 
     @api.constrains('applies_domain', 'deliverable_id')
     def _check_applies_domain(self):
@@ -594,10 +644,100 @@ class SgiIndicatorSpec(models.Model):
         help="Opcional: sin fecha, la meta es permanente.")
     spec_missing = fields.Char(string="Le falta", compute='_compute_spec_missing')
 
+    # --- Modos genéricos (P-1): el indicador se calcula solo de lo que ya
+    # mide el SGI, sin una fórmula fija por indicador.
+    activity_id = fields.Many2one(
+        'sgi.process.activity', string="Actividad medida", ondelete='set null',
+        help="Para «% a tiempo»: la actividad cuyo cumplimiento semanal se toma.")
+    deliverable_id = fields.Many2one(
+        'sgi.deliverable', string="Entregable medido", ondelete='set null',
+        help="Para «% completo»: el entregable cuyo filtro «ya está completo» "
+             "se compara contra lo entregado. Vacío: el entregable con el que "
+             "se mide la actividad.")
+
+    def _sgi_measured_deliverable(self):
+        self.ensure_one()
+        if self.deliverable_id:
+            return self.deliverable_id
+        return self.activity_id._sgi_output_deliverable() if self.activity_id \
+            else self.env['sgi.deliverable']
+
+    def _detail_actividad_a_tiempo(self, date_from, date_to):
+        """% a tiempo de la actividad en las semanas del periodo. Toma las
+        filas que ya calculó el cron (sgi.activity.week.stat) y, para las
+        semanas que no tenga, las cuenta en el momento. Detalle (I-1): a
+        tiempo ÷ con plazo, los casos son los «con plazo» y los registros las
+        filas semanales que se usaron."""
+        if not self.activity_id:
+            return {'value': None}
+        monday = date_from - timedelta(days=date_from.weekday())
+        weeks = []
+        while monday <= date_to:
+            weeks.append(monday)
+            monday += timedelta(days=7)
+        stats = {s.period_start: s for s in self.env['sgi.activity.week.stat'].search([
+            ('activity_id', '=', self.activity_id.id), ('period_start', 'in', weeks)])}
+        timed = on_time = 0
+        for start in weeks:
+            stat = stats.get(start)
+            counts = ({'timed_count': stat.timed_count, 'on_time_count': stat.on_time_count}
+                      if stat else self.activity_id._sgi_week_counts(start))
+            timed += counts['timed_count']
+            on_time += counts['on_time_count']
+        return {
+            'value': round(on_time * 100.0 / timed, 2) if timed else None,
+            'numerator': on_time, 'denominator': timed, 'sample_size': timed,
+            'model': 'sgi.activity.week.stat', 'ids': [s.id for s in stats.values()],
+        }
+
+    def _calc_actividad_a_tiempo(self, date_from, date_to):
+        return self._detail_actividad_a_tiempo(date_from, date_to)['value']
+
+    def _detail_entregable_completo(self, date_from, date_to):
+        """% de lo entregado en el periodo que cumple el filtro «ya está
+        completo» del entregable. Detalle (I-1): completos ÷ entregados, con
+        los registros entregados."""
+        deliverable = self._sgi_measured_deliverable()
+        model = deliverable.odoo_model_id.model
+        if not model or model not in self.env:
+            return {'value': None}
+        Model = self.env[model].sudo()
+        date_field = deliverable.measure_date_field or 'create_date'
+        if date_field not in Model._fields:
+            date_field = 'create_date'
+        start = datetime.combine(date_from, time.min)
+        end = datetime.combine(date_to, time.min) + timedelta(days=1)
+        done = Model.search(sgi_safe_domain(deliverable.measure_domain)
+                            + [(date_field, '>=', start), (date_field, '<', end)])
+        complete_domain = sgi_safe_domain(deliverable.complete_domain)
+        complete_ids = Model.search([('id', 'in', done.ids)] + complete_domain).ids \
+            if (done and complete_domain) else done.ids
+        if deliverable.require_signed and complete_ids:
+            # REG-1: completo solo si el registro tiene una firma de Sign ligada.
+            signed = set(deliverable._sgi_signed_ids(model, complete_ids))
+            complete_ids = [i for i in complete_ids if i in signed]
+        complete = len(complete_ids)
+        return {
+            'value': round(complete * 100.0 / len(done), 2) if done else None,
+            'numerator': complete, 'denominator': len(done),
+            'model': model, 'ids': done.ids,
+        }
+
+    def _calc_entregable_completo(self, date_from, date_to):
+        return self._detail_entregable_completo(date_from, date_to)['value']
+
     def _sgi_spec_problems(self):
         """SMART: meta, fórmula, fuente, responsable y frecuencia."""
         self.ensure_one()
         problems = []
+        if self.calc_mode == 'actividad_a_tiempo' and not self.activity_id:
+            problems.append("«% a tiempo» sin actividad medida")
+        if self.calc_mode == 'entregable_completo':
+            deliverable = self._sgi_measured_deliverable()
+            if not deliverable.odoo_model_id:
+                problems.append("«% completo» sin entregable con modelo de Odoo")
+            elif not (deliverable.complete_domain or '').strip():
+                problems.append("el entregable %s no dice cuándo está completo" % deliverable.name)
         if not self.target_objective:
             problems.append("sin meta")
         if not (self.formula or '').strip():
@@ -748,7 +888,7 @@ class SgiActivityWeekCounts(models.Model):
             base = line._sgi_applicable_domain()
             counts['applicable_count'] += In.search_count(
                 base + [(in_date, '>=', week_start), (in_date, '<', week_end)])
-            if not line.max_days or Out is None:
+            if not line._sgi_has_deadline() or Out is None:
                 continue
             same = In._name == Out._name
             if not same and not line.match_path:
@@ -759,8 +899,8 @@ class SgiActivityWeekCounts(models.Model):
                 (in_date, '>=', week_end - timedelta(days=self.env['sgi.activity.week.stat']._LOOKBACK_DAYS)),
                 (in_date, '<', week_end)])
             for rec in candidates:
-                due = sgi_add_business_days(env, rec[in_date], line.max_days, self.company_id)
-                if due >= week_end.date():
+                due = line._sgi_due(rec, in_date)
+                if due is None or due >= week_end.date():
                     continue
                 if same:
                     delivered = Out.search_count(out_domain + [
@@ -770,13 +910,21 @@ class SgiActivityWeekCounts(models.Model):
                         (line.match_path, '=', rec.id), (out_date, '<', week_end)], limit=1)
                 if not delivered:
                     counts['late_open_count'] += 1
-            # A tiempo: salidas de la semana contra su entrada.
+            # A tiempo: salidas de la semana contra su entrada. Si la salida
+            # apunta a varias entradas (la revisión por la dirección y sus
+            # auditorías), manda la última: la salida no podía hacerse antes.
             for rec in done:
-                source = rec if same else rec.mapped(line.match_path)[:1]
+                if same:
+                    source = rec
+                else:
+                    sources = rec.mapped(line.match_path).filtered(in_date)
+                    source = sources.sorted(in_date)[-1:] if sources else sources
                 if not source or not source[in_date]:
                     continue
+                due = line._sgi_due(source, in_date)
+                if due is None:
+                    continue
                 counts['timed_count'] += 1
-                due = sgi_add_business_days(env, source[in_date], line.max_days, self.company_id)
                 if rec[out_date] and fields.Datetime.to_datetime(rec[out_date]).date() <= due:
                     counts['on_time_count'] += 1
             break   # la primera entrada con plazo que se liga es la que manda

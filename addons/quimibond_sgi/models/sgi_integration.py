@@ -163,10 +163,13 @@ class MaintenanceRequest(models.Model):
             'sgi_origin_type': 'proceso',
             'sgi_deviation': "Solicitud de mantenimiento «%s» sobre el equipo «%s».\n%s" % (
                 self.name or '', equipment_name, self.description or ''),
+            'sgi_maintenance_request_id': self.id,  # S5.06: de qué solicitud viene
         }
         if team:
             vals['team_id'] = team.id
         alert = self.env['quality.alert'].sgi_auto_create('mantenimiento_falla', vals)
+        if not alert:  # fuente apagada en Configuración → Fuentes de NC
+            return False
         self.sgi_alert_id = alert.id
         self.message_post(body="Se levantó la NC <b>%s</b> por esta falla." % (
             alert.sgi_folio or alert.name))

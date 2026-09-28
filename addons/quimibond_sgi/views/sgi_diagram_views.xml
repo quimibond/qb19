@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tipo de vista «sgi_diagram» (54.0.0, models/sgi_diagram_view.py): el
+         diagrama entra al selector de vistas de la acción, junto a lista,
+         kanban y formulario. Una sola entrada de menú por objeto; nada de
+         submenú «Diagramas». `kind` = diagrama que abre; `kinds` = pestañas. -->
+
+    <record id="sgi_process_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.process.sgi_diagram</field>
+        <field name="model">sgi.process</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="process_map" kinds="process_map,interaction_matrix,roles_map,doc_pyramid"/>
+        </field>
+    </record>
+
+    <record id="sgi_process_activity_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.process.activity.sgi_diagram</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="process_flow" kinds="process_flow,sipoc,pdca"/>
+        </field>
+    </record>
+
+    <record id="sgi_risk_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.risk.sgi_diagram</field>
+        <field name="model">sgi.risk</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="risk_matrix"/>
+        </field>
+    </record>
+
+    <record id="sgi_legal_requirement_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.legal.requirement.sgi_diagram</field>
+        <field name="model">sgi.legal.requirement</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="legal_matrix"/>
+        </field>
+    </record>
+
+    <record id="sgi_interested_party_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.interested.party.sgi_diagram</field>
+        <field name="model">sgi.interested.party</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="context_map"/>
+        </field>
+    </record>
+
+    <record id="sgi_objective_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.objective.sgi_diagram</field>
+        <field name="model">sgi.objective</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="kpi_tree"/>
+        </field>
+    </record>
+
+    <record id="sgi_indicator_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.indicator.sgi_diagram</field>
+        <field name="model">sgi.indicator</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="kpi_tree"/>
+        </field>
+    </record>
+
+    <record id="sgi_policy_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.policy.sgi_diagram</field>
+        <field name="model">sgi.policy</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="kpi_tree"/>
+        </field>
+    </record>
+
+    <record id="sgi_management_review_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.management.review.sgi_diagram</field>
+        <field name="model">sgi.management.review</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="management_review"/>
+        </field>
+    </record>
+
+    <record id="quality_alert_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">quality.alert.sgi_diagram</field>
+        <field name="model">quality.alert</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="nc_flow"/>
+        </field>
+    </record>
+
+    <record id="sgi_audit_program_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.audit.program.sgi_diagram</field>
+        <field name="model">sgi.audit.program</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="audit_program"/>
+        </field>
+    </record>
+
+    <record id="sgi_emergency_plan_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.emergency.plan.sgi_diagram</field>
+        <field name="model">sgi.emergency.plan</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="emergency_map"/>
+        </field>
+    </record>
+
+    <record id="maintenance_equipment_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">maintenance.equipment.sgi_diagram</field>
+        <field name="model">maintenance.equipment</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="calibration_map"/>
+        </field>
+    </record>
+
+    <record id="documents_document_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">documents.document.sgi_diagram</field>
+        <field name="model">documents.document</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="doc_tree" kinds="doc_tree,doc_pyramid"/>
+        </field>
+    </record>
+
+    <record id="sgi_competence_gap_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.competence.gap.sgi_diagram</field>
+        <field name="model">sgi.competence.gap</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="competence_matrix"/>
+        </field>
+    </record>
+
+    <record id="sgi_activity_exec_stat_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">sgi.activity.exec.stat.sgi_diagram</field>
+        <field name="model">sgi.activity.exec.stat</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="who_does_what"/>
+        </field>
+    </record>
+
+    <record id="hr_job_view_sgi_diagram" model="ir.ui.view">
+        <field name="name">hr.job.sgi_diagram</field>
+        <field name="model">hr.job</field>
+        <field name="arch" type="xml">
+            <sgi_diagram kind="roles_map" kinds="roles_map,who_does_what"/>
+        </field>
+    </record>
+
+    <!-- El diagrama como vista más de cada acción existente -->
+
+    <record id="sgi_risk_action" model="ir.actions.act_window">
+        <field name="view_mode">kanban,list,sgi_diagram,pivot,form,activity</field>
+    </record>
+
+    <record id="sgi_legal_requirement_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_interested_party_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_objective_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_indicator_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form,activity</field>
+    </record>
+
+    <record id="sgi_policy_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_management_review_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_audit_program_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_emergency_plan_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form,activity</field>
+    </record>
+
+    <record id="sgi_equipment_action_measuring" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_document_action" model="ir.actions.act_window">
+        <field name="view_mode">list,sgi_diagram,form</field>
+    </record>
+
+    <record id="sgi_competence_gap_action" model="ir.actions.act_window">
+        <field name="view_mode">pivot,sgi_diagram,list</field>
+    </record>
+
+    <record id="sgi_activity_exec_stat_action_who" model="ir.actions.act_window">
+        <field name="view_mode">pivot,sgi_diagram,list,graph</field>
+    </record>
+
+    <!-- Puestos: quién ejecuta qué, desde Empleados → Puestos (SGI) -->
+    <record id="sgi_hr_job_action_roles" model="ir.actions.act_window">
+        <field name="name">Puestos y procesos</field>
+        <field name="res_model">hr.job</field>
+        <field name="view_mode">sgi_diagram,list,form</field>
+        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin puestos</p></field>
+    </record>
+
+</odoo>

@@ -57,10 +57,19 @@ def sgi_business_days(env, start, end, company=None):
 
 def sgi_add_business_days(env, start, days, company=None):
     """Fecha (date) en que vence algo que llegó en ``start`` con ``days``
-    días hábiles de plazo: la entrada del viernes con 1 día vence el lunes."""
+    días hábiles de plazo: la entrada del viernes con 1 día vence el lunes.
+    ``days`` negativo cuenta hacia atrás (-2 = dos días hábiles antes)."""
     day = start.date() if isinstance(start, datetime) else start
     if not days:
         return day
+    if days < 0:
+        back = -days
+        horizon = day - timedelta(days=back * 3 + 15)
+        dates = sorted((d for d in _working_dates(env, horizon, day - timedelta(days=1), company)),
+                       reverse=True)
+        if len(dates) >= back:
+            return dates[back - 1]
+        return horizon
     horizon = day + timedelta(days=days * 3 + 15)
     dates = sorted(d for d in _working_dates(env, day + timedelta(days=1), horizon, company))
     if len(dates) >= days:

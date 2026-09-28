@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- COA al cliente: sale desde el botón «Adjuntar COA» de la entrega con
+         los PDF adjuntos. noupdate: Calidad puede ajustar el texto. -->
+    <data noupdate="1">
+        <record id="mail_template_sgi_coa" model="mail.template">
+            <field name="name">SGI: COA al cliente</field>
+            <field name="model_id" ref="stock.model_stock_picking"/>
+            <field name="subject">COA {{ object.partner_id.commercial_partner_id.name }} – {{ object.name }} – {{ object.sale_id.name or object.origin or '' }}</field>
+            <field name="body_html" type="html">
+<div>
+    <p>Buen día,</p>
+    <p>Adjuntamos el certificado de análisis (COA) del embarque
+        <strong t-out="object.name"/>
+        <t t-if="object.sale_id"> del pedido <strong t-out="object.sale_id.name"/></t>
+        <t t-if="object.sale_id.client_order_ref"> (su orden <strong t-out="object.sale_id.client_order_ref"/>)</t>.</p>
+    <p>Saludos,<br/><t t-out="user.name"/><br/>
+        <t t-out="object.company_id.name"/></p>
+</div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+    </data>
+</odoo>

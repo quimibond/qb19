@@ -57,18 +57,6 @@
         </field>
     </record>
 
-    <record id="sgi_activity_role_action" model="ir.actions.act_window">
-        <field name="name">Roles por puesto</field>
-        <field name="res_model">sgi.activity.role</field>
-        <field name="view_mode">list</field>
-        <field name="search_view_id" ref="sgi_activity_role_view_search"/>
-        <field name="context">{'search_default_group_job': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Quién hace qué, por puesto</p>
-            <p>Cada fila dice qué papel tiene un puesto en una actividad: la <b>ejecuta</b>, la <b>aprueba</b>, <b>participa</b> o <b>se entera</b>. De aquí salen el procedimiento, la descripción de puesto y la medición de quién la hace de verdad.</p>
-        </field>
-    </record>
-
     <!-- ====== Entregables: lo que pasa de una actividad a otra ====== -->
     <record id="sgi_deliverable_view_list" model="ir.ui.view">
         <field name="name">sgi.deliverable.list</field>
@@ -175,17 +163,6 @@
         </field>
     </record>
 
-    <record id="sgi_deliverable_action" model="ir.actions.act_window">
-        <field name="name">Entregables</field>
-        <field name="res_model">sgi.deliverable</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_deliverable_view_search"/>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Lo que pasa de un paso al siguiente</p>
-            <p>El pedido confirmado, el programa semanal, el lote liberado. Se captura una vez; cada actividad dice cuál <b>recibe</b> y cuál <b>entrega</b>, y las ligas entre actividades, los flujos entre procesos y las entradas y salidas de cada proceso salen solos.</p>
-        </field>
-    </record>
-
     <!-- ====== Familias de puestos ====== -->
     <record id="sgi_job_family_view_list" model="ir.ui.view">
         <field name="name">sgi.job.family.list</field>
@@ -287,18 +264,6 @@
         </field>
     </record>
 
-    <record id="sgi_activity_exec_stat_view_graph" model="ir.ui.view">
-        <field name="name">sgi.activity.exec.stat.graph</field>
-        <field name="model">sgi.activity.exec.stat</field>
-        <field name="arch" type="xml">
-            <graph string="Tendencia de ejecuciones" type="bar" stacked="1" sample="1">
-                <field name="period_start" interval="week"/>
-                <field name="exec_class"/>
-                <field name="count" type="measure"/>
-            </graph>
-        </field>
-    </record>
-
     <record id="sgi_activity_exec_stat_view_search" model="ir.ui.view">
         <field name="name">sgi.activity.exec.stat.search</field>
         <field name="model">sgi.activity.exec.stat</field>
@@ -343,18 +308,6 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Quién ejecuta cada actividad</p>
             <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambia las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
-        </field>
-    </record>
-
-    <record id="sgi_activity_exec_stat_action_trend" model="ir.actions.act_window">
-        <field name="name">Tendencia</field>
-        <field name="res_model">sgi.activity.exec.stat</field>
-        <field name="view_mode">graph,pivot,list</field>
-        <field name="view_id" ref="sgi_activity_exec_stat_view_graph"/>
-        <field name="search_view_id" ref="sgi_activity_exec_stat_view_search"/>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Ejecuciones por semana</p>
-            <p>Apiladas por clase de ejecución. Filtra por proceso en el panel de la izquierda.</p>
         </field>
     </record>
 

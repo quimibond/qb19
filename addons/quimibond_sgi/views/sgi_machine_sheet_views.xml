@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_machine_sheet_view_form" model="ir.ui.view">
+        <field name="name">sgi.machine.sheet.form</field>
+        <field name="model">sgi.machine.sheet</field>
+        <field name="arch" type="xml">
+            <form string="Ficha técnica de proceso por máquina">
+                <header>
+                    <button name="action_set_current" type="object" string="Poner en vigor" class="btn-primary"
+                            invisible="state != 'borrador'" groups="quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager"/>
+                    <button name="action_new_revision" type="object" string="Nueva revisión" invisible="state != 'vigente'"/>
+                    <button name="action_set_obsolete" type="object" string="Marcar obsoleta" invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,vigente"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Obsoleta" bg_color="text-bg-secondary" invisible="state != 'obsoleta'"/>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="product_id" readonly="state != 'borrador'"/>
+                            <field name="workcenter_id" readonly="state != 'borrador'"/>
+                            <field name="area" readonly="state != 'borrador'"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'borrador'"/>
+                            <field name="revision" readonly="1"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Materia prima" name="yarn">
+                            <field name="yarn_line_ids" readonly="state != 'borrador'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="fiber"/>
+                                    <field name="feed"/>
+                                    <field name="yarn_type"/>
+                                    <field name="title"/>
+                                    <field name="twist"/>
+                                    <field name="consumption"/>
+                                    <field name="pct"/>
+                                </list>
+                            </field>
+                            <group string="Poleas">
+                                <group>
+                                    <field name="pulley_1" readonly="state != 'borrador'"/>
+                                    <field name="pulley_2" readonly="state != 'borrador'"/>
+                                </group>
+                                <group>
+                                    <field name="pulley_3" readonly="state != 'borrador'"/>
+                                    <field name="pulley_4" readonly="state != 'borrador'"/>
+                                </group>
+                            </group>
+                            <field name="yarn_note" placeholder="Observaciones de materia prima" readonly="state != 'borrador'"/>
+                        </page>
+                        <page string="Máquina y tela acondicionada" name="params">
+                            <field name="param_line_ids" readonly="state != 'borrador'">
+                                <list editable="bottom" default_group_by="section">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="section"/>
+                                    <field name="name"/>
+                                    <field name="spec"/>
+                                    <field name="tolerance"/>
+                                    <field name="unit"/>
+                                </list>
+                            </field>
+                            <group>
+                                <field name="machine_note" readonly="state != 'borrador'"/>
+                                <field name="fabric_note" readonly="state != 'borrador'"/>
+                            </group>
+                        </page>
+                        <page string="Firmas" name="signatures">
+                            <group>
+                                <group>
+                                    <field name="lab_user_id"/>
+                                    <field name="mechanic_user_id"/>
+                                </group>
+                                <group>
+                                    <field name="approved_by_id"/>
+                                    <field name="engineering_by_id"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_machine_sheet_view_list" model="ir.ui.view">
+        <field name="name">sgi.machine.sheet.list</field>
+        <field name="model">sgi.machine.sheet</field>
+        <field name="arch" type="xml">
+            <list string="Fichas de proceso por máquina" decoration-muted="state == 'obsoleta'" decoration-info="state == 'borrador'">
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="workcenter_id"/>
+                <field name="area" optional="show"/>
+                <field name="date"/>
+                <field name="revision"/>
+                <field name="state" widget="badge" decoration-success="state == 'vigente'" decoration-info="state == 'borrador'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_machine_sheet_view_search" model="ir.ui.view">
+        <field name="name">sgi.machine.sheet.search</field>
+        <field name="model">sgi.machine.sheet</field>
+        <field name="arch" type="xml">
+            <search string="Fichas de proceso por máquina">
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="workcenter_id"/>
+                <filter name="current" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
+                <filter name="draft" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="obsolete" string="Obsoletas" domain="[('state', '=', 'obsoleta')]"/>
+                <group>
+                    <filter name="group_workcenter" string="Máquina" context="{'group_by': 'workcenter_id'}"/>
+                    <filter name="group_product" string="Artículo" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_machine_sheet_action" model="ir.actions.act_window">
+        <field name="name">Fichas de proceso por máquina</field>
+        <field name="res_model">sgi.machine.sheet</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_current': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea la primera ficha de proceso</p>
+            <p>Los parámetros con los que se corre cada artículo en cada máquina (hilos, poleas, condiciones y tela
+            acondicionada con especificación y tolerancia). Sustituye el Excel F-IT-P-P01-08-05. Una ficha vigente por
+            artículo y máquina; al poner en vigor una nueva la anterior queda obsoleta.</p>
+        </field>
+    </record>
+
+    <record id="sgi_workcenter_view_form_machine_sheet" model="ir.ui.view">
+        <field name="name">mrp.workcenter.form.inherit.sgi.machine.sheet</field>
+        <field name="model">mrp.workcenter</field>
+        <field name="inherit_id" ref="mrp.mrp_workcenter_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="%(sgi_machine_sheet_action)d" type="action" class="oe_stat_button" icon="fa-file-text-o"
+                        context="{'search_default_workcenter_id': id, 'default_workcenter_id': id}">
+                    <span class="o_stat_text">Fichas de proceso</span>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

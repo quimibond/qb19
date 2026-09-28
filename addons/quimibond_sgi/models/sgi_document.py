@@ -75,6 +75,14 @@ class DocumentsDocument(models.Model):
              "El botón «Abrir en Odoo» salta directo a él.")
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
     sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI")
+    # P-3: el documento apunta al cambio documental que lo dejó así (alta,
+    # modificación o baja aprobada). Es la liga con la que E2.02 «Publicar el
+    # documento vigente» se mide contra su entrada (match: sgi_doc_change_id).
+    sgi_doc_change_id = fields.Many2one(
+        'approval.request', string="Último cambio documental", copy=False,
+        readonly=True, index=True, ondelete='set null',
+        help="Solicitud de cambio documental aprobada que produjo esta versión "
+             "(la de alta, o la última modificación o baja aplicada).")
     # Revisión como número: se compara, se ordena y no se captura «A» ni
     # «00» por omisión. La etiqueta de dos dígitos es para imprimir.
     sgi_revision = fields.Integer(string="Revisión", tracking=True)
@@ -90,7 +98,9 @@ class DocumentsDocument(models.Model):
         ('piloto', "Prueba piloto"),
         ('vigente', "Vigente"),
         ('obsoleto', "Obsoleto"),
-    ], string="Estado SGI", default='borrador', tracking=True)
+    ], string="Estado SGI", tracking=True,
+        help="Solo los documentos controlados del SGI llevan estado; los demás "
+             "archivos de Documentos quedan sin él (2026-09-25).")
     sgi_owner_id = fields.Many2one('res.users', string="Responsable SGI")
     sgi_job_ids = fields.Many2many('hr.job', 'sgi_document_job_rel', 'document_id', 'job_id',
                                    string="Puestos a los que aplica")
@@ -342,6 +352,18 @@ class DocumentsDocument(models.Model):
         for doc in self:
             doc.sgi_revision_label = "%02d" % (doc.sgi_revision or 0)
 
+    def _sgi_share_controlled(self):
+        """Un documento controlado en piloto o vigente lo lee cualquier usuario
+        interno (es lo que cada puesto debe leer y firmar), sin depender de la
+        carpeta. Documents 18+: `access_internal`; no se baja un «editor»."""
+        if 'access_internal' not in self._fields:
+            return
+        docs = self.sudo().filtered(
+            lambda d: d.sgi_is_controlled and d.sgi_state in ('piloto', 'vigente')
+            and (d.access_internal or 'none') == 'none')
+        if docs:
+            super(DocumentsDocument, docs).write({'access_internal': 'view'})
+
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type_id', 'sgi_process_id')
     def _check_sgi_code(self):
         """La clave cumple la nomenclatura de su TIPO (patrón nuevo o clave
@@ -554,9 +576,12 @@ class DocumentsDocument(models.Model):
     def create(self, vals_list):
         # Obsoleta versiones previas ANTES de crear la nueva vigente (evita el candado de unicidad)
         for vals in vals_list:
+            if vals.get('sgi_is_controlled') and not vals.get('sgi_state'):
+                vals['sgi_state'] = 'borrador'
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
         docs = super().create(vals_list)
+        docs._sgi_share_controlled()
         for state in ('piloto', 'vigente'):
             docs.filtered(lambda d, state=state: d.sgi_state == state)\
                 ._sgi_check_procedure_measures(state, created=True)
@@ -572,6 +597,7 @@ class DocumentsDocument(models.Model):
             if request and not request.sgi_document_id:
                 doc = docs[0]
                 request.sudo().write({'sgi_document_id': doc.id})
+                doc.sudo().write({'sgi_doc_change_id': request.id})
                 doc.message_post(
                     body="Documento creado desde la solicitud de alta aprobada "
                          "<b>%s</b>." % (request.name or ''))
@@ -619,6 +645,13 @@ class DocumentsDocument(models.Model):
                     'sgi_previous_code_date': today,
                 })
         res = super().write(vals)
+        if vals.get('sgi_is_controlled') and 'sgi_state' not in vals:
+            # Al volverse controlado sin estado, arranca en borrador.
+            fresh = self.filtered(lambda d: not d.sgi_state)
+            if fresh:
+                super(DocumentsDocument, fresh).write({'sgi_state': 'borrador'})
+        if 'sgi_state' in vals or 'sgi_is_controlled' in vals:
+            self._sgi_share_controlled()
         if 'sgi_revision' in vals or 'sgi_code' in vals:
             self._sgi_check_revision_increases(old_revisions)
         if vals.get('sgi_state') == 'vigente':
@@ -641,7 +674,7 @@ class DocumentsDocument(models.Model):
         for doc in self:
             if not doc.sgi_job_ids:
                 continue
-            employees = self.env['hr.employee'].search([('job_id', 'in', doc.sgi_job_ids.ids)])
+            employees = self.env['hr.employee'].sudo().search([('job_id', 'in', doc.sgi_job_ids.ids)])
             existing = doc.sgi_ack_ids.mapped('employee_id')
             to_create = [{
                 'document_id': doc.id,

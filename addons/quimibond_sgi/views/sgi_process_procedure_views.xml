@@ -93,6 +93,8 @@
                                     <field name="applies_note" optional="show"/>
                                     <field name="applies_domain" optional="hide"/>
                                     <field name="match_path" optional="hide"/>
+                                    <field name="due_field" optional="hide"/>
+                                    <field name="offset_days" optional="hide"/>
                                 </list>
                             </field>
                             <group>
@@ -480,18 +482,6 @@
         </field>
     </record>
 
-    <record id="sgi_process_activity_action_mine" model="ir.actions.act_window">
-        <field name="name">Mis actividades de procedimiento</field>
-        <field name="res_model">sgi.process.activity</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_process_activity_view_search"/>
-        <field name="context">{'search_default_my_activities': 1, 'search_default_group_process': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Los pasos de procedimiento que le tocan a tu puesto</p>
-            <p>Aquí ves <b>qué te toca hacer y dónde</b>: cada línea es un numeral de procedimiento asignado a tu puesto, con su formato y el botón <i>Abrir en Odoo</i> que te lleva directo al menú donde se ejecuta. Si está vacío, pide a RH que asigne tu puesto (hr.job) a tu ficha de empleado.</p>
-        </field>
-    </record>
-
     <!-- ====== Cadena de actividades: el hilo conductor paso a paso ====== -->
     <record id="sgi_activity_link_view_list" model="ir.ui.view">
         <field name="name">sgi.activity.link.list</field>
@@ -528,6 +518,10 @@
                 <field name="to_activity_id"/>
                 <field name="from_process_id"/>
                 <field name="to_process_id"/>
+                <filter name="vigentes" string="Estructura vigente"
+                        domain="[('from_activity_id.active', '=', True), ('to_activity_id.active', '=', True)]"
+                        help="Ligas entre actividades activas (de procesos vigentes)."/>
+                <separator/>
                 <filter name="cross" string="Cruzan procesos"
                         domain="[('is_cross_process', '=', True)]"/>
                 <filter name="internal" string="Dentro del proceso"
@@ -549,18 +543,6 @@
                             context="{'group_by': 'to_process_id'}"/>
                 </group>
             </search>
-        </field>
-    </record>
-
-    <record id="sgi_activity_link_action" model="ir.actions.act_window">
-        <field name="name">Cadena de actividades</field>
-        <field name="res_model">sgi.activity.link</field>
-        <field name="view_mode">list</field>
-        <field name="search_view_id" ref="sgi_activity_link_view_search"/>
-        <field name="context">{'search_default_group_from': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">El hilo conductor de la operación</p>
-            <p>Cada liga dice <b>qué entregable pasa de un paso al siguiente</b> — el pedido confirmado, el programa semanal, el lote liberado — incluso cruzando procesos. Salen solas de lo que cada actividad recibe y entrega (catálogo de entregables) y se imprimen en el procedimiento.</p>
         </field>
     </record>
 
@@ -600,81 +582,4 @@
     </record>
 
     <!-- ====== Pestaña "Procedimiento" en la ficha del proceso ====== -->
-    <record id="sgi_process_view_form_procedure" model="ir.ui.view">
-        <field name="name">sgi.process.form.procedure</field>
-        <field name="model">sgi.process</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//form/header" position="inside">
-                    <button name="action_print_procedure" type="object"
-                            string="Imprimir procedimiento" icon="fa-print"
-                            invisible="activity_count == 0"/>
-            </xpath>
-            <xpath expr="//page[@name='entradas_salidas']" position="before">
-                <page string="Actividades" name="procedimiento">
-                    <div class="mb-2">
-                        <span class="text-muted"><field name="measure_method_summary" class="d-inline"/></span>
-                    </div>
-                    <field name="stage_ids" context="{'default_process_id': id}">
-                        <list editable="bottom" string="Etapas">
-                            <field name="sequence" widget="handle"/>
-                            <field name="code" string="Letra"/>
-                            <field name="name"/>
-                            <field name="activity_count"/>
-                        </list>
-                    </field>
-                    <field name="procedure_activity_ids" context="{'default_process_id': id}">
-                        <list string="Actividades" default_order="sequence, number"
-                              decoration-danger="measure_state == 'rojo'"
-                              decoration-muted="not measure_method">
-                            <field name="sequence" widget="handle"/>
-                            <field name="number"/>
-                            <field name="name"/>
-                            <field name="stage_id" optional="show"/>
-                            <field name="executor_role_ids" widget="many2many_tags"/>
-                            <field name="input_deliverable_ids" widget="many2many_tags" optional="hide"/>
-                            <field name="output_deliverable_ids" widget="many2many_tags" optional="show"/>
-                            <field name="approver_role_ids" widget="many2many_tags" optional="show"/>
-                            <field name="measure_method" optional="show"/>
-                            <field name="measure_state" widget="badge" optional="show"
-                                   decoration-success="measure_state == 'verde'"
-                                   decoration-danger="measure_state == 'rojo'"/>
-                            <field name="measure_adherence_pct" optional="show"/>
-                            <field name="instruction_id" optional="hide"/>
-                            <field name="format_document_ids" widget="many2many_tags" optional="hide"/>
-                            <field name="odoo_menu_id" column_invisible="1"/>
-                            <field name="odoo_ref" column_invisible="1"/>
-                            <field name="measure_model_id" column_invisible="1"/>
-                            <button name="action_open_odoo" type="object"
-                                    title="Abrir en Odoo" icon="fa-external-link"
-                                    invisible="not odoo_menu_id and not measure_model_id and not odoo_ref"/>
-                        </list>
-                    </field>
-                    <separator string="Texto del procedimiento (sale en el PDF)"/>
-                    <group>
-                        <field name="scope" placeholder="A qué áreas aplica…"/>
-                        <field name="env_aspects"/>
-                        <field name="norm_ids" widget="many2many_tags"/>
-                    </group>
-                    <field name="job_responsibility_ids">
-                        <list string="Responsabilidades" editable="bottom">
-                            <field name="sequence" widget="handle"/>
-                            <field name="name"/>
-                            <field name="job_id"/>
-                            <field name="responsibilities"/>
-                        </list>
-                    </field>
-                    <group string="Firmas">
-                        <group>
-                            <field name="doc_owner_id"/>
-                            <field name="doc_approver_id"/>
-                        </group>
-                        <group>
-                            <field name="doc_vobo_id"/>
-                        </group>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
 </odoo>

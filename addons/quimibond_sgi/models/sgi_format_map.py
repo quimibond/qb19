@@ -3,7 +3,7 @@ import logging
 import re
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 from .sgi_document import SGI_CODE_REGEX
 
@@ -80,6 +80,16 @@ class SgiConfig(models.AbstractModel):
         # Días por omisión de una prueba piloto documental.
         'quimibond_sgi.pilot_days': '60',
         'quimibond_sgi.nc_escalation_days_external': '3',
+        # NC-1/NC-3 (49.0.0): plazos por etapa en días hábiles desde que se
+        # abre la NC, días de gracia antes de escalar a MAST y días para la
+        # verificación de eficacia tras la última acción correctiva.
+        'quimibond_sgi.nc_days_containment': '1',
+        'quimibond_sgi.nc_days_root_cause': '10',
+        'quimibond_sgi.nc_days_plan': '15',
+        'quimibond_sgi.nc_escalation_mast_days': '3',
+        'quimibond_sgi.nc_effectiveness_days': '90',
+        # NC-6: días hábiles que tiene el proveedor para contestar por el portal.
+        'quimibond_sgi.nc_days_supplier_response': '5',
         'quimibond_sgi.nc_recurrence_months': '12',
         'quimibond_sgi.action_escalation_manager_days': '7',
         'quimibond_sgi.action_escalation_director_days': '15',
@@ -97,7 +107,30 @@ class SgiConfig(models.AbstractModel):
         # Días de gracia del OTD de proveedores (comparación por día calendario).
         'quimibond_sgi.supplier_otd_tolerance_days': '1',
         'quimibond_sgi.pesaje_tolerance_kg': '3.0',
+        # I-3: desperdicio en kg y compras de materia prima (sgi_indicator_i3.py).
+        'quimibond_sgi.waste_location_ids': '39,43',
+        'quimibond_sgi.waste_input_categ_ids': '350,356',
+        'quimibond_sgi.raw_material_categ_id': '318',
+        # P-21: tipos de operación que cuentan como reproceso (MA-04).
+        # Re-proceso Tintorería (106) y Re-proceso Acabado (107); «Acabado
+        # producto en proceso» (151) entra cuando producción lo confirme.
+        'quimibond_sgi.rework_picking_type_ids': '106,107',
+        # I-6: día hábil del mes en que se miden los indicadores mensuales.
+        'quimibond_sgi.monthly_measure_business_day': '3',
+        # I-4: día del mes siguiente en que vence la causa y acción de un rojo.
+        'quimibond_sgi.red_plan_due_day': '10',
+        # I-2: mínimo de casos para que una medición cuente para NC.
+        'quimibond_sgi.indicator_min_sample': '5',
+        # P-7: no surtir lotes sin liberar (models/sgi_release.py).
+        'quimibond_sgi.release_block_enabled': 'True',
+        'quimibond_sgi.release_block_picking_type_ids': '113,210',
+        'quimibond_sgi.unreleased_location_ids': '324,44,36,246,45',
         'quimibond_sgi.waste_subproduct_category': 'SubProducto',
+        # COA (sgi_coa): el bloqueo al validar una salida sin COA se enciende
+        # cuando el cambio se implemente formalmente; la excepción es del
+        # puesto Jefe de Calidad.
+        'quimibond_sgi.coa_block_validation': 'False',
+        'quimibond_sgi.coa_exception_job_id': '204',
         'quimibond_sgi.monthly_sales_budget': '0',
         'quimibond_sgi.rh_user_id': '0',
         'quimibond_sgi.purchase_approval_category_id': '0',
@@ -214,13 +247,9 @@ class SgiConfig(models.AbstractModel):
         for measure in measures:
             indicator = measure.indicator_id
             date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
-            value = indicator._sgi_compute_value(date_from, date_to)
-            if value is None:
+            vals = indicator._sgi_measure_vals(date_from, date_to)
+            if vals.get('state') != 'capturado':
                 continue
-            vals = {'value': value, 'state': 'capturado'}
-            note = indicator._sgi_compute_note(date_from, date_to)
-            if note:
-                vals['note'] = note
             measure.write(vals)
         return True
 
@@ -529,6 +558,20 @@ class SgiConfig(models.AbstractModel):
                 norm = Norm.create({'code': code, 'name': name})
             norm_ids.append(norm.id)
         process.norm_ids = [(6, 0, norm_ids)]
+
+        # Candado: la reconstrucción borra las actividades del proceso. Solo
+        # procede si todas las que hay salieron de esta misma semilla; si
+        # alguna vino de otro lado (la carga del catálogo, captura de MAST),
+        # se detiene en vez de borrar el trabajo real.
+        seeded = {row[4] for row in self._SGI_VENTAS_ACTIVITIES}  # descripción
+        foreign = process.procedure_activity_ids.filtered(
+            lambda a: (a.description or '') not in seeded)
+        if foreign:
+            raise UserError(
+                "La semilla del piloto P-A28 no se aplica: el proceso Ventas ya "
+                "tiene %d actividad(es) que no salieron de ella (p. ej. «%s»). "
+                "Reconstruirlo las borraría." % (
+                    len(foreign), foreign[0].display_name))
 
         # Reconstrucción idempotente de responsabilidades y actividades.
         process.job_responsibility_ids.unlink()

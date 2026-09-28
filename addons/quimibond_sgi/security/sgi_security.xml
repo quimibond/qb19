@@ -24,18 +24,26 @@
             (4, ref('approvals.group_approval_user'))]"/>
     </record>
 
+    <!-- Auditor SGI (PERM-1, 19.0.48.0.0): SOLO LECTURA. Lee todo el SGI y
+         los registros de los procesos auditados (NC, inspecciones,
+         documentos, tickets, compras, entregas, órdenes de producción,
+         mantenimiento, ventas, encuestas, firmas) y solo escribe hallazgos
+         (y la auditoría misma: programa, minutas, checklist). Ya no implica
+         Usuario SGI: un auditor que además opera su puesto lleva los dos
+         grupos, y lo que escribe lo escribe como usuario, no como auditor. -->
     <record id="group_sgi_auditor" model="res.groups">
         <field name="name">Auditor SGI</field>
         <field name="sequence">20</field>
         <field name="privilege_id" ref="res_groups_privilege_sgi"/>
-        <field name="implied_ids" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="implied_ids" eval="[(3, ref('group_sgi_user')), (4, ref('base.group_user'))]"/>
     </record>
 
     <record id="group_sgi_manager" model="res.groups">
         <field name="name">Jefe MAST y SGI</field>
         <field name="sequence">30</field>
         <field name="privilege_id" ref="res_groups_privilege_sgi"/>
-        <field name="implied_ids" eval="[(4, ref('group_sgi_auditor')),
+        <field name="implied_ids" eval="[(4, ref('group_sgi_user')),
+            (4, ref('group_sgi_auditor')),
             (4, ref('quality.group_quality_manager')),
             (4, ref('documents.group_documents_manager')),
             (4, ref('helpdesk.group_helpdesk_manager')),

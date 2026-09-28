@@ -40,6 +40,19 @@
             <field name="nextcall" eval="(DateTime.now() + timedelta(minutes=30)).strftime('%Y-%m-%d %H:%M:%S')"/>
         </record>
 
+        <!-- El de cada hora solo repasa lo reciente (sat.cfdi.MATCH_RECENT_DAYS);
+             de noche se repasan todos los pendientes. -->
+        <record id="cron_sat_match_unmatched_full" model="ir.cron">
+            <field name="name">SAT (Syntage) - Cruzar todos los CFDI pendientes (noche)</field>
+            <field name="model_id" ref="model_sat_cfdi"/>
+            <field name="state">code</field>
+            <field name="code">model._cron_match_unmatched(full=True)</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="active">True</field>
+            <field name="nextcall" eval="(DateTime.now().replace(hour=8, minute=30, second=0, microsecond=0) + timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        </record>
+
         <!-- Cola de descargas/extracciones por periodo (action_pull_period con
              background=True). Se dispara al encolar vía _trigger(); el horario
              diario es solo red de seguridad. -->

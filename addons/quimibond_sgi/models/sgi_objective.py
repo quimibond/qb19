@@ -39,6 +39,7 @@ class SgiObjective(models.Model):
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
+        ('sin_dato', "Sin dato"),
     ], string="Salud agregada", compute='_compute_health',
         help="Peor color entre los procesos de sus indicadores Y el último "
              "semáforo de cada indicador.")
@@ -55,7 +56,9 @@ class SgiObjective(models.Model):
             values = objective.indicator_ids.mapped('process_id').mapped('health')
             values += [semaphore_to_health.get(s) for s in
                        objective.indicator_ids.mapped('last_semaphore') if s]
-            objective.health = sgi_worst_health(values)
+            # Sin indicadores no hay con qué juzgar: «sin dato», no verde.
+            values = [v for v in values if v]
+            objective.health = sgi_worst_health(values) if values else 'sin_dato'
 
     def _compute_indicator_count(self):
         data = self.env['sgi.indicator']._read_group(

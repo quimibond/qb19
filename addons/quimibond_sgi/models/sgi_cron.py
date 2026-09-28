@@ -140,6 +140,13 @@ class SgiCron(models.AbstractModel):
         ])
 
         def _process(alert):
+            # NC-1 (49.0.0): plazos por etapa (contención / causa raíz / plan)
+            # con aviso el día que vencen y escalamiento al dueño del proceso
+            # y a MAST. Las NC viejas sin plazos los reciben aquí.
+            if not alert.sgi_due_plan:
+                alert._sgi_set_deadlines()
+            alert._sgi_deadline_escalation(today)
+            alert._sgi_supplier_escalation(today)  # NC-6
             days = external_days if alert.sgi_origin_type in ('auditoria_externa', 'reclamacion') else default_days
             deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')
@@ -347,6 +354,12 @@ class SgiCron(models.AbstractModel):
         last_prev = first_this - relativedelta(days=1)
         deadline = first_this + relativedelta(days=4)
         indicators = self.env['sgi.indicator'].search([('frequency', '=', 'monthly')])
+        self._sgi_step(
+            "foto del valor del inventario (S3-04)",
+            lambda: self.env['sgi.inventory.value'].sgi_snapshot(last_prev))
+        self._sgi_step(
+            "trayectorias faltantes",
+            lambda: self.env['sgi.indicator'].cron_missing_trajectories())
         self._sgi_step(
             "mediciones mensuales",
             lambda: self._sgi_generate_measures(
@@ -570,19 +583,11 @@ class SgiCron(models.AbstractModel):
                 ('period_date', '=', period_date),
             ], limit=1)
             if not measure:
-                vals = {'indicator_id': indicator.id, 'period_date': period_date}
-                value = indicator._sgi_compute_value(date_from, date_to)
-                if indicator.calc_mode != 'manual' and value is not None:
-                    vals['value'] = value
-                    vals['state'] = 'capturado'
-                    note = indicator._sgi_compute_note(date_from, date_to)
-                    if note:
-                        vals['note'] = note
-                else:
-                    vals['state'] = 'pendiente'
-                    note = indicator._sgi_compute_note(date_from, date_to)
-                    if note:
-                        vals['note'] = note
+                # Antes de «medir desde» no hay dato confiable: no se crea.
+                if not indicator._sgi_measurable_on(date_to):
+                    return
+                vals = dict(indicator._sgi_measure_vals(date_from, date_to),
+                            indicator_id=indicator.id, period_date=period_date)
                 measure = Measure.create(vals)
                 if measure.state == 'pendiente':
                     user_id = indicator.responsible_id.id or manager_id
@@ -652,15 +657,31 @@ class SgiCron(models.AbstractModel):
         manager_id = self._sgi_manager_user_id()
 
         def _process(risk):
-            owner = risk.process_id.owner_id.user_id
-            user_id = owner.id or manager_id
+            # Con el proceso archivado, la revisión va al Jefe MAST (el dueño
+            # del proceso sustituido ya no responde por él).
+            owner = risk.process_id.owner_id.user_id if risk.sgi_process_active else False
+            user_id = owner.id if owner else manager_id
             self._sgi_schedule(
                 risk,
                 "Revisar riesgo %s" % (risk.folio or risk.name),
-                "La revisión del riesgo/oportunidad venció el %s." % risk.next_review_date,
+                "Reevaluación periódica (enero / julio): la revisión del riesgo/oportunidad "
+                "venció el %s. Actualiza probabilidad e impacto y pulsa «Registrar "
+                "evaluación»." % risk.next_review_date,
                 user_id)
 
         self._sgi_for_each(risks, _process, "revisión de riesgos")
+        # DIR-2: riesgo alto sin acción abierta → actividad al dueño del proceso.
+        flagged = self.env['sgi.risk'].search([('high_without_action', '=', True)])
+
+        def _flagged(risk):
+            owner = risk.process_id.owner_id.user_id if risk.sgi_process_active else False
+            self._sgi_schedule(
+                risk, "Riesgo alto sin acción: %s" % (risk.folio or risk.name),
+                "El riesgo está en atención alta o inmediata y no tiene ninguna acción de "
+                "tratamiento abierta. Registra una acción con responsable y compromiso.",
+                owner.id if owner else manager_id)
+
+        self._sgi_for_each(flagged, _flagged, "riesgos altos sin acción")
         return True
 
     # ------------------------------------------------------------------
@@ -684,7 +705,17 @@ class SgiCron(models.AbstractModel):
             ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
             ('partner_id', '!=', False),
         ])
-        partners = pickings.mapped('partner_id.commercial_partner_id')
+        # Solo proveedores críticos (materia prima y maquila): los marcados en
+        # el contacto o los que en el periodo entregaron productos de las
+        # categorías críticas (Ajustes → SGI → Categorías de proveedores críticos).
+        critical_categs = self.env['sgi.supplier.eval']._sgi_critical_categ_ids()
+        if critical_categs:
+            critical_pickings = pickings.filtered(
+                lambda p: p.partner_id.commercial_partner_id.sgi_supplier_critical
+                or any(m.product_id.categ_id.id in critical_categs for m in p.move_ids))
+        else:
+            critical_pickings = pickings.filtered(lambda p: p.partner_id.commercial_partner_id.sgi_supplier_critical)
+        partners = critical_pickings.mapped('partner_id.commercial_partner_id')
         purchase_user_id = self._sgi_purchase_user_id()
 
         def _process(partner):
@@ -1037,6 +1068,22 @@ class SgiCron(models.AbstractModel):
 
         self._sgi_for_each(overdue, _overdue, "evaluaciones legales vencidas")
 
+        # DIR-1 (51.0.0): aviso 60 días antes de la próxima evaluación, al
+        # responsable del requisito (aparece en sus actividades y en Mis
+        # pendientes). Idempotente por resumen.
+        upcoming = Requirement.search([
+            ('next_eval_date', '>', today), ('next_eval_date', '<=', soon)])
+
+        def _upcoming(req):
+            self._sgi_schedule(
+                req,
+                "Evaluación de cumplimiento vence el %s: %s" % (req.next_eval_date, req.display_name),
+                "Evalúe el cumplimiento del requisito antes del %s y registre resultado, "
+                "evidencia y siguiente fecha («Registrar evaluación»)." % req.next_eval_date,
+                req.responsible_id.id or manager_id)
+
+        self._sgi_for_each(upcoming, _upcoming, "evaluaciones legales próximas")
+
         expiring = Requirement.search([
             ('expiry_date', '!=', False), ('expiry_date', '<=', soon),
         ])
@@ -1121,6 +1168,9 @@ class SgiCron(models.AbstractModel):
         self._sgi_step(
             "competencias por cursos eLearning",
             lambda: self.env['slide.channel']._sgi_sync_completions())
+        self._sgi_step(
+            "responsivas de EPP firmadas vía Sign",
+            lambda: self.env['sgi.epp.delivery']._sgi_sync_from_sign())
         return True
 
     # ------------------------------------------------------------------
@@ -1150,8 +1200,10 @@ class SgiCron(models.AbstractModel):
             ('stage_id.sgi_is_cancel_stage', '=', False)]))
         metric("Acciones CAPA vencidas", lambda: self.env['sgi.action.line'].search_count([
             ('date_done', '=', False), ('state', '=', 'vencida')]))
+        # Indicadores y riesgos de procesos archivados siguen midiéndose, pero
+        # el resumen solo cuenta los de procesos vigentes.
         metric("Indicadores en rojo (último semáforo)", lambda: self.env['sgi.indicator'].search_count([
-            ('last_semaphore', '=', 'rojo')]))
+            ('last_semaphore', '=', 'rojo'), ('sgi_process_active', '=', True)]))
         metric("Evaluaciones legales vencidas", lambda: self.env['sgi.legal.requirement'].search_count([
             ('next_eval_date', '!=', False), ('next_eval_date', '<=', today)]))
         metric("Requisitos legales en incumplimiento (total o parcial)",
@@ -1159,7 +1211,7 @@ class SgiCron(models.AbstractModel):
                    ('compliance_state', 'in', ('no_cumple', 'parcial'))]))
         metric("Riesgos en atención alta sin tratamiento", lambda: self.env['sgi.risk'].search_count([
             ('attention_level', 'in', ('inmediata', 'alto')),
-            ('state', '=', 'identificado')]))
+            ('state', '=', 'identificado'), ('sgi_process_active', '=', True)]))
         metric("Acuses de lectura pendientes", lambda: self.env['sgi.document.ack'].search_count([
             ('state', '=', 'pendiente')]))
         metric("Partes interesadas con revisión vencida",

@@ -119,20 +119,6 @@
         </field>
     </record>
 
-    <record id="sgi_action_line_action_mine" model="ir.actions.act_window">
-        <field name="name">Mis acciones</field>
-        <field name="res_model">sgi.action.line</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_action_line_view_search"/>
-        <field name="context">{'search_default_mine': 1, 'search_default_open': 1, 'search_default_overdue': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin acciones pendientes 🎉</p>
-            <p>Aquí aparecen TODAS tus acciones del SGI — vengan de una No
-               Conformidad, un riesgo, un AMEF o un incidente — con su fecha
-               compromiso. Quita el filtro "Mis acciones" para ver las de todos.</p>
-        </field>
-    </record>
-
     <record id="sgi_action_line_action_all" model="ir.actions.act_window">
         <field name="name">Todas las acciones</field>
         <field name="res_model">sgi.action.line</field>

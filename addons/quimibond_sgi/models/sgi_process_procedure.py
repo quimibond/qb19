@@ -314,9 +314,11 @@ class SgiProcessProcedure(models.Model):
             'type': 'ir.actions.act_window',
             'name': "%s — %s" % (name or "Actividades", self.name),
             'res_model': 'sgi.process.activity',
-            'view_mode': 'list,kanban,form',
+            # 54.1.0: las actividades se capturan aquí (botón «Actividades» de
+            # la ficha), con lista editable, kanban, diagrama y organigrama.
+            'view_mode': 'list,kanban,sgi_diagram,hierarchy,form',
             'domain': [('process_id', '=', self.id)] + (extra_domain or []),
-            'context': {'default_process_id': self.id},
+            'context': {'default_process_id': self.id, 'search_default_process_id': self.id},
         }
 
     def action_view_red_activities(self):
@@ -1275,8 +1277,11 @@ class SgiProcessActivity(models.Model):
             lambda: self.search(
                 ['|', ('measure_model_id', '!=', False),
                  ('measure_method', '!=', False)])._sgi_measure(),
-            lambda: self.env['sgi.activity.link'].search(
-                [])._sgi_evaluate_chain(),
+            # Solo la estructura vigente: una liga que toca una actividad
+            # archivada (proceso sustituido) ya no se evalúa ni avisa.
+            lambda: self.env['sgi.activity.link'].search([
+                ('from_activity_id.active', '=', True),
+                ('to_activity_id.active', '=', True)])._sgi_evaluate_chain(),
         )
         for step in steps:
             try:

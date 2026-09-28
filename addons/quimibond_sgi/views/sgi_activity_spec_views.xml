@@ -128,7 +128,7 @@
     </record>
 
     <menuitem id="menu_sgi_spec_gaps" name="Faltantes de especificación"
-              parent="menu_sgi_analysis" action="sgi_activity_spec_gap_action" sequence="118"/>
+              parent="menu_sgi_analysis" action="sgi_activity_spec_gap_action" sequence="80"/>
     <menuitem id="menu_sgi_week_stats" name="Cumplimiento semanal"
-              parent="menu_sgi_analysis" action="sgi_activity_week_stat_action" sequence="119"/>
+              parent="menu_sgi_analysis" action="sgi_activity_week_stat_action" sequence="90"/>
 </odoo>

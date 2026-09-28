@@ -75,3 +75,36 @@ class SgiCompetenceGap(models.Model):
             WHERE emp.active = TRUE
               AND COALESCE(cl.level_progress, 0) < COALESCE(rl.level_progress, 0)
         """
+
+
+class HrDepartmentCompetenceMatrix(models.Model):
+    """PER-3 (52.0.0): matriz de competencias puesto × persona del área."""
+    _inherit = 'hr.department'
+
+    def _sgi_competence_matrix(self):
+        self.ensure_one()
+        Employee = self.env['hr.employee'].sudo()
+        Ack = self.env['sgi.document.ack'].sudo()
+        Member = self.env['slide.channel.partner'].sudo()
+        labels = dict(Employee._fields['sgi_my_procedure_ack_state'].selection)
+        rows = []
+        for emp in Employee.search([('department_id', 'child_of', self.id)], order='job_id, name'):
+            acks = Ack.search([('employee_id', '=', emp.id),
+                               ('document_id.sgi_doc_type', 'in', ('instructivo', 'formato_it'))])
+            read = len(acks.filtered(lambda a: a.state == 'leido'))
+            partners = (emp.user_id.partner_id | emp.work_contact_id) if 'work_contact_id' in emp._fields \
+                else emp.user_id.partner_id
+            courses = Member.search_count([
+                ('partner_id', 'in', partners.ids), ('member_status', '=', 'completed')]) if partners else 0
+            skills = ", ".join(
+                "%s (%s)" % (sk.skill_id.name, sk.skill_level_id.name)
+                for sk in emp.employee_skill_ids) if 'employee_skill_ids' in emp._fields else ''
+            rows.append({
+                'employee': emp,
+                'job': emp.job_id.name or '—',
+                'procedure': labels.get(emp.sgi_my_procedure_ack_state, '—'),
+                'instructions': "%d de %d" % (read, len(acks)) if acks else "sin instructivos asignados",
+                'courses': courses,
+                'skills': skills or '—',
+            })
+        return rows

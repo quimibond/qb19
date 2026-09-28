@@ -344,7 +344,9 @@ class SatCfdi(models.Model):
                     # Banco / impuestos: Odoo lo registra por póliza, no como factura.
                     rec.write({'match_status': 'ignorado', 'match_method': False,
                                'ignore_reason': _('Política del contacto: se registra por póliza')})
-                else:
+                elif rec.match_status != 'solo_sat' or rec.match_method:
+                    # Sin cambio no se escribe: el cron repasa cientos de
+                    # pendientes que siguen igual.
                     rec.write({'match_status': 'solo_sat', 'match_method': False})
 
     # ── segunda pasada: sugerencias por RFC + monto + fecha ────────────
@@ -410,10 +412,10 @@ class SatCfdi(models.Model):
             if rec.match_status != 'solo_sat' or rec.suggestion_rejected or rec.move_id:
                 continue
             move, reason = rec._suggest_move()
-            vals = {'suggested_move_id': move.id or False, 'suggestion_reason': reason or False}
             if move:
                 found += 1
-            rec.write(vals)
+            if rec.suggested_move_id != move or rec.suggestion_reason != (reason or False):
+                rec.write({'suggested_move_id': move.id or False, 'suggestion_reason': reason or False})
         return found
 
     def action_accept_suggestion(self):
@@ -691,11 +693,11 @@ class SatCfdi(models.Model):
         return accepted
 
     @api.model
-    def _cron_suggest_matches(self, limit=3000):
+    def _cron_suggest_matches(self, limit=3000, extra_domain=None):
         pending = self.sudo().search([
             ('match_status', '=', 'solo_sat'), ('suggestion_rejected', '=', False),
             ('tipo', 'in', ('I', 'E')), ('estado_sat', '=', 'vigente'),
-        ], order='fecha_emision desc, id desc', limit=limit)
+        ] + (extra_domain or []), order='fecha_emision desc, id desc', limit=limit)
         found = pending.action_suggest()
         accepted = pending._auto_accept_suggestions()
         _logger.info('sat.cfdi: %s sugerencias para %s CFDI solo en el SAT, %s ligadas automáticamente',
@@ -792,17 +794,31 @@ class SatCfdi(models.Model):
                         match_status='matched' if vals['move_id'] else 'solo_sat')
         return super().write(vals)
 
+    # Ventana del cruce de cada hora (días de emisión o de alta del CFDI). Lo
+    # más viejo se repasa en la pasada completa de la noche.
+    MATCH_RECENT_DAYS = 45
+
     @api.model
-    def _cron_match_unmatched(self, limit=2000):
+    def _cron_match_unmatched(self, limit=2000, full=False):
+        """Vuelve a cruzar los CFDI "solo en el SAT" (la factura pudo capturarse
+        después). Cada hora solo los recientes; ``full=True`` (cron nocturno)
+        todos. Repasar cada hora los ~650 pendientes de 2024-2025 tomaba
+        90-280 s de un worker en horario laboral y no ligaba ninguno
+        (2026-09-24)."""
         # Solo facturas y notas de crédito (los P y N no se cruzan aquí), y los
         # más recientes primero: con el límite, los CFDI nuevos no pueden
         # quedarse detrás de miles de nóminas viejas.
-        cfdis = self.sudo().search([('match_status', '=', 'solo_sat'), ('tipo', 'in', ('I', 'E'))],
+        recent = []
+        if not full:
+            since = fields.Datetime.now() - timedelta(days=self.MATCH_RECENT_DAYS)
+            recent = ['|', ('fecha_emision', '>=', since), ('create_date', '>=', since)]
+        cfdis = self.sudo().search([('match_status', '=', 'solo_sat'), ('tipo', 'in', ('I', 'E'))] + recent,
                                    order='fecha_emision desc, id desc', limit=limit)
         cfdis._match_move()
         matched = len(cfdis.filtered(lambda c: c.match_status == 'matched'))
-        _logger.info('sat.cfdi: cruce de %s pendientes, %s ligados', len(cfdis), matched)
-        self._cron_suggest_matches()
+        _logger.info('sat.cfdi: cruce %s de %s pendientes, %s ligados',
+                     'completo' if full else 'reciente', len(cfdis), matched)
+        self._cron_suggest_matches(extra_domain=recent)
         return matched
 
     @api.model

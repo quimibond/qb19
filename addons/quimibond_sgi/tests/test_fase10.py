@@ -144,6 +144,12 @@ class TestActivityMeasurement(TransactionCase):
     def test_12_chain_flow_and_auto_nc(self):
         """El eslabón atorado avisa al dueño y, si persiste 7 días, levanta
         NC automática; al fluir, se limpia."""
+        # La fuente de NC «eslabón atorado» está apagada en producción (decisión
+        # de MAST): la prueba la enciende para probar el mecanismo, no el dato.
+        source = self.env.ref('quimibond_sgi.sgi_alert_source_chain_stuck')
+        previous = source.enabled
+        source.enabled = True
+        self.addCleanup(setattr, source, 'enabled', previous)
         marker = 'Evidencia fase3 cadena'
         self.env['res.partner'].create({'name': marker})
         frm = self._activity(
@@ -198,9 +204,12 @@ class TestActivityMeasurement(TransactionCase):
         my_proc_doc = self.env['documents.document'].create({
             'name': 'P-TST-REF PROCEDIMIENTO', 'type': 'binary',
             'sgi_doc_type': 'procedimiento', 'sgi_process_id': mine.id})
+        # Controlado y con clave válida (F-{proceso}-NN): «Formatos
+        # referenciados» solo admite documentos controlados.
         my_format = self.env['documents.document'].create({
             'name': 'F-P-TST-REF-01', 'type': 'binary',
-            'sgi_doc_type': 'formato', 'sgi_process_id': mine.id})
+            'sgi_doc_type': 'formato', 'sgi_process_id': mine.id,
+            'sgi_is_controlled': True, 'sgi_code': 'F-P-TST-REF-01'})
         citing = self.env['sgi.process.activity'].create({
             'process_id': self.process.id, 'name': 'Cita procedimiento ajeno',
             'related_procedure_id': my_proc_doc.id})

@@ -4,9 +4,10 @@
         <field name="name">SGI: Mediciones de indicadores y NC automáticas</field>
         <field name="model_id" ref="model_sgi_cron"/>
         <field name="state">code</field>
-        <field name="code">model.cron_indicators()</field>
+        <field name="code">model.cron_indicators(scheduled=True)</field>
+        <!-- I-6: corre a diario; mide el tercer día hábil del mes. -->
         <field name="interval_number">1</field>
-        <field name="interval_type">months</field>
+        <field name="interval_type">days</field>
         <field name="active" eval="True"/>
     </record>
 
@@ -14,9 +15,10 @@
         <field name="name">SGI: Mediciones semanales de indicadores</field>
         <field name="model_id" ref="model_sgi_cron"/>
         <field name="state">code</field>
-        <field name="code">model.cron_indicators_weekly()</field>
+        <field name="code">model.cron_indicators_weekly(scheduled=True)</field>
+        <!-- I-6: corre a diario; mide el lunes. -->
         <field name="interval_number">1</field>
-        <field name="interval_type">weeks</field>
+        <field name="interval_type">days</field>
         <field name="active" eval="True"/>
     </record>
 
