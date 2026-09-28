@@ -2274,3 +2274,24 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
   (`sgi.format.map`, puntos de calidad, `sgi_odoo_menu_id`, clave de formato
   en pantalla y PDF); falta la definición de cada formato, empezando por C4
   (11), S4 (14) y C5 (8).
+
+### 19.0.56.14.0 — Bloques 8 y 9: dirección, proveedores, clientes y firmas
+
+- **8.1 DIR-2, 8.2 DIR-3, 8.4 PER-3** ya estaban (52.0.0): riesgos con
+  semáforo y reevaluación enero/julio, informe de revisión por la dirección
+  con las entradas de 9.3 y acuerdos como acciones, matriz de competencias.
+- **8.3 DIR-4**: el tablero de dirección muestra hasta **12** indicadores:
+  los oficiales de nivel dirección; si no hay (hoy los 93 están en prueba),
+  los de nivel dirección en cualquier estado con un aviso; si tampoco hay,
+  un aviso de cómo marcarlos. Prueba: `test_pr5_direction.test_05` (como
+  usuario de Dirección).
+- **9.1 NC-6**: un proveedor **sin recepciones con fecha compromiso** ya no
+  sale «baja»: su OTD queda «sin datos» (`otd_has_data`), la calificación usa
+  solo calidad y la clase es **«Sin datos»** (si tuvo NC en el periodo, la
+  clase sale de la calidad). `post-migrate` 56.14.0 recalcula las
+  evaluaciones con OTD 0 y aplica la clase al proveedor si es su evaluación
+  más reciente. Ojo: en producción la mayoría de los OTD 0 revisados son
+  atraso real (recibido días o meses después del compromiso); esos siguen en
+  «baja» con la regla actual. Prueba: `test_pr6_external.test_08` (como
+  Usuario SGI).
+- **9.2 NC-7, 9.3 AU-4, 9.4 AU-5, 9.5 DOC-4, 9.6 REG-1** ya estaban (53.0.0).
