@@ -182,6 +182,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_master_list_all.xml',
         # menus
         'views/sgi_menus.xml',
+        'views/sgi_menus_late.xml',
         'views/sgi_activity_spec_views.xml',
     ],
     'demo': [

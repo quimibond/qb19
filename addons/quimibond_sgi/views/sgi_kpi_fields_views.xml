@@ -196,10 +196,4 @@
             <p>IMSS, INFONAVIT, ISR retenido, impuesto sobre nómina… con su vencimiento y la fecha en que se presentó (S4-04).</p></field>
     </record>
 
-    <menuitem id="menu_sgi_employer_obligations" name="Obligaciones patronales" parent="menu_sgi_direction"
-              action="sgi_employer_obligation_action" sequence="31"/>
-    <menuitem id="menu_sgi_lock_date_log" name="Bitácora de bloqueo contable" parent="menu_sgi_admin_indicators"
-              action="sgi_lock_date_log_action" sequence="30"/>
-    <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes" parent="menu_sgi_admin_indicators"
-              action="sgi_inventory_value_action" sequence="31"/>
 </odoo>

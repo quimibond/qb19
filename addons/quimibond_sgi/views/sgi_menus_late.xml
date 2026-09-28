@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- menuitems que dependen de padres definidos en sgi_menus.xml; se cargan
+         despues de sgi_menus.xml para que la instalacion limpia (SH dev branch) no falle -->
+    <menuitem id="menu_sgi_epp_deliveries" name="Responsivas de EPP"
+              parent="quimibond_sgi.menu_sgi_admin_signatures" action="sgi_epp_delivery_action" sequence="20"/>
+
+    <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
+              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_procedure_action_mine"
+              sequence="15"/>
+    <menuitem id="menu_sgi_my_team" name="Mi equipo"
+              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_team_action_mine"
+              sequence="16"/>
+
+    <menuitem id="menu_sgi_employer_obligations" name="Obligaciones patronales" parent="menu_sgi_direction"
+              action="sgi_employer_obligation_action" sequence="31"/>
+    <menuitem id="menu_sgi_lock_date_log" name="Bitácora de bloqueo contable" parent="menu_sgi_admin_indicators"
+              action="sgi_lock_date_log_action" sequence="30"/>
+    <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes" parent="menu_sgi_admin_indicators"
+              action="sgi_inventory_value_action" sequence="31"/>
+</odoo>
