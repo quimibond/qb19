@@ -14,6 +14,7 @@
     <template id="report_staff_efficiency_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
+                <t t-set="money" t-value="doc.sgi_show_money()"/>
                 <t t-call="web.external_layout">
                     <div class="page">
                         <h2 class="text-center"><span t-out="'Concentrado de eficiencias del personal' if doc.department_id else 'Eficiencias de personal'"/></h2>
@@ -23,7 +24,7 @@
                             · Criterios: A asistencia 5.5 % · O y L 2 % · E eficiencia 2 % · PQ calidad 2 %
                         </p>
                         <table class="table table-sm table-bordered" style="font-size:9px;">
-                            <thead><tr><th>Núm.</th><th>Nombre</th><th>Puesto</th><th>Área</th><th>A 5.5 %</th><th>O y L 2 %</th><th>E 2 %</th><th>PQ 2 %</th><th>Salario diario</th><th>Salario mensual</th><th>Total %</th><th>A pagar</th></tr></thead>
+                            <thead><tr><th>Núm.</th><th>Nombre</th><th>Puesto</th><th>Área</th><th>A 5.5 %</th><th>O y L 2 %</th><th>E 2 %</th><th>PQ 2 %</th><t t-if="money"><th>Salario diario</th><th>Salario mensual</th></t><th>Total %</th><th t-if="money">A pagar</th></tr></thead>
                             <tbody>
                                 <tr t-foreach="doc.line_ids" t-as="l">
                                     <td><span t-out="l.employee_id.registration_number or l.employee_id.id"/></td>
@@ -34,13 +35,15 @@
                                     <td class="text-end"><span t-out="'%.2f' % l.housekeeping_pct"/></td>
                                     <td class="text-end"><span t-out="'%.2f' % l.efficiency_pct"/></td>
                                     <td class="text-end"><span t-out="'%.2f' % l.quality_pct"/></td>
-                                    <td class="text-end"><span t-field="l.wage_daily"/></td>
-                                    <td class="text-end"><span t-field="l.wage_monthly"/></td>
+                                    <t t-if="money">
+                                        <td class="text-end"><span t-field="l.wage_daily"/></td>
+                                        <td class="text-end"><span t-field="l.wage_monthly"/></td>
+                                    </t>
                                     <td class="text-end"><span t-out="'%.2f' % l.total_pct"/></td>
-                                    <td class="text-end"><span t-field="l.amount"/></td>
+                                    <td t-if="money" class="text-end"><span t-field="l.amount"/></td>
                                 </tr>
                             </tbody>
-                            <tfoot><tr><th colspan="11" class="text-end">Total</th><th class="text-end"><span t-field="doc.amount_total"/></th></tr></tfoot>
+                            <tfoot t-if="money"><tr><th colspan="11" class="text-end">Total</th><th class="text-end"><span t-field="doc.amount_total"/></th></tr></tfoot>
                         </table>
                         <table class="table table-sm mt-4" style="font-size:10px; width:60%;">
                             <tr><td class="text-center" style="border-top:1px solid #000;">Elaboró · Jefe de área<br/><span t-out="doc.prepared_by_id.name or ''"/></td>

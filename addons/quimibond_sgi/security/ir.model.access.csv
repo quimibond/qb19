@@ -250,6 +250,8 @@ access_sgi_staff_efficiency_hr,sgi.staff.efficiency.hr,model_sgi_staff_efficienc
 access_sgi_staff_efficiency_sgi,sgi.staff.efficiency.sgi,model_sgi_staff_efficiency,quimibond_sgi.group_sgi_manager,1,0,0,0
 access_sgi_staff_efficiency_line_hr,sgi.staff.efficiency.line.hr,model_sgi_staff_efficiency_line,hr.group_hr_user,1,1,1,1
 access_sgi_staff_efficiency_line_sgi,sgi.staff.efficiency.line.sgi,model_sgi_staff_efficiency_line,quimibond_sgi.group_sgi_manager,1,0,0,0
+access_sgi_staff_efficiency_capture,sgi.staff.efficiency.capture,model_sgi_staff_efficiency,quimibond_sgi.group_sgi_efficiency_capture,1,1,1,1
+access_sgi_staff_efficiency_line_capture,sgi.staff.efficiency.line.capture,model_sgi_staff_efficiency_line,quimibond_sgi.group_sgi_efficiency_capture,1,1,1,1
 access_sgi_epp_delivery_line_user,sgi.epp.delivery.line.user,model_sgi_epp_delivery_line,base.group_user,1,0,0,0
 access_sgi_epp_delivery_line_hr,sgi.epp.delivery.line.hr,model_sgi_epp_delivery_line,hr.group_hr_user,1,1,1,1
 access_sgi_epp_delivery_line_manager,sgi.epp.delivery.line.manager,model_sgi_epp_delivery_line,quimibond_sgi.group_sgi_manager,1,1,1,1
@@ -276,3 +278,4 @@ access_sgi_checklist_template_item_maint,sgi.checklist.template.item.maint,model
 access_sgi_checklist_template_item_manager,sgi.checklist.template.item.manager,model_sgi_checklist_template_item,group_sgi_manager,1,1,1,1
 access_sgi_checklist_line_user,sgi.checklist.line.user,model_sgi_checklist_line,base.group_user,1,1,1,0
 access_sgi_checklist_line_manager,sgi.checklist.line.manager,model_sgi_checklist_line,group_sgi_manager,1,1,1,1
+access_sgi_checklist_finish_user,sgi.checklist.finish.user,model_sgi_checklist_finish,base.group_user,1,1,1,0
