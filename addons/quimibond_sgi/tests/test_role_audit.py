@@ -141,3 +141,25 @@ class TestRoleAudit(TransactionCase):
         self.assertIn(self.mine, self.env['sgi.indicator'].search([('last_semaphore', '=', 'rojo')]))
         self.assertTrue(self.env['documents.document']._fields['sgi_ack_count'].store)
         self.assertTrue(self.env['sgi.indicator']._fields['spec_missing'].store)
+
+    def test_08_accion_terminada_exige_100_y_fecha_pasada(self):
+        """3.6 (como Usuario SGI): terminar pone 100 %; no se puede terminar en
+        el futuro ni con avance menor a 100 %."""
+        from datetime import timedelta
+        from odoo import fields as ofields
+        from odoo.exceptions import ValidationError
+        today = ofields.Date.today()
+        risk = self.env['sgi.risk'].create({'name': 'Riesgo acción', 'instrument': 'ryo',
+                                            'eval_probability': '1', 'eval_impact': '1'})
+        line = self.env['sgi.action.line'].create({
+            'risk_id': risk.id, 'name': 'Acción propia', 'responsible_id': self.user.id,
+            'date_commit': today})
+        mine = line.with_user(self.user)
+        with self.assertRaises(ValidationError):
+            mine.write({'date_done': today + timedelta(days=30)})
+        with self.assertRaises(ValidationError):
+            mine.write({'date_done': today, 'progress': '0'})
+        mine.write({'date_done': today})
+        self.assertEqual((line.progress, line.state), ('100', 'terminada'))
+        mine.write({'date_done': False})
+        self.assertEqual(line.progress, '50', "Reabrir la regresa a 50 %.")

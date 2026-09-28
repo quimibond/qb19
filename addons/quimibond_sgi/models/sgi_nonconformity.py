@@ -711,6 +711,30 @@ class SgiActionLine(models.Model):
                     "SST, un simulacro o un objetivo integral (exactamente uno, "
                     "no varios ni ninguno).")
 
+    @api.constrains('date_done', 'progress')
+    def _sgi_check_done(self):
+        """3.6: una acción terminada tiene 100 % de avance y una fecha de
+        término que ya pasó (hoy o antes). Antes había una «terminada» con 0 %
+        y fecha futura."""
+        today = fields.Date.context_today(self)
+        for line in self.filtered('date_done'):
+            if line.date_done > today:
+                raise ValidationError(
+                    "La acción «%s» no puede terminar en el futuro (%s). Captura la fecha "
+                    "en que realmente se terminó." % (line.name, line.date_done))
+            if line.progress != '100':
+                raise ValidationError(
+                    "La acción «%s» está al %s%%: para terminarla, el avance debe ser 100%%."
+                    % (line.name, line.progress or '0'))
+
+    @staticmethod
+    def _sgi_done_vals(vals):
+        """Terminar (poner fecha) sin decir el avance lo sube a 100 %;
+        reabrir (quitar la fecha) sin decir el avance lo regresa a 50 %."""
+        if 'date_done' in vals and 'progress' not in vals:
+            vals = dict(vals, progress='100' if vals['date_done'] else '50')
+        return vals
+
     @api.constrains('action_type', 'alert_id')
     def _sgi_check_root_cause_before_capa(self):
         """H8: sin causa raíz no hay acción correctiva/preventiva.
@@ -809,11 +833,12 @@ class SgiActionLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        lines = super().create(vals_list)
+        lines = super().create([self._sgi_done_vals(vals) for vals in vals_list])
         lines._sgi_sync_activity()
         return lines
 
     def write(self, vals):
+        vals = self._sgi_done_vals(vals)
         res = super().write(vals)
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:

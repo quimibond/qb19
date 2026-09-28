@@ -2183,3 +2183,17 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
 - Pruebas: `tests/test_perm_groups.py` (incluye abrir Mi procedimiento como
   Usuario SGI tras el cambio de grupo).
 
+
+### 19.0.56.9.0 — Bloque 3: no conformidades y acciones
+
+- **3.1–3.5** ya estaban (NC-1 a NC-5, 49.0.0): plazos por etapa con
+  escalamiento, contención, eficacia a 90 días, cancelación con motivo y
+  aprobación de MAST, y migración de las etapas estándar. Las etapas de
+  `quality.alert.stage` no tienen «archivar» en Odoo; las estándar quedan en
+  los equipos de planta y las del SGI en los equipos SGI.
+- **3.6**: una acción terminada exige **100 % de avance** y **fecha de término
+  hoy o antes** (`_sgi_check_done`). Poner la fecha sin decir el avance lo
+  sube a 100 %; quitarla lo regresa a 50 %. `post-migrate` 56.9.0 reabre las
+  terminadas con fecha futura (en producción, la acción 63) y sube a 100 %
+  las terminadas con fecha pasada. Prueba: `test_role_audit.test_08` como
+  Usuario SGI.
