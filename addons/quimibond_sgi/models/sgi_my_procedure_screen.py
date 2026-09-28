@@ -130,7 +130,7 @@ class SgiMyProcedureMixin(models.AbstractModel):
     sgi_mp_short_role_ids = fields.Many2many(
         'sgi.activity.role', string="Participa o se entera", compute='_compute_sgi_mp_roles')
     sgi_mp_ack_ids = fields.Many2many(
-        'sgi.document.ack', string="Acuses de lectura", compute='_compute_sgi_mp_lists')
+        'sgi.document.ack', string="Acuses de lectura (Mi procedimiento)", compute='_compute_sgi_mp_lists')
     sgi_mp_document_ids = fields.Many2many(
         'documents.document', string="Documentos que aplican al puesto", compute='_compute_sgi_mp_lists')
     sgi_mp_epp_ids = fields.Many2many(

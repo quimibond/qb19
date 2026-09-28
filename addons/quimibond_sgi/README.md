@@ -2366,3 +2366,10 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   real si la base lo trae, Mi procedimiento por equipos y al cambiar de
   equipo, diagramas, ejecuciones, desglose por equipo y por mercado; lecturas
   como Usuario SGI).
+
+### 19.0.56.16.1 — Etiqueta duplicada en empleado
+
+- `sgi_mp_ack_ids` (pestaña Procedimiento) se llamaba igual que
+  `sgi_document_ack_ids` («Acuses de lectura») y el build avisaba «Two fields
+  … have the same label». Ahora es «Acuses de lectura (Mi procedimiento)»; en
+  pantalla no cambia nada (la pestaña usa su propio separador).
