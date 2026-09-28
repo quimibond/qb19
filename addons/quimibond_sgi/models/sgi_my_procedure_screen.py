@@ -298,6 +298,7 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
     mp_outputs = fields.Char(string="Entrega", compute='_compute_mp_pieces')
     mp_related = fields.Char(string="Conforme a", compute='_compute_mp_pieces')
     mp_escalates = fields.Char(string="Si se atora, escala a", compute='_compute_mp_pieces')
+    mp_norms = fields.Char(string="Cumple con", compute='_compute_mp_pieces')
     mp_external = fields.Char(related='activity_id.external_system', string="Se hace en")
     mp_instruction_id = fields.Many2one(
         related='activity_id.instruction_id', string="Instructivo")
@@ -306,7 +307,7 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
     @api.depends('activity_id', 'activity_id.measure_state', 'activity_id.measure_last_date',
                  'activity_id.how_steps', 'activity_id.done_criteria', 'activity_id.on_fail',
                  'activity_id.check_against', 'activity_id.role_ids', 'activity_id.input_ids',
-                 'activity_id.output_deliverable_ids')
+                 'activity_id.output_deliverable_ids', 'activity_id.norm_clause_ids')
     def _compute_mp_pieces(self):
         Job = self.env['hr.job']
         activities = self.activity_id.sudo()
@@ -317,7 +318,7 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
                 role.update({f: False for f in (
                     'mp_status', 'mp_status_detail', 'mp_number', 'mp_how', 'mp_where',
                     'mp_check_against', 'mp_done', 'mp_on_fail', 'mp_inputs', 'mp_outputs',
-                    'mp_related', 'mp_escalates', 'mp_can_go')})
+                    'mp_related', 'mp_escalates', 'mp_can_go', 'mp_norms')})
                 continue
             extra = Job._sgi_mp_entry_extra(activity, status.get(activity))
             role.mp_status = extra['status']
@@ -333,6 +334,7 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
                 for name, days in extra['inputs'])
             role.mp_outputs = ", ".join(extra['outputs'])
             role.mp_related = extra['related']
+            role.mp_norms = extra['norms']
             role.mp_escalates = "; ".join(
                 "%s%s" % (r._sgi_target_label(),
                           " (a los %d días hábiles)" % r.after_days if r.after_days else "")

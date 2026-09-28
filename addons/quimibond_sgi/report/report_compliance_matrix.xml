@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 56.23.0 · Matriz de cumplimiento: puntos de la norma contra procesos.
+         Horizontal para que quepan los 14 procesos. -->
+    <record id="paperformat_sgi_carta_horizontal" model="report.paperformat">
+        <field name="name">SGI Carta horizontal (Matriz de cumplimiento)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">25</field>
+        <field name="margin_bottom">15</field>
+        <field name="margin_left">8</field>
+        <field name="margin_right">8</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">20</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_compliance_matrix" model="ir.actions.report">
+        <field name="name">Matriz de cumplimiento</field>
+        <field name="model">sgi.norm</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_compliance_matrix_document</field>
+        <field name="report_file">quimibond_sgi.report_compliance_matrix_document</field>
+        <field name="print_report_name">'Matriz de cumplimiento - %s' % (object.code)</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta_horizontal"/>
+        <field name="binding_model_id" ref="model_sgi_norm"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_compliance_matrix_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="matrix" t-value="doc._sgi_compliance_matrix()"/>
+                <t t-call="web.external_layout">
+                    <div class="page" style="font-size:9px;">
+                        <h3 class="text-center mb-1">Matriz de cumplimiento — <span t-out="doc.code"/></h3>
+                        <p class="text-center text-muted mb-2">
+                            <span t-out="doc.name"/> ·
+                            <span t-out="matrix['covered']"/> punto(s) con actividad ·
+                            <span t-out="matrix['uncovered']"/> sin ninguna actividad ·
+                            En cada cruce, los numerales de las actividades que lo cumplen.
+                        </p>
+                        <table class="table table-sm table-bordered" style="font-size:8px;">
+                            <thead>
+                                <tr>
+                                    <th style="width:6%;">Punto</th>
+                                    <th style="width:20%;">Requisito</th>
+                                    <th t-foreach="matrix['processes']" t-as="process" class="text-center"
+                                        t-att-title="process.name">
+                                        <span t-out="process.code or process.name"/>
+                                    </th>
+                                    <th class="text-center">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="matrix['rows']" t-as="row"
+                                    t-att-style="'background-color:#f8d7da;' if not row['total'] else None">
+                                    <td><strong t-out="row['clause'].code"/></td>
+                                    <td>
+                                        <span t-out="row['clause'].name"/>
+                                        <div t-if="not row['total']" style="color:#b02a37; font-weight:bold;">
+                                            Sin ninguna actividad
+                                        </div>
+                                    </td>
+                                    <td t-foreach="row['cells']" t-as="cell" class="text-center">
+                                        <span t-out="', '.join(cell)"/>
+                                    </td>
+                                    <td class="text-center"><span t-out="row['total']"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="text-muted mt-2" style="font-size:8px;">
+                            Fuente: «Cumple con» de cada actividad del SGI (solo actividades vigentes).
+                            Procesos: los que declaran la norma o tienen alguna actividad ligada a ella.
+                        </div>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

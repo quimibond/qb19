@@ -7,6 +7,12 @@ revisa y en qué equipos o unidades) y el cron diario crea una solicitud de
 mantenimiento preventivo por equipo, con los puntos a revisar como hoja
 dentro de la solicitud. Cada punto se marca «Bien», «Falla» o «No aplica»;
 de las fallas sale una solicitud correctiva con un botón.
+
+56.22.0: los llenan electromecánicos y choferes sin usuario de Odoo, desde una
+tableta compartida (un usuario por tableta, responsable de la plantilla). Al
+terminar, «Terminar checklist» pide quién lo llenó (empleado) y su PIN de
+empleado (el mismo del quiosco de asistencia y del piso de producción): la
+hoja guarda el empleado y la hora, y así se mide por persona.
 """
 from datetime import datetime, time
 
@@ -29,7 +35,11 @@ class SgiChecklistTemplate(models.Model):
     ], string="Frecuencia", required=True, default='diaria')
     equipment_ids = fields.Many2many('maintenance.equipment', string="Equipos o unidades", required=True)
     maintenance_team_id = fields.Many2one('maintenance.team', string="Equipo de mantenimiento")
-    user_id = fields.Many2one('res.users', string="Responsable de llenarlo")
+    user_id = fields.Many2one('res.users', string="Responsable de llenarlo",
+                              help="Usuario que ve las hojas: el de la tableta compartida o el jefe del área.")
+    employee_ids = fields.Many2many(
+        'hr.employee', 'sgi_checklist_template_employee_rel', 'template_id', 'employee_id',
+        string="Quién lo llena", help="Electromecánicos o choferes que pueden firmar la hoja. Vacío: cualquiera.")
     item_ids = fields.One2many('sgi.checklist.template.item', 'template_id', string="Puntos a revisar")
     active = fields.Boolean(default=True)
     last_run = fields.Date(string="Última generación", readonly=True)
@@ -120,6 +130,9 @@ class MaintenanceRequestChecklist(models.Model):
                                                 readonly=True, index=True)
     sgi_checklist_date = fields.Date(string="Día del checklist", readonly=True, index=True)
     sgi_checklist_line_ids = fields.One2many('sgi.checklist.line', 'request_id', string="Hoja de checklist")
+    sgi_checklist_employee_id = fields.Many2one(
+        'hr.employee', string="Lo llenó", readonly=True, index=True, tracking=True, copy=False)
+    sgi_checklist_done_at = fields.Datetime(string="Terminado el", readonly=True, copy=False)
     sgi_checklist_state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('completo', "Completo"),
@@ -139,6 +152,15 @@ class MaintenanceRequestChecklist(models.Model):
             else:
                 req.sgi_checklist_state = 'pendiente'
 
+    def action_sgi_checklist_finish(self):
+        """Abre la firma de quien llenó la hoja (empleado + PIN)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': "¿Quién llenó el checklist?",
+            'res_model': 'sgi.checklist.finish', 'view_mode': 'form', 'target': 'new',
+            'context': {'default_request_id': self.id},
+        }
+
     def action_sgi_create_correctives(self):
         """Una solicitud correctiva por punto con falla (una sola vez)."""
         for req in self:
@@ -156,3 +178,41 @@ class MaintenanceRequestChecklist(models.Model):
                         req.name, line.name, " — %s" % line.note if line.note else ''),
                 })
         return True
+
+
+class SgiChecklistFinish(models.TransientModel):
+    _name = 'sgi.checklist.finish'
+    _description = "Terminar checklist: quién lo llenó"
+
+    request_id = fields.Many2one('maintenance.request', required=True, ondelete='cascade')
+    allowed_employee_ids = fields.Many2many('hr.employee', compute='_compute_allowed_employee_ids')
+    employee_id = fields.Many2one('hr.employee', string="¿Quién lo llenó?", required=True,
+                                  domain="allowed_employee_ids and [('id', 'in', allowed_employee_ids)] or []")
+    pin = fields.Char(string="PIN del empleado")
+
+    @api.depends('request_id')
+    def _compute_allowed_employee_ids(self):
+        for wiz in self:
+            wiz.allowed_employee_ids = wiz.request_id.sgi_checklist_template_id.employee_ids
+
+    def action_confirm(self):
+        self.ensure_one()
+        req = self.request_id
+        if req.sgi_checklist_employee_id:
+            raise UserError("Esta hoja ya la firmó %s." % req.sgi_checklist_employee_id.name)
+        missing = req.sgi_checklist_line_ids.filtered(lambda l: not l.answer)
+        if missing:
+            raise UserError("Faltan %d punto(s) por marcar: %s." % (
+                len(missing), ", ".join(missing.mapped('name')[:5])))
+        allowed = req.sgi_checklist_template_id.employee_ids
+        if allowed and self.employee_id not in allowed:
+            raise UserError("%s no está en la lista de quién llena este checklist." % self.employee_id.name)
+        # sudo: el PIN es un campo de RH; el usuario de la tableta no lo lee.
+        real_pin = self.employee_id.sudo().pin
+        if real_pin and (self.pin or '') != real_pin:
+            raise UserError("PIN incorrecto para %s." % self.employee_id.name)
+        req.sudo().write({'sgi_checklist_employee_id': self.employee_id.id,
+                          'sgi_checklist_done_at': fields.Datetime.now()})
+        req.message_post(body="Checklist llenado por %s%s." % (
+            self.employee_id.name, "" if real_pin else " (sin PIN registrado)"))
+        return {'type': 'ir.actions.act_window_close'}

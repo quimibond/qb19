@@ -284,4 +284,11 @@
     <menuitem id="menu_sgi_coa_inbox" name="COA recibidos"
               parent="menu_sgi_automotive" action="sgi_coa_inbox_action" sequence="60"
               groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
+
+    <!-- 56.22.0: Inicio → Eficiencias de mi área (C4.25). El jefe o
+         supervisor captura y cierra la hoja de su departamento; RH la recibe
+         desde Empleados → Eficiencias de personal (SGI). -->
+    <menuitem id="menu_sgi_my_staff_efficiency" name="Eficiencias de mi área"
+              parent="menu_sgi_panel" action="sgi_staff_efficiency_action" sequence="19"
+              groups="quimibond_sgi.group_sgi_efficiency_capture"/>
 </odoo>

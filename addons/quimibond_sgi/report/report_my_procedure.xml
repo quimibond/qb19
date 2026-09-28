@@ -109,6 +109,9 @@
                 <div t-if="entry.get('related')" style="margin-top:3px;">
                     <b>Conforme a:</b> <t t-out="entry['related']"/>.
                 </div>
+                <div t-if="entry.get('norms')" style="margin-top:3px;">
+                    <b>Cumple con:</b> <t t-out="entry['norms']"/>.
+                </div>
                 <div t-if="entry.get('instruction')" style="margin-top:3px;">
                     <b>Instructivo:</b> <t t-out="entry['instruction']"/>.
                 </div>

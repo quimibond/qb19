@@ -2469,6 +2469,62 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   MAST) para levantar el acta; una por NC.
 - Pruebas: `tests/test_due_long.py`, `tests/test_nc_origins.py`.
 
+### 19.0.56.23.0 — Actividades ligadas a los requisitos de la norma
+
+- **«Cumple con»** (`sgi.process.activity.norm_clause_ids`): los puntos de la
+  norma que cumple cada actividad. En la ficha de la actividad (arriba, junto
+  al método de medición), como columna editable en lote en la lista de
+  actividades y en Mi procedimiento (pantalla, «Más detalle», y PDF). No entra
+  en la huella de Mi procedimiento: ligar puntos no obliga a republicar ni a
+  firmar. La carga por API acepta `"complies_with": ["9001 8.5.1", "CLI-02", …]`.
+  Los requisitos con clave propia (norma «Requisitos específicos de clientes»,
+  CLI-01…) se muestran solo con su clave.
+- **Evidencia en el punto de la norma**: ficha propia del punto con la pestaña
+  «Evidencia en el SGI» (procesos y actividades que lo cumplen) y botón a las
+  NC levantadas contra él. En rojo los puntos sin actividad; filtro «Sin
+  actividad» en Administración SGI → Cláusulas.
+- **Matriz de cumplimiento** (PDF horizontal, desde la ficha de la norma o
+  Imprimir): puntos contra procesos, con los numerales de las actividades en
+  cada cruce y en rojo los puntos sin ninguna actividad. Botón «Puntos sin
+  actividad» en la norma.
+- **Checklist de auditoría por requisito**: cada pregunta dice qué puntos
+  audita («— Requisito: 9001 8.5.1»; de las normas de la auditoría si las
+  tiene) y el hallazgo nace con su cláusula (llega a la NC). Si la auditoría
+  dice qué normas cubre, se agrega una pregunta por cada punto sin ninguna
+  actividad en el SGI.
+- Pruebas: `tests/test_norm_compliance.py`.
+
+### 19.0.56.22.0 — Eficiencias por área, checklists firmados y respuesta al cliente
+
+- **Eficiencias de personal (C4.25 → S4.35)**: grupo «Captura de eficiencias
+  (jefe o supervisor de área)» (Ajustes → Usuarios → SGI / Eficiencias de
+  personal). El jefe ve y captura solo la hoja de su departamento (el suyo y
+  sus subdepartamentos, o el que encabeza como jefe en Odoo) desde SGI →
+  Inicio → Eficiencias de mi área; la edita mientras está en borrador y la
+  cierra. Al cerrar, el Coordinador de RH (`quimibond_sgi.rh_user_id`)
+  recibe una actividad; con «Recibir (RH)» la hoja queda «Recibido por RH»
+  con quién y cuándo. Salarios e importes (pantalla y PDF) solo para RH y el
+  Jefe MAST: el jefe de área captura porcentajes. La migración mete a los
+  jefes de departamento con usuario; los supervisores se agregan a mano.
+- **Checklists firmados por el empleado**: la plantilla dice quién lo llena
+  («Quién lo llena»). En la tableta compartida (usuario de la tableta como
+  «Responsable de llenarlo»: la regla de mantenimiento le deja ver las hojas
+  donde es responsable) se abre Mantenimiento → Checklists de hoy, se marcan
+  los puntos y «Terminar checklist» pide el empleado y su PIN (el del quiosco
+  de asistencia). La hoja guarda «Lo llenó» y la hora; la lista y el pivote
+  de hojas miden por persona.
+- **Respuesta al cliente en la NC (C5.19, C5.20)**: pestaña «Cliente». En
+  reclamaciones y scorecards: recepción, acuse (plazo 2 días hábiles,
+  `quimibond_sgi.complaint_ack_days`), respuesta formal (días hábiles del
+  equipo de venta, `crm.team.sgi_complaint_response_days`: 20 Industrial, 5
+  los demás, o el plazo que pidió el cliente) y si cada uno fue a tiempo. El
+  cron de NC avisa al responsable al vencer. Para C5.20, «¿Producto ya
+  embarcado?» y la fecha del aviso escrito. La NC no se cierra sin la
+  respuesta formal ni, si se embarcó, sin el aviso.
+- **MCP**: la migración deja `ir.model.access`, `ir.rule`, `ir.ui.view` e
+  `ir.model.data` de solo lectura por MCP (configuración de `mcp_server`).
+- Pruebas: `tests/test_capture_reply.py`.
+
 ### 19.0.56.21.0 — Documento externo y pantallas para lo que seguía en papel
 
 - **Documento externo (E2.36)**: en los documentos de tipo «Documento

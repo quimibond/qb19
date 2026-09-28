@@ -375,6 +375,9 @@ class HrJobMyProcedure(models.Model):
             'outputs': activity.output_deliverable_ids.mapped('name'),
             'related': (activity.related_procedure_id.sgi_code
                         or activity.related_procedure_id.name) if activity.related_procedure_id else '',
+            # 56.23.0: puntos de la norma que cumple. Referencia: no entra en
+            # la huella (ligar puntos no obliga a republicar ni a firmar).
+            'norms': activity._sgi_norm_labels(),
         }
 
     @api.model

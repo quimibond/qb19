@@ -126,6 +126,28 @@
                             </list>
                         </field>
                     </page>
+                    <!-- 56.22.0: C5.19 (acuse y respuesta formal) y C5.20 (producto embarcado). -->
+                    <page string="Cliente" invisible="not sgi_folio and id">
+                        <group>
+                            <group string="Acuse y respuesta (C5.19)" invisible="not sgi_customer_reply_required">
+                                <field name="sgi_sale_team_id"/>
+                                <field name="sgi_customer_received_date"/>
+                                <field name="sgi_customer_ack_due"/>
+                                <field name="sgi_customer_ack_date"/>
+                                <field name="sgi_customer_ack_on_time" invisible="not sgi_customer_ack_date"/>
+                                <field name="sgi_customer_deadline"/>
+                                <field name="sgi_customer_response_due"/>
+                                <field name="sgi_customer_response_date"/>
+                                <field name="sgi_customer_response_on_time" invisible="not sgi_customer_response_date"/>
+                            </group>
+                            <group string="Producto ya embarcado (C5.20)">
+                                <field name="sgi_shipped_status"/>
+                                <field name="sgi_customer_notice_date" invisible="sgi_shipped_status not in ('si', 'posible')"/>
+                                <field name="sgi_customer_notice_note" invisible="sgi_shipped_status not in ('si', 'posible')"/>
+                            </group>
+                        </group>
+                        <field name="sgi_customer_reply_required" invisible="1"/>
+                    </page>
                     <page string="Ligas SGI" invisible="not sgi_folio">
                         <group>
                             <group string="Trazabilidad">
@@ -352,6 +374,18 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay lecciones aprendidas</p>
             <p>Cada NC mayor cerrada con «Lección aplicada a AMEF / plan de control / documento» aparece aquí: causa raíz, eficacia y proceso. Es la memoria del sistema (ISO 7.1.6).</p>
+        </field>
+    </record>
+
+    <!-- 56.22.0 · C5.19: días hábiles para responder una reclamación por línea. -->
+    <record id="sgi_crm_team_view_form_complaint_days" model="ir.ui.view">
+        <field name="name">crm.team.form.sgi.complaint.days</field>
+        <field name="model">crm.team</field>
+        <field name="inherit_id" ref="sales_team.crm_team_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='right']" position="inside">
+                <field name="sgi_complaint_response_days"/>
+            </xpath>
         </field>
     </record>
 </odoo>

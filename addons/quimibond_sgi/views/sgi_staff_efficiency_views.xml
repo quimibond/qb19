@@ -11,7 +11,9 @@
                             invisible="state != 'borrador'" icon="fa-cogs"
                             help="Tiempo esperado / tiempo real registrado por cada empleado en las órdenes de trabajo del mes. Propone el % (tope 2 %)."/>
                     <button name="action_close" type="object" string="Cerrar" class="btn-primary" invisible="state != 'borrador'"/>
-                    <button name="action_reopen" type="object" string="Reabrir" invisible="state != 'cerrado'" groups="hr.group_hr_manager"/>
+                    <button name="action_receive" type="object" string="Recibir (RH)" class="btn-primary"
+                            invisible="state != 'cerrado'" groups="hr.group_hr_user"/>
+                    <button name="action_reopen" type="object" string="Reabrir" invisible="state == 'borrador'" groups="hr.group_hr_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -25,7 +27,8 @@
                         </group>
                         <group>
                             <field name="prepared_by_id" readonly="state != 'borrador'"/>
-                            <field name="received_by_id" readonly="state != 'borrador'"/>
+                            <field name="received_by_id" readonly="1"/>
+                            <field name="received_date" invisible="not received_date"/>
                             <field name="employee_count"/>
                             <field name="amount_total"/>
                         </group>
@@ -36,7 +39,8 @@
                     </div>
                     <field name="line_ids" readonly="state != 'borrador'">
                         <list editable="bottom">
-                            <field name="employee_id"/>
+                            <field name="employee_id"
+                                   domain="parent.department_id and [('department_id', 'child_of', parent.department_id)] or []"/>
                             <field name="job_id"/>
                             <field name="wage_daily"/>
                             <field name="attendance_pct"/>
@@ -70,7 +74,7 @@
                 <field name="employee_count"/>
                 <field name="amount_total" sum="Total"/>
                 <field name="prepared_by_id" optional="show"/>
-                <field name="state" widget="badge" decoration-success="state == 'cerrado'"/>
+                <field name="state" widget="badge" decoration-info="state == 'cerrado'" decoration-success="state == 'recibido'"/>
                 <field name="currency_id" column_invisible="1"/>
             </list>
         </field>
@@ -117,7 +121,8 @@
                 <field name="name"/>
                 <field name="department_id"/>
                 <filter name="open" string="Abiertas" domain="[('state', '=', 'borrador')]"/>
-                <filter name="closed" string="Cerradas" domain="[('state', '=', 'cerrado')]"/>
+                <filter name="closed" string="Cerradas, por recibir" domain="[('state', '=', 'cerrado')]"/>
+                <filter name="received" string="Recibidas por RH" domain="[('state', '=', 'recibido')]"/>
                 <group>
                     <filter name="group_period" string="Mes" context="{'group_by': 'period_date:month'}"/>
                     <filter name="group_department" string="Área" context="{'group_by': 'department_id'}"/>
