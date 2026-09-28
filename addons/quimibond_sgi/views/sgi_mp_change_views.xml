@@ -1,34 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 56.2.0: «Proponer cambio» / «Proponer nueva actividad» desde Mi
-         procedimiento. El asistente crea la solicitud de Aprobaciones. -->
-    <record id="sgi_mp_change_wizard_view_form" model="ir.ui.view">
-        <field name="name">sgi.mp.change.wizard.form</field>
-        <field name="model">sgi.mp.change.wizard</field>
+    <!-- 56.4.0: la propuesta edita la actividad de verdad (mismos campos que
+         la ficha y quién la hace); al aprobarse se aplica sola. -->
+    <record id="sgi_activity_change_view_form" model="ir.ui.view">
+        <field name="name">sgi.activity.change.form</field>
+        <field name="model">sgi.activity.change</field>
         <field name="arch" type="xml">
             <form string="Proponer cambio a mi procedimiento">
                 <field name="allowed_process_ids" invisible="1"/>
+                <field name="state" invisible="1"/>
                 <p class="text-muted">
-                    Tu propuesta va a Aprobaciones («Proponer cambio a mi procedimiento»):
-                    la aprueban tu jefe directo y el Jefe MAST y SGI. Al aprobarse, MAST
-                    actualiza la actividad y vuelve a publicar el procedimiento.
+                    Cambia directamente los campos de la actividad. Tu propuesta va a Aprobaciones
+                    («Proponer cambio a mi procedimiento»): la aprueban tu jefe directo y el Jefe MAST
+                    y SGI. Al aprobarse, el cambio se aplica solo a la actividad y MAST vuelve a
+                    publicar el procedimiento.
                 </p>
                 <group>
                     <group>
-                        <field name="change_type" widget="radio"/>
+                        <field name="change_type" widget="radio" readonly="not activity_id"/>
                         <field name="activity_id" invisible="not activity_id" options="{'no_open': True}"/>
                         <field name="process_id" readonly="activity_id"
                                required="change_type == 'agregar'"
                                domain="[('id', 'in', allowed_process_ids)] if allowed_process_ids else []"
                                options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <group>
                         <field name="job_id" invisible="not job_id" options="{'no_open': True}"/>
                     </group>
                 </group>
-                <group string="Cómo está hoy" invisible="not current_text">
-                    <field name="current_text" nolabel="1" colspan="2"/>
-                </group>
+                <notebook invisible="change_type == 'quitar'">
+                    <page string="Qué y cómo" name="que">
+                        <group>
+                            <field name="name" required="change_type == 'agregar'"/>
+                            <field name="description"/>
+                            <field name="how_steps" placeholder="1 a 5 pasos cortos"/>
+                            <field name="instruction_id" options="{'no_create': True}"/>
+                            <field name="format_document_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="related_procedure_id" options="{'no_create': True}"/>
+                        </group>
+                    </page>
+                    <page string="Cuándo y dónde" name="cuando">
+                        <group>
+                            <group string="Cuándo">
+                                <field name="measure_cadence"/>
+                                <field name="due_weekday" invisible="measure_cadence != 'semanal'"/>
+                                <field name="due_business_day" invisible="measure_cadence != 'mensual'"/>
+                            </group>
+                            <group string="Dónde">
+                                <field name="exec_channel"/>
+                                <field name="odoo_menu_id" options="{'no_create': True}"/>
+                                <field name="external_system"/>
+                                <field name="place_note"/>
+                            </group>
+                        </group>
+                    </page>
+                    <page string="Terminado" name="terminado">
+                        <group>
+                            <field name="check_against"/>
+                            <field name="done_criteria"/>
+                            <field name="on_fail"/>
+                        </group>
+                    </page>
+                    <page string="Quién la hace" name="quien">
+                        <field name="role_line_ids">
+                            <list editable="bottom">
+                                <field name="sequence" widget="handle"/>
+                                <field name="role"/>
+                                <field name="target_type"/>
+                                <field name="job_id" invisible="target_type != 'job'" options="{'no_create': True}"/>
+                                <field name="family_id" invisible="target_type != 'family'" options="{'no_create': True}"/>
+                                <field name="relative_role" invisible="target_type != 'relative'"/>
+                                <field name="after_days" invisible="role != 'escala'"/>
+                                <field name="condition" optional="show"/>
+                            </list>
+                        </field>
+                    </page>
+                    <page string="Qué cambia" name="diff">
+                        <field name="diff_html" nolabel="1"/>
+                    </page>
+                </notebook>
                 <group>
-                    <field name="proposal" required="1" placeholder="Describe el paso como quieres que quede: qué se hace, quién, cuándo, dónde en Odoo."/>
                     <field name="reason" required="1" placeholder="¿Qué problema resuelve? ¿Qué pasa hoy?"/>
                     <field name="attachment" filename="attachment_name"/>
                     <field name="attachment_name" invisible="1"/>
@@ -52,6 +103,8 @@
                     <field name="sgi_activity_id" readonly="1"/>
                     <field name="sgi_mp_apply_scheduled" readonly="1"/>
                 </group>
+                <field name="sgi_mp_diff_html" nolabel="1" invisible="not sgi_mp_proposal_id" readonly="1"/>
+                <field name="sgi_mp_proposal_id" invisible="1"/>
             </xpath>
         </field>
     </record>

@@ -1768,6 +1768,28 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### Proponer cambio edita la actividad de verdad (56.4.0)
+
+La propuesta de 56.2.0 era texto libre («cómo está hoy / cómo propongo»).
+Ahora es una propuesta **estructurada** (`sgi.activity.change`):
+
+- Al abrirla desde una tarjeta nace con los valores actuales de la actividad
+  en los mismos campos de la ficha: resumen, descripción, cómo (pasos),
+  instructivo, formatos, procedimiento relacionado, cadencia y vencimiento,
+  dónde se hace y menú de Odoo, sistema externo, lugar, contra qué se
+  compara, criterio de terminado, si no se puede, y **quién la hace**
+  (renglones de rol: ejecuta, aprueba, participa, se entera, escala; puesto,
+  familia o rol relativo). La persona cambia lo que haga falta.
+- La pestaña «Qué cambia» y la solicitud de Aprobaciones muestran el antes →
+  propuesto campo por campo; al enviar se congela.
+- **Al aprobarse se aplica sola:** cambiar escribe los campos y deja
+  exactamente los roles propuestos (conserva los que siguen); agregar crea la
+  actividad en el proceso con sus roles; quitar la **archiva**. El cambio
+  queda en el chatter de la actividad y cada Jefe MAST y SGI recibe «Revisar
+  cambio aplicado y republicar» para publicar la nueva revisión.
+- No deja enviar sin motivo, sin cambios (al cambiar) ni sin resumen y
+  proceso (al agregar). Se retira el asistente de texto `sgi.mp.change.wizard`.
+
 ### Mis pendientes en una sola lista con semáforo (56.3.0)
 
 - **Pantalla.** Los botones separados (atrasadas, al día, sin medir, acciones,
