@@ -70,3 +70,4 @@ from . import test_my_procedure_ui
 from . import test_kpi_fields
 from . import test_excel_migration
 from . import test_mp_change
+from . import test_my_pending

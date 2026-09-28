@@ -1768,6 +1768,31 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### Mis pendientes en una sola lista con semáforo (56.3.0)
+
+- **Pantalla.** Los botones separados (atrasadas, al día, sin medir, acciones,
+  NC, mediciones, legales, documentos por revisar) se cambian por un solo
+  botón **Mis pendientes** con el total y, en rojo, cuántas están atrasadas
+  («12 · 3 atrasadas»). El estado de cada actividad sigue en sus tarjetas
+  (botón Actividades).
+- **Lista única** (`sgi.my.pending`, transitorio): acciones abiertas, NC a
+  contestar, mediciones por capturar o validar, requisitos legales y
+  documentos por revisar, con Tipo, Qué, Proceso, Vence y Estado. Vence: la
+  fecha compromiso de la acción; la primera etapa pendiente de la NC
+  (contención, causa raíz, plan) o su eficacia; el cierre del periodo de la
+  medición; la evaluación o vigencia más próxima del requisito; la próxima
+  revisión del documento. Estado: **atrasada** (vence antes de hoy, rojo),
+  **por vencer** (7 días o menos, amarillo), **al día** (verde). Orden:
+  atrasadas primero y luego por vencimiento. Filtros Atrasadas, Vence esta
+  semana y Al día; agrupar por Tipo, Estado y Persona. «Abrir» lleva al
+  registro de origen.
+- **Mi equipo.** Por persona, el semáforo (peor estado), el total y los
+  atrasados; «Ver pendientes» abre su lista y «Pendientes del equipo» junta a
+  todo el equipo agrupado por persona. El organigrama muestra el mismo
+  semáforo. Filtros Con atrasadas, Con pendientes por vencer y Al día.
+- Los criterios de cada tipo son los mismos que tenían los botones; se buscan
+  una vez por tipo para todas las personas. Pruebas en `tests/test_my_pending.py`.
+
 ### Documentos del puesto, proponer cambios y aviso sin empleado (56.2.0)
 
 - **Documentos que aplican al puesto.** Salían vacíos para todos: solo se
