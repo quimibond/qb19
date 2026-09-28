@@ -41,7 +41,8 @@ class QualityAlertCustomerReply(models.Model):
     sgi_sale_team_id = fields.Many2one(
         'crm.team', string="Línea (equipo de venta)", compute='_compute_sgi_sale_team_id',
         store=True, readonly=False,
-        help="Del pedido de la reclamación o, si no hay, del cliente. Fija el plazo de respuesta.")
+        help="Del pedido de la reclamación o, si no hay, del último pedido del cliente. "
+             "Fija el plazo de respuesta.")
     sgi_customer_received_date = fields.Date(
         string="Reclamación recibida el", compute='_compute_sgi_customer_received_date',
         store=True, readonly=False,
@@ -84,8 +85,14 @@ class QualityAlertCustomerReply(models.Model):
                 alert.sgi_sale_team_id = alert.sgi_sale_team_id
                 continue
             team = alert.sgi_complaint_ticket_id.sgi_sale_order_id.team_id
-            if not team and alert.partner_id:
-                team = alert.partner_id.commercial_partner_id.team_id or alert.partner_id.team_id
+            # Sin pedido en la reclamación: el equipo del último pedido del
+            # cliente. En Odoo 19 res.partner ya no tiene team_id (el build
+            # de main de 56.22.0 reventó al instalar por leerlo).
+            partner = alert.partner_id.commercial_partner_id
+            if not team and partner:
+                team = self.env['sale.order'].sudo().search(
+                    [('partner_id', 'child_of', partner.id), ('team_id', '!=', False)],
+                    order='date_order desc, id desc', limit=1).team_id
             alert.sgi_sale_team_id = team
 
     @api.depends('sgi_complaint_ticket_id.create_date', 'create_date')

@@ -2469,6 +2469,31 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   MAST) para levantar el acta; una por NC.
 - Pruebas: `tests/test_due_long.py`, `tests/test_nc_origins.py`.
 
+### 19.0.56.23.0 — Actividades ligadas a los requisitos de la norma
+
+- **«Cumple con»** (`sgi.process.activity.norm_clause_ids`): los puntos de la
+  norma que cumple cada actividad. En la ficha de la actividad (arriba, junto
+  al método de medición), como columna editable en lote en la lista de
+  actividades y en Mi procedimiento (pantalla, «Más detalle», y PDF). No entra
+  en la huella de Mi procedimiento: ligar puntos no obliga a republicar ni a
+  firmar. La carga por API acepta `"complies_with": ["9001 8.5.1", "CLI-02", …]`.
+  Los requisitos con clave propia (norma «Requisitos específicos de clientes»,
+  CLI-01…) se muestran solo con su clave.
+- **Evidencia en el punto de la norma**: ficha propia del punto con la pestaña
+  «Evidencia en el SGI» (procesos y actividades que lo cumplen) y botón a las
+  NC levantadas contra él. En rojo los puntos sin actividad; filtro «Sin
+  actividad» en Administración SGI → Cláusulas.
+- **Matriz de cumplimiento** (PDF horizontal, desde la ficha de la norma o
+  Imprimir): puntos contra procesos, con los numerales de las actividades en
+  cada cruce y en rojo los puntos sin ninguna actividad. Botón «Puntos sin
+  actividad» en la norma.
+- **Checklist de auditoría por requisito**: cada pregunta dice qué puntos
+  audita («— Requisito: 9001 8.5.1»; de las normas de la auditoría si las
+  tiene) y el hallazgo nace con su cláusula (llega a la NC). Si la auditoría
+  dice qué normas cubre, se agrega una pregunta por cada punto sin ninguna
+  actividad en el SGI.
+- Pruebas: `tests/test_norm_compliance.py`.
+
 ### 19.0.56.22.0 — Eficiencias por área, checklists firmados y respuesta al cliente
 
 - **Eficiencias de personal (C4.25 → S4.35)**: grupo «Captura de eficiencias

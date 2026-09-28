@@ -64,6 +64,9 @@
                             <field name="measure_method"/>
                             <field name="measure_adherence_pct"
                                    invisible="not measure_user_field"/>
+                            <field name="norm_clause_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Puntos de la norma que cumple"/>
                         </group>
                     </group>
                     <notebook>
@@ -320,6 +323,7 @@
                 <field name="section" optional="hide"/>
                 <field name="name"/>
                 <field name="sale_team_ids" widget="many2many_tags" optional="show"/>
+                <field name="norm_clause_ids" widget="many2many_tags" optional="show"/>
                 <field name="fiscal_position_ids" widget="many2many_tags" optional="hide"/>
                 <field name="department_ids" widget="many2many_tags" optional="hide"/>
                 <field name="exec_channel" optional="show"/>

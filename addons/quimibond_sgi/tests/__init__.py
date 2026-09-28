@@ -84,3 +84,4 @@ from . import test_nc_origins
 from . import test_external_doc
 from . import test_hse_records
 from . import test_capture_reply
+from . import test_norm_compliance
