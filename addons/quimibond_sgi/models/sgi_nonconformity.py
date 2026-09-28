@@ -68,6 +68,12 @@ class QualityAlert(models.Model):
         ('auditoria_externa', "Auditoría externa"),
         ('reclamacion', "Reclamación de cliente"),
         ('indicador', "Indicador incumplido"),
+        # 56.20.0: E2.27, E2.20, C5.28, E2.29 y E2.39.
+        ('incidente_sst', "Incidente/accidente SST"),
+        ('emergencia', "Emergencia real"),
+        ('scorecard', "Scorecard de cliente"),
+        ('recorrido_csh', "Recorrido de la Comisión de Seguridad e Higiene"),
+        ('riesgo', "Riesgo u oportunidad"),
     ], string="Origen", default='proceso', tracking=True)
     sgi_source_id = fields.Many2one(
         'sgi.alert.source', string="Fuente automática", readonly=True, copy=False,
@@ -192,6 +198,7 @@ class QualityAlert(models.Model):
             if alert.sgi_folio and alert.sgi_classification == 'mayor':
                 Cron._sgi_send_critical_mail(
                     'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
+        alerts._sgi_request_admin_record()
         return alerts
 
     # ------------------------------------------------------------------
@@ -548,6 +555,8 @@ class QualityAlert(models.Model):
                     lambda a: a.stage_id != new_stage and a.sgi_folio)
         res = super().write(vals)
         Cron = self.env['sgi.cron']
+        if vals.get('sgi_followup_action') == 'administrativa':
+            self._sgi_request_admin_record()
         for alert in newly_mayor:
             Cron._sgi_send_critical_mail(
                 'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
@@ -556,6 +565,18 @@ class QualityAlert(models.Model):
                 alert._sgi_notify_mayor_closed()
             alert._sgi_read_across()
         return res
+
+    def _sgi_request_admin_record(self):
+        """S4.32 (56.20.0): «Acción administrativa» pide el acta al
+        Coordinador de RH (parámetro quimibond_sgi.rh_user_id; si no, Jefe
+        MAST). Una sola actividad por NC."""
+        Cron = self.env['sgi.cron']
+        rh_id = Cron._sgi_rh_user_id()
+        for alert in self.filtered(lambda a: a.sgi_followup_action == 'administrativa'):
+            Cron._sgi_schedule(
+                alert, "Levantar acta administrativa (S4.32)",
+                "La NC %s pide acción administrativa. Levanta el acta con los responsables "
+                "y adjúntala a la NC." % (alert.sgi_folio or alert.name), rh_id)
 
     def _sgi_notify_mayor_closed(self):
         """PROT-05/D7: al cerrar una NC mayor, recordar actualizar AMEF y plan de

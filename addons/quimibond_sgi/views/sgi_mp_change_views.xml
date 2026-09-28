@@ -45,6 +45,8 @@
                                 <field name="measure_cadence"/>
                                 <field name="due_weekday" invisible="measure_cadence != 'semanal'"/>
                                 <field name="due_business_day" invisible="measure_cadence != 'mensual'"/>
+                                <field name="due_month" invisible="measure_cadence not in ('trimestral', 'semestral', 'anual')"/>
+                                <field name="due_day" invisible="measure_cadence not in ('trimestral', 'semestral', 'anual')"/>
                             </group>
                             <group string="Dónde">
                                 <field name="exec_channel"/>

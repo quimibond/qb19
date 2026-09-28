@@ -56,7 +56,8 @@
                         <field name="sgi_classification"/>
                         <field name="sgi_norm_clause_id"/>
                         <field name="sgi_process_id"/>
-                        <field name="sgi_external_ref" invisible="sgi_origin_type != 'auditoria_externa'"/>
+                        <field name="sgi_external_ref" invisible="sgi_origin_type not in ('auditoria_externa', 'scorecard')"/>
+                        <field name="sgi_incident_id" invisible="sgi_origin_type != 'incidente_sst' and not sgi_incident_id"/>
                         <field name="sgi_complaint_ticket_id" invisible="not sgi_complaint_ticket_id"/>
                     </group>
                     <group string="Responsabilidades" invisible="not sgi_folio and id">
