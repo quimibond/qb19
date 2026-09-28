@@ -2162,3 +2162,24 @@ los faltantes de procesos archivados y liga los acuses existentes. Reglas
 nuevas: objetivo sin indicador = «sin dato»; la evaluación trimestral solo
 toma proveedores críticos (contacto marcado o categorías de Ajustes →
 Categorías de proveedores críticos; vacío = materia prima + «maquila»).
+
+### 19.0.56.8.0 — Bloque 2: permisos
+
+- **2.1 PERM-1** (desde 48.0.0): el Auditor SGI lee todo el SGI y la
+  evidencia; escribe hallazgos y, para conducir la auditoría, la auditoría,
+  su checklist y el programa (sin borrar). En 56.7.0 recibió menús de lectura
+  de Documentos, Indicadores y acuses y el permiso de la pantalla Mi
+  procedimiento.
+- **2.2 PERM-2**: `post-migrate` 56.8.0 deja **solo a Areli**
+  (mas@quimibond.com) como miembro directo de Jefe MAST y SGI; los demás
+  miembros directos (hoy Darío Manríquez y Sergio González) pasan a Usuario
+  SGI. Dirección de Operaciones (Jorge) y Administrador SGI lo siguen
+  teniendo por herencia. `res.groups._sgi_enforce_mast_members`.
+- **2.3**: el mismo script retira los grupos heredados «SGI» (295) y «SGI
+  admin» (296): sin privilegio y sin xmlid de un módulo. Sus miembros ya
+  tenían los grupos nuevos (quien no, recibe Usuario SGI); su único permiso
+  era de lectura sobre el modelo de Studio `x_emp_activity` (0 registros);
+  sus reglas se archivan. `res.groups._sgi_retire_legacy_groups`.
+- Pruebas: `tests/test_perm_groups.py` (incluye abrir Mi procedimiento como
+  Usuario SGI tras el cambio de grupo).
+
