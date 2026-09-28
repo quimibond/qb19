@@ -46,7 +46,7 @@
                         <div t-if="record.mp_where.raw_value" class="small text-muted mt-1">
                             <i class="fa fa-map-marker me-1" title="Dónde"/><field name="mp_where"/>
                         </div>
-                        <t t-set="more" t-value="record.mp_check_against.raw_value or record.mp_done.raw_value or record.mp_on_fail.raw_value or record.mp_inputs.raw_value or record.mp_outputs.raw_value or record.mp_related.raw_value or record.mp_escalates.raw_value"/>
+                        <t t-set="more" t-value="record.mp_check_against.raw_value or record.mp_done.raw_value or record.mp_on_fail.raw_value or record.mp_inputs.raw_value or record.mp_outputs.raw_value or record.mp_related.raw_value or record.mp_escalates.raw_value or record.mp_norms.raw_value"/>
                         <div t-if="more" class="mt-1">
                             <a role="button" class="small text-decoration-none" data-bs-toggle="collapse"
                                t-attf-href="#o_sgi_mp_more_{{record.id.raw_value}}" aria-expanded="false">
@@ -59,6 +59,7 @@
                                 <div t-if="record.mp_inputs.raw_value"><b>Recibe:</b> <field name="mp_inputs"/></div>
                                 <div t-if="record.mp_outputs.raw_value"><b>Entrega:</b> <field name="mp_outputs"/></div>
                                 <div t-if="record.mp_related.raw_value"><b>Conforme a:</b> <field name="mp_related"/></div>
+                                <div t-if="record.mp_norms.raw_value"><b>Cumple con:</b> <field name="mp_norms"/></div>
                                 <div t-if="record.mp_escalates.raw_value"><b>Si se atora, escala a:</b> <field name="mp_escalates"/></div>
                             </div>
                         </div>

@@ -87,6 +87,7 @@ _KEYS_ACTIVITY = ({
     'cadence', 'roles', 'inputs', 'outputs', 'instruction', 'related_procedure',
     'formats', 'evidence', 'measure', 'automation',
     'check_against', 'where', 'how_steps', 'done_criteria', 'on_fail', 'due',
+    'complies_with',        # 56.23.0: puntos de la norma («9001 8.5.1»)
     'links_to',             # anterior: error propio
 }, {'roles': (list, _KEYS_ROLE), 'inputs': (list, _KEYS_INPUT),
     'where': (dict, _KEYS_WHERE), 'due': (dict, _KEYS_DUE),
@@ -599,6 +600,15 @@ class _SgiLoader:
                 else:
                     self.report.warn('activity', key, "Formato %s no encontrado." % code)
             vals['format_document_ids'] = docs
+        if 'complies_with' in item:
+            clauses = []
+            for label in item['complies_with'] or []:
+                clause = self.env['sgi.norm.clause']._sgi_find(label)
+                if clause:
+                    clauses.append(clause.id)
+                else:
+                    self.report.warn('activity', key, "Punto de la norma «%s» no encontrado." % label)
+            vals['norm_clause_ids'] = clauses
         if 'evidence' in item:
             vals.update(self._evidence_vals(key, item['evidence'] or []))
         measure = item.get('measure') or {}

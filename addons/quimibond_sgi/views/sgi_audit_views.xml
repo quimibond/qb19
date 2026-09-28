@@ -140,8 +140,9 @@
                     <notebook>
                         <page string="Checklist" name="checklist">
                             <div class="text-muted mb-2">
-                                Una pregunta por actividad de cada proceso auditado (se genera al
-                                planificar). «Ver registros» abre la evidencia real del entregable;
+                                Una pregunta por actividad de cada proceso auditado, con los puntos
+                                de la norma que cumple, y una por cada punto de las normas de la
+                                auditoría sin actividad en el SGI (se genera al planificar). «Ver registros» abre la evidencia real del entregable;
                                 cada respuesta distinta de Conforme crea su hallazgo.
                             </div>
                             <field name="checklist_line_ids" readonly="state in ('borrador', 'cerrada')">
@@ -152,6 +153,7 @@
                                     <field name="sequence" widget="handle"/>
                                     <field name="process_id" optional="show"/>
                                     <field name="question"/>
+                                    <field name="norm_clause_ids" widget="many2many_tags" optional="show"/>
                                     <field name="executor" optional="show"/>
                                     <field name="deliverables" optional="show"/>
                                     <field name="can_open_records" column_invisible="1"/>
