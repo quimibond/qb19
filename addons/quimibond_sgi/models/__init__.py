@@ -78,3 +78,4 @@ from . import sgi_approval_native
 from . import sgi_business_line
 from . import sgi_doc_change_sign
 from . import sgi_sign_builder
+from . import sgi_my_procedure_sign
