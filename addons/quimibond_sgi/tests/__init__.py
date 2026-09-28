@@ -76,3 +76,4 @@ from . import test_role_audit
 from . import test_perm_groups
 from . import test_cleanup_b10
 from . import test_business_line
+from . import test_doc_change_sign

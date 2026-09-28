@@ -2366,3 +2366,40 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   real si la base lo trae, Mi procedimiento por equipos y al cambiar de
   equipo, diagramas, ejecuciones, desglose por equipo y por mercado; lecturas
   como Usuario SGI).
+
+### 19.0.56.16.1 — Etiqueta duplicada en empleado
+
+- `sgi_mp_ack_ids` (pestaña Procedimiento) se llamaba igual que
+  `sgi_document_ack_ids` («Acuses de lectura») y el build avisaba «Two fields
+  … have the same label». Ahora es «Acuses de lectura (Mi procedimiento)»; en
+  pantalla no cambia nada (la pestaña usa su propio separador).
+
+### 19.0.56.17.0 — Cambio documental firmado en Sign
+
+- La solicitud de cambio documental (F-P-G01-06, Aprobaciones) se aprueba
+  **firmando en Sign**. Al enviarla, el SGI arma el PDF (solicitud, versión
+  nueva si viene adjunta y al final la hoja de firmas), crea la plantilla de
+  Sign sin intervención de MAST y manda la firma en orden: **Elaboró** (quien
+  pide) → **Revisó** (dueño del proceso del documento o del primer proceso
+  afectado) → **Aprobó** (aprobador de la categoría: Jefe MAST).
+- Cada firma aprueba su renglón en Aprobaciones (revisó y aprobó son
+  aprobadores requeridos, en ese orden); con la última el cambio se aplica
+  solo. El PDF firmado queda en la solicitud y en el documento. Quien tiene
+  dos papeles firma una vez en todas sus cajas.
+- En la categoría con «Se aprueba firmando en Sign» el botón Aprobar queda
+  bloqueado; rechazar sigue desde Aprobaciones. Firma cancelada o vencida:
+  «Reenviar a firma».
+- El archivo que se publica es el que se mandó a firmar
+  (`sgi_change_attachment_id`), no el PDF firmado que Sign deja después.
+- Sin Sign de por medio (Sign avisa tarde o falla): el cron diario «Sincronizar
+  Firma electrónica y eLearning» vuelve a revisar; si algo falla al aprobar,
+  la firma no se revierte.
+- `post-migrate` 56.17.0: «Modificación de documento SGI» se aprueba por Sign,
+  sin jefe directo, mínimo 1; MOC pedía 2 aprobaciones sin aprobador (nunca
+  se podía aprobar): queda el Jefe MAST requerido y mínimo 1. Había 0
+  solicitudes de ambas en producción.
+- Reporte `quimibond_sgi.action_report_doc_change` (carta); roles de Sign
+  «SGI · Elaboró / Revisó / Aprobó».
+- Pruebas: `tests/test_doc_change_sign.py` (firma en orden, aprobación por
+  firma, bloqueo del botón, dueño faltante, misma persona en dos papeles,
+  archivo que se publica).

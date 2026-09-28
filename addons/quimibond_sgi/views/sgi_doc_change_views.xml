@@ -5,8 +5,14 @@
         <field name="model">approval.request</field>
         <field name="inherit_id" ref="approvals.approval_request_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_send_to_sign" type="object" string="Reenviar a firma"
+                        class="btn-primary" icon="fa-pencil"
+                        invisible="not sgi_sign_required or request_status != 'pending' or sgi_sign_state in ('sent', 'shared', 'signed')"/>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <field name="sgi_is_doc_change" invisible="1"/>
+                <field name="sgi_sign_required" invisible="1"/>
                 <field name="sgi_is_moc" invisible="1"/>
                 <notebook invisible="not sgi_is_moc">
                     <page string="Gestión del cambio SGI (MOC)">
@@ -25,6 +31,27 @@
                 <field name="sgi_new_document_id" invisible="not sgi_new_document_id" readonly="1"/>
                 <notebook invisible="not sgi_is_doc_change">
                     <page string="Cambio documental SGI">
+                        <div class="alert alert-info mb-2" role="status"
+                             invisible="not sgi_sign_required or sgi_sign_request_id">
+                            Al enviar la solicitud se manda a firmar en Sign: <b>elaboró</b>
+                            (quien pide) → <b>revisó</b> (dueño del proceso) → <b>aprobó</b>
+                            (Jefe MAST). Cada firma aprueba su paso; con la última el cambio
+                            se aplica solo.
+                        </div>
+                        <group invisible="not sgi_sign_request_id">
+                            <group>
+                                <field name="sgi_sign_request_id" readonly="1"/>
+                                <field name="sgi_sign_state" readonly="1" widget="badge"
+                                       decoration-success="sgi_sign_state == 'signed'"
+                                       decoration-warning="sgi_sign_state == 'sent'"
+                                       decoration-danger="sgi_sign_state in ('canceled', 'expired')"/>
+                            </group>
+                            <group>
+                                <field name="sgi_sign_progress"/>
+                                <field name="sgi_change_attachment_id" readonly="1"
+                                       invisible="not sgi_change_attachment_id"/>
+                            </group>
+                        </group>
                         <div class="mb-2"
                              invisible="sgi_change_kind != 'alta' or request_status != 'approved' or sgi_document_id">
                             <button name="action_sgi_create_document" type="object"
@@ -59,6 +86,21 @@
                         </group>
                     </page>
                 </notebook>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_approval_category_view_form" model="ir.ui.view">
+        <field name="name">sgi.approval.category.form.inherit</field>
+        <field name="model">approval.category</field>
+        <field name="inherit_id" ref="approvals.approval_category_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="SGI" name="sgi">
+                    <field name="sgi_is_doc_change"/>
+                    <field name="sgi_sign_required" invisible="not sgi_is_doc_change"/>
+                    <field name="sgi_is_moc"/>
+                </group>
             </xpath>
         </field>
     </record>

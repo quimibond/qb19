@@ -1293,6 +1293,9 @@ class SgiCron(models.AbstractModel):
         self._sgi_step(
             "responsivas de EPP firmadas vía Sign",
             lambda: self.env['sgi.epp.delivery']._sgi_sync_from_sign())
+        self._sgi_step(
+            "cambios documentales firmados vía Sign",
+            lambda: self.env['approval.request']._sgi_sync_all_sign())
         return True
 
     # ------------------------------------------------------------------

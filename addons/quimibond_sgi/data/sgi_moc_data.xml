@@ -12,6 +12,6 @@
 que no son un cambio documental ni un ECO de ingeniería. La solicitud exige
 motivo, procesos afectados y evaluación de riesgos antes de poder aprobarse.</field>
         <field name="sgi_is_moc" eval="True"/>
-        <field name="approval_minimum">2</field>
+        <field name="approval_minimum">1</field>
     </record>
 </odoo>
