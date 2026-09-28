@@ -1987,12 +1987,26 @@ SGI).
   `quimibond_sgi.mast_user_id`), no al primero heredado (era el CEO).
 - Cierre automático de actividades ya resueltas (captura de indicador, eslabón
   que vuelve a fluir, riesgo con acción o revisado, parte interesada revisada)
-  en el cron diario de indicadores.
+  en el cron diario de No Conformidades (corre todos los días).
 - Propuestas de cambio: el **dueño del proceso** se agrega como aprobador.
 - Mi equipo del dueño de proceso: solo quien ejecuta o aprueba actividades
   activas de su proceso (antes entraban su jefe y sus pares).
 - Mis pendientes: sin mediciones de indicadores archivados.
 - Pruebas: `tests/test_role_audit.py`.
+
+**1.1 / 1.8 — campos guardados.** El procedimiento del empleado vive en
+campos **guardados** de `hr.employee`: `sgi_mp_job_id` (puesto de la versión
+vigente), `sgi_mp_role_ids`, `sgi_mp_received_role_ids`,
+`sgi_mp_short_role_ids`, `sgi_mp_process_ids` y `sgi_my_procedure_ack_state`.
+Se buscan, se agrupan y se leen por API sin abrir la pantalla. Se recalculan
+al cambiar el puesto o la familia, al crear, editar o borrar un rol, al
+archivar o mover una actividad y al publicar
+(`hr.employee._sgi_mp_touch_jobs`). La pantalla, Mi equipo y «Ver como» leen
+esos campos; el empleado público los copia del empleado. También quedan
+guardados `sgi.indicator.last_measure_id/last_value/last_semaphore` (filtro
+«En rojo»), `sgi.indicator.spec_missing` y
+`documents.document.sgi_ack_count/sgi_ack_read_pct`. Odoo los calcula al
+actualizar el módulo (columnas nuevas).
 
 ## Fórmulas para 28 indicadores más (55.0.0)
 

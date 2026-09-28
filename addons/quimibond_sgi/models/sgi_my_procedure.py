@@ -474,6 +474,7 @@ class HrJobMyProcedure(models.Model):
                 job.name, revision, data['total'], sum(len(s['entries']) for s in data['sections']),
                 len(doc.sgi_ack_ids)))
             published |= doc
+            self.env['hr.employee']._sgi_mp_touch_jobs(job)
             _logger.info("SGI Mi procedimiento: %s rev %02d publicado (%s).",
                          code, revision, job.name)
         parts = []
@@ -609,16 +610,20 @@ class HrJobMyProcedure(models.Model):
 class HrEmployeeMyProcedure(models.Model):
     _inherit = 'hr.employee'
 
+    sgi_document_ack_ids = fields.One2many('sgi.document.ack', 'employee_id', string="Acuses de lectura")
+    # 56.7.0 (1.8): guardado para filtrar y agrupar (quién ya firmó).
     sgi_my_procedure_ack_state = fields.Selection([
         ('sin_publicar', "Sin publicar"),
         ('pendiente', "Acuse pendiente"),
         ('leido', "Leído y entendido"),
-    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack')
+    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack', store=True, index=True)
 
+    @api.depends('sgi_mp_job_id', 'sgi_document_ack_ids.state', 'sgi_document_ack_ids.document_id')
     def _compute_sgi_my_procedure_ack(self):
         Ack = self.env['sgi.document.ack'].sudo()
         for emp in self:
-            doc = emp.job_id._sgi_my_procedure_current_doc() if emp.job_id else False
+            job = emp.sudo().sgi_mp_job_id
+            doc = job._sgi_my_procedure_current_doc() if job else False
             if not doc:
                 emp.sgi_my_procedure_ack_state = 'sin_publicar'
                 continue

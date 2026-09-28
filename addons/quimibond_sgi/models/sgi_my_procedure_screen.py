@@ -91,6 +91,12 @@ class HrJobMyProcedureLists(models.Model):
         short = roles.filtered(lambda r: r.role in _SHORT_ROLES) - detail.filtered(
             lambda r: r.activity_id in detail.activity_id)
         received = roles.filtered(lambda r: r.role == 'escala')
+        return self._sgi_mp_order(detail, received, short)
+
+    @api.model
+    def _sgi_mp_order(self, detail, received, short):
+        """Orden de lectura de las tres listas (lo guardado en el empleado
+        sale en el orden del modelo; la pantalla lo reordena aquí)."""
         Job = self.env['hr.job']
 
         def sort_key(role):
@@ -118,11 +124,11 @@ class SgiMyProcedureMixin(models.AbstractModel):
     _description = "Mi procedimiento en la ficha"
 
     sgi_mp_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Mis actividades", compute='_compute_sgi_mp_lists')
+        'sgi.activity.role', string="Mis actividades", compute='_compute_sgi_mp_roles')
     sgi_mp_received_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_sgi_mp_lists')
+        'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_sgi_mp_roles')
     sgi_mp_short_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Participa o se entera", compute='_compute_sgi_mp_lists')
+        'sgi.activity.role', string="Participa o se entera", compute='_compute_sgi_mp_roles')
     sgi_mp_ack_ids = fields.Many2many(
         'sgi.document.ack', string="Acuses de lectura", compute='_compute_sgi_mp_lists')
     sgi_mp_document_ids = fields.Many2many(
@@ -132,7 +138,7 @@ class SgiMyProcedureMixin(models.AbstractModel):
     sgi_mp_epp_text = fields.Text(string="EPP requerido (Mi procedimiento)", compute='_compute_sgi_mp_lists')
     sgi_mp_can_sign = fields.Boolean(string="Puede firmar", compute='_compute_sgi_mp_lists')
     sgi_mp_process_ids = fields.Many2many(
-        'sgi.process', string="Procesos donde participa", compute='_compute_sgi_mp_lists')
+        'sgi.process', string="Procesos donde participa", compute='_compute_sgi_mp_roles')
 
     def _sgi_mp_job(self):
         """El puesto cuyo procedimiento se muestra (el del empleado; el
@@ -146,22 +152,36 @@ class SgiMyProcedureMixin(models.AbstractModel):
         return self.env['hr.employee'].sudo().browse(self.id) if self._name != 'hr.job' else \
             self.env['hr.employee'].sudo()
 
+    def _compute_sgi_mp_roles(self):
+        """Puesto y empleado público. En hr.employee los cuatro campos están
+        GUARDADOS (56.7.0, ver HrEmployeeMyProcedureTab); el empleado público
+        (mismo id) los lee de ahí y el puesto los calcula de sus roles."""
+        Role = self.env['sgi.activity.role'].sudo()
+        for rec in self:
+            emp = rec._sgi_mp_employee_rec().exists() if rec._name != 'hr.job' else False
+            if emp:
+                rec.sgi_mp_role_ids = emp.sgi_mp_role_ids.ids
+                rec.sgi_mp_received_role_ids = emp.sgi_mp_received_role_ids.ids
+                rec.sgi_mp_short_role_ids = emp.sgi_mp_short_role_ids.ids
+                rec.sgi_mp_process_ids = emp.sgi_mp_process_ids.ids
+                continue
+            job = rec._sgi_mp_job()
+            lists = job._sgi_mp_role_lists() if job else {'detail': Role, 'received': Role, 'short': Role}
+            rec.sgi_mp_role_ids = lists['detail'].ids
+            rec.sgi_mp_received_role_ids = lists['received'].ids
+            rec.sgi_mp_short_role_ids = lists['short'].ids
+            rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
+
     # Sin @api.depends: no se almacena y hr.job no tiene job_id; se
     # recalcula en cada lectura, como la pantalla de Inicio.
     @api.depends_context('uid')
     def _compute_sgi_mp_lists(self):
-        Role = self.env['sgi.activity.role'].sudo()
         Ack = self.env['sgi.document.ack'].sudo()
         Epp = self.env['sgi.epp.delivery'].sudo()
         me = self.env.user.employee_id.sudo()
         for rec in self:
             job = rec._sgi_mp_job()
             emp = rec._sgi_mp_employee_rec().exists()
-            lists = job._sgi_mp_role_lists() if job else {'detail': Role, 'received': Role, 'short': Role}
-            rec.sgi_mp_role_ids = lists['detail'].ids
-            rec.sgi_mp_received_role_ids = lists['received'].ids
-            rec.sgi_mp_short_role_ids = lists['short'].ids
-            rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
             rec.sgi_mp_document_ids = _sgi_readable(
                 job._sgi_mp_document_records(), rec.env) if job else False
             rec.sgi_mp_epp_text = (job.sgi_epp_required or False) if job else False
@@ -191,8 +211,58 @@ class SgiMyProcedureMixin(models.AbstractModel):
 
 
 class HrEmployeeMyProcedureTab(models.Model):
+    """56.7.0 (1.1 / 1.8): el procedimiento del empleado vive en campos
+    GUARDADOS: se buscan, se agrupan y se leen por API (read/search_read) sin
+    abrir la pantalla, y Mi equipo, «Ver como» y la ficha leen lo mismo. Se
+    recalculan cuando cambia el puesto (versión vigente), la familia del
+    puesto o los roles y actividades (ver _sgi_mp_touch_jobs)."""
     _name = 'hr.employee'
     _inherit = ['hr.employee', 'sgi.my.procedure.mixin']
+
+    sgi_mp_job_id = fields.Many2one(
+        'hr.job', string="Puesto (Mi procedimiento)", related='current_version_id.job_id',
+        store=True, index=True, readonly=True)
+    sgi_mp_role_ids = fields.Many2many(
+        'sgi.activity.role', 'hr_employee_sgi_mp_role_rel', 'employee_id', 'role_id',
+        string="Mis actividades", compute='_compute_sgi_mp_roles_stored', store=True)
+    sgi_mp_received_role_ids = fields.Many2many(
+        'sgi.activity.role', 'hr_employee_sgi_mp_received_rel', 'employee_id', 'role_id',
+        string="Escalamientos que recibe", compute='_compute_sgi_mp_roles_stored', store=True)
+    sgi_mp_short_role_ids = fields.Many2many(
+        'sgi.activity.role', 'hr_employee_sgi_mp_short_rel', 'employee_id', 'role_id',
+        string="Participa o se entera", compute='_compute_sgi_mp_roles_stored', store=True)
+    sgi_mp_process_ids = fields.Many2many(
+        'sgi.process', 'hr_employee_sgi_mp_process_rel', 'employee_id', 'process_id',
+        string="Procesos donde participa", compute='_compute_sgi_mp_roles_stored', store=True)
+
+    @api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id')
+    def _compute_sgi_mp_roles_stored(self):
+        Role = self.env['sgi.activity.role'].sudo()
+        cache = {}
+        for emp in self:
+            job = emp.sudo().sgi_mp_job_id
+            if job.id not in cache:
+                cache[job.id] = job._sgi_mp_role_lists() if job else {
+                    'detail': Role, 'received': Role, 'short': Role}
+            lists = cache[job.id]
+            emp.sgi_mp_role_ids = lists['detail'].ids
+            emp.sgi_mp_received_role_ids = lists['received'].ids
+            emp.sgi_mp_short_role_ids = lists['short'].ids
+            emp.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
+
+    @api.model
+    def _sgi_mp_touch_jobs(self, jobs):
+        """Marca para recalcular el procedimiento guardado de los empleados
+        de estos puestos (cambió un rol, una actividad o una publicación)."""
+        jobs = jobs.exists() if jobs else jobs
+        if not jobs:
+            return
+        employees = self.sudo().with_context(active_test=False).search([('sgi_mp_job_id', 'in', jobs.ids)])
+        if not employees:
+            return
+        for fname in ('sgi_mp_role_ids', 'sgi_mp_received_role_ids', 'sgi_mp_short_role_ids',
+                      'sgi_mp_process_ids', 'sgi_my_procedure_ack_state'):
+            self.env.add_to_compute(self._fields[fname], employees)
 
 
 class HrEmployeePublicMyProcedureTab(models.Model):
@@ -483,9 +553,15 @@ class SgiMyProcedure(models.TransientModel):
             job = wiz._sgi_mp_job()
             emp = wiz._sgi_mp_employee()
             user = emp.user_id if emp else False
-            # --- Actividades del puesto y de su familia, solo activas.
-            lists = job._sgi_mp_role_lists() if job else {
-                'detail': Role, 'received': Role, 'short': Role}
+            # --- Actividades del puesto y de su familia, solo activas. Con
+            # empleado se leen de sus campos guardados (1.1: la pantalla solo
+            # muestra); sin empleado (se eligió un puesto), del puesto.
+            if emp and emp.sgi_mp_job_id == job:
+                lists = self.env['hr.job']._sgi_mp_order(
+                    emp.sgi_mp_role_ids, emp.sgi_mp_received_role_ids, emp.sgi_mp_short_role_ids)
+            else:
+                lists = job._sgi_mp_role_lists() if job else {
+                    'detail': Role, 'received': Role, 'short': Role}
             detail = lists['detail']
             wiz.role_ids = detail.ids
             wiz.received_role_ids = lists['received'].ids

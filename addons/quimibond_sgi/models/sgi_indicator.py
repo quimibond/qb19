@@ -184,14 +184,15 @@ class SgiIndicator(models.Model):
     active = fields.Boolean(default=True)
 
     measure_ids = fields.One2many('sgi.indicator.measure', 'indicator_id', string="Mediciones")
+    # 56.7.0 (1.8): guardados para filtrar «En rojo» y reportar.
     last_measure_id = fields.Many2one('sgi.indicator.measure', string="Última medición",
-                                      compute='_compute_last_measure')
-    last_value = fields.Float(string="Último valor", compute='_compute_last_measure')
+                                      compute='_compute_last_measure', store=True)
+    last_value = fields.Float(string="Último valor", compute='_compute_last_measure', store=True)
     last_semaphore = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Último semáforo", compute='_compute_last_measure')
+    ], string="Último semáforo", compute='_compute_last_measure', store=True)
 
     _code_uniq = models.Constraint(
         'unique(code)',

@@ -1389,6 +1389,11 @@ class SgiProcessActivity(models.Model):
         records = self.with_context(sgi_roles_via_activity=True) \
             if 'role_ids' in vals or 'responsible_job_ids' in vals else self
         res = super(SgiProcessActivity, records).write(vals)
+        # 56.7.0: archivar, reactivar o mover una actividad cambia el «Mi
+        # procedimiento» guardado de quienes tienen rol en ella.
+        if {'active', 'process_id', 'measure_cadence'} & set(vals):
+            roles = self.sudo().with_context(active_test=False).role_ids
+            self.env['hr.employee']._sgi_mp_touch_jobs(roles._sgi_mp_jobs())
         # La medición (configuración o refresco del cron) no es un cambio al
         # cuerpo del procedimiento: no dispara revisión documental (G14).
         if set(vals) - self._SGI_MEASURE_FIELDS:

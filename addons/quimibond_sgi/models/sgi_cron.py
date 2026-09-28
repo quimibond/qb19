@@ -144,6 +144,11 @@ class SgiCron(models.AbstractModel):
         default_days = int(Param.get_param('quimibond_sgi.nc_escalation_days', 5))
         external_days = int(Param.get_param('quimibond_sgi.nc_escalation_days_external', 3))
 
+        # 56.7.0: actividades que agendaron los crons y cuya causa ya se
+        # resolvió (captura, eslabón que fluye, riesgo con acción…). Va en
+        # este cron porque corre TODOS los días; el de indicadores solo mide
+        # el tercer día hábil.
+        self._sgi_step("cerrar actividades ya resueltas", self._sgi_close_resolved_activities)
         # Marca acciones vencidas (recomputo del store)
         self._sgi_step(
             "recomputar estado de acciones",
@@ -371,7 +376,6 @@ class SgiCron(models.AbstractModel):
         last_prev = first_this - relativedelta(days=1)
         deadline = first_this + relativedelta(days=4)
         indicators = self.env['sgi.indicator'].search([('frequency', '=', 'monthly')])
-        self._sgi_step("cerrar actividades ya resueltas", self._sgi_close_resolved_activities)
         self._sgi_step(
             "foto del valor del inventario (S3-04)",
             lambda: self.env['sgi.inventory.value'].sgi_snapshot(last_prev))

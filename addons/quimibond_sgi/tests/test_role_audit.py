@@ -105,3 +105,39 @@ class TestRoleAudit(TransactionCase):
         # Sin empleado ligado también abre (vacía o con lo del usuario).
         action = self.env['sgi.my.pending'].with_user(self.other).action_open_mine()
         self.assertEqual(action['res_model'], 'sgi.my.pending')
+
+    def test_07_procedimiento_guardado_en_el_empleado(self):
+        """1.1 / 1.8: el procedimiento vive en campos guardados del empleado
+        (se buscan y se leen por API) y se recalcula al cambiar los roles."""
+        process = self.env['sgi.process'].create({'code': 'ZROLG', 'name': 'Proceso guardado'})
+        activity = self.env['sgi.process.activity'].create({
+            'process_id': process.id, 'name': 'Revisar lo guardado', 'number': '1.1',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job.id})]})
+        role = activity.role_ids
+        Employee = self.env['hr.employee']
+        self.assertEqual(self.emp.sgi_mp_job_id, self.job)
+        self.assertIn(role, self.emp.sgi_mp_role_ids)
+        self.assertIn(self.emp, Employee.search([('sgi_mp_role_ids', 'in', role.ids)]),
+                      "Guardado: se busca por rol.")
+        self.assertIn(self.emp, Employee.search([('sgi_mp_process_ids', 'in', process.ids)]))
+        data = self.emp.read(['sgi_mp_role_ids', 'sgi_mp_process_ids', 'sgi_my_procedure_ack_state'])[0]
+        self.assertIn(role.id, data['sgi_mp_role_ids'])
+        self.assertEqual(data['sgi_my_procedure_ack_state'], 'sin_publicar')
+        groups = Employee._read_group([('id', '=', self.emp.id)], ['sgi_my_procedure_ack_state'], ['__count'])
+        self.assertEqual(groups[0][0], 'sin_publicar', "Guardado: se agrupa por estado de firma.")
+        # Archivar la actividad lo saca del procedimiento guardado.
+        activity.active = False
+        self.assertNotIn(role, self.emp.sgi_mp_role_ids)
+        activity.active = True
+        self.assertIn(role, self.emp.sgi_mp_role_ids)
+        # La pantalla (como Usuario SGI) muestra lo mismo que está guardado.
+        screen = self.env['sgi.my.procedure'].with_user(self.user).create({'employee_id': self.emp.id})
+        self.assertEqual(screen.job_id, self.job)
+        self.assertEqual(set(screen.role_ids.ids), set(self.emp.sgi_mp_role_ids.ids))
+        # Indicador: último semáforo guardado y buscable; difusión guardada.
+        self.env['sgi.indicator.measure'].create({
+            'indicator_id': self.mine.id, 'period_date': date(2046, 5, 1), 'value': 0.1, 'state': 'capturado'})
+        self.assertEqual(self.mine.last_semaphore, 'rojo')
+        self.assertIn(self.mine, self.env['sgi.indicator'].search([('last_semaphore', '=', 'rojo')]))
+        self.assertTrue(self.env['documents.document']._fields['sgi_ack_count'].store)
+        self.assertTrue(self.env['sgi.indicator']._fields['spec_missing'].store)

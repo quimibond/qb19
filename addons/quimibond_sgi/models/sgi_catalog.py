@@ -275,22 +275,32 @@ class SgiActivityRole(models.Model):
             activities._sgi_check_roles()
         activities.process_id._sgi_flag_procedure_dirty()
 
+    def _sgi_mp_jobs(self):
+        """Puestos cuyo «Mi procedimiento» depende de estos roles (directos
+        y los de su familia)."""
+        return self.sudo().job_id | self.sudo().family_id.job_ids
+
     @api.model_create_multi
     def create(self, vals_list):
         roles = super().create(vals_list)
         roles._sgi_after_change(roles.activity_id)
+        self.env['hr.employee']._sgi_mp_touch_jobs(roles._sgi_mp_jobs())
         return roles
 
     def write(self, vals):
         before = self.activity_id
+        jobs = self._sgi_mp_jobs()
         res = super().write(vals)
         self._sgi_after_change(before | self.activity_id)
+        self.env['hr.employee']._sgi_mp_touch_jobs(jobs | self._sgi_mp_jobs())
         return res
 
     def unlink(self):
         activities = self.activity_id
+        jobs = self._sgi_mp_jobs()
         res = super().unlink()
         self._sgi_after_change(activities)
+        self.env['hr.employee']._sgi_mp_touch_jobs(jobs)
         return res
 
 

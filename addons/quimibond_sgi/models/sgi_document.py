@@ -226,8 +226,9 @@ class DocumentsDocument(models.Model):
             "Selecciona el «Menú de Odoo» (o el worksheet destino) en la ficha.")
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
-    sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats')
-    sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats')
+    # 56.7.0 (1.8): guardados para filtrar y reportar la difusión.
+    sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats', store=True)
+    sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats', store=True)
 
     # --- Relación documental por FK real (P-A28 -> IT/F/F-IT/DAT P-A28-*) ---
     # H21: la familia se define por un enlace explícito y editable, no por regex.

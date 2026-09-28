@@ -642,7 +642,7 @@ class SgiIndicatorSpec(models.Model):
     target_date = fields.Date(
         string="Llegar a la meta el",
         help="Opcional: sin fecha, la meta es permanente.")
-    spec_missing = fields.Char(string="Le falta", compute='_compute_spec_missing')
+    spec_missing = fields.Char(string="Le falta", compute='_compute_spec_missing', store=True)
 
     # --- Modos genéricos (P-1): el indicador se calcula solo de lo que ya
     # mide el SGI, sin una fórmula fija por indicador.
@@ -750,7 +750,10 @@ class SgiIndicatorSpec(models.Model):
             problems.append("sin frecuencia")
         return problems
 
-    @api.depends('target_objective', 'formula', 'source', 'responsible_id', 'frequency')
+    @api.depends('target_objective', 'formula', 'source', 'responsible_id', 'frequency', 'calc_mode',
+                 'activity_id', 'deliverable_id.odoo_model_id', 'deliverable_id.complete_domain',
+                 'activity_id.output_deliverable_ids.odoo_model_id',
+                 'activity_id.output_deliverable_ids.complete_domain')
     def _compute_spec_missing(self):
         for indicator in self:
             indicator.spec_missing = ", ".join(indicator._sgi_spec_problems()) or False

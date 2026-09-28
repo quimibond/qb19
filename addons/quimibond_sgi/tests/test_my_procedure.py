@@ -467,14 +467,16 @@ class TestMyProcedure(TransactionCase):
         pantalla de Inicio, y la firma desde la ficha."""
         wiz = self.env['sgi.my.procedure'].with_user(self.user_emp).create(
             {'employee_id': self.emp1.id})
+        # 56.7.0: en el empleado las listas están guardadas (orden del
+        # modelo); la pantalla las reordena para leerlas.
         emp = self.emp1.with_user(self.manager)
-        self.assertEqual(emp.sgi_mp_role_ids.ids, wiz.role_ids.ids)
-        self.assertEqual(emp.sgi_mp_received_role_ids.ids, wiz.received_role_ids.ids)
-        self.assertEqual(emp.sgi_mp_short_role_ids.ids, wiz.short_role_ids.ids)
+        self.assertEqual(set(emp.sgi_mp_role_ids.ids), set(wiz.role_ids.ids))
+        self.assertEqual(set(emp.sgi_mp_received_role_ids.ids), set(wiz.received_role_ids.ids))
+        self.assertEqual(set(emp.sgi_mp_short_role_ids.ids), set(wiz.short_role_ids.ids))
         self.assertEqual(set(emp.sgi_mp_process_ids.ids), set(wiz.process_ids.ids))
         # Empleado público (lo que ve cualquier usuario interno): lo mismo.
         public = self.env['hr.employee.public'].with_user(self.user_emp).browse(self.emp1.id)
-        self.assertEqual(public.sgi_mp_role_ids.ids, wiz.role_ids.ids)
+        self.assertEqual(set(public.sgi_mp_role_ids.ids), set(wiz.role_ids.ids))
         self.assertEqual(public.action_sgi_print_my_procedure()['type'], 'ir.actions.report')
         # Puesto: sus actividades, sin acuses ni responsivas.
         job = self.job.with_user(self.manager)

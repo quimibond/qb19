@@ -165,6 +165,7 @@
                 <field name="responsible_id"/>
                 <filter name="mine" string="Mis indicadores"
                         domain="[('responsible_id', '=', uid)]"/>
+                <filter name="red" string="En rojo" domain="[('last_semaphore', '=', 'rojo')]"/>
                 <separator/>
                 <filter name="vigentes" string="De procesos vigentes"
                         domain="[('sgi_process_active', '=', True)]"/>
