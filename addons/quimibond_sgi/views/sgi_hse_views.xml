@@ -244,6 +244,9 @@
                             <field name="last_run"/>
                         </group>
                     </group>
+                    <group string="Quién lo llena (firma con su PIN de empleado)">
+                        <field name="employee_ids" widget="many2many_tags" nolabel="1"/>
+                    </group>
                     <group string="Equipos o unidades">
                         <field name="equipment_ids" widget="many2many_tags" nolabel="1"/>
                     </group>
@@ -271,11 +274,64 @@
         </field>
     </record>
 
+    <!-- 56.22.0: lista propia de hojas (quién la llenó, para medir por persona). -->
+    <record id="sgi_checklist_request_view_list" model="ir.ui.view">
+        <field name="name">maintenance.request.list.sgi.checklist</field>
+        <field name="model">maintenance.request</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Hojas de checklist" decoration-danger="sgi_checklist_state == 'con_fallas'"
+                  decoration-muted="sgi_checklist_employee_id">
+                <field name="sgi_checklist_date"/>
+                <field name="sgi_checklist_template_id"/>
+                <field name="equipment_id"/>
+                <field name="sgi_checklist_state" widget="badge"
+                       decoration-success="sgi_checklist_state == 'completo'"
+                       decoration-danger="sgi_checklist_state == 'con_fallas'"/>
+                <field name="sgi_checklist_employee_id"/>
+                <field name="sgi_checklist_done_at" optional="show"/>
+                <field name="user_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_checklist_request_view_pivot" model="ir.ui.view">
+        <field name="name">maintenance.request.pivot.sgi.checklist</field>
+        <field name="model">maintenance.request</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <pivot string="Checklists por persona">
+                <field name="sgi_checklist_employee_id" type="row"/>
+                <field name="sgi_checklist_state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
     <record id="sgi_checklist_request_action" model="ir.actions.act_window">
         <field name="name">Hojas de checklist</field>
         <field name="res_model">maintenance.request</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,form,pivot</field>
         <field name="domain">[('sgi_checklist_template_id', '!=', False)]</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_checklist_request_view_list')}),
+            (0, 0, {'view_mode': 'form'}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_checklist_request_view_pivot')})]"/>
+    </record>
+
+    <!-- Tableta compartida: solo las hojas de hoy que faltan de firmar. -->
+    <record id="sgi_checklist_today_action" model="ir.actions.act_window">
+        <field name="name">Checklists de hoy</field>
+        <field name="res_model">maintenance.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sgi_checklist_template_id', '!=', False), ('sgi_checklist_employee_id', '=', False), ('sgi_checklist_date', '=', context_today().strftime('%Y-%m-%d'))]</field>
+        <field name="context">{'create': False}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_checklist_request_view_list')}),
+            (0, 0, {'view_mode': 'form'})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay checklists pendientes hoy</p>
+            <p>Abre la hoja de tu equipo o unidad, marca cada punto y al final «Terminar checklist» con tu nombre y tu PIN.</p>
+        </field>
     </record>
 
     <record id="sgi_maintenance_request_view_form_checklist" model="ir.ui.view">
@@ -293,6 +349,11 @@
                                decoration-danger="sgi_checklist_state == 'con_fallas'"/>
                     </group>
                     <group>
+                        <field name="sgi_checklist_employee_id" invisible="not sgi_checklist_employee_id"/>
+                        <field name="sgi_checklist_done_at" invisible="not sgi_checklist_done_at"/>
+                        <button name="action_sgi_checklist_finish" type="object"
+                                string="Terminar checklist" class="btn-primary"
+                                invisible="sgi_checklist_employee_id"/>
                         <button name="action_sgi_create_correctives" type="object"
                                 string="Crear correctivos de las fallas" class="btn-secondary"
                                 invisible="sgi_checklist_state != 'con_fallas'"/>
@@ -303,13 +364,32 @@
                             <field name="sequence" column_invisible="1"/>
                             <field name="name" readonly="1"/>
                             <field name="hint" readonly="1"/>
-                            <field name="answer"/>
-                            <field name="note"/>
+                            <field name="answer" readonly="parent.sgi_checklist_employee_id"/>
+                            <field name="note" readonly="parent.sgi_checklist_employee_id"/>
                             <field name="corrective_request_id" readonly="1"/>
                         </list>
                     </field>
                 </group>
             </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_checklist_finish_view_form" model="ir.ui.view">
+        <field name="name">sgi.checklist.finish.form</field>
+        <field name="model">sgi.checklist.finish</field>
+        <field name="arch" type="xml">
+            <form string="Terminar checklist">
+                <group>
+                    <field name="request_id" invisible="1"/>
+                    <field name="allowed_employee_ids" invisible="1"/>
+                    <field name="employee_id" options="{'no_create': True, 'no_open': True}"/>
+                    <field name="pin" password="True"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Terminar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
         </field>
     </record>
 
@@ -320,6 +400,8 @@
               parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="45"/>
     <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist (planta y unidades)"
               parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="50"/>
+    <menuitem id="menu_sgi_checklist_today" name="Checklists de hoy"
+              parent="maintenance.menu_maintenance_title" action="sgi_checklist_today_action" sequence="1"/>
     <menuitem id="menu_sgi_checklist_templates" name="Checklists de planta y unidades"
               parent="menu_sgi_config" action="sgi_checklist_template_action" sequence="60"/>
 </odoo>

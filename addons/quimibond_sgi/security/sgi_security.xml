@@ -240,4 +240,69 @@
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="perm_read" eval="False"/>
     </record>
+
+    <!-- 56.22.0 · Eficiencias de personal (C4.25 → S4.35). El jefe o
+         supervisor de área captura y cierra SOLO la hoja de su departamento
+         (el suyo y los que dependen de él, o el que encabeza como jefe); RH la
+         recibe. Grupo aparte porque no es un nivel del SGI: se suma al que
+         la persona ya tenga. Las reglas van por operación: lee su área, y
+         solo edita la hoja mientras está en borrador. RH y MAST tienen su
+         regla abierta porque las reglas de grupo se suman (OR). -->
+    <record id="res_groups_privilege_sgi_efficiency" model="res.groups.privilege">
+        <field name="name">Eficiencias de personal</field>
+        <field name="sequence">21</field>
+        <field name="category_id" ref="module_category_sgi"/>
+    </record>
+    <record id="group_sgi_efficiency_capture" model="res.groups">
+        <field name="name">Captura de eficiencias (jefe o supervisor de área)</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_sgi_efficiency"/>
+        <field name="implied_ids" eval="[(4, ref('group_sgi_user'))]"/>
+    </record>
+    <record id="rule_sgi_staff_eff_capture_read" model="ir.rule">
+        <field name="name">SGI: el jefe de área ve las eficiencias de su departamento</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="groups" eval="[(4, ref('group_sgi_efficiency_capture'))]"/>
+        <field name="domain_force">['|', ('department_id', 'child_of', user.employee_ids.department_id.ids), ('department_id.manager_id.user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_sgi_staff_eff_capture_edit" model="ir.rule">
+        <field name="name">SGI: el jefe de área captura la hoja de su departamento en borrador</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="groups" eval="[(4, ref('group_sgi_efficiency_capture'))]"/>
+        <field name="domain_force">[('state', '=', 'borrador'), '|', ('department_id', 'child_of', user.employee_ids.department_id.ids), ('department_id.manager_id.user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_staff_eff_hr_all" model="ir.rule">
+        <field name="name">SGI: RH ve y recibe todas las eficiencias</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user')), (4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_sgi_staff_eff_line_capture_read" model="ir.rule">
+        <field name="name">SGI: el jefe de área ve los renglones de su departamento</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency_line"/>
+        <field name="groups" eval="[(4, ref('group_sgi_efficiency_capture'))]"/>
+        <field name="domain_force">['|', ('sheet_id.department_id', 'child_of', user.employee_ids.department_id.ids), ('sheet_id.department_id.manager_id.user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_sgi_staff_eff_line_capture_edit" model="ir.rule">
+        <field name="name">SGI: el jefe de área captura renglones de su hoja en borrador</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency_line"/>
+        <field name="groups" eval="[(4, ref('group_sgi_efficiency_capture'))]"/>
+        <field name="domain_force">[('sheet_id.state', '=', 'borrador'), '|', ('sheet_id.department_id', 'child_of', user.employee_ids.department_id.ids), ('sheet_id.department_id.manager_id.user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_staff_eff_line_hr_all" model="ir.rule">
+        <field name="name">SGI: RH ve todos los renglones de eficiencias</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency_line"/>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user')), (4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
 </odoo>
