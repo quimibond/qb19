@@ -257,3 +257,8 @@ access_sgi_my_pending_user,sgi.my.pending.user,model_sgi_my_pending,base.group_u
 access_sgi_activity_change_user,sgi.activity.change.user,model_sgi_activity_change,base.group_user,1,1,1,0
 access_sgi_activity_change_manager,sgi.activity.change.manager,model_sgi_activity_change,quimibond_sgi.group_sgi_manager,1,1,1,1
 access_sgi_activity_change_role_user,sgi.activity.change.role.user,model_sgi_activity_change_role,base.group_user,1,1,1,1
+access_sgi_activity_scope_employee,sgi.activity.scope.employee,model_sgi_activity_scope,base.group_user,1,0,0,0
+access_sgi_activity_scope_manager,sgi.activity.scope.manager,model_sgi_activity_scope,group_sgi_manager,1,1,1,1
+access_sgi_measure_scope_user,sgi.indicator.measure.scope.user,model_sgi_indicator_measure_scope,group_sgi_user,1,1,1,1
+access_sgi_measure_scope_auditor,sgi.indicator.measure.scope.auditor,model_sgi_indicator_measure_scope,group_sgi_auditor,1,0,0,0
+access_sgi_measure_scope_manager,sgi.indicator.measure.scope.manager,model_sgi_indicator_measure_scope,group_sgi_manager,1,1,1,1

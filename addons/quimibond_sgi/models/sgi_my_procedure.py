@@ -240,6 +240,8 @@ class HrJobMyProcedure(models.Model):
             'manager': self.department_id.manager_id,
             'employees': employees,
             'family': self.sgi_family_id,
+            # 56.16.0: líneas de negocio que filtran este procedimiento.
+            'scopes': self._sgi_mp_scopes(),
             'processes': processes,
             'counts': [(role_labels[c], counts[c]) for c, _l in SGI_ROLE_SELECTION if counts[c]],
         }

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Líneas de negocio iniciales (56.16.0). noupdate: MAST las renombra,
+         archiva o agrega sin que una actualización las regrese. -->
+    <data noupdate="1">
+        <record id="sgi_scope_industrial" model="sgi.activity.scope">
+            <field name="name">Industrial</field>
+            <field name="sequence">10</field>
+            <field name="color">1</field>
+        </record>
+        <record id="sgi_scope_confeccion" model="sgi.activity.scope">
+            <field name="name">Confección</field>
+            <field name="sequence">20</field>
+            <field name="color">2</field>
+        </record>
+        <record id="sgi_scope_nacional" model="sgi.activity.scope">
+            <field name="name">Nacional</field>
+            <field name="sequence">30</field>
+            <field name="color">3</field>
+        </record>
+        <record id="sgi_scope_exportacion" model="sgi.activity.scope">
+            <field name="name">Exportación</field>
+            <field name="sequence">40</field>
+            <field name="color">4</field>
+        </record>
+        <record id="sgi_scope_tejido" model="sgi.activity.scope">
+            <field name="name">Tejido</field>
+            <field name="sequence">50</field>
+            <field name="color">5</field>
+        </record>
+        <record id="sgi_scope_tintoreria" model="sgi.activity.scope">
+            <field name="name">Tintorería y acabado</field>
+            <field name="sequence">60</field>
+            <field name="color">6</field>
+        </record>
+        <record id="sgi_scope_entretelas" model="sgi.activity.scope">
+            <field name="name">Entretelas</field>
+            <field name="sequence">70</field>
+            <field name="color">7</field>
+        </record>
+        <record id="sgi_scope_maquila" model="sgi.activity.scope">
+            <field name="name">Maquila</field>
+            <field name="sequence">80</field>
+            <field name="color">8</field>
+        </record>
+    </data>
+</odoo>

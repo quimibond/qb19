@@ -2318,3 +2318,43 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
   de Consolti, campos de Studio en empleados) y 10.8 (partir el módulo en
   2027).
 - Pruebas: `tests/test_cleanup_b10.py` (conteos como Usuario SGI).
+
+### 19.0.56.16.0 — Líneas de negocio («Aplica a»)
+
+Un mismo proceso atiende líneas distintas: «C2 Pedido a entrega» trae el
+pedido industrial (C2.04), el de confección (C2.08) y la etapa de exportación
+(C2.28 a C2.32) mezclados.
+
+- **Catálogo** `sgi.activity.scope` (Administración SGI → Configuración →
+  Líneas de negocio), editable por MAST: Industrial, Confección, Nacional,
+  Exportación, Tejido, Tintorería y acabado, Entretelas, Maquila (datos
+  `noupdate`). Cada línea puede llevar equipos de venta y etiquetas del pedido
+  para medir indicadores.
+- **Actividades**: campo «Aplica a» (`scope_ids`); vacío = aplica a todas. En
+  la búsqueda, «Aplica a» trae la línea elegida **más las generales**
+  (`scope_filter_id`); «Solo de la línea», filtros «Aplican a todas las
+  líneas» / «Solo de alguna línea» y agrupar por «Aplica a». En Procesos,
+  buscar «Tiene actividades de…».
+- **Diagramas**: el flujo del proceso (carriles y columnas) tiene selector de
+  línea; lo que no aplica se dibuja atenuado y punteado. «Quién hace qué»
+  (matriz) cuenta solo lo que aplica a la línea.
+- **Quién hace qué** (ejecuciones): departamento del puesto (guardado) y
+  «Aplica a» para filtrar y agrupar.
+- **Mi procedimiento**: «Líneas» en el puesto y, si la persona atiende menos,
+  en el empleado. Con líneas, el procedimiento (pantalla, pestaña, PDF,
+  conteos y huella) muestra solo las actividades generales y las de sus
+  líneas; la portada del PDF dice las líneas.
+- **Indicadores**: «Medir por línea» en los de fórmula configurable cuyos
+  términos lleguen a equipo de ventas o etiquetas del pedido (`team_id`,
+  `sale_id.team_id`, `order_id.team_id`, `tag_ids`…). La medición oficial
+  (NC, semáforo del proceso, tablero, RxD) sigue siendo el total; el
+  desglose queda en la misma medición (`sgi.indicator.measure.scope`, una
+  fila por línea con su semáforo) y en Indicadores → Mediciones por línea.
+  Así nada que suponga una medición por periodo se rompe.
+- `post-migrate` 56.16.0 etiqueta C2.04 → Industrial, C2.08 → Confección y la
+  etapa E de C2 → Exportación, y da líneas a ATENCION A CLIENTES Y VENDEDORES
+  CONFECCION (Confección + Nacional) y COORDINADOR DE VENTAS INDUSTRIAL
+  (Industrial). Solo agrega; lo que ya tenga líneas no se toca.
+- Pruebas: `tests/test_activity_scope.py` (filtro, C2 real si la base lo
+  trae, Mi procedimiento por puesto y por persona, diagramas, ejecuciones por
+  departamento, indicador por equipo y por etiqueta; lecturas como Usuario SGI).

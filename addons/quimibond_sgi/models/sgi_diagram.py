@@ -122,12 +122,33 @@ class SgiDiagram(models.AbstractModel):
         code = activity.number or activity.legacy_number or ''
         if with_process:
             code = "%s · %s" % (activity.process_id.code or '', code)
+        meta = []
+        if activity.scope_ids:
+            meta.append({'icon': 'fa-tags', 'label': "Aplica a",
+                         'value': ", ".join(activity.scope_ids.mapped('name'))})
+        scope = self._scope_param()
         return {
             'key': _key(activity), 'model': 'sgi.process.activity', 'res_id': activity.id,
             'code': code, 'name': activity.name or '', 'subtitle': jobs,
             'color': SEMAPHORE_COLOR.get(activity.measure_state, 'muted'),
-            'avatar': '', 'meta': [],
+            'avatar': '', 'meta': meta,
+            # 56.16.0: no aplica a la línea elegida → se dibuja atenuada.
+            'out': not self.env['sgi.activity.scope']._sgi_applies(activity.scope_ids, scope),
         }
+
+    def _scope_param(self):
+        """Línea de negocio elegida en el diagrama (parámetro «linea»)."""
+        value = self._param('linea', '')
+        if not str(value).isdigit():
+            return self.env['sgi.activity.scope']
+        return self.env['sgi.activity.scope'].browse(int(value)).exists()
+
+    def _scope_option(self):
+        """Selector «Aplica a» del diagrama: todas o una línea."""
+        scopes = self.env['sgi.activity.scope'].search([])
+        return {'name': 'linea', 'default': '',
+                'values': [{'value': '', 'label': "Todas las líneas"}]
+                + [{'value': str(s.id), 'label': s.name} for s in scopes]}
 
     def _process_nav(self, process):
         return {
@@ -189,7 +210,8 @@ class SgiDiagram(models.AbstractModel):
         lanes_by = self._param('carriles', 'puesto')
         options = [{'name': 'carriles', 'default': 'puesto',
                     'values': [{'value': 'puesto', 'label': "Carriles por puesto"},
-                               {'value': 'etapa', 'label': "Columnas por etapa"}]}]
+                               {'value': 'etapa', 'label': "Columnas por etapa"}]},
+                   self._scope_option()]
         if lanes_by == 'puesto':
             result = self._process_flow_swimlanes(process, activities)
             result['param_options'] = options
@@ -426,7 +448,11 @@ class SgiDiagram(models.AbstractModel):
     def _data_who_does_what(self, res_id=None):
         Role = self.env['sgi.activity.role']
         processes = self.env['sgi.process'].search([('active', '=', True)], order='process_type, code')
-        roles = Role.search([('process_id', 'in', processes.ids), ('activity_id.active', '=', True)])
+        domain = [('process_id', 'in', processes.ids), ('activity_id.active', '=', True)]
+        scope = self._scope_param()
+        if scope:
+            domain += self.env['sgi.activity.scope']._sgi_domain(scope, 'activity_id.scope_ids')
+        roles = Role.search(domain)
         weight = {'ejecuta': 3, 'aprueba': 2, 'participa': 1, 'informa': 1, 'escala': 1}
         cells, jobs = {}, self.env['hr.job']
         for role in roles:
@@ -454,6 +480,7 @@ class SgiDiagram(models.AbstractModel):
             'layout': 'matrix',
             'lanes': [],
             'matrix': {'rows': rows, 'cols': cols, 'cells': matrix_cells},
+            'param_options': [self._scope_option()],
             'legend': [{'color': 'success', 'label': "ejecuta"}, {'color': 'warning', 'label': "aprueba"},
                        {'color': 'info', 'label': "participa / se entera / escala"}],
         }
