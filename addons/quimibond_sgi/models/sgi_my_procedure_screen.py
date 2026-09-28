@@ -986,6 +986,7 @@ class HrEmployeePublicMyTeam(models.Model):
             'res_model': 'hr.employee.public',
             # 54.4.0: abre en organigrama; lista y kanban a un clic.
             'view_mode': 'hierarchy,list,kanban,form',
+            'mobile_view_mode': 'list',
             'views': [(self.env.ref('quimibond_sgi.sgi_my_team_view_hierarchy').id, 'hierarchy'),
                       (self.env.ref('quimibond_sgi.sgi_my_team_view_list').id, 'list'),
                       (False, 'kanban'), (False, 'form')],

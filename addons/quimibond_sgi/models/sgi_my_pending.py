@@ -224,13 +224,31 @@ class SgiMyPending(models.TransientModel):
         context = {'create': False}
         if group_by_person:
             context['search_default_group_employee'] = 1
+        else:
+            context['search_default_group_state'] = 1
         return {
             'type': 'ir.actions.act_window', 'name': name, 'res_model': self._name,
             'view_mode': 'list', 'domain': [('id', 'in', rows.ids)],
             'views': [(self.env.ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list')],
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_pending_view_search').id, 'search'],
             'context': context,
+            'help': "<p class='o_view_nocontent_smiling_face'>Sin pendientes</p><p>Estás al día.</p>",
         }
+
+    @api.model
+    def action_open_mine(self):
+        """Inicio → Mis pendientes: los del usuario actual. Sin empleado
+        ligado, los renglones van solo con el usuario."""
+        employee = self.env.user.employee_id.sudo()
+        if employee:
+            rows = self._sgi_build(employee)
+        else:
+            user = self.env.user
+            self.search([('create_uid', '=', self.env.uid), ('employee_id', '=', False),
+                         ('user_id', '=', user.id)]).unlink()
+            rows = self.create([dict(row, user_id=user.id)
+                                for row in self._sgi_pending_values(user).get(user.id, [])])
+        return self._sgi_action(rows, "Mis pendientes")
 
     def action_open(self):
         """Abre el registro de origen (la acción, la NC, la medición…)."""

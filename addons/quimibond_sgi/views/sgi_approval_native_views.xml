@@ -14,7 +14,7 @@
                   decoration-danger="approval_state == 'conflicto'">
                 <header>
                     <button name="action_sgi_sync_approval" type="object" string="Sincronizar"
-                            icon="fa-refresh"/>
+                            icon="fa-refresh" groups="quimibond_sgi.group_sgi_manager"/>
                 </header>
                 <field name="process_id" readonly="1"/>
                 <field name="activity_id" readonly="1"/>
@@ -26,16 +26,16 @@
                 <field name="approval_kind"/>
                 <field name="approval_model_id" options="{'no_create': True}"
                        readonly="approval_kind != 'boton'"/>
-                <field name="approval_method" readonly="approval_kind != 'boton'"/>
-                <field name="condition_field_id" options="{'no_create': True}"
+                <field name="approval_method" optional="hide" readonly="approval_kind != 'boton'"/>
+                <field name="condition_field_id" options="{'no_create': True}" optional="hide"
                        readonly="approval_kind != 'boton' or not approval_model_id"/>
-                <field name="condition_operator" readonly="not condition_field_id"/>
-                <field name="condition_value" readonly="not condition_field_id"/>
+                <field name="condition_operator" optional="hide" readonly="not condition_field_id"/>
+                <field name="condition_value" optional="hide" readonly="not condition_field_id"/>
                 <field name="approval_category_id" options="{'no_create': True}" optional="show"
                        readonly="approval_kind != 'solicitud'"/>
-                <field name="approval_sign_template_id" options="{'no_create': True}" optional="show"
+                <field name="approval_sign_template_id" options="{'no_create': True}" optional="hide"
                        readonly="approval_kind != 'firma'"/>
-                <field name="approval_conflict_rule_ids" widget="many2many_tags" optional="show"
+                <field name="approval_conflict_rule_ids" widget="many2many_tags" optional="hide"
                        string="Otra regla en el botón"/>
                 <field name="approval_user_ids" widget="many2many_tags" optional="show"/>
                 <field name="approval_state" widget="badge"
@@ -46,9 +46,9 @@
                 <field name="approval_last_date" optional="hide"/>
                 <field name="approval_rule_id" column_invisible="1"/>
                 <button name="action_sgi_sync_approval" type="object" string="Sincronizar" icon="fa-refresh"
-                        invisible="approval_state not in ('por_sincronizar', 'activa')"/>
+                        invisible="approval_state not in ('por_sincronizar', 'activa')" groups="quimibond_sgi.group_sgi_manager"/>
                 <button name="action_sgi_adopt_rule" type="object" string="Adoptar regla" icon="fa-link"
-                        invisible="approval_state != 'conflicto'"
+                        invisible="approval_state != 'conflicto'" groups="quimibond_sgi.group_sgi_manager"
                         confirm="La regla existente pasará a mantenerla el SGI: sus aprobadores serán las personas del puesto y su condición la de este renglón."/>
                 <button name="action_sgi_open_approval_entries" type="object" string="Ver aprobaciones"
                         icon="fa-check-square-o" invisible="not approval_rule_id"/>

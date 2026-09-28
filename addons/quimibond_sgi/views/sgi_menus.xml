@@ -113,22 +113,24 @@
     <menuitem id="menu_sgi_satisfaction" name="Satisfacción del cliente"
               parent="menu_sgi_direction" action="sgi_satisfaction_action" sequence="40"/>
 
-    <!-- 5. Administración SGI (solo MAST): todo lo técnico en una entrada. -->
+    <!-- 5. Administración SGI: todo lo técnico en una entrada. El auditor
+         lee documentos, indicadores y firmas; lo que edita o configura es
+         solo de MAST (groups en cada submenú). -->
     <menuitem id="menu_sgi_admin" name="Administración SGI" parent="menu_sgi_root"
-              sequence="90" groups="quimibond_sgi.group_sgi_manager"/>
+              sequence="90" groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_auditor"/>
 
     <!-- 5.1 Documentos -->
     <menuitem id="menu_sgi_documental" name="Documentos" parent="menu_sgi_admin" sequence="10"/>
     <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
               action="sgi_document_action" sequence="10"/>
     <menuitem id="menu_sgi_doc_changes" name="Cambios documentales" parent="menu_sgi_documental"
-              action="sgi_doc_change_board_action" sequence="20"/>
+              action="sgi_doc_change_board_action" sequence="20" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_master_list" name="Lista maestra" parent="menu_sgi_documental"
               action="sgi_document_master_list_action" sequence="12"/>
     <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_documental"
-              action="sgi_migration_action" sequence="30"/>
+              action="sgi_migration_action" sequence="30" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_documental"
-              action="sgi_document_type_action" sequence="40"/>
+              action="sgi_document_type_action" sequence="40" groups="quimibond_sgi.group_sgi_manager"/>
 
     <!-- 5.2 Indicadores, fórmulas y mediciones -->
     <menuitem id="menu_sgi_admin_indicators" name="Indicadores" parent="menu_sgi_admin" sequence="20"/>
@@ -140,7 +142,7 @@
     <!-- 5.3 Diagnóstico: diagnóstico, cobertura, cumplimiento, faltantes y
          cumplimiento semanal (CEO 2026-09-24: Tendencia se retiró; el
          Concentrado de NC es el filtro «Concentrado» de la lista de NC). -->
-    <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_admin" sequence="30"/>
+    <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_admin" sequence="30" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_analysis"
               action="sgi_diagnostic_run_action" sequence="10"/>
     <menuitem id="menu_sgi_activity_methods" name="Cobertura de medición"
@@ -154,12 +156,12 @@
     <!-- 5.4 Firmas de lectura -->
     <menuitem id="menu_sgi_admin_signatures" name="Firmas de lectura" parent="menu_sgi_admin" sequence="40"/>
     <menuitem id="menu_sgi_my_procedure_publish" name="Publicar Mi procedimiento"
-              parent="menu_sgi_admin_signatures" action="sgi_my_procedure_action_publish" sequence="5"/>
+              parent="menu_sgi_admin_signatures" action="sgi_my_procedure_action_publish" sequence="5" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_admin_signatures"
               action="sgi_document_ack_action" sequence="10"/>
 
     <!-- 5.5 Configuración -->
-    <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_admin" sequence="50"/>
+    <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_admin" sequence="50" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_config"
               action="sgi_catalog_load_wizard_action" sequence="2"
               groups="quimibond_sgi.group_sgi_admin"/>

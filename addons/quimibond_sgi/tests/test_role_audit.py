@@ -94,3 +94,14 @@ class TestRoleAudit(TransactionCase):
         still = self.env['mail.activity'].search([
             ('res_model', '=', 'sgi.indicator'), ('res_id', '=', self.mine.id), ('summary', '=', summary)])
         self.assertFalse(still, "Capturada la medición, la actividad se marca hecha.")
+
+    def test_06_mis_pendientes_en_el_menu(self):
+        menu = self.env.ref('quimibond_sgi.menu_sgi_my_pending')
+        self.assertEqual(menu.parent_id, self.env.ref('quimibond_sgi.menu_sgi_panel'))
+        self.assertEqual(menu.action, self.env.ref('quimibond_sgi.sgi_my_pending_action_mine'))
+        action = self.env['sgi.my.pending'].with_user(self.user).action_open_mine()
+        self.assertEqual(action['res_model'], 'sgi.my.pending')
+        self.assertEqual(action['context'].get('search_default_group_state'), 1)
+        # Sin empleado ligado también abre (vacía o con lo del usuario).
+        action = self.env['sgi.my.pending'].with_user(self.other).action_open_mine()
+        self.assertEqual(action['res_model'], 'sgi.my.pending')

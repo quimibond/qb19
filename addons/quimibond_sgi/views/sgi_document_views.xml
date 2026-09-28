@@ -14,7 +14,8 @@
                             class="btn-primary" icon="fa-external-link"
                             invisible="sgi_doc_type != 'formulario_odoo'"/>
                     <button name="action_generate_acks" type="object" string="Generar acuses"
-                            class="btn-secondary" invisible="sgi_state not in ('piloto','vigente')"/>
+                            class="btn-secondary" invisible="sgi_state not in ('piloto','vigente')"
+                            groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="sgi_state" widget="statusbar"
                            statusbar_visible="borrador,piloto,vigente,obsoleto"/>
                 </header>
@@ -93,7 +94,7 @@
                         </div>
                     </group>
                     <notebook>
-                        <page string="Migración a Odoo"
+                        <page string="Migración a Odoo" name="migracion"
                               invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo')">
                             <group>
                                 <group>
@@ -118,7 +119,7 @@
                                 archivo y el botón principal abra la vista real.
                             </div>
                         </page>
-                        <page string="Documentos relacionados" invisible="not sgi_is_controlled">
+                        <page string="Documentos relacionados" name="relacionados" invisible="not sgi_is_controlled">
                             <group string="Familia documental">
                                 <field name="sgi_parent_document_id"
                                        help="Enlázalo al procedimiento padre (la nomenclatura solo lo sugiere)."/>
@@ -147,17 +148,17 @@
                                 </field>
                             </group>
                         </page>
-                        <page string="Puestos que aplican">
+                        <page string="Puestos que aplican" name="puestos">
                             <div class="alert alert-info mb-3" role="status">
                                 <b>La difusión depende de esto:</b> el botón
                                 «Generar acuses» crea un acuse por cada empleado
-                                de estos puestos, y «Mis procedimientos» filtra
+                                de estos puestos, y «Mi procedimiento» filtra
                                 por puesto. Un documento vigente sin puestos no
                                 se difunde a nadie.
                             </div>
                             <field name="sgi_job_ids" widget="many2many_tags"/>
                         </page>
-                        <page string="Acuses de lectura">
+                        <page string="Acuses de lectura" name="acuses">
                             <group groups="quimibond_sgi.group_sgi_manager">
                                 <group string="Firma electrónica (app Firma)">
                                     <field name="sgi_sign_template_id"

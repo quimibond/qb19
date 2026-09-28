@@ -156,7 +156,7 @@ class SgiActivitySpec(models.Model):
     odoo_action_id = fields.Many2one(
         'ir.actions.act_window', string="Acción de Odoo",
         compute='_compute_odoo_action_id', store=True, readonly=False,
-        help="Pantalla que abre «Abrir en Odoo»; sale del menú y se puede cambiar.")
+        help="Pantalla que abre «Ir a hacerlo»; sale del menú y se puede cambiar.")
     external_system = fields.Char(
         string="Sistema externo",
         help="Portal proveedores GM, VUCEM, sistema del agente aduanal…")

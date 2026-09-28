@@ -144,7 +144,7 @@
     <!-- El diagrama como vista más de cada acción existente -->
 
     <record id="sgi_risk_action" model="ir.actions.act_window">
-        <field name="view_mode">kanban,list,sgi_diagram,pivot,form,activity</field>
+        <field name="view_mode">list,kanban,sgi_diagram,pivot,form,activity</field>
     </record>
 
     <record id="sgi_legal_requirement_action" model="ir.actions.act_window">

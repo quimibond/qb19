@@ -167,8 +167,7 @@
         <field name="arch" type="xml">
             <list string="Procesos" sample="1" multi_edit="1" default_order="process_type, code"
                   decoration-danger="measure_status == 'rojo'"
-                  decoration-muted="measure_status == 'gris'"
-                  decoration-success="measure_status == 'verde'">
+                  decoration-muted="measure_status == 'gris'">
                 <field name="code"/>
                 <field name="name"/>
                 <field name="process_type"/>
@@ -206,7 +205,7 @@
                     <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_sgi_request_change" type="object"
-                            string="Pedir un cambio" icon="fa-pencil-square-o"/>
+                            string="Proponer cambio" icon="fa-lightbulb-o"/>
                     <button name="action_sgi_register_finding" type="object"
                             string="Registrar hallazgo" icon="fa-flag"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
@@ -409,6 +408,8 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="owner_id"/>
+                <filter name="mine" string="Mis procesos" domain="[('owner_id.user_id', '=', uid)]"/>
+                <separator/>
                 <filter name="tipo_cop" string="Cadena de valor" domain="[('process_type', '=', 'cop')]"/>
                 <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>
                 <separator/>
@@ -440,7 +441,7 @@
         <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="sgi_process_view_search"/>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Administración del mapa de procesos</p>
-            <p>Edite fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
+            <p>Edita las fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
     </record>
 
 </odoo>
