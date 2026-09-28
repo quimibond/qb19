@@ -1768,6 +1768,69 @@ versiones anteriores y uno nuevo. Todos se corrigen en código:
   ahora los delega a la plantilla (`sgi_sign_count` relacionado).
 - `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
 
+### Mis pendientes en una sola lista con semáforo (56.3.0)
+
+- **Pantalla.** Los botones separados (atrasadas, al día, sin medir, acciones,
+  NC, mediciones, legales, documentos por revisar) se cambian por un solo
+  botón **Mis pendientes** con el total y, en rojo, cuántas están atrasadas
+  («12 · 3 atrasadas»). El estado de cada actividad sigue en sus tarjetas
+  (botón Actividades).
+- **Lista única** (`sgi.my.pending`, transitorio): acciones abiertas, NC a
+  contestar, mediciones por capturar o validar, requisitos legales y
+  documentos por revisar, con Tipo, Qué, Proceso, Vence y Estado. Vence: la
+  fecha compromiso de la acción; la primera etapa pendiente de la NC
+  (contención, causa raíz, plan) o su eficacia; el cierre del periodo de la
+  medición; la evaluación o vigencia más próxima del requisito; la próxima
+  revisión del documento. Estado: **atrasada** (vence antes de hoy, rojo),
+  **por vencer** (7 días o menos, amarillo), **al día** (verde). Orden:
+  atrasadas primero y luego por vencimiento. Filtros Atrasadas, Vence esta
+  semana y Al día; agrupar por Tipo, Estado y Persona. «Abrir» lleva al
+  registro de origen.
+- **Mi equipo.** Por persona, el semáforo (peor estado), el total y los
+  atrasados; «Ver pendientes» abre su lista y «Pendientes del equipo» junta a
+  todo el equipo agrupado por persona. El organigrama muestra el mismo
+  semáforo. Filtros Con atrasadas, Con pendientes por vencer y Al día.
+- Los criterios de cada tipo son los mismos que tenían los botones; se buscan
+  una vez por tipo para todas las personas. Pruebas en `tests/test_my_pending.py`.
+
+### Documentos del puesto, proponer cambios y aviso sin empleado (56.2.0)
+
+- **Documentos que aplican al puesto.** Salían vacíos para todos: solo se
+  contaban los documentos que nombran al puesto en `sgi_job_ids`, y en
+  producción solo lo hacen los propios «Mi procedimiento» (excluidos). Ahora
+  `hr.job._sgi_mp_document_records()` junta, de las actividades activas donde
+  el puesto tiene rol (directo o por familia), el instructivo, los formatos
+  referenciados y el procedimiento relacionado, más los que nombran al
+  puesto; solo vigentes. Lo usan la ficha del empleado, la pantalla (pestaña
+  **Documentos**) y el PDF.
+- **Proponer cambio.** Cada tarjeta y renglón de actividad trae «Proponer
+  cambio» y el encabezado «Proponer nueva actividad». El asistente
+  (`sgi.mp.change.wizard`) prellena cómo está hoy la actividad y pide la
+  propuesta, el motivo y un adjunto; crea la solicitud en la categoría marcada
+  `sgi_is_mp_change` («Proponer cambio a mi procedimiento (SGI)», la marca el
+  `post-migrate` 56.2.0) con referencia `<proceso> / <numeral> <actividad>`,
+  dueño el usuario y `sgi_activity_id`, y la envía. Si faltan aprobadores
+  (jefe directo sin usuario) queda en borrador con el motivo en el chatter.
+  Al aprobarse, cada Jefe MAST y SGI recibe la actividad «Aplicar cambio
+  aprobado y republicar» en la actividad del procedimiento (o en el proceso si
+  es nueva). `sgi.process.activity` gana chatter para eso.
+- **Sin empleado ligado.** «Mi procedimiento» ya no truena ni abre vacía: muestra
+  «Tu usuario no está ligado a un empleado».
+- Pruebas en `tests/test_mp_change.py`.
+
+### Puesto vacío al abrir desde Mi equipo (56.1.1)
+
+«Ver su procedimiento» desde Mi equipo abría la pantalla con **Puesto vacío y
+Actividades 0** aunque la ficha del empleado calculara bien sus 30 roles. Dos
+causas: la acción creaba el registro con `job_id=False` explícito, y en un
+campo calculado guardado eso apaga el cálculo; y el cálculo leía el puesto por
+`hr.employee.public`, que para quien no es de RH viene vacío (en Odoo 19 pasa
+por `version_id`). Ahora el puesto sale del empleado en sudo, las listas,
+acuses y documentos se calculan con `_sgi_mp_job()` (el puesto elegido o el
+del empleado, así un registro guardado sin puesto también se muestra bien) y
+la acción solo manda las llaves con valor. `post-migrate` 56.1.1 rellena el
+puesto en las pantallas guardadas. Prueba en `TestMyProcedure.test_13`.
+
 ## Fórmulas para 28 indicadores más (55.0.0)
 
 **Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa

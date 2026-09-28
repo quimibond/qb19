@@ -71,3 +71,5 @@ from . import sgi_dev_request
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign
+from . import sgi_mp_change
+from . import sgi_my_pending

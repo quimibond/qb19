@@ -73,6 +73,10 @@
                                     class="btn btn-outline-secondary btn-sm" title="Ver instructivo">
                                 <i class="fa fa-book me-1" title="Instructivo"/>Instructivo
                             </button>
+                            <button type="object" name="action_mp_propose_change" class="btn btn-link btn-sm"
+                                    title="Proponer cambio a esta actividad">
+                                <i class="fa fa-lightbulb-o me-1" title="Proponer cambio"/>Proponer cambio
+                            </button>
                             <button type="object" name="action_open_activity" class="btn btn-link btn-sm text-muted"
                                     title="Ver actividad">
                                 <i class="fa fa-file-text-o" title="Actividad"/>
@@ -127,6 +131,8 @@
                             confirm="Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora."/>
                     <button name="action_open_doc" type="object" string="Ver revisión vigente" icon="fa-file-pdf-o"
                             invisible="not doc_id"/>
+                    <button name="action_propose_new_activity" type="object" string="Proponer nueva actividad"
+                            icon="fa-lightbulb-o" invisible="not job_id"/>
                     <button name="action_print" type="object" string="Imprimir PDF" icon="fa-print"
                             invisible="not job_id"/>
                     <button name="action_publish" type="object" string="Publicar revisión" icon="fa-upload"
@@ -140,6 +146,12 @@
                     <field name="ack_state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <field name="no_employee" invisible="1"/>
+                    <div class="alert alert-warning" role="alert" invisible="not no_employee">
+                        <i class="fa fa-user-times me-1" title="Sin empleado"/>
+                        <strong>Tu usuario no está ligado a un empleado.</strong>
+                        Pide a RH que te ligue en tu ficha de empleado para ver tu procedimiento.
+                    </div>
                     <!-- 54.1.0: la pantalla se lee como una ficha de persona: quién
                          es y qué puesto tiene arriba, y CADA lista (actividades,
                          escalamientos, acuses, documentos, pendientes, EPP) es un
@@ -150,17 +162,19 @@
                         <button name="action_show_all" type="object" class="oe_stat_button" icon="fa-list-ol">
                             <field name="activity_count" widget="statinfo" string="Actividades"/>
                         </button>
-                        <button name="action_show_late" type="object" class="oe_stat_button text-danger"
-                                icon="fa-exclamation-circle" invisible="late_count == 0">
-                            <field name="late_count" widget="statinfo" string="Atrasadas"/>
-                        </button>
-                        <button name="action_show_ok" type="object" class="oe_stat_button text-success"
-                                icon="fa-check-circle" invisible="ok_count == 0">
-                            <field name="ok_count" widget="statinfo" string="Al día"/>
-                        </button>
-                        <button name="action_show_unmeasured" type="object" class="oe_stat_button"
-                                icon="fa-circle-o" invisible="unmeasured_count == 0">
-                            <field name="unmeasured_count" widget="statinfo" string="Sin medir"/>
+                        <!-- 56.3.0: un solo botón para todos los pendientes
+                             (acciones, NC, mediciones, legales, documentos),
+                             con las atrasadas en rojo. -->
+                        <button name="action_show_pending" type="object" class="oe_stat_button"
+                                icon="fa-tasks" invisible="pending_total == 0">
+                            <div class="o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="pending_total"/>
+                                    <span class="text-danger" invisible="pending_late == 0">
+                                        · <field name="pending_late"/> atrasadas</span>
+                                </span>
+                                <span class="o_stat_text">Mis pendientes</span>
+                            </div>
                         </button>
                         <button name="action_show_received" type="object" class="oe_stat_button"
                                 icon="fa-level-up" invisible="received_count == 0">
@@ -178,29 +192,9 @@
                                 icon="fa-file-text-o" invisible="document_count == 0">
                             <field name="document_count" widget="statinfo" string="Documentos"/>
                         </button>
-                        <button name="action_focus_pending" type="object" class="oe_stat_button"
-                                icon="fa-tasks" invisible="pending_count == 0">
-                            <field name="pending_count" widget="statinfo" string="Acciones"/>
-                        </button>
-                        <button name="action_show_nc" type="object" class="oe_stat_button"
-                                icon="fa-exclamation-triangle" invisible="nc_count == 0">
-                            <field name="nc_count" widget="statinfo" string="NC a contestar"/>
-                        </button>
-                        <button name="action_show_measures" type="object" class="oe_stat_button"
-                                icon="fa-calculator" invisible="measure_count == 0">
-                            <field name="measure_count" widget="statinfo" string="Mediciones"/>
-                        </button>
                         <button name="action_show_indicators" type="object" class="oe_stat_button"
                                 icon="fa-tachometer" invisible="indicator_count == 0">
                             <field name="indicator_count" widget="statinfo" string="Indicadores"/>
-                        </button>
-                        <button name="action_show_legal" type="object" class="oe_stat_button"
-                                icon="fa-balance-scale" invisible="legal_count == 0">
-                            <field name="legal_count" widget="statinfo" string="Legales"/>
-                        </button>
-                        <button name="action_show_doc_reviews" type="object" class="oe_stat_button"
-                                icon="fa-refresh" invisible="doc_review_count == 0">
-                            <field name="doc_review_count" widget="statinfo" string="Doc. por revisar"/>
                         </button>
                         <button name="action_show_epp" type="object" class="oe_stat_button"
                                 icon="fa-shield" invisible="epp_count == 0">
@@ -250,6 +244,19 @@
                     <group string="EPP requerido por el puesto (S03-01)" invisible="not epp_required">
                         <field name="epp_required" nolabel="1" readonly="1" colspan="2"/>
                     </group>
+                    <notebook invisible="not job_id">
+                        <page string="Documentos" name="documentos">
+                            <field name="document_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="sgi_code" string="Clave"/>
+                                    <field name="name"/>
+                                    <field name="sgi_doc_type" string="Tipo"/>
+                                    <field name="sgi_revision_label" string="Rev."/>
+                                    <button name="action_sgi_view_file" type="object" string="Ver archivo" icon="fa-file-o"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -327,6 +334,8 @@
                 <field name="condition" optional="hide"/>
                 <button name="action_open_activity" type="object" string="Ver actividad"
                         icon="fa-external-link" class="btn-link"/>
+                <button name="action_mp_propose_change" type="object" string="Proponer cambio"
+                        icon="fa-lightbulb-o" class="btn-link"/>
             </list>
         </field>
     </record>
@@ -406,20 +415,29 @@
         <field name="model">hr.employee.public</field>
         <field name="arch" type="xml">
             <list string="Mi equipo" create="0" delete="0" default_order="name"
-                  decoration-danger="sgi_mp_late > 0"
-                  decoration-warning="sgi_mp_late == 0 and sgi_mp_acks_pending > 0">
+                  decoration-danger="sgi_mp_pending_state == 'atrasada'"
+                  decoration-warning="sgi_mp_pending_state == 'por_vencer'">
+                <header>
+                    <button name="action_sgi_team_pending" type="object" string="Pendientes del equipo"
+                            icon="fa-tasks" display="always"/>
+                </header>
                 <field name="name"/>
                 <field name="job_id"/>
                 <field name="department_id" optional="show"/>
                 <field name="parent_id" string="Jefe" optional="show"/>
-                <field name="sgi_mp_late" sum="Atrasadas"/>
-                <field name="sgi_mp_ok" optional="show"/>
-                <field name="sgi_mp_unmeasured" optional="hide"/>
-                <field name="sgi_mp_total" optional="show"/>
+                <field name="sgi_mp_pending_state" widget="badge"
+                       decoration-danger="sgi_mp_pending_state == 'atrasada'"
+                       decoration-warning="sgi_mp_pending_state == 'por_vencer'"
+                       decoration-success="sgi_mp_pending_state == 'al_dia'"/>
+                <field name="sgi_mp_pending_total" sum="Pendientes"/>
+                <field name="sgi_mp_pending_late" sum="Atrasados"/>
+                <field name="sgi_mp_total" optional="hide"/>
                 <field name="sgi_mp_acks_pending" sum="Firmas pendientes"/>
                 <field name="sgi_mp_ack_state" widget="badge"
                        decoration-success="sgi_mp_ack_state == 'leido'"
                        decoration-warning="sgi_mp_ack_state == 'pendiente'"/>
+                <button name="action_sgi_open_pending" type="object"
+                        string="Ver pendientes" icon="fa-tasks"/>
                 <button name="action_sgi_open_my_procedure" type="object"
                         string="Ver su procedimiento" icon="fa-eye"/>
             </list>
@@ -437,8 +455,9 @@
                 <field name="name"/>
                 <field name="job_id"/>
                 <field name="avatar_128"/>
-                <field name="sgi_mp_late"/>
-                <field name="sgi_mp_total"/>
+                <field name="sgi_mp_pending_total"/>
+                <field name="sgi_mp_pending_late"/>
+                <field name="sgi_mp_pending_state"/>
                 <field name="sgi_mp_acks_pending"/>
                 <field name="sgi_mp_ack_state"/>
                 <templates>
@@ -451,12 +470,16 @@
                             </div>
                         </div>
                         <div class="d-flex flex-wrap gap-1 small">
-                            <span t-if="record.sgi_mp_late.raw_value" class="badge text-bg-danger"
-                                  title="Actividades atrasadas">
-                                <i class="fa fa-exclamation-circle me-1"/><field name="sgi_mp_late"/> atrasadas
+                            <span t-if="record.sgi_mp_pending_state.raw_value == 'atrasada'" class="badge text-bg-danger"
+                                  title="Pendientes atrasados">
+                                <i class="fa fa-exclamation-circle me-1"/><field name="sgi_mp_pending_total"/> · <field name="sgi_mp_pending_late"/> atrasadas
                             </span>
-                            <span t-elif="record.sgi_mp_total.raw_value" class="badge text-bg-success" title="Actividades al día">
-                                <i class="fa fa-check-circle me-1"/>al día
+                            <span t-elif="record.sgi_mp_pending_state.raw_value == 'por_vencer'" class="badge text-bg-warning"
+                                  title="Pendientes por vencer">
+                                <i class="fa fa-clock-o me-1"/><field name="sgi_mp_pending_total"/> por vencer
+                            </span>
+                            <span t-elif="record.sgi_mp_pending_total.raw_value" class="badge text-bg-success" title="Pendientes al día">
+                                <i class="fa fa-check-circle me-1"/><field name="sgi_mp_pending_total"/> al día
                             </span>
                             <span t-if="record.sgi_mp_acks_pending.raw_value" class="badge text-bg-warning"
                                   title="Firmas de lectura pendientes">
@@ -482,7 +505,9 @@
                 <field name="job_id"/>
                 <field name="department_id"/>
                 <field name="parent_id" string="Jefe"/>
-                <filter name="with_late" string="Con atrasadas" domain="[('sgi_mp_late', '>', 0)]"/>
+                <filter name="with_late" string="Con atrasadas" domain="[('sgi_mp_pending_late', '>', 0)]"/>
+                <filter name="with_soon" string="Con pendientes por vencer" domain="[('sgi_mp_pending_state', '=', 'por_vencer')]"/>
+                <filter name="all_ok" string="Al día" domain="[('sgi_mp_pending_state', '=', 'al_dia')]"/>
                 <filter name="with_acks" string="Con firmas pendientes" domain="[('sgi_mp_acks_pending', '>', 0)]"/>
                 <filter name="mp_pending" string="Mi procedimiento sin firmar" domain="[('sgi_mp_ack_state', '=', 'pendiente')]"/>
                 <filter name="mp_unpublished" string="Mi procedimiento sin publicar" domain="[('sgi_mp_ack_state', '=', 'sin_publicar')]"/>

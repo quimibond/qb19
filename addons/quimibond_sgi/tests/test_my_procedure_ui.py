@@ -10,12 +10,18 @@ class TestMyProcedureUi(TransactionCase):
     def test_01_pantalla_con_botones(self):
         Screen = self.env['sgi.my.procedure']
         arch = Screen.get_views([(False, 'form')])['views']['form']['arch']
-        for button in ('action_show_all', 'action_show_late', 'action_show_ok', 'action_show_unmeasured',
+        for button in ('action_show_all', 'action_show_pending',
                        'action_show_received', 'action_show_short', 'action_show_acks', 'action_show_documents',
-                       'action_focus_pending', 'action_show_nc', 'action_show_measures', 'action_show_indicators',
-                       'action_show_legal', 'action_show_doc_reviews', 'action_show_epp', 'action_open_obligations'):
+                       'action_show_indicators', 'action_show_epp', 'action_open_obligations'):
             self.assertIn('name="%s"' % button, arch, button)
-        self.assertNotIn('<notebook', arch, "Sin pestañas: cada lista es un botón.")
+        # 56.3.0: un solo botón de pendientes, sin botones separados por tipo
+        # ni por estado de las actividades.
+        for button in ('action_show_late', 'action_show_ok', 'action_show_unmeasured', 'action_focus_pending',
+                       'action_show_nc', 'action_show_measures', 'action_show_legal', 'action_show_doc_reviews'):
+            self.assertNotIn('name="%s"' % button, arch, button)
+        # 56.2.0: la única pestaña es Documentos (pedido del CEO).
+        self.assertEqual(arch.count('<page'), 1)
+        self.assertIn('name="documentos"', arch)
         self.assertIn('many2one_avatar_employee', arch)
         self.assertNotIn('string="Estado"', arch, "Los conteos ya no van en un grupo, van en botones.")
         job = self.env['hr.job'].create({'name': 'PUESTO UI'})
@@ -40,7 +46,7 @@ class TestMyProcedureUi(TransactionCase):
         views = self.env['hr.employee.public'].get_views([(False, 'hierarchy')])
         arch = views['views']['hierarchy']['arch']
         self.assertIn('parent_field="parent_id"', arch)
-        self.assertIn('sgi_mp_late', arch)
+        self.assertIn('sgi_mp_pending_state', arch, "56.3.0: el semáforo de pendientes por persona.")
         action = self.env['sgi.my.procedure'].action_open_my_team()
         self.assertEqual(action['view_mode'].split(',')[0], 'hierarchy')
         self.assertEqual(action['views'][0][1], 'hierarchy')

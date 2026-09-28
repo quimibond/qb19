@@ -149,7 +149,6 @@ class SgiMyProcedureMixin(models.AbstractModel):
     def _compute_sgi_mp_lists(self):
         Role = self.env['sgi.activity.role'].sudo()
         Ack = self.env['sgi.document.ack'].sudo()
-        Doc = self.env['documents.document'].sudo()
         Epp = self.env['sgi.epp.delivery'].sudo()
         me = self.env.user.employee_id.sudo()
         for rec in self:
@@ -160,10 +159,8 @@ class SgiMyProcedureMixin(models.AbstractModel):
             rec.sgi_mp_received_role_ids = lists['received'].ids
             rec.sgi_mp_short_role_ids = lists['short'].ids
             rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
-            rec.sgi_mp_document_ids = _sgi_readable(Doc.search(
-                [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
-                 ('sgi_doc_type', '!=', 'mi_procedimiento')],
-                order='sgi_doc_type, sgi_code, name'), rec.env) if job else False
+            rec.sgi_mp_document_ids = _sgi_readable(
+                job._sgi_mp_document_records(), rec.env) if job else False
             rec.sgi_mp_epp_text = (job.sgi_epp_required or False) if job else False
             if emp:
                 rec.sgi_mp_ack_ids = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code').ids
@@ -381,11 +378,19 @@ class SgiMyProcedure(models.TransientModel):
         return self.env['hr.employee'].sudo().browse(self.employee_id.id) \
             if self.employee_id else self.env['hr.employee'].sudo()
 
+    def _sgi_mp_job(self):
+        """El puesto cuyo procedimiento se muestra: el elegido o, si hay
+        empleado, el suyo (sudo sobre hr.employee: en Odoo 19 job_id pasa por
+        version_id y hr.employee.public lo trae vacío para quien no es de RH).
+        Así un registro guardado con job_id vacío sigue mostrando bien."""
+        self.ensure_one()
+        return self.job_id.sudo() or self._sgi_mp_employee().job_id
+
     @api.depends('employee_id')
     def _compute_job_id(self):
         for wiz in self:
             if wiz.employee_id:
-                wiz.job_id = wiz.employee_id.job_id
+                wiz.job_id = wiz._sgi_mp_employee().job_id
 
     @api.depends_context('uid')
     def _compute_scope(self):
@@ -411,7 +416,7 @@ class SgiMyProcedure(models.TransientModel):
         Ack = self.env['sgi.document.ack'].sudo()
         me = self._sgi_mp_my_employee()
         for wiz in self:
-            job = wiz.job_id.sudo()
+            job = wiz._sgi_mp_job()
             doc = job._sgi_my_procedure_current_doc() if job else False
             wiz.doc_id = doc or False
             wiz.is_me = bool(me and wiz.employee_id.id == me.id)
@@ -442,7 +447,7 @@ class SgiMyProcedure(models.TransientModel):
         Employee = self.env['hr.employee'].sudo()
         for wiz in self:
             emp = wiz._sgi_mp_employee()
-            job = wiz.job_id.sudo()
+            job = wiz._sgi_mp_job()
             boss = emp.parent_id if emp and emp.parent_id else (job.department_id.manager_id if job else False)
             wiz.boss_id = boss.id if boss else False
             wiz.department_id = (emp.department_id if emp and emp.department_id else job.department_id) or False
@@ -465,7 +470,7 @@ class SgiMyProcedure(models.TransientModel):
         env = self.env
         today = fields.Date.context_today(self)
         for wiz in self:
-            job = wiz.job_id.sudo()
+            job = wiz._sgi_mp_job()
             emp = wiz._sgi_mp_employee()
             user = emp.user_id if emp else False
             # --- Actividades del puesto y de su familia, solo activas.
@@ -485,10 +490,8 @@ class SgiMyProcedure(models.TransientModel):
             acks = Ack.search([('employee_id', '=', emp.id)], order='state, sgi_code') if emp else Ack
             wiz.ack_ids = acks.ids
             wiz.pending_ack_count = len(acks.filtered(lambda a: a.state == 'pendiente'))
-            wiz.document_ids = _sgi_readable(Doc.search(
-                [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', job.ids),
-                 ('sgi_doc_type', '!=', 'mi_procedimiento')],
-                order='sgi_doc_type, sgi_code, name'), wiz.env) if job else False
+            wiz.document_ids = _sgi_readable(
+                job._sgi_mp_document_records(), wiz.env) if job else False
             # --- EPP del puesto y responsivas del empleado
             wiz.epp_required = job.sgi_epp_required or False
             deliveries = env['sgi.epp.delivery'].sudo().search(
@@ -646,11 +649,11 @@ class SgiMyProcedure(models.TransientModel):
     @api.model
     def action_open_mine(self):
         """Inicio → Mi procedimiento: la pantalla del puesto del usuario."""
+        # 56.2.0: sin empleado ligado la pantalla abre con el aviso
+        # «Tu usuario no está ligado a un empleado» (campo no_employee), en
+        # vez de un error o una pantalla vacía.
         me = self._sgi_mp_my_employee()
-        if not me and not self._sgi_mp_is_admin():
-            raise UserError(
-                "Tu usuario no tiene empleado ligado. Pide a RH que lo capture en tu ficha.")
-        wiz = self.create({'employee_id': me.id if me else False})
+        wiz = self.create({'employee_id': me.id} if me else {})
         return {
             'type': 'ir.actions.act_window',
             'name': "Mi procedimiento",
@@ -664,7 +667,14 @@ class SgiMyProcedure(models.TransientModel):
     def action_open_for(self, employee_id=False, job_id=False):
         """«Ver su procedimiento» desde la ficha del empleado, la del puesto o
         una fila de Mi equipo, respetando el alcance del usuario."""
-        wiz = self.create({'employee_id': employee_id or False, 'job_id': job_id or False})
+        # Solo las llaves con valor: un job_id=False explícito apaga el
+        # cálculo del puesto a partir del empleado (campo calculado guardado).
+        vals = {}
+        if employee_id:
+            vals['employee_id'] = employee_id
+        if job_id:
+            vals['job_id'] = job_id
+        wiz = self.create(vals)
         if wiz.employee_id and wiz.employee_id.id not in wiz.allowed_employee_ids.ids:
             raise UserError("Esa persona no está en tu equipo; solo ves a tu gente, tus "
                             "departamentos y los puestos de tus procesos.")
