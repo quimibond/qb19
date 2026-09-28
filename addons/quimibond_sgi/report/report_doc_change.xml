@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cambio documental F-P-G01-06 para firmar en Sign (56.17.0). La última
+         hoja es la de firmas: sus renglones miden exactamente lo que
+         models/sgi_doc_change_sign.py (_sign_box) usa para colocar las
+         firmas (margen superior 10 mm, renglones de 55 mm desde los 45 mm). -->
+    <record id="paperformat_sgi_doc_change" model="report.paperformat">
+        <field name="name">SGI Carta (cambio documental)</field>
+        <field name="format">Letter</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">10</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">15</field>
+        <field name="margin_right">15</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <record id="action_report_doc_change" model="ir.actions.report">
+        <field name="name">Cambio documental (F-P-G01-06)</field>
+        <field name="model">approval.request</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_doc_change_document</field>
+        <field name="report_file">quimibond_sgi.report_doc_change_document</field>
+        <field name="print_report_name">'F-P-G01-06 - %s' % (object.name)</field>
+        <field name="paperformat_id" ref="paperformat_sgi_doc_change"/>
+    </record>
+
+    <template id="report_doc_change_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="kinds" t-value="dict(doc._fields['sgi_change_kind'].selection)"/>
+                <t t-set="format_rev" t-value="doc.env['sgi.format.map'].sudo()._revision_of('F-P-G01-06')"/>
+                <div class="page" style="font-size:12px;">
+                    <table style="width:100%; border-collapse:collapse;" border="1">
+                        <tr>
+                            <td style="width:70%; padding:6px; border:1px solid #000; text-align:center;">
+                                <strong style="font-size:15px;">SOLICITUD DE CAMBIO DOCUMENTAL</strong>
+                                <div t-out="doc.name"/>
+                            </td>
+                            <td style="padding:6px; border:1px solid #000;">
+                                <div><strong>F-P-G01-06</strong></div>
+                                <div t-if="format_rev">Rev. <t t-out="format_rev"/></div>
+                            </td>
+                        </tr>
+                    </table>
+                    <table style="width:100%; border-collapse:collapse; margin-top:8px;" border="1">
+                        <tr>
+                            <td style="width:30%; padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Tipo de cambio</strong></td>
+                            <td style="padding:5px; border:1px solid #000;" t-out="kinds.get(doc.sgi_change_kind, '')"/>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Documento</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-if="doc.sgi_document_id"><t t-out="doc.sgi_document_id.sgi_code"/> — <t t-out="doc.sgi_document_id.name"/></t>
+                                <t t-else="">Alta de documento nuevo</t>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Revisión</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                vigente <t t-out="'%02d' % (doc.sgi_current_revision or 0)"/>
+                                → nueva <t t-out="'%02d' % (doc.sgi_new_revision or 0)"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Proceso</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-out="', '.join((doc.sgi_document_id.sgi_process_id | doc.sgi_affected_process_ids).mapped('display_name'))"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Solicita</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-out="doc.request_owner_id.name"/> ·
+                                <t t-out="doc.create_date" t-options="{'widget': 'date'}"/>
+                            </td>
+                        </tr>
+                        <tr t-if="doc.sgi_pilot">
+                            <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Prueba piloto</strong></td>
+                            <td style="padding:5px; border:1px solid #000;">
+                                <t t-out="doc.sgi_pilot_start" t-options="{'widget': 'date'}"/> a
+                                <t t-out="doc.sgi_pilot_end" t-options="{'widget': 'date'}"/>
+                            </td>
+                        </tr>
+                    </table>
+                    <h4 style="margin-top:14px;">Motivo del cambio</h4>
+                    <div style="white-space:pre-wrap; border:1px solid #999; padding:6px;" t-out="doc.sgi_reason or ''"/>
+                    <h4 style="margin-top:14px;">Descripción de los cambios</h4>
+                    <div style="white-space:pre-wrap; border:1px solid #999; padding:6px;" t-out="doc.sgi_changes or ''"/>
+                    <p t-if="doc.sgi_change_attachment_id" style="margin-top:12px;">
+                        Se anexa la versión nueva: <strong t-out="doc.sgi_change_attachment_id.name"/>.
+                    </p>
+                </div>
+                <!-- Hoja de firmas: siempre la última página. -->
+                <div class="page" style="page-break-before:always; font-size:12px;">
+                    <div style="height:35mm;">
+                        <strong style="font-size:15px;">HOJA DE FIRMAS — <t t-out="doc.name"/></strong>
+                        <div>F-P-G01-06 · cambio documental firmado electrónicamente en Sign.</div>
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+                        <tr t-foreach="doc._sgi_sign_rows()" t-as="row" style="height:55mm;">
+                            <td style="width:45%; height:55mm; vertical-align:top; padding:4mm; border:1px solid #000;">
+                                <strong style="font-size:14px;" t-out="row[0]"/>
+                                <div style="margin-top:3mm;" t-out="row[1].name or ''"/>
+                                <div class="text-muted" t-out="row[1].employee_id.job_id.name or ''"/>
+                            </td>
+                            <td style="height:55mm; border:1px solid #000;"/>
+                        </tr>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

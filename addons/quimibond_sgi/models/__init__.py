@@ -76,3 +76,4 @@ from . import sgi_mp_change
 from . import sgi_my_pending
 from . import sgi_approval_native
 from . import sgi_business_line
+from . import sgi_doc_change_sign
