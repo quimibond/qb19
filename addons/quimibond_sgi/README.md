@@ -2212,3 +2212,20 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
   hallazgo → NC sobre el proceso real C2 de la copia de producción (en una
   base vacía, sobre el de prueba), como auditor y como MAST.
   `test_role_audit.test_09`: el Usuario SGI no aprueba el programa.
+
+### 19.0.56.11.0 — Bloque 5: documentos y requisitos legales
+
+- **5.1 DOC-1, 5.3 DOC-3, 5.4 DIR-1** ya estaban (51.0.0): publicación en un
+  paso al aprobar el cambio documental, lista maestra en PDF por proceso y
+  global, requisitos legales con responsable obligatorio, evaluaciones
+  (resultado, evidencia, siguiente fecha), aviso 60 días antes, «no cumple»
+  abre NC y matriz legal en PDF. En producción: 25 requisitos y 0
+  evaluaciones (captura de MAST).
+- **5.2 DOC-2**: al pasar un proceso a vigente, sus documentos sustituidos
+  quedan obsoletos **con fecha, motivo y el proceso que los sustituye**
+  (`sgi_obsolete_date`, `sgi_obsolete_reason`, `sgi_replaced_by_process_id`,
+  visibles en la ficha). Cualquier paso a obsoleto guarda la fecha.
+  `post-migrate` 56.11.0 llena la fecha de los que ya estaban obsoletos.
+  Pruebas: `test_cleanup_45.test_04` y `test_09` (C2 real con sus 3
+  procedimientos sustituidos; se omite si la copia no los tiene o C2 aún no
+  cumple para vigente).

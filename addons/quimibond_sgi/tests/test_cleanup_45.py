@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Limpieza 19.0.45.0.0: el árbol de cinco entradas, los xmlids retirados,
 el religado de los procesos viejos y el retiro automático de lo sustituido."""
+from odoo import fields
+from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
 
 from ..models.sgi_cleanup import SGI_MENU_ENTRIES, SGI_REMOVED_XMLIDS
@@ -109,5 +111,25 @@ class TestCleanup45(TransactionCase):
         self.assertEqual(replaced.sgi_state, 'vigente', "En piloto conviven.")
         new.write({'state': 'vigente'})
         self.assertEqual(replaced.sgi_state, 'obsoleto', "Vigente retira lo que sustituye.")
+        # 5.2 DOC-2 (56.11.0): fecha, motivo y proceso que lo sustituye.
+        self.assertEqual(replaced.sgi_obsolete_date, fields.Date.context_today(replaced))
+        self.assertIn('XNEWC', replaced.sgi_obsolete_reason)
+        self.assertEqual(replaced.sgi_replaced_by_process_id, new)
         self.assertEqual(fmt.sgi_state, 'vigente', "Los formatos de la familia siguen vigentes.")
         self.assertTrue(any('obsoleto' in (m.body or '').lower() for m in new.message_ids))
+
+    def test_09_c2_real_vuelve_obsoletos_los_que_sustituye(self):
+        """5.2 con datos reales: C2 sustituye 3 procedimientos en la copia de
+        producción; al pasar a vigente quedan obsoletos con fecha y motivo."""
+        c2 = self.Process.search([('code', '=', 'C2')], limit=1)
+        replaced = c2.replaced_document_ids.filtered(lambda d: d.sgi_state == 'vigente')
+        if not replaced:
+            self.skipTest("Base sin el proceso C2 real o sin documentos sustituidos vigentes.")
+        try:
+            with self.env.cr.savepoint():
+                c2.write({'state': 'vigente'})
+        except UserError as error:
+            self.skipTest("C2 aún no cumple para vigente en esta copia: %s" % error)
+        for doc in replaced:
+            self.assertEqual(doc.sgi_state, 'obsoleto', doc.sgi_code)
+            self.assertTrue(doc.sgi_obsolete_date and doc.sgi_obsolete_reason)
