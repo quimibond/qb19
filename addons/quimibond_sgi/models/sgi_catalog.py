@@ -360,11 +360,12 @@ class HrJob(models.Model):
         domain = [('job_id', 'in', self.ids)]
         if families:
             domain = ['|'] + domain + [('family_id', 'in', families.ids)]
-        # 56.16.0: con líneas de negocio, solo las actividades generales y
-        # las de sus líneas (las de la persona si se calcula para ella).
-        scopes = self._sgi_mp_scopes()
-        if scopes:
-            domain += self.env['sgi.activity.scope']._sgi_domain(scopes, 'activity_id.scope_ids')
+        # 56.16.0: con equipos de venta, solo las actividades generales y las
+        # de sus equipos (los de la persona si se calcula para ella).
+        teams = self._sgi_mp_teams()
+        if teams:
+            domain += ['|', ('activity_id.sale_team_ids', '=', False),
+                       ('activity_id.sale_team_ids', 'in', teams.ids)]
         return [('activity_active', '=', True)] + domain
     sgi_execute_count = fields.Integer(
         string="Ejecuta", compute='_compute_sgi_role_counts')
@@ -387,8 +388,8 @@ class HrJob(models.Model):
 
     def _compute_sgi_role_counts(self):
         """Roles propios más los de su familia, de actividades activas."""
-        # Con líneas de negocio el conteo va por puesto (56.16.0).
-        scoped = self.filtered(lambda j: j.id and j.sudo().sgi_scope_ids)
+        # Con equipos de venta el conteo va por puesto (56.16.0).
+        scoped = self.filtered(lambda j: j.id and j._sgi_mp_teams(for_employee=False))
         jobs = self.filtered('id') - scoped
         by_job, by_family = {}, {}
         for job in scoped:
@@ -408,7 +409,7 @@ class HrJob(models.Model):
                     by_family[(family.id, role)] = count
         for job in self:
             def total(role, job=job):
-                # Con líneas, la familia ya viene en el conteo del puesto.
+                # Con equipos, la familia ya viene en el conteo del puesto.
                 family = 0 if job in scoped else by_family.get((job.sgi_family_id.id, role), 0)
                 return by_job.get((job.id, role), 0) + family
             job.sgi_execute_count = total('ejecuta')

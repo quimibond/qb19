@@ -123,32 +123,45 @@ class SgiDiagram(models.AbstractModel):
         if with_process:
             code = "%s · %s" % (activity.process_id.code or '', code)
         meta = []
-        if activity.scope_ids:
+        tags = activity.sale_team_ids | activity.fiscal_position_ids
+        if tags:
             meta.append({'icon': 'fa-tags', 'label': "Aplica a",
-                         'value': ", ".join(activity.scope_ids.mapped('name'))})
-        scope = self._scope_param()
+                         'value': ", ".join(tags.mapped('name'))})
+        team, market = self._line_params()
         return {
             'key': _key(activity), 'model': 'sgi.process.activity', 'res_id': activity.id,
             'code': code, 'name': activity.name or '', 'subtitle': jobs,
             'color': SEMAPHORE_COLOR.get(activity.measure_state, 'muted'),
             'avatar': '', 'meta': meta,
-            # 56.16.0: no aplica a la línea elegida → se dibuja atenuada.
-            'out': not self.env['sgi.activity.scope']._sgi_applies(activity.scope_ids, scope),
+            # 56.16.0: no aplica al equipo o al mercado elegido → atenuada.
+            'out': not (activity._sgi_applies_to_teams(team)
+                        and (not market or not activity.fiscal_position_ids
+                             or market in activity.fiscal_position_ids)),
         }
 
-    def _scope_param(self):
-        """Línea de negocio elegida en el diagrama (parámetro «linea»)."""
-        value = self._param('linea', '')
-        if not str(value).isdigit():
-            return self.env['sgi.activity.scope']
-        return self.env['sgi.activity.scope'].browse(int(value)).exists()
+    def _line_params(self):
+        """(equipo de ventas, posición fiscal) elegidos en el diagrama
+        (parámetros «equipo» y «mercado»)."""
+        def pick(name, model):
+            value = self._param(name, '')
+            return self.env[model].browse(int(value)).exists() if str(value).isdigit() \
+                else self.env[model]
+        return pick('equipo', 'crm.team'), pick('mercado', 'account.fiscal.position')
 
-    def _scope_option(self):
-        """Selector «Aplica a» del diagrama: todas o una línea."""
-        scopes = self.env['sgi.activity.scope'].search([])
-        return {'name': 'linea', 'default': '',
-                'values': [{'value': '', 'label': "Todas las líneas"}]
-                + [{'value': str(s.id), 'label': s.name} for s in scopes]}
+    def _line_options(self):
+        """Selectores del diagrama: equipo de ventas y, si alguna actividad
+        lo usa, mercado (posición fiscal)."""
+        teams = self.env['crm.team'].search([])
+        options = [{'name': 'equipo', 'default': '',
+                    'values': [{'value': '', 'label': "Todos los equipos de venta"}]
+                    + [{'value': str(t.id), 'label': t.name} for t in teams]}]
+        positions = self.env['sgi.process.activity'].search(
+            [('fiscal_position_ids', '!=', False)]).fiscal_position_ids
+        if positions:
+            options.append({'name': 'mercado', 'default': '',
+                            'values': [{'value': '', 'label': "Todos los mercados"}]
+                            + [{'value': str(p.id), 'label': p.name} for p in positions]})
+        return options
 
     def _process_nav(self, process):
         return {
@@ -210,8 +223,8 @@ class SgiDiagram(models.AbstractModel):
         lanes_by = self._param('carriles', 'puesto')
         options = [{'name': 'carriles', 'default': 'puesto',
                     'values': [{'value': 'puesto', 'label': "Carriles por puesto"},
-                               {'value': 'etapa', 'label': "Columnas por etapa"}]},
-                   self._scope_option()]
+                               {'value': 'etapa', 'label': "Columnas por etapa"}]}
+                   ] + self._line_options()
         if lanes_by == 'puesto':
             result = self._process_flow_swimlanes(process, activities)
             result['param_options'] = options
@@ -449,9 +462,10 @@ class SgiDiagram(models.AbstractModel):
         Role = self.env['sgi.activity.role']
         processes = self.env['sgi.process'].search([('active', '=', True)], order='process_type, code')
         domain = [('process_id', 'in', processes.ids), ('activity_id.active', '=', True)]
-        scope = self._scope_param()
-        if scope:
-            domain += self.env['sgi.activity.scope']._sgi_domain(scope, 'activity_id.scope_ids')
+        team, _market = self._line_params()
+        if team:
+            domain += ['|', ('activity_id.sale_team_ids', '=', False),
+                       ('activity_id.sale_team_ids', 'in', team.ids)]
         roles = Role.search(domain)
         weight = {'ejecuta': 3, 'aprueba': 2, 'participa': 1, 'informa': 1, 'escala': 1}
         cells, jobs = {}, self.env['hr.job']
@@ -480,7 +494,7 @@ class SgiDiagram(models.AbstractModel):
             'layout': 'matrix',
             'lanes': [],
             'matrix': {'rows': rows, 'cols': cols, 'cells': matrix_cells},
-            'param_options': [self._scope_option()],
+            'param_options': self._line_options()[:1],
             'legend': [{'color': 'success', 'label': "ejecuta"}, {'color': 'warning', 'label': "aprueba"},
                        {'color': 'info', 'label': "participa / se entera / escala"}],
         }

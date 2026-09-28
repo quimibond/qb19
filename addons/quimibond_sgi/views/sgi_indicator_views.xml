@@ -107,12 +107,12 @@
                                    invisible="calc_mode != 'entregable_completo'"/>
                             <field name="nc_on_red"/>
                             <field name="critical" invisible="not nc_on_red"/>
-                            <field name="measure_by_scope" invisible="calc_mode != 'configurable'"/>
-                            <field name="measure_scope_ids" widget="many2many_tags"
-                                   options="{'color_field': 'color', 'no_create': True}"
-                                   placeholder="Todas las que tienen equipo o etiqueta"
-                                   invisible="not measure_by_scope"/>
-                            <field name="scope_support" invisible="calc_mode != 'configurable'"
+                            <field name="measure_split" invisible="calc_mode != 'configurable'"/>
+                            <field name="measure_team_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Los equipos de venta de la compañía"
+                                   invisible="measure_split != 'team'"/>
+                            <field name="split_support" invisible="calc_mode != 'configurable'"
                                    class="text-muted"/>
                         </group>
                     </group>
@@ -333,13 +333,13 @@
                             <field name="alert_id" readonly="1"/>
                         </group>
                     </group>
-                    <group string="Por línea de negocio" name="scope_lines" invisible="not scope_line_ids">
-                        <field name="scope_line_ids" nolabel="1" colspan="2" readonly="1">
+                    <group string="Desglose (equipo de ventas o mercado)" name="split" invisible="not split_ids">
+                        <field name="split_ids" nolabel="1" colspan="2" readonly="1">
                             <list create="0" delete="0"
                                   decoration-danger="semaphore == 'rojo'"
                                   decoration-warning="semaphore == 'amarillo'"
                                   decoration-muted="state == 'sin_dato'">
-                                <field name="scope_id"/>
+                                <field name="label"/>
                                 <field name="value"/>
                                 <field name="uom"/>
                                 <field name="numerator" optional="show"/>

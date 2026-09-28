@@ -166,10 +166,10 @@
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="perm_read" eval="False"/>
     </record>
-    <!-- 56.16.0: el desglose por línea sigue la regla de su medición. -->
-    <record id="rule_sgi_measure_scope_user_own" model="ir.rule">
-        <field name="name">SGI: el usuario recalcula por línea solo sus indicadores</field>
-        <field name="model_id" ref="model_sgi_indicator_measure_scope"/>
+    <!-- 56.16.0: el desglose (equipo o mercado) sigue la regla de su medición. -->
+    <record id="rule_sgi_measure_split_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario recalcula el desglose de solo sus indicadores</field>
+        <field name="model_id" ref="model_sgi_indicator_measure_split"/>
         <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
         <field name="domain_force">['|', ('measure_id.indicator_id.responsible_id', '=', user.id), ('measure_id.indicator_id.process_id.owner_id.user_id', '=', user.id)]</field>
         <field name="perm_read" eval="False"/>
@@ -177,9 +177,9 @@
         <field name="perm_create" eval="True"/>
         <field name="perm_unlink" eval="True"/>
     </record>
-    <record id="rule_sgi_measure_scope_manager_all" model="ir.rule">
-        <field name="name">SGI: MAST recalcula por línea cualquier indicador</field>
-        <field name="model_id" ref="model_sgi_indicator_measure_scope"/>
+    <record id="rule_sgi_measure_split_manager_all" model="ir.rule">
+        <field name="name">SGI: MAST recalcula el desglose de cualquier indicador</field>
+        <field name="model_id" ref="model_sgi_indicator_measure_split"/>
         <field name="groups" eval="[(4, ref('group_sgi_manager'))]"/>
         <field name="domain_force">[(1, '=', 1)]</field>
         <field name="perm_read" eval="False"/>

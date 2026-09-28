@@ -51,9 +51,14 @@
                                    context="{'default_process_id': process_id}"/>
                             <field name="step"/>
                             <field name="legacy_number" invisible="not legacy_number"/>
-                            <field name="scope_ids" widget="many2many_tags"
-                                   options="{'color_field': 'color', 'no_create': True}"
-                                   placeholder="Todas las líneas"/>
+                            <field name="sale_team_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Todos los equipos de venta"/>
+                            <field name="fiscal_position_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Todos los mercados"/>
+                            <field name="department_ids" widget="many2many_tags" readonly="1"
+                                   invisible="not department_ids"/>
                         </group>
                         <group>
                             <field name="measure_method"/>
@@ -312,8 +317,9 @@
                 <field name="number"/>
                 <field name="section" optional="hide"/>
                 <field name="name"/>
-                <field name="scope_ids" widget="many2many_tags" optional="show"
-                       options="{'color_field': 'color'}"/>
+                <field name="sale_team_ids" widget="many2many_tags" optional="show"/>
+                <field name="fiscal_position_ids" widget="many2many_tags" optional="hide"/>
+                <field name="department_ids" widget="many2many_tags" optional="hide"/>
                 <field name="exec_channel" optional="show"/>
                 <field name="spec_complete" widget="boolean" optional="hide"
                        decoration-danger="not spec_complete"/>
@@ -368,7 +374,7 @@
                             <field name="name" class="text-truncate"/>
                         </div>
                         <field name="process_id" class="text-muted small"/>
-                        <field name="scope_ids" widget="many2many_tags" options="{'color_field': 'color'}"/>
+                        <field name="sale_team_ids" widget="many2many_tags"/>
                         <field name="executor_role_ids" widget="many2many_tags"/>
                         <footer class="pt-1 small gap-2">
                             <field name="measure_method"/>
@@ -412,9 +418,11 @@
                 <field name="number"/>
                 <field name="responsible_role"/>
                 <field name="process_id"/>
-                <field name="scope_filter_id" string="Aplica a"
-                       help="La línea elegida más las actividades que aplican a todas."/>
-                <field name="scope_ids" string="Solo de la línea"/>
+                <field name="team_filter_id" string="Equipo de ventas"
+                       help="El equipo elegido más las actividades que aplican a todos."/>
+                <field name="market_filter_id" string="Mercado"
+                       help="El mercado (posición fiscal) elegido más las actividades que aplican a todos."/>
+                <field name="department_ids" string="Departamento"/>
                 <separator/>
                 <filter name="my_activities" string="Mis actividades"
                         domain="[('responsible_job_ids.employee_ids.user_id', '=', uid)]"/>
@@ -455,10 +463,10 @@
                 <filter name="channel_manual" string="En papel, correo o teléfono"
                         domain="[('exec_channel', 'in', ('papel', 'correo', 'telefono'))]"/>
                 <separator/>
-                <filter name="scope_general" string="Aplican a todas las líneas"
-                        domain="[('scope_ids', '=', False)]"/>
-                <filter name="scope_some" string="Solo de alguna línea"
-                        domain="[('scope_ids', '!=', False)]"/>
+                <filter name="team_general" string="Aplican a todos los equipos"
+                        domain="[('sale_team_ids', '=', False)]"/>
+                <filter name="team_some" string="Solo de algún equipo"
+                        domain="[('sale_team_ids', '!=', False)]"/>
                 <group>
                     <filter name="group_channel" string="Dónde se hace"
                             context="{'group_by': 'exec_channel'}"/>
@@ -476,8 +484,12 @@
                             context="{'group_by': 'measure_state'}"/>
                     <filter name="group_executor" string="Puesto que ejecuta"
                             context="{'group_by': 'responsible_job_ids'}"/>
-                    <filter name="group_scope" string="Aplica a"
-                            context="{'group_by': 'scope_ids'}"/>
+                    <filter name="group_team" string="Equipo de ventas"
+                            context="{'group_by': 'sale_team_ids'}"/>
+                    <filter name="group_market" string="Mercado"
+                            context="{'group_by': 'fiscal_position_ids'}"/>
+                    <filter name="group_department" string="Departamento"
+                            context="{'group_by': 'department_ids'}"/>
                 </group>
                 <searchpanel>
                     <field name="process_id" select="one" icon="fa-sitemap"/>

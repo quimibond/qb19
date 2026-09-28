@@ -235,16 +235,15 @@ class HrEmployeeMyProcedureTab(models.Model):
         'sgi.process', 'hr_employee_sgi_mp_process_rel', 'employee_id', 'process_id',
         string="Procesos donde participa", compute='_compute_sgi_mp_roles_stored', store=True)
 
-    @api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id',
-                 'sgi_mp_job_id.sgi_scope_ids', 'sgi_scope_ids')
+    @api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id', 'user_id')
     def _compute_sgi_mp_roles_stored(self):
         Role = self.env['sgi.activity.role'].sudo()
         cache = {}
         for emp in self:
             job = emp.sudo().sgi_mp_job_id
-            # Líneas de la persona (56.16.0): mismo puesto con otras líneas
-            # es otra lista.
-            key = (job.id, tuple(emp.sudo().sgi_scope_ids.ids))
+            # Equipos de venta de la persona (56.16.0): mismo puesto con
+            # otros equipos es otra lista.
+            key = (job.id, tuple(self.env['hr.job']._sgi_user_teams(emp.sudo().user_id).ids))
             if key not in cache:
                 cache[key] = job.with_context(sgi_mp_employee_id=emp.id)._sgi_mp_role_lists() if job else {
                     'detail': Role, 'received': Role, 'short': Role}

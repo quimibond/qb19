@@ -143,7 +143,7 @@
                             <td style="padding:5px; border:1px solid #000;">
                                 <strong t-out="cover['job'].name"/>
                                 <span t-if="cover['family']" class="text-muted"> · familia <t t-out="cover['family'].name"/></span>
-                                <span t-if="cover.get('scopes')" class="text-muted"> · líneas: <t t-out="', '.join(cover['scopes'].mapped('name'))"/></span>
+                                <span t-if="cover.get('teams')" class="text-muted"> · equipos de venta: <t t-out="', '.join(cover['teams'].mapped('name'))"/></span>
                             </td>
                         </tr>
                         <tr>
