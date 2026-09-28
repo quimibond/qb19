@@ -353,12 +353,14 @@ class HrJob(models.Model):
 
     def _sgi_roles_domain(self):
         """Roles del puesto: los suyos y los de su familia (el puesto hereda
-        las actividades de su familia)."""
+        las actividades de su familia), solo de actividades activas. Los
+        roles de actividades archivadas se quedan en la base (223 en
+        producción, 2026-09-28) pero no cuentan ni se muestran (56.15.0)."""
         families = self.sgi_family_id
         domain = [('job_id', 'in', self.ids)]
         if families:
             domain = ['|'] + domain + [('family_id', 'in', families.ids)]
-        return domain
+        return [('activity_active', '=', True)] + domain
     sgi_execute_count = fields.Integer(
         string="Ejecuta", compute='_compute_sgi_role_counts')
     sgi_approve_count = fields.Integer(
@@ -379,17 +381,18 @@ class HrJob(models.Model):
             job.sgi_all_role_ids = Role.search(job._sgi_roles_domain()) if job.id else Role
 
     def _compute_sgi_role_counts(self):
-        """Roles propios más los de su familia."""
+        """Roles propios más los de su familia, de actividades activas."""
         jobs = self.filtered('id')
         by_job, by_family = {}, {}
         if jobs:
             Role = self.env['sgi.activity.role']
             for job, role, count in Role._read_group(
-                    [('job_id', 'in', jobs.ids)], ['job_id', 'role'], ['__count']):
+                    [('job_id', 'in', jobs.ids), ('activity_active', '=', True)],
+                    ['job_id', 'role'], ['__count']):
                 by_job[(job.id, role)] = count
             if jobs.sgi_family_id:
                 for family, role, count in Role._read_group(
-                        [('family_id', 'in', jobs.sgi_family_id.ids)],
+                        [('family_id', 'in', jobs.sgi_family_id.ids), ('activity_active', '=', True)],
                         ['family_id', 'role'], ['__count']):
                     by_family[(family.id, role)] = count
         for job in self:

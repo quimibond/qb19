@@ -29,8 +29,9 @@ poder filtrarlos desde un término (``sgi.indicator.term``):
   registró.
 - S4-02 ``hr.employee.sgi_trial_date_end``: fin del periodo de prueba del
   contrato vigente, guardado en el empleado para filtrar evaluaciones.
-- S4-04 ``sgi.employer.obligation``: obligaciones patronales (IMSS, INFONAVIT,
-  ISR, ISN…) con vencimiento y fecha de presentación.
+- S4-04: el modelo ``sgi.employer.obligation`` (obligaciones patronales) se
+  retiró en 56.15.0 sin haber tenido registros; las obligaciones viven en
+  ``qb_obligation``.
 - S6-02 ``res.users.sgi_deactivated_date``: fecha en que se desactivó el
   usuario, para compararla con la baja del empleado.
 - S4-03 vive en ``quimibond_nomina`` (``hr.payslip.run``), porque este módulo
@@ -296,53 +297,6 @@ class HrEmployeeTrial(models.Model):
     sgi_trial_date_end = fields.Date(
         string="Fin del periodo de prueba", related='version_id.trial_date_end', store=True,
         help="Del contrato vigente; para medir las evaluaciones del periodo de prueba (S4-02).")
-
-
-# ---- S4-04 ----------------------------------------------------------------
-class SgiEmployerObligation(models.Model):
-    _name = 'sgi.employer.obligation'
-    _description = "Obligación patronal"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
-    _order = 'due_date desc, id desc'
-
-    name = fields.Char(string="Obligación", required=True, tracking=True)
-    kind = fields.Selection([
-        ('imss', "IMSS"), ('infonavit', "INFONAVIT"), ('isr', "ISR retenido"),
-        ('isn', "Impuesto sobre nómina"), ('sar', "SAR / AFORE"), ('stps', "STPS"), ('otro', "Otra"),
-    ], string="Tipo", required=True, default='imss', tracking=True)
-    period_date = fields.Date(string="Periodo", required=True,
-                              help="Primer día del mes o bimestre al que corresponde.")
-    due_date = fields.Date(string="Vence", required=True, tracking=True)
-    filed_date = fields.Date(string="Presentada el", tracking=True, copy=False)
-    responsible_id = fields.Many2one('res.users', string="Responsable", tracking=True,
-                                     default=lambda self: self.env.user)
-    company_id = fields.Many2one('res.company', string="Compañía", required=True,
-                                 default=lambda self: self.env.company)
-    amount = fields.Monetary(string="Importe", currency_field='currency_id')
-    currency_id = fields.Many2one(related='company_id.currency_id')
-    reference = fields.Char(string="Folio / referencia")
-    notes = fields.Text(string="Notas")
-    state = fields.Selection([
-        ('pendiente', "Pendiente"), ('presentada', "Presentada a tiempo"),
-        ('tarde', "Presentada tarde"), ('vencida', "Vencida sin presentar"),
-    ], string="Estado", compute='_compute_state', store=True)
-    on_time = fields.Boolean(string="A tiempo", compute='_compute_state', store=True)
-
-    @api.depends('due_date', 'filed_date')
-    def _compute_state(self):
-        today = fields.Date.context_today(self)
-        for obligation in self:
-            if obligation.filed_date:
-                on_time = bool(obligation.due_date) and obligation.filed_date <= obligation.due_date
-                obligation.state = 'presentada' if on_time else 'tarde'
-                obligation.on_time = on_time
-            else:
-                obligation.state = 'vencida' if obligation.due_date and obligation.due_date < today else 'pendiente'
-                obligation.on_time = False
-
-    def action_mark_filed(self):
-        self.filtered(lambda o: not o.filed_date).write({'filed_date': fields.Date.context_today(self)})
-        return True
 
 
 # ---- S6-02 ----------------------------------------------------------------

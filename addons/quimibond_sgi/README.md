@@ -2295,3 +2295,26 @@ Categorías de proveedores críticos; vacío = materia prima + «maquila»).
   «baja» con la regla actual. Prueba: `test_pr6_external.test_08` (como
   Usuario SGI).
 - **9.2 NC-7, 9.3 AU-4, 9.4 AU-5, 9.5 DOC-4, 9.6 REG-1** ya estaban (53.0.0).
+
+### 19.0.56.15.0 — Bloque 10: limpieza y deuda técnica
+
+- **10.1**: se retira `sgi.employer.obligation` (0 registros en producción):
+  modelo, vistas, acción, menú Dirección → Obligaciones patronales, accesos y
+  el paso del cron legal que agregó 56.7.0. `pre-migrate` 56.15.0 borra sus
+  vistas, acción, menú y xmlids antes de cargar los XML; la tabla vacía la
+  limpia Odoo. Las obligaciones viven en `qb_obligation` (398). Ligar las
+  actividades de S4 a `qb.obligation` es captura (qué obligación cubre cada
+  actividad).
+- **10.3**: los 223 roles de actividades archivadas ya no cuentan en ningún
+  cálculo: conteos del puesto y de la familia, «Actividades SGI» del puesto,
+  «Ver sus actividades» y el conteo de puestos del SIPOC (que ahora también
+  cuenta los puestos por familia). No se borra ningún rol.
+- **10.4 PR-1** ya estaba (53.1.0). **10.5**: `sgi.activity.spec.gap` solo
+  se regenera cuando cambió el conjunto de faltantes; se deja así.
+- **Pendiente por decisión** (no se tocó): 10.2 (`responsible_role` y los
+  campos de flujo; `prev/next_activity_ids`, `flow_parent_id` y
+  `responsible_job_ids` son cálculos vivos de los eslabones, no legado),
+  10.6 (campos heredados sin datos), 10.7 (ficha de máquina vs. ficha técnica
+  de Consolti, campos de Studio en empleados) y 10.8 (partir el módulo en
+  2027).
+- Pruebas: `tests/test_cleanup_b10.py` (conteos como Usuario SGI).

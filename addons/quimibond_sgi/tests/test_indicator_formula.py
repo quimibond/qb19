@@ -167,18 +167,22 @@ class TestIndicatorFormula(TransactionCase):
         self.assertIn(num._sgi_describe(), ind.formula_text)
 
     def test_09_comparar_dos_fechas_del_registro(self):
-        Obl = self.env['sgi.employer.obligation']
-        model = self.env['ir.model']._get('sgi.employer.obligation')
-        rows = [(date(2046, 3, 1), date(2046, 3, 17), date(2046, 3, 15)),   # a tiempo, 2 días antes
-                (date(2046, 3, 1), date(2046, 3, 17), date(2046, 3, 20)),   # 3 días tarde
-                (date(2046, 3, 1), date(2046, 3, 17), False)]              # sin presentar
-        for period, due, filed in rows:
-            Obl.create({'name': 'ZF9 %s' % (filed or 'pendiente'), 'period_date': period,
-                        'due_date': due, 'filed_date': filed})
+        # 56.15.0: antes usaba sgi.employer.obligation (retirado); la bitácora
+        # de bloqueo contable tiene dos fechas: A = «antes», B = «después».
         ind = self.Indicator.create({'code': 'ZF-09', 'name': 'Fechas', 'calc_mode': 'configurable'})
-        base = {'model_id': model.id, 'domain': "[('name', 'like', 'ZF9')]", 'date_field': 'due_date'}
-        num = self._term(ind, 'numerator', aggregation='count_delta', field_name='due_date',
-                         field_name_2='filed_date', delta_unit='days', delta_op='<=', delta_value=0, **base)
+        Log = self.env['sgi.lock.date.log']
+        model = self.env['ir.model']._get('sgi.lock.date.log')
+        company = ind._sgi_kpi_company()
+        rows = [(date(2046, 3, 17), date(2046, 3, 15)),   # a tiempo, 2 días antes
+                (date(2046, 3, 17), date(2046, 3, 20)),   # 3 días tarde
+                (date(2046, 3, 17), False)]              # sin fecha B
+        for due, filed in rows:
+            Log.create({'company_id': company.id, 'lock_field': 'tax_lock_date',
+                        'date_before': due, 'date_after': filed})
+        base = {'model_id': model.id, 'date_field': 'date_before',
+                'domain': "[('lock_field', '=', 'tax_lock_date'), ('date_before', '>', '2046-01-01')]"}
+        num = self._term(ind, 'numerator', aggregation='count_delta', field_name='date_before',
+                         field_name_2='date_after', delta_unit='days', delta_op='<=', delta_value=0, **base)
         den = self._term(ind, 'denominator', aggregation='count', **base)
         detail = ind._detail_configurable(*self.period)
         self.assertEqual((detail['numerator'], detail['denominator']), (1.0, 3.0), "Solo la presentada a tiempo.")
@@ -188,13 +192,13 @@ class TestIndicatorFormula(TransactionCase):
         num.write({'aggregation': 'avg_delta', 'delta_unit': 'days'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 0.5, "(−2 + 3) ÷ 2.")
         num.write({'aggregation': 'count_delta', 'delta_unit': 'next_month_day', 'delta_value': 5,
-                   'field_name': 'period_date', 'field_name_2': 'filed_date'})
+                   'field_name': 'date_before', 'field_name_2': 'date_after'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 2.0,
                          "Presentadas a más tardar el 5 de abril: las dos con fecha.")
-        num.write({'delta_unit': 'same_month', 'field_name': 'due_date'})
+        num.write({'delta_unit': 'same_month', 'field_name': 'date_before'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 2.0, "Mismo mes que el vencimiento.")
         num.write({'delta_unit': 'business_days', 'delta_op': '<=', 'delta_value': 2,
-                   'field_name': 'due_date'})
+                   'field_name': 'date_before'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 2.0,
                          "Hábiles: del sábado 17 al martes 20 son 2 (lunes y martes); la del 15 da 0.")
         num.write({'delta_value': 1})

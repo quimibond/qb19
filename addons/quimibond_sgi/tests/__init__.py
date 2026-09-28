@@ -74,3 +74,4 @@ from . import test_my_pending
 from . import test_approval_native
 from . import test_role_audit
 from . import test_perm_groups
+from . import test_cleanup_b10

@@ -1167,26 +1167,12 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     # Cumplimiento legal (14001/45001 6.1.3 / 9.1.2)
     # ------------------------------------------------------------------
-    @api.model
-    def _sgi_expire_employer_obligations(self):
-        """El estado «Vencida sin presentar» depende de la fecha de hoy: se
-        guardaba al crear la obligación y nunca cambiaba (56.7.0)."""
-        Obligation = self.env['sgi.employer.obligation']
-        stale = Obligation.search([('filed_date', '=', False), ('state', '=', 'pendiente'),
-                                   ('due_date', '<', fields.Date.context_today(self))])
-        if stale:
-            for fname in ('state', 'on_time'):
-                self.env.add_to_compute(Obligation._fields[fname], stale)
-            Obligation.flush_model(['state', 'on_time'])
-        return len(stale)
-
     def cron_legal_requirements(self):
         """Cron diario: evaluaciones de cumplimiento vencidas y permisos por
         vencer (≤60 días) o vencidos. Idempotente por resumen."""
         today = fields.Date.context_today(self)
         soon = today + relativedelta(days=60)
         manager_id = self._sgi_manager_user_id()
-        self._sgi_step("obligaciones patronales vencidas", self._sgi_expire_employer_obligations)
         Requirement = self.env['sgi.legal.requirement']
         overdue = Requirement.search([
             ('next_eval_date', '!=', False),
