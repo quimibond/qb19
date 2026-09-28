@@ -582,7 +582,7 @@ class SgiMyProcedure(models.TransientModel):
         action = {
             'type': 'ir.actions.act_window', 'name': name, 'res_model': records._name,
             'view_mode': view_mode, 'domain': [('id', 'in', records.ids)],
-            'context': dict(context or {}, create=False),
+            'context': dict({'create': False}, **(context or {})),
         }
         if views:
             action['views'] = [(self.env.ref('quimibond_sgi.' + xid).id if xid else False, mode)
@@ -590,7 +590,13 @@ class SgiMyProcedure(models.TransientModel):
         return action
 
     def _action_roles(self, name, roles):
-        return self._action_list(name, roles, view_mode='kanban,list', views=[
+        # 56.6.1: «Nuevo» (arriba a la izquierda) del kanban abre la propuesta
+        # de actividad nueva (on_create), con el proceso y el puesto de esta
+        # pantalla; la actividad nace al aprobarse.
+        context = {'create': bool(self._sgi_mp_job()),
+                   'sgi_mp_job_id': self._sgi_mp_job().id,
+                   'sgi_mp_process_ids': self.process_ids.ids}
+        return self._action_list(name, roles, view_mode='kanban,list', context=context, views=[
             ('sgi_activity_role_view_kanban_mp', 'kanban'), ('sgi_activity_role_view_list_my_procedure', 'list')])
 
     def action_show_late(self):

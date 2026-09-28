@@ -16,7 +16,8 @@
                  el «cómo» siempre visible; el resto del procedimiento se
                  despliega con «Más detalle» (Bootstrap collapse; el kanban
                  no abre la tarjeta al hacer clic en un data-bs-toggle). -->
-            <kanban create="0" delete="0" quick_create="0" default_group_by="cadence" group_create="0"
+            <kanban create="1" delete="0" quick_create="0" on_create="quimibond_sgi.sgi_activity_change_action_new"
+                    default_group_by="cadence" group_create="0"
                     group_delete="0" group_edit="0" records_draggable="0" class="o_sgi_mp_kanban">
                 <field name="mp_status"/>
                 <field name="mp_can_go"/>

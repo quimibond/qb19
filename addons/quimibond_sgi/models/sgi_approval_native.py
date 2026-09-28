@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""56.5.0: el rol «Aprueba» ligado a una aprobación NATIVA de Odoo.
+"""56.5.0 / 56.6.0: el rol «Aprueba» ligado a una aprobación NATIVA de Odoo.
 
 Cada renglón «Aprueba» de una actividad dice qué documento de Odoo se aprueba
 (modelo), en qué botón (método: confirmar la compra, validar el traslado,
@@ -42,8 +42,16 @@ CONDITION_FIELD_TYPES = ('float', 'monetary', 'integer', 'char', 'selection', 'b
 APPROVAL_STATES = [
     ('sin_configurar', "Sin configurar"),
     ('sin_aprobadores', "Sin personas en el puesto"),
+    ('conflicto', "Ya hay otra regla en el botón"),
     ('por_sincronizar', "Por sincronizar"),
     ('activa', "Activa en Odoo"),
+]
+# 56.6.0: no toda aprobación es un botón. Las decisiones sin documento van a
+# una solicitud de Aprobaciones y lo que hoy se firma en papel, a Sign.
+APPROVAL_KINDS = [
+    ('boton', "Botón de Odoo"),
+    ('solicitud', "Solicitud en Aprobaciones"),
+    ('firma', "Firma en Sign"),
 ]
 
 
@@ -55,8 +63,30 @@ class StudioApprovalRuleSgi(models.Model):
         help="Renglón «Aprueba» de la actividad del procedimiento que mantiene esta regla.")
 
 
+class ApprovalCategorySgiRole(models.Model):
+    _inherit = 'approval.category'
+
+    sgi_role_id = fields.Many2one(
+        'sgi.activity.role', string="Rol SGI que aprueba", index='btree_not_null', ondelete='set null',
+        help="Categoría creada para un renglón «Aprueba»: sus aprobadores siguen a las personas del puesto.")
+
+
 class SgiActivityRoleApproval(models.Model):
     _inherit = 'sgi.activity.role'
+
+    approval_kind = fields.Selection(
+        APPROVAL_KINDS, string="Cómo se aprueba", default='boton',
+        help="Botón de Odoo: la regla nativa bloquea el botón del documento. Solicitud: una "
+             "categoría de Aprobaciones para decisiones sin documento. Firma: una plantilla de Sign.")
+    approval_category_id = fields.Many2one(
+        'approval.category', string="Categoría de Aprobaciones", ondelete='set null',
+        help="Vacía: «Sincronizar» crea una categoría propia con las personas del puesto.")
+    approval_sign_template_id = fields.Many2one(
+        'sign.template', string="Plantilla de Sign", ondelete='set null')
+    approval_conflict_rule_ids = fields.Many2many(
+        'studio.approval.rule', string="Otras reglas en el botón", compute='_compute_approval_conflicts',
+        help="Reglas de aprobación activas en el mismo botón que no mantiene este rol: el documento "
+             "pediría dos aprobaciones. Adóptala o quítala antes de sincronizar.")
 
     approval_model_id = fields.Many2one(
         'ir.model', string="Documento que se aprueba", ondelete='set null',
@@ -151,14 +181,42 @@ class SgiActivityRoleApproval(models.Model):
         for role in self:
             role.approval_user_ids = role._sgi_approver_users() if role.role == 'aprueba' else False
 
+    @api.depends('approval_kind', 'approval_model_id', 'approval_method', 'approval_rule_id')
+    def _compute_approval_conflicts(self):
+        Rule = self.env['studio.approval.rule'].sudo()
+        for role in self:
+            if role.role != 'aprueba' or role.approval_kind != 'boton' or not role.approval_model_id \
+                    or not role.approval_method:
+                role.approval_conflict_rule_ids = False
+                continue
+            rules = Rule.search([('model_id', '=', role.approval_model_id.id),
+                                 ('method', '=', role.approval_method), ('active', '=', True)])
+            # Reglas de otros roles SGI en el mismo botón son niveles válidos
+            # (cada uno con su condición); solo cuentan las que nadie mantiene.
+            role.approval_conflict_rule_ids = rules.filtered(
+                lambda r: not r.sgi_role_id and r != role.approval_rule_id)
+
     def _compute_approval_state(self):
         for role in self:
             if role.role != 'aprueba':
                 role.approval_state = False
+            elif role.approval_kind == 'firma':
+                role.approval_state = 'activa' if role.approval_sign_template_id else 'sin_configurar'
+            elif role.approval_kind == 'solicitud':
+                category = role.approval_category_id.sudo()
+                if not role.approval_user_ids and not (category and category.approver_ids):
+                    role.approval_state = 'sin_aprobadores'
+                elif not category or (category.sgi_role_id == role and set(
+                        category.approver_ids.user_id.ids) != set(role.approval_user_ids.ids)):
+                    role.approval_state = 'por_sincronizar'
+                else:
+                    role.approval_state = 'activa'
             elif not role.approval_model_id or not role.approval_method:
                 role.approval_state = 'sin_configurar'
             elif not role.approval_user_ids:
                 role.approval_state = 'sin_aprobadores'
+            elif role.approval_conflict_rule_ids:
+                role.approval_state = 'conflicto'
             elif not role.approval_rule_id.active or not role._sgi_rule_in_sync():
                 role.approval_state = 'por_sincronizar'
             else:
@@ -166,11 +224,24 @@ class SgiActivityRoleApproval(models.Model):
 
     def _compute_approval_entries(self):
         Entry = self.env['studio.approval.entry'].sudo()
+        Request = self.env['approval.request'].sudo()
+        Sign = self.env['sign.request'].sudo()
         for role in self:
-            entries = Entry.search([('rule_id', '=', role.approval_rule_id.id), ('approved', '=', True)],
-                                   order='create_date desc') if role.approval_rule_id else Entry
-            role.approval_entry_count = len(entries)
-            role.approval_last_date = entries[:1].create_date
+            if role.approval_kind == 'solicitud' and role.approval_category_id:
+                done = Request.search([('category_id', '=', role.approval_category_id.id),
+                                       ('request_status', '=', 'approved')], order='write_date desc')
+                role.approval_entry_count = len(done)
+                role.approval_last_date = done[:1].write_date
+            elif role.approval_kind == 'firma' and role.approval_sign_template_id:
+                done = Sign.search([('template_id', '=', role.approval_sign_template_id.id),
+                                    ('state', '=', 'signed')], order='write_date desc')
+                role.approval_entry_count = len(done)
+                role.approval_last_date = done[:1].write_date
+            else:
+                entries = Entry.search([('rule_id', '=', role.approval_rule_id.id), ('approved', '=', True)],
+                                       order='create_date desc') if role.approval_rule_id else Entry
+                role.approval_entry_count = len(entries)
+                role.approval_last_date = entries[:1].create_date
 
     # ------------------------------------------------------------------
     def _sgi_rule_vals(self):
@@ -196,17 +267,62 @@ class SgiActivityRoleApproval(models.Model):
             and (rule.domain or False) == (self.approval_domain or False) \
             and set(rule.approver_ids.ids) == set(self._sgi_approver_users().ids)
 
+    def _sgi_sync_category(self):
+        """Solicitud en Aprobaciones: la categoría propia del rol (se crea si
+        no hay) con las personas del puesto como aprobadores. Una categoría
+        elegida que no es del rol no se toca."""
+        Category = self.env['approval.category'].sudo()
+        for role in self:
+            users = role._sgi_approver_users()
+            category = role.approval_category_id.sudo()
+            if not role.activity_id.active or role.role != 'aprueba':
+                if category.sgi_role_id == role:
+                    category.active = False
+                continue
+            if not category:
+                if not users:
+                    continue
+                activity = role.activity_id.sudo()
+                number = activity.number or activity.legacy_number or ''
+                category = Category.create({
+                    'name': " ".join(("SGI %s %s" % (number, activity.name or '')).split()),
+                    'description': "Aprobación del procedimiento: %s" % (role.condition or "siempre"),
+                    'sgi_role_id': role.id, 'approval_minimum': 1,
+                })
+                role.approval_category_id = category
+            if category.sgi_role_id == role:
+                current = category.approver_ids
+                keep = current.filtered(lambda a: a.user_id in users)
+                (current - keep).unlink()
+                missing = users - keep.user_id
+                if missing:
+                    category.write({'approver_ids': [(0, 0, {'user_id': u.id, 'required': False})
+                                                     for u in missing]})
+                category.active = True
+
     def _sgi_sync_approval_rule(self):
-        """Crea, actualiza o archiva la regla nativa. Devuelve el estado."""
+        """Pone al día la aprobación del rol según su tipo."""
         Rule = self.env['studio.approval.rule'].sudo()
         for role in self:
             rule = role.approval_rule_id.sudo()
+            if role.approval_kind != 'boton':
+                if rule.active:
+                    rule.active = False
+                if role.approval_kind == 'solicitud':
+                    role._sgi_sync_category()
+                continue
             wanted = (role.role == 'aprueba' and role.activity_id.active and role.approval_model_id
                       and role.approval_method and role._sgi_approver_users())
             if not wanted:
                 if rule.active:
                     rule.active = False
                 continue
+            if role.approval_conflict_rule_ids:
+                raise UserError(
+                    "El botón «%s» de «%s» ya tiene otra regla de aprobación (%s): el documento pediría "
+                    "dos aprobaciones. Usa «Adoptar regla» para que el SGI la mantenga, o quítala en "
+                    "Studio." % (role.approval_method, role.approval_model_id.name,
+                                 ", ".join(role.approval_conflict_rule_ids.mapped('display_name'))))
             model = self.env.get(role.approval_model_id.model)
             if model is None or not callable(getattr(model, role.approval_method, None)):
                 raise UserError("«%s» no tiene el botón «%s»: revisa el documento y el botón que se aprueba "
@@ -229,6 +345,19 @@ class SgiActivityRoleApproval(models.Model):
         self._sgi_sync_approval_rule()
         return True
 
+    def action_sgi_adopt_rule(self):
+        """Adopta la regla manual que ya existe en el botón: la liga al rol y
+        la deja con las personas del puesto y la condición del rol."""
+        self.ensure_one()
+        rule = self.approval_conflict_rule_ids[:1].sudo()
+        if not rule:
+            raise UserError("No hay otra regla en este botón.")
+        rule.sgi_role_id = self
+        self.approval_rule_id = rule
+        self.invalidate_recordset(['approval_conflict_rule_ids'])
+        self._sgi_sync_approval_rule()
+        return True
+
     def action_sgi_open_approval_rule(self):
         self.ensure_one()
         if not self.approval_rule_id:
@@ -244,19 +373,22 @@ class SgiActivityRoleApproval(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if {'role', 'job_id', 'family_id', 'relative_role', 'target_type'} & set(vals):
-            self.filtered('approval_rule_id')._sgi_sync_approval_rule()
+        if {'role', 'job_id', 'family_id', 'relative_role', 'target_type', 'approval_kind'} & set(vals):
+            self.filtered(lambda r: r.approval_rule_id or r.approval_category_id.sgi_role_id == r
+                          )._sgi_sync_approval_rule()
         return res
 
     def unlink(self):
         self.approval_rule_id.sudo().write({'active': False})
+        self.approval_category_id.sudo().filtered(lambda c: c.sgi_role_id in self).write({'active': False})
         return super().unlink()
 
     @api.model
     def cron_sgi_sync_approvals(self):
         """Cada noche: aprobadores al día (cambian las personas de los
         puestos) y reglas archivadas si la actividad o el rol ya no existen."""
-        roles = self.sudo().search([('approval_rule_id', '!=', False)])
+        roles = self.sudo().search(['|', ('approval_rule_id', '!=', False),
+                                    ('approval_category_id.sgi_role_id', '!=', False)])
         for role in roles:
             try:
                 with self.env.cr.savepoint():
@@ -272,5 +404,6 @@ class SgiProcessActivityApproval(models.Model):
     def write(self, vals):
         res = super().write(vals)
         if 'active' in vals:
-            self.role_ids.filtered('approval_rule_id')._sgi_sync_approval_rule()
+            self.role_ids.filtered(lambda r: r.approval_rule_id or r.approval_category_id.sgi_role_id == r
+                                   )._sgi_sync_approval_rule()
         return res

@@ -21,6 +21,7 @@ PENDING_KINDS = [
     ('legal', "Requisito legal"),
     ('documento', "Revisión de documento"),
     ('aprobacion', "Aprobación"),
+    ('solicitud', "Solicitud por aprobar"),
 ]
 PENDING_STATES = [
     ('atrasada', "Atrasada"),
@@ -96,6 +97,10 @@ class SgiMyPending(models.TransientModel):
         if 'studio.approval.request' in env:
             records['aprobacion'] = env['studio.approval.request'].sudo().search(
                 [('mail_activity_id.user_id', 'in', ids)], order='create_date')
+        # 56.6.0: solicitudes de Aprobaciones esperando a la persona.
+        records['solicitud'] = env['approval.approver'].sudo().search(
+            [('user_id', 'in', ids), ('status', '=', 'pending'),
+             ('request_id.request_status', '=', 'pending')], order='create_date')
         return records
 
     @api.model
@@ -127,6 +132,14 @@ class SgiMyPending(models.TransientModel):
             return {'name': "Evaluar %s" % (rec.display_name or rec.name),
                     'date_due': min(dates) if dates else False,
                     'process_id': rec.process_ids[:1].id}
+        if kind == 'solicitud':
+            req = rec.request_id
+            category = req.category_id
+            return {'name': "Aprobar %s" % (req.name or category.name or ''),
+                    'date_due': req.date_confirmed and fields.Date.to_date(req.date_confirmed),
+                    'process_id': (category.sgi_role_id.activity_id.process_id.id
+                                   if 'sgi_role_id' in category._fields else False)
+                    or req.sgi_affected_process_ids[:1].id}
         if kind == 'aprobacion':
             rule = rec.rule_id
             record = self.env[rule.model_name].sudo().browse(rec.res_id).exists() if rule.model_name else None
@@ -150,6 +163,8 @@ class SgiMyPending(models.TransientModel):
             return rec.responsible_id
         if kind == 'aprobacion':
             return rec.mail_activity_id.user_id
+        if kind == 'solicitud':
+            return rec.user_id
         return rec.sgi_owner_id
 
     @api.model
@@ -164,6 +179,8 @@ class SgiMyPending(models.TransientModel):
                 if kind == 'aprobacion':
                     # «Abrir» lleva al documento que espera la aprobación.
                     row.update(res_model=rec.rule_id.model_name, res_id=rec.res_id)
+                elif kind == 'solicitud':
+                    row.update(res_model='approval.request', res_id=rec.request_id.id)
                 row['state'] = pending_state(row['date_due'], today)
                 row['state_rank'] = STATE_RANK[row['state']]
                 for user in self._sgi_row_users(kind, rec):

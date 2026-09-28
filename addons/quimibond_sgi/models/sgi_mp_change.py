@@ -258,6 +258,19 @@ class SgiActivityChange(models.Model):
             'view_mode': 'form', 'target': 'new',
         }
 
+    @api.model
+    def action_sgi_new_from_context(self):
+        """«Nuevo» del kanban de Mis actividades: la propuesta de actividad
+        nueva con el puesto y los procesos que trae el contexto."""
+        ctx = self.env.context
+        job = self.env['hr.job'].browse(ctx.get('sgi_mp_job_id') or []).exists()
+        processes = self.env['sgi.process'].browse(ctx.get('sgi_mp_process_ids') or []).exists()
+        if not job:
+            job = self.env.user.employee_id.sudo().job_id
+        if job and not processes:
+            processes = job.sudo()._sgi_mp_role_lists()['detail'].activity_id.process_id
+        return self._sgi_open(processes=processes, job=job or None)
+
     def _sgi_reference(self):
         self.ensure_one()
         process = self.process_id.sudo()
