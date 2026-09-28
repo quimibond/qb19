@@ -25,6 +25,8 @@
                     </div>
                     <group>
                         <field name="sgi_mp_process_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                        <field name="sgi_team_ids" widget="many2many_tags" readonly="1"
+                               invisible="not sgi_team_ids"/>
                     </group>
                     <field name="sgi_mp_role_ids" mode="list" nolabel="1" readonly="1"
                            context="{'list_view_ref': 'quimibond_sgi.sgi_activity_role_view_list_mp_embedded'}"/>

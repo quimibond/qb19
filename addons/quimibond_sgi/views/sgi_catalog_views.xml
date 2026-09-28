@@ -243,6 +243,8 @@
                 <field name="user_id" widget="many2one_avatar_user"/>
                 <field name="employee_id" optional="hide"/>
                 <field name="job_id" optional="show"/>
+                <field name="department_id" optional="show"/>
+                <field name="sale_team_ids" widget="many2many_tags" optional="hide"/>
                 <field name="family_id" optional="hide"/>
                 <field name="exec_class" widget="badge"/>
                 <field name="count" sum="Total"/>
@@ -272,7 +274,10 @@
                 <field name="activity_id"/>
                 <field name="user_id"/>
                 <field name="job_id"/>
+                <field name="department_id"/>
                 <field name="process_id"/>
+                <field name="team_filter_id" string="Equipo de ventas"
+                       help="El equipo elegido más las actividades que aplican a todos."/>
                 <filter name="otro_puesto" string="Otro puesto"
                         domain="[('exec_class', '=', 'otro_puesto')]"/>
                 <filter name="generico" string="Cuenta genérica"
@@ -288,6 +293,9 @@
                     <filter name="group_activity" string="Actividad" context="{'group_by': 'activity_id'}"/>
                     <filter name="group_class" string="Clase" context="{'group_by': 'exec_class'}"/>
                     <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_department" string="Departamento del puesto"
+                            context="{'group_by': 'department_id'}"/>
+                    <filter name="group_team" string="Equipo de ventas" context="{'group_by': 'sale_team_ids'}"/>
                     <filter name="group_user" string="Usuario" context="{'group_by': 'user_id'}"/>
                     <filter name="group_week" string="Semana" context="{'group_by': 'period_start:week'}"/>
                 </group>
@@ -466,6 +474,8 @@
                     <group>
                         <group>
                             <field name="sgi_family_id"/>
+                            <field name="sgi_team_ids" widget="many2many_tags" readonly="1"
+                                   invisible="not sgi_team_ids"/>
                         </group>
                         <group>
                             <field name="sgi_vacancy_approved"/>

@@ -235,16 +235,19 @@ class HrEmployeeMyProcedureTab(models.Model):
         'sgi.process', 'hr_employee_sgi_mp_process_rel', 'employee_id', 'process_id',
         string="Procesos donde participa", compute='_compute_sgi_mp_roles_stored', store=True)
 
-    @api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id')
+    @api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id', 'user_id')
     def _compute_sgi_mp_roles_stored(self):
         Role = self.env['sgi.activity.role'].sudo()
         cache = {}
         for emp in self:
             job = emp.sudo().sgi_mp_job_id
-            if job.id not in cache:
-                cache[job.id] = job._sgi_mp_role_lists() if job else {
+            # Equipos de venta de la persona (56.16.0): mismo puesto con
+            # otros equipos es otra lista.
+            key = (job.id, tuple(self.env['hr.job']._sgi_user_teams(emp.sudo().user_id).ids))
+            if key not in cache:
+                cache[key] = job.with_context(sgi_mp_employee_id=emp.id)._sgi_mp_role_lists() if job else {
                     'detail': Role, 'received': Role, 'short': Role}
-            lists = cache[job.id]
+            lists = cache[key]
             emp.sgi_mp_role_ids = lists['detail'].ids
             emp.sgi_mp_received_role_ids = lists['received'].ids
             emp.sgi_mp_short_role_ids = lists['short'].ids
@@ -533,7 +536,8 @@ class SgiMyProcedure(models.TransientModel):
             wiz.department_id = (emp.department_id if emp and emp.department_id else job.department_id) or False
             wiz.family_id = job.sgi_family_id if job else False
             if job:
-                roles = self.env['sgi.activity.role'].sudo().search(job._sgi_roles_domain())
+                roles = self.env['sgi.activity.role'].sudo().search(job.with_context(
+                    sgi_mp_employee_id=emp.id if emp else False)._sgi_roles_domain())
                 wiz.process_ids = roles.filtered(lambda r: r.activity_id.active).mapped(
                     'activity_id.process_id').ids
                 wiz.job_employee_ids = Employee.search([('job_id', '=', job.id)]).ids

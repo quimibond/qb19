@@ -107,6 +107,13 @@
                                    invisible="calc_mode != 'entregable_completo'"/>
                             <field name="nc_on_red"/>
                             <field name="critical" invisible="not nc_on_red"/>
+                            <field name="measure_split" invisible="calc_mode != 'configurable'"/>
+                            <field name="measure_team_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Los equipos de venta de la compañía"
+                                   invisible="measure_split != 'team'"/>
+                            <field name="split_support" invisible="calc_mode != 'configurable'"
+                                   class="text-muted"/>
                         </group>
                     </group>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not spec_missing">
@@ -325,6 +332,29 @@
                             <field name="small_sample" invisible="not small_sample"/>
                             <field name="alert_id" readonly="1"/>
                         </group>
+                    </group>
+                    <group string="Desglose (equipo de ventas o mercado)" name="split" invisible="not split_ids">
+                        <field name="split_ids" nolabel="1" colspan="2" readonly="1">
+                            <list create="0" delete="0"
+                                  decoration-danger="semaphore == 'rojo'"
+                                  decoration-warning="semaphore == 'amarillo'"
+                                  decoration-muted="state == 'sin_dato'">
+                                <field name="label"/>
+                                <field name="value"/>
+                                <field name="uom"/>
+                                <field name="numerator" optional="show"/>
+                                <field name="denominator" optional="show"/>
+                                <field name="sample_size" optional="show"/>
+                                <field name="state" optional="hide"/>
+                                <field name="semaphore" widget="badge"
+                                       decoration-success="semaphore == 'verde'"
+                                       decoration-warning="semaphore == 'amarillo'"
+                                       decoration-danger="semaphore == 'rojo'"/>
+                                <button name="action_view_evidence" type="object" string="Registros"
+                                        icon="fa-list" invisible="not detail_ids"/>
+                                <field name="detail_ids" column_invisible="1"/>
+                            </list>
+                        </field>
                     </group>
                     <group string="Nota" name="note">
                         <field name="note" nolabel="1"/>

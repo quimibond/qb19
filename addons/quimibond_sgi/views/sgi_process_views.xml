@@ -408,6 +408,7 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="owner_id"/>
+                <field name="activity_team_ids" string="Tiene actividades del equipo"/>
                 <filter name="mine" string="Mis procesos" domain="[('owner_id.user_id', '=', uid)]"/>
                 <separator/>
                 <filter name="tipo_cop" string="Cadena de valor" domain="[('process_type', '=', 'cop')]"/>
