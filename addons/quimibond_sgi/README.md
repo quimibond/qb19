@@ -1775,6 +1775,10 @@ a la izquierda). Con `on_create` abre la propuesta de actividad nueva
 (`sgi.activity.change`, acción `sgi_activity_change_action_new`) con el puesto
 y los procesos de la pantalla ya puestos; la actividad nace al aprobarse,
 igual que «Proponer nueva actividad». Sin puesto el botón no aparece.
+56.6.2: la vista de lista hace lo mismo; como la lista de Odoo no tiene
+`on_create`, usa `js_class="sgi_my_activities_list"`
+(`static/src/my_procedure/new_activity_list.js`), que solo cambia lo que hace
+«Nuevo».
 
 ### El rol «Aprueba» ligado a la aprobación nativa de Odoo (56.5.0)
 
