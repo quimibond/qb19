@@ -24,6 +24,9 @@ Quimibond: textil técnico (tejido circular, tramado, tintorería y acabado, ent
 - 427 documentos del Dropbox contra "~490": la segunda cifra incluía externos, procedimientos y Mi procedimiento. No es discrepancia.
 - Roles de actividades archivadas: ya se borraron con respaldo en 56.24.0.
 
+## Decisiones de Jose tras la tanda 1
+Lee `docs/audit/decisiones.md`: **manda sobre cualquier propuesta**. Resumen: el SGI se instala vacío (el mapa de procesos va a un módulo de datos aparte); los procesos archivados nunca se borran; el documento es la fuente de verdad de procedimiento ↔ proceso; clave nueva `PR-{proceso}`; presupuesto de ventas, bitácora contable, valor de inventario y PPAP/AMEF/MSA salen a módulos propios sin borrar datos; grupo nuevo «Salud ocupacional»; Auditor ve todo menos salud y salarios; Dirección consulta y aprueba sin permisos de Jefe MAST. Los informes de la tanda 1 (`01-arquitectura.md`, `02-obsoleto.md`, `03-modelo.md`, `06-seguridad.md`) ya existen: **no dupliques sus hallazgos**; si tocas lo mismo, cita su ID.
+
 ## Reglas
 - **Solo lectura.** No edites nada en `addons/`, no hagas commits ni push, no toques git. Escribe **solo** tu archivo `docs/audit/NN-<tema>.md` (y, si lo necesitas, CSV de apoyo en `docs/audit/NN-<tema>/`).
 - Producción por MCP (`mcp__Quimibond_-_Odoo__*`, cárgalas con ToolSearch): usa **solo** `search_records`, `aggregate_records`, `get_record`, `get_fields`, `list_models`. **Prohibido** `create_record`, `update_record`, `delete_record`, `call_model_method`, `post_message`. Filtra a `company_id = 1` cuando el modelo lo tenga.
@@ -38,7 +41,7 @@ Quimibond: textil técnico (tejido circular, tramado, tintorería y acabado, ent
 1. **Resumen** (máximo 10 líneas).
 2. **Tabla de hallazgos:**
    `| ID | Elemento (xml_id / modelo.campo / archivo:línea) | Hallazgo | Evidencia | Severidad (Crítica/Alta/Media/Baja) | Acción (Eliminar/Corregir/Agregar/Mover/Documentar/Decidir) | Propuesta concreta | Esfuerzo (h) | Depende de |`
-   IDs con tu prefijo: A-001 (arquitectura), B-001 (obsoleto), C-001 (modelo), F-001 (seguridad).
+   IDs con tu prefijo: A-001 (arquitectura), B-001 (obsoleto), C-001 (modelo), D-001 (vistas), E-001 (menús), F-001 (seguridad), G-001 (lógica), H-001 (datos).
 3. **Preguntas que requieren decisión de negocio** (para Jose), cada una con tu recomendación.
 4. **Cobertura:** cuántos elementos del inventario revisaste de cuántos (por tipo). Debe ser 100 %; si no, di qué faltó y por qué.
 
