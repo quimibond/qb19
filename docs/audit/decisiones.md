@@ -59,3 +59,52 @@ A-001 (instalación limpia), B-004 (prueba del árbol de menús), B-001 (ninguna
 - **Siguen con escritura:** `sgi.*` y los modelos de negocio de la carga (`documents.*`, `approval.*`, `fleet.*`, `maintenance.*`, `hr.*`, `quality.*`, …).
 - **Respaldo:** export CSV de *MCP Available Models* antes de tocar nada (paso 1 de §5).
 - **Después:** módulo `qb_mcp_politica` (opción B de §5) en un PR propio. El módulo `mcp_server` está en la raíz del repo y no se toca, porque es de un tercero.
+
+## 2026-09-29 — respuestas a la tanda 2
+
+### Vencimientos (H-003)
+Jose cargó en producción 13 de los 15 vencimientos incompletos:
+
+| Actividad | Vence |
+|---|---|
+| Presupuesto de ventas (E1.01) | 15 de noviembre |
+| Presupuesto de gastos (E1.02) | 15 de diciembre |
+| Plan estratégico (E1.03) | 31 de enero |
+| Reporte a accionistas (E1.10) | 30 de abril, luego cada trimestre |
+| Auditoría interna (E2.05) | 31 de marzo, luego cada trimestre |
+| Aguinaldo (S4.22) | 16 de diciembre (el cuadro de antigüedades se firma antes; el límite legal es el 20) |
+| PTU (S4.23) | 30 de mayo |
+| Programa de capacitación (S4.24) | 31 de enero |
+| Fijar la fecha del inventario general (S3.21) | 31 de mayo |
+| Semestrales: inventario general, encuesta de clientes, matriz de habilidades, preventivo de cómputo | 30 de junio |
+
+Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protección Civil, según la fecha de su registro; la da Areli/MAST) y **S4.30** (SIRCE, según el periodo del plan de capacitación; lo confirma RH).
+
+### Respuestas (Jose acepta las 14 recomendaciones, con estos matices)
+1. **Usuarios:** oficina con usuario; en planta, el supervisor ejecuta. **Los usuarios los decide Jose y los crea Sistemas; el programador no crea ninguno, solo configura.** Jose pasa el nombre del dueño de C4.
+2. **Calibración:** solo avisa, no bloquea, hasta que se carguen las fechas reales. Los avisos van al Coordinador de Laboratorio y al Jefe de Calidad.
+3. **Mediciones automáticas:** las valida el dueño del indicador, en 3 días hábiles.
+4. **Días inhábiles:**
+   - Un vencimiento que cae en inhábil se **adelanta**.
+   - Los escalamientos se cuentan en días hábiles.
+   - Se cargan en el calendario los festivos de la LFT (art. 74) y los del contrato colectivo.
+5. **Actividad hecha sin resolver la causa:** no se vuelve a crear mientras siga el mismo episodio.
+6. **Mediciones contra módulos sin uso:** pasan a «Manual» con justificación.
+7. **Aprobador igual al solicitante (E2.01, S4.03, S6.07):** se quita. El programador propone el aprobador correcto de cada una, Jose lo carga, y se agrega una validación para que no se repita.
+8. **Numerales:** se congelan, con sus huecos.
+9. **Helpdesk:** «Reclamaciones entretelas» y «ATENCION A CLIENTES» son del SGI. «Generar NC» solo en equipos del SGI.
+10. **Carpeta Dirección:**
+    - Abiertos para todos: Política, Objetivos, Riesgos y Requisitos legales.
+    - El resto, solo Auditor, Jefe MAST y Dirección.
+11. **Claves en Documentos:** el personal ve título y revisión. La clave vieja solo aparece en «Del Dropbox a Odoo».
+12. **Aprobaciones huérfanas de Sandra:** se **cancelan** las 2 (no se aprueban).
+13. **Carga del mapa:** manual, con modo de prueba primero. Aprobado el módulo `quimibond_sgi_mapa`.
+14. **Checklists:** listos a las 05:30 hora de México. OdooBot con zona `America/Mexico_City`.
+
+### Transición (para el agente L)
+- **Son 49 procedimientos, no 47**, más **P-I01**, que va aparte por las credenciales.
+- Análisis rutina por rutina: `Del_Dropbox_a_Odoo_rutina_por_rutina.xlsx`.
+  - 815 rutinas: 709 cubiertas, 68 reemplazadas por Odoo, 38 pendientes.
+  - Columnas: `clave, procedimiento, n, rutina, frecuencia, responsable_anterior, estado, actividades_odoo, motivo`.
+  - P-I01 no está incluido.
+- Clasificación de los 52 procedimientos: ver «Estado de migración (C-003)» arriba (23 sustituidos, 21 con pendientes, 5 de control operacional, P-I01 aparte).
