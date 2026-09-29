@@ -373,9 +373,14 @@ class SgiMyPending(models.TransientModel):
         company = env['sgi.config']._sgi_company()
         employees = employees.filtered(lambda e: not e.company_id or e.company_id == company)
         roles_by_emp = {}
+        # 57.13.0: los escalamientos a un rol relativo («Dueño del proceso»)
+        # no son de un puesto: le llegan al dueño del proceso de la actividad,
+        # o a su jefe si el dueño también la ejecuta (sgi_relative_roles).
+        relative = env['sgi.activity.role'].sudo()._sgi_relative_escalations(employees)
         for emp in employees:
             detail = emp.sgi_mp_role_ids.filtered(lambda r: r.role == 'ejecuta')
-            roles_by_emp[emp.id] = (detail, emp.sgi_mp_received_role_ids)
+            received = emp.sgi_mp_received_role_ids | relative.get(emp.id, env['sgi.activity.role'])
+            roles_by_emp[emp.id] = (detail, received)
         all_roles = env['sgi.activity.role'].sudo()
         for detail, received in roles_by_emp.values():
             all_roles |= detail | received

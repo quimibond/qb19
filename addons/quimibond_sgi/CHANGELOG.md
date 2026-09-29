@@ -13,6 +13,50 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.13.0 — 2026-09-29
+
+**Corregido (entrega 8, primer bloque; H-018, J-010; decisión de Jose
+2026-09-29 «roles relativos»):** los roles relativos de `sgi.activity.role`
+se resuelven a personas (`models/sgi_relative_roles.py`):
+
+- **Dueño del proceso**: el del proceso del REGISTRO que se pide o aprueba
+  (`sgi_process_id`/`process_id`; si no, cualquier many2one o many2many
+  guardado a `sgi.process`, p. ej. `sgi_affected_process_ids`; si no, un salto
+  por el documento o la actividad ligados). Sin proceso en el registro, el de
+  la actividad (antes siempre el de la actividad).
+- **Solicitante**: `request_owner_id`, `sgi_requester_id`, `requester_id`,
+  `requested_by` o `request_user_id`; si no, `create_uid` (salvo sistema).
+  **Jefe del área que pide**: su `hr.employee.parent_id`. **Quien lo
+  detecta**: `sgi_detected_by_id`, `detected_by_id`, `reporter_id` o
+  `sgi_requester_id`; si no, `create_uid`. **Área responsable**: el
+  `manager_id` del departamento del registro (`sgi_area_id.department_id`,
+  `department_id` u otro many2one a `hr.department`). Sin registro solo se
+  resuelve «Dueño del proceso»; lo que no se resuelve regresa vacío con su
+  motivo (log y reporte).
+- **Aprobador ≠ quien ejecuta o pide**: en «Aprueba» y «Escala» se quita a
+  quien también ejecuta la actividad o pide el registro; si no queda nadie,
+  sube a su jefe directo (`parent_id`, saltando a quien también ejecute o
+  pida); sin jefe queda vacío con aviso. El caso S6.07 (Mariano aprobaba lo
+  que él ejecuta) sube a su jefe.
+- **Escalamientos a «Dueño del proceso» en Mis pendientes**: los 41 de
+  producción no le llegaban a nadie (la lista guardada del empleado solo ve
+  puestos y familias). Ahora le llegan al dueño del proceso de la actividad,
+  o a su jefe si el dueño también la ejecuta (`_sgi_relative_escalations`).
+- **Ejecutor relativo** (C2.35, S1.01, S1.18): en la adherencia cuenta como
+  correcto cualquier empleado de la empresa (lo hace quien pide o detecta);
+  genéricos, sin empleado y sistema siguen fuera.
+- **Aprobaciones nativas**: «Jefe del área que pide» con «Solicitud en
+  Aprobaciones» crea la categoría con `manager_approval = required` (nativo:
+  el jefe de quien hace la solicitud). En botón o firma, un relativo que
+  depende del registro queda en el estado nuevo «Depende de cada registro».
+- La carga por API avisa (`kind='role'`) cuando un «Aprueba» es
+  «Solicitante»; no lo rechaza (`quimibond_sgi_mapa` todavía lo trae en
+  E2.01, S4.03 y S6.07).
+- `sgi.activity.role.sgi_relative_roles_report()`: a quién resuelve hoy cada
+  rol relativo (solo lectura, se puede llamar por MCP).
+
+**Pruebas:** `test_relative_roles` (11 casos, datos propios).
+
 ## 19.0.57.12.0 — 2026-09-29
 
 **Cambiado (D-11 ampliada, Jose 2026-09-29):**

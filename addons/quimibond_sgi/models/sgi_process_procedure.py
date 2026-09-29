@@ -630,6 +630,16 @@ class SgiProcessActivity(models.Model):
             return None
         return executors._sgi_jobs()
 
+    def _sgi_executor_is_relative(self):
+        """57.13.0: el ejecutor es un relativo que depende del registro
+        (solicitante, quien detecta…), no un puesto."""
+        from .sgi_catalog import SGI_RECORD_RELATIVES   # sgi_catalog carga después
+        self.ensure_one()
+        executors = self.role_ids.filtered(lambda r: r.role == 'ejecuta')
+        return bool(executors) and all(
+            r.target_type == 'relative' and r.relative_role in SGI_RECORD_RELATIVES
+            for r in executors)
+
     def _sgi_check_roles(self):
         """Exactamente un «ejecuta» (cero si la actividad es automática) y a
         lo más un «aprueba» sin condición. Se puede saltar solo desde código
@@ -1138,6 +1148,11 @@ class SgiProcessActivity(models.Model):
             domain + [(date_field, '>=', since)],
             [user_field, '%s:day' % date_field], ['__count'])
         expected = self._sgi_executor_jobs()
+        # 57.13.0: ejecutor relativo (solicitante, quien detecta…): lo hace
+        # quien pide o detecta en cada registro, así que cualquier empleado
+        # de la empresa cuenta como correcto; cuentas genéricas, sin empleado
+        # y sistema siguen sin contar.
+        anyone = expected is None and self._sgi_executor_is_relative()
         generic_ids = self._sgi_generic_user_ids()
         system_ids = {SUPERUSER_ID}
         root = self.env.ref('base.user_root', raise_if_not_found=False)
@@ -1158,7 +1173,7 @@ class SgiProcessActivity(models.Model):
                 klass = 'generico'
             elif not emp:
                 klass = 'sin_empleado'
-            elif expected is not None and job and job in expected:
+            elif anyone or (expected is not None and job and job in expected):
                 klass = 'correcto'
             else:
                 klass = 'otro_puesto'
@@ -1176,7 +1191,7 @@ class SgiProcessActivity(models.Model):
                 'family_id': job.sgi_family_id.id or False,
                 # Ejecutor relativo (solicitante, quien detecta…): no hay a
                 # quién comparar; solo se cuenta.
-                'exec_class': False if expected is None else klass,
+                'exec_class': False if expected is None and not anyone else klass,
                 'count': count,
                 '_class': klass,
             }
@@ -1195,7 +1210,7 @@ class SgiProcessActivity(models.Model):
         total = sum(counts.values())
         attributable = total - counts['sistema']
         adherence = round(counts['correcto'] * 100.0 / attributable, 1) \
-            if expected is not None and attributable else 0.0
+            if (expected is not None or anyone) and attributable else 0.0
         warnings = []
         if expected is not None and attributable and adherence < 80:
             warnings.append("Adherencia de %.0f%%: la hacen puestos que no la tienen "
