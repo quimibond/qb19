@@ -196,22 +196,8 @@ class TestBandeja(TransactionCase):
         self.assertNotIn('P-A68', row['name'])
         self.assertIn('Procedimiento de bandeja', row['name'])
 
-    # ---- aprobacion (Studio) --------------------------------------------------
-    def test_07_aprobacion(self):
-        if 'studio.approval.request' not in self.env:
-            self.skipTest("Sin Studio.")
-        approver = new_test_user(self.env, login='zs_8a_apr', groups='base.group_user,purchase.group_purchase_user')
-        partner = self.env['res.partner'].create({'name': 'Proveedor 8A'})
-        order = self.env['purchase.order'].create({'partner_id': partner.id})
-        rule = self.env['studio.approval.rule'].sudo().create({
-            'name': 'Regla 8A', 'model_id': self.env['ir.model']._get('purchase.order').id,
-            'method': 'button_confirm', 'approver_ids': [(6, 0, approver.ids)]})
-        activity = order.activity_schedule('mail.mail_activity_data_todo',
-                                           summary='Conceder aprobación', user_id=approver.id)
-        self.env['studio.approval.request'].sudo().create({
-            'rule_id': rule.id, 'res_id': order.id, 'mail_activity_id': activity.id})
-        rows = self._rows(approver, 'aprobacion')
-        self.assertTrue([r for r in rows if r['res_model'] == 'purchase.order' and r['res_id'] == order.id])
+    # ---- aprobacion (Studio): test_07 se mudó a quimibond_sgi_studio
+    # (tests/test_approval_studio.py, test_06) en 57.9.0 (A-010, J-018).
 
     # ---- solicitud (Aprobaciones) ---------------------------------------------
     def test_08_solicitud(self):

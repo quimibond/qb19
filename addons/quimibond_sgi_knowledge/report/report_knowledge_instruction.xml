@@ -5,8 +5,8 @@
         <field name="name">Instructivo (artículo de Knowledge)</field>
         <field name="model">knowledge.article</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">quimibond_sgi.report_knowledge_instruction_document</field>
-        <field name="report_file">quimibond_sgi.report_knowledge_instruction_document</field>
+        <field name="report_name">quimibond_sgi_knowledge.report_knowledge_instruction_document</field>
+        <field name="report_file">quimibond_sgi_knowledge.report_knowledge_instruction_document</field>
     </record>
 
     <template id="report_knowledge_instruction_document">

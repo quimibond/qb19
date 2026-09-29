@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""56.27.0: archivar una regla de aprobación cierra sus avisos abiertos.
+"""quimibond_sgi 56.27.0 (en este satélite desde 57.9.0, A-010): archivar una
+regla de aprobación cierra sus avisos abiertos.
 
 Cuando una regla de aprobación de Studio (`studio.approval.rule`, cualquiera,
 no solo las del SGI) pasa de activa a archivada, las actividades que avisaban

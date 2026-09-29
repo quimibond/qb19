@@ -13,6 +13,53 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.9.0 — 2026-09-29
+
+**Cambiado (A-015):** el manifest lista solo las dependencias directas, cada
+una con lo que la usa; las que ya traen otras (`base`, `mail`, `hr`, `stock`,
+`purchase`, `approvals`, `quality_control`) no se repiten.
+
+**Retirado (A-011, A-012):** las dependencias `sale_management` (sin ningún
+uso) y `hr_timesheet` (solo escribía `allow_timesheets=False` en el proyecto
+de Diseño y Desarrollo; el archivo es `noupdate` y en producción no cambia
+nada). En producción no se desinstala nada.
+
+**Cambiado (A-010, D-10):** la regla de aprobación de Studio del rol
+«Aprueba» (tipo «Botón de Odoo») sale al satélite nuevo
+**`quimibond_sgi_studio`** (`auto_install` con `web_studio`), con el cierre de
+avisos al archivar una regla (antes `sgi_approval_rule_archive.py`). El núcleo
+ya no depende de `web_studio`: se quedan el tipo, el documento, el botón, la
+condición, las solicitudes de Aprobaciones, las firmas de Sign, el cron, el
+menú y las aprobaciones de Studio en Mis pendientes (solo si Studio está). El
+núcleo deja ganchos `_sgi_button_*`; sin el satélite, «Sincronizar» un rol de
+botón avisa que falta el módulo.
+
+**Cambiado (A-014):** DOC-5, el instructivo en Conocimiento, sale al satélite
+nuevo **`quimibond_sgi_knowledge`** (`auto_install` con `knowledge`). El
+núcleo ya no depende de `knowledge`.
+
+**Migración (pre, `migrations/19.0.57.9.0/pre-migrate.py`, con el
+procedimiento común `migrations/mudanza.py`):** los XML IDs de lo que sale
+cambian de `module` en `ir_model_data` (campos, modelo transitorio, vistas,
+reporte, acceso); nada se borra ni se recrea. Marca los dos satélites para
+instalar en el mismo update.
+
+**Datos de producción (2026-09-29, lectura):** 11 roles con
+`approval_rule_id` y 11 reglas `studio.approval.rule` activas con
+`sgi_role_id` (creadas ese día); 1,072 roles `approval_kind = 'boton'`; 0
+actividades con `instruction_article_id`, 0 documentos con `sgi_article_id` y
+ningún otro campo de `sgi.*`/`documents.document`/`hr.*` apunta a
+`knowledge.article`; `web_studio`, `knowledge`, `sale_management` y
+`hr_timesheet` instalados.
+
+**Pruebas (J-018):** `test_approval_native` test_02–04 y
+`test_approval_rule_archive` pasan a `quimibond_sgi_studio`, con
+`test_bandeja` test_07 (aprobación de Studio en Mis pendientes, ya sin
+`skipTest`) y la aserción «una solicitud no bloquea ningún botón»;
+`test_pr6_external` test_05 pasa a `quimibond_sgi_knowledge` (sin
+`skipTest`). Nueva en el núcleo: `test_approval_native` test_03 (puesto sin
+personas).
+
 ## 19.0.57.8.0 — 2026-09-29
 
 **Retirado (B-011):** 27 métodos `action_*` sin botón, menú ni llamador,

@@ -89,7 +89,7 @@ class SgiInstructionPublish(models.TransientModel):
         if current and current.sgi_content_hash == content_hash:
             raise UserError("El artículo no cambió desde la revisión vigente %s." % current.sgi_revision_label)
         revision = (max(previous.mapped('sgi_revision')) + 1) if previous else 0
-        report = self.env.ref('quimibond_sgi.action_report_knowledge_instruction')
+        report = self.env.ref('quimibond_sgi_knowledge.action_report_knowledge_instruction')
         pdf, _ = self.env['ir.actions.report'].sudo()._render_qweb_pdf(report.report_name, article.ids)
         today = fields.Date.context_today(self)
         doc = Doc.create({

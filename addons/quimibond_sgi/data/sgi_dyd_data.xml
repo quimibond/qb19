@@ -11,7 +11,6 @@
     <record id="sgi_project_dyd" model="project.project">
         <field name="name">Diseño y Desarrollo (P-D01 · 8.3)</field>
         <field name="sgi_is_improvement" eval="True"/>
-        <field name="allow_timesheets" eval="False"/>
     </record>
 
     <record id="sgi_dyd_stage_plan" model="project.task.type">
