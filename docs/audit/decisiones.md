@@ -250,3 +250,19 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - **Pendiente para pasar a producción** (PR de `main` a `quimibond`, con visto bueno de Jose):
   - antes: aplicar la opción A del MCP en Ajustes;
   - después: instalar `qb_mcp_politica`, meter a Miguel Medina (88) en Salud ocupacional y depurar a «Empleados / Encargado».
+
+## 2026-09-29 — Lotes 2 y 3 integrados a `main`
+
+- **Lote 1:** build de `main` en verde (Jose).
+- **Lote 2** (quimibond/qb19#463, `4ff9643`, `quimibond_sgi` 56.34.0): entregas 4, 3-integridad y 3-documentos. Build de `main` **naranja solo por dos avisos esperados**:
+  - 56.31.0 listó 26 procedimientos solo del lado del proceso. La copia del build es anterior a la escritura de los 23 del lado del documento (hoy, 01:11 UTC), así que en producción deben ser 13. **Si en producción dice 26, detenerse.**
+  - 56.30.0: F-P-A28-13 no tiene documento.
+- **Lote 3** (quimibond/qb19#464, `65a5284`, `quimibond_sgi` 56.35.0 + `quimibond_sgi_mapa` 1.0.0): `export_payload` y el mapa. Integrado por instrucción de Jose («Push»). La evidencia es el build de `main`.
+- **Ajustes de Jose a la entrega 4:**
+  - **Jorge Ortiz (35, Dirección):** pierde solo lo de Jefe MAST. Conserva Administrador de Proyecto, Aprobaciones y Soporte, asignados directo por la migración 56.29.0 (`sgi.config._sgi_director_keep_admin_groups`), salvo que Jose diga otra cosa después de hablar con él.
+  - **Salarios de eficiencias:** grupo propio `group_sgi_salary`, ya no el de Nómina. Arranca solo con Lorena (23), Miguel (88) y Jose (7).
+    - El 152 (Mariano Domínguez, `sistemas@`) no entra hasta que Jose confirme.
+    - El 12 es «Jose Mizrahi Daniel» (`jose023md@gmail.com`). Está en Nómina / Encargado; queda a decisión de Jose.
+  - **Auditor:** lee los hallazgos de la Comisión, sin escribir, para poder auditar la ISO 45001.
+- **Datos que hace Jose antes de pasar a producción:** ligar F-P-A28-13, el 5556 y la limpieza de C-008 (5556, 3359, 4995, 4022, 3760, 3644, 5119 y 3930).
+- **Borrado de `restrict` en documentos de evidencia y en formatos ligados:** con `restrict`, un documento de esos en la papelera haría fallar todos los días la limpieza automática de Documentos. Quedan con su `ondelete` por default y `set null`.
