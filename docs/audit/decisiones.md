@@ -200,3 +200,17 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 4. **Archivar** las cuentas (no borrarlas), para no perder el `create_uid` de miles de registros.
 
 «manufactura@» ya tiene nombre de persona (Guadalupe Ramos): se liga a su empleado y se le cambia el login a uno personal. Así se conserva su historial. Lo decide Jose y lo ejecuta Sistemas.
+
+## 2026-09-29 — Entrega 1c, reglas archivadas y cuentas compartidas
+
+1. **Entrega 1c, justo después de la 1b:** los candados contra llamadas RPC (F-005, F-006, F-007, F-008, F-015), las fichas estándar sin grupo (D-001), `qb_mcp_politica` y la regla de documentos sin propietario (N-001).
+   - Para que la regla no dependa de Areli, **una migración pone a Areli (usuario 128) como propietaria** de los documentos controlados que no tienen. **Solo después se enciende la regla.** Ella reasigna con el tiempo.
+2. **Avisos de reglas de aprobación archivadas: opción A.** Al archivar una regla, sus avisos abiertos se marcan como hechos con la nota «Regla archivada el … por …», sin aprobar ni rechazar nada. **Va en un PR aparte** (entrega 1d).
+3. **Cuentas compartidas: aprobada la propuesta.** Nada se borra.
+   - «manufactura@» (80) se liga a Guadalupe Ramos y se le pone un login personal.
+   - «Supervisor» (92) se archiva después de un periodo en paralelo, cuando cada quien tenga su usuario o una tableta con PIN.
+   - Jose averigua quién usa hoy «Supervisor».
+4. **Los 10 modelos a revisar** (`99-consolidado/acciones_y_revision.md`):
+   - Los 5 sensibles quedan restringidos a su grupo (RH, Contabilidad, Salud ocupacional o Comisión, según el caso), dentro de la 1c o la 4: `hr.version` (extensión del SGI), `sgi.staff.efficiency.line`, `account.move.line` (campos del SGI), `sgi.competence.gap` y `sgi.csh.finding`.
+   - Los otros 5 se quedan: auditorías, evaluaciones legales, fichas de hilo y vista de diagrama.
+5. **Evidencia de Odoo.sh:** Jose pasa las capturas de los builds de las ramas de las entregas 1 y 1b. Mientras, se sigue con la 1c.
