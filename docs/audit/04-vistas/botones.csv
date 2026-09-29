@@ -1,0 +1,317 @@
+vista,modelo,boton,tipo,texto,confirm,groups,invisible,linea,metodo_existe
+sgi_action_line_view_list,sgi.action.line,action_open_origin,object,,,,,28,sí
+sgi_action_line_view_list,sgi.action.line,action_mark_done,object,Terminar,Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?,,date_done,32,sí
+sgi_action_line_view_form,sgi.action.line,action_mark_done,object,Marcar terminada,Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?,,date_done,85,sí
+sgi_action_line_view_form,sgi.action.line,action_open_origin,object,Abrir origen,,,,87,sí
+sgi_alert_source_view_form,sgi.alert.source,action_view_alerts,object,,,,,31,sí
+sgi_activity_role_view_list_approval,sgi.activity.role,action_sgi_sync_approval,object,Sincronizar,,quimibond_sgi.group_sgi_manager,,17,sí
+sgi_activity_role_view_list_approval,sgi.activity.role,action_sgi_sync_approval,object,Sincronizar,,quimibond_sgi.group_sgi_manager,"approval_state not in ('por_sincronizar', 'activa')",49,sí
+sgi_activity_role_view_list_approval,sgi.activity.role,action_sgi_adopt_rule,object,Adoptar regla,La regla existente pasará a mantenerla el SGI: sus aprobadores serán las personas del puesto y su condición la de este renglón.,quimibond_sgi.group_sgi_manager,approval_state != 'conflicto',52,sí
+sgi_activity_role_view_list_approval,sgi.activity.role,action_sgi_open_approval_entries,object,Ver aprobaciones,,,not approval_rule_id,54,sí
+sgi_audit_program_view_form,sgi.audit.program,action_approve,object,Aprobar,,quimibond_sgi.group_sgi_manager,state != 'borrador',12,sí
+sgi_audit_program_view_form,sgi.audit.program,action_close,object,Cerrar,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'aprobado',15,sí
+sgi_audit_program_view_form,sgi.audit.program,action_draft,object,Volver a borrador,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state == 'borrador',18,sí
+sgi_audit_program_view_form,sgi.audit.program.line,action_create_audit,object,Crear auditoría,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'pendiente',38,sí
+sgi_audit_view_form,sgi.audit,action_plan,object,Planificar,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'borrador',79,sí
+sgi_audit_view_form,sgi.audit,action_start,object,Iniciar,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'planificada',81,sí
+sgi_audit_view_form,sgi.audit,action_generate_checklist,object,Regenerar checklist,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager","state not in ('planificada', 'en_ejecucion')",85,sí
+sgi_audit_view_form,sgi.audit,action_answer_checklist,object,Contestar checklist (encuesta),,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'en_ejecucion' or not survey_id,88,sí
+sgi_audit_view_form,sgi.audit,action_generate_findings_from_checklist,object,Hallazgos de la encuesta,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager","state not in ('en_ejecucion', 'informe') or not survey_input_ids",91,sí
+sgi_audit_view_form,sgi.audit,action_open_report_document,object,Ver informe,,,not report_document_id,94,sí
+sgi_audit_view_form,sgi.audit,action_report,object,Elaborar informe,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'en_ejecucion',96,sí
+sgi_audit_view_form,sgi.audit,action_close,object,Cerrar,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'informe',98,sí
+sgi_audit_view_form,sgi.audit,action_evaluate_auditors,object,Evaluar al auditor,,,"state not in ('informe', 'cerrada')",102,sí
+sgi_audit_view_form,sgi.audit,action_draft,object,Volver a borrador,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager","state in ('borrador','cerrada')",104,sí
+sgi_audit_view_form,sgi.audit,action_open_findings,object,,,,,110,sí
+sgi_audit_view_form,sgi.audit,,,,,,,113,
+sgi_audit_view_form,sgi.audit.checklist.line,action_open_records,object,Ver registros,,,not can_open_records,161,sí
+sgi_audit_view_form,sgi.audit.finding,action_generate_nc,object,Generar NC,,,"alert_id or finding_type in ('conformidad','oportunidad')",181,sí
+sgi_measure_split_view_list,sgi.indicator.measure.split,action_view_evidence,object,Registros,,,not detail_ids,32,sí
+sgi_equipment_view_form,maintenance.equipment,action_view_calibrations,object,,,,not sgi_is_measuring,102,sí
+sgi_deliverable_view_form,sgi.deliverable,action_view_links,object,Ligas,,,,87,sí
+sgi_catalog_load_wizard_view_form,sgi.catalog.load.wizard,action_test,object,Probar,,,state == 'loaded',392,sí
+sgi_catalog_load_wizard_view_form,sgi.catalog.load.wizard,action_load,object,Cargar,Se escribirá el catálogo en la base. ¿Continuar?,,state == 'loaded',395,sí
+sgi_catalog_load_wizard_view_form,sgi.catalog.load.wizard,,,Cerrar,,,,396,
+sgi_hr_job_view_form_roles,hr.job,action_sgi_view_roles,object,,,quimibond_sgi.group_sgi_user,,468,sí
+sgi_coa_stock_picking_view_form,stock.picking,action_sgi_attach_coa,object,Adjuntar COA,,"quality.group_quality_user,quimibond_sgi.group_sgi_user",not sgi_requires_coa,37,sí
+sgi_coa_sale_order_view_form,sale.order,action_sgi_view_coa,object,,,,sgi_coa_status == 'no_aplica',91,sí
+sgi_coa_attach_wizard_view_form,sgi.coa.attach.wizard,action_confirm,object,Guardar,,,,145,sí
+sgi_coa_attach_wizard_view_form,sgi.coa.attach.wizard,,,Cancelar,,,,146,
+sgi_coa_exception_wizard_view_form,sgi.coa.exception.wizard,action_confirm,object,Validar sin COA,,,,165,sí
+sgi_coa_exception_wizard_view_form,sgi.coa.exception.wizard,,,Cancelar,,,,166,
+sgi_coa_inbox_view_form,sgi.coa.inbox,action_link_manual,object,Ligar a la salida,,,state == 'ligado',194,sí
+sgi_employee_view_form_competence,hr.employee,action_view_skill_gaps,object,,,,,75,sí
+sgi_helpdesk_ticket_view_form,helpdesk.ticket,action_sgi_generate_nc,object,Generar NC,,,sgi_alert_id,10,sí
+sgi_interested_party_view_form,sgi.interested.party,action_mark_reviewed,object,Marcar revisada,,,,25,sí
+sgi_control_plan_view_form,sgi.control.plan,action_set_vigente,object,Marcar vigente,,,state == 'vigente',11,sí
+sgi_control_plan_view_form,sgi.control.plan,action_set_obsoleto,object,Marcar obsoleto,,,state != 'vigente',13,sí
+sgi_control_plan_view_form,sgi.control.plan,action_set_borrador,object,Regresar a borrador,,,state == 'borrador',15,sí
+sgi_control_plan_view_form,sgi.control.plan,action_open_orphan_points,object,Ligar puntos sueltos,,,state == 'obsoleto',19,sí
+sgi_control_plan_view_form,sgi.control.plan,action_view_points,object,,,,point_count == 0,26,sí
+sgi_control_plan_view_form,sgi.control.plan,action_view_fmeas,object,,,,fmea_count == 0,30,sí
+sgi_quality_point_view_form,quality.point,action_sgi_open_replaced_documents,object,,,,sgi_replaced_document_count == 0,132,sí
+sgi_stock_lot_view_form,stock.lot,action_sgi_print_coa,object,Certificado de Calidad (CoA),,,,164,sí
+sgi_stock_lot_view_form,stock.lot,action_sgi_publish_coa,object,Publicar CoA en portal,Se adjuntará el CoA a la(s) entrega(s) del lote para que el cliente lo vea en su portal. ¿Continuar?,,,167,sí
+sgi_project_view_form_dev_request,project.project,action_sgi_dev_load_lines,object,Proponer características del tipo,,,,15,sí
+sgi_project_view_form_dev_request,project.project,action_sgi_dev_print,object,Imprimir solicitud,,,,16,sí
+sgi_direction_board_view_form,sgi.direction.board,action_open_spreadsheet,object,Hoja de cálculo,,,,11,sí
+sgi_approval_request_view_form,approval.request,action_sgi_send_to_sign,object,Reenviar a firma,,,"not sgi_sign_required or request_status != 'pending' or sgi_sign_state in ('sent', 'shared', 'signed')",11,sí
+sgi_document_view_form,documents.document,action_sgi_view_file,object,Ver archivo,,,sgi_doc_type == 'formulario_odoo',12,sí
+sgi_document_view_form,documents.document,action_sgi_open_odoo_form,object,Abrir en Odoo,,,sgi_doc_type != 'formulario_odoo',15,sí
+sgi_document_view_form,documents.document,action_generate_acks,object,Generar acuses,,quimibond_sgi.group_sgi_manager,"sgi_state not in ('piloto','vigente')",18,sí
+sgi_document_view_form,documents.document,action_open_acks,object,,,,,24,sí
+sgi_document_view_form,documents.document,action_sgi_open_in_documents,object,Abrir en Documentos,,,,31,sí
+sgi_document_view_form,documents.document,action_sgi_open_migration_point,object,Abrir worksheet,,,not sgi_migration_point_id,136,sí
+sgi_document_view_form,documents.document,action_sgi_send_sign_requests,object,Enviar acuses a firma,Se creará una solicitud de firma electrónica por cada empleado con acuse pendiente. ¿Continuar?,,,193,sí
+sgi_document_view_list,documents.document,action_sgi_view_file,object,Ver archivo,,,sgi_doc_type == 'formulario_odoo',244,sí
+sgi_document_view_list,documents.document,action_sgi_open_odoo_form,object,Abrir en Odoo,,,sgi_doc_type != 'formulario_odoo',247,sí
+sgi_document_ack_view_list,sgi.document.ack,action_view_file,object,,,,,309,sí
+sgi_document_ack_view_list,sgi.document.ack,action_mark_read,object,Marcar leído y entendido,,,state == 'leido',311,sí
+sgi_document_ack_view_form,sgi.document.ack,action_view_file,object,Leer el documento,,,,323,sí
+sgi_document_ack_view_form,sgi.document.ack,action_mark_read,object,Marcar leído y entendido,,,state == 'leido',325,sí
+sgi_migration_view_list,documents.document,action_sgi_open_migration_point,object,Abrir worksheet,,,not sgi_migration_point_id,416,sí
+sgi_migration_view_list,documents.document,action_sgi_view_file,object,Ver archivo,,,,418,sí
+sgi_emergency_plan_view_form,sgi.emergency.plan,action_set_vigente,object,Marcar vigente,,,state == 'vigente',11,sí
+sgi_emergency_plan_view_form,sgi.emergency.plan,action_set_obsoleto,object,Marcar obsoleto,,,state != 'vigente',13,sí
+sgi_emergency_plan_view_form,sgi.emergency.plan,action_set_borrador,object,Regresar a borrador,,,state == 'borrador',15,sí
+sgi_emergency_plan_view_form,sgi.emergency.plan,action_view_drills,object,,,,,22,sí
+sgi_emergency_drill_view_form,sgi.emergency.drill,action_set_realizado,object,Marcar realizado,,,state != 'programado',121,sí
+sgi_emergency_drill_view_form,sgi.emergency.drill,action_set_cancelado,object,Cancelar,,,state != 'programado',123,sí
+sgi_emergency_drill_view_form,sgi.emergency.drill,action_set_programado,object,Reabrir,,,state == 'programado',125,sí
+sgi_epp_delivery_view_form,sgi.epp.delivery,action_send_sign_request,object,Enviar a firmar (Sign),,"quimibond_sgi.group_sgi_manager,hr.group_hr_user","state == 'firmada' or (sign_state and sign_state not in ('canceled', 'expired'))",15,sí
+sgi_epp_delivery_view_form,sgi.epp.delivery,action_sign,object,Firmar: recibí el EPP,Confirmo que recibí el equipo de protección personal listado y me comprometo a usarlo y cuidarlo. La firma queda registrada con fecha y hora.,,not can_sign,18,sí
+sgi_epp_delivery_view_form,sgi.epp.delivery,action_open_sign_request,object,Ver solicitud de firma,,,not sign_request_id,19,sí
+sgi_epp_delivery_view_list,sgi.epp.delivery,action_sign,object,Firmar,,,not can_sign,80,sí
+sgi_hr_employee_view_form_epp,hr.employee,action_sgi_epp_deliveries,object,,,"quimibond_sgi.group_sgi_user,hr.group_hr_user",,127,sí
+sgi_fmea_view_form,sgi.fmea,action_set_vigente,object,Marcar vigente,,,state == 'vigente',10,sí
+sgi_fmea_view_form,sgi.fmea,action_set_obsoleto,object,Marcar obsoleto,,,state != 'vigente',12,sí
+sgi_fmea_view_form,sgi.fmea,action_set_borrador,object,Regresar a borrador,,,state == 'borrador',14,sí
+sgi_fmea_view_form,sgi.fmea,action_view_sgi_ncs,object,,,,sgi_nc_count == 0,22,sí
+sgi_csh_inspection_view_form,sgi.csh.inspection,action_close,object,Cerrar recorrido,,,state != 'borrador',148,sí
+sgi_csh_inspection_view_form,sgi.csh.inspection,action_reopen,object,Reabrir,,quimibond_sgi.group_sgi_manager,state != 'cerrado',150,sí
+sgi_csh_inspection_view_form,sgi.csh.inspection,action_view_ncs,object,,,,not nc_count,156,sí
+sgi_csh_inspection_view_form,sgi.csh.finding,action_generate_nc,object,Generar NC,,,alert_id,185,sí
+sgi_checklist_template_view_form,sgi.checklist.template,action_generate_today,object,Generar las de hoy,,,,231,sí
+sgi_maintenance_request_view_form_checklist,maintenance.request,action_sgi_checklist_finish,object,Terminar checklist,,,sgi_checklist_employee_id,356,sí
+sgi_maintenance_request_view_form_checklist,maintenance.request,action_sgi_create_correctives,object,Crear correctivos de las fallas,,,sgi_checklist_state != 'con_fallas',359,sí
+sgi_checklist_finish_view_form,sgi.checklist.finish,action_confirm,object,Terminar,,,,389,sí
+sgi_checklist_finish_view_form,sgi.checklist.finish,,,Cancelar,,,,390,
+sgi_incident_view_form,sgi.incident,action_set_investigacion,object,Investigar,,,state != 'reportado',10,sí
+sgi_incident_view_form,sgi.incident,action_set_acciones,object,Definir acciones,,,state != 'investigacion',12,sí
+sgi_incident_view_form,sgi.incident,action_set_cerrado,object,Cerrar,,,"state not in ('investigacion', 'acciones')",14,sí
+sgi_incident_view_form,sgi.incident,action_set_reportado,object,Reabrir,,,state != 'cerrado',16,sí
+sgi_management_review_view_form_validate,sgi.management.review,action_validate_measures,object,Validar mediciones del periodo,Valida todas las mediciones capturadas del periodo de esta revisión y abre los rojos que aún no tienen causa ni acción. ¿Continuar?,quimibond_sgi.group_sgi_manager,state == 'cerrada',78,sí
+sgi_indicator_view_form,sgi.indicator,action_set_official,object,Pasar a oficial,Revisaste la lista de registros de una medición contra la realidad y el dato es confiable. Desde ahora sus rojos pueden abrir NC. ¿Continuar?,quimibond_sgi.group_sgi_manager,status == 'oficial',49,sí
+sgi_indicator_view_form,sgi.indicator,action_set_trial,object,Regresar a prueba,,quimibond_sgi.group_sgi_manager,status == 'prueba',52,sí
+sgi_indicator_view_form,sgi.indicator,action_view_trend,object,Tendencia,,,,54,sí
+sgi_indicator_view_form,sgi.indicator,action_recalculate_now,object,Recalcular ahora,,quimibond_sgi.group_sgi_manager,calc_mode == 'manual',59,sí
+sgi_indicator_view_form,sgi.indicator.measure,action_view_records,object,,,,not detail_count,154,sí
+sgi_indicator_view_form,sgi.indicator.measure,action_validate,object,Validar,,,state == 'validado',165,sí
+sgi_measure_view_list,sgi.indicator.measure,action_view_records,object,,,,not detail_count,247,sí
+sgi_measure_view_list,sgi.indicator.measure,action_view_evidence,object,,,,source_type == 'manual',258,sí
+sgi_measure_view_list,sgi.indicator.measure,action_validate,object,Validar,,,state == 'validado',261,sí
+sgi_measure_view_form,sgi.indicator.measure,action_capture,object,Marcar capturado,,,state != 'pendiente',273,sí
+sgi_measure_view_form,sgi.indicator.measure,action_validate,object,Validar,,,state == 'validado',275,sí
+sgi_measure_view_form,sgi.indicator.measure,action_view_records,object,Ver registros,,,not detail_count,278,sí
+sgi_measure_view_form,sgi.indicator.measure,action_view_evidence,object,Ver evidencia,,,source_type == 'manual',281,sí
+sgi_measure_view_form,sgi.indicator.measure,action_recompute_value,object,Recalcular valor,Se recalcula el valor del periodo con el modo de cálculo ACTUAL del indicador. ¿Continuar?,,source_type == 'manual' or state == 'validado',285,sí
+sgi_measure_view_form,sgi.indicator.measure,action_reset,object,Regresar a pendiente,La medición volverá a Pendiente y dejará de contar como evidencia validada. ¿Continuar?,quimibond_sgi.group_sgi_manager,state == 'pendiente',290,sí
+sgi_measure_view_form,sgi.indicator.measure.split,action_view_evidence,object,Registros,,,not detail_ids,354,sí
+sgi_stock_picking_view_form,stock.picking,action_sgi_open_ncs,object,,,,sgi_nc_count == 0,11,sí
+sgi_mrp_production_view_form,mrp.production,action_sgi_open_ncs,object,,,,sgi_nc_count == 0,32,sí
+sgi_hr_employee_view_form,hr.employee,action_sgi_my_procedures,object,,,,,47,sí
+sgi_hr_employee_view_form,hr.employee,action_sgi_pending_acks,object,,,,,51,sí
+sgi_product_template_view_form_spec,product.template,action_sgi_open_spec,object,Ver especificación,,,not sgi_spec_document_id,112,sí
+sgi_legal_evaluate_view_form,sgi.legal.evaluate,action_confirm,object,Registrar,,,,41,sí
+sgi_legal_evaluate_view_form,sgi.legal.evaluate,,,Cancelar,,,,42,
+sgi_legal_requirement_view_form,sgi.legal.requirement,action_evaluate,object,Registrar evaluación,,,,70,sí
+sgi_legal_requirement_view_form,sgi.legal.requirement,action_mark_cumple,object,Cumple,,quimibond_sgi.group_sgi_manager,,72,sí
+sgi_legal_requirement_view_form,sgi.legal.requirement,action_mark_parcial,object,Cumple parcialmente,Un cumplimiento parcial levanta una No Conformidad. ¿Registrar la evaluación?,quimibond_sgi.group_sgi_manager,,75,sí
+sgi_legal_requirement_view_form,sgi.legal.requirement,action_mark_no_cumple,object,No cumple,Un incumplimiento levanta una No Conformidad mayor. ¿Registrar la evaluación?,quimibond_sgi.group_sgi_manager,,78,sí
+sgi_legal_requirement_view_form,sgi.legal.requirement,action_mark_no_aplica,object,No aplica,,quimibond_sgi.group_sgi_manager,,79,sí
+sgi_legal_requirement_view_form,sgi.legal.requirement,action_view_alert,object,,,,not alert_id,85,sí
+sgi_legal_requirement_view_form,sgi.legal.requirement,action_view_evaluations,object,,,,,89,sí
+sgi_stock_picking_view_form_links,stock.picking,action_sgi_open_acuses,object,,,,sgi_acuse_count == 0,171,sí
+sgi_acuse_attach_wizard_view_form,sgi.acuse.attach.wizard,action_attach,object,Adjuntar,,,,196,sí
+sgi_acuse_attach_wizard_view_form,sgi.acuse.attach.wizard,,,Cancelar,,,,197,
+sgi_machine_sheet_view_form,sgi.machine.sheet,action_set_current,object,Poner en vigor,,"quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager",state != 'borrador',10,sí
+sgi_machine_sheet_view_form,sgi.machine.sheet,action_new_revision,object,Nueva revisión,,,state != 'vigente',11,sí
+sgi_machine_sheet_view_form,sgi.machine.sheet,action_set_obsolete,object,Marcar obsoleta,,"quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager",state != 'vigente',13,sí
+sgi_workcenter_view_form_machine_sheet,mrp.workcenter,%(sgi_machine_sheet_action)d,action,,,,,150,
+sgi_management_review_view_form,sgi.management.review,action_load_inputs,object,Cargar entradas,,,state != 'borrador',10,sí
+sgi_management_review_view_form,sgi.management.review,action_mark_done,object,Marcar realizada,,,state != 'borrador',12,sí
+sgi_management_review_view_form,sgi.management.review,action_close,object,Cerrar,,,state != 'realizada',14,sí
+sgi_management_review_view_form,sgi.management.review,action_draft,object,Volver a borrador,,,state == 'borrador',16,sí
+sgi_purchase_order_form,purchase.order,action_sgi_open_ncs,object,,,,sgi_nc_count == 0,11,sí
+sgi_maintenance_request_form,maintenance.request,action_sgi_raise_nc,object,Levantar NC,,,maintenance_type != 'corrective' or sgi_alert_id,27,sí
+sgi_maintenance_request_form,maintenance.request,action_sgi_raise_nc,object,Ver NC,,,not sgi_alert_id,29,sí
+sgi_activity_change_view_form,sgi.activity.change,action_submit,object,Enviar propuesta,,,,90,sí
+sgi_activity_change_view_form,sgi.activity.change,,,Cancelar,,,,91,
+sgi_equipment_view_form_msa,maintenance.equipment,action_view_sgi_msa,object,,,,not sgi_is_measuring,99,sí
+sgi_my_pending_view_list,sgi.my.pending,action_open,object,Abrir,,,,21,sí
+sgi_hr_employee_view_form_mp_tab,hr.employee,action_sgi_mp_sign,object,Firmar leído y entendido,Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora.,,not sgi_mp_can_sign,19,sí
+sgi_hr_employee_view_form_mp_tab,hr.employee,action_sgi_open_my_procedure,object,Ver su procedimiento,,,,21,sí
+sgi_hr_employee_view_form_mp_tab,hr.employee,action_sgi_print_my_procedure,object,Imprimir PDF,,,,23,sí
+sgi_hr_employee_view_form_mp_tab,documents.document,action_sgi_view_file,object,Ver archivo,,,,46,sí
+sgi_hr_employee_view_form_mp_tab,sgi.document.ack,action_view_file,object,Ver archivo,,,,58,sí
+sgi_hr_employee_view_form_mp_tab,sgi.document.ack,action_mark_read,object,Marcar leído y entendido,,,state != 'pendiente',60,sí
+sgi_hr_employee_view_form_mp_tab,sgi.epp.delivery,action_sign,object,Firmar: recibí el EPP,,,not can_sign,73,sí
+sgi_hr_employee_public_view_form_mp_tab,hr.employee.public,action_sgi_mp_sign,object,Firmar leído y entendido,Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora.,,not sgi_mp_can_sign,92,sí
+sgi_hr_employee_public_view_form_mp_tab,hr.employee.public,action_sgi_open_my_procedure,object,Ver su procedimiento,,,,94,sí
+sgi_hr_employee_public_view_form_mp_tab,hr.employee.public,action_sgi_print_my_procedure,object,Imprimir PDF,,,,96,sí
+sgi_hr_employee_public_view_form_mp_tab,documents.document,action_sgi_view_file,object,Ver archivo,,,,117,sí
+sgi_hr_employee_public_view_form_mp_tab,sgi.document.ack,action_view_file,object,Ver archivo,,,,129,sí
+sgi_hr_employee_public_view_form_mp_tab,sgi.document.ack,action_mark_read,object,Marcar leído y entendido,,,state != 'pendiente',131,sí
+sgi_hr_employee_public_view_form_mp_tab,sgi.epp.delivery,action_sign,object,Firmar: recibí el EPP,,,not can_sign,144,sí
+sgi_hr_job_view_form_mp_tab,hr.job,action_sgi_open_my_procedure,object,Ver su procedimiento,,,,162,sí
+sgi_hr_job_view_form_mp_tab,hr.job,action_sgi_print_my_procedure,object,Imprimir PDF,,,,164,sí
+sgi_hr_job_view_form_mp_tab,documents.document,action_sgi_view_file,object,Ver archivo,,,,184,sí
+sgi_activity_role_view_kanban_mp,sgi.activity.role,action_mp_go,object,,,,,68,sí
+sgi_activity_role_view_kanban_mp,sgi.activity.role,action_mp_instruction,object,,,,,75,sí
+sgi_activity_role_view_kanban_mp,sgi.activity.role,action_mp_propose_change,object,,,,,79,sí
+sgi_activity_role_view_kanban_mp,sgi.activity.role,action_open_activity,object,,,,,83,sí
+sgi_activity_role_view_list_mp_embedded,sgi.activity.role,action_mp_go,object,Ir a hacerlo,,,not mp_can_go,116,sí
+sgi_activity_role_view_list_mp_embedded,sgi.activity.role,action_mp_instruction,object,Instructivo,,,not mp_instruction_id,118,sí
+sgi_activity_role_view_list_mp_embedded,sgi.activity.role,action_mp_propose_change,object,Proponer cambio,,,,120,sí
+sgi_activity_role_view_list_mp_embedded,sgi.activity.role,action_open_activity,object,Ver actividad,,,,122,sí
+sgi_activity_role_view_list_mp_received,sgi.activity.role,action_open_activity,object,Ver actividad,,,,137,sí
+sgi_activity_role_view_list_mp_short,sgi.activity.role,action_open_activity,object,Ver actividad,,,,153,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_sign,object,Firmar leído y entendido,Confirmo que leí y entendí la revisión vigente de «Mi procedimiento». La firma queda registrada con fecha y hora.,,not is_me or ack_state != 'pendiente',174,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_propose_new_activity,object,Proponer actividad,,,not job_id,176,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_print,object,Imprimir,,,not job_id,178,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_show_pending,object,,,,pending_total == 0,192,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_show_acks,object,,,,pending_ack_count == 0,203,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_show_indicators,object,,,,indicator_count == 0,207,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_open_obligations,object,,,,not has_obligations,211,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_open_doc,object,,,,not doc_id,215,sí
+sgi_my_procedure_view_form,sgi.my.procedure,action_show_all,object,Abrir en pantalla completa,,,,249,sí
+sgi_my_procedure_view_form,sgi.indicator,action_sgi_measures,object,Mediciones,,,,270,sí
+sgi_my_procedure_view_form,sgi.indicator,action_view_trend,object,Tendencia,,,,272,sí
+sgi_my_procedure_view_form,sgi.activity.role,action_open_activity,object,Ver actividad,,,,285,sí
+sgi_my_procedure_view_form,sgi.activity.role,action_open_activity,object,Ver actividad,,,,298,sí
+sgi_my_procedure_view_form,documents.document,action_sgi_view_file,object,Ver archivo,,,,310,sí
+sgi_my_procedure_check_view_form,sgi.my.procedure.check,action_publish_all,object,Publicar todos los puestos,"Se publica «Mi procedimiento» de TODOS los puestos con roles y personas: revisión nueva solo donde cambió el contenido, y cada revisión nueva deja pendiente el acuse de sus empleados. ¿Continuar?",,,364,sí
+sgi_activity_role_view_list_my_procedure,sgi.activity.role,action_mp_go,object,Ir a hacerlo,,,not mp_can_go,441,sí
+sgi_activity_role_view_list_my_procedure,sgi.activity.role,action_mp_instruction,object,Instructivo,,,not mp_instruction_id,443,sí
+sgi_activity_role_view_list_my_procedure,sgi.activity.role,action_mp_propose_change,object,Proponer cambio,,,,445,sí
+sgi_activity_role_view_list_my_procedure,sgi.activity.role,action_open_activity,object,Ver actividad,,,,447,sí
+sgi_hr_job_view_form_my_procedure,hr.job,action_sgi_open_my_procedure,object,Ver su procedimiento,,,,462,sí
+sgi_hr_job_view_form_my_procedure,hr.job,action_sgi_print_my_procedure,object,Imprimir «Mi procedimiento»,,,,465,sí
+sgi_hr_job_view_form_my_procedure,hr.job,action_sgi_publish_my_procedure,object,Publicar revisión,"Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?",quimibond_sgi.group_sgi_manager,,470,sí
+sgi_hr_job_view_form_my_procedure,hr.job,action_sgi_open_my_procedure_doc,object,Ver revisión vigente,,,not sgi_my_procedure_doc_id,473,sí
+sgi_hr_employee_view_form_my_procedure,hr.employee,action_sgi_open_my_procedure,object,,,,not job_id,492,sí
+sgi_my_team_view_list,hr.employee.public,action_sgi_team_pending,object,Pendientes del equipo,,,,525,sí
+sgi_my_team_view_list,hr.employee.public,action_sgi_open_pending,object,Ver pendientes,,,,543,sí
+sgi_my_team_view_list,hr.employee.public,action_sgi_open_my_procedure,object,Ver su procedimiento,,,,545,sí
+sgi_quality_alert_view_form,quality.alert,action_sgi_escalate_to_nc,object,Escalar a NC del SGI,,quimibond_sgi.group_sgi_user,sgi_folio,14,sí
+sgi_quality_alert_view_form,quality.alert,action_sgi_force_close,object,Cierre forzado (Jefe MAST),,quimibond_sgi.group_sgi_manager,not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel,18,sí
+sgi_quality_alert_view_form,quality.alert,action_sgi_cancel,object,Cancelar NC,,quimibond_sgi.group_sgi_user,not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel,22,sí
+sgi_nc_cancel_view_form,sgi.nc.cancel,action_confirm,object,Solicitar cancelación,,,is_manager,305,sí
+sgi_nc_cancel_view_form,sgi.nc.cancel,action_confirm,object,Cancelar la NC,,,not is_manager,307,sí
+sgi_nc_cancel_view_form,sgi.nc.cancel,,,Volver,,,,308,
+sgi_nc_force_close_view_form,sgi.nc.force.close,action_confirm,object,Cerrar NC,,,,325,sí
+sgi_nc_force_close_view_form,sgi.nc.force.close,,,Cancelar,,,,326,
+sgi_norm_view_form,sgi.norm,%(quimibond_sgi.action_report_compliance_matrix)d,action,Matriz de cumplimiento,,,,10,
+sgi_norm_view_form,sgi.norm,action_view_uncovered_clauses,object,Puntos sin actividad,,,,12,sí
+sgi_norm_clause_view_form,sgi.norm.clause,action_view_alerts,object,,,,not alert_count,83,sí
+sgi_objective_view_form,sgi.objective,action_open_indicators,object,,,,,27,sí
+sgi_policy_view_form,sgi.policy,action_set_vigente,object,Publicar (Vigente),,quimibond_sgi.group_sgi_manager,state == 'vigente',31,sí
+sgi_policy_view_form,sgi.policy,action_generate_acks,object,Generar acuses de difusión,,quimibond_sgi.group_sgi_manager,state != 'vigente',35,sí
+sgi_policy_view_form,sgi.policy,action_set_borrador,object,A borrador,,quimibond_sgi.group_sgi_manager,state == 'borrador',38,sí
+sgi_policy_view_form,sgi.policy,action_set_obsoleta,object,Obsoletar,,quimibond_sgi.group_sgi_manager,state != 'vigente',41,sí
+sgi_policy_view_form,sgi.policy,action_open_objectives,object,,,,objective_count == 0,49,sí
+sgi_ppap_view_form,sgi.ppap,action_mark_enviado,object,Marcar enviado,,,state != 'preparacion',10,sí
+sgi_ppap_view_form,sgi.ppap,action_approve,object,Aprobar,,,state != 'enviado',12,sí
+sgi_ppap_view_form,sgi.ppap,action_set_interino,object,Interino,,,state != 'enviado',14,sí
+sgi_ppap_view_form,sgi.ppap,action_reject,object,Rechazar,,,"state not in ('enviado', 'interino')",16,sí
+sgi_ppap_view_form,sgi.ppap,action_reset,object,Regresar a preparación,,,state == 'preparacion',18,sí
+sgi_ppap_res_partner_form,res.partner,action_view_sgi_ppap,object,,,,not is_company,156,sí
+sgi_ppap_product_template_form,product.template,action_view_sgi_ppap,object,,,,,170,sí
+sgi_quality_alert_view_form_supplier,quality.alert,action_sgi_send_to_supplier,object,Enviar al proveedor,"Se envía al proveedor el enlace del portal con la NC (producto, lote, desviación). ¿Continuar?",quimibond_sgi.group_sgi_user,not sgi_folio or sgi_supplier_state != 'no_enviada' or sgi_stage_is_closing or sgi_stage_is_cancel,14,sí
+sgi_audit_program_view_form_pr6,sgi.audit.program,action_suggest_lines,object,Programa sugerido,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",state != 'borrador',65,sí
+sgi_process_activity_view_form_knowledge,sgi.process.activity,action_publish_instruction,object,Publicar como instructivo,,quimibond_sgi.group_sgi_manager,not instruction_article_id,85,sí
+sgi_instruction_publish_view_form,sgi.instruction.publish,action_publish,object,Publicar,,,,106,sí
+sgi_instruction_publish_view_form,sgi.instruction.publish,,,Cancelar,,,,107,
+sgi_sign_request_wizard_view_form,sgi.sign.request.wizard,action_confirm,object,Enviar a firma,,,,127,sí
+sgi_sign_request_wizard_view_form,sgi.sign.request.wizard,,,Cancelar,,,,128,
+sgi_purchase_order_view_form_sign,purchase.order,action_sgi_view_sign_requests,object,,,,sgi_sign_count == 0,141,sí
+sgi_purchase_order_view_form_sign,purchase.order,action_sgi_sign,object,,,quimibond_sgi.group_sgi_user,,145,sí
+sgi_stock_picking_view_form_sign,stock.picking,action_sgi_view_sign_requests,object,,,,sgi_sign_count == 0,159,sí
+sgi_stock_picking_view_form_sign,stock.picking,action_sgi_sign,object,,,quimibond_sgi.group_sgi_user,,163,sí
+sgi_stock_lot_view_form_sign,stock.lot,action_sgi_view_sign_requests,object,,,,sgi_sign_count == 0,177,sí
+sgi_stock_lot_view_form_sign,stock.lot,action_sgi_sign,object,,,quimibond_sgi.group_sgi_user,,181,sí
+sgi_product_template_view_form_sign,product.template,action_sgi_view_sign_requests,object,,,,sgi_sign_count == 0,195,sí
+sgi_product_template_view_form_sign,product.template,action_sgi_sign,object,,,quimibond_sgi.group_sgi_user,,199,sí
+sgi_process_activity_view_form,sgi.process.activity,action_open_odoo,object,Ir a hacerlo,,,not odoo_action_id and not odoo_menu_id and not measure_model_id and not odoo_ref,15,sí
+sgi_process_activity_view_form,sgi.process.activity,action_view_measure_records,object,Ver evidencia,,,not measure_model_id,18,sí
+sgi_process_activity_view_form,sgi.process.activity,action_open_next,object,Siguiente paso,,,not next_activity_ids,21,sí
+sgi_process_activity_view_list,sgi.process.activity,action_open_odoo,object,Ir a hacerlo,,,not odoo_menu_id and not measure_model_id and not odoo_ref,357,sí
+sgi_process_activity_view_list,sgi.process.activity,action_view_measure_records,object,Evidencia,,,not measure_model_id,360,sí
+sgi_process_flow_view_list,sgi.process.flow,action_view_records,object,Ver registros,,,not odoo_model_id,18,sí
+sgi_process_flow_view_form,sgi.process.flow,action_view_records,object,Ver registros,,,not odoo_model_id,31,sí
+sgi_process_view_form,sgi.process,action_sgi_set_pilot,object,Pasar a piloto,,quimibond_sgi.group_sgi_manager,state != 'borrador',200,sí
+sgi_process_view_form,sgi.process,action_sgi_publish,object,Publicar,Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?,quimibond_sgi.group_sgi_manager,state == 'vigente',204,sí
+sgi_process_view_form,sgi.process,action_sgi_set_draft,object,Regresar a borrador,,quimibond_sgi.group_sgi_manager,state == 'borrador',206,sí
+sgi_process_view_form,sgi.process,action_sgi_request_change,object,Proponer cambio,,,,208,sí
+sgi_process_view_form,sgi.process,action_sgi_register_finding,object,Registrar hallazgo,,"quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager",,211,sí
+sgi_process_view_form,sgi.process,action_sgi_view_diagram,object,,,,not id,226,sí
+sgi_process_view_form,sgi.process,action_view_activities,object,,,,,232,sí
+sgi_process_view_form,sgi.process,action_view_red_activities,object,,,,activity_red_count == 0,236,sí
+sgi_process_view_form,sgi.process,action_open_indicators,object,,,,,240,sí
+sgi_process_view_form,sgi.process,action_open_red_kpis,object,,,,red_kpi_count == 0,244,sí
+sgi_process_view_form,sgi.process,action_open_risks,object,,,,,248,sí
+sgi_process_view_form,sgi.process,action_open_high_risks,object,,,,open_high_risk_count == 0,252,sí
+sgi_process_view_form,sgi.process,action_open_documents,object,,,,,256,sí
+sgi_process_view_form,sgi.process,action_open_flows,object,,,,,260,sí
+sgi_process_view_form,sgi.process,action_view_chain,object,,,,chain_link_count == 0,264,sí
+sgi_process_view_form,sgi.process,action_open_ncs,object,,,,nc_count == 0,268,sí
+sgi_process_view_form,sgi.process,action_open_overdue_actions,object,,,,overdue_action_count == 0,272,sí
+sgi_process_view_form,sgi.process,action_view_spec_gaps,object,,,,spec_error_count == 0 and spec_warning_count == 0,276,sí
+sgi_res_partner_supplier_view_form,res.partner,action_sgi_open_complaints,object,,,,sgi_complaint_count == 0,12,sí
+sgi_res_partner_supplier_view_form,res.partner,action_sgi_open_ncs,object,,,,sgi_nc_count == 0,16,sí
+sgi_res_partner_supplier_view_form,res.partner,action_sgi_open_evals,object,,,,sgi_eval_count == 0,20,sí
+sgi_risk_view_form,sgi.risk,action_evaluate,object,Registrar evaluación,,,state == 'cerrado',34,sí
+sgi_risk_view_form,sgi.risk,action_set_en_tratamiento,object,Iniciar tratamiento,,,state != 'identificado',37,sí
+sgi_risk_view_form,sgi.risk,action_set_controlado,object,Marcar controlado,,,state != 'en_tratamiento',40,sí
+sgi_risk_view_form,sgi.risk,action_set_cerrado,object,Cerrar,,,state != 'controlado',43,sí
+sgi_risk_view_form,sgi.risk,action_set_identificado,object,Reabrir,,,state != 'cerrado',46,sí
+sgi_risk_view_form,sgi.risk,action_view_sgi_ncs,object,,,,sgi_nc_count == 0,54,sí
+sgi_sales_budget_line_view_list,sgi.sales.budget.line,action_view_week_orders,object,Ver pedidos de la semana,,,kind != 'pronostico',50,sí
+sgi_sales_budget_line_view_list,sgi.sales.budget.line,action_create_draft_quotation,object,Crear cotización,,,"kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')",53,sí
+sgi_sales_budget_line_view_list,sgi.sales.budget.line,action_view_month_invoices,object,Ver facturas del mes,,,kind == 'pronostico',56,sí
+sgi_sales_budget_line_view_form,sgi.sales.budget.line,action_view_week_orders,object,Ver pedidos de la semana,,,kind != 'pronostico',71,sí
+sgi_sales_budget_line_view_form,sgi.sales.budget.line,action_create_draft_quotation,object,Crear cotización (borrador),,,"kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')",74,sí
+sgi_sales_budget_line_view_form,sgi.sales.budget.line,action_view_month_invoices,object,Ver facturas del mes,,,kind == 'pronostico',77,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_download_template,object,1. Descargar plantilla,,,state != 'borrador',253,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_open_import,object,2. Importar,,,state != 'borrador',256,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_open_grid_qty,object,2. Capturar en la matriz,,,state != 'borrador',259,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_preload_from_orders,object,Precargar desde pedidos,,,kind != 'pronostico' or state != 'borrador',262,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_preload_from_orders,object,Precargar (pronóstico + real),,,kind != 'presupuesto' or state != 'borrador',265,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_refresh_actuals,object,3. Actualizar,,,,267,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_send_to_review,object,Enviar a revisión,,"sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager",kind != 'presupuesto' or state != 'borrador',271,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_send_to_review,object,Marcar revisado,,"sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager",kind != 'pronostico' or state != 'borrador',275,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_approve,object,Aprobar (Dirección),,"quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager",kind != 'presupuesto' or state != 'revisado',279,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_revise,object,Revisar (nueva Rev.),,quimibond_sgi.group_sgi_manager,kind != 'presupuesto' or state != 'aprobado',282,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_set_borrador,object,Regresar a borrador,,"sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager","state not in ('revisado', 'aprobado')",285,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_send_to_mps,object,Enviar demanda al MPS,,,not sgi_mps_available or (kind == 'pronostico' and state != 'revisado') or (kind == 'presupuesto' and state != 'aprobado'),288,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_open_comparison,object,Comparación,,,,291,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_open_analysis,object,Análisis,,,,293,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_reconcile_invoiced,object,Conciliar facturado,,,kind != 'presupuesto',296,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_open_cumulative,object,Curva (Dirección),,,,298,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_print_budget,object,Imprimir,,,,300,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_view_price_deviations,object,,,,price_deviation_count == 0,308,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_view_uncovered,object,,,,kind != 'pronostico' or uncovered_count == 0,314,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_view_orders_without_forecast,object,Pedidos fuera de pronóstico,,,kind != 'pronostico',321,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_view_no_price,object,Ver líneas sin precio,,,,338,sí
+sgi_sales_budget_view_form,sgi.sales.budget,action_price_coverage_report,object,Auditar cobertura de precios,,,,340,sí
+sgi_sales_budget_import_view_form,sgi.sales.budget.import,action_import,object,Importar,,,result,501,sí
+sgi_sales_budget_import_view_form,sgi.sales.budget.import,,,Cerrar,,,,502,
+res_config_settings_view_form_sgi,res.config.settings,%(quimibond_sgi.sgi_alert_source_action)d,action,Ver fuentes de NC,,,,78,
+sgi_staff_efficiency_view_form,sgi.staff.efficiency,action_load_employees,object,Cargar empleados del área,,,state != 'borrador',9,sí
+sgi_staff_efficiency_view_form,sgi.staff.efficiency,action_compute_efficiency,object,Calcular eficiencia desde órdenes de trabajo,,,state != 'borrador',12,sí
+sgi_staff_efficiency_view_form,sgi.staff.efficiency,action_close,object,Cerrar,,,state != 'borrador',13,sí
+sgi_staff_efficiency_view_form,sgi.staff.efficiency,action_receive,object,Recibir (RH),,hr.group_hr_user,state != 'cerrado',15,sí
+sgi_staff_efficiency_view_form,sgi.staff.efficiency,action_reopen,object,Reabrir,,hr.group_hr_manager,state == 'borrador',16,sí
+sgi_supplier_eval_view_form,sgi.supplier.eval,action_recompute,object,Recalcular,,,,35,sí
+sgi_supplier_eval_view_form,sgi.supplier.eval,action_apply_to_partner,object,Aplicar al proveedor,,,,37,sí
+sgi_mrp_eco_view_form,mrp.eco,action_view_sgi_ppap,object,,,,not sgi_ppap_id,11,sí

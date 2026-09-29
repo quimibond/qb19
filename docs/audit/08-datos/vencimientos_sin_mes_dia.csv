@@ -1,0 +1,16 @@
+sgi.process.activity id,numeral,cadencia,falta
+479,C6.21,semestral,due_month y due_day
+682,E1.01,anual,due_month y due_day
+683,E1.02,anual,due_month y due_day
+684,E1.03,anual,due_month y due_day
+691,E1.10,trimestral,due_month y due_day
+696,E2.05,trimestral,due_month y due_day
+703,E2.12,semestral,due_month y due_day
+719,E2.21,anual,due_month y due_day
+615,S3.21,semestral,due_month y due_day
+664,S4.22,anual,due_month y due_day
+665,S4.23,anual,due_month y due_day
+666,S4.24,anual,due_month y due_day
+668,S4.26,semestral,due_month y due_day
+758,S4.30,anual,due_month y due_day
+671,S6.02,semestral,due_month y due_day

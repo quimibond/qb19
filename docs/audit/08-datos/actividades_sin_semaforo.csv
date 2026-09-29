@@ -1,0 +1,37 @@
+sgi.process.activity id,numeral,sgi.deliverable id,modelo,diagnostico
+564,C1.01,366,project.project,hay registros (76 proyectos FT-%)
+565,C1.02,367,project.task,hay registros (43)
+566,C1.03,368,sgi.fmea,modelo vacio
+570,C1.07,372,project.task,hay registros
+574,C1.11,375,project.task,hay registros
+576,C1.13,377,project.task,hay registros
+577,C1.14,378,project.task,hay registros
+578,C1.15,379,sgi.control.plan,sin registros que cumplan
+579,C1.16,380,sgi.ppap,modelo vacio
+406,C2.34,172,ir.attachment,no verificable por MCP
+549,C5.02,247,quality.alert,sin registros que cumplan
+552,C5.05,354,quality.alert,sin registros que cumplan
+553,C5.07,355,quality.check,sin registros que cumplan
+554,C5.08,356,quality.alert,sin registros que cumplan
+555,C5.09,357,sgi.action.line,sin registros que cumplan
+559,C5.13,361,sgi.action.line,sin registros que cumplan
+561,C5.15,362,quality.alert,sin registros que cumplan
+740,C5.21,553,quality.alert,sin registros que cumplan
+741,C5.22,557,approval.request,sin registros que cumplan
+743,C5.24,550,sgi.calibration,sin registros que cumplan
+746,C5.27,551,sgi.ppap,modelo vacio
+690,E1.09,504,sgi.management.review.agreement,modelo vacio
+692,E2.01,509,approval.request,sin registros que cumplan
+697,E2.06,514,sgi.audit,modelo vacio
+699,E2.08,516,quality.alert,sin registros que cumplan
+715,E2.17,547,sgi.epp.delivery,modelo vacio
+725,E2.27,545,sgi.incident,modelo vacio
+431,S2.12,203,account.move,sin registros que cumplan
+649,S4.07,459,hr.appraisal,sin registros que cumplan
+656,S4.14,465,hr.payslip,sin registros que cumplan (timbrado 2027)
+772,S4.36,558,approval.request,sin registros que cumplan
+586,S5.05,250,maintenance.request,sin registros que cumplan
+587,S5.06,385,quality.alert,sin registros que cumplan
+590,S5.09,388,maintenance.request,sin registros que cumplan
+676,S6.07,488,approval.request,hay registros (1 pendiente)
+677,S6.08,489,approval.request,sin registros que cumplan

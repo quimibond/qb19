@@ -1,0 +1,87 @@
+accion,tipo,titulo_de_pantalla,menu,res_model,view_mode,contexto,largo_help
+sgi_document_master_list_action,ir.actions.act_window,Lista maestra de documentos (DOC-3),Lista maestra de documentos,documents.document,"list,form","{'search_default_sgi_vigente': 1, 'search_default_group_area': 1, 'sgi_master_list': 1}",244
+sgi_action_line_action_all,ir.actions.act_window,Todas las acciones,Acciones correctivas,sgi.action.line,"list,form","{'search_default_open': 1, 'search_default_overdue': 1, 'search_default_group_responsible': 1}",155
+sgi_activity_spec_gap_action,ir.actions.act_window,Faltantes de especificación,Faltantes de especificación,sgi.activity.spec.gap,"pivot,list",{'search_default_errors': 1},220
+sgi_activity_week_stat_action,ir.actions.act_window,Cumplimiento semanal,Cumplimiento semanal,sgi.activity.week.stat,"pivot,list",,255
+sgi_alert_source_action,ir.actions.act_window,Fuentes de NC automáticas,Fuentes de NC automáticas,sgi.alert.source,"list,form",,460
+sgi_activity_role_action_approval,ir.actions.act_window,Aprobaciones del SGI,Aprobaciones del SGI,sgi.activity.role,list,{'search_default_group_process': 1},219
+sgi_area_action,ir.actions.act_window,Áreas SGI,Áreas,sgi.area,"list,form",,106
+sgi_audit_program_action,ir.actions.act_window,Programa de auditorías,Programa de auditorías,sgi.audit.program,"list,sgi_diagram,form",,128
+sgi_audit_action,ir.actions.act_window,Auditorías,Auditorías realizadas,sgi.audit,"list,form,activity",,184
+sgi_measure_split_action,ir.actions.act_window,Mediciones por equipo o mercado,Mediciones por equipo o mercado,sgi.indicator.measure.split,"list,pivot,graph",,187
+sgi_calibration_action,ir.actions.act_window,Calibraciones,Calibraciones,sgi.calibration,"list,form",,172
+sgi_equipment_action_measuring,ir.actions.act_window,Equipos de medición,Equipos de medición,maintenance.equipment,"list,sgi_diagram,form","{'search_default_group_category': 0, 'default_sgi_is_measuring': True}",132
+sgi_job_family_action,ir.actions.act_window,Familias de puestos,Familias de puesto,sgi.job.family,"list,form",,163
+sgi_activity_exec_stat_action_who,ir.actions.act_window,Quién hace qué,Matriz de responsabilidades,sgi.activity.exec.stat,"pivot,sgi_diagram,list,graph",,311
+sgi_activity_method_action,ir.actions.act_window,Cobertura de medición,Cobertura de medición,sgi.process.activity,"pivot,list",,290
+sgi_catalog_load_wizard_action,ir.actions.act_window,Cargar catálogo,Cargar catálogo,sgi.catalog.load.wizard,form,,0
+sgi_document_type_action,ir.actions.act_window,Tipos de documento,Tipos de documento,sgi.document.type,list,,255
+sgi_coa_inbox_action,ir.actions.act_window,COA recibidos por correo,COA recibidos,sgi.coa.inbox,"list,form",{'search_default_sin_ligar': 1},225
+sgi_competence_gap_action,ir.actions.act_window,Brechas de competencia (DNC),Brechas de competencia (DNC),sgi.competence.gap,"pivot,sgi_diagram,list",{'search_default_group_department': 1},409
+sgi_dnc_survey_action,ir.actions.server,Encuesta DNC,Encuesta DNC,,,,en código
+sgi_complaint_action,ir.actions.server,Reclamaciones de clientes,Reclamaciones de clientes,,,,en código
+sgi_satisfaction_action,ir.actions.server,Satisfacción del cliente,Satisfacción del cliente,,,,en código
+sgi_internal_complaint_action,ir.actions.server,Quejas y sugerencias,Quejas y sugerencias del personal,,,,en código
+sgi_interested_party_action,ir.actions.act_window,Partes interesadas,Partes interesadas,sgi.interested.party,"list,sgi_diagram,form",,363
+sgi_control_plan_action,ir.actions.act_window,Planes de control,Planes de control,sgi.control.plan,"list,form",,333
+sgi_quality_alert_action_pareto,ir.actions.act_window,Pareto de alertas de calidad,Pareto de alertas de calidad,quality.alert,"pivot,graph,list",,106
+sgi_diagnostic_line_action,ir.actions.act_window,Diagnóstico del SGI,,sgi.diagnostic.line,"list,form",,92
+sgi_diagnostic_run_action,ir.actions.server,Diagnóstico del SGI,Diagnóstico del SGI,,,,en código
+sgi_risk_action,ir.actions.act_window,Riesgos y oportunidades,Riesgos y oportunidades,sgi.risk,"kanban,list,pivot,form,activity",{'search_default_vigentes': 1},179
+sgi_legal_requirement_action,ir.actions.act_window,Requisitos legales,Requisitos legales,sgi.legal.requirement,"list,form",,320
+sgi_objective_action,ir.actions.act_window,Objetivos Integrales,Objetivos integrales,sgi.objective,"list,form",,277
+sgi_indicator_action,ir.actions.act_window,Indicadores,Indicadores,sgi.indicator,"list,form,activity",{'search_default_vigentes': 1},168
+sgi_policy_action,ir.actions.act_window,Política Integral,Política integral,sgi.policy,"list,form",,194
+sgi_management_review_action,ir.actions.act_window,Revisión por la Dirección,Revisión por la dirección,sgi.management.review,"list,form",,184
+sgi_emergency_plan_action,ir.actions.act_window,Planes de emergencia,Planes de emergencia,sgi.emergency.plan,"list,form,activity",,189
+sgi_document_action,ir.actions.act_window,Documentos SGI,Documentos,documents.document,"list,form","{'default_sgi_is_controlled': True, 'search_default_sgi_vigente': 1}",157
+sgi_hr_job_action_roles,ir.actions.act_window,Puestos y procesos,Puestos y procesos,hr.job,"sgi_diagram,list,form",,11
+sgi_direction_board_action_open,ir.actions.server,Tablero de dirección,Tablero de dirección,,,,en código
+sgi_doc_change_board_action,ir.actions.server,Cambios documentales,Solicitudes de cambio a documentos,,,,en código
+sgi_document_ack_action,ir.actions.act_window,Acuses de lectura,Acuses de lectura,sgi.document.ack,"list,form",,161
+sgi_document_resolve_menu_action,ir.actions.server,Resolver menú de Odoo (SGI),,,,,en código
+sgi_migration_action,ir.actions.act_window,Migración de formatos a Odoo,Migración de formatos,documents.document,"kanban,list,form",,226
+sgi_emergency_drill_action,ir.actions.act_window,Simulacros,Simulacros,sgi.emergency.drill,"list,form",,162
+sgi_epp_delivery_action,ir.actions.act_window,Responsivas de EPP,Responsivas de EPP,sgi.epp.delivery,"list,form",,201
+sgi_external_doc_action,ir.actions.act_window,Documentos externos,Documentos externos,documents.document,"list,form","{'default_sgi_is_controlled': True, 'default_sgi_doc_type': 'externo',                                'search_default_por_implantar': 1}",273
+sgi_fmea_action,ir.actions.act_window,AMEF,AMEF,sgi.fmea,"list,form,activity",,205
+sgi_format_map_action,ir.actions.act_window,Formatos en documentos de Odoo,Formatos en documentos de Odoo,sgi.format.map,"list,form",,203
+sgi_process_hierarchy_action,ir.actions.act_window,Mapa de procesos,,sgi.process,"hierarchy,kanban,list,form",,102
+sgi_process_action,ir.actions.act_window,Procesos,Mapa de procesos,sgi.process,"kanban,list,form",,115
+sgi_process_activity_action,ir.actions.act_window,Actividades de procedimiento,Actividades,sgi.process.activity,"list,kanban,form",,139
+sgi_health_record_action,ir.actions.act_window,Estudios de higiene y exámenes médicos,Estudios de higiene y exámenes médicos,sgi.health.record,"list,form",{'search_default_por_vencer': 1},167
+sgi_csh_inspection_action,ir.actions.act_window,Recorridos de la Comisión de Seguridad e Higiene,Recorridos de la Comisión de Seguridad e Higiene,sgi.csh.inspection,"list,form",,186
+sgi_checklist_template_action,ir.actions.act_window,Checklists de planta y unidades,Checklists de planta y unidades,sgi.checklist.template,"list,form",,213
+sgi_checklist_request_action,ir.actions.act_window,Hojas de checklist,Hojas de checklist (planta y unidades),maintenance.request,"list,form,pivot",,0
+sgi_checklist_today_action,ir.actions.act_window,Checklists de hoy,Checklists de hoy,maintenance.request,"list,form",{'create': False},155
+sgi_improvement_action,ir.actions.server,Mejoras,Mejora continua,,,,en código
+sgi_incident_action,ir.actions.act_window,Incidentes SST,Incidentes y accidentes,sgi.incident,"list,form,pivot,activity",,371
+sgi_measure_action,ir.actions.act_window,Mediciones,Mediciones,sgi.indicator.measure,"list,graph,pivot,form",,146
+sgi_lock_date_log_action,ir.actions.act_window,Bitácora de bloqueo contable,Bitácora de bloqueo contable,sgi.lock.date.log,list,,156
+sgi_inventory_value_action,ir.actions.act_window,Valor del inventario por mes,Valor del inventario por mes,sgi.inventory.value,list,,201
+sgi_machine_sheet_action,ir.actions.act_window,Fichas de proceso por máquina,Fichas de proceso por máquina,sgi.machine.sheet,"list,form",{'search_default_current': 1},354
+sgi_activity_change_action_new,ir.actions.server,Nueva actividad (propuesta),,,,,en código
+sgi_msa_study_action,ir.actions.act_window,Estudios MSA,Estudios MSA,sgi.msa.study,"list,form",,199
+sgi_indicator_action_mine,ir.actions.act_window,Mis indicadores,Mis indicadores,sgi.indicator,"list,form",{'create': False},158
+sgi_nc_board_action,ir.actions.server,No Conformidades,No conformidades,,,,en código
+sgi_nc_lessons_action,ir.actions.act_window,Lecciones aprendidas,Lecciones aprendidas,quality.alert,"list,form",,212
+sgi_norm_action,ir.actions.act_window,Normas ISO,Normas,sgi.norm,"list,form",,95
+sgi_norm_clause_action,ir.actions.act_window,Cláusulas,Cláusulas,sgi.norm.clause,"list,form",{'search_default_group_norm': 1},104
+sgi_ppap_action,ir.actions.act_window,PPAP,PPAP,sgi.ppap,"list,form",,223
+sgi_ppap_element_template_action,ir.actions.act_window,Catálogo de elementos PPAP,Elementos PPAP,sgi.ppap.element.template,list,,83
+sgi_activity_compliance_action,ir.actions.act_window,Cumplimiento de procedimientos,Cumplimiento de procedimientos,sgi.process.activity,"pivot,graph,list",,270
+sgi_risk_category_action,ir.actions.act_window,Categorías de riesgo,Categorías de riesgo,sgi.risk.category,list,,94
+sgi_sales_budget_import_action,ir.actions.act_window,Importar desde Excel,,sgi.sales.budget.import,form,,0
+sgi_sales_budget_action,ir.actions.act_window,Presupuesto de ventas (F-P-A28-17/18),Presupuestos,sgi.sales.budget,"kanban,list,form","{'search_default_not_obsolete': 1, 'default_kind': 'presupuesto'}",286
+sgi_sales_forecast_action,ir.actions.act_window,Pronóstico de ventas (F-P-A28-13),Pronósticos,sgi.sales.budget,"kanban,list,form","{'search_default_not_obsolete': 1, 'default_kind': 'pronostico'}",325
+sgi_sales_analysis_mercado_action,ir.actions.act_window,Por mercado,Por mercado,sgi.sales.budget.line,"pivot,list","{'search_default_vigente': 1, 'search_default_presupuesto': 1,             'search_default_year_current': 1}",0
+sgi_sales_analysis_cliente_action,ir.actions.act_window,Por cliente,Por cliente,sgi.sales.budget.line,"pivot,list","{'search_default_vigente': 1, 'search_default_presupuesto': 1,             'search_default_year_current': 1}",150
+sgi_sales_analysis_producto_action,ir.actions.act_window,Por producto,Por producto,sgi.sales.budget.line,"pivot,list","{'search_default_vigente': 1, 'search_default_presupuesto': 1,             'search_default_year_current': 1}",0
+sgi_sales_analysis_global_action,ir.actions.act_window,Global (Dirección),Global (Dirección),sgi.sales.budget.line,graph,"{'search_default_vigente': 1, 'search_default_presupuesto': 1,             'search_default_year_current': 1}",218
+sgi_config_settings_action,ir.actions.act_window,Ajustes del SGI,Ajustes,res.config.settings,form,{'module': 'quimibond_sgi'},0
+sgi_slide_channel_action,ir.actions.act_window,Cursos y competencias (eLearning),Cursos y competencias (eLearning),slide.channel,list,,317
+sgi_staff_efficiency_action,ir.actions.act_window,Eficiencias de personal,Eficiencias de mi área / Hojas mensuales,sgi.staff.efficiency,"list,form",,320
+sgi_staff_efficiency_line_action,ir.actions.act_window,Análisis de eficiencias,Análisis por empleado,sgi.staff.efficiency.line,"pivot,list",,0
+sgi_supplier_eval_action,ir.actions.act_window,Evaluaciones de proveedores,Evaluación de proveedores,sgi.supplier.eval,"list,form",,620
+sgi_supplier_eval_recompute_action,ir.actions.server,Recalcular métricas (SGI),,,,,en código
+mrp_revision_log_action_pareto,ir.actions.act_window,Pareto de defectos de revisado,Pareto de defectos (revisado),mrp.revision.log,"pivot,graph,list","{'search_default_con_defecto': 1, 'search_default_group_causa': 1}",0
