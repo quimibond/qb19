@@ -7,6 +7,8 @@ from odoo.exceptions import UserError, ValidationError
 
 from .sgi_document import SGI_CODE_REGEX
 
+from .sgi_guard import sgi_require_system
+
 _logger = logging.getLogger(__name__)
 
 
@@ -169,6 +171,7 @@ class SgiConfig(models.AbstractModel):
 
     @api.model
     def seed_parameters(self):
+        sgi_require_system(self.env)  # F-008
         Param = self.env['ir.config_parameter'].sudo()
         for key, value in self._SGI_DEFAULT_PARAMS.items():
             if Param.get_param(key) is False:
@@ -197,6 +200,7 @@ class SgiConfig(models.AbstractModel):
     def activate_auto_indicators(self):
         """Siembra idempotente del calc_mode automático (ver _SGI_AUTO_INDICATORS).
         Solo actúa donde el indicador sigue en 'manual'."""
+        sgi_require_system(self.env)  # F-008
         for xmlid, mode in self._SGI_AUTO_INDICATORS.items():
             indicator = self.env.ref(xmlid, raise_if_not_found=False)
             if indicator and indicator.calc_mode == 'manual':
@@ -215,6 +219,7 @@ class SgiConfig(models.AbstractModel):
         - AL-02 con objetivo 100 pintaba rojo con UNA sola devolución en el
           mes; objetivo 99 mantiene la exigencia sin volverla imposible.
         """
+        sgi_require_system(self.env)  # F-008
         energia = self.env.ref('quimibond_sgi.sgi_ind_consumo_energia',
                                raise_if_not_found=False)
         if energia:
@@ -240,6 +245,7 @@ class SgiConfig(models.AbstractModel):
         meses ya generados en blanco para siempre. Solo escribe cuando el
         cálculo ahora sí devuelve valor; sin dato sigue pendiente y no se
         toca (cero ruido en el chatter). Las validadas jamás se tocan."""
+        sgi_require_system(self.env)  # F-008
         measures = self.env['sgi.indicator.measure'].search([
             ('state', '=', 'pendiente'),
             ('indicator_id.calc_mode', '!=', 'manual'),
@@ -285,6 +291,7 @@ class SgiConfig(models.AbstractModel):
         procedimiento padre P-Xnn vigente por la nomenclatura. Idempotente: solo
         toca los documentos sin padre. Los que no matcheen quedan vacíos y se
         reporta el conteo en el log (carga manual posterior de MAST)."""
+        sgi_require_system(self.env)  # F-008
         Doc = self.env['documents.document']
         family_re = re.compile(r'(P-[AGCDEIMPSV]\d{2})')
         docs = Doc.search([
@@ -525,6 +532,7 @@ class SgiConfig(models.AbstractModel):
         procedimiento como pendiente de revisión (G14). Cualquier otra función de
         semilla que capture el contenido de OTROS procedimientos vigentes debe
         usar el mismo contexto para no disparar el falso positivo."""
+        sgi_require_system(self.env)  # F-008
         process = self.env.ref('quimibond_sgi.proc_ventas', raise_if_not_found=False)
         if not process:
             _logger.warning("SGI piloto P-A28: no existe el proceso 'proc_ventas'.")
@@ -623,6 +631,7 @@ class SgiConfig(models.AbstractModel):
 
     @api.model
     def seed_process_purposes(self):
+        sgi_require_system(self.env)  # F-008
         for xmlid, text in self._SGI_PROCESS_PURPOSES.items():
             process = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
             if process and not process.purpose:
@@ -636,6 +645,7 @@ class SgiConfig(models.AbstractModel):
         auditoría 2026-08 también los datos maestros: procesos, flujos, áreas
         y normas — sin esto, el odoo-update seguiría revirtiendo lo que MAST
         edite ahí y resucitando lo que borre)."""
+        sgi_require_system(self.env)  # F-008
         self.env['ir.model.data'].sudo().search([
             ('module', '=', 'quimibond_sgi'),
             ('model', 'in', ('ir.cron', 'sgi.format.map',

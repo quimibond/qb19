@@ -58,8 +58,8 @@ class TestPr6External(TransactionCase):
         self.assertTrue(any('escalada a MAST' in s for s in summaries))
         # El proveedor contesta por el portal (sin correo de por medio).
         with self.assertRaises(UserError):
-            nc.sgi_supplier_answer('', 'algo')
-        nc.sgi_supplier_answer('Lote de hilo de otro proveedor mezclado', 'Segregar y reponer el 30/09')
+            nc._sgi_supplier_answer('', 'algo')
+        nc._sgi_supplier_answer('Lote de hilo de otro proveedor mezclado', 'Segregar y reponer el 30/09')
         self.assertEqual(nc.sgi_supplier_state, 'contestada')
         self.assertTrue(nc.sgi_supplier_response_date)
         self.assertIn('Segregar', nc.sgi_supplier_action)

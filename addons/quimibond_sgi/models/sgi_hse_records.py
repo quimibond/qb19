@@ -16,6 +16,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .sgi_guard import sgi_require_system
+
 _HEALTH_KINDS = [
     ('examen_medico', "Examen médico"),
     ('estudio_higiene', "Estudio de higiene"),
@@ -108,6 +110,7 @@ class SgiCronHealth(models.AbstractModel):
 
     @api.model
     def cron_competences(self):
+        sgi_require_system(self.env)  # F-008
         res = super().cron_competences()
         self._sgi_step("estudios de higiene y exámenes médicos por vencer",
                        lambda: self.env['sgi.health.record']._sgi_expiry_notices())

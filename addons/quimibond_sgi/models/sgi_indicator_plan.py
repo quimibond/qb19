@@ -28,6 +28,8 @@ from odoo.exceptions import UserError, ValidationError
 
 from .sgi_calendar import sgi_nth_business_day
 
+from .sgi_guard import sgi_require_system
+
 _WINDOW_BY_MODE = {
     'desperdicio_kg': "3 meses móviles",
     'compras_mp_vs_ventas': "3 meses móviles",
@@ -247,6 +249,7 @@ class SgiCronCalendar(models.AbstractModel):
         """Diario desde I-6: escala los planes vencidos todos los días y mide
         solo el tercer día hábil (o cuando el mes anterior siga sin medir).
         Sin ``scheduled`` (a mano) mide siempre, como antes."""
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         self._sgi_step("escalamiento de planes de mediciones rojas",
                        lambda: self.env['sgi.indicator.measure']._sgi_escalate_red_plans(today))
@@ -256,6 +259,7 @@ class SgiCronCalendar(models.AbstractModel):
 
     @api.model
     def cron_indicators_weekly(self, scheduled=False):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         if scheduled and not self._sgi_weekly_run_due(today):
             return True

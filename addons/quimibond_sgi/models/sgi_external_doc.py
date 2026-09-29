@@ -12,6 +12,8 @@ from odoo import api, fields, models
 
 from .sgi_calendar import sgi_add_business_days
 
+from .sgi_guard import sgi_require_system
+
 
 class DocumentsDocumentExternal(models.Model):
     _inherit = 'documents.document'
@@ -65,6 +67,7 @@ class SgiCronExternalDoc(models.AbstractModel):
 
     @api.model
     def cron_documents(self):
+        sgi_require_system(self.env)  # F-008
         res = super().cron_documents()
         self._sgi_step("implantación de documentos externos", self._sgi_external_doc_notices)
         return res

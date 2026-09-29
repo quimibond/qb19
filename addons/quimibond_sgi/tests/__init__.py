@@ -90,3 +90,4 @@ from . import test_update_respects_mast
 from . import test_security_entrega1
 from . import test_entrega1b
 from . import test_approval_rule_archive
+from . import test_entrega1c

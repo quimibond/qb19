@@ -246,8 +246,11 @@ class SgiInventoryValue(models.Model):
         'unique(company_id, date)', "Ya hay una foto del inventario para ese mes.")
 
     @api.model
-    def sgi_snapshot(self, date=None, company=None):
-        """Guarda (o actualiza) la foto del valor del inventario: existencias
+    def _sgi_snapshot(self, date=None, company=None):
+        """F-015 (auditoría 2026-09): privado; antes cualquiera reescribía por RPC
+        la foto de meses pasados con las existencias de hoy.
+
+        Guarda (o actualiza) la foto del valor del inventario: existencias
         en ubicaciones internas con valuación, igual que AL-01. Por omisión el
         último día del mes anterior y la compañía de los KPI."""
         Indicator = self.env['sgi.indicator']

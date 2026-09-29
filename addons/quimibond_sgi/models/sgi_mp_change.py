@@ -14,7 +14,7 @@ procedimiento.
 from markupsafe import Markup, escape
 
 from odoo import Command, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 MP_CHANGE_TYPES = [
     ('agregar', "Agregar actividad"),
@@ -75,6 +75,25 @@ class ApprovalRequestMpChange(models.Model):
     sgi_mp_apply_scheduled = fields.Boolean(
         string="Cambio aplicado", readonly=True, copy=False)
 
+    _SGI_MP_FIELDS = ('sgi_mp_change_type', 'sgi_mp_proposal_id')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # F-005 (auditoría 2026-09): la propuesta solo se cuelga desde el botón
+        # «Enviar» de la propia propuesta en borrador, nunca por RPC ajeno.
+        if not self.env.su:
+            for vals in vals_list:
+                if vals.get('sgi_mp_proposal_id'):
+                    proposal = self.env['sgi.activity.change'].browse(vals['sgi_mp_proposal_id'])
+                    if proposal.state != 'borrador' or proposal.create_uid != self.env.user:
+                        raise AccessError("Solo quien hizo la propuesta puede enviarla, y una sola vez.")
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if not self.env.su and any(f in vals for f in self._SGI_MP_FIELDS):
+            raise AccessError("La propuesta de una solicitud no se puede cambiar después de enviarla.")
+        return super().write(vals)
+
     def action_approve(self, approver=None):
         res = super().action_approve(approver=approver)
         self.filtered(lambda r: r.request_status == 'approved' and r.sgi_mp_change_type
@@ -90,8 +109,17 @@ class ApprovalRequestMpChange(models.Model):
         """Aplica la propuesta aprobada a la actividad y agenda a cada Jefe
         MAST y SGI revisar y republicar el procedimiento."""
         users = self._sgi_mp_apply_users()
+        mp_category = self.env['approval.category']._sgi_mp_change_category()
         for req in self:
             proposal = req.sgi_mp_proposal_id.sudo()
+            # F-005: solo se aplica la propuesta de ESTA solicitud, enviada y
+            # de la categoría «Proponer cambio»; cualquier otra cosa se ignora.
+            if proposal and not (req.category_id == mp_category
+                                 and proposal.request_id == req and proposal.state == 'enviada'):
+                req.sudo().message_post(body="La propuesta ligada no corresponde a esta solicitud; "
+                                             "no se aplicó ningún cambio.")
+                req.sudo().sgi_mp_apply_scheduled = True
+                continue
             target = proposal._sgi_apply() if proposal else (
                 req.sgi_activity_id or req.sgi_affected_process_ids[:1])
             if proposal and target and target._name == 'sgi.process.activity':
