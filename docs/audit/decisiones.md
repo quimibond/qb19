@@ -348,3 +348,19 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - **Pendientes:**
   - **D-28** (normas certificadas y fechas): la pasa Jose.
   - **D-09** (quién captura eficiencias): recomendación, el supervisor de cada turno; falta que Jose la confirme.
+
+## 2026-09-29 — D-28, roles relativos y buscador de producción
+
+- **D-28, normas certificadas.** Organismo: SIDE Certificaciones, acreditado ante la ema.
+  - **ISO 9001:2015:** certificada desde el 24-ago-2021. Certificado vigente 24070237A, del 23-ago-2024 al 22-ago-2027.
+  - **ISO 14001:2015:** certificada desde el 3-jul-2023. El certificado conocido vencía el 2-jul-2026; Jose confirma con MAST el vigente.
+  - **ISO 45001:2018:** auditoría de certificación del 22 al 24-sep-2026, resultado pendiente. Se trata como «en certificación».
+  - **IATF 16949:** no certificada. Los requisitos de clientes automotrices van en «Requisitos específicos de clientes».
+- **Aprobadores:**
+  - S4.03 (rol 1465) y S6.07 (rol 1577) quedaron en «Jefe del área que pide», cargados por Jose.
+  - E2.01 no se toca.
+- **«Dueño del proceso» se resuelve con el proceso de la actividad**, no con el del registro que se aprueba (`sgi_catalog.py:239`, `sgi_approval_native.py:174`). Los demás relativos no se resuelven a nadie.
+- **Aprobado:** el arreglo de roles relativos es el primer bloque del resto de la entrega 8, después de la red de pruebas.
+  - Con el arreglo en producción, Jose carga E2.01 y S6.07 como «Dueño del proceso».
+  - La validación aprobador ≠ ejecutor revisa todo el catálogo y entrega la lista de casos.
+- **Hotfix 57.0.1** (quimibond/qb19#473): el buscador «Del Dropbox a Odoo» tronaba en producción porque `documents.document.name` es jsonb. El build de `main` no lo atrapó porque es staging y no corre las pruebas.
