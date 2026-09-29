@@ -160,3 +160,43 @@ Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protecc
    - `main` hace de paso previo a producción: ahí se prueba la actualización sobre la copia de producción. Ver `docs/RUNBOOK_DESPLIEGUE.md`.
    - Ninguna entrega se integra a `main` ni pasa a `quimibond` sin el visto bueno de Jose.
    - quimibond/qb19#452 se queda con destino `main`.
+
+## 2026-09-29 — Aprobación del plan (fase 2 → fase 3)
+
+**Plan aprobado.** Flujo confirmado: rama de desarrollo → `main` (paso previo a producción) → `quimibond` (producción).
+
+### Orden de las entregas
+1. **Entrega 1**: el PR quimibond/qb19#452 más I-014.
+2. **Entrega 1b**.
+3. **Entrega 4** (menús y grupos), en el mismo release que los permisos de Dirección (F-013, E-009).
+4. **Entrega 8a** (nueva), con lo que ve el usuario:
+   - I-001: Mis pendientes como bandeja única;
+   - G-001: mediciones que nacen atrasadas;
+   - G-004, G-005 y G-006: avisos duplicados y calibración;
+   - I-002 e I-003: avisos de MAST que llegan a otras personas.
+5. Después: **3 → 6 → 2 → 5 → resto de 8 → 9 → 10**.
+
+Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes de retirar migraciones, y el pie de formato ligado al documento (C-006) antes de renombrar claves.
+
+### Decisiones
+- **D-03:** el SGI es **solo de la empresa 1**, y se declara en el código.
+- **D-01:** como recomendó la consolidación. Los términos con IDs de producción, los objetivos y los planes de control van a `quimibond_sgi_mapa`. Los indicadores automáticos sin IDs fijos se quedan como catálogo del SGI.
+- **D-02:** clave nueva `F-{proceso}-{nn}`, `IT-{proceso}-{nn}` y `DA-{proceso}-{nn}` (procedimientos `PR-{proceso}`), **sin renombrar archivos**.
+- **D-04:** la bandeja oficial es **Mis pendientes, con todo adentro**: actividades atrasadas, firmas, acuses de lectura y aprobaciones.
+- **D-05:** **Areli audita todo menos E2**. E2 lo audita **Oscar González** o un auditor externo. El grupo Auditor SGI queda para ellos dos.
+- **D-08:** **una tableta por área** (Tejido, Tintorería, Acabado e Inspección) y **PIN obligatorio para firmar**. Se eliminan las cuentas «Supervisor» y «manufactura@», pero antes el programador informa qué hace hoy cada una.
+- **D-32:** I-014 sigue abierto y va en la entrega 1. **Hecho** en la rama `claude/sgi-entrega-1` (commit 882af9c).
+
+### D-08: qué hacen hoy las dos cuentas (MCP, solo lectura, desde el 1-jul-2026)
+| Cuenta | Nombre en Odoo | Último acceso (UTC) | Actividad desde el 1-jul (registros creados por la cuenta) |
+|---|---|---|---|
+| 92 `supervisor@quimibond.com` | «Supervisor», sin empleado | 2026-09-28 16:51 | 653 órdenes de producción, 2,706 movimientos de inventario. Mensajes en 3,094 OP, 1,330 facturas o asientos, 1,023 albaranes, 684 lotes, más algunos en productos, firmas, aprobaciones y documentos |
+| 80 `manufactura@quimibond.com` | «Guadalupe Ramos», sin empleado ligado | 2026-09-29 01:32 | 95 órdenes de producción, 958 movimientos de inventario. Mensajes en 512 OP, 377 albaranes, 172 facturas o asientos, 100 solicitudes de aprobación, 96 solicitudes de firma, 94 lotes y 9 documentos |
+
+**Las dos son cuentas de operación diaria.** Apagarlas sin reemplazo detiene producción y almacén. Propuesta:
+1. Averiguar quién usa hoy «Supervisor»: es una cuenta compartida, sin empleado.
+2. Darle a cada persona su usuario, o la tableta de su área con PIN.
+3. Pasar por un periodo en paralelo.
+4. **Archivar** las cuentas (no borrarlas), para no perder el `create_uid` de miles de registros.
+
+«manufactura@» ya tiene nombre de persona (Guadalupe Ramos): se liga a su empleado y se le cambia el login a uno personal. Así se conserva su historial. Lo decide Jose y lo ejecuta Sistemas.
