@@ -98,11 +98,15 @@ class TestExcelMigration(TransactionCase):
         self.assertIn(b'FUERA DE SERVICIO', html)
 
     def test_06_lista_maestra_global(self):
+        # Un procedimiento lleva su proceso y la clave PR-{proceso} (56.32.0,
+        # D-02): «P-ZK99» sin proceso ya no cumple la nomenclatura.
+        process = self.env['sgi.process'].create({'code': 'ZK', 'name': 'Proceso ZK'})
         doc = self.env['documents.document'].create({
-            'name': 'P-ZK99 Procedimiento ZK', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-ZK99', 'sgi_state': 'vigente'})
+            'name': 'PR-ZK Procedimiento ZK', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'PR-ZK', 'sgi_state': 'vigente',
+            'sgi_process_id': process.id})
         action = self.env.ref('quimibond_sgi.sgi_document_master_list_action')
         self.assertIn('sgi_is_controlled', action.domain)
         self.assertEqual(action.res_model, 'documents.document')
         html = self.env['ir.actions.report']._render_qweb_html('quimibond_sgi.report_master_list_all_document', doc.ids)[0]
-        self.assertIn(b'P-ZK99', html)
+        self.assertIn(b'PR-ZK', html)

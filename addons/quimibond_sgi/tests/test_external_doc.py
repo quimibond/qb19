@@ -48,7 +48,8 @@ class TestExternalDoc(TransactionCase):
         self.assertTrue(doc.activity_ids.filtered(lambda a: (a.summary or '').startswith('Vencido')))
 
     def test_03_no_externo_no_tiene_plazo(self):
-        doc = self._doc(sgi_doc_type='instructivo', sgi_code='IT-Z09',
+        # IT-{proceso}-{nn} (56.32.0, D-02): «IT-Z09» no cumple la nomenclatura.
+        doc = self._doc(sgi_doc_type='instructivo', sgi_code='IT-ZEX-09',
                         sgi_ext_received_date=date(2046, 3, 2))
         self.assertFalse(doc.sgi_ext_deadline)
         self.assertFalse(doc.sgi_ext_state)

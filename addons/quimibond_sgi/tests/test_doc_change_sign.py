@@ -47,10 +47,12 @@ class TestDocChangeSign(TransactionCase):
             'approver_sequence': True,
             'approver_ids': [(0, 0, {'user_id': cls.mast.id, 'required': True})],
         })
+        # Clave con la nomenclatura del tipo (PR-{proceso}, 56.32.0 / D-02):
+        # «P-Z01» no la cumple y la base nueva la rechaza.
         cls.doc = env['documents.document'].create({
             'name': 'ZS Procedimiento firmado', 'type': 'binary',
             'sgi_is_controlled': True, 'sgi_doc_type': 'procedimiento',
-            'sgi_code': 'P-Z01', 'sgi_revision': 0, 'sgi_state': 'vigente',
+            'sgi_code': 'PR-ZDC', 'sgi_revision': 0, 'sgi_state': 'vigente',
             'sgi_process_id': cls.process.id,
         })
 
@@ -131,7 +133,7 @@ class TestDocChangeSign(TransactionCase):
     def test_05_se_publica_el_archivo_que_se_firmo(self):
         req = self._request()
         new_version = self.env['ir.attachment'].create({
-            'name': 'P-Z01 rev 01.pdf', 'datas': base64.b64encode(_blank_pdf()),
+            'name': 'PR-ZDC rev 01.pdf', 'datas': base64.b64encode(_blank_pdf()),
             'mimetype': 'application/pdf', 'res_model': 'approval.request', 'res_id': req.id})
         sign = self._confirm(req)
         self.assertEqual(req.sgi_change_attachment_id, new_version)

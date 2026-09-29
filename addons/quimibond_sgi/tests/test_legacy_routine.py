@@ -40,8 +40,12 @@ class TestLegacyRoutine(TransactionCase):
         cls.process = cls.env['sgi.process'].create({'code': 'E9', 'name': 'Proceso rutinas'})
         cls.other = cls.env['sgi.process'].create({'code': 'S9', 'name': 'Proceso que sustituye'})
         Activity = cls.env['sgi.process.activity']
-        cls.a1 = Activity.create({'process_id': cls.process.id, 'name': 'Actividad uno', 'step': 1})
-        cls.a2 = Activity.create({'process_id': cls.process.id, 'name': 'Actividad dos', 'step': 2})
+        # Con método de medición: un procedimiento vigente del proceso no
+        # admite actividades sin medir (_sgi_check_procedure_measures).
+        cls.a1 = Activity.create({'process_id': cls.process.id, 'name': 'Actividad uno', 'step': 1,
+                                  'measure_method': 'manual'})
+        cls.a2 = Activity.create({'process_id': cls.process.id, 'name': 'Actividad dos', 'step': 2,
+                                  'measure_method': 'manual'})
         cls.proc_a = cls._proc('P-V71')
         cls.proc_b = cls._proc('P-V72')
         cls.mast = sgi_test_user(cls.env, login='e6r_mast')
