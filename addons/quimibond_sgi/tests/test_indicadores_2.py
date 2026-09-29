@@ -150,14 +150,17 @@ class TestIndicadores2(TransactionCase):
         overdue = order(cut - timedelta(hours=72))              # vencida hace 3 días
         order(cut - timedelta(hours=24))                        # vencida, pero < 48 h
         order(cut + timedelta(days=3))                          # a futuro
-        order(cut - timedelta(hours=72), state='draft')         # borrador: abierta
+        order(cut - timedelta(hours=72), state='draft')         # borrador: no cuenta
+        order(cut - timedelta(hours=72), state='progress')      # en proceso: vencida
+        order(cut - timedelta(hours=72), state='to_close')      # por cerrar: vencida
         order(cut - timedelta(hours=100), state='done')         # cerrada: fuera
         order(cut - timedelta(hours=100), state='cancel')       # cancelada: fuera
         detail = ind._detail_ordenes_vencidas_48h(week_from, week_to)
-        self.assertEqual(detail['numerator'] - base['numerator'], 2)
-        self.assertEqual(detail['denominator'] - base['denominator'], 4)
+        self.assertEqual(detail['numerator'] - base['numerator'], 3)
+        self.assertEqual(detail['denominator'] - base['denominator'], 5,
+                         "Confirmadas, en proceso y por cerrar; sin borrador, hecha ni cancelada.")
         self.assertIn(overdue.id, detail['ids'])
-        self.assertIn('borrador', detail['note'])
+        self.assertIn('sin borradores', detail['note'])
         # Un periodo viejo no se reconstruye: sin dato.
         old = ind._detail_ordenes_vencidas_48h(week_from - timedelta(days=28),
                                                week_to - timedelta(days=28))
@@ -368,8 +371,23 @@ class TestIndicadores2(TransactionCase):
         self.assertEqual(set(changed), {'S1-05', 'C4-01'})
         self.assertEqual(s105.source, "Líneas de factura de proveedor contra precio de la "
                                       "orden de compra")
+        self.assertEqual(s105.formula, "|pagado − acordado| × cantidad ÷ compras del mes × 100")
         self.assertEqual(c401.name, "Órdenes vencidas más de 48 horas")
         self.assertIn('más de 48 horas', c401.formula)
         self.assertEqual((c401.direction, c401.target_objective, c401.target_acceptable),
                          ('lower_better', 10.0, 20.0))
         self.assertEqual(Indicator._sgi_update_ind2_fichas(), {}, "Idempotente.")
+        # Escalones trimestrales: uno que ya existía no se pisa.
+        self.env['sgi.indicator.step'].create({
+            'indicator_id': c401.id, 'date_from': date(2027, 1, 1),
+            'objective': 30.0, 'acceptable': 40.0})
+        created = Indicator._sgi_c4_01_trajectory()
+        self.assertEqual(len(created), 2)
+        steps = {s.date_from: (s.objective, s.acceptable) for s in c401.step_ids}
+        self.assertEqual(steps, {date(2026, 10, 1): (40.0, 50.0),
+                                 date(2027, 1, 1): (30.0, 40.0),
+                                 date(2027, 4, 1): (10.0, 20.0)})
+        self.assertEqual(Indicator._sgi_c4_01_trajectory(), [], "Idempotente.")
+        self.assertEqual(c401._sgi_targets_on(date(2026, 12, 7)), (40.0, 50.0),
+                         "La semana de diciembre se compara contra la meta de su trimestre.")
+        self.assertEqual(c401._sgi_targets_on(date(2027, 5, 3)), (10.0, 20.0))

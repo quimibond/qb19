@@ -3,9 +3,13 @@
 
 1. ``sgi.indicator._sgi_update_ind2_fichas()``: en S1-05 la fuente dice
    «precio de la orden de compra» en vez de «lista de precios del proveedor»
-   (solo esa frase); C4-01 toma su definición nueva (órdenes abiertas
-   vencidas más de 48 h, foto al cierre de la semana; sentido «más bajo es
-   mejor», metas 10 / 20 si seguía en «más alto es mejor»).
+   (solo esa frase) y su fórmula pasa a «|pagado − acordado| × cantidad ÷
+   compras del mes × 100»; C4-01 toma su definición nueva (órdenes
+   confirmadas, en proceso o por cerrar vencidas más de 48 h, foto al cierre
+   de la semana; sentido «más bajo es mejor», metas 10 / 20 si seguía en «más
+   alto es mejor») y ``_sgi_c4_01_trajectory()`` le carga los escalones
+   trimestrales 40 / 25 / 10 % (dic-2026, mar-2027, jun-2027) sin tocar los
+   que ya existan.
 2. ``sgi.indicator._sgi_adopt_offboarding_plan()``: el plan existente «Baja
    de personal» (id 5) toma los tipos propios en «Desactivar usuario de Odoo,
    correo y accesos» (Retirar accesos) y «Recuperar EPP…» (Recuperar EPP) y
@@ -40,6 +44,8 @@ def migrate(cr, version):
     fichas = Indicator._sgi_update_ind2_fichas()
     _logger.info("SGI 57.14.0: fichas actualizadas: %s (esperado: S1-05 136, C4-01 142).",
                  fichas)
+    steps = Indicator._sgi_c4_01_trajectory()
+    _logger.info("SGI 57.14.0: escalones de C4-01 creados: %s (esperado: 3).", steps)
     plan = Indicator._sgi_adopt_offboarding_plan()
     _logger.info("SGI 57.14.0: plan de salida: %s (esperado: renglones 19 y 18 con tipo "
                  "nuevo y un renglón creado).", plan)

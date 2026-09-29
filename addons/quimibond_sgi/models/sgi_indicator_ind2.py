@@ -18,8 +18,8 @@ registros que se guardan en la medición, como I-1/I-3) y su ``_calc_<modo>``.
   separa lo pagado de más, lo pagado de menos y la cobertura (líneas e
   importe con OC contra el total).
 - C4-01 ``ordenes_vencidas_48h`` (definición nueva de Jose, 2026-09-29):
-  foto al cierre de la semana. Órdenes de fabricación abiertas (ni hechas ni
-  canceladas) cuya fecha de fin programada (``mrp.production.date_finished``:
+  foto al cierre de la semana. Órdenes de fabricación abiertas (confirmadas,
+  en proceso o por cerrar; los borradores no cuentan) cuya fecha de fin programada (``mrp.production.date_finished``:
   en Odoo 19 es la fecha esperada mientras la orden no está hecha, y la real
   al cerrarla) venció hace más de 48 h ÷ órdenes abiertas. Como el estado de
   una orden en el pasado no se puede reconstruir (al cerrarla,
@@ -48,7 +48,7 @@ y la foto de C4-01 no se miden antes de que el plazo venza: la medición queda
 «pendiente» y el cron diario la re-mide (``recompute_pending_measures``).
 """
 import logging
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytz
 from dateutil.relativedelta import relativedelta
@@ -97,19 +97,31 @@ IND2_FROM_NEXT_MONTH = ('S6-02',)
 # Textos de ficha que cambian con las decisiones de Jose (2026-09-29).
 S1_05_OLD_PHRASE = "lista de precios del proveedor"
 S1_05_NEW_PHRASE = "precio de la orden de compra"
+S1_05_FORMULA = "|pagado − acordado| × cantidad ÷ compras del mes × 100"
+# C4-01: órdenes abiertas = confirmadas, en proceso o por cerrar (los
+# borradores no cuentan; decisión de Jose 2026-09-29).
+C4_01_OPEN_STATES = ('confirmed', 'progress', 'to_close')
 C4_01_FICHA = {
     'name': "Órdenes vencidas más de 48 horas",
-    'formula': ("Órdenes de fabricación abiertas (ni hechas ni canceladas) con su fecha de "
-                "fin programada vencida hace más de 48 horas al cierre de la semana ÷ "
-                "órdenes abiertas al cierre de la semana × 100"),
-    'source': ("Fabricación: órdenes abiertas y su fecha de fin programada, foto al cierre "
-               "de la semana"),
+    'formula': ("Órdenes de fabricación abiertas (confirmadas, en proceso o por cerrar) con "
+                "su fecha de fin programada vencida hace más de 48 horas al cierre de la "
+                "semana ÷ órdenes abiertas al cierre de la semana × 100"),
+    'source': ("Fabricación: órdenes confirmadas, en proceso o por cerrar y su fecha de fin "
+               "programada, foto al cierre de la semana"),
     # El número ahora es de órdenes vencidas: más bajo es mejor. Metas espejo
     # de las anteriores (90 / 80 % a tiempo → 10 / 20 % vencidas).
     'direction': 'lower_better',
     'target_objective': 10.0,
     'target_acceptable': 20.0,
 }
+# Escalones trimestrales de C4-01 (trayectoria): (inicio del trimestre,
+# objetivo, aceptable). 40 % a dic-2026, 25 % a mar-2027, 10 % a jun-2027; el
+# aceptable guarda la distancia de la meta final (10 → 20).
+C4_01_STEPS = (
+    (date(2026, 10, 1), 40.0, 50.0),
+    (date(2027, 1, 1), 25.0, 35.0),
+    (date(2027, 4, 1), 10.0, 20.0),
+)
 
 
 class SgiIndicatorInd2(models.Model):
@@ -311,16 +323,15 @@ class SgiIndicatorInd2(models.Model):
         cut = self._sgi_local_midnight_utc(date_to + timedelta(days=1))
         orders = self.env['mrp.production'].sudo().search([
             ('company_id', '=', self._sgi_kpi_company().id),
-            ('state', 'not in', ('done', 'cancel')),
+            ('state', 'in', C4_01_OPEN_STATES),
             ('create_date', '<', cut)])
         limit = cut - timedelta(hours=OVERDUE_HOURS)
         overdue = orders.filtered(lambda o: o.date_finished and o.date_finished < limit)
         out = self._ratio(len(overdue), len(orders), orders)
-        drafts = len(orders.filtered(lambda o: o.state == 'draft'))
-        out['note'] = ("Foto del %s: %d orden(es) abiertas (%d en borrador), %d vencidas "
-                       "hace más de %d h." % (fields.Date.context_today(self).strftime('%d/%m/%Y'),
-                                              len(orders), drafts, len(overdue),
-                                              OVERDUE_HOURS))
+        out['note'] = ("Foto del %s: %d orden(es) abiertas (confirmadas, en proceso o por "
+                       "cerrar; sin borradores), %d vencidas hace más de %d h." % (
+                           fields.Date.context_today(self).strftime('%d/%m/%Y'),
+                           len(orders), len(overdue), OVERDUE_HOURS))
         return out
 
     def _calc_ordenes_vencidas_48h(self, date_from, date_to):
@@ -565,8 +576,9 @@ class SgiIndicatorInd2(models.Model):
         """57.14.0 (decisiones de Jose 2026-09-29), textos de ficha:
 
         - S1-05: en «De dónde sale el dato» (``source``) la frase «lista de
-          precios del proveedor» pasa a «precio de la orden de compra». Solo
-          esa frase.
+          precios del proveedor» pasa a «precio de la orden de compra» (solo
+          esa frase) y la fórmula a «|pagado − acordado| × cantidad ÷ compras
+          del mes × 100».
         - C4-01: nombre, fórmula y fuente con la definición nueva (órdenes
           abiertas vencidas más de 48 h, foto al cierre de la semana). El
           sentido pasa a «más bajo es mejor» con metas espejo (10 / 20) solo si
@@ -590,8 +602,10 @@ class SgiIndicatorInd2(models.Model):
 
         for indicator in self.search([('code', '=', 'S1-05')]):
             source = indicator.source or ''
+            vals = {'formula': S1_05_FORMULA}
             if S1_05_OLD_PHRASE in source:
-                _write(indicator, {'source': source.replace(S1_05_OLD_PHRASE, S1_05_NEW_PHRASE)})
+                vals['source'] = source.replace(S1_05_OLD_PHRASE, S1_05_NEW_PHRASE)
+            _write(indicator, vals)
         for indicator in self.search([('code', '=', 'C4-01')]):
             vals = {k: C4_01_FICHA[k] for k in ('name', 'formula', 'source')}
             if indicator.direction == 'higher_better':
@@ -599,6 +613,38 @@ class SgiIndicatorInd2(models.Model):
                              ('direction', 'target_objective', 'target_acceptable')})
             _write(indicator, vals)
         return changed
+
+    @api.model
+    def _sgi_c4_01_trajectory(self):
+        """57.14.0: escalones trimestrales de C4-01 (40 % a dic-2026, 25 % a
+        mar-2027, 10 % a jun-2027) con el mecanismo de trayectoria del SGI
+        (``sgi.indicator.step``: la medición toma la meta de su trimestre).
+        Quedan marcados «corregido a mano» con su motivo, para que «Generar
+        trayectoria» no los recalcule. Un trimestre que ya tiene escalón no se
+        toca: se avisa en el log. Idempotente. Devuelve los ids creados."""
+        Step = self.env['sgi.indicator.step'].with_context(sgi_trajectory=True)
+        created = []
+        for indicator in self.search([('code', '=', 'C4-01')]):
+            existing = {s.date_from: s for s in indicator.step_ids}
+            for date_from, objective, acceptable in C4_01_STEPS:
+                step = existing.get(date_from)
+                if step:
+                    if (step.objective, step.acceptable) != (objective, acceptable):
+                        _logger.warning(
+                            "SGI 57.14.0: C4-01 (id %s) ya tiene escalón %s (objetivo %s / "
+                            "aceptable %s); no se cambia a %s / %s.", indicator.id, step.name,
+                            step.objective, step.acceptable, objective, acceptable)
+                    continue
+                step = Step.create({
+                    'indicator_id': indicator.id, 'date_from': date_from,
+                    'objective': objective, 'acceptable': acceptable, 'manual': True,
+                    'reason': "Decisión de Jose (2026-09-29): 40 % a dic-2026, 25 % a "
+                              "mar-2027 y 10 % a jun-2027."})
+                created.append(step.id)
+            if created:
+                indicator.message_post(body="57.14.0: escalones trimestrales de la meta "
+                                            "cargados (40 / 25 / 10 %).")
+        return created
 
     @api.model
     def _sgi_adopt_offboarding_plan(self):

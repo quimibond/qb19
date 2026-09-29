@@ -36,15 +36,19 @@ tomadas de la ficha de cada indicador en producción:
   nota separa pagado de más, pagado de menos y la cobertura (líneas e
   importe con OC contra el total del periodo).
 - **C4-01** `ordenes_vencidas_48h` (definición nueva de Jose): foto al
-  cierre de la semana. Órdenes de fabricación de la compañía abiertas (ni
-  hechas ni canceladas; los borradores cuentan) cuya fecha de fin programada
-  venció hace más de 48 h ÷ órdenes abiertas. En Odoo 19
+  cierre de la semana. Órdenes de fabricación de la compañía abiertas
+  (`state` en `confirmed`, `progress` o `to_close`; los borradores no
+  cuentan) cuya fecha de fin programada venció hace más de 48 h ÷ órdenes
+  abiertas. En Odoo 19
   `mrp.production.date_finished` es la fecha esperada mientras la orden no
   está hecha (`_compute_date_finished`) y pasa a la real al cerrarla, así
   que el pasado no se reconstruye: solo se mide en los 7 días siguientes al
   cierre de la semana (lo abierto al medir = lo abierto al cierre; las
   órdenes creadas después del cierre no cuentan); un periodo más viejo sale
-  sin dato. No depende de las operaciones.
+  sin dato. No depende de las operaciones. Meta 10 % (aceptable 20 %), más
+  bajo es mejor, con escalones trimestrales (trayectoria del SGI,
+  `sgi.indicator.step`): 40 / 50 en T4 2026, 25 / 35 en T1 2027 y 10 / 20 en
+  T2 2027; la medición se compara contra la meta de su trimestre.
 - **C1-04** `desarrollos_vendidos`: artículos (`product.template`, archivados
   incluidos) de las categorías de `quimibond_sgi.finished_product_categ_ids`
   (319 «Producto Terminado» y sus hijas) dados de alta en el mismo periodo de
@@ -83,10 +87,15 @@ registros guardados. Parámetro nuevo sembrado: `finished_product_categ_ids`
 anterior en el log (y en el chatter del indicador):
 
 1. `_sgi_update_ind2_fichas()`: S1-05, en `source`, «lista de precios del
-   proveedor» → «precio de la orden de compra» (solo esa frase). C4-01:
+   proveedor» → «precio de la orden de compra» (solo esa frase) y fórmula
+   «|pagado − acordado| × cantidad ÷ compras del mes × 100». C4-01:
    nombre «Órdenes vencidas más de 48 horas», fórmula y fuente nuevas; si
    sigue en «más alto es mejor», pasa a «más bajo es mejor» con metas espejo
    10 / 20 (antes 90 / 80 a tiempo).
+   `_sgi_c4_01_trajectory()` le carga los tres escalones trimestrales
+   (marcados «corregido a mano» con su motivo, para que «Generar
+   trayectoria» no los recalcule); un trimestre que ya tenga escalón no se
+   toca y se avisa en el log.
 2. `_sgi_adopt_offboarding_plan()`: en el plan «Baja de personal…» de
    empleados, «Desactivar usuario de Odoo, correo y accesos» toma el tipo
    «Retirar accesos» y «Recuperar EPP…» el tipo «Recuperar EPP»; se agrega
@@ -100,14 +109,16 @@ anterior en el log (y en el chatter del indicador):
 
 **Datos de producción (2026-09-29, lectura):** S2-01 agosto 76 pagos a PPD,
 76 complementos a más tardar el 4-sep (100 %). S1-05 agosto 360 de 1,472
-líneas con OC (24 %; 31 % del importe). C4-01 hoy: 433 órdenes abiertas (39
-en borrador), 238 con fin programado vencido antes del 27-sep (≈ 55 %).
+líneas con OC (24 %; 31 % del importe). C4-01 hoy: 394 órdenes confirmadas, en
+proceso o por cerrar, 199 con fin programado vencido antes del 27-sep
+(≈ 50 %); fuera, 39 borradores.
 C1-04 cohorte de marzo 13 artículos. RH-01: ningún puesto con plantilla.
 S4-01: 19 bajas desde julio, 13 sin motivo y la mayoría registrada semanas
 después (carga del 7-sep). S6-02: cero actividades en empleados; plan 5 con
 los renglones 18 (EPP) y 19 (accesos, Mariano Dominguez), ambos «Por hacer».
 
-**Pruebas:** `test_indicadores_2` (9 casos, datos propios).
+**Pruebas:** `test_indicadores_2` (9 casos, datos propios; `test_09` cubre
+las fichas y los escalones de C4-01).
 
 ## 19.0.57.13.0 — 2026-09-29
 
