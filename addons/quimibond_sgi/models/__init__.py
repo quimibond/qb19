@@ -68,7 +68,11 @@ from . import sgi_diagram
 from . import sgi_links
 from . import sgi_diagram_iso
 from . import sgi_diagram_view
-from . import sgi_kpi_fields
+from . import sgi_kpi_sales
+from . import sgi_kpi_quality
+from . import sgi_kpi_account
+from . import sgi_kpi_review
+from . import sgi_kpi_hr
 from . import sgi_dev_request
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
@@ -88,3 +92,5 @@ from . import sgi_norm_compliance
 from . import sgi_archived_filters
 from . import sgi_approval_rule_archive
 from . import sgi_document_owner
+from . import sgi_multicompany
+from . import sgi_current_documents

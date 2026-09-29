@@ -395,7 +395,7 @@ class SgiDiagram(models.AbstractModel):
         for doc in docs:
             meta = [{'icon': 'fa-pencil-square-o', 'label': "Acuses pendientes", 'value': pending[doc.id]}] \
                 if pending.get(doc.id) else []
-            groups[type_of.get(doc.sgi_doc_type, 'otros')].append({
+            groups[type_of.get(doc.sgi_doc_type_id.code, 'otros')].append({
                 'key': _key(doc), 'model': 'documents.document', 'res_id': doc.id,
                 'code': doc.sgi_code or '', 'name': doc.name or '',
                 'subtitle': "Rev. %02d · %s" % (doc.sgi_revision or 0, state_labels.get(doc.sgi_state, '')),

@@ -90,9 +90,9 @@
     </record>
 
     <record id="sgi_policy_action" model="ir.actions.act_window">
-        <field name="name">Política Integral</field>
+        <field name="name">Política integral</field>
         <field name="res_model">sgi.policy</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,sgi_diagram,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Publica la política integral</p>
             <p>Es la cabeza de la Línea Dorada: de ella se despliegan los objetivos integrales, sus indicadores y los procesos. Solo una política puede estar vigente.</p>

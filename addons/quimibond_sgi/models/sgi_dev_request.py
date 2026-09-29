@@ -10,15 +10,14 @@ y norma). El PDF imprime la clave del formato que corresponde al tipo.
 from odoo import api, fields, models
 
 DEV_TYPES = [
-    ('general', "General (F-P-D01-02)"),
-    ('entretelas_v10', "Entretelas V10 (F-P-D01-18)"),
-    ('carda', "Carda (F-P-D01-26)"),
-    ('tramado', "Tramado (F-P-D01-27)"),
+    ('general', "General"),
+    ('entretelas_v10', "Entretelas V10"),
+    ('carda', "Carda"),
+    ('tramado', "Tramado"),
 ]
-DEV_FORMAT = {
-    'general': 'F-P-D01-02', 'entretelas_v10': 'F-P-D01-18',
-    'carda': 'F-P-D01-26', 'tramado': 'F-P-D01-27',
-}
+# C-006: cada tipo apunta a su formato por el mapeo ``format_ref_dev_<tipo>``
+# (sgi.format.map ligado al documento), no por el texto de la clave.
+DEV_FORMAT_REF = 'format_ref_dev_%s'
 # (nombre, dirección, unidad) por tipo; el orden es el del Excel.
 DEV_DEFAULT_LINES = {
     'general': [
@@ -96,17 +95,21 @@ class ProjectProjectDevRequest(models.Model):
             elif not project.sgi_is_ft:
                 project.sgi_is_ft = False
 
+    def _sgi_dev_format_map(self):
+        self.ensure_one()
+        return self.env['sgi.format.map'].sudo()._sgi_ref(
+            DEV_FORMAT_REF % (self.sgi_dev_type or 'general'))
+
     @api.depends('sgi_dev_type')
     def _compute_sgi_dev_format_code(self):
         for project in self:
-            project.sgi_dev_format_code = DEV_FORMAT.get(project.sgi_dev_type or 'general')
+            project.sgi_dev_format_code = project._sgi_dev_format_map().sgi_live_parts()[0]
 
     def sgi_dev_format_info(self):
-        """'F-P-D01-18 · Rev. 02' para el pie del PDF (revisión viva desde Documentos)."""
+        """'F-P-D01-18 · Rev. 02' para el pie del PDF (clave y revisión vivas
+        del documento ligado al mapeo)."""
         self.ensure_one()
-        code = self.sgi_dev_format_code or DEV_FORMAT['general']
-        revision = self.env['sgi.format.map'].sudo()._revision_of(code)
-        return "%s · Rev. %s" % (code, revision) if revision else code
+        return self._sgi_dev_format_map().sgi_live_label()
 
     def action_sgi_dev_load_lines(self):
         """Propone las características del tipo (solo agrega las que faltan)."""

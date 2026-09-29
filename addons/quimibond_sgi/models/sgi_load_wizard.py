@@ -30,7 +30,7 @@ class SgiCatalogLoadWizard(models.TransientModel):
         ('draft', "Captura"),
         ('tested', "Probado"),
         ('loaded', "Cargado"),
-    ], default='draft', readonly=True)
+    ], string="Estado", default='draft', readonly=True)
     dry_run_ok = fields.Boolean(readonly=True)
     summary = fields.Text(string="Resumen", readonly=True)
     line_ids = fields.One2many(

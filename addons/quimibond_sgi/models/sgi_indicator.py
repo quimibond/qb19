@@ -4,6 +4,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
+from .sgi_menu_paths import sgi_menu_path
+
 CALC_MODES = [
     ('manual', "Captura manual"),
     ('otif_ventas', "OTIF ventas (embarques a tiempo)"),
@@ -68,16 +70,16 @@ class SgiIndicator(models.Model):
 
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True)
-    process_id = fields.Many2one('sgi.process', string="Proceso")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
     # Estructura vigente = proceso activo. Guardado para poder filtrar los
     # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
     sgi_process_active = fields.Boolean(
         related='process_id.active', store=True, string="Proceso vigente",
         help="El proceso al que pertenece está activo. Sin proceso o con el "
              "proceso archivado, queda pendiente de proceso nuevo.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
     responsible_id = fields.Many2one('res.users', string="Responsable")
-    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral")
+    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral", ondelete='restrict')
     uom = fields.Char(string="Unidad", help="% , MXN, unidades, kg, m…")
     direction = fields.Selection([
         ('higher_better', "Más alto es mejor"),
@@ -127,7 +129,7 @@ class SgiIndicator(models.Model):
         'desperdicio_scrap': "Inventario → desechos (scrap) del periodo.",
         'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
         'cumplimiento_programa': "Fabricación → cumplimiento del plan maestro (MPS).",
-        'cierre_nc': "SGI → No Conformidades: cerradas a tiempo vs abiertas.",
+        'cierre_nc': "%s: cerradas a tiempo vs abiertas." % sgi_menu_path('no_conformidades'),
         'reclamos_cliente': "Helpdesk → tickets de reclamación de clientes del periodo.",
         'disponibilidad_mantto': "Mantenimiento → tiempo de paro vs disponible.",
         'preventivo_cumplido': "Mantenimiento → OTs preventivas cumplidas a tiempo.",

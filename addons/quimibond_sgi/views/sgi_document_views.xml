@@ -40,13 +40,21 @@
                         Genere una nueva revisión controlada o confírmelo.
                     </div>
                     <div class="oe_title">
-                        <h1><field name="sgi_code" placeholder="Clave (P-A28 · F-P-G05-01 · IT-P-P01-08 · DAT… · ANEXO 6)"/></h1>
-                        <h2><field name="name" placeholder="Nombre del documento"/></h2>
+                        <!-- D-002 / C-009 (56.32.0): el título limpio manda; la
+                             clave vigente va debajo y la del Dropbox solo como
+                             dato («Clave anterior»). El archivo no se renombra. -->
+                        <h1><field name="sgi_title" readonly="1" invisible="not sgi_title"/></h1>
+                        <h3 class="text-muted">
+                            <field name="sgi_code" placeholder="Clave (PR-C1 · F-C1-01 · IT-C1-01 · DA-C1-01)"/>
+                        </h3>
+                        <div class="text-muted" invisible="not sgi_previous_code">
+                            Clave anterior: <field name="sgi_previous_code" readonly="1" class="oe_inline"/>
+                        </div>
+                        <field name="name" placeholder="Nombre del archivo"/>
                         <div class="text-muted" invisible="not sgi_is_controlled">
-                            La clave sigue la nomenclatura PNTQ (P-Xnn, F-P-Xnn-nn,
-                            IT-P-Xnn-nn, F-IT-P-Xnn-nn-nn, DAT, PROT-nn, ANEXO n;
-                            X = área G/A/C/D/E/I/M/P/S/V). Solo puede haber UNA
-                            revisión vigente por clave.
+                            Clave nueva: PR-{proceso} para procedimientos,
+                            F-{proceso}-nn, IT-{proceso}-nn y DA-{proceso}-nn. Solo
+                            puede haber UNA revisión vigente por clave.
                         </div>
                     </div>
                     <group>
@@ -57,10 +65,8 @@
                             <field name="sgi_area_id"/>
                             <field name="sgi_process_id"/>
                             <field name="sgi_doc_change_id" invisible="not sgi_doc_change_id"/>
-                            <field name="sgi_previous_code" readonly="1"
-                                   invisible="not sgi_previous_code"/>
                             <field name="sgi_previous_code_date" readonly="1"
-                                   invisible="not sgi_previous_code"/>
+                                   invisible="not sgi_previous_code_date"/>
                             <field name="type" invisible="1"/>
                         </group>
                         <group>
@@ -70,7 +76,11 @@
                             <field name="sgi_next_review_date"/>
                             <field name="sgi_obsolete_date" invisible="not sgi_obsolete_date"/>
                             <field name="sgi_obsolete_reason" invisible="not sgi_obsolete_reason"/>
-                            <field name="sgi_replaced_by_process_id" invisible="not sgi_replaced_by_process_id"/>
+                            <!-- D-017 (56.31.0): la sustitución se captura AQUÍ (el
+                                 documento manda); visible en todo procedimiento. -->
+                            <field name="sgi_replaced_by_process_id"
+                                   invisible="sgi_doc_type != 'procedimiento' and not sgi_replaced_by_process_id"
+                                   options="{'no_create': True}"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
                             <field name="sgi_retention_years"/>
@@ -118,7 +128,7 @@
                     </group>
                     <notebook>
                         <page string="Migración a Odoo" name="migracion"
-                              invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo')">
+                              invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo', 'procedimiento')">
                             <group>
                                 <group>
                                     <field name="sgi_migration_class"/>
@@ -223,8 +233,9 @@
                   decoration-muted="sgi_state == 'obsoleto'"
                   decoration-warning="sgi_state == 'piloto'"
                   decoration-info="sgi_state == 'borrador'">
+                <field name="sgi_title"/>
                 <field name="sgi_code"/>
-                <field name="name"/>
+                <field name="name" optional="hide"/>
                 <field name="sgi_doc_type"/>
                 <field name="sgi_area_id" optional="show"/>
                 <field name="sgi_process_id" optional="show"/>
@@ -255,7 +266,8 @@
         <field name="arch" type="xml">
             <search string="Documentos SGI">
                 <field name="sgi_code"
-                       filter_domain="['|', ('sgi_code', 'ilike', self), '&amp;', ('sgi_previous_code', 'ilike', self), ('sgi_previous_code_date', '&gt;=', (context_today() - relativedelta(months=12)).strftime('%Y-%m-%d'))]"/>
+                       filter_domain="['|', ('sgi_code', 'ilike', self), ('sgi_previous_code', 'ilike', self)]"/>
+                <field name="sgi_title"/>
                 <field name="sgi_previous_code" string="Clave anterior (Dropbox)"/>
                 <field name="sgi_doc_type_id"/>
                 <field name="name"/>
@@ -279,9 +291,9 @@
     </record>
 
     <record id="sgi_document_action" model="ir.actions.act_window">
-        <field name="name">Documentos SGI</field>
+        <field name="name">Documentos</field>
         <field name="res_model">documents.document</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,sgi_diagram,form</field>
         <field name="domain">[('sgi_is_controlled','=',True)]</field>
         <field name="context">{'default_sgi_is_controlled': True, 'search_default_sgi_vigente': 1}</field>
         <field name="search_view_id" ref="sgi_document_view_search"/>
@@ -388,6 +400,18 @@
         <field name="code">action = records.action_sgi_resolve_odoo_menu()</field>
     </record>
 
+    <!-- C-004 / D-02 (56.32.0): clave nueva documento por documento (o por
+         lote), con todas las revisiones de la clave. La clave del Dropbox ya
+         quedó como clave anterior. Solo Jefe MAST (el método lo exige). -->
+    <record id="sgi_document_assign_new_code_action" model="ir.actions.server">
+        <field name="name">Asignar clave nueva (SGI)</field>
+        <field name="model_id" ref="documents.model_documents_document"/>
+        <field name="binding_model_id" ref="documents.model_documents_document"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">action = records.action_sgi_assign_new_code()</field>
+    </record>
+
     <!-- ============ MIGRACIÓN DE FORMATOS A ODOO ============ -->
     <record id="sgi_migration_view_list" model="ir.ui.view">
         <field name="name">sgi.migration.formatos.list</field>
@@ -400,6 +424,7 @@
                   decoration-info="sgi_migration_state == 'en_curso'"
                   decoration-muted="sgi_migration_state == 'na'">
                 <field name="sgi_code" string="Clave"/>
+                <field name="sgi_previous_code" string="Clave del Dropbox" optional="show"/>
                 <field name="name" string="Formato"/>
                 <field name="sgi_area_id" optional="show"/>
                 <field name="sgi_process_id" optional="hide"/>
@@ -407,6 +432,8 @@
                 <field name="sgi_migration_target"/>
                 <field name="sgi_migration_point_id" optional="show"/>
                 <field name="sgi_odoo_menu_id" optional="show"/>
+                <field name="sgi_replaced_by_process_id" optional="hide"
+                       options="{'no_create': True}"/>
                 <field name="sgi_migration_state" widget="badge"
                        decoration-success="sgi_migration_state in ('migrado', 'baja')"
                        decoration-warning="sgi_migration_state == 'pendiente'"

@@ -67,4 +67,74 @@
         <field name="sgi_code_alt">F-P-A28-13</field>
         <field name="note">Presupuesto de Ventas General F-P-A28-18 (mensual) / Pronóstico F-P-A28-13 (semanal por cliente); F-P-A28-17 es el comparativo ppto vs real</field>
     </record>
+
+    <!-- C-006 (19.0.56.30.0): formatos que el SGI imprime POR REFERENCIA desde
+         su código (sin modelo). El código los pide por xmlid
+         (sgi.format.map.sgi_ref_label) y la clave y revisión salen del
+         documento ligado; la migración 19.0.56.30.0 los liga por la clave de
+         abajo. Sin modelo, no llevan banner. -->
+    <record id="format_ref_staff_efficiency" model="sgi.format.map">
+        <field name="sgi_code">F-P-A01-32</field>
+        <field name="note">Eficiencias del personal (hoja general, sin área)</field>
+    </record>
+
+    <record id="format_ref_staff_efficiency_area" model="sgi.format.map">
+        <field name="sgi_code">F-P-A01-34</field>
+        <field name="note">Eficiencias del personal por área</field>
+    </record>
+
+    <record id="format_ref_epp_responsiva" model="sgi.format.map">
+        <field name="sgi_code">F-P-S03-02</field>
+        <field name="note">Responsiva de entrega de EPP</field>
+    </record>
+
+    <record id="format_ref_machine_sheet" model="sgi.format.map">
+        <field name="sgi_code">F-IT-P-P01-08-05</field>
+        <field name="note">Ficha de proceso por máquina</field>
+    </record>
+
+    <record id="format_ref_dev_general" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-02</field>
+        <field name="note">Solicitud de desarrollo: general</field>
+    </record>
+
+    <record id="format_ref_dev_entretelas_v10" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-18</field>
+        <field name="note">Solicitud de desarrollo: entretelas V10</field>
+    </record>
+
+    <record id="format_ref_dev_carda" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-26</field>
+        <field name="note">Solicitud de desarrollo: carda</field>
+    </record>
+
+    <record id="format_ref_dev_tramado" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-27</field>
+        <field name="note">Solicitud de desarrollo: tramado</field>
+    </record>
+
+    <record id="format_ref_procedure_print" model="sgi.format.map">
+        <field name="sgi_code">F-P-G01-02</field>
+        <field name="note">Pie del procedimiento impreso</field>
+    </record>
+
+    <record id="format_ref_iper_matrix" model="sgi.format.map">
+        <field name="sgi_code">F-P-S01-01</field>
+        <field name="note">Matriz IPER citada en el procedimiento impreso</field>
+    </record>
+
+    <record id="format_ref_doc_change" model="sgi.format.map">
+        <field name="sgi_code">F-P-G01-06</field>
+        <field name="note">Solicitud de cambio documental (PDF para Sign)</field>
+    </record>
+
+    <record id="format_ref_calibration_label" model="sgi.format.map">
+        <field name="sgi_code">F-P-C03-01</field>
+        <field name="note">Etiqueta de equipo calibrado</field>
+    </record>
+
+    <record id="format_ref_out_of_service_label" model="sgi.format.map">
+        <field name="sgi_code">F-P-C03-02</field>
+        <field name="note">Etiqueta de equipo fuera de servicio</field>
+    </record>
 </odoo>

@@ -144,16 +144,9 @@
     </record>
 
     <record id="sgi_staff_efficiency_line_action" model="ir.actions.act_window">
-        <field name="name">Análisis de eficiencias</field>
+        <field name="name">Análisis por empleado</field>
         <field name="res_model">sgi.staff.efficiency.line</field>
         <field name="view_mode">pivot,list</field>
     </record>
 
-    <menuitem id="menu_hr_sgi_staff_efficiency" name="Eficiencias de personal (SGI)"
-              parent="hr.menu_hr_root" sequence="72"
-              groups="hr.group_hr_user"/>
-    <menuitem id="menu_sgi_staff_efficiency" name="Hojas mensuales" parent="menu_hr_sgi_staff_efficiency"
-              action="sgi_staff_efficiency_action" sequence="10"/>
-    <menuitem id="menu_sgi_staff_efficiency_analysis" name="Análisis por empleado" parent="menu_hr_sgi_staff_efficiency"
-              action="sgi_staff_efficiency_line_action" sequence="20"/>
 </odoo>

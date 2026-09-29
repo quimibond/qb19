@@ -26,7 +26,7 @@
     </record>
 
     <record id="sgi_document_master_list_action" model="ir.actions.act_window">
-        <field name="name">Lista maestra de documentos (DOC-3)</field>
+        <field name="name">Lista maestra</field>
         <field name="res_model">documents.document</field>
         <field name="view_mode">list,form</field>
         <field name="domain">[('sgi_is_controlled', '=', True)]</field>

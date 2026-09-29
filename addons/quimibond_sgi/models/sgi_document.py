@@ -4,13 +4,16 @@ import re
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import AccessError, ValidationError, UserError
 
 from .sgi_base import sgi_bypass_allowed
 
 _logger = logging.getLogger(__name__)
 
-# Nomenclatura documental real de PNTQ (áreas G,A,C,D,E,I,M,P,S,V)
+# Nomenclatura documental del Dropbox de PNTQ (áreas G,A,C,D,E,I,M,P,S,V).
+# C-007 (56.32.0): solo la usa la herramienta histórica de carga
+# (tools/carga_documental.py). La nomenclatura vigente vive en los tipos de
+# documento (sgi.document.type: patrón nuevo D-02 + clave heredada).
 SGI_CODE_REGEX = re.compile(
     r'^(MIID'
     r'|P-[AGCDEIMPSV]\d{2}'
@@ -28,17 +31,27 @@ SGI_CODE_REGEX = re.compile(
 class DocumentsDocument(models.Model):
     _inherit = 'documents.document'
 
-    sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True)
+    sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True, index=True)
     sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True)
-    # La clave anterior sigue encontrando el documento durante 12 meses
-    # (búsqueda «Clave SGI» y _sgi_find_by_code): nadie pierde un formato
-    # porque cambió la nomenclatura.
+    # C-004/C-005 (56.32.0): la clave anterior es DEFINITIVA (la del Dropbox,
+    # copiada por la migración 56.32.0) y se busca siempre (búsqueda «Clave
+    # SGI», «Del Dropbox a Odoo» y _sgi_find_by_code): nadie pierde un formato
+    # porque cambió la nomenclatura. Un renombre posterior no la pisa; queda
+    # en el seguimiento de «Clave SGI».
     sgi_previous_code = fields.Char(
-        string="Clave anterior", index=True, copy=False, tracking=True)
+        string="Clave anterior", index=True, copy=False, tracking=True,
+        help="Clave con la que se conocía el documento antes de la clave nueva "
+             "(la del Dropbox). Se busca siempre y no se sobrescribe.")
     sgi_previous_code_date = fields.Date(
         string="Cambio de clave", copy=False,
-        help="Desde cuándo rige la clave actual; la anterior se encuentra "
-             "hasta 12 meses después.")
+        help="Cuándo se cambió la clave en Odoo. Vacío = clave anterior del "
+             "Dropbox, copiada por la migración.")
+    # C-009 / D-002: título limpio para mostrar (el nombre del archivo sin la
+    # extensión ni la clave inicial). El archivo no se renombra: es evidencia.
+    sgi_title = fields.Char(
+        string="Título", compute='_compute_sgi_title', store=True, index=True,
+        help="Nombre del documento sin la clave ni la extensión del archivo. "
+             "El archivo conserva su nombre original.")
     # Tipo de documento como dato (sgi.document.type). El campo de selección
     # de antes se conserva calculado para las vistas, dominios y reportes
     # que lo usan; escribirlo resuelve el tipo por su código.
@@ -73,8 +86,8 @@ class DocumentsDocument(models.Model):
         'ir.ui.menu', string="Menú de Odoo",
         help="Menú donde vive el formulario que sustituye a este documento. "
              "El botón «Abrir en Odoo» salta directo a él.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
-    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI")
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
+    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI", ondelete='restrict')
     # P-3: el documento apunta al cambio documental que lo dejó así (alta,
     # modificación o baja aprobada). Es la liga con la que E2.02 «Publicar el
     # documento vigente» se mide contra su entrada (match: sgi_doc_change_id).
@@ -98,7 +111,7 @@ class DocumentsDocument(models.Model):
         ('piloto', "Prueba piloto"),
         ('vigente', "Vigente"),
         ('obsoleto', "Obsoleto"),
-    ], string="Estado SGI", tracking=True,
+    ], string="Estado SGI", tracking=True, index=True,
         help="Solo los documentos controlados del SGI llevan estado; los demás "
              "archivos de Documentos quedan sin él (2026-09-25).")
     sgi_owner_id = fields.Many2one('res.users', string="Responsable SGI")
@@ -108,8 +121,18 @@ class DocumentsDocument(models.Model):
     # 5.2 DOC-2 (56.11.0): cuándo y por qué quedó obsoleto.
     sgi_obsolete_date = fields.Date(string="Obsoleto desde", readonly=True, copy=False)
     sgi_obsolete_reason = fields.Char(string="Motivo de obsolescencia", readonly=True, copy=False)
+    # C-001/C-014/C-015 (56.31.0, decisión 3 de Jose): ÚNICA fuente de verdad
+    # de «qué proceso sustituye a este procedimiento». El proceso solo lee el
+    # inverso (sgi.process.replaced_document_ids). restrict, nunca cascade: un
+    # One2many cuyo inverso es cascade borra las filas que se quitan (C-014).
     sgi_replaced_by_process_id = fields.Many2one(
-        'sgi.process', string="Lo sustituye el proceso", readonly=True, copy=False, index=True)
+        'sgi.process', string="Lo sustituye el proceso", copy=False, index=True,
+        ondelete='restrict', tracking=True,
+        domain="[('active', '=', True)]",
+        help="Proceso de Odoo que sustituye a este procedimiento del Dropbox. El "
+             "procedimiento sigue vigente mientras el proceso esté en borrador o "
+             "piloto; cuando el proceso entra en vigor pasa a obsoleto y a «Baja "
+             "tramitada». Lo captura el Jefe MAST.")
     sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto")
 
     # --- Retención y disposición de registros (ISO 7.5.3; clientes IATF
@@ -353,6 +376,40 @@ class DocumentsDocument(models.Model):
                                 order='company_id', limit=1)
             doc.sgi_doc_type_id = dtype
 
+    @staticmethod
+    def _sgi_strip_code(text, code):
+        """El texto sin la clave inicial (tolerante a separadores: «F-P-A-16-02»
+        contra la clave F-P-A16-02). None si el texto no empieza con ella."""
+        target = re.sub(r'[^0-9A-Z]', '', (code or '').upper())
+        if not target:
+            return None
+        acc = ''
+        for index, char in enumerate(text):
+            if char.isalnum():
+                acc += char.upper()
+            if acc == target:
+                rest = text[index + 1:]
+                if rest[:1].isalnum():
+                    return None
+                return rest.lstrip(' -_–—·.:')
+            if not target.startswith(acc):
+                return None
+        return None
+
+    @api.depends('name', 'sgi_code', 'sgi_previous_code', 'sgi_is_controlled')
+    def _compute_sgi_title(self):
+        for doc in self:
+            base = (doc.name or '').strip()
+            base = re.sub(r'\.[A-Za-z0-9]{2,5}$', '', base).strip()
+            title = base
+            if doc.sgi_is_controlled:
+                for code in (doc.sgi_code, doc.sgi_previous_code):
+                    stripped = doc._sgi_strip_code(base, code)
+                    if stripped:
+                        title = stripped
+                        break
+            doc.sgi_title = title or base or False
+
     @api.depends('sgi_revision')
     def _compute_sgi_revision_label(self):
         for doc in self:
@@ -418,6 +475,47 @@ class DocumentsDocument(models.Model):
                 raise ValidationError(
                     "Un documento de tipo «%s» debe estar ligado a su proceso "
                     "(%s)." % (dtype.name, code))
+
+    @api.constrains('sgi_replaced_by_process_id', 'sgi_is_controlled', 'sgi_doc_type_id')
+    def _check_sgi_replaced_by_process(self):
+        """C-015: solo un procedimiento controlado lo sustituye un proceso, y
+        ese proceso está activo y es de la misma empresa."""
+        for doc in self.filtered('sgi_replaced_by_process_id'):
+            process = doc.sgi_replaced_by_process_id
+            if not doc.sgi_is_controlled or doc.sgi_doc_type != 'procedimiento':
+                raise ValidationError(
+                    "Solo un procedimiento controlado puede tener «Lo sustituye el "
+                    "proceso» (%s es %s)." % (
+                        doc.sgi_code or doc.name,
+                        doc.sgi_doc_type_id.name or 'sin tipo'
+                        if doc.sgi_is_controlled else 'no controlado'))
+            if not process.active:
+                raise ValidationError(
+                    "El proceso %s está archivado: no puede sustituir a %s." % (
+                        process.display_name, doc.sgi_code or doc.name))
+            if doc.company_id and process.company_id and doc.company_id != process.company_id:
+                raise ValidationError(
+                    "El proceso %s es de otra empresa que %s." % (
+                        process.display_name, doc.sgi_code or doc.name))
+
+    @api.constrains('sgi_migration_state', 'sgi_replaced_by_process_id')
+    def _check_sgi_procedure_migration_state(self):
+        """L-005 (decisión C-003): un procedimiento no queda «Migrado a Odoo»
+        (o sigue en curso, o su proceso entró en vigor y quedó en baja), y
+        «No aplica» (control operacional) es un procedimiento que ningún
+        proceso sustituye. Solo corre al escribir esos campos."""
+        for doc in self.filtered(lambda d: d.sgi_is_controlled
+                                 and d.sgi_doc_type == 'procedimiento'):
+            if doc.sgi_migration_state == 'migrado':
+                raise ValidationError(
+                    "Un procedimiento no queda «Migrado a Odoo»: está «En curso» "
+                    "hasta que su proceso entre en vigor, y entonces pasa a «Baja "
+                    "tramitada» (%s)." % (doc.sgi_code or doc.name))
+            if doc.sgi_migration_state == 'na' and doc.sgi_replaced_by_process_id:
+                raise ValidationError(
+                    "%s lo sustituye el proceso %s: no puede ser «No aplica (se "
+                    "queda)»." % (doc.sgi_code or doc.name,
+                                  doc.sgi_replaced_by_process_id.display_name))
 
     def _sgi_same_code_docs(self):
         """Otros documentos (activos o archivados) con la misma clave y
@@ -510,8 +608,8 @@ class DocumentsDocument(models.Model):
 
     @api.model
     def _sgi_find_by_code(self, code, states=('vigente',)):
-        """Documento por clave; si no hay, por clave anterior cambiada en
-        los últimos 12 meses."""
+        """Documento por clave; si no hay, por clave anterior (sin límite de
+        tiempo desde 56.32.0, C-005)."""
         code = (code or '').strip()
         if not code:
             return self.browse()
@@ -520,11 +618,8 @@ class DocumentsDocument(models.Model):
                           order='sgi_revision desc, id desc', limit=1)
         if doc:
             return doc
-        since = fields.Date.context_today(self) - relativedelta(months=12)
-        return self.search([
-            ('sgi_previous_code', '=', code),
-            ('sgi_previous_code_date', '>=', since),
-        ] + domain, order='sgi_revision desc, id desc', limit=1)
+        return self.search([('sgi_previous_code', '=', code)] + domain,
+                           order='sgi_revision desc, id desc', limit=1)
 
     @api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_state')
     def _check_unique_vigente(self):
@@ -542,6 +637,153 @@ class DocumentsDocument(models.Model):
                 if dup:
                     raise ValidationError(
                         "Ya existe un documento vigente con la clave '%s'." % doc.sgi_code)
+
+    @api.model
+    def _sgi_migrate_procedure_states(self, na_codes=(), skip_codes=()):
+        """L-005 / C-003 (migración 56.31.0): los procedimientos controlados,
+        activos y en vigor que siguen en «Migrado a Odoo» pasan a «En curso»,
+        salvo los de ``na_codes`` (control operacional) que pasan a «No
+        aplica (se queda)» si ningún proceso los sustituye. Los de
+        ``skip_codes`` no se tocan (P-I01, que se retira aparte). Las claves se
+        comparan con la clave del Dropbox (clave anterior, o la clave si aún
+        no se copió). Por SQL, sin chatter; solo toca «migrado», así que no
+        pisa lo que MAST cambie a mano. Devuelve {estado: n}."""
+        self.env.flush_all()
+        cr = self.env.cr
+        cr.execute("""
+            UPDATE documents_document d
+               SET sgi_migration_state = CASE
+                       WHEN coalesce(d.sgi_previous_code, d.sgi_code) = ANY(%(na)s)
+                            AND d.sgi_replaced_by_process_id IS NULL
+                       THEN 'na' ELSE 'en_curso' END
+              FROM sgi_document_type t
+             WHERE t.id = d.sgi_doc_type_id AND t.code = 'procedimiento'
+               AND d.sgi_is_controlled IS TRUE AND d.active IS TRUE
+               AND d.sgi_state IN ('vigente', 'piloto')
+               AND d.sgi_migration_state = 'migrado'
+               AND NOT (coalesce(d.sgi_previous_code, d.sgi_code, '') = ANY(%(skip)s))
+         RETURNING d.sgi_migration_state
+        """, {'na': list(na_codes), 'skip': list(skip_codes)})
+        result = {}
+        for (state,) in cr.fetchall():
+            result[state] = result.get(state, 0) + 1
+        self.invalidate_model(['sgi_migration_state'])
+        return result
+
+    @api.model
+    def _sgi_migrate_previous_codes(self, exclude_ids=(), ids=None):
+        """C-004 + L-004 (migración 56.32.0): la clave del Dropbox pasa a ser
+        la clave anterior definitiva. Copia ``sgi_code`` → ``sgi_previous_code``
+        (sin fecha = clave del Dropbox) en los documentos controlados, activos
+        o archivados, salvo «Mi procedimiento» y externos, solo donde la clave
+        anterior está vacía. No toca ``sgi_code`` ni el nombre. Por SQL: sin
+        write(), sin seguimiento ni chatter. ``ids`` limita el alcance (pruebas).
+        Devuelve cuántos copió (0 la segunda vez)."""
+        self.env.flush_all()
+        query = """
+            UPDATE documents_document d
+               SET sgi_previous_code = d.sgi_code
+              FROM sgi_document_type t
+             WHERE t.id = d.sgi_doc_type_id
+               AND t.code NOT IN ('mi_procedimiento', 'externo')
+               AND d.sgi_is_controlled IS TRUE
+               AND d.sgi_previous_code IS NULL
+               AND d.sgi_code IS NOT NULL AND btrim(d.sgi_code) <> ''
+               AND NOT (d.id = ANY(%(exclude)s))
+        """
+        params = {'exclude': list(exclude_ids)}
+        if ids is not None:
+            query += " AND d.id = ANY(%(ids)s)"
+            params['ids'] = list(ids)
+        self.env.cr.execute(query, params)
+        count = self.env.cr.rowcount
+        self.invalidate_model(['sgi_previous_code'])
+        # El título limpio también quita la clave anterior.
+        if count:
+            docs = self.with_context(active_test=False).search(
+                [('sgi_previous_code', '!=', False)] + ([('id', 'in', list(ids))] if ids is not None else []))
+            self.env.add_to_compute(self._fields['sgi_title'], docs)
+        return count
+
+    # --- Clave nueva (C-004, D-02) -------------------------------------------
+    def _sgi_new_code_blockers(self):
+        """Por qué este documento no recibe clave nueva (texto) o False."""
+        self.ensure_one()
+        if not self.sgi_is_controlled:
+            return "no es controlado"
+        if self.sgi_state == 'obsoleto':
+            return "está obsoleto"
+        if self.sgi_doc_type in ('formulario_odoo', 'externo', 'mi_procedimiento'):
+            return "es %s: conserva su clave" % (self.sgi_doc_type_id.name or self.sgi_doc_type)
+        if self.sgi_replaced_by_process_id:
+            return "lo sustituye el proceso %s: se da de baja con su clave" % (
+                self.sgi_replaced_by_process_id.code)
+        if not self.sgi_doc_type_id.prefix_pattern:
+            return "su tipo (%s) no tiene patrón de clave nueva" % (self.sgi_doc_type_id.name or '—')
+        if self.sgi_doc_type_id._sgi_new_code_ok(self.sgi_code, self.sgi_process_id):
+            return "ya tiene clave nueva"
+        return False
+
+    def _sgi_assign_new_code(self, new_code=None):
+        """Pone la clave nueva a este documento y a TODAS las revisiones de su
+        clave (activas o archivadas), o a ninguna. Sin ``new_code`` la arma el
+        tipo (``sgi_next_code`` con el proceso). La clave anterior (Dropbox)
+        no se toca: ya quedó en ``sgi_previous_code``. Solo Jefe MAST."""
+        self.ensure_one()
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise AccessError("Solo el Jefe MAST asigna claves nuevas.")
+        blocker = self._sgi_new_code_blockers()
+        if blocker:
+            raise UserError("%s no recibe clave nueva: %s." % (self.sgi_code or self.name, blocker))
+        dtype = self.sgi_doc_type_id
+        if not self.sgi_process_id and '{process}' in dtype.prefix_pattern:
+            raise UserError("%s necesita su proceso para armar la clave nueva." % self.sgi_code)
+        new_code = (new_code or dtype.sgi_next_code(self.sgi_process_id)).strip()
+        if not dtype._sgi_new_code_ok(new_code, self.sgi_process_id):
+            raise UserError(
+                "«%s» no es una clave nueva de %s (%s, proceso %s). La clave del "
+                "Dropbox no se reutiliza como clave nueva." % (
+                    new_code, dtype.name, dtype.prefix_pattern,
+                    self.sgi_process_id.code or '—'))
+        family = self | self._sgi_same_code_docs()
+        taken = self.with_context(active_test=False).search_count([
+            ('sgi_code', '=', new_code), ('id', 'not in', family.ids)])
+        if taken:
+            raise UserError("La clave %s ya la usa otro documento." % new_code)
+        old_code = self.sgi_code
+        # Cambia la clave, no la revisión: la regla «cada revisión nueva va
+        # por arriba» no aplica a revisiones que ya existían.
+        family.with_context(sgi_revision_correction=True).write({'sgi_code': new_code})
+        for doc in family:
+            doc.message_post(body="Clave nueva %s (antes %s)." % (new_code, old_code))
+        return new_code
+
+    def action_sgi_assign_new_code(self):
+        """Acción «Asignar clave nueva» (lista de documentos, Jefe MAST): a
+        cada documento seleccionado le arma la siguiente clave del patrón de
+        su tipo (D-02) con todas sus revisiones. Los que no aplican se
+        reportan y se saltan."""
+        done, skipped, seen = [], [], set()
+        for doc in self.sorted(lambda d: (d.sgi_process_id.code or '', d.sgi_code or '')):
+            if doc.sgi_code in seen:
+                continue
+            seen.add(doc.sgi_code)
+            try:
+                with self.env.cr.savepoint():
+                    old = doc.sgi_code
+                    done.append("%s → %s" % (old, doc._sgi_assign_new_code()))
+            except (UserError, ValidationError) as exc:
+                skipped.append(str(exc.args[0] if exc.args else exc))
+        message = "Clave nueva en %d clave(s)." % len(done)
+        if done:
+            message += " " + "; ".join(done[:20])
+        if skipped:
+            message += " Sin cambio (%d): %s" % (len(skipped), "; ".join(skipped[:20]))
+        return {
+            'type': 'ir.actions.client', 'tag': 'display_notification',
+            'params': {'type': 'success' if done and not skipped else 'warning',
+                       'message': message, 'sticky': bool(skipped)},
+        }
 
     def _obsolete_code(self, code, exclude=None):
         """Obsoleta cualquier versión vigente del mismo código (excepto `exclude`)."""
@@ -582,6 +824,8 @@ class DocumentsDocument(models.Model):
                 ('sgi_parent_document_id', 'in', prior_revisions.ids)])
             if orphans:
                 orphans.write({'sgi_parent_document_id': doc.id})
+            # C-006: los formatos ligados a la revisión anterior pasan a la nueva.
+            self.env['sgi.format.map']._sgi_repoint(prior_revisions, doc)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -618,6 +862,11 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        if 'sgi_replaced_by_process_id' in vals and not (
+                self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            # D-017: el documento es la fuente de verdad y lo captura el Jefe MAST.
+            raise AccessError(
+                "Solo el Jefe MAST captura qué proceso sustituye a un procedimiento.")
         if vals.get('sgi_state') == 'obsoleto' and 'sgi_obsolete_date' not in vals:
             vals = dict(vals, sgi_obsolete_date=fields.Date.context_today(self))
         if vals.get('sgi_state') in ('piloto', 'vigente'):
@@ -648,11 +897,13 @@ class DocumentsDocument(models.Model):
             if 'sgi_revision' in vals else {}
         if 'sgi_code' in vals and 'sgi_previous_code' not in vals:
             # Cambio de clave: la anterior se guarda y sigue encontrando el
-            # documento 12 meses. Documento por documento: cada uno tenía la
-            # suya.
+            # documento, sin límite. C-005 (56.32.0): solo si no tenía clave
+            # anterior; la del Dropbox (o la primera) es definitiva y los
+            # renombres posteriores quedan en el seguimiento de «Clave SGI».
             new_code = (vals.get('sgi_code') or '').strip()
             today = fields.Date.context_today(self)
-            for doc in self.filtered(lambda d: d.sgi_code and d.sgi_code != new_code):
+            for doc in self.filtered(lambda d: d.sgi_code and d.sgi_code != new_code
+                                     and not d.sgi_previous_code):
                 super(DocumentsDocument, doc).write({
                     'sgi_previous_code': doc.sgi_code,
                     'sgi_previous_code_date': today,

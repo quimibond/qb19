@@ -333,7 +333,7 @@ class SgiProcessProcedure(models.Model):
         self.ensure_one()
         return bool(self.env['documents.document'].sudo().search_count([
             ('sgi_process_id', '=', self.id),
-            ('sgi_doc_type', '=', 'procedimiento'),
+            ('sgi_doc_type_id.code', '=', 'procedimiento'),
             ('sgi_is_controlled', '=', True),
             ('sgi_state', 'in', ('piloto', 'vigente')),
         ], limit=1))
@@ -389,19 +389,14 @@ class SgiProcessProcedure(models.Model):
         VIVO de aquí (única fuente de verdad)."""
         self.ensure_one()
         docs = self.procedure_ids.filtered(
-            lambda d: d.sgi_doc_type == 'procedimiento' and d.sgi_state == 'vigente')
+            lambda d: d.sgi_doc_type_id.code == 'procedimiento' and d.sgi_state == 'vigente')
         return docs[:1]
 
-    def _sgi_format_revision(self, code):
-        """Revisión viva del documento controlado vigente con esa clave (para el
-        pie F-P-G01-02), o False."""
-        return self.env['sgi.format.map'].sudo()._revision_of(code)
-
-    def _sgi_document_by_code(self, code):
-        """Documento vigente con esa clave (ref. a F-P-S01-01, etc.)."""
-        return self.env['documents.document'].sudo().search([
-            ('sgi_code', '=', code), ('sgi_state', '=', 'vigente'),
-        ], limit=1)
+    def _sgi_format_parts(self, ref):
+        """(clave, revisión) vivas del formato por referencia del mapeo
+        (``format_ref_procedure_print`` para el pie; C-006: ya no por el texto
+        de la clave)."""
+        return self.env['sgi.format.map'].sudo().sgi_ref_parts(ref)
 
     def _sgi_env_risks(self):
         """Riesgos ambientales ligados al proceso (sección 5)."""
@@ -537,7 +532,7 @@ class SgiProcessActivity(models.Model):
         inverse='_inverse_responsible_job_ids', store=True)
     instruction_id = fields.Many2one(
         'documents.document', string="Instructivo",
-        domain=[('sgi_doc_type', '=', 'instructivo')],
+        domain=[('sgi_doc_type_id.code', '=', 'instructivo')],
         help="Instructivo (IT) que explica cómo se hace el paso. El "
              "«Procedimiento relacionado» es otra cosa: el procedimiento que "
              "rige la actividad.")
@@ -573,7 +568,7 @@ class SgiProcessActivity(models.Model):
         help="Claves de formato en rojo que la actividad genera o usa.")
     related_procedure_id = fields.Many2one(
         'documents.document', string="Procedimiento relacionado",
-        domain=[('sgi_doc_type', '=', 'procedimiento')],
+        domain=[('sgi_doc_type_id.code', '=', 'procedimiento')],
         help="Otro procedimiento que rige esta actividad (ej. marca P-A22).")
     odoo_ref = fields.Char(
         string="Dónde se ejecuta en Odoo",
@@ -1272,7 +1267,7 @@ class SgiProcessActivity(models.Model):
             # Los «Formularios de Odoo» del control documental también
             # resuelven su menú desde el texto del destino de migración.
             lambda: self.env['documents.document'].search([
-                ('sgi_doc_type', '=', 'formulario_odoo'),
+                ('sgi_doc_type_id.code', '=', 'formulario_odoo'),
                 ('sgi_odoo_menu_id', '=', False),
                 ('sgi_migration_target', '!=', False),
             ]).action_sgi_resolve_odoo_menu(),

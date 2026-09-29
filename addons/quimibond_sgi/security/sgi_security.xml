@@ -29,7 +29,11 @@
          crea y sigue las suyas y aprueba las que le tocan. (3, …) quita la
          implicación que ya está en la base. -->
 
-    <!-- Auditor SGI (PERM-1, 19.0.48.0.0): SOLO LECTURA. Lee todo el SGI y
+    <!-- Auditor SGI (PERM-1, 19.0.48.0.0): SOLO LECTURA. Entrega 4 (decisión
+         3 y F-012): lee todo el SGI MENOS salud (sgi.health.record) y salarios
+         (sgi.staff.efficiency*, campos de hr.version): no tiene ACL de esos
+         modelos. Lo que base.group_user le daba de escritura en el SGI se le
+         quita con reglas (ver «Auditor: no escribe» al final). Lee todo el SGI y
          los registros de los procesos auditados (NC, inspecciones,
          documentos, tickets, compras, entregas, órdenes de producción,
          mantenimiento, ventas, encuestas, firmas) y solo escribe hallazgos
@@ -66,11 +70,19 @@
         <field name="implied_ids" eval="[(4, ref('group_sgi_manager'))]"/>
     </record>
 
+    <!-- F-013 (decisión 3 de la tanda 1, entrega 4): Dirección de Operaciones
+         CONSULTA Y APRUEBA, sin permisos de Jefe MAST. Deja de implicar al
+         Jefe MAST (el (3, …) quita la implicación que ya está en la base) e
+         implica Usuario SGI (su propio trabajo y aprobaciones) y Auditor
+         (lectura de todo el SGI menos salud y salarios). Conserva sus ACL
+         propias: tablero y revisión por la dirección. -->
     <record id="group_sgi_director" model="res.groups">
         <field name="name">Dirección de Operaciones (SGI)</field>
         <field name="sequence">40</field>
         <field name="privilege_id" ref="res_groups_privilege_sgi"/>
-        <field name="implied_ids" eval="[(4, ref('group_sgi_manager'))]"/>
+        <field name="implied_ids" eval="[(3, ref('group_sgi_manager')),
+            (4, ref('group_sgi_user')),
+            (4, ref('group_sgi_auditor'))]"/>
     </record>
     <!-- Multiempresa (fase 1): el grupo tiene 8 empresas en la misma base.
          Vacío = compartido. -->
@@ -142,6 +154,62 @@
     <record id="rule_sgi_document_type_company" model="ir.rule">
         <field name="name">SGI: Tipos de documento por empresa</field>
         <field name="model_id" ref="model_sgi_document_type"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <!-- F-014 / C-012 (auditoría 2026-09, D-03): los 10 modelos del SGI que
+         ya tenían empresa y no tenían regla. Globales, como las de arriba:
+         vacío = compartido. Los crons corren como superusuario y no las ven.
+         Los ~50 modelos sin empresa (indicadores, riesgos, NC, auditorías,
+         normas, áreas…) son compartidos a propósito: el SGI es de una sola
+         empresa (sgi.config._sgi_company) y no se crean procesos en otra. -->
+    <record id="rule_sgi_health_record_company" model="ir.rule">
+        <field name="name">SGI: Expedientes de salud por empresa</field>
+        <field name="model_id" ref="model_sgi_health_record"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_staff_efficiency_company" model="ir.rule">
+        <field name="name">SGI: Eficiencia de personal por empresa</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_checklist_template_company" model="ir.rule">
+        <field name="name">SGI: Plantillas de checklist por empresa</field>
+        <field name="model_id" ref="model_sgi_checklist_template"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_coa_inbox_company" model="ir.rule">
+        <field name="name">SGI: Bandeja de certificados de análisis por empresa</field>
+        <field name="model_id" ref="model_sgi_coa_inbox"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_csh_inspection_company" model="ir.rule">
+        <field name="name">SGI: Inspecciones de la comisión de seguridad e higiene por empresa</field>
+        <field name="model_id" ref="model_sgi_csh_inspection"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_inventory_value_company" model="ir.rule">
+        <field name="name">SGI: Valor del inventario por empresa</field>
+        <field name="model_id" ref="model_sgi_inventory_value"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_lock_date_log_company" model="ir.rule">
+        <field name="name">SGI: Bitácora de fechas de bloqueo por empresa</field>
+        <field name="model_id" ref="model_sgi_lock_date_log"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_machine_sheet_company" model="ir.rule">
+        <field name="name">SGI: Hojas de máquina por empresa</field>
+        <field name="model_id" ref="model_sgi_machine_sheet"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_sales_budget_company" model="ir.rule">
+        <field name="name">SGI: Presupuestos de ventas por empresa</field>
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_sales_budget_line_company" model="ir.rule">
+        <field name="name">SGI: Líneas de presupuesto de ventas por empresa</field>
+        <field name="model_id" ref="model_sgi_sales_budget_line"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
 
@@ -324,5 +392,188 @@
         <field name="sequence">10</field>
         <field name="privilege_id" ref="res_groups_privilege_sgi_health"/>
         <field name="implied_ids" eval="[(4, ref('group_sgi_user'))]"/>
+    </record>
+
+    <!-- Entrega 4 (decisión de Jose, 2026-09-29): salarios e importes de
+         eficiencias de personal (salario diario y mensual, «A pagar», importe
+         total, y el PDF con importes). Antes eran de «Nómina / Encargado»
+         (hr_payroll.group_hr_payroll_user), que en producción incluye a
+         usuarios que no deben ver salarios. Grupo propio, sin miembros en el
+         XML: los iniciales (Lorena, Miguel y Jose) los pone la migración
+         19.0.56.29.0 por login, y después se asignan a mano. Ningún grupo lo
+         implica (ni Jefe MAST, ni Dirección, ni RH). -->
+    <record id="res_groups_privilege_sgi_salary" model="res.groups.privilege">
+        <field name="name">Salarios de eficiencias</field>
+        <field name="sequence">24</field>
+        <field name="category_id" ref="module_category_sgi"/>
+    </record>
+    <record id="group_sgi_salary" model="res.groups">
+        <field name="name">Salarios de eficiencias (SGI)</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_sgi_salary"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+
+    <!-- ================================================================
+         Auditor: no escribe (F-012, entrega 4). El Auditor implica
+         base.group_user y las ACL de usuario interno le daban escritura en
+         cuatro modelos del SGI. Las ACL se suman y no se pueden restar, así
+         que va por reglas de grupo, que se combinan con OR entre los grupos
+         del usuario: el Auditor solo recibe [(0, '=', 1)] (no escribe) y el
+         Usuario SGI recibe [(1, '=', 1)], así que quien tiene los dos (MAST,
+         Dirección, un auditor que además opera su puesto) sigue igual. Un
+         empleado sin SGI no tiene ninguna de las dos y tampoco cambia.
+         ================================================================ -->
+    <record id="rule_sgi_checklist_line_auditor_no_write" model="ir.rule">
+        <field name="name">SGI: el Auditor no escribe renglones de checklist</field>
+        <field name="model_id" ref="model_sgi_checklist_line"/>
+        <field name="groups" eval="[(4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(0, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_checklist_line_user_write" model="ir.rule">
+        <field name="name">SGI: el Usuario SGI escribe renglones de checklist (sin cambio)</field>
+        <field name="model_id" ref="model_sgi_checklist_line"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_activity_change_auditor_no_write" model="ir.rule">
+        <field name="name">SGI: el Auditor no escribe cambios a actividades</field>
+        <field name="model_id" ref="model_sgi_activity_change"/>
+        <field name="groups" eval="[(4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(0, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_activity_change_user_write" model="ir.rule">
+        <field name="name">SGI: el Usuario SGI escribe cambios a actividades (sin cambio)</field>
+        <field name="model_id" ref="model_sgi_activity_change"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_activity_change_role_auditor_no_write" model="ir.rule">
+        <field name="name">SGI: el Auditor no escribe roles de cambios a actividades</field>
+        <field name="model_id" ref="model_sgi_activity_change_role"/>
+        <field name="groups" eval="[(4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(0, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_activity_change_role_user_write" model="ir.rule">
+        <field name="name">SGI: el Usuario SGI escribe roles de cambios a actividades (sin cambio)</field>
+        <field name="model_id" ref="model_sgi_activity_change_role"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_dev_characteristic_auditor_no_write" model="ir.rule">
+        <field name="name">SGI: el Auditor no escribe características de desarrollo</field>
+        <field name="model_id" ref="model_sgi_dev_characteristic"/>
+        <field name="groups" eval="[(4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(0, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_dev_characteristic_user_write" model="ir.rule">
+        <field name="name">SGI: el Usuario SGI escribe características de desarrollo (sin cambio)</field>
+        <field name="model_id" ref="model_sgi_dev_characteristic"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+
+    <!-- ================================================================
+         Incidentes y accidentes (D-06 y D-009, entrega 4): todos reportan;
+         el reportante edita su incidente mientras siga «Reportado» y después
+         lo consulta (causas y acciones) sin editarlo; Jefe MAST y Salud
+         ocupacional investigan, cierran y reabren (ver write() de
+         sgi.incident); Auditor y Dirección leen todos.
+         ================================================================ -->
+    <record id="rule_sgi_incident_user_read_own" model="ir.rule">
+        <field name="name">SGI: el usuario consulta los incidentes que reportó o donde tiene una acción</field>
+        <field name="model_id" ref="model_sgi_incident"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">['|', '|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id), ('action_line_ids.responsible_id', '=', user.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_sgi_incident_user_edit_reported" model="ir.rule">
+        <field name="name">SGI: el reportante edita su incidente mientras está reportado</field>
+        <field name="model_id" ref="model_sgi_incident"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">[('state', '=', 'reportado'), '|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id)]</field>
+        <field name="perm_read" eval="False"/>
+    </record>
+    <record id="rule_sgi_incident_auditor_read" model="ir.rule">
+        <field name="name">SGI: Auditor y Dirección leen todos los incidentes</field>
+        <field name="model_id" ref="model_sgi_incident"/>
+        <field name="groups" eval="[(4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_sgi_incident_sst_all" model="ir.rule">
+        <field name="name">SGI: MAST y Salud ocupacional investigan todos los incidentes</field>
+        <field name="model_id" ref="model_sgi_incident"/>
+        <field name="groups" eval="[(4, ref('group_sgi_manager')), (4, ref('group_sgi_health'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <!-- ================================================================
+         Entrega 4 · modelos sensibles (decisión de Jose, 2026-09-29).
+         ================================================================ -->
+
+    <!-- Comisión de Seguridad e Higiene (sgi.csh.finding): los hallazgos de
+         los recorridos pueden nombrar personas. Grupo propio, VACÍO al
+         instalar (Jose decide quién entra); implica Usuario SGI para llegar
+         al menú. Leen y escriben hallazgos la Comisión, Salud ocupacional y
+         el Jefe MAST; el Auditor los lee. El resto de los Usuarios SGI ve el
+         recorrido y su conteo, no los hallazgos. -->
+    <record id="res_groups_privilege_sgi_csh" model="res.groups.privilege">
+        <field name="name">Comisión de Seguridad e Higiene</field>
+        <field name="sequence">23</field>
+        <field name="category_id" ref="module_category_sgi"/>
+    </record>
+    <record id="group_sgi_csh" model="res.groups">
+        <field name="name">Comisión de Seguridad e Higiene (SGI)</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_sgi_csh"/>
+        <field name="implied_ids" eval="[(4, ref('group_sgi_user'))]"/>
+    </record>
+
+    <!-- Brechas de competencia (sgi.competence.gap, vista SQL): el Usuario SGI
+         ve las suyas y las de su equipo (quienes le reportan o su
+         departamento); RH, Jefe MAST y Auditor, todas. -->
+    <record id="rule_sgi_competence_gap_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario ve sus brechas de competencia y las de su equipo</field>
+        <field name="model_id" ref="model_sgi_competence_gap"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">['|', '|', ('employee_id.user_id', '=', user.id), ('employee_id.parent_id.user_id', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_sgi_competence_gap_all" model="ir.rule">
+        <field name="name">SGI: RH, MAST y Auditor ven todas las brechas de competencia</field>
+        <field name="model_id" ref="model_sgi_competence_gap"/>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user')), (4, ref('group_sgi_manager')), (4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <!-- Eficiencias de personal: «Salarios de eficiencias (SGI)» (dueño de
+         los salarios) ve todas las hojas; las reglas de RH y MAST siguen, pero
+         sin los importes (groups en los campos de
+         models/sgi_staff_efficiency.py). -->
+    <record id="rule_sgi_staff_eff_payroll_all" model="ir.rule">
+        <field name="name">SGI: Salarios de eficiencias ve todas las hojas</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="groups" eval="[(4, ref('group_sgi_salary'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_sgi_staff_eff_line_payroll_all" model="ir.rule">
+        <field name="name">SGI: Salarios de eficiencias ve todos los renglones</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency_line"/>
+        <field name="groups" eval="[(4, ref('group_sgi_salary'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
     </record>
 </odoo>

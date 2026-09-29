@@ -54,7 +54,7 @@ class SgiMyPending(models.TransientModel):
     employee_id = fields.Many2one('hr.employee.public', string="Persona", readonly=True)
     kind = fields.Selection(PENDING_KINDS, string="Tipo", required=True, readonly=True)
     name = fields.Char(string="Qué", readonly=True)
-    process_id = fields.Many2one('sgi.process', string="Proceso", readonly=True)
+    process_id = fields.Many2one('sgi.process', string="Proceso", readonly=True, ondelete='restrict')
     date_due = fields.Date(string="Vence", readonly=True)
     state = fields.Selection(PENDING_STATES, string="Estado", readonly=True)
     state_rank = fields.Integer(readonly=True)
