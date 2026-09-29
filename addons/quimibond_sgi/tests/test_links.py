@@ -88,11 +88,16 @@ class TestLinks(TransactionCase):
     def test_04_documentos_fuera_del_sgi_sin_estado(self):
         plain = self.env['documents.document'].create({'name': 'Foto de la planta.jpg', 'type': 'binary'})
         self.assertFalse(plain.sgi_state, "Un archivo que no es del SGI no lleva estado.")
+        # Claves con la nomenclatura de su tipo (PR-{proceso}; anexo «ANEXO nn»):
+        # «P-L91» y «AN-L91» no la cumplen y la base nueva las rechaza.
         controlled = self.env['documents.document'].create({
-            'name': 'P-L91 Procedimiento ligas', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-L91', 'sgi_process_id': self.process.id})
+            'name': 'PR-XLK Procedimiento ligas', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'PR-XLK', 'sgi_process_id': self.process.id})
         self.assertEqual(controlled.sgi_state, 'borrador')
-        plain.write({'sgi_is_controlled': True, 'sgi_doc_type': 'anexo', 'sgi_code': 'AN-L91'})
+        # 56.28.0 (N-001): un documento que se vuelve controlado necesita su
+        # responsable SGI.
+        plain.write({'sgi_is_controlled': True, 'sgi_doc_type': 'anexo', 'sgi_code': 'ANEXO 91',
+                     'sgi_owner_id': self.env.ref('base.user_admin').id})
         self.assertEqual(plain.sgi_state, 'borrador', "Al volverse controlado arranca en borrador.")
 
     def test_05_faltantes_no_viven_en_procesos_archivados(self):

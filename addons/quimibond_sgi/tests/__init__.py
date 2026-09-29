@@ -73,6 +73,7 @@ from . import test_excel_migration
 from . import test_mp_change
 from . import test_my_pending
 from . import test_approval_native
+from . import test_relative_roles
 from . import test_role_audit
 from . import test_cleanup_b10
 from . import test_business_line

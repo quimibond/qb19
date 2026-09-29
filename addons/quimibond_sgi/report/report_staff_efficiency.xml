@@ -27,7 +27,9 @@
                             <thead><tr><th>Núm.</th><th>Nombre</th><th>Puesto</th><th>Área</th><th>A 5.5 %</th><th>O y L 2 %</th><th>E 2 %</th><th>PQ 2 %</th><t t-if="money"><th>Salario diario</th><th>Salario mensual</th></t><th>Total %</th><th t-if="money">A pagar</th></tr></thead>
                             <tbody>
                                 <tr t-foreach="doc.line_ids" t-as="l">
-                                    <td><span t-out="l.employee_id.registration_number or l.employee_id.id"/></td>
+                                    <!-- 57.13.0: el número de empleado es de RH (groups); el jefe
+                                         que imprime su hoja no lo puede leer y el PDF tronaba. -->
+                                    <td><span t-out="l.employee_id.sudo().registration_number or l.employee_id.id"/></td>
                                     <td><span t-out="l.employee_id.name"/></td>
                                     <td><span t-out="l.job_id.name or ''"/></td>
                                     <td><span t-out="l.department_id.name or ''"/></td>

@@ -35,8 +35,11 @@ class TestNcDeadlines(TransactionCase):
             'code': 'XNCD', 'name': 'Proceso NC plazos', 'owner_id': cls.owner.id})
 
     def _nc(self, days_ago=0, **vals):
+        # Etapa «Abierta» explícita: en una base nueva las etapas genéricas de
+        # Calidad («Nuevo»…, sin equipos) van antes y la NC nacía fuera del
+        # flujo del SGI; en producción esas etapas son de otros equipos.
         alert = self.env['quality.alert'].create(dict({
-            'title': 'NC plazos', 'team_id': self.team.id,
+            'title': 'NC plazos', 'team_id': self.team.id, 'stage_id': self.stage_open.id,
             'sgi_process_id': self.process.id,
             'sgi_responsible_ids': [(6, 0, self.user.ids)]}, **vals))
         if days_ago:

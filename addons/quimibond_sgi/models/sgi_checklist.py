@@ -66,20 +66,27 @@ class SgiChecklistTemplate(models.Model):
                     ('sgi_checklist_date', '=', day)])
                 if exists:
                     continue
-                created |= Request.create({
+                vals = {
                     'name': "%s%s — %s — %s" % (
                         "%s " % template.code if template.code else '', template.name, equipment.name, day),
                     'equipment_id': equipment.id,
                     'maintenance_type': 'preventive',
                     'schedule_date': datetime.combine(day, time(8, 0)),
-                    'maintenance_team_id': (template.maintenance_team_id or equipment.maintenance_team_id).id,
                     'user_id': (template.user_id or equipment.technician_user_id).id,
                     'sgi_checklist_template_id': template.id,
                     'sgi_checklist_date': day,
                     'sgi_checklist_line_ids': [(0, 0, {'sequence': item.sequence, 'name': item.name,
                                                        'hint': item.hint})
                                                for item in template.item_ids],
-                })
+                }
+                # 57.13.0: el equipo de mantenimiento es obligatorio en Odoo 19.
+                # Mandar False cuando ni la plantilla ni el equipo lo tienen
+                # anulaba el default de Odoo (el primer equipo de la empresa) y
+                # la solicitud no se creaba (NOT NULL).
+                team = template.maintenance_team_id or equipment.maintenance_team_id
+                if team:
+                    vals['maintenance_team_id'] = team.id
+                created |= Request.create(vals)
             template.last_run = day
         return created
 

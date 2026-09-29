@@ -56,19 +56,28 @@ class TestHierarchy(TransactionCase):
         self.assertEqual(action['context']['sgi_diagram_res_id'], self.proc.id)
 
     def test_03_datos_del_mapa_con_conexiones(self):
+        # 57.8.0 (B-012) retiró sgi.process.sgi_map_data, que ya nadie
+        # llamaba: el mapa lo dibuja el diagrama «process_map» de sgi.diagram
+        # (bandas por tipo de proceso, entradas/salidas y flechas).
         self.env['sgi.process.flow'].create({
             'from_process_id': self.proc.id, 'to_process_id': self.other.id, 'name': 'Lote liberado'})
-        data = self.env['sgi.process'].sgi_map_data()
-        by_id = {p['id']: p for band in data['bands'] for p in band['processes']}
+        data = self.env['sgi.diagram'].data('process_map', self.proc.id)
+        self.assertEqual(data['layout'], 'bands')
+        by_id = {i['res_id']: i for lane in data['lanes'] for i in lane['items']}
         self.assertIn(self.proc.id, by_id)
-        self.assertEqual(by_id[self.proc.id]['out_count'], 1)
-        self.assertEqual(by_id[self.other.id]['in_count'], 1)
-        keys = [band['key'] for band in data['bands']]
+
+        def meta(process, label):
+            return {m['label']: m['value'] for m in by_id[process.id]['meta']}[label]
+        self.assertEqual(meta(self.proc, "Salidas"), 1)
+        self.assertEqual(meta(self.other, "Entradas"), 1)
+        keys = [lane['key'] for lane in data['lanes']]
         self.assertEqual(keys, [k for k in ('estrategico', 'cop', 'soporte') if k in keys],
                          "Bandas en el orden del mapa.")
-        flow = [f for f in data['flows'] if f['from_id'] == self.proc.id and f['to_id'] == self.other.id]
+        flow = [e for e in data['edges']
+                if e['from'] == 'sgi.process,%d' % self.proc.id and e['to'] == 'sgi.process,%d' % self.other.id]
         self.assertEqual(len(flow), 1)
-        self.assertEqual(flow[0]['name'], 'Lote liberado')
+        self.assertEqual(flow[0]['label'], 'Lote liberado')
+        self.assertEqual(data['selected'], 'sgi.process,%d' % self.proc.id)
         self.assertEqual(self.macro.child_count, 1)
 
     def test_04_diagramas_en_html(self):
@@ -80,12 +89,12 @@ class TestHierarchy(TransactionCase):
         stage = self.env['sgi.process.stage'].create({'process_id': self.proc.id, 'name': 'Arranque', 'code': 'A'})
         self.a1.stage_id = stage
         doc = self.env['documents.document'].create({
-            'name': 'P-H91 Procedimiento H', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-H91', 'sgi_state': 'vigente',
+            'name': 'PR-XH1 Procedimiento H', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'PR-XH1', 'sgi_state': 'vigente',
             'sgi_process_id': self.proc.id})
         fmt = self.env['documents.document'].create({
-            'name': 'IT-P-H91-01 Instructivo H', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-P-H91-01', 'sgi_state': 'piloto',
+            'name': 'IT-XH1-01 Instructivo H', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-XH1-01', 'sgi_state': 'piloto',
             'sgi_process_id': self.proc.id, 'sgi_parent_document_id': doc.id})
         objective = self.env['sgi.objective'].create({'name': 'Objetivo H'})
         indicator = self.env['sgi.indicator'].create({

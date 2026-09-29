@@ -242,7 +242,10 @@ class HrJobMyProcedure(models.Model):
         cover = {
             'job': self,
             'department': self.department_id,
-            'manager': self.department_id.manager_id,
+            # 57.13.0: con sudo, como los empleados: el PDF lo imprime y lo
+            # publica el Jefe MAST, que no es de RH, y leer al responsable
+            # (hr.employee: puesto, perfil privado) daba AccessError.
+            'manager': self.sudo().department_id.manager_id,
             'employees': employees,
             'family': self.sgi_family_id,
             # 56.16.0: equipos de venta que filtran este procedimiento.
@@ -537,13 +540,22 @@ class HrJobMyProcedure(models.Model):
         """Puestos que tienen «Mi procedimiento» que publicar: con roles
         (propios o de su familia) y con personas."""
         Role = self.env['sgi.activity.role'].sudo()
-        jobs = self.env['hr.job'].sudo().search([])
+        # 57.13.0 (D-03): solo puestos y personas de la empresa del SGI.
+        company_domain = self._sgi_mp_company_domain()
+        jobs = self.env['hr.job'].sudo().search(company_domain)
         families = jobs.sgi_family_id
         roles = Role.search(['|', ('job_id', 'in', jobs.ids), ('family_id', 'in', families.ids)])
         roles = roles.filtered(lambda r: r.activity_id.active)
-        with_roles = roles.job_id | roles.family_id.job_ids
-        staffed = self.env['hr.employee'].sudo().search([('job_id', 'in', with_roles.ids)]).job_id
+        with_roles = (roles.job_id | roles.family_id.job_ids) & jobs
+        staffed = self.env['hr.employee'].sudo().search(
+            [('job_id', 'in', with_roles.ids)] + company_domain).job_id
         return with_roles & staffed
+
+    @api.model
+    def _sgi_mp_company_domain(self):
+        """Puestos y empleados de la empresa del SGI (o sin empresa)."""
+        company = self.env['sgi.config']._sgi_company()
+        return [('company_id', 'in', [company.id, False])]
 
     @api.model
     def action_sgi_publish_all_my_procedures(self):
@@ -587,10 +599,13 @@ class HrJobMyProcedure(models.Model):
         Job = self.env['hr.job'].sudo()
         Employee = self.env['hr.employee'].sudo()
         Role = self.env['sgi.activity.role'].sudo()
-        jobs = Job.search([])
+        # 57.13.0 (D-03): solo la empresa del SGI; la revisión previa la abre
+        # el Jefe MAST y leer puestos o empleados de otra empresa tronaba.
+        company_domain = self._sgi_mp_company_domain()
+        jobs = Job.search(company_domain)
         roles = Role.search([('activity_id.active', '=', True)])
-        with_roles = roles.job_id | roles.family_id.job_ids
-        staffed_jobs = Employee.search([('job_id', '!=', False)]).job_id
+        with_roles = (roles.job_id | roles.family_id.job_ids) & jobs
+        staffed_jobs = Employee.search([('job_id', '!=', False)] + company_domain).job_id
 
         by_name = {}
         for job in jobs:
@@ -599,9 +614,10 @@ class HrJobMyProcedure(models.Model):
         duplicates = [group for group in by_name.values() if len(group) > 1]
         duplicates.sort(key=lambda g: sgi_normalize_name(g[0].name))
 
-        no_job = Employee.search([('job_id', '=', False)], order='name')
+        no_job = Employee.search([('job_id', '=', False)] + company_domain, order='name')
         job_without_roles = Employee.search(
-            [('job_id', '!=', False), ('job_id', 'not in', with_roles.ids)], order='job_id, name')
+            [('job_id', '!=', False), ('job_id', 'not in', with_roles.ids)] + company_domain,
+            order='job_id, name')
         roles_without_people = (with_roles - staffed_jobs).sorted('name')
         return {
             'duplicates': duplicates,
@@ -633,7 +649,12 @@ class HrEmployeeMyProcedure(models.Model):
         ('sin_publicar', "Sin publicar"),
         ('pendiente', "Acuse pendiente"),
         ('leido', "Leído y entendido"),
-    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack', store=True, index=True)
+    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack', store=True, index=True,
+        # 57.13.0: sin prefetch. hr.employee.public no lo tiene y Odoo 19 no
+        # deja leer a quien no es de RH campos fuera del perfil público: al
+        # leer cualquier campo de un empleado (el nombre del jefe, en el PDF)
+        # el prefetch lo arrastraba y todo tronaba.
+        prefetch=False)
 
     @api.depends('sgi_mp_job_id', 'sgi_document_ack_ids.state', 'sgi_document_ack_ids.document_id')
     def _compute_sgi_my_procedure_ack(self):

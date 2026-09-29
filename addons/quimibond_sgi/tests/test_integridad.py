@@ -26,9 +26,18 @@ class TestIntegridad(TransactionCase):
             'process_id': cls.process.id})
 
     def _assert_restricted(self, record):
-        with mute_logger('odoo.sql_db'), self.assertRaises((IntegrityError, UserError)):
-            record.unlink()
-            self.env.flush_all()
+        # Odoo no acepta tuplas en assertRaises (su versión hace issubclass).
+        # ``restrict`` lo frena la base (IntegrityError) o el ORM (UserError):
+        # cualquiera de los dos vale, y nada más.
+        raised = None
+        try:
+            with mute_logger('odoo.sql_db'), self.env.cr.savepoint():
+                record.unlink()
+                self.env.flush_all()
+        except (IntegrityError, UserError) as exc:
+            raised = exc
+        self.assertIsNotNone(raised, "%s se borró estando en uso." % record.display_name)
+        self.env.invalidate_all()
         self.assertTrue(record.exists())
 
     def test_01_process_with_indicator_cannot_be_deleted(self):

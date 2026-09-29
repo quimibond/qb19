@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import TransactionCase, new_test_user, tagged
 
 
 @tagged('post_install', '-at_install')
@@ -28,7 +28,11 @@ class TestSignElearning(TransactionCase):
             'sgi_doc_type': 'procedimiento',
             'sgi_code': 'P-G99',
         })
-        result = doc.action_sgi_send_sign_requests()
+        # Lo llama el Jefe MAST (candado del método, 56.28.0): el env de la
+        # prueba es OdooBot, que no está en el grupo.
+        mast = new_test_user(self.env, login='zs_sign_mast',
+                             groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        result = doc.with_user(mast).action_sgi_send_sign_requests()
         self.assertEqual(result['params']['type'], 'info')
         with self.assertRaises(UserError):
             doc.with_user(self.user).action_sgi_send_sign_requests()

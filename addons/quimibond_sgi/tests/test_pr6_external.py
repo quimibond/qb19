@@ -11,6 +11,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
+from .common_users import sgi_set_mast
 
 
 @tagged('post_install', '-at_install')
@@ -30,6 +31,8 @@ class TestPr6External(TransactionCase):
         cls.process = cls.env['sgi.process'].create({'code': 'XP6', 'name': 'Proceso PR6'})
         cls.buyer = new_test_user(cls.env, login='pr6_buyer',
                                   groups='base.group_user,quimibond_sgi.group_sgi_user')
+        # Base nueva: sin Jefe MAST activo la escalación «a MAST» no se agenda.
+        cls.mast = sgi_set_mast(cls.env)
 
     # ---- NC-6 -------------------------------------------------------
     def test_01_nc6_enviar_al_proveedor_y_respuesta_por_portal(self):

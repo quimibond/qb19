@@ -11,9 +11,9 @@ aunque ya nadie tuviera que aprobar nada.
 Ahora se marcan como **hechas** con la nota «Regla de aprobación archivada el
 AAAA-MM-DD por <usuario>; ya no se requiere esta aprobación.», sin aprobar ni
 rechazar (no se crea ningún `studio.approval.entry`). En Odoo 19 marcar hecha
-una actividad la ARCHIVA (no la borra) y publica en el chatter del documento
-el mensaje «actividad hecha» con la nota; si la actividad no está sobre el
-documento, la nota se publica aparte en el documento.
+una actividad la ARCHIVA (no la borra); aquí se archiva directo con la nota en
+`feedback` (19.0.1.0.1: sin pasar por «Marcar como hecho», que Studio
+intercepta) y la nota se publica una vez en el chatter del documento.
 
 La `studio.approval.request` NO se borra (regla de la casa: nada se borra,
 solo se archiva): queda ligada a su actividad archivada. Mis pendientes ya
@@ -61,14 +61,18 @@ class StudioApprovalRuleArchive(models.Model):
             return
         note = self._sgi_archive_note()
         noted = set()  # (modelo, id) de los documentos que ya llevan la nota en el chatter
-        for activity in requests.mail_activity_id.filtered('active'):
-            # action_feedback: el «Marcar como hecho» nativo de Odoo 19 (archiva
-            # la actividad, guarda la nota en `feedback` y la publica en el
-            # documento). Una por una para saber en qué documento quedó.
-            message_id = activity.action_feedback(feedback=note)
-            if message_id:
-                message = self.env['mail.message'].sudo().browse(message_id)
-                noted.add((message.model, message.res_id))
+        # 19.0.1.0.1: la actividad se archiva con la nota escrita a mano, sin
+        # action_feedback. En la actividad de una solicitud de Studio, «Marcar
+        # como hecho» pasa por la lógica de aprobación de Studio (decide la
+        # solicitud y revisa permisos del aprobador): archivar la regla
+        # tronaba con AccessError sobre studio.approval.request. La nota va al
+        # chatter del documento en el ciclo de abajo, una vez por documento.
+        activities = requests.mail_activity_id.filtered('active')
+        if activities:
+            vals = {'active': False, 'feedback': note}
+            if 'date_done' in activities._fields:
+                vals['date_done'] = fields.Date.context_today(self)
+            activities.sudo().write(vals)
         for request in requests:
             rule = request.rule_id
             key = (rule.model_name, request.res_id)

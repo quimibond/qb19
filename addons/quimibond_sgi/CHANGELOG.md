@@ -13,6 +13,154 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.13.0 — 2026-09-29
+
+**Corregido (entrega 8, primer bloque; H-018, J-010; decisión de Jose
+2026-09-29 «roles relativos»):** los roles relativos de `sgi.activity.role`
+se resuelven a personas (`models/sgi_relative_roles.py`):
+
+- **Dueño del proceso**: el del proceso del REGISTRO que se pide o aprueba
+  (`sgi_process_id`/`process_id`; si no, cualquier many2one o many2many
+  guardado a `sgi.process`, p. ej. `sgi_affected_process_ids`; si no, un salto
+  por el documento o la actividad ligados). Sin proceso en el registro, el de
+  la actividad (antes siempre el de la actividad).
+- **Solicitante**: `request_owner_id`, `sgi_requester_id`, `requester_id`,
+  `requested_by` o `request_user_id`; si no, `create_uid` (salvo sistema).
+  **Jefe del área que pide**: su `hr.employee.parent_id`. **Quien lo
+  detecta**: `sgi_detected_by_id`, `detected_by_id`, `reporter_id` o
+  `sgi_requester_id`; si no, `create_uid`. **Área responsable**: el
+  `manager_id` del departamento del registro (`sgi_area_id.department_id`,
+  `department_id` u otro many2one a `hr.department`). Sin registro solo se
+  resuelve «Dueño del proceso»; lo que no se resuelve regresa vacío con su
+  motivo (log y reporte).
+- **Aprobador ≠ quien ejecuta o pide**: en «Aprueba» y «Escala» se quita a
+  quien también ejecuta la actividad o pide el registro; si no queda nadie,
+  sube a su jefe directo (`parent_id`, saltando a quien también ejecute o
+  pida); sin jefe queda vacío con aviso. El caso S6.07 (Mariano aprobaba lo
+  que él ejecuta) sube a su jefe.
+- **Escalamientos a «Dueño del proceso» en Mis pendientes**: los 41 de
+  producción no le llegaban a nadie (la lista guardada del empleado solo ve
+  puestos y familias). Ahora le llegan al dueño del proceso de la actividad,
+  o a su jefe si el dueño también la ejecuta (`_sgi_relative_escalations`).
+- **Ejecutor relativo** (C2.35, S1.01, S1.18): en la adherencia cuenta como
+  correcto cualquier empleado de la empresa (lo hace quien pide o detecta);
+  genéricos, sin empleado y sistema siguen fuera.
+- **Aprobaciones nativas**: «Jefe del área que pide» con «Solicitud en
+  Aprobaciones» crea la categoría con `manager_approval = required` (nativo:
+  el jefe de quien hace la solicitud). En botón o firma, un relativo que
+  depende del registro queda en el estado nuevo «Depende de cada registro».
+- La carga por API avisa (`kind='role'`) cuando un «Aprueba» es
+  «Solicitante»; no lo rechaza (`quimibond_sgi_mapa` todavía lo trae en
+  E2.01, S4.03 y S6.07).
+- `sgi.activity.role.sgi_relative_roles_report()`: a quién resuelve hoy cada
+  rol relativo (solo lectura, se puede llamar por MCP).
+
+**Pruebas:** `test_relative_roles` (11 casos, datos propios).
+
+**Corregido (primera corrida real de las pruebas, build de desarrollo
+38913511 sobre base nueva con demo: 76 fallas de 1,199):**
+
+- **Diagramas:** `sgi.diagram.data` tomaba el método antes de poner los
+  parámetros en el contexto, así que todo diagrama ignoraba lo elegido
+  (instrumento de riesgos, vista de cumplimiento legal, carriles por etapa,
+  equipo de ventas, mercado). Y cada caja de actividad unía
+  `sale_team_ids | fiscal_position_ids` (modelos distintos: `TypeError`),
+  así que el flujo del proceso y los demás diagramas con actividades
+  tronaban desde 56.16.0.
+- **Quien no es de RH y lee empleados (Odoo 19 solo le da el perfil
+  público):** `hr.employee.sgi_mp_job_id` y `sgi_my_procedure_ack_state` sin
+  prefetch (no están en `hr.employee.public`; al leer cualquier campo de un
+  empleado, el prefetch los arrastraba y Odoo rechazaba la lectura); el
+  responsable del departamento en el PDF de «Mi procedimiento» se lee con
+  sudo, igual que los empleados; el número de empleado del PDF de
+  eficiencias (`registration_number`, grupo de RH) también. Publicar e
+  imprimir «Mi procedimiento» y el PDF de eficiencias tronaban para el Jefe
+  MAST y los jefes de área sin RH.
+- **Una sola empresa (D-03) en «Mi procedimiento»:** la lista de personas y
+  puestos de MAST / Dirección / administrador, «Mi equipo», los puestos a
+  publicar y la revisión previa se limitan a la empresa del SGI (antes todas:
+  un empleado de otra empresa no permitida al usuario tronaba la pantalla).
+- **Restricción perdida:** `sgi_approval_native._check_condition` tenía el
+  mismo nombre que la de `sgi_catalog` y la reemplazaba: desde 56.5.0 no se
+  revisaba que la condición solo vaya en «aprueba», «informa» o «escala».
+  Se renombra a `_check_approval_condition`.
+- **Acciones (`sgi.action.line`):** la actividad espejo se agenda, actualiza
+  y cierra con sudo; el responsable de una acción sobre un registro que no
+  puede editar (un riesgo de otro proceso) no podía terminarla ni reabrirla.
+- **Familias de puestos:** la regla «un puesto, una familia» comparaba
+  también contra familias archivadas cuando el contexto traía
+  `active_test=False` (la carga por API): no se podía crear la familia nueva
+  de un puesto cuya familia vieja estaba archivada.
+- **Documentos controlados:** el responsable SGI por defecto también cuando
+  «controlado» llega por el contexto (`default_sgi_is_controlled`: alta
+  documental, lista maestra, externos); antes el alta por código tronaba.
+- **Pie de formato (`sgi.format.map`):** la regla «documento o clave» se
+  revisa también al crear (un `@api.constrains` no corre si sus campos no
+  vienen en el alta).
+- **Checklists de mantenimiento:** sin equipo de mantenimiento en la
+  plantilla ni en el equipo se mandaba `maintenance_team_id = False` y la
+  solicitud no se creaba (NOT NULL en Odoo 19); ahora toma el default de Odoo.
+- **Responsiva de EPP:** creada con renglones y sin `items`, la lista de EPP
+  quedaba vacía (el alta ponía `items = False` y bloqueaba el cálculo).
+- **Plan de control del artículo:** el compute guardado no tenía de qué
+  depender y nunca proponía el plan; ahora lo propone el plan al incluir el
+  artículo (a los que aún no tienen).
+- **Aprobación nativa:** `approval_state` con dependencias (seguía «Por
+  sincronizar» en la misma transacción después de sincronizar).
+- **Migración 57.1.0:** `_sgi_cierre_nc_formula` baja lo escrito antes de su
+  SQL (una segunda llamada en la misma transacción repetía los migrados).
+- **Proponer cambio:** la propuesta se crea con sudo (nace como copia de la
+  actividad, con formatos que quien propone puede no poder leer); el autor
+  sigue siendo quien propone (F-005).
+- **Satélites:** `quimibond_sgi_revisado` 19.0.4.2.1 deja «Calidad PQ»
+  después de «Reproceso» (con solo el anterior en `selection_add` quedaba al
+  final de la lista); `quimibond_sgi_studio` 19.0.1.0.1 archiva las
+  actividades de una regla archivada escribiendo la nota, sin «Marcar como
+  hecho» (Studio lo intercepta con su lógica de aprobación y tronaba con
+  AccessError).
+
+**Datos de producción (2026-09-29, lectura):** 165 empleados y 129 puestos,
+todos de la empresa 1; Areli (128) sin grupo de RH; 0 roles con condición
+fuera de aprueba/informa (5 y 6); 3 plantillas de checklist sin equipos; 10
+planes de control sin artículos; 4 solicitudes de aprobación de Studio. Nada
+de esto pide migración.
+
+**Pruebas (corrida real, base nueva):** se ajustan las que quedaron viejas
+frente a un cambio intencional (A) y las que no preparaban sus datos para
+una base nueva de Odoo 19 (B):
+
+- (A) `test_audit_hardening` a6 (cerrar un incidente es de MAST y Salud,
+  56.34.0), `test_hierarchy` test_03 (el mapa es el diagrama `process_map`;
+  `sgi_map_data` se retiró en 57.8.0), `test_indicator_trajectory` (los
+  escalones se generan solos desde 55.0.0), `test_ola_b` (objetivo sin
+  indicadores = «sin dato», 53.5.0), `test_procedure` (sin agrupación por
+  proceso desde 45.0.0: panel lateral), `test_format_map_documento` test_04
+  (el borrado del documento ligado queda en `set null`, decisión de Jose del
+  lote 2).
+- (B) claves con la nomenclatura del tipo (`PR-{proceso}`,
+  `IT-{proceso}-{nn}`, `ANEXO nn`) en `test_hierarchy`, `test_doc_change_sign`,
+  `test_excel_migration`, `test_external_doc`, `test_links`,
+  `test_sign_builder`; ejecutor obligatorio (`test_due_long`,
+  `test_cleanup_b10`); método de medición en procedimientos vigentes
+  (`test_dropbox_key`, `test_legacy_routine`); Jefe MAST y Dirección activos
+  (OdooBot está archivado) con `common_users.sgi_set_mast/sgi_set_director`
+  en `test_fase7`, `test_fase8`, `test_ola1`, `test_pegamento`,
+  `test_pr6_external`; `assertRaises` sin tuplas (`test_integridad`,
+  `test_entrega4`, `test_role_audit`); ubicaciones, cuentas y diario de la
+  compañía de la prueba (`test_indicator_i3`, `test_indicator_p21`,
+  `test_expansion_kpis`); etapa «Abierta» explícita (`test_nc_deadlines`);
+  Odoo 19: `res.partner` sin `date` (`test_bandeja`), destinatarios del
+  correo en `recipient_ids` (`test_weekly_overdue`), `date_order` = momento de
+  confirmar (`test_kpi_fields`), organigrama sin `parent_field`
+  (`test_my_procedure_ui`), campos de `get_views` para todos los grupos
+  (`test_entrega1c`), asistente de diseño de documento en base nueva
+  (`test_my_procedure`), ficha `hr.employee` solo para RH
+  (`test_my_procedure` test_15), ACL de Documentos por registro
+  (`test_perm_auditor`), menús de satélites instalados (`test_menu_tree`),
+  seguimiento confirmado antes de migrar (`test_calibracion_avisos`),
+  lectura tras `flush` de lo guardado (`test_role_audit` test_07) y el envío a
+  firma como Jefe MAST (`test_sign_elearning`).
+
 ## 19.0.57.12.0 — 2026-09-29
 
 **Cambiado (D-11 ampliada, Jose 2026-09-29):**

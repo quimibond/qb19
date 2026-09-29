@@ -1043,6 +1043,12 @@ class _SgiLoader:
         if relative not in dict(SGI_RELATIVE_ROLES):
             raise ValidationError("Rol relativo «%s» inválido (%s)." % (
                 relative, ', '.join(dict(SGI_RELATIVE_ROLES))))
+        if role.get('role') == 'aprueba' and relative == 'solicitante':
+            # 57.13.0 (J-010): quien pide no se aprueba a sí mismo; en cada
+            # registro sube a su jefe (sgi_relative_roles). Se carga, pero avisa.
+            self.report.warn('role', key, "«Aprueba = Solicitante»: quien pide no se aprueba "
+                                          "a sí mismo; se resuelve a su jefe. Usa «Jefe del "
+                                          "área que pide» o «Dueño del proceso».")
         return {'target_type': 'relative', 'relative_role': relative}, ('relative', relative)
 
     def _roles_commands(self, activity, item, key):
