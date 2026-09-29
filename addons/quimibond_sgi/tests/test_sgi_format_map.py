@@ -119,3 +119,14 @@ class TestSgiFormatMap(TransactionCase):
                       'quimibond_sgi.report_purchaseorder_document_sgi',
                       'quimibond_sgi.report_delivery_document_sgi'):
             self.assertTrue(self.env.ref(xmlid))
+
+    def test_09_clave_heredada_sin_tipos_que_exijan_clave(self):
+        """56.38.2: al actualizar desde 56.28, ningún tipo exige clave todavía
+        (la 56.32.0 lo enciende después de cargar los XML). La clave heredada
+        del Dropbox tiene que pasar igual, o el update revienta en
+        sgi_format_map_data.xml."""
+        self.env['sgi.document.type'].search([]).write({'code_required': False})
+        fmap = self.Map.create({'sgi_code': 'F-P-A01-32', 'note': 'Prueba 56.38.2'})
+        self.assertEqual(fmap.sgi_code, 'F-P-A01-32')
+        with self.assertRaises(ValidationError), mute_logger('odoo.sql_db'):
+            self.Map.create({'sgi_code': 'NO-ES-CLAVE', 'note': 'Prueba 56.38.2'})
