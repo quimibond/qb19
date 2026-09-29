@@ -6,6 +6,8 @@ from collections import defaultdict
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import escape
+
 from odoo import models, fields, api
 from odoo.tools import html2plaintext
 
@@ -412,6 +414,24 @@ class SgiCron(models.AbstractModel):
             self._sgi_close_activities(to_close, "aviso repetido (migración 56.37.0)")
         result['moved'] = dict(result['moved'])
         return result
+
+    @api.model
+    def _sgi_migrate_close_calibration_notices(self, backup_table):
+        """56.38.0 (G-006): cierra, con respaldo, los avisos «Calibración
+        VENCIDA: <equipo>» (uno por equipo) que reemplaza el resumen diario.
+        No toca el «No usar» de ningún equipo. Devuelve los ids cerrados."""
+        todo = self.env.ref('mail.mail_activity_data_todo')
+        acts = self.env['mail.activity'].sudo().search([
+            ('res_model', '=', 'maintenance.equipment'),
+            ('summary', '=like', "Calibración VENCIDA: %"),
+            ('activity_type_id', '=', todo.id)], order='id')
+        self._sgi_backup_activities(backup_table, acts)
+        ids = acts.ids
+        self._sgi_close_activities(
+            acts, "lo reemplaza el resumen diario de calibración al Coordinador de "
+                  "Laboratorio y al Jefe de Calidad (migración 56.38.0); el equipo no se "
+                  "desbloquea aquí")
+        return ids
 
     # ------------------------------------------------------------------
     # 1. Cron diario — No Conformidades
@@ -1316,50 +1336,94 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     # 8. Cron diario — Calibraciones (P-C03)
     # ------------------------------------------------------------------
+    # 56.38.0 (G-006, decisión 2 de la tanda 2): los avisos de calibración van
+    # al Coordinador de Laboratorio y al Jefe de Calidad, resueltos por
+    # puesto (nombre del hr.job en la empresa del SGI). Parámetro con los
+    # nombres separados por «;» por si el puesto cambia de nombre.
+    _SGI_CALIBRATION_JOBS = "COORDINADOR DE LABORATORIO Y MP;JEFE DE CALIDAD"
+
+    @api.model
+    def _sgi_calibration_recipients(self):
+        """[(puesto, usuario)] de los puestos que reciben el resumen de
+        calibración. Sin nadie con usuario en esos puestos, el Jefe MAST."""
+        names = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.calibration_job_names', self._SGI_CALIBRATION_JOBS) or ''
+        company = self.env['sgi.config']._sgi_company()
+        recipients, seen = [], set()
+        for name in [n.strip() for n in names.split(';') if n.strip()]:
+            jobs = self.env['hr.job'].sudo().search([
+                ('name', '=ilike', name), ('company_id', 'in', (company.id, False))])
+            employees = self.env['hr.employee'].sudo().search(
+                [('job_id', 'in', jobs.ids), ('user_id', '!=', False)], order='id')
+            for user in employees.user_id.filtered('active'):
+                if user.id not in seen:
+                    seen.add(user.id)
+                    recipients.append((jobs[:1].id, user.id))
+        if not recipients:
+            manager_id = self._sgi_manager_user_id()
+            if manager_id:
+                recipients.append(('mast', manager_id))
+        return recipients
+
+    @api.model
+    def _sgi_calibration_block_enabled(self):
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.calibration_block_expired', '') or ''
+        return value.strip().lower() in ('1', 'true', 'yes', 'si', 'sí')
+
     @api.model
     def cron_calibrations(self):
+        """56.38.0 (G-006): solo avisa, no bloquea, hasta que se carguen las
+        fechas reales (decisión 2 de la tanda 2). El bloqueo «No usar» del
+        equipo vencido queda detrás del parámetro
+        ``quimibond_sgi.calibration_block_expired`` (apagado). En lugar de un
+        aviso por equipo, un resumen diario por destinatario con los
+        vencidos y los por vencer. Nada de esto toca el bloqueo en línea de
+        la inspección de calidad (un equipo vencido sigue sin poder
+        dictaminar, sgi_calibration.py)."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         today = fields.Date.context_today(self)
         Equipment = self.env['maintenance.equipment']
         manager_id = self._sgi_manager_user_id()
+        company = self.env['sgi.config']._sgi_company()
 
         # Recomputa el estado de calibración (store) antes de evaluar. G-024
         # (56.37.0): solo escribe los equipos cuyo estado cambió.
-        measuring = Equipment.search([('sgi_is_measuring', '=', True)])
+        measuring = Equipment.search([('sgi_is_measuring', '=', True),
+                                      ('company_id', 'in', (company.id, False))])
         self._sgi_step("recomputar estado de calibración",
                        lambda: self._sgi_refresh_calibration_states(measuring))
+        expired = measuring.filtered(lambda eq: eq.sgi_calibration_state == 'vencido')
+        soon = measuring.filtered(lambda eq: eq.sgi_calibration_state == 'por_vencer')
+        failures = 0
 
-        # Por vencer (<= 30 días) y vencidos.
-        def _calibration(eq):
-            if not eq.sgi_next_calibration_date:
-                return
-            owner = eq.technician_user_id or eq.owner_user_id
-            user_id = owner.id or manager_id
-            if eq.sgi_calibration_state == 'por_vencer':
-                self._sgi_schedule(
-                    eq,
-                    "Calibración por vencer: %s" % eq.name,
-                    "El equipo vence su calibración el %s. Programe la calibración." % (
-                        eq.sgi_next_calibration_date),
-                    user_id, date_deadline=eq.sgi_next_calibration_date,
-                    key='calibracion_por_vencer')
-            elif eq.sgi_calibration_state == 'vencido':
-                # Vencido: bloquear y avisar al Jefe MAST. El correo crítico
-                # sale solo en la transición al bloqueo (no cada corrida).
+        if self._sgi_calibration_block_enabled():
+            def _block(eq):
+                # El correo crítico sale solo en la transición al bloqueo.
                 if not eq.sgi_do_not_use:
                     eq.sgi_do_not_use = True
                     self._sgi_send_critical_mail(
-                        'quimibond_sgi.mail_template_sgi_calibration_blocked',
-                        eq)
-                self._sgi_schedule(
-                    eq,
-                    "Calibración VENCIDA: %s" % eq.name,
-                    "El equipo tiene la calibración vencida desde el %s y quedó "
-                    "bloqueado (No usar)." % eq.sgi_next_calibration_date,
-                    manager_id or user_id, date_deadline=today, key='calibracion_vencida')
+                        'quimibond_sgi.mail_template_sgi_calibration_blocked', eq)
 
-        failures = self._sgi_for_each(measuring, _calibration, "calibraciones")
+            failures += self._sgi_for_each(expired, _block, "bloqueo por calibración vencida")
+
+        if expired or soon:
+            summary = "Calibración: %d equipo(s) vencido(s) y %d por vencer (%s)" % (
+                len(expired), len(soon), today.strftime('%d/%m/%Y'))
+            note = self._sgi_calibration_note(expired, soon)
+            anchor = (expired or soon).sorted('id')[:1]
+
+            # Clave con la fecha: un resumen por día y destinatario; el de
+            # ayer se cierra en el barrido de abajo (lo reemplaza el de hoy).
+            for role, user_id in self._sgi_calibration_recipients():
+                if not self._sgi_step(
+                        "resumen de calibración (usuario %s)" % user_id,
+                        lambda role=role, user_id=user_id: self._sgi_schedule(
+                            anchor, summary, note, user_id, date_deadline=today,
+                            key='calibracion_resumen:%s:%s' % (role, today.isoformat()),
+                            anywhere=True)):
+                    failures += 1
 
         # EPP por vencer (P-S03).
         ppe = Equipment.search([
@@ -1379,9 +1443,33 @@ class SgiCron(models.AbstractModel):
                     user_id, date_deadline=eq.sgi_ppe_expiry_date, key='epp_por_vencer')
 
         failures += self._sgi_for_each(ppe, _ppe, "EPP")
-        self._sgi_sweep(['calibracion_por_vencer', 'calibracion_vencida', 'epp_por_vencer'],
-                        "el equipo ya se calibró o el EPP ya se repuso", failures)
+        self._sgi_sweep(['calibracion_resumen', 'calibracion_por_vencer', 'calibracion_vencida',
+                         'epp_por_vencer'],
+                        "ya no aplica o lo reemplaza el resumen de calibración de hoy", failures)
         return True
+
+    @api.model
+    def _sgi_calibration_note(self, expired, soon, limit=200):
+        """Nota del resumen diario: vencidos primero (más viejos arriba) y
+        luego por vencer, con su fecha. Se corta en ``limit`` renglones."""
+        def _rows(equipments):
+            ordered = equipments.sorted(lambda e: (e.sgi_next_calibration_date, e.name or ''))
+            rows = ["<li>%s — %s</li>" % (escape(eq.name or ''), eq.sgi_next_calibration_date)
+                    for eq in ordered[:limit]]
+            if len(ordered) > limit:
+                rows.append("<li>… y %d más</li>" % (len(ordered) - limit))
+            return "".join(rows)
+        parts = []
+        if expired:
+            parts.append("<p><b>Vencidos (%d)</b>: programe la calibración o cargue la fecha "
+                         "real de la última.</p><ul>%s</ul>" % (len(expired), _rows(expired)))
+        if soon:
+            parts.append("<p><b>Por vencer en 30 días (%d)</b>:</p><ul>%s</ul>" % (
+                len(soon), _rows(soon)))
+        if not self._sgi_calibration_block_enabled():
+            parts.append("<p>El sistema solo avisa: no bloquea los equipos vencidos "
+                         "(parámetro quimibond_sgi.calibration_block_expired apagado).</p>")
+        return "".join(parts)
 
     # ------------------------------------------------------------------
     # 9. Cron diario — Competencias, certificaciones y currículos (P-A01)

@@ -104,6 +104,14 @@ class ResConfigSettings(models.TransientModel):
     sgi_rh_user_id = fields.Many2one(
         'res.users', string="Usuario de RH",
         help="Recibe las actividades automáticas de RH (competencias por vencer, DNC).")
+    sgi_calibration_block_expired = fields.Boolean(
+        string="Bloquear equipos con calibración vencida",
+        config_parameter='quimibond_sgi.calibration_block_expired',
+        help="Apagado (default, decisión de la tanda 2): el cron solo avisa con un "
+             "resumen diario al Coordinador de Laboratorio y al Jefe de Calidad. "
+             "Encendido: además marca «No usar» cada equipo vencido y manda el "
+             "correo crítico. La inspección de calidad rechaza un equipo vencido "
+             "en cualquier caso.")
     sgi_mast_user_id = fields.Many2one(
         'res.users', string="Jefe MAST y SGI",
         help="Recibe los avisos automáticos del SGI que no tienen dueño "

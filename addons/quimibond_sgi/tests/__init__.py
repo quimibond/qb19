@@ -100,3 +100,4 @@ from . import test_multicompany
 from . import test_menu_tree
 from . import test_entrega4
 from . import test_avisos_crons
+from . import test_calibracion_avisos
