@@ -23,8 +23,14 @@ class DocumentsDocumentOwner(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         default_owner = None
+        ctx = self.env.context
         for vals in vals_list:
-            if vals.get('sgi_is_controlled') and not vals.get('sgi_owner_id'):
+            # 57.13.0: también cuando «controlado» llega por el contexto
+            # (default_sgi_is_controlled: alta documental, lista maestra,
+            # externos); antes el default entraba después y la restricción
+            # rechazaba el documento por no tener responsable.
+            controlled = vals.get('sgi_is_controlled', ctx.get('default_sgi_is_controlled'))
+            if controlled and not vals.get('sgi_owner_id', ctx.get('default_sgi_owner_id')):
                 if default_owner is None:
                     default_owner = self.env['sgi.cron']._sgi_manager_user_id() or self.env.user.id
                 vals['sgi_owner_id'] = default_owner

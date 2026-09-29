@@ -294,7 +294,11 @@ class SgiActivityChange(models.Model):
             }
         if job:
             vals['job_id'] = job.id
-        proposal = self.create(vals)
+        # 57.13.0: la propuesta nace como copia de la actividad, con formatos
+        # e instructivos que quien propone puede no poder leer (un formato en
+        # borrador): ligarlos con sus permisos daba AccessError. Se crea con
+        # sudo; el autor (create_uid) sigue siendo quien propone (F-005).
+        proposal = self.sudo().create(vals).with_env(self.env)
         return {
             'type': 'ir.actions.act_window',
             'name': "Proponer cambio a mi procedimiento" if activity else "Proponer nueva actividad",

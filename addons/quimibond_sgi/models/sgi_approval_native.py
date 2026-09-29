@@ -151,8 +151,12 @@ class SgiActivityRoleApproval(models.Model):
             value = raw
         return [(field.name, self.condition_operator or '=', value)]
 
+    # 57.13.0: antes se llamaba _check_condition, el mismo nombre que la
+    # restricción de sgi_catalog («la condición solo va en quien aprueba, se
+    # entera o escala»); al heredar, esta la reemplazaba y aquella dejó de
+    # correr desde 56.5.0.
     @api.constrains('condition_field_id', 'condition_value', 'approval_model_id')
-    def _check_condition(self):
+    def _check_approval_condition(self):
         for role in self.filtered('condition_field_id'):
             if role.condition_field_id.model_id != role.approval_model_id:
                 raise ValidationError("El campo de la condición debe ser del documento que se aprueba.")
@@ -187,6 +191,15 @@ class SgiActivityRoleApproval(models.Model):
         for role in self:
             role.approval_user_ids = role._sgi_approver_users() if role.role == 'aprueba' else False
 
+    # 57.13.0: sin dependencias el estado se quedaba en caché: «Sincronizar»
+    # creaba la categoría y, en la misma transacción, el rol seguía «Por
+    # sincronizar». Las personas del puesto no se pueden declarar aquí (el
+    # formulario las vuelve a leer en cada petición).
+    @api.depends('role', 'target_type', 'relative_role', 'job_id', 'family_id',
+                 'approval_kind', 'approval_sign_template_id', 'approval_model_id',
+                 'approval_method', 'approval_category_id.sgi_role_id',
+                 'approval_category_id.approver_ids.user_id',
+                 'approval_category_id.manager_approval')
     def _compute_approval_state(self):
         for role in self:
             if role.role != 'aprueba':

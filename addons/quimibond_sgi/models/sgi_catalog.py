@@ -105,10 +105,15 @@ class SgiJobFamily(models.Model):
 
     @api.constrains('job_ids', 'company_id', 'active')
     def _check_job_single_family(self):
-        """Un puesto pertenece a una sola familia por empresa."""
+        """Un puesto pertenece a una sola familia ACTIVA por empresa.
+
+        57.13.0: la carga por API busca con ``active_test=False`` y el
+        contexto llegaba hasta aquí: una familia archivada con el mismo puesto
+        impedía crear la nueva."""
         for family in self.filtered('active'):
             others = self.search([
                 ('id', '!=', family.id),
+                ('active', '=', True),
                 ('company_id', '=', family.company_id.id),
                 ('job_ids', 'in', family.job_ids.ids),
             ]) if family.job_ids else self.browse()

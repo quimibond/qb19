@@ -838,14 +838,18 @@ class SgiActionLine(models.Model):
             origin = line._sgi_origin()
             if not origin:
                 continue
+            # 57.13.0: la actividad espejo es contabilidad del sistema, con
+            # sudo. El responsable de una acción no siempre puede editar el
+            # registro de origen (un riesgo de un proceso ajeno) y Odoo exige
+            # escritura en él para agendar: reabrir su propia acción tronaba.
             if line.activity_id:
-                line.activity_id.write({
+                line.activity_id.sudo().write({
                     'user_id': line.responsible_id.id,
                     'date_deadline': line.date_commit,
                     'summary': line.name,
                 })
             else:
-                act = origin.activity_schedule(
+                act = origin.sudo().activity_schedule(
                     Todo,
                     summary=line.name,
                     note=line._sgi_activity_note(),
@@ -862,7 +866,9 @@ class SgiActionLine(models.Model):
         """
         for line in self:
             if line.activity_id:
-                line.activity_id.action_feedback(
+                # 57.13.0: con sudo (ver _sgi_sync_activity); la nota queda a
+                # nombre de quien terminó la acción (sudo conserva el usuario).
+                line.activity_id.sudo().action_feedback(
                     feedback="Acción terminada el %s." % (line.date_done or ''))
                 line.activity_id = False
 

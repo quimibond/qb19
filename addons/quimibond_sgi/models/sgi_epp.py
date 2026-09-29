@@ -75,9 +75,15 @@ class SgiEppDelivery(models.Model):
         for vals in vals_list:
             if not vals.get('name') or vals['name'] == "Nuevo":
                 vals['name'] = Seq.next_by_code('sgi.epp.delivery') or "Nuevo"
-            if not vals.get('items') and vals.get('employee_id'):
+            # 57.13.0: con renglones manda el cálculo de ``items`` (sgi_epp_sign);
+            # poner ``items = False`` aquí lo bloqueaba y la responsiva creada
+            # por código quedaba sin lista de EPP.
+            if vals.get('line_ids') and not vals.get('items'):
+                vals.pop('items', None)
+            elif not vals.get('items') and vals.get('employee_id'):
                 emp = self.env['hr.employee'].sudo().browse(vals['employee_id'])
-                vals['items'] = emp.job_id.sgi_epp_required or False
+                if emp.job_id.sgi_epp_required:
+                    vals['items'] = emp.job_id.sgi_epp_required
         records = super().create(vals_list)
         records.filtered(lambda r: r.state != 'entregada' or r.signed_date)._sgi_check_can_sign()
         return records
