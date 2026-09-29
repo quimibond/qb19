@@ -102,6 +102,12 @@ class TestCalibracionAvisos(TransactionCase):
             'name': 'ZCAL Sin fecha', 'sgi_is_measuring': True, 'company_id': company.id,
             'sgi_do_not_use': True})
         self.expired.sgi_do_not_use = True
+        # En producción el bloqueo ya estaba confirmado desde antes. Aquí se
+        # confirma el seguimiento del «No usar = Sí» antes de migrar: si no,
+        # Odoo compara contra el valor de ANTES del bloqueo (No), no ve cambio
+        # neto y no deja rastro de la liberación.
+        self.env.flush_all()
+        self.env.cr.precommit.run()
         table = 'sgi_equipment_do_not_use_bak_prueba'
         released = self.Cron._sgi_migrate_release_do_not_use(table)
         self.assertIn(self.expired, released)

@@ -406,6 +406,10 @@ class SgiIndicatorFormula(models.Model):
         Devuelve los ids migrados."""
         Indicator = self.with_context(active_test=False)
         if indicator_ids is None:
+            # 57.13.0: lo escrito por el ORM en esta misma transacción baja
+            # antes del SQL; si no, una segunda llamada volvía a tomar los ya
+            # migrados (y repetía la nota del chatter).
+            self.env['sgi.indicator'].flush_model(['calc_mode'])
             self.env.cr.execute("SELECT id FROM sgi_indicator WHERE calc_mode = 'cierre_nc'")
             indicators = Indicator.browse([row[0] for row in self.env.cr.fetchall()])
         else:

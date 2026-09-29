@@ -21,3 +21,21 @@ def assert_locked(test, method, *args, **kwargs):
     test.assertNotIsInstance(
         caught.exception, AccessError,
         "Debió detenerla el candado, no un permiso: %s" % caught.exception)
+
+
+def sgi_set_mast(env, login='sgi_mast_avisos'):
+    """Jefe MAST que recibe los avisos sin dueño (``_sgi_manager_user_id``).
+
+    En una base nueva nadie está en el grupo: el env de la prueba es OdooBot,
+    que está archivado, y ``_sgi_first_user_id`` solo toma usuarios activos.
+    Sin esto los avisos que van al Jefe MAST no se agendan (en la copia de
+    producción sí había a quién: ``quimibond_sgi.mast_user_id``)."""
+    user = new_test_user(env, login=login, groups='base.group_user,quimibond_sgi.group_sgi_manager')
+    env['ir.config_parameter'].sudo().set_param('quimibond_sgi.mast_user_id', str(user.id))
+    return user
+
+
+def sgi_set_director(env, login='sgi_direccion_avisos'):
+    """Dirección de Operaciones que recibe las escalaciones (primer miembro
+    activo del grupo; en una base nueva no hay ninguno)."""
+    return new_test_user(env, login=login, groups='base.group_user,quimibond_sgi.group_sgi_director')

@@ -21,8 +21,11 @@ class SgiIndicatorCalidadPq(models.Model):
     # Mismo lugar en la lista que tenía en el núcleo (después de «reproceso»).
     # Si este módulo se desinstala, los indicadores en este modo pasan a
     # captura manual.
+    # El modo siguiente va también en la lista: selection_add ordena por
+    # dependencias y, con solo el anterior, «calidad_pq» quedaba al final.
     calc_mode = fields.Selection(
-        selection_add=[('reproceso',), ('calidad_pq', "Calidad PQ (rollos revisados sin defecto)")],
+        selection_add=[('reproceso',), ('calidad_pq', "Calidad PQ (rollos revisados sin defecto)"),
+                       ('cumplimiento_programa',)],
         ondelete={'calidad_pq': 'set default'})
 
     _SOURCE_INFO = dict(

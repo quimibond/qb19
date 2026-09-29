@@ -9,6 +9,8 @@
 - F-015: la foto del inventario ya no es un método público.
 - N-001: todo documento controlado tiene responsable.
 - D-001: las fichas estándar abren para quien no es del SGI."""
+from lxml import etree
+
 from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -80,7 +82,13 @@ class TestEntrega1c(TransactionCase):
         un contacto y fallaba por los contadores del SGI."""
         partner = self.env['res.partner'].create({'name': 'E1c Contacto'})
         views = self.env['res.partner'].with_user(self.plain).get_views([(False, 'form')])
-        fields_in_view = list(views['models']['res.partner']['fields'])
-        for name in ('sgi_complaint_count', 'sgi_eval_count', 'sgi_nc_count'):
-            self.assertNotIn(name, fields_in_view)
-        self.assertTrue(partner.with_user(self.plain).read(fields_in_view))
+        # Odoo 17+ calcula ``models[...]['fields']`` una vez para todos los
+        # grupos (vista en caché) y quita del arch los nodos con ``groups``
+        # después, por usuario; la ficha lee solo los campos que quedan en el
+        # arch. Por eso se revisa el arch, no la lista de campos del modelo.
+        arch = etree.fromstring(views['views']['form']['arch'])
+        in_arch = set(arch.xpath('//field/@name'))
+        for name in ('sgi_complaint_count', 'sgi_eval_count', 'sgi_nc_count', 'sgi_ppap_count'):
+            self.assertNotIn(name, in_arch)
+        partner_fields = views['models']['res.partner']['fields']
+        self.assertTrue(partner.with_user(self.plain).read([n for n in in_arch if n in partner_fields]))

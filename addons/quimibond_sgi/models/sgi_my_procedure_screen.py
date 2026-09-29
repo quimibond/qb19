@@ -221,7 +221,10 @@ class HrEmployeeMyProcedureTab(models.Model):
 
     sgi_mp_job_id = fields.Many2one(
         'hr.job', string="Puesto (Mi procedimiento)", related='current_version_id.job_id',
-        store=True, index=True, readonly=True)
+        store=True, index=True, readonly=True,
+        # 57.13.0: sin prefetch (ver sgi_my_procedure_ack_state): no está en
+        # el perfil público y el prefetch lo leía para quien no es de RH.
+        prefetch=False)
     sgi_mp_role_ids = fields.Many2many(
         'sgi.activity.role', 'hr_employee_sgi_mp_role_rel', 'employee_id', 'role_id',
         string="Mis actividades", compute='_compute_sgi_mp_roles_stored', store=True)
@@ -478,12 +481,16 @@ class SgiMyProcedure(models.TransientModel):
         me = self._sgi_mp_my_employee()
         Employee = self.env['hr.employee'].sudo()
         Job = self.env['hr.job'].sudo()
+        company_domain = Job._sgi_mp_company_domain()
         for wiz in self:
             wiz.can_publish = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
             if admin:
+                # 57.13.0 (D-03): solo la empresa del SGI. Con todas las
+                # empresas, los empleados de otra que el usuario no tiene
+                # permitida tronaban al leer la lista (regla multiempresa).
                 wiz.can_pick = True
-                wiz.allowed_employee_ids = Employee.search([]).ids
-                wiz.allowed_job_ids = Job.search([]).ids
+                wiz.allowed_employee_ids = Employee.search(company_domain).ids
+                wiz.allowed_job_ids = Job.search(company_domain).ids
                 continue
             team = me._sgi_mp_team_employees() if me else Employee
             wiz.allowed_employee_ids = team.ids
@@ -972,7 +979,9 @@ class HrEmployeePublicMyTeam(models.Model):
         me = Wiz._sgi_mp_my_employee()
         Employee = self.env['hr.employee'].sudo()
         if Wiz._sgi_mp_is_admin():
-            return Employee.search([('job_id', '!=', False)])
+            # 57.13.0 (D-03): la empresa del SGI.
+            return Employee.search([('job_id', '!=', False)]
+                                   + self.env['hr.job']._sgi_mp_company_domain())
         if not me:
             return Employee
         return me._sgi_mp_team_employees() - me

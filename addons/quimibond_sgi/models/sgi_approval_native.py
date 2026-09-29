@@ -21,6 +21,8 @@ import logging
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_catalog import SGI_RECORD_RELATIVES
+
 _logger = logging.getLogger(__name__)
 
 # Botón que se aprueba por omisión según el documento.
@@ -50,6 +52,9 @@ APPROVAL_STATES = [
     ('conflicto', "Ya hay otra regla en el botón"),
     ('por_sincronizar', "Por sincronizar"),
     ('activa', "Activa en Odoo"),
+    # 57.13.0: solicitante, quien detecta o área responsable, o el jefe del
+    # que pide en un botón o firma: no hay aprobador fijo que sincronizar.
+    ('relativo', "Depende de cada registro"),
 ]
 # 56.6.0: no toda aprobación es un botón. Las decisiones sin documento van a
 # una solicitud de Aprobaciones y lo que hoy se firma en papel, a Sign.
@@ -146,45 +151,71 @@ class SgiActivityRoleApproval(models.Model):
             value = raw
         return [(field.name, self.condition_operator or '=', value)]
 
+    # 57.13.0: antes se llamaba _check_condition, el mismo nombre que la
+    # restricción de sgi_catalog («la condición solo va en quien aprueba, se
+    # entera o escala»); al heredar, esta la reemplazaba y aquella dejó de
+    # correr desde 56.5.0.
     @api.constrains('condition_field_id', 'condition_value', 'approval_model_id')
-    def _check_condition(self):
+    def _check_approval_condition(self):
         for role in self.filtered('condition_field_id'):
             if role.condition_field_id.model_id != role.approval_model_id:
                 raise ValidationError("El campo de la condición debe ser del documento que se aprueba.")
             role._sgi_condition_domain()
 
     def _sgi_approver_users(self):
-        """Usuarios activos de las personas del puesto (o de la familia, o el
-        dueño del proceso) que aprueban."""
+        """Usuarios activos de las personas que aprueban: las del puesto, las
+        de la familia o el dueño del proceso (57.13.0: con la regla aprobador
+        ≠ ejecutor, ver ``sgi_relative_roles``). Los relativos que dependen
+        del registro (solicitante, jefe del que pide…) no tienen personas
+        fijas: vacío."""
         self.ensure_one()
-        Employee = self.env['hr.employee'].sudo()
-        if self.target_type == 'job' and self.job_id:
-            employees = Employee.search([]).filtered(lambda e: e.job_id == self.job_id)
-        elif self.target_type == 'family' and self.family_id:
-            jobs = self.family_id.sudo().job_ids
-            employees = Employee.search([]).filtered(lambda e: e.job_id in jobs)
-        elif self.relative_role == 'dueno_proceso':
-            employees = self.activity_id.process_id.sudo().owner_id
-        else:
-            employees = Employee
+        employees, _note = self._sgi_target_employees()
         return employees.user_id.filtered(lambda u: u.active and not u.share)
+
+    def _sgi_category_manager_approval(self):
+        """57.13.0: «Jefe del área que pide» en una solicitud de Aprobaciones
+        es nativo: la categoría pide la aprobación del jefe del empleado que
+        hace la solicitud (``manager_approval``)."""
+        self.ensure_one()
+        return 'required' if (self.target_type == 'relative'
+                              and self.relative_role == 'jefe_del_solicitante') else False
+
+    def _sgi_record_dependent(self):
+        """El aprobador depende de cada registro y no hay forma nativa de
+        fijarlo en el catálogo (57.13.0)."""
+        self.ensure_one()
+        return self.target_type == 'relative' and self.relative_role in SGI_RECORD_RELATIVES \
+            and not (self.approval_kind == 'solicitud' and self._sgi_category_manager_approval())
 
     def _compute_approval_users(self):
         for role in self:
             role.approval_user_ids = role._sgi_approver_users() if role.role == 'aprueba' else False
 
+    # 57.13.0: sin dependencias el estado se quedaba en caché: «Sincronizar»
+    # creaba la categoría y, en la misma transacción, el rol seguía «Por
+    # sincronizar». Las personas del puesto no se pueden declarar aquí (el
+    # formulario las vuelve a leer en cada petición).
+    @api.depends('role', 'target_type', 'relative_role', 'job_id', 'family_id',
+                 'approval_kind', 'approval_sign_template_id', 'approval_model_id',
+                 'approval_method', 'approval_category_id.sgi_role_id',
+                 'approval_category_id.approver_ids.user_id',
+                 'approval_category_id.manager_approval')
     def _compute_approval_state(self):
         for role in self:
             if role.role != 'aprueba':
                 role.approval_state = False
+            elif role._sgi_record_dependent():
+                role.approval_state = 'relativo'
             elif role.approval_kind == 'firma':
                 role.approval_state = 'activa' if role.approval_sign_template_id else 'sin_configurar'
             elif role.approval_kind == 'solicitud':
                 category = role.approval_category_id.sudo()
-                if not role.approval_user_ids and not (category and category.approver_ids):
+                manager = role._sgi_category_manager_approval()
+                if not role.approval_user_ids and not manager and not (category and category.approver_ids):
                     role.approval_state = 'sin_aprobadores'
-                elif not category or (category.sgi_role_id == role and set(
-                        category.approver_ids.user_id.ids) != set(role.approval_user_ids.ids)):
+                elif not category or (category.sgi_role_id == role and (set(
+                        category.approver_ids.user_id.ids) != set(role.approval_user_ids.ids)
+                        or (category.manager_approval or False) != manager)):
                     role.approval_state = 'por_sincronizar'
                 else:
                     role.approval_state = 'activa'
@@ -261,8 +292,9 @@ class SgiActivityRoleApproval(models.Model):
                 if category.sgi_role_id == role:
                     category.active = False
                 continue
+            manager = role._sgi_category_manager_approval()
             if not category:
-                if not users:
+                if not users and not manager:
                     continue
                 activity = role.activity_id.sudo()
                 number = activity.number or activity.legacy_number or ''
@@ -270,6 +302,7 @@ class SgiActivityRoleApproval(models.Model):
                     'name': " ".join(("SGI %s %s" % (number, activity.name or '')).split()),
                     'description': "Aprobación del procedimiento: %s" % (role.condition or "siempre"),
                     'sgi_role_id': role.id, 'approval_minimum': 1,
+                    'manager_approval': manager,
                 })
                 role.approval_category_id = category
             if category.sgi_role_id == role:
@@ -280,6 +313,8 @@ class SgiActivityRoleApproval(models.Model):
                 if missing:
                     category.write({'approver_ids': [(0, 0, {'user_id': u.id, 'required': False})
                                                      for u in missing]})
+                if (category.manager_approval or False) != manager:
+                    category.manager_approval = manager
                 category.active = True
 
     def _sgi_sync_approval_rule(self):

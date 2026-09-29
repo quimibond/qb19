@@ -58,8 +58,11 @@ class TestIndicatorTrajectory(TransactionCase):
                                      'value': 20.0, 'state': 'capturado'})
         self.assertEqual((later.target_objective, later.target_acceptable), (22.0, 19.0))
         self.assertEqual(later.semaphore, 'amarillo')
-        # Sin escalones: las metas del indicador.
-        plain = self._indicator('ZT-02b')
+        # Sin escalones: las metas del indicador. Desde 55.0.0 los escalones
+        # se generan solos al crear un indicador con arranque y fecha de meta
+        # (_sgi_auto_trajectory); sin fecha de arranque no hay trayectoria.
+        plain = self._indicator('ZT-02b', baseline_date=False)
+        self.assertFalse(plain.step_ids)
         m = self.Measure.create({'indicator_id': plain.id, 'period_date': date(2027, 5, 1),
                                  'value': 12.0, 'state': 'capturado'})
         self.assertEqual(m.target_objective, 22.0)

@@ -75,10 +75,14 @@ class SgiDiagram(models.AbstractModel):
 
     @api.model
     def data(self, kind, res_id=None, params=None):
+        # 57.13.0: el método se toma DESPUÉS de poner los parámetros en el
+        # contexto. Antes quedaba ligado al registro sin ellos y cada
+        # diagrama ignoraba lo elegido (instrumento, vista, carriles,
+        # equipo, mercado…).
+        self = self.with_context(sgi_diagram_params=dict(params or {}))
         method = getattr(self, '_data_%s' % kind, None)
         if not method:
             raise ValueError("Diagrama desconocido: %s" % kind)
-        self = self.with_context(sgi_diagram_params=dict(params or {}))
         result = method(int(res_id) if res_id else None)
         result.setdefault('kind', kind)
         result.setdefault('edges', [])
@@ -123,10 +127,12 @@ class SgiDiagram(models.AbstractModel):
         if with_process:
             code = "%s · %s" % (activity.process_id.code or '', code)
         meta = []
-        tags = activity.sale_team_ids | activity.fiscal_position_ids
+        # 57.13.0: equipos y posiciones fiscales son modelos distintos; unirlos
+        # con «|» lanzaba TypeError (inconsistent models) en cada actividad.
+        tags = activity.sale_team_ids.mapped('name') + activity.fiscal_position_ids.mapped('name')
         if tags:
             meta.append({'icon': 'fa-tags', 'label': "Aplica a",
-                         'value': ", ".join(tags.mapped('name'))})
+                         'value': ", ".join(tags)})
         team, market = self._line_params()
         return {
             'key': _key(activity), 'model': 'sgi.process.activity', 'res_id': activity.id,

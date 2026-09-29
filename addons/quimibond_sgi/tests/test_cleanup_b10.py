@@ -27,7 +27,11 @@ class TestCleanupB10(TransactionCase):
             'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': cls.job.id}),
                          (0, 0, {'role': 'aprueba', 'job_id': cls.job.id}),
                          (0, 0, {'role': 'participa', 'target_type': 'family', 'family_id': cls.family.id}),
-                         (0, 0, {'role': 'ejecuta', 'job_id': cls.job_family.id})]})
+                         # Antes un segundo «ejecuta»: la regla de exactamente un
+                         # ejecutor (_sgi_check_roles) lo rechaza en una base nueva.
+                         # Lo que se prueba es que el puesto no cuente roles de una
+                         # actividad archivada, sea cual sea el rol.
+                         (0, 0, {'role': 'informa', 'job_id': cls.job_family.id})]})
         cls.act_old.write({'active': False})
         cls.user = new_test_user(cls.env, login='b10_sgi_user',
                                  groups='base.group_user,quimibond_sgi.group_sgi_user')

@@ -17,11 +17,15 @@ class TestDueLong(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.process = cls.env['sgi.process'].create({'code': 'ZDL', 'name': 'ZS Vencimientos'})
+        # Toda actividad no automática lleva exactamente un puesto que la
+        # ejecuta (_sgi_check_roles); en una base nueva no hay de dónde tomarlo.
+        cls.job = cls.env['hr.job'].create({'name': 'ZS PUESTO VENCIMIENTOS'})
 
     def _act(self, **vals):
         return self.env['sgi.process.activity'].create(dict({
             'process_id': self.process.id, 'name': 'Revisar la matriz legal',
-            'done_criteria': 'La matriz quedó revisada', 'on_fail': 'Avisar a MAST'}, **vals))
+            'done_criteria': 'La matriz quedó revisada', 'on_fail': 'Avisar a MAST',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job.id})]}, **vals))
 
     def test_01_anual(self):
         act = self._act(measure_cadence='anual', due_month='3', due_day=15)

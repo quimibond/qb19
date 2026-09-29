@@ -23,7 +23,10 @@ class TestDropboxKey(TransactionCase):
         cls.process = cls.env['sgi.process'].create({'code': 'E8', 'name': 'Proceso buscador'})
         cls.old_process = cls.env['sgi.process'].create({'code': 'XDBK', 'name': 'Proceso viejo'})
         Activity = cls.env['sgi.process.activity']
-        cls.activity = Activity.create({'process_id': cls.process.id, 'name': 'Capturar', 'step': 1})
+        # Con método de medición: un procedimiento vigente del proceso no
+        # admite actividades sin medir (_sgi_check_procedure_measures).
+        cls.activity = Activity.create({'process_id': cls.process.id, 'name': 'Capturar', 'step': 1,
+                                        'measure_method': 'manual'})
         cls.archived = Activity.create({'process_id': cls.old_process.id, 'name': 'Numeral viejo',
                                         'step': 1})
         cls.env.flush_all()

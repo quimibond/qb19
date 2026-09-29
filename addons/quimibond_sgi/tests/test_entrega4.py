@@ -124,7 +124,9 @@ class TestEntrega4Groups(TransactionCase):
         # Auditor y Dirección leen; no editan.
         self.assertTrue(inc.with_user(self.auditor).read(['name']))
         self.assertTrue(inc.with_user(self.director).read(['name']))
-        with self.assertRaises((AccessError, UserError)):
+        # Odoo no acepta tuplas en assertRaises (issubclass); AccessError es
+        # subclase de UserError, así que UserError cubre ambos casos.
+        with self.assertRaises(UserError):
             inc.with_user(self.director).action_set_reportado()
         # Salud ocupacional reabre (D-06), no solo el Jefe MAST.
         inc.with_user(self.health).action_set_reportado()

@@ -331,18 +331,22 @@ class TestBandeja(TransactionCase):
     # ---- G-017: «a tiempo» con el vencimiento periódico ----------------------------
     def test_14_semaforo_con_vencimiento(self):
         activity = self.activity
-        Partner = self.env['res.partner']
-        domain = [('ref', '=', 'ZS-G017')]
+        # Evidencia con un campo Date cualquiera. Antes era res.partner.date,
+        # que Odoo 19 ya no tiene (KeyError en una base nueva): el tipo de
+        # cambio (res.currency.rate.name) es Date en cualquier base.
+        currency = self.env['res.currency'].create({'name': 'ZSG', 'symbol': 'ZS', 'active': True})
+        Rate = self.env['res.currency.rate']
+        domain = [('currency_id', '=', currency.id)]
         # Mes cerrado: vence el día hábil 1 del mes. Hecha el día 20 = tarde.
         july = date(2026, 7, 20)
         due = activity._sgi_periodic_due(july)
         self.assertLess(due, july)
-        self.assertEqual(activity._sgi_periodic_state(Partner, domain, 'date', july), 'rojo')
-        Partner.create({'name': 'Hecha tarde', 'ref': 'ZS-G017', 'date': date(2026, 7, 20)})
-        self.assertEqual(activity._sgi_periodic_state(Partner, domain, 'date', july), 'rojo',
+        self.assertEqual(activity._sgi_periodic_state(Rate, domain, 'name', july), 'rojo')
+        Rate.create({'currency_id': currency.id, 'name': date(2026, 7, 20), 'rate': 1.5})
+        self.assertEqual(activity._sgi_periodic_state(Rate, domain, 'name', july), 'rojo',
                          "Hecha después del vencimiento no es «al día».")
-        Partner.create({'name': 'Hecha a tiempo', 'ref': 'ZS-G017', 'date': due})
-        self.assertEqual(activity._sgi_periodic_state(Partner, domain, 'date', july), 'verde')
+        Rate.create({'currency_id': currency.id, 'name': due, 'rate': 1.5})
+        self.assertEqual(activity._sgi_periodic_state(Rate, domain, 'name', july), 'verde')
         # Sin vencimiento periódico manda la ventana de siempre.
         activity.sudo().write({'due_business_day': 0})
-        self.assertIsNone(activity._sgi_periodic_state(Partner, domain, 'date', july))
+        self.assertIsNone(activity._sgi_periodic_state(Rate, domain, 'name', july))

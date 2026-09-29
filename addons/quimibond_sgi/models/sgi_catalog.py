@@ -49,6 +49,10 @@ SGI_RELATIVE_ROLES = [
     ('area_responsable', "Área responsable"),
     ('dueno_proceso', "Dueño del proceso"),
 ]
+# 57.13.0: los relativos que dependen del registro que se pide, aprueba o
+# detecta. Sin registro no hay a quién (ver sgi_relative_roles).
+SGI_RECORD_RELATIVES = ('solicitante', 'jefe_del_solicitante', 'quien_detecta',
+                        'area_responsable')
 
 
 def sgi_normalize_name(name):
@@ -101,10 +105,15 @@ class SgiJobFamily(models.Model):
 
     @api.constrains('job_ids', 'company_id', 'active')
     def _check_job_single_family(self):
-        """Un puesto pertenece a una sola familia por empresa."""
+        """Un puesto pertenece a una sola familia ACTIVA por empresa.
+
+        57.13.0: la carga por API busca con ``active_test=False`` y el
+        contexto llegaba hasta aquí: una familia archivada con el mismo puesto
+        impedía crear la nueva."""
         for family in self.filtered('active'):
             others = self.search([
                 ('id', '!=', family.id),
+                ('active', '=', True),
                 ('company_id', '=', family.company_id.id),
                 ('job_ids', 'in', family.job_ids.ids),
             ]) if family.job_ids else self.browse()
@@ -137,9 +146,12 @@ class SgiActivityRole(models.Model):
         index=True)
     relative_role = fields.Selection(
         SGI_RELATIVE_ROLES, string="Rol relativo",
-        help="Rol que no es de un puesto fijo. «Dueño del proceso» se resuelve "
-             "al dueño del proceso; los demás no se resuelven a un puesto (no "
-             "cuentan para «puesto sin persona» ni para adherencia).")
+        help="Rol que no es de un puesto fijo. «Dueño del proceso»: el dueño del "
+             "proceso del registro (o, si no tiene, el de la actividad). "
+             "Solicitante, jefe del que pide, quien detecta y área responsable "
+             "se resuelven con cada registro (quien lo pide o crea, su jefe, "
+             "el responsable del departamento). Quien aprueba o recibe el "
+             "escalamiento nunca es quien ejecuta o pide: sube a su jefe.")
     after_days = fields.Integer(
         string="Escala a los (días hábiles)",
         help="Solo para «Escala»: días hábiles después del plazo de la actividad "

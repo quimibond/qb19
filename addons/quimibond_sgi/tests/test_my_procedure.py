@@ -170,7 +170,10 @@ class TestMyProcedure(TransactionCase):
                          "Todos los roles del puesto y de su familia, incluido el escalamiento.")
         self.assertEqual(roles.filtered(lambda r: r.activity_id == self.a_weekly_fri
                                         and r.role == 'ejecuta').activity_when, 'Cada viernes')
-        report = self.emp1.action_sgi_print_my_procedure()
+        # En una base nueva la compañía no tiene diseño de documento y, para
+        # un administrador, Odoo devuelve primero el asistente «Configurar el
+        # diseño» (sin report_name); en producción ya está configurado.
+        report = self.emp1.with_context(discard_logo_check=True).action_sgi_print_my_procedure()
         self.assertEqual(report['report_name'], 'quimibond_sgi.report_my_procedure_document')
         no_job = self.env['hr.employee'].create({'name': 'Sin puesto MP'})
         with self.assertRaises(UserError):
@@ -471,7 +474,12 @@ class TestMyProcedure(TransactionCase):
             {'employee_id': self.emp1.id})
         # 56.7.0: en el empleado las listas están guardadas (orden del
         # modelo); la pantalla las reordena para leerlas.
-        emp = self.emp1.with_user(self.manager)
+        # La ficha hr.employee es de RH: en Odoo 19 quien no es de RH (el Jefe
+        # MAST de la prueba) no lee hr.employee de otra persona, abre
+        # hr.employee.public (se prueba abajo). La lee un usuario de RH.
+        hr_user = new_test_user(self.env, login='mp_hr_ficha',
+                                groups='base.group_user,hr.group_hr_user,quimibond_sgi.group_sgi_user')
+        emp = self.emp1.with_user(hr_user)
         self.assertEqual(set(emp.sgi_mp_role_ids.ids), set(wiz.role_ids.ids))
         self.assertEqual(set(emp.sgi_mp_received_role_ids.ids), set(wiz.received_role_ids.ids))
         self.assertEqual(set(emp.sgi_mp_short_role_ids.ids), set(wiz.short_role_ids.ids))

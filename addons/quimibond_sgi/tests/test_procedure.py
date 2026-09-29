@@ -217,7 +217,14 @@ class TestProcedureActivityMenu(TransactionCase):
     def test_01_action_opens_grouped(self):
         action = self.env.ref('quimibond_sgi.sgi_process_activity_action').read()[0]
         self.assertEqual(action['res_model'], 'sgi.process.activity')
-        self.assertIn('search_default_group_process', action['context'])
+        # 45.0.0 (limpieza antes de producción): ya no abre agrupada por
+        # proceso; el proceso se elige en el panel lateral (searchpanel) de la
+        # vista de búsqueda.
+        self.assertNotIn('search_default_group_process', action['context'] or '')
+        arch = self.env['sgi.process.activity'].get_views(
+            [(action['search_view_id'][0], 'search')])['views']['search']['arch']
+        self.assertIn('<searchpanel', arch)
+        self.assertIn('name="process_id"', arch)
 
     def test_02_mine_filter_safe_without_employee(self):
         # Usuario SIN empleado: el filtro no debe truncar ni reventar.

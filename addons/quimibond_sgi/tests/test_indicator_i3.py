@@ -21,9 +21,16 @@ class TestIndicatorI3(TransactionCase):
         cls.period_end = date(2044, 6, 30)
 
     def _account(self, account_type):
-        return self.env['account.account'].search(
+        # En una base nueva el plan de cuentas genérico no trae todos los
+        # tipos (depreciación, «otros gastos»): sin cuenta la línea quedaba
+        # sin account_id (NOT NULL). La prueba crea la que falte, siempre de
+        # la compañía de la prueba (no la primera de cualquier compañía).
+        Account = self.env['account.account']
+        return Account.search(
             [('account_type', '=', account_type), ('company_ids', 'in', self.company.ids)], limit=1) \
-            or self.env['account.account'].search([('account_type', '=', account_type)], limit=1)
+            or Account.create({'name': 'Prueba I-3 %s' % account_type,
+                               'code': 'ZI3%d' % (len(account_type) * 100 + sum(map(ord, account_type)) % 97),
+                               'account_type': account_type, 'company_ids': [(6, 0, self.company.ids)]})
 
     def _invoice(self, move_type, partner, amount, when, account, product=None):
         line = {'name': 'linea', 'quantity': 1.0, 'price_unit': amount,
@@ -38,10 +45,17 @@ class TestIndicatorI3(TransactionCase):
 
     def test_01_desperdicio_kg(self):
         env = self.env
-        stock = env['stock.location'].search([('usage', '=', 'internal')], limit=1)
+        # Ubicaciones de la compañía de la prueba: la base nueva trae varias
+        # compañías demo y la primera ubicación interna podía ser de otra
+        # («no company crossover»).
+        stock = env['stock.warehouse'].search(
+            [('company_id', '=', self.company.id)], limit=1).lot_stock_id
         waste = env['stock.location'].create({
-            'name': 'Desperdicio prueba', 'location_id': stock.id, 'usage': 'internal'})
-        prodloc = env['stock.location'].search([('usage', '=', 'production')], limit=1)
+            'name': 'Desperdicio prueba', 'location_id': stock.id, 'usage': 'internal',
+            'company_id': self.company.id})
+        prodloc = env['stock.location'].search(
+            [('usage', '=', 'production'), ('company_id', 'in', [self.company.id, False])],
+            order='company_id', limit=1)
         categ = env['product.category'].create({'name': 'Hilo prueba I-3'})
         self.Param.set_param('quimibond_sgi.waste_location_ids', str(waste.id))
         self.Param.set_param('quimibond_sgi.waste_input_categ_ids', str(categ.id))
