@@ -118,3 +118,14 @@ Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protecc
   - Nota del programador: Mis pendientes tampoco filtra por empresa; esas dos son de la empresa 4. Va en el mismo PR.
 - **OdooBot:** **no se le cambia la zona horaria**, porque con ese usuario corren todos los procesos automáticos de Odoo. El cron de checklists calcula las 05:30 en `America/Mexico_City` dentro del código. Cualquier otro proceso del SGI que dependa de la zona de OdooBot se lista en G (G-007) y se corrige igual, en código.
 - **Excel de rutinas:** la hoja «Instrucciones» ya dice 49 procedimientos; los datos no cambian.
+
+## 2026-09-29 — respuestas al agente K (documentación)
+
+1. **Orden obligatorio:** primero se reconstruye el CHANGELOG y después se sacan las migraciones (A-026). Van en **PRs separados, en ese orden** (K-018).
+2. **Si la documentación contradice `decisiones.md`, manda `decisiones.md`.** El README del módulo se reduce a qué es, cómo se instala y dónde está la documentación. El historial va al CHANGELOG.
+3. **Manuales de usuario:**
+   - Uno por rol: operador o supervisor, jefe de área, MAST, Dirección y auditor.
+   - En español llano, con las rutas de menú del árbol final (`05-menus/arbol_final.md`).
+   - Sin claves del Dropbox, salvo en la sección de transición.
+   - **Se escriben después de aplicar los menús nuevos**, no antes, para no documentar rutas que van a cambiar.
+4. **Aprobada la estructura `docs/sgi/`** (11-documentacion §6). La parte técnica se genera por script y se revisa en CI (`--check`).
