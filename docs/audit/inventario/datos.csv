@@ -1,0 +1,438 @@
+addon,xml_id,model,name,noupdate,en_manifest,file,line
+quimibond_sgi,sgi_spreadsheet_dashboard_group,spreadsheet.dashboard.group,SGI,no,sí,addons/quimibond_sgi/views/sgi_catalog_views.xml,410
+quimibond_sgi,sgi_spreadsheet_dashboard_health,spreadsheet.dashboard,Salud del SGI,sí,sí,addons/quimibond_sgi/views/sgi_catalog_views.xml,417
+quimibond_sgi,paperformat_sgi_carta_horizontal,report.paperformat,SGI Carta horizontal (Matriz de cumplimiento),no,sí,addons/quimibond_sgi/report/report_compliance_matrix.xml,5
+quimibond_sgi,paperformat_sgi_doc_change,report.paperformat,SGI Carta (cambio documental),no,sí,addons/quimibond_sgi/report/report_doc_change.xml,7
+quimibond_sgi,paperformat_sgi_carta,report.paperformat,SGI Carta (Mi procedimiento),no,sí,addons/quimibond_sgi/report/report_my_procedure.xml,5
+quimibond_sgi,sgi_alert_source_indicator_red,sgi.alert.source,Indicador en semáforo rojo,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,7
+quimibond_sgi,sgi_alert_source_calibration,sgi.alert.source,Equipo de medición fuera de tolerancia,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,19
+quimibond_sgi,sgi_alert_source_incident,sgi.alert.source,Incidente SST grave o fatal,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,31
+quimibond_sgi,sgi_alert_source_audit_finding,sgi.alert.source,Hallazgo de auditoría,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,42
+quimibond_sgi,sgi_alert_source_complaint,sgi.alert.source,Reclamación de cliente,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,53
+quimibond_sgi,sgi_alert_source_chain_stuck,sgi.alert.source,Eslabón de procedimiento atorado,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,63
+quimibond_sgi,sgi_alert_source_legal,sgi.alert.source,Incumplimiento de requisito legal,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,75
+quimibond_sgi,sgi_alert_source_maintenance,sgi.alert.source,Falla de mantenimiento,sí,sí,addons/quimibond_sgi/data/sgi_alert_source_data.xml,86
+quimibond_sgi,sgi_area_g,sgi.area,SGI,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,7
+quimibond_sgi,sgi_area_a,sgi.area,Administración,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,11
+quimibond_sgi,sgi_area_c,sgi.area,Calidad,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,15
+quimibond_sgi,sgi_area_d,sgi.area,Diseño,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,19
+quimibond_sgi,sgi_area_e,sgi.area,Ambiental,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,23
+quimibond_sgi,sgi_area_i,sgi.area,Inspección,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,27
+quimibond_sgi,sgi_area_m,sgi.area,Mantenimiento,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,31
+quimibond_sgi,sgi_area_p,sgi.area,Producción,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,35
+quimibond_sgi,sgi_area_s,sgi.area,SST,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,39
+quimibond_sgi,sgi_area_v,sgi.area,Ventas,sí,sí,addons/quimibond_sgi/data/sgi_areas.xml,43
+quimibond_sgi,sgi_survey_audit_9001,survey.survey,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,7
+quimibond_sgi,sgi_survey_page_4,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,14
+quimibond_sgi,sgi_survey_q_4,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,20
+quimibond_sgi,sgi_survey_a_4_c,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,26
+quimibond_sgi,sgi_survey_a_4_nc,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,29
+quimibond_sgi,sgi_survey_a_4_o,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,32
+quimibond_sgi,sgi_survey_page_5,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,37
+quimibond_sgi,sgi_survey_q_5,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,43
+quimibond_sgi,sgi_survey_a_5_c,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,49
+quimibond_sgi,sgi_survey_a_5_nc,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,52
+quimibond_sgi,sgi_survey_a_5_o,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,55
+quimibond_sgi,sgi_survey_page_6,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,60
+quimibond_sgi,sgi_survey_q_6,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,66
+quimibond_sgi,sgi_survey_a_6_c,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,72
+quimibond_sgi,sgi_survey_a_6_nc,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,75
+quimibond_sgi,sgi_survey_a_6_o,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,78
+quimibond_sgi,sgi_survey_page_7,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,83
+quimibond_sgi,sgi_survey_q_7,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,89
+quimibond_sgi,sgi_survey_a_7_c,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,95
+quimibond_sgi,sgi_survey_a_7_nc,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,98
+quimibond_sgi,sgi_survey_a_7_o,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,101
+quimibond_sgi,sgi_survey_page_8,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,106
+quimibond_sgi,sgi_survey_q_8,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,112
+quimibond_sgi,sgi_survey_a_8_c,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,118
+quimibond_sgi,sgi_survey_a_8_nc,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,121
+quimibond_sgi,sgi_survey_a_8_o,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,124
+quimibond_sgi,sgi_survey_page_9,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,129
+quimibond_sgi,sgi_survey_q_9,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,135
+quimibond_sgi,sgi_survey_a_9_c,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,141
+quimibond_sgi,sgi_survey_a_9_nc,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,144
+quimibond_sgi,sgi_survey_a_9_o,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,147
+quimibond_sgi,sgi_survey_page_10,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,152
+quimibond_sgi,sgi_survey_q_10,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,158
+quimibond_sgi,sgi_survey_a_10_c,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,164
+quimibond_sgi,sgi_survey_a_10_nc,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,167
+quimibond_sgi,sgi_survey_a_10_o,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_audit_data.xml,170
+quimibond_sgi,mail_template_sgi_coa,mail.template,SGI: COA al cliente,sí,sí,addons/quimibond_sgi/data/sgi_coa_data.xml,6
+quimibond_sgi,sgi_control_plan_mp,sgi.control.plan,Recepción de Materias Primas (F-P-P03-01),sí,sí,addons/quimibond_sgi/data/sgi_control_plans_fase4.xml,12
+quimibond_sgi,sgi_control_plan_revisado,sgi.control.plan,Tejido Circular — Revisado,sí,sí,addons/quimibond_sgi/data/sgi_control_plans_fase4.xml,21
+quimibond_sgi,sgi_survey_dnc,survey.survey,,sí,sí,addons/quimibond_sgi/data/sgi_dnc_survey.xml,4
+quimibond_sgi,sgi_survey_dnc_page1,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_dnc_survey.xml,12
+quimibond_sgi,sgi_survey_dnc_q1,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_dnc_survey.xml,19
+quimibond_sgi,sgi_survey_dnc_q2,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_dnc_survey.xml,26
+quimibond_sgi,sgi_survey_dnc_q3,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_dnc_survey.xml,38
+quimibond_sgi,sgi_survey_dnc_page2,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_dnc_survey.xml,47
+quimibond_sgi,sgi_survey_dnc_q4,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_dnc_survey.xml,54
+quimibond_sgi,sgi_sign_role_elaboro,sign.item.role,SGI · Elaboró,sí,sí,addons/quimibond_sgi/data/sgi_doc_change_sign_data.xml,4
+quimibond_sgi,sgi_sign_role_reviso,sign.item.role,SGI · Revisó,sí,sí,addons/quimibond_sgi/data/sgi_doc_change_sign_data.xml,7
+quimibond_sgi,sgi_sign_role_aprobo,sign.item.role,SGI · Aprobó,sí,sí,addons/quimibond_sgi/data/sgi_doc_change_sign_data.xml,10
+quimibond_sgi,sgi_sign_role_empleado,sign.item.role,SGI · Empleado,sí,sí,addons/quimibond_sgi/data/sgi_doc_change_sign_data.xml,14
+quimibond_sgi,sgi_doc_type_miid,sgi.document.type,Manual (MIID),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,8
+quimibond_sgi,sgi_doc_type_procedimiento,sgi.document.type,Procedimiento (PR),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,16
+quimibond_sgi,sgi_doc_type_instructivo,sgi.document.type,Instructivo (IT),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,25
+quimibond_sgi,sgi_doc_type_formato,sgi.document.type,Formato (F),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,34
+quimibond_sgi,sgi_doc_type_formato_it,sgi.document.type,Formato de instructivo (F-IT),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,43
+quimibond_sgi,sgi_doc_type_control_operacional,sgi.document.type,Control operacional (CO),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,51
+quimibond_sgi,sgi_doc_type_metodo_anexo,sgi.document.type,Método / anexo (MA),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,59
+quimibond_sgi,sgi_doc_type_descripcion_puesto,sgi.document.type,Descripción de puesto (DP),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,67
+quimibond_sgi,sgi_doc_type_dat,sgi.document.type,DAT,sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,75
+quimibond_sgi,sgi_doc_type_protocolo,sgi.document.type,Protocolo (PROT),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,83
+quimibond_sgi,sgi_doc_type_diagrama,sgi.document.type,Diagrama de flujo (DF),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,91
+quimibond_sgi,sgi_doc_type_reglamento,sgi.document.type,Reglamento (R),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,99
+quimibond_sgi,sgi_doc_type_anexo,sgi.document.type,Anexo,sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,107
+quimibond_sgi,sgi_doc_type_externo,sgi.document.type,Documento externo,sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,115
+quimibond_sgi,sgi_doc_type_formulario_odoo,sgi.document.type,Formulario de Odoo (vista),sí,sí,addons/quimibond_sgi/data/sgi_document_types.xml,122
+quimibond_sgi,sgi_project_dyd,project.project,Diseño y Desarrollo (P-D01 · 8.3),sí,sí,addons/quimibond_sgi/data/sgi_dyd_data.xml,11
+quimibond_sgi,sgi_dyd_stage_plan,project.task.type,Planificación (8.3.2),sí,sí,addons/quimibond_sgi/data/sgi_dyd_data.xml,17
+quimibond_sgi,sgi_dyd_stage_inputs,project.task.type,Entradas del diseño (8.3.3),sí,sí,addons/quimibond_sgi/data/sgi_dyd_data.xml,22
+quimibond_sgi,sgi_dyd_stage_review,project.task.type,Revisión (8.3.4),sí,sí,addons/quimibond_sgi/data/sgi_dyd_data.xml,27
+quimibond_sgi,sgi_dyd_stage_verification,project.task.type,Verificación (8.3.4),sí,sí,addons/quimibond_sgi/data/sgi_dyd_data.xml,32
+quimibond_sgi,sgi_dyd_stage_validation,project.task.type,Validación con cliente (8.3.4),sí,sí,addons/quimibond_sgi/data/sgi_dyd_data.xml,37
+quimibond_sgi,sgi_dyd_stage_transfer,project.task.type,Transferencia a producción (8.3.6),sí,sí,addons/quimibond_sgi/data/sgi_dyd_data.xml,42
+quimibond_sgi,sgi_seq_epp_delivery,ir.sequence,Responsiva de EPP (SGI),sí,sí,addons/quimibond_sgi/data/sgi_epp_data.xml,3
+quimibond_sgi,sgi_objective_expansion,sgi.objective,Expansión comercial rentable y diversificada,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,12
+quimibond_sgi,sgi_ind_ex_margen,sgi.indicator,Margen sobre órdenes de venta,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,18
+quimibond_sgi,sgi_ind_ex_compras_ventas,sgi.indicator,Compras vs ventas facturadas,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,30
+quimibond_sgi,sgi_ind_ex_clientes_nuevos,sgi.indicator,Clientes nuevos (primera factura),sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,41
+quimibond_sgi,sgi_ind_ex_concentracion,sgi.indicator,Concentración top 3 clientes (12 meses),sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,53
+quimibond_sgi,sgi_ind_ex_facturacion_usd,sgi.indicator,Participación de facturación en USD,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,65
+quimibond_sgi,sgi_ind_ex_notas_credito,sgi.indicator,Notas de crédito vs facturación,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,77
+quimibond_sgi,sgi_ind_ex_dso,sgi.indicator,Días de cartera (DSO),sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,89
+quimibond_sgi,sgi_ind_ex_cartera_vencida,sgi.indicator,Cartera vencida,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,105
+quimibond_sgi,sgi_ind_ex_cartera_vencida_60,sgi.indicator,Cartera vencida a más de 60 días,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,116
+quimibond_sgi,sgi_ind_ex_retencion,sgi.indicator,Retención de clientes (12 meses),sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,127
+quimibond_sgi,sgi_ind_ex_reactivados,sgi.indicator,Clientes reactivados,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,139
+quimibond_sgi,sgi_ind_ex_fuera_top10,sgi.indicator,Ventas fuera del top 10 clientes (12 meses),sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,151
+quimibond_sgi,sgi_ind_ex_conc_productos,sgi.indicator,Concentración top 5 productos (12 meses),sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,163
+quimibond_sgi,sgi_ind_ex_cancelados,sgi.indicator,Pedidos de venta cancelados,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,175
+quimibond_sgi,sgi_ind_ex_entregas,sgi.indicator,Entregas completas a la primera,sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,187
+quimibond_sgi,sgi_ind_ex_dpo,sgi.indicator,Días de pago a proveedores (DPO),sí,sí,addons/quimibond_sgi/data/sgi_expansion_data.xml,198
+quimibond_sgi,sgi_seq_emergency_plan,ir.sequence,Planes de emergencia SGI,sí,sí,addons/quimibond_sgi/data/sgi_fase7_data.xml,6
+quimibond_sgi,sgi_seq_emergency_drill,ir.sequence,Simulacros SGI,sí,sí,addons/quimibond_sgi/data/sgi_fase7_data.xml,14
+quimibond_sgi,sgi_seq_msa,ir.sequence,Estudios MSA SGI,sí,sí,addons/quimibond_sgi/data/sgi_fase7_data.xml,22
+quimibond_sgi,sgi_ind_satisfaccion,sgi.indicator,Satisfacción del cliente,sí,sí,addons/quimibond_sgi/data/sgi_fase7_data.xml,63
+quimibond_sgi,sgi_alert_source_devolucion,sgi.alert.source,Devolución de cliente validada,sí,sí,addons/quimibond_sgi/data/sgi_fase8_data.xml,7
+quimibond_sgi,format_map_sale_order,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,8
+quimibond_sgi,format_map_purchase_order,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,18
+quimibond_sgi,format_map_stock_picking,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,28
+quimibond_sgi,format_map_mrp_production,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,34
+quimibond_sgi,format_map_maintenance_request,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,40
+quimibond_sgi,format_map_quality_alert,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,46
+quimibond_sgi,format_map_stock_lot,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,52
+quimibond_sgi,format_map_mgmt_review,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,58
+quimibond_sgi,format_map_sales_budget,sgi.format.map,,sí,sí,addons/quimibond_sgi/data/sgi_format_map_data.xml,64
+quimibond_sgi,sgi_helpdesk_team_voice,helpdesk.team,Quejas y Sugerencias,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,6
+quimibond_sgi,sgi_hd_voice_stage_new,helpdesk.stage,Recibida,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,11
+quimibond_sgi,sgi_hd_voice_stage_progress,helpdesk.stage,En atención,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,15
+quimibond_sgi,sgi_hd_voice_stage_closed,helpdesk.stage,Cerrada,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,19
+quimibond_sgi,sgi_hd_tag_queja,helpdesk.tag,Queja,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,24
+quimibond_sgi,sgi_hd_tag_sugerencia,helpdesk.tag,Sugerencia,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,27
+quimibond_sgi,sgi_hd_tag_condicion_insegura,helpdesk.tag,SST-Condición insegura,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,30
+quimibond_sgi,sgi_survey_satisfaction,survey.survey,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,37
+quimibond_sgi,sgi_sat_q_calidad,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,43
+quimibond_sgi,sgi_sat_calidad_1,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,49
+quimibond_sgi,sgi_sat_calidad_2,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,50
+quimibond_sgi,sgi_sat_calidad_3,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,51
+quimibond_sgi,sgi_sat_calidad_4,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,52
+quimibond_sgi,sgi_sat_calidad_5,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,53
+quimibond_sgi,sgi_sat_q_entregas,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,55
+quimibond_sgi,sgi_sat_entregas_1,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,61
+quimibond_sgi,sgi_sat_entregas_2,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,62
+quimibond_sgi,sgi_sat_entregas_3,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,63
+quimibond_sgi,sgi_sat_entregas_4,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,64
+quimibond_sgi,sgi_sat_entregas_5,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,65
+quimibond_sgi,sgi_sat_q_atencion,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,67
+quimibond_sgi,sgi_sat_atencion_1,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,73
+quimibond_sgi,sgi_sat_atencion_2,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,74
+quimibond_sgi,sgi_sat_atencion_3,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,75
+quimibond_sgi,sgi_sat_atencion_4,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,76
+quimibond_sgi,sgi_sat_atencion_5,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,77
+quimibond_sgi,sgi_sat_q_reclamos,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,79
+quimibond_sgi,sgi_sat_reclamos_1,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,85
+quimibond_sgi,sgi_sat_reclamos_2,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,86
+quimibond_sgi,sgi_sat_reclamos_3,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,87
+quimibond_sgi,sgi_sat_reclamos_4,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,88
+quimibond_sgi,sgi_sat_reclamos_5,survey.question.answer,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,89
+quimibond_sgi,sgi_sat_q_comentario,survey.question,,sí,sí,addons/quimibond_sgi/data/sgi_helpdesk_interno.xml,91
+quimibond_sgi,sgi_term_desperdicio_num,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,13
+quimibond_sgi,sgi_term_desperdicio_den,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,23
+quimibond_sgi,sgi_term_reproceso_num,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,35
+quimibond_sgi,sgi_term_reproceso_den,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,45
+quimibond_sgi,sgi_term_inventario_num,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,59
+quimibond_sgi,sgi_term_inventario_den,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,69
+quimibond_sgi,sgi_term_energia_num,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,81
+quimibond_sgi,sgi_term_energia_den,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,92
+quimibond_sgi,sgi_term_compras_mp_num,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,105
+quimibond_sgi,sgi_term_compras_mp_den,sgi.indicator.term,,sí,sí,addons/quimibond_sgi/data/sgi_indicator_formula_data.xml,115
+quimibond_sgi,sgi_ind_cierre_nc,sgi.indicator,Cierre de No Conformidades (NCA/NCD),sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,11
+quimibond_sgi,sgi_ind_consumo_papel,sgi.indicator,Consumo de papel 100−(NF/DL×100),sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,21
+quimibond_sgi,sgi_ind_consumo_energia,sgi.indicator,Consumo de energía,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,31
+quimibond_sgi,sgi_ind_separacion_residuos,sgi.indicator,Separación de residuos,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,39
+quimibond_sgi,sgi_ind_crecimiento_ventas,sgi.indicator,Crecimiento anual de ventas,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,52
+quimibond_sgi,sgi_ind_presupuesto_ventas,sgi.indicator,Cumplimiento de presupuesto de ventas,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,64
+quimibond_sgi,sgi_ind_otd_proveedores,sgi.indicator,Entregas a tiempo de proveedores,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,78
+quimibond_sgi,sgi_ind_requisiciones,sgi.indicator,Requisiciones atendidas,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,89
+quimibond_sgi,sgi_ind_errores_oc,sgi.indicator,Errores en órdenes de compra,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,100
+quimibond_sgi,sgi_ind_diferencia_inventario,sgi.indicator,Diferencia inventario físico vs sistema,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,113
+quimibond_sgi,sgi_ind_embarques_sin_error,sgi.indicator,Embarques sin error,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,124
+quimibond_sgi,sgi_ind_otif,sgi.indicator,OTIF (On Time In Full),sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,137
+quimibond_sgi,sgi_ind_doc_exportaciones,sgi.indicator,Documentación de exportaciones,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,148
+quimibond_sgi,sgi_ind_producido_programado,sgi.indicator,Producido vs programado,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,162
+quimibond_sgi,sgi_ind_producido_capacidad,sgi.indicator,Producido vs capacidad,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,173
+quimibond_sgi,sgi_ind_calidad_pq,sgi.indicator,Calidad PQ,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,184
+quimibond_sgi,sgi_ind_reproceso,sgi.indicator,Reproceso,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,195
+quimibond_sgi,sgi_ind_desperdicio,sgi.indicator,Desperdicio,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,206
+quimibond_sgi,sgi_ind_reclamos_cliente,sgi.indicator,Reclamos de cliente,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,219
+quimibond_sgi,sgi_ind_disponibilidad,sgi.indicator,Disponibilidad de equipos,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,232
+quimibond_sgi,sgi_ind_preventivo,sgi.indicator,Mantenimiento preventivo cumplido,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,243
+quimibond_sgi,sgi_ind_ots_atendidas,sgi.indicator,Órdenes de trabajo atendidas,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,254
+quimibond_sgi,sgi_ind_cobertura_plantilla,sgi.indicator,Cobertura de plantilla,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,267
+quimibond_sgi,sgi_ind_capacitacion,sgi.indicator,Capacitación,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,278
+quimibond_sgi,sgi_ind_rotacion,sgi.indicator,Rotación de personal,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,289
+quimibond_sgi,sgi_ind_disponibilidad_odoo,sgi.indicator,Disponibilidad de Odoo,sí,sí,addons/quimibond_sgi/data/sgi_indicators_data.xml,302
+quimibond_sgi,mail_template_sgi_incident_grave,mail.template,SGI: Incidente grave/fatal,sí,sí,addons/quimibond_sgi/data/sgi_mail_templates.xml,12
+quimibond_sgi,mail_template_sgi_nc_mayor,mail.template,SGI: NC mayor,sí,sí,addons/quimibond_sgi/data/sgi_mail_templates.xml,34
+quimibond_sgi,mail_template_sgi_calibration_blocked,mail.template,SGI: Equipo bloqueado por calibración vencida,sí,sí,addons/quimibond_sgi/data/sgi_mail_templates.xml,56
+quimibond_sgi,sgi_project_agreements,project.project,Acuerdos RxD,sí,sí,addons/quimibond_sgi/data/sgi_mgmt_review_data.xml,4
+quimibond_sgi,sgi_approval_category_purchase,approval.category,Solicitud de compra SGI,sí,sí,addons/quimibond_sgi/data/sgi_mgmt_review_data.xml,12
+quimibond_sgi,sgi_approval_category_moc,approval.category,Cambio de proceso / infraestructura (MOC SGI),sí,sí,addons/quimibond_sgi/data/sgi_moc_data.xml,8
+quimibond_sgi,sgi_doc_type_mi_procedimiento,sgi.document.type,Mi procedimiento (MP),sí,sí,addons/quimibond_sgi/data/sgi_my_procedure_data.xml,7
+quimibond_sgi,sgi_norm_9001,sgi.norm,Sistema de Gestión de la Calidad,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,8
+quimibond_sgi,sgi_norm_14001,sgi.norm,Sistema de Gestión Ambiental,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,12
+quimibond_sgi,sgi_norm_45001,sgi.norm,Sistema de Gestión de SST,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,16
+quimibond_sgi,c_9001_41,sgi.norm.clause,Comprensión de la organización y su contexto,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,22
+quimibond_sgi,c_9001_42,sgi.norm.clause,Comprensión de las necesidades y expectativas de las partes interesadas,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,23
+quimibond_sgi,c_9001_43,sgi.norm.clause,Determinación del alcance del sistema de gestión de la calidad,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,24
+quimibond_sgi,c_9001_44,sgi.norm.clause,Sistema de gestión de la calidad y sus procesos,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,25
+quimibond_sgi,c_9001_51,sgi.norm.clause,Liderazgo y compromiso,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,26
+quimibond_sgi,c_9001_52,sgi.norm.clause,Política,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,27
+quimibond_sgi,c_9001_53,sgi.norm.clause,"Roles, responsabilidades y autoridades en la organización",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,28
+quimibond_sgi,c_9001_61,sgi.norm.clause,Acciones para abordar riesgos y oportunidades,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,29
+quimibond_sgi,c_9001_62,sgi.norm.clause,Objetivos de la calidad y planificación para lograrlos,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,30
+quimibond_sgi,c_9001_63,sgi.norm.clause,Planificación de los cambios,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,31
+quimibond_sgi,c_9001_71,sgi.norm.clause,Recursos,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,32
+quimibond_sgi,c_9001_72,sgi.norm.clause,Competencia,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,33
+quimibond_sgi,c_9001_73,sgi.norm.clause,Toma de conciencia,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,34
+quimibond_sgi,c_9001_74,sgi.norm.clause,Comunicación,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,35
+quimibond_sgi,c_9001_75,sgi.norm.clause,Información documentada,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,36
+quimibond_sgi,c_9001_81,sgi.norm.clause,Planificación y control operacional,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,37
+quimibond_sgi,c_9001_82,sgi.norm.clause,Requisitos para los productos y servicios,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,38
+quimibond_sgi,c_9001_83,sgi.norm.clause,Diseño y desarrollo de los productos y servicios,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,39
+quimibond_sgi,c_9001_84,sgi.norm.clause,"Control de los procesos, productos y servicios suministrados externamente",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,40
+quimibond_sgi,c_9001_85,sgi.norm.clause,Producción y provisión del servicio,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,41
+quimibond_sgi,c_9001_86,sgi.norm.clause,Liberación de los productos y servicios,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,42
+quimibond_sgi,c_9001_87,sgi.norm.clause,Control de las salidas no conformes,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,43
+quimibond_sgi,c_9001_91,sgi.norm.clause,"Seguimiento, medición, análisis y evaluación",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,44
+quimibond_sgi,c_9001_92,sgi.norm.clause,Auditoría interna,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,45
+quimibond_sgi,c_9001_93,sgi.norm.clause,Revisión por la dirección,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,46
+quimibond_sgi,c_9001_101,sgi.norm.clause,Generalidades,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,47
+quimibond_sgi,c_9001_102,sgi.norm.clause,No conformidad y acción correctiva,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,48
+quimibond_sgi,c_9001_103,sgi.norm.clause,Mejora continua,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,49
+quimibond_sgi,c_14001_41,sgi.norm.clause,Comprensión de la organización y su contexto,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,52
+quimibond_sgi,c_14001_42,sgi.norm.clause,Comprensión de las necesidades y expectativas de las partes interesadas,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,53
+quimibond_sgi,c_14001_43,sgi.norm.clause,Determinación del alcance del sistema de gestión ambiental,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,54
+quimibond_sgi,c_14001_44,sgi.norm.clause,Sistema de gestión ambiental,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,55
+quimibond_sgi,c_14001_51,sgi.norm.clause,Liderazgo y compromiso,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,56
+quimibond_sgi,c_14001_52,sgi.norm.clause,Política ambiental,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,57
+quimibond_sgi,c_14001_53,sgi.norm.clause,"Roles, responsabilidades y autoridades en la organización",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,58
+quimibond_sgi,c_14001_61,sgi.norm.clause,"Acciones para abordar riesgos y oportunidades (aspectos ambientales, requisitos legales)",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,59
+quimibond_sgi,c_14001_62,sgi.norm.clause,Objetivos ambientales y planificación para lograrlos,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,60
+quimibond_sgi,c_14001_71,sgi.norm.clause,Recursos,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,61
+quimibond_sgi,c_14001_72,sgi.norm.clause,Competencia,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,62
+quimibond_sgi,c_14001_73,sgi.norm.clause,Toma de conciencia,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,63
+quimibond_sgi,c_14001_74,sgi.norm.clause,Comunicación,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,64
+quimibond_sgi,c_14001_75,sgi.norm.clause,Información documentada,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,65
+quimibond_sgi,c_14001_81,sgi.norm.clause,Planificación y control operacional,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,66
+quimibond_sgi,c_14001_82,sgi.norm.clause,Preparación y respuesta ante emergencias,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,67
+quimibond_sgi,c_14001_91,sgi.norm.clause,"Seguimiento, medición, análisis y evaluación (incluye evaluación del cumplimiento)",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,68
+quimibond_sgi,c_14001_92,sgi.norm.clause,Auditoría interna,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,69
+quimibond_sgi,c_14001_93,sgi.norm.clause,Revisión por la dirección,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,70
+quimibond_sgi,c_14001_101,sgi.norm.clause,Generalidades,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,71
+quimibond_sgi,c_14001_102,sgi.norm.clause,No conformidad y acción correctiva,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,72
+quimibond_sgi,c_14001_103,sgi.norm.clause,Mejora continua,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,73
+quimibond_sgi,c_45001_41,sgi.norm.clause,Comprensión de la organización y su contexto,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,76
+quimibond_sgi,c_45001_42,sgi.norm.clause,Comprensión de las necesidades y expectativas de los trabajadores y otras partes interesadas,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,77
+quimibond_sgi,c_45001_43,sgi.norm.clause,Determinación del alcance del sistema de gestión de la SST,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,78
+quimibond_sgi,c_45001_44,sgi.norm.clause,Sistema de gestión de la SST,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,79
+quimibond_sgi,c_45001_51,sgi.norm.clause,Liderazgo y compromiso,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,80
+quimibond_sgi,c_45001_52,sgi.norm.clause,Política de la SST,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,81
+quimibond_sgi,c_45001_53,sgi.norm.clause,"Roles, responsabilidades y autoridades en la organización",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,82
+quimibond_sgi,c_45001_54,sgi.norm.clause,Consulta y participación de los trabajadores,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,83
+quimibond_sgi,c_45001_61,sgi.norm.clause,"Acciones para abordar riesgos y oportunidades (identificación de peligros, IPER)",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,84
+quimibond_sgi,c_45001_62,sgi.norm.clause,Objetivos de la SST y planificación para lograrlos,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,85
+quimibond_sgi,c_45001_71,sgi.norm.clause,Recursos,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,86
+quimibond_sgi,c_45001_72,sgi.norm.clause,Competencia,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,87
+quimibond_sgi,c_45001_73,sgi.norm.clause,Toma de conciencia,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,88
+quimibond_sgi,c_45001_74,sgi.norm.clause,Comunicación,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,89
+quimibond_sgi,c_45001_75,sgi.norm.clause,Información documentada,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,90
+quimibond_sgi,c_45001_81,sgi.norm.clause,Planificación y control operacional,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,91
+quimibond_sgi,c_45001_82,sgi.norm.clause,Preparación y respuesta ante emergencias,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,92
+quimibond_sgi,c_45001_91,sgi.norm.clause,"Seguimiento, medición, análisis y evaluación del desempeño",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,93
+quimibond_sgi,c_45001_92,sgi.norm.clause,Auditoría interna,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,94
+quimibond_sgi,c_45001_93,sgi.norm.clause,Revisión por la dirección,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,95
+quimibond_sgi,c_45001_101,sgi.norm.clause,Generalidades,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,96
+quimibond_sgi,c_45001_102,sgi.norm.clause,"Incidentes, no conformidades y acciones correctivas",sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,97
+quimibond_sgi,c_45001_103,sgi.norm.clause,Mejora continua,sí,sí,addons/quimibond_sgi/data/sgi_norms.xml,98
+quimibond_sgi,sgi_objective_ingresos,sgi.objective,Ingresos MX$360M a 2030,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,4
+quimibond_sgi,sgi_objective_no_automotriz,sgi.objective,≥30% de ventas no automotrices,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,9
+quimibond_sgi,sgi_objective_exportaciones,sgi.objective,Exportaciones ≥40%,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,14
+quimibond_sgi,sgi_objective_ebitda,sgi.objective,EBITDA 15%,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,19
+quimibond_sgi,sgi_objective_cero_residuos,sgi.objective,Cero residuos a relleno 2030,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,24
+quimibond_sgi,sgi_objective_certificaciones,sgi.objective,Mantener ISO 9001/14001/45001,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,29
+quimibond_sgi,sgi_objective_innovacion,sgi.objective,1-2 productos innovadores por año,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,34
+quimibond_sgi,sgi_objective_seguridad,sgi.objective,Cultura de seguridad ISO 45001,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,39
+quimibond_sgi,sgi_objective_gobierno,sgi.objective,Profesionalización y gobierno corporativo,sí,sí,addons/quimibond_sgi/data/sgi_objectives.xml,44
+quimibond_sgi,sgi_ppap_el_01,sgi.ppap.element.template,Registros de diseño,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,4
+quimibond_sgi,sgi_ppap_el_02,sgi.ppap.element.template,Documentos de cambio de ingeniería,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,8
+quimibond_sgi,sgi_ppap_el_03,sgi.ppap.element.template,Aprobación de ingeniería del cliente,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,12
+quimibond_sgi,sgi_ppap_el_04,sgi.ppap.element.template,AMEF de diseño (DFMEA),sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,16
+quimibond_sgi,sgi_ppap_el_05,sgi.ppap.element.template,Diagrama de flujo del proceso,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,20
+quimibond_sgi,sgi_ppap_el_06,sgi.ppap.element.template,AMEF de proceso (PFMEA),sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,24
+quimibond_sgi,sgi_ppap_el_07,sgi.ppap.element.template,Plan de control,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,28
+quimibond_sgi,sgi_ppap_el_08,sgi.ppap.element.template,Estudios de análisis de sistemas de medición (MSA),sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,32
+quimibond_sgi,sgi_ppap_el_09,sgi.ppap.element.template,Resultados dimensionales,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,36
+quimibond_sgi,sgi_ppap_el_10,sgi.ppap.element.template,Resultados de pruebas de material y desempeño,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,40
+quimibond_sgi,sgi_ppap_el_11,sgi.ppap.element.template,Estudios iniciales del proceso (SPC / Cpk),sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,44
+quimibond_sgi,sgi_ppap_el_12,sgi.ppap.element.template,Documentación del laboratorio calificado,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,48
+quimibond_sgi,sgi_ppap_el_13,sgi.ppap.element.template,Reporte de aprobación de apariencia (AAR),sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,52
+quimibond_sgi,sgi_ppap_el_14,sgi.ppap.element.template,Muestras de producto / partes de producción,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,56
+quimibond_sgi,sgi_ppap_el_15,sgi.ppap.element.template,Muestra maestra,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,60
+quimibond_sgi,sgi_ppap_el_16,sgi.ppap.element.template,Ayudas de verificación (check aids),sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,64
+quimibond_sgi,sgi_ppap_el_17,sgi.ppap.element.template,Requisitos específicos del cliente,sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,68
+quimibond_sgi,sgi_ppap_el_18,sgi.ppap.element.template,Garantía de presentación de la parte (PSW),sí,sí,addons/quimibond_sgi/data/sgi_ppap_elements.xml,72
+quimibond_sgi,mail_template_sgi_nc_supplier,mail.template,SGI: No conformidad a proveedor (portal),sí,sí,addons/quimibond_sgi/data/sgi_pr6_data.xml,4
+quimibond_sgi,proc_adm,sgi.process,ADMINISTRACIÓN,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,8
+quimibond_sgi,proc_cal,sgi.process,CALIDAD,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,13
+quimibond_sgi,proc_mto,sgi.process,MANTENIMIENTO,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,18
+quimibond_sgi,proc_dis,sgi.process,DISEÑO Y DESARROLLO,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,23
+quimibond_sgi,proc_mfg,sgi.process,MANUFACTURA,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,28
+quimibond_sgi,proc_ventas,sgi.process,Ventas,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,35
+quimibond_sgi,proc_planeacion,sgi.process,Planeación,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,39
+quimibond_sgi,proc_compras,sgi.process,Compras,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,43
+quimibond_sgi,proc_almacen_mp,sgi.process,Almacén de Materia Prima,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,47
+quimibond_sgi,proc_almacen_pt,sgi.process,Almacén de Producto Terminado,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,51
+quimibond_sgi,proc_prod_tac,sgi.process,Producción TAC,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,55
+quimibond_sgi,proc_prod_ent,sgi.process,Producción Entretelas,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,59
+quimibond_sgi,proc_tintoreria,sgi.process,Tintorería,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,63
+quimibond_sgi,proc_inspeccion,sgi.process,Inspección y Empaque,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,67
+quimibond_sgi,proc_laboratorio,sgi.process,Laboratorio,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,71
+quimibond_sgi,proc_logistica,sgi.process,Logística,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,75
+quimibond_sgi,proc_facturacion,sgi.process,Facturación,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,79
+quimibond_sgi,proc_cxc,sgi.process,Crédito y Cobranza,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,83
+quimibond_sgi,proc_rh,sgi.process,Recursos Humanos,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,87
+quimibond_sgi,proc_sgi,sgi.process,MAST y SGI,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,91
+quimibond_sgi,proc_direccion,sgi.process,Dirección de Operaciones,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,95
+quimibond_sgi,flow_cxc_ventas,sgi.process.flow,Condiciones de crédito,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,101
+quimibond_sgi,flow_ventas_plan_pronostico,sgi.process.flow,Pronóstico de ventas (F-P-A28-13),sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,106
+quimibond_sgi,flow_ventas_plan_presupuesto,sgi.process.flow,Presupuesto anual (F-P-A28-14),sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,110
+quimibond_sgi,flow_ventas_plan_pedido,sgi.process.flow,Pedido confirmado,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,114
+quimibond_sgi,flow_plan_prod,sgi.process.flow,Programa semanal de producción (F-P-A12-01),sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,119
+quimibond_sgi,flow_plan_almacen,sgi.process.flow,Solicitud de existencias (F-P-A12-02),sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,124
+quimibond_sgi,flow_plan_ventas,sgi.process.flow,Resumen de fechas de entrega (F-P-A12-03),sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,129
+quimibond_sgi,flow_compras_almacen,sgi.process.flow,Orden de compra / insumos,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,133
+quimibond_sgi,flow_almacen_prod,sgi.process.flow,Materia prima liberada,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,138
+quimibond_sgi,flow_prod_inspeccion,sgi.process.flow,Lote a liberar,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,143
+quimibond_sgi,flow_inspeccion_almacenpt,sgi.process.flow,Rollo clasificado,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,148
+quimibond_sgi,flow_almacenpt_logistica,sgi.process.flow,Lista de embarque,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,153
+quimibond_sgi,flow_logistica_facturacion,sgi.process.flow,Remisión / entrega,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,158
+quimibond_sgi,flow_facturacion_cxc,sgi.process.flow,Factura,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,163
+quimibond_sgi,flow_mto_prodtac,sgi.process.flow,Máquina disponible / OT atendida,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,170
+quimibond_sgi,flow_mto_prodent,sgi.process.flow,Máquina disponible / OT atendida,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,175
+quimibond_sgi,flow_lab_inspeccion,sgi.process.flow,Resultados de prueba,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,180
+quimibond_sgi,flow_rh_direccion,sgi.process.flow,Personal competente (F-P-A01-01),sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,185
+quimibond_sgi,flow_sgi_direccion,sgi.process.flow,Estado del SGI,sí,sí,addons/quimibond_sgi/data/sgi_process_data.xml,189
+quimibond_sgi,flow_almacenmp_compras_req,sgi.process.flow,Requisición de compra / alerta de stock,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,14
+quimibond_sgi,flow_plan_prodent,sgi.process.flow,Programa semanal de producción (F-P-A12-01),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,22
+quimibond_sgi,flow_almacenmp_prodent,sgi.process.flow,Materia prima liberada (entretelas),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,27
+quimibond_sgi,flow_direccion_plan_te,sgi.process.flow,Autorización de tiempo extra,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,32
+quimibond_sgi,flow_prodtac_tintoreria,sgi.process.flow,Tela cruda tejida para teñido,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,39
+quimibond_sgi,flow_tintoreria_prodtac,sgi.process.flow,Tela teñida para acabado (rama),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,44
+quimibond_sgi,flow_prodent_inspeccion,sgi.process.flow,Entretela a liberar,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,49
+quimibond_sgi,flow_almacenmp_lab,sgi.process.flow,Muestra de MP para liberación (P-C04),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,56
+quimibond_sgi,flow_lab_almacenmp,sgi.process.flow,Liberación de materia prima,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,61
+quimibond_sgi,flow_prodtac_mto,sgi.process.flow,Solicitud de mantenimiento (F-P-M01-01),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,69
+quimibond_sgi,flow_prodent_mto,sgi.process.flow,Solicitud de mantenimiento (F-P-M01-01),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,74
+quimibond_sgi,flow_inspeccion_sgi_nc,sgi.process.flow,No Conformidad levantada (F-P-G05-01),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,81
+quimibond_sgi,flow_ventas_cal_reclamo,sgi.process.flow,Reclamación del cliente (P-C01),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,86
+quimibond_sgi,flow_sgi_compras_prov,sgi.process.flow,Evaluación trimestral de proveedores,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,92
+quimibond_sgi,flow_direccion_sgi_acuerdos,sgi.process.flow,Acuerdos y recursos de la Revisión por la Dirección,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,98
+quimibond_sgi,flow_mfg_sgi_incidente,sgi.process.flow,Reporte de incidente SST (INC-),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,103
+quimibond_sgi,flow_ventas_diseno,sgi.process.flow,Solicitud de desarrollo / muestra (P-D01),sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,110
+quimibond_sgi,flow_diseno_mfg,sgi.process.flow,Especificación / ficha técnica aprobada,sí,sí,addons/quimibond_sgi/data/sgi_process_flows_extra.xml,114
+quimibond_sgi,sgi_risk_cat_operativo,sgi.risk.category,Operativo,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,7
+quimibond_sgi,sgi_risk_cat_financiero,sgi.risk.category,Financiero,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,10
+quimibond_sgi,sgi_risk_cat_legal,sgi.risk.category,Legal,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,13
+quimibond_sgi,sgi_risk_cat_ambiental,sgi.risk.category,Ambiental,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,16
+quimibond_sgi,sgi_risk_cat_sst,sgi.risk.category,SST (Seguridad y Salud),sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,19
+quimibond_sgi,sgi_risk_cat_tecnologico,sgi.risk.category,Tecnológico,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,22
+quimibond_sgi,sgi_risk_cat_patrimonial,sgi.risk.category,Patrimonial,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,25
+quimibond_sgi,sgi_risk_cat_imagen,sgi.risk.category,Imagen / Reputación,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,28
+quimibond_sgi,sgi_risk_cat_proveedores,sgi.risk.category,Proveedores,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,31
+quimibond_sgi,sgi_risk_cat_rh,sgi.risk.category,Recursos Humanos,sí,sí,addons/quimibond_sgi/data/sgi_risk_data.xml,34
+quimibond_sgi,sgi_seq_nc_internal,ir.sequence,NC Internas SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences.xml,3
+quimibond_sgi,sgi_seq_nc_external,ir.sequence,NC Externas SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences.xml,12
+quimibond_sgi,sgi_seq_machine_sheet,ir.sequence,Ficha de proceso por máquina (SGI),sí,sí,addons/quimibond_sgi/data/sgi_sequences.xml,20
+quimibond_sgi,sgi_seq_audit,ir.sequence,Auditorías SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase2.xml,3
+quimibond_sgi,sgi_seq_risk,ir.sequence,Riesgos y oportunidades SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase2.xml,12
+quimibond_sgi,sgi_seq_mgmt_review,ir.sequence,Revisión por la Dirección SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase2.xml,21
+quimibond_sgi,sgi_seq_control_plan,ir.sequence,Planes de control SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase3.xml,3
+quimibond_sgi,sgi_seq_fmea,ir.sequence,AMEF SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase3.xml,12
+quimibond_sgi,sgi_seq_ppap,ir.sequence,PPAP SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase3.xml,21
+quimibond_sgi,sgi_seq_incident,ir.sequence,Incidentes SST SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase3.xml,30
+quimibond_sgi,sgi_seq_policy,ir.sequence,Política integral SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase6.xml,3
+quimibond_sgi,sgi_seq_sales_budget,ir.sequence,Presupuesto de ventas SGI,sí,sí,addons/quimibond_sgi/data/sgi_sequences_fase6.xml,11
+quimibond_sgi,sgi_quality_team_internal,quality.alert.team,NC Internas,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,4
+quimibond_sgi,sgi_quality_team_external,quality.alert.team,NC Externas,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,8
+quimibond_sgi,sgi_nc_int_stage_open,quality.alert.stage,Abierta,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,17
+quimibond_sgi,sgi_nc_int_stage_followup,quality.alert.stage,Seguimiento,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,21
+quimibond_sgi,sgi_nc_int_stage_closed,quality.alert.stage,Cerrada,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,25
+quimibond_sgi,sgi_nc_int_stage_cancel,quality.alert.stage,Cancelada,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,30
+quimibond_sgi,sgi_helpdesk_team_complaints,helpdesk.team,Reclamaciones de clientes,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,37
+quimibond_sgi,sgi_hd_stage_new,helpdesk.stage,Nueva,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,41
+quimibond_sgi,sgi_hd_stage_containment,helpdesk.stage,Contención,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,45
+quimibond_sgi,sgi_hd_stage_analysis,helpdesk.stage,Análisis,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,49
+quimibond_sgi,sgi_hd_stage_response,helpdesk.stage,Respuesta al cliente,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,53
+quimibond_sgi,sgi_hd_stage_closed,helpdesk.stage,Cerrada,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,57
+quimibond_sgi,sgi_hd_sla_first_response,helpdesk.sla,Primera respuesta ≤ 3 días,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,61
+quimibond_sgi,sgi_project_improvement,project.project,Mejora Continua SGI,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,70
+quimibond_sgi,sgi_task_stage_proposal,project.task.type,Propuesta,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,74
+quimibond_sgi,sgi_task_stage_progress,project.task.type,En ejecución,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,78
+quimibond_sgi,sgi_task_stage_done,project.task.type,Terminada,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,82
+quimibond_sgi,sgi_approval_category_doc_change,approval.category,Modificación de documento SGI,sí,sí,addons/quimibond_sgi/data/sgi_stages.xml,89
+quimibond_sgi,sgi_demo_partner,res.partner,Continental Demo Automotive,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,8
+quimibond_sgi,sgi_demo_product,product.product,Fieltro técnico automotriz SGI-DEMO,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,14
+quimibond_sgi,sgi_demo_control_plan,sgi.control.plan,Plan de control — Fieltro técnico (Continental),no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,21
+quimibond_sgi,sgi_demo_point_gramaje,quality.point,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,32
+quimibond_sgi,sgi_demo_point_espesor,quality.point,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,49
+quimibond_sgi,sgi_demo_lot,stock.lot,LOTE-DEMO-0001,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,66
+quimibond_sgi,sgi_demo_check_gramaje,quality.check,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,71
+quimibond_sgi,sgi_demo_check_espesor,quality.check,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,79
+quimibond_sgi,sgi_demo_equipment_ok,maintenance.equipment,Báscula analítica BA-01,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,88
+quimibond_sgi,sgi_demo_cal_ok,sgi.calibration,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,97
+quimibond_sgi,sgi_demo_equipment_bad,maintenance.equipment,Micrómetro digital MI-07,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,107
+quimibond_sgi,sgi_demo_cal_bad,sgi.calibration,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,116
+quimibond_sgi,sgi_demo_ppe,maintenance.equipment,Arnés de seguridad AS-03,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,127
+quimibond_sgi,sgi_demo_fmea,sgi.fmea,PFMEA — Línea de termofusión,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,134
+quimibond_sgi,sgi_demo_fmea_line_high,sgi.fmea.line,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,142
+quimibond_sgi,sgi_demo_fmea_line_low,sgi.fmea.line,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,155
+quimibond_sgi,sgi_demo_fmea_action,sgi.action.line,Poka-yoke: bloqueo de arranque si T < set point,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,168
+quimibond_sgi,sgi_demo_ppap,sgi.ppap,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,177
+quimibond_sgi,sgi_demo_incident,sgi.incident,Casi accidente: montacargas en pasillo peatonal,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,186
+quimibond_sgi,sgi_demo_incident_action,sgi.action.line,Delimitar y señalizar pasillo peatonal,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,199
+quimibond_sgi,sgi_demo_skilltype,hr.skill.type,Competencias técnicas SGI-DEMO,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,208
+quimibond_sgi,sgi_demo_level_basic,hr.skill.level,Básico,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,212
+quimibond_sgi,sgi_demo_level_expert,hr.skill.level,Experto,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,218
+quimibond_sgi,sgi_demo_skill,hr.skill,Operación de línea de termofusión,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,224
+quimibond_sgi,sgi_demo_job,hr.job,Operador de termofusión SGI-DEMO,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,229
+quimibond_sgi,sgi_demo_job_skill,hr.job.skill,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,233
+quimibond_sgi,sgi_demo_employee,hr.employee,Operador Demo (brecha de competencia),no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,240
+quimibond_sgi,sgi_demo_employee_skill,hr.employee.skill,,no,sí,addons/quimibond_sgi/demo/sgi_demo_fase3.xml,245
+quimibond_sgi,module_category_sgi,ir.module.category,SGI,no,sí,addons/quimibond_sgi/security/sgi_security.xml,3
+quimibond_sgi,res_groups_privilege_sgi,res.groups.privilege,SGI,no,sí,addons/quimibond_sgi/security/sgi_security.xml,9
+quimibond_sgi,res_groups_privilege_sgi_efficiency,res.groups.privilege,Eficiencias de personal,no,sí,addons/quimibond_sgi/security/sgi_security.xml,251
+quimibond_sgi_pesaje,sgi_alert_source_pesaje,sgi.alert.source,Rollo pesado fuera de tolerancia,sí,sí,addons/quimibond_sgi_pesaje/data/pesaje_data.xml,13

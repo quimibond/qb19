@@ -1,0 +1,1423 @@
+addon,model,method,decorators,lines,sudo_calls,except_handlers,menciones_py,menciones_xml,menciones_tests,file,line
+quimibond_sgi,sgi.process.activity,_compute_odoo_action_id,api.depends('odoo_menu_id'),5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,207
+quimibond_sgi,sgi.process.activity,_compute_spec_gap_summary,"api.depends('spec_gap_ids.message', 'spec_gap_ids.severity')",5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,214
+quimibond_sgi,sgi.process.activity,_check_due_business_day,api.constrains('due_business_day'),4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,221
+quimibond_sgi,sgi.process.activity,_check_due_day,api.constrains('due_day'),4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,227
+quimibond_sgi,sgi.process.activity,_sgi_due_months,,8,0,0,4,0,3,addons/quimibond_sgi/models/sgi_activity_spec.py,232
+quimibond_sgi,sgi.process.activity,action_open_odoo,,6,1,0,3,3,4,addons/quimibond_sgi/models/sgi_activity_spec.py,241
+quimibond_sgi,sgi.process.activity,_sgi_verb_list,api.model,3,1,0,2,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,252
+quimibond_sgi,sgi.process.activity,_sgi_spec_problems,,83,0,0,7,0,7,addons/quimibond_sgi/models/sgi_activity_spec.py,256
+quimibond_sgi,sgi.process.activity,_sgi_refresh_spec_gaps,,18,4,0,11,0,1,addons/quimibond_sgi/models/sgi_activity_spec.py,340
+quimibond_sgi,sgi.process.activity,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_activity_spec.py,360
+quimibond_sgi,sgi.process.activity,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_activity_spec.py,365
+quimibond_sgi,sgi.process.activity,_sgi_sentence_parts,,34,0,0,5,0,1,addons/quimibond_sgi/models/sgi_activity_spec.py,371
+quimibond_sgi,sgi.process.activity,_sgi_output_deliverable,,6,0,0,3,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,409
+quimibond_sgi,sgi.process.activity,_sgi_periodic_due,,19,0,0,1,0,5,addons/quimibond_sgi/models/sgi_activity_spec.py,416
+quimibond_sgi,sgi.process.activity,_sgi_due_label,,7,0,0,2,0,2,addons/quimibond_sgi/models/sgi_activity_spec.py,436
+quimibond_sgi,sgi.activity.role,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_activity_spec.py,449
+quimibond_sgi,sgi.activity.role,write,,4,0,0,299,1,238,addons/quimibond_sgi/models/sgi_activity_spec.py,454
+quimibond_sgi,sgi.activity.role,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_activity_spec.py,459
+quimibond_sgi,sgi.activity.input,_check_due_field,"api.constrains('due_field', 'deliverable_id')",13,0,0,0,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,494
+quimibond_sgi,sgi.activity.input,_sgi_has_deadline,,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,508
+quimibond_sgi,sgi.activity.input,_sgi_due,,16,0,0,2,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,512
+quimibond_sgi,sgi.activity.input,_check_applies_domain,"api.constrains('applies_domain', 'deliverable_id')",10,1,1,0,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,530
+quimibond_sgi,sgi.activity.input,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_activity_spec.py,542
+quimibond_sgi,sgi.activity.input,write,,4,0,0,299,1,238,addons/quimibond_sgi/models/sgi_activity_spec.py,547
+quimibond_sgi,sgi.activity.input,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_activity_spec.py,552
+quimibond_sgi,sgi.activity.input,_sgi_applicable_domain,,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,558
+quimibond_sgi,sgi.deliverable,_check_complete_domain,"api.constrains('complete_domain', 'odoo_model_id')",10,1,1,0,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,578
+quimibond_sgi,sgi.deliverable,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_activity_spec.py,589
+quimibond_sgi,sgi.process,_compute_spec_counts,,11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,621
+quimibond_sgi,sgi.process,_compute_channel_pct,,9,0,0,3,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,633
+quimibond_sgi,sgi.process,_sgi_publish_problems,,13,0,0,2,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,643
+quimibond_sgi,sgi.process,action_sgi_set_pilot,,2,0,0,0,1,0,addons/quimibond_sgi/models/sgi_activity_spec.py,657
+quimibond_sgi,sgi.process,action_sgi_set_draft,,2,0,0,0,1,0,addons/quimibond_sgi/models/sgi_activity_spec.py,660
+quimibond_sgi,sgi.process,action_sgi_publish,,22,0,0,1,1,2,addons/quimibond_sgi/models/sgi_activity_spec.py,663
+quimibond_sgi,sgi.process,action_view_spec_gaps,,9,0,0,0,1,1,addons/quimibond_sgi/models/sgi_activity_spec.py,686
+quimibond_sgi,sgi.indicator,_sgi_measured_deliverable,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,718
+quimibond_sgi,sgi.indicator,_detail_actividad_a_tiempo,,27,0,0,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,725
+quimibond_sgi,sgi.indicator,_calc_actividad_a_tiempo,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,753
+quimibond_sgi,sgi.indicator,_detail_entregable_completo,,29,1,0,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,756
+quimibond_sgi,sgi.indicator,_calc_entregable_completo,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,786
+quimibond_sgi,sgi.indicator,_sgi_spec_problems,,23,0,0,7,0,7,addons/quimibond_sgi/models/sgi_activity_spec.py,789
+quimibond_sgi,sgi.indicator,_compute_spec_missing,"api.depends('target_objective', 'formula', 'source', 'responsible_id', 'frequency', 'calc_mode', 'activity_id', 'deliverable_id.odoo_model_id', 'deliverable_id.complete_domain', 'activity_id.output_deliverable_ids.odoo_model_id', 'activity_id.output_deliverable_ids.complete_domain')",3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,817
+quimibond_sgi,ir.config_parameter,_sgi_verbs_touched,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,825
+quimibond_sgi,ir.config_parameter,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_activity_spec.py,830
+quimibond_sgi,ir.config_parameter,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_activity_spec.py,835
+quimibond_sgi,sgi.activity.week.stat,_compute_rates,"api.depends('done_count', 'complete_count', 'timed_count', 'on_time_count')",6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,882
+quimibond_sgi,sgi.activity.week.stat,_sgi_compute,api.model,20,0,1,1,0,0,addons/quimibond_sgi/models/sgi_activity_spec.py,892
+quimibond_sgi,sgi.process.activity,_sgi_week_counts,,89,2,0,2,0,3,addons/quimibond_sgi/models/sgi_activity_spec.py,917
+quimibond_sgi,sgi.process.activity,cron_measure_activities,api.model,9,0,1,3,1,0,addons/quimibond_sgi/models/sgi_activity_spec.py,1008
+quimibond_sgi,sgi.alert.source,_compute_alert_count,,9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_alert_source.py,62
+quimibond_sgi,sgi.alert.source,_get_by_code,api.model,5,1,0,1,0,0,addons/quimibond_sgi/models/sgi_alert_source.py,73
+quimibond_sgi,sgi.alert.source,_register_suppression,,16,1,0,1,0,0,addons/quimibond_sgi/models/sgi_alert_source.py,79
+quimibond_sgi,sgi.alert.source,action_view_alerts,,9,0,0,1,2,0,addons/quimibond_sgi/models/sgi_alert_source.py,96
+quimibond_sgi,sgi.activity.role,_compute_approval_model_id,"api.depends('role', 'activity_id.measure_model_id')",5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,119
+quimibond_sgi,sgi.activity.role,_compute_approval_method,api.depends('approval_model_id'),5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,126
+quimibond_sgi,sgi.activity.role,_compute_approval_domain,"api.depends('condition_field_id', 'condition_operator', 'condition_value')",3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,133
+quimibond_sgi,sgi.activity.role,_sgi_condition_domain,,19,0,1,2,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,137
+quimibond_sgi,sgi.activity.role,_check_condition,"api.constrains('condition_field_id', 'condition_value', 'approval_model_id')",5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,158
+quimibond_sgi,sgi.activity.role,_sgi_approver_users,,15,3,0,5,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,164
+quimibond_sgi,sgi.activity.role,_compute_approval_users,,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,180
+quimibond_sgi,sgi.activity.role,_compute_approval_conflicts,"api.depends('approval_kind', 'approval_model_id', 'approval_method', 'approval_rule_id')",13,1,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,185
+quimibond_sgi,sgi.activity.role,_compute_approval_state,,25,1,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,199
+quimibond_sgi,sgi.activity.role,_compute_approval_entries,,20,3,0,2,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,225
+quimibond_sgi,sgi.activity.role,_sgi_rule_vals,,15,1,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,247
+quimibond_sgi,sgi.activity.role,_sgi_rule_in_sync,,6,1,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,263
+quimibond_sgi,sgi.activity.role,_sgi_sync_category,,32,3,0,1,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,270
+quimibond_sgi,sgi.activity.role,_sgi_sync_approval_rule,,40,2,0,5,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,303
+quimibond_sgi,sgi.activity.role,action_sgi_sync_approval,,3,0,0,0,2,5,addons/quimibond_sgi/models/sgi_approval_native.py,344
+quimibond_sgi,sgi.activity.role,action_sgi_adopt_rule,,12,1,0,0,1,1,addons/quimibond_sgi/models/sgi_approval_native.py,348
+quimibond_sgi,sgi.activity.role,action_sgi_open_approval_rule,,6,0,0,0,0,0,addons/quimibond_sgi/models/sgi_approval_native.py,361
+quimibond_sgi,sgi.activity.role,action_sgi_open_approval_entries,,5,0,0,0,1,0,addons/quimibond_sgi/models/sgi_approval_native.py,368
+quimibond_sgi,sgi.activity.role,write,,6,0,0,299,1,238,addons/quimibond_sgi/models/sgi_approval_native.py,374
+quimibond_sgi,sgi.activity.role,unlink,,4,2,0,71,0,20,addons/quimibond_sgi/models/sgi_approval_native.py,381
+quimibond_sgi,sgi.activity.role,cron_sgi_sync_approvals,api.model,12,1,1,0,1,2,addons/quimibond_sgi/models/sgi_approval_native.py,387
+quimibond_sgi,sgi.process.activity,write,,6,0,0,299,1,238,addons/quimibond_sgi/models/sgi_approval_native.py,404
+quimibond_sgi,hr.job,_sgi_roles_domain,,2,0,0,10,0,2,addons/quimibond_sgi/models/sgi_archived_filters.py,31
+quimibond_sgi,sgi.process,write,,8,1,0,299,1,238,addons/quimibond_sgi/models/sgi_archived_filters.py,38
+quimibond_sgi,sgi.my.pending,_sgi_process_alive,staticmethod,2,0,0,1,0,0,addons/quimibond_sgi/models/sgi_archived_filters.py,52
+quimibond_sgi,sgi.my.pending,_sgi_pending_records,api.model,17,0,0,3,0,4,addons/quimibond_sgi/models/sgi_archived_filters.py,56
+quimibond_sgi,sgi.my.pending,_sgi_role_alive,api.model,8,1,0,2,0,0,addons/quimibond_sgi/models/sgi_archived_filters.py,75
+quimibond_sgi,sgi.my.pending,_sgi_open_studio_requests,api.model,34,2,0,1,0,0,addons/quimibond_sgi/models/sgi_archived_filters.py,85
+quimibond_sgi,sgi.area,_compute_display_name,"api.depends('code', 'name')",3,0,0,21,0,0,addons/quimibond_sgi/models/sgi_area.py,21
+quimibond_sgi,sgi.audit.program,_compute_name,api.depends('year'),3,0,0,11,0,0,addons/quimibond_sgi/models/sgi_audit.py,54
+quimibond_sgi,sgi.audit.program,action_approve,,27,0,0,9,4,27,addons/quimibond_sgi/models/sgi_audit.py,58
+quimibond_sgi,sgi.audit.program,action_close,,2,0,0,5,5,9,addons/quimibond_sgi/models/sgi_audit.py,86
+quimibond_sgi,sgi.audit.program,action_draft,,2,0,0,2,3,0,addons/quimibond_sgi/models/sgi_audit.py,89
+quimibond_sgi,sgi.audit.program,action_suggest_lines,,26,0,0,0,1,3,addons/quimibond_sgi/models/sgi_audit.py,92
+quimibond_sgi,sgi.audit.program.line,action_create_audit,,18,0,0,0,1,1,addons/quimibond_sgi/models/sgi_audit.py,145
+quimibond_sgi,sgi.audit,_compute_name,"api.depends('folio', 'audit_type')",4,0,0,11,0,0,addons/quimibond_sgi/models/sgi_audit.py,236
+quimibond_sgi,sgi.audit,_compute_finding_count,api.depends('finding_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_audit.py,242
+quimibond_sgi,sgi.audit,_compute_checklist_counts,api.depends('checklist_line_ids.answer'),7,0,0,3,0,0,addons/quimibond_sgi/models/sgi_audit.py,247
+quimibond_sgi,sgi.audit,_check_partner_by_type,"api.constrains('audit_type', 'partner_id')",7,0,0,0,0,0,addons/quimibond_sgi/models/sgi_audit.py,256
+quimibond_sgi,sgi.audit,_check_auditor_independence,"api.constrains('process_ids', 'lead_auditor_id', 'auditor_ids')",37,2,0,0,0,0,addons/quimibond_sgi/models/sgi_audit.py,265
+quimibond_sgi,sgi.audit,action_generate_checklist,,21,0,0,3,1,3,addons/quimibond_sgi/models/sgi_audit.py,306
+quimibond_sgi,sgi.audit,action_plan,,3,0,0,0,2,5,addons/quimibond_sgi/models/sgi_audit.py,328
+quimibond_sgi,sgi.audit,action_start,,5,0,0,0,1,4,addons/quimibond_sgi/models/sgi_audit.py,332
+quimibond_sgi,sgi.audit,action_report,,5,0,0,0,1,1,addons/quimibond_sgi/models/sgi_audit.py,338
+quimibond_sgi,sgi.audit,write,,7,0,0,299,1,238,addons/quimibond_sgi/models/sgi_audit.py,344
+quimibond_sgi,sgi.audit,action_close,,11,0,0,5,5,9,addons/quimibond_sgi/models/sgi_audit.py,352
+quimibond_sgi,sgi.audit,_sgi_archive_report,,27,3,1,1,0,0,addons/quimibond_sgi/models/sgi_audit.py,364
+quimibond_sgi,sgi.audit,action_open_report_document,,9,0,0,0,1,1,addons/quimibond_sgi/models/sgi_audit.py,392
+quimibond_sgi,sgi.audit,action_draft,,2,0,0,2,3,0,addons/quimibond_sgi/models/sgi_audit.py,402
+quimibond_sgi,sgi.audit,_sgi_check_can_close,,22,0,0,11,0,4,addons/quimibond_sgi/models/sgi_audit.py,405
+quimibond_sgi,sgi.audit,action_answer_checklist,,19,1,0,0,1,2,addons/quimibond_sgi/models/sgi_audit.py,428
+quimibond_sgi,sgi.audit,action_evaluate_auditors,,24,2,0,0,1,2,addons/quimibond_sgi/models/sgi_audit.py,448
+quimibond_sgi,sgi.audit,action_generate_findings_from_checklist,,42,0,0,0,1,3,addons/quimibond_sgi/models/sgi_audit.py,473
+quimibond_sgi,sgi.audit,action_open_findings,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_audit.py,516
+quimibond_sgi,sgi.audit.finding,unlink,,12,0,0,71,0,20,addons/quimibond_sgi/models/sgi_audit.py,559
+quimibond_sgi,sgi.audit.finding,action_generate_nc,,36,0,0,1,2,7,addons/quimibond_sgi/models/sgi_audit.py,572
+quimibond_sgi,sgi.audit.checklist.line,_compute_question,"api.depends('activity_id.number', 'activity_id.name', 'activity_id.process_id.code', 'activity_id.role_ids', 'activity_id.output_deliverable_ids')",11,0,0,5,0,0,addons/quimibond_sgi/models/sgi_audit.py,642
+quimibond_sgi,sgi.audit.checklist.line,_compute_can_open_records,"api.depends('activity_id.measure_model_id', 'activity_id.output_deliverable_ids.odoo_model_id')",6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_audit.py,655
+quimibond_sgi,sgi.audit.checklist.line,action_open_records,,22,1,0,0,1,1,addons/quimibond_sgi/models/sgi_audit.py,662
+quimibond_sgi,sgi.audit.checklist.line,_sgi_sync_finding,,21,0,0,4,0,0,addons/quimibond_sgi/models/sgi_audit.py,685
+quimibond_sgi,sgi.audit.checklist.line,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_audit.py,708
+quimibond_sgi,sgi.audit.checklist.line,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_audit.py,713
+quimibond_sgi,sgi.base.mixin,create,api.model_create_multi,8,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_base.py,41
+quimibond_sgi,sgi.base.mixin,_sgi_schedule_activity,,10,0,0,3,0,1,addons/quimibond_sgi/models/sgi_base.py,53
+quimibond_sgi,sgi.base.mixin,_sgi_done_activities,,5,0,0,0,0,0,addons/quimibond_sgi/models/sgi_base.py,64
+quimibond_sgi,sgi.base.mixin,_sgi_locked_records,,6,0,0,4,0,1,addons/quimibond_sgi/models/sgi_base.py,73
+quimibond_sgi,sgi.base.mixin,_sgi_vals_touch_locked,,14,0,0,1,0,0,addons/quimibond_sgi/models/sgi_base.py,80
+quimibond_sgi,sgi.base.mixin,write,,14,0,0,299,1,238,addons/quimibond_sgi/models/sgi_base.py,95
+quimibond_sgi,sgi.base.mixin,unlink,,17,0,0,71,0,20,addons/quimibond_sgi/models/sgi_base.py,110
+quimibond_sgi,sgi.process.activity,_compute_department_ids,api.depends('responsible_job_ids.department_id'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,90
+quimibond_sgi,sgi.process.activity,_compute_line_filters,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_business_line.py,94
+quimibond_sgi,sgi.process.activity,_search_team_filter_id,api.model,2,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,99
+quimibond_sgi,sgi.process.activity,_search_market_filter_id,api.model,2,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,103
+quimibond_sgi,sgi.process.activity,_sgi_applies_to_teams,,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,106
+quimibond_sgi,sgi.process.activity,write,,8,1,0,299,1,238,addons/quimibond_sgi/models/sgi_business_line.py,112
+quimibond_sgi,sgi.process,_compute_activity_team_ids,,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,130
+quimibond_sgi,sgi.process,_search_activity_team_ids,api.model,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,137
+quimibond_sgi,hr.job,_compute_sgi_team_ids,,3,0,0,3,0,0,addons/quimibond_sgi/models/sgi_business_line.py,151
+quimibond_sgi,hr.job,_sgi_user_teams,api.model,7,2,0,4,0,0,addons/quimibond_sgi/models/sgi_business_line.py,156
+quimibond_sgi,hr.job,_sgi_mp_teams,,21,2,0,4,0,0,addons/quimibond_sgi/models/sgi_business_line.py,164
+quimibond_sgi,hr.employee,_compute_sgi_team_ids,,4,1,0,3,0,0,addons/quimibond_sgi/models/sgi_business_line.py,195
+quimibond_sgi,crm.team.member,_sgi_touch,,5,2,0,4,0,0,addons/quimibond_sgi/models/sgi_business_line.py,205
+quimibond_sgi,crm.team.member,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_business_line.py,212
+quimibond_sgi,crm.team.member,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_business_line.py,217
+quimibond_sgi,crm.team.member,unlink,,3,0,0,71,0,20,addons/quimibond_sgi/models/sgi_business_line.py,223
+quimibond_sgi,crm.team,write,,8,3,0,299,1,238,addons/quimibond_sgi/models/sgi_business_line.py,231
+quimibond_sgi,sgi.activity.exec.stat,_compute_sale_team_ids,api.depends('activity_id.sale_team_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,253
+quimibond_sgi,sgi.indicator,_compute_split_support,"api.depends('measure_split', 'calc_mode', 'term_ids.model_id')",9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,278
+quimibond_sgi,sgi.indicator,_sgi_split_problem,,14,0,0,3,0,0,addons/quimibond_sgi/models/sgi_business_line.py,288
+quimibond_sgi,sgi.indicator,_check_measure_split,"api.constrains('measure_split', 'calc_mode', 'term_ids')",5,0,0,0,0,0,addons/quimibond_sgi/models/sgi_business_line.py,304
+quimibond_sgi,sgi.indicator,_sgi_split_keys,,10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,310
+quimibond_sgi,sgi.indicator,_sgi_semaphore_on,,13,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,321
+quimibond_sgi,sgi.indicator,_sgi_measure_vals,,22,0,0,12,0,4,addons/quimibond_sgi/models/sgi_business_line.py,335
+quimibond_sgi,sgi.indicator.term,_sgi_split_path,,10,0,0,3,0,0,addons/quimibond_sgi/models/sgi_business_line.py,362
+quimibond_sgi,sgi.indicator.term,_sgi_first_path,,13,0,0,2,0,0,addons/quimibond_sgi/models/sgi_business_line.py,373
+quimibond_sgi,sgi.indicator.term,_sgi_split_domain,,14,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,387
+quimibond_sgi,sgi.indicator.term,_sgi_records,,6,0,0,4,0,0,addons/quimibond_sgi/models/sgi_business_line.py,402
+quimibond_sgi,sgi.indicator.measure.split,_compute_label,"api.depends('team_id', 'market')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_business_line.py,451
+quimibond_sgi,sgi.indicator.measure.split,_compute_semaphore,"api.depends('value', 'state', 'period_date', 'indicator_id.direction', 'indicator_id.target_objective', 'indicator_id.target_acceptable', 'indicator_id.range_min', 'indicator_id.range_max', 'indicator_id.range_tolerance', 'indicator_id.step_ids.objective', 'indicator_id.step_ids.acceptable', 'indicator_id.step_ids.date_from')",6,0,0,8,0,0,addons/quimibond_sgi/models/sgi_business_line.py,462
+quimibond_sgi,sgi.indicator.measure.split,action_view_evidence,,12,0,0,2,4,7,addons/quimibond_sgi/models/sgi_business_line.py,469
+quimibond_sgi,quality.check,_compute_sgi_equipment_id,api.depends('point_id'),5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_calibration.py,20
+quimibond_sgi,quality.check,_sgi_check_equipment_calibrated,"api.constrains('quality_state', 'sgi_equipment_id')",21,0,0,0,0,0,addons/quimibond_sgi/models/sgi_calibration.py,27
+quimibond_sgi,maintenance.equipment,_compute_next_calibration_date,"api.depends('sgi_last_calibration_date', 'sgi_calibration_interval_months')",7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_calibration.py,83
+quimibond_sgi,maintenance.equipment,_compute_calibration_state,api.depends('sgi_next_calibration_date'),11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_calibration.py,92
+quimibond_sgi,maintenance.equipment,_compute_calibration_count,api.depends('sgi_calibration_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_calibration.py,105
+quimibond_sgi,maintenance.equipment,action_view_calibrations,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_calibration.py,109
+quimibond_sgi,sgi.calibration,_check_certificate,"api.constrains('calibration_type', 'certificate_ref', 'certificate_file')",10,0,0,0,0,0,addons/quimibond_sgi/models/sgi_calibration.py,151
+quimibond_sgi,sgi.calibration,_compute_next_date,"api.depends('date', 'equipment_id.sgi_calibration_interval_months')",4,0,0,5,0,0,addons/quimibond_sgi/models/sgi_calibration.py,163
+quimibond_sgi,sgi.calibration,create,api.model_create_multi,5,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_calibration.py,169
+quimibond_sgi,sgi.calibration,_sgi_apply_to_equipment,,18,0,0,1,0,0,addons/quimibond_sgi/models/sgi_calibration.py,175
+quimibond_sgi,sgi.calibration,_sgi_create_alert,,33,0,0,8,0,1,addons/quimibond_sgi/models/sgi_calibration.py,194
+quimibond_sgi,sgi.job.family,_compute_display_name,"api.depends('code', 'name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_catalog.py,83
+quimibond_sgi,sgi.job.family,_compute_employee_count,,8,1,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,88
+quimibond_sgi,sgi.job.family,_check_job_single_family,"api.constrains('job_ids', 'company_id', 'active')",14,0,0,0,0,0,addons/quimibond_sgi/models/sgi_catalog.py,98
+quimibond_sgi,sgi.activity.role,_check_target,"api.constrains('target_type', 'job_id', 'family_id', 'relative_role')",12,0,0,0,0,0,addons/quimibond_sgi/models/sgi_catalog.py,169
+quimibond_sgi,sgi.activity.role,_check_condition,"api.constrains('role', 'condition')",9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,183
+quimibond_sgi,sgi.activity.role,_check_after_days,"api.constrains('role', 'after_days')",10,0,0,0,0,0,addons/quimibond_sgi/models/sgi_catalog.py,194
+quimibond_sgi,sgi.activity.role,_sgi_target_label,,7,0,0,9,0,0,addons/quimibond_sgi/models/sgi_catalog.py,205
+quimibond_sgi,sgi.activity.role,_compute_display_name,"api.depends('role', 'target_type', 'job_id', 'family_id', 'relative_role')",5,0,0,21,0,0,addons/quimibond_sgi/models/sgi_catalog.py,214
+quimibond_sgi,sgi.activity.role,_sgi_target_key,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,220
+quimibond_sgi,sgi.activity.role,_sgi_jobs,,15,0,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,229
+quimibond_sgi,sgi.activity.role,_sgi_staffing_state,,16,0,0,4,0,1,addons/quimibond_sgi/models/sgi_catalog.py,245
+quimibond_sgi,sgi.activity.role,_sgi_after_change,,5,0,0,3,0,0,addons/quimibond_sgi/models/sgi_catalog.py,272
+quimibond_sgi,sgi.activity.role,_sgi_mp_jobs,,4,2,0,7,0,0,addons/quimibond_sgi/models/sgi_catalog.py,278
+quimibond_sgi,sgi.activity.role,create,api.model_create_multi,5,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_catalog.py,284
+quimibond_sgi,sgi.activity.role,write,,7,0,0,299,1,238,addons/quimibond_sgi/models/sgi_catalog.py,290
+quimibond_sgi,sgi.activity.role,unlink,,7,0,0,71,0,20,addons/quimibond_sgi/models/sgi_catalog.py,298
+quimibond_sgi,hr.job,_compute_sgi_family_id,"api.depends('sgi_family_ids', 'sgi_family_ids.active')",3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,331
+quimibond_sgi,hr.job,_sgi_vacancy_valid,,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,335
+quimibond_sgi,hr.job,_sgi_staffing_state,,12,1,0,4,0,1,addons/quimibond_sgi/models/sgi_catalog.py,341
+quimibond_sgi,hr.job,_sgi_roles_domain,,16,0,0,10,0,2,addons/quimibond_sgi/models/sgi_catalog.py,354
+quimibond_sgi,hr.job,_compute_sgi_all_role_ids,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,384
+quimibond_sgi,hr.job,_compute_sgi_role_counts,,32,0,0,5,0,0,addons/quimibond_sgi/models/sgi_catalog.py,389
+quimibond_sgi,hr.job,action_sgi_view_roles,,11,0,0,0,3,1,addons/quimibond_sgi/models/sgi_catalog.py,422
+quimibond_sgi,hr.job,_sgi_find_job,api.model,25,0,0,1,0,1,addons/quimibond_sgi/models/sgi_catalog.py,435
+quimibond_sgi,hr.job,_sgi_job_references,,13,0,0,1,0,0,addons/quimibond_sgi/models/sgi_catalog.py,464
+quimibond_sgi,hr.job,sgi_merge_duplicate_jobs,api.model,85,2,1,1,0,1,addons/quimibond_sgi/models/sgi_catalog.py,479
+quimibond_sgi,sgi.document.type,_check_legacy_regex,api.constrains('legacy_code_regex'),8,0,1,0,0,0,addons/quimibond_sgi/models/sgi_catalog.py,607
+quimibond_sgi,sgi.document.type,_check_prefix_pattern,api.constrains('prefix_pattern'),9,0,1,0,0,0,addons/quimibond_sgi/models/sgi_catalog.py,617
+quimibond_sgi,sgi.document.type,_sgi_pattern_regex,,20,0,0,3,0,0,addons/quimibond_sgi/models/sgi_catalog.py,629
+quimibond_sgi,sgi.document.type,_sgi_format_code,,3,0,0,7,0,0,addons/quimibond_sgi/models/sgi_catalog.py,650
+quimibond_sgi,sgi.document.type,_sgi_legacy_match,,8,0,1,2,0,0,addons/quimibond_sgi/models/sgi_catalog.py,654
+quimibond_sgi,sgi.document.type,_sgi_code_ok,,15,0,0,3,0,0,addons/quimibond_sgi/models/sgi_catalog.py,663
+quimibond_sgi,sgi.document.type,_sgi_any_match,api.model,4,0,0,2,0,0,addons/quimibond_sgi/models/sgi_catalog.py,680
+quimibond_sgi,sgi.document.type,sgi_next_code,,25,0,0,0,0,1,addons/quimibond_sgi/models/sgi_catalog.py,685
+quimibond_sgi,sgi.config,sgi_drop_empty_studio_models,api.model,36,5,0,0,0,0,addons/quimibond_sgi/models/sgi_catalog.py,722
+quimibond_sgi,sgi.checklist.template,_sgi_due_today,,5,0,0,1,0,2,addons/quimibond_sgi/models/sgi_checklist.py,48
+quimibond_sgi,sgi.checklist.template,_sgi_generate,,31,1,0,2,0,3,addons/quimibond_sgi/models/sgi_checklist.py,54
+quimibond_sgi,sgi.checklist.template,action_generate_today,,5,0,0,0,1,0,addons/quimibond_sgi/models/sgi_checklist.py,86
+quimibond_sgi,sgi.checklist.template,cron_generate,api.model,5,0,0,0,1,0,addons/quimibond_sgi/models/sgi_checklist.py,93
+quimibond_sgi,maintenance.request,_compute_sgi_checklist_state,api.depends('sgi_checklist_line_ids.answer'),11,0,0,1,0,0,addons/quimibond_sgi/models/sgi_checklist.py,143
+quimibond_sgi,maintenance.request,action_sgi_checklist_finish,,8,0,0,0,1,0,addons/quimibond_sgi/models/sgi_checklist.py,155
+quimibond_sgi,maintenance.request,action_sgi_create_correctives,,17,0,0,0,1,1,addons/quimibond_sgi/models/sgi_checklist.py,164
+quimibond_sgi,sgi.checklist.finish,_compute_allowed_employee_ids,api.depends('request_id'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_checklist.py,194
+quimibond_sgi,sgi.checklist.finish,action_confirm,,21,2,0,13,8,33,addons/quimibond_sgi/models/sgi_checklist.py,198
+quimibond_sgi,ir.ui.menu,_sgi_menu_tree_offenders,,22,1,0,1,0,2,addons/quimibond_sgi/models/sgi_cleanup.py,110
+quimibond_sgi,ir.ui.menu,_sgi_menu_dangling_actions,,10,1,0,0,0,1,addons/quimibond_sgi/models/sgi_cleanup.py,133
+quimibond_sgi,sgi.process,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_cleanup.py,149
+quimibond_sgi,sgi.process,_sgi_obsolete_replaced_documents,,19,1,0,1,0,0,addons/quimibond_sgi/models/sgi_cleanup.py,155
+quimibond_sgi,sgi.process,_sgi_relink_from_archived,,150,4,0,1,0,2,addons/quimibond_sgi/models/sgi_cleanup.py,176
+quimibond_sgi,sgi.process,_sgi_relink_write,,24,0,2,1,0,0,addons/quimibond_sgi/models/sgi_cleanup.py,327
+quimibond_sgi,res.partner,write,,24,0,0,299,1,238,addons/quimibond_sgi/models/sgi_coa.py,66
+quimibond_sgi,stock.picking,_compute_sgi_requires_coa,"api.depends('partner_id', 'picking_type_id', 'company_id')",7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_coa.py,119
+quimibond_sgi,stock.picking,_compute_sgi_coa_status,"api.depends('sgi_requires_coa', 'sgi_coa_attachment_ids', 'sgi_coa_sent_date')",10,0,0,3,0,0,addons/quimibond_sgi/models/sgi_coa.py,128
+quimibond_sgi,stock.picking,action_sgi_attach_coa,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_coa.py,140
+quimibond_sgi,stock.picking,_sgi_coa_recipients,,4,0,0,1,0,1,addons/quimibond_sgi/models/sgi_coa.py,151
+quimibond_sgi,stock.picking,_sgi_coa_register,,10,1,0,3,0,2,addons/quimibond_sgi/models/sgi_coa.py,156
+quimibond_sgi,stock.picking,_sgi_coa_send,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_coa.py,167
+quimibond_sgi,stock.picking,_sgi_coa_block_enabled,,3,1,0,1,0,0,addons/quimibond_sgi/models/sgi_coa.py,177
+quimibond_sgi,stock.picking,_sgi_user_is_quality_head,,5,1,0,3,0,0,addons/quimibond_sgi/models/sgi_coa.py,181
+quimibond_sgi,stock.picking,button_validate,,22,0,0,6,0,12,addons/quimibond_sgi/models/sgi_coa.py,187
+quimibond_sgi,sale.order,_compute_sgi_coa_status,api.depends('picking_ids.sgi_coa_status'),4,0,0,3,0,0,addons/quimibond_sgi/models/sgi_coa.py,221
+quimibond_sgi,sale.order,_compute_sgi_coa_attachment_count,,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_coa.py,226
+quimibond_sgi,sale.order,action_sgi_view_coa,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_coa.py,230
+quimibond_sgi,sgi.coa.attach.wizard,default_get,api.model,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_coa.py,256
+quimibond_sgi,sgi.coa.attach.wizard,action_confirm,,24,1,0,13,8,33,addons/quimibond_sgi/models/sgi_coa.py,263
+quimibond_sgi,sgi.coa.exception.wizard,action_confirm,,11,0,0,13,8,33,addons/quimibond_sgi/models/sgi_coa.py,296
+quimibond_sgi,sgi.coa.inbox,message_new,api.model,5,0,0,2,0,0,addons/quimibond_sgi/models/sgi_coa.py,334
+quimibond_sgi,sgi.coa.inbox,_message_post_after_hook,,7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_coa.py,340
+quimibond_sgi,sgi.coa.inbox,_sgi_find_picking,,29,0,0,1,0,0,addons/quimibond_sgi/models/sgi_coa.py,348
+quimibond_sgi,sgi.coa.inbox,_sgi_link_attachments,,19,1,0,1,0,2,addons/quimibond_sgi/models/sgi_coa.py,378
+quimibond_sgi,sgi.coa.inbox,action_link_manual,,20,1,0,0,1,1,addons/quimibond_sgi/models/sgi_coa.py,398
+quimibond_sgi,hr.employee,_compute_sgi_skill_gap_count,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_competence.py,11
+quimibond_sgi,hr.employee,action_view_skill_gaps,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_competence.py,18
+quimibond_sgi,sgi.competence.gap,_table_query,property,28,0,0,0,0,0,addons/quimibond_sgi/models/sgi_competence.py,50
+quimibond_sgi,hr.department,_sgi_competence_matrix,,27,3,0,0,1,1,addons/quimibond_sgi/models/sgi_competence.py,84
+quimibond_sgi,helpdesk.ticket,action_sgi_generate_nc,,36,0,0,0,1,3,addons/quimibond_sgi/models/sgi_complaint.py,21
+quimibond_sgi,sgi.interested.party,_compute_next_review_date,"api.depends('last_review_date', 'review_frequency_months')",8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_context.py,64
+quimibond_sgi,sgi.interested.party,action_mark_reviewed,,10,0,0,0,1,1,addons/quimibond_sgi/models/sgi_context.py,73
+quimibond_sgi,quality.point,_compute_sgi_replaced_document_count,,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_control_plan.py,22
+quimibond_sgi,quality.point,action_sgi_open_replaced_documents,,9,0,0,0,1,0,addons/quimibond_sgi/models/sgi_control_plan.py,26
+quimibond_sgi,sgi.control.plan,_compute_point_count,api.depends('point_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_control_plan.py,93
+quimibond_sgi,sgi.control.plan,_compute_fmea_count,api.depends('fmea_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_control_plan.py,98
+quimibond_sgi,sgi.control.plan,action_view_fmeas,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_control_plan.py,102
+quimibond_sgi,sgi.control.plan,action_set_vigente,,8,0,0,3,4,16,addons/quimibond_sgi/models/sgi_control_plan.py,113
+quimibond_sgi,sgi.control.plan,action_set_borrador,,3,0,0,4,5,0,addons/quimibond_sgi/models/sgi_control_plan.py,122
+quimibond_sgi,sgi.control.plan,action_set_obsoleto,,15,0,0,3,3,0,addons/quimibond_sgi/models/sgi_control_plan.py,126
+quimibond_sgi,sgi.control.plan,action_view_points,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_control_plan.py,142
+quimibond_sgi,sgi.control.plan,action_open_orphan_points,,16,0,0,0,1,1,addons/quimibond_sgi/models/sgi_control_plan.py,153
+quimibond_sgi,stock.lot,_sgi_coa_checks,,7,0,0,2,1,0,addons/quimibond_sgi/models/sgi_control_plan.py,174
+quimibond_sgi,stock.lot,action_sgi_print_coa,,8,0,0,0,1,0,addons/quimibond_sgi/models/sgi_control_plan.py,182
+quimibond_sgi,stock.lot,_sgi_delivery_pickings,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_control_plan.py,191
+quimibond_sgi,stock.lot,action_sgi_publish_coa,,28,0,0,0,1,1,addons/quimibond_sgi/models/sgi_control_plan.py,200
+quimibond_sgi,sgi.cron,_sgi_activity_exists,api.model,10,0,0,3,0,0,addons/quimibond_sgi/models/sgi_cron.py,20
+quimibond_sgi,sgi.cron,_sgi_schedule,api.model,8,0,0,63,0,1,addons/quimibond_sgi/models/sgi_cron.py,32
+quimibond_sgi,sgi.cron,_sgi_first_user_id,,16,0,0,4,0,0,addons/quimibond_sgi/models/sgi_cron.py,41
+quimibond_sgi,sgi.cron,_sgi_manager_user_id,,11,2,0,47,0,4,addons/quimibond_sgi/models/sgi_cron.py,58
+quimibond_sgi,sgi.cron,_sgi_director_user_id,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_cron.py,70
+quimibond_sgi,sgi.cron,_sgi_sales_admin_user_id,,5,0,0,4,0,0,addons/quimibond_sgi/models/sgi_cron.py,74
+quimibond_sgi,sgi.cron,_sgi_critical_mail_emails,,9,0,0,2,0,0,addons/quimibond_sgi/models/sgi_cron.py,91
+quimibond_sgi,sgi.cron,_sgi_send_critical_mail,,14,1,1,4,0,0,addons/quimibond_sgi/models/sgi_cron.py,101
+quimibond_sgi,sgi.cron,_sgi_step,,8,0,1,20,0,1,addons/quimibond_sgi/models/sgi_cron.py,116
+quimibond_sgi,sgi.cron,_sgi_for_each,,11,0,1,25,0,1,addons/quimibond_sgi/models/sgi_cron.py,125
+quimibond_sgi,sgi.cron,cron_nonconformities,api.model,57,1,0,2,1,2,addons/quimibond_sgi/models/sgi_cron.py,141
+quimibond_sgi,sgi.cron,cron_overdue_actions,api.model,43,1,0,1,1,5,addons/quimibond_sgi/models/sgi_cron.py,203
+quimibond_sgi,sgi.cron,cron_documents,api.model,67,1,0,2,1,1,addons/quimibond_sgi/models/sgi_cron.py,251
+quimibond_sgi,sgi.cron,cron_news,api.model,38,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,323
+quimibond_sgi,sgi.cron,cron_indicators,api.model,34,0,0,2,1,2,addons/quimibond_sgi/models/sgi_cron.py,366
+quimibond_sgi,sgi.cron,_sgi_team_net_invoiced,api.model,11,0,0,1,0,0,addons/quimibond_sgi/models/sgi_cron.py,402
+quimibond_sgi,sgi.cron,cron_forecast_coverage,api.model,46,0,0,0,1,2,addons/quimibond_sgi/models/sgi_cron.py,415
+quimibond_sgi,sgi.cron,_sgi_sales_budget_month_close,api.model,56,1,0,1,0,3,addons/quimibond_sgi/models/sgi_cron.py,463
+quimibond_sgi,sgi.cron,_sgi_budget_top_gaps,api.model,20,0,0,1,0,0,addons/quimibond_sgi/models/sgi_cron.py,521
+quimibond_sgi,sgi.cron,cron_budget_revaluation,api.model,8,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,546
+quimibond_sgi,sgi.cron,_sgi_sales_budget_revaluation,api.model,23,0,0,1,0,1,addons/quimibond_sgi/models/sgi_cron.py,556
+quimibond_sgi,sgi.cron,cron_indicators_weekly,api.model,12,0,0,2,1,0,addons/quimibond_sgi/models/sgi_cron.py,581
+quimibond_sgi,sgi.cron,_sgi_close_resolved_activities,api.model,77,9,0,2,0,3,addons/quimibond_sgi/models/sgi_cron.py,595
+quimibond_sgi,sgi.cron,_sgi_generate_measures,api.model,47,0,1,2,0,4,addons/quimibond_sgi/models/sgi_cron.py,674
+quimibond_sgi,sgi.cron,_sgi_calc_notice,api.model,7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_cron.py,723
+quimibond_sgi,sgi.cron,_sgi_schedule_deadline,api.model,8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_cron.py,732
+quimibond_sgi,sgi.cron,cron_audit_program,api.model,24,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,745
+quimibond_sgi,sgi.cron,cron_risk_review,api.model,36,0,0,0,1,1,addons/quimibond_sgi/models/sgi_cron.py,774
+quimibond_sgi,sgi.cron,cron_supplier_eval,api.model,56,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,815
+quimibond_sgi,sgi.cron,_sgi_purchase_user_id,,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_cron.py,872
+quimibond_sgi,sgi.cron,_sgi_rh_user_id,,7,1,0,6,0,0,addons/quimibond_sgi/models/sgi_cron.py,876
+quimibond_sgi,sgi.cron,cron_calibrations,api.model,59,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,888
+quimibond_sgi,sgi.cron,cron_competences,api.model,47,0,0,2,1,0,addons/quimibond_sgi/models/sgi_cron.py,952
+quimibond_sgi,sgi.cron,_sgi_quarter_label,api.model,2,0,0,2,0,0,addons/quimibond_sgi/models/sgi_cron.py,1004
+quimibond_sgi,sgi.cron,cron_satisfaction_survey,api.model,18,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,1008
+quimibond_sgi,sgi.cron,cron_dnc,api.model,21,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,1028
+quimibond_sgi,sgi.cron,cron_emergency_drills,api.model,53,0,0,0,1,2,addons/quimibond_sgi/models/sgi_cron.py,1051
+quimibond_sgi,sgi.cron,cron_operational_signals,api.model,57,0,0,0,1,3,addons/quimibond_sgi/models/sgi_cron.py,1110
+quimibond_sgi,sgi.cron,cron_legal_requirements,,54,0,0,0,1,1,addons/quimibond_sgi/models/sgi_cron.py,1171
+quimibond_sgi,sgi.cron,_sgi_participation_survey,api.model,7,1,0,2,0,0,addons/quimibond_sgi/models/sgi_cron.py,1227
+quimibond_sgi,sgi.cron,cron_worker_participation,api.model,19,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,1236
+quimibond_sgi,sgi.cron,cron_context_review,api.model,23,0,0,0,1,0,addons/quimibond_sgi/models/sgi_cron.py,1257
+quimibond_sgi,sgi.cron,cron_sign_elearning_sync,api.model,19,0,0,0,1,1,addons/quimibond_sgi/models/sgi_cron.py,1285
+quimibond_sgi,sgi.cron,cron_weekly_digest,api.model,66,1,0,0,1,1,addons/quimibond_sgi/models/sgi_cron.py,1309
+quimibond_sgi,quality.alert,_compute_sgi_customer_reply_required,"api.depends('sgi_origin_type', 'partner_id', 'sgi_complaint_ticket_id')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_customer_reply.py,76
+quimibond_sgi,quality.alert,_compute_sgi_sale_team_id,"api.depends('sgi_complaint_ticket_id.sgi_sale_order_id.team_id', 'partner_id')",15,1,0,1,0,0,addons/quimibond_sgi/models/sgi_customer_reply.py,82
+quimibond_sgi,quality.alert,_compute_sgi_customer_received_date,"api.depends('sgi_complaint_ticket_id.create_date', 'create_date')",8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_customer_reply.py,99
+quimibond_sgi,quality.alert,_sgi_int_param,api.model,5,1,1,2,0,0,addons/quimibond_sgi/models/sgi_customer_reply.py,109
+quimibond_sgi,quality.alert,_compute_sgi_customer_dues,"api.depends('sgi_customer_reply_required', 'sgi_customer_received_date', 'sgi_customer_deadline', 'sgi_sale_team_id.sgi_complaint_response_days')",12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_customer_reply.py,117
+quimibond_sgi,quality.alert,_compute_sgi_customer_on_time,"api.depends('sgi_customer_ack_date', 'sgi_customer_ack_due', 'sgi_customer_response_date', 'sgi_customer_response_due')",8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_customer_reply.py,132
+quimibond_sgi,quality.alert,_sgi_check_can_close,,13,0,0,11,0,4,addons/quimibond_sgi/models/sgi_customer_reply.py,141
+quimibond_sgi,quality.alert,_sgi_customer_reply_escalation,,16,0,0,1,0,1,addons/quimibond_sgi/models/sgi_customer_reply.py,155
+quimibond_sgi,sgi.cron,cron_nonconformities,api.model,12,0,0,2,1,2,addons/quimibond_sgi/models/sgi_customer_reply.py,177
+quimibond_sgi,sgi.process.stage,_compute_display_name,"api.depends('code', 'name')",3,0,0,21,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,50
+quimibond_sgi,sgi.process.stage,_compute_activity_count,,7,0,0,3,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,54
+quimibond_sgi,sgi.process.stage,_sgi_get_or_create,api.model,17,0,0,2,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,63
+quimibond_sgi,sgi.deliverable,_compute_consumers,api.depends('input_line_ids.activity_id'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,150
+quimibond_sgi,sgi.deliverable,_compute_processes,"api.depends('producer_activity_ids.process_id', 'input_line_ids.activity_id.process_id')",12,0,0,3,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,155
+quimibond_sgi,sgi.deliverable,_check_measure,"api.constrains('odoo_model_id', 'measure_domain', 'measure_date_field', 'measure_user_field')",26,1,1,0,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,169
+quimibond_sgi,sgi.deliverable,_sgi_measure_vals,,9,0,0,12,0,4,addons/quimibond_sgi/models/sgi_deliverable.py,196
+quimibond_sgi,sgi.deliverable,_sgi_sync_connections,,60,2,0,10,0,1,addons/quimibond_sgi/models/sgi_deliverable.py,209
+quimibond_sgi,sgi.deliverable,write,,24,2,0,299,1,238,addons/quimibond_sgi/models/sgi_deliverable.py,270
+quimibond_sgi,sgi.deliverable,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_deliverable.py,296
+quimibond_sgi,sgi.deliverable,unlink,,7,2,0,71,0,20,addons/quimibond_sgi/models/sgi_deliverable.py,301
+quimibond_sgi,sgi.deliverable,action_view_links,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_deliverable.py,309
+quimibond_sgi,sgi.activity.input,_check_not_own_output,"api.constrains('activity_id', 'deliverable_id')",6,0,0,0,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,352
+quimibond_sgi,sgi.activity.input,create,api.model_create_multi,5,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_deliverable.py,360
+quimibond_sgi,sgi.activity.input,write,,8,0,0,299,1,238,addons/quimibond_sgi/models/sgi_deliverable.py,366
+quimibond_sgi,sgi.activity.input,unlink,,6,0,0,71,0,20,addons/quimibond_sgi/models/sgi_deliverable.py,375
+quimibond_sgi,sgi.process,_compute_io_deliverables,"api.depends('procedure_activity_ids.input_deliverable_ids', 'procedure_activity_ids.output_deliverable_ids')",7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,400
+quimibond_sgi,sgi.process,_sgi_responsibilities_by_job,,16,0,0,0,1,1,addons/quimibond_sgi/models/sgi_deliverable.py,408
+quimibond_sgi,sgi.calculated.connection.mixin,_compute_origin,api.depends('deliverable_id'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,451
+quimibond_sgi,sgi.calculated.connection.mixin,_check_inactive_reason,"api.constrains('active', 'inactive_reason', 'deliverable_id')",8,0,0,0,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,456
+quimibond_sgi,sgi.calculated.connection.mixin,_sgi_guard_manual_write,,10,0,0,2,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,465
+quimibond_sgi,sgi.calculated.connection.mixin,_sgi_retire_manual,,8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,476
+quimibond_sgi,sgi.process.flow,_sgi_manual_twins,,8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,490
+quimibond_sgi,sgi.process.flow,write,,3,0,0,299,1,238,addons/quimibond_sgi/models/sgi_deliverable.py,499
+quimibond_sgi,sgi.process.flow,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_deliverable.py,503
+quimibond_sgi,sgi.activity.link,_sgi_manual_twins,,8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,520
+quimibond_sgi,sgi.activity.link,write,,7,0,0,299,1,238,addons/quimibond_sgi/models/sgi_deliverable.py,529
+quimibond_sgi,sgi.activity.link,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_deliverable.py,537
+quimibond_sgi,sgi.activity.link,_sgi_chain_verdict,,16,0,0,1,0,3,addons/quimibond_sgi/models/sgi_deliverable.py,543
+quimibond_sgi,sgi.process.activity,_compute_input_deliverables,api.depends('input_ids.deliverable_id'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,579
+quimibond_sgi,sgi.process.activity,_inverse_input_deliverables,,11,0,0,1,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,583
+quimibond_sgi,sgi.process.activity,_check_io,api.constrains('output_deliverable_ids'),7,0,0,0,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,596
+quimibond_sgi,sgi.process.activity,_check_measure_deliverable,"api.constrains('measure_deliverable_id', 'output_deliverable_ids', 'measure_method')",6,0,0,0,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,605
+quimibond_sgi,sgi.process.activity,_sgi_apply_deliverable_measure,,17,0,0,3,0,0,addons/quimibond_sgi/models/sgi_deliverable.py,616
+quimibond_sgi,sgi.process.activity,create,api.model_create_multi,5,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_deliverable.py,635
+quimibond_sgi,sgi.process.activity,write,,9,0,0,299,1,238,addons/quimibond_sgi/models/sgi_deliverable.py,641
+quimibond_sgi,sgi.process.activity,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_deliverable.py,651
+quimibond_sgi,sgi.process.activity,_sgi_sentence_parts,,34,0,0,5,0,1,addons/quimibond_sgi/models/sgi_deliverable.py,657
+quimibond_sgi,sgi.process.activity,_sgi_sentence,,6,0,0,0,0,3,addons/quimibond_sgi/models/sgi_deliverable.py,692
+quimibond_sgi,sgi.process.activity,_sgi_sentence_html,,5,0,0,0,1,1,addons/quimibond_sgi/models/sgi_deliverable.py,699
+quimibond_sgi,project.project,_compute_sgi_is_ft,api.depends('name'),6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_dev_request.py,92
+quimibond_sgi,project.project,_compute_sgi_dev_format_code,api.depends('sgi_dev_type'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_dev_request.py,100
+quimibond_sgi,project.project,sgi_dev_format_info,,6,1,0,0,1,1,addons/quimibond_sgi/models/sgi_dev_request.py,104
+quimibond_sgi,project.project,action_sgi_dev_load_lines,,10,0,0,0,1,2,addons/quimibond_sgi/models/sgi_dev_request.py,111
+quimibond_sgi,project.project,action_sgi_dev_print,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_dev_request.py,122
+quimibond_sgi,sgi.diagnostic,_compute_counts,api.depends('line_ids.level'),5,0,0,25,0,0,addons/quimibond_sgi/models/sgi_diagnostic.py,49
+quimibond_sgi,sgi.diagnostic,_compute_summary,"api.depends('date', 'line_ids.section', 'line_ids.text', 'line_ids.fix')",15,0,0,1,0,0,addons/quimibond_sgi/models/sgi_diagnostic.py,56
+quimibond_sgi,sgi.diagnostic,create,api.model_create_multi,6,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_diagnostic.py,73
+quimibond_sgi,sgi.diagnostic,_sgi_fill,,9,0,0,2,0,0,addons/quimibond_sgi/models/sgi_diagnostic.py,80
+quimibond_sgi,sgi.diagnostic,action_run,api.model,15,0,0,0,1,1,addons/quimibond_sgi/models/sgi_diagnostic.py,91
+quimibond_sgi,sgi.diagnostic,action_refresh,,4,0,0,0,0,1,addons/quimibond_sgi/models/sgi_diagnostic.py,107
+quimibond_sgi,sgi.diagnostic,_sgi_line,,4,0,0,42,0,0,addons/quimibond_sgi/models/sgi_diagnostic.py,115
+quimibond_sgi,sgi.diagnostic,_sgi_build_report,api.model,296,4,1,1,0,0,addons/quimibond_sgi/models/sgi_diagnostic.py,121
+quimibond_sgi,sgi.diagram,data,api.model,12,0,0,100,63,83,addons/quimibond_sgi/models/sgi_diagram.py,77
+quimibond_sgi,sgi.diagram,_kinds,api.model,3,0,0,2,0,1,addons/quimibond_sgi/models/sgi_diagram.py,91
+quimibond_sgi,sgi.diagram,catalog,api.model,3,0,0,6,3,8,addons/quimibond_sgi/models/sgi_diagram.py,96
+quimibond_sgi,sgi.diagram,_param,,2,0,0,7,0,0,addons/quimibond_sgi/models/sgi_diagram.py,100
+quimibond_sgi,sgi.diagram,processes,api.model,4,0,0,119,5,34,addons/quimibond_sgi/models/sgi_diagram.py,104
+quimibond_sgi,sgi.diagram,_process_item,,9,0,0,7,0,0,addons/quimibond_sgi/models/sgi_diagram.py,110
+quimibond_sgi,sgi.diagram,_activity_item,,21,0,0,6,0,0,addons/quimibond_sgi/models/sgi_diagram.py,120
+quimibond_sgi,sgi.diagram,_line_params,,8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_diagram.py,142
+quimibond_sgi,sgi.diagram,_line_options,,14,0,0,2,0,0,addons/quimibond_sgi/models/sgi_diagram.py,151
+quimibond_sgi,sgi.diagram,_process_nav,,6,0,0,8,0,0,addons/quimibond_sgi/models/sgi_diagram.py,166
+quimibond_sgi,sgi.diagram,_process,,5,0,0,27,0,21,addons/quimibond_sgi/models/sgi_diagram.py,173
+quimibond_sgi,sgi.diagram,_data_process_map,,30,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram.py,180
+quimibond_sgi,sgi.diagram,_data_process_flow,,62,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram.py,211
+quimibond_sgi,sgi.diagram,_process_flow_swimlanes,,50,0,0,1,0,0,addons/quimibond_sgi/models/sgi_diagram.py,274
+quimibond_sgi,sgi.diagram,_data_sipoc,,49,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram.py,325
+quimibond_sgi,sgi.diagram,_data_doc_tree,,43,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram.py,375
+quimibond_sgi,sgi.diagram,_data_kpi_tree,,41,0,0,2,0,0,addons/quimibond_sgi/models/sgi_diagram.py,419
+quimibond_sgi,sgi.diagram,_data_who_does_what,,40,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram.py,461
+quimibond_sgi,sgi.diagram,_item,,9,0,0,20,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,51
+quimibond_sgi,sgi.diagram,_virtual,,7,0,0,6,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,61
+quimibond_sgi,sgi.diagram,_list_action,staticmethod,3,0,0,9,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,70
+quimibond_sgi,sgi.diagram,_cell,staticmethod,5,0,0,4,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,75
+quimibond_sgi,sgi.diagram,_data_interaction_matrix,,30,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,82
+quimibond_sgi,sgi.diagram,_data_context_map,,41,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,114
+quimibond_sgi,sgi.diagram,_data_roles_map,,37,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,157
+quimibond_sgi,sgi.diagram,_data_risk_matrix,,46,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,196
+quimibond_sgi,sgi.diagram,_data_legal_matrix,,55,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,244
+quimibond_sgi,sgi.diagram,_data_calibration_map,,49,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,301
+quimibond_sgi,sgi.diagram,_data_competence_matrix,,30,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,352
+quimibond_sgi,sgi.diagram,_data_doc_pyramid,,31,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,384
+quimibond_sgi,sgi.diagram,_data_emergency_map,,36,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,417
+quimibond_sgi,sgi.diagram,_data_audit_program,,22,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,455
+quimibond_sgi,sgi.diagram,_data_management_review,,56,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,479
+quimibond_sgi,sgi.diagram,_data_nc_flow,,55,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,537
+quimibond_sgi,sgi.diagram,_data_pdca,,67,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,594
+quimibond_sgi,sgi.diagram,_data_kpi_tree,,17,0,0,2,0,0,addons/quimibond_sgi/models/sgi_diagram_iso.py,663
+quimibond_sgi,ir.ui.view,_get_view_info,,2,0,0,1,0,1,addons/quimibond_sgi/models/sgi_diagram_view.py,26
+quimibond_sgi,ir.ui.view,_validate_tag_sgi_diagram,,17,0,0,0,0,0,addons/quimibond_sgi/models/sgi_diagram_view.py,29
+quimibond_sgi,sgi.indicator,_compute_last_six,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_direction_board.py,33
+quimibond_sgi,sgi.indicator,_calc_acuerdos_rxd,,10,1,0,0,0,0,addons/quimibond_sgi/models/sgi_direction_board.py,42
+quimibond_sgi,sgi.direction.board,_sgi_board_indicators,,22,0,0,1,0,0,addons/quimibond_sgi/models/sgi_direction_board.py,71
+quimibond_sgi,sgi.direction.board,_compute_board,api.depends('date'),20,5,0,8,0,0,addons/quimibond_sgi/models/sgi_direction_board.py,95
+quimibond_sgi,sgi.direction.board,action_open,api.model,8,0,0,2,3,4,addons/quimibond_sgi/models/sgi_direction_board.py,117
+quimibond_sgi,sgi.direction.board,action_open_spreadsheet,,2,0,0,0,1,1,addons/quimibond_sgi/models/sgi_direction_board.py,126
+quimibond_sgi,approval.request,_onchange_sgi_suggest_revision,"api.onchange('sgi_document_id', 'sgi_change_kind')",8,0,0,0,0,2,addons/quimibond_sgi/models/sgi_doc_change.py,56
+quimibond_sgi,approval.request,_check_document_required,"api.constrains('sgi_is_doc_change', 'sgi_change_kind', 'sgi_document_id')",7,0,0,0,0,0,addons/quimibond_sgi/models/sgi_doc_change.py,66
+quimibond_sgi,approval.request,_check_pilot,"api.constrains('sgi_is_doc_change', 'sgi_pilot', 'sgi_pilot_start', 'sgi_pilot_end')",15,0,0,0,0,0,addons/quimibond_sgi/models/sgi_doc_change.py,75
+quimibond_sgi,approval.request,_sgi_change_attachment,,6,1,0,4,0,1,addons/quimibond_sgi/models/sgi_doc_change.py,97
+quimibond_sgi,approval.request,_sgi_publish_revision,,33,1,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change.py,104
+quimibond_sgi,approval.request,_sgi_reset_acks,,8,1,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change.py,138
+quimibond_sgi,approval.request,_sgi_notify_process,,17,0,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change.py,147
+quimibond_sgi,approval.request,_sgi_apply_doc_change,,54,0,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change.py,165
+quimibond_sgi,approval.request,_sgi_check_moc_ready,,17,0,0,1,0,1,addons/quimibond_sgi/models/sgi_doc_change.py,220
+quimibond_sgi,approval.request,action_approve,,7,0,0,9,4,27,addons/quimibond_sgi/models/sgi_doc_change.py,238
+quimibond_sgi,approval.request,action_sgi_create_document,,18,0,0,0,1,1,addons/quimibond_sgi/models/sgi_doc_change.py,246
+quimibond_sgi,approval.request,_compute_sgi_sign_progress,api.depends('sgi_sign_request_id.request_item_ids.state'),5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,68
+quimibond_sgi,approval.request,_sgi_sign_process,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,77
+quimibond_sgi,approval.request,_sgi_sign_mast_users,,8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,81
+quimibond_sgi,approval.request,_sgi_sign_signers,,29,1,0,2,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,90
+quimibond_sgi,approval.request,_sgi_sign_rows,,7,1,0,0,1,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,120
+quimibond_sgi,approval.request,_sgi_check_doc_change_ready,,10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,128
+quimibond_sgi,approval.request,_sgi_prepare_approvers,,12,2,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,139
+quimibond_sgi,approval.request,_sgi_render_doc_change_pdf,,4,0,0,1,0,1,addons/quimibond_sgi/models/sgi_doc_change_sign.py,155
+quimibond_sgi,approval.request,_sgi_sign_pdf,,24,0,1,1,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,160
+quimibond_sgi,approval.request,_sgi_send_to_sign,,29,1,0,2,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,185
+quimibond_sgi,approval.request,action_confirm,,8,0,0,13,8,33,addons/quimibond_sgi/models/sgi_doc_change_sign.py,215
+quimibond_sgi,approval.request,action_sgi_send_to_sign,,8,0,0,0,1,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,224
+quimibond_sgi,approval.request,action_sgi_open_sign_request,,4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,233
+quimibond_sgi,approval.request,action_approve,,9,0,0,9,4,27,addons/quimibond_sgi/models/sgi_doc_change_sign.py,238
+quimibond_sgi,approval.request,_sgi_change_attachment,,5,0,0,4,0,1,addons/quimibond_sgi/models/sgi_doc_change_sign.py,248
+quimibond_sgi,approval.request,_sgi_sync_sign,,22,2,0,2,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,257
+quimibond_sgi,approval.request,_sgi_archive_signed_pdf,,14,2,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,280
+quimibond_sgi,approval.request,_sgi_sync_all_sign,api.model,7,1,0,1,0,0,addons/quimibond_sgi/models/sgi_doc_change_sign.py,296
+quimibond_sgi,sign.request.item,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_doc_change_sign.py,322
+quimibond_sgi,sign.request,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_doc_change_sign.py,332
+quimibond_sgi,documents.document,action_sgi_open_migration_point,,15,0,0,1,2,2,addons/quimibond_sgi/models/sgi_document.py,175
+quimibond_sgi,documents.document,action_sgi_resolve_odoo_menu,,28,0,0,1,1,2,addons/quimibond_sgi/models/sgi_document.py,191
+quimibond_sgi,documents.document,action_sgi_open_odoo_form,,12,0,0,1,2,2,addons/quimibond_sgi/models/sgi_document.py,220
+quimibond_sgi,documents.document,_compute_sgi_family,"api.depends('sgi_parent_document_id', 'sgi_parent_document_id.sgi_child_document_ids', 'sgi_child_document_ids')",8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_document.py,261
+quimibond_sgi,documents.document,_onchange_sgi_code_parent,api.onchange('sgi_code'),14,0,0,0,0,0,addons/quimibond_sgi/models/sgi_document.py,271
+quimibond_sgi,documents.document,_compute_sgi_ack_stats,"api.depends('sgi_ack_ids', 'sgi_ack_ids.state')",7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_document.py,287
+quimibond_sgi,documents.document,_onchange_sgi_issue_date,api.onchange('sgi_issue_date'),4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_document.py,296
+quimibond_sgi,documents.document,init,,32,0,0,4,0,0,addons/quimibond_sgi/models/sgi_document.py,301
+quimibond_sgi,documents.document,_compute_sgi_doc_type,api.depends('sgi_doc_type_id.code'),5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_document.py,335
+quimibond_sgi,documents.document,_inverse_sgi_doc_type,,14,1,0,1,0,0,addons/quimibond_sgi/models/sgi_document.py,341
+quimibond_sgi,documents.document,_compute_sgi_revision_label,api.depends('sgi_revision'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_document.py,357
+quimibond_sgi,documents.document,_sgi_share_controlled,,16,1,0,2,0,0,addons/quimibond_sgi/models/sgi_document.py,361
+quimibond_sgi,documents.document,_check_sgi_code,"api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type_id', 'sgi_process_id')",42,1,0,0,0,0,addons/quimibond_sgi/models/sgi_document.py,379
+quimibond_sgi,documents.document,_sgi_same_code_docs,,9,0,0,4,0,0,addons/quimibond_sgi/models/sgi_document.py,422
+quimibond_sgi,documents.document,_check_sgi_revision_unique,"api.constrains('sgi_code', 'sgi_revision', 'sgi_is_controlled', 'active', 'company_id')",12,0,0,0,0,0,addons/quimibond_sgi/models/sgi_document.py,433
+quimibond_sgi,documents.document,_check_sgi_code_family,"api.constrains('sgi_code', 'sgi_doc_type_id', 'sgi_process_id', 'sgi_is_controlled')",17,0,0,1,0,0,addons/quimibond_sgi/models/sgi_document.py,447
+quimibond_sgi,documents.document,_sgi_check_revision_increases,,22,0,0,2,0,0,addons/quimibond_sgi/models/sgi_document.py,465
+quimibond_sgi,documents.document,_sgi_check_procedure_measures,,22,0,0,2,0,0,addons/quimibond_sgi/models/sgi_document.py,488
+quimibond_sgi,documents.document,_sgi_find_by_code,api.model,16,0,0,5,0,1,addons/quimibond_sgi/models/sgi_document.py,512
+quimibond_sgi,documents.document,_check_unique_vigente,"api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_state')",15,0,0,0,0,0,addons/quimibond_sgi/models/sgi_document.py,530
+quimibond_sgi,documents.document,_obsolete_code,,19,0,0,3,0,0,addons/quimibond_sgi/models/sgi_document.py,546
+quimibond_sgi,documents.document,_sgi_reparent_family,,19,0,0,3,0,0,addons/quimibond_sgi/models/sgi_document.py,566
+quimibond_sgi,documents.document,create,api.model_create_multi,32,2,0,165,62,1373,addons/quimibond_sgi/models/sgi_document.py,587
+quimibond_sgi,documents.document,write,,63,0,0,299,1,238,addons/quimibond_sgi/models/sgi_document.py,620
+quimibond_sgi,documents.document,action_generate_acks,,16,1,0,7,2,9,addons/quimibond_sgi/models/sgi_document.py,684
+quimibond_sgi,documents.document,action_open_acks,,10,0,0,1,1,0,addons/quimibond_sgi/models/sgi_document.py,701
+quimibond_sgi,documents.document,action_sgi_view_file,,27,0,0,3,7,4,addons/quimibond_sgi/models/sgi_document.py,712
+quimibond_sgi,documents.document,action_sgi_open_in_documents,,12,1,0,0,1,1,addons/quimibond_sgi/models/sgi_document.py,740
+quimibond_sgi,sgi.document.ack,_sgi_check_can_sign,,8,0,0,5,0,0,addons/quimibond_sgi/models/sgi_document.py,782
+quimibond_sgi,sgi.document.ack,create,api.model_create_multi,6,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_document.py,792
+quimibond_sgi,sgi.document.ack,write,,9,0,0,299,1,238,addons/quimibond_sgi/models/sgi_document.py,799
+quimibond_sgi,sgi.document.ack,action_mark_read,,5,0,0,1,4,5,addons/quimibond_sgi/models/sgi_document.py,809
+quimibond_sgi,sgi.document.ack,action_view_file,,4,0,0,0,4,1,addons/quimibond_sgi/models/sgi_document.py,815
+quimibond_sgi,sgi.emergency.plan,_compute_drill_count,api.depends('drill_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_emergency.py,61
+quimibond_sgi,sgi.emergency.plan,_compute_drill_dates,"api.depends('drill_ids.state', 'drill_ids.date_done', 'drill_frequency_months')",9,0,0,2,0,0,addons/quimibond_sgi/models/sgi_emergency.py,66
+quimibond_sgi,sgi.emergency.plan,_compute_display_name,"api.depends('folio', 'name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_emergency.py,77
+quimibond_sgi,sgi.emergency.plan,action_set_vigente,,8,0,0,3,4,16,addons/quimibond_sgi/models/sgi_emergency.py,82
+quimibond_sgi,sgi.emergency.plan,action_set_borrador,,3,0,0,4,5,0,addons/quimibond_sgi/models/sgi_emergency.py,91
+quimibond_sgi,sgi.emergency.plan,action_set_obsoleto,,3,0,0,3,3,0,addons/quimibond_sgi/models/sgi_emergency.py,95
+quimibond_sgi,sgi.emergency.plan,action_view_drills,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_emergency.py,99
+quimibond_sgi,sgi.emergency.drill,_compute_display_name,"api.depends('folio', 'plan_id.name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_emergency.py,146
+quimibond_sgi,sgi.emergency.drill,_sgi_check_can_realize,,22,0,0,1,0,0,addons/quimibond_sgi/models/sgi_emergency.py,151
+quimibond_sgi,sgi.emergency.drill,write,,9,0,0,299,1,238,addons/quimibond_sgi/models/sgi_emergency.py,174
+quimibond_sgi,sgi.emergency.drill,action_set_realizado,,7,0,0,0,1,4,addons/quimibond_sgi/models/sgi_emergency.py,184
+quimibond_sgi,sgi.emergency.drill,action_set_cancelado,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_emergency.py,192
+quimibond_sgi,sgi.emergency.drill,action_set_programado,,4,0,0,0,1,0,addons/quimibond_sgi/models/sgi_emergency.py,196
+quimibond_sgi,sgi.epp.delivery,_compute_job_id,api.depends('employee_id'),4,1,0,3,0,0,addons/quimibond_sgi/models/sgi_epp.py,46
+quimibond_sgi,sgi.epp.delivery,_compute_can_sign,"api.depends('user_id', 'state');api.depends_context('uid')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_epp.py,53
+quimibond_sgi,sgi.epp.delivery,_onchange_employee_id,api.onchange('employee_id'),3,1,0,0,0,0,addons/quimibond_sgi/models/sgi_epp.py,59
+quimibond_sgi,sgi.epp.delivery,_sgi_check_can_sign,,8,1,0,5,0,0,addons/quimibond_sgi/models/sgi_epp.py,63
+quimibond_sgi,sgi.epp.delivery,create,api.model_create_multi,11,1,0,165,62,1373,addons/quimibond_sgi/models/sgi_epp.py,73
+quimibond_sgi,sgi.epp.delivery,write,,8,0,0,299,1,238,addons/quimibond_sgi/models/sgi_epp.py,85
+quimibond_sgi,sgi.epp.delivery,action_sign,,8,0,0,2,5,7,addons/quimibond_sgi/models/sgi_epp.py,94
+quimibond_sgi,hr.employee,_compute_sgi_epp_counts,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_epp.py,112
+quimibond_sgi,hr.employee,action_sgi_epp_deliveries,,8,0,0,0,1,0,addons/quimibond_sgi/models/sgi_epp.py,119
+quimibond_sgi,hr.employee,action_sgi_deliver_epp,,9,1,0,0,1,1,addons/quimibond_sgi/models/sgi_epp.py,128
+quimibond_sgi,sgi.epp.delivery,_compute_items,"api.depends('line_ids.name', 'line_ids.quantity', 'line_ids.uom', 'line_ids.size')",8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_epp_sign.py,44
+quimibond_sgi,sgi.epp.delivery,write,,6,0,0,299,1,238,addons/quimibond_sgi/models/sgi_epp_sign.py,53
+quimibond_sgi,sgi.epp.delivery,_sgi_epp_sign_template,,4,2,0,1,0,0,addons/quimibond_sgi/models/sgi_epp_sign.py,60
+quimibond_sgi,sgi.epp.delivery,_sgi_epp_auto_template,,10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_epp_sign.py,65
+quimibond_sgi,sgi.epp.delivery,action_send_sign_request,,27,3,0,0,1,2,addons/quimibond_sgi/models/sgi_epp_sign.py,76
+quimibond_sgi,sgi.epp.delivery,action_open_sign_request,,6,0,0,0,1,0,addons/quimibond_sgi/models/sgi_epp_sign.py,104
+quimibond_sgi,sgi.epp.delivery,_sgi_sync_from_sign,api.model,10,1,0,3,0,3,addons/quimibond_sgi/models/sgi_epp_sign.py,112
+quimibond_sgi,sgi.epp.delivery,sgi_format_info,,5,1,0,4,4,3,addons/quimibond_sgi/models/sgi_epp_sign.py,123
+quimibond_sgi,sgi.activity.exec.stat,_compute_display_name,"api.depends('activity_id', 'period_start', 'user_id')",5,0,0,21,0,0,addons/quimibond_sgi/models/sgi_exec_stat.py,55
+quimibond_sgi,documents.document,_compute_sgi_ext_deadline,"api.depends('sgi_ext_received_date', 'sgi_doc_type', 'company_id')",7,1,0,1,0,0,addons/quimibond_sgi/models/sgi_external_doc.py,37
+quimibond_sgi,documents.document,_compute_sgi_ext_state,"api.depends('sgi_ext_deadline', 'sgi_ext_implemented_date', 'sgi_doc_type')",10,0,0,2,0,0,addons/quimibond_sgi/models/sgi_external_doc.py,46
+quimibond_sgi,documents.document,_sgi_ext_owner_user_id,,4,1,0,1,0,0,addons/quimibond_sgi/models/sgi_external_doc.py,57
+quimibond_sgi,sgi.cron,cron_documents,api.model,4,0,0,2,1,1,addons/quimibond_sgi/models/sgi_external_doc.py,67
+quimibond_sgi,sgi.cron,_sgi_external_doc_notices,api.model,21,1,0,1,0,2,addons/quimibond_sgi/models/sgi_external_doc.py,73
+quimibond_sgi,sgi.fmea,_compute_max_npr,api.depends('line_ids.npr'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_fmea.py,50
+quimibond_sgi,sgi.fmea,_compute_sgi_nc_count,api.depends('sgi_nc_ids'),3,0,0,9,0,0,addons/quimibond_sgi/models/sgi_fmea.py,55
+quimibond_sgi,sgi.fmea,action_view_sgi_ncs,,9,0,0,1,2,0,addons/quimibond_sgi/models/sgi_fmea.py,59
+quimibond_sgi,sgi.fmea,_sgi_check_can_publish,,41,0,0,1,0,0,addons/quimibond_sgi/models/sgi_fmea.py,69
+quimibond_sgi,sgi.fmea,write,,4,0,0,299,1,238,addons/quimibond_sgi/models/sgi_fmea.py,111
+quimibond_sgi,sgi.fmea,action_set_vigente,,3,0,0,3,4,16,addons/quimibond_sgi/models/sgi_fmea.py,116
+quimibond_sgi,sgi.fmea,action_set_borrador,,3,0,0,4,5,0,addons/quimibond_sgi/models/sgi_fmea.py,120
+quimibond_sgi,sgi.fmea,action_set_obsoleto,,15,0,0,3,3,0,addons/quimibond_sgi/models/sgi_fmea.py,124
+quimibond_sgi,sgi.fmea,_compute_display_name,"api.depends('folio', 'name')",3,0,0,21,0,0,addons/quimibond_sgi/models/sgi_fmea.py,141
+quimibond_sgi,sgi.fmea.line,_sgi_npr_threshold,,3,1,0,1,0,0,addons/quimibond_sgi/models/sgi_fmea.py,176
+quimibond_sgi,sgi.fmea.line,_compute_npr,"api.depends('severity', 'occurrence', 'detection')",8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_fmea.py,181
+quimibond_sgi,sgi.fmea.line,_compute_npr_post,"api.depends('severity_post', 'occurrence_post', 'detection_post')",7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_fmea.py,191
+quimibond_sgi,sgi.fmea.line,unlink,,11,0,0,71,0,20,addons/quimibond_sgi/models/sgi_fmea.py,203
+quimibond_sgi,sgi.format.map,_check_codes,"api.constrains('sgi_code', 'sgi_code_alt')",9,1,0,0,0,0,addons/quimibond_sgi/models/sgi_format_map.py,43
+quimibond_sgi,sgi.format.map,_get_for_model,api.model,2,0,0,1,0,0,addons/quimibond_sgi/models/sgi_format_map.py,54
+quimibond_sgi,sgi.format.map,_revision_of,api.model,7,1,0,8,1,0,addons/quimibond_sgi/models/sgi_format_map.py,58
+quimibond_sgi,sgi.config,seed_parameters,api.model,6,1,0,0,6,0,addons/quimibond_sgi/models/sgi_format_map.py,171
+quimibond_sgi,sgi.config,activate_auto_indicators,api.model,8,0,0,0,1,4,addons/quimibond_sgi/models/sgi_format_map.py,197
+quimibond_sgi,sgi.config,fix_kpi_seeds,api.model,27,0,0,0,1,2,addons/quimibond_sgi/models/sgi_format_map.py,207
+quimibond_sgi,sgi.config,recompute_pending_measures,api.model,19,0,0,0,1,1,addons/quimibond_sgi/models/sgi_format_map.py,236
+quimibond_sgi,sgi.config,migrate_document_families,api.model,31,0,0,1,1,4,addons/quimibond_sgi/models/sgi_format_map.py,283
+quimibond_sgi,sgi.config,_sgi_resolve_menu,,7,0,0,5,0,1,addons/quimibond_sgi/models/sgi_format_map.py,487
+quimibond_sgi,sgi.config,_sgi_vigente_docs_by_codes,,10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_format_map.py,502
+quimibond_sgi,sgi.config,seed_procedure_ventas,api.model,109,0,0,1,0,7,addons/quimibond_sgi/models/sgi_format_map.py,514
+quimibond_sgi,sgi.config,seed_process_purposes,api.model,6,0,0,0,1,0,addons/quimibond_sgi/models/sgi_format_map.py,625
+quimibond_sgi,sgi.config,harden_noupdate,api.model,14,1,0,0,1,0,addons/quimibond_sgi/models/sgi_format_map.py,633
+quimibond_sgi,sgi.format.mixin,_sgi_format_applies,,4,0,0,2,0,0,addons/quimibond_sgi/models/sgi_format_map.py,657
+quimibond_sgi,sgi.format.mixin,_sgi_format_code,,4,0,0,7,0,0,addons/quimibond_sgi/models/sgi_format_map.py,662
+quimibond_sgi,sgi.format.mixin,sgi_format_info,,9,2,0,4,4,3,addons/quimibond_sgi/models/sgi_format_map.py,667
+quimibond_sgi,sgi.format.mixin,_compute_sgi_format_banner,,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_format_map.py,677
+quimibond_sgi,sale.order,_sgi_format_code,,5,0,0,7,0,0,addons/quimibond_sgi/models/sgi_format_map.py,688
+quimibond_sgi,stock.picking,_sgi_format_applies,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_format_map.py,704
+quimibond_sgi,res.groups,_sgi_enforce_mast_members,api.model,15,2,0,0,0,3,addons/quimibond_sgi/models/sgi_groups_cleanup.py,30
+quimibond_sgi,res.groups,_sgi_legacy_groups,api.model,7,2,0,1,0,2,addons/quimibond_sgi/models/sgi_groups_cleanup.py,47
+quimibond_sgi,res.groups,_sgi_retire_legacy_groups,api.model,28,3,0,0,0,2,addons/quimibond_sgi/models/sgi_groups_cleanup.py,56
+quimibond_sgi,sgi.process.activity,_compute_flow_parent_id,"api.depends('in_link_ids.from_activity_id', 'in_link_ids.from_activity_id.sequence', 'in_link_ids.from_activity_id.active', 'process_id', 'sequence')",8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_hierarchy.py,32
+quimibond_sgi,sgi.process.activity,_compute_flow_child_count,api.depends('flow_child_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_hierarchy.py,42
+quimibond_sgi,sgi.process.activity,_compute_flow_executor,api.depends('responsible_job_ids.name'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_hierarchy.py,47
+quimibond_sgi,sgi.process,_compute_child_count,api.depends('child_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_hierarchy.py,58
+quimibond_sgi,sgi.process,_sgi_diagram_action,,10,0,0,3,0,0,addons/quimibond_sgi/models/sgi_hierarchy.py,62
+quimibond_sgi,sgi.process,action_sgi_view_diagram,,4,0,0,0,1,4,addons/quimibond_sgi/models/sgi_hierarchy.py,73
+quimibond_sgi,sgi.process,action_sgi_view_process_map,,11,0,0,0,0,1,addons/quimibond_sgi/models/sgi_hierarchy.py,78
+quimibond_sgi,sgi.process,action_sgi_view_sipoc,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_hierarchy.py,90
+quimibond_sgi,sgi.process,action_sgi_view_doc_tree,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_hierarchy.py,93
+quimibond_sgi,sgi.process,sgi_map_data,api.model,4,0,0,0,0,1,addons/quimibond_sgi/models/sgi_hierarchy.py,97
+quimibond_sgi,sgi.health.record,_compute_next_date,"api.depends('date', 'validity_months')",4,0,0,5,0,0,addons/quimibond_sgi/models/sgi_hse_records.py,57
+quimibond_sgi,sgi.health.record,_compute_state,api.depends('next_date'),9,0,0,6,0,0,addons/quimibond_sgi/models/sgi_hse_records.py,63
+quimibond_sgi,sgi.health.record,_sgi_expiry_notices,api.model,21,2,0,1,0,1,addons/quimibond_sgi/models/sgi_hse_records.py,74
+quimibond_sgi,sgi.cron,cron_competences,api.model,5,0,0,2,1,0,addons/quimibond_sgi/models/sgi_hse_records.py,109
+quimibond_sgi,sgi.csh.inspection,_compute_counts,api.depends('finding_ids.alert_id'),4,0,0,25,0,0,addons/quimibond_sgi/models/sgi_hse_records.py,140
+quimibond_sgi,sgi.csh.inspection,create,api.model_create_multi,6,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_hse_records.py,146
+quimibond_sgi,sgi.csh.inspection,action_close,,11,0,0,5,5,9,addons/quimibond_sgi/models/sgi_hse_records.py,153
+quimibond_sgi,sgi.csh.inspection,action_reopen,,2,0,0,1,2,0,addons/quimibond_sgi/models/sgi_hse_records.py,165
+quimibond_sgi,sgi.csh.inspection,action_view_ncs,,5,0,0,0,1,0,addons/quimibond_sgi/models/sgi_hse_records.py,168
+quimibond_sgi,sgi.csh.finding,action_generate_nc,,25,1,0,1,2,7,addons/quimibond_sgi/models/sgi_hse_records.py,196
+quimibond_sgi,project.task,_sgi_check_can_close_improvement,,16,0,0,1,0,0,addons/quimibond_sgi/models/sgi_improvement.py,31
+quimibond_sgi,project.task,write,,8,0,0,299,1,238,addons/quimibond_sgi/models/sgi_improvement.py,48
+quimibond_sgi,sgi.incident,create,api.model_create_multi,6,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_incident.py,70
+quimibond_sgi,sgi.incident,write,,20,0,0,299,1,238,addons/quimibond_sgi/models/sgi_incident.py,77
+quimibond_sgi,sgi.incident,_sgi_create_alert,,35,0,0,8,0,1,addons/quimibond_sgi/models/sgi_incident.py,98
+quimibond_sgi,sgi.incident,_sgi_notify_if_serious,,26,0,0,2,0,0,addons/quimibond_sgi/models/sgi_incident.py,134
+quimibond_sgi,sgi.incident,_sgi_check_can_close,,24,0,0,11,0,4,addons/quimibond_sgi/models/sgi_incident.py,161
+quimibond_sgi,sgi.incident,action_set_investigacion,,3,0,0,0,1,3,addons/quimibond_sgi/models/sgi_incident.py,186
+quimibond_sgi,sgi.incident,action_set_acciones,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_incident.py,190
+quimibond_sgi,sgi.incident,action_set_cerrado,,4,0,0,1,2,7,addons/quimibond_sgi/models/sgi_incident.py,194
+quimibond_sgi,sgi.incident,action_set_reportado,,3,0,0,0,1,2,addons/quimibond_sgi/models/sgi_incident.py,199
+quimibond_sgi,sgi.incident,_compute_display_name,"api.depends('folio', 'name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_incident.py,204
+quimibond_sgi,sgi.indicator,_compute_source,api.depends('calc_mode'),5,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator.py,171
+quimibond_sgi,sgi.indicator,_compute_last_measure,"api.depends('measure_ids.period_date', 'measure_ids.value', 'measure_ids.semaphore', 'measure_ids.state')",10,0,0,3,0,0,addons/quimibond_sgi/models/sgi_indicator.py,204
+quimibond_sgi,sgi.indicator,_compute_display_name,"api.depends('code', 'name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_indicator.py,216
+quimibond_sgi,sgi.indicator,action_sgi_measures,,12,0,0,0,1,1,addons/quimibond_sgi/models/sgi_indicator.py,221
+quimibond_sgi,sgi.indicator,action_view_trend,,12,0,0,0,2,1,addons/quimibond_sgi/models/sgi_indicator.py,234
+quimibond_sgi,sgi.indicator,_sgi_compute_value,,9,0,0,1,0,9,addons/quimibond_sgi/models/sgi_indicator.py,250
+quimibond_sgi,sgi.indicator,_sgi_period_bounds,,6,0,0,5,0,0,addons/quimibond_sgi/models/sgi_indicator.py,260
+quimibond_sgi,sgi.indicator,_sgi_dt_bounds,,3,0,0,28,0,0,addons/quimibond_sgi/models/sgi_indicator.py,267
+quimibond_sgi,sgi.indicator,_sgi_kpi_company,,13,1,0,30,0,3,addons/quimibond_sgi/models/sgi_indicator.py,271
+quimibond_sgi,sgi.indicator,_calc_otif_ventas,,15,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,285
+quimibond_sgi,sgi.indicator,_calc_otd_compras,,16,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,301
+quimibond_sgi,sgi.indicator,_sgi_production_done,,6,0,0,4,0,0,addons/quimibond_sgi/models/sgi_indicator.py,318
+quimibond_sgi,sgi.indicator,_calc_produccion_vs_programado,,7,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,325
+quimibond_sgi,sgi.indicator,_sgi_waste_category_ids,,8,1,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator.py,333
+quimibond_sgi,sgi.indicator,_calc_desperdicio,,14,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator.py,342
+quimibond_sgi,sgi.indicator,_calc_desperdicio_scrap,,12,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,357
+quimibond_sgi,sgi.indicator,_calc_calidad_pq,,15,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,370
+quimibond_sgi,sgi.indicator,_calc_cumplimiento_programa,,13,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,386
+quimibond_sgi,sgi.indicator,_calc_cierre_nc,,14,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,400
+quimibond_sgi,sgi.indicator,_calc_reclamos_cliente,,10,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,415
+quimibond_sgi,sgi.indicator,_calc_disponibilidad_mantto,,3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,426
+quimibond_sgi,sgi.indicator,_calc_preventivo_cumplido,,10,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,430
+quimibond_sgi,sgi.indicator,_calc_rotacion_rh,,9,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,441
+quimibond_sgi,sgi.indicator,_calc_plantilla_rh,,3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,451
+quimibond_sgi,sgi.indicator,_sgi_year_budget_amount,,11,1,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator.py,455
+quimibond_sgi,sgi.indicator,_calc_presupuesto_ventas,,13,1,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator.py,467
+quimibond_sgi,sgi.indicator,_note_presupuesto_ventas,,5,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator.py,481
+quimibond_sgi,sgi.indicator,_sgi_net_invoiced,,13,0,0,8,0,0,addons/quimibond_sgi/models/sgi_indicator.py,487
+quimibond_sgi,sgi.indicator,_sgi_receivable_balance,,14,0,0,2,0,1,addons/quimibond_sgi/models/sgi_indicator.py,501
+quimibond_sgi,sgi.indicator,_calc_crecimiento_ventas,,9,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator.py,516
+quimibond_sgi,sgi.indicator,_calc_ots_atendidas,,15,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,526
+quimibond_sgi,sgi.indicator,_sgi_purchase_approval_categories,,14,1,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator.py,542
+quimibond_sgi,sgi.indicator,_calc_requisiciones,,17,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator.py,557
+quimibond_sgi,sgi.indicator,_sgi_outgoing_done,,7,0,0,8,0,0,addons/quimibond_sgi/models/sgi_indicator.py,575
+quimibond_sgi,sgi.indicator,_sgi_shipments_with_return,,4,0,0,3,0,0,addons/quimibond_sgi/models/sgi_indicator.py,583
+quimibond_sgi,sgi.indicator,_calc_embarques_sin_error,,8,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,588
+quimibond_sgi,sgi.indicator,_calc_produccion_vs_capacidad,,20,1,0,0,0,3,addons/quimibond_sgi/models/sgi_indicator.py,598
+quimibond_sgi,sgi.indicator,_sgi_energy_partner,,7,1,0,3,0,0,addons/quimibond_sgi/models/sgi_indicator.py,619
+quimibond_sgi,sgi.indicator,_note_consumo_energia,,5,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,627
+quimibond_sgi,sgi.indicator,_note_produccion_vs_capacidad,,6,1,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,633
+quimibond_sgi,sgi.indicator,_calc_compras_sin_devolucion,,15,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,640
+quimibond_sgi,sgi.indicator,_calc_capacitacion,,22,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator.py,656
+quimibond_sgi,sgi.indicator,_sgi_satisfaction_survey,,15,2,0,5,0,0,addons/quimibond_sgi/models/sgi_indicator.py,679
+quimibond_sgi,sgi.indicator,_calc_satisfaccion_cliente,,24,2,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,695
+quimibond_sgi,sgi.indicator,_note_satisfaccion_cliente,,5,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,720
+quimibond_sgi,sgi.indicator,_sgi_compute_note,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator.py,726
+quimibond_sgi,sgi.indicator,_calc_inventario_ciclico,,19,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,735
+quimibond_sgi,sgi.indicator,_sgi_net_purchased,,11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator.py,758
+quimibond_sgi,sgi.indicator,_calc_margen_ventas,,25,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,770
+quimibond_sgi,sgi.indicator,_calc_compras_vs_ventas,,7,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,796
+quimibond_sgi,sgi.indicator,_calc_clientes_nuevos,,21,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,804
+quimibond_sgi,sgi.indicator,_sgi_customer_moves_domain,,5,0,0,5,0,0,addons/quimibond_sgi/models/sgi_indicator.py,826
+quimibond_sgi,sgi.indicator,_calc_concentracion_top3,,13,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,832
+quimibond_sgi,sgi.indicator,_calc_facturacion_usd,,13,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,846
+quimibond_sgi,sgi.indicator,_calc_notas_credito,,13,0,0,0,0,3,addons/quimibond_sgi/models/sgi_indicator.py,860
+quimibond_sgi,sgi.indicator,_calc_dso_cartera,,12,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator.py,874
+quimibond_sgi,sgi.indicator,_sgi_open_moves,,10,0,0,3,0,2,addons/quimibond_sgi/models/sgi_indicator.py,887
+quimibond_sgi,sgi.indicator,_sgi_overdue_pct,,12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator.py,898
+quimibond_sgi,sgi.indicator,_calc_cartera_vencida,,2,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,911
+quimibond_sgi,sgi.indicator,_calc_cartera_vencida_60,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,914
+quimibond_sgi,sgi.indicator,_sgi_invoiced_partner_ids,,7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator.py,917
+quimibond_sgi,sgi.indicator,_calc_retencion_clientes,,11,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,925
+quimibond_sgi,sgi.indicator,_calc_clientes_reactivados,,24,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,937
+quimibond_sgi,sgi.indicator,_sgi_customer_amounts_12m,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator.py,962
+quimibond_sgi,sgi.indicator,_calc_ventas_fuera_top10,,8,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,971
+quimibond_sgi,sgi.indicator,_calc_concentracion_productos,,21,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,980
+quimibond_sgi,sgi.indicator,_calc_pedidos_cancelados,,11,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,1002
+quimibond_sgi,sgi.indicator,_calc_entregas_completas,,9,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator.py,1014
+quimibond_sgi,sgi.indicator,_calc_dpo_pagos,,12,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator.py,1024
+quimibond_sgi,sgi.indicator.measure,_compute_semaphore,"api.depends('value', 'state', 'indicator_id.direction', 'indicator_id.target_objective', 'indicator_id.target_acceptable')",25,0,0,8,0,0,addons/quimibond_sgi/models/sgi_indicator.py,1080
+quimibond_sgi,sgi.indicator.measure,_compute_display_name,"api.depends('indicator_id', 'period_date')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_indicator.py,1107
+quimibond_sgi,sgi.indicator.measure,action_view_evidence,,209,0,0,2,4,7,addons/quimibond_sgi/models/sgi_indicator.py,1147
+quimibond_sgi,sgi.indicator.measure,write,,13,0,0,299,1,238,addons/quimibond_sgi/models/sgi_indicator.py,1362
+quimibond_sgi,sgi.indicator.measure,action_capture,,2,0,0,0,1,1,addons/quimibond_sgi/models/sgi_indicator.py,1376
+quimibond_sgi,sgi.indicator.measure,action_validate,,4,0,0,4,3,11,addons/quimibond_sgi/models/sgi_indicator.py,1379
+quimibond_sgi,sgi.indicator.measure,action_reset,,3,0,0,1,2,2,addons/quimibond_sgi/models/sgi_indicator.py,1384
+quimibond_sgi,sgi.indicator.measure,_sgi_check_validate_access,,10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator.py,1388
+quimibond_sgi,sgi.indicator.measure,_sgi_maybe_create_nc,,50,0,0,4,0,3,addons/quimibond_sgi/models/sgi_indicator.py,1399
+quimibond_sgi,sgi.indicator,_sgi_set_calc,,3,1,0,4,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,68
+quimibond_sgi,sgi.indicator,_sgi_calc_diagnose,,12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,72
+quimibond_sgi,sgi.indicator,action_set_official,,2,0,0,0,1,2,addons/quimibond_sgi/models/sgi_indicator_detail.py,85
+quimibond_sgi,sgi.indicator,action_set_trial,,2,0,0,0,1,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,88
+quimibond_sgi,sgi.indicator,_sgi_compute_detail,,17,0,0,1,0,1,addons/quimibond_sgi/models/sgi_indicator_detail.py,94
+quimibond_sgi,sgi.indicator,_sgi_evidence_records,,19,1,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,112
+quimibond_sgi,sgi.indicator,_sgi_measure_vals,,24,0,0,12,0,4,addons/quimibond_sgi/models/sgi_indicator_detail.py,132
+quimibond_sgi,sgi.indicator,_sgi_measurable_on,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,157
+quimibond_sgi,sgi.indicator,_sgi_aggregate,api.model,11,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator_detail.py,163
+quimibond_sgi,sgi.indicator,_ratio,staticmethod,9,0,0,8,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,178
+quimibond_sgi,sgi.indicator,_detail_otif_ventas,,6,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,188
+quimibond_sgi,sgi.indicator,_detail_otd_compras,,12,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,195
+quimibond_sgi,sgi.indicator,_detail_entregas_completas,,4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,208
+quimibond_sgi,sgi.indicator,_detail_embarques_sin_error,,4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,213
+quimibond_sgi,sgi.indicator,_detail_pedidos_cancelados,,8,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,218
+quimibond_sgi,sgi.indicator,_detail_cierre_nc,,10,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,227
+quimibond_sgi,sgi.indicator,_detail_calidad_pq,,8,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator_detail.py,238
+quimibond_sgi,sgi.indicator,_detail_preventivo_cumplido,,6,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,247
+quimibond_sgi,sgi.indicator,_detail_dso_cartera,,7,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,254
+quimibond_sgi,sgi.indicator,_sgi_detail_overdue,,11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,262
+quimibond_sgi,sgi.indicator,_detail_cartera_vencida,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,274
+quimibond_sgi,sgi.indicator,_detail_cartera_vencida_60,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,277
+quimibond_sgi,sgi.indicator.measure,_compute_small_sample,"api.depends('sample_size', 'state', 'detail_ids')",6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,301
+quimibond_sgi,sgi.indicator.measure,_compute_detail_count,api.depends('detail_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,309
+quimibond_sgi,sgi.indicator.measure,_compute_value_is_pct,api.depends('indicator_id.uom'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,314
+quimibond_sgi,sgi.indicator.measure,_compute_semaphore,"api.depends('value', 'state', 'indicator_id.direction', 'indicator_id.target_objective', 'indicator_id.target_acceptable')",4,0,0,8,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,320
+quimibond_sgi,sgi.indicator.measure,action_view_records,,18,0,0,1,5,4,addons/quimibond_sgi/models/sgi_indicator_detail.py,325
+quimibond_sgi,sgi.indicator.measure,action_recompute_value,,23,0,0,0,1,3,addons/quimibond_sgi/models/sgi_indicator_detail.py,344
+quimibond_sgi,sgi.indicator.measure,action_validate,,5,0,0,4,3,11,addons/quimibond_sgi/models/sgi_indicator_detail.py,368
+quimibond_sgi,sgi.indicator.measure,_sgi_previous_measure,,9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,374
+quimibond_sgi,sgi.indicator.measure,_sgi_red_with_data,,4,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_detail.py,384
+quimibond_sgi,sgi.indicator.measure,_sgi_maybe_create_nc,,23,0,0,4,0,3,addons/quimibond_sgi/models/sgi_indicator_detail.py,389
+quimibond_sgi,sgi.indicator.term,_sgi_lock_date,,6,1,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,111
+quimibond_sgi,sgi.indicator.term,_sgi_resolve_placeholders,,22,0,0,1,0,1,addons/quimibond_sgi/models/sgi_indicator_formula.py,118
+quimibond_sgi,sgi.indicator.term,_sgi_domain,,9,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,142
+quimibond_sgi,sgi.indicator.term,_check_term,api.constrains(*_TRACKED),37,1,1,0,0,1,addons/quimibond_sgi/models/sgi_indicator_formula.py,153
+quimibond_sgi,sgi.indicator.term,_sgi_window,,10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,192
+quimibond_sgi,sgi.indicator.term,_sgi_records,,26,1,0,4,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,203
+quimibond_sgi,sgi.indicator.term,_sgi_delta,,23,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,230
+quimibond_sgi,sgi.indicator.term,_sgi_delta_ok,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,254
+quimibond_sgi,sgi.indicator.term,_sgi_matching,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,261
+quimibond_sgi,sgi.indicator.term,_sgi_value,,17,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,268
+quimibond_sgi,sgi.indicator.term,_sgi_describe,,22,0,0,4,0,1,addons/quimibond_sgi/models/sgi_indicator_formula.py,287
+quimibond_sgi,sgi.indicator.term,_sgi_log_change,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,310
+quimibond_sgi,sgi.indicator.term,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_indicator_formula.py,318
+quimibond_sgi,sgi.indicator.term,write,,7,0,0,299,1,238,addons/quimibond_sgi/models/sgi_indicator_formula.py,323
+quimibond_sgi,sgi.indicator.term,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_indicator_formula.py,331
+quimibond_sgi,sgi.indicator,_compute_can_edit_formula,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,348
+quimibond_sgi,sgi.indicator,_compute_has_formula,"api.depends('term_ids', 'term_ids.model_id', 'term_ids.domain', 'term_ids.date_field', 'term_ids.aggregation', 'term_ids.field_name', 'term_ids.field_name_2', 'term_ids.delta_unit', 'term_ids.delta_op', 'term_ids.delta_value', 'term_ids.factor', 'term_ids.window')",6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,357
+quimibond_sgi,sgi.indicator,_sgi_terms,,6,0,0,3,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,364
+quimibond_sgi,sgi.indicator,_sgi_formula_changed,,9,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_formula.py,371
+quimibond_sgi,sgi.indicator,_detail_configurable,,31,0,0,3,0,16,addons/quimibond_sgi/models/sgi_indicator_formula.py,381
+quimibond_sgi,sgi.indicator,_calc_configurable,,2,0,0,0,0,2,addons/quimibond_sgi/models/sgi_indicator_formula.py,413
+quimibond_sgi,sgi.indicator,_note_configurable,,4,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator_formula.py,416
+quimibond_sgi,sgi.indicator,sgi_recalculate,,45,0,0,2,0,4,addons/quimibond_sgi/models/sgi_indicator_formula.py,422
+quimibond_sgi,sgi.indicator,_sgi_default_period,,8,0,0,1,0,1,addons/quimibond_sgi/models/sgi_indicator_formula.py,468
+quimibond_sgi,sgi.indicator,action_recalculate_now,,4,0,0,0,1,1,addons/quimibond_sgi/models/sgi_indicator_formula.py,477
+quimibond_sgi,sgi.indicator,_sgi_measure_vals,,11,0,0,12,0,4,addons/quimibond_sgi/models/sgi_indicator_formula.py,482
+quimibond_sgi,sgi.indicator,_sgi_kg_consumed,,20,0,0,3,0,0,addons/quimibond_sgi/models/sgi_indicator_i3.py,43
+quimibond_sgi,sgi.indicator,_detail_desperdicio_kg,,27,0,0,1,0,1,addons/quimibond_sgi/models/sgi_indicator_i3.py,65
+quimibond_sgi,sgi.indicator,_calc_desperdicio_kg,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_i3.py,93
+quimibond_sgi,sgi.indicator,_sgi_balance_by_type,,11,0,0,4,0,0,addons/quimibond_sgi/models/sgi_indicator_i3.py,97
+quimibond_sgi,sgi.indicator,_sgi_closing_move_domain,api.model,8,0,0,4,0,0,addons/quimibond_sgi/models/sgi_indicator_i3.py,110
+quimibond_sgi,sgi.indicator,_detail_margen_ebitda,,10,0,0,1,0,4,addons/quimibond_sgi/models/sgi_indicator_i3.py,119
+quimibond_sgi,sgi.indicator,_calc_margen_ebitda,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_i3.py,130
+quimibond_sgi,sgi.indicator,_detail_compras_mp_vs_ventas,,21,0,0,1,0,2,addons/quimibond_sgi/models/sgi_indicator_i3.py,134
+quimibond_sgi,sgi.indicator,_calc_compras_mp_vs_ventas,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_i3.py,156
+quimibond_sgi,sgi.indicator,_sgi_rework_picking_types,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_p21.py,37
+quimibond_sgi,sgi.indicator,_detail_reproceso,,23,0,0,1,0,1,addons/quimibond_sgi/models/sgi_indicator_p21.py,41
+quimibond_sgi,sgi.indicator,_calc_reproceso,,2,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator_p21.py,65
+quimibond_sgi,sgi.indicator,_note_reproceso,,5,0,0,0,0,1,addons/quimibond_sgi/models/sgi_indicator_p21.py,68
+quimibond_sgi,sgi.indicator,_sgi_has_valuation,,2,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_p21.py,75
+quimibond_sgi,sgi.indicator,_detail_inventario_diferencia,,19,2,0,1,0,2,addons/quimibond_sgi/models/sgi_indicator_p21.py,78
+quimibond_sgi,sgi.indicator,_calc_inventario_diferencia,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_p21.py,98
+quimibond_sgi,sgi.indicator,_note_inventario_diferencia,,4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_p21.py,101
+quimibond_sgi,sgi.indicator,_detail_consumo_energia,,22,0,0,1,0,2,addons/quimibond_sgi/models/sgi_indicator_p21.py,107
+quimibond_sgi,sgi.indicator,_calc_consumo_energia,,2,0,0,0,0,3,addons/quimibond_sgi/models/sgi_indicator_p21.py,130
+quimibond_sgi,sgi.indicator,_compute_window_label,"api.depends('calc_mode', 'frequency', 'term_ids.window')",14,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,54
+quimibond_sgi,sgi.action.line,_compute_origin_display,api.depends('measure_id'),5,0,0,5,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,78
+quimibond_sgi,sgi.action.line,_sgi_origin,,5,0,0,8,0,1,addons/quimibond_sgi/models/sgi_indicator_plan.py,84
+quimibond_sgi,sgi.action.line,_check_parent_xor,"api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'drill_id', 'objective_id', 'measure_id', 'name')",8,0,0,4,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,92
+quimibond_sgi,sgi.action.line,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_indicator_plan.py,102
+quimibond_sgi,sgi.indicator.measure,_compute_plan,"api.depends('semaphore', 'state', 'small_sample', 'period_date', 'cause', 'action_line_ids', 'indicator_id.frequency')",12,1,0,3,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,121
+quimibond_sgi,sgi.indicator.measure,_sgi_plan_summary,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,135
+quimibond_sgi,sgi.indicator.measure,_sgi_plan_activity,,21,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,139
+quimibond_sgi,sgi.indicator.measure,_sgi_plan_captured,,11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,161
+quimibond_sgi,sgi.indicator.measure,_sgi_escalate_red_plans,api.model,22,0,0,1,0,4,addons/quimibond_sgi/models/sgi_indicator_plan.py,174
+quimibond_sgi,sgi.indicator.measure,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_indicator_plan.py,198
+quimibond_sgi,sgi.indicator.measure,write,,6,0,0,299,1,238,addons/quimibond_sgi/models/sgi_indicator_plan.py,203
+quimibond_sgi,sgi.indicator.measure,action_open_plan,,6,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,210
+quimibond_sgi,sgi.cron,_sgi_monthly_run_due,api.model,13,1,0,1,0,4,addons/quimibond_sgi/models/sgi_indicator_plan.py,222
+quimibond_sgi,sgi.cron,_sgi_weekly_run_due,api.model,7,0,0,1,0,3,addons/quimibond_sgi/models/sgi_indicator_plan.py,237
+quimibond_sgi,sgi.cron,cron_indicators,api.model,10,0,0,2,1,2,addons/quimibond_sgi/models/sgi_indicator_plan.py,246
+quimibond_sgi,sgi.cron,cron_indicators_weekly,api.model,5,0,0,2,1,0,addons/quimibond_sgi/models/sgi_indicator_plan.py,258
+quimibond_sgi,sgi.management.review,action_validate_measures,,23,0,0,0,1,3,addons/quimibond_sgi/models/sgi_indicator_plan.py,268
+quimibond_sgi,sgi.indicator.step,_compute_name,api.depends('date_from'),4,0,0,11,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,48
+quimibond_sgi,sgi.indicator.step,_check_quarter,api.constrains('date_from'),4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,54
+quimibond_sgi,sgi.indicator.step,write,,15,0,0,299,1,238,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,59
+quimibond_sgi,sgi.indicator,_compute_has_trajectory,api.depends('step_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,92
+quimibond_sgi,sgi.indicator,_check_range,"api.constrains('direction', 'range_min', 'range_max', 'range_tolerance')",6,0,0,0,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,97
+quimibond_sgi,sgi.indicator,_sgi_spec_problems,,7,0,0,7,0,7,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,104
+quimibond_sgi,sgi.indicator,_sgi_trajectory_ready,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,116
+quimibond_sgi,sgi.indicator,_sgi_auto_trajectory,,10,0,1,3,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,121
+quimibond_sgi,sgi.indicator,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,133
+quimibond_sgi,sgi.indicator,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,138
+quimibond_sgi,sgi.indicator,cron_missing_trajectories,api.model,6,0,0,1,0,1,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,145
+quimibond_sgi,sgi.indicator,_sgi_trajectory_value,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,153
+quimibond_sgi,sgi.indicator,action_generate_trajectory,,37,0,0,1,1,8,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,162
+quimibond_sgi,sgi.indicator,_sgi_targets_on,,16,0,0,3,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,200
+quimibond_sgi,sgi.indicator.measure,_compute_targets,"api.depends('indicator_id.target_objective', 'indicator_id.target_acceptable', 'indicator_id.direction', 'period_date', 'indicator_id.step_ids.objective', 'indicator_id.step_ids.acceptable', 'indicator_id.step_ids.date_from')",7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,232
+quimibond_sgi,sgi.indicator.measure,_compute_semaphore,"api.depends('value', 'state', 'period_date', 'indicator_id.direction', 'indicator_id.target_objective', 'indicator_id.target_acceptable', 'indicator_id.range_min', 'indicator_id.range_max', 'indicator_id.range_tolerance', 'indicator_id.step_ids.objective', 'indicator_id.step_ids.acceptable', 'indicator_id.step_ids.date_from')",21,0,0,8,0,0,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,246
+quimibond_sgi,sgi.process.activity,_sgi_article_hash,,5,0,0,2,0,0,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,25
+quimibond_sgi,sgi.process.activity,_compute_instruction_article_stale,"api.depends('instruction_article_id.body', 'instruction_id.sgi_content_hash')",6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,32
+quimibond_sgi,sgi.process.activity,action_publish_instruction,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,39
+quimibond_sgi,sgi.instruction.publish,_compute_job_ids,api.depends('activity_id'),4,1,0,1,0,0,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,71
+quimibond_sgi,sgi.instruction.publish,action_publish,,45,3,0,1,1,4,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,76
+quimibond_sgi,stock.picking,_compute_sgi_nc_count,,4,0,0,9,0,0,addons/quimibond_sgi/models/sgi_integration.py,11
+quimibond_sgi,stock.picking,action_sgi_open_ncs,,10,0,0,3,4,0,addons/quimibond_sgi/models/sgi_integration.py,16
+quimibond_sgi,stock.picking,_sgi_is_customer_return,,9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_integration.py,40
+quimibond_sgi,stock.picking,_sgi_create_return_alert,,30,0,0,1,0,1,addons/quimibond_sgi/models/sgi_integration.py,50
+quimibond_sgi,stock.picking,_action_done,,4,0,0,3,0,3,addons/quimibond_sgi/models/sgi_integration.py,81
+quimibond_sgi,mrp.production,_compute_sgi_nc_count,,4,0,0,9,0,0,addons/quimibond_sgi/models/sgi_integration.py,92
+quimibond_sgi,mrp.production,action_sgi_open_ncs,,10,0,0,3,4,0,addons/quimibond_sgi/models/sgi_integration.py,97
+quimibond_sgi,purchase.order,_compute_sgi_nc_count,,6,0,0,9,0,0,addons/quimibond_sgi/models/sgi_integration.py,114
+quimibond_sgi,purchase.order,action_sgi_open_ncs,,11,0,0,3,4,0,addons/quimibond_sgi/models/sgi_integration.py,121
+quimibond_sgi,purchase.order,button_confirm,,11,0,0,3,0,8,addons/quimibond_sgi/models/sgi_integration.py,133
+quimibond_sgi,maintenance.request,action_sgi_raise_nc,,25,0,0,0,2,3,addons/quimibond_sgi/models/sgi_integration.py,152
+quimibond_sgi,maintenance.request,_sgi_open_alert,,9,0,0,2,0,0,addons/quimibond_sgi/models/sgi_integration.py,178
+quimibond_sgi,product.template,action_sgi_open_spec,,7,0,0,2,1,2,addons/quimibond_sgi/models/sgi_integration.py,221
+quimibond_sgi,product.product,action_sgi_open_spec,,3,0,0,2,1,2,addons/quimibond_sgi/models/sgi_integration.py,236
+quimibond_sgi,hr.employee,_compute_sgi_counts,,15,0,0,2,0,0,addons/quimibond_sgi/models/sgi_integration.py,247
+quimibond_sgi,hr.employee,action_sgi_my_procedures,,25,0,0,0,1,0,addons/quimibond_sgi/models/sgi_integration.py,263
+quimibond_sgi,hr.employee,action_sgi_pending_acks,,9,0,0,0,1,0,addons/quimibond_sgi/models/sgi_integration.py,289
+quimibond_sgi,res.partner,_compute_sgi_partner_counts,,17,0,0,2,0,0,addons/quimibond_sgi/models/sgi_integration.py,306
+quimibond_sgi,res.partner,action_sgi_open_complaints,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_integration.py,324
+quimibond_sgi,res.partner,action_sgi_open_ncs,,10,0,0,3,4,0,addons/quimibond_sgi/models/sgi_integration.py,335
+quimibond_sgi,ir.ui.menu,_sgi_attach_quality_menus,api.model,46,3,0,1,1,1,addons/quimibond_sgi/models/sgi_integration.py,351
+quimibond_sgi,sale.order,action_confirm,,9,1,0,13,8,33,addons/quimibond_sgi/models/sgi_kpi_fields.py,69
+quimibond_sgi,stock.picking,_compute_sgi_quality_approved,"api.depends('check_ids.quality_state', 'check_ids.control_date', 'create_date')",10,0,0,2,0,0,addons/quimibond_sgi/models/sgi_kpi_fields.py,100
+quimibond_sgi,account.move.line,_compute_sgi_po_price_diff,"api.depends('price_unit', 'quantity', 'purchase_line_id.price_unit', 'move_id.move_type')",7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_kpi_fields.py,131
+quimibond_sgi,account.move,_compute_sgi_payment_date,"api.depends('payment_state', 'line_ids.matched_debit_ids.max_date', 'line_ids.matched_credit_ids.max_date')",10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_kpi_fields.py,151
+quimibond_sgi,sgi.management.review.agreement,_compute_done_date,api.depends('action_line_id.date_done'),6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_kpi_fields.py,173
+quimibond_sgi,sgi.lock.date.log,_compute_business_day,"api.depends('moved_at', 'company_id')",8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_kpi_fields.py,198
+quimibond_sgi,sgi.lock.date.log,sgi_business_day_of,api.model,3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_kpi_fields.py,208
+quimibond_sgi,res.company,write,,13,1,0,299,1,238,addons/quimibond_sgi/models/sgi_kpi_fields.py,216
+quimibond_sgi,sgi.inventory.value,sgi_snapshot,api.model,20,3,0,1,0,2,addons/quimibond_sgi/models/sgi_kpi_fields.py,249
+quimibond_sgi,hr.version,_compute_sgi_departure,"api.depends('departure_reason_id', 'employee_id.departure_reason_id')",4,1,0,1,0,0,addons/quimibond_sgi/models/sgi_kpi_fields.py,283
+quimibond_sgi,hr.version,write,,4,0,0,299,1,238,addons/quimibond_sgi/models/sgi_kpi_fields.py,288
+quimibond_sgi,res.users,write,,4,0,0,299,1,238,addons/quimibond_sgi/models/sgi_kpi_fields.py,310
+quimibond_sgi,sgi.legal.requirement,_compute_next_eval_date,"api.depends('last_eval_date', 'eval_frequency_months')",8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_legal.py,104
+quimibond_sgi,sgi.legal.requirement,_compute_evaluation_count,api.depends('evaluation_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_legal.py,114
+quimibond_sgi,sgi.legal.requirement,_compute_display_name,"api.depends('reference', 'name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_legal.py,119
+quimibond_sgi,sgi.legal.requirement,_sgi_mark,,21,0,0,5,0,0,addons/quimibond_sgi/models/sgi_legal.py,128
+quimibond_sgi,sgi.legal.requirement,action_mark_no_aplica,,2,0,0,0,1,0,addons/quimibond_sgi/models/sgi_legal.py,150
+quimibond_sgi,sgi.legal.requirement,action_evaluate,,8,0,0,1,2,2,addons/quimibond_sgi/models/sgi_legal.py,153
+quimibond_sgi,sgi.legal.requirement,action_view_evaluations,,8,0,0,0,1,0,addons/quimibond_sgi/models/sgi_legal.py,162
+quimibond_sgi,sgi.legal.requirement,action_mark_cumple,,2,0,0,0,1,1,addons/quimibond_sgi/models/sgi_legal.py,171
+quimibond_sgi,sgi.legal.requirement,action_mark_parcial,,4,0,0,0,1,1,addons/quimibond_sgi/models/sgi_legal.py,174
+quimibond_sgi,sgi.legal.requirement,action_mark_no_cumple,,4,0,0,0,1,2,addons/quimibond_sgi/models/sgi_legal.py,179
+quimibond_sgi,sgi.legal.requirement,_sgi_create_alert,,33,0,0,8,0,1,addons/quimibond_sgi/models/sgi_legal.py,184
+quimibond_sgi,sgi.legal.requirement,action_view_alert,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_legal.py,218
+quimibond_sgi,sgi.legal.evaluate,_compute_next_date,"api.depends('requirement_id', 'result')",5,0,0,5,0,0,addons/quimibond_sgi/models/sgi_legal.py,270
+quimibond_sgi,sgi.legal.evaluate,action_confirm,,9,0,0,13,8,33,addons/quimibond_sgi/models/sgi_legal.py,276
+quimibond_sgi,project.task,_compute_sgi_dyd_link_count,"api.depends('sgi_fmea_ids', 'sgi_bom_ids', 'sgi_production_ids', 'sgi_control_plan_ids', 'sgi_ppap_ids')",5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,74
+quimibond_sgi,product.template,_compute_sgi_control_plan_id,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,90
+quimibond_sgi,approval.request,action_create_purchase_orders,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,125
+quimibond_sgi,approval.request,_sgi_link_purchase_orders,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,132
+quimibond_sgi,account.move,_compute_sgi_picking_ids,"api.depends('invoice_line_ids.sale_line_ids.move_ids.picking_id', 'invoice_line_ids.purchase_line_id.move_ids.picking_id')",10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,154
+quimibond_sgi,ir.attachment,create,api.model_create_multi,9,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_links.py,174
+quimibond_sgi,stock.picking,_compute_sgi_production_id,"api.depends('move_ids.production_id', 'move_ids.raw_material_production_id', 'origin')",9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,198
+quimibond_sgi,stock.picking,_compute_sgi_acuse_count,api.depends('sgi_acuse_attachment_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,209
+quimibond_sgi,stock.picking,action_sgi_attach_acuse,,7,0,0,0,1,0,addons/quimibond_sgi/models/sgi_links.py,213
+quimibond_sgi,stock.picking,action_sgi_open_acuses,,7,0,0,0,1,0,addons/quimibond_sgi/models/sgi_links.py,221
+quimibond_sgi,sgi.acuse.attach.wizard,action_attach,,10,0,0,0,1,1,addons/quimibond_sgi/models/sgi_links.py,239
+quimibond_sgi,sgi.acuse.attach.wizard,_sgi_extension,,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_links.py,250
+quimibond_sgi,sgi.acuse.attach.wizard,_sgi_file_size,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_links.py,254
+quimibond_sgi,sgi.process,load_payload,api.model,44,0,2,4,1,48,addons/quimibond_sgi/models/sgi_load.py,215
+quimibond_sgi,sgi.catalog.load.wizard,_compute_counts,api.depends('line_ids.action'),5,0,0,25,0,0,addons/quimibond_sgi/models/sgi_load_wizard.py,42
+quimibond_sgi,sgi.catalog.load.wizard,_payload,,12,0,1,1,0,15,addons/quimibond_sgi/models/sgi_load_wizard.py,48
+quimibond_sgi,sgi.catalog.load.wizard,_run,,34,0,0,4,0,0,addons/quimibond_sgi/models/sgi_load_wizard.py,61
+quimibond_sgi,sgi.catalog.load.wizard,action_test,,2,0,0,0,1,1,addons/quimibond_sgi/models/sgi_load_wizard.py,96
+quimibond_sgi,sgi.catalog.load.wizard,action_load,,2,0,0,0,1,1,addons/quimibond_sgi/models/sgi_load_wizard.py,99
+quimibond_sgi,sgi.machine.sheet,create,api.model_create_multi,9,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_machine_sheet.py,57
+quimibond_sgi,sgi.machine.sheet,_check_single_current,"api.constrains('state', 'product_id', 'workcenter_id')",9,0,0,0,0,0,addons/quimibond_sgi/models/sgi_machine_sheet.py,68
+quimibond_sgi,sgi.machine.sheet,action_set_current,,8,0,0,0,1,2,addons/quimibond_sgi/models/sgi_machine_sheet.py,78
+quimibond_sgi,sgi.machine.sheet,action_set_obsolete,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_machine_sheet.py,87
+quimibond_sgi,sgi.machine.sheet,action_new_revision,,4,0,0,0,1,1,addons/quimibond_sgi/models/sgi_machine_sheet.py,91
+quimibond_sgi,sgi.machine.sheet,copy_data,,7,0,0,3,0,0,addons/quimibond_sgi/models/sgi_machine_sheet.py,96
+quimibond_sgi,sgi.machine.sheet,sgi_format_info,,5,1,0,4,4,3,addons/quimibond_sgi/models/sgi_machine_sheet.py,104
+quimibond_sgi,sgi.management.review,_compute_name,"api.depends('folio', 'date')",3,0,0,11,0,0,addons/quimibond_sgi/models/sgi_management_review.py,83
+quimibond_sgi,sgi.management.review,_sgi_bounds,,5,0,0,5,0,0,addons/quimibond_sgi/models/sgi_management_review.py,87
+quimibond_sgi,sgi.management.review,action_load_inputs,,21,0,0,0,2,4,addons/quimibond_sgi/models/sgi_management_review.py,96
+quimibond_sgi,sgi.management.review,_sgi_load_objectives,,20,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,118
+quimibond_sgi,sgi.management.review,_sgi_load_satisfaction,,17,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,139
+quimibond_sgi,sgi.management.review,_sgi_load_legal,,24,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,157
+quimibond_sgi,sgi.management.review,_sgi_load_participation,,27,1,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,182
+quimibond_sgi,sgi.management.review,_sgi_load_prev_agreements,,18,0,0,1,0,1,addons/quimibond_sgi/models/sgi_management_review.py,210
+quimibond_sgi,sgi.management.review,_sgi_load_nc,,30,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,229
+quimibond_sgi,sgi.management.review,_sgi_load_complaints,,15,0,0,2,0,0,addons/quimibond_sgi/models/sgi_management_review.py,260
+quimibond_sgi,sgi.management.review,_sgi_period_audits,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_management_review.py,276
+quimibond_sgi,sgi.management.review,_sgi_load_audits,,12,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,283
+quimibond_sgi,sgi.management.review,_sgi_load_red_measures,,7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_management_review.py,296
+quimibond_sgi,sgi.management.review,_sgi_load_suppliers,,9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,304
+quimibond_sgi,sgi.management.review,_sgi_load_high_risks,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,314
+quimibond_sgi,sgi.management.review,_sgi_load_env,,17,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,321
+quimibond_sgi,sgi.management.review,_sgi_load_doc_changes,,14,0,0,1,0,0,addons/quimibond_sgi/models/sgi_management_review.py,339
+quimibond_sgi,sgi.management.review,action_mark_done,,30,0,0,1,3,7,addons/quimibond_sgi/models/sgi_management_review.py,357
+quimibond_sgi,sgi.management.review,action_close,,2,0,0,5,5,9,addons/quimibond_sgi/models/sgi_management_review.py,388
+quimibond_sgi,sgi.management.review,action_draft,,2,0,0,2,3,0,addons/quimibond_sgi/models/sgi_management_review.py,391
+quimibond_sgi,sgi.management.review.agreement,_compute_status,"api.depends('action_line_id.state', 'action_line_id.date_done', 'task_id.stage_id.fold')",12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_management_review.py,412
+quimibond_sgi,sgi.action.line,_compute_origin_display,api.depends('review_id'),5,0,0,5,0,0,addons/quimibond_sgi/models/sgi_management_review.py,434
+quimibond_sgi,sgi.action.line,_sgi_origin,,5,0,0,8,0,1,addons/quimibond_sgi/models/sgi_management_review.py,440
+quimibond_sgi,sgi.action.line,_check_parent_xor,"api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'drill_id', 'objective_id', 'review_id', 'name')",8,0,0,4,0,0,addons/quimibond_sgi/models/sgi_management_review.py,448
+quimibond_sgi,approval.category,_sgi_mp_change_category,api.model,6,2,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,56
+quimibond_sgi,approval.request,action_approve,,5,0,0,9,4,27,addons/quimibond_sgi/models/sgi_mp_change.py,78
+quimibond_sgi,approval.request,_sgi_mp_apply_users,,4,2,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,84
+quimibond_sgi,approval.request,_sgi_mp_apply,,22,5,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,89
+quimibond_sgi,sgi.process.activity,action_sgi_mp_propose_change,,3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,122
+quimibond_sgi,sgi.activity.role,action_mp_propose_change,,3,0,0,0,3,3,addons/quimibond_sgi/models/sgi_mp_change.py,130
+quimibond_sgi,sgi.my.procedure,_compute_no_employee,"api.depends('employee_id', 'job_id');api.depends_context('uid')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,145
+quimibond_sgi,sgi.my.procedure,action_propose_new_activity,,4,0,0,0,1,2,addons/quimibond_sgi/models/sgi_mp_change.py,150
+quimibond_sgi,sgi.activity.change,_sgi_check_editable,,9,0,0,5,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,175
+quimibond_sgi,sgi.activity.change,write,,3,0,0,299,1,238,addons/quimibond_sgi/models/sgi_mp_change.py,185
+quimibond_sgi,sgi.activity.change,unlink,,3,0,0,71,0,20,addons/quimibond_sgi/models/sgi_mp_change.py,189
+quimibond_sgi,sgi.activity.change,_compute_display_title,"api.depends('change_type', 'activity_id', 'name', 'process_id')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,233
+quimibond_sgi,sgi.activity.change,_sgi_activity_vals,api.model,17,0,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,240
+quimibond_sgi,sgi.activity.change,_sgi_open,api.model,24,2,0,4,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,259
+quimibond_sgi,sgi.activity.change,action_sgi_new_from_context,api.model,11,2,0,0,1,2,addons/quimibond_sgi/models/sgi_mp_change.py,285
+quimibond_sgi,sgi.activity.change,_sgi_reference,,9,2,0,3,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,297
+quimibond_sgi,sgi.activity.change,_sgi_display,api.model,12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,311
+quimibond_sgi,sgi.activity.change,_sgi_role_labels,,11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,324
+quimibond_sgi,sgi.activity.change,_sgi_changes,,16,3,0,2,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,336
+quimibond_sgi,sgi.activity.change,_compute_diff_html,"api.depends(*MP_FIELDS, 'role_line_ids', 'role_line_ids.role', 'role_line_ids.job_id', 'role_line_ids.family_id', 'role_line_ids.relative_role', 'role_line_ids.after_days', 'role_line_ids.condition', 'change_type', 'reason')",23,0,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,356
+quimibond_sgi,sgi.activity.change,action_submit,,49,0,1,0,1,6,addons/quimibond_sgi/models/sgi_mp_change.py,381
+quimibond_sgi,sgi.activity.change,_sgi_add_process_owner_approver,,9,2,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,431
+quimibond_sgi,sgi.activity.change,_sgi_values_for_activity,,12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,441
+quimibond_sgi,sgi.activity.change,_sgi_role_commands,,35,0,0,2,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,454
+quimibond_sgi,sgi.activity.change,_sgi_apply,,19,3,0,1,0,0,addons/quimibond_sgi/models/sgi_mp_change.py,490
+quimibond_sgi,sgi.activity.change.role,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_mp_change.py,520
+quimibond_sgi,sgi.activity.change.role,write,,3,0,0,299,1,238,addons/quimibond_sgi/models/sgi_mp_change.py,525
+quimibond_sgi,sgi.activity.change.role,unlink,,3,0,0,71,0,20,addons/quimibond_sgi/models/sgi_mp_change.py,529
+quimibond_sgi,maintenance.equipment,_compute_sgi_msa_count,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_msa.py,21
+quimibond_sgi,maintenance.equipment,action_view_sgi_msa,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_msa.py,28
+quimibond_sgi,sgi.msa.study,_compute_verdict,"api.depends('study_type', 'grr_pct')",11,0,0,1,0,0,addons/quimibond_sgi/models/sgi_msa.py,79
+quimibond_sgi,sgi.msa.study,_compute_display_name,"api.depends('folio', 'equipment_id.name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_msa.py,92
+quimibond_sgi,sgi.msa.study,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_msa.py,98
+quimibond_sgi,sgi.msa.study,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_msa.py,103
+quimibond_sgi,sgi.msa.study,_sgi_notify_if_unacceptable,,13,0,0,2,0,0,addons/quimibond_sgi/models/sgi_msa.py,109
+quimibond_sgi,sgi.my.pending,_sgi_pending_records,api.model,39,7,0,3,0,4,addons/quimibond_sgi/models/sgi_my_pending.py,67
+quimibond_sgi,sgi.my.pending,_sgi_row,api.model,49,1,0,1,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,108
+quimibond_sgi,sgi.my.pending,_sgi_row_users,api.model,14,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,159
+quimibond_sgi,sgi.my.pending,_sgi_pending_values,api.model,21,0,0,3,0,1,addons/quimibond_sgi/models/sgi_my_pending.py,175
+quimibond_sgi,sgi.my.pending,_sgi_summary,api.model,8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,198
+quimibond_sgi,sgi.my.pending,_sgi_build,api.model,13,1,0,4,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,208
+quimibond_sgi,sgi.my.pending,_sgi_action,api.model,14,0,0,4,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,223
+quimibond_sgi,sgi.my.pending,action_open_mine,api.model,13,1,0,1,2,12,addons/quimibond_sgi/models/sgi_my_pending.py,239
+quimibond_sgi,sgi.my.pending,action_open,,7,0,0,2,3,4,addons/quimibond_sgi/models/sgi_my_pending.py,253
+quimibond_sgi,sgi.my.procedure,_compute_pending_summary,api.depends('employee_id');api.depends_context('uid'),8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,270
+quimibond_sgi,sgi.my.procedure,action_show_pending,,5,0,0,0,1,2,addons/quimibond_sgi/models/sgi_my_pending.py,279
+quimibond_sgi,hr.employee.public,_sgi_pending_by_employee,api.model,4,1,0,2,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,302
+quimibond_sgi,hr.employee.public,_compute_sgi_mp_pending,,7,1,0,3,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,307
+quimibond_sgi,hr.employee.public,_sgi_pending_ids_where,,4,1,0,4,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,315
+quimibond_sgi,hr.employee.public,_search_sgi_mp_pending_total,api.model,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,321
+quimibond_sgi,hr.employee.public,_search_sgi_mp_pending_late,api.model,3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,326
+quimibond_sgi,hr.employee.public,_search_sgi_mp_pending_state,api.model,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_pending.py,331
+quimibond_sgi,hr.employee.public,action_sgi_open_pending,,5,1,0,0,1,1,addons/quimibond_sgi/models/sgi_my_pending.py,340
+quimibond_sgi,hr.employee.public,action_sgi_team_pending,,5,1,0,0,1,1,addons/quimibond_sgi/models/sgi_my_pending.py,346
+quimibond_sgi,sgi.activity.role,_compute_activity_when,"api.depends('activity_id.measure_cadence', 'activity_id.due_weekday', 'activity_id.due_business_day', 'activity_id.due_month', 'activity_id.due_day')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,83
+quimibond_sgi,sgi.activity.role,action_open_activity,,7,0,0,0,7,1,addons/quimibond_sgi/models/sgi_my_procedure.py,88
+quimibond_sgi,hr.job,_sgi_my_procedure_code,,3,0,0,4,0,1,addons/quimibond_sgi/models/sgi_my_procedure.py,112
+quimibond_sgi,hr.job,_sgi_my_procedure_current_doc,,8,1,0,13,0,9,addons/quimibond_sgi/models/sgi_my_procedure.py,116
+quimibond_sgi,hr.job,_compute_sgi_my_procedure_doc,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,125
+quimibond_sgi,hr.job,_sgi_mp_when,api.model,15,0,0,3,0,1,addons/quimibond_sgi/models/sgi_my_procedure.py,136
+quimibond_sgi,hr.job,_sgi_mp_role_label,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,152
+quimibond_sgi,hr.job,_sgi_my_procedure_data,,114,4,0,6,1,14,addons/quimibond_sgi/models/sgi_my_procedure.py,155
+quimibond_sgi,hr.job,_sgi_mp_document_records,,17,2,0,3,0,1,addons/quimibond_sgi/models/sgi_my_procedure.py,270
+quimibond_sgi,hr.job,_sgi_mp_documents,,10,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,288
+quimibond_sgi,hr.job,_sgi_mp_status_map,api.model,29,1,0,3,0,1,addons/quimibond_sgi/models/sgi_my_procedure.py,300
+quimibond_sgi,hr.job,_sgi_mp_status,api.model,2,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,331
+quimibond_sgi,hr.job,_sgi_mp_entry_extra,api.model,47,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,335
+quimibond_sgi,hr.job,_sgi_my_procedure_hash,api.model,21,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,384
+quimibond_sgi,hr.job,_sgi_mp_parts_html,api.model,5,0,0,0,1,0,addons/quimibond_sgi/models/sgi_my_procedure.py,407
+quimibond_sgi,hr.job,_sgi_my_procedure_header,,18,0,0,0,1,0,addons/quimibond_sgi/models/sgi_my_procedure.py,413
+quimibond_sgi,hr.job,action_sgi_print_my_procedure,,2,0,0,5,4,3,addons/quimibond_sgi/models/sgi_my_procedure.py,435
+quimibond_sgi,hr.job,action_sgi_publish_my_procedure,,95,1,1,2,1,11,addons/quimibond_sgi/models/sgi_my_procedure.py,438
+quimibond_sgi,hr.job,_sgi_my_procedure_jobs,api.model,11,3,0,2,0,2,addons/quimibond_sgi/models/sgi_my_procedure.py,535
+quimibond_sgi,hr.job,action_sgi_publish_all_my_procedures,api.model,24,0,0,2,0,2,addons/quimibond_sgi/models/sgi_my_procedure.py,548
+quimibond_sgi,hr.job,_sgi_my_procedure_stale_jobs,api.model,6,0,0,1,0,2,addons/quimibond_sgi/models/sgi_my_procedure.py,574
+quimibond_sgi,hr.job,_sgi_my_procedure_precheck,api.model,30,3,0,1,0,1,addons/quimibond_sgi/models/sgi_my_procedure.py,582
+quimibond_sgi,hr.job,action_sgi_open_my_procedure_doc,,11,0,0,1,1,0,addons/quimibond_sgi/models/sgi_my_procedure.py,613
+quimibond_sgi,hr.job,_sgi_my_procedure_view_action,,17,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,625
+quimibond_sgi,hr.employee,_compute_sgi_my_procedure_ack,"api.depends('sgi_mp_job_id', 'sgi_document_ack_ids.state', 'sgi_document_ack_ids.document_id')",10,2,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,656
+quimibond_sgi,hr.employee,_sgi_require_job,,7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure.py,667
+quimibond_sgi,hr.employee,action_sgi_print_my_procedure,,3,0,0,5,4,3,addons/quimibond_sgi/models/sgi_my_procedure.py,675
+quimibond_sgi,hr.employee,action_sgi_my_procedure_view,,2,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure.py,679
+quimibond_sgi,sgi.cron,cron_my_procedure_stale,api.model,30,2,0,0,1,2,addons/quimibond_sgi/models/sgi_my_procedure.py,687
+quimibond_sgi,hr.employee,_sgi_mp_team_employees,,22,4,0,2,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,55
+quimibond_sgi,hr.job,_sgi_mp_role_lists,,13,1,0,4,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,82
+quimibond_sgi,hr.job,_sgi_mp_order,api.model,19,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,97
+quimibond_sgi,sgi.my.procedure.mixin,_sgi_mp_job,,6,1,0,10,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,143
+quimibond_sgi,sgi.my.procedure.mixin,_sgi_mp_employee_rec,,4,2,0,3,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,150
+quimibond_sgi,sgi.my.procedure.mixin,_compute_sgi_mp_roles,,19,1,0,4,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,155
+quimibond_sgi,sgi.my.procedure.mixin,_compute_sgi_mp_lists,api.depends_context('uid'),22,3,0,5,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,178
+quimibond_sgi,sgi.my.procedure.mixin,action_sgi_mp_sign,,10,0,0,0,2,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,201
+quimibond_sgi,hr.employee,_compute_sgi_mp_roles_stored,"api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id', 'user_id')",16,3,0,4,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,239
+quimibond_sgi,hr.employee,_sgi_mp_touch_jobs,api.model,12,1,0,11,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,257
+quimibond_sgi,hr.job,_sgi_mp_job,,2,1,0,10,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,280
+quimibond_sgi,sgi.activity.role,_compute_mp_pieces,"api.depends('activity_id', 'activity_id.measure_state', 'activity_id.measure_last_date', 'activity_id.how_steps', 'activity_id.done_criteria', 'activity_id.on_fail', 'activity_id.check_against', 'activity_id.role_ids', 'activity_id.input_ids', 'activity_id.output_deliverable_ids', 'activity_id.norm_clause_ids')",33,2,0,14,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,311
+quimibond_sgi,sgi.activity.role,action_mp_go,,4,1,0,0,3,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,345
+quimibond_sgi,sgi.activity.role,action_mp_instruction,,4,0,0,0,3,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,350
+quimibond_sgi,sgi.my.procedure,_sgi_mp_is_admin,api.model,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,452
+quimibond_sgi,sgi.my.procedure,_sgi_mp_my_employee,api.model,2,1,0,5,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,457
+quimibond_sgi,sgi.my.procedure,_sgi_mp_employee,,5,2,0,8,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,460
+quimibond_sgi,sgi.my.procedure,_sgi_mp_job,,7,1,0,10,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,466
+quimibond_sgi,sgi.my.procedure,_compute_job_id,api.depends('employee_id'),4,0,0,3,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,475
+quimibond_sgi,sgi.my.procedure,_compute_scope,api.depends_context('uid'),16,2,0,4,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,481
+quimibond_sgi,sgi.my.procedure,_compute_ack,"api.depends('employee_id', 'job_id');api.depends_context('uid')",29,1,0,4,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,500
+quimibond_sgi,sgi.my.procedure,_compute_who,"api.depends('employee_id', 'job_id')",18,2,0,5,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,531
+quimibond_sgi,sgi.my.procedure,_compute_lists,"api.depends('employee_id', 'job_id');api.depends_context('uid')",89,10,0,22,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,552
+quimibond_sgi,sgi.my.procedure,_compute_counts,"api.depends('role_ids', 'received_role_ids', 'short_role_ids', 'document_ids', 'pending_action_ids', 'pending_nc_ids', 'pending_measure_ids', 'indicator_ids', 'pending_legal_ids', 'pending_doc_review_ids', 'epp_delivery_ids')",13,0,0,25,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,657
+quimibond_sgi,sgi.my.procedure,_action_list,,11,0,0,12,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,674
+quimibond_sgi,sgi.my.procedure,_action_roles,,13,0,0,4,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,686
+quimibond_sgi,sgi.my.procedure,action_show_late,,2,0,0,0,0,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,700
+quimibond_sgi,sgi.my.procedure,action_show_ok,,2,0,0,0,0,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,703
+quimibond_sgi,sgi.my.procedure,action_show_unmeasured,,3,0,0,0,0,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,706
+quimibond_sgi,sgi.my.procedure,action_show_all,,2,0,0,0,1,4,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,710
+quimibond_sgi,sgi.my.procedure,action_show_received,,3,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,713
+quimibond_sgi,sgi.my.procedure,action_show_short,,3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,717
+quimibond_sgi,sgi.my.procedure,action_show_acks,,2,0,0,0,1,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,721
+quimibond_sgi,sgi.my.procedure,action_show_documents,,3,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,724
+quimibond_sgi,sgi.my.procedure,action_focus_pending,,2,0,0,0,0,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,728
+quimibond_sgi,sgi.my.procedure,action_show_nc,,2,0,0,0,0,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,731
+quimibond_sgi,sgi.my.procedure,action_show_measures,,2,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,734
+quimibond_sgi,sgi.my.procedure,action_show_indicators,,2,0,0,0,1,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,737
+quimibond_sgi,sgi.my.procedure,action_show_legal,,2,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,740
+quimibond_sgi,sgi.my.procedure,action_show_doc_reviews,,3,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,743
+quimibond_sgi,sgi.my.procedure,action_show_epp,,2,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,747
+quimibond_sgi,sgi.my.procedure,action_open_mine,api.model,15,0,0,1,2,12,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,754
+quimibond_sgi,sgi.my.procedure,action_open_for,api.model,24,0,0,3,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,771
+quimibond_sgi,sgi.my.procedure,action_sign,,18,3,0,2,5,7,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,796
+quimibond_sgi,sgi.my.procedure,action_print,,6,1,0,0,1,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,815
+quimibond_sgi,sgi.my.procedure,action_publish,,6,0,0,1,1,4,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,822
+quimibond_sgi,sgi.my.procedure,action_open_doc,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,829
+quimibond_sgi,sgi.my.procedure,action_publish_all,,2,0,0,1,1,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,833
+quimibond_sgi,sgi.my.procedure,action_precheck,,8,0,0,0,0,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,836
+quimibond_sgi,sgi.my.procedure,action_open_obligations,,12,0,0,0,1,1,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,845
+quimibond_sgi,sgi.my.procedure,_reload,,7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,858
+quimibond_sgi,hr.employee,action_sgi_open_my_procedure,,3,0,0,2,6,4,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,870
+quimibond_sgi,hr.job,action_sgi_open_my_procedure,,3,0,0,2,6,4,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,878
+quimibond_sgi,sgi.my.procedure.check,action_open,api.model,7,0,0,2,3,4,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,906
+quimibond_sgi,sgi.my.procedure.check,action_publish_all,,2,0,0,1,1,2,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,914
+quimibond_sgi,sgi.my.procedure.check,_compute_result,,9,0,0,5,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,917
+quimibond_sgi,hr.employee.public,_sgi_mp_job_stats,api.model,14,1,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,952
+quimibond_sgi,hr.employee.public,_sgi_mp_values,api.model,21,2,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,968
+quimibond_sgi,hr.employee.public,_compute_sgi_mp_stats,,7,1,0,6,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,990
+quimibond_sgi,hr.employee.public,_sgi_mp_ids_where,,8,1,0,4,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,998
+quimibond_sgi,hr.employee.public,_search_sgi_mp_late,api.model,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,1016
+quimibond_sgi,hr.employee.public,_search_sgi_mp_acks_pending,api.model,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,1023
+quimibond_sgi,hr.employee.public,_search_sgi_mp_ack_state,api.model,7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,1030
+quimibond_sgi,hr.employee.public,action_sgi_open_my_procedure,,3,0,0,2,6,4,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,1038
+quimibond_sgi,hr.employee.public,action_sgi_print_my_procedure,,4,1,0,5,4,3,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,1042
+quimibond_sgi,hr.employee.public,_sgi_team,api.model,12,1,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,1048
+quimibond_sgi,hr.employee.public,action_open_my_team,api.model,19,0,0,0,1,4,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,1062
+quimibond_sgi,documents.document,_sgi_mp_sign_required,api.model,3,1,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,31
+quimibond_sgi,documents.document,_sgi_mp_pending_sign_doc,api.model,7,1,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,36
+quimibond_sgi,documents.document,_sgi_mp_signers,,19,1,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,44
+quimibond_sgi,documents.document,_sgi_publish_sign_rows,,8,1,1,0,1,0,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,64
+quimibond_sgi,documents.document,_sgi_mp_send_to_sign,,18,1,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,73
+quimibond_sgi,documents.document,_sgi_publish_after_sign,,18,1,0,1,0,0,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,92
+quimibond_sgi,documents.document,_sgi_sync_publish_sign,api.model,8,1,0,2,0,0,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,112
+quimibond_sgi,sign.request,write,,9,0,1,299,1,238,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,125
+quimibond_sgi,mail.activity,_action_done,,18,1,0,3,0,3,addons/quimibond_sgi/models/sgi_nonconformity.py,18
+quimibond_sgi,quality.alert,create,api.model_create_multi,25,1,0,165,62,1373,addons/quimibond_sgi/models/sgi_nonconformity.py,178
+quimibond_sgi,quality.alert,_sgi_deadline_days,api.model,13,1,1,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,208
+quimibond_sgi,quality.alert,_sgi_set_deadlines,,14,0,0,2,0,1,addons/quimibond_sgi/models/sgi_nonconformity.py,222
+quimibond_sgi,quality.alert,_compute_sgi_deadline_states,"api.depends('sgi_action_line_ids.action_type', 'sgi_action_line_ids.responsible_id', 'sgi_action_line_ids.date_commit', 'sgi_root_cause', 'sgi_due_containment', 'sgi_due_root_cause', 'sgi_due_plan')",17,0,0,4,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,240
+quimibond_sgi,quality.alert,_sgi_deadline_owner_user_id,,7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,258
+quimibond_sgi,quality.alert,_sgi_deadline_escalation,,52,1,1,1,0,4,addons/quimibond_sgi/models/sgi_nonconformity.py,266
+quimibond_sgi,quality.alert,_sgi_schedule_effectiveness,,29,1,1,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,322
+quimibond_sgi,quality.alert,_sgi_check_stage_move,,28,0,0,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,355
+quimibond_sgi,quality.alert,action_sgi_cancel,,11,0,0,0,1,0,addons/quimibond_sgi/models/sgi_nonconformity.py,384
+quimibond_sgi,quality.alert,_compute_sgi_recurrence,"api.depends('sgi_process_id', 'sgi_norm_clause_id', 'sgi_folio')",31,2,0,2,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,397
+quimibond_sgi,quality.alert,_sgi_read_across,,23,0,0,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,429
+quimibond_sgi,quality.alert,sgi_auto_create,api.model,35,0,0,13,0,9,addons/quimibond_sgi/models/sgi_nonconformity.py,454
+quimibond_sgi,quality.alert,_sgi_check_can_close,,42,0,0,11,0,4,addons/quimibond_sgi/models/sgi_nonconformity.py,490
+quimibond_sgi,quality.alert,write,,35,0,0,299,1,238,addons/quimibond_sgi/models/sgi_nonconformity.py,533
+quimibond_sgi,quality.alert,_sgi_request_admin_record,,11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,569
+quimibond_sgi,quality.alert,_sgi_notify_mayor_closed,,27,0,0,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,581
+quimibond_sgi,quality.alert,action_sgi_force_close,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_nonconformity.py,609
+quimibond_sgi,quality.alert,action_sgi_escalate_to_nc,,31,0,0,0,1,2,addons/quimibond_sgi/models/sgi_nonconformity.py,620
+quimibond_sgi,sgi.action.line,_compute_origin_display,"api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id', 'fmea_line_id', 'objective_id')",4,0,0,5,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,694
+quimibond_sgi,sgi.action.line,action_mark_done,,8,0,0,1,3,7,addons/quimibond_sgi/models/sgi_nonconformity.py,699
+quimibond_sgi,sgi.action.line,action_open_origin,,13,0,0,0,2,1,addons/quimibond_sgi/models/sgi_nonconformity.py,708
+quimibond_sgi,sgi.action.line,_check_parent_xor,"api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id', 'drill_id', 'objective_id', 'name')",10,0,0,4,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,724
+quimibond_sgi,sgi.action.line,_sgi_check_done,"api.constrains('date_done', 'progress')",14,0,0,0,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,736
+quimibond_sgi,sgi.action.line,_sgi_done_vals,staticmethod,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,752
+quimibond_sgi,sgi.action.line,_sgi_check_root_cause_before_capa,"api.constrains('action_type', 'alert_id')",18,0,0,0,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,760
+quimibond_sgi,sgi.action.line,_compute_state,"api.depends('date_commit', 'date_done')",9,0,0,6,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,780
+quimibond_sgi,sgi.action.line,_sgi_origin,,16,0,0,8,0,1,addons/quimibond_sgi/models/sgi_nonconformity.py,793
+quimibond_sgi,sgi.action.line,_sgi_activity_note,,7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,810
+quimibond_sgi,sgi.action.line,_sgi_sync_activity,,23,0,0,2,0,1,addons/quimibond_sgi/models/sgi_nonconformity.py,818
+quimibond_sgi,sgi.action.line,_sgi_close_activity,,12,0,0,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,842
+quimibond_sgi,sgi.action.line,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_nonconformity.py,856
+quimibond_sgi,sgi.action.line,write,,29,0,0,299,1,238,addons/quimibond_sgi/models/sgi_nonconformity.py,861
+quimibond_sgi,sgi.action.line,unlink,,8,0,0,71,0,20,addons/quimibond_sgi/models/sgi_nonconformity.py,891
+quimibond_sgi,sgi.nc.force.close,action_confirm,,16,0,0,13,8,33,addons/quimibond_sgi/models/sgi_nonconformity.py,908
+quimibond_sgi,sgi.nc.cancel,_compute_is_manager,api.depends_context('uid'),4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_nonconformity.py,939
+quimibond_sgi,sgi.nc.cancel,action_confirm,,40,1,0,13,8,33,addons/quimibond_sgi/models/sgi_nonconformity.py,944
+quimibond_sgi,sgi.norm.clause,_compute_display_name,"api.depends('code', 'name')",3,0,0,21,0,0,addons/quimibond_sgi/models/sgi_norm.py,31
+quimibond_sgi,sgi.process.activity,_sgi_norm_labels,,9,1,0,1,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,30
+quimibond_sgi,sgi.norm.clause,_compute_short_label,"api.depends('code', 'norm_id.code')",9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,56
+quimibond_sgi,sgi.norm.clause,_sgi_find,api.model,14,0,0,1,0,4,addons/quimibond_sgi/models/sgi_norm_compliance.py,67
+quimibond_sgi,sgi.norm.clause,_sgi_sort_key,,7,0,0,4,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,82
+quimibond_sgi,sgi.norm.clause,_compute_sgi_evidence,"api.depends('activity_ids.active', 'activity_ids.process_id')",13,1,0,4,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,91
+quimibond_sgi,sgi.norm.clause,_search_covered,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,105
+quimibond_sgi,sgi.norm.clause,action_view_alerts,,5,0,0,1,2,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,112
+quimibond_sgi,sgi.norm,_sgi_short_code,,5,0,0,2,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,122
+quimibond_sgi,sgi.norm,_sgi_compliance_matrix,,28,0,0,0,1,2,addons/quimibond_sgi/models/sgi_norm_compliance.py,128
+quimibond_sgi,sgi.norm,action_view_uncovered_clauses,,5,0,0,0,1,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,157
+quimibond_sgi,sgi.audit.checklist.line,_compute_norm_clause_ids,"api.depends('activity_id.norm_clause_ids', 'audit_id.norm_ids')",9,1,0,1,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,174
+quimibond_sgi,sgi.audit.checklist.line,_compute_question,api.depends('norm_clause_ids'),13,0,0,5,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,185
+quimibond_sgi,sgi.audit.checklist.line,_sgi_sync_finding,,6,0,0,4,0,0,addons/quimibond_sgi/models/sgi_norm_compliance.py,199
+quimibond_sgi,sgi.audit,action_generate_checklist,,20,0,0,3,1,3,addons/quimibond_sgi/models/sgi_norm_compliance.py,210
+quimibond_sgi,sgi.objective,_compute_health,"api.depends('indicator_ids', 'indicator_ids.process_id')",13,0,0,9,0,0,addons/quimibond_sgi/models/sgi_objective.py,49
+quimibond_sgi,sgi.objective,_compute_indicator_count,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_objective.py,63
+quimibond_sgi,sgi.objective,_compute_display_name,"api.depends('name', 'target_year')",6,0,0,21,0,0,addons/quimibond_sgi/models/sgi_objective.py,71
+quimibond_sgi,sgi.objective,action_open_indicators,,10,0,0,1,2,1,addons/quimibond_sgi/models/sgi_objective.py,78
+quimibond_sgi,sgi.policy,_compute_health,"api.depends('objective_ids', 'objective_ids.health')",3,0,0,9,0,0,addons/quimibond_sgi/models/sgi_policy.py,50
+quimibond_sgi,sgi.policy,init,,20,0,0,4,0,0,addons/quimibond_sgi/models/sgi_policy.py,54
+quimibond_sgi,sgi.policy,_compute_objective_count,api.depends('objective_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_policy.py,76
+quimibond_sgi,sgi.policy,_compute_display_name,"api.depends('folio', 'name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_policy.py,81
+quimibond_sgi,sgi.policy,_sgi_obsolete_other_vigentes,,11,0,0,1,0,0,addons/quimibond_sgi/models/sgi_policy.py,86
+quimibond_sgi,sgi.policy,action_set_vigente,,5,0,0,3,4,16,addons/quimibond_sgi/models/sgi_policy.py,98
+quimibond_sgi,sgi.policy,action_set_borrador,,3,0,0,4,5,0,addons/quimibond_sgi/models/sgi_policy.py,104
+quimibond_sgi,sgi.policy,action_set_obsoleta,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_policy.py,108
+quimibond_sgi,sgi.policy,action_generate_acks,,18,0,0,7,2,9,addons/quimibond_sgi/models/sgi_policy.py,112
+quimibond_sgi,sgi.policy,action_open_objectives,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_policy.py,131
+quimibond_sgi,sgi.ppap,create,api.model_create_multi,5,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_ppap.py,72
+quimibond_sgi,sgi.ppap,_sgi_submission_for,api.model,7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_ppap.py,79
+quimibond_sgi,sgi.ppap,_sgi_generate_elements,,18,0,0,1,0,1,addons/quimibond_sgi/models/sgi_ppap.py,87
+quimibond_sgi,sgi.ppap,write,,11,0,0,299,1,238,addons/quimibond_sgi/models/sgi_ppap.py,106
+quimibond_sgi,sgi.ppap,action_mark_enviado,,16,0,0,0,1,6,addons/quimibond_sgi/models/sgi_ppap.py,118
+quimibond_sgi,sgi.ppap,action_approve,,12,0,0,9,4,27,addons/quimibond_sgi/models/sgi_ppap.py,135
+quimibond_sgi,sgi.ppap,action_set_interino,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_ppap.py,148
+quimibond_sgi,sgi.ppap,action_reject,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_ppap.py,152
+quimibond_sgi,sgi.ppap,action_reset,,6,0,0,1,2,2,addons/quimibond_sgi/models/sgi_ppap.py,156
+quimibond_sgi,sgi.ppap,_compute_display_name,"api.depends('folio', 'product_tmpl_id')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_ppap.py,164
+quimibond_sgi,res.partner,_compute_sgi_ppap_count,,6,0,0,5,0,0,addons/quimibond_sgi/models/sgi_ppap.py,175
+quimibond_sgi,res.partner,action_view_sgi_ppap,,10,0,0,4,3,0,addons/quimibond_sgi/models/sgi_ppap.py,182
+quimibond_sgi,product.template,_compute_sgi_ppap_count,,6,0,0,5,0,0,addons/quimibond_sgi/models/sgi_ppap.py,199
+quimibond_sgi,product.template,action_view_sgi_ppap,,10,0,0,4,3,0,addons/quimibond_sgi/models/sgi_ppap.py,206
+quimibond_sgi,product.product,_compute_sgi_ppap_count,,3,0,0,5,0,0,addons/quimibond_sgi/models/sgi_ppap.py,226
+quimibond_sgi,product.product,action_view_sgi_ppap,,3,0,0,4,3,0,addons/quimibond_sgi/models/sgi_ppap.py,230
+quimibond_sgi,sgi.ppap.element,unlink,,13,0,0,71,0,20,addons/quimibond_sgi/models/sgi_ppap.py,262
+quimibond_sgi,sgi.process,_group_expand_process_type,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process.py,110
+quimibond_sgi,sgi.process,_compute_owner_valid,"api.depends('owner_id.active', 'owner_id.user_id')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process.py,116
+quimibond_sgi,sgi.process,_onchange_owner_id_approver,api.onchange('owner_id'),3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process.py,122
+quimibond_sgi,sgi.process,_sgi_default_vobo_user,api.model,9,2,1,1,0,0,addons/quimibond_sgi/models/sgi_process.py,127
+quimibond_sgi,sgi.process,create,api.model_create_multi,11,1,0,165,62,1373,addons/quimibond_sgi/models/sgi_process.py,138
+quimibond_sgi,sgi.process,_check_parent_recursion,api.constrains('parent_id'),3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process.py,151
+quimibond_sgi,sgi.process,_compute_health,,85,0,0,9,0,0,addons/quimibond_sgi/models/sgi_process.py,155
+quimibond_sgi,sgi.process,_compute_display_name,"api.depends('code', 'name')",3,0,0,21,0,0,addons/quimibond_sgi/models/sgi_process.py,242
+quimibond_sgi,sgi.process,_compute_odoo_models,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process.py,246
+quimibond_sgi,sgi.process,_compute_counts,,22,0,0,25,0,0,addons/quimibond_sgi/models/sgi_process.py,251
+quimibond_sgi,sgi.process,_compute_flow_count,"api.depends('in_flow_ids', 'out_flow_ids')",3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process.py,275
+quimibond_sgi,sgi.process,action_open_flows,,11,0,0,0,1,2,addons/quimibond_sgi/models/sgi_process.py,279
+quimibond_sgi,sgi.process,action_print_risk_matrix,,3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process.py,291
+quimibond_sgi,sgi.process,action_print_master_list,,3,0,0,0,0,2,addons/quimibond_sgi/models/sgi_process.py,295
+quimibond_sgi,sgi.process,_sgi_master_list_documents,,8,1,0,0,1,1,addons/quimibond_sgi/models/sgi_process.py,299
+quimibond_sgi,sgi.process,action_open_documents,,20,0,0,0,1,2,addons/quimibond_sgi/models/sgi_process.py,308
+quimibond_sgi,sgi.process,action_open_indicators,,10,0,0,1,2,1,addons/quimibond_sgi/models/sgi_process.py,329
+quimibond_sgi,sgi.process,action_open_risks,,10,0,0,0,1,1,addons/quimibond_sgi/models/sgi_process.py,340
+quimibond_sgi,sgi.process,action_open_ncs,,10,0,0,0,1,1,addons/quimibond_sgi/models/sgi_process.py,351
+quimibond_sgi,sgi.process,action_open_overdue_actions,,16,0,0,0,1,0,addons/quimibond_sgi/models/sgi_process.py,362
+quimibond_sgi,sgi.process,action_open_red_kpis,,14,0,0,0,1,0,addons/quimibond_sgi/models/sgi_process.py,379
+quimibond_sgi,sgi.process,action_open_high_risks,,13,0,0,0,1,0,addons/quimibond_sgi/models/sgi_process.py,394
+quimibond_sgi,sgi.process.flow,_check_from_to,"api.constrains('from_process_id', 'to_process_id')",4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process.py,426
+quimibond_sgi,sgi.process.flow,_sgi_records_domain,,9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process.py,431
+quimibond_sgi,sgi.process.flow,action_view_records,,14,0,0,1,5,4,addons/quimibond_sgi/models/sgi_process.py,441
+quimibond_sgi,sgi.process,_compute_activity_count,api.depends('procedure_activity_ids'),3,0,0,3,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,122
+quimibond_sgi,sgi.process,_compute_inbound_references,,35,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,139
+quimibond_sgi,sgi.process,action_view_inbound_references,,11,0,0,0,0,1,addons/quimibond_sgi/models/sgi_process_procedure.py,175
+quimibond_sgi,sgi.process,_compute_chain_link_count,,26,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,192
+quimibond_sgi,sgi.process,action_view_chain,,11,0,0,0,1,2,addons/quimibond_sgi/models/sgi_process_procedure.py,219
+quimibond_sgi,sgi.process,_compute_measure_stats,"api.depends('procedure_activity_ids.measure_state', 'procedure_activity_ids.measure_model_id')",10,0,0,3,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,233
+quimibond_sgi,sgi.process,_compute_measure_methods,,19,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,244
+quimibond_sgi,sgi.process,_compute_activity_board,,27,0,0,5,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,264
+quimibond_sgi,sgi.process,_compute_measure_status,"api.depends('procedure_activity_ids.measure_state', 'procedure_activity_ids.measure_method')",9,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,294
+quimibond_sgi,sgi.process,_compute_chain_link_ids,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,304
+quimibond_sgi,sgi.process,action_view_activities,,12,0,0,2,1,1,addons/quimibond_sgi/models/sgi_process_procedure.py,311
+quimibond_sgi,sgi.process,action_view_red_activities,,2,0,0,0,1,0,addons/quimibond_sgi/models/sgi_process_procedure.py,324
+quimibond_sgi,sgi.process,action_view_no_method_activities,,2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,327
+quimibond_sgi,sgi.process,_sgi_measure_strict,,10,1,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,330
+quimibond_sgi,sgi.process,_sgi_flag_procedure_dirty,,37,1,0,14,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,341
+quimibond_sgi,sgi.process,write,,5,0,0,299,1,238,addons/quimibond_sgi/models/sgi_process_procedure.py,379
+quimibond_sgi,sgi.process,_sgi_procedure_document,,8,0,0,3,1,3,addons/quimibond_sgi/models/sgi_process_procedure.py,386
+quimibond_sgi,sgi.process,_sgi_format_revision,,4,1,0,0,1,0,addons/quimibond_sgi/models/sgi_process_procedure.py,395
+quimibond_sgi,sgi.process,_sgi_document_by_code,,5,1,0,0,1,0,addons/quimibond_sgi/models/sgi_process_procedure.py,400
+quimibond_sgi,sgi.process,_sgi_env_risks,,4,0,0,0,1,0,addons/quimibond_sgi/models/sgi_process_procedure.py,406
+quimibond_sgi,sgi.process,_sgi_iper_risks,,4,0,0,0,1,0,addons/quimibond_sgi/models/sgi_process_procedure.py,411
+quimibond_sgi,sgi.process,_sgi_documented_info,,11,0,0,0,1,2,addons/quimibond_sgi/models/sgi_process_procedure.py,416
+quimibond_sgi,sgi.process,action_print_procedure,,4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,428
+quimibond_sgi,sgi.process.responsibility,_onchange_job_id,api.onchange('job_id'),3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,457
+quimibond_sgi,sgi.process.responsibility,create,api.model_create_multi,4,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_process_procedure.py,462
+quimibond_sgi,sgi.process.responsibility,write,,4,0,0,299,1,238,addons/quimibond_sgi/models/sgi_process_procedure.py,467
+quimibond_sgi,sgi.process.responsibility,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_process_procedure.py,472
+quimibond_sgi,sgi.process.activity,_compute_responsible_job_ids,"api.depends('role_ids.role', 'role_ids.target_type', 'role_ids.job_id', 'role_ids.family_id.job_ids')",6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,602
+quimibond_sgi,sgi.process.activity,_inverse_responsible_job_ids,,14,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,609
+quimibond_sgi,sgi.process.activity,_compute_role_views,api.depends('role_ids.role'),6,0,0,3,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,632
+quimibond_sgi,sgi.process.activity,_compute_recent_exec_stat_ids,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,639
+quimibond_sgi,sgi.process.activity,_sgi_executor_jobs,,9,0,0,1,0,1,addons/quimibond_sgi/models/sgi_process_procedure.py,648
+quimibond_sgi,sgi.process.activity,_sgi_check_roles,,29,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,658
+quimibond_sgi,sgi.process.activity,_check_roles,"api.constrains('role_ids', 'automation_level_current')",2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,689
+quimibond_sgi,sgi.process.activity,_sgi_measure_problems,,18,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,692
+quimibond_sgi,sgi.process.activity,_sgi_check_measure_strict,,19,0,0,3,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,711
+quimibond_sgi,sgi.process.activity,_check_measure_method,"api.constrains('measure_method', 'measure_justification', 'measure_proxy_activity_id', 'measure_model_id', 'process_id', 'measure_deliverable_id')",2,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,734
+quimibond_sgi,sgi.process.activity,_check_proxy_cycle,api.constrains('measure_proxy_activity_id'),13,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,738
+quimibond_sgi,sgi.process.activity,_sgi_proxy_root,,8,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,752
+quimibond_sgi,sgi.process.activity,_compute_number,"api.depends('process_id.code', 'step')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,767
+quimibond_sgi,sgi.process.activity,_compute_section,"api.depends('stage_id.name', 'stage_id.code')",3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,773
+quimibond_sgi,sgi.process.activity,_check_stage_process,"api.constrains('stage_id', 'process_id')",5,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,778
+quimibond_sgi,sgi.process.activity,_sgi_parse_number,api.model,12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,785
+quimibond_sgi,sgi.process.activity,_sgi_structure_vals,,18,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,798
+quimibond_sgi,sgi.process.activity,_sgi_next_step,,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,817
+quimibond_sgi,sgi.process.activity,_compute_chain,"api.depends('out_link_ids.to_activity_id', 'in_link_ids.from_activity_id')",4,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,824
+quimibond_sgi,sgi.process.activity,action_open_next,,17,0,0,0,1,2,addons/quimibond_sgi/models/sgi_process_procedure.py,829
+quimibond_sgi,sgi.process.activity,_compute_measure_model_name,api.depends('measure_model_id'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,983
+quimibond_sgi,sgi.process.activity,_inverse_measure_model_name,,7,1,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,987
+quimibond_sgi,sgi.process.activity,_sgi_measure_domain,,7,0,1,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,995
+quimibond_sgi,sgi.process.activity,_sgi_measure,,28,0,0,1,0,16,addons/quimibond_sgi/models/sgi_process_procedure.py,1010
+quimibond_sgi,sgi.process.activity,_sgi_write_if_changed,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1039
+quimibond_sgi,sgi.process.activity,_sgi_measure_odoo,,45,1,1,2,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1046
+quimibond_sgi,sgi.process.activity,_sgi_generic_user_ids,api.model,6,1,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1093
+quimibond_sgi,sgi.process.activity,_sgi_exec_window_start,api.model,6,0,0,3,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1103
+quimibond_sgi,sgi.process.activity,_sgi_replace_exec_stats,,22,1,0,3,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1110
+quimibond_sgi,sgi.process.activity,_sgi_measure_executors,,114,2,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1133
+quimibond_sgi,sgi.process.activity,_sgi_resolve_menu,,14,0,0,5,0,1,addons/quimibond_sgi/models/sgi_process_procedure.py,1248
+quimibond_sgi,sgi.process.activity,cron_measure_activities,api.model,31,0,1,3,1,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1264
+quimibond_sgi,sgi.process.activity,_sgi_checked_measure_domain,,18,1,1,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1296
+quimibond_sgi,sgi.process.activity,action_view_measure_records,,15,0,0,3,3,4,addons/quimibond_sgi/models/sgi_process_procedure.py,1315
+quimibond_sgi,sgi.process.activity,_compute_display_name,"api.depends('number', 'name', 'section')",5,0,0,21,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1332
+quimibond_sgi,sgi.process.activity,_onchange_odoo_menu_id,api.onchange('odoo_menu_id'),4,0,0,0,0,2,addons/quimibond_sgi/models/sgi_process_procedure.py,1339
+quimibond_sgi,sgi.process.activity,action_open_odoo,,14,0,0,3,3,4,addons/quimibond_sgi/models/sgi_process_procedure.py,1344
+quimibond_sgi,sgi.process.activity,create,api.model_create_multi,20,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_process_procedure.py,1360
+quimibond_sgi,sgi.process.activity,write,,20,1,0,299,1,238,addons/quimibond_sgi/models/sgi_process_procedure.py,1381
+quimibond_sgi,sgi.process.activity,unlink,,5,0,0,71,0,20,addons/quimibond_sgi/models/sgi_process_procedure.py,1402
+quimibond_sgi,sgi.activity.link,_compute_cross,"api.depends('from_process_id', 'to_process_id')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1464
+quimibond_sgi,sgi.activity.link,_sgi_evaluate_chain,,55,0,0,1,0,7,addons/quimibond_sgi/models/sgi_process_procedure.py,1469
+quimibond_sgi,sgi.activity.link,_sgi_chain_nc_open,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1525
+quimibond_sgi,sgi.activity.link,_sgi_create_chain_nc,,39,1,0,1,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1532
+quimibond_sgi,sgi.activity.link,_check_not_self,"api.constrains('from_activity_id', 'to_activity_id')",5,0,0,0,0,0,addons/quimibond_sgi/models/sgi_process_procedure.py,1573
+quimibond_sgi,sgi.activity.link,create,api.model_create_multi,5,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_process_procedure.py,1580
+quimibond_sgi,sgi.activity.link,write,,7,0,0,299,1,238,addons/quimibond_sgi/models/sgi_process_procedure.py,1586
+quimibond_sgi,sgi.activity.link,unlink,,6,0,0,71,0,20,addons/quimibond_sgi/models/sgi_process_procedure.py,1594
+quimibond_sgi,stock.picking,_compute_sgi_delivery_picking,"api.depends('sale_id', 'picking_type_code', 'sale_id.picking_ids.state', 'sale_id.picking_ids.picking_type_code', 'sale_id.picking_ids.scheduled_date')",16,0,0,1,0,0,addons/quimibond_sgi/models/sgi_release.py,59
+quimibond_sgi,stock.picking,_sgi_release_block_enabled,api.model,4,1,0,1,0,0,addons/quimibond_sgi/models/sgi_release.py,78
+quimibond_sgi,stock.picking,_sgi_unreleased_lines,,26,1,0,1,0,0,addons/quimibond_sgi/models/sgi_release.py,83
+quimibond_sgi,stock.picking,_sgi_check_release,,16,0,0,1,0,0,addons/quimibond_sgi/models/sgi_release.py,110
+quimibond_sgi,stock.picking,button_validate,,3,0,0,6,0,12,addons/quimibond_sgi/models/sgi_release.py,127
+quimibond_sgi,sgi.risk,_sgi_level,,29,1,0,2,0,0,addons/quimibond_sgi/models/sgi_risk.py,140
+quimibond_sgi,sgi.risk,_check_iper_scale,"api.constrains('instrument', 'eval_probability', 'eval_impact', 'residual_probability', 'residual_impact')",9,0,0,0,0,0,addons/quimibond_sgi/models/sgi_risk.py,172
+quimibond_sgi,sgi.risk,_check_foda_type,"api.constrains('instrument', 'foda_type')",4,0,0,0,0,0,addons/quimibond_sgi/models/sgi_risk.py,183
+quimibond_sgi,sgi.risk,_compute_score,"api.depends('instrument', 'eval_probability', 'eval_impact')",8,0,0,2,0,0,addons/quimibond_sgi/models/sgi_risk.py,189
+quimibond_sgi,sgi.risk,_compute_residual,"api.depends('instrument', 'residual_probability', 'residual_impact')",9,0,0,2,0,0,addons/quimibond_sgi/models/sgi_risk.py,199
+quimibond_sgi,sgi.risk,_compute_semaphore,"api.depends('attention_level', 'instrument')",10,0,0,8,0,0,addons/quimibond_sgi/models/sgi_risk.py,210
+quimibond_sgi,sgi.risk,_compute_high_without_action,"api.depends('attention_level', 'state', 'action_line_ids.date_done')",5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_risk.py,222
+quimibond_sgi,sgi.risk,_sgi_next_semester,api.model,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_risk.py,229
+quimibond_sgi,sgi.risk,action_evaluate,,13,0,0,1,2,2,addons/quimibond_sgi/models/sgi_risk.py,235
+quimibond_sgi,sgi.risk,_compute_has_finished_actions,api.depends('action_line_ids.date_done'),4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_risk.py,250
+quimibond_sgi,sgi.risk,_compute_display_name,"api.depends('folio', 'name')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_risk.py,256
+quimibond_sgi,sgi.risk,_compute_sgi_nc_count,api.depends('sgi_nc_ids'),3,0,0,9,0,0,addons/quimibond_sgi/models/sgi_risk.py,262
+quimibond_sgi,sgi.risk,action_view_sgi_ncs,,9,0,0,1,2,0,addons/quimibond_sgi/models/sgi_risk.py,266
+quimibond_sgi,sgi.risk,_sgi_check_can_close,,23,0,0,11,0,4,addons/quimibond_sgi/models/sgi_risk.py,283
+quimibond_sgi,sgi.risk,write,,7,0,0,299,1,238,addons/quimibond_sgi/models/sgi_risk.py,307
+quimibond_sgi,sgi.risk,action_set_en_tratamiento,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_risk.py,318
+quimibond_sgi,sgi.risk,action_set_controlado,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_risk.py,322
+quimibond_sgi,sgi.risk,action_set_cerrado,,3,0,0,1,2,7,addons/quimibond_sgi/models/sgi_risk.py,326
+quimibond_sgi,sgi.risk,action_set_identificado,,3,0,0,0,1,0,addons/quimibond_sgi/models/sgi_risk.py,330
+quimibond_sgi,sale.order,_sgi_commitment_stamp,,3,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sale_commitment.py,25
+quimibond_sgi,sale.order,create,api.model_create_multi,5,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_sale_commitment.py,30
+quimibond_sgi,sale.order,write,,9,0,0,299,1,238,addons/quimibond_sgi/models/sgi_sale_commitment.py,36
+quimibond_sgi,sgi.sales.budget,_compute_needs_justification,"api.depends('fulfillment_pct', 'state', 'kind', 'amount_budget_total', 'nonfulfillment_note')",9,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,146
+quimibond_sgi,sgi.sales.budget,_compute_name,"api.depends('team_id', 'year', 'revision', 'kind', 'partner_id')",10,0,0,11,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,157
+quimibond_sgi,sgi.sales.budget,_compute_line_count,api.depends('line_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,169
+quimibond_sgi,sgi.sales.budget,_compute_amount_totals,"api.depends('line_ids.amount_budget', 'line_ids.amount_real', 'line_ids.amount_ordered')",9,0,0,4,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,175
+quimibond_sgi,sgi.sales.budget,_compute_qty_texts,"api.depends('line_ids.qty_budget', 'line_ids.qty_real', 'line_ids.uom_id')",4,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,186
+quimibond_sgi,sgi.sales.budget,_sgi_qty_text,,12,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,191
+quimibond_sgi,sgi.sales.budget,_compute_unconverted_count,api.depends('line_ids.unconverted_count'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,205
+quimibond_sgi,sgi.sales.budget,_compute_amount_currency_text,"api.depends('line_ids.amount_currency', 'line_ids.list_currency_id', 'amount_budget_total', 'currency_id')",12,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,211
+quimibond_sgi,sgi.sales.budget,_compute_no_price_count,api.depends('line_ids.has_list_price'),4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,225
+quimibond_sgi,sgi.sales.budget,action_view_no_price,,9,0,0,0,1,0,addons/quimibond_sgi/models/sgi_sales_budget.py,230
+quimibond_sgi,sgi.sales.budget,_compute_price_deviation_count,api.depends('line_ids.price_gap_alert'),4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,241
+quimibond_sgi,sgi.sales.budget,action_view_price_deviations,,10,0,0,0,1,1,addons/quimibond_sgi/models/sgi_sales_budget.py,246
+quimibond_sgi,sgi.sales.budget,action_price_coverage_report,,11,0,0,0,1,1,addons/quimibond_sgi/models/sgi_sales_budget.py,257
+quimibond_sgi,sgi.sales.budget,_compute_uncovered_count,api.depends('line_ids.coverage_state'),4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,271
+quimibond_sgi,sgi.sales.budget,action_view_uncovered,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_sales_budget.py,276
+quimibond_sgi,sgi.sales.budget,_sgi_horizon_mondays,,8,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,287
+quimibond_sgi,sgi.sales.budget,_sgi_orders_without_forecast,,26,0,0,2,0,1,addons/quimibond_sgi/models/sgi_sales_budget.py,296
+quimibond_sgi,sgi.sales.budget,action_view_orders_without_forecast,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_sales_budget.py,323
+quimibond_sgi,sgi.sales.budget,_sgi_team_year_real,,15,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,334
+quimibond_sgi,sgi.sales.budget,_compute_unbudgeted,"api.depends('line_ids.amount_real', 'team_id', 'year')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,351
+quimibond_sgi,sgi.sales.budget,_sgi_reconcile_data,,78,2,0,1,0,2,addons/quimibond_sgi/models/sgi_sales_budget.py,357
+quimibond_sgi,sgi.sales.budget,action_reconcile_invoiced,,53,0,0,0,1,2,addons/quimibond_sgi/models/sgi_sales_budget.py,436
+quimibond_sgi,sgi.sales.budget,_check_unique_active,"api.constrains('year', 'team_id', 'state', 'kind', 'partner_id', 'company_id')",20,0,0,0,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,492
+quimibond_sgi,sgi.sales.budget,_check_forecast_partner,"api.constrains('kind', 'partner_id')",6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,514
+quimibond_sgi,sgi.sales.budget,unlink,,7,0,0,71,0,20,addons/quimibond_sgi/models/sgi_sales_budget.py,521
+quimibond_sgi,sgi.sales.budget,_sgi_locked_records,,7,0,0,4,0,1,addons/quimibond_sgi/models/sgi_sales_budget.py,529
+quimibond_sgi,sgi.sales.budget,_sgi_no_price_pairs,,10,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,538
+quimibond_sgi,sgi.sales.budget,_sgi_can_review,,5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,549
+quimibond_sgi,sgi.sales.budget,action_send_to_review,,28,0,0,0,2,9,addons/quimibond_sgi/models/sgi_sales_budget.py,555
+quimibond_sgi,sgi.sales.budget,action_approve,,43,0,0,9,4,27,addons/quimibond_sgi/models/sgi_sales_budget.py,584
+quimibond_sgi,sgi.sales.budget,action_set_borrador,,3,0,0,4,5,0,addons/quimibond_sgi/models/sgi_sales_budget.py,628
+quimibond_sgi,sgi.sales.budget,action_set_obsoleto,,3,0,0,3,3,0,addons/quimibond_sgi/models/sgi_sales_budget.py,632
+quimibond_sgi,sgi.sales.budget,action_revise,,30,0,0,0,1,3,addons/quimibond_sgi/models/sgi_sales_budget.py,636
+quimibond_sgi,sgi.sales.budget,action_open_lines,,10,0,0,0,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,667
+quimibond_sgi,sgi.sales.budget,_action_grid,,15,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,678
+quimibond_sgi,sgi.sales.budget,action_open_grid_qty,,3,0,0,0,1,1,addons/quimibond_sgi/models/sgi_sales_budget.py,694
+quimibond_sgi,sgi.sales.budget,action_open_comparison,,11,0,0,0,1,1,addons/quimibond_sgi/models/sgi_sales_budget.py,698
+quimibond_sgi,sgi.sales.budget,action_open_analysis,,17,0,0,0,1,1,addons/quimibond_sgi/models/sgi_sales_budget.py,710
+quimibond_sgi,sgi.sales.budget,action_open_cumulative,,13,0,0,0,1,1,addons/quimibond_sgi/models/sgi_sales_budget.py,728
+quimibond_sgi,sgi.sales.budget,_report_matrix,,62,0,0,0,1,0,addons/quimibond_sgi/models/sgi_sales_budget.py,743
+quimibond_sgi,sgi.sales.budget,_report_forecast_matrix,,32,0,0,0,1,0,addons/quimibond_sgi/models/sgi_sales_budget.py,806
+quimibond_sgi,sgi.sales.budget,_sgi_format_code,,5,0,0,7,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,840
+quimibond_sgi,sgi.sales.budget,action_print_budget,,4,0,0,0,1,0,addons/quimibond_sgi/models/sgi_sales_budget.py,846
+quimibond_sgi,sgi.sales.budget,_sgi_historical_products,,20,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,856
+quimibond_sgi,sgi.sales.budget,_sgi_historical_pairs,,19,2,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,877
+quimibond_sgi,sgi.sales.budget,action_download_template,,49,2,0,0,1,2,addons/quimibond_sgi/models/sgi_sales_budget.py,897
+quimibond_sgi,sgi.sales.budget,action_refresh_actuals,,10,0,0,5,1,13,addons/quimibond_sgi/models/sgi_sales_budget.py,947
+quimibond_sgi,sgi.sales.budget,_compute_mps_available,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,961
+quimibond_sgi,sgi.sales.budget,_sgi_committed_by_week,,31,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,966
+quimibond_sgi,sgi.sales.budget,action_preload_from_orders,,15,0,0,0,2,5,addons/quimibond_sgi/models/sgi_sales_budget.py,998
+quimibond_sgi,sgi.sales.budget,_preload_forecast_from_orders,,20,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,1014
+quimibond_sgi,sgi.sales.budget,_preload_budget_proposals,,52,2,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,1035
+quimibond_sgi,sgi.sales.budget,_preload_budget_from_forecast_and_real,,48,2,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,1088
+quimibond_sgi,sgi.sales.budget,_sgi_forecast_covered_products,,12,0,0,1,0,3,addons/quimibond_sgi/models/sgi_sales_budget.py,1137
+quimibond_sgi,sgi.sales.budget,_sgi_mps_warehouse,,7,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,1150
+quimibond_sgi,sgi.sales.budget,_sgi_push_forecast_cells,,26,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,1158
+quimibond_sgi,sgi.sales.budget,action_send_to_mps,,14,0,0,1,1,3,addons/quimibond_sgi/models/sgi_sales_budget.py,1185
+quimibond_sgi,sgi.sales.budget,_send_forecast_to_mps,,20,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,1200
+quimibond_sgi,sgi.sales.budget,_send_budget_to_mps,,28,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget.py,1221
+quimibond_sgi,sgi.sales.budget,action_open_import,,13,0,0,0,1,1,addons/quimibond_sgi/models/sgi_sales_budget.py,1250
+quimibond_sgi,sgi.sales.budget.import,_onchange_file,api.onchange('file'),12,0,1,0,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,57
+quimibond_sgi,sgi.sales.budget.import,_load_workbook,,11,0,2,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,70
+quimibond_sgi,sgi.sales.budget.import,_parse_header,,43,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,83
+quimibond_sgi,sgi.sales.budget.import,_match_product,,13,0,0,3,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,127
+quimibond_sgi,sgi.sales.budget.import,_norm_apostrophe,staticmethod,4,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,142
+quimibond_sgi,sgi.sales.budget.import,_match_partner,,34,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,147
+quimibond_sgi,sgi.sales.budget.import,_as_number,staticmethod,10,0,1,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,183
+quimibond_sgi,sgi.sales.budget.import,_as_int,staticmethod,5,0,1,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,195
+quimibond_sgi,sgi.sales.budget.import,_week_monday,staticmethod,6,0,0,1,0,2,addons/quimibond_sgi/models/sgi_sales_budget_import.py,202
+quimibond_sgi,sgi.sales.budget.import,_parse_forecast_header,,26,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,209
+quimibond_sgi,sgi.sales.budget.import,_resolve_uom,,16,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,236
+quimibond_sgi,sgi.sales.budget.import,action_import,,28,0,0,0,1,11,addons/quimibond_sgi/models/sgi_sales_budget_import.py,254
+quimibond_sgi,sgi.sales.budget.import,_import_monthly,,57,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,283
+quimibond_sgi,sgi.sales.budget.import,_import_forecast,,44,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,341
+quimibond_sgi,sgi.sales.budget.import,_upsert_line,,29,0,1,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,386
+quimibond_sgi,sgi.sales.budget.import,_result_body,,11,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_import.py,416
+quimibond_sgi,sgi.sales.budget.line,_compute_display_name,"api.depends('product_id', 'date', 'uom_id', 'partner_id', 'customer_code')",11,0,0,21,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,180
+quimibond_sgi,sgi.sales.budget.line,_compute_amount_budget,"api.depends('qty_budget', 'price_unit_budget', 'price_unit_currency')",4,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,193
+quimibond_sgi,sgi.sales.budget.line,_onchange_product_id,api.onchange('product_id'),3,0,0,0,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,199
+quimibond_sgi,sgi.sales.budget.line,_compute_price,"api.depends('product_id', 'partner_id', 'uom_id', 'qty_budget')",14,0,0,7,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,204
+quimibond_sgi,sgi.sales.budget.line,_sgi_default_pricelist,,17,2,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,219
+quimibond_sgi,sgi.sales.budget.line,_sgi_min_plausible,,5,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,237
+quimibond_sgi,sgi.sales.budget.line,_sgi_pricelist_price,,71,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,243
+quimibond_sgi,sgi.sales.budget.line,_sgi_planning_factor,,19,1,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,315
+quimibond_sgi,sgi.sales.budget.line,_sgi_to_company_price,,14,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,335
+quimibond_sgi,sgi.sales.budget.line,_check_date_in_year,"api.constrains('date', 'budget_id')",16,0,0,0,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,352
+quimibond_sgi,sgi.sales.budget.line,_check_forecast_partner,"api.constrains('partner_id', 'budget_id')",7,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,370
+quimibond_sgi,sgi.sales.budget.line,_check_no_mixed_scheme,"api.constrains('partner_id', 'product_id', 'budget_id')",26,0,0,0,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,379
+quimibond_sgi,sgi.sales.budget.line,_check_uom_category,"api.constrains('uom_id', 'product_id')",9,0,0,0,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,407
+quimibond_sgi,sgi.sales.budget.line,_sgi_month_bounds,,8,0,0,3,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,418
+quimibond_sgi,sgi.sales.budget.line,_compute_real,"api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id', 'kind')",8,0,0,11,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,428
+quimibond_sgi,sgi.sales.budget.line,_sgi_compute_real_invoiced,,73,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,437
+quimibond_sgi,sgi.sales.budget.line,_sgi_set_price_gap,,27,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,511
+quimibond_sgi,sgi.sales.budget.line,_sgi_company_to_list_price,,12,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,539
+quimibond_sgi,sgi.sales.budget.line,_sgi_effective_monday,,9,0,0,5,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,552
+quimibond_sgi,sgi.sales.budget.line,_sgi_forecast_sols,,15,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,562
+quimibond_sgi,sgi.sales.budget.line,_sgi_compute_real_committed,,57,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,578
+quimibond_sgi,sgi.sales.budget.line,_sgi_set_coverage,,15,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,636
+quimibond_sgi,sgi.sales.budget.line,action_view_week_orders,,12,0,0,0,2,1,addons/quimibond_sgi/models/sgi_sales_budget_line.py,652
+quimibond_sgi,sgi.sales.budget.line,action_create_draft_quotation,,45,0,0,0,2,2,addons/quimibond_sgi/models/sgi_sales_budget_line.py,665
+quimibond_sgi,sgi.sales.budget.line,action_view_month_invoices,,23,0,0,0,2,1,addons/quimibond_sgi/models/sgi_sales_budget_line.py,711
+quimibond_sgi,sgi.sales.budget.line,_compute_ordered,"api.depends('product_id', 'date', 'uom_id', 'team_id', 'partner_id')",42,0,0,3,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,736
+quimibond_sgi,sgi.sales.budget.line,_compute_net_demand,"api.depends('qty_budget', 'qty_real')",3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,780
+quimibond_sgi,sgi.sales.budget.line,_compute_avg_prices,"api.depends('amount_budget', 'qty_budget', 'amount_real', 'qty_real')",6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,785
+quimibond_sgi,sgi.sales.budget.line,_compute_qty_forecast,"api.depends('product_id', 'partner_id', 'date', 'kind', 'uom_id')",36,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,793
+quimibond_sgi,sgi.sales.budget.line,create,api.model_create_multi,13,0,0,165,62,1373,addons/quimibond_sgi/models/sgi_sales_budget_line.py,839
+quimibond_sgi,sgi.sales.budget.line,_sgi_reopen_reviewed_parents,,16,0,0,3,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,853
+quimibond_sgi,sgi.sales.budget.line,_sgi_locked_lines,,6,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,870
+quimibond_sgi,sgi.sales.budget.line,write,,22,0,0,299,1,238,addons/quimibond_sgi/models/sgi_sales_budget_line.py,877
+quimibond_sgi,sgi.sales.budget.line,unlink,,18,0,0,71,0,20,addons/quimibond_sgi/models/sgi_sales_budget_line.py,900
+quimibond_sgi,sgi.sales.budget.line,_grid_cell_vals_from_domain,,17,0,0,1,0,0,addons/quimibond_sgi/models/sgi_sales_budget_line.py,920
+quimibond_sgi,sgi.sales.budget.line,grid_update_cell,api.model,21,0,0,0,0,3,addons/quimibond_sgi/models/sgi_sales_budget_line.py,939
+quimibond_sgi,res.config.settings,get_values,api.model,29,1,0,1,0,0,addons/quimibond_sgi/models/sgi_settings.py,186
+quimibond_sgi,res.config.settings,set_values,,17,1,0,1,0,0,addons/quimibond_sgi/models/sgi_settings.py,216
+quimibond_sgi,sgi.sign.builder,_sgi_box,api.model,5,0,0,3,1,0,addons/quimibond_sgi/models/sgi_sign_builder.py,30
+quimibond_sgi,sgi.sign.builder,_sgi_render_pdf,api.model,3,1,0,5,0,2,addons/quimibond_sgi/models/sgi_sign_builder.py,37
+quimibond_sgi,sgi.sign.builder,_sgi_append,api.model,19,0,1,3,0,0,addons/quimibond_sgi/models/sgi_sign_builder.py,42
+quimibond_sgi,sgi.sign.builder,_sgi_attachment_pdf,api.model,6,1,0,2,0,0,addons/quimibond_sgi/models/sgi_sign_builder.py,63
+quimibond_sgi,sgi.sign.builder,_sgi_signature_type,api.model,3,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sign_builder.py,71
+quimibond_sgi,sgi.sign.builder,_sgi_template,api.model,12,2,0,4,0,1,addons/quimibond_sgi/models/sgi_sign_builder.py,76
+quimibond_sgi,sgi.sign.builder,_sgi_request,api.model,10,1,0,2,0,0,addons/quimibond_sgi/models/sgi_sign_builder.py,90
+quimibond_sgi,documents.document,write,,4,0,0,299,1,238,addons/quimibond_sgi/models/sgi_sign_elearning.py,34
+quimibond_sgi,documents.document,_sgi_ack_sign_template,,18,1,0,1,0,4,addons/quimibond_sgi/models/sgi_sign_elearning.py,39
+quimibond_sgi,documents.document,action_sgi_send_sign_requests,,57,3,1,0,1,3,addons/quimibond_sgi/models/sgi_sign_elearning.py,58
+quimibond_sgi,sgi.document.ack,_sgi_sync_from_sign,api.model,16,1,0,3,0,3,addons/quimibond_sgi/models/sgi_sign_elearning.py,130
+quimibond_sgi,slide.channel,_sgi_employee_for_partner,,8,2,0,1,0,1,addons/quimibond_sgi/models/sgi_sign_elearning.py,161
+quimibond_sgi,slide.channel,_sgi_sync_completions,api.model,38,3,0,1,0,1,addons/quimibond_sgi/models/sgi_sign_elearning.py,171
+quimibond_sgi,sgi.sign.record.mixin,_sgi_sign_domain,api.model,2,0,0,2,0,0,addons/quimibond_sgi/models/sgi_sign_record.py,26
+quimibond_sgi,sgi.sign.record.mixin,_compute_sgi_sign_requests,,13,1,0,3,0,0,addons/quimibond_sgi/models/sgi_sign_record.py,29
+quimibond_sgi,sgi.sign.record.mixin,_search_sgi_signed,api.model,8,1,0,1,0,0,addons/quimibond_sgi/models/sgi_sign_record.py,44
+quimibond_sgi,sgi.sign.record.mixin,action_sgi_sign,,8,0,0,2,4,1,addons/quimibond_sgi/models/sgi_sign_record.py,53
+quimibond_sgi,sgi.sign.record.mixin,action_sgi_view_sign_requests,,7,0,0,2,4,0,addons/quimibond_sgi/models/sgi_sign_record.py,62
+quimibond_sgi,product.product,action_sgi_sign,,3,0,0,2,4,1,addons/quimibond_sgi/models/sgi_sign_record.py,99
+quimibond_sgi,product.product,action_sgi_view_sign_requests,,3,0,0,2,4,0,addons/quimibond_sgi/models/sgi_sign_record.py,103
+quimibond_sgi,sgi.sign.request.wizard,action_confirm,,21,2,0,13,8,33,addons/quimibond_sgi/models/sgi_sign_record.py,118
+quimibond_sgi,sgi.deliverable,_onchange_survey_id,api.onchange('survey_id'),6,0,0,0,0,1,addons/quimibond_sgi/models/sgi_sign_record.py,155
+quimibond_sgi,sgi.deliverable,_sgi_signed_ids,,8,1,0,1,0,1,addons/quimibond_sgi/models/sgi_sign_record.py,162
+quimibond_sgi,sgi.staff.efficiency,_compute_name,"api.depends('period_date', 'department_id')",4,0,0,11,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,54
+quimibond_sgi,sgi.staff.efficiency,_sgi_default_department,api.model,2,0,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,60
+quimibond_sgi,sgi.staff.efficiency,_compute_totals,api.depends('line_ids'),3,0,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,64
+quimibond_sgi,sgi.staff.efficiency,_compute_amount_total,api.depends('line_ids.amount'),5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,69
+quimibond_sgi,sgi.staff.efficiency,_period_bounds,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,75
+quimibond_sgi,sgi.staff.efficiency,action_load_employees,,14,1,0,0,1,1,addons/quimibond_sgi/models/sgi_staff_efficiency.py,80
+quimibond_sgi,sgi.staff.efficiency,action_compute_efficiency,,33,1,0,0,1,1,addons/quimibond_sgi/models/sgi_staff_efficiency.py,95
+quimibond_sgi,sgi.staff.efficiency,action_close,,16,2,0,5,5,9,addons/quimibond_sgi/models/sgi_staff_efficiency.py,129
+quimibond_sgi,sgi.staff.efficiency,action_receive,,10,0,0,0,1,2,addons/quimibond_sgi/models/sgi_staff_efficiency.py,146
+quimibond_sgi,sgi.staff.efficiency,action_reopen,,3,0,0,1,2,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,157
+quimibond_sgi,sgi.staff.efficiency,sgi_show_money,,4,0,0,0,1,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,161
+quimibond_sgi,sgi.staff.efficiency,sgi_format_info,,5,1,0,4,4,3,addons/quimibond_sgi/models/sgi_staff_efficiency.py,166
+quimibond_sgi,sgi.staff.efficiency.line,_compute_wage_daily,api.depends('employee_id'),5,1,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,205
+quimibond_sgi,sgi.staff.efficiency.line,_compute_wage_monthly,api.depends('wage_daily'),5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,212
+quimibond_sgi,sgi.staff.efficiency.line,_compute_total_pct,"api.depends('attendance_pct', 'housekeeping_pct', 'efficiency_pct', 'quality_pct')",4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,219
+quimibond_sgi,sgi.staff.efficiency.line,_compute_amounts,"api.depends('wage_daily', 'total_pct')",5,0,0,1,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,225
+quimibond_sgi,sgi.staff.efficiency.line,_check_maxima,"api.constrains('attendance_pct', 'housekeeping_pct', 'efficiency_pct', 'quality_pct')",8,0,0,0,0,0,addons/quimibond_sgi/models/sgi_staff_efficiency.py,232
+quimibond_sgi,sgi.process,_compute_nc_open_ids,,10,1,0,1,0,0,addons/quimibond_sgi/models/sgi_structure.py,29
+quimibond_sgi,sgi.process,_compute_structure_status,"api.depends('owner_id', 'state', 'health', 'activity_red_count', 'red_kpi_count', 'nc_count', 'overdue_action_count')",18,0,0,1,0,0,addons/quimibond_sgi/models/sgi_structure.py,42
+quimibond_sgi,sgi.process,action_sgi_request_change,,28,0,0,0,1,2,addons/quimibond_sgi/models/sgi_structure.py,61
+quimibond_sgi,sgi.process,action_sgi_register_finding,,13,0,0,2,2,2,addons/quimibond_sgi/models/sgi_structure.py,90
+quimibond_sgi,sgi.process,action_sgi_view_flows,,13,0,0,0,0,2,addons/quimibond_sgi/models/sgi_structure.py,104
+quimibond_sgi,sgi.process.activity,action_open_instruction,,6,0,0,1,1,2,addons/quimibond_sgi/models/sgi_structure.py,122
+quimibond_sgi,sgi.process.activity,action_sgi_register_finding,,7,0,0,2,2,2,addons/quimibond_sgi/models/sgi_structure.py,129
+quimibond_sgi,sgi.process.activity,action_view_recent_records,,6,0,0,0,2,0,addons/quimibond_sgi/models/sgi_structure.py,137
+quimibond_sgi,res.partner,_compute_sgi_eval_count,,6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_supplier_eval.py,45
+quimibond_sgi,res.partner,action_sgi_approve_supplier,,11,0,0,0,1,1,addons/quimibond_sgi/models/sgi_supplier_eval.py,52
+quimibond_sgi,res.partner,action_sgi_block_supplier,,7,0,0,0,1,1,addons/quimibond_sgi/models/sgi_supplier_eval.py,64
+quimibond_sgi,res.partner,action_sgi_open_evals,,10,0,0,0,1,0,addons/quimibond_sgi/models/sgi_supplier_eval.py,72
+quimibond_sgi,sgi.supplier.eval,_sgi_critical_categ_ids,api.model,18,1,0,1,0,2,addons/quimibond_sgi/models/sgi_supplier_eval.py,90
+quimibond_sgi,sgi.supplier.eval,_compute_metrics,"api.depends('partner_id', 'date_from', 'date_to')",27,1,0,6,0,0,addons/quimibond_sgi/models/sgi_supplier_eval.py,130
+quimibond_sgi,sgi.supplier.eval,_sgi_class_from_score,,6,0,0,2,0,1,addons/quimibond_sgi/models/sgi_supplier_eval.py,158
+quimibond_sgi,sgi.supplier.eval,_sgi_compute_otd,,37,1,0,1,0,1,addons/quimibond_sgi/models/sgi_supplier_eval.py,165
+quimibond_sgi,sgi.supplier.eval,_sgi_count_ncs,,10,0,0,1,0,1,addons/quimibond_sgi/models/sgi_supplier_eval.py,203
+quimibond_sgi,sgi.supplier.eval,action_recompute,,6,0,0,1,2,3,addons/quimibond_sgi/models/sgi_supplier_eval.py,214
+quimibond_sgi,sgi.supplier.eval,action_apply_to_partner,,8,0,0,1,1,1,addons/quimibond_sgi/models/sgi_supplier_eval.py,221
+quimibond_sgi,sgi.supplier.eval,_compute_display_name,"api.depends('partner_id', 'date_to')",4,0,0,21,0,0,addons/quimibond_sgi/models/sgi_supplier_eval.py,231
+quimibond_sgi,quality.alert,_compute_sgi_supplier_id,api.depends('partner_id'),4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_supplier_nc.py,37
+quimibond_sgi,quality.alert,_compute_sgi_supplier_overdue,"api.depends('sgi_supplier_state', 'sgi_supplier_due_date')",6,0,0,1,0,0,addons/quimibond_sgi/models/sgi_supplier_nc.py,43
+quimibond_sgi,quality.alert,_compute_access_url,,4,0,0,1,0,0,addons/quimibond_sgi/models/sgi_supplier_nc.py,50
+quimibond_sgi,quality.alert,action_sgi_send_to_supplier,,31,2,1,0,1,1,addons/quimibond_sgi/models/sgi_supplier_nc.py,55
+quimibond_sgi,quality.alert,sgi_supplier_answer,,25,5,0,2,0,2,addons/quimibond_sgi/models/sgi_supplier_nc.py,87
+quimibond_sgi,quality.alert,_sgi_supplier_escalation,,18,0,0,1,0,1,addons/quimibond_sgi/models/sgi_supplier_nc.py,113
+quimibond_sgi_pesaje,mrp.weigh.roll.wizard,_sgi_tolerance_kg,,3,1,0,2,0,0,addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py,14
+quimibond_sgi_pesaje,mrp.weigh.roll.wizard,confirm_weighing,,15,0,0,1,0,0,addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py,18
+quimibond_sgi_pesaje,mrp.weigh.roll.wizard,_sgi_weight_out_of_tolerance,,11,0,0,1,0,3,addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py,34
+quimibond_sgi_pesaje,mrp.weigh.roll.wizard,_sgi_create_weight_alert,,37,2,0,1,0,4,addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py,46
+quimibond_sgi_plm,mrp.eco,action_view_sgi_ppap,,9,0,0,4,3,0,addons/quimibond_sgi_plm/models/mrp_eco.py,20
+quimibond_sgi_plm,mrp.eco,action_apply,,6,0,0,1,0,0,addons/quimibond_sgi_plm/models/mrp_eco.py,30
+quimibond_sgi_plm,mrp.eco,_sgi_handle_ppap,,37,0,0,1,0,0,addons/quimibond_sgi_plm/models/mrp_eco.py,37
+quimibond_sgi_plm,mrp.eco,_sgi_link_ppap_element,,7,0,0,2,0,0,addons/quimibond_sgi_plm/models/mrp_eco.py,75
+quimibond_sgi_plm,mrp.eco,_sgi_sales_user_id,,5,0,0,1,0,0,addons/quimibond_sgi_plm/models/mrp_eco.py,83

@@ -1,0 +1,108 @@
+addon,xml_id,name,parent,action,groups,sequence,active,forma,noupdate,en_manifest,file,line
+quimibond_sgi,menu_sgi_spec_gaps,Faltantes de especificación,menu_sgi_analysis,sgi_activity_spec_gap_action,,80,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_activity_spec_views.xml,130
+quimibond_sgi,menu_sgi_week_stats,Cumplimiento semanal,menu_sgi_analysis,sgi_activity_week_stat_action,,90,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_activity_spec_views.xml,132
+quimibond_sgi,menu_sgi_measures_split,Mediciones por equipo o mercado,menu_sgi_admin_indicators,sgi_measure_split_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_business_line_views.xml,95
+quimibond_sgi,menu_sgi_epp_deliveries,Responsivas de EPP,quimibond_sgi.menu_sgi_safety,sgi_epp_delivery_action,,60,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_epp_views.xml,116
+quimibond_sgi,menu_sgi_external_docs,Documentos externos,menu_sgi_documental,sgi_external_doc_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_external_doc_views.xml,68
+quimibond_sgi,menu_sgi_health_records,Estudios de higiene y exámenes médicos,menu_sgi_safety,sgi_health_record_action,"hr.group_hr_user,quimibond_sgi.group_sgi_manager",50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_hse_views.xml,396
+quimibond_sgi,menu_sgi_csh_inspections,Recorridos de la Comisión de Seguridad e Higiene,menu_sgi_safety,sgi_csh_inspection_action,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_hse_views.xml,399
+quimibond_sgi,menu_sgi_checklist_requests,Hojas de checklist (planta y unidades),menu_sgi_safety,sgi_checklist_request_action,,70,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_hse_views.xml,401
+quimibond_sgi,menu_sgi_checklist_today,Checklists de hoy,maintenance.menu_maintenance_title,sgi_checklist_today_action,,1,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_hse_views.xml,403
+quimibond_sgi,menu_sgi_checklist_templates,Checklists de planta y unidades,menu_sgi_config,sgi_checklist_template_action,,60,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_hse_views.xml,405
+quimibond_sgi,menu_sgi_lock_date_log,Bitácora de bloqueo contable,account.menu_finance_reports,sgi_lock_date_log_action,,90,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_kpi_fields_views.xml,119
+quimibond_sgi,menu_sgi_inventory_value,Valor del inventario por mes,account.menu_finance_reports,sgi_inventory_value_action,,91,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_kpi_fields_views.xml,121
+quimibond_sgi,menu_sgi_root,SGI,,,"quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor",90,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,14
+quimibond_sgi,menu_sgi_panel,Inicio,menu_sgi_root,,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,25
+quimibond_sgi,menu_sgi_panel,,,eval:False,,,,record,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,25
+quimibond_sgi,menu_sgi_processes,Procesos,menu_sgi_root,,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,38
+quimibond_sgi,menu_sgi_processes,,,eval:False,,,,record,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,38
+quimibond_sgi,menu_sgi_process_map,Mapa de procesos,menu_sgi_processes,sgi_process_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,46
+quimibond_sgi,menu_sgi_activities,Actividades,menu_sgi_processes,sgi_process_activity_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,48
+quimibond_sgi,menu_sgi_analysis_who,Matriz de responsabilidades,menu_sgi_processes,sgi_activity_exec_stat_action_who,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,50
+quimibond_sgi,menu_sgi_jobs_roles,Puestos y procesos,menu_sgi_processes,sgi_hr_job_action_roles,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,53
+quimibond_sgi,menu_sgi_machine_sheets,Fichas de proceso por máquina,menu_sgi_processes,sgi_machine_sheet_action,,50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,56
+quimibond_sgi,menu_sgi_improvement_group,Mejora,menu_sgi_root,,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,61
+quimibond_sgi,menu_sgi_nc,No conformidades,menu_sgi_improvement_group,sgi_nc_board_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,62
+quimibond_sgi,menu_sgi_complaints,Reclamaciones de clientes,menu_sgi_improvement_group,sgi_complaint_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,64
+quimibond_sgi,menu_sgi_nc_all_actions,Acciones correctivas,menu_sgi_improvement_group,sgi_action_line_action_all,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,66
+quimibond_sgi,menu_sgi_internal_complaints,Quejas y sugerencias del personal,menu_sgi_improvement_group,sgi_internal_complaint_action,,60,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,69
+quimibond_sgi,menu_sgi_improvements,Mejora continua,menu_sgi_improvement_group,sgi_improvement_action,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,72
+quimibond_sgi,menu_sgi_lessons,Lecciones aprendidas,menu_sgi_improvement_group,sgi_nc_lessons_action,,50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,74
+quimibond_sgi,menu_sgi_audits,Auditorías,menu_sgi_improvement_group,,,70,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,76
+quimibond_sgi,menu_sgi_audit_list,Auditorías realizadas,menu_sgi_audits,sgi_audit_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,78
+quimibond_sgi,menu_sgi_audit_programs,Programa de auditorías,menu_sgi_audits,sgi_audit_program_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,80
+quimibond_sgi,menu_sgi_safety,Seguridad y ambiente,menu_sgi_root,,,35,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,82
+quimibond_sgi,menu_sgi_incidents,Incidentes y accidentes,menu_sgi_safety,sgi_incident_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,84
+quimibond_sgi,menu_sgi_emergency_plans,Planes de emergencia,menu_sgi_safety,sgi_emergency_plan_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,86
+quimibond_sgi,menu_sgi_emergency_drills,Simulacros,menu_sgi_safety,sgi_emergency_drill_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,88
+quimibond_sgi,menu_sgi_direction,Dirección,menu_sgi_root,,"quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_auditor",40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,92
+quimibond_sgi,menu_sgi_dashboard_health,Tablero de dirección,menu_sgi_direction,sgi_direction_board_action_open,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,96
+quimibond_sgi,menu_sgi_mgmt_review,Revisión por la dirección,menu_sgi_direction,sgi_management_review_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,98
+quimibond_sgi,menu_sgi_policy,Política integral,menu_sgi_direction,sgi_policy_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,100
+quimibond_sgi,menu_sgi_objectives,Objetivos integrales,menu_sgi_direction,sgi_objective_action,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,102
+quimibond_sgi,menu_sgi_risks,Riesgos y oportunidades,menu_sgi_direction,sgi_risk_action,,50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,104
+quimibond_sgi,menu_sgi_legal,Requisitos legales,menu_sgi_direction,sgi_legal_requirement_action,,60,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,106
+quimibond_sgi,menu_sgi_interested_parties,Partes interesadas,menu_sgi_direction,sgi_interested_party_action,,70,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,108
+quimibond_sgi,menu_sgi_satisfaction,Satisfacción del cliente,menu_sgi_direction,sgi_satisfaction_action,,80,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,110
+quimibond_sgi,menu_sgi_admin,Administración SGI,menu_sgi_root,,"quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_auditor",90,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,116
+quimibond_sgi,menu_sgi_documental,Documentos,menu_sgi_admin,,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,120
+quimibond_sgi,menu_sgi_documents,Documentos,menu_sgi_documental,sgi_document_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,121
+quimibond_sgi,menu_sgi_doc_changes,Solicitudes de cambio a documentos,menu_sgi_documental,sgi_doc_change_board_action,quimibond_sgi.group_sgi_manager,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,123
+quimibond_sgi,menu_sgi_master_list,Lista maestra de documentos,menu_sgi_documental,sgi_document_master_list_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,125
+quimibond_sgi,menu_sgi_migration,Migración de formatos,menu_sgi_documental,sgi_migration_action,quimibond_sgi.group_sgi_manager,50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,127
+quimibond_sgi,menu_sgi_config_doc_types,Tipos de documento,menu_sgi_documental,sgi_document_type_action,quimibond_sgi.group_sgi_manager,60,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,129
+quimibond_sgi,menu_sgi_admin_indicators,Indicadores,menu_sgi_admin,,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,133
+quimibond_sgi,menu_sgi_indicators,Indicadores,menu_sgi_admin_indicators,sgi_indicator_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,134
+quimibond_sgi,menu_sgi_measures,Mediciones,menu_sgi_admin_indicators,sgi_measure_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,136
+quimibond_sgi,menu_sgi_approvals_native,Aprobaciones del SGI,menu_sgi_admin,sgi_activity_role_action_approval,quimibond_sgi.group_sgi_manager,25,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,140
+quimibond_sgi,menu_sgi_analysis,Diagnóstico,menu_sgi_admin,,quimibond_sgi.group_sgi_manager,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,147
+quimibond_sgi,menu_sgi_diagnostic,Diagnóstico del SGI,menu_sgi_analysis,sgi_diagnostic_run_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,148
+quimibond_sgi,menu_sgi_activity_methods,Cobertura de medición,menu_sgi_analysis,sgi_activity_method_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,150
+quimibond_sgi,menu_sgi_compliance,Cumplimiento de procedimientos,menu_sgi_analysis,sgi_activity_compliance_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,152
+quimibond_sgi,menu_sgi_admin_signatures,Firmas de lectura,menu_sgi_admin,,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,159
+quimibond_sgi,menu_sgi_my_procedure_publish,Publicar Mi procedimiento,menu_sgi_admin_signatures,sgi_my_procedure_action_publish,quimibond_sgi.group_sgi_manager,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,160
+quimibond_sgi,menu_sgi_config_acks,Acuses de lectura,menu_sgi_admin_signatures,sgi_document_ack_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,162
+quimibond_sgi,menu_sgi_config,Configuración,menu_sgi_admin,,quimibond_sgi.group_sgi_manager,50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,166
+quimibond_sgi,menu_sgi_config_load,Cargar catálogo,menu_sgi_config,sgi_catalog_load_wizard_action,quimibond_sgi.group_sgi_admin,2,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,167
+quimibond_sgi,menu_sgi_job_families,Familias de puesto,menu_sgi_config,sgi_job_family_action,,3,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,170
+quimibond_sgi,menu_sgi_config_settings,Ajustes,menu_sgi_config,sgi_config_settings_action,base.group_system,5,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,172
+quimibond_sgi,menu_sgi_config_areas,Áreas,menu_sgi_config,sgi_area_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,175
+quimibond_sgi,menu_sgi_config_norms,Normas,menu_sgi_config,sgi_norm_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,177
+quimibond_sgi,menu_sgi_config_clauses,Cláusulas,menu_sgi_config,sgi_norm_clause_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,179
+quimibond_sgi,menu_sgi_config_risk_cat,Categorías de riesgo,menu_sgi_config,sgi_risk_category_action,,50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,181
+quimibond_sgi,menu_sgi_config_ppap_elements,Elementos PPAP,menu_sgi_config,sgi_ppap_element_template_action,,60,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,183
+quimibond_sgi,menu_sgi_config_format_map,Formatos en documentos de Odoo,menu_sgi_config,sgi_format_map_action,,70,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,185
+quimibond_sgi,menu_sgi_config_alert_sources,Fuentes de NC automáticas,menu_sgi_config,sgi_alert_source_action,,80,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,187
+quimibond_sgi,menu_sgi_suppliers,Evaluación de proveedores,purchase.menu_purchase_root,sgi_supplier_eval_action,"purchase.group_purchase_user,quimibond_sgi.group_sgi_user",30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,203
+quimibond_sgi,menu_hr_sgi_competences,Competencias (SGI),hr.menu_hr_root,,"hr.group_hr_user,quimibond_sgi.group_sgi_user",70,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,209
+quimibond_sgi,menu_sgi_competences,Brechas de competencia (DNC),menu_hr_sgi_competences,sgi_competence_gap_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,212
+quimibond_sgi,menu_sgi_dnc_survey,Encuesta DNC,menu_hr_sgi_competences,sgi_dnc_survey_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,215
+quimibond_sgi,menu_sgi_elearning_skills,Cursos y competencias (eLearning),menu_hr_sgi_competences,sgi_slide_channel_action,quimibond_sgi.group_sgi_manager,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,218
+quimibond_sgi,menu_sale_sgi_planning,Presupuesto y pronóstico,sale.sale_menu_root,,quimibond_sgi.group_sgi_user,6,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,225
+quimibond_sgi,menu_sale_sgi_sales_budget,Presupuestos,menu_sale_sgi_planning,sgi_sales_budget_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,228
+quimibond_sgi,menu_sale_sgi_sales_forecast,Pronósticos,menu_sale_sgi_planning,sgi_sales_forecast_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,230
+quimibond_sgi,menu_sale_sgi_sales_analysis,Análisis,menu_sale_sgi_planning,,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,232
+quimibond_sgi,menu_sale_sgi_analysis_mercado,Por mercado,menu_sale_sgi_sales_analysis,sgi_sales_analysis_mercado_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,234
+quimibond_sgi,menu_sale_sgi_analysis_cliente,Por cliente,menu_sale_sgi_sales_analysis,sgi_sales_analysis_cliente_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,236
+quimibond_sgi,menu_sale_sgi_analysis_producto,Por producto,menu_sale_sgi_sales_analysis,sgi_sales_analysis_producto_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,238
+quimibond_sgi,menu_sale_sgi_analysis_global,Global (Dirección),menu_sale_sgi_sales_analysis,sgi_sales_analysis_global_action,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,240
+quimibond_sgi,menu_sgi_automotive,Calidad preventiva,menu_sgi_root,,"quality.group_quality_user,quimibond_sgi.group_sgi_user",80,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,251
+quimibond_sgi,menu_sgi_control_plans,Planes de control,menu_sgi_automotive,sgi_control_plan_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,254
+quimibond_sgi,menu_sgi_fmea,AMEF,menu_sgi_automotive,sgi_fmea_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,256
+quimibond_sgi,menu_sgi_ppap,PPAP,menu_sgi_automotive,sgi_ppap_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,258
+quimibond_sgi,menu_sgi_metrology,Metrología,menu_sgi_automotive,,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,260
+quimibond_sgi,menu_sgi_measuring_equipment,Equipos de medición,menu_sgi_metrology,sgi_equipment_action_measuring,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,262
+quimibond_sgi,menu_sgi_calibrations,Calibraciones,menu_sgi_metrology,sgi_calibration_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,264
+quimibond_sgi,menu_sgi_msa,Estudios MSA,menu_sgi_metrology,sgi_msa_study_action,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,266
+quimibond_sgi,menu_sgi_dashboards,Tableros (SGI),menu_sgi_root,,"quality.group_quality_user,quimibond_sgi.group_sgi_manager",85,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,275
+quimibond_sgi,menu_sgi_dashboard_alerts,Pareto de alertas de calidad,menu_sgi_dashboards,sgi_quality_alert_action_pareto,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,278
+quimibond_sgi,menu_sgi_coa_inbox,COA recibidos,menu_sgi_automotive,sgi_coa_inbox_action,"quality.group_quality_user,quimibond_sgi.group_sgi_manager",60,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,286
+quimibond_sgi,menu_sgi_my_staff_efficiency,Eficiencias de mi área,menu_sgi_panel,sgi_staff_efficiency_action,quimibond_sgi.group_sgi_efficiency_capture,50,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_menus.xml,293
+quimibond_sgi,menu_sgi_my_procedure,Mi procedimiento,menu_sgi_panel,sgi_my_procedure_action_mine,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_my_procedure_views.xml,629
+quimibond_sgi,menu_sgi_my_pending,Mis pendientes,menu_sgi_panel,sgi_my_pending_action_mine,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_my_procedure_views.xml,632
+quimibond_sgi,menu_sgi_my_team,Mi equipo,menu_sgi_panel,sgi_my_team_action_mine,,40,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_my_procedure_views.xml,635
+quimibond_sgi,menu_sgi_my_indicators,Mis indicadores,menu_sgi_panel,sgi_indicator_action_mine,,30,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_my_procedure_views.xml,654
+quimibond_sgi,menu_hr_sgi_staff_efficiency,Eficiencias de personal (SGI),hr.menu_hr_root,,hr.group_hr_user,72,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml,152
+quimibond_sgi,menu_sgi_staff_efficiency,Hojas mensuales,menu_hr_sgi_staff_efficiency,sgi_staff_efficiency_action,,10,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml,155
+quimibond_sgi,menu_sgi_staff_efficiency_analysis,Análisis por empleado,menu_hr_sgi_staff_efficiency,sgi_staff_efficiency_line_action,,20,,menuitem,no,sí,addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml,157
+quimibond_sgi_revisado,menu_sgi_dashboard_defectos,Pareto de defectos (revisado),quimibond_sgi.menu_sgi_dashboards,mrp_revision_log_action_pareto,,20,,menuitem,no,sí,addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml,52
