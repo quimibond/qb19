@@ -165,9 +165,10 @@ class SgiStaffEfficiency(models.Model):
 
     def sgi_format_info(self):
         self.ensure_one()
-        code = 'F-P-A01-34' if self.department_id else 'F-P-A01-32'
-        revision = self.env['sgi.format.map'].sudo()._revision_of(code)
-        return "%s · Rev. %s" % (code, revision) if revision else code
+        # C-006: el formato sale del documento ligado al mapeo, no de su clave.
+        ref = 'format_ref_staff_efficiency_area' if self.department_id \
+            else 'format_ref_staff_efficiency'
+        return self.env['sgi.format.map'].sudo().sgi_ref_label(ref)
 
 
 class SgiStaffEfficiencyLine(models.Model):

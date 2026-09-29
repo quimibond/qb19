@@ -582,6 +582,8 @@ class DocumentsDocument(models.Model):
                 ('sgi_parent_document_id', 'in', prior_revisions.ids)])
             if orphans:
                 orphans.write({'sgi_parent_document_id': doc.id})
+            # C-006: los formatos ligados a la revisión anterior pasan a la nueva.
+            self.env['sgi.format.map']._sgi_repoint(prior_revisions, doc)
 
     @api.model_create_multi
     def create(self, vals_list):

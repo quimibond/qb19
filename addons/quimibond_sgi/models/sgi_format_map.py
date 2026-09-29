@@ -18,21 +18,49 @@ class SgiFormatMap(models.Model):
     El registro nativo (cotización, OC, remisión…) porta la clave del formato
     controlado que reemplaza; la revisión NUNCA se captura aquí: se lee en vivo
     del documento vigente en la app Documentos (única fuente de verdad).
+
+    C-006 (auditoría 2026-09): el mapeo apunta al DOCUMENTO (``document_id``),
+    no al texto de su clave. La clave y la revisión que se imprimen salen de la
+    revisión vigente de ese documento, así que un cambio de clave (clave nueva
+    D-02) o de revisión se refleja solo. ``sgi_code`` queda como la clave con
+    la que se sembró el mapeo: sirve para ligarlo y, mientras no esté ligado,
+    para buscar el documento (también por su clave anterior).
+
+    Los mapeos sin modelo (``model_id`` vacío) son los formatos que el código
+    usa por referencia (``format_ref_*`` en ``data/sgi_format_map_data.xml``):
+    responsiva de EPP, etiquetas de calibración, pie del procedimiento, etc.
     """
     _name = 'sgi.format.map'
     _description = "Formato SGI en documentos de Odoo"
     _order = 'sgi_code'
 
-    model_id = fields.Many2one('ir.model', string="Modelo de Odoo", required=True,
+    model_id = fields.Many2one('ir.model', string="Modelo de Odoo",
                                ondelete='cascade',
-                               help="El documento de Odoo que sustituye al formato en Excel.")
+                               help="El documento de Odoo que sustituye al formato en Excel. "
+                                    "Vacío en los formatos que el SGI usa por referencia "
+                                    "desde un reporte (etiquetas, responsivas, pies).")
     model_name = fields.Char(related='model_id.model', string="Modelo técnico", store=True)
-    sgi_code = fields.Char(string="Clave SGI", required=True,
-                           help="Clave del formato controlado (ej. F-P-A28-04).")
+    document_id = fields.Many2one(
+        'documents.document', string="Documento controlado", ondelete='restrict',
+        index=True, domain=[('sgi_is_controlled', '=', True)],
+        help="Formato controlado que se imprime. La clave y la revisión salen de "
+             "su revisión vigente, en vivo: si cambia la clave o sube la "
+             "revisión, el pie cambia solo.")
+    document_alt_id = fields.Many2one(
+        'documents.document', string="Documento alternativo", ondelete='restrict',
+        index=True, domain=[('sgi_is_controlled', '=', True)],
+        help="Formato que aplica cuando el registro está confirmado (solo ventas: "
+             "cotización vs pedido; presupuesto vs pronóstico).")
+    sgi_code = fields.Char(string="Clave al ligar",
+                           help="Clave con la que se sembró el mapeo (ej. F-P-A28-04). Solo "
+                                "sirve mientras no hay documento ligado; lo impreso sale "
+                                "del documento.")
     sgi_code_alt = fields.Char(
-        string="Clave alternativa",
+        string="Clave alternativa al ligar",
         help="Clave que aplica cuando el registro está confirmado (solo ventas: "
              "cotización vs pedido). Vacío = siempre la clave principal.")
+    live_label = fields.Char(string="Clave y revisión vigentes", compute='_compute_live_label')
+    live_alt_label = fields.Char(string="Alternativa vigente", compute='_compute_live_label')
     active = fields.Boolean(default=True)
     note = fields.Char(string="Nota")
 
@@ -40,6 +68,15 @@ class SgiFormatMap(models.Model):
         'unique(model_id)',
         "Ya existe un mapeo de formato para este modelo.",
     )
+
+    @api.depends('document_id.sgi_code', 'document_id.sgi_revision', 'document_id.sgi_state',
+                 'document_alt_id.sgi_code', 'document_alt_id.sgi_revision',
+                 'document_alt_id.sgi_state', 'sgi_code', 'sgi_code_alt')
+    def _compute_live_label(self):
+        for fmap in self:
+            fmap.live_label = fmap.sgi_live_label()
+            fmap.live_alt_label = fmap.sgi_live_label(alt=True) \
+                if (fmap.document_alt_id or fmap.sgi_code_alt) else False
 
     @api.constrains('sgi_code', 'sgi_code_alt')
     def _check_codes(self):
@@ -52,17 +89,121 @@ class SgiFormatMap(models.Model):
                         "La clave '%s' no cumple la nomenclatura del SGI "
                         "(ej. F-P-A28-04, F-IT-P-P01-08-01)." % code)
 
+    @api.constrains('document_id', 'sgi_code')
+    def _check_target(self):
+        for fmap in self:
+            if not fmap.document_id and not (fmap.sgi_code or '').strip():
+                raise ValidationError(
+                    "El formato necesita su documento controlado (o, mientras se "
+                    "liga, la clave).")
+
+    @api.onchange('document_id', 'document_alt_id')
+    def _onchange_document(self):
+        for fmap in self:
+            if fmap.document_id:
+                fmap.sgi_code = fmap.document_id.sgi_code
+            if fmap.document_alt_id:
+                fmap.sgi_code_alt = fmap.document_alt_id.sgi_code
+
     @api.model
     def _get_for_model(self, model_name):
         return self.search([('model_name', '=', model_name)], limit=1)
 
+    # --- Resolución en vivo (C-006) -----------------------------------------
+    @api.model
+    def _sgi_live_document(self, doc):
+        """Revisión vigente del formato ``doc``: el propio documento si está
+        vigente; si no (ya salió otra revisión), la vigente con su misma clave.
+        Vacío si ninguna revisión está vigente."""
+        Doc = self.env['documents.document'].sudo()
+        doc = doc.sudo()
+        if not doc:
+            return Doc
+        if doc.active and doc.sgi_state == 'vigente':
+            return doc
+        if not doc.sgi_code:
+            return Doc
+        return Doc.search([
+            ('sgi_code', '=', doc.sgi_code),
+            ('sgi_state', '=', 'vigente'),
+            ('sgi_is_controlled', '=', True),
+        ], order='sgi_revision desc, id desc', limit=1)
+
+    def _sgi_target(self, alt=False):
+        """(documento, clave al ligar) de la variante pedida."""
+        self.ensure_one()
+        if alt and (self.document_alt_id or self.sgi_code_alt):
+            return self.document_alt_id, self.sgi_code_alt
+        return self.document_id, self.sgi_code
+
+    def sgi_live_document(self, alt=False):
+        """Documento vigente que se imprime con este mapeo (vacío si no hay)."""
+        Doc = self.env['documents.document'].sudo()
+        if not self:
+            return Doc
+        doc, code = self._sgi_target(alt)
+        if doc:
+            return self._sgi_live_document(doc)
+        # Sin ligar todavía: por la clave (o la clave anterior).
+        return Doc._sgi_find_by_code(code) if code else Doc
+
+    def sgi_live_parts(self, alt=False):
+        """(clave, revisión) vivas; revisión False si no hay vigente, y
+        (False, False) si el mapeo no existe."""
+        if not self:
+            return False, False
+        live = self.sgi_live_document(alt)
+        if live:
+            return live.sgi_code, live.sgi_revision_label
+        doc, code = self._sgi_target(alt)
+        return (doc.sudo().sgi_code if doc else code) or False, False
+
+    def sgi_live_label(self, alt=False):
+        """'F-P-A28-12 · Rev. 03' | 'F-P-A28-12' (sin vigente) | False."""
+        code, revision = self.sgi_live_parts(alt)
+        if not code:
+            return False
+        return "%s · Rev. %s" % (code, revision) if revision else code
+
+    @api.model
+    def _sgi_ref(self, name):
+        """Mapeo por referencia (xmlid ``quimibond_sgi.<name>``); vacío si no
+        existe o está archivado."""
+        fmap = self.env.ref('quimibond_sgi.%s' % name, raise_if_not_found=False)
+        if not fmap or fmap._name != self._name or not fmap.active:
+            return self.browse()
+        return fmap.sudo()
+
+    @api.model
+    def sgi_ref_parts(self, name):
+        return self._sgi_ref(name).sgi_live_parts()
+
+    @api.model
+    def sgi_ref_label(self, name):
+        return self._sgi_ref(name).sgi_live_label()
+
+    @api.model
+    def sgi_ref_document(self, name):
+        return self._sgi_ref(name).sgi_live_document()
+
+    @api.model
+    def _sgi_repoint(self, old_docs, new_doc):
+        """Una revisión nueva entra en vigor: los mapeos que apuntaban a las
+        revisiones anteriores pasan a la nueva (la resolución en vivo ya la
+        encontraba; así la liga queda al día y la vista lo muestra)."""
+        if not old_docs or not new_doc:
+            return
+        maps = self.sudo().with_context(active_test=False)
+        maps.search([('document_id', 'in', old_docs.ids)]).write({'document_id': new_doc.id})
+        maps.search([('document_alt_id', 'in', old_docs.ids)]).write(
+            {'document_alt_id': new_doc.id})
+
     @api.model
     def _revision_of(self, code):
-        """Revisión del documento VIGENTE con esa clave, o False si no existe."""
-        doc = self.env['documents.document'].sudo().search([
-            ('sgi_code', '=', code),
-            ('sgi_state', '=', 'vigente'),
-        ], limit=1)
+        """Compatibilidad: revisión del documento vigente con esa clave (o con
+        esa clave anterior). El código del SGI ya no busca por texto: usa el
+        documento ligado al mapeo (``sgi_live_parts``)."""
+        doc = self.env['documents.document'].sudo()._sgi_find_by_code(code)
         return doc.sgi_revision_label if doc else False
 
 
@@ -669,20 +810,20 @@ class SgiFormatMixin(models.AbstractModel):
         self.ensure_one()
         return True
 
-    def _sgi_format_code(self, fmap):
-        """Clave a usar para este registro (hook por modelo)."""
+    def _sgi_format_use_alt(self, fmap):
+        """Si este registro usa la variante alternativa del mapeo (hook por
+        modelo: pedido confirmado, pronóstico)."""
         self.ensure_one()
-        return fmap.sgi_code
+        return False
 
     def sgi_format_info(self):
-        """'F-P-A28-04 · Rev. 03' | 'F-P-A28-04' (sin doc vigente) | False."""
+        """'F-P-A28-04 · Rev. 03' | 'F-P-A28-04' (sin doc vigente) | False.
+        Clave y revisión salen del documento ligado al mapeo (C-006)."""
         self.ensure_one()
         fmap = self.env['sgi.format.map'].sudo()._get_for_model(self._name)
         if not fmap or not self._sgi_format_applies():
             return False
-        code = self._sgi_format_code(fmap)
-        revision = self.env['sgi.format.map'].sudo()._revision_of(code)
-        return "%s · Rev. %s" % (code, revision) if revision else code
+        return fmap.sgi_live_label(alt=self._sgi_format_use_alt(fmap))
 
     def _compute_sgi_format_banner(self):
         for record in self:
@@ -695,11 +836,9 @@ class SaleOrder(models.Model):
     _name = 'sale.order'
     _inherit = ['sale.order', 'sgi.format.mixin']
 
-    def _sgi_format_code(self, fmap):
+    def _sgi_format_use_alt(self, fmap):
         self.ensure_one()
-        if fmap.sgi_code_alt and self.state == 'sale':
-            return fmap.sgi_code_alt
-        return fmap.sgi_code
+        return self.state == 'sale'
 
 
 class PurchaseOrder(models.Model):

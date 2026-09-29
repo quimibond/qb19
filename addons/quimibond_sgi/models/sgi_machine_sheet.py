@@ -103,9 +103,8 @@ class SgiMachineSheet(models.Model):
 
     def sgi_format_info(self):
         self.ensure_one()
-        code = 'F-IT-P-P01-08-05'
-        revision = self.env['sgi.format.map'].sudo()._revision_of(code)
-        return "%s · Rev. %s" % (code, revision) if revision else code
+        # C-006: ficha por máquina ligada a su documento en el mapeo.
+        return self.env['sgi.format.map'].sudo().sgi_ref_label('format_ref_machine_sheet')
 
 
 class SgiMachineSheetYarn(models.Model):
