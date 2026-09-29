@@ -162,6 +162,9 @@ class TestOlaCertificable(TransactionCase):
     # ------------------------------------------------------------------
     def test_moc_gate(self):
         category = self.env.ref('quimibond_sgi.sgi_approval_category_moc')
+        # D-15 (57.7.0): la categoría MOC sale archivada; el candado se
+        # sigue probando por si se reactiva.
+        category.active = True
         request = self.env['approval.request'].create({
             'name': 'Cambio de layout tejido', 'category_id': category.id,
             'request_owner_id': self.manager.id})

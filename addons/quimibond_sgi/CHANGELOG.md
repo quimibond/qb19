@@ -13,6 +13,47 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.7.0 — 2026-09-29
+
+**Cambiado (D-11):** `sgi.config.sgi_drop_empty_studio_models` cuenta las
+filas por SQL (archivados incluidos, sin depender de permisos: `x_emp_activity`
+no tiene ninguno) y **no borra ninguno si uno de los cuatro tiene registros**.
+Justo antes de cada borrado vuelve a contar; si ya no es 0, `UserError` y se
+revierte todo. Quita primero los one2many de Studio del propio modelo, reporta
+los modelos acompañantes (`_stage`, `_tag`, `_line…`, que no se borran) y los
+campos que Odoo quitará, y deja cada borrado en `ir.logging`. Se corre a mano
+en el shell (`dry_run=True` por default). No corre en el update.
+
+**Agregado (D-14):** correo semanal por persona con lo atrasado de su «Mis
+pendientes» (`sgi.cron.cron_weekly_overdue_mail`, plantilla
+`mail_template_sgi_weekly_overdue`). Solo a quien tiene algo atrasado; cada
+quien lo apaga en Preferencias (`res.users.sgi_weekly_overdue_mail`, encendido
+por default). Reutiliza el cron `sgi_cron_weekly_digest`, que sale
+**apagado**.
+
+**Retirado:** `sgi.cron.cron_weekly_digest`, el resumen semanal viejo a MAST y
+Dirección (B-017).
+
+**Cambiado (D-15):** «Solicitud de compra SGI» y «Cambio de proceso /
+infraestructura (MOC SGI)» se instalan archivadas; en producción se archivan
+con la familia OP-PTAR (`sgi.config._sgi_archive_unused_catalogs`, con CSV de
+respaldo adjunto; no archiva nada que tenga solicitudes o roles).
+
+**Migración (post, `migrations/19.0.57.7.0/post-migrate.py`):** reescribe el
+cron 201 al correo por persona y lo deja apagado; archiva 13, 14 y OP-PTAR si
+siguen sin uso.
+
+**Datos de producción (2026-09-29, lectura):** `x_calendario_de_obliga`,
+`x_no_conformidades` y `x_actividades_obligato` con 0 registros (también
+archivados); `x_emp_activity` sin permiso de lectura (se cuenta por SQL al
+correr). Acompañantes: `_stage` con 3 registros cada uno, `x_no_conformidades_tag`
+y `x_no_conformidades_line_0ff2d` con 0. `approval.request` en 13 y 14: 0.
+OP-PTAR (57): 2 puestos, 3 empleados, 0 roles.
+
+**Pruebas:** `test_studio_cleanup` y `test_weekly_overdue` (nuevas);
+`test_sign_elearning` sin el digest; `test_ola_certificable` reactiva la
+categoría MOC para probar su candado.
+
 ## 19.0.57.6.0 — 2026-09-29
 
 **Cambiado:** E1-02 se mide con `acuerdos_rxd` (D-13). El modo ahora cuenta

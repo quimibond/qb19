@@ -803,9 +803,11 @@ aviso arriba de la ficha.
   correrla **antes** de cargar los 14 procesos.
 - **Modelos de Studio vacíos** (`x_emp_activity`, `x_no_conformidades`,
   `x_actividades_obligato`, `x_calendario_de_obliga`):
-  `sgi.config.sgi_drop_empty_studio_models(dry_run=True)`. Solo borra los que
-  siguen en cero, con sus vistas, acciones y menús. Fuera de un update (borrar
-  un modelo recarga el registro).
+  `sgi.config.sgi_drop_empty_studio_models(dry_run=True)` en el shell. Desde
+  57.7.0 (D-11) borra solo si **los cuatro** siguen en cero filas (conteo por
+  SQL, archivados incluidos) y vuelve a contar justo antes de cada borrado;
+  con uno solo con registros no borra nada. Deja cada borrado en
+  `ir.logging`. Fuera de un update (borrar un modelo recarga el registro).
 
 ### Migración (19.0.29.0.0)
 
