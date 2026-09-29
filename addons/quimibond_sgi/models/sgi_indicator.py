@@ -56,6 +56,14 @@ CALC_MODES = [
     # Genéricos (P-1): sirven a cualquier actividad o entregable del SGI.
     ('actividad_a_tiempo', "Actividad del SGI: % a tiempo"),
     ('entregable_completo', "Entregable del SGI: % completo"),
+    # Indicadores 2 (57.14.0): cruces entre modelos y plazos (sgi_indicator_ind2.py).
+    ('complementos_pago', "Complementos de pago timbrados en plazo (S2-01)"),
+    ('desviacion_precio_compra', "Desviación del precio de compra contra la OC (S1-05)"),
+    ('ordenes_cerradas_48h', "Órdenes cerradas dentro de 48 h de su término real (C4-01)"),
+    ('desarrollos_vendidos', "Desarrollos vendidos en sus primeros 6 meses (C1-04)"),
+    ('cobertura_plantilla', "Cobertura de la plantilla autorizada (RH-01)"),
+    ('bajas_registradas', "Bajas registradas con motivo al día hábil siguiente (S4-01)"),
+    ('bajas_accesos_equipo', "Bajas con accesos y equipo retirados al día hábil siguiente (S6-02)"),
 ]
 
 
@@ -154,6 +162,13 @@ class SgiIndicator(models.Model):
         'margen_ebitda': "Contabilidad → (ingresos − costo de ventas − gastos de operación) ÷ ingresos, últimos 12 meses; sin depreciación, sin otros ingresos ni gastos financieros.",
         'acuerdos_rxd': "SGI → acuerdos de la Revisión por la Dirección con fecha límite en el periodo cumplidos a tiempo ÷ acuerdos con fecha límite en el periodo.",
         'compras_mp_vs_ventas': "Contabilidad → facturas de proveedor de materia prima (menos notas de crédito) ÷ ingresos (cuentas de ingreso), últimos 3 meses.",
+        'complementos_pago': "Contabilidad → pagos de clientes del periodo a facturas PPD cuyo complemento de pago se timbró a más tardar el día 5 del mes siguiente al pago (hora de México) ÷ esos pagos. Se mide cuando vence el plazo.",
+        'desviacion_precio_compra': "Contabilidad → Σ (precio pagado − precio de la OC) × cantidad ÷ importe, en las líneas de factura de proveedor del periodo que vienen de una OC (moneda de la compañía; la OC se convierte a la unidad y moneda de la factura). Las líneas sin OC quedan fuera y se cuentan en la nota.",
+        'ordenes_cerradas_48h': "Fabricación → órdenes cuyo término real (fin de su última operación) cae en el periodo, cerradas a más tardar 48 h después ÷ esas órdenes. Sin operaciones, o si el cierre terminó la operación, la orden queda fuera.",
+        'desarrollos_vendidos': "Ventas → artículos de producto terminado dados de alta en el mismo periodo de hace 6 meses con un pedido de venta confirmado en sus primeros 6 meses ÷ artículos dados de alta.",
+        'cobertura_plantilla': "Empleados → empleados que ocupan cada puesto al cierre del periodo (hasta su plantilla) ÷ «Plantilla autorizada» de los puestos.",
+        'bajas_registradas': "Empleados → bajas del periodo con motivo cuya fecha de salida se registró (seguimiento de Odoo) a más tardar el día hábil siguiente a la salida ÷ bajas del periodo.",
+        'bajas_accesos_equipo': "Empleados → bajas del periodo con «Retirar accesos» y «Recoger equipo» (plan de salida) marcadas como hechas a más tardar el día hábil siguiente a la salida ÷ bajas del periodo.",
     }
 
     @api.depends('calc_mode')

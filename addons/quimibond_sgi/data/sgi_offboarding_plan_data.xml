@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.14.0 (indicadores 2, S6-02): plan de salida nativo con las dos
+     actividades que mide S6-02. Tipos propios para que el indicador las
+     encuentre aunque se edite el resumen del plan. noupdate: RH y TI ajustan
+     responsables, plazos y textos sin que una actualización los regrese.
+     Al archivar a un empleado: Acciones → Lanzar plan → «Salida: accesos y
+     equipo»; «Marcar como hecha» deja la fecha que mide S6-02. -->
+<odoo noupdate="1">
+    <record id="sgi_activity_type_retirar_accesos" model="mail.activity.type">
+        <field name="name">Retirar accesos</field>
+        <field name="summary">Retirar accesos (usuario de Odoo, correo y sistemas)</field>
+        <field name="res_model">hr.employee</field>
+        <field name="category">default</field>
+        <field name="icon">fa-user-times</field>
+        <field name="delay_count">1</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+    </record>
+    <record id="sgi_activity_type_recoger_equipo" model="mail.activity.type">
+        <field name="name">Recoger equipo</field>
+        <field name="summary">Recoger equipo (cómputo, celular y accesorios)</field>
+        <field name="res_model">hr.employee</field>
+        <field name="category">default</field>
+        <field name="icon">fa-laptop</field>
+        <field name="delay_count">1</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+    </record>
+
+    <record id="sgi_offboarding_plan" model="mail.activity.plan">
+        <field name="name">Salida: accesos y equipo (S6-02)</field>
+        <field name="res_model">hr.employee</field>
+        <field name="company_id" ref="base.main_company"/>
+    </record>
+    <record id="sgi_offboarding_plan_accesos" model="mail.activity.plan.template">
+        <field name="plan_id" ref="sgi_offboarding_plan"/>
+        <field name="sequence">10</field>
+        <field name="activity_type_id" ref="sgi_activity_type_retirar_accesos"/>
+        <field name="summary">Retirar accesos: usuario de Odoo, correo y sistemas</field>
+        <field name="responsible_type">on_demand</field>
+        <field name="delay_count">1</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">after_plan_date</field>
+    </record>
+    <record id="sgi_offboarding_plan_equipo" model="mail.activity.plan.template">
+        <field name="plan_id" ref="sgi_offboarding_plan"/>
+        <field name="sequence">20</field>
+        <field name="activity_type_id" ref="sgi_activity_type_recoger_equipo"/>
+        <field name="summary">Recoger equipo: cómputo, celular y accesorios</field>
+        <field name="responsible_type">on_demand</field>
+        <field name="delay_count">1</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">after_plan_date</field>
+    </record>
+</odoo>

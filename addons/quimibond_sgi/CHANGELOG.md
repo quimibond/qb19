@@ -13,6 +13,84 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.14.0 — 2026-09-29
+
+**Agregado (indicadores 2, aprobado por Jose 2026-09-29):** siete modos de
+cálculo con detalle (numerador, denominador y registros en la medición) en
+`models/sgi_indicator_ind2.py`. Definiciones tomadas de la ficha de cada
+indicador en producción:
+
+- **S2-01** `complementos_pago`: pagos de clientes del periodo (en proceso o
+  pagados) aplicados a facturas PPD cuyo complemento
+  (`l10n_mx_edi.document` en `payment_sent` del asiento del pago) se timbró a
+  más tardar el **día 5 inclusive** del mes siguiente al pago, hora de
+  México ÷ esos pagos. Sin complemento timbrado = fuera de plazo (se cuenta
+  en la nota). Sin `l10n_mx_edi`, sin dato.
+- **S1-05** `desviacion_precio_compra`: Σ (precio pagado − precio de la OC)
+  × cantidad ÷ importe de esas líneas, en líneas de factura de proveedor
+  publicadas (`in_invoice`, `display_type product`) con `purchase_line_id`;
+  precios netos de descuento; la OC se convierte a la unidad
+  (`uom._compute_price`) y moneda (a la fecha de la factura) de la factura, y
+  la desviación a moneda de la compañía con el tipo de cambio de la línea.
+  Con signo: pagar de menos resta. Las líneas sin OC quedan fuera y la nota
+  dice cuántas.
+- **C4-01** `ordenes_cerradas_48h`: órdenes cuyo término real (máx.
+  `mrp.workorder.date_finished`, todas sus operaciones no canceladas con
+  fin) cae en la semana, cerradas (`mrp.production.date_finished` en
+  «hecho») a más tardar 48 h después ÷ esas órdenes. Si la operación terminó
+  hasta `quimibond_sgi.c4_stamp_seconds` (60) antes del cierre, el cierre la
+  terminó y la orden queda fuera (nota). **No se activa**: en producción las
+  operaciones terminan segundos antes del cierre (1-8 s en las 24 órdenes
+  revisadas): las termina el propio cierre.
+- **C1-04** `desarrollos_vendidos`: artículos (`product.template`, archivados
+  incluidos) de las categorías de `quimibond_sgi.finished_product_categ_ids`
+  (319 «Producto Terminado» y sus hijas) dados de alta en el mismo periodo de
+  hace 6 meses, con al menos un pedido de venta confirmado cuyo `date_order`
+  cae en los 6 meses siguientes a su alta ÷ artículos de esa cohorte.
+- **RH-01** `cobertura_plantilla`: por puesto con «Plantilla autorizada»,
+  empleados que lo ocupan al cierre del periodo, hasta la plantilla ÷ suma de
+  plantillas. Campo nuevo `hr.job.sgi_authorized_headcount` (seguimiento),
+  en la ficha y la lista nativas del puesto
+  (`views/sgi_hr_job_headcount_views.xml`).
+- **S4-01** `bajas_registradas`: bajas del periodo (`departure_date`) con
+  motivo cuya fecha de salida (y motivo, si tiene seguimiento) quedó
+  registrada a más tardar el día hábil siguiente ÷ bajas. El registro sale
+  del seguimiento **nativo** de Odoo 19 (`departure_date` y
+  `departure_reason_id` ya tienen `tracking=True` en `hr.version` y en el
+  empleado; no hizo falta heredarlos).
+- **S6-02** `bajas_accesos_equipo`: bajas del periodo con «Retirar accesos»
+  y «Recoger equipo» hechas a más tardar el día hábil siguiente ÷ bajas.
+  Fecha de hecho: el mensaje que publica `mail.activity._action_done`
+  (`mail_activity_type_id`, subtipo Actividades); de respaldo,
+  `mail.activity.date_done` de la actividad archivada. Plan nativo nuevo
+  «Salida: accesos y equipo (S6-02)» con dos tipos de actividad propios
+  (`data/sgi_offboarding_plan_data.xml`, `noupdate`, responsable «preguntar al
+  lanzar»).
+
+S2-01, C4-01, S4-01 y S6-02 no se miden antes de que venza su plazo: la
+medición queda «pendiente» con nota y el cron diario la re-mide. El detalle
+de un modo puede traer `note` (lo que quedó fuera) y se agrega a la nota de
+la medición (`_sgi_measure_vals`). «Ver evidencia» de estos modos abre los
+registros guardados. Parámetros nuevos sembrados:
+`finished_product_categ_ids` = 319 y `c4_stamp_seconds` = 60.
+
+**Migración** (`post-migrate`): `_sgi_activate_ind2()` pasa a su modo S2-01,
+S1-05, C1-04, RH-01, S4-01 y S6-02 si siguen activos, en «manual» y sin
+términos de fórmula (criterio de E1-02 en 57.6.0); S6-02, sin «Medir desde»,
+se mide desde el mes siguiente. C4-01 queda manual. Idempotente.
+
+**Datos de producción (2026-09-29, lectura):** S2-01 agosto 76 pagos a PPD,
+76 complementos a más tardar el 4-sep (100 %). S1-05 agosto 360 de 1,472
+líneas con OC (24 %; 31 % del importe). C4-01: 2,565 de 10,453 órdenes
+terminadas en 2026 tienen operaciones (agosto 16 %), casi todas de tejido, y
+en las 24 revisadas la operación termina segundos antes del cierre. C1-04 cohorte de marzo
+13 artículos. RH-01: ningún puesto con plantilla. S4-01: 19 bajas desde julio,
+13 sin motivo y la mayoría registrada semanas después (carga del 7-sep).
+S6-02: cero actividades en empleados; ya existe un plan manual «Baja de
+personal» (id 5) con tareas de accesos y EPP de tipo «Por hacer».
+
+**Pruebas:** `test_indicadores_2` (8 casos, datos propios).
+
 ## 19.0.57.13.0 — 2026-09-29
 
 **Corregido (entrega 8, primer bloque; H-018, J-010; decisión de Jose
