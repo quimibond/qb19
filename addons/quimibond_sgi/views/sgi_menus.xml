@@ -323,31 +323,16 @@
     <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes"
               parent="account.menu_finance_reports" action="sgi_inventory_value_action" sequence="91"/>
 
-    <!-- Ventas: el presupuesto/pronóstico se captura y da seguimiento en la
-         app Ventas (sale al módulo de presupuesto, decisión 5). -->
-    <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
-              parent="sale.sale_menu_root" sequence="6"
-              groups="quimibond_sgi.group_sgi_user"/>
-    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuestos"
-              parent="menu_sale_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
-    <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
-              parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
-    <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
-              parent="menu_sale_sgi_planning" sequence="30"/>
-    <menuitem id="menu_sale_sgi_analysis_mercado" name="Por mercado"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_mercado_action" sequence="10"/>
-    <menuitem id="menu_sale_sgi_analysis_cliente" name="Por cliente"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_cliente_action" sequence="20"/>
-    <menuitem id="menu_sale_sgi_analysis_producto" name="Por producto"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_producto_action" sequence="30"/>
-    <menuitem id="menu_sale_sgi_analysis_global" name="Global (Dirección)"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_global_action" sequence="40"/>
+    <!-- Ventas → Presupuesto y pronóstico (8 menús, 2434/2435 y demás con el
+         mismo id): los declara quimibond_ventas_presupuesto desde 57.11.0
+         (A-016, decisión 5, E-002). -->
 
     <!-- Calidad preventiva: AMEF, plan de control, PPAP y metrología viven
-         en la app Calidad. El parent declarado es un respaldo: la función de
-         abajo los recuelga del raíz de Calidad (E-008 lo simplifica aparte). -->
+         en la app Calidad. E-008 (57.5.0): padre fijo, el raíz de la app
+         Calidad (quality_control está en depends), con la secuencia que ya
+         tienen en producción (23 y 24, antes de Configuración, 25). -->
     <menuitem id="menu_sgi_automotive" name="Calidad preventiva"
-              parent="menu_sgi_root" sequence="80"
+              parent="quality_control.menu_quality_root" sequence="23"
               groups="quality.group_quality_user,quimibond_sgi.group_sgi_user"/>
     <menuitem id="menu_sgi_control_plans" name="Planes de control" parent="menu_sgi_automotive"
               action="sgi_control_plan_action" sequence="10"/>
@@ -366,14 +351,11 @@
     <!-- Paretos de calidad (D-20: antes «Tableros (SGI)»): análisis
          operativo, en la app Calidad. -->
     <menuitem id="menu_sgi_dashboards" name="Paretos de calidad"
-              parent="menu_sgi_root" sequence="85"
+              parent="quality_control.menu_quality_root" sequence="24"
               groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_dashboard_alerts" name="Pareto de alertas de calidad"
               parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto" sequence="10"/>
 
-    <!-- Recuelga los menús de calidad del raíz de la app Calidad, con
-         tolerancia si el xmlid no existe (ver ir.ui.menu). -->
-    <function model="ir.ui.menu" name="_sgi_attach_quality_menus"/>
     <!-- COA recibidos por correo (buzón «coa@»): los que no se ligaron solos. -->
     <menuitem id="menu_sgi_coa_inbox" name="COA recibidos"
               parent="menu_sgi_automotive" action="sgi_coa_inbox_action" sequence="60"

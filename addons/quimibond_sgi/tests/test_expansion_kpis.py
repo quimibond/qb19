@@ -54,16 +54,6 @@ class TestExpansionKpis(TransactionCase):
         move.action_post()
         return move
 
-    def test_01_compras_vs_ventas(self):
-        self._invoice('out_invoice', self.customer_a, 1000.0, self.period)
-        self._invoice('out_refund', self.customer_a, 100.0, self.period)
-        self._invoice('in_invoice', self.supplier, 720.0, self.period,
-                      account=self.expense)
-        ind = self._indicator('compras_vs_ventas')
-        value = ind._calc_compras_vs_ventas(self.period, self.period_end)
-        # 720 de compras sobre 900 netos de venta = 80%.
-        self.assertEqual(value, 80.0)
-
     def test_02_notas_credito(self):
         self._invoice('out_invoice', self.customer_a, 1000.0, self.period)
         self._invoice('out_refund', self.customer_a, 15.0, self.period)
@@ -97,9 +87,9 @@ class TestExpansionKpis(TransactionCase):
         # Solo los modos acotados al periodo/ventana: los de saldo abierto
         # (cartera, DPO) sí ven datos preexistentes de la base y se prueban
         # aparte contra su propia línea base.
-        for mode in ('compras_vs_ventas', 'notas_credito', 'clientes_nuevos',
+        for mode in ('notas_credito', 'clientes_nuevos',
                      'concentracion_top3', 'facturacion_usd', 'dso_cartera',
-                     'margen_ventas', 'retencion_clientes',
+                     'retencion_clientes',
                      'clientes_reactivados', 'ventas_fuera_top10',
                      'concentracion_productos', 'pedidos_cancelados',
                      'entregas_completas'):
@@ -260,27 +250,8 @@ class TestExpansionKpis(TransactionCase):
         empty = self.env['sgi.indicator.measure'].create({
             'indicator_id': ind.id, 'period_date': date(2043, 5, 1),
             'value': 0.0, 'state': 'pendiente'})
-        self.env['sgi.config'].recompute_pending_measures()
+        result = self.env['sgi.config'].recompute_pending_measures()
+        self.assertGreaterEqual(result['capturadas'], 1)
         self.assertEqual(measure.state, 'capturado')
         self.assertEqual(measure.value, 1.5)
         self.assertEqual(empty.state, 'pendiente')
-
-    def test_16_fix_kpi_seeds_idempotente(self):
-        energia = self.env.ref('quimibond_sgi.sgi_ind_consumo_energia')
-        embarques = self.env.ref('quimibond_sgi.sgi_ind_embarques_sin_error')
-        energia.uom = 'kWh'
-        embarques.write({'target_objective': 100, 'target_acceptable': 98})
-        broken = self.env['sgi.indicator.measure'].create({
-            'indicator_id': energia.id, 'period_date': date(2042, 3, 1),
-            'value': 0.0, 'state': 'capturado',
-            'note': "Configure el proveedor de energía en Ajustes para medir "
-                    "este indicador automáticamente."})
-        self.env['sgi.config'].fix_kpi_seeds()
-        self.assertEqual(energia.uom, 'MXN')
-        self.assertEqual(embarques.target_objective, 99)
-        self.assertEqual(broken.state, 'pendiente')
-        # Segunda corrida: no vuelve a tocar nada (una meta ajustada por MAST
-        # a otro valor se respeta).
-        embarques.target_objective = 97
-        self.env['sgi.config'].fix_kpi_seeds()
-        self.assertEqual(embarques.target_objective, 97)

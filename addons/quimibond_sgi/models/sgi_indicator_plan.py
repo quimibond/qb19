@@ -209,13 +209,6 @@ class SgiIndicatorMeasurePlan(models.Model):
             self._sgi_plan_captured()
         return res
 
-    def action_open_plan(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window', 'res_model': 'sgi.indicator.measure',
-            'res_id': self.id, 'view_mode': 'form', 'target': 'current',
-        }
-
 
 class SgiCronCalendar(models.AbstractModel):
     _inherit = 'sgi.cron'
@@ -253,6 +246,15 @@ class SgiCronCalendar(models.AbstractModel):
         today = fields.Date.context_today(self)
         self._sgi_step("escalamiento de planes de mediciones rojas",
                        lambda: self.env['sgi.indicator.measure']._sgi_escalate_red_plans(today))
+        # 57.1.0: los indicadores con «Último cálculo» vacío toman el
+        # diagnóstico de su última medición (todos los días, no solo el día
+        # en que se mide).
+        self._sgi_step("último cálculo de los indicadores sin diagnóstico",
+                       lambda: self.env['sgi.indicator']._sgi_calc_status_backfill())
+        # 57.5.0 (D-12, A-006): re-mide las mediciones pendientes que ya
+        # tienen dato. Antes corría en cada actualización del módulo.
+        self._sgi_step("mediciones pendientes re-medidas",
+                       lambda: self.env['sgi.config'].recompute_pending_measures())
         if scheduled and not self._sgi_monthly_run_due(today):
             return True
         return super().cron_indicators()

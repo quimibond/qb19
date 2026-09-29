@@ -144,13 +144,6 @@ class SgiProcessActivityMpChange(models.Model):
     _name = 'sgi.process.activity'
     _inherit = ['sgi.process.activity', 'mail.thread', 'mail.activity.mixin']
 
-    sgi_mp_change_ids = fields.One2many(
-        'approval.request', 'sgi_activity_id', string="Propuestas de cambio")
-
-    def action_sgi_mp_propose_change(self):
-        self.ensure_one()
-        return self.env['sgi.activity.change']._sgi_open(activity=self)
-
 
 class SgiActivityRoleMpChange(models.Model):
     _inherit = 'sgi.activity.role'

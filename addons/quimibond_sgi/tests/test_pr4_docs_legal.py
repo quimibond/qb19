@@ -93,8 +93,6 @@ class TestPr4DocsLegal(TransactionCase):
         self.assertTrue(self.doc.sgi_ack_ids.filtered(lambda a: a.state == 'pendiente'))
 
     def test_04_doc3_lista_maestra(self):
-        action = self.process.action_print_master_list()
-        self.assertEqual(action['report_name'], 'quimibond_sgi.report_master_list_document')
         self.assertEqual(self.process._sgi_master_list_documents(), self.doc)
         html = self.env['ir.actions.report']._render_qweb_html(
             'quimibond_sgi.report_master_list_document', self.process.ids)[0].decode()
@@ -131,8 +129,8 @@ class TestPr4DocsLegal(TransactionCase):
         req.next_eval_date = date.today() + timedelta(days=40)
         self.env['sgi.cron'].cron_legal_requirements()
         self.assertTrue(any('vence el' in s for s in self._activities(req)))
-        mp = self.env['sgi.my.procedure'].with_user(self.user_emp).create({'employee_id': self.emp.id})
-        self.assertIn(req, mp.pending_legal_ids)
+        # 57.8.0 (I-022): el pendiente se ve en Mis pendientes.
+        self.assertIn(req, self.env['sgi.my.pending']._sgi_pending_records(self.user_emp)['legal'])
         # PDF de la matriz legal.
         html = self.env['ir.actions.report']._render_qweb_html(
             'quimibond_sgi.report_legal_matrix_document', req.ids)[0].decode()

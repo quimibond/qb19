@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Reglas por empresa (F-014, J-013); vivían en quimibond_sgi/security/sgi_security.xml. -->
+    <record id="rule_sgi_sales_budget_company" model="ir.rule">
+        <field name="name">SGI: Presupuestos de ventas por empresa</field>
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_sales_budget_line_company" model="ir.rule">
+        <field name="name">SGI: Líneas de presupuesto de ventas por empresa</field>
+        <field name="model_id" ref="model_sgi_sales_budget_line"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+</odoo>

@@ -2,9 +2,9 @@
 """PR 6 del plan (19.0.53.0.0): proveedores, clientes y firmas.
 NC-6 NC a proveedor por el portal, AU-4 auditorías de cliente y a proveedor,
 AU-5 programa sugerido, DOC-4 documentos por revisar en Mis pendientes,
-DOC-5 instructivo desde Knowledge, REG-1 firmas ligadas al registro,
+DOC-5 instructivo desde Knowledge (en quimibond_sgi_knowledge desde 57.9.0),
+REG-1 firmas ligadas al registro,
 REG-2 encuesta como entregable. (NC-7 8D y DOC-4 aviso ya existían.)"""
-import base64
 from datetime import date, timedelta
 
 from odoo.exceptions import UserError, ValidationError
@@ -128,53 +128,21 @@ class TestPr6External(TransactionCase):
     # ---- DOC-4 / DOC-5 --------------------------------------------------
     def test_04_doc4_documentos_por_revisar_en_mis_pendientes(self):
         job = self.env['hr.job'].create({'name': 'DOC PR6'})
-        emp = self.env['hr.employee'].create({'name': 'Dueño doc PR6', 'job_id': job.id, 'user_id': self.buyer.id})
+        self.env['hr.employee'].create({'name': 'Dueño doc PR6', 'job_id': job.id, 'user_id': self.buyer.id})
         doc = self.env['documents.document'].create({
             'name': 'P-A84 Prueba.pdf', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A84', 'sgi_state': 'vigente',
             'sgi_owner_id': self.buyer.id, 'sgi_next_review_date': date.today() + timedelta(days=45)})
-        wiz = self.env['sgi.my.procedure'].with_user(self.buyer).create({'employee_id': emp.id})
-        self.assertIn(doc, wiz.pending_doc_review_ids)
+        # 57.8.0 (I-022): el pendiente se ve en Mis pendientes.
+        self.assertIn(doc, self.env['sgi.my.pending']._sgi_pending_records(self.buyer)['documento'])
         self.env['sgi.cron'].cron_documents()
         summaries = self.env['mail.activity'].search(
             [('res_model', '=', 'documents.document'), ('res_id', '=', doc.id),
              ('user_id', '=', self.buyer.id)]).mapped('summary')
         self.assertTrue(summaries, "El aviso de próxima revisión llega al dueño (60 días).")
 
-    def test_05_doc5_instructivo_desde_knowledge(self):
-        if 'knowledge.article' not in self.env:
-            self.skipTest("Knowledge no instalado")
-        manager = new_test_user(self.env, login='pr6_mast',
-                                groups='base.group_user,quimibond_sgi.group_sgi_manager')
-        article = self.env['knowledge.article'].create({
-            'name': 'Cómo enhebrar la urdidora', 'body': '<p>Paso 1: apagar. Paso 2: enhebrar.</p>'})
-        job = self.env['hr.job'].create({'name': 'URDIDOR PR6'})
-        self.env['hr.employee'].create({'name': 'Urdidor PR6', 'job_id': job.id})
-        activity = self.env['sgi.process.activity'].create({
-            'process_id': self.process.id, 'name': 'Enhebrar urdidora',
-            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job.id})],
-            'instruction_article_id': article.id})
-        wiz = self.env['sgi.instruction.publish'].with_user(manager).create({
-            'activity_id': activity.id, 'code': 'IT-P-C11-95'})
-        self.assertEqual(wiz.job_ids, job, "Propone los puestos que ejecutan.")
-        wiz.action_publish()
-        doc = activity.instruction_id
-        self.assertTrue(doc and doc.sgi_doc_type == 'instructivo')
-        self.assertEqual(doc.sgi_code, 'IT-P-C11-95')
-        self.assertEqual(doc.sgi_revision, 0)
-        self.assertEqual(doc.sgi_article_id, article)
-        self.assertTrue(base64.b64decode(doc.datas))
-        self.assertTrue(doc.sgi_ack_ids, "Acuses para el puesto.")
-        self.assertFalse(activity.instruction_article_stale)
-        with self.assertRaises(UserError):
-            self.env['sgi.instruction.publish'].with_user(manager).create({
-                'activity_id': activity.id, 'code': 'IT-P-C11-95'}).action_publish()
-        article.body = '<p>Paso 1: apagar. Paso 2: enhebrar. Paso 3: probar.</p>'
-        self.assertTrue(activity.instruction_article_stale)
-        self.env['sgi.instruction.publish'].with_user(manager).create({
-            'activity_id': activity.id, 'code': 'IT-P-C11-95'}).action_publish()
-        self.assertEqual(activity.instruction_id.sgi_revision, 1)
-        self.assertEqual(doc.sgi_state, 'obsoleto')
+    # test_05 (DOC-5, instructivo desde Knowledge) se mudó a
+    # quimibond_sgi_knowledge/tests/test_instruction_knowledge.py en 57.9.0 (A-014, J-018).
 
     # ---- REG-1 / REG-2 ----------------------------------------------------
     def test_06_reg1_firmas_ligadas_al_registro(self):

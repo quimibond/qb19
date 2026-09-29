@@ -34,11 +34,11 @@ class TestSignElearning(TransactionCase):
             doc.with_user(self.user).action_sgi_send_sign_requests()
 
     def test_sync_crons_run_empty(self):
-        """Los crons de sincronización y el digest corren sin datos sin
-        tronar (el patrón _sgi_step aísla cada paso)."""
+        """El cron de sincronización corre sin datos sin tronar (el patrón
+        _sgi_step aísla cada paso). El digest viejo se retiró en 57.7.0
+        (D-14): ver test_weekly_overdue."""
         cron = self.env['sgi.cron']
         self.assertTrue(cron.cron_sign_elearning_sync())
-        self.assertTrue(cron.cron_weekly_digest())
 
     def test_employee_lookup_and_skill_grant(self):
         """El mapeo curso→competencia resuelve al empleado por su usuario y

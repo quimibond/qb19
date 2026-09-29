@@ -24,8 +24,6 @@ class DocumentsDocumentMpSign(models.Model):
     sgi_publish_sign_request_id = fields.Many2one(
         'sign.request', string="Firma para entrar en vigor", readonly=True, copy=False,
         help="Solicitud de Sign de la que depende que esta revisión entre en vigor.")
-    sgi_publish_sign_state = fields.Selection(
-        related='sgi_publish_sign_request_id.state', string="Estado de la firma")
 
     @api.model
     def _sgi_mp_sign_required(self):

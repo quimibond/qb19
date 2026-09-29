@@ -33,12 +33,8 @@ SGI_MENU_ENTRIES = (
     'quimibond_sgi.menu_sgi_direction',          # Dirección
     'quimibond_sgi.menu_sgi_admin',              # Administración SGI
 )
-# Cuelgan de la app Calidad; el raíz del SGI es solo su respaldo si esa app
-# no existe (ver ir.ui.menu._sgi_attach_quality_menus).
-SGI_MENU_QUALITY_ENTRIES = (
-    'quimibond_sgi.menu_sgi_automotive',
-    'quimibond_sgi.menu_sgi_dashboards',
-)
+# «Calidad preventiva» y «Paretos de calidad» cuelgan de la app Calidad con
+# padre fijo en views/sgi_menus.xml (E-008, 57.5.0): no están bajo el raíz.
 
 # xmlids retirados en 19.0.45.0.0. La prueba falla si alguno vuelve a existir.
 SGI_REMOVED_XMLIDS = (
@@ -111,13 +107,12 @@ class SgiMenuCleanup(models.Model):
 
     def _sgi_menu_tree_offenders(self):
         """Menús bajo el raíz del SGI que no descienden de una de las seis
-        entradas (ni de las dos de Calidad cuando cuelgan del raíz por
-        respaldo). Vacío = el árbol está limpio."""
+        entradas. Vacío = el árbol está limpio."""
         root = self.env.ref('quimibond_sgi.menu_sgi_root', raise_if_not_found=False)
         if not root:
             return self.browse()
         allowed = self.browse()
-        for xmlid in SGI_MENU_ENTRIES + SGI_MENU_QUALITY_ENTRIES:
+        for xmlid in SGI_MENU_ENTRIES:
             menu = self.env.ref(xmlid, raise_if_not_found=False)
             if menu:
                 allowed |= menu

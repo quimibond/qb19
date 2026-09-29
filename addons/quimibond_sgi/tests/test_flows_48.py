@@ -13,33 +13,15 @@ class TestFlows48(TransactionCase):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
 
-    def _flow(self, xmlid):
-        return self.env.ref('quimibond_sgi.%s' % xmlid)
-
-    def test_01_flujos_nuevos_con_modelo(self):
-        expected = {
-            'flow_almacenmp_compras_req': 'approval.request',
-            'flow_plan_prodent': 'mrp.production',
-            'flow_prodtac_tintoreria': 'mrp.production',
-            'flow_tintoreria_prodtac': 'mrp.production',
-            'flow_prodent_inspeccion': 'mrp.production',
-            'flow_almacenmp_lab': 'quality.check',
-            'flow_lab_almacenmp': 'quality.check',
-            'flow_prodtac_mto': 'maintenance.request',
-            'flow_inspeccion_sgi_nc': 'quality.alert',
-            'flow_ventas_cal_reclamo': 'helpdesk.ticket',
-            'flow_sgi_compras_prov': 'sgi.supplier.eval',
-            'flow_direccion_sgi_acuerdos': 'sgi.management.review',
-            'flow_mfg_sgi_incidente': 'sgi.incident',
-            'flow_diseno_mfg': 'mrp.bom',
-        }
-        for xmlid, model in expected.items():
-            flow = self._flow(xmlid)
-            self.assertEqual(flow.odoo_model_name, model,
-                             "El flujo %s debe materializarse en %s" % (xmlid, model))
-
     def test_02_ver_registros_abre_el_modelo(self):
-        action = self._flow('flow_prodtac_mto').action_view_records()
+        """«Ver registros» abre el modelo del flujo (flujo propio: los flow_*
+        del mapa viejo ya no son del módulo desde 57.4.0, A-002)."""
+        tej, tint, _aca = self._chain()
+        flow = self.env['sgi.process.flow'].create({
+            'name': 'Solicitud de mantenimiento', 'from_process_id': tej.id,
+            'to_process_id': tint.id,
+            'odoo_model_id': self.env['ir.model']._get('maintenance.request').id})
+        action = flow.action_view_records()
         self.assertEqual(action['res_model'], 'maintenance.request')
 
     def test_03_todo_proceso_operativo_conectado(self):

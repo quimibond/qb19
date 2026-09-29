@@ -14,6 +14,8 @@
         <field name="approval_type">purchase</field>
         <field name="has_product">required</field>
         <field name="requirer_document">optional</field>
+        <!-- D-15 (57.7.0): sin uso; se instala archivada. -->
+        <field name="active" eval="False"/>
         <field name="description">Requisición interna que, al aprobarse, genera automáticamente las RFQ (órdenes de compra en borrador) desde las líneas de producto.</field>
     </record>
 </odoo>

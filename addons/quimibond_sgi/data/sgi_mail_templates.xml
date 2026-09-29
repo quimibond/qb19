@@ -72,4 +72,40 @@
         <field name="auto_delete" eval="True"/>
     </record>
 
+    <!-- D-14 (57.7.0): correo semanal por persona con lo atrasado de «Mis
+         pendientes». Las filas llegan por contexto (ctx.sgi_rows) desde
+         sgi.cron.cron_weekly_overdue_mail. -->
+    <record id="mail_template_sgi_weekly_overdue" model="mail.template">
+        <field name="name">SGI: Mis pendientes atrasados (semanal)</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="subject">SGI: tienes {{ ctx.get('sgi_total') }} pendiente(s) atrasado(s)</field>
+        <field name="email_to">{{ object.email_formatted }}</field>
+        <field name="lang">{{ object.lang }}</field>
+        <field name="body_html" type="html">
+<div>
+    <p>Hola <t t-out="object.name"/>:</p>
+    <p>Esto es lo que tienes <b>atrasado</b> en «Mis pendientes» del SGI
+       (<t t-out="ctx.get('sgi_total')"/> en total):</p>
+    <table style="border-collapse:collapse;">
+        <tr>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Vencía</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Tipo</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Qué</th>
+            <th style="text-align:left;padding:4px 0;">Proceso</th>
+        </tr>
+        <tr t-foreach="ctx.get('sgi_rows') or []" t-as="row">
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['date_due']"/></td>
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['kind']"/></td>
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['name']"/></td>
+            <td style="padding:4px 0;"><t t-out="row['process']"/></td>
+        </tr>
+    </table>
+    <p t-if="ctx.get('sgi_more')">… y <t t-out="ctx.get('sgi_more')"/> más.</p>
+    <p><a t-att-href="ctx.get('sgi_link')">Abrir Mis pendientes en Odoo</a></p>
+    <p style="color:#888;">Si no quieres este correo, apágalo en tu perfil →
+       Preferencias → «Correo semanal de mis pendientes atrasados (SGI)».</p>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
 </odoo>

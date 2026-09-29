@@ -110,7 +110,7 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
 | `otd_compras` | Recepciones done vs `date_planned` de la OC | Implementado |
 | `produccion_vs_programado` | `mrp.production` done: qty_produced/product_qty | Implementado |
 | `desperdicio` | `stock.scrap` / producción del periodo | Implementado |
-| `cierre_nc` | NCs cerradas/detectadas en el periodo | Implementado |
+| `cierre_nc` | Retirado en 57.1.0: TR-01 es fórmula configurable (NC del SGI cerradas en el periodo ÷ levantadas en el periodo, sin canceladas) | Retirado |
 | `reclamos_cliente` | Tickets del equipo Reclamaciones | Implementado |
 | `presupuesto_ventas` | Facturado (out_invoice posted) vs `monthly_budget` | Implementado |
 | `preventivo_cumplido` | `maintenance.request` preventivas en etapa "done" | Implementado (aprox.) |
@@ -299,7 +299,7 @@ Se arman con **Hojas de cálculo / Tableros nativos** (sin JS). Fuentes de datos
 3. **Días festivos** en el calendario 24/7 3 Turnos (festivos MX): configurar en
    *Empleados → Configuración → Tiempo libre → Festivos públicos* (config de instancia).
 4. **Rollout de las 186 telas**: correr el reporte de trabajo
-   `addons/quimibond_sgi/tools/reporte_telas_rollout.py`
+   `docs/historico/quimibond_sgi_tools/reporte_telas_rollout.py` (fuera del módulo desde 57.4.0)
    (`odoo-bin shell --no-http < …`), que lista las telas sin operación TEJIDO/BoM
    completa agrupadas por familia y exporta `/tmp/telas_rollout.csv`. **No** configura
    telas: el criterio (capacidades, tiempos) es de Producción.
@@ -803,9 +803,17 @@ aviso arriba de la ficha.
   correrla **antes** de cargar los 14 procesos.
 - **Modelos de Studio vacíos** (`x_emp_activity`, `x_no_conformidades`,
   `x_actividades_obligato`, `x_calendario_de_obliga`):
-  `sgi.config.sgi_drop_empty_studio_models(dry_run=True)`. Solo borra los que
-  siguen en cero, con sus vistas, acciones y menús. Fuera de un update (borrar
-  un modelo recarga el registro).
+  `sgi.config.sgi_drop_empty_studio_models(dry_run=True)` en el shell. Desde
+  57.7.0 (D-11) borra solo si **los cuatro** siguen en cero filas (conteo por
+  SQL, archivados incluidos) y vuelve a contar justo antes de cada borrado;
+  con uno solo con registros no borra nada. Deja cada borrado en
+  `ir.logging`. Fuera de un update (borrar un modelo recarga el registro).
+  Desde 57.12.0 (D-11 ampliada) borra también sus acompañantes: las 3 tablas
+  `_stage` (se respaldan antes en un CSV adjunto a la empresa del SGI),
+  `x_no_conformidades_tag`, `x_no_conformidades_line_0ff2d` y, con la acción
+  de su etapa, el menú 1643 «Calendario de obligaciones Stages». Si un
+  acompañante trae más filas de las esperadas, no está en la lista o algo de
+  fuera le apunta, no borra nada (`companion_problems`).
 
 ### Migración (19.0.29.0.0)
 
@@ -848,7 +856,9 @@ documental) — no intentar hacerlo de golpe.
 
 ## Herramientas de shell (`tools/`)
 
-Scripts de un solo uso, se corren con `odoo-bin shell --no-http < tools/<script>.py`:
+Scripts de un solo uso; desde 57.4.0 viven fuera del módulo, en `docs/historico/quimibond_sgi_tools/`
+(B-018). `post_carga_documental.py` liga a los procesos viejos y **no se vuelve a correr**.
+Se corrían con `odoo-bin shell --no-http < <script>.py`:
 
 - **`reporte_telas_rollout.py`** — lista de trabajo de telas sin operación TEJIDO/BoM
   completa (solo lectura, exporta `/tmp/telas_rollout.csv`).

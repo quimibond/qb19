@@ -10,7 +10,7 @@ from odoo.tools.convert import convert_file
 UPDATE_FILES = (
     'data/sgi_indicators_data.xml',
     'data/sgi_expansion_data.xml',
-    'data/sgi_fase7_data.xml',
+    'data/sgi_emergency_satisfaction_data.xml',
     'data/sgi_parameters.xml',
 )
 

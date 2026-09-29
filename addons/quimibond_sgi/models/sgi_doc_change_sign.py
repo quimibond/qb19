@@ -230,11 +230,6 @@ class ApprovalRequestSign(models.Model):
                 raise UserError("La solicitud %s ya tiene una firma en curso." % (req.name or ''))
         return self._sgi_send_to_sign()
 
-    def action_sgi_open_sign_request(self):
-        self.ensure_one()
-        return {'type': 'ir.actions.act_window', 'res_model': 'sign.request',
-                'res_id': self.sgi_sign_request_id.id, 'view_mode': 'form'}
-
     def action_approve(self, approver=None):
         if not self.env.context.get('sgi_sign_sync'):
             blocked = self.filtered(lambda r: r.sgi_is_doc_change and r.sgi_sign_required)

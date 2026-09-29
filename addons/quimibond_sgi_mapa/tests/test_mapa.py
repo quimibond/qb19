@@ -46,12 +46,23 @@ class TestMapaFile(TransactionCase):
         self.assertEqual(sum(len(a['roles']) for a in self.activities), 1072)
         self.assertEqual(sum(len(a['inputs']) for a in self.activities), 246)
         self.assertEqual(len(self.mapa['deliverables']), 319)
-        self.assertEqual(len(self.mapa['families']), 14)
+        # 13: sin OP-PTAR, que D-15 archiva (quimibond_sgi 57.7.0).
+        self.assertEqual(len(self.mapa['families']), 13)
         self.assertEqual(len(self.mapa['objectives']), 10)
         self.assertEqual(len(self.mapa['control_plans']), 10)
-        self.assertEqual(sum(len(i['terms']) for i in self.mapa['indicators']), 50)
+        # 52: los 50 de producción + los 2 de TR-01 (quimibond_sgi 57.1.0).
+        self.assertEqual(sum(len(i['terms']) for i in self.mapa['indicators']), 52)
         self.assertEqual((counts['processes'], counts['stages'], counts['activities']),
                          (14, 60, 310), "meta.counts coincide con el contenido.")
+
+    def test_01b_nada_archivado_y_e1_02_automatico(self):
+        """1.1.0: cargar el mapa no reactiva la familia OP-PTAR (D-15) y E1-02
+        se mide con los acuerdos de la RxD (D-13), como en quimibond_sgi."""
+        self.assertNotIn('OP-PTAR', [f['code'] for f in self.mapa['families']])
+        self.assertFalse([a for a in self.activities for r in a['roles'] if r.get('family') == 'OP-PTAR'])
+        e102 = [i for i in self.mapa['indicators'] if i['code'] == 'E1-02']
+        self.assertEqual([i['calc_mode'] for i in e102], ['acuerdos_rxd'])
+        self.assertEqual(self.mapa['meta']['counts']['families'], len(self.mapa['families']))
 
     def test_02_el_cargador_entiende_todo(self):
         self.assertEqual(_unknown_keys(self.mapa, _KEYS_PAYLOAD), [])

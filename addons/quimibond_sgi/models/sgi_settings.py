@@ -93,10 +93,8 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.supplier_otd_tolerance_days',
         help="Días de gracia sobre la fecha compromiso para contar una "
              "recepción como a tiempo (comparación por día calendario).")
-    sgi_pesaje_tolerance_kg = fields.Float(
-        string="Tolerancia de peso de rollo (kg)",
-        config_parameter='quimibond_sgi.pesaje_tolerance_kg',
-        help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.")
+    # 57.10.0 (A-020): la tolerancia de peso de rollo (sgi_pesaje_tolerance_kg)
+    # la declara quimibond_sgi_pesaje, dueño del parámetro.
     sgi_monthly_sales_budget = fields.Float(
         string="Presupuesto mensual de ventas (MXN)",
         config_parameter='quimibond_sgi.monthly_sales_budget',
@@ -119,9 +117,6 @@ class ResConfigSettings(models.TransientModel):
              "mas@quimibond.com o, si no existe, el primer miembro directo del "
              "grupo Jefe MAST y SGI. Al cambiarlo, los avisos abiertos se "
              "reasignan en la siguiente corrida de cada cron (no se duplican).")
-    sgi_waste_categ_id = fields.Many2one(
-        'product.category', string="Categoría del byproduct de desperdicio",
-        help="Categoría del SALDO (desperdicio) para el KPI automático.")
     sgi_purchase_approval_category_id = fields.Many2one(
         'approval.category', string="Categoría de requisiciones de compra",
         help="KPI CO-02 (Requisiciones): categoría de aprobación que cuenta como "
@@ -148,54 +143,10 @@ class ResConfigSettings(models.TransientModel):
         help="Encuesta cuyas respuestas alimentan el KPI CA-02. Sin configurar "
              "se usa la sembrada por el módulo. Útil para re-apuntar al "
              "histórico de respuestas (aunque esté archivado).")
-    sgi_sales_budget_alert_pct = fields.Integer(
-        string="Umbral de aviso de presupuesto de ventas (%)",
-        config_parameter='quimibond_sgi.sales_budget_alert_pct',
-        help="Al cierre de mes, si un equipo con presupuesto aprobado lleva "
-             "acumulado por debajo de este % del presupuesto del año, se avisa a "
-             "su responsable.")
-    sgi_budget_planning_rate = fields.Float(
-        string="Tipo de cambio presupuestal USD→MXN",
-        config_parameter='quimibond_sgi.budget_planning_rate',
-        help="Para sugerir precios de listas en otra moneda al presupuestar. "
-             "0 = usar el tipo de cambio vigente del día de captura.")
-    sgi_price_gap_tolerance_pct = fields.Float(
-        string="Tolerancia de desviación de precio (%)",
-        config_parameter='quimibond_sgi.price_gap_tolerance_pct',
-        help="Control de precios: gap facturado vs lista dentro de este % = OK.")
-    sgi_price_gap_grave_pct = fields.Float(
-        string="Desviación de precio grave (%)",
-        config_parameter='quimibond_sgi.price_gap_grave_pct',
-        help="Gap por encima de este % = grave (entre la tolerancia y este umbral "
-             "= leve).")
-    sgi_forecast_over_tolerance_pct = fields.Float(
-        string="Tolerancia de pronóstico excedido (%)",
-        config_parameter='quimibond_sgi.forecast_over_tolerance_pct',
-        help="Cobertura del pronóstico: comprometido por encima de 100% + este % "
-             "= 'excedido'.")
-    sgi_forecast_capture_horizon_weeks = fields.Integer(
-        string="Horizonte de captura del pronóstico (semanas)",
-        config_parameter='quimibond_sgi.forecast_capture_horizon_weeks',
-        help="Solo se evalúa la cobertura de las semanas dentro de este horizonte "
-             "(semana actual + N-1); las de fuera quedan 'fuera_horizonte'.")
-    sgi_budget_fulfillment_min = fields.Integer(
-        string="Cumplimiento mínimo del presupuesto (%)",
-        config_parameter='quimibond_sgi.budget_fulfillment_min',
-        help="P-A28 4.3.6.1: si un presupuesto aprobado va por debajo de este % de "
-             "cumplimiento, se pide justificación (banner rojo y actividad al Admin "
-             "de ventas). No bloquea nada.")
-    sgi_price_min_plausible = fields.Float(
-        string="Precio de lista mínimo plausible (moneda compañía)",
-        config_parameter='quimibond_sgi.price_min_plausible',
-        help="Un precio de lista resuelto por debajo de este umbral se toma como "
-             "placebo (placeholder $1) y la línea queda 'sin precio de lista', "
-             "aunque haya una regla. Cierra el hoyo de los precios placeholder.")
-    sgi_budget_pricelist_id = fields.Many2one(
-        'product.pricelist', string="Lista de precios presupuestal",
-        help="Lista con que se valúan las líneas del presupuesto SIN cliente "
-             "(global). Sin configurar, esas líneas quedan sin precio (NUNCA se "
-             "toma una lista arbitraria: eso valuaba el global con la tarifa de un "
-             "cliente).")
+    # 57.11.0 (A-016): los ajustes del presupuesto y del pronóstico de ventas
+    # (umbral de aviso, tipo de cambio, lista presupuestal, precio mínimo,
+    # desviación de precio, cumplimiento mínimo, cobertura del pronóstico) los
+    # declara quimibond_ventas_presupuesto. Las claves no cambian.
 
     @api.model
     def get_values(self):
@@ -207,9 +158,6 @@ class ResConfigSettings(models.TransientModel):
         mast_id = int(raw_mast) if raw_mast.isdigit() else 0
         res['sgi_mast_user_id'] = (
             mast_id if mast_id and self.env['res.users'].browse(mast_id).exists() else False)
-        categ_name = Param.get_param('quimibond_sgi.waste_subproduct_category', 'SubProducto')
-        categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
-        res['sgi_waste_categ_id'] = categ.id or False
         raw_critical = Param.get_param('quimibond_sgi.supplier_critical_categ_ids', '') or ''
         res['sgi_supplier_critical_categ_ids'] = [(6, 0, self.env['product.category'].browse(
             [int(x) for x in raw_critical.split(',') if x.strip().isdigit()]).exists().ids)]
@@ -226,10 +174,6 @@ class ResConfigSettings(models.TransientModel):
             survey_id if survey_id and self.env['survey.survey'].with_context(
                 active_test=False).browse(survey_id).exists()
             else False)
-        pl_id = int(Param.get_param('quimibond_sgi.budget_pricelist_id', '0') or 0)
-        res['sgi_budget_pricelist_id'] = (
-            pl_id if pl_id and self.env['product.pricelist'].browse(pl_id).exists()
-            else False)
         return res
 
     def set_values(self):
@@ -237,9 +181,6 @@ class ResConfigSettings(models.TransientModel):
         Param = self.env['ir.config_parameter'].sudo()
         Param.set_param('quimibond_sgi.rh_user_id', self.sgi_rh_user_id.id or 0)
         Param.set_param('quimibond_sgi.mast_user_id', self.sgi_mast_user_id.id or 0)
-        if self.sgi_waste_categ_id:
-            Param.set_param('quimibond_sgi.waste_subproduct_category',
-                            self.sgi_waste_categ_id.name)
         Param.set_param('quimibond_sgi.purchase_approval_category_id',
                         self.sgi_purchase_approval_category_id.id or 0)
         Param.set_param('quimibond_sgi.supplier_critical_categ_ids',
@@ -248,5 +189,3 @@ class ResConfigSettings(models.TransientModel):
                         self.sgi_energy_partner_id.id or 0)
         Param.set_param('quimibond_sgi.satisfaction_survey_id',
                         self.sgi_satisfaction_survey_id.id or 0)
-        Param.set_param('quimibond_sgi.budget_pricelist_id',
-                        self.sgi_budget_pricelist_id.id or 0)

@@ -54,9 +54,6 @@ class TestHierarchy(TransactionCase):
         self.assertEqual((action['type'], action['tag']), ('ir.actions.client', 'sgi_diagram'))
         self.assertEqual(action['context']['sgi_diagram_kind'], 'process_flow')
         self.assertEqual(action['context']['sgi_diagram_res_id'], self.proc.id)
-        action = self.proc.action_sgi_view_process_map()
-        self.assertEqual(action['context']['sgi_diagram_kind'], 'process_map')
-        self.assertEqual(action['context']['sgi_diagram_selected'], 'sgi.process,%d' % self.proc.id)
 
     def test_03_datos_del_mapa_con_conexiones(self):
         self.env['sgi.process.flow'].create({

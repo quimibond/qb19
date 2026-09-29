@@ -70,10 +70,6 @@ class SgiManagementReview(models.Model):
     satisfaction_summary = fields.Text(
         string="14. Satisfacción del cliente", readonly=True,
         help="Indicador CA-02 y reclamaciones del periodo.")
-    agreement_action_ids = fields.One2many(
-        'sgi.action.line', 'review_id', string="Acuerdos (acciones)",
-        help="Los acuerdos de la revisión son acciones con responsable y fecha; "
-             "miden E1-02 (acuerdos cumplidos a tiempo).")
 
     # Salidas
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',

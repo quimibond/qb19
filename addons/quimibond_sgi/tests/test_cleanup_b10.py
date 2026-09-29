@@ -38,6 +38,9 @@ class TestCleanupB10(TransactionCase):
         self.assertFalse(self.env['ir.model.data'].search_count(
             [('module', '=', 'quimibond_sgi'), ('name', 'like', 'employer_obligation')]),
             "Sin vistas, acción ni menú de obligaciones patronales.")
+        # 57.8.0 (B-006): tampoco quedan las filas de otros módulos.
+        self.assertFalse(self.env['ir.model.data'].search_count(
+            [('name', 'like', 'sgi_employer_obligation')]))
         self.assertFalse(self.env['ir.actions.act_window'].search_count(
             [('res_model', '=', 'sgi.employer.obligation')]))
 

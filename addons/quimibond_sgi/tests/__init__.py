@@ -14,7 +14,6 @@ from . import test_incident
 from . import test_competence
 from . import test_pegamento
 from . import test_escalate_nc
-from . import test_kpi_fase4
 from . import test_retro_vinculacion
 from . import test_process_map_46
 from . import test_sgi_format_map
@@ -31,7 +30,6 @@ from . import test_ola_a_procedure
 from . import test_ola_b
 from . import test_view_file
 from . import test_kpi20
-from . import test_sales_budget
 from . import test_alert_source
 from . import test_fase7
 from . import test_fase8
@@ -76,7 +74,6 @@ from . import test_mp_change
 from . import test_my_pending
 from . import test_approval_native
 from . import test_role_audit
-from . import test_perm_groups
 from . import test_cleanup_b10
 from . import test_business_line
 from . import test_doc_change_sign
@@ -92,7 +89,6 @@ from . import test_archived_filters
 from . import test_update_respects_mast
 from . import test_security_entrega1
 from . import test_entrega1b
-from . import test_approval_rule_archive
 from . import test_entrega1c
 from . import test_export_payload
 from . import test_integridad
@@ -105,3 +101,9 @@ from . import test_calibracion_avisos
 from . import test_dropbox_section
 from . import test_legacy_routine
 from . import test_dropbox_key
+from . import test_indicadores_571
+from . import test_procesos_viejos
+from . import test_siembras_y_funciones
+from . import test_legado
+from . import test_studio_cleanup
+from . import test_weekly_overdue

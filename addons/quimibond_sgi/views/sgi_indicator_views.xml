@@ -6,6 +6,13 @@
         <field name="model">sgi.indicator</field>
         <field name="arch" type="xml">
             <list string="Indicadores">
+                <!-- D-12 (57.5.0): solo el Administrador SGI; el método lo
+                     vuelve a revisar en el servidor. -->
+                <header>
+                    <button name="action_sgi_recompute_pending_measures" type="object"
+                            string="Recalcular mediciones pendientes" display="always"
+                            groups="quimibond_sgi.group_sgi_admin"/>
+                </header>
                 <field name="code"/>
                 <field name="name"/>
                 <field name="sgi_area_id"/>

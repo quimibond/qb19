@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
-"""56.5.0: el rol «Aprueba» ligado a la regla de aprobación nativa de Odoo."""
-from odoo.exceptions import UserError, ValidationError
+"""56.5.0: el rol «Aprueba» ligado a la aprobación nativa de Odoo.
+
+57.9.0 (A-010): lo del botón con la regla de Studio se prueba en
+quimibond_sgi_studio."""
+from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 
@@ -36,56 +39,12 @@ class TestApprovalNative(TransactionCase):
         with self.assertRaises(ValidationError):
             self.role.condition_value = 'mucho'
 
-    def test_02_sincroniza_regla_nativa(self):
-        self.role.write({
-            'condition_field_id': self.env['ir.model.fields']._get('purchase.order', 'amount_total').id,
-            'condition_operator': '>', 'condition_value': '50000'})
-        self.role.action_sgi_sync_approval()
-        rule = self.role.approval_rule_id
-        self.assertTrue(rule.active)
-        self.assertEqual((rule.model_id.model, rule.method), ('purchase.order', 'button_confirm'))
-        self.assertEqual(rule.domain, "[('amount_total', '>', 50000.0)]")
-        self.assertEqual(rule.approver_ids, self.boss_user)
-        self.assertEqual(rule.sgi_role_id, self.role)
-        self.assertEqual(self.role.approval_state, 'activa')
-        # Otra persona entra al puesto: la regla queda por sincronizar y el cron la pone al día.
-        other = new_test_user(self.env, login='apr_boss2', groups='base.group_user')
-        self.env['hr.employee'].create({'name': 'Director Aprob 2', 'job_id': self.job_boss.id,
-                                        'user_id': other.id})
-        self.role.invalidate_recordset(['approval_state', 'approval_user_ids'])
-        self.assertEqual(self.role.approval_state, 'por_sincronizar')
-        self.env['sgi.activity.role'].cron_sgi_sync_approvals()
-        self.assertEqual(rule.approver_ids, self.boss_user | other)
-        # Si la actividad se archiva, la regla también.
-        self.activity.active = False
-        self.assertFalse(rule.active)
+    # test_02 a test_04 (regla de Studio del botón) se mudaron a
+    # quimibond_sgi_studio/tests/test_approval_studio.py en 57.9.0 (A-010, J-018).
 
-    def test_03_boton_inexistente_y_sin_personas(self):
-        self.role.approval_method = 'boton_que_no_existe'
-        with self.assertRaises(UserError):
-            self.role.action_sgi_sync_approval()
-        self.role.write({'approval_method': 'button_confirm', 'job_id': self.job_buyer.id})
+    def test_03_sin_personas_en_el_puesto(self):
+        self.role.job_id = self.job_buyer
         self.assertEqual(self.role.approval_state, 'sin_aprobadores', "El puesto no tiene personas con usuario.")
-        self.role.action_sgi_sync_approval()
-        self.assertFalse(self.role.approval_rule_id, "Sin aprobadores no se crea una regla que nadie puede aprobar.")
-
-    def test_04_regla_manual_en_el_boton_se_adopta(self):
-        """56.6.0: si ya hay una regla hecha a mano en el mismo botón, no se
-        crea otra (el documento pediría dos aprobaciones): se adopta."""
-        manual = self.env['studio.approval.rule'].sudo().create({
-            'name': 'Regla a mano MP', 'model_id': self.env['ir.model']._get('purchase.order').id,
-            'method': 'button_confirm', 'approver_ids': [(6, 0, self.boss_user.ids)]})
-        self.role.invalidate_recordset()
-        self.assertEqual(self.role.approval_conflict_rule_ids, manual)
-        self.assertEqual(self.role.approval_state, 'conflicto')
-        with self.assertRaises(UserError):
-            self.role.action_sgi_sync_approval()
-        self.role.action_sgi_adopt_rule()
-        self.assertEqual(self.role.approval_rule_id, manual)
-        self.assertEqual(manual.sgi_role_id, self.role)
-        self.role.invalidate_recordset()
-        self.assertFalse(self.role.approval_conflict_rule_ids)
-        self.assertEqual(self.role.approval_state, 'activa')
 
     def test_05_solicitud_en_aprobaciones_y_mis_pendientes(self):
         """56.6.0: una decisión sin documento se aprueba con una categoría de
@@ -97,7 +56,6 @@ class TestApprovalNative(TransactionCase):
         self.assertEqual(category.sgi_role_id, self.role)
         self.assertEqual(category.approver_ids.user_id, self.boss_user)
         self.assertEqual(self.role.approval_state, 'activa')
-        self.assertFalse(self.role.approval_rule_id, "Una solicitud no bloquea ningún botón.")
         request = self.env['approval.request'].create({
             'name': 'Decisión MP', 'category_id': category.id, 'request_owner_id': self.env.user.id})
         request.action_confirm()

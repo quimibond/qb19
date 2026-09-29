@@ -214,16 +214,8 @@
         <field name="model_id" ref="model_sgi_machine_sheet"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
-    <record id="rule_sgi_sales_budget_company" model="ir.rule">
-        <field name="name">SGI: Presupuestos de ventas por empresa</field>
-        <field name="model_id" ref="model_sgi_sales_budget"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-    </record>
-    <record id="rule_sgi_sales_budget_line_company" model="ir.rule">
-        <field name="name">SGI: Líneas de presupuesto de ventas por empresa</field>
-        <field name="model_id" ref="model_sgi_sales_budget_line"/>
-        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-    </record>
+    <!-- 57.11.0 (A-016): las reglas por empresa de sgi.sales.budget y
+         sgi.sales.budget.line las declara quimibond_ventas_presupuesto. -->
 
     <!-- 56.7.0 (auditoría funcional 28-sep-2026): el Usuario SGI lee todo el
          SGI pero solo ESCRIBE lo suyo. Las reglas son de escritura/creación

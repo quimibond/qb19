@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ NC-6: NC a proveedor ============ -->
+    <record id="sgi_quality_alert_view_form_supplier" model="ir.ui.view">
+        <field name="name">sgi.quality.alert.form.supplier</field>
+        <field name="model">quality.alert</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_quality_alert_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_send_to_supplier" type="object"
+                        string="Enviar al proveedor" icon="fa-paper-plane"
+                        groups="quimibond_sgi.group_sgi_user"
+                        invisible="not sgi_folio or sgi_supplier_state != 'no_enviada' or sgi_stage_is_closing or sgi_stage_is_cancel"
+                        confirm="Se envía al proveedor el enlace del portal con la NC (producto, lote, desviación). ¿Continuar?"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Proveedor (NC-6)" name="sgi_supplier" invisible="not sgi_folio">
+                    <group>
+                        <group>
+                            <field name="sgi_supplier_id"/>
+                            <field name="sgi_supplier_state" widget="badge"
+                                   decoration-success="sgi_supplier_state == 'contestada'"
+                                   decoration-warning="sgi_supplier_state == 'enviada'"/>
+                            <field name="sgi_supplier_overdue" invisible="not sgi_supplier_overdue"
+                                   decoration-danger="sgi_supplier_overdue"/>
+                        </group>
+                        <group>
+                            <field name="sgi_supplier_sent_date"/>
+                            <field name="sgi_supplier_due_date"/>
+                            <field name="sgi_supplier_response_date"/>
+                        </group>
+                    </group>
+                    <group string="Respuesta del proveedor (portal)" invisible="sgi_supplier_state != 'contestada'">
+                        <field name="sgi_supplier_cause"/>
+                        <field name="sgi_supplier_action"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ============ AU-4 / AU-5 ============ -->
+    <record id="sgi_audit_view_form_pr6" model="ir.ui.view">
+        <field name="name">sgi.audit.form.pr6</field>
+        <field name="model">sgi.audit</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_audit_view_form"/>
+        <field name="arch" type="xml">
+            <field name="norm_ids" position="before">
+                <field name="partner_id" invisible="audit_type not in ('cliente', 'proveedor')"
+                       required="audit_type in ('cliente', 'proveedor')"/>
+                <field name="external_report_ref" invisible="audit_type != 'cliente'"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="sgi_audit_program_view_form_pr6" model="ir.ui.view">
+        <field name="name">sgi.audit.program.form.pr6</field>
+        <field name="model">sgi.audit.program</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_audit_program_view_form"/>
+        <field name="arch" type="xml">
+            <button name="action_approve" position="before">
+                <button name="action_suggest_lines" type="object" string="Programa sugerido"
+                        icon="fa-magic" invisible="state != 'borrador'"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
+                        help="Una línea por proceso vigente o en piloto, repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
+            </button>
+            <xpath expr="//field[@name='line_ids']/list/field[@name='process_id']" position="after">
+                <field name="partner_id" optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- DOC-5 (instructivo en Knowledge) se mudó a quimibond_sgi_knowledge
+         en 57.9.0 (A-014). -->
+
+    <!-- ============ REG-1 / REG-2 ============ -->
+    <record id="sgi_sign_request_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.sign.request.wizard.form</field>
+        <field name="model">sgi.sign.request.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Firmar desde el registro">
+                <field name="res_model" invisible="1"/>
+                <field name="res_id" invisible="1"/>
+                <group>
+                    <field name="template_id"/>
+                    <field name="partner_id"/>
+                    <field name="subject"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Enviar a firma" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_purchase_order_view_form_sign" model="ir.ui.view">
+        <field name="name">purchase.order.form.sgi.sign</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_stock_picking_view_form_sign" model="ir.ui.view">
+        <field name="name">stock.picking.form.sgi.sign</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_stock_picking_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_stock_lot_view_form_sign" model="ir.ui.view">
+        <field name="name">stock.lot.form.sgi.sign</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_product_template_view_form_sign" model="ir.ui.view">
+        <field name="name">product.template.form.sgi.sign</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_product_template_view_form_spec"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_deliverable_view_form_pr6" model="ir.ui.view">
+        <field name="name">sgi.deliverable.form.pr6</field>
+        <field name="model">sgi.deliverable</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_deliverable_view_form"/>
+        <field name="arch" type="xml">
+            <field name="complete_domain" position="after">
+                <field name="require_signed" invisible="not odoo_model_id"/>
+                <field name="survey_id"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- DOC-4 en Mis pendientes: documentos del usuario por revisar. -->
+</odoo>

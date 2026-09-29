@@ -7,7 +7,7 @@ Módulo de DATOS del SGI (decisión 6 de la auditoría: el SGI se instala
 vacío). Trae el mapa de procesos de producción exportado el 2026-09-29 en
 ``data/mapa.json``: 14 procesos, 60 etapas y 310 actividades con numeral
 congelado (con sus huecos), 1,072 roles por puesto, familia o rol relativo,
-319 entregables, 246 entradas con su plazo, 14 familias de puestos, 93
+319 entregables, 246 entradas con su plazo, 13 familias de puestos, 93
 indicadores con 50 términos de fórmula, 10 objetivos y 10 planes de control
 (D-01).
 
@@ -21,13 +21,15 @@ filtros con IDs de producción viajan con referencias portables (H-007). Lo
 que no exista en la base que carga se reporta en la prueba.
 
 Para regenerar el mapa: el mismo asistente descarga el de la base
-(``sgi.process.export_payload``). ``tools/generar_mapa.py`` es el script con
+(``sgi.process.export_payload``). 1.1.0: E1-02 va en ``acuerdos_rxd`` (D-13)
+y sin la familia archivada OP-PTAR (D-15), editado a mano (ver
+``meta.review``). ``tools/generar_mapa.py`` es el script con
 el que se armó el primero desde lecturas de producción por MCP.
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'depends': ['quimibond_sgi'],
     'data': [

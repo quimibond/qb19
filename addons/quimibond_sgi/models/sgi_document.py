@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 
 # Nomenclatura documental del Dropbox de PNTQ (áreas G,A,C,D,E,I,M,P,S,V).
 # C-007 (56.32.0): solo la usa la herramienta histórica de carga
-# (tools/carga_documental.py). La nomenclatura vigente vive en los tipos de
+# (docs/historico/quimibond_sgi_tools/carga_documental.py). La nomenclatura vigente vive en los tipos de
 # documento (sgi.document.type: patrón nuevo D-02 + clave heredada).
 SGI_CODE_REGEX = re.compile(
     r'^(MIID'
@@ -131,10 +131,6 @@ class DocumentsDocument(models.Model):
     sgi_revision = fields.Integer(string="Revisión", tracking=True)
     sgi_revision_label = fields.Char(
         string="Rev.", compute='_compute_sgi_revision_label')
-    sgi_revision_legacy = fields.Char(
-        string="Revisión (texto anterior)", readonly=True, copy=False,
-        help="Valor de texto que no se pudo convertir a número al migrar "
-             "(p. ej. «A»). Captura la revisión real en «Revisión».")
     sgi_issue_date = fields.Date(string="Fecha de emisión")
     sgi_state = fields.Selection([
         ('borrador', "Borrador"),

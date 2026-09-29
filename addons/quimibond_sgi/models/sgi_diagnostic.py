@@ -125,6 +125,19 @@ class SgiDiagnostic(models.TransientModel):
         return {'level': level, 'text': text, 'fix': fix or False}
 
     @api.model
+    def _sgi_key_settings_checks(self):
+        """[(clave de parámetro, aviso si vale 0)] de «Ajustes clave» que
+        agregan otros módulos (la lista presupuestal, quimibond_ventas_presupuesto)."""
+        return []
+
+    @api.model
+    def _sgi_floor_quality_lines(self, floor_alerts):
+        """Hallazgos de «Calidad preventiva y piso» que vienen de un satélite
+        (el revisado de tela, quimibond_sgi_revisado). ``floor_alerts``:
+        alertas de calidad de piso (sin folio de NC)."""
+        return []
+
+    @api.model
     def _sgi_build_report(self):
         """Lista de dicts (section, level, text, fix) en el orden del reporte."""
         env = self.env
@@ -237,9 +250,10 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line(
                 'warn', "No hay planes de emergencia vigentes (14001/45001 8.2).",
                 sgi_menu_path('planes_emergencia')))
+        # 57.11.0 (A-016): el presupuesto es de quimibond_ventas_presupuesto.
         budgets_draft = env['sgi.sales.budget'].search_count(
             [('kind', '=', 'presupuesto'), ('state', '=', 'borrador'),
-             ('year', '=', today.year)])
+             ('year', '=', today.year)]) if 'sgi.sales.budget' in env else 0
         if budgets_draft:
             lines.append(self._sgi_line(
                 'warn', "%d presupuesto(s) de ventas %d en borrador: el KPI VE-02 y el cierre de mes solo miden presupuestos APROBADOS." % (budgets_draft, today.year),
@@ -281,19 +295,8 @@ class SgiDiagnostic(models.TransientModel):
                 'warn', "%d de %d correctivas de los últimos 90 días sin equipo asignado: la señal de falla repetitiva no puede detectarlas." % (corr_no_eq, corr_total),
                 "capturar el equipo en la solicitud de mantenimiento"))
         floor_alerts = env['quality.alert'].search_count([('sgi_folio', '=', False)])
-        if 'mrp.revision.log' in env:
-            month_ago_dt = fields.Datetime.now() - relativedelta(days=30)
-            revision_logs = env['mrp.revision.log'].search_count(
-                [('create_date', '>=', month_ago_dt)])
-            if revision_logs and not floor_alerts:
-                lines.append(self._sgi_line(
-                    'warn', "El revisado registró %d defectos en 30 días pero hay CERO alertas de calidad de piso: el pareto de alertas está vacío (¿fuentes apagadas?)." % revision_logs))
-            ma03 = env['sgi.indicator'].search(
-                [('code', '=', 'MA-03'), ('calc_mode', '=', 'manual')], limit=1)
-            if ma03 and revision_logs:
-                lines.append(self._sgi_line(
-                    'warn', "MA-03 (Calidad PQ) sigue en captura manual con el revisado ya operando: puede automatizarse (calc_mode «calidad_pq») y validarse un mes contra el Excel.",
-                    "ficha del indicador MA-03"))
+        # 57.10.0 (A-019): lo del revisado de tela lo agrega quimibond_sgi_revisado.
+        lines += self._sgi_floor_quality_lines(floor_alerts)
         if not lines:
             lines.append(self._sgi_line('ok', "Calidad preventiva conectada al piso."))
         section("Calidad preventiva y piso", lines)
@@ -406,9 +409,7 @@ class SgiDiagnostic(models.TransientModel):
              "Proveedor de energía sin configurar: el KPI TR-03 queda pendiente."),
             ('quimibond_sgi.production_monthly_capacity',
              "Capacidad instalada sin configurar: el KPI MA-02 queda pendiente."),
-            ('quimibond_sgi.budget_pricelist_id',
-             "Lista de precios presupuestal sin configurar: las líneas globales del presupuesto quedan sin precio."),
-        ]
+        ] + self._sgi_key_settings_checks()
         for key, msg in checks:
             try:
                 value = int(float(Param.get_param(key, 0) or 0))

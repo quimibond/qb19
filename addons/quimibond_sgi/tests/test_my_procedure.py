@@ -159,9 +159,11 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual(self._ack_state(), 'pendiente')
 
     def test_05_empleado_y_vista(self):
-        action = self.emp1.action_sgi_my_procedure_view()
+        # 57.8.0 (B-011): la vista de roles sin botón se retiró; se prueba
+        # el mismo universo de roles del puesto.
         Role = self.env['sgi.activity.role']
-        roles = Role.search(action['domain'])
+        roles = Role.search(self.emp1._sgi_require_job()._sgi_roles_domain()
+                            + [('activity_active', '=', True)])
         self.assertEqual(set(roles.activity_id),
                          {self.a_weekly_fri, self.a_weekly_mon, self.a_monthly,
                           self.a_quarterly, self.a_event, self.a_received},
@@ -331,13 +333,13 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual(ack.state, 'pendiente')
         self.assertEqual(wiz.pending_ack_count, 1)
         self.assertTrue(wiz.has_user)
-        self.assertIn(action, wiz.pending_action_ids)
+        # 57.8.0 (I-022): las acciones se ven en Mis pendientes.
+        self.assertIn(action, self.env['sgi.my.pending']._sgi_pending_records(self.user_emp)['accion'])
         self.assertEqual(action.state, 'vencida')
         self.assertIn(indicator, wiz.official_indicator_ids)
         # Sin usuario no hay pendientes que mostrar; los documentos del puesto sí.
         wiz2 = self.env['sgi.my.procedure'].with_user(self.manager).create({'employee_id': self.emp2.id})
         self.assertFalse(wiz2.has_user)
-        self.assertFalse(wiz2.pending_action_ids)
         self.assertIn(doc, wiz2.document_ids)
 
     def test_14_pdf_alineado_con_la_pantalla(self):

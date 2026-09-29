@@ -21,8 +21,14 @@
         <field name="target_objective">85</field>
         <field name="target_acceptable">75</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">cierre_nc</field>
+        <!-- 57.1.0: fórmula configurable (el modo de código cierre_nc se
+             retiró). Los términos los pone la función de abajo, que en un
+             archivo noupdate solo corre al instalar; en una base existente
+             los pone la migración 19.0.57.1.0. -->
+        <field name="calc_mode">configurable</field>
     </record>
+    <function model="sgi.indicator" name="_sgi_cierre_nc_formula"
+              eval="[[ref('sgi_ind_cierre_nc')]]"/>
     <record id="sgi_ind_consumo_papel" model="sgi.indicator">
         <field name="code">TR-02</field>
         <field name="name">Consumo de papel 100−(NF/DL×100)</field>
@@ -195,7 +201,9 @@
         <field name="target_objective">92.5</field>
         <field name="target_acceptable">85</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">calidad_pq</field>
+        <!-- 57.10.0 (A-019): el modo «calidad_pq» es de quimibond_sgi_revisado,
+             que lo pone al instalarse en una base nueva (post_init_hook). -->
+        <field name="calc_mode">manual</field>
     </record>
     <record id="sgi_ind_reproceso" model="sgi.indicator">
         <field name="code">MA-04</field>
@@ -217,7 +225,7 @@
         <field name="target_objective">0.8</field>
         <field name="target_acceptable">1.2</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">desperdicio</field>
+        <field name="calc_mode">desperdicio_kg</field><!-- 57.6.0 (B-010): antes desperdicio -->
     </record>
 
     <!-- ===================== Calidad ===================== -->
@@ -243,7 +251,7 @@
         <field name="target_objective">94</field>
         <field name="target_acceptable">90</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">disponibilidad_mantto</field>
+        <field name="calc_mode">manual</field><!-- 57.6.0 (B-010): antes disponibilidad_mantto -->
     </record>
     <record id="sgi_ind_preventivo" model="sgi.indicator">
         <field name="code">MT-02</field>
@@ -254,7 +262,7 @@
         <field name="target_objective">95</field>
         <field name="target_acceptable">90</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">preventivo_cumplido</field>
+        <field name="calc_mode">configurable</field><!-- 57.6.0 (B-010): antes preventivo_cumplido -->
     </record>
     <record id="sgi_ind_ots_atendidas" model="sgi.indicator">
         <field name="code">MT-03</field>
@@ -278,7 +286,7 @@
         <field name="target_objective">91</field>
         <field name="target_acceptable">85</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">plantilla_rh</field>
+        <field name="calc_mode">manual</field><!-- 57.6.0 (B-010): antes plantilla_rh -->
     </record>
     <record id="sgi_ind_capacitacion" model="sgi.indicator">
         <field name="code">RH-02</field>

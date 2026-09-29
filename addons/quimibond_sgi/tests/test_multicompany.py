@@ -3,8 +3,8 @@
 de una sola empresa, ``sgi.config._sgi_company``).
 
 - Un proceso no se crea ni se mueve fuera de la empresa del SGI.
-- Un usuario con la empresa A activa no ve procesos, presupuestos ni NC de
-  la empresa B, aunque tenga B permitida; al activar B sí los ve.
+- Un usuario con la empresa A activa no ve procesos ni NC de la empresa B
+  (los presupuestos, en quimibond_ventas_presupuesto), aunque tenga B permitida; al activar B sí los ve.
 - Los 10 modelos con ``company_id`` que no tenían regla (F-014) la tienen.
 - Indicadores, riesgos, auditorías y demás modelos sin ``company_id`` son
   compartidos a propósito (D-03): no se prueban aquí."""
@@ -15,9 +15,10 @@ from odoo.tests import TransactionCase, new_test_user, tagged
 F014_MODELS = (
     'sgi.health.record', 'sgi.staff.efficiency', 'sgi.checklist.template',
     'sgi.coa.inbox', 'sgi.csh.inspection', 'sgi.inventory.value',
-    'sgi.lock.date.log', 'sgi.machine.sheet', 'sgi.sales.budget',
-    'sgi.sales.budget.line',
+    'sgi.lock.date.log', 'sgi.machine.sheet',
 )
+# 57.11.0 (A-016): sgi.sales.budget y sgi.sales.budget.line (y test_03) se
+# prueban en quimibond_ventas_presupuesto/tests/test_sales_budget_sgi.py.
 
 
 @tagged('post_install', '-at_install')
@@ -65,15 +66,6 @@ class TestMultiCompany(TransactionCase):
         self.assertEqual(
             env_ab['sgi.process'].search([('code', 'in', ('ZMCA', 'ZMCB'))]),
             self.process_a | self.process_b)
-
-    def test_03_sales_budget_of_b_hidden(self):
-        team = self.env['crm.team'].create({'name': 'ZMC Mercado'})
-        budget_b = self.env['sgi.sales.budget'].with_company(self.company_b).create({
-            'year': 2049, 'team_id': team.id, 'company_id': self.company_b.id})
-        env_a = self._as_user(self.company_a)
-        self.assertFalse(env_a['sgi.sales.budget'].search([('id', '=', budget_b.id)]))
-        env_ab = self._as_user(self.company_a, self.company_b)
-        self.assertEqual(env_ab['sgi.sales.budget'].search([('id', '=', budget_b.id)]), budget_b)
 
     def test_04_nonconformity_of_b_hidden(self):
         team_b = self.env['quality.alert.team'].create(

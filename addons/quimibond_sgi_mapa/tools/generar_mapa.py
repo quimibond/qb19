@@ -40,6 +40,12 @@ empresa 1, 2026-09-29):
 
 No se leen usuarios, empleados (salvo el puesto del dueño), sueldos ni el
 contenido de ningún documento.
+
+Ojo (quimibond_sgi_mapa 1.1.0): ``data/mapa.json`` se editó a mano después
+de generarlo (E1-02 en ``acuerdos_rxd`` y sin la familia OP-PTAR; ver
+``meta.review``). Volver a correr este script con las lecturas del
+2026-09-29 regresaría esas dos entradas; regenerar mejor con
+``export_payload`` en una base con quimibond_sgi 57.7.0 o posterior.
 """
 import glob
 import json

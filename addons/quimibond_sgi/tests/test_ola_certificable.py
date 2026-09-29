@@ -101,10 +101,10 @@ class TestOlaCertificable(TransactionCase):
             'value': 5.0, 'state': 'capturado'})
         with self.assertRaises(UserError):
             measure.action_recompute_value()  # manual: nada que recalcular
-        # plantilla_rh devuelve None (sin plantilla autorizada por puesto);
-        # reproceso ya se mide desde Odoo (P-21) y en una copia de producción
-        # trae dato.
-        indicator.calc_mode = 'plantilla_rh'
+        # Fórmula configurable sin términos devuelve None (57.6.0: el modo
+        # plantilla_rh se retiró, B-010); reproceso ya se mide desde Odoo
+        # (P-21) y en una copia de producción trae dato.
+        indicator.calc_mode = 'configurable'
         measure.action_recompute_value()
         self.assertEqual(measure.state, 'sin_dato')
 
@@ -162,6 +162,9 @@ class TestOlaCertificable(TransactionCase):
     # ------------------------------------------------------------------
     def test_moc_gate(self):
         category = self.env.ref('quimibond_sgi.sgi_approval_category_moc')
+        # D-15 (57.7.0): la categoría MOC sale archivada; el candado se
+        # sigue probando por si se reactiva.
+        category.active = True
         request = self.env['approval.request'].create({
             'name': 'Cambio de layout tejido', 'category_id': category.id,
             'request_owner_id': self.manager.id})
