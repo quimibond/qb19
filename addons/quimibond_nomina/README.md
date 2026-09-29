@@ -192,6 +192,133 @@ corrige en Nómina → Configuración → Conceptos CFDI, en español.
 con `lang='es_MX'`; el resultado va al diccionario del CFDI de ese recibo y
 nada más. `l10n.mx.concept` lo usa todo el CFDI mexicano y no se toca.
 
+### 7. Horas sencillas: el divisor de días (regla `H_SENC`, id 465)
+
+La regla `H_SENC` calculaba el valor de la hora con
+`payslip.l10n_mx_daily_salary / 8`, o sea sueldo ÷ 15 en la quincenal. NOI
+divide entre 15.2083 (= 365/24), que es el mismo divisor que ya usan
+`DIAS_IMSS`, `HE_EXEMPT` y `HE_TAX` (`payslip.l10n_mx_days_of_year / 24.0`).
+Cada hora sencilla salía 1.3887 % arriba de NOI; en la quincena 18 de Toluca
+las 18 personas con diferencia de gravable mayor a 5 pesos eran exactamente
+las 18 con horas sencillas, y la diferencia era, al centavo,
+`horas_sencillas × (15.2083 / 15 − 1)`.
+
+**Arreglo (2026-09-29, en la base, no en código):** la fórmula de `H_SENC`
+toma ahora `dias_periodo`, `sd` y `vh` con las mismas líneas que `HE_TAX`;
+no hay constante nueva. Verificado recalculando la corrida 122 (quincena 18
+Toluca): Luis Oswaldo Hernández Castelar (273) pasa de 9,983.08 a 9,952.01 y
+José Antonio Flores Vázquez (88) de 9,414.84 a 9,392.88 (NOI: 9,952.00 y
+9,392.87). Quien sólo tiene horas extra dobles no se mueve. La regla quedó
+vigilada por el centinela.
+
+```python
+if payslip.version_id.schedule_pay == 'bi-weekly':
+    dias_periodo = payslip.l10n_mx_days_of_year / 24.0
+elif payslip.version_id.schedule_pay == 'weekly':
+    dias_periodo = 7.0
+else:
+    dias_periodo = payslip._rule_parameter('l10n_mx_schedule_table')[payslip.version_id.schedule_pay]
+sd = payslip.version_id._get_contract_wage() / dias_periodo
+vh = sd / 8
+horas = sum(l.amount for l in payslip.input_line_ids if l.input_type_id.code == 'H_SENCILLA')
+result = horas * vh
+```
+
+### 8. ISR sobre el acumulado del mes (`models/isr_mensual.py`)
+
+**La regla real.** NOI no calcula el ISR de cada periodo por separado:
+calcula el ISR del mes calendario completo sobre el gravable acumulado del
+mes (con el subsidio al empleo mensual dentro del mismo cálculo) y en la
+última nómina del mes retiene la diferencia contra lo ya retenido en los
+periodos anteriores del mismo mes. Semanal: el ajuste cae en la última semana
+del mes (septiembre 2026 → semana 40); quincenal: en la quincena par
+(→ quincena 19). Odoo calculaba cada periodo con la tarifa del periodo: bien
+el primero del mes (dentro de 4 centavos), mal el último.
+
+**Evidencia** (reportes de NOI, quincenas 18 y 19 de Toluca, 50 personas):
+`tarifa_mensual(grav18 + grav19) − subsidio_mes − ISR18` reproduce el ISR de
+la quincena 19 con residuo máximo de 1 centavo en las 50; tres personas con
+el mismo gravable mensual (14,356.54) pagan el mismo ISR mensual al centavo
+(1,293.04). Cuando las quincenas son parejas el efecto es de centavos; cuando
+no: Jessica Francisco (Q18 29,975 / Q19 9,758) NOI 834.11 vs Odoo 1,139.53.
+
+**Cómo está hecho.** El módulo aporta `hr.payslip._qb_isr_mensual(gross)`,
+que devuelve `None` cuando no toca ajustar y, si toca, el `isr` y el
+`subsidio` del periodo. Las reglas `ISR` (id 514) y `SUBSIDY` (id 42) de
+«Paga regular» lo llaman (ver las fórmulas abajo; se editan en la base y las
+vigila el centinela):
+
+| Decisión | Cómo quedó |
+|---|---|
+| Última nómina del mes | Quincenal: `date_to` es el último día del mes. Semanal: `date_to + 7 días` cae en otro mes (una semana pertenece al mes de su `date_to`; la 41, 28-sep a 4-oct, es de octubre). Mensual: siempre. Otra periodicidad: no se ajusta |
+| Acumulado | Recibos del mismo empleado, misma estructura, misma compañía, sin nota de crédito, `date_to` en el mismo mes y anterior, en estado **validado o pagado**. Gravable = líneas `GROSS`; retenido = líneas `ISR` + `ISR_ADJUSTMENT`; subsidio aplicado = líneas `SUBSIDY` |
+| Un periodo previo en borrador | **No se ajusta**: el periodo se calcula como hoy y queda en el log. Ajustar contra un acumulado incompleto es peor. Lo mismo si el contrato empezó antes del mes y no hay ningún recibo previo |
+| Corridas piloto (viven en borrador) | Parámetro `quimibond_nomina.isr_mensual_incluye_borrador = 1`: cuenta los borradores y, con dos recibos del mismo periodo, toma el más reciente (aviso en el log). Quitarlo antes de la nómina real |
+| Tarifa mensual y subsidio | Parámetros de la localización, nada a mano: `l10n_mx_isr_tables['monthly']`, `l10n_mx_subsidy_salary_limit`, `l10n_mx_uma['monthly']` × `l10n_mx_uma_percentage_for_subsidy` (2026: 3,566.22 × 15.02 % = 535.65, límite 11,492.66). El subsidio del mes nunca excede el ISR del mes |
+| Signo | `isr` y `subsidio` del periodo pueden salir negativos: ISR negativo = devolución (la «compensación de ISR» de NOI); subsidio negativo = se recupera el aplicado en un periodo anterior cuando el mes completo rebasa el límite |
+| `ISR_ADJUSTMENT` (entrada manual, tipo 10) | Sigue igual y **se suma** al ISR del periodo; el ajuste automático no la sustituye. En periodos anteriores cuenta como retenido. No hace falta capturarla para cuadrar el mes |
+| Salario mínimo | El bloque de la regla `ISR` que deja el ISR en cero (`result_qty = 0`) no cambia, y `SUBSIDY` respeta esa cantidad cero |
+
+```
+isr_del_periodo      = tarifa_mensual(gravable_mes) − Σ ISR ya retenido en el mes
+subsidio_del_periodo = min(subsidio_mes, tarifa_mensual) − Σ subsidio ya aplicado
+```
+
+**Verificado** (simulación con las reglas de producción y los reportes de
+NOI, 2026-09-29): con el defecto 1 corregido, la corrida 121 (quincena 19
+Toluca) queda dentro de 2 pesos de NOI en 41 de 48 recibos; los 7 restantes
+tienen el gravable distinto a NOI por datos (horas extra o percepciones no
+capturadas: 499, 276, 275, 471, 99, 498, 270), no por el cálculo. Jessica
+Francisco (244): 6,622.08 vs 6,623.82 (la diferencia es el crédito
+INFONAVIT ya documentado); 345: 6,104.34 vs 6,104.38; 11: 11,908.72 vs
+11,908.78; 464: 9,707.31 vs 9,707.35.
+
+Fórmula de `ISR` (id 514) desde 19.0.1.7.0 — sólo cambia el bloque marcado:
+
+```python
+def find_rates(x, rates):
+    for low, high, fix, rate in rates:
+        if low <= x <= high:
+            return low, high, fix, rate
+periodicidad = payslip.version_id.schedule_pay or version.schedule_pay
+if periodicidad == 'bi-weekly':
+    dias_periodo = payslip.l10n_mx_days_of_year / 24.0
+elif periodicidad == 'weekly':
+    dias_periodo = 7.0
+else:
+    dias_periodo = payslip._rule_parameter('l10n_mx_schedule_table')[periodicidad]
+gross = categories['GROSS']
+result = 0
+if gross:
+    # Última nómina del mes: tarifa mensual sobre el acumulado menos lo ya retenido
+    # (quimibond_nomina, models/isr_mensual.py). None = periodo normal.
+    mes = payslip._qb_isr_mensual(gross)
+    if mes is not None:
+        result = -mes['isr']
+    else:
+        tablas = payslip._rule_parameter('l10n_mx_isr_tables')
+        low, high, fix, rate = find_rates(gross / dias_periodo, tablas['daily'])
+        result = -(((gross / dias_periodo - low) * rate + fix) * dias_periodo)
+daily_min_wage = payslip._rule_parameter('l10n_mx_daily_min_wage')
+if payslip.l10n_mx_daily_salary > daily_min_wage:
+    min_wage = 0
+else:
+    min_wage = daily_min_wage * dias_periodo
+if gross <= min_wage:
+    result_qty = 0.0
+```
+
+Condición de `SUBSIDY` (id 42); el importe sigue siendo `result = subsidy_accumulated`:
+
+```python
+subsidy_accumulated = result_rules['SUBSIDY_CURRENT_MONTH']['total'] + result_rules['SUBSIDY_NEXT_MONTH']['total']
+# Última nómina del mes: subsidio mensual menos el ya aplicado (quimibond_nomina).
+mes = payslip._qb_isr_mensual(categories['GROSS'])
+if mes is not None:
+    subsidy_accumulated = mes['subsidio'] if result_rules['ISR']['quantity'] else 0.0
+result = bool(subsidy_accumulated)
+```
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -205,7 +332,12 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Tipo de entrada `HE_DIAS` (`hr.payslip.input.type`) | al instalar; en cada actualización se liga a la estructura `MX_REGULAR` (`struct_ids`) | registro propio del módulo (`noupdate`) |
 | Vista QWeb `cfdiv40_nomina_quimibond` y vista `cfdiv40_nomina_horas_extra` (herencias de la plantilla del CFDI) | al instalar; la segunda reescribe su propio `arch`/`active` en cada actualización | registros propios del módulo; la plantilla de Odoo no se modifica |
 | Vistas del empleado, plantilla de contrato y del centinela; menú del centinela (se cuelga de Nómina → Configuración en cada actualización) | al instalar | registros propios del módulo |
+| Parámetro `quimibond_nomina.isr_mensual_incluye_borrador` | nunca lo escribe; sólo lo lee | lo pone a mano quien corre las pilotos |
 | Fila de `hr.payslip.line`, `hr.payslip`, `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner` | nunca | — |
+
+Las reglas `H_SENC`, `ISR` y `SUBSIDY` de «Paga regular» **se editaron en la
+base** (2026-09-29), no las escribe el módulo: las fórmulas vigentes están en
+las secciones 7 y 8 y el centinela avisa si cambian.
 
 Desinstalar el módulo borra lo propio (modelo, vistas, cron, tipo de entrada,
 campo) y no deja nada cambiado en registros de Odoo.
@@ -265,9 +397,12 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
    'rpartition'` y validado sin pagar con `... 'isoformat'`. Un recibo sin horas extra no
    cambia en nada. Un recibo quincenal con horas extra emite `Dias="6"`. Los
    conceptos salen en español aunque el shell esté en `en_US`.
-6. **La nómina no se movió.** Recalcular la corrida 117 (semana 38, 87
-   recibos) y confirmar que el neto sigue en 302,757.31. El módulo no toca el
-   cálculo, sólo el CFDI.
+6. **El cálculo.** Con el parámetro `quimibond_nomina.isr_mensual_incluye_borrador = 1`
+   y las corridas 122 (quincena 18) y 121 (quincena 19) recalculadas en ese
+   orden, la 121 debe quedar dentro de 2 pesos de NOI salvo los 7 casos de
+   datos de la sección 8: 244 → 6,622.08; 345 → 6,104.34; 11 → 11,908.72;
+   464 → 9,707.31. La corrida 117 (semana 38) no es última del mes y no se
+   mueve: neto 302,757.31.
 7. **Tests** (no corren en el CI porque dependen de Enterprise):
    `odoo-bin ... --test-tags /quimibond_nomina --stop-after-init`.
 
