@@ -27,7 +27,16 @@ class TestSignElearning(TransactionCase):
             'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento',
             'sgi_code': 'P-G99',
+            # Vigente: los acuses se mandan a firmar sobre la revisión vigente
+            # y un controlado vigente lo lee cualquier usuario interno
+            # (_sgi_share_controlled, 56.7.0). En Odoo 19 Documentos da el
+            # acceso por documento: en la corrida real (build 38916808) el
+            # Jefe MAST de la prueba no leía el borrador ajeno sin carpeta, así
+            # que tampoco habría podido abrirlo para apretar el botón.
+            'sgi_state': 'vigente',
         })
+        if 'access_internal' in doc._fields:
+            self.assertEqual(doc.access_internal, 'view')
         # Lo llama el Jefe MAST (candado del método, 56.28.0): el env de la
         # prueba es OdooBot, que no está en el grupo.
         mast = new_test_user(self.env, login='zs_sign_mast',
