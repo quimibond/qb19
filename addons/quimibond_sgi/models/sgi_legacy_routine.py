@@ -230,6 +230,18 @@ class SgiLegacyRoutine(models.Model):
                         routine.procedure_code, process.display_name))
 
     # ------------------------------------------------------------------
+    @api.model
+    def _sgi_default_decision_deadline(self):
+        """Fecha límite para decidir una rutina pendiente (decisión de Jose,
+        2026-09-29: 16 de octubre de 2026). Parámetro
+        ``quimibond_sgi.legacy_decision_deadline`` (AAAA-MM-DD)."""
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.legacy_decision_deadline', '2026-10-16')
+        try:
+            return fields.Date.to_date(value)
+        except (TypeError, ValueError):
+            return fields.Date.to_date('2026-10-16')
+
     @api.model_create_multi
     def create(self, vals_list):
         today = fields.Date.context_today(self)
@@ -237,6 +249,8 @@ class SgiLegacyRoutine(models.Model):
             if vals.get('state', 'pendiente') != 'pendiente':
                 vals.setdefault('resolved_date', today)
                 vals.setdefault('resolved_uid', self.env.uid)
+            elif not vals.get('decision_deadline'):
+                vals['decision_deadline'] = self._sgi_default_decision_deadline()
         return super().create(vals_list)
 
     def write(self, vals):
@@ -250,6 +264,13 @@ class SgiLegacyRoutine(models.Model):
             return res
         if vals.get('state') == 'pendiente':
             vals = dict(vals, resolved_date=False, resolved_uid=False)
+            if 'decision_deadline' not in vals:
+                without = self.filtered(lambda r: not r.decision_deadline)
+                res = super().write(vals)
+                if without:
+                    super(SgiLegacyRoutine, without).write(
+                        {'decision_deadline': self._sgi_default_decision_deadline()})
+                return res
         return super().write(vals)
 
     def unlink(self):

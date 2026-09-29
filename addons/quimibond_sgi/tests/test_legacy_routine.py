@@ -104,6 +104,23 @@ class TestLegacyRoutine(TransactionCase):
         self.assertTrue(pending.resolved_date)
         self.proc_b.write({'sgi_replaced_by_process_id': self.other.id})
 
+    def test_l2b_pendiente_con_fecha_limite(self):
+        """Decisión de Jose (2026-09-29): toda pendiente nace con fecha límite
+        del 16 de octubre de 2026 (parámetro), salvo que traiga la suya."""
+        from datetime import date
+        pending = self.Routine.create({'procedure_id': self.proc_b.id, 'n': 11, 'name': 'Pendiente',
+                                       'state': 'pendiente', 'reason': 'Sin dueño'})
+        self.assertEqual(pending.decision_deadline, date(2026, 10, 16))
+        own = self.Routine.create({'procedure_id': self.proc_b.id, 'n': 12, 'name': 'Con fecha',
+                                   'state': 'pendiente', 'reason': 'Sin dueño',
+                                   'decision_deadline': '2026-10-02'})
+        self.assertEqual(own.decision_deadline, date(2026, 10, 2))
+        self.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.legacy_decision_deadline', '2026-11-30')
+        other = self.Routine.create({'procedure_id': self.proc_b.id, 'n': 13, 'name': 'Otra',
+                                     'state': 'pendiente', 'reason': 'Sin dueño'})
+        self.assertEqual(other.decision_deadline, date(2026, 11, 30))
+
     # P-L3
     def test_l3_prueba_carga_idempotente_y_archiva(self):
         rows = [self._row('P-V71', 1), self._row('P-V71', 2, 'reemplazada', '', 'Lo hace Odoo solo')]
