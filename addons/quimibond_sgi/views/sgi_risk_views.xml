@@ -255,7 +255,7 @@
     <record id="sgi_risk_action" model="ir.actions.act_window">
         <field name="name">Riesgos y oportunidades</field>
         <field name="res_model">sgi.risk</field>
-        <field name="view_mode">kanban,list,pivot,form,activity</field>
+        <field name="view_mode">list,kanban,sgi_diagram,pivot,form,activity</field>
         <field name="search_view_id" ref="sgi_risk_view_search"/>
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">

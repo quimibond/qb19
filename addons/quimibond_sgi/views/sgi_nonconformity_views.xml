@@ -234,7 +234,7 @@
          NC creada desde este menú caía en las etapas nativas de Calidad
          («Nuevo»), fuera de los candados — pasó con 10 NCs en producción. -->
     <record id="sgi_nc_board_action" model="ir.actions.server">
-        <field name="name">No Conformidades</field>
+        <field name="name">No conformidades</field>
         <field name="model_id" ref="quality_control.model_quality_alert"/>
         <field name="state">code</field>
         <field name="code">
@@ -244,10 +244,11 @@ teams = [t.id for t in (team_int, team_ext) if t]
 search_view = env.ref('quimibond_sgi.sgi_nc_view_search', raise_if_not_found=False)
 action = {
     'type': 'ir.actions.act_window',
-    'name': 'No Conformidades',
+    'name': 'No conformidades',
     'res_model': 'quality.alert',
     'view_mode': 'kanban,list,sgi_diagram,form,activity',
-    'domain': [('team_id', 'in', teams)] if teams else [],
+    # E-012: sin los equipos del SGI no se abre TODO Calidad: lista vacía.
+    'domain': [('team_id', 'in', teams)] if teams else [('id', '=', False)],
     'context': {
         'default_team_id': team_int.id if team_int else False,
         'default_sgi_origin_type': 'proceso',

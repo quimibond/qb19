@@ -217,7 +217,7 @@ class SgiActivityChange(models.Model):
     def unlink(self):
         self._sgi_check_editable()
         return super().unlink()
-    process_id = fields.Many2one('sgi.process', string="Proceso")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
     allowed_process_ids = fields.Many2many(
         'sgi.process', 'sgi_activity_change_allowed_process_rel', 'change_id', 'process_id',
         string="Procesos del puesto")
@@ -232,13 +232,13 @@ class SgiActivityChange(models.Model):
     description = fields.Text(string="Descripción")
     how_steps = fields.Text(string="Cómo (pasos)")
     instruction_id = fields.Many2one(
-        'documents.document', string="Instructivo", domain=[('sgi_doc_type', '=', 'instructivo')])
+        'documents.document', string="Instructivo", domain=[('sgi_doc_type_id.code', '=', 'instructivo')])
     format_document_ids = fields.Many2many(
         'documents.document', 'sgi_activity_change_format_rel', 'change_id', 'document_id',
         string="Formatos referenciados", domain=[('sgi_is_controlled', '=', True)])
     related_procedure_id = fields.Many2one(
         'documents.document', string="Procedimiento relacionado",
-        domain=[('sgi_doc_type', '=', 'procedimiento')])
+        domain=[('sgi_doc_type_id.code', '=', 'procedimiento')])
     measure_cadence = fields.Selection(_activity_selection('measure_cadence'), string="Cadencia esperada")
     due_weekday = fields.Selection(_activity_selection('due_weekday'), string="Vence el (semanal)")
     due_business_day = fields.Integer(string="Vence el día hábil (mensual)")

@@ -46,7 +46,7 @@
     </record>
 
     <record id="sgi_norm_action" model="ir.actions.act_window">
-        <field name="name">Normas ISO</field>
+        <field name="name">Normas</field>
         <field name="res_model">sgi.norm</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">

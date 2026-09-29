@@ -302,8 +302,8 @@
                         <page string="Documentos" name="documentos">
                             <field name="document_ids" nolabel="1" readonly="1">
                                 <list create="0" delete="0">
-                                    <field name="sgi_code" string="Clave"/>
-                                    <field name="name"/>
+                                    <field name="sgi_title" string="Documento"/>
+                                    <field name="sgi_code" string="Clave" optional="show"/>
                                     <field name="sgi_doc_type" string="Tipo"/>
                                     <field name="sgi_revision_label" string="Rev."/>
                                     <button name="action_sgi_view_file" type="object" string="Ver archivo"

@@ -99,7 +99,7 @@
     </record>
 
     <record id="sgi_direction_board_action_open" model="ir.actions.server">
-        <field name="name">Tablero de dirección</field>
+        <field name="name">Tablero</field>
         <field name="model_id" ref="quimibond_sgi.model_sgi_direction_board"/>
         <field name="state">code</field>
         <field name="code">action = env['sgi.direction.board'].action_open()</field>

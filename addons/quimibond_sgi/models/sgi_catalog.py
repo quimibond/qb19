@@ -676,6 +676,18 @@ class SgiDocumentType(models.Model):
                 return True
         return self._sgi_legacy_match(code)
 
+    def _sgi_new_code_ok(self, code, process=None):
+        """¿La clave cumple la nomenclatura NUEVA del tipo (D-02)? A
+        diferencia de ``_sgi_code_ok``, la clave heredada del Dropbox no
+        cuenta: ``PR-C1`` es clave nueva de procedimiento, ``P-C01`` no (J-006)."""
+        self.ensure_one()
+        code = (code or '').strip()
+        if not code or not self.prefix_pattern:
+            return False
+        if '{process}' in self.prefix_pattern and not process:
+            return False
+        return bool(self._sgi_pattern_regex(process.code if process else None).match(code))
+
     @api.model
     def _sgi_any_match(self, code):
         """¿Alguna nomenclatura activa (nueva o heredada) acepta la clave?"""

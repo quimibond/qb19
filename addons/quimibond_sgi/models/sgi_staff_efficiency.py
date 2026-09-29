@@ -12,8 +12,16 @@ Cada fila queda ligada al empleado; nada se calcula en hojas sueltas.
 56.22.0 (C4.25 y S4.35): el jefe o supervisor de área (grupo «Captura de
 eficiencias») abre y captura solo la hoja de su departamento, la cierra y RH
 la recibe: al cerrar, el Coordinador de RH recibe una actividad y con
-«Recibir» queda como «Recibió». Los salarios e importes solo los ven RH y
-el Jefe MAST; el jefe de área captura porcentajes.
+«Recibir» queda como «Recibió».
+
+Entrega 4 (decisión de Jose, 2026-09-29): los salarios e importes (salario
+diario, mensual, «A pagar» e importe total) solo los ve el grupo propio
+«Salarios de eficiencias (SGI)» (quimibond_sgi.group_sgi_salary). No es el
+de Nómina (hr_payroll.group_hr_payroll_user), que en producción incluye a
+usuarios que no deben ver salarios. Miembros iniciales por la migración
+19.0.56.29.0 (Lorena, Miguel y Jose). NO los ven el Jefe MAST, Dirección,
+Captura de eficiencias, RH en general ni los supervisores: ellos ven la
+eficiencia sin el importe.
 """
 
 from dateutil.relativedelta import relativedelta
@@ -22,8 +30,10 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 MAX_ATTENDANCE, MAX_HOUSEKEEPING, MAX_EFFICIENCY, MAX_QUALITY = 5.5, 2.0, 2.0, 2.0
-# Salarios e importes: solo RH y el Jefe MAST (el jefe de área captura %).
-_MONEY_GROUPS = 'hr.group_hr_user,quimibond_sgi.group_sgi_manager'
+# Salarios e importes: solo el grupo propio (entrega 4). Ni Nómina, ni MAST,
+# ni RH en general (hr.group_hr_user tiene 20 usuarios y se va a depurar), ni
+# el jefe de área.
+_MONEY_GROUPS = 'quimibond_sgi.group_sgi_salary'
 _RECEIVE_SUMMARY = "Recibir eficiencias"
 
 
@@ -159,15 +169,15 @@ class SgiStaffEfficiency(models.Model):
         return True
 
     def sgi_show_money(self):
-        """El PDF lleva salarios e importes solo para RH y el Jefe MAST."""
-        user = self.env.user
-        return user.has_group('hr.group_hr_user') or user.has_group('quimibond_sgi.group_sgi_manager')
+        """El PDF lleva salarios e importes solo para «Salarios de eficiencias» (entrega 4)."""
+        return self.env.user.has_group(_MONEY_GROUPS)
 
     def sgi_format_info(self):
         self.ensure_one()
-        code = 'F-P-A01-34' if self.department_id else 'F-P-A01-32'
-        revision = self.env['sgi.format.map'].sudo()._revision_of(code)
-        return "%s · Rev. %s" % (code, revision) if revision else code
+        # C-006: el formato sale del documento ligado al mapeo, no de su clave.
+        ref = 'format_ref_staff_efficiency_area' if self.department_id \
+            else 'format_ref_staff_efficiency'
+        return self.env['sgi.format.map'].sudo().sgi_ref_label(ref)
 
 
 class SgiStaffEfficiencyLine(models.Model):
@@ -223,7 +233,7 @@ class SgiStaffEfficiencyLine(models.Model):
 
     @api.depends('wage_daily', 'total_pct')
     def _compute_amounts(self):
-        # Aparte de total_pct (56.22.0): amount lleva grupos (RH y MAST) y
+        # Aparte de total_pct (56.22.0): amount lleva grupos (Salarios) y
         # total_pct lo ve también el jefe de área.
         for line in self:
             line.amount = (line.wage_daily or 0.0) * 30.0 * line.total_pct / 100.0

@@ -446,16 +446,25 @@ class _SgiLoader:
             vals['state'] = proc['state']
         if proc.get('publish'):
             self.publish.append(code)
+        replaced = None
         if 'replaced_documents' in proc:
-            docs = []
+            # C-001 (56.31.0): la sustitución vive en el DOCUMENTO
+            # (sgi_replaced_by_process_id). La carga la escribe ahí, nunca en
+            # el proceso, y no le quita en silencio un procedimiento a otro
+            # proceso (P-T4).
+            replaced = self.Doc.browse()
             for doc_code in proc['replaced_documents'] or []:
                 doc = self.Doc._sgi_find_by_code(doc_code, states=None)
-                if doc:
-                    docs.append(doc.id)
-                else:
+                if not doc:
                     self.report.warn('process', code,
                                      "Documento sustituido %s no encontrado." % doc_code)
-            vals['replaced_document_ids'] = docs
+                    continue
+                other = doc.sgi_replaced_by_process_id
+                if other and other != process:
+                    raise ValidationError(
+                        "El procedimiento %s ya lo sustituye el proceso %s; quítalo "
+                        "primero de su ficha." % (doc_code, other.code))
+                replaced |= doc
         if process:
             if not process.active:
                 vals['active'] = True
@@ -466,11 +475,28 @@ class _SgiLoader:
         else:
             if not vals.get('name'):
                 raise ValidationError("El proceso nuevo %s necesita «name»." % code)
-            vals['replaced_document_ids'] = [Command.set(vals.get('replaced_document_ids') or [])]
             process = self.Process.create(dict(vals, code=code, company_id=self.company.id))
             self.report.change('process', code, 'created')
+        if replaced is not None:
+            self._set_replaced_documents(process, replaced)
         self.processes[code] = process
         return process
+
+    def _set_replaced_documents(self, process, replaced):
+        """Escribe la sustitución en los documentos: los de la lista apuntan al
+        proceso y los que salieron de ella quedan vacíos (no se borran:
+        restrict, C-014). Solo escribe lo que cambia."""
+        current = self.Doc.search([('sgi_replaced_by_process_id', '=', process.id)])
+        added = replaced - current
+        removed = current - replaced
+        if added:
+            added.write({'sgi_replaced_by_process_id': process.id})
+        if removed:
+            removed.write({'sgi_replaced_by_process_id': False})
+        if added or removed:
+            self.report.change('process', process.code, 'replaced_documents',
+                               ['+%s' % (d.sgi_code or d.id) for d in added]
+                               + ['-%s' % (d.sgi_code or d.id) for d in removed])
 
     def _load_activities(self, process, items, archive_missing):
         seen = set()

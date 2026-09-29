@@ -18,6 +18,9 @@ from . import test_kpi_fase4
 from . import test_retro_vinculacion
 from . import test_process_map_46
 from . import test_sgi_format_map
+from . import test_format_map_documento
+from . import test_replaced_by_process
+from . import test_clave_anterior
 from . import test_flows_48
 from . import test_ola0
 from . import test_ola1
@@ -91,3 +94,7 @@ from . import test_security_entrega1
 from . import test_entrega1b
 from . import test_approval_rule_archive
 from . import test_entrega1c
+from . import test_integridad
+from . import test_multicompany
+from . import test_menu_tree
+from . import test_entrega4

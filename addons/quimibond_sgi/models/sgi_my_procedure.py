@@ -37,6 +37,7 @@ from odoo.exceptions import UserError
 from .sgi_catalog import SGI_ROLE_SELECTION, sgi_normalize_name
 
 from .sgi_guard import sgi_require_system
+from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -699,8 +700,9 @@ class SgiCronMyProcedure(models.AbstractModel):
             return True
         summary = "Mi procedimiento: %d puesto(s) por publicar" % len(stale)
         note = "Puestos con personas cuya revisión no existe o ya no coincide con sus " \
-               "actividades: %s. Publícalos desde SGI → Inicio → Mi procedimiento " \
-               "(«Publicar todos los puestos»)." % ", ".join(stale.mapped('name'))
+               "actividades: %s. Publícalos desde %s " \
+               "(«Publicar todos los puestos»)." % (", ".join(stale.mapped('name')),
+                                                  sgi_menu_path('publicar_mi_procedimiento'))
         # La actividad cuelga de la revisión vigente del primer puesto
         # desactualizado (ahí va a trabajar MAST); si ninguno tiene revisión,
         # de la más reciente publicada.
@@ -711,7 +713,7 @@ class SgiCronMyProcedure(models.AbstractModel):
                 break
         if not anchor:
             anchor = self.env['documents.document'].sudo().search(
-                [('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
+                [('sgi_doc_type_id.code', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
                 order='sgi_issue_date desc, id desc', limit=1)
         if anchor:
             self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id())

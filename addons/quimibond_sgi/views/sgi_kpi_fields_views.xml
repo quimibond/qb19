@@ -49,7 +49,7 @@
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='price_subtotal']" position="after">
-                <field name="sgi_po_price_diff" optional="hide"/>
+                <field name="sgi_po_price_diff" optional="hide" groups="account.group_account_readonly"/>
             </xpath>
             <xpath expr="//field[@name='invoice_date_due']" position="after">
                 <field name="sgi_payment_date" invisible="not sgi_payment_date"/>
@@ -116,8 +116,4 @@
             <p>El cron mensual de indicadores guarda el valor de las existencias en ubicaciones internas (mismo cálculo de AL-01) para compararlo contra las cuentas 115 (S3-04).</p></field>
     </record>
 
-    <menuitem id="menu_sgi_lock_date_log" name="Bitácora de bloqueo contable" parent="account.menu_finance_reports"
-              action="sgi_lock_date_log_action" sequence="90"/>
-    <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes" parent="account.menu_finance_reports"
-              action="sgi_inventory_value_action" sequence="91"/>
 </odoo>

@@ -117,6 +117,10 @@ class SgiCronHealth(models.AbstractModel):
         return res
 
 
+_CSH_FINDING_GROUPS = ('quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_manager,'
+                       'quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_auditor')
+
+
 class SgiCshInspection(models.Model):
     _name = 'sgi.csh.inspection'
     _description = "Recorrido de la Comisión de Seguridad e Higiene"
@@ -131,7 +135,10 @@ class SgiCshInspection(models.Model):
     participant_ids = fields.Many2many('hr.employee', string="Integrantes de la Comisión")
     notes = fields.Text(string="Acta / observaciones generales")
     attachment_ids = fields.Many2many('ir.attachment', string="Acta firmada (PDF) y fotos")
-    finding_ids = fields.One2many('sgi.csh.finding', 'inspection_id', string="Hallazgos")
+    # Entrega 4: los hallazgos pueden nombrar personas; los leen la Comisión de
+    # Seguridad e Higiene, el Jefe MAST, Salud ocupacional y el Auditor.
+    finding_ids = fields.One2many('sgi.csh.finding', 'inspection_id', string="Hallazgos",
+                                  groups=_CSH_FINDING_GROUPS)
     finding_count = fields.Integer(compute='_compute_counts', string="Número de hallazgos")
     nc_count = fields.Integer(compute='_compute_counts', string="NC")
     state = fields.Selection([
@@ -142,9 +149,11 @@ class SgiCshInspection(models.Model):
 
     @api.depends('finding_ids.alert_id')
     def _compute_counts(self):
+        # sudo: el conteo lo ve cualquiera; el detalle, solo _CSH_FINDING_GROUPS.
         for rec in self:
-            rec.finding_count = len(rec.finding_ids)
-            rec.nc_count = len(rec.finding_ids.alert_id)
+            findings = rec.sudo().finding_ids
+            rec.finding_count = len(findings)
+            rec.nc_count = len(findings.alert_id)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -155,6 +164,12 @@ class SgiCshInspection(models.Model):
         return super().create(vals_list)
 
     def action_close(self):
+        # D-009 (entrega 4): cierra el recorrido quien ve sus hallazgos.
+        if not self.env.su and not any(self.env.user.has_group(group)
+                                       for group in _CSH_FINDING_GROUPS.split(',')
+                                       if group != 'quimibond_sgi.group_sgi_auditor'):
+            raise UserError("Solo la Comisión de Seguridad e Higiene, Salud ocupacional o el "
+                            "Jefe MAST cierran un recorrido.")
         for rec in self:
             pending = rec.finding_ids.filtered(lambda f: not f.disposition or (
                 f.disposition == 'nc' and not f.alert_id) or (
@@ -173,7 +188,7 @@ class SgiCshInspection(models.Model):
         self.ensure_one()
         return {'type': 'ir.actions.act_window', 'name': "NC del recorrido %s" % self.name,
                 'res_model': 'quality.alert', 'view_mode': 'list,form',
-                'domain': [('id', 'in', self.finding_ids.alert_id.ids)]}
+                'domain': [('id', 'in', self.sudo().finding_ids.alert_id.ids)]}
 
 
 class SgiCshFinding(models.Model):

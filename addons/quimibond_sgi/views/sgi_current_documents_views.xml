@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inicio → Documentos vigentes (I-015 / D-21, entrega 4): título y
+         revisión de los documentos controlados vigentes, sin la clave del
+         Dropbox (decisión 11 de la tanda 2), y el acuse de lectura pendiente
+         del usuario en el mismo renglón. Solo lectura. -->
+    <record id="sgi_current_document_view_list" model="ir.ui.view">
+        <field name="name">documents.document.list.sgi.current</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Documentos vigentes" create="0" edit="0" delete="0"
+                  decoration-warning="sgi_my_ack_state == 'pendiente'">
+                <field name="name" string="Documento"/>
+                <field name="sgi_revision_label" string="Revisión"/>
+                <field name="sgi_my_ack_state" widget="badge"
+                       decoration-warning="sgi_my_ack_state == 'pendiente'"
+                       decoration-success="sgi_my_ack_state == 'leido'"/>
+                <button name="action_sgi_view_file" type="object" string="Ver"
+                        icon="fa-eye" title="Abrir el documento"/>
+                <button name="action_sgi_mark_my_ack_read" type="object" string="Leído y entendido"
+                        icon="fa-check" invisible="sgi_my_ack_state != 'pendiente'"
+                        confirm="Confirmas que leíste y entendiste este documento. Tu acuse queda registrado con la fecha de hoy."/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_current_document_view_search" model="ir.ui.view">
+        <field name="name">documents.document.search.sgi.current</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Documentos vigentes">
+                <field name="name" string="Documento"/>
+                <filter name="my_pending_acks" string="Mis acuses pendientes"
+                        domain="[('sgi_my_ack_state', '=', 'pendiente')]"/>
+                <filter name="my_acks" string="Los que me tocan"
+                        domain="[('sgi_my_ack_state', '!=', 'no_aplica')]"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'sgi_process_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_current_document_action" model="ir.actions.act_window">
+        <field name="name">Documentos vigentes</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">list</field>
+        <field name="domain">[('sgi_is_controlled', '=', True), ('sgi_state', '=', 'vigente')]</field>
+        <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
+        <field name="view_id" ref="sgi_current_document_view_list"/>
+        <field name="search_view_id" ref="sgi_current_document_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin documentos vigentes</p>
+            <p>Los documentos controlados vigentes del SGI con su revisión. «Ver» abre el archivo; si te toca
+            firmar la lectura, el renglón dice «Por leer» y el botón «Leído y entendido» deja tu acuse.</p>
+        </field>
+    </record>
+</odoo>

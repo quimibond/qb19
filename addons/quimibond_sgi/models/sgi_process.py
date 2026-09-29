@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
 
 from .sgi_risk import SGI_HIGH_ATTENTION
+
+_logger = logging.getLogger(__name__)
 
 
 class SgiProcess(models.Model):
@@ -49,12 +53,18 @@ class SgiProcess(models.Model):
         help="Qué marca el fin del proceso (ej. la factura queda cobrada).")
     inputs = fields.Text(string="Entradas")
     outputs = fields.Text(string="Salidas")
-    replaced_document_ids = fields.Many2many(
-        'documents.document', 'sgi_process_replaced_doc_rel', 'process_id',
-        'document_id', string="Procedimientos que sustituye",
-        help="Documentos vigentes que este proceso reemplaza. Al poner en "
-             "vigor el procedimiento del proceso se ofrece marcarlos "
-             "obsoletos.")
+    # C-001 (19.0.56.31.0, decisión 3 de Jose): el DOCUMENTO manda
+    # (documents.document.sgi_replaced_by_process_id, ondelete restrict); aquí
+    # solo se lee su inverso. La tabla M2M vieja sgi_process_replaced_doc_rel
+    # quedó respaldada en un adjunto JSON por proceso (pre-migrate 56.31.0).
+    replaced_document_ids = fields.One2many(
+        'documents.document', 'sgi_replaced_by_process_id',
+        string="Procedimientos que sustituye", readonly=True,
+        help="Procedimientos del Dropbox que este proceso sustituye. Se captura "
+             "en la ficha de cada procedimiento («Lo sustituye el proceso»). "
+             "Siguen vigentes mientras el proceso esté en borrador o piloto; al "
+             "entrar en vigor el proceso pasan a obsoletos y a «Baja "
+             "tramitada».")
     # PR-1 (53.1.0): quién sustituyó a este proceso al archivarlo por «replaces».
     # Una carga futura mueve al sucesor lo que se quede colgado aquí.
     replaced_by_id = fields.Many2one(
@@ -63,7 +73,8 @@ class SgiProcess(models.Model):
         help="Proceso que tomó el lugar de este al archivarlo. La carga lo "
              "llena con «replaces»; en un proceso archivado sin sucesor se "
              "captura a mano y la siguiente carga mueve al sucesor lo que "
-             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).")
+             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).",
+        ondelete='restrict')
     owner_valid = fields.Boolean(
         string="Dueño válido", compute='_compute_owner_valid',
         help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
@@ -77,7 +88,7 @@ class SgiProcess(models.Model):
         'documents.document', 'sgi_process_id', string="Documentos del proceso")
     procedure_ids = fields.One2many(
         'documents.document', 'sgi_process_id', string="Procedimientos e instructivos",
-        domain=[('sgi_doc_type', 'in', ('procedimiento', 'instructivo')),
+        domain=[('sgi_doc_type_id.code', 'in', ('procedimiento', 'instructivo')),
                 ('sgi_state', '=', 'vigente')])
     indicator_ids = fields.One2many('sgi.indicator', 'process_id', string="Indicadores")
     risk_ids = fields.One2many('sgi.risk', 'process_id', string="Riesgos y oportunidades")
@@ -146,6 +157,43 @@ class SgiProcess(models.Model):
             if not vals.get('doc_vobo_id') and vobo:
                 vals['doc_vobo_id'] = vobo.id
         return super().create(vals_list)
+
+    # --- Punto 5 (45.0.0) + L-005 (56.31.0): al poner vigente el proceso, lo
+    # que sustituye queda obsoleto y con la baja tramitada. Movido desde
+    # sgi_cleanup.py (B-004).
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('state') == 'vigente':
+            self._sgi_obsolete_replaced_documents()
+        return res
+
+    def _sgi_obsolete_replaced_documents(self):
+        """Los procedimientos que sustituye un proceso vigente (los que tienen
+        a este proceso en «Lo sustituye el proceso») pasan a obsoletos, con
+        fecha y motivo, y su migración a «Baja tramitada». Idempotente: solo
+        toca los vigentes, y completa la baja de los ya obsoletos."""
+        for process in self.filtered(lambda p: p.state == 'vigente'):
+            replaced = process.replaced_document_ids
+            docs = replaced.filtered(lambda d: d.sgi_state == 'vigente')
+            reason = "Lo sustituye el proceso %s, que entró en vigor." % process.display_name
+            for doc in docs:
+                doc.sudo().write({'sgi_state': 'obsoleto', 'sgi_obsolete_reason': reason,
+                                  'sgi_migration_state': 'baja'})
+                doc.message_post(body=(
+                    "Obsoleto: lo sustituye el proceso %s, que entró en vigor." % process.display_name))
+            pending = replaced.filtered(
+                lambda d: d.sgi_state == 'obsoleto' and d.sgi_migration_state != 'baja')
+            if pending:
+                pending.sudo().write({'sgi_migration_state': 'baja'})
+            if not docs:
+                continue
+            process.message_post(body=(
+                "Al entrar en vigor quedaron obsoletos, con la baja tramitada, %d "
+                "documento(s) sustituido(s): %s." % (
+                    len(docs), ", ".join(docs.mapped(lambda d: d.sgi_code or d.name)))))
+            _logger.info("SGI: %s vigente → %d documento(s) sustituido(s) obsoleto(s) y en baja.",
+                         process.code, len(docs))
+        return True
 
     @api.constrains('parent_id')
     def _check_parent_recursion(self):
