@@ -149,3 +149,16 @@ Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protecc
 8. **Las 13 contradicciones entre clase y estado:** el importador las detecta en modo de prueba y MAST las corrige antes de la carga real.
 
 **Aprobados:** el diseño de L (`12-transicion.md`), su corrección a C-001 (L-003: no se rellena nada desde el lado del proceso) y la migración de la clave vieja sobre **490 documentos** (L-004).
+
+## 2026-09-29 — Salud ocupacional y flujo de ramas
+
+1. **Grupo «Salud ocupacional (SGI)»:** entra **solo Miguel Medina** (usuario 88, Coordinador de RH). Nadie más: ni Areli ni Dirección.
+   - Se asigna en producción **después** de desplegar la entrega 1, que es la que crea el grupo. Va en «Acciones en producción».
+   - Con esto se resuelve I-014: el usuario 88 es `quimibond_sgi.rh_user_id`, así que los avisos de exámenes le llegan a alguien que sí puede abrirlos.
+2. **Flujo de ramas: `staging` es un paso obligatorio antes de producción.**
+   - Cada entrega sale en su propia rama, con PR hacia **`staging`**, no hacia `main`.
+   - La instalación limpia y las pruebas del SGI corren en el **build de desarrollo de la rama de la entrega**, antes de pasar a `staging`. Para la entrega 1: `test_cleanup_45`, `test_update_respects_mast` y `test_security_entrega1`.
+   - En `staging` se prueba la actualización sobre la copia de producción de Odoo.sh: que el módulo actualice sin errores y que los datos reales sigan bien.
+   - De `staging` a `main` solo con el visto bueno de Jose y con el resultado del build de staging en el PR.
+   - Cambiar el destino de quimibond/qb19#452 a `staging` y ajustar a este flujo el plan de PRs de la consolidación.
+   - **Pendiente de confirmar:** en GitHub no existe una rama `staging` (el 2026-09-29 hay `main`, `quimibond`, `qbtesting`, `qbtesting-anterior-2026-08-26` y `consolti`).
