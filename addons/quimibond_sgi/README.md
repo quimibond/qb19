@@ -1882,6 +1882,35 @@ Ahora es una propuesta **estructurada** (`sgi.activity.change`):
 - No deja enviar sin motivo, sin cambios (al cambiar) ni sin resumen y
   proceso (al agregar). Se retira el asistente de texto `sgi.mp.change.wizard`.
 
+### Del Dropbox a Odoo: rutina por rutina, buscador y avance (57.0.0)
+
+Entrega 6 de la auditoría 2026-09, bloque 2 (L-002, L-006, L-008, L-009,
+L-015…L-021, C-016). Diseño: `docs/audit/12-transicion.md` §3.
+
+- **`sgi.legacy.routine`**: cada rutina de un procedimiento del Dropbox (el
+  documento es el encabezado), su estado (cubierta / la hace Odoo / eliminada
+  / pendiente), las actividades que la cubren, el motivo, la decisión de las
+  pendientes (responsable y fecha) y la revisión del dueño del proceso. Con
+  chatter; se archiva, nunca se borra. Llave única (procedimiento, n). Un
+  procedimiento sustituido no tiene rutinas pendientes (y al revés).
+- En el procedimiento: las rutinas y sus conteos guardados. En la actividad:
+  botón **«Viene de»**, solo Auditor, Jefe MAST y Dirección.
+- **Buscador por clave anterior** (`sgi.dropbox.key`, SQL de solo lectura):
+  documentos con clave anterior, rutinas («P-A02 · 11») y numerales de
+  actividades archivadas. Nadie ve un documento que no puede abrir (el filtro
+  se arma con el usuario real) y P-I01 no sale. «Abrir en Odoo» y «Ver el
+  anterior».
+- **Avance de la transición** (`sgi.dropbox.progress`): un renglón por proceso
+  activo con procedimientos, rutinas, documentos y actividades nuevas.
+- **Importar rutinas** (asistente, solo Jefe MAST): XLSX de Jose o su hoja en
+  CSV (encabezado de `docs/audit/12-transicion/plantilla_rutina_por_rutina.csv`),
+  mismas reglas que `validar_rutinas.py`. Siempre prueba primero; «Cargar» solo
+  con el mismo archivo (SHA-256), sin errores y con la confirmación marcada.
+  Transacción por procedimiento, idempotente; el modo de prueba enseña además
+  los documentos cuya clase y estado no cuadran (respuesta 8 de Jose). API:
+  `env['sgi.legacy.routine'].load_routines(payload, dry_run=True)`.
+- Sin datos con XML ID (decisión 4): instalar no carga ninguna rutina.
+
 ### Del Dropbox a Odoo: formatos y documentos anteriores (56.39.0)
 
 Entrega 6 de la auditoría 2026-09, bloque 1 (E-001, E-004, E-005, L-010…L-014,

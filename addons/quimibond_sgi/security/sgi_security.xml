@@ -576,4 +576,24 @@
         <field name="groups" eval="[(4, ref('group_sgi_salary'))]"/>
         <field name="domain_force">[(1, '=', 1)]</field>
     </record>
+
+    <!-- ================================================================
+         «Del Dropbox a Odoo» (57.0.0, entrega 6).
+         Buscador por clave anterior (L-006): la regla del diseño con «any»
+         sobre el documento. Aviso: Odoo evalúa los dominios de ir.rule en
+         modo sistema, así que el «any» puede no aplicar las reglas de
+         Documentos; el filtro que SÍ garantiza que nadie vea un documento que
+         no puede abrir está en sgi.dropbox.key._sgi_key_filters (con el
+         usuario real) y lo prueba P-L6 (tests/test_dropbox_key.py).
+         ================================================================ -->
+    <record id="rule_sgi_dropbox_key_readable_document" model="ir.rule">
+        <field name="name">SGI: clave anterior solo de documentos que el usuario puede leer</field>
+        <field name="model_id" ref="model_sgi_dropbox_key"/>
+        <field name="domain_force">['|', ('document_id', '=', False), ('document_id', 'any', [])]</field>
+    </record>
+    <record id="rule_sgi_dropbox_progress_company" model="ir.rule">
+        <field name="name">SGI: avance de la transición por empresa</field>
+        <field name="model_id" ref="model_sgi_dropbox_progress"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>

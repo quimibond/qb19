@@ -103,3 +103,5 @@ from . import test_bandeja
 from . import test_avisos_crons
 from . import test_calibracion_avisos
 from . import test_dropbox_section
+from . import test_legacy_routine
+from . import test_dropbox_key

@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.56.39.0',
+    'version': '19.0.57.0.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -197,6 +197,8 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
         'views/sgi_current_documents_views.xml',
+        # 57.0.0 (entrega 6): «Del Dropbox a Odoo» (rutinas, buscador, avance).
+        'views/sgi_dropbox_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         'views/sgi_menus.xml',

@@ -94,3 +94,6 @@ from . import sgi_approval_rule_archive
 from . import sgi_document_owner
 from . import sgi_multicompany
 from . import sgi_current_documents
+from . import sgi_legacy_routine
+from . import sgi_dropbox_views
+from . import sgi_legacy_routine_import

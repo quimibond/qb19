@@ -26,7 +26,11 @@ SGI/Procesos/Matriz de responsabilidades | menu_sgi_analysis_who | -
 SGI/Procesos/Puestos y procesos | menu_sgi_jobs_roles | -
 SGI/Procesos/Fichas de proceso por máquina | menu_sgi_machine_sheets | -
 SGI/Procesos/Del Dropbox a Odoo | menu_sgi_dropbox | -
+SGI/Procesos/Del Dropbox a Odoo/Buscador por clave anterior | menu_sgi_dropbox_search | -
+SGI/Procesos/Del Dropbox a Odoo/Procedimientos anteriores | menu_sgi_dropbox_procedures | -
 SGI/Procesos/Del Dropbox a Odoo/Formatos y documentos anteriores | menu_sgi_migration | -
+SGI/Procesos/Del Dropbox a Odoo/Rutina por rutina | menu_sgi_dropbox_routines | -
+SGI/Procesos/Del Dropbox a Odoo/Avance de la transición | menu_sgi_dropbox_progress | -
 SGI/Mejora | menu_sgi_improvement_group | -
 SGI/Mejora/No conformidades | menu_sgi_nc | -
 SGI/Mejora/Reclamaciones de clientes | menu_sgi_complaints | -
