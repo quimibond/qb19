@@ -129,3 +129,23 @@ Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protecc
    - Sin claves del Dropbox, salvo en la sección de transición.
    - **Se escriben después de aplicar los menús nuevos**, no antes, para no documentar rutas que van a cambiar.
 4. **Aprobada la estructura `docs/sgi/`** (11-documentacion §6). La parte técnica se genera por script y se revisa en CI (`--check`).
+
+## 2026-09-29 — P-I01 y respuestas al agente L
+
+### P-I01 (L-001)
+- **Acceso cerrado por Jose.** Verificado por MCP (lectura, `documents.document` 3560): «Permisos para usuarios internos» y acceso por enlace están en «Ninguno», con un solo acceso explícito. Además lo pueden ver los administradores de Documentos.
+- **Pendiente de Sistemas:** cambiar las contraseñas de las cuentas que aparecen en P-I01. Cerrar el acceso no borra lo que alguien ya pudo haber visto.
+- **Su familia** (7 DAT, 3 formatos, 6 instructivos): Jose buscó en el texto indexado de los 16 las palabras contraseña, password, login y «usuario:», y los dominios de Quimibond y de Odoo. No salió nada. **Siguen abiertos** para no parar a Inspección.
+- **Pedido al programador:** una regla para que en adelante un documento controlado sin propietario no pueda quedar abierto a todos los internos sin revisión.
+
+### Respuestas a L
+1. **P-I01** queda «En curso» hasta que salga su versión limpia. MAST emite un P-I01 nuevo sin credenciales o, si C4 y C5 lo cubren, se da de baja. Sus rutinas las analiza Jose sin copiar el contenido sensible.
+2. **Familias sin procedimiento** (P-A05, A13, A23, A30, C10 y P07): se le pregunta a Areli. Mientras, clase «Por definir».
+3. **Instructivos, DAT, anexos, protocolos y reglamentos:** por default, clase D y «No aplica (se queda)». Los que ya pasaron a actividades de Odoo se marcan uno por uno.
+4. **Las 38 rutinas pendientes:** las decide Areli con el dueño de cada proceso, **a más tardar el 16 de octubre de 2026**. El importador las acepta sin decisión, pero el tablero las muestra en rojo.
+5. **Estado «eliminada»:** se conserva, para las rutinas que se dejan de hacer a propósito.
+6. **Revisión y comentario:** se capturan en Odoo, en `sgi.legacy.routine`, para que la evidencia de revisión quede dentro del SGI.
+7. **Documento 5119** (P-A28 obsoleto, sin archivo): se archiva.
+8. **Las 13 contradicciones entre clase y estado:** el importador las detecta en modo de prueba y MAST las corrige antes de la carga real.
+
+**Aprobados:** el diseño de L (`12-transicion.md`), su corrección a C-001 (L-003: no se rellena nada desde el lado del proceso) y la migración de la clave vieja sobre **490 documentos** (L-004).
