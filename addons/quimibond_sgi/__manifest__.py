@@ -27,7 +27,6 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'base',
         'mail',
         'hr',
-        'hr_payroll',  # entrega 4: los salarios de eficiencias son del grupo de Nómina
         'stock',
         'purchase',
         'documents',

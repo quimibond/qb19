@@ -154,6 +154,39 @@ class TestEntrega4Groups(TransactionCase):
         with self.assertRaises(UserError):
             review.with_user(self.director).action_draft()
 
+    # ---- Decisión de Jose (2026-09-29): Dirección conserva tres administraciones ----
+    def test_11_director_keeps_admin_groups_direct(self):
+        director = new_test_user(self.env, login='e4_director_admin',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_director')
+        admin_xmlids = ('project.group_project_manager', 'approvals.group_approval_manager',
+                        'helpdesk.group_helpdesk_manager')
+        self.env['sgi.config'].sudo()._sgi_director_keep_admin_groups()
+        for xmlid in admin_xmlids:
+            self.assertIn(self.env.ref(xmlid), director.group_ids, "%s directo." % xmlid)
+        # Idempotente: una segunda corrida no agrega nada a este usuario.
+        again = self.env['sgi.config'].sudo()._sgi_director_keep_admin_groups()
+        self.assertNotIn(director.login, again)
+        # Pierde solo lo de Jefe MAST (y no ve salarios).
+        mast = self.env.ref('quimibond_sgi.group_sgi_manager')
+        self.assertNotIn(mast, director.group_ids)
+        self.assertNotIn(mast, director.all_group_ids)
+        self.assertFalse(director.has_group('quimibond_sgi.group_sgi_salary'))
+        with self.assertRaises(AccessError):
+            self.env['sgi.document.type'].with_user(director).check_access('write')
+        review = self.env['sgi.management.review'].create({
+            'period_from': date(2048, 1, 1), 'period_to': date(2048, 6, 30), 'state': 'realizada'})
+        with self.assertRaises(UserError):
+            review.with_user(director).action_close()
+        # Conserva lo de Dirección (test_01 y test_02).
+        self.assertTrue(director.has_group('quimibond_sgi.group_sgi_user'))
+        self.assertTrue(director.has_group('quimibond_sgi.group_sgi_auditor'))
+        self.env['sgi.management.review'].with_user(director).check_access('write')
+        self.env['sgi.direction.board'].with_user(director).check_access('create')
+        visible = self.env['ir.ui.menu'].with_user(director)._visible_menu_ids()
+        self.assertIn(self.env.ref('quimibond_sgi.menu_sgi_mgmt_review').id, visible)
+        self.assertNotIn(self.env.ref('quimibond_sgi.menu_sgi_config').id, visible,
+                         "Configuración sigue siendo solo de MAST.")
+
     # ---- I-015 / D-21: Documentos vigentes con acuse ----
     def test_10_current_documents_and_ack(self):
         employee = self.env['hr.employee'].create({'name': 'Empleado E4', 'user_id': self.user.id})
@@ -192,8 +225,8 @@ class TestEntrega4SensitiveModels(TransactionCase):
         cls.mast = new_test_user(env, login='e4s_mast', groups='base.group_user,quimibond_sgi.group_sgi_manager')
         cls.capture = new_test_user(env, login='e4s_capture',
                                     groups='base.group_user,quimibond_sgi.group_sgi_efficiency_capture')
-        cls.payroll = new_test_user(env, login='e4s_payroll',
-                                    groups='base.group_user,hr_payroll.group_hr_payroll_user')
+        cls.payroll = new_test_user(env, login='e4s_salary',
+                                    groups='base.group_user,quimibond_sgi.group_sgi_salary')
         cls.hr = new_test_user(env, login='e4s_hr', groups='base.group_user,hr.group_hr_user')
         cls.csh = new_test_user(env, login='e4s_csh', groups='base.group_user,quimibond_sgi.group_sgi_csh')
         cls.health = new_test_user(env, login='e4s_health',
@@ -205,7 +238,7 @@ class TestEntrega4SensitiveModels(TransactionCase):
                                                   'department_id': cls.dept.id})
         cls.worker = env['hr.employee'].create({'name': 'E4 Tejedor', 'department_id': cls.dept.id})
 
-    # ---- sgi.staff.efficiency(.line): salarios solo para Nómina ----
+    # ---- sgi.staff.efficiency(.line): salarios solo para «Salarios de eficiencias» ----
     def _sheet(self):
         sheet = self.env['sgi.staff.efficiency'].create({'period_date': date(2046, 5, 1),
                                                          'department_id': self.dept.id})
@@ -214,7 +247,7 @@ class TestEntrega4SensitiveModels(TransactionCase):
             'attendance_pct': 5.5, 'efficiency_pct': 2.0})
         return sheet, line
 
-    def test_01_salaries_only_for_payroll(self):
+    def test_01_salaries_only_for_salary_group(self):
         sheet, line = self._sheet()
         money = ['wage_daily', 'wage_monthly', 'amount']
         data = line.with_user(self.payroll).read(money)[0]
@@ -228,13 +261,31 @@ class TestEntrega4SensitiveModels(TransactionCase):
             # Ven la eficiencia sin el importe.
             self.assertEqual(line.with_user(user).read(['total_pct'])[0]['total_pct'], 7.5)
         # Exportar pasa por los mismos groups del campo: no aparece en la
-        # lista de campos exportables de quien no es de Nómina.
+        # lista de campos exportables de quien no es del grupo de salarios.
         self.assertNotIn('amount', line.with_user(self.mast).fields_get())
         Report = self.env['ir.actions.report']
         name = 'quimibond_sgi.report_staff_efficiency_document'
         self.assertNotIn(b'A pagar', Report.with_user(self.mast)._render_qweb_html(name, sheet.ids)[0],
                          "El PDF del Jefe MAST no lleva importes.")
         self.assertIn(b'A pagar', Report.with_user(self.payroll)._render_qweb_html(name, sheet.ids)[0])
+
+    def test_01b_payroll_group_alone_does_not_see_salaries(self):
+        """Nómina (hr_payroll.group_hr_payroll_user) ya no basta: en
+        producción incluye a usuarios que no deben ver salarios."""
+        payroll_group = self.env.ref('hr_payroll.group_hr_payroll_user', raise_if_not_found=False)
+        if not payroll_group:
+            self.skipTest("hr_payroll no está instalado.")
+        payroll = new_test_user(self.env, login='e4s_payroll_only', groups='base.group_user')
+        payroll.write({'group_ids': [(4, payroll_group.id)]})
+        self.assertFalse(payroll.has_group('quimibond_sgi.group_sgi_salary'))
+        sheet, line = self._sheet()
+        self.assertTrue(line.with_user(self.payroll).read(['amount'])[0]['amount'],
+                        "El grupo de salarios ve el importe.")
+        for field in ('wage_daily', 'wage_monthly', 'amount'):
+            self.assertEqual(line._fields[field].groups, 'quimibond_sgi.group_sgi_salary', field)
+            self.assertNotIn(field, line.with_user(payroll).fields_get(), field)
+        self.assertNotIn('amount_total', sheet.with_user(payroll).fields_get())
+        self.assertFalse(sheet.with_user(payroll).sgi_show_money())
 
     # ---- hr.version: campos del SGI solo RH ----
     def test_02_hr_version_fields_only_hr(self):

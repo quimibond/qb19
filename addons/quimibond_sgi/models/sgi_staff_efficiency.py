@@ -15,11 +15,13 @@ la recibe: al cerrar, el Coordinador de RH recibe una actividad y con
 «Recibir» queda como «Recibió».
 
 Entrega 4 (decisión de Jose, 2026-09-29): los salarios e importes (salario
-diario, mensual, «A pagar» e importe total) solo los ve Nómina, el grupo
-«Nómina / Encargado: gestionar todos los contratos»
-(hr_payroll.group_hr_payroll_user: el Coordinador de RH y el Responsable de
-Nóminas). NO los ven el Jefe MAST, Captura de eficiencias ni los
-supervisores: ellos ven la eficiencia sin el importe.
+diario, mensual, «A pagar» e importe total) solo los ve el grupo propio
+«Salarios de eficiencias (SGI)» (quimibond_sgi.group_sgi_salary). No es el
+de Nómina (hr_payroll.group_hr_payroll_user), que en producción incluye a
+usuarios que no deben ver salarios. Miembros iniciales por la migración
+19.0.56.29.0 (Lorena, Miguel y Jose). NO los ven el Jefe MAST, Dirección,
+Captura de eficiencias, RH en general ni los supervisores: ellos ven la
+eficiencia sin el importe.
 """
 
 from dateutil.relativedelta import relativedelta
@@ -28,9 +30,10 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 MAX_ATTENDANCE, MAX_HOUSEKEEPING, MAX_EFFICIENCY, MAX_QUALITY = 5.5, 2.0, 2.0, 2.0
-# Salarios e importes: solo Nómina (entrega 4). Ni MAST, ni RH en general
-# (hr.group_hr_user tiene 20 usuarios y se va a depurar), ni el jefe de área.
-_MONEY_GROUPS = 'hr_payroll.group_hr_payroll_user'
+# Salarios e importes: solo el grupo propio (entrega 4). Ni Nómina, ni MAST,
+# ni RH en general (hr.group_hr_user tiene 20 usuarios y se va a depurar), ni
+# el jefe de área.
+_MONEY_GROUPS = 'quimibond_sgi.group_sgi_salary'
 _RECEIVE_SUMMARY = "Recibir eficiencias"
 
 
@@ -166,7 +169,7 @@ class SgiStaffEfficiency(models.Model):
         return True
 
     def sgi_show_money(self):
-        """El PDF lleva salarios e importes solo para Nómina (entrega 4)."""
+        """El PDF lleva salarios e importes solo para «Salarios de eficiencias» (entrega 4)."""
         return self.env.user.has_group(_MONEY_GROUPS)
 
     def sgi_format_info(self):
@@ -229,7 +232,7 @@ class SgiStaffEfficiencyLine(models.Model):
 
     @api.depends('wage_daily', 'total_pct')
     def _compute_amounts(self):
-        # Aparte de total_pct (56.22.0): amount lleva grupos (Nómina) y
+        # Aparte de total_pct (56.22.0): amount lleva grupos (Salarios) y
         # total_pct lo ve también el jefe de área.
         for line in self:
             line.amount = (line.wage_daily or 0.0) * 30.0 * line.total_pct / 100.0

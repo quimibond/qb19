@@ -655,6 +655,45 @@ class SgiConfig(models.AbstractModel):
         ]).write({'noupdate': True})
         return True
 
+    # Entrega 4 (decisión de Jose, 2026-09-29): Dirección dejó de implicar al
+    # Jefe MAST, que le daba estas tres administraciones. Dirección las
+    # conserva asignadas directo al usuario; pierde solo lo de Jefe MAST.
+    _SGI_DIRECTOR_ADMIN_GROUPS = (
+        'project.group_project_manager',
+        'approvals.group_approval_manager',
+        'helpdesk.group_helpdesk_manager',
+    )
+
+    @api.model
+    def _sgi_director_keep_admin_groups(self):
+        """Agrega DIRECTO (group_ids) a cada usuario interno activo con
+        «Dirección de Operaciones (SGI)» explícito las administraciones de
+        Proyecto, Aprobaciones y Soporte. Salta el grupo que no exista.
+        Idempotente: solo escribe lo que falta. Devuelve {login: [xmlid]}."""
+        director = self.env.ref('quimibond_sgi.group_sgi_director', raise_if_not_found=False)
+        if not director:
+            return {}
+        groups = self.env['res.groups']
+        for xmlid in self._SGI_DIRECTOR_ADMIN_GROUPS:
+            group = self.env.ref(xmlid, raise_if_not_found=False)
+            if group:
+                groups |= group
+            else:
+                _logger.warning("SGI: no existe el grupo %s; Dirección se queda sin él.", xmlid)
+        users = self.env['res.users'].sudo().with_context(active_test=True).search([
+            ('group_ids', 'in', director.id), ('share', '=', False)])
+        added = {}
+        for user in users:
+            missing = groups - user.group_ids
+            if missing:
+                user.write({'group_ids': [(4, g.id) for g in missing]})
+                added[user.login] = missing.mapped(lambda g: g.get_external_id().get(g.id) or g.name)
+        if added:
+            _logger.info("SGI: Dirección conserva sus administraciones directas; agregadas: %s", added)
+        else:
+            _logger.info("SGI: Dirección ya tenía sus administraciones directas (%d usuario(s)).", len(users))
+        return added
+
 
 class SgiFormatMixin(models.AbstractModel):
     """Agrega al modelo la clave del formato SGI que sustituye (pantalla y PDF)."""

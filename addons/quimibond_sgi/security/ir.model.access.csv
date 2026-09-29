@@ -283,5 +283,5 @@ access_sgi_checklist_finish_user,sgi.checklist.finish.user,model_sgi_checklist_f
 access_sgi_diagnostic_auditor,sgi.diagnostic.auditor,model_sgi_diagnostic,group_sgi_auditor,1,1,1,0
 access_sgi_diagnostic_line_auditor,sgi.diagnostic.line.auditor,model_sgi_diagnostic_line,group_sgi_auditor,1,1,1,0
 access_sgi_management_review_agreement_director,sgi.management.review.agreement.director,model_sgi_management_review_agreement,group_sgi_director,1,1,1,0
-access_sgi_staff_efficiency_payroll,sgi.staff.efficiency.payroll,model_sgi_staff_efficiency,hr_payroll.group_hr_payroll_user,1,1,1,1
-access_sgi_staff_efficiency_line_payroll,sgi.staff.efficiency.line.payroll,model_sgi_staff_efficiency_line,hr_payroll.group_hr_payroll_user,1,1,1,1
+access_sgi_staff_efficiency_payroll,sgi.staff.efficiency.payroll,model_sgi_staff_efficiency,group_sgi_salary,1,1,1,1
+access_sgi_staff_efficiency_line_payroll,sgi.staff.efficiency.line.payroll,model_sgi_staff_efficiency_line,group_sgi_salary,1,1,1,1
