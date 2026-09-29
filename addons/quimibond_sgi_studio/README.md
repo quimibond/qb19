@@ -1,0 +1,21 @@
+# Quimibond SGI - Aprobaciones de Studio
+
+Satélite de `quimibond_sgi` (`auto_install` con `web_studio`). Salió del
+núcleo en 57.9.0 (auditoría A-010, decisión D-10 de Jose).
+
+- **Qué trae:** el tipo «Botón de Odoo» del rol «Aprueba»: la regla
+  `studio.approval.rule` que bloquea el botón del documento, con las
+  personas del puesto como aprobadores (`sgi.activity.role.approval_rule_id`,
+  `studio.approval.rule.sgi_role_id`), la detección de otra regla en el mismo
+  botón y «Adoptar regla», las aprobaciones dadas (`studio.approval.entry`) y
+  el cierre de avisos al archivar una regla (antes `sgi_approval_rule_archive`).
+- **Qué se queda en el núcleo:** el tipo, el documento, el botón, la
+  condición, las solicitudes de Aprobaciones, las firmas de Sign, el cron
+  nocturno, el menú «Aprobaciones del SGI» y las aprobaciones de Studio en
+  Mis pendientes (leídas solo si Studio está instalado).
+- **Mudanza:** `quimibond_sgi/migrations/19.0.57.9.0/pre-migrate.py` pasa los
+  XML IDs de los 3 campos a este módulo (`ir_model_data.module`, sin borrar
+  nada) y lo marca para instalar en el mismo update. Producción el
+  2026-09-29: 11 roles con regla y 11 reglas activas con rol.
+- **Pruebas:** `tests/test_approval_studio.py` y
+  `tests/test_approval_rule_archive.py` (se mudaron del núcleo).

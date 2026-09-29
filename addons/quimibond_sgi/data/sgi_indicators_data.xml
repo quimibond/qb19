@@ -201,7 +201,9 @@
         <field name="target_objective">92.5</field>
         <field name="target_acceptable">85</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">calidad_pq</field>
+        <!-- 57.10.0 (A-019): el modo «calidad_pq» es de quimibond_sgi_revisado,
+             que lo pone al instalarse en una base nueva (post_init_hook). -->
+        <field name="calc_mode">manual</field>
     </record>
     <record id="sgi_ind_reproceso" model="sgi.indicator">
         <field name="code">MA-04</field>

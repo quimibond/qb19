@@ -51,13 +51,9 @@ class TestEntrega4Groups(TransactionCase):
                          "Configuración es solo de MAST.")
 
     def test_02_director_approves_without_mast_write(self):
-        """Aprobar: Dirección ya no escribe el presupuesto de ventas (era del
-        Jefe MAST), pero lo aprueba: action_approve revisa el grupo y sella
-        con sudo. El flujo completo lo cubre test_sales_budget (test_03 y
-        test_04) con un usuario que solo tiene el grupo Dirección."""
-        with self.assertRaises(AccessError):
-            self.env['sgi.sales.budget'].with_user(self.director).check_access('write')
-        # Sus ACL propias siguen: revisión por la dirección y tablero.
+        """Dirección conserva sus ACL propias: revisión por la dirección y
+        tablero. Lo del presupuesto de ventas (no lo escribe, lo aprueba) se
+        mudó a quimibond_ventas_presupuesto en 57.11.0 (A-016, J-018)."""
         self.env['sgi.management.review'].with_user(self.director).check_access('write')
         self.env['sgi.management.review.agreement'].with_user(self.director).check_access('write')
         self.env['sgi.direction.board'].with_user(self.director).check_access('create')

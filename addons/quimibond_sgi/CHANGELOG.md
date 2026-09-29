@@ -13,6 +13,159 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.12.0 — 2026-09-29
+
+**Cambiado (D-11 ampliada, Jose 2026-09-29):**
+`sgi.config.sgi_drop_empty_studio_models` borra también los acompañantes de
+Studio de los cuatro modelos (`<modelo>_*`) junto con su padre: las 3 tablas
+`_stage` (3 filas cada una: «Nuevo», «En progreso», «Listo»),
+`x_no_conformidades_tag` y `x_no_conformidades_line_0ff2d` (vacías), con sus
+acciones, vistas y menús (el 1643 «Calendario de obligaciones Stages», bajo
+Contabilidad → Configuración personalizada). Lista cerrada en
+`_SGI_STUDIO_COMPANIONS` con las filas esperadas: un acompañante con más
+filas, que no esté en la lista, que no sea de Studio o al que apunte un campo
+de fuera de la familia detiene todo y se reporta en `companion_problems`. Un
+acompañante con filas se respalda justo antes de borrarlo en un CSV (todas
+sus columnas, por SQL) adjunto a la empresa del SGI, que sobrevive al
+borrado. Recuento justo antes de cada borrado. Sigue manual, en el shell y
+con `dry_run=True` por default; no corre en el update.
+
+**Datos de producción (2026-09-29, lectura):** los cuatro padres de Studio
+sin registros visibles; `x_actividades_obligato_stage`,
+`x_calendario_de_obliga_stage` y `x_no_conformidades_stage` con 3 filas cada
+una (creadas en 2024), `x_no_conformidades_tag` y
+`x_no_conformidades_line_0ff2d` con 0; los únicos campos que apuntan a los
+acompañantes son de la propia familia (`x_studio_stage_id`,
+`x_studio_tag_ids`, `x_no_conformidades_id`); el menú 1643 abre la acción
+2506 de `x_calendario_de_obliga_stage`.
+
+**Pruebas:** `test_studio_cleanup` test_06–test_10 (borrado con respaldo,
+más filas, campo de fuera, acompañante no esperado y la lista de
+producción).
+
+**Nota:** `e2-sale-automotriz` (57.12.0 en el plan) no entró en este lote;
+esta versión la toma la ampliación de D-11.
+
+## 19.0.57.11.0 — 2026-09-29
+
+**Cambiado (A-016, A-013, E-014):** el presupuesto y el pronóstico de ventas
+salen al módulo nuevo **`quimibond_ventas_presupuesto`** (19.0.1.0.0, depende
+del SGI, de `sale_stock`, `web_grid` y `account_budget`; `auto_install`):
+modelos `sgi.sales.budget`, `.line` e `.import` (conservan su nombre técnico y
+sus tablas), `budget.analytic.sgi_sales_budget_id`, vistas, reporte,
+análisis, 8 menús de Ventas → Presupuesto y pronóstico, reglas, accesos,
+secuencia, pie de formato, los crons de cobertura del pronóstico y
+revaluación del S2, el cierre de mes, los 9 parámetros (mismas claves) y sus
+ajustes. El núcleo ya no depende de `web_grid` ni de `account_budget`.
+
+**Cambiado:** el núcleo deja los ganchos `sgi.cron._sgi_monthly_close_steps`
+(cierre de mes) y `sgi.diagnostic._sgi_key_settings_checks` (Ajustes clave).
+El KPI VE-02 (`presupuesto_ventas`), su evidencia y el aviso del Diagnóstico
+leen el presupuesto solo si el módulo está.
+
+**Migración (pre, `migrations/19.0.57.11.0/pre-migrate.py`):** cambia
+`ir_model_data.module` de modelos, campos, valores de selección,
+restricciones, herencias (`ir.model.inherit`), vistas, acciones, reporte,
+accesos, reglas, menús, crons, secuencia y pie de formato, y la columna
+`module` de `ir_model_constraint` e `ir_model_relation`; nada se borra ni se
+recrea (E-002: los menús 2434/2435 conservan su id). Marca el módulo nuevo
+para instalar en el mismo update y detiene el update si hay presupuestos y
+no se puede instalar. `migrations/mudanza.py` suma `ir.model.inherit` y
+`instalar(obligatorio=...)`; el pre-migrate de 57.9.0 lo usa con Studio (11
+roles con regla en producción).
+
+**Datos de producción (2026-09-29, lectura):** `sgi.sales.budget` = 4 (ids
+4, 5, 7, 137; borrador, 2026) con 1,291 líneas; menús 2434 y 2435 (acciones
+3886 y 3887) bajo 2438, más 2449 y 2444–2447; crons 184 y 185 activos con los
+valores del XML; `sgi.format.map` 9 igual al XML (con `document_id` 3882, que
+el XML no toca); folios PPV-2026-004…137; 50 XML IDs del núcleo sobre estos
+registros, todos declarados por el módulo nuevo.
+
+**Pruebas (J-018):** `test_sales_budget` (117 pruebas) pasa al módulo nuevo;
+`test_multicompany` test_03 y los dos modelos de F-014, la aserción de
+presupuesto de `test_entrega4` test_02 y `cron_forecast_coverage` de
+`test_avisos_crons` pasan a `quimibond_ventas_presupuesto/tests/test_sales_budget_sgi.py`.
+
+## 19.0.57.10.0 — 2026-09-29
+
+**Cambiado (A-019):** MA-03 «Calidad PQ» sale del núcleo a
+**`quimibond_sgi_revisado`** 19.0.4.2.0: el modo `calidad_pq` se registra allá
+con `selection_add` (mismo lugar en la lista, después de «reproceso»;
+`ondelete='set default'`), junto con `_calc_calidad_pq`, `_detail_calidad_pq`,
+su fuente, su evidencia y los dos avisos del Diagnóstico. El cálculo es el
+mismo, línea por línea. El núcleo deja el gancho
+`sgi.diagnostic._sgi_floor_quality_lines` y ya no lee `mrp.revision.log`.
+La siembra de MA-03 en una base nueva queda en `manual`; el satélite la pasa a
+`calidad_pq` al instalarse solo si sigue en manual y sin mediciones (B-001).
+
+**Cambiado (A-020):** la tolerancia de peso de rollo
+(`quimibond_sgi.pesaje_tolerance_kg`, misma clave) la siembra y la muestra en
+Ajustes → SGI → Piso **`quimibond_sgi_pesaje`** 19.0.5.2.0
+(`post_init_hook` idempotente y su propia herencia de la vista de ajustes). El
+núcleo ya no la siembra ni declara el campo.
+
+**Migración (pre, `migrations/19.0.57.10.0/pre-migrate.py`):** mueve a los
+satélites el XML ID del valor de selección `calidad_pq` y el del campo de
+ajustes (`ir_model_data.module`, sin borrar). Si `mrp_revisado_telas` no
+estuviera, los indicadores en `calidad_pq` pasan a `manual` con aviso.
+
+**Datos de producción (2026-09-29, lectura):** MA-03 (id 16) activo en
+`calidad_pq`, última medición 08/2026 = 70.88; `quimibond_sgi_revisado`,
+`quimibond_sgi_pesaje`, `mrp_revisado_telas` y `pesaje_rollos_tejido`
+instalados.
+
+**Pruebas (J-018):** `test_kpi_fase4` pasa a
+`quimibond_sgi_revisado/tests/test_calidad_pq.py` sin cambios (test_03) y
+suma el modo registrado desde el satélite (test_04) y la siembra que no pisa
+a MAST (test_05); `quimibond_sgi_pesaje` suma test_05 (ajuste y tolerancia).
+
+## 19.0.57.9.0 — 2026-09-29
+
+**Cambiado (A-015):** el manifest lista solo las dependencias directas, cada
+una con lo que la usa; las que ya traen otras (`base`, `mail`, `hr`, `stock`,
+`purchase`, `approvals`, `quality_control`) no se repiten.
+
+**Retirado (A-011, A-012):** las dependencias `sale_management` (sin ningún
+uso) y `hr_timesheet` (solo escribía `allow_timesheets=False` en el proyecto
+de Diseño y Desarrollo; el archivo es `noupdate` y en producción no cambia
+nada). En producción no se desinstala nada.
+
+**Cambiado (A-010, D-10):** la regla de aprobación de Studio del rol
+«Aprueba» (tipo «Botón de Odoo») sale al satélite nuevo
+**`quimibond_sgi_studio`** (`auto_install` con `web_studio`), con el cierre de
+avisos al archivar una regla (antes `sgi_approval_rule_archive.py`). El núcleo
+ya no depende de `web_studio`: se quedan el tipo, el documento, el botón, la
+condición, las solicitudes de Aprobaciones, las firmas de Sign, el cron, el
+menú y las aprobaciones de Studio en Mis pendientes (solo si Studio está). El
+núcleo deja ganchos `_sgi_button_*`; sin el satélite, «Sincronizar» un rol de
+botón avisa que falta el módulo.
+
+**Cambiado (A-014):** DOC-5, el instructivo en Conocimiento, sale al satélite
+nuevo **`quimibond_sgi_knowledge`** (`auto_install` con `knowledge`). El
+núcleo ya no depende de `knowledge`.
+
+**Migración (pre, `migrations/19.0.57.9.0/pre-migrate.py`, con el
+procedimiento común `migrations/mudanza.py`):** los XML IDs de lo que sale
+cambian de `module` en `ir_model_data` (campos, modelo transitorio, vistas,
+reporte, acceso); nada se borra ni se recrea. Marca los dos satélites para
+instalar en el mismo update.
+
+**Datos de producción (2026-09-29, lectura):** 11 roles con
+`approval_rule_id` y 11 reglas `studio.approval.rule` activas con
+`sgi_role_id` (creadas ese día); 1,072 roles `approval_kind = 'boton'`; 0
+actividades con `instruction_article_id`, 0 documentos con `sgi_article_id` y
+ningún otro campo de `sgi.*`/`documents.document`/`hr.*` apunta a
+`knowledge.article`; `web_studio`, `knowledge`, `sale_management` y
+`hr_timesheet` instalados.
+
+**Pruebas (J-018):** `test_approval_native` test_02–04 y
+`test_approval_rule_archive` pasan a `quimibond_sgi_studio`, con
+`test_bandeja` test_07 (aprobación de Studio en Mis pendientes, ya sin
+`skipTest`) y la aserción «una solicitud no bloquea ningún botón»;
+`test_pr6_external` test_05 pasa a `quimibond_sgi_knowledge` (sin
+`skipTest`). Nueva en el núcleo: `test_approval_native` test_03 (puesto sin
+personas).
+
 ## 19.0.57.8.0 — 2026-09-29
 
 **Retirado (B-011):** 27 métodos `action_*` sin botón, menú ni llamador,

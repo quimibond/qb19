@@ -70,45 +70,8 @@
         </field>
     </record>
 
-    <!-- ============ DOC-5: instructivo en Knowledge ============ -->
-    <record id="sgi_process_activity_view_form_knowledge" model="ir.ui.view">
-        <field name="name">sgi.process.activity.form.knowledge</field>
-        <field name="model">sgi.process.activity</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_process_activity_view_form"/>
-        <field name="arch" type="xml">
-            <field name="instruction_id" position="after">
-                <field name="instruction_article_id" options="{'no_create': True}"/>
-                <field name="instruction_article_stale" invisible="not instruction_article_stale"
-                       decoration-warning="instruction_article_stale"/>
-                <button name="action_publish_instruction" type="object" string="Publicar como instructivo"
-                        icon="fa-upload" class="btn-link" invisible="not instruction_article_id"
-                        groups="quimibond_sgi.group_sgi_manager"/>
-            </field>
-        </field>
-    </record>
-
-    <record id="sgi_instruction_publish_view_form" model="ir.ui.view">
-        <field name="name">sgi.instruction.publish.form</field>
-        <field name="model">sgi.instruction.publish</field>
-        <field name="arch" type="xml">
-            <form string="Publicar como instructivo">
-                <field name="activity_id" invisible="1"/>
-                <p class="text-muted">
-                    El artículo se congela como PDF, revisión nueva del instructivo con su clave IT,
-                    y queda ligado a la actividad. Los puestos que aplican reciben acuse de lectura.
-                </p>
-                <group>
-                    <field name="article_id"/>
-                    <field name="code" placeholder="IT-P-C11-05"/>
-                    <field name="job_ids" widget="many2many_tags"/>
-                </group>
-                <footer>
-                    <button name="action_publish" type="object" string="Publicar" class="btn-primary"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
-                </footer>
-            </form>
-        </field>
-    </record>
+    <!-- DOC-5 (instructivo en Knowledge) se mudó a quimibond_sgi_knowledge
+         en 57.9.0 (A-014). -->
 
     <!-- ============ REG-1 / REG-2 ============ -->
     <record id="sgi_sign_request_wizard_view_form" model="ir.ui.view">

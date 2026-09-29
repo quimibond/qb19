@@ -686,7 +686,7 @@ class SgiSalesBudget(models.Model):
 
     def action_open_grid_qty(self):
         return self._action_grid(
-            'quimibond_sgi.sgi_sales_budget_line_grid_qty', "Cantidades")
+            'quimibond_ventas_presupuesto.sgi_sales_budget_line_grid_qty', "Cantidades")
 
     def action_open_comparison(self):
         self.ensure_one()
@@ -711,9 +711,9 @@ class SgiSalesBudget(models.Model):
             'view_mode': 'pivot,list',
             'views': [
                 (self.env.ref(
-                    'quimibond_sgi.sgi_sales_analysis_pivot_cliente').id, 'pivot'),
+                    'quimibond_ventas_presupuesto.sgi_sales_analysis_pivot_cliente').id, 'pivot'),
                 (self.env.ref(
-                    'quimibond_sgi.sgi_sales_budget_line_view_list').id, 'list')],
+                    'quimibond_ventas_presupuesto.sgi_sales_budget_line_view_list').id, 'list')],
             'domain': [('budget_id', '=', self.id)],
             'context': {'search_default_group_partner': 1},
         }
@@ -728,7 +728,7 @@ class SgiSalesBudget(models.Model):
             'res_model': 'sgi.sales.budget.line',
             'view_mode': 'graph',
             'views': [(self.env.ref(
-                'quimibond_sgi.sgi_sales_budget_line_view_graph_curve').id, 'graph')],
+                'quimibond_ventas_presupuesto.sgi_sales_budget_line_view_graph_curve').id, 'graph')],
             'domain': [('budget_id', '=', self.id)],
         }
 
@@ -838,7 +838,7 @@ class SgiSalesBudget(models.Model):
     def action_print_budget(self):
         self.ensure_one()
         return self.env.ref(
-            'quimibond_sgi.action_report_sales_budget').report_action(self)
+            'quimibond_ventas_presupuesto.action_report_sales_budget').report_action(self)
 
     # --- Plantilla descargable (filas ya puestas) ----------------------------
     _SGI_TEMPLATE_MONTHS = [

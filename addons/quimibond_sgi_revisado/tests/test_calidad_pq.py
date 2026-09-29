@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
+"""MA-03 «Calidad PQ». test_03 se mudó de quimibond_sgi/tests/test_kpi_fase4.py
+en quimibond_sgi 57.10.0 (A-019, J-018), sin cambios: el cálculo debe medir
+igual que en el núcleo."""
 import datetime
 
 from odoo.tests import TransactionCase, tagged
 
 
 @tagged('post_install', '-at_install')
-class TestKpiFase4(TransactionCase):
+class TestCalidadPq(TransactionCase):
 
     @classmethod
     def setUpClass(cls):
@@ -37,3 +40,24 @@ class TestKpiFase4(TransactionCase):
         self.assertEqual(detail['numerator'] - base['numerator'], 3,
                          "3 de 4 rollos sin defecto.")
         self.assertEqual(indicator._calc_calidad_pq(*window), detail['value'])
+
+    def test_04_modo_registrado_desde_el_satelite(self):
+        field = self.Indicator._fields['calc_mode']
+        modes = [value for value, _label in field.selection]
+        self.assertIn('calidad_pq', modes)
+        self.assertEqual(modes.index('calidad_pq'), modes.index('reproceso') + 1,
+                         "Mismo lugar en la lista que tenía en el núcleo.")
+        indicator = self.Indicator.new({'calc_mode': 'calidad_pq'})
+        self.assertEqual(indicator.source_type, 'auto')
+        self.assertIn('revisado de telas', indicator.source_info)
+        self.assertEqual(self.env['sgi.indicator.measure']._EVIDENCE['calidad_pq'][0], 'mrp.revision.log')
+
+    def test_05_siembra_solo_si_sigue_en_manual(self):
+        fresh = self.Indicator.create({'code': 'ZPQ-1', 'name': 'PQ nuevo', 'calc_mode': 'manual'})
+        self.assertEqual(fresh._sgi_seed_calidad_pq(), fresh)
+        self.assertEqual(fresh.calc_mode, 'calidad_pq')
+        measured = self.Indicator.create({'code': 'ZPQ-2', 'name': 'PQ con mediciones', 'calc_mode': 'manual'})
+        self.env['sgi.indicator.measure'].create({
+            'indicator_id': measured.id, 'period_date': datetime.date(2040, 1, 1)})
+        measured._sgi_seed_calidad_pq()
+        self.assertEqual(measured.calc_mode, 'manual', "Lo que ya se mide a mano no se toca (B-001).")

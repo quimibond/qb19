@@ -729,11 +729,25 @@ class SgiConfigStudioCleanup(models.AbstractModel):
 
     # Modelos de Studio que el SGI sustituye (actividades por empleado, NC,
     # obligaciones). D-11 (Jose, 2026-09-29): se borran SOLO si los cuatro
-    # siguen vacíos, archivados incluidos. Sus modelos acompañantes de Studio
-    # (etapas, etiquetas, líneas: ``<modelo>_*``) NO se borran: se reportan.
+    # siguen vacíos, archivados incluidos.
     _SGI_STUDIO_MODELS = (
         'x_emp_activity', 'x_no_conformidades', 'x_actividades_obligato',
         'x_calendario_de_obliga')
+    # D-11 ampliada (Jose, 2026-09-29; 57.12.0): sus acompañantes de Studio
+    # (``<modelo>_*``) se borran junto con su padre. Valor = filas que se
+    # esperan como máximo: las 3 etapas por omisión de Studio («Nuevo», «En
+    # progreso», «Listo», producción 2026-09-29) se respaldan en CSV antes de
+    # borrar; etiquetas y líneas deben estar vacías. Un acompañante que no
+    # esté aquí, con más filas o al que apunte un campo de fuera de la
+    # familia detiene todo. El menú 1643 «Calendario de obligaciones Stages»
+    # se va con la acción de su acompañante.
+    _SGI_STUDIO_COMPANIONS = {
+        'x_actividades_obligato_stage': 3,
+        'x_calendario_de_obliga_stage': 3,
+        'x_no_conformidades_stage': 3,
+        'x_no_conformidades_tag': 0,
+        'x_no_conformidades_line_0ff2d': 0,
+    }
 
     def _sgi_studio_row_count(self, ir_model):
         """Filas de la tabla del modelo contadas por SQL (sin reglas, sin
@@ -754,12 +768,52 @@ class SgiConfigStudioCleanup(models.AbstractModel):
             'path': 'quimibond_sgi/models/sgi_catalog.py',
             'func': 'sgi_drop_empty_studio_models', 'line': '0'})
 
+    def _sgi_studio_backup_csv(self, ir_model):
+        """CSV con todas las filas de la tabla (SQL, archivados incluidos),
+        adjunto a la empresa del SGI: sobrevive al borrado del modelo."""
+        table = ir_model.model.replace('.', '_')
+        self.env.cr.execute(SQL("SELECT * FROM %s ORDER BY id", SQL.identifier(table)))
+        columns = [desc[0] for desc in self.env.cr.description]
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(columns)
+        rows = self.env.cr.fetchall()
+        for row in rows:
+            writer.writerow(['' if value is None else value for value in row])
+        company = self._sgi_company()
+        return self.env['ir.attachment'].sudo().create({
+            'name': 'respaldo_d11_%s_%s.csv' % (table, fields.Date.context_today(self)),
+            'res_model': 'res.company', 'res_id': company.id,
+            'description': "D-11: %d fila(s) de %s («%s») antes de borrar el modelo de Studio."
+                           % (len(rows), ir_model.model, ir_model.name),
+            'mimetype': 'text/csv', 'raw': buffer.getvalue().encode('utf-8')})
+
+    def _sgi_studio_drop_model(self, model):
+        """Borra un modelo de Studio con sus menús, acciones y vistas.
+        Devuelve el resumen para el log."""
+        name = model.model
+        actions = self.env['ir.actions.act_window'].sudo().search([('res_model', '=', name)])
+        menus = self.env['ir.ui.menu'].sudo().with_context(active_test=False).search(
+            [('action', 'in', ['ir.actions.act_window,%d' % a for a in actions.ids])])
+        views = self.env['ir.ui.view'].sudo().with_context(active_test=False).search(
+            [('model', '=', name)])
+        # Los one2many de Studio del propio modelo van primero: con ellos
+        # vivos Odoo no deja quitar el many2one inverso del acompañante.
+        model.field_id.filtered(
+            lambda f: f.state == 'manual' and f.ttype == 'one2many').unlink()
+        summary = "menús %s, acciones %s, vistas %s" % (menus.ids, actions.ids, views.ids)
+        menus.unlink()
+        actions.unlink()
+        views.unlink()
+        self.env['ir.model'].sudo().browse(model.id).unlink()
+        return summary
+
     @api.model
     def sgi_drop_empty_studio_models(self, dry_run=True):
-        """D-11 (57.7.0): borra los modelos de Studio vacíos que el SGI
-        sustituye, con sus menús, acciones y vistas. Se corre a mano en el
-        shell de Odoo.sh, fuera de un update (borrar un modelo recarga el
-        registro)::
+        """D-11 (57.7.0, ampliada en 57.12.0): borra los modelos de Studio
+        vacíos que el SGI sustituye y sus acompañantes, con sus menús,
+        acciones y vistas. Se corre a mano en el shell de Odoo.sh, fuera de
+        un update (borrar un modelo recarga el registro)::
 
             env['sgi.config'].sgi_drop_empty_studio_models()             # reporte
             env['sgi.config'].sgi_drop_empty_studio_models(dry_run=False)
@@ -768,24 +822,34 @@ class SgiConfigStudioCleanup(models.AbstractModel):
         Reglas:
         - Cuenta las filas por SQL (archivados incluidos). Si UNO de los
           cuatro tiene registros, **no borra ninguno** (``aborted``).
-        - Justo antes de borrar cada modelo vuelve a contar; si ya tiene
-          registros, lanza ``UserError`` y la transacción se revierte entera.
+        - Los acompañantes (``<modelo>_*``) se borran con su padre solo si
+          están en ``_SGI_STUDIO_COMPANIONS``, no tienen más filas de las
+          esperadas y ningún campo de fuera de la familia (los padres y sus
+          acompañantes) apunta a ellos. Si uno no cumple, **no borra nada**
+          y lo reporta en ``companion_problems``.
+        - Un acompañante con filas (las 3 etapas de Studio) se respalda en
+          un CSV adjunto a la empresa del SGI justo antes de borrarlo.
+        - Justo antes de borrar cada modelo vuelve a contar; si ya tiene más
+          filas de las esperadas, lanza ``UserError`` y la transacción se
+          revierte entera (respaldos incluidos).
         - Solo modelos de Studio (``state = 'manual'``).
-        - Los acompañantes (``<modelo>_stage``, ``_tag``, ``_line…``) y los
-          campos de otros modelos que apuntan al borrado se reportan; Odoo
-          quita esos campos relacionales al borrar el modelo.
-        - Cada borrado queda en el log y en ``ir.logging``.
+        - Los campos de otros modelos que apuntan a un padre se reportan;
+          Odoo los quita al borrar el modelo.
+        - Cada borrado y cada respaldo quedan en el log y en ``ir.logging``.
 
-        Devuelve ``{'dry_run', 'counts', 'companions', 'inbound_fields',
-        'dropped', 'kept', 'missing', 'aborted'}``."""
+        Devuelve ``{'dry_run', 'counts', 'companions', 'companion_problems',
+        'inbound_fields', 'backups', 'dropped', 'kept', 'missing',
+        'aborted'}``; en ``backups``, los acompañantes que se respaldan (en la
+        prueba) o los ids de los adjuntos (al borrar)."""
         if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_admin')):
             raise UserError("Solo un Administrador SGI puede borrar modelos de Studio.")
         IrModel = self.env['ir.model'].sudo()
         IrFields = self.env['ir.model.fields'].sudo()
         report = {'dry_run': bool(dry_run), 'counts': {}, 'companions': {},
-                  'inbound_fields': {}, 'dropped': [], 'kept': [], 'missing': [],
-                  'aborted': False}
+                  'companion_problems': [], 'inbound_fields': {}, 'backups': [],
+                  'dropped': [], 'kept': [], 'missing': [], 'aborted': False}
         plan = IrModel.browse()
+        companions_of = {}
         for name in self._SGI_STUDIO_MODELS:
             model = IrModel.search([('model', '=', name)], limit=1)
             if not model:
@@ -795,7 +859,9 @@ class SgiConfigStudioCleanup(models.AbstractModel):
                 report['kept'].append({'model': name, 'reason': "no es de Studio"})
                 continue
             report['counts'][name] = self._sgi_studio_row_count(model)
-            for companion in IrModel.search([('model', '=like', name.replace('_', '\\_') + '\\_%')]):
+            companions_of[model] = IrModel.search(
+                [('model', '=like', name.replace('_', '\\_') + '\\_%')])
+            for companion in companions_of[model]:
                 report['companions'][companion.model] = self._sgi_studio_row_count(companion)
             report['inbound_fields'][name] = [
                 '%s.%s' % (f.model, f.name) for f in IrFields.search(
@@ -810,36 +876,71 @@ class SgiConfigStudioCleanup(models.AbstractModel):
                 "SGI D-11: NO se borra ningún modelo de Studio: %s tienen registros (%s)."
                 % (", ".join(with_rows), report['counts']), level='WARNING')
             return report
-        if dry_run:
-            report['dropped'] = plan.mapped('model')
-            _logger.info("SGI D-11 (prueba): se borrarían %s; acompañantes que se quedan: %s; "
-                         "campos que Odoo quitaría: %s.", report['dropped'],
-                         report['companions'], report['inbound_fields'])
+        all_companions = IrModel.browse()
+        for companions in companions_of.values():
+            all_companions |= companions
+        family = set(plan.mapped('model')) | set(all_companions.mapped('model'))
+        for companion in all_companions:
+            name = companion.model
+            count = report['companions'][name] or 0
+            expected = self._SGI_STUDIO_COMPANIONS.get(name)
+            if companion.state != 'manual':
+                report['companion_problems'].append("%s: no es de Studio" % name)
+            elif expected is None:
+                report['companion_problems'].append("%s: acompañante no esperado (%d fila(s))" % (name, count))
+            elif count > expected:
+                report['companion_problems'].append(
+                    "%s: %d fila(s), se esperaban a lo más %d" % (name, count, expected))
+            outside = IrFields.search([('relation', '=', name), ('model', 'not in', list(family))])
+            if outside:
+                report['companion_problems'].append("%s: le apuntan %s" % (
+                    name, ", ".join('%s.%s' % (f.model, f.name) for f in outside)))
+            if count and expected:
+                report['backups'].append(name)
+        if report['companion_problems']:
+            report['aborted'] = True
+            report['backups'] = []
+            self._sgi_studio_log(
+                "SGI D-11: NO se borra ningún modelo de Studio; acompañantes con problemas: %s."
+                % "; ".join(report['companion_problems']), level='WARNING')
             return report
+        if dry_run:
+            report['dropped'] = plan.mapped('model') + [
+                c.model for m in plan for c in companions_of[m]]
+            _logger.info("SGI D-11 (prueba): se borrarían %s; se respaldarían en CSV %s; "
+                         "campos que Odoo quitaría: %s.", report['dropped'], report['backups'],
+                         report['inbound_fields'])
+            return report
+        report['backups'] = []
         for model in plan:
             name = model.model
             count = self._sgi_studio_row_count(model)
             if count:
                 raise UserError(
                     "El modelo %s ya tiene %d registro(s): no se borra nada (D-11)." % (name, count))
-            actions = self.env['ir.actions.act_window'].sudo().search([('res_model', '=', name)])
-            menus = self.env['ir.ui.menu'].sudo().with_context(active_test=False).search(
-                [('action', 'in', ['ir.actions.act_window,%d' % a for a in actions.ids])])
-            views = self.env['ir.ui.view'].sudo().with_context(active_test=False).search(
-                [('model', '=', name)])
-            # Los one2many de Studio del propio modelo van primero: con ellos
-            # vivos Odoo no deja quitar el many2one inverso del acompañante.
-            model.field_id.filtered(
-                lambda f: f.state == 'manual' and f.ttype == 'one2many').unlink()
-            summary = "menús %s, acciones %s, vistas %s" % (menus.ids, actions.ids, views.ids)
-            menus.unlink()
-            actions.unlink()
-            views.unlink()
-            IrModel.browse(model.id).unlink()
+            companions = companions_of[model]
+            summary = self._sgi_studio_drop_model(model)
             report['dropped'].append(name)
             self._sgi_studio_log(
                 "SGI D-11: modelo de Studio vacío %s eliminado (0 filas verificadas por SQL "
                 "justo antes; %s)." % (name, summary))
+            for companion in companions:
+                cname = companion.model
+                count = self._sgi_studio_row_count(companion) or 0
+                if count > self._SGI_STUDIO_COMPANIONS.get(cname, 0):
+                    raise UserError(
+                        "El acompañante %s ya tiene %d registro(s): no se borra nada (D-11)."
+                        % (cname, count))
+                backup = ''
+                if count:
+                    attachment = self._sgi_studio_backup_csv(companion)
+                    report['backups'].append(attachment.id)
+                    backup = "; respaldo CSV ir.attachment %d" % attachment.id
+                summary = self._sgi_studio_drop_model(companion)
+                report['dropped'].append(cname)
+                self._sgi_studio_log(
+                    "SGI D-11: acompañante de Studio %s de %s eliminado (%d fila(s) verificadas "
+                    "por SQL justo antes%s; %s)." % (cname, name, count, backup, summary))
         return report
 
 

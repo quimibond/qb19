@@ -808,6 +808,12 @@ aviso arriba de la ficha.
   SQL, archivados incluidos) y vuelve a contar justo antes de cada borrado;
   con uno solo con registros no borra nada. Deja cada borrado en
   `ir.logging`. Fuera de un update (borrar un modelo recarga el registro).
+  Desde 57.12.0 (D-11 ampliada) borra también sus acompañantes: las 3 tablas
+  `_stage` (se respaldan antes en un CSV adjunto a la empresa del SGI),
+  `x_no_conformidades_tag`, `x_no_conformidades_line_0ff2d` y, con la acción
+  de su etapa, el menú 1643 «Calendario de obligaciones Stages». Si un
+  acompañante trae más filas de las esperadas, no está en la lista o algo de
+  fuera le apunta, no borra nada (`companion_problems`).
 
 ### Migración (19.0.29.0.0)
 

@@ -437,7 +437,7 @@ class TestSalesBudgetStep2(TransactionCase):
             'date': date(2040, 6, 1), 'uom_id': self.uom_m.id,
             'qty_budget': 1200.0, 'amount_budget': 48000.0})
         html, ttype = self.env['ir.actions.report']._render_qweb_html(
-            'quimibond_sgi.action_report_sales_budget', budget.ids)
+            'quimibond_ventas_presupuesto.action_report_sales_budget', budget.ids)
         self.assertEqual(ttype, 'html')
         self.assertIn('Presupuesto de Ventas', html.decode())
         self.assertIn('F-P-A28-18', html.decode())
@@ -973,7 +973,7 @@ class TestSalesBudgetForecastImport(TransactionCase):
             'date': self.Wizard._week_monday(2040, 23), 'uom_id': self.uom_m.id,
             'customer_code': 'SCR31', 'qty_budget': 500.0})
         html, ttype = self.env['ir.actions.report']._render_qweb_html(
-            'quimibond_sgi.action_report_sales_budget', fc.ids)
+            'quimibond_ventas_presupuesto.action_report_sales_budget', fc.ids)
         self.assertIn('Pronóstico de Ventas', html.decode())
         self.assertIn('F-P-A28-13', html.decode())
         self.assertIn('SCR31', html.decode())
@@ -1268,8 +1268,8 @@ class TestSalesBudgetTemplate(TransactionCase):
         b = self.Budget.create({'year': 2040, 'team_id': self.team.id})
         f = self.Budget.create({'year': 2040, 'team_id': self.team.id,
                                 'kind': 'pronostico', 'partner_id': self.cli1.id})
-        act_b = self.env.ref('quimibond_sgi.sgi_sales_budget_action')
-        act_f = self.env.ref('quimibond_sgi.sgi_sales_forecast_action')
+        act_b = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_budget_action')
+        act_f = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_forecast_action')
         budgets = self.Budget.search(
             [('team_id', '=', self.team.id)] + list(eval(act_b.domain)))
         forecasts = self.Budget.search(
@@ -1390,7 +1390,7 @@ class TestSalesBudgetAnalysisViews(TransactionCase):
                       'sgi_sales_analysis_cliente_action',
                       'sgi_sales_analysis_producto_action',
                       'sgi_sales_analysis_global_action'):
-            action = self.env.ref('quimibond_sgi.%s' % xmlid)
+            action = self.env.ref('quimibond_ventas_presupuesto.%s' % xmlid)
             self.assertEqual(action.res_model, 'sgi.sales.budget.line')
             self.assertTrue(action.view_ids, "La acción define sus vistas.")
             for v in action.view_ids:

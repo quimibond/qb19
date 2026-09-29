@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""56.27.0: archivar una regla de aprobación de Studio cierra sus avisos
+"""quimibond_sgi 56.27.0 (aquí desde 57.9.0): archivar una regla de aprobación de Studio cierra sus avisos
 abiertos (actividad hecha con nota), sin aprobar ni rechazar nada."""
 from odoo.tests import TransactionCase, tagged, new_test_user
 

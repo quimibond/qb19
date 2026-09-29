@@ -34,9 +34,6 @@ from . import sgi_load
 from . import sgi_exec_stat
 from . import sgi_load_wizard
 from . import sgi_export
-from . import sgi_sales_budget
-from . import sgi_sales_budget_line
-from . import sgi_sales_budget_import
 from . import sgi_diagnostic
 from . import sgi_emergency
 from . import sgi_msa
@@ -45,7 +42,6 @@ from . import sgi_sign_elearning
 from . import sgi_cron
 from . import sgi_activity_spec
 from . import sgi_coa
-from . import sgi_budget_analytic
 from . import sgi_release
 from . import sgi_indicator_detail
 from . import sgi_indicator_i3
@@ -60,7 +56,6 @@ from . import sgi_structure
 from . import sgi_cleanup
 from . import sgi_direction_board
 from . import sgi_supplier_nc
-from . import sgi_instruction_knowledge
 from . import sgi_sign_record
 from . import sgi_hierarchy
 from . import sgi_diagram
@@ -89,7 +84,6 @@ from . import sgi_checklist
 from . import sgi_customer_reply
 from . import sgi_norm_compliance
 from . import sgi_archived_filters
-from . import sgi_approval_rule_archive
 from . import sgi_document_owner
 from . import sgi_multicompany
 from . import sgi_current_documents

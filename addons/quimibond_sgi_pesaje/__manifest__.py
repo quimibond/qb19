@@ -12,11 +12,15 @@ SGI la trate (y, si es sistémico, se escale a NC).
 
 NO modifica el comportamiento de pesaje_rollos_tejido: solo agrega el gancho
 hacia el SGI. Se instala automáticamente cuando conviven ambos módulos.
+
+Desde 5.2.0 (quimibond_sgi 57.10.0, auditoría A-020) es dueño de la tolerancia
+``quimibond_sgi.pesaje_tolerance_kg``: la siembra al instalarse y la muestra en
+Ajustes → SGI → Piso. Antes lo hacía el núcleo.
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Manufacturing/SGI',
-    'version': '19.0.5.1.0',
+    'version': '19.0.5.2.0',
     'license': 'LGPL-3',
     'depends': [
         'quimibond_sgi',
@@ -24,7 +28,9 @@ hacia el SGI. Se instala automáticamente cuando conviven ambos módulos.
     ],
     'data': [
         'data/pesaje_data.xml',
+        'views/res_config_settings_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'auto_install': True,
     'installable': True,
 }

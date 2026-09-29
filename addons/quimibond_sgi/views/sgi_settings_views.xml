@@ -41,41 +41,9 @@
                             <field name="sgi_satisfaction_survey_id"
                                    context="{'active_test': False}"/>
                         </setting>
-                        <setting string="Umbral de aviso de presupuesto de ventas (%)"
-                                 help="Al cierre de mes, un equipo con presupuesto aprobado por debajo de este % del acumulado del año avisa a su responsable.">
-                            <field name="sgi_sales_budget_alert_pct"/>
-                        </setting>
-                        <setting string="Tipo de cambio presupuestal USD→MXN"
-                                 help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
-                            <field name="sgi_budget_planning_rate"/>
-                        </setting>
-                        <setting string="Lista de precios presupuestal"
-                                 help="Lista con que se valúan las líneas del presupuesto SIN cliente (global). Sin configurar, quedan sin precio (nunca una lista arbitraria).">
-                            <field name="sgi_budget_pricelist_id"/>
-                        </setting>
-                        <setting string="Precio de lista mínimo plausible"
-                                 help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla.">
-                            <field name="sgi_price_min_plausible"/>
-                        </setting>
-                        <setting string="Tolerancia de desviación de precio (%)"
-                                 help="Control de precios: gap facturado vs lista dentro de este % = OK; entre este y el grave = leve.">
-                            <field name="sgi_price_gap_tolerance_pct"/>
-                        </setting>
-                        <setting string="Desviación de precio grave (%)">
-                            <field name="sgi_price_gap_grave_pct"/>
-                        </setting>
-                        <setting string="Cumplimiento mínimo del presupuesto (%)"
-                                 help="P-A28 4.3.6.1: un presupuesto aprobado por debajo de este % pide justificación (banner y actividad al Admin de ventas). No bloquea.">
-                            <field name="sgi_budget_fulfillment_min"/>
-                        </setting>
-                        <setting string="Tolerancia de pronóstico excedido (%)"
-                                 help="P-A28 4.2.2.7: comprometido por encima de 100% + este % = excedido.">
-                            <field name="sgi_forecast_over_tolerance_pct"/>
-                        </setting>
-                        <setting string="Horizonte de captura del pronóstico (semanas)"
-                                 help="Solo se evalúa la cobertura de las semanas dentro de este horizonte (actual + N-1).">
-                            <field name="sgi_forecast_capture_horizon_weeks"/>
-                        </setting>
+                        <!-- 57.11.0 (A-016): los ajustes del presupuesto y del
+                             pronóstico de ventas los agrega quimibond_ventas_presupuesto
+                             al final de este bloque. -->
                     </block>
                     <block title="No Conformidades y AMEF">
                         <setting string="Fuentes de NC automáticas"
@@ -181,12 +149,8 @@
                             <field name="sgi_doc_ack_pending_days"/>
                         </setting>
                     </block>
-                    <block title="Piso">
-                        <setting string="Tolerancia de peso de rollo (kg)"
-                                 help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.">
-                            <field name="sgi_pesaje_tolerance_kg"/>
-                        </setting>
-                    </block>
+                    <!-- 57.10.0 (A-020): el bloque «Piso» (tolerancia de peso de
+                         rollo) lo agrega quimibond_sgi_pesaje antes de «Firmas en Sign». -->
                     <block title="Firmas en Sign" name="sgi_sign">
                         <setting string="«Mi procedimiento» se firma en Sign"
                              help="Publicar deja la revisión en borrador y la manda a firmar: MAST elabora, el jefe directo del puesto aprueba. Entra en vigor sola al firmarse.">

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ajustes → SGI → Piso: la tolerancia de peso de rollo (antes en la
+         vista de ajustes del núcleo, quimibond_sgi 57.10.0, A-020). -->
+    <record id="res_config_settings_view_form_sgi_pesaje" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sgi.pesaje</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="quimibond_sgi.res_config_settings_view_form_sgi"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='sgi_sign']" position="before">
+                <block title="Piso" name="sgi_piso">
+                    <setting string="Tolerancia de peso de rollo (kg)"
+                             help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.">
+                        <field name="sgi_pesaje_tolerance_kg"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

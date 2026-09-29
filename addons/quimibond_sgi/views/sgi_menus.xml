@@ -323,25 +323,9 @@
     <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes"
               parent="account.menu_finance_reports" action="sgi_inventory_value_action" sequence="91"/>
 
-    <!-- Ventas: el presupuesto/pronóstico se captura y da seguimiento en la
-         app Ventas (sale al módulo de presupuesto, decisión 5). -->
-    <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
-              parent="sale.sale_menu_root" sequence="6"
-              groups="quimibond_sgi.group_sgi_user"/>
-    <menuitem id="menu_sale_sgi_sales_budget" name="Presupuestos"
-              parent="menu_sale_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
-    <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
-              parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
-    <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
-              parent="menu_sale_sgi_planning" sequence="30"/>
-    <menuitem id="menu_sale_sgi_analysis_mercado" name="Por mercado"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_mercado_action" sequence="10"/>
-    <menuitem id="menu_sale_sgi_analysis_cliente" name="Por cliente"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_cliente_action" sequence="20"/>
-    <menuitem id="menu_sale_sgi_analysis_producto" name="Por producto"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_producto_action" sequence="30"/>
-    <menuitem id="menu_sale_sgi_analysis_global" name="Global (Dirección)"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_global_action" sequence="40"/>
+    <!-- Ventas → Presupuesto y pronóstico (8 menús, 2434/2435 y demás con el
+         mismo id): los declara quimibond_ventas_presupuesto desde 57.11.0
+         (A-016, decisión 5, E-002). -->
 
     <!-- Calidad preventiva: AMEF, plan de control, PPAP y metrología viven
          en la app Calidad. E-008 (57.5.0): padre fijo, el raíz de la app

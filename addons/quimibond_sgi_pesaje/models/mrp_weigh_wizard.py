@@ -3,8 +3,9 @@ from odoo import models
 
 # Tolerancia por defecto (kg). El módulo base pesaje_rollos_tejido valida ±3 kg
 # de forma fija; para no divergir en silencio si Producción la ajusta, aquí se
-# lee del parámetro compartido `quimibond_sgi.pesaje_tolerance_kg` (mismo valor
-# por defecto). Ver README.
+# lee del parámetro `quimibond_sgi.pesaje_tolerance_kg` (mismo valor por
+# defecto), que siembra y muestra en Ajustes este módulo (post_init_hook y
+# models/res_config_settings.py).
 DEFAULT_TOLERANCE_KG = 3.0
 
 
