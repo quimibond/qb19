@@ -627,14 +627,14 @@
     </record>
 
     <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
-              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_procedure_action_mine"
-              sequence="15"/>
+              parent="menu_sgi_panel" action="sgi_my_procedure_action_mine"
+              sequence="20"/>
     <menuitem id="menu_sgi_my_pending" name="Mis pendientes"
-              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_pending_action_mine"
-              sequence="16"/>
+              parent="menu_sgi_panel" action="sgi_my_pending_action_mine"
+              sequence="10"/>
     <menuitem id="menu_sgi_my_team" name="Mi equipo"
-              parent="quimibond_sgi.menu_sgi_panel" action="sgi_my_team_action_mine"
-              sequence="18"/>
+              parent="menu_sgi_panel" action="sgi_my_team_action_mine"
+              sequence="40"/>
 
     <!-- 56.7.0: Inicio → Mis indicadores. Antes el Usuario SGI no tenía
          menú para ver ni capturar sus indicadores (Indicadores y Mediciones
@@ -652,6 +652,6 @@
         </field>
     </record>
     <menuitem id="menu_sgi_my_indicators" name="Mis indicadores"
-              parent="quimibond_sgi.menu_sgi_panel" action="sgi_indicator_action_mine"
-              sequence="17"/>
+              parent="menu_sgi_panel" action="sgi_indicator_action_mine"
+              sequence="30"/>
 </odoo>

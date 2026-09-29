@@ -93,5 +93,5 @@
     </record>
 
     <menuitem id="menu_sgi_measures_split" name="Mediciones por equipo o mercado"
-              parent="menu_sgi_admin_indicators" action="sgi_measure_split_action" sequence="21"/>
+              parent="menu_sgi_admin_indicators" action="sgi_measure_split_action" sequence="30"/>
 </odoo>

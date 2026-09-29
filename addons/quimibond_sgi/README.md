@@ -2469,6 +2469,33 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   MAST) para levantar el acta; una por NC.
 - Pruebas: `tests/test_due_long.py`, `tests/test_nc_origins.py`.
 
+### 19.0.56.24.0 — Menú SGI reordenado y sin lo archivado en Mi procedimiento / Mis pendientes
+
+- **Nombres de menú**: el XML trae los nombres que quedaron en producción
+  (sin claves del Dropbox), para que el upgrade no los regrese. Regla: el
+  menú lleva el nombre nuevo; la clave vieja vive solo en el documento
+  (`sgi_previous_code`), buscable en la Lista maestra («Clave anterior»,
+  sin límite de fecha, y columna «Clave anterior»).
+- **Orden del menú SGI**: Inicio (Mis pendientes, Mi procedimiento, Mis
+  indicadores, Mi equipo, Eficiencias de mi área) · Procesos · Mejora (con
+  Auditorías) · **Seguridad y ambiente** como menú propio (incluye las
+  Responsivas de EPP) · Dirección · Administración SGI (Documentos,
+  Indicadores, Aprobaciones del SGI, Diagnóstico, Firmas de lectura,
+  Configuración). «Bitácora de bloqueo contable» y «Valor del inventario por
+  mes» pasan a Contabilidad → Reportes.
+- **Mi procedimiento** deja fuera las actividades de procesos archivados;
+  archivar o reactivar un proceso recalcula lo guardado en los empleados.
+- **Mis pendientes** deja fuera las aprobaciones de Studio ya decididas, de
+  reglas archivadas o cuyo documento ya pasó el paso (pedido confirmado,
+  compra facturada, cancelado), las de roles del SGI con actividad o proceso
+  archivado, las solicitudes de categorías archivadas y las acciones, NC y
+  mediciones de procesos archivados.
+- **Roles de actividades archivadas**: la migración borra los 223 roles
+  («ejecuta», procesos viejos P-xxx) que ya no se veían y bloqueaban borrar
+  o fusionar puestos viejos. Antes deja un respaldo JSON por proceso,
+  adjunto al proceso archivado («roles_borrados_56.24.0_<clave>.json»).
+- Pruebas: `tests/test_archived_filters.py`.
+
 ### 19.0.56.23.0 — Actividades ligadas a los requisitos de la norma
 
 - **«Cumple con»** (`sgi.process.activity.norm_clause_ids`): los puntos de la
