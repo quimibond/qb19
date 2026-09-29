@@ -212,7 +212,7 @@ date_planned de OC) · `produccion_vs_programado` · `desperdicio` (**subproduct
 TEJIDO D**, categoría param `waste_subproduct_category`; NO stock.scrap) ·
 `desperdicio_scrap` (histórico) · `calidad_pq` (mrp.revision.log sin causa) ·
 `cumplimiento_programa` (MOs con inicio en periodo — aproxima el MPS; validar antes de
-`nc_on_red`) · `cierre_nc` · `reclamos_cliente` · `preventivo_cumplido` · `rotacion_rh` ·
+`nc_on_red`) · `reclamos_cliente` · `preventivo_cumplido` · `rotacion_rh` ·
 `presupuesto_ventas` (VE-02: facturación neta vs **presupuesto de ventas aprobado**
 del periodo — `sgi.sales.budget` líneas del mes, todos los equipos; SIEMPRE sobre
 importe en moneda compañía, nunca cantidades mezcladas; fallback al parámetro de
@@ -308,7 +308,7 @@ maintenance.request cerradas etapa done vs creadas) · `requisiciones` (CO-02,
 approval.request de categoría de compras aprobadas vs solicitadas; categoría
 autodetectada por `approval_type='purchase'` o param) · `embarques_sin_error` (AL-02,
 pickings salida done sin devolución de cliente `returned_move_ids` vs total) ·
-`produccion_vs_capacidad` (MA-02, producción real vs param `production_monthly_capacity`,
+`produccion_vs_capacidad` (MA-02, kg producidos — solo órdenes en kg, desde 57.1.0 — vs param `production_monthly_capacity` en kg,
 prorrateada por días si el periodo no es mensual) · `consumo_energia` (TR-03, facturado
 del periodo por el proveedor param `energy_partner_id`; sin proveedor → 0 con nota) ·
 `compras_sin_devolucion` (**PROXY** de errores en OC; a validar por MAST; NO se activa en

@@ -82,6 +82,41 @@ class SgiIndicatorDetail(models.Model):
             return 'sin_formula', missing
         return 'sin_datos', (vals.get('note') or "Sin registros que contar en el periodo.")
 
+    @api.model
+    def _sgi_calc_status_backfill(self):
+        """57.1.0: «Último cálculo» vacío en un indicador que ya tiene
+        mediciones se llena con el diagnóstico de su última medición, sin
+        recalcular nada.
+
+        Antes solo lo escribía el cron al CREAR una medición (y «Recalcular
+        ahora»). El campo llegó en 56.12.0 (28-sep-2026), cuando las
+        mediciones de agosto ya existían (17-sep), así que los 93
+        indicadores de producción se quedaron vacíos hasta el siguiente
+        cierre mensual. Lo llama el cron diario de indicadores; solo toca los
+        vacíos, así que un indicador ya diagnosticado no cambia."""
+        Measure = self.env['sgi.indicator.measure']
+        indicators = self.search([('calc_status', '=', False)])
+        done = 0
+        for indicator in indicators:
+            if indicator.calc_mode == 'manual':
+                indicator._sgi_set_calc('manual')
+                done += 1
+                continue
+            last = Measure.search([('indicator_id', '=', indicator.id)],
+                                  order='period_date desc', limit=1)
+            if not last:
+                today = fields.Date.context_today(self)
+                if indicator.measure_from and indicator.measure_from > today:
+                    indicator._sgi_set_calc('antes', "Mide desde el %s." % indicator.measure_from)
+                    done += 1
+                continue  # sin mediciones: lo diagnostica el cron al medir
+            status, reason = indicator._sgi_calc_diagnose(
+                {'state': last.state, 'note': last.note})
+            prefix = "Según la medición de %s" % last.period_date.strftime('%m/%Y')
+            indicator._sgi_set_calc(status, "%s: %s" % (prefix, reason) if reason else prefix + ".")
+            done += 1
+        return done
+
     def action_set_official(self):
         self.write({'status': 'oficial'})
 
@@ -224,17 +259,6 @@ class SgiIndicatorDetail(models.Model):
         cancelled = len(orders.filtered(lambda o: o.state == 'cancel'))
         return self._ratio(cancelled, len(orders), orders)
 
-    def _detail_cierre_nc(self, date_from, date_to):
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        Alert = self.env['quality.alert']
-        detected = Alert.search([
-            ('sgi_folio', '!=', False),
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
-        closed = Alert.search_count([
-            ('sgi_folio', '!=', False),
-            ('date_close', '>=', dt_from), ('date_close', '<', dt_to)])
-        return self._ratio(closed, len(detected), detected)
-
     def _detail_calidad_pq(self, date_from, date_to):
         if 'mrp.revision.log' not in self.env:
             return {'value': None}
@@ -358,6 +382,8 @@ class SgiIndicatorMeasureDetail(models.Model):
             date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
             vals = indicator._sgi_measure_vals(date_from, date_to)
             measure.write(vals)
+            # 57.1.0: el recálculo desde la medición también deja el motivo.
+            indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
             label = ("sin dato calculable" if vals['state'] == 'sin_dato'
                      else "valor recalculado: %s (%s casos)" % (vals['value'], vals['sample_size']))
             indicator.message_post(

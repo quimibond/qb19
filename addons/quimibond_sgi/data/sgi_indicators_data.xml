@@ -21,8 +21,14 @@
         <field name="target_objective">85</field>
         <field name="target_acceptable">75</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">cierre_nc</field>
+        <!-- 57.1.0: fórmula configurable (el modo de código cierre_nc se
+             retiró). Los términos los pone la función de abajo, que en un
+             archivo noupdate solo corre al instalar; en una base existente
+             los pone la migración 19.0.57.1.0. -->
+        <field name="calc_mode">configurable</field>
     </record>
+    <function model="sgi.indicator" name="_sgi_cierre_nc_formula"
+              eval="[[ref('sgi_ind_cierre_nc')]]"/>
     <record id="sgi_ind_consumo_papel" model="sgi.indicator">
         <field name="code">TR-02</field>
         <field name="name">Consumo de papel 100−(NF/DL×100)</field>

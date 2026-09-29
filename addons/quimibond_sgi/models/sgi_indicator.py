@@ -4,7 +4,6 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
-from .sgi_menu_paths import sgi_menu_path
 
 CALC_MODES = [
     ('manual', "Captura manual"),
@@ -16,7 +15,8 @@ CALC_MODES = [
     ('desperdicio_scrap', "Desperdicio (por desechos / scrap)"),
     ('calidad_pq', "Calidad PQ (rollos revisados sin defecto)"),
     ('cumplimiento_programa', "Cumplimiento del programa (MPS)"),
-    ('cierre_nc', "Cierre de No Conformidades"),
+    # 57.1.0: «cierre_nc» (TR-01) pasó a fórmula configurable; ver
+    # sgi_indicator_formula._sgi_cierre_nc_formula y la migración 19.0.57.1.0.
     ('reclamos_cliente', "Reclamos de cliente"),
     ('disponibilidad_mantto', "Disponibilidad de mantenimiento"),
     ('preventivo_cumplido', "Preventivo cumplido"),
@@ -129,7 +129,6 @@ class SgiIndicator(models.Model):
         'desperdicio_scrap': "Inventario → desechos (scrap) del periodo.",
         'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
         'cumplimiento_programa': "Fabricación → cumplimiento del plan maestro (MPS).",
-        'cierre_nc': "%s: cerradas a tiempo vs abiertas." % sgi_menu_path('no_conformidades'),
         'reclamos_cliente': "Helpdesk → tickets de reclamación de clientes del periodo.",
         'disponibilidad_mantto': "Mantenimiento → tiempo de paro vs disponible.",
         'preventivo_cumplido': "Mantenimiento → OTs preventivas cumplidas a tiempo.",
@@ -142,7 +141,7 @@ class SgiIndicator(models.Model):
         'ots_atendidas': "Mantenimiento → solicitudes cerradas (etapa terminada) en el periodo vs creadas en el periodo.",
         'requisiciones': "Aprobaciones → requisiciones de compra aprobadas en el periodo vs solicitadas.",
         'embarques_sin_error': "Inventario → embarques a clientes del periodo sin devolución ligada vs total.",
-        'produccion_vs_capacidad': "Fabricación → producción real del periodo vs la capacidad instalada configurada en Ajustes (prorrateada por días si el periodo no es mensual).",
+        'produccion_vs_capacidad': "Fabricación → kg producidos del periodo (solo órdenes en kg) vs la capacidad instalada en kg configurada en Ajustes (prorrateada por días si el periodo no es mensual).",
         'consumo_energia': "Contabilidad → facturado del periodo por el proveedor de energía (Ajustes) ÷ toneladas de hilo y fibra consumidas en órdenes (misma base que MA-05). Pesos por tonelada.",
         'compras_sin_devolucion': "PROXY (a validar por MAST): órdenes de compra confirmadas del periodo sin devolución a proveedor vs total. No mide directamente los 'errores en OC'; MAST debe validar la definición antes de fiarse del dato.",
         'capacitacion': "Empleados → competencias del puesto vigentes (certificación al día) vs requeridas.",
@@ -399,21 +398,6 @@ class SgiIndicator(models.Model):
         done_qty = sum(scheduled.filtered(lambda m: m.state == 'done').mapped('qty_produced'))
         return round(done_qty / planned * 100.0, 2)
 
-    def _calc_cierre_nc(self, date_from, date_to):
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        Alert = self.env['quality.alert']
-        detected = Alert.search_count([
-            ('sgi_folio', '!=', False),
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
-        ])
-        if not detected:
-            return None
-        closed = Alert.search_count([
-            ('sgi_folio', '!=', False),
-            ('date_close', '>=', dt_from), ('date_close', '<', dt_to),
-        ])
-        return round(closed / detected * 100.0, 2)
-
     def _calc_reclamos_cliente(self, date_from, date_to):
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
         team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
@@ -597,26 +581,43 @@ class SgiIndicator(models.Model):
         return round((total - with_error) / total * 100.0, 2)
 
     # ----- Paso 2: modos con parámetro + proxy -----------------------------
-    def _calc_produccion_vs_capacidad(self, date_from, date_to):
-        """Producción real del periodo (misma base que produccion_vs_programado)
-        sobre la capacidad instalada configurada en Ajustes. La capacidad es
-        mensual; para periodos no mensuales se prorratea por los días del periodo.
-        Sin capacidad configurada → None (se captura manual, patrón presupuesto)."""
+    def _sgi_capacity_for_period(self, date_from, date_to):
+        """Capacidad instalada (kg) del periodo: la mensual de Ajustes, o
+        prorrateada por días si el periodo no es mensual. 0 sin parámetro."""
         capacity = float(self.env['ir.config_parameter'].sudo().get_param(
             'quimibond_sgi.production_monthly_capacity', 0) or 0)
-        if not capacity:
-            return None
-        produced = sum(self._sgi_production_done(date_from, date_to).mapped('qty_produced'))
-        if self.frequency == 'monthly':
-            cap = capacity
-        else:
-            month_start = date_from.replace(day=1)
-            days_in_month = ((month_start + relativedelta(months=1)) - month_start).days
-            period_days = (date_to - date_from).days + 1  # fin inclusivo
-            cap = capacity * period_days / days_in_month
-        if not cap:
-            return None
-        return round(produced / cap * 100.0, 2)
+        if not capacity or self.frequency == 'monthly':
+            return capacity
+        month_start = date_from.replace(day=1)
+        days_in_month = ((month_start + relativedelta(months=1)) - month_start).days
+        period_days = (date_to - date_from).days + 1  # fin inclusivo
+        return capacity * period_days / days_in_month
+
+    def _detail_produccion_vs_capacidad(self, date_from, date_to):
+        """MA-02: kg producidos del periodo ÷ capacidad instalada en kg
+        (Ajustes, ``quimibond_sgi.production_monthly_capacity``).
+
+        57.1.0: solo órdenes cuya unidad es kg. Antes sumaba ``qty_produced``
+        de todas las órdenes terminadas y mezclaba kg con metros (agosto de
+        2026: 710 órdenes en kg con 240 t y 294 en metros con 1.5 millones de
+        m): en cuanto se capturara la capacidad el valor habría salido
+        inflado. Sin la unidad kg o sin capacidad: sin dato."""
+        kg = self.env.ref('uom.product_uom_kgm', raise_if_not_found=False)
+        cap = self._sgi_capacity_for_period(date_from, date_to)
+        productions = self._sgi_production_done(date_from, date_to)
+        if kg:
+            productions = productions.filtered(lambda p: p.product_uom_id == kg)
+        produced = sum(productions.mapped('qty_produced'))
+        if not kg or not cap:
+            return {'value': None, 'numerator': produced, 'denominator': cap or None,
+                    'model': 'mrp.production', 'ids': productions.ids}
+        return {'value': round(produced / cap * 100.0, 2), 'numerator': produced,
+                'denominator': cap, 'model': 'mrp.production', 'ids': productions.ids}
+
+    def _calc_produccion_vs_capacidad(self, date_from, date_to):
+        """Producción en kg del periodo sobre la capacidad instalada (ver
+        ``_detail_produccion_vs_capacidad``). Sin capacidad → None."""
+        return self._detail_produccion_vs_capacidad(date_from, date_to)['value']
 
     def _sgi_energy_partner(self):
         """Proveedor de energía configurado en Ajustes (m2o), o vacío."""
@@ -1122,14 +1123,13 @@ class SgiIndicatorMeasure(models.Model):
         'desperdicio_scrap': ('stock.scrap', [('state', '=', 'done')], 'date_done', True),
         'calidad_pq': ('mrp.revision.log', [], 'create_date', True),
         'cumplimiento_programa': ('mrp.production', [('state', '!=', 'cancel')], 'date_finished', True),
-        'cierre_nc': ('quality.alert', [], 'create_date', True),
         'disponibilidad_mantto': ('maintenance.request', [], 'create_date', True),
         'preventivo_cumplido': ('maintenance.request', [('maintenance_type', '=', 'preventive')], 'create_date', True),
         'crecimiento_ventas': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'inventario_diferencia': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
         'inventario_ciclico': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
         'ots_atendidas': ('maintenance.request', [], 'request_date', False),
-        'produccion_vs_capacidad': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
+        'produccion_vs_capacidad': ('mrp.production', [('state', '=', 'done'), ('product_uom_id.name', '=', 'kg')], 'date_finished', True),
         'margen_ventas': ('sale.order', [('state', '=', 'sale')], 'date_order', True),
         'compras_vs_ventas': ('account.move', [('move_type', 'in', ('in_invoice', 'in_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'clientes_nuevos': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
