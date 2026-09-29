@@ -48,7 +48,7 @@
 | A-029 | `data/sgi_norms.xml` (3 normas, 73 cláusulas) contra producción (4 normas, 83 cláusulas) | La norma «Requisitos específicos de clientes» y CLI-01…CLI-10 existen solo en producción, sin XML ID. Una instalación limpia trae 3 normas. Es coherente con la decisión 4 (dato capturado en producción). Si alguna vez se quieren en XML, primero hay que crear en producción los XML IDs de los registros existentes; si no, se duplican. | `00-inventario.md` (normas y cláusulas); `ir.model.data` `sgi.norm` 3. | Baja | Documentar | Dejarla como dato de producción. Anotar en el README que no se agrega por XML sin la migración que crea los XML IDs primero. | 0.5 | — |
 | A-030 | `__init__.py:10-38` `post_init_hook` | Liga puntos de control a los planes de control de 2 XML IDs buscando los equipos de calidad **por nombre** («CALIDAD Materia Prima», «Revisado de Tela») y se traga cualquier excepción. Solo corre al instalar. | Código citado. | Baja | Documentar | Sin cambio urgente. Si se quitan los planes de control del XML (anexo B), el hook queda inerte y se puede borrar. | 0.5 | Anexo B |
 
-**Conteo:** 30 hallazgos. Alta 5 (A-001, A-002, A-004, A-008, más A-003 como parte de A-002 → cuento A-003 como Media), Media 13, Baja 12. Detalle por severidad: **Alta 4** (A-001, A-002, A-004, A-008) · **Media 14** (A-003, A-005, A-006, A-007, A-009, A-010, A-013, A-016, A-017, A-018, A-019, A-022, A-026, más A-005 ya contado) · **Baja 12** (A-011, A-012, A-014, A-015, A-020, A-021, A-023, A-024, A-025, A-027, A-028, A-029, A-030). Conteo exacto: Alta 4, Media 13, Baja 13.
+**Conteo:** 30 hallazgos. **Crítica 0** · **Alta 4** (A-001, A-002, A-004, A-008) · **Media 13** (A-003, A-005, A-006, A-007, A-009, A-010, A-013, A-016, A-017, A-018, A-019, A-022, A-026) · **Baja 13** (A-011, A-012, A-014, A-015, A-020, A-021, A-023, A-024, A-025, A-027, A-028, A-029, A-030).
 
 ## 3. Preguntas que requieren decisión de negocio (para Jose)
 
@@ -127,6 +127,8 @@ Conclusión: **quitar los dos archivos del manifest basta para que producción n
 
 ```python
 # Esbozo; no se ejecutó. Solo SQL, sin importar código del módulo (regla de A-026).
+import logging
+_logger = logging.getLogger(__name__)
 LEGACY_MODELS = ('sgi.process', 'sgi.process.flow')
 
 def migrate(cr, version):
