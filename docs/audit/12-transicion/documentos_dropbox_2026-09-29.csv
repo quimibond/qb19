@@ -1,0 +1,440 @@
+id,clave,tipo,estado_sgi,clase,estado_migracion,con_destino_texto,con_liga_real_si_migrado,con_padre
+848,F-P-V01-12,formulario_odoo,vigente,a,migrado,1,1,1
+3054,F-P-A28-14,formulario_odoo,vigente,a,migrado,1,1,1
+3359,F-P-V01-04,formato,obsoleto,a,pendiente,1,1,1
+3479,ANEXO 1,anexo,vigente,,migrado,0,0,0
+3480,ANEXO 10,anexo,vigente,,migrado,0,0,0
+3481,ANEXO 11,anexo,vigente,,migrado,0,0,0
+3482,ANEXO 12,anexo,vigente,,migrado,0,0,0
+3483,ANEXO 13,anexo,vigente,,migrado,0,0,0
+3484,ANEXO 14,anexo,vigente,,migrado,0,0,0
+3485,ANEXO 15,anexo,vigente,,migrado,0,0,0
+3486,ANEXO 2,anexo,vigente,,migrado,0,0,0
+3487,ANEXO 3,anexo,vigente,,migrado,0,0,0
+3488,ANEXO 4,anexo,vigente,,migrado,0,0,0
+3489,ANEXO 5,anexo,vigente,,migrado,0,0,0
+3490,ANEXO 6,anexo,vigente,,migrado,0,0,0
+3491,ANEXO 7,anexo,vigente,,migrado,0,0,0
+3492,ANEXO 8,anexo,vigente,,migrado,0,0,0
+3493,ANEXO 9,anexo,vigente,,migrado,0,0,0
+3495,MIID,miid,vigente,,pendiente,0,1,0
+3503,F-P-G01-02,formato,vigente,d,na,1,1,1
+3587,IT-P-A07-02,instructivo,vigente,,pendiente,0,1,1
+3589,IT-P-A10-01,instructivo,vigente,,pendiente,0,1,1
+3591,IT-P-A14-01,instructivo,vigente,,pendiente,0,1,1
+3592,IT-P-A14-02,instructivo,vigente,,pendiente,0,1,1
+3594,IT-P-A28-01,instructivo,vigente,,pendiente,0,1,1
+3595,IT-P-A28-02,instructivo,vigente,,pendiente,0,1,1
+3598,IT-P-C04-01,instructivo,vigente,,pendiente,0,1,1
+3599,IT-P-C04-02,instructivo,vigente,,pendiente,0,1,1
+3600,IT-P-C04-03,instructivo,vigente,,pendiente,0,1,1
+3601,IT-P-C04-04,instructivo,vigente,,pendiente,0,1,1
+3602,IT-P-C05-01,instructivo,vigente,,pendiente,0,1,1
+3603,IT-P-C05-02,instructivo,vigente,,pendiente,0,1,1
+3604,IT-P-C05-03,instructivo,vigente,,pendiente,0,1,1
+3605,IT-P-C05-04,instructivo,vigente,,pendiente,0,1,1
+3606,IT-P-C05-05,instructivo,vigente,,pendiente,0,1,1
+3607,IT-P-C05-06,instructivo,vigente,,pendiente,0,1,1
+3608,IT-P-C05-07,instructivo,vigente,,pendiente,0,1,1
+3609,IT-P-C05-08,instructivo,vigente,,pendiente,0,1,1
+3610,IT-P-C14-01,instructivo,vigente,,pendiente,0,1,1
+3611,IT-P-C14-02,instructivo,vigente,,pendiente,0,1,1
+3612,IT-P-C17-01,instructivo,vigente,,pendiente,0,1,1
+3614,IT-P-I01-01,instructivo,vigente,,pendiente,0,1,1
+3615,IT-P-I01-03,instructivo,vigente,,pendiente,0,1,1
+3616,IT-P-I01-05,instructivo,vigente,,pendiente,0,1,1
+3617,IT-P-I01-07,instructivo,vigente,,pendiente,0,1,1
+3618,IT-P-I01-08,instructivo,vigente,,pendiente,0,1,1
+3619,IT-P-I01-14,instructivo,vigente,,pendiente,0,1,1
+3621,IT-P-D02-01,instructivo,vigente,,pendiente,0,1,1
+3624,IT-P-P01-01,instructivo,vigente,,pendiente,0,1,1
+3625,IT-P-P01-02,instructivo,vigente,,pendiente,0,1,1
+3626,IT-P-P01-03,instructivo,vigente,,pendiente,0,1,1
+3627,IT-P-P01-04,instructivo,vigente,,pendiente,0,1,1
+3628,IT-P-P01-06,instructivo,vigente,,pendiente,0,1,1
+3629,IT-P-P01-07,instructivo,vigente,,pendiente,0,1,1
+3630,IT-P-P01-19,instructivo,vigente,,pendiente,0,1,1
+3631,IT-P-P01-20,instructivo,vigente,,pendiente,0,1,1
+3633,IT-P-P03-04,instructivo,vigente,,pendiente,0,1,1
+3634,IT-P-P04-01,instructivo,vigente,,pendiente,0,1,1
+3635,IT-P-P04-05,instructivo,vigente,,pendiente,0,1,1
+3637,IT-P-P07-02,instructivo,vigente,,pendiente,0,1,0
+3638,IT-P-P07-03,instructivo,vigente,,pendiente,0,1,0
+3639,IT-P-P07-04,instructivo,vigente,,pendiente,0,1,0
+3640,IT-P-P07-05,instructivo,vigente,,pendiente,0,1,0
+3642,IT-P-P01-18,instructivo,vigente,,pendiente,0,1,1
+3644,F-P-P01-10,formato,vigente,d,pendiente,1,1,1
+3645,IT-P-P01-08,instructivo,vigente,,pendiente,0,1,1
+3646,IT-P-P01-09,instructivo,vigente,,pendiente,0,1,1
+3654,IT-P-P01-12,instructivo,vigente,,pendiente,0,1,1
+3656,IT-P-G03-01,instructivo,vigente,,pendiente,0,1,1
+3658,F-P-M01-01,formulario_odoo,vigente,a,migrado,1,1,1
+3659,F-P-M01-02,formato,vigente,a,migrado,1,0,1
+3660,F-P-M01-04,formato,vigente,a,pendiente,1,1,1
+3661,F-P-M01-05,formato,vigente,a,migrado,1,0,1
+3662,F-P-M01-06,formato,vigente,a,migrado,1,0,1
+3663,F-P-M01-07,formulario_odoo,vigente,a,migrado,1,1,1
+3664,F-P-M01-08,formato,vigente,a,migrado,1,0,1
+3676,DAT P-G01-02,dat,vigente,,pendiente,0,1,1
+3677,F-P-A04-01,formato,vigente,d,na,1,1,1
+3694,F-P-A04-02,formato,vigente,d,na,1,1,1
+3698,F-IT-P-A05-01-01,formato_it,vigente,a,pendiente,1,1,0
+3699,F-IT-P-A05-01-06,formato_it,vigente,a,pendiente,1,1,0
+3700,F-IT-P-A07-01-01,formato_it,vigente,a,pendiente,1,1,1
+3701,F-IT-P-A07-01-02,formato_it,vigente,a,pendiente,1,1,1
+3702,F-IT-P-A07-01-03,formulario_odoo,vigente,b,migrado,1,1,1
+3703,F-IT-P-A07-01-04,formulario_odoo,vigente,b,migrado,1,1,1
+3704,F-IT-P-A07-01-05,formato_it,vigente,a,pendiente,1,1,1
+3705,F-IT-P-A07-01-06,formato_it,vigente,a,pendiente,1,1,1
+3706,F-IT-P-A07-01-07,formulario_odoo,vigente,b,migrado,1,1,1
+3707,F-IT-P-A07-01-08,formulario_odoo,vigente,b,migrado,1,1,1
+3708,F-P-A07-04,formulario_odoo,vigente,a,migrado,1,1,1
+3710,F-P-A02-01,formato,vigente,a,migrado,1,1,1
+3711,F-P-A02-02,formato,vigente,a,migrado,1,1,1
+3712,F-P-A02-03,formulario_odoo,vigente,a,migrado,1,1,1
+3713,F-P-A02-04,formulario_odoo,vigente,a,migrado,1,1,1
+3714,F-P-A02-05,formato,vigente,a,migrado,1,1,1
+3715,F-P-A02-06,formato,vigente,a,migrado,1,1,1
+3716,F-P-A02-07,formato,vigente,a,migrado,1,1,1
+3717,F-P-A02-09,formato,vigente,c,migrado,1,1,1
+3718,F-P-A02-12,formato,vigente,c,migrado,1,1,1
+3719,F-P-A02-13,formulario_odoo,vigente,a,migrado,1,1,1
+3720,F-P-A02-14,formato,vigente,a,migrado,1,1,1
+3721,F-P-A02-15,formato,vigente,c,migrado,1,1,1
+3722,F-P-A02-16,formato,vigente,a,migrado,1,1,1
+3723,F-P-A02-17,formato,vigente,a,na,1,1,1
+3725,F-P-A13-01,formato,vigente,a,en_curso,1,0,0
+3726,F-P-A13-02,formato,vigente,c,pendiente,1,1,0
+3727,F-P-A13-03,formato,vigente,c,migrado,1,0,0
+3728,F-P-A13-04,formato,vigente,c,migrado,1,0,0
+3729,F-P-A13-05,formato,vigente,a,migrado,1,0,0
+3730,F-P-A13-06,formato,vigente,c,migrado,1,0,0
+3731,F-P-A13-07,formato,vigente,c,migrado,1,0,0
+3732,F-P-A13-10,formato,vigente,a,migrado,1,0,0
+3733,F-P-A26-01,formato,vigente,c,pendiente,1,1,1
+3734,F-P-A26-02,formato,vigente,a,en_curso,1,0,1
+3735,F-P-C09-02,formulario_odoo,vigente,a,migrado,1,1,1
+3743,F-P-A03-01,formato,vigente,a,migrado,1,0,1
+3744,F-P-A03-02,formato,vigente,a,migrado,1,0,1
+3745,F-P-A03-03,formulario_odoo,vigente,x,migrado,0,1,1
+3746,F-P-A03-04,formato,vigente,a,migrado,1,0,1
+3748,F-P-A23-01,formato,vigente,c,pendiente,1,1,0
+3749,F-P-A23-04,formato,vigente,c,pendiente,1,1,0
+3750,F-P-A23-06,formato,vigente,a,migrado,1,0,0
+3751,F-P-A23-07,formato,vigente,c,pendiente,1,1,0
+3752,F-P-A23-08,formato,vigente,a,migrado,1,0,0
+3753,F-P-A23-09,formato,vigente,c,pendiente,1,1,0
+3754,F-P-A23-10,formato,vigente,c,pendiente,1,1,0
+3755,F-P-A23-11,formato,vigente,c,pendiente,1,1,0
+3756,F-P-A23-15,formato,vigente,a,migrado,1,0,0
+3760,R-P-A23-02,reglamento,vigente,,pendiente,0,1,0
+3762,F-P-A10-01,formulario_odoo,vigente,a,migrado,1,1,1
+3763,F-P-A10-02,formulario_odoo,vigente,a,migrado,1,1,1
+3764,F-P-A10-03,formulario_odoo,vigente,a,migrado,1,1,1
+3765,F-P-A10-04,formulario_odoo,vigente,a,migrado,1,1,1
+3766,F-P-A10-05,formulario_odoo,vigente,b,migrado,1,1,1
+3768,F-P-A16-01,formato,vigente,a,migrado,1,1,1
+3769,F-P-A16-02,formato,vigente,a,migrado,1,1,1
+3770,F-P-A16-03,formato,vigente,a,migrado,1,1,1
+3771,F-P-A16-04,formato,vigente,a,migrado,1,1,1
+3772,F-P-A16-05,formato,vigente,a,migrado,1,1,1
+3773,F-P-A16-06,formato,vigente,a,migrado,1,1,1
+3774,F-P-A16-07,formato,vigente,a,migrado,1,1,1
+3775,F-P-A16-08,formato,vigente,a,migrado,1,1,1
+3776,F-P-A16-09,formato,vigente,a,migrado,1,1,1
+3777,F-P-A16-10,formato,vigente,a,migrado,1,1,1
+3778,F-P-A16-11,formato,vigente,a,migrado,1,1,1
+3786,F-P-A14-01,formato,vigente,d,na,1,1,1
+3787,F-P-A14-02,formulario_odoo,vigente,a,migrado,1,1,1
+3788,F-P-A14-05,formato,vigente,d,na,1,1,1
+3801,F-P-A19-01,formato,vigente,a,migrado,1,0,1
+3802,F-P-A19-02,formato,vigente,a,migrado,1,0,1
+3803,F-P-S02-01,formulario_odoo,vigente,a,migrado,1,1,1
+3804,F-P-S02-02,formulario_odoo,vigente,a,migrado,1,1,1
+3805,F-P-S03-01,formulario_odoo,vigente,a,migrado,1,1,1
+3806,F-P-S03-02,formato,vigente,a,migrado,1,0,1
+3807,F-P-S03-03,formato,vigente,a,na,1,1,1
+3821,F-P-A12-01,formulario_odoo,vigente,a,migrado,1,1,1
+3825,F-P-A01-01,formulario_odoo,vigente,a,migrado,1,1,1
+3826,F-P-A01-02,formato,vigente,a,migrado,1,1,1
+3827,F-P-A01-03,formato,vigente,a,migrado,1,1,1
+3828,F-P-A01-04,formato,vigente,a,migrado,1,1,1
+3829,F-P-A01-05,formato,vigente,a,migrado,1,1,1
+3830,F-P-A01-06,formato,vigente,a,pendiente,1,1,1
+3831,F-P-A01-08,formato,vigente,a,migrado,1,1,1
+3832,F-P-A01-09,formato,vigente,a,migrado,1,1,1
+3833,F-P-A01-12,formato,vigente,a,migrado,1,1,1
+3834,F-P-A01-13,formato,vigente,a,migrado,1,1,1
+3835,F-P-A01-14,formato,vigente,a,migrado,1,1,1
+3836,F-P-A01-15,formato,vigente,a,migrado,1,1,1
+3837,F-P-A01-16,formato,vigente,a,migrado,1,1,1
+3838,F-P-A01-17,formato,vigente,a,migrado,1,1,1
+3839,F-P-A01-19,formulario_odoo,vigente,a,migrado,1,1,1
+3840,F-P-A01-20,formato,vigente,a,pendiente,1,1,1
+3841,F-P-A01-21,formulario_odoo,vigente,a,migrado,1,1,1
+3842,F-P-A01-22,formulario_odoo,vigente,a,migrado,1,1,1
+3843,F-P-A01-23,formato,vigente,a,migrado,1,1,1
+3844,F-P-A01-24,formato,vigente,a,migrado,1,1,1
+3845,F-P-A01-25,formato,vigente,d,pendiente,1,1,1
+3846,F-P-A01-26,formato,vigente,a,en_curso,1,1,1
+3847,F-P-A01-27,formato,vigente,a,migrado,1,1,1
+3848,F-P-A01-28,formato,vigente,a,en_curso,1,1,1
+3849,F-P-A01-29,formato,vigente,a,migrado,1,1,1
+3850,F-P-A01-30,formato,vigente,a,na,1,1,1
+3851,F-P-A01-32,formato,vigente,c,migrado,1,1,1
+3852,F-P-A01-34,formato,vigente,c,migrado,1,1,1
+3853,F-P-A01-35,formato,vigente,c,pendiente,1,1,1
+3854,F-P-A01-36,formato,vigente,a,en_curso,1,1,1
+3855,F-P-A01-37,formato,vigente,a,en_curso,1,1,1
+3856,F-P-A01-38,formato,vigente,a,en_curso,1,1,1
+3857,F-P-A01-39,formato,vigente,a,en_curso,1,1,1
+3858,F-P-A01-40,formato,vigente,c,pendiente,1,1,1
+3859,F-P-A01-41,formato,vigente,d,pendiente,1,1,1
+3860,F-P-A01-42,formato,vigente,a,migrado,1,1,1
+3861,F-P-A01-43,formato,vigente,a,pendiente,1,1,1
+3862,F-P-A01-44,formato,vigente,a,migrado,1,1,1
+3863,F-P-A01-45,formato,vigente,a,pendiente,1,1,1
+3864,F-P-A01-46,formato,vigente,a,pendiente,1,1,1
+3865,F-P-A01-47,formato,vigente,a,migrado,1,1,1
+3866,F-P-A01-48,formato,vigente,a,en_curso,1,1,1
+3867,F-P-A01-49,formato,vigente,a,en_curso,1,1,1
+3869,F-P-A30-01,formato,vigente,a,migrado,1,0,0
+3870,F-P-A30-02,formato,vigente,a,migrado,1,0,0
+3871,F-P-A30-03,formato,vigente,a,migrado,1,0,0
+3873,F-P-A28-01,formulario_odoo,vigente,a,migrado,1,1,1
+3874,F-P-A28-03,formato,vigente,a,migrado,1,0,1
+3875,F-P-A28-04,formato,vigente,a,migrado,1,0,1
+3877,F-P-A28-09,formato,vigente,c,pendiente,1,1,1
+3878,F-P-A28-12,formulario_odoo,vigente,a,migrado,1,1,1
+3879,F-P-A28-15,formato,vigente,a,na,1,1,1
+3880,F-P-A28-16,formato,vigente,a,na,1,1,1
+3881,F-P-A28-17,formulario_odoo,vigente,a,migrado,1,1,1
+3882,F-P-A28-18,formulario_odoo,vigente,a,migrado,1,1,1
+3883,F-P-A28-19,formulario_odoo,vigente,a,migrado,1,1,1
+3884,F-P-A28-20,formato,vigente,a,na,1,1,1
+3885,F-P-A28-21,formulario_odoo,vigente,a,migrado,1,1,1
+3889,F-IT-P-C04-01-01,formato_it,vigente,b,migrado,1,1,1
+3890,F-IT-P-C04-02-01,formato_it,vigente,b,migrado,1,1,1
+3891,F-IT-P-C05-01-01,formato_it,vigente,b,migrado,1,1,1
+3892,F-IT-P-C05-01-02,formato_it,vigente,b,migrado,1,1,1
+3893,F-IT-P-C05-02-01,formato_it,vigente,b,migrado,1,1,1
+3894,F-IT-P-C05-04-01,formato_it,vigente,b,migrado,1,1,1
+3895,F-IT-P-C05-06-01,formato_it,vigente,b,migrado,1,1,1
+3896,F-IT-P-C05-06-02,formato_it,vigente,b,migrado,1,1,1
+3897,F-IT-P-C05-06-03,formato_it,vigente,b,migrado,1,1,1
+3898,F-IT-P-C05-06-04,formato_it,vigente,b,migrado,1,1,1
+3899,F-IT-P-C05-06-05,formato_it,vigente,b,migrado,1,1,1
+3900,F-IT-P-C05-06-06,formato_it,vigente,b,migrado,1,1,1
+3901,F-IT-P-C05-06-07,formato_it,vigente,a,pendiente,1,1,1
+3902,F-IT-P-C05-07-01,formato_it,vigente,a,pendiente,1,1,1
+3904,F-P-C01-01,formulario_odoo,vigente,a,migrado,1,1,1
+3905,F-P-C01-05,formulario_odoo,vigente,a,migrado,1,1,1
+3906,F-P-C01-06,formato,vigente,a,migrado,1,0,1
+3907,F-P-C01-07,formulario_odoo,vigente,a,migrado,1,1,1
+3909,F-P-C03-01,formato,vigente,c,migrado,1,0,1
+3910,F-P-C03-02,formato,vigente,c,migrado,1,0,1
+3911,F-P-C03-03,formato,vigente,a,migrado,1,0,1
+3912,F-P-C03-04,formato,vigente,a,migrado,1,0,1
+3913,F-P-C03-05,formato,vigente,a,migrado,1,0,1
+3914,F-P-C04-01,formulario_odoo,vigente,b,migrado,1,1,1
+3915,F-P-C04-02,formato,vigente,c,pendiente,1,1,1
+3916,F-P-C04-03,formato,vigente,c,pendiente,1,1,1
+3917,F-P-C04-04,formato,vigente,c,pendiente,1,1,1
+3918,F-P-C04-05,formato,vigente,a,pendiente,1,1,1
+3919,F-P-C04-06,formulario_odoo,vigente,b,migrado,1,1,1
+3920,F-P-C05-02,formato,vigente,a,pendiente,1,1,1
+3921,F-P-C05-06,formato,vigente,c,pendiente,1,1,1
+3922,F-P-C05-07,formato,vigente,a,pendiente,1,1,1
+3923,F-P-C05-08,formato,vigente,b,migrado,1,1,1
+3924,F-P-C05-09,formato,vigente,b,migrado,1,1,1
+3925,F-P-C05-11,formato,vigente,a,pendiente,1,1,1
+3926,F-P-C06-01,formato,vigente,b,migrado,1,1,1
+3927,F-P-C06-03,formato,vigente,b,migrado,1,1,1
+3928,F-P-C06-05,formato,vigente,b,migrado,1,1,1
+3929,F-P-C06-07,formato,vigente,b,migrado,1,1,1
+3930,F-P-C06-08,formato,vigente,b,migrado,1,1,1
+3931,F-P-C07-01,formulario_odoo,vigente,c,migrado,1,1,1
+3932,F-P-C07-02,formulario_odoo,vigente,c,migrado,1,1,1
+3933,F-P-C08-02,formato,vigente,c,migrado,1,0,1
+3934,F-P-C09-03,formulario_odoo,vigente,a,migrado,1,1,1
+3935,F-P-C14-02,formulario_odoo,vigente,b,migrado,1,1,1
+3936,F-P-C15-01,formato,vigente,b,migrado,1,1,1
+3937,F-P-C16-02,formato,vigente,b,migrado,1,1,1
+3938,F-P-C16-09,formato,vigente,b,migrado,1,1,1
+3939,F-P-C17-01,formato,vigente,b,migrado,1,1,1
+3940,F-P-C17-02,formato,vigente,b,migrado,1,1,1
+3941,F-P-C17-03,formato,vigente,b,migrado,1,1,1
+3942,F-P-C17-04,formato,vigente,b,migrado,1,1,1
+3943,F-P-C17-05,formato,vigente,a,pendiente,1,1,1
+3948,F-P-I01-01,formato,vigente,b,migrado,1,1,1
+3949,F-P-I01-02,formato,vigente,b,migrado,1,1,1
+3950,F-P-I01-03,formato,vigente,b,migrado,1,1,1
+3958,F-P-D01-02,formato,vigente,a,migrado,1,0,1
+3959,F-P-D01-03,formato,vigente,a,migrado,1,0,1
+3960,F-P-D01-05,formato,vigente,a,migrado,1,0,1
+3961,F-P-D01-07,formato,vigente,b,migrado,1,1,1
+3962,F-P-D01-08,formato,vigente,a,migrado,1,0,1
+3963,F-P-D01-09,formato,vigente,a,migrado,1,0,1
+3964,F-P-D01-10,formato,vigente,a,migrado,1,0,1
+3965,F-P-D01-11,formato,vigente,a,migrado,1,0,1
+3966,F-P-D01-12,formato,vigente,a,migrado,1,0,1
+3967,F-P-D01-16,formato,vigente,a,migrado,1,0,1
+3968,F-P-D01-18,formato,vigente,a,migrado,1,0,1
+3969,F-P-D01-19,formato,vigente,a,migrado,1,0,1
+3970,F-P-D01-21,formato,vigente,b,migrado,1,1,1
+3971,F-P-D01-24,formato,vigente,a,migrado,1,0,1
+3972,F-P-D01-26,formato,vigente,a,migrado,1,0,1
+3973,F-P-D01-27,formato,vigente,a,migrado,1,0,1
+3974,F-P-D01-29,formato,vigente,a,pendiente,1,1,1
+3975,F-P-D01-32,formato,vigente,a,migrado,1,0,1
+3976,F-P-D01-33,formato,vigente,a,migrado,1,0,1
+3977,F-P-D01-34,formato,vigente,b,migrado,1,1,1
+3978,F-P-D01-35,formato,vigente,b,migrado,1,1,1
+3979,F-P-D01-37,formato,vigente,b,migrado,1,1,1
+3980,F-P-D01-38,formato,vigente,b,migrado,1,1,1
+3981,F-P-D01-39,formato,vigente,a,migrado,1,0,1
+3982,F-P-D01-40,formato,vigente,a,migrado,1,0,1
+3983,F-P-D01-46,formato,vigente,b,migrado,1,1,1
+3984,F-P-D01-47,formato,vigente,a,migrado,1,0,1
+3987,F-IT-P-P01-01-01,formato_it,vigente,b,migrado,1,1,1
+3988,F-IT-P-P01-01-02,formato_it,vigente,b,migrado,1,1,1
+3989,F-IT-P-P01-01-03,formato_it,vigente,a,pendiente,1,1,1
+3990,F-IT-P-P01-01-04,formato_it,vigente,b,migrado,1,1,1
+3991,F-IT-P-P01-01-05,formato_it,vigente,b,migrado,1,1,1
+3992,F-IT-P-P01-02-01,formato_it,vigente,b,migrado,1,1,1
+3993,F-IT-P-P01-02-02,formato_it,vigente,a,pendiente,1,1,1
+3994,F-IT-P-P01-03-01,formato_it,vigente,b,migrado,1,1,1
+3995,F-IT-P-P01-04-01,formato_it,vigente,b,migrado,1,1,1
+3996,F-IT-P-P01-06-01,formato_it,vigente,b,migrado,1,1,1
+3997,F-IT-P-P01-06-02,formato_it,vigente,b,migrado,1,1,1
+3998,F-IT-P-P01-07-01,formato_it,vigente,b,migrado,1,1,1
+3999,F-P-P02-01,formato,vigente,a,pendiente,1,1,1
+4001,F-P-P01-01,formato,vigente,a,pendiente,1,1,1
+4005,F-IT-P-P01-08-02,formulario_odoo,vigente,a,migrado,1,1,1
+4006,F-IT-P-P01-08-13,formato_it,vigente,a,migrado,1,0,1
+4007,F-IT-P-P01-10-01,formato_it,vigente,b,migrado,1,1,1
+4008,F-IT-P-P01-10-02,formato_it,vigente,b,migrado,1,1,1
+4009,F-IT-P-P01-10-06,formato_it,vigente,b,migrado,1,1,1
+4010,F-IT-P-P01-12-04,formato_it,vigente,b,migrado,1,1,1
+4022,F-P-P01-00,formato,vigente,a,pendiente,1,1,1
+4023,F-P-P04-02,formato,vigente,a,pendiente,1,1,1
+4026,F-IT-P-P04-07-01,formato_it,vigente,a,pendiente,1,1,1
+4027,F-IT-P-P04-08-01,formato_it,vigente,a,pendiente,1,1,1
+4030,F-P-P04-03,formato,vigente,b,migrado,1,1,1
+4031,F-P-P04-08,formato,vigente,b,migrado,1,1,1
+4032,F-P-P04-10,formato,vigente,b,migrado,1,1,1
+4036,F-IT-P-P01-20-01,formato_it,vigente,b,migrado,1,1,1
+4037,F-IT-P-P01-20-05,formato_it,vigente,b,migrado,1,1,1
+4038,F-IT-P-P07-01-02,formato_it,vigente,b,migrado,1,1,0
+4039,F-IT-P-P07-01-03,formato_it,vigente,b,migrado,1,1,0
+4040,F-IT-P-P07-01-04,formato_it,vigente,b,migrado,1,1,0
+4041,F-IT-P-P07-01-05,formato_it,vigente,b,migrado,1,1,0
+4042,F-IT-P-P07-02-06,formato_it,vigente,b,migrado,1,1,0
+4060,F-P-E01-01,formato,vigente,a,pendiente,1,1,1
+4061,F-P-E03-01,formato,vigente,d,na,1,1,1
+4063,F-IT-P-G03-01-01,formulario_odoo,vigente,b,migrado,1,1,1
+4064,F-P-A04-03,formato,vigente,d,na,1,1,1
+4065,F-P-G01-03,formato,vigente,c,migrado,1,0,1
+4066,F-P-G01-05,formato,vigente,d,migrado,1,0,1
+4067,F-P-G01-06,formulario_odoo,vigente,a,migrado,1,1,1
+4068,F-P-G01-08,formato,vigente,d,migrado,1,0,1
+4069,F-P-G01-09,formato,vigente,a,migrado,1,0,1
+4070,F-P-G01-13,formato,vigente,d,na,1,1,1
+4071,F-P-G01-16,formulario_odoo,vigente,c,migrado,1,0,1
+4072,F-P-G03-01,formulario_odoo,vigente,a,migrado,1,1,1
+4073,F-P-G03-03,formulario_odoo,vigente,c,migrado,1,0,1
+4074,F-P-G03-04,formulario_odoo,vigente,a,migrado,1,1,1
+4075,F-P-G03-05,formulario_odoo,vigente,a,migrado,1,1,1
+4076,F-P-G03-06,formulario_odoo,vigente,a,migrado,1,1,1
+4077,F-P-G03-07,formulario_odoo,vigente,a,migrado,1,1,1
+4078,F-P-G03-08,formato,vigente,a,migrado,1,1,1
+4079,F-P-G03-09,formato,vigente,a,migrado,1,1,1
+4080,F-P-G04-01,formato,vigente,a,migrado,1,0,1
+4081,F-P-G04-02,formulario_odoo,vigente,a,migrado,1,1,1
+4082,F-P-G04-03,formato,vigente,c,pendiente,1,1,1
+4083,F-P-G04-04,formulario_odoo,vigente,a,migrado,1,1,1
+4084,F-P-G04-05,formulario_odoo,vigente,a,migrado,1,1,1
+4085,F-P-G04-06,formato,vigente,c,pendiente,1,1,1
+4086,F-P-G05-01,formulario_odoo,vigente,a,migrado,1,1,1
+4087,F-P-G05-02,formato,vigente,a,migrado,1,0,1
+4088,F-P-G05-03,formato,vigente,c,pendiente,1,1,1
+4089,F-P-G05-04,formato,vigente,c,pendiente,1,1,1
+4090,F-P-G05-05,formato,vigente,a,migrado,1,0,1
+4100,DAT-P-A16-01,dat,vigente,,pendiente,0,1,1
+4102,DAT-P-A14-01,dat,vigente,,pendiente,0,1,1
+4158,DAT P-C06-01,dat,vigente,,pendiente,0,1,1
+4687,DAT P-C03-01,dat,vigente,,pendiente,0,1,1
+4688,DAT P-C10-01,dat,vigente,,pendiente,0,1,0
+4689,DAT P-C10-02,dat,vigente,,pendiente,0,1,0
+4691,DAT P-P03-01,dat,vigente,,pendiente,0,1,1
+4694,DAT P-D02-01,dat,vigente,,pendiente,0,1,1
+4695,DAT P-D02-02,dat,vigente,,pendiente,0,1,1
+4696,DAT P-D02-03,dat,vigente,,pendiente,0,1,1
+4697,DAT P-D02-04,dat,vigente,,pendiente,0,1,1
+4698,DAT P-D02-05,dat,vigente,,pendiente,0,1,1
+4700,DAT P-I01-01,dat,vigente,,pendiente,0,1,1
+4701,DAT P-I01-03,dat,vigente,,pendiente,0,1,1
+4702,DAT P-I01-05,dat,vigente,,pendiente,0,1,1
+4703,DAT P-I01-06,dat,vigente,,pendiente,0,1,1
+4704,DAT P-I01-07,dat,vigente,,pendiente,0,1,1
+4705,DAT P-I01-08,dat,vigente,,pendiente,0,1,1
+4706,DAT P-I01-09,dat,vigente,,pendiente,0,1,1
+4709,DAT P-M01-01,dat,vigente,,pendiente,0,1,1
+4710,DAT P-M01-02,dat,vigente,,pendiente,0,1,1
+4711,DAT P-M01-03,dat,vigente,,pendiente,0,1,1
+4712,DAT P-M01-04,dat,vigente,,pendiente,0,1,1
+4713,DAT P-M01-05,dat,vigente,,pendiente,0,1,1
+4714,DAT P-M01-06,dat,vigente,,pendiente,0,1,1
+4715,DAT P-M01-07,dat,vigente,,pendiente,0,1,1
+4716,DAT P-M01-08,dat,vigente,,pendiente,0,1,1
+4717,DAT P-M01-10,dat,vigente,,pendiente,0,1,1
+4718,DAT P-M01-11,dat,vigente,,pendiente,0,1,1
+4719,DAT P-M01-12,dat,vigente,,pendiente,0,1,1
+4722,DAT P-P01-01,dat,vigente,,pendiente,0,1,1
+4724,DAT P-P01-02,dat,vigente,,pendiente,0,1,1
+4726,DAT P-P01-03,dat,vigente,,pendiente,0,1,1
+4744,DAT P-A14-02,dat,vigente,,pendiente,0,1,1
+4745,DAT P-E02-01,dat,vigente,,pendiente,0,1,1
+4746,DAT P-E02-02,dat,vigente,,pendiente,0,1,1
+4747,DAT-P-A17-03,dat,vigente,,pendiente,0,1,1
+4751,DAT-P-G01-07,dat,vigente,,migrado,0,0,1
+4753,DAT P-G01-03,dat,vigente,,pendiente,0,1,1
+4754,DAT P-G01-06,dat,vigente,,pendiente,0,1,1
+4756,DAT-P-A14-04,dat,vigente,,pendiente,0,1,1
+4758,F-IT-P-P01-08-01,formulario_odoo,vigente,a,migrado,1,1,1
+4759,F-IT-P-P01-08-03,formulario_odoo,vigente,a,migrado,1,1,1
+4760,F-IT-P-P01-08-04,formato_it,vigente,a,en_curso,1,1,1
+4761,F-IT-P-P01-08-05,formato_it,vigente,a,migrado,1,0,1
+4762,F-IT-P-P01-08-06,formato_it,vigente,a,en_curso,1,1,1
+4763,F-IT-P-P01-08-07,formato_it,vigente,a,migrado,1,1,1
+4764,F-IT-P-P01-08-08,formato_it,vigente,d,pendiente,1,1,1
+4765,F-IT-P-P01-08-09,formato_it,vigente,d,pendiente,1,1,1
+4766,F-IT-P-P01-10-03,formato_it,vigente,b,migrado,1,1,1
+4767,F-IT-P-P01-10-04,formato_it,vigente,b,migrado,1,1,1
+4768,F-IT-P-P01-10-05,formato_it,vigente,b,migrado,1,1,1
+4771,F-IT-P-P01-12-03,formato_it,vigente,b,migrado,1,1,1
+4774,F-IT-P-P01-13-01,formato_it,vigente,b,migrado,1,1,1
+4775,F-IT-P-P01-13-02,formato_it,vigente,b,migrado,1,1,1
+4776,F-IT-P-P01-13-03,formato_it,vigente,b,migrado,1,1,1
+4777,F-IT-P-P01-13-04,formato_it,vigente,b,migrado,1,1,1
+4778,F-IT-P-P01-13-05,formato_it,vigente,b,migrado,1,1,1
+4779,F-IT-P-P01-13-06,formato_it,vigente,b,migrado,1,1,1
+4780,F-IT-P-P01-15-01,formato_it,vigente,b,migrado,1,1,1
+4910,F-P-C09-01,formulario_odoo,vigente,a,migrado,1,1,1
+4921,PROT-01,protocolo,vigente,,migrado,0,0,0
+4922,PROT-02,protocolo,vigente,,migrado,0,0,0
+4923,PROT-03,protocolo,vigente,,migrado,0,0,0
+4924,PROT-04,protocolo,vigente,,migrado,0,0,0
+4925,PROT-05,protocolo,vigente,,migrado,0,0,0
+4995,DF-X-XXX-XX,diagrama,vigente,,pendiente,0,1,0
+5037,R-P-A14-01,reglamento,vigente,,migrado,0,0,1
+5038,R-P-A14-02,reglamento,vigente,,migrado,0,0,1
+5039,R-P-A14-03,reglamento,vigente,,migrado,0,0,1
+5040,R-P-A14-04,reglamento,vigente,,migrado,0,0,1
+5055,F-P-A12-02,formulario_odoo,vigente,a,migrado,1,1,1
+5056,F-P-A12-03,formulario_odoo,vigente,a,migrado,1,1,1
+5057,F-IT-P-P01-12-01,formato_it,vigente,a,pendiente,1,1,1
+5058,F-IT-P-P01-12-02,formato_it,vigente,b,migrado,1,1,1
+5059,F-P-A28-06,formulario_odoo,vigente,a,migrado,1,1,1
+5067,F-P-S01-01,formulario_odoo,vigente,a,migrado,1,1,1
+5152,F-P-V01-04,formato,vigente,a,migrado,1,0,1
