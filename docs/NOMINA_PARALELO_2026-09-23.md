@@ -68,6 +68,34 @@ Todo lo demás está a ±5 centavos de redondeo.
 - **2 XML sin recibo en Odoo:** Uriel Martínez López (S38, finiquito, baja)
   y Gael García Ramírez (S38; en Odoo entró hasta la S39).
 
+## Quincena 19 de Toluca (2026-09-29): ISR mensual y H_SENC
+
+Con `quimibond_nomina` 19.0.1.7.0 en producción (ISR sobre el acumulado del
+mes en la última nómina del mes; `H_SENC` con el divisor 15.2083) y las
+corridas 122 (Q18) y 121 (Q19) recalculadas contra el reporte de NOI
+`NOMINA 19 QNTL.xlsx`:
+
+| | Recibos | Dentro de 2 pesos |
+|---|---|---|
+| 122 Quincena 18 Toluca | 48 con XML | 48 |
+| 121 Quincena 19 Toluca | 48 con reporte | 41 |
+
+Los 7 fuera de rango de la quincena 19 son datos, no cálculo: 276 Vallejo,
+275 Cruz Apolinar, 471 Esquivel, 99 Juárez Matías y 498 Velázquez tienen el
+gravable distinto a NOI (horas extra u otras percepciones no capturadas en
+Odoo); 499 Bernal y 270 Escandón tienen el mismo gravable pero deducciones o
+percepciones exentas distintas (Escandón: prima dominical exenta 98.33 que
+Odoo no trae). Jessica Francisco (244) queda en 6,622.08 vs 6,623.82: el
+crédito INFONAVIT. Cynthia Santana (11) 11,908.71 vs 11,908.78; Villordo
+(464) 9,707.31 vs 9,707.35; Mairani Hernández (345) 6,104.34 vs 6,104.38.
+
+El parámetro `quimibond_nomina.isr_mensual_incluye_borrador = 1` está puesto
+para que las pilotos (en borrador) acumulen; **quitarlo antes de la primera
+nómina real**. La corrida 120 (semana 40, última de septiembre) no se
+recalculó: si se recalcula, el ajuste mensual tomará las semanas 37 a 39 en
+borrador, incluida la corrida 116 (semana 37, superada), así que primero
+cancelar la 116.
+
 ## Conclusión
 
 El cálculo de Odoo reproduce a NOI en los 199 recibos comparados: ISR,
