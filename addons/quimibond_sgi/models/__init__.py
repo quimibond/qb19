@@ -84,3 +84,4 @@ from . import sgi_hse_records
 from . import sgi_checklist
 from . import sgi_customer_reply
 from . import sgi_norm_compliance
+from . import sgi_archived_filters

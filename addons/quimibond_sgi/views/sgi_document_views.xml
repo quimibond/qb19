@@ -256,6 +256,7 @@
             <search string="Documentos SGI">
                 <field name="sgi_code"
                        filter_domain="['|', ('sgi_code', 'ilike', self), '&amp;', ('sgi_previous_code', 'ilike', self), ('sgi_previous_code_date', '&gt;=', (context_today() - relativedelta(months=12)).strftime('%Y-%m-%d'))]"/>
+                <field name="sgi_previous_code" string="Clave anterior (Dropbox)"/>
                 <field name="sgi_doc_type_id"/>
                 <field name="name"/>
                 <field name="sgi_area_id"/>

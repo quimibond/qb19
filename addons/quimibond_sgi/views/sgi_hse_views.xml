@@ -394,12 +394,12 @@
     </record>
 
     <menuitem id="menu_sgi_health_records" name="Estudios de higiene y exámenes médicos"
-              parent="menu_sgi_safety" action="sgi_health_record_action" sequence="40"
+              parent="menu_sgi_safety" action="sgi_health_record_action" sequence="50"
               groups="hr.group_hr_user,quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_csh_inspections" name="Recorridos de la Comisión de Seguridad e Higiene"
-              parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="45"/>
+              parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="40"/>
     <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist (planta y unidades)"
-              parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="50"/>
+              parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="70"/>
     <menuitem id="menu_sgi_checklist_today" name="Checklists de hoy"
               parent="maintenance.menu_maintenance_title" action="sgi_checklist_today_action" sequence="1"/>
     <menuitem id="menu_sgi_checklist_templates" name="Checklists de planta y unidades"
