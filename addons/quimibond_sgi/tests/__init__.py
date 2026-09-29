@@ -92,3 +92,4 @@ from . import test_entrega1b
 from . import test_approval_rule_archive
 from . import test_entrega1c
 from . import test_menu_tree
+from . import test_entrega4

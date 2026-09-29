@@ -6,14 +6,20 @@
         <field name="arch" type="xml">
             <form string="Incidente SST">
                 <header>
+                    <!-- D-009: investigar, cerrar y reabrir es de MAST y Salud
+                         ocupacional (el write() lo exige también por RPC). -->
                     <button name="action_set_investigacion" type="object" string="Investigar"
-                            class="btn-primary" invisible="state != 'reportado'"/>
+                            class="btn-primary" invisible="state != 'reportado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
                     <button name="action_set_acciones" type="object" string="Definir acciones"
-                            class="btn-primary" invisible="state != 'investigacion'"/>
+                            class="btn-primary" invisible="state != 'investigacion'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
                     <button name="action_set_cerrado" type="object" string="Cerrar"
-                            class="btn-primary" invisible="state not in ('investigacion', 'acciones')"/>
+                            class="btn-primary" invisible="state not in ('investigacion', 'acciones')"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
                     <button name="action_set_reportado" type="object" string="Reabrir"
-                            invisible="state != 'cerrado'"/>
+                            invisible="state != 'cerrado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="reportado,investigacion,acciones,cerrado"/>
                 </header>

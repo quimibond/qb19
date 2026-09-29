@@ -10,10 +10,11 @@
                             invisible="state != 'borrador'"/>
                     <button name="action_mark_done" type="object" string="Marcar realizada"
                             class="btn-primary" invisible="state != 'borrador'"/>
+                    <!-- D-009: cerrar y reabrir la revisión es del Jefe MAST. -->
                     <button name="action_close" type="object" string="Cerrar"
-                            invisible="state != 'realizada'"/>
+                            invisible="state != 'realizada'" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_draft" type="object" string="Volver a borrador"
-                            invisible="state == 'borrador'"/>
+                            invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>

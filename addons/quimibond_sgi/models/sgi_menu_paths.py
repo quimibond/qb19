@@ -20,6 +20,8 @@ SGI_MENU_PATHS = {
                       ('SGI', 'Procesos', 'Mapa de procesos')),
     'mi_procedimiento': ('quimibond_sgi.menu_sgi_my_procedure',
                          ('SGI', 'Inicio', 'Mi procedimiento')),
+    'documentos_vigentes': ('quimibond_sgi.menu_sgi_current_documents',
+                            ('SGI', 'Inicio', 'Documentos vigentes')),
     'indicadores': ('quimibond_sgi.menu_sgi_indicators',
                     ('SGI', 'Administración SGI', 'Indicadores', 'Indicadores')),
     'mediciones': ('quimibond_sgi.menu_sgi_measures',

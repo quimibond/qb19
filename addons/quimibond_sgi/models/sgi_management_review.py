@@ -386,10 +386,18 @@ class SgiManagementReview(models.Model):
             review.state = 'realizada'
         return True
 
+    def _sgi_check_mast(self):
+        """D-009 (entrega 4): cerrar y reabrir la revisión es del Jefe MAST.
+        Dirección la prepara, la marca realizada y la consulta."""
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise UserError("Solo el Jefe MAST cierra o regresa a borrador una revisión por la dirección.")
+
     def action_close(self):
+        self._sgi_check_mast()
         self.write({'state': 'cerrada'})
 
     def action_draft(self):
+        self._sgi_check_mast()
         self.write({'state': 'borrador'})
 
 

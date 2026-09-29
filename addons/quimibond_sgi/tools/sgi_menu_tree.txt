@@ -15,6 +15,7 @@ SGI | menu_sgi_root | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_us
 SGI/Inicio | menu_sgi_panel | -
 SGI/Inicio/Mis pendientes | menu_sgi_my_pending | -
 SGI/Inicio/Mi procedimiento | menu_sgi_my_procedure | -
+SGI/Inicio/Documentos vigentes | menu_sgi_current_documents | -
 SGI/Inicio/Mis indicadores | menu_sgi_my_indicators | -
 SGI/Inicio/Mi equipo | menu_sgi_my_team | -
 SGI/Inicio/Eficiencias de mi área | menu_sgi_my_staff_efficiency | quimibond_sgi.group_sgi_efficiency_capture

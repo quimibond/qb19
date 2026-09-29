@@ -41,6 +41,10 @@
               parent="menu_sgi_panel" action="sgi_my_pending_action_mine" sequence="10"/>
     <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
               parent="menu_sgi_panel" action="sgi_my_procedure_action_mine" sequence="20"/>
+    <!-- I-015 / D-21: los documentos vigentes (título y revisión, sin clave
+         del Dropbox) y el acuse de lectura del usuario en el mismo renglón. -->
+    <menuitem id="menu_sgi_current_documents" name="Documentos vigentes"
+              parent="menu_sgi_panel" action="sgi_current_document_action" sequence="25"/>
     <menuitem id="menu_sgi_my_indicators" name="Mis indicadores"
               parent="menu_sgi_panel" action="sgi_indicator_action_mine" sequence="30"/>
     <menuitem id="menu_sgi_my_team" name="Mi equipo"

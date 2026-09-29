@@ -695,7 +695,14 @@ class SgiActionLine(models.Model):
     def _compute_origin_display(self):
         for line in self:
             origin = line._sgi_origin()
-            line.origin_display = origin.display_name if origin else ''
+            # Entrega 4: el origen puede ser un incidente que el usuario no lee
+            # (solo lo ven quien lo reportó, MAST, Salud y Auditor): se dice
+            # qué es, sin abrirlo.
+            if origin and not origin._filtered_access('read'):
+                line.origin_display = "Incidente o accidente" if origin._name == 'sgi.incident' \
+                    else origin._description
+            else:
+                line.origin_display = origin.display_name if origin else ''
 
     def action_mark_done(self):
         """El click más usado del empleado: terminar su acción. Sella la fecha

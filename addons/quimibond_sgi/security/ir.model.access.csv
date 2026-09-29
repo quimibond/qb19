@@ -279,3 +279,6 @@ access_sgi_checklist_template_item_manager,sgi.checklist.template.item.manager,m
 access_sgi_checklist_line_user,sgi.checklist.line.user,model_sgi_checklist_line,base.group_user,1,1,1,0
 access_sgi_checklist_line_manager,sgi.checklist.line.manager,model_sgi_checklist_line,group_sgi_manager,1,1,1,1
 access_sgi_checklist_finish_user,sgi.checklist.finish.user,model_sgi_checklist_finish,base.group_user,1,1,1,0
+access_sgi_diagnostic_auditor,sgi.diagnostic.auditor,model_sgi_diagnostic,group_sgi_auditor,1,1,1,0
+access_sgi_diagnostic_line_auditor,sgi.diagnostic.line.auditor,model_sgi_diagnostic_line,group_sgi_auditor,1,1,1,0
+access_sgi_management_review_agreement_director,sgi.management.review.agreement.director,model_sgi_management_review_agreement,group_sgi_director,1,1,1,0

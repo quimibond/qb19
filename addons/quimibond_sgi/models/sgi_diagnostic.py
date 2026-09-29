@@ -83,7 +83,12 @@ class SgiDiagnostic(models.TransientModel):
         """Corre las verificaciones y deja una fila por hallazgo."""
         self.ensure_one()
         self.line_ids.unlink()
-        rows = self._sgi_build_report()
+        # D-18 (entrega 4): el Auditor y Dirección leen el Diagnóstico. Las
+        # verificaciones solo cuentan y nombran (no escriben nada); para quien
+        # no es Jefe MAST corren con sudo para no depender de las ACL de cada
+        # app. Las filas se crean con el usuario (son suyas).
+        builder = self if self.env.user.has_group('quimibond_sgi.group_sgi_manager') else self.sudo()
+        rows = builder._sgi_build_report()
         self.env['sgi.diagnostic.line'].create([
             dict(row, diagnostic_id=self.id, sequence=seq * 10)
             for seq, row in enumerate(rows, start=1)])

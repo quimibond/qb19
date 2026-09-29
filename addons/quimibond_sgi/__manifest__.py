@@ -195,6 +195,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
+        'views/sgi_current_documents_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         'views/sgi_menus.xml',
