@@ -19,7 +19,7 @@ adentro»):
   primero después de la semana) más el plazo de captura en días hábiles: ya
   no nace atrasada.
 - I-001: dos fuentes por persona (con o sin usuario): las actividades de su
-  procedimiento que van atrasadas (ejecuta o aprueba) y los acuses de
+  procedimiento que van atrasadas (ejecuta; desde 56.38.1 ya no aprueba) y los acuses de
   «leído y entendido» pendientes. Además, las firmas de Firma electrónica
   por hacer (por usuario).
 - I-012: quien tiene «Escala» en una actividad la recibe cuando el atraso
@@ -30,6 +30,14 @@ adentro»):
   gente de planta sin usuario ya tiene semáforo (sus actividades y acuses).
 - Un solo semáforo: el estado de las actividades es el de Mi procedimiento
   (``hr.job._sgi_mp_status_map``) y el de los renglones, ``pending_state``.
+
+56.38.1 (decisiones de Jose sobre la entrega 8a):
+
+- Capturar medición: 5 días hábiles (antes 3); validar sigue en 3 y el
+  acuse en 5. El aviso «Capturar indicador» del cron usa la misma fecha.
+- El aprobador solo ve lo que ya le toca (aprobación nativa, solicitud o
+  firma, que nacen cuando el ejecutor actuó); el atraso del ejecutor va al
+  rol «Escala».
 """
 from datetime import timedelta
 
@@ -66,7 +74,7 @@ STATE_RANK = {'atrasada': 0, 'por_vencer': 1, 'al_dia': 2}
 SOON_DAYS = 7
 HORIZON_DAYS = 60
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
-CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (3)
+CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
 ACK_DAYS_PARAM = 'quimibond_sgi.ack_business_days'                    # (5)
 # Indicadores automáticos cuya medición sí tiene que capturar alguien.
@@ -133,10 +141,12 @@ class SgiIndicatorMeasureDue(models.Model):
         return sgi_nth_business_day(self.env, following.year, following.month, nth)
 
     def _sgi_capture_due(self):
-        """«Capturar»: el día en que se mide más el plazo de captura."""
+        """«Capturar»: el día en que se mide más el plazo de captura (5 días
+        hábiles desde 56.38.1, decisión de Jose). Es la única regla: la usan
+        Mis pendientes y el aviso «Capturar indicador» del cron."""
         self.ensure_one()
         return sgi_add_business_days(self.env, self._sgi_run_day(),
-                                     _int_param(self.env, CAPTURE_DAYS_PARAM, 3))
+                                     _int_param(self.env, CAPTURE_DAYS_PARAM, 5))
 
     def _sgi_validate_due(self):
         """«Validar»: 3 días hábiles desde la captura (decisión 3, tanda 2).
@@ -339,10 +349,21 @@ class SgiMyPending(models.TransientModel):
     @api.model
     def _sgi_employee_rows(self, employees):
         """{empleado.id: [renglones]} de los tipos de la persona (I-001,
-        I-012): actividades que ejecuta o aprueba y van atrasadas en Mi
-        procedimiento, escalamientos cuyo atraso ya pasó sus días hábiles y
-        acuses de «leído y entendido» pendientes. Solo empleados de la
-        empresa del SGI (D-03)."""
+        I-012): actividades que ejecuta y van atrasadas en Mi procedimiento,
+        escalamientos cuyo atraso ya pasó sus días hábiles y acuses de
+        «leído y entendido» pendientes. Solo empleados de la empresa del SGI
+        (D-03).
+
+        56.38.1 (decisión de Jose): el rol «Aprueba» ya no recibe renglón
+        por el atraso del ejecutor. La actividad del procedimiento no sabe
+        si el ejecutor ya cumplió y falta la aprobación: su semáforo sale de
+        la evidencia (``measure_state`` y entradas con plazo vencido), que no
+        distingue «no la hizo» de «la hizo y falta aprobar». Lo que sí le
+        toca al aprobador llega por Odoo cuando el ejecutor ya actuó: la
+        regla de aprobación nativa del botón (tipo ``aprobacion``), la
+        solicitud de Aprobaciones (``solicitud``) o la firma (``firma``). El
+        atraso del ejecutor le llega a quien tiene «Escala», pasados sus días
+        hábiles."""
         employees = employees.sudo()
         result = {emp.id: [] for emp in employees}
         if not employees:
@@ -353,7 +374,7 @@ class SgiMyPending(models.TransientModel):
         employees = employees.filtered(lambda e: not e.company_id or e.company_id == company)
         roles_by_emp = {}
         for emp in employees:
-            detail = emp.sgi_mp_role_ids.filtered(lambda r: r.role in ('ejecuta', 'aprueba'))
+            detail = emp.sgi_mp_role_ids.filtered(lambda r: r.role == 'ejecuta')
             roles_by_emp[emp.id] = (detail, emp.sgi_mp_received_role_ids)
         all_roles = env['sgi.activity.role'].sudo()
         for detail, received in roles_by_emp.values():
@@ -380,11 +401,10 @@ class SgiMyPending(models.TransientModel):
                 if activity not in late or activity.id in seen:
                     continue
                 seen.add(activity.id)
-                verb = "Aprobar" if role.role == 'aprueba' else "Hacer"
                 detail_txt = status[activity][2]
                 rows.append({
-                    'kind': 'actividad', 'name': "%s %s%s" % (
-                        verb, label(activity), (" — %s" % detail_txt) if detail_txt else ''),
+                    'kind': 'actividad', 'name': "Hacer %s%s" % (
+                        label(activity), (" — %s" % detail_txt) if detail_txt else ''),
                     'date_due': late_due[activity.id], 'process_id': activity.process_id.id,
                     'res_model': 'sgi.process.activity', 'res_id': activity.id,
                     # Van atrasadas por definición, aunque no se sepa desde cuándo.
