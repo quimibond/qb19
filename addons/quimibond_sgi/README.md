@@ -1942,6 +1942,33 @@ C-011). Sección permanente **Procesos → Del Dropbox a Odoo** (decisión 7):
 - `quimibond_sgi.dropbox_excluded_codes`: claves fuera de la sección (P-I01
   siempre, aunque el parámetro se vacíe).
 
+### Decisiones de Jose sobre la entrega 8a (56.38.1)
+
+- **Plazos de Mis pendientes:** capturar medición, 5 días hábiles desde el
+  día en que se mide (`quimibond_sgi.measure_capture_business_days`, antes
+  3); validar, 3 desde la captura; acuse, 5. El aviso «Capturar indicador»
+  de los crons de indicadores vence en la misma fecha
+  (`sgi.indicator.measure._sgi_capture_due()`); antes traía su propio plazo
+  (día 1 + 4 naturales en el mensual, lunes + 2 en el semanal), que en el
+  mensual caía antes o encima del día en que corre el cron.
+- **El aprobador solo ve lo que ya le toca.** El rol «Aprueba» ya no recibe
+  renglón «Aprobar …» porque la actividad vaya atrasada: el semáforo de la
+  actividad sale de la evidencia y no distingue «no la hizo» de «la hizo y
+  falta aprobar». Lo que sí le toca le llega cuando el ejecutor ya actuó: la
+  aprobación nativa del botón (`studio.approval.request`), la solicitud de
+  Aprobaciones o la firma de Sign. El atraso del ejecutor le llega a quien
+  tiene «Escala», pasados sus días hábiles.
+- **Equipos en «No usar» liberados.** `migrations/19.0.56.38.1/post-migrate.py`
+  libera todos los equipos de medición en «No usar» de la empresa del SGI
+  (144 en producción el 29-sep-2026: 143 que bloqueó el cron el 25-sep y el
+  IMB 02, 743, que se creó así), con respaldo en
+  `sgi_equipment_do_not_use_bak_563801` y el cambio en el chatter de cada
+  equipo. **La inspección de calidad sigue rechazando un equipo con la
+  calibración vencida** (`quality.check._sgi_check_equipment_calibrated` la
+  evalúa en línea; no se toca), y el bloqueo automático del cron sigue
+  apagado (`quimibond_sgi.calibration_block_expired`). Un equipo que falle su
+  calibración (fuera de tolerancia) se sigue bloqueando como siempre.
+
 ### Mis pendientes con todo adentro (56.36.0, D-04)
 
 Entrega 8a de la auditoría 2026-09 (G-001, I-001, I-006, I-007, I-012,
@@ -1951,13 +1978,15 @@ G-017, I-021). Mis pendientes es la bandeja oficial:
   automático cuyo cálculo falló (`calc_status` error, sin fórmula o manual).
   Vence el día hábil en que se mide (el N-ésimo del mes siguiente,
   `quimibond_sgi.monthly_measure_business_day`, o el primero después de la
-  semana) más `quimibond_sgi.measure_capture_business_days` (3) días hábiles.
+  semana) más `quimibond_sgi.measure_capture_business_days` (5 desde
+  56.38.1; antes 3) días hábiles.
 - **Validar medición:** la `capturado`, para el dueño del indicador, 3 días
   hábiles desde `captured_date` (`quimibond_sgi.measure_validate_business_days`;
   sin fecha, desde que se creó). Botón «Validar» en el renglón.
-- **Actividad atrasada:** las que la persona ejecuta o aprueba y Mi
-  procedimiento marca «Atrasada» (el mismo semáforo). **Escalamiento:** llega
-  a quien tiene «Escala» cuando el atraso pasa de sus días hábiles.
+- **Actividad atrasada:** las que la persona ejecuta y Mi procedimiento
+  marca «Atrasada» (el mismo semáforo; desde 56.38.1 ya no las que aprueba).
+  **Escalamiento:** llega a quien tiene «Escala» cuando el atraso pasa de sus
+  días hábiles.
 - **Acuse de lectura** pendiente (vence en `quimibond_sgi.ack_business_days`,
   5, días hábiles desde que se pidió) y **Firma** de Firma electrónica por
   hacer (vence en su «Válido hasta» o 3 días hábiles).

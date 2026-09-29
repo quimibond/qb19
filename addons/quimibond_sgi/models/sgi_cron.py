@@ -433,6 +433,35 @@ class SgiCron(models.AbstractModel):
                   "desbloquea aquí")
         return ids
 
+    @api.model
+    def _sgi_migrate_release_do_not_use(self, backup_table):
+        """56.38.1 (decisión de Jose): libera todos los equipos de medición en
+        «No usar» de la empresa del SGI (o sin empresa), con respaldo previo en
+        ``backup_table`` (id, name, sgi_do_not_use, sgi_calibration_state,
+        sgi_next_calibration_date). Escribe por ORM: el campo tiene
+        ``tracking=True`` y el cambio queda en el chatter del equipo (nota de
+        OdooBot; ``maintenance.equipment`` no define subtipo de seguimiento,
+        así que no se manda correo ni se agenda nada). Idempotente: la segunda
+        vez no encuentra equipos bloqueados. Devuelve los equipos liberados."""
+        company = self.env['sgi.config']._sgi_company()
+        blocked = self.env['maintenance.equipment'].sudo().with_context(active_test=False).search([
+            ('sgi_is_measuring', '=', True), ('sgi_do_not_use', '=', True),
+            ('company_id', 'in', (company.id, False))], order='id')
+        if not blocked:
+            return blocked
+        self.env.flush_all()
+        cr = self.env.cr
+        cr.execute(
+            "CREATE TABLE IF NOT EXISTS %s AS SELECT id, name, sgi_do_not_use, sgi_calibration_state, "
+            "sgi_next_calibration_date, now() AS backed_up_at FROM maintenance_equipment WITH NO DATA"
+            % backup_table)
+        cr.execute(
+            "INSERT INTO %s SELECT id, name, sgi_do_not_use, sgi_calibration_state, "
+            "sgi_next_calibration_date, now() FROM maintenance_equipment WHERE id IN %%s "
+            "AND id NOT IN (SELECT id FROM %s)" % (backup_table, backup_table), (tuple(blocked.ids),))
+        blocked.write({'sgi_do_not_use': False})
+        return blocked
+
     # ------------------------------------------------------------------
     # 1. Cron diario — No Conformidades
     # ------------------------------------------------------------------
@@ -1114,7 +1143,11 @@ class SgiCron(models.AbstractModel):
                                deadline, period_label):
         """Genera (idempotente) las mediciones del periodo y evalúa la NC
         automática. Cada indicador va en su savepoint: un cálculo que truene
-        (fuente de datos rota) no deja sin medir a los demás."""
+        (fuente de datos rota) no deja sin medir a los demás.
+
+        56.38.1: el aviso «Capturar indicador» vence en
+        ``measure._sgi_capture_due()``, la misma fecha de Mis pendientes;
+        ``deadline`` queda solo de respaldo."""
         Measure = self.env['sgi.indicator.measure']
         manager_id = self._sgi_manager_user_id()
 
@@ -1146,14 +1179,19 @@ class SgiCron(models.AbstractModel):
                 if measure.state == 'pendiente':
                     user_id = indicator.responsible_id.id or manager_id
                     if user_id:
+                        # 56.38.1: una sola regla de plazo, la de Mis
+                        # pendientes (día en que se mide + 5 días hábiles).
+                        # Antes: día 1 + 4 naturales o lunes + 2, que en el
+                        # mensual caía antes o encima del día en que corre.
+                        due = measure._sgi_capture_due() or deadline
                         # G-021 (56.37.0): la clave lleva la medición, así
                         # se cierra por medición y no por indicador.
                         self._sgi_schedule(
                             indicator,
                             "Capturar indicador %s (%s)" % (indicator.code, period_label),
                             "Registre el valor del indicador del periodo (%s) antes del %s." % (
-                                period_label, deadline),
-                            user_id, date_deadline=deadline,
+                                period_label, due),
+                            user_id, date_deadline=due,
                             key='capturar_indicador:%d' % measure.id)
             # NC automática (solo mediciones rojas validadas con nc_on_red)
             measure._sgi_maybe_create_nc()
