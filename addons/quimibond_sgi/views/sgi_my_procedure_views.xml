@@ -626,15 +626,6 @@
         </field>
     </record>
 
-    <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
-              parent="menu_sgi_panel" action="sgi_my_procedure_action_mine"
-              sequence="20"/>
-    <menuitem id="menu_sgi_my_pending" name="Mis pendientes"
-              parent="menu_sgi_panel" action="sgi_my_pending_action_mine"
-              sequence="10"/>
-    <menuitem id="menu_sgi_my_team" name="Mi equipo"
-              parent="menu_sgi_panel" action="sgi_my_team_action_mine"
-              sequence="40"/>
 
     <!-- 56.7.0: Inicio → Mis indicadores. Antes el Usuario SGI no tenía
          menú para ver ni capturar sus indicadores (Indicadores y Mediciones
@@ -651,7 +642,4 @@
             <p>Los indicadores del SGI los asigna MAST; cuando tengas uno, aquí ves su último valor y capturas sus mediciones.</p>
         </field>
     </record>
-    <menuitem id="menu_sgi_my_indicators" name="Mis indicadores"
-              parent="menu_sgi_panel" action="sgi_indicator_action_mine"
-              sequence="30"/>
 </odoo>

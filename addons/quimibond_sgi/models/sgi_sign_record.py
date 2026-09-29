@@ -116,15 +116,26 @@ class SgiSignRequestWizard(models.TransientModel):
     subject = fields.Char(string="Asunto")
 
     def action_confirm(self):
+        """F-003 (auditoría 2026-09): sin sudo(). Antes cualquier usuario interno
+        podía mandar por RPC CUALQUIER plantilla de Sign a cualquier contacto,
+        porque plantilla y solicitud se leían y creaban como superusuario.
+        Ahora solo se firma desde los modelos del SGI, sobre un registro que el
+        usuario puede leer, con una plantilla que Sign le deja ver y con sus
+        propios permisos de Sign."""
         self.ensure_one()
+        if self.res_model not in SGI_SIGN_MODELS:
+            raise UserError("Solo se puede pedir firma desde una orden de compra, una entrega, "
+                            "un lote o un producto.")
         record = self.env[self.res_model].browse(self.res_id).exists()
         if not record:
             raise UserError("El registro ya no existe.")
-        template = self.template_id.sudo()
+        record.check_access('read')
+        template = self.template_id
+        template.check_access('read')
         roles = template.sign_item_ids.mapped('responsible_id')
         if len(roles) != 1:
             raise UserError("La plantilla debe tener campos de UN solo firmante; esta tiene %d." % len(roles))
-        request = self.env['sign.request'].sudo().create({
+        request = self.env['sign.request'].create({
             'template_id': template.id,
             'reference': "%s — %s" % (template.display_name, record.display_name),
             'subject': self.subject or "Firma: %s" % record.display_name,

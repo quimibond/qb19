@@ -175,10 +175,10 @@ class SgiConfig(models.AbstractModel):
                 Param.set_param(key, value)
         return True
 
-    # Indicadores cuyo cálculo automático ya es confiable: al actualizar el
-    # módulo se les fija el calc_mode SOLO si siguen en 'manual', para NO pisar
-    # una decisión de MAST (si MAST lo regresó a manual o lo puso en otro modo,
-    # se respeta). No incluye CO-03 (compras_sin_devolucion): es un PROXY que
+    # Indicadores cuyo cálculo automático ya es confiable. Desde B-001
+    # (auditoría 2026-09) ya no se aplica en cada update: 'manual' puede ser
+    # la decisión de MAST y el update no la distingue de la siembra. Queda
+    # solo para llamarse a mano; se retira con la limpieza de siembras. No incluye CO-03 (compras_sin_devolucion): es un PROXY que
     # MAST debe validar y activar a mano en la ficha del indicador.
     _SGI_AUTO_INDICATORS = {
         'quimibond_sgi.sgi_ind_crecimiento_ventas': 'crecimiento_ventas',

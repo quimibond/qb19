@@ -106,7 +106,7 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
                 <page string="Salud ocupacional" name="sgi_health"
-                      groups="hr.group_hr_user,quimibond_sgi.group_sgi_manager">
+                      groups="quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager">
                     <field name="sgi_health_record_ids" context="{'default_employee_id': id}">
                         <list decoration-danger="state == 'vencido'" decoration-warning="state == 'por_vencer'">
                             <field name="kind"/>
@@ -395,7 +395,7 @@
 
     <menuitem id="menu_sgi_health_records" name="Estudios de higiene y exámenes médicos"
               parent="menu_sgi_safety" action="sgi_health_record_action" sequence="50"
-              groups="hr.group_hr_user,quimibond_sgi.group_sgi_manager"/>
+              groups="quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_csh_inspections" name="Recorridos de la Comisión de Seguridad e Higiene"
               parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="40"/>
     <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist (planta y unidades)"
