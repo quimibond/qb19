@@ -39,13 +39,13 @@ class SgiFormatMap(models.Model):
                                     "desde un reporte (etiquetas, responsivas, pies).")
     model_name = fields.Char(related='model_id.model', string="Modelo técnico", store=True)
     document_id = fields.Many2one(
-        'documents.document', string="Documento controlado", ondelete='restrict',
+        'documents.document', string="Documento controlado", ondelete='set null',
         index=True, domain=[('sgi_is_controlled', '=', True)],
         help="Formato controlado que se imprime. La clave y la revisión salen de "
              "su revisión vigente, en vivo: si cambia la clave o sube la "
              "revisión, el pie cambia solo.")
     document_alt_id = fields.Many2one(
-        'documents.document', string="Documento alternativo", ondelete='restrict',
+        'documents.document', string="Documento alternativo", ondelete='set null',
         index=True, domain=[('sgi_is_controlled', '=', True)],
         help="Formato que aplica cuando el registro está confirmado (solo ventas: "
              "cotización vs pedido; presupuesto vs pronóstico).")
