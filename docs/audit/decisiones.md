@@ -236,3 +236,17 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - **D-21:** confirmada: «Documentos vigentes» para el Usuario SGI, con título y revisión. **Agregado:** desde ahí se da el acuse de lectura.
 - **Corrección a los modelos sensibles:** los salarios de eficiencias quedan **solo para RH y Nóminas** (Coordinador de RH y Responsable de Nóminas), **no para el Jefe MAST**. Captura de eficiencias y los supervisores ven la eficiencia, sin el importe.
 - La entrega 4 sigue sobre el lote 1 (rama `claude/sgi-entrega-4`).
+
+## 2026-09-29 — Lote 1 integrado a `main`
+
+- Por instrucción de Jose («push a main»), el lote 1 (quimibond/qb19#458: entregas 1, 1b, 1d y 1c) **entró a `main`** con un merge commit (`d11e35a`), **sin esperar el build de su rama**. Estado al integrar: CI de GitHub en verde y mergeable.
+- **La evidencia pasa al build de `main` en Odoo.sh:**
+  - instalación y actualización sin errores;
+  - suite del SGI y de `qb_mcp_politica`;
+  - las consultas de la sección «Upgrade» del PR.
+
+  Si algo falla, se corrige en una rama nueva hacia `main`.
+- Se cerraron, con nota, los PRs de referencia #452, #455, #456 y #457.
+- **Pendiente para pasar a producción** (PR de `main` a `quimibond`, con visto bueno de Jose):
+  - antes: aplicar la opción A del MCP en Ajustes;
+  - después: instalar `qb_mcp_politica`, meter a Miguel Medina (88) en Salud ocupacional y depurar a «Empleados / Encargado».
