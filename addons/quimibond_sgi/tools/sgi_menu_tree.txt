@@ -9,8 +9,8 @@
 #   grupos = xmlids en orden alfabético separados por coma; «-» = sin grupos
 #            propios (hereda lo que ve la carpeta)
 # Calidad preventiva y Paretos de calidad cuelgan de la app Calidad y no
-# entran aquí. Fuente del árbol: docs/audit/05-menus/arbol_final.md (sin «Del
-# Dropbox a Odoo», que es la entrega 6).
+# entran aquí. Fuente del árbol: docs/audit/05-menus/arbol_final.md («Del
+# Dropbox a Odoo» desde la entrega 6).
 SGI | menu_sgi_root | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_user
 SGI/Inicio | menu_sgi_panel | -
 SGI/Inicio/Mis pendientes | menu_sgi_my_pending | -
@@ -25,6 +25,12 @@ SGI/Procesos/Actividades | menu_sgi_activities | -
 SGI/Procesos/Matriz de responsabilidades | menu_sgi_analysis_who | -
 SGI/Procesos/Puestos y procesos | menu_sgi_jobs_roles | -
 SGI/Procesos/Fichas de proceso por máquina | menu_sgi_machine_sheets | -
+SGI/Procesos/Del Dropbox a Odoo | menu_sgi_dropbox | -
+SGI/Procesos/Del Dropbox a Odoo/Buscador por clave anterior | menu_sgi_dropbox_search | -
+SGI/Procesos/Del Dropbox a Odoo/Procedimientos anteriores | menu_sgi_dropbox_procedures | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Procesos/Del Dropbox a Odoo/Formatos y documentos anteriores | menu_sgi_migration | -
+SGI/Procesos/Del Dropbox a Odoo/Rutina por rutina | menu_sgi_dropbox_routines | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Procesos/Del Dropbox a Odoo/Avance de la transición | menu_sgi_dropbox_progress | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Mejora | menu_sgi_improvement_group | -
 SGI/Mejora/No conformidades | menu_sgi_nc | -
 SGI/Mejora/Reclamaciones de clientes | menu_sgi_complaints | -
@@ -59,7 +65,6 @@ SGI/Administración SGI/Documentos/Lista maestra | menu_sgi_master_list | -
 SGI/Administración SGI/Documentos/Documentos externos | menu_sgi_external_docs | -
 SGI/Administración SGI/Documentos/Solicitudes de cambio | menu_sgi_doc_changes | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Administración SGI/Documentos/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Documentos/Migración de formatos | menu_sgi_migration | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Administración SGI/Indicadores | menu_sgi_admin_indicators | -
 SGI/Administración SGI/Indicadores/Indicadores | menu_sgi_indicators | -
 SGI/Administración SGI/Indicadores/Mediciones | menu_sgi_measures | -

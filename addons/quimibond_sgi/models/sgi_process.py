@@ -156,7 +156,10 @@ class SgiProcess(models.Model):
                     vals['doc_approver_id'] = user.id
             if not vals.get('doc_vobo_id') and vobo:
                 vals['doc_vobo_id'] = vobo.id
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        if any(vals.get('owner_id') for vals in vals_list):
+            self.sudo()._sgi_sync_process_owner_group()
+        return records
 
     # --- Punto 5 (45.0.0) + L-005 (56.31.0): al poner vigente el proceso, lo
     # que sustituye queda obsoleto y con la baja tramitada. Movido desde
@@ -165,7 +168,47 @@ class SgiProcess(models.Model):
         res = super().write(vals)
         if vals.get('state') == 'vigente':
             self._sgi_obsolete_replaced_documents()
+        if {'owner_id', 'active', 'company_id'} & set(vals):
+            self.sudo()._sgi_sync_process_owner_group()
         return res
+
+    # --- 57.0.0 (entrega 6, decisión de Jose): «Dueño de proceso (SGI)» ---
+    @api.model
+    def _sgi_sync_process_owner_group(self):
+        """Sincroniza ``quimibond_sgi.group_sgi_process_owner`` con los datos:
+        entran los usuarios activos de ``owner_id`` (es un ``hr.employee``: se
+        toma su ``user_id``) de los procesos activos de la empresa del SGI
+        (``sgi.config._sgi_company()``); salen los que ya no son dueños de
+        ningún proceso activo. Toca solo la membresía directa de ese grupo;
+        idempotente (sin cambios no escribe). Lo llaman ``create``/``write``
+        de ``sgi.process`` (``owner_id``, ``active``, ``company_id``), el
+        post-migrate de 19.0.57.0.0 y el cron diario de respaldo (que además
+        recoge los cambios de ``hr.employee.user_id``).
+
+        Verificado en producción por MCP (solo lectura, 2026-09-29, empresa
+        1): ``aggregate_records sgi.process groupby [owner_id] domain
+        [company_id = 1, active = True]`` → 14 procesos activos, todos con
+        dueño, 11 empleados distintos; 10 con usuario activo interno (ids 6,
+        15, 22, 33, 35, 68, 88, 128, 135, 152) y 1 sin usuario (Francisco
+        González, empleado 564, que no entra). Esperado la primera vez: 10
+        dueños en el grupo."""
+        group = self.env.ref('quimibond_sgi.group_sgi_process_owner', raise_if_not_found=False)
+        if not group:
+            return {'added': [], 'removed': []}
+        group = group.sudo()
+        company = self.env['sgi.config']._sgi_company()
+        processes = self.env['sgi.process'].sudo().with_context(active_test=True).search([
+            ('company_id', '=', company.id), ('owner_id', '!=', False)])
+        owners = processes.mapped('owner_id.user_id').filtered(lambda u: u.active and not u.share)
+        current = group.with_context(active_test=False).user_ids
+        to_add = owners - current
+        to_remove = current - owners
+        commands = [(4, user.id) for user in to_add] + [(3, user.id) for user in to_remove]
+        if commands:
+            group.write({'user_ids': commands})
+            _logger.info("SGI: grupo «Dueño de proceso» sincronizado: +%s −%s (quedan %d).",
+                         to_add.ids, to_remove.ids, len(owners))
+        return {'added': to_add.ids, 'removed': to_remove.ids}
 
     def _sgi_obsolete_replaced_documents(self):
         """Los procedimientos que sustituye un proceso vigente (los que tienen

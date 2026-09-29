@@ -27,6 +27,36 @@ SGI_CODE_REGEX = re.compile(
     r'|ANEXO \d{1,2})$'
 )
 
+# «Del Dropbox a Odoo» (entrega 6, 56.39.0) -----------------------------------
+# L-010 / E-005: campos de la transición. Los consultan todos; solo los escribe
+# el Jefe MAST (o el sistema con sudo: el cron que resuelve menús, la
+# aplicación de cambios documentales, la baja al entrar en vigor el proceso).
+# No hay contexto de excepción: el contexto lo controla el cliente por RPC.
+SGI_TRANSITION_FIELDS = frozenset((
+    'sgi_previous_code', 'sgi_previous_code_date',
+    'sgi_migration_class', 'sgi_migration_state', 'sgi_migration_target',
+    'sgi_migration_point_id', 'sgi_odoo_menu_id', 'sgi_replaced_by_process_id',
+))
+# Tipos del Dropbox que no son procedimiento (la sección «Formatos y documentos
+# anteriores», E-004).
+SGI_DROPBOX_DOC_TYPES = (
+    'formato', 'formato_it', 'formulario_odoo', 'instructivo', 'dat', 'anexo',
+    'protocolo', 'reglamento', 'miid', 'diagrama',
+)
+# L-001: P-I01 contiene credenciales. Queda fuera de la sección, del cron de
+# menús, de las migraciones y del importador SIEMPRE, aunque el parámetro
+# quimibond_sgi.dropbox_excluded_codes se vacíe.
+SGI_DROPBOX_ALWAYS_EXCLUDED = ('P-I01',)
+# Clave de procedimiento del Dropbox dentro de cualquier clave anterior
+# (F-P-A23-04 → P-A23; DAT P-C10-01 → P-C10; F-IT-P-P07-01-02 → P-P07).
+SGI_LEGACY_FAMILY_RE = re.compile(r'(?<![A-Z])(P-[A-Z]\d{2})(?!\d)')
+
+
+def sgi_legacy_family(code):
+    """Familia (clave del procedimiento del Dropbox) de una clave anterior."""
+    match = SGI_LEGACY_FAMILY_RE.search((code or '').strip().upper())
+    return match.group(1) if match else False
+
 
 class DocumentsDocument(models.Model):
     _inherit = 'documents.document'
@@ -195,6 +225,141 @@ class DocumentsDocument(models.Model):
         help="Punto de calidad (worksheet) que sustituye a este formato. "
              "El botón «Abrir worksheet» salta directo a él.")
 
+    # --- «Del Dropbox a Odoo» (entrega 6, 56.39.0) ---------------------------
+    # C-011: el destino se guarda de tres formas; para leerlo hay una sola
+    # etiqueta con prioridad menú > worksheet > texto.
+    sgi_destination_label = fields.Char(
+        string="Dónde vive en Odoo", compute='_compute_sgi_destination_label',
+        help="Menú de Odoo ligado; si no hay, el worksheet de Calidad; si no, el "
+             "texto «Destino en Odoo». Vacío = todavía sin destino.")
+    # L-014: familia del Dropbox por la clave anterior (P-A23 para F-P-A23-04),
+    # para agrupar los documentos cuyo procedimiento no está cargado sin
+    # inventar procedimientos.
+    sgi_legacy_family = fields.Char(
+        string="Familia del Dropbox", compute='_compute_sgi_legacy_family',
+        store=True, index=True,
+        help="Clave del procedimiento del Dropbox al que pertenece el documento, "
+             "sacada de su clave anterior (o de su clave si todavía no la tiene).")
+    # E-005: las vistas de la sección dejan los campos de transición en solo
+    # lectura para quien no es Jefe MAST (la guarda del servidor es L-010).
+    sgi_can_edit_transition = fields.Boolean(
+        compute='_compute_sgi_can_edit_transition')
+
+    @api.depends('sgi_odoo_menu_id', 'sgi_migration_point_id', 'sgi_migration_target')
+    def _compute_sgi_destination_label(self):
+        for doc in self:
+            if doc.sgi_odoo_menu_id:
+                label = doc.sgi_odoo_menu_id.sudo().complete_name
+            elif doc.sgi_migration_point_id:
+                point = doc.sgi_migration_point_id.sudo()
+                label = "Worksheet: %s" % (point.title or point.name or point.id)
+            else:
+                label = (doc.sgi_migration_target or '').strip()
+            doc.sgi_destination_label = label or False
+
+    @api.depends('sgi_previous_code', 'sgi_code', 'sgi_is_controlled')
+    def _compute_sgi_legacy_family(self):
+        for doc in self:
+            doc.sgi_legacy_family = sgi_legacy_family(
+                doc.sgi_previous_code or doc.sgi_code) if doc.sgi_is_controlled else False
+
+    @api.depends_context('uid')
+    def _compute_sgi_can_edit_transition(self):
+        allowed = sgi_bypass_allowed(self.env)
+        for doc in self:
+            doc.sgi_can_edit_transition = allowed
+
+    @api.model
+    def _sgi_dropbox_excluded_codes(self):
+        """Claves del Dropbox fuera de la sección (L-001): el parámetro
+        ``quimibond_sgi.dropbox_excluded_codes`` (separadas por coma) más
+        P-I01, que no se puede quitar."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.dropbox_excluded_codes', '') or ''
+        codes = {c.strip().upper() for c in raw.split(',') if c.strip()}
+        return tuple(sorted(codes | set(SGI_DROPBOX_ALWAYS_EXCLUDED)))
+
+    @api.model
+    def _sgi_dropbox_excluded_domain(self):
+        """Dominio que deja fuera el procedimiento excluido y su familia."""
+        codes = list(self._sgi_dropbox_excluded_codes())
+        return [('sgi_legacy_family', 'not in', codes),
+                ('sgi_parent_document_id', 'not any', [('sgi_legacy_family', 'in', codes)])]
+
+    def _sgi_is_dropbox_excluded(self):
+        self.ensure_one()
+        codes = self._sgi_dropbox_excluded_codes()
+        return (self.sgi_legacy_family in codes
+                or self.sgi_parent_document_id.sgi_legacy_family in codes)
+
+    @api.constrains('sgi_migration_class', 'sgi_migration_state')
+    def _check_sgi_dropbox_class(self):
+        """L-012 / L-013 (solo al escribir clase o estado; las 13
+        contradicciones de hoy las corrige MAST): en los documentos del
+        Dropbox que no son procedimiento, «Migrado» es de clase A, B o C y con
+        destino; la clase D («Sigue como documento») es «No aplica (se
+        queda)», y A, B o C nunca son «No aplica»."""
+        for doc in self.filtered(lambda d: d.sgi_is_controlled
+                                 and d.sgi_doc_type in SGI_DROPBOX_DOC_TYPES):
+            name = doc.sgi_previous_code or doc.sgi_code or doc.name
+            cls, state = doc.sgi_migration_class, doc.sgi_migration_state
+            if state == 'migrado' and (cls not in ('a', 'b', 'c') or not (
+                    doc.sgi_odoo_menu_id or doc.sgi_migration_point_id or doc.sgi_migration_target)):
+                raise ValidationError(
+                    "%s no puede quedar «Migrado a Odoo» sin clase A, B o C y sin "
+                    "destino (menú, worksheet o texto)." % name)
+            if cls == 'd' and state != 'na':
+                raise ValidationError(
+                    "%s es clase D («Sigue como documento»): su estado de migración es "
+                    "«No aplica (se queda)»." % name)
+            if cls in ('a', 'b', 'c') and state == 'na':
+                raise ValidationError(
+                    "%s es clase %s: Odoo lo sustituye, no puede ser «No aplica (se "
+                    "queda)»." % (name, cls.upper()))
+
+    @api.model
+    def _sgi_classify_legacy_documents(self, exclude_codes=None, ids=None):
+        """Respuesta 3 de Jose a L (migración 56.39.0): instructivos, DAT,
+        anexos, protocolos y reglamentos controlados y activos SIN clase pasan
+        a clase D y «No aplica (se queda)». Los que ya pasaron a actividades de
+        Odoo los marca MAST uno por uno. Deja fuera el procedimiento excluido
+        (P-I01) y su familia: por la clave anterior o la clave, y por el
+        procedimiento padre. Por SQL, sin chatter; solo toca los que no tienen
+        clase, así que la segunda vez devuelve {}. ``ids`` limita el alcance
+        (pruebas). Devuelve {tipo: n}."""
+        codes = list(exclude_codes if exclude_codes is not None
+                     else self._sgi_dropbox_excluded_codes())
+        codes = [re.sub(r'[^A-Z0-9-]', '', c.upper()) for c in codes if c]
+        patterns = ['(^|[^A-Z])%s([^0-9]|$)' % c for c in codes if c] or ['a^']
+        self.env.flush_all()
+        query = """
+            UPDATE documents_document d
+               SET sgi_migration_class = 'd', sgi_migration_state = 'na'
+              FROM sgi_document_type t
+             WHERE t.id = d.sgi_doc_type_id
+               AND t.code IN ('instructivo', 'dat', 'anexo', 'protocolo', 'reglamento')
+               AND d.sgi_is_controlled IS TRUE AND d.active IS TRUE
+               AND d.sgi_migration_class IS NULL
+               AND NOT (upper(coalesce(d.sgi_previous_code, '')) ~ ANY(%(patterns)s))
+               AND NOT (upper(coalesce(d.sgi_code, '')) ~ ANY(%(patterns)s))
+               AND NOT EXISTS (
+                   SELECT 1 FROM documents_document p
+                    WHERE p.id = d.sgi_parent_document_id
+                      AND (upper(coalesce(p.sgi_previous_code, '')) ~ ANY(%(patterns)s)
+                           OR upper(coalesce(p.sgi_code, '')) ~ ANY(%(patterns)s)))
+        """
+        params = {'patterns': patterns}
+        if ids is not None:
+            query += " AND d.id = ANY(%(ids)s)"
+            params['ids'] = list(ids)
+        query += " RETURNING t.code"
+        self.env.cr.execute(query, params)
+        result = {}
+        for (code,) in self.env.cr.fetchall():
+            result[code] = result.get(code, 0) + 1
+        self.invalidate_model(['sgi_migration_class', 'sgi_migration_state'])
+        return result
+
     def action_sgi_open_migration_point(self):
         """Del formato a su worksheet en un clic (y desde ahí, a sus checks)."""
         self.ensure_one()
@@ -240,18 +405,44 @@ class DocumentsDocument(models.Model):
             },
         }
 
+    @api.model
+    def _sgi_cron_resolve_menus(self):
+        """Paso del cron de medición: resuelve el «Menú de Odoo» desde el
+        texto del destino. Los «Formularios de Odoo» y, desde 56.39.0 (L-011),
+        cualquier documento de clase A o B (48 formatos «migrado» solo tenían
+        el destino en texto). Con sudo: el menú es dato de transición (L-010)
+        y esto lo hace el sistema. P-I01 y su familia quedan fuera (L-001)."""
+        docs = self.sudo().search([
+            ('sgi_odoo_menu_id', '=', False),
+            ('sgi_migration_target', '!=', False),
+            '|', ('sgi_doc_type_id.code', '=', 'formulario_odoo'),
+            ('sgi_migration_class', 'in', ('a', 'b')),
+        ] + self._sgi_dropbox_excluded_domain())
+        return docs.action_sgi_resolve_odoo_menu()
+
     def action_sgi_open_odoo_form(self):
-        """Abre el formulario de Odoo que sustituye al documento: el menú
-        ligado o, en su defecto, el worksheet destino de la migración."""
+        """«Abrir en Odoo» (57.0.0: lo usa todo Usuario SGI desde «Formatos y
+        documentos anteriores»). Abre lo que sustituye al documento: el menú
+        ligado (su acción; si no es una ventana, el menú mismo), si no el
+        worksheet destino y, si no hay ninguno, un aviso. No escribe nada.
+        Si el usuario no tiene acceso al menú destino, lo dice en vez de
+        abrir una pantalla que Odoo le negaría."""
         self.ensure_one()
-        action = self.sgi_odoo_menu_id.action if self.sgi_odoo_menu_id else False
-        if action and action._name == 'ir.actions.act_window':
-            return action.read()[0]
+        menu = self.sgi_odoo_menu_id
+        action = menu.sudo().action if menu else False
+        if action:
+            if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
+                raise UserError(
+                    "Este documento vive en Odoo en «%s», pero tu usuario no tiene acceso a ese "
+                    "menú. Pide el acceso a tu jefe o al Jefe MAST." % menu.sudo().complete_name)
+            if action._name == 'ir.actions.act_window':
+                return action.read()[0]
+            return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
         if self.sgi_migration_point_id:
             return self.action_sgi_open_migration_point()
         raise UserError(
-            "Este documento no tiene ligado su formulario de Odoo. "
-            "Selecciona el «Menú de Odoo» (o el worksheet destino) en la ficha.")
+            "Este documento todavía no tiene destino en Odoo (ni menú ni worksheet ligados). "
+            "Si ya se hace en Odoo, avísale al Jefe MAST para que lo ligue.")
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     # 56.7.0 (1.8): guardados para filtrar y reportar la difusión.
@@ -827,8 +1018,58 @@ class DocumentsDocument(models.Model):
             # C-006: los formatos ligados a la revisión anterior pasan a la nueva.
             self.env['sgi.format.map']._sgi_repoint(prior_revisions, doc)
 
+    # --- L-010 / E-005 (56.39.0): el usuario no escribe la transición -------
+    @api.model
+    def _sgi_check_transition_create(self, vals_list):
+        """Crear un documento con datos de transición (clave anterior, clase,
+        estado o destino de migración, menú, sustitución) es de Jefe MAST. Los
+        valores por defecto (vacío, estado «Pendiente») sí pasan: el formulario
+        los manda al crear."""
+        if sgi_bypass_allowed(self.env):
+            return
+        for vals in vals_list:
+            given = sorted(
+                name for name in SGI_TRANSITION_FIELDS & set(vals)
+                if vals[name] and not (name == 'sgi_migration_state' and vals[name] == 'pendiente'))
+            if given:
+                raise AccessError(
+                    "Solo el Jefe MAST captura los datos de «Del Dropbox a Odoo» (%s)."
+                    % ", ".join(self._fields[name].string for name in given))
+
+    def _sgi_check_transition_write(self, vals):
+        """Escribir un campo de transición con un valor DISTINTO al que ya
+        tiene es de Jefe MAST (reescribir el mismo valor, como hace un
+        formulario, no cuenta)."""
+        touched = SGI_TRANSITION_FIELDS & set(vals)
+        if not touched or sgi_bypass_allowed(self.env):
+            return
+        changed = sorted(name for name in touched
+                         if any(doc._sgi_value_differs(name, vals[name]) for doc in self))
+        if not changed:
+            return
+        if changed == ['sgi_replaced_by_process_id']:
+            # D-017: el documento es la fuente de verdad y lo captura el Jefe MAST.
+            raise AccessError(
+                "Solo el Jefe MAST captura qué proceso sustituye a un procedimiento.")
+        raise AccessError(
+            "Solo el Jefe MAST cambia los datos de «Del Dropbox a Odoo» (%s)."
+            % ", ".join(self._fields[name].string for name in changed))
+
+    def _sgi_value_differs(self, name, value):
+        self.ensure_one()
+        field = self._fields[name]
+        current = self[name]
+        if field.type == 'many2one':
+            if isinstance(value, models.BaseModel):
+                value = value.id
+            return (value or False) != (current.id or False)
+        if field.type == 'date':
+            return fields.Date.to_date(value or None) != (current or None)
+        return (value or False) != (current or False)
+
     @api.model_create_multi
     def create(self, vals_list):
+        self._sgi_check_transition_create(vals_list)
         # Obsoleta versiones previas ANTES de crear la nueva vigente (evita el candado de unicidad)
         for vals in vals_list:
             if vals.get('sgi_is_controlled') and not vals.get('sgi_state'):
@@ -862,11 +1103,7 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
-        if 'sgi_replaced_by_process_id' in vals and not (
-                self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
-            # D-017: el documento es la fuente de verdad y lo captura el Jefe MAST.
-            raise AccessError(
-                "Solo el Jefe MAST captura qué proceso sustituye a un procedimiento.")
+        self._sgi_check_transition_write(vals)
         if vals.get('sgi_state') == 'obsoleto' and 'sgi_obsolete_date' not in vals:
             vals = dict(vals, sgi_obsolete_date=fields.Date.context_today(self))
         if vals.get('sgi_state') in ('piloto', 'vigente'):

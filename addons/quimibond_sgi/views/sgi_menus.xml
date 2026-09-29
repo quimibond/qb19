@@ -74,6 +74,35 @@
               parent="menu_sgi_processes" action="sgi_hr_job_action_roles" sequence="40"/>
     <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina"
               parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"/>
+    <!-- Entrega 6 (E-001, decisión 7): sección permanente «Del Dropbox a
+         Odoo». Solo el Jefe MAST edita (vistas y guarda L-010 en
+         documents.document). La clave vieja solo se muestra aquí (decisión
+         11 de la tanda 2).
+         57.0.0 (decisión de Jose): el buscador y «Formatos y documentos
+         anteriores» los ve todo Usuario SGI (heredan del raíz); «Procedimientos
+         anteriores», «Rutina por rutina» y «Avance de la transición» solo
+         Auditor, Jefe MAST, Dirección y Dueño de proceso (grupo sincronizado
+         desde sgi.process). La restricción es también de ACL (rutinas y
+         avance) y de acción (group_ids en las tres acciones). Los tres menús
+         son nuevos en 57.0.0 (no existen en producción): no llevan «-». -->
+    <menuitem id="menu_sgi_dropbox" name="Del Dropbox a Odoo"
+              parent="menu_sgi_processes" sequence="60"/>
+    <!-- 2419 conserva su id (E-004): se reparenta, se renombra y el «-» le
+         quita los grupos que tenía en Administración para que herede. -->
+    <menuitem id="menu_sgi_dropbox_search" name="Buscador por clave anterior"
+              parent="menu_sgi_dropbox" action="sgi_dropbox_key_action" sequence="10"/>
+    <menuitem id="menu_sgi_dropbox_procedures" name="Procedimientos anteriores"
+              parent="menu_sgi_dropbox" action="sgi_dropbox_procedure_action" sequence="20"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+    <menuitem id="menu_sgi_migration" name="Formatos y documentos anteriores"
+              parent="menu_sgi_dropbox" action="sgi_migration_action" sequence="30"
+              groups="-quimibond_sgi.group_sgi_auditor,-quimibond_sgi.group_sgi_manager,-quimibond_sgi.group_sgi_director"/>
+    <menuitem id="menu_sgi_dropbox_routines" name="Rutina por rutina"
+              parent="menu_sgi_dropbox" action="sgi_dropbox_routine_action" sequence="40"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+    <menuitem id="menu_sgi_dropbox_progress" name="Avance de la transición"
+              parent="menu_sgi_dropbox" action="sgi_dropbox_progress_action" sequence="50"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
 
     <!-- ============================================================
          3. Mejora (todos): lo que salió mal y lo que se hace para que no
@@ -175,12 +204,8 @@
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
     <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_documental"
               action="sgi_document_type_action" sequence="50" groups="quimibond_sgi.group_sgi_manager"/>
-    <!-- Se queda aquí hasta la entrega 6 («Del Dropbox a Odoo»). Auditor y
-         Dirección la leen para no perderla al dejar Dirección de implicar
-         al Jefe MAST (I-016). -->
-    <menuitem id="menu_sgi_migration" name="Migración de formatos" parent="menu_sgi_documental"
-              action="sgi_migration_action" sequence="60"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <!-- «Migración de formatos» (menu_sgi_migration, 2419) se mudó en la
+         entrega 6 a Procesos → Del Dropbox a Odoo. -->
 
     <!-- 6.2 Indicadores y mediciones -->
     <menuitem id="menu_sgi_admin_indicators" name="Indicadores" parent="menu_sgi_admin" sequence="20"/>

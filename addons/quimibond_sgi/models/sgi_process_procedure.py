@@ -1273,12 +1273,9 @@ class SgiProcessActivity(models.Model):
             lambda: self.search([('odoo_menu_id', '=', False),
                                  ('odoo_ref', '!=', False)])._sgi_resolve_menu(),
             # Los «Formularios de Odoo» del control documental también
-            # resuelven su menú desde el texto del destino de migración.
-            lambda: self.env['documents.document'].search([
-                ('sgi_doc_type_id.code', '=', 'formulario_odoo'),
-                ('sgi_odoo_menu_id', '=', False),
-                ('sgi_migration_target', '!=', False),
-            ]).action_sgi_resolve_odoo_menu(),
+            # resuelven su menú desde el texto del destino de migración; desde
+            # 56.39.0 (L-011), también los de clase A o B.
+            lambda: self.env['documents.document']._sgi_cron_resolve_menus(),
             lambda: self.search(
                 ['|', ('measure_model_id', '!=', False),
                  ('measure_method', '!=', False)])._sgi_measure(),
