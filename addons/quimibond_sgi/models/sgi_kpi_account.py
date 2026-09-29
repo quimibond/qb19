@@ -37,9 +37,10 @@ LOCK_FIELDS = {
 class AccountMoveLinePoDiff(models.Model):
     _inherit = 'account.move.line'
 
+    # Entrega 4: importe contable, solo para quien ve Contabilidad (lectura).
     sgi_po_price_diff = fields.Monetary(
         string="Diferencia vs orden de compra", compute='_compute_sgi_po_price_diff', store=True,
-        currency_field='currency_id',
+        currency_field='currency_id', groups='account.group_account_readonly',
         help="(precio facturado − precio de la orden de compra) × cantidad (S1-05).")
 
     @api.depends('price_unit', 'quantity', 'purchase_line_id.price_unit', 'move_id.move_type')

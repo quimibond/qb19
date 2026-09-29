@@ -448,9 +448,9 @@
     </record>
 
     <record id="sgi_process_action" model="ir.actions.act_window">
-        <field name="name">Procesos</field>
+        <field name="name">Mapa de procesos</field>
         <field name="res_model">sgi.process</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">sgi_diagram,kanban,list,hierarchy,form</field>
         <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="sgi_process_view_search"/>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Administración del mapa de procesos</p>

@@ -5,6 +5,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_risk import SGI_HIGH_ATTENTION
+from .sgi_menu_paths import sgi_menu_path
 
 
 class SgiManagementReview(models.Model):
@@ -161,7 +162,7 @@ class SgiManagementReview(models.Model):
         total = Requirement.search_count([])
         if not total:
             return ("Sin requisitos legales registrados: capture la matriz "
-                    "legal (SGI → Riesgos y auditorías → Requisitos legales).")
+                    "legal (%s)." % sgi_menu_path('requisitos_legales'))
         today = fields.Date.context_today(self)
         parts = ["%d requisito(s) registrados." % total]
         labels = dict(Requirement._fields['compliance_state'].selection)
@@ -385,10 +386,18 @@ class SgiManagementReview(models.Model):
             review.state = 'realizada'
         return True
 
+    def _sgi_check_mast(self):
+        """D-009 (entrega 4): cerrar y reabrir la revisión es del Jefe MAST.
+        Dirección la prepara, la marca realizada y la consulta."""
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise UserError("Solo el Jefe MAST cierra o regresa a borrador una revisión por la dirección.")
+
     def action_close(self):
+        self._sgi_check_mast()
         self.write({'state': 'cerrada'})
 
     def action_draft(self):
+        self._sgi_check_mast()
         self.write({'state': 'borrador'})
 
 
