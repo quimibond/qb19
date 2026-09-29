@@ -370,3 +370,11 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - Jose: el arreglo del buscador (57.0.1, quimibond/qb19#473) **no** sale solo. Se junta con la entrega 2, el diagnóstico de indicadores y lo que se haga mientras tanto, y va a `quimibond` en **un solo paso**.
 - Hasta entonces, en producción el Buscador de «Del Dropbox a Odoo» sigue fallando. El resto de la entrega 6 funciona: «Formatos y documentos anteriores», rutinas, avance e importación.
 - quimibond/qb19#473 se redirigió a `main` para entrar en el paquete.
+
+## 2026-09-29 — Lote 5 en `main` y acompañantes de Studio
+
+- Jose ordenó integrar a `main` sin build de desarrollo previo: quimibond/qb19#474 (57.0.1–57.5.0) y quimibond/qb19#475 (57.6.0–57.8.0, `qb_mcp_politica` 1.1.0). Build de `main` verde en los dos (staging: no corre las pruebas del SGI).
+- Etiqueta `sgi-antes-de-limpieza` creada por Jose sobre `d5e0b61`.
+- **D-11 ampliada:** los acompañantes de Studio también se van: las 3 tablas `_stage` (3 registros cada una, con respaldo CSV antes), `x_no_conformidades_tag`, `x_no_conformidades_line_0ff2d` y el menú 1643. Se borran con el método manual de D-11, junto con su modelo padre.
+- **Mapa:** se vuelve a exportar `quimibond_sgi_mapa` con E1-02 en `acuerdos_rxd` y sin reactivar lo archivado (OP-PTAR).
+- `quimibond` sigue sin cambios hasta el paso único, al terminar la entrega 2.
