@@ -66,5 +66,5 @@
     </record>
 
     <menuitem id="menu_sgi_external_docs" name="Documentos externos" parent="menu_sgi_documental"
-              action="sgi_external_doc_action" sequence="15"/>
+              action="sgi_external_doc_action" sequence="30"/>
 </odoo>

@@ -116,8 +116,8 @@
             <p>El cron mensual de indicadores guarda el valor de las existencias en ubicaciones internas (mismo cálculo de AL-01) para compararlo contra las cuentas 115 (S3-04).</p></field>
     </record>
 
-    <menuitem id="menu_sgi_lock_date_log" name="Bitácora de bloqueo contable" parent="menu_sgi_admin_indicators"
-              action="sgi_lock_date_log_action" sequence="30"/>
-    <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes" parent="menu_sgi_admin_indicators"
-              action="sgi_inventory_value_action" sequence="31"/>
+    <menuitem id="menu_sgi_lock_date_log" name="Bitácora de bloqueo contable" parent="account.menu_finance_reports"
+              action="sgi_lock_date_log_action" sequence="90"/>
+    <menuitem id="menu_sgi_inventory_value" name="Valor del inventario por mes" parent="account.menu_finance_reports"
+              action="sgi_inventory_value_action" sequence="91"/>
 </odoo>
