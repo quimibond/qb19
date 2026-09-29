@@ -19,6 +19,9 @@
                        decoration-warning="state == 'por_vencer'"
                        decoration-success="state == 'al_dia'"/>
                 <button name="action_open" type="object" string="Abrir" icon="fa-external-link"/>
+                <!-- 56.36.0 (I-006): el dueño valida desde el renglón. -->
+                <button name="action_validate_measure" type="object" string="Validar" icon="fa-check"
+                        class="btn-link" invisible="kind != 'validacion'"/>
             </list>
         </field>
     </record>
@@ -35,6 +38,10 @@
                 <filter name="this_week" string="Vence esta semana"
                         domain="[('date_due', '&gt;=', context_today().strftime('%Y-%m-%d')), ('date_due', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
                 <filter name="ok" string="Al día" domain="[('state', '=', 'al_dia')]"/>
+                <separator/>
+                <filter name="kind_activity" string="Actividades y escalamientos" domain="[('kind', '=', 'actividad')]"/>
+                <filter name="kind_validate" string="Mediciones por validar" domain="[('kind', '=', 'validacion')]"/>
+                <filter name="kind_sign" string="Firmas y acuses" domain="[('kind', 'in', ('firma', 'acuse'))]"/>
                 <group>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>

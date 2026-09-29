@@ -92,14 +92,20 @@ class MaintenanceEquipment(models.Model):
     def _compute_calibration_state(self):
         today = fields.Date.context_today(self)
         for eq in self:
-            if not eq.sgi_next_calibration_date:
-                eq.sgi_calibration_state = False
-            elif eq.sgi_next_calibration_date < today:
-                eq.sgi_calibration_state = 'vencido'
-            elif eq.sgi_next_calibration_date <= today + relativedelta(days=30):
-                eq.sgi_calibration_state = 'por_vencer'
-            else:
-                eq.sgi_calibration_state = 'vigente'
+            eq.sgi_calibration_state = eq._sgi_calibration_state_on(today)
+
+    def _sgi_calibration_state_on(self, today):
+        """Estado de calibración en la fecha ``today`` (56.37.0: el cron lo
+        usa para escribir solo los equipos que cambian, G-024)."""
+        self.ensure_one()
+        next_date = self.sgi_next_calibration_date
+        if not next_date:
+            return False
+        if next_date < today:
+            return 'vencido'
+        if next_date <= today + relativedelta(days=30):
+            return 'por_vencer'
+        return 'vigente'
 
     @api.depends('sgi_calibration_ids')
     def _compute_calibration_count(self):

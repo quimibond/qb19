@@ -17,6 +17,14 @@
                                  help="Recibe las actividades automáticas de RH: competencias por vencer, DNC.">
                             <field name="sgi_rh_user_id"/>
                         </setting>
+                        <setting string="Bloquear equipos con calibración vencida"
+                                 help="Apagado: solo avisa (resumen diario al Coordinador de Laboratorio y al Jefe de Calidad). Encendido: además marca «No usar».">
+                            <field name="sgi_calibration_block_expired"/>
+                        </setting>
+                        <setting string="Jefe MAST y SGI"
+                                 help="Recibe los avisos automáticos del SGI sin dueño. Vacío: mas@quimibond.com o el primer miembro directo del grupo.">
+                            <field name="sgi_mast_user_id"/>
+                        </setting>
                     </block>
                     <block title="KPIs automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"

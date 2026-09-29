@@ -104,6 +104,21 @@ class ResConfigSettings(models.TransientModel):
     sgi_rh_user_id = fields.Many2one(
         'res.users', string="Usuario de RH",
         help="Recibe las actividades automáticas de RH (competencias por vencer, DNC).")
+    sgi_calibration_block_expired = fields.Boolean(
+        string="Bloquear equipos con calibración vencida",
+        config_parameter='quimibond_sgi.calibration_block_expired',
+        help="Apagado (default, decisión de la tanda 2): el cron solo avisa con un "
+             "resumen diario al Coordinador de Laboratorio y al Jefe de Calidad. "
+             "Encendido: además marca «No usar» cada equipo vencido y manda el "
+             "correo crítico. La inspección de calidad rechaza un equipo vencido "
+             "en cualquier caso.")
+    sgi_mast_user_id = fields.Many2one(
+        'res.users', string="Jefe MAST y SGI",
+        help="Recibe los avisos automáticos del SGI que no tienen dueño "
+             "(parámetro quimibond_sgi.mast_user_id). Vacío: el usuario "
+             "mas@quimibond.com o, si no existe, el primer miembro directo del "
+             "grupo Jefe MAST y SGI. Al cambiarlo, los avisos abiertos se "
+             "reasignan en la siguiente corrida de cada cron (no se duplican).")
     sgi_waste_categ_id = fields.Many2one(
         'product.category', string="Categoría del byproduct de desperdicio",
         help="Categoría del SALDO (desperdicio) para el KPI automático.")
@@ -188,6 +203,10 @@ class ResConfigSettings(models.TransientModel):
         Param = self.env['ir.config_parameter'].sudo()
         rh_id = int(Param.get_param('quimibond_sgi.rh_user_id', '0') or 0)
         res['sgi_rh_user_id'] = rh_id if rh_id and self.env['res.users'].browse(rh_id).exists() else False
+        raw_mast = Param.get_param('quimibond_sgi.mast_user_id', '') or ''
+        mast_id = int(raw_mast) if raw_mast.isdigit() else 0
+        res['sgi_mast_user_id'] = (
+            mast_id if mast_id and self.env['res.users'].browse(mast_id).exists() else False)
         categ_name = Param.get_param('quimibond_sgi.waste_subproduct_category', 'SubProducto')
         categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
         res['sgi_waste_categ_id'] = categ.id or False
@@ -217,6 +236,7 @@ class ResConfigSettings(models.TransientModel):
         super().set_values()
         Param = self.env['ir.config_parameter'].sudo()
         Param.set_param('quimibond_sgi.rh_user_id', self.sgi_rh_user_id.id or 0)
+        Param.set_param('quimibond_sgi.mast_user_id', self.sgi_mast_user_id.id or 0)
         if self.sgi_waste_categ_id:
             Param.set_param('quimibond_sgi.waste_subproduct_category',
                             self.sgi_waste_categ_id.name)

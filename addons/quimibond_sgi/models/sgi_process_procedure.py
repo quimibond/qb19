@@ -374,7 +374,7 @@ class SgiProcessProcedure(models.Model):
             Cron._sgi_schedule(
                 doc, "Procedimiento vivo cambió: revisar %s" % (doc.sgi_code or doc.name),
                 "Genera una nueva revisión controlada del procedimiento o confirma que el "
-                "cambio no la amerita.", user_id)
+                "cambio no la amerita.", user_id, key='procedimiento_vivo')
 
     def write(self, vals):
         res = super().write(vals)
@@ -1069,7 +1069,15 @@ class SgiProcessActivity(models.Model):
                     vals['measure_count_30d'] = Model.search_count(window)
                     vals.update(activity._sgi_measure_executors(Model, domain, date_field))
                     days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-                    if days:
+                    # G-017 (56.36.0): con vencimiento periódico, «a tiempo»
+                    # es antes del vencimiento (decisión 5), no una ventana de
+                    # días naturales. Vive en sgi_activity_spec.
+                    periodic = activity._sgi_periodic_state(
+                        Model, domain, date_field, fields.Date.context_today(activity)) \
+                        if hasattr(activity, '_sgi_periodic_state') else None
+                    if periodic:
+                        vals['measure_state'] = periodic
+                    elif days:
                         in_window = Model.search_count(
                             domain
                             + [(date_field, '>=', now - timedelta(days=days))])
@@ -1498,7 +1506,7 @@ class SgiActivityLink(models.Model):
                             to.display_name,
                             "dentro de su plazo de %d días hábiles" % link.max_days
                             if link.max_days else "en su periodo"),
-                        owner_user)
+                        owner_user, key='eslabon_atorado:%d' % link.id)
                 elif (now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS \
                         and not link._sgi_chain_nc_open():
                     # Sin NC ligada, o la ligada ya cerró/canceló: este
