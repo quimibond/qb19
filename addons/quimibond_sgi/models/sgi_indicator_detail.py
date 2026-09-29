@@ -194,19 +194,6 @@ class SgiIndicatorDetail(models.Model):
         self.ensure_one()
         return not self.measure_from or date_to >= self.measure_from
 
-    @api.model
-    def _sgi_aggregate(self, measures):
-        """Valor de varias mediciones juntas: suma de numeradores entre suma
-        de denominadores (×100 si el indicador es un %). None si alguna no
-        trae detalle o el denominador suma cero."""
-        measures = measures.filtered(lambda m: m.state in ('capturado', 'validado'))
-        if not measures or any(not m.denominator for m in measures):
-            return None
-        den = sum(measures.mapped('denominator'))
-        num = sum(measures.mapped('numerator'))
-        pct = all(m.value_is_pct for m in measures)
-        return round(num / den * (100.0 if pct else 1.0), 2)
-
     # ---- Detalle por modo: primera tanda (a tiempo, completo, OTIF/OTD,
     # entregas, pedidos, NC, calidad, cartera). Los demás llegan por tandas.
     @staticmethod

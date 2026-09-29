@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.7.0',
+    'version': '19.0.57.8.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -61,7 +61,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         # data
         'data/sgi_sequences.xml',
         'data/sgi_document_types.xml',
-        'data/sgi_sequences_fase2.xml',
+        'data/sgi_sequences_audit_risk.xml',
         'data/sgi_areas.xml',
         'data/sgi_norms.xml',
         # 57.4.0 (A-002, decisión 6): el SGI se instala sin procesos. El mapa
@@ -80,18 +80,18 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_helpdesk_interno.xml',
         'data/sgi_mgmt_review_data.xml',
         'data/sgi_cron.xml',
-        'data/sgi_cron_fase2.xml',
-        'data/sgi_sequences_fase3.xml',
-        'data/sgi_sequences_fase6.xml',
+        'data/sgi_cron_indicators_audit.xml',
+        'data/sgi_sequences_quality_sst.xml',
+        'data/sgi_sequences_policy_budget.xml',
         'data/sgi_ppap_elements.xml',
-        'data/sgi_cron_fase3.xml',
+        'data/sgi_cron_calibration_budget.xml',
         'data/sgi_dnc_survey.xml',
-        'data/sgi_control_plans_fase4.xml',
+        'data/sgi_control_plans.xml',
         'data/sgi_format_map_data.xml',
         'data/sgi_parameters.xml',
         'data/sgi_alert_source_data.xml',
-        'data/sgi_fase7_data.xml',
-        'data/sgi_fase8_data.xml',
+        'data/sgi_emergency_satisfaction_data.xml',
+        'data/sgi_operational_signals_data.xml',
         'data/sgi_measure_cron.xml',
         'data/sgi_approval_cron.xml',
         'data/sgi_cumplimiento_data.xml',
@@ -105,7 +105,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_my_procedure_data.xml',
         'data/sgi_mp_change_category_data.xml',
         'data/sgi_epp_data.xml',
-        'data/sgi_pr6_data.xml',
+        'data/sgi_supplier_nc_data.xml',
         # views
         'views/sgi_area_views.xml',
         'report/report_compliance_matrix.xml',
@@ -162,7 +162,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_coa_views.xml',
         # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el
         # padre debe cargarse antes; el build de producción reventó por esto).
-        'views/sgi_pr6_views.xml',
+        'views/sgi_supplier_audit_sign_views.xml',
         'views/sgi_hierarchy_views.xml',
         'views/sgi_links_views.xml',
         'views/sgi_diagram_views.xml',
@@ -207,7 +207,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_menus.xml',
     ],
     'demo': [
-        'demo/sgi_demo_fase3.xml',
+        'demo/sgi_demo_quality.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'assets': {

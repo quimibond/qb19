@@ -161,7 +161,7 @@ class TestStructure(TransactionCase):
                          "Fin de semana no cuenta: 5 días hábiles > 2.")
         b.measure_last_date = datetime(2026, 10, 6, 10, 0)
         self.assertEqual(link._sgi_chain_verdict(datetime(2026, 10, 12, 12, 0)), ('fluye', 0.0))
-        self.assertIn('Con plazo (2 días hábiles)', b._sgi_sentence())
+        self.assertIn('Con plazo (2 días hábiles)', " ".join("%s: %s." % (lab, txt) if lab else "%s." % txt for lab, txt in b._sgi_sentence_parts()))
 
     def test_08_sentence_and_responsibilities(self):
         d = self.Deliverable.create({'code': 'X-S', 'name': 'Programa semanal'})
@@ -170,7 +170,7 @@ class TestStructure(TransactionCase):
             'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job_a.id}),
                          (0, 0, {'role': 'informa', 'job_id': self.job_b.id})],
             'output_deliverable_ids': [(6, 0, d.ids)]})
-        sentence = act._sgi_sentence()
+        sentence = " ".join("%s: %s." % (lab, txt) if lab else "%s." % txt for lab, txt in act._sgi_sentence_parts())
         self.assertIn('Ejecuta: PUESTO ESTRUCTURA A.', sentence)
         self.assertIn('Se entera: PUESTO ESTRUCTURA B.', sentence)
         self.assertIn('Entrega: Programa semanal.', sentence)

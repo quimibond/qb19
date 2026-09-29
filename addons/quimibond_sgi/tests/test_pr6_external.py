@@ -128,13 +128,13 @@ class TestPr6External(TransactionCase):
     # ---- DOC-4 / DOC-5 --------------------------------------------------
     def test_04_doc4_documentos_por_revisar_en_mis_pendientes(self):
         job = self.env['hr.job'].create({'name': 'DOC PR6'})
-        emp = self.env['hr.employee'].create({'name': 'Dueño doc PR6', 'job_id': job.id, 'user_id': self.buyer.id})
+        self.env['hr.employee'].create({'name': 'Dueño doc PR6', 'job_id': job.id, 'user_id': self.buyer.id})
         doc = self.env['documents.document'].create({
             'name': 'P-A84 Prueba.pdf', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A84', 'sgi_state': 'vigente',
             'sgi_owner_id': self.buyer.id, 'sgi_next_review_date': date.today() + timedelta(days=45)})
-        wiz = self.env['sgi.my.procedure'].with_user(self.buyer).create({'employee_id': emp.id})
-        self.assertIn(doc, wiz.pending_doc_review_ids)
+        # 57.8.0 (I-022): el pendiente se ve en Mis pendientes.
+        self.assertIn(doc, self.env['sgi.my.pending']._sgi_pending_records(self.buyer)['documento'])
         self.env['sgi.cron'].cron_documents()
         summaries = self.env['mail.activity'].search(
             [('res_model', '=', 'documents.document'), ('res_id', '=', doc.id),

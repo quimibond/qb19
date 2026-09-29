@@ -99,20 +99,6 @@ class TestIndicatorDetail(TransactionCase):
         self._partners(1, 6)
         self.assertTrue(self._measure(ind))
 
-    def test_06_aggregate_sums_not_averages(self):
-        ind = self._indicator('X-D6')
-        a = self.Measure.create({'indicator_id': ind.id, 'period_date': date(2040, 1, 1),
-                                 'value': 100.0, 'numerator': 2, 'denominator': 2,
-                                 'state': 'capturado'})
-        b = self.Measure.create({'indicator_id': ind.id, 'period_date': date(2040, 1, 8),
-                                 'value': 0.0, 'numerator': 0, 'denominator': 18,
-                                 'state': 'capturado'})
-        self.assertEqual(self.Indicator._sgi_aggregate(a | b), 10.0,
-                         "2 de 20, no el promedio de 100 y 0.")
-        c = self.Measure.create({'indicator_id': ind.id, 'period_date': date(2040, 1, 15),
-                                 'value': 50.0, 'state': 'capturado'})
-        self.assertIsNone(self.Indicator._sgi_aggregate(a | b | c), "Sin detalle no se suma.")
-
     def test_07_otif_detail_and_recompute(self):
         ind = self.Indicator.create({
             'code': 'X-D7', 'name': 'OTIF detalle', 'uom': '%', 'calc_mode': 'otif_ventas',

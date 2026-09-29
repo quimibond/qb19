@@ -55,14 +55,11 @@ class TestStructureSgi(TransactionCase):
         self.assertEqual(ctx['default_sgi_document_id'], doc.id)
 
     def test_03_diagrama_e_instructivo(self):
-        # 53.2.0: «Ver en diagrama» es la vista hierarchy de actividades; la
-        # lista de flechas sigue en action_sgi_view_flows.
+        # 53.2.0: «Ver en diagrama» es la vista hierarchy de actividades.
+        # 57.8.0 (B-011): se retiró action_sgi_view_flows (sin botón).
         action = self.process.action_sgi_view_diagram()
         self.assertEqual((action['type'], action['tag']), ('ir.actions.client', 'sgi_diagram'))
         self.assertEqual(action['context']['sgi_diagram_kind'], 'process_flow')
-        action = self.process.action_sgi_view_flows()
-        self.assertEqual(action['res_model'], 'sgi.process.flow')
-        self.assertIn(('from_process_id', '=', self.process.id), action['domain'])
         with self.assertRaises(UserError):
             self.activity.action_open_instruction()
         it = self.env['documents.document'].create({

@@ -13,6 +13,73 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.8.0 — 2026-09-29
+
+**Retirado (B-011):** 27 métodos `action_*` sin botón, menú ni llamador,
+verificados con grep en todo el repo y contra las vistas de producción (0 de
+Studio): en `sgi.my.procedure` `action_show_late/ok/unmeasured/short/
+documents/nc/measures/legal/doc_reviews/epp`, `action_focus_pending` y
+`action_precheck`; en `sgi.process` `action_sgi_view_process_map/sipoc/
+doc_tree`, `action_sgi_view_flows`, `action_print_risk_matrix`,
+`action_print_master_list`, `action_view_inbound_references`,
+`action_view_no_method_activities` y `action_print_procedure`; además
+`sgi.activity.role.action_sgi_open_approval_rule`,
+`approval.request.action_sgi_open_sign_request`,
+`sgi.indicator.measure.action_open_plan`,
+`sgi.process.activity.action_sgi_mp_propose_change`,
+`hr.employee.action_sgi_my_procedure_view` (con
+`hr.job._sgi_my_procedure_view_action`, que solo usaba él) y
+`sgi.sales.budget.action_open_lines`. **Se queda** `action_show_received`: sí
+es botón de la pantalla (el informe lo daba por muerto). Los reportes siguen
+en el menú Imprimir.
+
+**Retirado (I-022, G-013):** las listas de Mi procedimiento que ninguna vista
+mostraba (`pending_action_ids`, `pending_nc_ids`, `pending_measure_ids`,
+`pending_legal_ids`, `pending_doc_review_ids`) y sus conteos; se calculaban en
+cada apertura. Los pendientes viven en «Mis pendientes».
+
+**Retirado (B-012):** `_sgi_done_activities`, `sgi_business_day_of`,
+`_sgi_file_size`, `_sgi_mp_role_label`, `sgi_map_data`, `_sgi_sentence` y
+`_sgi_aggregate`. Se queda `sgi_next_code`.
+
+**Retirado (B-013):** 10 campos no guardados sin uso:
+`sgi.activity.role.approval_model_name`, `sgi.audit.checklist.line.audit_state`,
+`hr.job.sgi_role_ids`, `sgi.deliverable.link_ids`,
+`approval.request.sgi_purchase_order_ids`,
+`sgi.management.review.agreement_action_ids`,
+`sgi.process.activity.sgi_mp_change_ids`, `maintenance.equipment.sgi_msa_ids`,
+`documents.document.sgi_publish_sign_state` y
+`sgi.process.activity.exec_stat_ids`. Se queda `linked_document_ids`.
+
+**Retirado (B-014, D-012):** la acción `sgi_process_hierarchy_action` (sin
+menú) y las vistas `sgi_nc_view_pivot`/`sgi_nc_view_graph` (ninguna acción
+las usaba). **Corregido:** «Pareto de alertas de calidad» usa sus vistas
+(equipo × etiqueta) por `view_ids`; antes ganaban las estándar.
+
+**Cambiado (A-023, B-019):** archivos de datos y vistas renombrados por tema,
+sin cambiar XML IDs ni el orden del manifest: `sgi_sequences_fase2/3/6` →
+`sgi_sequences_audit_risk`, `_quality_sst`, `_policy_budget`;
+`sgi_cron_fase2/3` → `sgi_cron_indicators_audit`, `sgi_cron_calibration_budget`;
+`sgi_control_plans_fase4` → `sgi_control_plans`; `sgi_fase7_data` →
+`sgi_emergency_satisfaction_data`; `sgi_fase8_data` →
+`sgi_operational_signals_data`; `sgi_pr6_data` → `sgi_supplier_nc_data`;
+`views/sgi_pr6_views` → `views/sgi_supplier_audit_sign_views`;
+`demo/sgi_demo_fase3` → `demo/sgi_demo_quality`.
+
+**Migración (post, `migrations/19.0.57.8.0/post-migrate.py`, B-006):** borra
+las 15 filas de `ir_model_data` de otros módulos que apuntaban a
+`sgi.employer.obligation` (solo esas filas; ningún dato).
+
+**Datos de producción (2026-09-29, lectura):** 15 filas `ir.model.data` con
+`sgi_employer_obligation`; 0 vistas de producción que citen los métodos o
+campos retirados fuera del módulo; la acción 4053 sin menú.
+
+**Pruebas:** ajustadas `test_my_procedure_ui`, `test_my_procedure`,
+`test_hierarchy`, `test_structure_sgi`, `test_structure`, `test_spec`,
+`test_fase10`, `test_indicator_detail`, `test_pr4_docs_legal`,
+`test_pr6_external` y `test_cleanup_b10` (los pendientes se prueban en
+`sgi.my.pending`).
+
 ## 19.0.57.7.0 — 2026-09-29
 
 **Cambiado (D-11):** `sgi.config.sgi_drop_empty_studio_models` cuenta las

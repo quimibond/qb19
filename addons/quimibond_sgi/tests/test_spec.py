@@ -80,7 +80,7 @@ class TestSpec(TransactionCase):
         act.write({'role_ids': [(0, 0, {'role': 'escala', 'relative_role': 'dueno_proceso',
                                         'target_type': 'relative', 'after_days': 3})]})
         self.assertNotIn('no_escalation', self._codes(act))
-        self.assertIn('a los 3 días hábiles', act._sgi_sentence())
+        self.assertIn('a los 3 días hábiles', " ".join("%s: %s." % (lab, txt) if lab else "%s." % txt for lab, txt in act._sgi_sentence_parts()))
 
     # 5
     def test_05_due_weekday_needs_weekly_cadence(self):

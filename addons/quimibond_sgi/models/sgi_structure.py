@@ -101,20 +101,6 @@ class SgiProcessStructure(models.Model):
                         'default_name': "Hallazgo en %s %s" % (self.code or '', self.name or '')},
         }
 
-    def action_sgi_view_flows(self):
-        """«Con quién se conecta»: las flechas del mapa que entran y salen de
-        este proceso, agrupadas por quién entrega. (Hasta 53.1.x era «Ver en
-        diagrama»; el diagrama real vive en sgi_hierarchy.)"""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Con quién se conecta — %s" % self.display_name,
-            'res_model': 'sgi.process.flow',
-            'view_mode': 'list,form',
-            'domain': ['|', ('from_process_id', '=', self.id), ('to_process_id', '=', self.id)],
-            'context': {'search_default_group_from': 1},
-        }
-
 
 class SgiProcessActivityStructure(models.Model):
     _inherit = 'sgi.process.activity'

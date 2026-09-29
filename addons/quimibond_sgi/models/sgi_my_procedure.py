@@ -153,9 +153,6 @@ class HrJobMyProcedure(models.Model):
             return ((2, months[0] * 100 + activity.due_day), "Cada %s" % activity._sgi_due_label())
         return ((9, 0), "")
 
-    def _sgi_mp_role_label(self, role):
-        return dict(SGI_ROLE_SELECTION).get(role, role)
-
     def _sgi_my_procedure_data(self):
         """Todo lo que imprime y lo que se compara: secciones por cadencia,
         lista corta, escalamientos, portada y huella."""
@@ -626,24 +623,6 @@ class HrJobMyProcedure(models.Model):
             'name': doc.name,
         }
 
-    def _sgi_my_procedure_view_action(self):
-        """La misma información como vista de Odoo: roles del puesto agrupados
-        por cadencia, con la actividad a un clic."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Mi procedimiento — %s" % self.display_name,
-            'res_model': 'sgi.activity.role',
-            'view_mode': 'list,form',
-            'views': [(self.env.ref('quimibond_sgi.sgi_activity_role_view_list_my_procedure').id, 'list'),
-                      (False, 'form')],
-            'domain': self._sgi_roles_domain() + [('activity_active', '=', True)],
-            'context': {'group_by': ['cadence', 'role'], 'create': False, 'edit': False},
-            'help': "<p class='o_view_nocontent_smiling_face'>Sin actividades para "
-                    "este puesto</p><p>Pide a MAST que capture los roles del "
-                    "puesto en las actividades de procedimiento.</p>",
-        }
-
 
 class HrEmployeeMyProcedure(models.Model):
     _inherit = 'hr.employee'
@@ -679,9 +658,6 @@ class HrEmployeeMyProcedure(models.Model):
     def action_sgi_print_my_procedure(self):
         return self._sgi_require_job().with_context(
             sgi_mp_employee_id=self.id).action_sgi_print_my_procedure()
-
-    def action_sgi_my_procedure_view(self):
-        return self._sgi_require_job()._sgi_my_procedure_view_action()
 
 
 class SgiCronMyProcedure(models.AbstractModel):

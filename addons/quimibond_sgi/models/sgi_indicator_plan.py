@@ -209,13 +209,6 @@ class SgiIndicatorMeasurePlan(models.Model):
             self._sgi_plan_captured()
         return res
 
-    def action_open_plan(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window', 'res_model': 'sgi.indicator.measure',
-            'res_id': self.id, 'view_mode': 'form', 'target': 'current',
-        }
-
 
 class SgiCronCalendar(models.AbstractModel):
     _inherit = 'sgi.cron'

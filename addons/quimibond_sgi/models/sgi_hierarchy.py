@@ -74,27 +74,3 @@ class SgiProcessHierarchy(models.Model):
         """«Ver en diagrama»: el flujo de actividades del proceso por etapa,
         con los eslabones como flechas (componente sgi_diagram)."""
         return self._sgi_diagram_action('process_flow', "Flujo del proceso")
-
-    def action_sgi_view_process_map(self):
-        """«Ver en el mapa»: el mapa con conexiones, con este proceso
-        seleccionado (sus flechas de entrada y salida resaltadas)."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'sgi_diagram',
-            'name': "Mapa de procesos",
-            'context': {'sgi_diagram_kind': 'process_map', 'sgi_diagram_res_id': self.id,
-                        'sgi_diagram_selected': 'sgi.process,%d' % self.id},
-        }
-
-    def action_sgi_view_sipoc(self):
-        return self._sgi_diagram_action('sipoc', "Tortuga (SIPOC)")
-
-    def action_sgi_view_doc_tree(self):
-        return self._sgi_diagram_action('doc_tree', "Árbol documental")
-
-    @api.model
-    def sgi_map_data(self):
-        """Compatibilidad 53.3.x: los datos del mapa viven en sgi.diagram."""
-        data = self.env['sgi.diagram'].data('process_map')
-        return {'bands': data['lanes'], 'flows': data['edges']}

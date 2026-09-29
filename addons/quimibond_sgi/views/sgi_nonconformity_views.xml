@@ -262,27 +262,8 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
         </field>
     </record>
 
-    <record id="sgi_nc_view_pivot" model="ir.ui.view">
-        <field name="name">sgi.nc.pivot</field>
-        <field name="model">quality.alert</field>
-        <field name="arch" type="xml">
-            <pivot string="Análisis de NC">
-                <field name="sgi_process_id" type="row"/>
-                <field name="create_date" interval="month" type="col"/>
-            </pivot>
-        </field>
-    </record>
-
-    <record id="sgi_nc_view_graph" model="ir.ui.view">
-        <field name="name">sgi.nc.graph</field>
-        <field name="model">quality.alert</field>
-        <field name="arch" type="xml">
-            <graph string="NC por mes" type="bar">
-                <field name="create_date" interval="month"/>
-                <field name="sgi_classification"/>
-            </graph>
-        </field>
-    </record>
+    <!-- 57.8.0 (D-012): se retiraron sgi_nc_view_pivot y sgi_nc_view_graph;
+         ninguna acción las usaba y ganaban las vistas estándar. -->
 
     <!-- ============ WIZARD CANCELACIÓN (NC-4) ============ -->
     <record id="sgi_nc_cancel_view_form" model="ir.ui.view">

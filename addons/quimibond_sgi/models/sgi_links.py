@@ -14,8 +14,6 @@ Estos son los campos que faltaban:
 - C2.34: el acuse adjunto guarda su entrega (y la entrega, sus acuses).
 - C4.19: el traspaso a liberación guarda su orden de producción.
 """
-import base64
-
 from odoo import api, fields, models
 
 
@@ -119,8 +117,6 @@ class PurchaseOrderLink(models.Model):
 class ApprovalRequestLink(models.Model):
     _inherit = 'approval.request'
 
-    sgi_purchase_order_ids = fields.One2many(
-        'purchase.order', 'sgi_approval_request_id', string="Órdenes de compra (SGI)")
 
     def action_create_purchase_orders(self):
         """approvals_purchase crea las órdenes desde las líneas; aquí se les
@@ -250,6 +246,3 @@ class SgiAcuseAttachWizard(models.TransientModel):
     def _sgi_extension(self):
         name = self.file_name or ''
         return name[name.rfind('.'):] if '.' in name else '.pdf'
-
-    def _sgi_file_size(self):
-        return len(base64.b64decode(self.file or b''))

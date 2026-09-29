@@ -61,12 +61,6 @@ class SgiBaseMixin(models.AbstractModel):
             user_id=user_id or self.env.uid,
             date_deadline=date_deadline or fields.Date.context_today(self))
 
-    def _sgi_done_activities(self, feedback=False):
-        """Marca como hechas las actividades «Por hacer» del/los registro(s)."""
-        return self.activity_feedback(
-            ['mail.mail_activity_data_todo'],
-            feedback=feedback or "Hecho.")
-
     # ------------------------------------------------------------------------
     # Inmutabilidad de registros cerrados (evidencia del SGI)
     # ------------------------------------------------------------------------

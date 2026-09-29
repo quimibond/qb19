@@ -566,7 +566,6 @@ class SgiAuditChecklistLine(models.Model):
     ], string="Respuesta")
     evidence = fields.Text(string="Evidencia", help="Qué registros se revisaron y qué se encontró.")
     finding_id = fields.Many2one('sgi.audit.finding', string="Hallazgo", readonly=True, copy=False)
-    audit_state = fields.Selection(related='audit_id.state')
 
     @api.depends('activity_id.number', 'activity_id.name', 'activity_id.process_id.code',
                  'activity_id.role_ids', 'activity_id.output_deliverable_ids')

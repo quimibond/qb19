@@ -219,8 +219,6 @@ class TestActivityMeasurement(TransactionCase):
         self.assertEqual(mine.inbound_reference_count, 2)
         self.assertEqual(set(mine.inbound_reference_ids.ids),
                          {citing.id, using.id})
-        action = mine.action_view_inbound_references()
-        self.assertEqual(action['res_model'], 'sgi.process.activity')
         # Las actividades del propio proceso no cuentan como referencia.
         self.env['sgi.process.activity'].create({
             'process_id': mine.id, 'name': 'Auto-cita',

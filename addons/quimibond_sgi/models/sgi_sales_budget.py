@@ -668,17 +668,6 @@ class SgiSalesBudget(models.Model):
             'view_mode': 'form',
         }
 
-    def action_open_lines(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Líneas — %s" % self.name,
-            'res_model': 'sgi.sales.budget.line',
-            'view_mode': 'list,form',
-            'domain': [('budget_id', '=', self.id)],
-            'context': {'default_budget_id': self.id},
-        }
-
     def _action_grid(self, view_xmlid, name):
         self.ensure_one()
         return {

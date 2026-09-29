@@ -312,8 +312,6 @@ class SgiActivityRole(models.Model):
 class HrJob(models.Model):
     _inherit = 'hr.job'
 
-    sgi_role_ids = fields.One2many(
-        'sgi.activity.role', 'job_id', string="Roles en actividades SGI")
     sgi_family_ids = fields.Many2many(
         'sgi.job.family', 'sgi_job_family_rel', 'job_id', 'family_id',
         string="Familias SGI", readonly=True)
