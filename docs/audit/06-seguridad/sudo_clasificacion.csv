@@ -1,0 +1,270 @@
+modelo,metodo,decoradores,sudo_calls,clase,revisa_grupo_o_candado,sudo_escribe,riesgo,ubicacion
+sgi.process.activity,action_open_odoo,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_activity_spec.py:241
+sgi.process.activity,_sgi_verb_list,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_activity_spec.py:252
+sgi.process.activity,_sgi_refresh_spec_gaps,,4,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_activity_spec.py:340
+sgi.activity.input,_check_applies_domain,"api.constrains('applies_domain', 'deliverable_id')",1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_activity_spec.py:530
+sgi.deliverable,_check_complete_domain,"api.constrains('complete_domain', 'odoo_model_id')",1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_activity_spec.py:578
+sgi.indicator,_detail_entregable_completo,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_activity_spec.py:756
+sgi.process.activity,_sgi_week_counts,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_activity_spec.py:917
+sgi.alert.source,_get_by_code,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_alert_source.py:73
+sgi.alert.source,_register_suppression,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_alert_source.py:79
+sgi.activity.role,_sgi_approver_users,,3,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:164
+sgi.activity.role,_compute_approval_conflicts,"api.depends('approval_kind', 'approval_model_id', 'approval_method', 'approval_rule_id')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:185
+sgi.activity.role,_compute_approval_state,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:199
+sgi.activity.role,_compute_approval_entries,,3,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:225
+sgi.activity.role,_sgi_rule_vals,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:247
+sgi.activity.role,_sgi_rule_in_sync,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:263
+sgi.activity.role,_sgi_sync_category,,3,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:270
+sgi.activity.role,_sgi_sync_approval_rule,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:303
+sgi.activity.role,action_sgi_adopt_rule,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_approval_native.py:348
+sgi.activity.role,unlink,,2,override ORM,no,sí,revisar,addons/quimibond_sgi/models/sgi_approval_native.py:381
+sgi.activity.role,cron_sgi_sync_approvals,api.model,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_approval_native.py:387
+sgi.process,write,,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_archived_filters.py:38
+sgi.my.pending,_sgi_role_alive,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_archived_filters.py:75
+sgi.my.pending,_sgi_open_studio_requests,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_archived_filters.py:85
+sgi.audit,_check_auditor_independence,"api.constrains('process_ids', 'lead_auditor_id', 'auditor_ids')",2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_audit.py:265
+sgi.audit,_sgi_archive_report,,3,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_audit.py:364
+sgi.audit,action_answer_checklist,,1,action público,no,sí,revisar,addons/quimibond_sgi/models/sgi_audit.py:428
+sgi.audit,action_evaluate_auditors,,2,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_audit.py:448
+sgi.audit.checklist.line,action_open_records,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_audit.py:662
+sgi.process.activity,write,,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_business_line.py:112
+hr.job,_sgi_user_teams,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_business_line.py:156
+hr.job,_sgi_mp_teams,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_business_line.py:164
+hr.employee,_compute_sgi_team_ids,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_business_line.py:195
+crm.team.member,_sgi_touch,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_business_line.py:205
+crm.team,write,,3,override ORM,no,sí,revisar,addons/quimibond_sgi/models/sgi_business_line.py:231
+sgi.job.family,_compute_employee_count,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_catalog.py:88
+sgi.activity.role,_sgi_mp_jobs,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_catalog.py:278
+hr.job,_sgi_staffing_state,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_catalog.py:341
+hr.job,sgi_merge_duplicate_jobs,api.model,2,público llamable por RPC,sí,no,con candado,addons/quimibond_sgi/models/sgi_catalog.py:479
+sgi.config,sgi_drop_empty_studio_models,api.model,5,público llamable por RPC,sí,no,con candado,addons/quimibond_sgi/models/sgi_catalog.py:722
+sgi.checklist.template,_sgi_generate,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_checklist.py:54
+sgi.checklist.finish,action_confirm,,2,action público,no,sí,revisar,addons/quimibond_sgi/models/sgi_checklist.py:198
+ir.ui.menu,_sgi_menu_tree_offenders,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_cleanup.py:110
+ir.ui.menu,_sgi_menu_dangling_actions,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_cleanup.py:133
+sgi.process,_sgi_obsolete_replaced_documents,,1,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_cleanup.py:155
+sgi.process,_sgi_relink_from_archived,,4,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_cleanup.py:176
+stock.picking,_sgi_coa_register,,1,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_coa.py:156
+stock.picking,_sgi_coa_block_enabled,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_coa.py:177
+stock.picking,_sgi_user_is_quality_head,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_coa.py:181
+sgi.coa.attach.wizard,action_confirm,,1,action público,sí,no,con candado,addons/quimibond_sgi/models/sgi_coa.py:263
+sgi.coa.inbox,_sgi_link_attachments,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_coa.py:378
+sgi.coa.inbox,action_link_manual,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_coa.py:398
+hr.department,_sgi_competence_matrix,,3,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_competence.py:84
+sgi.cron,_sgi_manager_user_id,,2,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:58
+sgi.cron,_sgi_send_critical_mail,,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:101
+sgi.cron,cron_nonconformities,api.model,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:141
+sgi.cron,cron_overdue_actions,api.model,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:203
+sgi.cron,cron_documents,api.model,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:251
+sgi.cron,_sgi_sales_budget_month_close,api.model,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:463
+sgi.cron,_sgi_close_resolved_activities,api.model,9,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:595
+sgi.cron,_sgi_rh_user_id,,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:876
+sgi.cron,_sgi_participation_survey,api.model,1,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_cron.py:1227
+sgi.cron,cron_weekly_digest,api.model,1,cron / tarea programada,no,sí,justificado,addons/quimibond_sgi/models/sgi_cron.py:1309
+quality.alert,_compute_sgi_sale_team_id,"api.depends('sgi_complaint_ticket_id.sgi_sale_order_id.team_id', 'partner_id')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_customer_reply.py:82
+quality.alert,_sgi_int_param,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_customer_reply.py:109
+sgi.deliverable,_check_measure,"api.constrains('odoo_model_id', 'measure_domain', 'measure_date_field', 'measure_user_field')",1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_deliverable.py:169
+sgi.deliverable,_sgi_sync_connections,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_deliverable.py:209
+sgi.deliverable,write,,2,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_deliverable.py:270
+sgi.deliverable,unlink,,2,override ORM,no,sí,revisar,addons/quimibond_sgi/models/sgi_deliverable.py:301
+project.project,sgi_dev_format_info,,1,público llamable por RPC,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_dev_request.py:104
+sgi.diagnostic,_sgi_build_report,api.model,4,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_diagnostic.py:121
+sgi.indicator,_calc_acuerdos_rxd,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_direction_board.py:42
+sgi.direction.board,_compute_board,api.depends('date'),5,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_direction_board.py:95
+approval.request,_sgi_change_attachment,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_doc_change.py:97
+approval.request,_sgi_publish_revision,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_doc_change.py:104
+approval.request,_sgi_reset_acks,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_doc_change.py:138
+approval.request,_sgi_sign_signers,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_doc_change_sign.py:90
+approval.request,_sgi_sign_rows,,1,privado (no llamable por RPC),sí,no,justificado,addons/quimibond_sgi/models/sgi_doc_change_sign.py:120
+approval.request,_sgi_prepare_approvers,,2,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_doc_change_sign.py:139
+approval.request,_sgi_send_to_sign,,1,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_doc_change_sign.py:185
+approval.request,_sgi_sync_sign,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_doc_change_sign.py:257
+approval.request,_sgi_archive_signed_pdf,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_doc_change_sign.py:280
+approval.request,_sgi_sync_all_sign,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_doc_change_sign.py:296
+documents.document,_inverse_sgi_doc_type,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_document.py:341
+documents.document,_sgi_share_controlled,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_document.py:361
+documents.document,_check_sgi_code,"api.constrains('sgi_is_controlled', 'sgi_code', 'sgi_doc_type_id', 'sgi_process_id')",1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_document.py:379
+documents.document,create,api.model_create_multi,2,override ORM,sí,sí,revisar,addons/quimibond_sgi/models/sgi_document.py:587
+documents.document,action_generate_acks,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_document.py:684
+documents.document,action_sgi_open_in_documents,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_document.py:740
+sgi.epp.delivery,_compute_job_id,api.depends('employee_id'),1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_epp.py:46
+sgi.epp.delivery,_onchange_employee_id,api.onchange('employee_id'),1,privado (no llamable por RPC),sí,no,justificado,addons/quimibond_sgi/models/sgi_epp.py:59
+sgi.epp.delivery,_sgi_check_can_sign,,1,privado (no llamable por RPC),sí,no,justificado,addons/quimibond_sgi/models/sgi_epp.py:63
+sgi.epp.delivery,create,api.model_create_multi,1,override ORM,sí,no,acotado,addons/quimibond_sgi/models/sgi_epp.py:73
+hr.employee,action_sgi_deliver_epp,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_epp.py:128
+sgi.epp.delivery,_sgi_epp_sign_template,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_epp_sign.py:60
+sgi.epp.delivery,action_send_sign_request,,3,action público,no,sí,revisar,addons/quimibond_sgi/models/sgi_epp_sign.py:76
+sgi.epp.delivery,_sgi_sync_from_sign,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_epp_sign.py:112
+sgi.epp.delivery,sgi_format_info,,1,público llamable por RPC,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_epp_sign.py:123
+documents.document,_compute_sgi_ext_deadline,"api.depends('sgi_ext_received_date', 'sgi_doc_type', 'company_id')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_external_doc.py:37
+documents.document,_sgi_ext_owner_user_id,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_external_doc.py:57
+sgi.cron,_sgi_external_doc_notices,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_external_doc.py:73
+sgi.fmea.line,_sgi_npr_threshold,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_fmea.py:176
+sgi.format.map,_check_codes,"api.constrains('sgi_code', 'sgi_code_alt')",1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_format_map.py:43
+sgi.format.map,_revision_of,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_format_map.py:58
+sgi.config,seed_parameters,api.model,1,público llamable por RPC,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_format_map.py:171
+sgi.config,harden_noupdate,api.model,1,público llamable por RPC,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_format_map.py:633
+sgi.format.mixin,sgi_format_info,,2,público llamable por RPC,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_format_map.py:667
+res.groups,_sgi_enforce_mast_members,api.model,2,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_groups_cleanup.py:30
+res.groups,_sgi_legacy_groups,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_groups_cleanup.py:47
+res.groups,_sgi_retire_legacy_groups,api.model,3,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_groups_cleanup.py:56
+sgi.health.record,_sgi_expiry_notices,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_hse_records.py:74
+sgi.csh.finding,action_generate_nc,,1,action público,no,sí,revisar,addons/quimibond_sgi/models/sgi_hse_records.py:196
+sgi.indicator,_sgi_kpi_company,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:271
+sgi.indicator,_sgi_waste_category_ids,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:333
+sgi.indicator,_sgi_year_budget_amount,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:455
+sgi.indicator,_calc_presupuesto_ventas,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:467
+sgi.indicator,_sgi_purchase_approval_categories,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:542
+sgi.indicator,_calc_produccion_vs_capacidad,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:598
+sgi.indicator,_sgi_energy_partner,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:619
+sgi.indicator,_note_produccion_vs_capacidad,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:633
+sgi.indicator,_sgi_satisfaction_survey,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:679
+sgi.indicator,_calc_satisfaccion_cliente,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator.py:695
+sgi.indicator,_sgi_set_calc,,1,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_indicator_detail.py:68
+sgi.indicator,_sgi_evidence_records,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator_detail.py:112
+sgi.indicator.term,_sgi_lock_date,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator_formula.py:111
+sgi.indicator.term,_check_term,api.constrains(*_TRACKED),1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator_formula.py:153
+sgi.indicator.term,_sgi_records,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator_formula.py:203
+sgi.indicator,_detail_inventario_diferencia,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator_p21.py:78
+sgi.indicator.measure,_compute_plan,"api.depends('semaphore', 'state', 'small_sample', 'period_date', 'cause', 'action_line_ids', 'indicator_id.frequency')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_indicator_plan.py:121
+sgi.cron,_sgi_monthly_run_due,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_indicator_plan.py:222
+sgi.instruction.publish,_compute_job_ids,api.depends('activity_id'),1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_instruction_knowledge.py:71
+sgi.instruction.publish,action_publish,,3,action público,sí,no,con candado,addons/quimibond_sgi/models/sgi_instruction_knowledge.py:76
+ir.ui.menu,_sgi_attach_quality_menus,api.model,3,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_integration.py:351
+sale.order,action_confirm,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_kpi_fields.py:69
+res.company,write,,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_kpi_fields.py:216
+sgi.inventory.value,sgi_snapshot,api.model,3,público llamable por RPC,no,sí,revisar,addons/quimibond_sgi/models/sgi_kpi_fields.py:249
+hr.version,_compute_sgi_departure,"api.depends('departure_reason_id', 'employee_id.departure_reason_id')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_kpi_fields.py:283
+sgi.machine.sheet,sgi_format_info,,1,público llamable por RPC,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_machine_sheet.py:104
+sgi.management.review,_sgi_load_participation,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_management_review.py:182
+approval.category,_sgi_mp_change_category,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:56
+approval.request,_sgi_mp_apply_users,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:84
+approval.request,_sgi_mp_apply,,5,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:89
+sgi.activity.change,_sgi_open,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:259
+sgi.activity.change,action_sgi_new_from_context,api.model,2,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_mp_change.py:285
+sgi.activity.change,_sgi_reference,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:297
+sgi.activity.change,_sgi_changes,,3,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:336
+sgi.activity.change,_sgi_add_process_owner_approver,,2,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:431
+sgi.activity.change,_sgi_apply,,3,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_mp_change.py:490
+sgi.my.pending,_sgi_pending_records,api.model,7,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_pending.py:67
+sgi.my.pending,_sgi_row,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_pending.py:108
+sgi.my.pending,_sgi_build,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_pending.py:208
+sgi.my.pending,action_open_mine,api.model,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_my_pending.py:239
+hr.employee.public,_sgi_pending_by_employee,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_pending.py:302
+hr.employee.public,_compute_sgi_mp_pending,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_pending.py:307
+hr.employee.public,_sgi_pending_ids_where,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_pending.py:315
+hr.employee.public,action_sgi_open_pending,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_my_pending.py:340
+hr.employee.public,action_sgi_team_pending,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_my_pending.py:346
+hr.job,_sgi_my_procedure_current_doc,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:116
+hr.job,_sgi_my_procedure_data,,4,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:155
+hr.job,_sgi_mp_document_records,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:270
+hr.job,_sgi_mp_status_map,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:300
+hr.job,action_sgi_publish_my_procedure,,1,action público,sí,no,con candado,addons/quimibond_sgi/models/sgi_my_procedure.py:438
+hr.job,_sgi_my_procedure_jobs,api.model,3,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:535
+hr.job,_sgi_my_procedure_precheck,api.model,3,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:582
+hr.employee,_compute_sgi_my_procedure_ack,"api.depends('sgi_mp_job_id', 'sgi_document_ack_ids.state', 'sgi_document_ack_ids.document_id')",2,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:656
+sgi.cron,cron_my_procedure_stale,api.model,2,cron / tarea programada,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure.py:687
+hr.employee,_sgi_mp_team_employees,,4,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:55
+hr.job,_sgi_mp_role_lists,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:82
+sgi.my.procedure.mixin,_sgi_mp_job,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:143
+sgi.my.procedure.mixin,_sgi_mp_employee_rec,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:150
+sgi.my.procedure.mixin,_compute_sgi_mp_roles,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:155
+sgi.my.procedure.mixin,_compute_sgi_mp_lists,api.depends_context('uid'),3,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:178
+hr.employee,_compute_sgi_mp_roles_stored,"api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id', 'user_id')",3,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:239
+hr.employee,_sgi_mp_touch_jobs,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:257
+hr.job,_sgi_mp_job,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:280
+sgi.activity.role,_compute_mp_pieces,"api.depends('activity_id', 'activity_id.measure_state', 'activity_id.measure_last_date', 'activity_id.how_steps', 'activity_id.done_criteria', 'activity_id.on_fail', 'activity_id.check_against', 'activity_id.role_ids', 'activity_id.input_ids', 'activity_id.output_deliverable_ids', 'activity_id.norm_clause_ids')",2,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:311
+sgi.activity.role,action_mp_go,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:345
+sgi.my.procedure,_sgi_mp_my_employee,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:457
+sgi.my.procedure,_sgi_mp_employee,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:460
+sgi.my.procedure,_sgi_mp_job,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:466
+sgi.my.procedure,_compute_scope,api.depends_context('uid'),2,compute/search,sí,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:481
+sgi.my.procedure,_compute_ack,"api.depends('employee_id', 'job_id');api.depends_context('uid')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:500
+sgi.my.procedure,_compute_who,"api.depends('employee_id', 'job_id')",2,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:531
+sgi.my.procedure,_compute_lists,"api.depends('employee_id', 'job_id');api.depends_context('uid')",10,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:552
+sgi.my.procedure,action_sign,,3,action público,sí,sí,con candado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:796
+sgi.my.procedure,action_print,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:815
+hr.employee.public,_sgi_mp_job_stats,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:952
+hr.employee.public,_sgi_mp_values,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:968
+hr.employee.public,_compute_sgi_mp_stats,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:990
+hr.employee.public,_sgi_mp_ids_where,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:998
+hr.employee.public,action_sgi_print_my_procedure,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:1042
+hr.employee.public,_sgi_team,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_screen.py:1048
+documents.document,_sgi_mp_sign_required,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_sign.py:31
+documents.document,_sgi_mp_pending_sign_doc,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_sign.py:36
+documents.document,_sgi_mp_signers,,1,privado (no llamable por RPC),sí,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_sign.py:44
+documents.document,_sgi_publish_sign_rows,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_sign.py:64
+documents.document,_sgi_mp_send_to_sign,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_sign.py:73
+documents.document,_sgi_publish_after_sign,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_sign.py:92
+documents.document,_sgi_sync_publish_sign,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_my_procedure_sign.py:112
+mail.activity,_action_done,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_nonconformity.py:18
+quality.alert,create,api.model_create_multi,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_nonconformity.py:178
+quality.alert,_sgi_deadline_days,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_nonconformity.py:208
+quality.alert,_sgi_deadline_escalation,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_nonconformity.py:266
+quality.alert,_sgi_schedule_effectiveness,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_nonconformity.py:322
+quality.alert,_compute_sgi_recurrence,"api.depends('sgi_process_id', 'sgi_norm_clause_id', 'sgi_folio')",2,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_nonconformity.py:397
+sgi.nc.cancel,action_confirm,,1,action público,sí,no,con candado,addons/quimibond_sgi/models/sgi_nonconformity.py:944
+sgi.process.activity,_sgi_norm_labels,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_norm_compliance.py:30
+sgi.norm.clause,_compute_sgi_evidence,"api.depends('activity_ids.active', 'activity_ids.process_id')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_norm_compliance.py:91
+sgi.audit.checklist.line,_compute_norm_clause_ids,"api.depends('activity_id.norm_clause_ids', 'audit_id.norm_ids')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_norm_compliance.py:174
+sgi.process,_sgi_default_vobo_user,api.model,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process.py:127
+sgi.process,create,api.model_create_multi,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_process.py:138
+sgi.process,_sgi_master_list_documents,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process.py:299
+sgi.process,_sgi_measure_strict,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:330
+sgi.process,_sgi_flag_procedure_dirty,,1,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:341
+sgi.process,_sgi_format_revision,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:395
+sgi.process,_sgi_document_by_code,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:400
+sgi.process.activity,_inverse_measure_model_name,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:987
+sgi.process.activity,_sgi_measure_odoo,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:1046
+sgi.process.activity,_sgi_generic_user_ids,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:1093
+sgi.process.activity,_sgi_replace_exec_stats,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:1110
+sgi.process.activity,_sgi_measure_executors,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:1133
+sgi.process.activity,_sgi_checked_measure_domain,,1,privado (no llamable por RPC),sí,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:1296
+sgi.process.activity,write,,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_process_procedure.py:1381
+sgi.activity.link,_sgi_create_chain_nc,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_process_procedure.py:1532
+stock.picking,_sgi_release_block_enabled,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_release.py:78
+stock.picking,_sgi_unreleased_lines,,1,privado (no llamable por RPC),sí,no,justificado,addons/quimibond_sgi/models/sgi_release.py:83
+sgi.risk,_sgi_level,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_risk.py:140
+sgi.sales.budget,_compute_needs_justification,"api.depends('fulfillment_pct', 'state', 'kind', 'amount_budget_total', 'nonfulfillment_note')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:146
+sgi.sales.budget,_sgi_horizon_mondays,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:287
+sgi.sales.budget,_sgi_team_year_real,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:334
+sgi.sales.budget,_sgi_reconcile_data,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:357
+sgi.sales.budget,_sgi_historical_products,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:856
+sgi.sales.budget,_sgi_historical_pairs,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:877
+sgi.sales.budget,action_download_template,,2,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_sales_budget.py:897
+sgi.sales.budget,_sgi_committed_by_week,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:966
+sgi.sales.budget,_preload_forecast_from_orders,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:1014
+sgi.sales.budget,_preload_budget_proposals,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:1035
+sgi.sales.budget,_preload_budget_from_forecast_and_real,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget.py:1088
+sgi.sales.budget.line,_sgi_default_pricelist,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget_line.py:219
+sgi.sales.budget.line,_sgi_min_plausible,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget_line.py:237
+sgi.sales.budget.line,_sgi_planning_factor,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget_line.py:315
+sgi.sales.budget.line,_sgi_compute_real_invoiced,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget_line.py:437
+sgi.sales.budget.line,_sgi_compute_real_committed,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sales_budget_line.py:578
+res.config.settings,get_values,api.model,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_settings.py:186
+res.config.settings,set_values,,1,override ORM,no,no,acotado,addons/quimibond_sgi/models/sgi_settings.py:216
+sgi.sign.builder,_sgi_render_pdf,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sign_builder.py:37
+sgi.sign.builder,_sgi_attachment_pdf,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sign_builder.py:63
+sgi.sign.builder,_sgi_signature_type,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sign_builder.py:71
+sgi.sign.builder,_sgi_template,api.model,2,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_sign_builder.py:76
+sgi.sign.builder,_sgi_request,api.model,1,privado (no llamable por RPC),no,sí,justificado,addons/quimibond_sgi/models/sgi_sign_builder.py:90
+documents.document,_sgi_ack_sign_template,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sign_elearning.py:39
+documents.document,action_sgi_send_sign_requests,,3,action público,sí,sí,con candado,addons/quimibond_sgi/models/sgi_sign_elearning.py:58
+sgi.document.ack,_sgi_sync_from_sign,api.model,1,privado (no llamable por RPC),sí,no,justificado,addons/quimibond_sgi/models/sgi_sign_elearning.py:130
+slide.channel,_sgi_employee_for_partner,,2,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sign_elearning.py:161
+slide.channel,_sgi_sync_completions,api.model,3,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sign_elearning.py:171
+sgi.sign.record.mixin,_compute_sgi_sign_requests,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_sign_record.py:29
+sgi.sign.record.mixin,_search_sgi_signed,api.model,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_sign_record.py:44
+sgi.sign.request.wizard,action_confirm,,2,action público,no,sí,revisar,addons/quimibond_sgi/models/sgi_sign_record.py:118
+sgi.deliverable,_sgi_signed_ids,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_sign_record.py:162
+sgi.staff.efficiency,action_load_employees,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_staff_efficiency.py:80
+sgi.staff.efficiency,action_compute_efficiency,,1,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_staff_efficiency.py:95
+sgi.staff.efficiency,action_close,,2,action público,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_staff_efficiency.py:129
+sgi.staff.efficiency,sgi_format_info,,1,público llamable por RPC,no,no,lectura/acotado,addons/quimibond_sgi/models/sgi_staff_efficiency.py:166
+sgi.staff.efficiency.line,_compute_wage_daily,api.depends('employee_id'),1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_staff_efficiency.py:205
+sgi.process,_compute_nc_open_ids,,1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_structure.py:29
+sgi.supplier.eval,_sgi_critical_categ_ids,api.model,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_supplier_eval.py:90
+sgi.supplier.eval,_compute_metrics,"api.depends('partner_id', 'date_from', 'date_to')",1,compute/search,no,no,justificado,addons/quimibond_sgi/models/sgi_supplier_eval.py:130
+sgi.supplier.eval,_sgi_compute_otd,,1,privado (no llamable por RPC),no,no,justificado,addons/quimibond_sgi/models/sgi_supplier_eval.py:165
+quality.alert,action_sgi_send_to_supplier,,2,action público,sí,no,con candado,addons/quimibond_sgi/models/sgi_supplier_nc.py:55
+quality.alert,sgi_supplier_answer,,5,público llamable por RPC,no,sí,revisar,addons/quimibond_sgi/models/sgi_supplier_nc.py:87
