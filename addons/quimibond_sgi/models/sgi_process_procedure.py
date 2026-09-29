@@ -1069,7 +1069,15 @@ class SgiProcessActivity(models.Model):
                     vals['measure_count_30d'] = Model.search_count(window)
                     vals.update(activity._sgi_measure_executors(Model, domain, date_field))
                     days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-                    if days:
+                    # G-017 (56.36.0): con vencimiento periódico, «a tiempo»
+                    # es antes del vencimiento (decisión 5), no una ventana de
+                    # días naturales. Vive en sgi_activity_spec.
+                    periodic = activity._sgi_periodic_state(
+                        Model, domain, date_field, fields.Date.context_today(activity)) \
+                        if hasattr(activity, '_sgi_periodic_state') else None
+                    if periodic:
+                        vals['measure_state'] = periodic
+                    elif days:
                         in_window = Model.search_count(
                             domain
                             + [(date_field, '>=', now - timedelta(days=days))])

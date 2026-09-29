@@ -1,0 +1,295 @@
+# -*- coding: utf-8 -*-
+"""Entrega 8a, línea «bandeja» (auditoría 2026-09, D-04): Mis pendientes con
+todo adentro. Una prueba por tipo de pendiente (J-007), más G-001, G-017,
+I-007, I-012 e I-021."""
+import io
+from datetime import date, timedelta
+
+from dateutil.relativedelta import relativedelta
+
+from odoo import fields
+from odoo.exceptions import UserError
+from odoo.tests import TransactionCase, new_test_user, tagged
+
+from .common_documents import sgi_hide_real_documents
+
+
+def _blank_pdf():
+    from odoo.tools.pdf import PdfFileWriter
+    writer = PdfFileWriter()
+    writer.add_blank_page(612, 792)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
+
+
+@tagged('post_install', '-at_install')
+class TestBandeja(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        sgi_hide_real_documents(env)
+        cls.today = fields.Date.context_today(env.user)
+        cls.Pending = env['sgi.my.pending']
+        cls.job = env['hr.job'].create({'name': 'PUESTO BANDEJA 8A'})
+        cls.boss_job = env['hr.job'].create({'name': 'DIRECCION BANDEJA 8A'})
+        cls.process = env['sgi.process'].create({'code': 'Z8A', 'name': 'Proceso bandeja 8A'})
+        # Actividad mensual que vence el día hábil 1 y escala a Dirección al
+        # día hábil siguiente.
+        cls.activity = env['sgi.process.activity'].create({
+            'process_id': cls.process.id, 'name': 'Cerrar la orden 8A', 'number': '8.1',
+            'measure_cadence': 'mensual', 'due_business_day': 1,
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': cls.job.id}),
+                         (0, 0, {'role': 'escala', 'job_id': cls.boss_job.id, 'after_days': 1})]})
+        cls.user = new_test_user(env, login='zs_8a_user', email='zs.8a@example.com',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_user')
+        cls.boss_user = new_test_user(env, login='zs_8a_boss', email='zs.8a.boss@example.com',
+                                      groups='base.group_user,quimibond_sgi.group_sgi_user')
+        cls.emp = env['hr.employee'].create({
+            'name': 'ZS Persona 8A', 'job_id': cls.job.id, 'user_id': cls.user.id})
+        cls.boss = env['hr.employee'].create({
+            'name': 'ZS Dirección 8A', 'job_id': cls.boss_job.id, 'user_id': cls.boss_user.id})
+        cls.emp.parent_id = cls.boss
+        # I-021: gente de planta sin usuario, a cargo del mismo jefe.
+        cls.floor = env['hr.employee'].create({
+            'name': 'ZS Planta 8A', 'job_id': cls.job.id, 'parent_id': cls.boss.id})
+        (cls.emp | cls.boss | cls.floor).invalidate_recordset()
+
+    # ------------------------------------------------------------------
+    def _rows(self, user=None, kind=None):
+        user = user or self.user
+        rows = self.Pending._sgi_pending_values(user)[user.id]
+        return [r for r in rows if kind is None or r['kind'] == kind]
+
+    def _row(self, kind, res_id, user=None):
+        found = [r for r in self._rows(user, kind) if r['res_id'] == res_id]
+        return found[0] if found else None
+
+    def _late(self):
+        self.activity.sudo().write({'measure_state': 'rojo'})
+        self.activity.invalidate_recordset()
+
+    def _indicator(self, code, calc_mode='manual', frequency='monthly'):
+        return self.env['sgi.indicator'].create({
+            'code': code, 'name': 'KPI %s' % code, 'calc_mode': calc_mode,
+            'frequency': frequency, 'responsible_id': self.user.id,
+            'process_id': self.process.id})
+
+    # ---- accion -------------------------------------------------------------
+    def test_01_accion(self):
+        objective = self.env['sgi.objective'].create({'name': 'Objetivo 8A'})
+        line = self.env['sgi.action.line'].create({
+            'name': 'Acción 8A', 'responsible_id': self.user.id,
+            'date_commit': self.today - timedelta(days=2), 'objective_id': objective.id})
+        row = self._row('accion', line.id)
+        self.assertTrue(row)
+        self.assertEqual(row['state'], 'atrasada')
+
+    # ---- nc -----------------------------------------------------------------
+    def test_02_nc(self):
+        Alert = self.env['quality.alert']
+        if 'sgi_responsible_ids' not in Alert._fields:
+            self.skipTest("Sin responsables de NC en este modelo.")
+        alert = Alert.create({'name': 'ZS NC 8A', 'sgi_process_id': self.process.id,
+                              'sgi_responsible_ids': [(6, 0, self.user.ids)]})
+        self.assertTrue(self._row('nc', alert.id))
+        self.process.active = False
+        self.assertFalse(self._row('nc', alert.id), "Nada de procesos archivados.")
+
+    # ---- medicion: «Capturar» (G-001) ---------------------------------------
+    def test_03_capturar_no_nace_atrasada(self):
+        indicator = self._indicator('Z8A-M')
+        period = self.today.replace(day=1) - relativedelta(months=1)
+        measure = self.env['sgi.indicator.measure'].create({
+            'indicator_id': indicator.id, 'period_date': period})
+        row = self._row('medicion', measure.id)
+        self.assertTrue(row, "Un indicador manual pendiente se captura.")
+        self.assertTrue(row['name'].startswith("Capturar Z8A-M"))
+        self.assertEqual(row['date_due'], measure._sgi_capture_due())
+        self.assertGreater(row['date_due'], measure._sgi_run_day(),
+                           "Vence después del día en que se mide, no al cierre del periodo.")
+        self.assertGreater(row['date_due'], period + relativedelta(day=31))
+        # Un indicador automático que sí calcula no se le pide a nadie.
+        auto = self._indicator('Z8A-A', calc_mode='otif_ventas')
+        auto.sudo().write({'calc_status': 'ok'})
+        pending = self.env['sgi.indicator.measure'].create({
+            'indicator_id': auto.id, 'period_date': period})
+        self.assertFalse(self._row('medicion', pending.id))
+        auto.sudo().write({'calc_status': 'error'})
+        self.assertTrue(self._row('medicion', pending.id), "Si el cálculo falla, se captura a mano.")
+
+    # ---- validacion: «Validar» en 3 días hábiles (I-006, I-007) --------------
+    def test_04_validar_dueño_tres_dias_habiles(self):
+        indicator = self._indicator('Z8A-W', calc_mode='otif_ventas', frequency='weekly')
+        monday = self.today - timedelta(days=self.today.weekday() + 7)
+        measure = self.env['sgi.indicator.measure'].create({
+            'indicator_id': indicator.id, 'period_date': monday, 'state': 'capturado', 'value': 95.0})
+        self.assertEqual(measure.captured_date, self.today)
+        row = self._row('validacion', measure.id)
+        self.assertTrue(row)
+        self.assertTrue(row['name'].startswith("Validar Z8A-W"))
+        self.assertIn("semana del %s" % monday.strftime('%d/%m/%Y'), row['name'])
+        self.assertEqual(row['date_due'], measure._sgi_validate_due())
+        self.assertGreater(row['date_due'], self.today)
+        self.assertNotEqual(row['state'], 'atrasada', "Recién calculada no nace atrasada.")
+        self.assertFalse(self._row('medicion', measure.id), "Ya no dice «Medir».")
+        # El dueño valida desde el renglón.
+        rec = self.Pending.with_user(self.user)._sgi_build(self.emp)
+        line = rec.filtered(lambda r: r.kind == 'validacion' and r.res_id == measure.id)
+        line.with_user(self.user).action_validate_measure()
+        self.assertEqual(measure.state, 'validado')
+        other = self.Pending.create({'kind': 'accion', 'name': 'No es medición'})
+        with self.assertRaises(UserError):
+            other.action_validate_measure()
+
+    # ---- legal --------------------------------------------------------------
+    def test_05_legal(self):
+        req = self.env['sgi.legal.requirement'].create({
+            'name': 'Requisito 8A', 'system': 'ambiental', 'responsible_id': self.user.id,
+            'next_eval_date': self.today + timedelta(days=3)})
+        row = self._row('legal', req.id)
+        self.assertTrue(row)
+        self.assertEqual(row['state'], 'por_vencer')
+
+    # ---- documento (I-007: sin la clave vieja) -------------------------------
+    def test_06_documento_titulo_limpio(self):
+        doc = self.env['documents.document'].create({
+            'name': 'Procedimiento de bandeja', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A68', 'sgi_state': 'vigente',
+            'sgi_owner_id': self.user.id, 'sgi_next_review_date': self.today + timedelta(days=20)})
+        row = self._row('documento', doc.id)
+        self.assertTrue(row)
+        self.assertNotIn('P-A68', row['name'])
+        self.assertIn('Procedimiento de bandeja', row['name'])
+
+    # ---- aprobacion (Studio) --------------------------------------------------
+    def test_07_aprobacion(self):
+        if 'studio.approval.request' not in self.env:
+            self.skipTest("Sin Studio.")
+        approver = new_test_user(self.env, login='zs_8a_apr', groups='base.group_user,purchase.group_purchase_user')
+        partner = self.env['res.partner'].create({'name': 'Proveedor 8A'})
+        order = self.env['purchase.order'].create({'partner_id': partner.id})
+        rule = self.env['studio.approval.rule'].sudo().create({
+            'name': 'Regla 8A', 'model_id': self.env['ir.model']._get('purchase.order').id,
+            'method': 'button_confirm', 'approver_ids': [(6, 0, approver.ids)]})
+        activity = order.activity_schedule('mail.mail_activity_data_todo',
+                                           summary='Conceder aprobación', user_id=approver.id)
+        self.env['studio.approval.request'].sudo().create({
+            'rule_id': rule.id, 'res_id': order.id, 'mail_activity_id': activity.id})
+        rows = self._rows(approver, 'aprobacion')
+        self.assertTrue([r for r in rows if r['res_model'] == 'purchase.order' and r['res_id'] == order.id])
+
+    # ---- solicitud (Aprobaciones) ---------------------------------------------
+    def test_08_solicitud(self):
+        category = self.env['approval.category'].create({
+            'name': 'ZS Categoría 8A', 'approval_minimum': 1,
+            'approver_ids': [(0, 0, {'user_id': self.user.id, 'required': True})]})
+        request = self.env['approval.request'].create({
+            'name': 'ZS solicitud 8A', 'category_id': category.id,
+            'request_owner_id': self.env.user.id})
+        request.action_confirm()
+        self.assertTrue(self._row('solicitud', request.id))
+
+    # ---- actividad atrasada (I-001) y semáforo de Mi procedimiento ------------
+    def test_09_actividad_atrasada(self):
+        self.assertFalse(self._rows(kind='actividad'), "Al día: no sale.")
+        self._late()
+        rows = self._rows(kind='actividad')
+        self.assertEqual([r['res_id'] for r in rows], [self.activity.id])
+        self.assertEqual(rows[0]['state'], 'atrasada')
+        self.assertTrue(rows[0]['name'].startswith("Hacer"))
+        self.assertIn('Cerrar la orden 8A', rows[0]['name'])
+        role = self.activity.role_ids.filtered(lambda r: r.role == 'ejecuta')
+        self.assertEqual(role.mp_status, 'atrasada', "Mismo semáforo en Mi procedimiento.")
+        # La pantalla ya no dice «Estás al día».
+        Wiz = self.env['sgi.my.procedure'].with_user(self.user)
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        self.assertGreaterEqual(wiz.pending_late, 1)
+        # Proceso archivado: fuera.
+        self.process.active = False
+        self.assertFalse(self._rows(kind='actividad'))
+
+    # ---- escalamiento (I-012) --------------------------------------------------
+    def test_10_escalamiento_llega_a_quien_escala(self):
+        self.assertFalse(self._rows(self.boss_user, 'actividad'))
+        self._late()
+        rows = self._rows(self.boss_user, 'actividad')
+        self.assertEqual([r['res_id'] for r in rows], [self.activity.id])
+        self.assertTrue(rows[0]['name'].startswith("Escalamiento:"))
+        self.assertLessEqual(rows[0]['date_due'], self.today)
+        # La pestaña de escalamientos arranca en los atrasados.
+        Wiz = self.env['sgi.my.procedure'].with_user(self.boss_user)
+        wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
+        self.assertEqual(wiz.received_late_count, 1)
+        self.assertEqual(wiz.action_show_received()['name'], "Escalamientos atrasados")
+
+    # ---- acuse de lectura (I-001) -----------------------------------------------
+    def test_11_acuse(self):
+        doc = self.env['documents.document'].create({
+            'name': 'Instructivo de bandeja', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'formato', 'sgi_code': 'F-P-A95-01', 'sgi_state': 'vigente'})
+        ack = self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.emp.id})
+        row = self._row('acuse', ack.id)
+        self.assertTrue(row)
+        self.assertTrue(row['name'].startswith("Leer y firmar"))
+        self.assertGreater(row['date_due'], self.today)
+        ack.with_user(self.user).action_mark_read()
+        self.assertFalse(self._row('acuse', ack.id))
+
+    # ---- firma (Firma electrónica, D-04) -----------------------------------------
+    def test_12_firma(self):
+        role = self.env['sign.item.role'].search([], limit=1)
+        if not role:
+            self.skipTest("Base sin papeles de Sign.")
+        Builder = self.env['sgi.sign.builder']
+        template = Builder._sgi_template('Plantilla 8A', _blank_pdf(), 1, [(0, role)])
+        product = self.env['product.template'].create({'name': 'Tela 8A'})
+        request = Builder._sgi_request(template, 'Firma 8A', 'Firma 8A', product,
+                                       [(self.user.partner_id, role)])
+        items = request.request_item_ids
+        row = self._row('firma', items.id)
+        self.assertTrue(row)
+        self.assertEqual(row['name'], "Firmar Firma 8A")
+        self.assertTrue(row['date_due'])
+        # La liga con token solo es del firmante: el jefe (Mi equipo) no la recibe.
+        vals = {'kind': 'firma', 'res_model': 'sign.request.item', 'res_id': items.id}
+        Pending = self.env['sgi.my.pending']
+        self.assertNotEqual(Pending.with_user(self.boss_user).new(vals).action_open().get('type'),
+                            'ir.actions.act_url')
+        if items.access_token:
+            self.assertEqual(Pending.with_user(self.user).new(vals).action_open().get('type'),
+                             'ir.actions.act_url')
+
+    # ---- I-021: semáforo de Mi equipo sin usuario ----------------------------------
+    def test_13_mi_equipo_sin_usuario(self):
+        Public = self.env['hr.employee.public'].with_user(self.boss_user)
+        self.assertFalse(Public.browse(self.floor.id).sgi_mp_pending_state)
+        self._late()
+        Public.invalidate_model()
+        row = Public.browse(self.floor.id)
+        self.assertEqual(row.sgi_mp_pending_state, 'atrasada')
+        self.assertIn(self.floor.id, Public.search([('sgi_mp_pending_state', '=', 'atrasada')]).ids)
+        rows = self.env['sgi.my.pending'].with_user(self.boss_user).search(
+            row.action_sgi_open_pending()['domain'])
+        self.assertEqual(rows.mapped('kind'), ['actividad'])
+
+    # ---- G-017: «a tiempo» con el vencimiento periódico ----------------------------
+    def test_14_semaforo_con_vencimiento(self):
+        activity = self.activity
+        Partner = self.env['res.partner']
+        domain = [('ref', '=', 'ZS-G017')]
+        # Mes cerrado: vence el día hábil 1 del mes. Hecha el día 20 = tarde.
+        july = date(2026, 7, 20)
+        due = activity._sgi_periodic_due(july)
+        self.assertLess(due, july)
+        self.assertEqual(activity._sgi_periodic_state(Partner, domain, 'date', july), 'rojo')
+        Partner.create({'name': 'Hecha tarde', 'ref': 'ZS-G017', 'date': date(2026, 7, 20)})
+        self.assertEqual(activity._sgi_periodic_state(Partner, domain, 'date', july), 'rojo',
+                         "Hecha después del vencimiento no es «al día».")
+        Partner.create({'name': 'Hecha a tiempo', 'ref': 'ZS-G017', 'date': due})
+        self.assertEqual(activity._sgi_periodic_state(Partner, domain, 'date', july), 'verde')
+        # Sin vencimiento periódico manda la ventana de siempre.
+        activity.sudo().write({'due_business_day': 0})
+        self.assertIsNone(activity._sgi_periodic_state(Partner, domain, 'date', july))

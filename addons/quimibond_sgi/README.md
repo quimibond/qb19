@@ -1882,6 +1882,34 @@ Ahora es una propuesta **estructurada** (`sgi.activity.change`):
 - No deja enviar sin motivo, sin cambios (al cambiar) ni sin resumen y
   proceso (al agregar). Se retira el asistente de texto `sgi.mp.change.wizard`.
 
+### Mis pendientes con todo adentro (56.36.0, D-04)
+
+Entrega 8a de la auditoría 2026-09 (G-001, I-001, I-006, I-007, I-012,
+G-017, I-021). Mis pendientes es la bandeja oficial:
+
+- **Capturar medición:** solo la `pendiente` de un indicador manual o de uno
+  automático cuyo cálculo falló (`calc_status` error, sin fórmula o manual).
+  Vence el día hábil en que se mide (el N-ésimo del mes siguiente,
+  `quimibond_sgi.monthly_measure_business_day`, o el primero después de la
+  semana) más `quimibond_sgi.measure_capture_business_days` (3) días hábiles.
+- **Validar medición:** la `capturado`, para el dueño del indicador, 3 días
+  hábiles desde `captured_date` (`quimibond_sgi.measure_validate_business_days`;
+  sin fecha, desde que se creó). Botón «Validar» en el renglón.
+- **Actividad atrasada:** las que la persona ejecuta o aprueba y Mi
+  procedimiento marca «Atrasada» (el mismo semáforo). **Escalamiento:** llega
+  a quien tiene «Escala» cuando el atraso pasa de sus días hábiles.
+- **Acuse de lectura** pendiente (vence en `quimibond_sgi.ack_business_days`,
+  5, días hábiles desde que se pidió) y **Firma** de Firma electrónica por
+  hacer (vence en su «Válido hasta» o 3 días hábiles).
+- Semanas como «semana del dd/mm/aaaa»; documentos por su título, sin clave
+  del Dropbox.
+- **Semáforo de la actividad (G-017):** con vencimiento periódico (día de la
+  semana, día hábil del mes, mes y día) «al día» es hecha antes del
+  vencimiento del periodo; la ventana de días naturales queda para las que no
+  tienen vencimiento.
+- **Mi equipo:** el semáforo sale de la persona, así que la gente sin usuario
+  también lo tiene (actividades y acuses).
+
 ### Mis pendientes en una sola lista con semáforo (56.3.0)
 
 - **Pantalla.** Los botones separados (atrasadas, al día, sin medir, acciones,
