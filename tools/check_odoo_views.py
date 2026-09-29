@@ -20,6 +20,13 @@ la imagen community). Nacen de tres builds rotos de `main` el 2026-09-25:
    borrarse en un pre-migrate; si no, Odoo la revalida antes de recargarla y
    el build revienta (54.0.0 y 54.1.0 del SGI, 2026-09-25).
 
+4. **Tipo de modelo en las extensiones**: una clase que extiende un modelo
+   del repo (`_inherit` sin `_name` nuevo) debe ser del mismo tipo que el
+   original (`Model`, `TransientModel`, `AbstractModel`). Extender el
+   TransientModel `sgi.my.pending` con `models.Model` tumbó la instalación de
+   56.24.0 en producción («transforms the transient model … into a
+   non-transient model», 2026-09-29).
+
 Uso: `python3 tools/check_odoo_views.py [--base-ref origin/main] [ruta/a/addons ...]`
 (sin rutas revisa `addons/` y los módulos de la raíz). Sale con 1 si hay errores.
 """
@@ -375,6 +382,79 @@ def check_stale_self_inherits(module_dir, base_ref):
     return errors
 
 
+_MODEL_KINDS = ('Model', 'TransientModel', 'AbstractModel')
+
+
+def _model_classes(path):
+    """(clase, tipo, _name, [_inherit], línea) de cada clase de modelo del
+    archivo, leída con ast (sin importar Odoo)."""
+    try:
+        tree = ast.parse(open(path, encoding='utf-8').read(), filename=path)
+    except SyntaxError:
+        return []
+    found = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ClassDef):
+            continue
+        kind = None
+        for base in node.bases:
+            if isinstance(base, ast.Attribute) and base.attr in _MODEL_KINDS \
+                    and isinstance(base.value, ast.Name) and base.value.id == 'models':
+                kind = base.attr
+        if not kind:
+            continue
+        name, inherit = None, []
+        for stmt in node.body:
+            if not isinstance(stmt, ast.Assign) or len(stmt.targets) != 1 \
+                    or not isinstance(stmt.targets[0], ast.Name):
+                continue
+            target, value = stmt.targets[0].id, stmt.value
+            if target == '_name' and isinstance(value, ast.Constant) and isinstance(value.value, str):
+                name = value.value
+            elif target == '_inherit':
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    inherit = [value.value]
+                elif isinstance(value, (ast.List, ast.Tuple)):
+                    inherit = [e.value for e in value.elts
+                               if isinstance(e, ast.Constant) and isinstance(e.value, str)]
+        found.append((node.name, kind, name, inherit, node.lineno))
+    return found
+
+
+def check_model_kinds(module_dirs):
+    """Una extensión (`_inherit = 'x'` sin `_name` distinto) debe ser del
+    mismo tipo que la clase que define `x` en el repo. Odoo rechaza al cargar
+    convertir un TransientModel en Model (y al revés) o un modelo concreto en
+    abstracto. Los modelos que no se definen en el repo (los de Odoo) no se
+    revisan."""
+    classes = []
+    for module_dir in module_dirs:
+        for path in sorted(glob.glob(os.path.join(module_dir, 'models', '**', '*.py'), recursive=True)
+                           + glob.glob(os.path.join(module_dir, 'wizard', '**', '*.py'), recursive=True)
+                           + glob.glob(os.path.join(module_dir, 'wizards', '**', '*.py'), recursive=True)):
+            for cls, kind, name, inherit, line in _model_classes(path):
+                classes.append((path, cls, kind, name, inherit, line))
+    defined = {}
+    for path, cls, kind, name, inherit, line in classes:
+        if name and name not in inherit:
+            defined.setdefault(name, set()).add(kind)
+    errors = []
+    for path, cls, kind, name, inherit, line in classes:
+        if len(inherit) != 1 or (name and name != inherit[0]):
+            continue
+        original = defined.get(inherit[0])
+        if not original or len(original) != 1:
+            continue
+        original_kind = next(iter(original))
+        if kind != original_kind:
+            errors.append(
+                "%s:%d: %s extiende '%s' con models.%s, pero '%s' es models.%s; Odoo no carga el "
+                "registro (hereda de models.%s)." % (
+                    os.path.relpath(path, ROOT), line, cls, inherit[0], kind, inherit[0],
+                    original_kind, original_kind))
+    return errors
+
+
 def main(argv):
     base_ref = None
     args = list(argv[1:])
@@ -388,6 +468,8 @@ def main(argv):
         print("Sin RNG en tools/odoo_rng: no se validan vistas.")
     errors = []
     seen = set()
+    module_dirs = [d for d in _module_dirs(paths) if '/.git/' not in d]
+    errors += check_model_kinds(sorted(set(module_dirs)))
     for module_dir in _module_dirs(paths):
         if module_dir in seen or '/.git/' in module_dir:
             continue
@@ -400,8 +482,9 @@ def main(argv):
             errors += check_stale_self_inherits(module_dir, base_ref)
     for err in errors:
         print("ERROR:", err)
-    print("%d error(es) en vistas RNG, imports de modelos, registro de tests, orden de herencia de vistas%s." % (
-        len(errors), " y herencias propias contra %s" % base_ref if base_ref else ""))
+    against = " y herencias propias contra %s" % base_ref if base_ref else ""
+    print("%d error(es) en vistas RNG, imports de modelos, tipo de modelo en extensiones, registro de tests, "
+          "orden de herencia de vistas%s." % (len(errors), against))
     return 1 if errors else 0
 
 
