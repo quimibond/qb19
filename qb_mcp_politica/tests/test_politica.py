@@ -118,3 +118,30 @@ class TestPoliticaMcp(TransactionCase):
         from ..models import politica
         self.assertFalse(politica.es_protegido('ir.attachment'))
         self.assertTrue(politica.es_protegido('ir.cron'))
+
+    # -- D-22: en el SGI no se borra por MCP ----------------------------
+
+    def test_sgi_no_se_borra(self):
+        from ..models import politica
+        for op in ('read', 'create', 'write'):
+            self.assertTrue(politica.operacion_permitida('sgi.indicator', op))
+        self.assertFalse(politica.operacion_permitida('sgi.indicator', 'unlink'))
+        self.assertFalse(politica.operacion_permitida('sgi.process.activity', 'unlink'))
+        # Fuera del SGI no cambia nada.
+        self.assertTrue(politica.operacion_permitida('res.partner', 'unlink'))
+        self.assertTrue(politica.operacion_permitida('documents.document', 'unlink'))
+
+    def test_delete_record_sgi_pide_archivar(self):
+        from odoo.exceptions import AccessError
+        with self.assertRaises(AccessError) as caught:
+            self.env['mcp.mixin']._check_op('sgi.indicator', 'unlink')
+        self.assertIn('archívalo (active=False)', str(caught.exception))
+
+    def test_sgi_puerta_niega_unlink(self):
+        """La puerta niega unlink en sgi.* aunque la fila lo permita."""
+        if 'sgi.indicator' not in self.env:
+            self.skipTest("quimibond_sgi no está instalado en esta base.")
+        self._fila_vieja('sgi.indicator')
+        self.assertEqual(self._operaciones('sgi.indicator'), {
+            'read': True, 'create': True, 'write': True, 'unlink': False,
+        })
