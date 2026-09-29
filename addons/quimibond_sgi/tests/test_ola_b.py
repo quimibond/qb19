@@ -131,6 +131,9 @@ class TestOlaBCascade(TransactionCase):
         policy = self.env['sgi.policy'].create({'name': 'Política salud'})
         obj = self.env['sgi.objective'].create(
             {'name': 'Obj salud', 'policy_id': policy.id})
-        # Sin indicadores/procesos en rojo, la salud agregada es verde.
-        self.assertEqual(obj.health, 'verde')
+        # 53.5.0 (regla de datos): un objetivo sin indicadores no tiene con
+        # qué juzgarse y queda «sin dato», no verde (test_links test_06). La
+        # política toma el peor color de sus objetivos; «sin dato» no la
+        # empeora, así que sigue verde.
+        self.assertEqual(obj.health, 'sin_dato')
         self.assertEqual(policy.health, 'verde')

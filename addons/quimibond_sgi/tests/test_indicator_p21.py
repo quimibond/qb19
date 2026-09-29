@@ -19,8 +19,16 @@ class TestIndicatorP21(TransactionCase):
         cls.Param = env['ir.config_parameter'].sudo()
         cls.kg = env.ref('uom.product_uom_kgm')
         cls.metro = env.ref('uom.product_uom_meter')
-        cls.stock = env['stock.location'].search([('usage', '=', 'internal')], limit=1)
-        cls.prodloc = env['stock.location'].search([('usage', '=', 'production')], limit=1)
+        # Ubicaciones de la compañía de los KPI (base.main_company, la del env):
+        # la base nueva trae varias compañías demo y la primera ubicación
+        # interna podía ser de otra («no company crossover», o movimientos que
+        # el KPI no ve porque filtra por compañía).
+        company = env.company
+        cls.stock = env['stock.warehouse'].search(
+            [('company_id', '=', company.id)], limit=1).lot_stock_id
+        cls.prodloc = env['stock.location'].search(
+            [('usage', '=', 'production'), ('company_id', 'in', [company.id, False])],
+            order='company_id', limit=1)
         cls.categ = env['product.category'].create({'name': 'Hilo prueba P-21'})
         cls.Param.set_param('quimibond_sgi.waste_input_categ_ids', str(cls.categ.id))
         cls.hilo = env['product.product'].create({

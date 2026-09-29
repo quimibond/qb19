@@ -42,11 +42,17 @@ class TestWeeklyOverdueMail(TransactionCase):
         self.assertNotIn(self.late_off.id, sent, "Quien lo apagó no recibe correo.")
         self.assertNotIn(self.on_time.id, sent, "Sin atrasos no hay correo.")
         mails = self.env['mail.mail'].sudo().search([('subject', 'ilike', 'atrasado')])
-        recipients = ' '.join(mails.mapped('email_to'))
+
+        # Odoo 19 convierte el «Para» de la plantilla en destinatarios
+        # (recipient_ids, el contacto del usuario) y deja email_to vacío: el
+        # correo sí sale, a la dirección del contacto. Se revisan ambos.
+        def addresses(mail):
+            return ' '.join([mail.email_to or ''] + mail.recipient_ids.mapped('email'))
+        recipients = ' '.join(addresses(mail) for mail in mails)
         self.assertIn('d14.a@example.com', recipients)
         self.assertNotIn('d14.b@example.com', recipients)
         self.assertNotIn('d14.c@example.com', recipients)
-        body = ' '.join(mails.filtered(lambda m: 'd14.a@' in (m.email_to or '')).mapped('body_html'))
+        body = ' '.join(mails.filtered(lambda m: 'd14.a@' in addresses(m)).mapped('body_html'))
         self.assertIn('Acción atrasada D14', body)
         self.assertNotIn('Acción al día D14', body)
 
