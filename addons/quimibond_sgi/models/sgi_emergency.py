@@ -33,7 +33,7 @@ class SgiEmergencyPlan(models.Model):
     responsible_id = fields.Many2one('res.users', string="Responsable (brigada)",
                                      tracking=True)
     document_id = fields.Many2one('documents.document', string="Plan documentado",
-                                  domain=[('sgi_is_controlled', '=', True)], ondelete='restrict')
+                                  domain=[('sgi_is_controlled', '=', True)])
     risk_ids = fields.Many2many('sgi.risk', string="Riesgos ligados (IPER/ambiental)",
                                 domain=[('instrument', 'in', ('iper', 'ambiental'))])
     drill_frequency_months = fields.Integer(string="Frecuencia de simulacro (meses)",

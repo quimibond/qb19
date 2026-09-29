@@ -230,8 +230,7 @@ class SgiAudit(models.Model):
     checklist_nonconforming_count = fields.Integer(compute='_compute_checklist_counts')
     # AU-3 (50.0.0): informe F-P-G03-07 archivado al cerrar.
     report_document_id = fields.Many2one(
-        'documents.document', string="Informe archivado", readonly=True, copy=False,
-        ondelete='restrict')
+        'documents.document', string="Informe archivado", readonly=True, copy=False)
 
     @api.depends('folio', 'audit_type')
     def _compute_name(self):

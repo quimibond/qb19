@@ -85,8 +85,7 @@ class SgiControlPlan(models.Model):
     point_count = fields.Integer(string="N° de puntos", compute='_compute_point_count')
     fmea_ids = fields.One2many('sgi.fmea', 'control_plan_id', string="AMEF ligados")
     fmea_count = fields.Integer(string="# AMEF", compute='_compute_fmea_count')
-    document_id = fields.Many2one('documents.document', string="Especificación del cliente",
-                                  ondelete='restrict')
+    document_id = fields.Many2one('documents.document', string="Especificación del cliente")
     notes = fields.Text(string="Notas")
 
 
