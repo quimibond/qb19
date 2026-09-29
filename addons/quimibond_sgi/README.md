@@ -801,6 +801,12 @@ select count(*) from documents_document where sgi_is_controlled and sgi_doc_type
 
 ## Alcance multiempresa (decisión de arquitectura)
 
+**El SGI es de una sola empresa** (D-03, 56.34.0): la de
+`sgi.config._sgi_company()` (parámetro `quimibond_sgi.sgi_company_id`, por
+default la principal, PNTQ); un proceso no se crea ni se mueve a otra
+(`models/sgi_multicompany.py`), y los 10 modelos con `company_id` que no tenían
+regla ya la tienen (F-014).
+
 La instancia tiene varias compañías. Desde la fase 1 del catálogo
 (v19.0.29.0.0) el **catálogo** (procesos, actividades, roles, ligas, flujos,
 responsabilidades, tipos de documento) lleva `company_id` y regla por empresa.

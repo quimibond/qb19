@@ -91,3 +91,4 @@ from . import sgi_norm_compliance
 from . import sgi_archived_filters
 from . import sgi_approval_rule_archive
 from . import sgi_document_owner
+from . import sgi_multicompany
