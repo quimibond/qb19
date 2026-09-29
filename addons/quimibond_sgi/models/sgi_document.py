@@ -421,17 +421,28 @@ class DocumentsDocument(models.Model):
         return docs.action_sgi_resolve_odoo_menu()
 
     def action_sgi_open_odoo_form(self):
-        """Abre el formulario de Odoo que sustituye al documento: el menú
-        ligado o, en su defecto, el worksheet destino de la migración."""
+        """«Abrir en Odoo» (57.0.0: lo usa todo Usuario SGI desde «Formatos y
+        documentos anteriores»). Abre lo que sustituye al documento: el menú
+        ligado (su acción; si no es una ventana, el menú mismo), si no el
+        worksheet destino y, si no hay ninguno, un aviso. No escribe nada.
+        Si el usuario no tiene acceso al menú destino, lo dice en vez de
+        abrir una pantalla que Odoo le negaría."""
         self.ensure_one()
-        action = self.sgi_odoo_menu_id.action if self.sgi_odoo_menu_id else False
-        if action and action._name == 'ir.actions.act_window':
-            return action.read()[0]
+        menu = self.sgi_odoo_menu_id
+        action = menu.sudo().action if menu else False
+        if action:
+            if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
+                raise UserError(
+                    "Este documento vive en Odoo en «%s», pero tu usuario no tiene acceso a ese "
+                    "menú. Pide el acceso a tu jefe o al Jefe MAST." % menu.sudo().complete_name)
+            if action._name == 'ir.actions.act_window':
+                return action.read()[0]
+            return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
         if self.sgi_migration_point_id:
             return self.action_sgi_open_migration_point()
         raise UserError(
-            "Este documento no tiene ligado su formulario de Odoo. "
-            "Selecciona el «Menú de Odoo» (o el worksheet destino) en la ficha.")
+            "Este documento todavía no tiene destino en Odoo (ni menú ni worksheet ligados). "
+            "Si ya se hace en Odoo, avísale al Jefe MAST para que lo ligue.")
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     # 56.7.0 (1.8): guardados para filtrar y reportar la difusión.

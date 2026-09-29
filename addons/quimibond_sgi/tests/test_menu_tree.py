@@ -112,3 +112,18 @@ class TestMenuTree(TransactionCase):
         for xmlid in ('menu_sgi_dashboard_health', 'menu_sgi_mgmt_review',
                       'menu_sgi_interested_parties', 'menu_sgi_satisfaction'):
             self.assertEqual(self.env.ref('quimibond_sgi.' + xmlid).group_ids, restricted, xmlid)
+
+    def test_06_dropbox_by_group(self):
+        """57.0.0 (decisión de Jose): en «Del Dropbox a Odoo» el buscador y
+        «Formatos y documentos anteriores» los ve todo Usuario SGI; rutinas,
+        procedimientos anteriores y avance solo Auditor, Jefe MAST, Dirección y
+        Dueño de proceso."""
+        for xmlid in ('menu_sgi_dropbox', 'menu_sgi_dropbox_search', 'menu_sgi_migration'):
+            self.assertFalse(self.env.ref('quimibond_sgi.' + xmlid).group_ids, xmlid)
+        restricted = (self.env.ref('quimibond_sgi.group_sgi_auditor')
+                      | self.env.ref('quimibond_sgi.group_sgi_manager')
+                      | self.env.ref('quimibond_sgi.group_sgi_director')
+                      | self.env.ref('quimibond_sgi.group_sgi_process_owner'))
+        for xmlid in ('menu_sgi_dropbox_procedures', 'menu_sgi_dropbox_routines',
+                      'menu_sgi_dropbox_progress'):
+            self.assertEqual(self.env.ref('quimibond_sgi.' + xmlid).group_ids, restricted, xmlid)

@@ -2,6 +2,7 @@
 """Buscador por clave anterior y avance de la transición (19.0.57.0.0;
 entrega 6). P-L6 de docs/audit/12-transicion.md §3.11. También ejercita las
 columnas de las dos vistas SQL, que no se pueden probar fuera del build."""
+from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged
 
 from .common_documents import sgi_hide_real_documents, sgi_neutralize_dropbox_contradictions
@@ -48,6 +49,10 @@ class TestDropboxKey(TransactionCase):
             'procedure_id': cls.procedure.id, 'n': 3, 'name': 'Revisar la captura',
             'state': 'cubierta', 'activity_ids': [(6, 0, cls.activity.ids)]})
         cls.user = sgi_test_user(cls.env, login='e6k_user', groups='quimibond_sgi.group_sgi_user')
+        # 57.0.0: las rutinas del buscador solo las ve Auditor, MAST, Dirección
+        # o dueño de proceso; Dirección implica Usuario SGI (lee documentos).
+        cls.director = sgi_test_user(cls.env, login='e6k_director',
+                                     groups='quimibond_sgi.group_sgi_director')
 
     @classmethod
     def _doc(cls, code, doc_type, state='vigente', **extra):
@@ -71,14 +76,29 @@ class TestDropboxKey(TransactionCase):
         self.assertEqual(doc_row.destination, 'AppClaveE6/MenuClaveE6')
         action = doc_row.action_open_target()
         self.assertEqual(action['res_model'], 'res.partner', "«Abrir en Odoo» abre la acción del menú.")
-        routine_row = self._find('P-V81 · 3', self.user)
+        routine_row = self._find('P-V81 · 3', self.director)
         self.assertEqual(routine_row.routine_id, self.routine)
         self.assertEqual(routine_row.destination, 'E8.01')
         self.assertEqual(routine_row.action_open_target()['res_model'], 'sgi.process.activity')
         numeral = self._find('XDBK 4.1.2', self.user)
         self.assertEqual(numeral.activity_id, self.archived)
-        self.assertEqual(self.Key.with_user(self.user).search([('title', 'ilike', 'Revisar la captura')]),
+        self.assertEqual(self.Key.with_user(self.director).search([('title', 'ilike', 'Revisar la captura')]),
                          routine_row, "Se busca también por título.")
+
+    def test_usuario_sgi_busca_sin_rutinas(self):
+        """57.0.0 (decisión de Jose): el Usuario SGI usa el buscador, pero las
+        rutinas no le salen, y «Ver el anterior» de un procedimiento le abre
+        la ficha del documento (la de procedimiento anterior trae rutinas)."""
+        Key = self.Key.with_user(self.user)
+        self.assertFalse(self._find('P-V81 · 3', self.user), "Sin rutinas para el Usuario SGI.")
+        self.assertFalse(Key.search([('kind', '=', 'rutina')]))
+        proc_row = self._find('P-V81', self.user)
+        self.assertEqual(len(proc_row), 1)
+        view = proc_row.action_open_previous()['views'][0][0]
+        self.assertEqual(view, self.env.ref('quimibond_sgi.sgi_dropbox_document_view_form').id)
+        director_row = self._find('P-V81', self.director)
+        self.assertEqual(director_row.action_open_previous()['views'][0][0],
+                         self.env.ref('quimibond_sgi.sgi_dropbox_procedure_view_form').id)
 
     def test_l6_no_muestra_lo_que_no_puede_abrir(self):
         self.assertTrue(self._find('F-P-V81-02'), "El sistema lo ve.")
@@ -87,7 +107,10 @@ class TestDropboxKey(TransactionCase):
         self.assertFalse(self._find('P-I01', self.user), "P-I01 nunca sale.")
 
     def test_avance_por_proceso(self):
-        row = self.env['sgi.dropbox.progress'].with_user(self.user).search(
+        with self.assertRaises(AccessError):
+            self.env['sgi.dropbox.progress'].with_user(self.user).search(
+                [('process_id', '=', self.process.id)])
+        row = self.env['sgi.dropbox.progress'].with_user(self.director).search(
             [('process_id', '=', self.process.id)])
         self.assertEqual(len(row), 1)
         self.assertEqual(row.routines_total, 1)

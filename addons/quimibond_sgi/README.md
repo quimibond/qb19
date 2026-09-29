@@ -1910,6 +1910,18 @@ L-015…L-021, C-016). Diseño: `docs/audit/12-transicion.md` §3.
   los documentos cuya clase y estado no cuadran (respuesta 8 de Jose). API:
   `env['sgi.legacy.routine'].load_routines(payload, dry_run=True)`.
 - Sin datos con XML ID (decisión 4): instalar no carga ninguna rutina.
+- **Quién ve qué** (decisión de Jose): todo Usuario SGI ve el buscador (sin
+  rutinas) y «Formatos y documentos anteriores» con «Abrir en Odoo» (menú
+  ligado, si no el worksheet, si no un aviso; no escribe). «Procedimientos
+  anteriores», «Rutina por rutina» y «Avance de la transición» solo Auditor,
+  Jefe MAST, Dirección y **Dueño de proceso (SGI)**
+  (`group_sgi_process_owner`), con grupos en menú y acción y ACL de
+  `sgi.legacy.routine` y `sgi.dropbox.progress` solo para esos cuatro. La
+  membresía del grupo de dueños no se asigna a mano:
+  `sgi.process._sgi_sync_process_owner_group()` la sincroniza (usuarios
+  activos de los dueños de procesos activos de la empresa del SGI) al crear o
+  escribir `owner_id`/`active`/`company_id`, en el post-migrate de 57.0.0 y
+  en un cron diario. Producción, 2026-09-29: 10 dueños con usuario.
 
 ### Del Dropbox a Odoo: formatos y documentos anteriores (56.39.0)
 

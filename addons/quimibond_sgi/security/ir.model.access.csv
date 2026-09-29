@@ -285,12 +285,15 @@ access_sgi_diagnostic_line_auditor,sgi.diagnostic.line.auditor,model_sgi_diagnos
 access_sgi_management_review_agreement_director,sgi.management.review.agreement.director,model_sgi_management_review_agreement,group_sgi_director,1,1,1,0
 access_sgi_staff_efficiency_payroll,sgi.staff.efficiency.payroll,model_sgi_staff_efficiency,group_sgi_salary,1,1,1,1
 access_sgi_staff_efficiency_line_payroll,sgi.staff.efficiency.line.payroll,model_sgi_staff_efficiency_line,group_sgi_salary,1,1,1,1
-access_sgi_legacy_routine_user,sgi.legacy.routine.user,model_sgi_legacy_routine,group_sgi_user,1,0,0,0
 access_sgi_legacy_routine_auditor,sgi.legacy.routine.auditor,model_sgi_legacy_routine,group_sgi_auditor,1,0,0,0
 access_sgi_legacy_routine_manager,sgi.legacy.routine.manager,model_sgi_legacy_routine,group_sgi_manager,1,1,1,0
+access_sgi_legacy_routine_director,sgi.legacy.routine.director,model_sgi_legacy_routine,group_sgi_director,1,0,0,0
+access_sgi_legacy_routine_process_owner,sgi.legacy.routine.process_owner,model_sgi_legacy_routine,group_sgi_process_owner,1,0,0,0
 access_sgi_dropbox_key_user,sgi.dropbox.key.user,model_sgi_dropbox_key,group_sgi_user,1,0,0,0
 access_sgi_dropbox_key_auditor,sgi.dropbox.key.auditor,model_sgi_dropbox_key,group_sgi_auditor,1,0,0,0
-access_sgi_dropbox_progress_user,sgi.dropbox.progress.user,model_sgi_dropbox_progress,group_sgi_user,1,0,0,0
 access_sgi_dropbox_progress_auditor,sgi.dropbox.progress.auditor,model_sgi_dropbox_progress,group_sgi_auditor,1,0,0,0
+access_sgi_dropbox_progress_manager,sgi.dropbox.progress.manager,model_sgi_dropbox_progress,group_sgi_manager,1,0,0,0
+access_sgi_dropbox_progress_director,sgi.dropbox.progress.director,model_sgi_dropbox_progress,group_sgi_director,1,0,0,0
+access_sgi_dropbox_progress_process_owner,sgi.dropbox.progress.process_owner,model_sgi_dropbox_progress,group_sgi_process_owner,1,0,0,0
 access_sgi_legacy_routine_import_manager,sgi.legacy.routine.import.manager,model_sgi_legacy_routine_import,group_sgi_manager,1,1,1,1
 access_sgi_legacy_routine_import_line_manager,sgi.legacy.routine.import.line.manager,model_sgi_legacy_routine_import_line,group_sgi_manager,1,1,1,1

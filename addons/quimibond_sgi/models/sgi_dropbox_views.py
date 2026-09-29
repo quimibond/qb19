@@ -21,7 +21,7 @@ import re
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
 
-from .sgi_legacy_routine import ROUTINE_STATES
+from .sgi_legacy_routine import ROUTINE_STATES, sgi_can_read_legacy_routines
 
 KEY_KINDS = [
     ('procedimiento', "Procedimiento"),
@@ -91,11 +91,17 @@ class SgiDropboxKey(models.Model):
         del procedimiento del numeral) en SQL. L-006/P-L6: nadie ve un
         documento que no puede abrir (carpeta Dirección, P-I01): se calcula
         con el usuario real, porque una regla ``any`` se evalúa en modo
-        sistema y no filtraría. Las claves excluidas no salen nunca."""
+        sistema y no filtraría. Las claves excluidas no salen nunca.
+
+        57.0.0 (decisión de Jose): las rutinas solo salen para Auditor, Jefe
+        MAST, Dirección y dueños de proceso; el Usuario SGI normal busca
+        procedimientos, formatos, instructivos y numerales, sin rutinas."""
         excluded = _sql_codes(self.env['documents.document']._sgi_dropbox_excluded_codes())
         doc_filter = "d.sgi_previous_code NOT IN (%s)" % excluded
         routine_filter = "coalesce(r.procedure_code, '') NOT IN (%s)" % excluded
         numeral_filter = "TRUE"
+        if not sgi_can_read_legacy_routines(self.env):
+            routine_filter = "FALSE"
         if not self.env.su:
             Doc = self.env['documents.document'].with_context(active_test=False)
             try:
@@ -223,8 +229,11 @@ class SgiDropboxKey(models.Model):
                     'context': {'active_test': False}}
         if not self.document_id:
             raise UserError("No hay documento anterior que abrir.")
-        view = 'sgi_dropbox_procedure_view_form' if self.document_id.sgi_doc_type == 'procedimiento' \
-            else 'sgi_dropbox_document_view_form'
+        # La ficha de procedimiento anterior trae las rutinas: solo para
+        # quien las puede leer (57.0.0); el resto ve la ficha del documento.
+        view = 'sgi_dropbox_procedure_view_form' if (
+            self.document_id.sgi_doc_type == 'procedimiento'
+            and sgi_can_read_legacy_routines(self.env)) else 'sgi_dropbox_document_view_form'
         return {'type': 'ir.actions.act_window', 'res_model': 'documents.document',
                 'res_id': self.document_id.id, 'view_mode': 'form',
                 'views': [(self.env.ref('quimibond_sgi.%s' % view).id, 'form')]}

@@ -40,6 +40,20 @@ DECISIONS = [
     ('eliminar', "Eliminar con motivo"),
 ]
 # Mismas reglas que docs/audit/12-transicion/validar_rutinas.py.
+# Entrega 6 (57.0.0, decisión de Jose): «Rutina por rutina», «Procedimientos
+# anteriores» y «Avance de la transición» solo para Auditor, Jefe MAST,
+# Dirección y dueños de proceso (grupo sincronizado desde sgi.process). El
+# buscador y «Formatos y documentos anteriores» son para todo Usuario SGI.
+LEGACY_ROUTINE_GROUPS = ('quimibond_sgi.group_sgi_auditor', 'quimibond_sgi.group_sgi_manager',
+                         'quimibond_sgi.group_sgi_director', 'quimibond_sgi.group_sgi_process_owner')
+LEGACY_ROUTINE_GROUPS_ATTR = ','.join(LEGACY_ROUTINE_GROUPS)
+
+
+def sgi_can_read_legacy_routines(env):
+    """¿El usuario ve rutinas, procedimientos anteriores y avance?"""
+    return env.su or any(env.user.has_group(group) for group in LEGACY_ROUTINE_GROUPS)
+
+
 STATE_ALIASES = {'odoo': 'reemplazada', 'la hace odoo': 'reemplazada',
                  'omitida': 'eliminada', 'cubierto': 'cubierta'}
 DECISION_ALIASES = {'actividad': 'actividad', 'crear actividad': 'actividad',
@@ -669,8 +683,11 @@ class DocumentsDocumentLegacyRoutines(models.Model):
     """L-017: las rutinas y sus conteos en el procedimiento anterior."""
     _inherit = 'documents.document'
 
+    # 57.0.0: con grupos para que un read() sin campos (exportar, copiar) de
+    # un Usuario SGI no toque el modelo, que no puede leer.
     sgi_legacy_routine_ids = fields.One2many(
-        'sgi.legacy.routine', 'procedure_id', string="Rutinas del procedimiento anterior")
+        'sgi.legacy.routine', 'procedure_id', string="Rutinas del procedimiento anterior",
+        groups=LEGACY_ROUTINE_GROUPS_ATTR)
     sgi_routine_count = fields.Integer(string="Rutinas", compute='_compute_sgi_routine_counts',
                                        store=True)
     sgi_routine_covered_count = fields.Integer(string="Cubiertas", compute='_compute_sgi_routine_counts',

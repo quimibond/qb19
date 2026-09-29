@@ -2,8 +2,10 @@
 <odoo>
     <!-- ================================================================
          «Del Dropbox a Odoo» (57.0.0; entrega 6, docs/audit/12-transicion.md
-         §3.4–§3.6). Todos consultan; solo el Jefe MAST edita rutinas e
-         importa. La clave vieja solo se muestra aquí (decisión 11 de la
+         §3.4–§3.6). El buscador lo ve todo Usuario SGI (sin rutinas); rutinas,
+         procedimientos anteriores y avance, solo Auditor, Jefe MAST,
+         Dirección y Dueño de proceso (57.0.0, decisión de Jose); solo el Jefe
+         MAST edita rutinas e importa. La clave vieja solo se muestra aquí (decisión 11 de la
          tanda 2). Ningún nombre de acción ni de vista lleva claves.
          ================================================================ -->
 
@@ -214,6 +216,9 @@
     </record>
 
     <record id="sgi_dropbox_routine_action" model="ir.actions.act_window">
+        <!-- 57.0.0: solo Auditor, Jefe MAST, Dirección y Dueño de proceso. -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_auditor'), ref('quimibond_sgi.group_sgi_manager'),
+            ref('quimibond_sgi.group_sgi_director'), ref('quimibond_sgi.group_sgi_process_owner')])]"/>
         <field name="name">Rutina por rutina</field>
         <field name="res_model">sgi.legacy.routine</field>
         <field name="view_mode">list,form,pivot</field>
@@ -242,7 +247,8 @@
                 <field name="title"/>
                 <field name="process_id"/>
                 <field name="migration_state" optional="show"/>
-                <field name="routine_state" optional="show"/>
+                <field name="routine_state" optional="show"
+                       groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
                 <field name="doc_state" optional="hide"/>
                 <field name="destination"/>
                 <field name="odoo_menu_id" column_invisible="1"/>
@@ -277,12 +283,14 @@
                             <field name="process_id"/>
                             <field name="doc_state" invisible="not doc_state"/>
                             <field name="migration_state" invisible="not migration_state"/>
-                            <field name="routine_state" invisible="not routine_state"/>
+                            <field name="routine_state" invisible="not routine_state"
+                                   groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
                         </group>
                         <group>
                             <field name="destination"/>
                             <field name="document_id" invisible="not document_id"/>
-                            <field name="routine_id" invisible="not routine_id"/>
+                            <field name="routine_id" invisible="not routine_id"
+                                   groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
                             <field name="activity_id" invisible="not activity_id"/>
                             <field name="odoo_menu_id" invisible="not odoo_menu_id"/>
                             <field name="point_id" invisible="not point_id"/>
@@ -306,7 +314,8 @@
                         domain="[('kind', 'in', ('formato', 'formato_it', 'formulario_odoo'))]"/>
                 <filter name="instructions" string="Instructivos y DAT"
                         domain="[('kind', 'in', ('instructivo', 'dat'))]"/>
-                <filter name="routines" string="Rutinas" domain="[('kind', '=', 'rutina')]"/>
+                <filter name="routines" string="Rutinas" domain="[('kind', '=', 'rutina')]"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
                 <filter name="archived_numbers" string="Numerales archivados"
                         domain="[('kind', '=', 'numeral_archivado')]"/>
                 <separator/>
@@ -375,7 +384,7 @@
                     <button name="action_sgi_view_file" type="object" string="Ver el PDF"
                             icon="fa-file-pdf-o"/>
                     <button name="action_sgi_open_routines" type="object" string="Rutina por rutina"
-                            icon="fa-list"/>
+                            icon="fa-list" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
                     <field name="sgi_migration_state" widget="statusbar"
                            statusbar_visible="en_curso,baja,na"/>
                 </header>
@@ -405,7 +414,8 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="Rutinas" name="rutinas">
+                        <page string="Rutinas" name="rutinas"
+                              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner">
                             <field name="sgi_legacy_routine_ids" readonly="not sgi_can_edit_transition"
                                    context="{'default_procedure_id': id}">
                                 <list decoration-danger="state == 'pendiente'">
@@ -468,6 +478,9 @@
     </record>
 
     <record id="sgi_dropbox_procedure_action" model="ir.actions.act_window">
+        <!-- 57.0.0: solo Auditor, Jefe MAST, Dirección y Dueño de proceso. -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_auditor'), ref('quimibond_sgi.group_sgi_manager'),
+            ref('quimibond_sgi.group_sgi_director'), ref('quimibond_sgi.group_sgi_process_owner')])]"/>
         <field name="name">Procedimientos anteriores</field>
         <field name="res_model">documents.document</field>
         <field name="view_mode">list,form</field>
@@ -553,6 +566,9 @@
     </record>
 
     <record id="sgi_dropbox_progress_action" model="ir.actions.act_window">
+        <!-- 57.0.0: solo Auditor, Jefe MAST, Dirección y Dueño de proceso. -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_auditor'), ref('quimibond_sgi.group_sgi_manager'),
+            ref('quimibond_sgi.group_sgi_director'), ref('quimibond_sgi.group_sgi_process_owner')])]"/>
         <field name="name">Avance de la transición</field>
         <field name="res_model">sgi.dropbox.progress</field>
         <field name="view_mode">list,graph,pivot</field>

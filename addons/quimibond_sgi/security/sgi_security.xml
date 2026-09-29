@@ -84,6 +84,18 @@
             (4, ref('group_sgi_user')),
             (4, ref('group_sgi_auditor'))]"/>
     </record>
+    <!-- Entrega 6 (57.0.0, decisión de Jose): «Dueño de proceso (SGI)». Ve,
+         con Auditor, Jefe MAST y Dirección, «Rutina por rutina»,
+         «Procedimientos anteriores» y «Avance de la transición» (solo
+         lectura). La membresía NO se asigna a mano: la sincroniza
+         sgi.process._sgi_sync_process_owner_group() desde el dueño de cada
+         proceso activo (al crear o cambiar el dueño, en el post-migrate de
+         19.0.57.0.0 y en un cron diario), y quita a quien ya no es dueño.
+         Sin privilegio: no sale como nivel en la ficha del usuario. -->
+    <record id="group_sgi_process_owner" model="res.groups">
+        <field name="name">Dueño de proceso (SGI)</field>
+        <field name="implied_ids" eval="[(4, ref('group_sgi_user'))]"/>
+    </record>
     <!-- Multiempresa (fase 1): el grupo tiene 8 empresas en la misma base.
          Vacío = compartido. -->
     <record id="rule_sgi_process_company" model="ir.rule">

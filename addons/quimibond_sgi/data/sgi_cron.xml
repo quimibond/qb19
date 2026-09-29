@@ -43,4 +43,17 @@
         <field name="interval_type">months</field>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- 57.0.0 (entrega 6): respaldo diario de la membresía de «Dueño de
+         proceso (SGI)» (el create/write de sgi.process ya la sincroniza; esto
+         recoge, p. ej., un cambio del usuario del empleado dueño). -->
+    <record id="sgi_cron_process_owner_group" model="ir.cron">
+        <field name="name">SGI: Sincronizar el grupo «Dueño de proceso»</field>
+        <field name="model_id" ref="model_sgi_process"/>
+        <field name="state">code</field>
+        <field name="code">model._sgi_sync_process_owner_group()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>
