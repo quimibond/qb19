@@ -1,0 +1,107 @@
+id,menu,padre,accion,grupos_prod,empleado_sin_sgi(132),usuario_sgi(150),usuario_sgi_con_rh68(88),captura_eficiencias(135),supervisor_planta(24),salud_ocupacional_entrega1,auditor_solo,jefe_mast(128),direccion(35),administrador(152)
+2558,Faltantes de especificación,menu_sgi_analysis,sgi_activity_spec_gap_action,,—,—,—,—,—,—,—,sí,sí,sí
+2559,Cumplimiento semanal,menu_sgi_analysis,sgi_activity_week_stat_action,,—,—,—,—,—,—,—,sí,sí,sí
+2598,Mediciones por equipo o mercado,menu_sgi_admin_indicators,sgi_measure_split_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2576,Responsivas de EPP,quimibond_sgi.menu_sgi_safety,sgi_epp_delivery_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2599,Documentos externos,menu_sgi_documental,sgi_external_doc_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2600,Estudios de higiene y exámenes médicos,menu_sgi_safety,sgi_health_record_action,"68,318",—,—,sí,—,—,sí,—,sí,sí,sí
+2601,Recorridos de la Comisión de Seguridad e Higiene,menu_sgi_safety,sgi_csh_inspection_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2602,Hojas de checklist (planta y unidades),menu_sgi_safety,sgi_checklist_request_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2605,Checklists de hoy,maintenance.menu_maintenance_title,sgi_checklist_today_action,,sí,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2603,Checklists de planta y unidades,menu_sgi_config,sgi_checklist_template_action,,—,—,—,—,—,—,—,sí,sí,sí
+2587,Bitácora de bloqueo contable,account.menu_finance_reports,sgi_lock_date_log_action,,sí,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2588,Valor del inventario por mes,account.menu_finance_reports,sgi_inventory_value_action,,sí,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2377,SGI,,,"316,317",—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2378,Inicio,menu_sgi_root,,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2381,Procesos,menu_sgi_root,,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2513,Mapa de procesos,menu_sgi_processes,sgi_process_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2584,Actividades,menu_sgi_processes,sgi_process_activity_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2552,Matriz de responsabilidades,menu_sgi_processes,sgi_activity_exec_stat_action_who,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2585,Puestos y procesos,menu_sgi_processes,sgi_hr_job_action_roles,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2592,Fichas de proceso por máquina,menu_sgi_processes,sgi_machine_sheet_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2424,Mejora,menu_sgi_root,,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2385,No conformidades,menu_sgi_improvement_group,sgi_nc_board_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2388,Reclamaciones de clientes,menu_sgi_improvement_group,sgi_complaint_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2422,Acciones correctivas,menu_sgi_improvement_group,sgi_action_line_action_all,318,—,—,—,—,—,—,—,sí,sí,sí
+2501,Quejas y sugerencias del personal,menu_sgi_improvement_group,sgi_internal_complaint_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2389,Mejora continua,menu_sgi_improvement_group,sgi_improvement_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2502,Lecciones aprendidas,menu_sgi_improvement_group,sgi_nc_lessons_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2570,Auditorías,menu_sgi_improvement_group,,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2397,Auditorías realizadas,menu_sgi_audits,sgi_audit_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2396,Programa de auditorías,menu_sgi_audits,sgi_audit_program_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2571,Seguridad y ambiente,menu_sgi_root,,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2409,Incidentes y accidentes,menu_sgi_safety,sgi_incident_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2506,Planes de emergencia,menu_sgi_safety,sgi_emergency_plan_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2507,Simulacros,menu_sgi_safety,sgi_emergency_drill_action,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2572,Dirección,menu_sgi_root,,"317,318,319",—,—,—,—,—,—,sí,sí,sí,sí
+2548,Tablero de dirección,menu_sgi_direction,sgi_direction_board_action_open,,—,—,—,—,—,—,sí,sí,sí,sí
+2400,Revisión por la dirección,menu_sgi_direction,sgi_management_review_action,318,—,—,—,—,—,—,—,sí,sí,sí
+2429,Política integral,menu_sgi_direction,sgi_policy_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2394,Objetivos integrales,menu_sgi_direction,sgi_objective_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2398,Riesgos y oportunidades,menu_sgi_direction,sgi_risk_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2516,Requisitos legales,menu_sgi_direction,sgi_legal_requirement_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2517,Partes interesadas,menu_sgi_direction,sgi_interested_party_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2503,Satisfacción del cliente,menu_sgi_direction,sgi_satisfaction_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2573,Administración SGI,menu_sgi_root,,"317,318",—,—,—,—,—,—,sí,sí,sí,sí
+2425,Documentos,menu_sgi_admin,,,—,—,—,—,—,—,sí,sí,sí,sí
+2383,Documentos,menu_sgi_documental,sgi_document_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2390,Solicitudes de cambio a documentos,menu_sgi_documental,sgi_doc_change_board_action,318,—,—,—,—,—,—,—,sí,sí,sí
+2593,Lista maestra de documentos,menu_sgi_documental,sgi_document_master_list_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2419,Migración de formatos,menu_sgi_documental,sgi_migration_action,318,—,—,—,—,—,—,—,sí,sí,sí
+2557,Tipos de documento,menu_sgi_documental,sgi_document_type_action,318,—,—,—,—,—,—,—,sí,sí,sí
+2574,Indicadores,menu_sgi_admin,,,—,—,—,—,—,—,sí,sí,sí,sí
+2392,Indicadores,menu_sgi_admin_indicators,sgi_indicator_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2393,Mediciones,menu_sgi_admin_indicators,sgi_measure_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2596,Aprobaciones del SGI,menu_sgi_admin,sgi_activity_role_action_approval,318,—,—,—,—,—,—,—,sí,sí,sí
+2551,Diagnóstico,menu_sgi_admin,,318,—,—,—,—,—,—,—,sí,sí,sí
+2509,Diagnóstico del SGI,menu_sgi_analysis,sgi_diagnostic_run_action,318,—,—,—,—,—,—,—,sí,sí,sí
+2554,Cobertura de medición,menu_sgi_analysis,sgi_activity_method_action,,—,—,—,—,—,—,—,sí,sí,sí
+2515,Cumplimiento de procedimientos,menu_sgi_analysis,sgi_activity_compliance_action,,—,—,—,—,—,—,—,sí,sí,sí
+2575,Firmas de lectura,menu_sgi_admin,,,—,—,—,—,—,—,sí,sí,sí,sí
+2597,Publicar Mi procedimiento,menu_sgi_admin_signatures,sgi_my_procedure_action_publish,318,—,—,—,—,—,—,—,sí,sí,sí
+2416,Acuses de lectura,menu_sgi_admin_signatures,sgi_document_ack_action,,—,—,—,—,—,—,sí,sí,sí,sí
+2411,Configuración,menu_sgi_admin,,318,—,—,—,—,—,—,—,sí,sí,sí
+2555,Cargar catálogo,menu_sgi_config,sgi_catalog_load_wizard_action,325,—,—,—,—,—,—,—,—,—,sí
+2556,Familias de puesto,menu_sgi_config,sgi_job_family_action,,—,—,—,—,—,—,—,sí,sí,sí
+2426,Ajustes,menu_sgi_config,sgi_config_settings_action,3,—,—,—,—,—,—,—,—,—,sí
+2413,Áreas,menu_sgi_config,sgi_area_action,,—,—,—,—,—,—,—,sí,sí,sí
+2414,Normas,menu_sgi_config,sgi_norm_action,,—,—,—,—,—,—,—,sí,sí,sí
+2415,Cláusulas,menu_sgi_config,sgi_norm_clause_action,,—,—,—,—,—,—,—,sí,sí,sí
+2417,Categorías de riesgo,menu_sgi_config,sgi_risk_category_action,,—,—,—,—,—,—,—,sí,sí,sí
+2412,Elementos PPAP,menu_sgi_config,sgi_ppap_element_template_action,,—,—,—,—,—,—,—,sí,sí,sí
+2420,Formatos en documentos de Odoo,menu_sgi_config,sgi_format_map_action,,—,—,—,—,—,—,—,sí,sí,sí
+2491,Fuentes de NC automáticas,menu_sgi_config,sgi_alert_source_action,,—,—,—,—,—,—,—,sí,sí,sí
+2399,Evaluación de proveedores,purchase.menu_purchase_root,sgi_supplier_eval_action,"38,316",—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2512,Competencias (SGI),hr.menu_hr_root,,"68,316",—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2410,Brechas de competencia (DNC),menu_hr_sgi_competences,sgi_competence_gap_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2504,Encuesta DNC,menu_hr_sgi_competences,sgi_dnc_survey_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2518,Cursos y competencias (eLearning),menu_hr_sgi_competences,sgi_slide_channel_action,318,—,—,—,—,—,—,—,sí,sí,sí
+2438,Presupuesto y pronóstico,sale.sale_menu_root,,316,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2434,Presupuestos,menu_sale_sgi_planning,sgi_sales_budget_action,316,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2435,Pronósticos,menu_sale_sgi_planning,sgi_sales_forecast_action,316,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2449,Análisis,menu_sale_sgi_planning,,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2444,Por mercado,menu_sale_sgi_sales_analysis,sgi_sales_analysis_mercado_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2445,Por cliente,menu_sale_sgi_sales_analysis,sgi_sales_analysis_cliente_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2446,Por producto,menu_sale_sgi_sales_analysis,sgi_sales_analysis_producto_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2447,Global (Dirección),menu_sale_sgi_sales_analysis,sgi_sales_analysis_global_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2401,Calidad preventiva,menu_sgi_root,,"66,316",—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2402,Planes de control,menu_sgi_automotive,sgi_control_plan_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2403,AMEF,menu_sgi_automotive,sgi_fmea_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2404,PPAP,menu_sgi_automotive,sgi_ppap_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2405,Metrología,menu_sgi_automotive,,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2406,Equipos de medición,menu_sgi_metrology,sgi_equipment_action_measuring,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2407,Calibraciones,menu_sgi_metrology,sgi_calibration_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2508,Estudios MSA,menu_sgi_metrology,sgi_msa_study_action,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2379,Tableros (SGI),menu_sgi_root,,"66,318",—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2380,Pareto de alertas de calidad,menu_sgi_dashboards,sgi_quality_alert_action_pareto,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2567,COA recibidos,menu_sgi_automotive,sgi_coa_inbox_action,"66,318",—,sí,sí,sí,sí,sí,—,sí,sí,sí
+2604,Eficiencias de mi área,menu_sgi_panel,sgi_staff_efficiency_action,327,—,—,sí,sí,—,—,—,sí,—,sí
+2568,Mi procedimiento,menu_sgi_panel,sgi_my_procedure_action_mine,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2594,Mis pendientes,menu_sgi_panel,sgi_my_pending_action_mine,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2569,Mi equipo,menu_sgi_panel,sgi_my_team_action_mine,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2595,Mis indicadores,menu_sgi_panel,sgi_indicator_action_mine,,—,sí,sí,sí,sí,sí,sí,sí,sí,sí
+2589,Eficiencias de personal (SGI),hr.menu_hr_root,,68,—,—,sí,—,—,—,—,—,—,—
+2590,Hojas mensuales,menu_hr_sgi_staff_efficiency,sgi_staff_efficiency_action,,—,—,sí,—,—,—,—,—,—,—
+2591,Análisis por empleado,menu_hr_sgi_staff_efficiency,sgi_staff_efficiency_line_action,,—,—,sí,—,—,—,—,—,—,—
+2418,Pareto de defectos (revisado),quimibond_sgi.menu_sgi_dashboards,mrp_revision_log_action_pareto,,—,sí,sí,sí,sí,sí,—,sí,sí,sí
+,TOTAL con acción,,,,3,43,47,44,43,44,39,81,80,83
