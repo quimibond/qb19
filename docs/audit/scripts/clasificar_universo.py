@@ -162,7 +162,15 @@ def per_element(row, model):
     if t == 'menú':
         v = menus.get(el)
         if v:
-            return MENU_V.get(v['veredicto'], C), ids_in(v['nota']), '05-menus/menus_final'
+            idz = ids_in(v['nota']) or {'Se mueve (módulo de ventas)': ['A-016'],
+                                        'Se mueve (satélite)': ['A-018']}.get(v['veredicto'], [])
+            if v['veredicto'] in ('Se renombra', 'Renombra + grupos', 'Se renombra (fuera)', 'Se mueve y renombra'):
+                idz = idz or ['E-007']
+            if v['veredicto'] in ('Grupos', 'Renombra + grupos'):
+                idz = idz + ['E-009']
+            if v['veredicto'].startswith('Secuencia'):
+                idz = idz or ['E-013']
+            return MENU_V.get(v['veredicto'], C), idz, '05-menus/menus_final'
     if t == 'acción':
         v = acciones.get(el)
         if v:
@@ -174,6 +182,8 @@ def per_element(row, model):
             if v['nombre_propuesto'] or v['clave_dropbox_en_nombre'] or idz:
                 if v['clave_dropbox_en_nombre']:
                     idz.append('D-004')
+                if v['nombre_propuesto'] and not idz:
+                    idz.append('E-007')  # título = nombre del menú (E-007 absorbe D-005)
                 return C, idz, '05-menus/acciones_revision'
             return Q, [], '05-menus/acciones_revision'
     if t == 'cron':
@@ -222,14 +232,28 @@ def acc_to_class(fid):
     return {'Eliminar': E, 'Corregir': C, 'Agregar': C, 'Mover': C}.get(a, Q)
 
 
-tokens = collections.defaultdict(set)  # texto citado -> ids finales
+# Un nombre citado en la columna `elemento` del hallazgo toma la acción del hallazgo; uno citado
+# solo en `propuesta` (p. ej. «usar _sgi_pending_records») aporta el ID pero a lo más «Se corrige».
+tokens = collections.defaultdict(set)  # (texto citado, en_elemento) -> ids finales
 for rid, r in raw.items():
     fid = to_final.get(rid, rid)
-    for tok in re.findall(r'`([^`]+)`', r['elemento'] + ' ' + r['propuesta']):
-        tok = tok.strip()
-        if len(tok) >= 6:
-            tokens[tok].add(fid)
+    for col, is_el in (('elemento', True), ('propuesta', False)):
+        for tok in re.findall(r'`([^`]+)`', r[col]):
+            tok = tok.strip()
+            if len(tok) >= 6:
+                tokens[(tok, is_el)].add(fid)
 tok_list = list(tokens.items())
+CONTAINERS = ('modelo propio', 'modelo heredado', 'archivo', 'qweb', 'vista')
+KEEP = {'sgi.config.seed_parameters': 'B-001'}  # B-001: «dejar solo seed_parameters»
+# B-001/A-006 (propuesta): estas siembras se borran; las dos últimas pasan a cron o a botón.
+EXPLICIT = {
+    'sgi.config.activate_auto_indicators': (E, ['B-001', 'A-006']),
+    'sgi.config.fix_kpi_seeds': (E, ['B-001', 'A-006']),
+    'sgi.config.harden_noupdate': (E, ['B-001', 'A-006']),
+    'sgi.config.seed_process_purposes': (E, ['B-001', 'A-003']),
+    'sgi.config.recompute_pending_measures': (C, ['A-006']),
+    'sgi.config.migrate_document_families': (C, ['A-006', 'E-001']),
+}
 
 universe = rd('inventario/universo.csv')
 name_count = collections.Counter(u['elemento'].rsplit('.', 1)[-1] for u in universe if u['tipo'] in ('campo', 'método'))
@@ -245,12 +269,13 @@ def by_name(row):
     if t == 'archivo':
         loc = row['ubicacion'].replace('addons/quimibond_sgi/', '')
         keys = {loc}
-    found = set()
-    for tok, fids in tok_list:
+    found = {}
+    for (tok, is_el), fids in tok_list:
         for k in keys:
             if k == tok or (len(k) >= 10 and re.search(r'(?<![\w.])' + re.escape(k) + r'(?![\w])', tok)):
-                found |= fids
-    return sorted(found)
+                for f in fids:
+                    found[f] = found.get(f, False) or is_el
+    return found
 
 
 # ---------------------------------------------------------------- clasificación
@@ -288,11 +313,21 @@ for u in universe:
             cls, ids, fuente = pe
     # (b)
     extra = by_name(u)
+    if cls is None and el in EXPLICIT:
+        cls, ids, fuente = EXPLICIT[el][0], list(EXPLICIT[el][1]), 'hallazgo (propuesta de B-001/A-006)'
+    if cls is None and el in KEEP:
+        cls, ids, fuente = Q, [KEEP[el]], 'hallazgo (se conserva)'
     if cls is None and extra:
-        cands = [(acc_to_class(f), f) for f in extra]
-        cands = [c for c in cands if c[0]]
+        cands = []
+        for f, is_el in extra.items():
+            c = acc_to_class(f)
+            if not c:
+                continue
+            if not is_el or t in CONTAINERS:
+                c = min(c, C, key=lambda x: RANK[x]) if c != Q else Q
+            cands.append(c)
         if cands:
-            cls = max(cands, key=lambda c: RANK[c[0]])[0]
+            cls = max(cands, key=lambda c: RANK[c])
             fuente = 'coincidencia de nombre en hallazgo'
     ids = sorted(set(ids) | set(extra))
     # (c)
