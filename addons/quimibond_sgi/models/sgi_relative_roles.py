@@ -126,19 +126,21 @@ class SgiActivityRoleRelative(models.Model):
             field = record_fields.get(name)
             if field and field.type == 'many2one' and field.comodel_name == 'sgi.process' \
                     and record[name]:
-                return record[name]
+                # ``._origin``: en un registro ``new`` (onchange, pantalla sin
+                # guardar) los relacionales llegan como NewId.
+                return record[name]._origin
         found = Process
         for field in record_fields.values():
             if field.store and field.comodel_name == 'sgi.process' \
                     and field.type in ('many2one', 'many2many') \
                     and field.name not in SGI_RECORD_PROCESS_FIELDS:
-                found |= record[field.name]
+                found |= record[field.name]._origin
         if found or not hop:
             return found
         for name in SGI_RECORD_PROCESS_VIA:
             field = record_fields.get(name)
             if field and field.type == 'many2one' and record[name]:
-                found = self._sgi_record_process(record[name].sudo(), hop=False)
+                found = self._sgi_record_process(record[name]._origin.sudo(), hop=False)
                 if found:
                     return found
         return Process
