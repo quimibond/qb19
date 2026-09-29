@@ -303,3 +303,22 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - **E2.31 y E2.32:** sin cambios. El escalamiento a Dirección abre la actividad, no los datos de salud.
 - `main` quedó sincronizado con `quimibond` (quimibond/qb19#467). El PR de producción es quimibond/qb19#468.
 - Entrega 6 en quimibond/qb19#469, sin merge hasta que producción esté estable.
+
+## 2026-09-29 — Producción en 56.38.2 y entrega 6 aprobada
+
+- **Producción** (verificado por MCP):
+  - `quimibond_sgi` 19.0.56.38.2; `qb_mcp_politica` instalado; `quimibond_sgi_mapa` sin instalar.
+  - 0 equipos en «No usar».
+  - Avisos: Ana Silvia (67) en 0, Jose (7) en 2, Areli (128) en 37.
+  - 487 documentos activos con clave anterior.
+- **El primer update de producción falló**: la clave heredada no pasaba la validación de `sgi.format.map` porque en producción el tipo «formato» no exigía clave. Se corrigió con el hotfix 56.38.2 (quimibond/qb19#470) y se sincronizó a `main` (#471). En el intento fallido la 56.31.0 reportó los 13 procedimientos esperados.
+- **Entrega 6 aprobada por Jose** (quimibond/qb19#469, integrada a `main`, `d5e0b61`). Cuando el build de `main` salga verde, pasa a `quimibond`.
+  - Mariano (152) entra al SGI solo como dueño de S6, por el grupo «Dueño de proceso (SGI)». No entra a Nómina ni a Salud ocupacional.
+  - Las 38 pendientes quedan en rojo en «Avance de la transición», con fecha límite del 16-oct-2026 (parámetro `quimibond_sgi.legacy_decision_deadline`).
+  - **Después del despliegue:**
+    - Areli corrige las 13 contradicciones de clase y estado.
+    - Areli importa las rutinas: Probar → confirmar → Cargar. Deben ser 815; si no cuadra, no carga.
+- **`validar_rutinas.py` sobre el libro de Jose (2026-09-29):**
+  - 815 filas: 709 cubiertas, 68 reemplazadas, 38 pendientes.
+  - 49 procedimientos.
+  - 0 errores y 1 aviso: las 38 pendientes no tienen decisión.
