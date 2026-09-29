@@ -13,6 +13,39 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.12.0 — 2026-09-29
+
+**Cambiado (D-11 ampliada, Jose 2026-09-29):**
+`sgi.config.sgi_drop_empty_studio_models` borra también los acompañantes de
+Studio de los cuatro modelos (`<modelo>_*`) junto con su padre: las 3 tablas
+`_stage` (3 filas cada una: «Nuevo», «En progreso», «Listo»),
+`x_no_conformidades_tag` y `x_no_conformidades_line_0ff2d` (vacías), con sus
+acciones, vistas y menús (el 1643 «Calendario de obligaciones Stages», bajo
+Contabilidad → Configuración personalizada). Lista cerrada en
+`_SGI_STUDIO_COMPANIONS` con las filas esperadas: un acompañante con más
+filas, que no esté en la lista, que no sea de Studio o al que apunte un campo
+de fuera de la familia detiene todo y se reporta en `companion_problems`. Un
+acompañante con filas se respalda justo antes de borrarlo en un CSV (todas
+sus columnas, por SQL) adjunto a la empresa del SGI, que sobrevive al
+borrado. Recuento justo antes de cada borrado. Sigue manual, en el shell y
+con `dry_run=True` por default; no corre en el update.
+
+**Datos de producción (2026-09-29, lectura):** los cuatro padres de Studio
+sin registros visibles; `x_actividades_obligato_stage`,
+`x_calendario_de_obliga_stage` y `x_no_conformidades_stage` con 3 filas cada
+una (creadas en 2024), `x_no_conformidades_tag` y
+`x_no_conformidades_line_0ff2d` con 0; los únicos campos que apuntan a los
+acompañantes son de la propia familia (`x_studio_stage_id`,
+`x_studio_tag_ids`, `x_no_conformidades_id`); el menú 1643 abre la acción
+2506 de `x_calendario_de_obliga_stage`.
+
+**Pruebas:** `test_studio_cleanup` test_06–test_10 (borrado con respaldo,
+más filas, campo de fuera, acompañante no esperado y la lista de
+producción).
+
+**Nota:** `e2-sale-automotriz` (57.12.0 en el plan) no entró en este lote;
+esta versión la toma la ampliación de D-11.
+
 ## 19.0.57.11.0 — 2026-09-29
 
 **Cambiado (A-016, A-013, E-014):** el presupuesto y el pronóstico de ventas
