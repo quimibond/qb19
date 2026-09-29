@@ -2017,7 +2017,7 @@ desde una acción sin proceso activo, la vista mandaba `resId: null` y
 `false` (`static/src/diagram/diagram_view.js`).
 
 Tres mejoras al modo «fórmula configurable» (`models/sgi_indicator_formula.py`)
-y los campos que faltaban (`models/sgi_kpi_fields.py`), para que 28
+y los campos que faltaban (`models/sgi_kpi_*.py`; hasta 56.32 un solo `sgi_kpi_fields.py`), para que 28
 indicadores capturados a mano pasen a fórmula sin programar cada uno.
 
 **1. Fechas relativas en el filtro del término.** Dentro del dominio, entre

@@ -28,7 +28,7 @@ SGI_CODE_REGEX = re.compile(
 class DocumentsDocument(models.Model):
     _inherit = 'documents.document'
 
-    sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True)
+    sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True, index=True)
     sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True)
     # La clave anterior sigue encontrando el documento durante 12 meses
     # (búsqueda «Clave SGI» y _sgi_find_by_code): nadie pierde un formato
@@ -73,8 +73,8 @@ class DocumentsDocument(models.Model):
         'ir.ui.menu', string="Menú de Odoo",
         help="Menú donde vive el formulario que sustituye a este documento. "
              "El botón «Abrir en Odoo» salta directo a él.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
-    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI")
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
+    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI", ondelete='restrict')
     # P-3: el documento apunta al cambio documental que lo dejó así (alta,
     # modificación o baja aprobada). Es la liga con la que E2.02 «Publicar el
     # documento vigente» se mide contra su entrada (match: sgi_doc_change_id).
@@ -98,7 +98,7 @@ class DocumentsDocument(models.Model):
         ('piloto', "Prueba piloto"),
         ('vigente', "Vigente"),
         ('obsoleto', "Obsoleto"),
-    ], string="Estado SGI", tracking=True,
+    ], string="Estado SGI", tracking=True, index=True,
         help="Solo los documentos controlados del SGI llevan estado; los demás "
              "archivos de Documentos quedan sin él (2026-09-25).")
     sgi_owner_id = fields.Many2one('res.users', string="Responsable SGI")

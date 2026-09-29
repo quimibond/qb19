@@ -84,12 +84,13 @@ class QualityAlert(models.Model):
         ('menor', "Menor"),
         ('observacion', "Observación"),
     ], string="Clasificación", tracking=True)
-    sgi_norm_clause_id = fields.Many2one('sgi.norm.clause', string="Requisito (cláusula)")
+    sgi_norm_clause_id = fields.Many2one('sgi.norm.clause', string="Requisito (cláusula)",
+                                         ondelete='restrict')
     sgi_requester_id = fields.Many2one('res.users', string="Solicitante")
     sgi_requester_job = fields.Char(related='sgi_requester_id.employee_id.job_title',
                                     string="Cargo del solicitante", readonly=True)
     sgi_lead_auditor_id = fields.Many2one('res.users', string="Auditor líder")
-    sgi_process_id = fields.Many2one('sgi.process', string="Proceso detectado")
+    sgi_process_id = fields.Many2one('sgi.process', string="Proceso detectado", ondelete='restrict')
     sgi_responsible_ids = fields.Many2many('res.users', 'sgi_alert_responsible_rel',
                                            'alert_id', 'user_id', string="Responsables a contestar")
     sgi_deviation = fields.Text(string="Desviación detectada")

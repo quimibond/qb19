@@ -711,7 +711,7 @@ class SgiCronMyProcedure(models.AbstractModel):
                 break
         if not anchor:
             anchor = self.env['documents.document'].sudo().search(
-                [('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
+                [('sgi_doc_type_id.code', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
                 order='sgi_issue_date desc, id desc', limit=1)
         if anchor:
             self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id())

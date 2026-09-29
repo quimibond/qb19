@@ -34,7 +34,8 @@ class SgiPolicy(models.Model):
     document_id = fields.Many2one(
         'documents.document', string="Documento publicado (MIID)",
         domain=[('sgi_is_controlled', '=', True)],
-        help="Documento controlado donde se publica la política (p. ej. el MIID).")
+        help="Documento controlado donde se publica la política (p. ej. el MIID).",
+        ondelete='restrict')
     objective_ids = fields.One2many('sgi.objective', 'policy_id',
                                     string="Objetivos integrales")
     objective_count = fields.Integer(string="# Objetivos",

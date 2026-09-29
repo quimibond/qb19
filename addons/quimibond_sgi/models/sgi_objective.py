@@ -27,6 +27,7 @@ class SgiObjective(models.Model):
     policy_id = fields.Many2one('sgi.policy', string="Política integral",
                                 default=lambda self: self.env['sgi.policy'].search(
                                     [('state', '=', 'vigente')], limit=1),
+                                ondelete='restrict',
                                 help="Política de la que se despliega este objetivo (cascada ISO).")
     target_year = fields.Integer(string="Año meta")
     indicator_ids = fields.One2many('sgi.indicator', 'objective_id', string="Indicadores")

@@ -405,8 +405,8 @@ class SgiManagementReviewAgreement(models.Model):
     task_id = fields.Many2one('project.task', string="Tarea (anterior a 52.0.0)", readonly=True)
     action_line_id = fields.Many2one('sgi.action.line', string="Acción", readonly=True, copy=False)
     action_state = fields.Selection(related='action_line_id.state', string="Estado de la acción")
-    is_done = fields.Boolean(compute='_compute_status')
-    status_label = fields.Char(compute='_compute_status')
+    is_done = fields.Boolean(string="Cumplido", compute='_compute_status')
+    status_label = fields.Char(string="Situación", compute='_compute_status')
 
     @api.depends('action_line_id.state', 'action_line_id.date_done', 'task_id.stage_id.fold')
     def _compute_status(self):
