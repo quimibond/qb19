@@ -9,21 +9,25 @@
                 <!-- Única herencia del button_box del partner (D.30): el orden
                      de los botones es determinista dentro de esta vista. -->
                 <button name="action_sgi_open_complaints" type="object" class="oe_stat_button"
-                        icon="fa-comments" invisible="sgi_complaint_count == 0">
+                        icon="fa-comments" invisible="sgi_complaint_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_complaint_count" widget="statinfo" string="Reclamaciones"/>
                 </button>
                 <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
-                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_nc_count" widget="statinfo" string="NC"/>
                 </button>
                 <button name="action_sgi_open_evals" type="object" class="oe_stat_button"
-                        icon="fa-star" invisible="sgi_eval_count == 0">
+                        icon="fa-star" invisible="sgi_eval_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_eval_count" widget="statinfo" string="Evaluaciones"/>
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">
                 <page string="SGI Proveedor" name="sgi_supplier"
-                      invisible="not is_company and not supplier_rank">
+                      invisible="not is_company and not supplier_rank"
+                      groups="quimibond_sgi.group_sgi_user">
                     <group>
                         <group string="Aprobación (8.4.1)">
                             <field name="sgi_supplier_status" widget="badge"

@@ -13,6 +13,7 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
+from odoo.exceptions import AccessError
 
 PENDING_KINDS = [
     ('accion', "Acción"),
@@ -276,8 +277,25 @@ class SgiMyProcedurePending(models.TransientModel):
             wiz.pending_total = total
             wiz.pending_late = late
 
+    @api.model
+    def _sgi_check_in_scope(self, employees):
+        """F-007 (auditoría 2026-09): los pendientes y el procedimiento de otra
+        persona solo se ven si está en el alcance de Mi equipo (su gente, sus
+        departamentos y los puestos de sus procesos; MAST, administrador y
+        Dirección ven a todos). Antes se armaban con sudo() para cualquier id
+        mandado por RPC."""
+        if self.env.su or self._sgi_mp_is_admin():
+            return True
+        me = self._sgi_mp_my_employee()
+        allowed = (me | me._sgi_mp_team_employees()) if me else me
+        if set(employees.ids) - set(allowed.ids):
+            raise AccessError("Esa persona no está en tu equipo; solo ves a tu gente, tus "
+                              "departamentos y los puestos de tus procesos.")
+        return True
+
     def action_show_pending(self):
         self.ensure_one()
+        self._sgi_check_in_scope(self._sgi_mp_employee())
         rows = self.env['sgi.my.pending']._sgi_build(self._sgi_mp_employee())
         name = "Mis pendientes" if self.is_me else "Pendientes — %s" % (self.employee_id.name or '')
         return self.env['sgi.my.pending']._sgi_action(rows, name)
@@ -340,11 +358,13 @@ class HrEmployeePublicPending(models.Model):
     def action_sgi_open_pending(self):
         self.ensure_one()
         employee = self.env['hr.employee'].sudo().browse(self.id)
+        self.env['sgi.my.procedure']._sgi_check_in_scope(employee)
         rows = self.env['sgi.my.pending']._sgi_build(employee)
         return self.env['sgi.my.pending']._sgi_action(rows, "Pendientes — %s" % self.name)
 
     def action_sgi_team_pending(self):
         """«Pendientes del equipo»: una lista, agrupada por persona."""
         team = self.env['hr.employee'].sudo().browse(self.ids) if self else self._sgi_team()
+        self.env['sgi.my.procedure']._sgi_check_in_scope(team)
         rows = self.env['sgi.my.pending']._sgi_build(team)
         return self.env['sgi.my.pending']._sgi_action(rows, "Pendientes del equipo", group_by_person=True)

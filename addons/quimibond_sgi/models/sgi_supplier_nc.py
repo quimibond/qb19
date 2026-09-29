@@ -84,9 +84,15 @@ class QualityAlertSupplierPortal(models.Model):
             supplier.display_name, self.sgi_supplier_due_date))
         return True
 
-    def sgi_supplier_answer(self, cause, action):
-        """Respuesta del proveedor desde el portal (con token válido)."""
+    def _sgi_supplier_answer(self, cause, action):
+        """Respuesta del proveedor desde el portal (con token válido).
+
+        F-006 (auditoría 2026-09): privado (con «_») para que no se pueda
+        llamar por RPC; solo lo llama el controlador del portal, que ya validó
+        el token. Solo acepta la respuesta de una NC enviada al proveedor."""
         self.ensure_one()
+        if self.sgi_supplier_state != 'enviada':
+            raise UserError("Esta NC no está esperando respuesta del proveedor.")
         cause = (cause or '').strip()
         action = (action or '').strip()
         if not cause or not action:
