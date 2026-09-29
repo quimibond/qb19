@@ -33,3 +33,16 @@ def sgi_hide_real_documents(env):
          WHERE document_id IS NOT NULL OR document_alt_id IS NOT NULL
     """)
     env.invalidate_all()
+
+
+def sgi_neutralize_dropbox_contradictions(env):
+    """Las 13 contradicciones de clase y estado de producción (L-013) salen en
+    cada modo de prueba como error; en la copia de la prueba se apagan para
+    medir solo lo que la prueba siembra (se deshace al final)."""
+    env.flush_all()
+    env.cr.execute("""
+        UPDATE documents_document SET sgi_migration_class = NULL
+         WHERE (sgi_migration_class = 'd' AND sgi_migration_state IS DISTINCT FROM 'na')
+            OR (sgi_migration_class IN ('a', 'b', 'c') AND sgi_migration_state = 'na')
+    """)
+    env.invalidate_all()

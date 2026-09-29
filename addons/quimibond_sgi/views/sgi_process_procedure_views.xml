@@ -19,6 +19,11 @@
                     <button name="action_open_next" type="object"
                             string="Siguiente paso" icon="fa-arrow-right"
                             invisible="not next_activity_ids"/>
+                    <!-- L-018 (57.0.0): de qué rutinas del Dropbox viene; la clave
+                         vieja no se muestra al personal (decisión 11). -->
+                    <button name="action_sgi_view_legacy_routines" type="object"
+                            string="Viene de" icon="fa-history"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
                     <field name="measure_state" widget="statusbar"
                            invisible="not measure_state"/>
                 </header>

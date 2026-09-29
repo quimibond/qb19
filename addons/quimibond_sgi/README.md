@@ -1882,6 +1882,78 @@ Ahora es una propuesta **estructurada** (`sgi.activity.change`):
 - No deja enviar sin motivo, sin cambios (al cambiar) ni sin resumen y
   proceso (al agregar). Se retira el asistente de texto `sgi.mp.change.wizard`.
 
+### Del Dropbox a Odoo: rutina por rutina, buscador y avance (57.0.0)
+
+Entrega 6 de la auditoría 2026-09, bloque 2 (L-002, L-006, L-008, L-009,
+L-015…L-021, C-016). Diseño: `docs/audit/12-transicion.md` §3.
+
+- **`sgi.legacy.routine`**: cada rutina de un procedimiento del Dropbox (el
+  documento es el encabezado), su estado (cubierta / la hace Odoo / eliminada
+  / pendiente), las actividades que la cubren, el motivo, la decisión de las
+  pendientes (responsable y fecha) y la revisión del dueño del proceso. Con
+  chatter; se archiva, nunca se borra. Llave única (procedimiento, n). Un
+  procedimiento sustituido no tiene rutinas pendientes (y al revés).
+- En el procedimiento: las rutinas y sus conteos guardados. En la actividad:
+  botón **«Viene de»**, solo Auditor, Jefe MAST y Dirección.
+- **Buscador por clave anterior** (`sgi.dropbox.key`, SQL de solo lectura):
+  documentos con clave anterior, rutinas («P-A02 · 11») y numerales de
+  actividades archivadas. Nadie ve un documento que no puede abrir (el filtro
+  se arma con el usuario real) y P-I01 no sale. «Abrir en Odoo» y «Ver el
+  anterior».
+- **Avance de la transición** (`sgi.dropbox.progress`): un renglón por proceso
+  activo con procedimientos, rutinas, documentos y actividades nuevas.
+- **Importar rutinas** (asistente, solo Jefe MAST): XLSX de Jose o su hoja en
+  CSV (encabezado de `docs/audit/12-transicion/plantilla_rutina_por_rutina.csv`),
+  mismas reglas que `validar_rutinas.py`. Siempre prueba primero; «Cargar» solo
+  con el mismo archivo (SHA-256), sin errores y con la confirmación marcada.
+  Transacción por procedimiento, idempotente; el modo de prueba enseña además
+  los documentos cuya clase y estado no cuadran (respuesta 8 de Jose). API:
+  `env['sgi.legacy.routine'].load_routines(payload, dry_run=True)`.
+- Sin datos con XML ID (decisión 4): instalar no carga ninguna rutina.
+- **Quién ve qué** (decisión de Jose): todo Usuario SGI ve el buscador (sin
+  rutinas) y «Formatos y documentos anteriores» con «Abrir en Odoo» (menú
+  ligado, si no el worksheet, si no un aviso; no escribe). «Procedimientos
+  anteriores», «Rutina por rutina» y «Avance de la transición» solo Auditor,
+  Jefe MAST, Dirección y **Dueño de proceso (SGI)**
+  (`group_sgi_process_owner`), con grupos en menú y acción y ACL de
+  `sgi.legacy.routine` y `sgi.dropbox.progress` solo para esos cuatro. La
+  membresía del grupo de dueños no se asigna a mano:
+  `sgi.process._sgi_sync_process_owner_group()` la sincroniza (usuarios
+  activos de los dueños de procesos activos de la empresa del SGI) al crear o
+  escribir `owner_id`/`active`/`company_id`, en el post-migrate de 57.0.0 y
+  en un cron diario. Producción, 2026-09-29: 10 dueños con usuario.
+
+### Del Dropbox a Odoo: formatos y documentos anteriores (56.39.0)
+
+Entrega 6 de la auditoría 2026-09, bloque 1 (E-001, E-004, E-005, L-010…L-014,
+C-011). Sección permanente **Procesos → Del Dropbox a Odoo** (decisión 7):
+
+- **Formatos y documentos anteriores** es el menú 2419 y la acción 3870 de
+  «Migración de formatos», movidos (mismo id). Ahora trae formatos, F-IT,
+  formularios de Odoo, instructivos, DAT, anexos, protocolos, reglamentos,
+  manual y diagrama, también los obsoletos (filtro «No obsoletos» por
+  defecto, se puede quitar). Filtros: Sin clase, Sin liga real, Clase y estado
+  no cuadran, Familia sin procedimiento. «Abrir en Odoo» lleva al menú o al
+  worksheet que lo sustituye.
+- **Todos consultan; solo el Jefe MAST escribe** la clave anterior, la clase,
+  el estado, el destino, el menú, el worksheet y «Lo sustituye el proceso»:
+  guarda en `documents.document.create/write` (L-010) y celdas de solo
+  lectura para los demás (E-005). El sistema escribe con `sudo` (cron de
+  menús, cambios documentales, baja al entrar en vigor el proceso); no hay
+  contexto de excepción, porque el contexto lo controla el cliente por RPC.
+- `sgi_destination_label` (C-011): menú > worksheet > texto.
+- `sgi_legacy_family` (L-014): la familia del Dropbox por la clave anterior
+  (`F-P-A23-04` → `P-A23`), para agrupar las familias sin procedimiento.
+- El cron de medición resuelve el menú desde el texto también para los
+  documentos de clase A o B (L-011), sin P-I01 ni su familia.
+- Al escribir clase o estado (L-012/L-013): «Migrado» exige clase A, B o C con
+  destino; la clase D es «No aplica»; A, B o C nunca son «No aplica».
+- Migración: instructivos, DAT, anexos, protocolos y reglamentos sin clase
+  pasan a clase D y «No aplica» (respuesta 3 de Jose a L), con respaldo en
+  `documents_document_bak_563900` y sin tocar P-I01 ni su familia.
+- `quimibond_sgi.dropbox_excluded_codes`: claves fuera de la sección (P-I01
+  siempre, aunque el parámetro se vacíe).
+
 ### Decisiones de Jose sobre la entrega 8a (56.38.1)
 
 - **Plazos de Mis pendientes:** capturar medición, 5 días hábiles desde el
