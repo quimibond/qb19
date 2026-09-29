@@ -12,7 +12,7 @@
    "roles": 1072,
    "inputs": 246,
    "deliverables": 319,
-   "families": 14,
+   "families": 13,
    "indicators": 93,
    "terms": 52,
    "objectives": 10,
@@ -20,7 +20,8 @@
   },
   "review": [
    "res.partner: SHAWMUT CORPORATION (id 1783) sin llave única: se exporta por id + nombre y solo se resuelve en una copia de producción",
-   "TR-01: calc_mode 'configurable' con 2 términos (quimibond_sgi 57.1.0 retiró el modo cierre_nc); en producción lo aplica la migración 19.0.57.1.0 y la próxima exportación ya lo trae así"
+   "TR-01: calc_mode 'configurable' con 2 términos (quimibond_sgi 57.1.0 retiró el modo cierre_nc); en producción lo aplica la migración 19.0.57.1.0 y la próxima exportación ya lo trae así",
+   "Editado a mano el 2026-09-29 (quimibond_sgi_mapa 19.0.1.1.0), sin volver a leer producción: E1-02 pasa a calc_mode 'acuerdos_rxd' (D-13, lo aplica la migración 19.0.57.6.0) y sale la familia OP-PTAR (D-15, la archiva la migración 19.0.57.7.0; 0 roles la usan). Producción sigue en 57.0.0: una exportación de hoy traería lo mismo que antes; la próxima exportación con export_payload, ya con 57.7.0 aplicado, sale así sola."
   ]
  },
  "tolerant": true,
@@ -100,14 +101,6 @@
     "OPERADOR JET E",
     "OPERADOR JET F",
     "OPERADOR JET G"
-   ]
-  },
-  {
-   "code": "OP-PTAR",
-   "name": "Operador de PTAR",
-   "jobs": [
-    "OPERADOR DE PTAR",
-    "OPERADOR PTAR"
    ]
   },
   {
@@ -25565,7 +25558,7 @@
    "target_objective": 90,
    "target_acceptable": 75,
    "frequency": "monthly",
-   "calc_mode": "manual",
+   "calc_mode": "acuerdos_rxd",
    "formula": "Acuerdos con fecha límite en el mes cerrados a tiempo ÷ acuerdos con fecha límite en el mes × 100",
    "source": "SGI: acuerdos de la revisión por la dirección y de la revisión mensual",
    "status": "prueba",
