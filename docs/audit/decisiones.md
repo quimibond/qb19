@@ -51,3 +51,11 @@ A-001 (instalación limpia), B-004 (prueba del árbol de menús), B-001 (ninguna
 ### Para la tanda 2
 - «Cumple con» cargado (225 actividades); las 85 sin cláusula son a propósito; los 24 requisitos sin actividad los atiende Jose. **No son hallazgos.**
 - El agente E incluye en su árbol final el menú de «Del Dropbox a Odoo» (el antes y el después).
+
+## Aplicación de F-001 (MCP)
+
+- **Quién:** Jose (o Sistemas) desde Ajustes → Técnico → MCP → *MCP Available Models*. El MCP no expone los modelos `mcp.*`, así que ni Claude ni ningún agente puede aplicar este cambio: es a propósito.
+- **Paso a paso:** `06-seguridad.md` §5, opción A, con un ajuste por la decisión de Jose: `ir.config_parameter` pasa de «solo lectura» a **desactivado**. La lista final está en `06-seguridad/mcp_propuesta.csv`: 30 modelos en solo lectura y 9 desactivados. Los `ir.actions.*` ya no están expuestos, e `ir.ui.view`, `ir.model.access`, `ir.rule` e `ir.model.data` ya estaban en solo lectura.
+- **Siguen con escritura:** `sgi.*` y los modelos de negocio de la carga (`documents.*`, `approval.*`, `fleet.*`, `maintenance.*`, `hr.*`, `quality.*`, …).
+- **Respaldo:** export CSV de *MCP Available Models* antes de tocar nada (paso 1 de §5).
+- **Después:** módulo `qb_mcp_politica` (opción B de §5) en un PR propio. El módulo `mcp_server` está en la raíz del repo y no se toca, porque es de un tercero.

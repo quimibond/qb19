@@ -6,7 +6,7 @@ iap.account,Cuenta de compras dentro de la aplicación,True,True,True,True,desac
 iap.autocomplete.api,API de autocompletado del contacto de compras dentro de la aplicación,True,True,True,True,solo lectura,True,False,False,False,False
 iap.enrich.api,API de enriquecimiento de leads para compras dentro de la aplicación,True,True,True,True,solo lectura,True,False,False,False,False
 iap.service,Servicio de compras dentro de la aplicación,True,True,True,True,solo lectura,True,False,False,False,False
-ir.config_parameter,Parámetro del sistema,True,True,True,True,solo lectura,True,False,False,False,False
+ir.config_parameter,Parámetro del sistema,True,True,True,True,desactivar (active = False) — decisión de Jose 2026-09-29,False,False,False,False,False
 ir.cron,Acciones planificadas,True,True,True,True,solo lectura,True,False,False,False,False
 ir.default,Valores predeterminados,True,True,True,True,solo lectura,True,False,False,False,False
 ir.filters,Filtros,True,True,True,True,solo lectura,True,False,False,False,False
