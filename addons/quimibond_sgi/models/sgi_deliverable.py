@@ -136,7 +136,18 @@ class SgiDeliverable(models.Model):
         ('sin_destino', "Nadie lo recibe"),
     ], compute='_compute_processes', string="Cabo suelto",
         help="Un entregable que alguien recibe pero nadie entrega (o al revés) es "
-             "un hueco en la cadena.")
+             "un hueco en la cadena, salvo que esté marcado como frontera.")
+    # H-010 (entrega 3): la frontera del mapa. Lo que llega de fuera (release
+    # del cliente, factura del SAT, falla de máquina) no tiene quien lo
+    # entregue, y una salida final no tiene quien la reciba; marcados así no
+    # cuentan como cadena rota.
+    boundary = fields.Selection([
+        ('entrada_externa', "Entrada externa"),
+        ('salida_final', "Salida final"),
+    ], string="Frontera del mapa",
+        help="Entrada externa: llega de fuera del mapa (cliente, SAT, proveedor, "
+             "una falla); nadie del mapa la entrega. Salida final: sale del mapa; "
+             "nadie del mapa la recibe. Marcado así, no es un cabo suelto.")
 
     _code_company_uniq = models.Constraint(
         'unique(code, company_id)',
@@ -151,16 +162,17 @@ class SgiDeliverable(models.Model):
         for deliverable in self:
             deliverable.consumer_activity_ids = deliverable.input_line_ids.activity_id
 
-    @api.depends('producer_activity_ids.process_id', 'input_line_ids.activity_id.process_id')
+    @api.depends('producer_activity_ids.process_id', 'input_line_ids.activity_id.process_id',
+                 'boundary')
     def _compute_processes(self):
         for deliverable in self:
             producers = deliverable.producer_activity_ids
             consumers = deliverable.input_line_ids.activity_id
             deliverable.producer_process_ids = producers.process_id
             deliverable.consumer_process_ids = consumers.process_id
-            if consumers and not producers:
+            if consumers and not producers and deliverable.boundary != 'entrada_externa':
                 deliverable.orphan = 'sin_origen'
-            elif producers and not consumers:
+            elif producers and not consumers and deliverable.boundary != 'salida_final':
                 deliverable.orphan = 'sin_destino'
             else:
                 deliverable.orphan = False

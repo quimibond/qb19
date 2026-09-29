@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.56.28.0',
+    'version': '19.0.56.35.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -68,9 +68,9 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
-        # sgi_expansion_data define indicadores que las fórmulas referencian (A-001).
         'data/sgi_expansion_data.xml',
-        'data/sgi_indicator_formula_data.xml',
+        # 56.35.0 (A-004/D-01): sgi_indicator_formula_data.xml salió del núcleo
+        # (IDs de producción); los términos viajan en quimibond_sgi_mapa.
         'data/sgi_risk_data.xml',
         'data/sgi_audit_data.xml',
         'data/sgi_helpdesk_interno.xml',
@@ -100,6 +100,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_checklist_cron.xml',
         'data/sgi_coa_data.xml',
         'data/sgi_my_procedure_data.xml',
+        'data/sgi_mp_change_category_data.xml',
         'data/sgi_epp_data.xml',
         'data/sgi_pr6_data.xml',
         # views

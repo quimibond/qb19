@@ -33,6 +33,7 @@ from . import sgi_deliverable
 from . import sgi_load
 from . import sgi_exec_stat
 from . import sgi_load_wizard
+from . import sgi_export
 from . import sgi_sales_budget
 from . import sgi_sales_budget_line
 from . import sgi_sales_budget_import
