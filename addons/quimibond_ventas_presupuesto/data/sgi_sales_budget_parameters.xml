@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Siembra idempotente de parámetros, igual que quimibond_sgi
+         (data/sgi_parameters.xml): con los 9 del presupuesto y del pronóstico
+         de ventas (mismas claves quimibond_sgi.*) crea SOLO los que faltan.
+         Corre en cada update sin tocar valores capturados. -->
+    <function model="sgi.config" name="seed_parameters"/>
+</odoo>

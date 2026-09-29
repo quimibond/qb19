@@ -55,5 +55,6 @@ def migrate(cr, version):
     mudanza.mover(cr, 'quimibond_sgi_studio', tag + " (Studio)", **STUDIO)
     mudanza.mover(cr, 'quimibond_sgi_knowledge', tag + " (Conocimiento)", **KNOWLEDGE)
     mudanza.faltantes(cr, 'quimibond_sgi_knowledge', KNOWLEDGE['nombres'], tag)
-    mudanza.instalar(cr, 'quimibond_sgi_studio', ['web_studio'], tag)
+    mudanza.instalar(cr, 'quimibond_sgi_studio', ['web_studio'], tag, obligatorio=bool(
+        mudanza.contar(cr, 'sgi_activity_role', 'approval_rule_id IS NOT NULL')))
     mudanza.instalar(cr, 'quimibond_sgi_knowledge', ['knowledge'], tag)

@@ -12,7 +12,7 @@ from datetime import timedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
-from .sgi_base import sgi_bypass_allowed
+from odoo.addons.quimibond_sgi.models.sgi_base import sgi_bypass_allowed
 from .sgi_sales_budget import _REAL_MOVE_TYPES, _convert_qty
 
 

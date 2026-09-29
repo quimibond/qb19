@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ajustes → SGI → KPIs automáticos: los del presupuesto y del pronóstico
+         de ventas (antes en la vista de ajustes de quimibond_sgi, A-016). -->
+    <record id="res_config_settings_view_form_sales_budget" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.sgi.sales.budget</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="quimibond_sgi.res_config_settings_view_form_sgi"/>
+        <field name="arch" type="xml">
+            <xpath expr="//block[@name='sgi_auto_kpis']" position="inside">
+                <setting string="Umbral de aviso de presupuesto de ventas (%)"
+                         help="Al cierre de mes, un equipo con presupuesto aprobado por debajo de este % del acumulado del año avisa a su responsable.">
+                    <field name="sgi_sales_budget_alert_pct"/>
+                </setting>
+                <setting string="Tipo de cambio presupuestal USD→MXN"
+                         help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
+                    <field name="sgi_budget_planning_rate"/>
+                </setting>
+                <setting string="Lista de precios presupuestal"
+                         help="Lista con que se valúan las líneas del presupuesto SIN cliente (global). Sin configurar, quedan sin precio (nunca una lista arbitraria).">
+                    <field name="sgi_budget_pricelist_id"/>
+                </setting>
+                <setting string="Precio de lista mínimo plausible"
+                         help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla.">
+                    <field name="sgi_price_min_plausible"/>
+                </setting>
+                <setting string="Tolerancia de desviación de precio (%)"
+                         help="Control de precios: gap facturado vs lista dentro de este % = OK; entre este y el grave = leve.">
+                    <field name="sgi_price_gap_tolerance_pct"/>
+                </setting>
+                <setting string="Desviación de precio grave (%)">
+                    <field name="sgi_price_gap_grave_pct"/>
+                </setting>
+                <setting string="Cumplimiento mínimo del presupuesto (%)"
+                         help="P-A28 4.3.6.1: un presupuesto aprobado por debajo de este % pide justificación (banner y actividad al Admin de ventas). No bloquea.">
+                    <field name="sgi_budget_fulfillment_min"/>
+                </setting>
+                <setting string="Tolerancia de pronóstico excedido (%)"
+                         help="P-A28 4.2.2.7: comprometido por encima de 100% + este % = excedido.">
+                    <field name="sgi_forecast_over_tolerance_pct"/>
+                </setting>
+                <setting string="Horizonte de captura del pronóstico (semanas)"
+                         help="Solo se evalúa la cobertura de las semanas dentro de este horizonte (actual + N-1).">
+                    <field name="sgi_forecast_capture_horizon_weeks"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+</odoo>

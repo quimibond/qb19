@@ -4,8 +4,8 @@
         <field name="name">Presupuesto de ventas (F-P-A28-17/18)</field>
         <field name="model">sgi.sales.budget</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">quimibond_sgi.report_sales_budget_document</field>
-        <field name="report_file">quimibond_sgi.report_sales_budget_document</field>
+        <field name="report_name">quimibond_ventas_presupuesto.report_sales_budget_document</field>
+        <field name="report_file">quimibond_ventas_presupuesto.report_sales_budget_document</field>
         <field name="print_report_name">'PPV-%s-%s' % (object.team_id.name or '', object.year or '')</field>
     </record>
 
@@ -14,7 +14,7 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <t t-if="doc.kind == 'pronostico'">
-                        <t t-call="quimibond_sgi.report_sales_forecast_page">
+                        <t t-call="quimibond_ventas_presupuesto.report_sales_forecast_page">
                             <t t-set="doc" t-value="doc"/>
                         </t>
                     </t>

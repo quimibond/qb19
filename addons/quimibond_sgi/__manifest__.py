@@ -22,7 +22,7 @@ los dos auto_install.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.10.0',
+    'version': '19.0.57.11.0',
     'license': 'LGPL-3',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -31,6 +31,8 @@ los dos auto_install.
     # Salieron sale_management y hr_timesheet (sin uso), knowledge (DOC-5,
     # ahora quimibond_sgi_knowledge) y web_studio (la regla de aprobación del
     # botón, ahora quimibond_sgi_studio). En producción no se desinstala nada.
+    # 57.11.0 (A-016, A-013): web_grid y account_budget se van con el
+    # presupuesto de ventas a quimibond_ventas_presupuesto.
     'depends': [
         'documents',  # control documental (documents.document)
         'approvals_purchase',  # requisiciones (sgi_links); trae approvals y purchase
@@ -39,12 +41,10 @@ los dos auto_install.
         'helpdesk',  # reclamaciones y mesa interna
         'project',  # mejoras y diseño y desarrollo (P-D01)
         'sale_stock',  # salidas del pedido (COA por entrega, OTIF)
-        'account_budget',  # presupuesto de gastos ligado al de ventas (P-3)
         'maintenance',  # calibraciones y equipos
         'stock_account',  # stock.move.value / stock.quant.value (AL-01)
         'survey',  # evaluaciones, DNC y encuestas como entregable
         'hr_skills',  # competencias por puesto; trae hr
-        'web_grid',  # matriz del presupuesto de ventas
         'web_hierarchy',  # organigrama de procesos y puestos
         'sign',  # firmas de documentos, registros y aprobaciones
         'portal',  # respuesta del proveedor a su NC (controllers/portal_nc.py)
@@ -146,8 +146,6 @@ los dos auto_install.
         'views/sgi_format_map_views.xml',
         'views/sgi_alert_source_views.xml',
         'views/sgi_action_line_views.xml',
-        'views/sgi_sales_budget_views.xml',
-        'views/sgi_budget_analytic_views.xml',
         'views/sgi_settings_views.xml',
         'views/sgi_sign_elearning_views.xml',
         'views/sgi_catalog_views.xml',
@@ -182,7 +180,6 @@ los dos auto_install.
         'report/report_my_procedure.xml',
         'report/report_master_list.xml',
         'report/report_direction.xml',
-        'report/report_sales_budget.xml',
         'report/report_retention.xml',
         'report/sgi_format_footer.xml',
         'report/report_dev_request.xml',

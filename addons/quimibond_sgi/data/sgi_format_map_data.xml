@@ -61,12 +61,8 @@
         <field name="note">Acta de Revisión por la Dirección</field>
     </record>
 
-    <record id="format_map_sales_budget" model="sgi.format.map">
-        <field name="model_id" ref="model_sgi_sales_budget"/>
-        <field name="sgi_code">F-P-A28-18</field>
-        <field name="sgi_code_alt">F-P-A28-13</field>
-        <field name="note">Presupuesto de Ventas General F-P-A28-18 (mensual) / Pronóstico F-P-A28-13 (semanal por cliente); F-P-A28-17 es el comparativo ppto vs real</field>
-    </record>
+    <!-- 57.11.0 (A-016): format_map_sales_budget (F-P-A28-18/13) lo declara
+         quimibond_ventas_presupuesto: su modelo es de ese módulo. -->
 
     <!-- C-006 (19.0.56.30.0): formatos que el SGI imprime POR REFERENCIA desde
          su código (sin modelo). El código los pide por xmlid

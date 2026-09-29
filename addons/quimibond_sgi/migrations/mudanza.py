@@ -60,6 +60,10 @@ _POR_MODELO = [
                 "JOIN ir_model m ON m.id = s.model_id WHERE m.model = ANY(%(modelos)s)"),
     ('mail.template', "SELECT t.id FROM mail_template t JOIN ir_model m ON m.id = t.model_id "
                       "WHERE m.model = ANY(%(modelos)s)"),
+    # Odoo 19: una fila por (modelo, padre de _inherit) con XML ID por módulo
+    # (``model_inherit__<modelo>__<padre>``).
+    ('ir.model.inherit', "SELECT i.id FROM ir_model_inherit i JOIN ir_model m ON m.id = i.model_id "
+                         "WHERE m.model = ANY(%(modelos)s)"),
 ]
 
 
@@ -155,6 +159,15 @@ def mover(cr, destino, etiqueta, modelos=(), campos=(), relaciones=(), nombres=(
     return total
 
 
+def contar(cr, tabla, where='true'):
+    """Filas de una tabla (0 si la tabla no existe)."""
+    cr.execute("SELECT to_regclass(%s)", (tabla,))
+    if not cr.fetchone()[0]:
+        return 0
+    cr.execute('SELECT count(*) FROM "%s" WHERE %s' % (tabla, where))
+    return cr.fetchone()[0]
+
+
 def faltantes(cr, destino, nombres, etiqueta):
     """XML IDs esperados que no están ni en el núcleo ni en el satélite: en una
     base que viene de una versión vieja pueden no existir (se crean al
@@ -171,11 +184,12 @@ def faltantes(cr, destino, nombres, etiqueta):
     return missing
 
 
-def instalar(cr, destino, requiere, etiqueta):
+def instalar(cr, destino, requiere, etiqueta, obligatorio=False):
     """Marca el satélite para instalarse en este mismo update si están todas
-    sus dependencias ajenas al SGI. Si falta alguna no se instala (no había
-    datos que mudar) y se avisa. Si el satélite no está en la lista de
-    módulos, se detiene el update: lo mudado se quedaría sin dueño."""
+    sus dependencias ajenas al SGI. Si falta alguna no se instala y se avisa;
+    con ``obligatorio`` (hay datos que se quedarían sin módulo) se detiene el
+    update. Si el satélite no está en la lista de módulos, también se
+    detiene: lo mudado se quedaría sin dueño."""
     from odoo import SUPERUSER_ID, api
 
     env = api.Environment(cr, SUPERUSER_ID, {})
@@ -191,6 +205,9 @@ def instalar(cr, destino, requiere, etiqueta):
     missing = Module.search([('name', 'in', list(requiere)), ('state', 'not in', ready)]).mapped('name')
     missing += sorted(set(requiere) - set(Module.search([('name', 'in', list(requiere))]).mapped('name')))
     if missing:
+        if obligatorio:
+            raise RuntimeError("%s: %s tiene datos en esta base y no se puede instalar porque faltan %s."
+                               % (etiqueta, destino, missing))
         _logger.warning("%s: %s no se instala porque faltan %s.", etiqueta, destino, missing)
         return False
     module.button_install()

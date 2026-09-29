@@ -13,6 +13,46 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.11.0 — 2026-09-29
+
+**Cambiado (A-016, A-013, E-014):** el presupuesto y el pronóstico de ventas
+salen al módulo nuevo **`quimibond_ventas_presupuesto`** (19.0.1.0.0, depende
+del SGI, de `sale_stock`, `web_grid` y `account_budget`; `auto_install`):
+modelos `sgi.sales.budget`, `.line` e `.import` (conservan su nombre técnico y
+sus tablas), `budget.analytic.sgi_sales_budget_id`, vistas, reporte,
+análisis, 8 menús de Ventas → Presupuesto y pronóstico, reglas, accesos,
+secuencia, pie de formato, los crons de cobertura del pronóstico y
+revaluación del S2, el cierre de mes, los 9 parámetros (mismas claves) y sus
+ajustes. El núcleo ya no depende de `web_grid` ni de `account_budget`.
+
+**Cambiado:** el núcleo deja los ganchos `sgi.cron._sgi_monthly_close_steps`
+(cierre de mes) y `sgi.diagnostic._sgi_key_settings_checks` (Ajustes clave).
+El KPI VE-02 (`presupuesto_ventas`), su evidencia y el aviso del Diagnóstico
+leen el presupuesto solo si el módulo está.
+
+**Migración (pre, `migrations/19.0.57.11.0/pre-migrate.py`):** cambia
+`ir_model_data.module` de modelos, campos, valores de selección,
+restricciones, herencias (`ir.model.inherit`), vistas, acciones, reporte,
+accesos, reglas, menús, crons, secuencia y pie de formato, y la columna
+`module` de `ir_model_constraint` e `ir_model_relation`; nada se borra ni se
+recrea (E-002: los menús 2434/2435 conservan su id). Marca el módulo nuevo
+para instalar en el mismo update y detiene el update si hay presupuestos y
+no se puede instalar. `migrations/mudanza.py` suma `ir.model.inherit` y
+`instalar(obligatorio=...)`; el pre-migrate de 57.9.0 lo usa con Studio (11
+roles con regla en producción).
+
+**Datos de producción (2026-09-29, lectura):** `sgi.sales.budget` = 4 (ids
+4, 5, 7, 137; borrador, 2026) con 1,291 líneas; menús 2434 y 2435 (acciones
+3886 y 3887) bajo 2438, más 2449 y 2444–2447; crons 184 y 185 activos con los
+valores del XML; `sgi.format.map` 9 igual al XML (con `document_id` 3882, que
+el XML no toca); folios PPV-2026-004…137; 50 XML IDs del núcleo sobre estos
+registros, todos declarados por el módulo nuevo.
+
+**Pruebas (J-018):** `test_sales_budget` (117 pruebas) pasa al módulo nuevo;
+`test_multicompany` test_03 y los dos modelos de F-014, la aserción de
+presupuesto de `test_entrega4` test_02 y `cron_forecast_coverage` de
+`test_avisos_crons` pasan a `quimibond_ventas_presupuesto/tests/test_sales_budget_sgi.py`.
+
 ## 19.0.57.10.0 — 2026-09-29
 
 **Cambiado (A-019):** MA-03 «Calidad PQ» sale del núcleo a

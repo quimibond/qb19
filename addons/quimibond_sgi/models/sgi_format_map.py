@@ -289,29 +289,8 @@ class SgiConfig(models.AbstractModel):
         # Encuesta que alimenta el KPI CA-02 (survey.survey). 0 = usar la
         # sembrada del módulo. Permite re-apuntar al histórico archivado.
         'quimibond_sgi.satisfaction_survey_id': '0',
-        # Umbral (%) de cumplimiento acumulado del presupuesto de ventas bajo el
-        # cual el cierre de mes avisa al responsable del equipo.
-        'quimibond_sgi.sales_budget_alert_pct': '80',
-        # Tipo de cambio presupuestal USD→MXN para sugerir precios de listas en
-        # otra moneda. 0 = usar el tipo de cambio vigente del día de captura.
-        'quimibond_sgi.budget_planning_rate': '0',
-        # Control de precios (lista vs facturado): tolerancia % del gap para
-        # 'leve' y umbral 'grave'.
-        'quimibond_sgi.price_gap_tolerance_pct': '3.0',
-        'quimibond_sgi.price_gap_grave_pct': '10.0',
-        # Cumplimiento mínimo (%) del presupuesto por debajo del cual se pide
-        # justificación del incumplimiento (P-A28 4.3.6.1). No bloquea nada.
-        'quimibond_sgi.budget_fulfillment_min': '80',
-        # Cobertura del pronóstico (P-A28 4.2.2.7): tolerancia % sobre 100 para
-        # 'excedido', y horizonte de captura en semanas (semana actual + N-1).
-        'quimibond_sgi.forecast_over_tolerance_pct': '10.0',
-        'quimibond_sgi.forecast_capture_horizon_weeks': '3',
-        # Precio de lista mínimo plausible (moneda compañía): por debajo se toma
-        # como placebo (placeholder $1) y la línea queda sin precio de lista.
-        'quimibond_sgi.price_min_plausible': '5.0',
-        # Lista de precios PRESUPUESTAL para líneas sin cliente (id). 0 = sin
-        # configurar: esas líneas quedan sin precio (nunca una lista arbitraria).
-        'quimibond_sgi.budget_pricelist_id': '0',
+        # 57.11.0 (A-016): los 9 parámetros del presupuesto y del pronóstico de
+        # ventas los siembra quimibond_ventas_presupuesto (mismas claves).
     }
 
     @api.model

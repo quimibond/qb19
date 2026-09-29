@@ -16,8 +16,10 @@ AVISO_CRONS = (
     'cron_audit_program', 'cron_risk_review', 'cron_calibrations', 'cron_competences',
     'cron_satisfaction_survey', 'cron_dnc', 'cron_emergency_drills',
     'cron_operational_signals', 'cron_legal_requirements', 'cron_worker_participation',
-    'cron_context_review', 'cron_forecast_coverage', 'cron_my_procedure_stale',
+    'cron_context_review', 'cron_my_procedure_stale',
 )
+# 57.11.0 (A-016): cron_forecast_coverage se corre dos veces en
+# quimibond_ventas_presupuesto/tests/test_sales_budget_sgi.py.
 
 
 @tagged('post_install', '-at_install')

@@ -125,6 +125,12 @@ class SgiDiagnostic(models.TransientModel):
         return {'level': level, 'text': text, 'fix': fix or False}
 
     @api.model
+    def _sgi_key_settings_checks(self):
+        """[(clave de parámetro, aviso si vale 0)] de «Ajustes clave» que
+        agregan otros módulos (la lista presupuestal, quimibond_ventas_presupuesto)."""
+        return []
+
+    @api.model
     def _sgi_floor_quality_lines(self, floor_alerts):
         """Hallazgos de «Calidad preventiva y piso» que vienen de un satélite
         (el revisado de tela, quimibond_sgi_revisado). ``floor_alerts``:
@@ -244,9 +250,10 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line(
                 'warn', "No hay planes de emergencia vigentes (14001/45001 8.2).",
                 sgi_menu_path('planes_emergencia')))
+        # 57.11.0 (A-016): el presupuesto es de quimibond_ventas_presupuesto.
         budgets_draft = env['sgi.sales.budget'].search_count(
             [('kind', '=', 'presupuesto'), ('state', '=', 'borrador'),
-             ('year', '=', today.year)])
+             ('year', '=', today.year)]) if 'sgi.sales.budget' in env else 0
         if budgets_draft:
             lines.append(self._sgi_line(
                 'warn', "%d presupuesto(s) de ventas %d en borrador: el KPI VE-02 y el cierre de mes solo miden presupuestos APROBADOS." % (budgets_draft, today.year),
@@ -402,9 +409,7 @@ class SgiDiagnostic(models.TransientModel):
              "Proveedor de energía sin configurar: el KPI TR-03 queda pendiente."),
             ('quimibond_sgi.production_monthly_capacity',
              "Capacidad instalada sin configurar: el KPI MA-02 queda pendiente."),
-            ('quimibond_sgi.budget_pricelist_id',
-             "Lista de precios presupuestal sin configurar: las líneas globales del presupuesto quedan sin precio."),
-        ]
+        ] + self._sgi_key_settings_checks()
         for key, msg in checks:
             try:
                 value = int(float(Param.get_param(key, 0) or 0))

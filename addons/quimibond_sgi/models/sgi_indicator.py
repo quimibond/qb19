@@ -380,7 +380,13 @@ class SgiIndicator(models.Model):
         """Importe presupuestado del periodo: suma de amount_budget de las líneas
         de presupuesto APROBADO (todos los equipos/mercados) cuyo mes cae en el
         periodo. Prorrateo mensual = las líneas de ese mes. Siempre en importe y
-        moneda de la compañía (nunca cantidades mezcladas)."""
+        moneda de la compañía (nunca cantidades mezcladas).
+
+        57.11.0 (A-016): el presupuesto vive en quimibond_ventas_presupuesto;
+        el SGI solo lo lee. Sin ese módulo no hay presupuesto aprobado y el
+        KPI cae al parámetro de Ajustes, como antes sin presupuesto."""
+        if 'sgi.sales.budget.line' not in self.env:
+            return 0.0
         lines = self.env['sgi.sales.budget.line'].sudo().search([
             ('budget_id.kind', '=', 'presupuesto'),
             ('budget_id.state', '=', 'aprobado'),
@@ -1114,6 +1120,9 @@ class SgiIndicatorMeasure(models.Model):
             }
         if mode == 'presupuesto_ventas':
             # Evidencia = las líneas del presupuesto aprobado del periodo.
+            if 'sgi.sales.budget.line' not in self.env:
+                raise UserError("La evidencia de este indicador son las líneas del presupuesto "
+                                "de ventas: instala «Quimibond - Presupuesto y pronóstico de ventas».")
             return {
                 'type': 'ir.actions.act_window',
                 'name': "Presupuesto del periodo — evidencia de %s" % self.period_date,
