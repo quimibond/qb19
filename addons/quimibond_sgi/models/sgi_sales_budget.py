@@ -836,12 +836,11 @@ class SgiSalesBudget(models.Model):
             'partner': self.partner_id.name or '',
         }
 
-    # Banner de formato según el tipo: pronóstico = F-P-A28-13, presupuesto = 18.
-    def _sgi_format_code(self, fmap):
+    # Banner de formato según el tipo: el pronóstico usa el documento
+    # alternativo del mapeo; el presupuesto, el principal (C-006).
+    def _sgi_format_use_alt(self, fmap):
         self.ensure_one()
-        if self.kind == 'pronostico':
-            return fmap.sgi_code_alt or 'F-P-A28-13'
-        return fmap.sgi_code
+        return self.kind == 'pronostico'
 
     def action_print_budget(self):
         self.ensure_one()

@@ -31,7 +31,9 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-set="kinds" t-value="dict(doc._fields['sgi_change_kind'].selection)"/>
-                <t t-set="format_rev" t-value="doc.env['sgi.format.map'].sudo()._revision_of('F-P-G01-06')"/>
+                <!-- C-006: clave y revisión vivas del documento ligado al mapeo -->
+                <t t-set="format_parts" t-value="doc.env['sgi.format.map'].sudo().sgi_ref_parts('format_ref_doc_change')"/>
+                <t t-set="format_rev" t-value="format_parts[1]"/>
                 <div class="page" style="font-size:12px;">
                     <table style="width:100%; border-collapse:collapse;" border="1">
                         <tr>
@@ -40,7 +42,7 @@
                                 <div t-out="doc.name"/>
                             </td>
                             <td style="padding:6px; border:1px solid #000;">
-                                <div><strong>F-P-G01-06</strong></div>
+                                <div><strong t-out="format_parts[0]"/></div>
                                 <div t-if="format_rev">Rev. <t t-out="format_rev"/></div>
                             </td>
                         </tr>
@@ -53,7 +55,7 @@
                         <tr>
                             <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Documento</strong></td>
                             <td style="padding:5px; border:1px solid #000;">
-                                <t t-if="doc.sgi_document_id"><t t-out="doc.sgi_document_id.sgi_code"/> — <t t-out="doc.sgi_document_id.name"/></t>
+                                <t t-if="doc.sgi_document_id"><t t-out="doc.sgi_document_id.sgi_code"/> — <t t-out="doc.sgi_document_id.sgi_title or doc.sgi_document_id.name"/></t>
                                 <t t-else="">Alta de documento nuevo</t>
                             </td>
                         </tr>
@@ -97,7 +99,7 @@
                 <div class="page" style="page-break-before:always; font-size:12px;">
                     <div style="height:35mm;">
                         <strong style="font-size:15px;">HOJA DE FIRMAS — <t t-out="doc.name"/></strong>
-                        <div>F-P-G01-06 · cambio documental firmado electrónicamente en Sign.</div>
+                        <div><t t-out="format_parts[0]"/> · cambio documental firmado electrónicamente en Sign.</div>
                     </div>
                     <table style="width:100%; border-collapse:collapse; table-layout:fixed;">
                         <tr t-foreach="doc._sgi_sign_rows()" t-as="row" style="height:55mm;">

@@ -46,6 +46,7 @@
             <field name="sequence">35</field>
             <field name="requires_process" eval="False"/>
             <field name="code_required" eval="True"/>
+            <field name="prefix_pattern">F-{process}-{seq:02d}</field>
             <field name="legacy_code_regex">^F-IT-P-[AGCDEIMPSV]\d{2}-\d{2}-\d{2}$</field>
         </record>
         <record id="sgi_doc_type_control_operacional" model="sgi.document.type">
@@ -78,6 +79,7 @@
             <field name="sequence">60</field>
             <field name="requires_process" eval="False"/>
             <field name="code_required" eval="True"/>
+            <field name="prefix_pattern">DA-{process}-{seq:02d}</field>
             <field name="legacy_code_regex">^DAT.*$</field>
         </record>
         <record id="sgi_doc_type_protocolo" model="sgi.document.type">

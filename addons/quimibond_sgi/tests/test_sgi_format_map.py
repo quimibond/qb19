@@ -17,9 +17,10 @@ class TestSgiFormatMap(TransactionCase):
         # Los mapeos son noupdate y MAST los edita en producción: la prueba
         # fija los de venta y compra que valida.
         cls.Map.search([('model_name', '=', 'sale.order')]).write(
-            {'sgi_code': 'F-P-A28-12', 'sgi_code_alt': 'F-P-A28-06'})
+            {'sgi_code': 'F-P-A28-12', 'sgi_code_alt': 'F-P-A28-06',
+             'document_id': False, 'document_alt_id': False})
         cls.Map.search([('model_name', '=', 'purchase.order')]).write(
-            {'sgi_code': 'F-P-A02-03'})
+            {'sgi_code': 'F-P-A02-03', 'document_id': False})
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente Formato'})
         cls.product = cls.env['product.product'].create({
             'name': 'Tela de prueba', 'type': 'consu', 'list_price': 10.0,

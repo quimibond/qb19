@@ -392,16 +392,11 @@ class SgiProcessProcedure(models.Model):
             lambda d: d.sgi_doc_type_id.code == 'procedimiento' and d.sgi_state == 'vigente')
         return docs[:1]
 
-    def _sgi_format_revision(self, code):
-        """Revisión viva del documento controlado vigente con esa clave (para el
-        pie F-P-G01-02), o False."""
-        return self.env['sgi.format.map'].sudo()._revision_of(code)
-
-    def _sgi_document_by_code(self, code):
-        """Documento vigente con esa clave (ref. a F-P-S01-01, etc.)."""
-        return self.env['documents.document'].sudo().search([
-            ('sgi_code', '=', code), ('sgi_state', '=', 'vigente'),
-        ], limit=1)
+    def _sgi_format_parts(self, ref):
+        """(clave, revisión) vivas del formato por referencia del mapeo
+        (``format_ref_procedure_print`` para el pie; C-006: ya no por el texto
+        de la clave)."""
+        return self.env['sgi.format.map'].sudo().sgi_ref_parts(ref)
 
     def _sgi_env_risks(self):
         """Riesgos ambientales ligados al proceso (sección 5)."""
