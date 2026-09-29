@@ -571,7 +571,11 @@ class SgiMyPending(models.TransientModel):
         self.ensure_one()
         if self.kind == 'firma' and self.res_model == 'sign.request.item':
             item = self.env['sign.request.item'].sudo().browse(self.res_id).exists()
-            if item and 'access_token' in item._fields and item.access_token:
+            # La liga con token firma A NOMBRE del firmante: solo se le da a
+            # él. Un jefe que abre el renglón desde Mi equipo ve la solicitud
+            # con sus propios permisos (abajo), nunca el token ajeno.
+            if item and item.partner_id == self.env.user.partner_id \
+                    and 'access_token' in item._fields and item.access_token:
                 # La firma se hace en la página de Firma electrónica.
                 return {'type': 'ir.actions.act_url', 'target': 'self',
                         'url': '/sign/document/%d/%s' % (item.sign_request_id.id, item.access_token)}

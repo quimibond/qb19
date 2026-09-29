@@ -253,6 +253,14 @@ class TestBandeja(TransactionCase):
         self.assertTrue(row)
         self.assertEqual(row['name'], "Firmar Firma 8A")
         self.assertTrue(row['date_due'])
+        # La liga con token solo es del firmante: el jefe (Mi equipo) no la recibe.
+        vals = {'kind': 'firma', 'res_model': 'sign.request.item', 'res_id': items.id}
+        Pending = self.env['sgi.my.pending']
+        self.assertNotEqual(Pending.with_user(self.boss_user).new(vals).action_open().get('type'),
+                            'ir.actions.act_url')
+        if items.access_token:
+            self.assertEqual(Pending.with_user(self.user).new(vals).action_open().get('type'),
+                             'ir.actions.act_url')
 
     # ---- I-021: semáforo de Mi equipo sin usuario ----------------------------------
     def test_13_mi_equipo_sin_usuario(self):
