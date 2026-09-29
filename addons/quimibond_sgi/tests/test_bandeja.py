@@ -11,6 +11,7 @@ from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
+from ..models.sgi_calendar import sgi_add_business_days
 from .common_documents import sgi_hide_real_documents
 
 
@@ -35,18 +36,24 @@ class TestBandeja(TransactionCase):
         cls.Pending = env['sgi.my.pending']
         cls.job = env['hr.job'].create({'name': 'PUESTO BANDEJA 8A'})
         cls.boss_job = env['hr.job'].create({'name': 'DIRECCION BANDEJA 8A'})
+        cls.approver_job = env['hr.job'].create({'name': 'APRUEBA BANDEJA 8A'})
         cls.process = env['sgi.process'].create({'code': 'Z8A', 'name': 'Proceso bandeja 8A'})
-        # Actividad mensual que vence el día hábil 1 y escala a Dirección al
-        # día hábil siguiente.
+        # Actividad mensual que vence el día hábil 1, la aprueba otro puesto y
+        # escala a Dirección al día hábil siguiente.
         cls.activity = env['sgi.process.activity'].create({
             'process_id': cls.process.id, 'name': 'Cerrar la orden 8A', 'number': '8.1',
             'measure_cadence': 'mensual', 'due_business_day': 1,
             'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': cls.job.id}),
+                         (0, 0, {'role': 'aprueba', 'job_id': cls.approver_job.id}),
                          (0, 0, {'role': 'escala', 'job_id': cls.boss_job.id, 'after_days': 1})]})
         cls.user = new_test_user(env, login='zs_8a_user', email='zs.8a@example.com',
                                  groups='base.group_user,quimibond_sgi.group_sgi_user')
         cls.boss_user = new_test_user(env, login='zs_8a_boss', email='zs.8a.boss@example.com',
                                       groups='base.group_user,quimibond_sgi.group_sgi_user')
+        cls.approver_user = new_test_user(env, login='zs_8a_approver', email='zs.8a.approver@example.com',
+                                          groups='base.group_user,quimibond_sgi.group_sgi_user')
+        cls.approver = env['hr.employee'].create({
+            'name': 'ZS Aprueba 8A', 'job_id': cls.approver_job.id, 'user_id': cls.approver_user.id})
         cls.emp = env['hr.employee'].create({
             'name': 'ZS Persona 8A', 'job_id': cls.job.id, 'user_id': cls.user.id})
         cls.boss = env['hr.employee'].create({
@@ -55,7 +62,7 @@ class TestBandeja(TransactionCase):
         # I-021: gente de planta sin usuario, a cargo del mismo jefe.
         cls.floor = env['hr.employee'].create({
             'name': 'ZS Planta 8A', 'job_id': cls.job.id, 'parent_id': cls.boss.id})
-        (cls.emp | cls.boss | cls.floor).invalidate_recordset()
+        (cls.emp | cls.boss | cls.floor | cls.approver).invalidate_recordset()
 
     # ------------------------------------------------------------------
     def _rows(self, user=None, kind=None):
@@ -119,6 +126,31 @@ class TestBandeja(TransactionCase):
         self.assertFalse(self._row('medicion', pending.id))
         auto.sudo().write({'calc_status': 'error'})
         self.assertTrue(self._row('medicion', pending.id), "Si el cálculo falla, se captura a mano.")
+
+    def test_03b_capturar_cinco_habiles_y_mismo_plazo_en_el_aviso(self):
+        """56.38.1 (decisión de Jose): capturar vence 5 días hábiles después del
+        día en que se mide, y el aviso «Capturar indicador» del cron vence el
+        mismo día que el renglón de Mis pendientes (una sola regla)."""
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.measure_capture_business_days', '')
+        indicator = self._indicator('Z8A-C5')
+        period = self.today.replace(day=1) - relativedelta(months=1)
+        last = period + relativedelta(day=31)
+        self.env['sgi.cron']._sgi_generate_measures(
+            indicator, period, period, last, period, period.strftime('%m/%Y'))
+        measure = self.env['sgi.indicator.measure'].search(
+            [('indicator_id', '=', indicator.id), ('period_date', '=', period)])
+        self.assertEqual(measure.state, 'pendiente')
+        due = measure._sgi_capture_due()
+        self.assertEqual(due, sgi_add_business_days(self.env, measure._sgi_run_day(), 5))
+        self.assertEqual(self._row('medicion', measure.id)['date_due'], due)
+        notice = self.env['mail.activity'].search([
+            ('res_model', '=', 'sgi.indicator'), ('res_id', '=', indicator.id),
+            ('summary', '=like', 'Capturar indicador Z8A-C5%')])
+        self.assertEqual(len(notice), 1)
+        self.assertEqual(notice.date_deadline, due, "El aviso no trae su propio plazo.")
+        # Validar sigue en 3 días hábiles.
+        measure.write({'value': 1.0, 'state': 'capturado'})
+        self.assertEqual(measure._sgi_validate_due(), sgi_add_business_days(self.env, self.today, 3))
 
     # ---- validacion: «Validar» en 3 días hábiles (I-006, I-007) --------------
     def test_04_validar_dueño_tres_dias_habiles(self):
@@ -224,6 +256,41 @@ class TestBandeja(TransactionCase):
         wiz = Wiz.browse(Wiz.action_open_mine()['res_id'])
         self.assertEqual(wiz.received_late_count, 1)
         self.assertEqual(wiz.action_show_received()['name'], "Escalamientos atrasados")
+
+    # ---- aprobador y escalador ante el atraso del ejecutor (56.38.1) ----------
+    def test_10b_aprobador_no_ve_el_atraso_del_ejecutor(self):
+        """Decisión de Jose: el aprobador solo ve lo que ya le toca. Una
+        actividad atrasada sin hacer es del ejecutor y, pasados sus días, de
+        quien escala; no del que aprueba."""
+        self._late()
+        self.assertTrue(self.approver.sgi_mp_role_ids.filtered(lambda r: r.role == 'aprueba'),
+                        "El puesto sí aprueba la actividad.")
+        # El ejecutor sí la ve.
+        mine = self._rows(kind='actividad')
+        self.assertEqual([r['res_id'] for r in mine], [self.activity.id])
+        self.assertTrue(mine[0]['name'].startswith("Hacer"))
+        # El aprobador no: nada por aprobar todavía.
+        self.assertFalse(self._rows(self.approver_user, 'actividad'))
+        self.assertFalse([r for r in self._rows(self.approver_user) if r['res_id'] == self.activity.id
+                          and r['res_model'] == 'sgi.process.activity'])
+        # Mi equipo (por persona) tampoco se lo cuenta.
+        summary = self.Pending._sgi_summary_employees(self.approver)
+        self.assertEqual(summary[self.approver.id][1], 0, "Sin atrasos para el aprobador.")
+
+    def test_10c_escalador_solo_pasados_sus_dias(self):
+        self._late()
+        escala = self.activity.role_ids.filtered(lambda r: r.role == 'escala')
+        escala.after_days = 60
+        self.boss.invalidate_recordset()
+        self.assertFalse(self._rows(self.boss_user, 'actividad'),
+                         "Antes de sus días hábiles no le llega a quien escala.")
+        self.assertTrue(self._rows(kind='actividad'), "Al ejecutor sí.")
+        escala.after_days = 1
+        self.boss.invalidate_recordset()
+        rows = self._rows(self.boss_user, 'actividad')
+        self.assertEqual([r['res_id'] for r in rows], [self.activity.id])
+        self.assertTrue(rows[0]['name'].startswith("Escalamiento:"))
+        self.assertFalse(self._rows(self.approver_user, 'actividad'))
 
     # ---- acuse de lectura (I-001) -----------------------------------------------
     def test_11_acuse(self):

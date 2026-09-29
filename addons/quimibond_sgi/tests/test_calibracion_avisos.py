@@ -88,3 +88,37 @@ class TestCalibracionAvisos(TransactionCase):
         self.assertIn(legacy.id, {row[0] for row in self.env.cr.fetchall()})
         self.assertEqual(self.Cron._sgi_migrate_close_calibration_notices(
             'sgi_mail_activity_bak_prueba_cal'), [], "Idempotente.")
+
+    def test_05_migracion_libera_no_usar(self):
+        """56.38.1 (decisión de Jose): la migración libera los equipos en «No
+        usar» con respaldo y rastro en el chatter; la inspección sigue
+        rechazando el vencido."""
+        company = self.env['sgi.config']._sgi_company()
+        other = self.env['res.company'].create({'name': 'ZCAL Otra empresa'})
+        foreign = self.env['maintenance.equipment'].create({
+            'name': 'ZCAL Equipo de otra empresa', 'sgi_is_measuring': True, 'company_id': other.id,
+            'sgi_do_not_use': True})
+        no_date = self.env['maintenance.equipment'].create({
+            'name': 'ZCAL Sin fecha', 'sgi_is_measuring': True, 'company_id': company.id,
+            'sgi_do_not_use': True})
+        self.expired.sgi_do_not_use = True
+        table = 'sgi_equipment_do_not_use_bak_prueba'
+        released = self.Cron._sgi_migrate_release_do_not_use(table)
+        self.assertIn(self.expired, released)
+        self.assertIn(no_date, released)
+        self.assertNotIn(foreign, released, "Solo la empresa del SGI.")
+        self.assertFalse(self.expired.sgi_do_not_use)
+        self.assertFalse(no_date.sgi_do_not_use)
+        self.assertTrue(foreign.sgi_do_not_use)
+        self.env.cr.execute("SELECT id, sgi_do_not_use, sgi_calibration_state FROM %s" % table)
+        rows = {row[0]: row[1:] for row in self.env.cr.fetchall()}
+        self.assertEqual(rows[self.expired.id], (True, 'vencido'), "Respaldo con el estado anterior.")
+        self.assertIn(no_date.id, rows)
+        self.env.flush_all()
+        self.env.cr.precommit.run()  # el seguimiento se escribe al confirmar
+        tracked = self.env['mail.tracking.value'].sudo().search([
+            ('mail_message_id.model', '=', 'maintenance.equipment'),
+            ('mail_message_id.res_id', '=', self.expired.id),
+            ('field_id.name', '=', 'sgi_do_not_use')])
+        self.assertTrue(tracked, "El cambio queda en el chatter.")
+        self.assertFalse(self.Cron._sgi_migrate_release_do_not_use(table), "Idempotente.")
