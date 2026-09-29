@@ -36,7 +36,11 @@
                                    invisible="sgi_supplier_status != 'aprobado'"/>
                         </group>
                         <group string="Clasificación SGI">
-                            <field name="sgi_supplier_class"/>
+                            <field name="sgi_supplier_class" widget="badge"
+                                   decoration-success="sgi_supplier_class == 'acreditado'"
+                                   decoration-warning="sgi_supplier_class == 'condicionado'"
+                                   decoration-danger="sgi_supplier_class == 'baja'"
+                                   decoration-muted="sgi_supplier_class == 'sin_datos'"/>
                             <field name="sgi_supplier_score"/>
                             <field name="sgi_last_eval_date"/>
                         </group>
@@ -53,13 +57,19 @@
                     <field name="sgi_eval_ids">
                         <list decoration-success="supplier_class == 'acreditado'"
                               decoration-warning="supplier_class == 'condicionado'"
-                              decoration-danger="supplier_class == 'baja'">
+                              decoration-danger="supplier_class == 'baja'"
+                              decoration-muted="supplier_class == 'sin_datos'">
                             <field name="date_from"/>
                             <field name="date_to"/>
-                            <field name="otd_pct"/>
+                            <field name="otd_has_data" column_invisible="1"/>
+                            <field name="otd_pct" invisible="not otd_has_data"/>
                             <field name="nc_count"/>
                             <field name="score"/>
-                            <field name="supplier_class"/>
+                            <field name="supplier_class" widget="badge"
+                                   decoration-success="supplier_class == 'acreditado'"
+                                   decoration-warning="supplier_class == 'condicionado'"
+                                   decoration-danger="supplier_class == 'baja'"
+                                   decoration-muted="supplier_class == 'sin_datos'"/>
                         </list>
                     </field>
                 </page>

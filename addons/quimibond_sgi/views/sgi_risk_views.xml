@@ -102,12 +102,12 @@
                         Escala 1–5 × 1–5. Nivel: ≥15 Alto · ≥6 Medio · resto Bajo.
                     </div>
                     <div class="text-muted mb-2" invisible="not next_review_date">
-                        El cron diario avisará al dueño del proceso cuando venza
+                        Se avisará al dueño del proceso cuando venza
                         la próxima revisión.
                     </div>
                     <div class="alert alert-info mb-2" role="status"
                          invisible="next_review_date or instrument == 'foda'">
-                        💡 Captura la <b>Próxima revisión</b>: sin ella nadie
+                        <i class="fa fa-lightbulb-o" title="Sugerencia"/> Captura la <b>Próxima revisión</b>: sin ella nadie
                         recibirá el recordatorio de revalorar este riesgo.
                     </div>
                     <group string="Evaluación" invisible="instrument == 'foda'">
@@ -178,7 +178,7 @@
                             <div class="text-muted">
                                 <field name="instrument"/> — <field name="process_id"/>
                             </div>
-                            <div>Nivel: <field name="score"/></div>
+                            <div>Puntaje: <field name="score"/></div>
                         </div>
                     </t>
                 </templates>

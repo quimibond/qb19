@@ -140,3 +140,44 @@ class TestPr5Direction(TransactionCase):
             'quimibond_sgi.report_competence_matrix_document', dept.ids)[0].decode()
         for text in ('Matriz de competencias', 'Área PR5', 'Tejedor PR5', 'TEJEDOR PR5', '0 de 1'):
             self.assertIn(text, html)
+
+    def test_05_dir4_tablero_sin_oficiales_usa_nivel_direccion(self):
+        """8.3: sin indicadores oficiales Dirección veía el tablero vacío. Ahora
+        cae a los de nivel dirección en cualquier estado (máximo 12) y, si no
+        hay, muestra una nota en vez de nada."""
+        # Escenario limpio: ningún indicador existente cuenta.
+        self.env.cr.execute("UPDATE sgi_indicator SET status = 'prueba', level = 'proceso'")
+        self.env.invalidate_all()
+        Indicator = self.env['sgi.indicator']
+        Board = self.env['sgi.direction.board']
+        director = new_test_user(self.env, login='pr5_director',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_director')
+        # 1. Sin nivel dirección: nada, con nota clara.
+        board = Board.create({})
+        self.assertFalse(board.indicator_ids)
+        self.assertEqual(board.indicator_count, 0)
+        self.assertIn('No hay indicadores de nivel dirección', board.indicator_note)
+        # 2. Solo en prueba de nivel dirección: se muestran (máximo 12) con nota.
+        Indicator.create([{
+            'code': 'TST-D%02d' % i, 'name': 'KPI dirección %d' % i,
+            'calc_mode': 'manual', 'level': 'direccion'} for i in range(14)])
+        Indicator.create({'code': 'TST-P00', 'name': 'KPI proceso', 'calc_mode': 'manual',
+                          'level': 'proceso'})
+        board = Board.create({})
+        self.assertEqual(len(board.indicator_ids), 12, "Máximo 12 en el tablero.")
+        self.assertEqual(board.indicator_count, 12)
+        self.assertEqual(set(board.indicator_ids.mapped('level')), {'direccion'})
+        self.assertEqual(set(board.indicator_ids.mapped('status')), {'prueba'})
+        self.assertIn('en prueba', board.indicator_note)
+        # Dirección (no admin) abre el tablero y ve los mismos indicadores.
+        action = Board.with_user(director).action_open()
+        board_dir = Board.with_user(director).browse(action['res_id'])
+        self.assertEqual(len(board_dir.indicator_ids), 12)
+        self.assertTrue(board_dir.indicator_ids.mapped('code'))
+        self.assertTrue(board_dir.indicator_note)
+        # 3. En cuanto hay un oficial de nivel dirección, solo los oficiales y sin nota.
+        official = Indicator.search([('code', '=', 'TST-D13')])
+        official.write({'status': 'oficial'})
+        board = Board.create({})
+        self.assertEqual(board.indicator_ids, official)
+        self.assertFalse(board.indicator_note)

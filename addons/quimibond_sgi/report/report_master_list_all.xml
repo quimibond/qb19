@@ -10,6 +10,7 @@
         <field name="arch" type="xml">
             <list string="Lista maestra de documentos" create="false" default_order="sgi_code">
                 <field name="sgi_code"/>
+                <field name="sgi_previous_code" string="Clave anterior" optional="show"/>
                 <field name="name" string="Título"/>
                 <field name="sgi_doc_type_id" optional="show"/>
                 <field name="sgi_revision_label" string="Rev."/>
@@ -31,6 +32,7 @@
         <field name="domain">[('sgi_is_controlled', '=', True)]</field>
         <field name="context">{'search_default_sgi_vigente': 1, 'search_default_group_area': 1, 'sgi_master_list': 1}</field>
         <field name="view_id" ref="sgi_document_master_list_view_list"/>
+        <field name="search_view_id" ref="sgi_document_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin documentos controlados</p>
             <p>La lista maestra sale en vivo de Documentos: cada documento controlado con su clave, revisión,

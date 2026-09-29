@@ -62,14 +62,23 @@ class SgiEppDeliverySign(models.Model):
         template = self.env['sign.template'].sudo().browse(int(param)) if param and param.isdigit() else self.env['sign.template']
         return template.exists()
 
+    def _sgi_epp_auto_template(self):
+        """56.18.0: sin plantilla hecha a mano, el SGI la arma con la
+        responsiva impresa y una hoja «Recibí el EPP» con la firma colocada."""
+        self.ensure_one()
+        builder = self.env['sgi.sign.builder']
+        responsiva = builder._sgi_render_pdf('quimibond_sgi.action_report_epp_delivery', self)
+        sheet = builder._sgi_render_pdf('quimibond_sgi.action_report_epp_sign_sheet', self)
+        pdf, page = builder._sgi_append([responsiva], sheet)
+        return builder._sgi_template("Responsiva EPP %s" % (self.name or ''), pdf, page,
+                                     [(0, self.env.ref('quimibond_sgi.sgi_sign_role_empleado'))])
+
     def action_send_sign_request(self):
         """Crea la solicitud de firma para el empleado (una viva por responsiva)."""
-        template = self._sgi_epp_sign_template()
-        if not template:
-            raise UserError("Liga primero la plantilla de Sign de la responsiva de EPP en Ajustes → SGI → EPP.")
-        roles = template.sign_item_ids.mapped('responsible_id')
-        if len(roles) != 1:
-            raise UserError("La plantilla de firma debe tener campos de UN solo firmante (el empleado). Tiene %d roles." % len(roles))
+        manual = self._sgi_epp_sign_template()
+        if manual and len(manual.sign_item_ids.mapped('responsible_id')) != 1:
+            raise UserError("La plantilla de firma debe tener campos de UN solo firmante (el empleado). Tiene %d roles."
+                            % len(manual.sign_item_ids.mapped('responsible_id')))
         for rec in self:
             if rec.state == 'firmada':
                 continue
@@ -79,6 +88,8 @@ class SgiEppDeliverySign(models.Model):
             partner = employee.user_id.partner_id or employee.work_contact_id
             if not partner or not partner.email:
                 raise UserError("%s no tiene contacto con correo: Sign no puede mandarle la solicitud." % employee.name)
+            template = manual or rec._sgi_epp_auto_template()
+            roles = template.sign_item_ids.mapped('responsible_id')
             request = self.env['sign.request'].sudo().create({
                 'template_id': template.id,
                 'reference': "Responsiva EPP %s — %s" % (rec.name, employee.name),
@@ -122,4 +133,5 @@ class ResConfigSettingsEpp(models.TransientModel):
     sgi_epp_sign_template_id = fields.Many2one(
         'sign.template', string="Plantilla de Sign de la responsiva de EPP",
         config_parameter='quimibond_sgi.epp_sign_template_id',
-        help="Plantilla de la app Firma hecha con el PDF «Responsiva de EPP» y un solo campo de firma (el empleado).")
+        help="Opcional: vacío, el SGI arma la plantilla sola (responsiva + hoja «Recibí el EPP»). "
+             "Solo si se quiere otra, una plantilla hecha a mano con un solo firmante (el empleado).")

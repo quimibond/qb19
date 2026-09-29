@@ -22,6 +22,25 @@
         <field name="code">action = env['sgi.my.procedure'].action_open_mine()</field>
     </record>
 
+    <!-- Inicio → «Mis pendientes»: la lista con semáforo del usuario (la
+         misma del botón Pendientes de Mi procedimiento). -->
+    <record id="sgi_my_pending_action_mine" model="ir.actions.server">
+        <field name="name">Mis pendientes</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_open_mine()</field>
+    </record>
+
+    <!-- 56.7.0: Administración SGI → Firmas de lectura → «Publicar Mi
+         procedimiento» (revisión previa y «Publicar todos los puestos»; antes
+         vivían en el encabezado de la pantalla de cada empleado). -->
+    <record id="sgi_my_procedure_action_publish" model="ir.actions.server">
+        <field name="name">Publicar Mi procedimiento</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_procedure_check"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.procedure.check'].action_open()</field>
+    </record>
+
     <!-- Mi equipo: lista nativa de empleados acotada al equipo del usuario. -->
     <record id="sgi_my_team_action_mine" model="ir.actions.server">
         <field name="name">Mi equipo</field>

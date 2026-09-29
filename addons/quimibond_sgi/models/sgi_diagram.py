@@ -122,12 +122,46 @@ class SgiDiagram(models.AbstractModel):
         code = activity.number or activity.legacy_number or ''
         if with_process:
             code = "%s · %s" % (activity.process_id.code or '', code)
+        meta = []
+        tags = activity.sale_team_ids | activity.fiscal_position_ids
+        if tags:
+            meta.append({'icon': 'fa-tags', 'label': "Aplica a",
+                         'value': ", ".join(tags.mapped('name'))})
+        team, market = self._line_params()
         return {
             'key': _key(activity), 'model': 'sgi.process.activity', 'res_id': activity.id,
             'code': code, 'name': activity.name or '', 'subtitle': jobs,
             'color': SEMAPHORE_COLOR.get(activity.measure_state, 'muted'),
-            'avatar': '', 'meta': [],
+            'avatar': '', 'meta': meta,
+            # 56.16.0: no aplica al equipo o al mercado elegido → atenuada.
+            'out': not (activity._sgi_applies_to_teams(team)
+                        and (not market or not activity.fiscal_position_ids
+                             or market in activity.fiscal_position_ids)),
         }
+
+    def _line_params(self):
+        """(equipo de ventas, posición fiscal) elegidos en el diagrama
+        (parámetros «equipo» y «mercado»)."""
+        def pick(name, model):
+            value = self._param(name, '')
+            return self.env[model].browse(int(value)).exists() if str(value).isdigit() \
+                else self.env[model]
+        return pick('equipo', 'crm.team'), pick('mercado', 'account.fiscal.position')
+
+    def _line_options(self):
+        """Selectores del diagrama: equipo de ventas y, si alguna actividad
+        lo usa, mercado (posición fiscal)."""
+        teams = self.env['crm.team'].search([])
+        options = [{'name': 'equipo', 'default': '',
+                    'values': [{'value': '', 'label': "Todos los equipos de venta"}]
+                    + [{'value': str(t.id), 'label': t.name} for t in teams]}]
+        positions = self.env['sgi.process.activity'].search(
+            [('fiscal_position_ids', '!=', False)]).fiscal_position_ids
+        if positions:
+            options.append({'name': 'mercado', 'default': '',
+                            'values': [{'value': '', 'label': "Todos los mercados"}]
+                            + [{'value': str(p.id), 'label': p.name} for p in positions]})
+        return options
 
     def _process_nav(self, process):
         return {
@@ -189,7 +223,8 @@ class SgiDiagram(models.AbstractModel):
         lanes_by = self._param('carriles', 'puesto')
         options = [{'name': 'carriles', 'default': 'puesto',
                     'values': [{'value': 'puesto', 'label': "Carriles por puesto"},
-                               {'value': 'etapa', 'label': "Columnas por etapa"}]}]
+                               {'value': 'etapa', 'label': "Columnas por etapa"}]}
+                   ] + self._line_options()
         if lanes_by == 'puesto':
             result = self._process_flow_swimlanes(process, activities)
             result['param_options'] = options
@@ -303,7 +338,10 @@ class SgiDiagram(models.AbstractModel):
         activities = self.env['sgi.process.activity'].search_count(
             [('process_id', '=', process.id), ('active', '=', True)])
         indicators = self.env['sgi.indicator'].search_count([('process_id', '=', process.id)])
-        jobs = self.env['sgi.activity.role'].search([('process_id', '=', process.id)]).job_id
+        # Solo roles de actividades activas (los de archivadas siguen en la base).
+        roles = self.env['sgi.activity.role'].search(
+            [('process_id', '=', process.id), ('activity_active', '=', True)])
+        jobs = roles.job_id | roles.family_id.job_ids
         center = self._process_item(process, meta=[
             {'icon': 'fa-list-ol', 'label': "Actividades", 'value': activities},
             {'icon': 'fa-tachometer', 'label': "Indicadores", 'value': indicators},
@@ -423,7 +461,12 @@ class SgiDiagram(models.AbstractModel):
     def _data_who_does_what(self, res_id=None):
         Role = self.env['sgi.activity.role']
         processes = self.env['sgi.process'].search([('active', '=', True)], order='process_type, code')
-        roles = Role.search([('process_id', 'in', processes.ids), ('activity_id.active', '=', True)])
+        domain = [('process_id', 'in', processes.ids), ('activity_id.active', '=', True)]
+        team, _market = self._line_params()
+        if team:
+            domain += ['|', ('activity_id.sale_team_ids', '=', False),
+                       ('activity_id.sale_team_ids', 'in', team.ids)]
+        roles = Role.search(domain)
         weight = {'ejecuta': 3, 'aprueba': 2, 'participa': 1, 'informa': 1, 'escala': 1}
         cells, jobs = {}, self.env['hr.job']
         for role in roles:
@@ -451,6 +494,7 @@ class SgiDiagram(models.AbstractModel):
             'layout': 'matrix',
             'lanes': [],
             'matrix': {'rows': rows, 'cols': cols, 'cells': matrix_cells},
+            'param_options': self._line_options()[:1],
             'legend': [{'color': 'success', 'label': "ejecuta"}, {'color': 'warning', 'label': "aprueba"},
                        {'color': 'info', 'label': "participa / se entera / escala"}],
         }

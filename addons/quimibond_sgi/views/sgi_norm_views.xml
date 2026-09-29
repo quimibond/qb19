@@ -5,6 +5,12 @@
         <field name="model">sgi.norm</field>
         <field name="arch" type="xml">
             <form string="Norma">
+                <header>
+                    <button name="%(quimibond_sgi.action_report_compliance_matrix)d" type="action"
+                            string="Matriz de cumplimiento" icon="fa-th" class="btn-primary"/>
+                    <button name="action_view_uncovered_clauses" type="object"
+                            string="Puntos sin actividad" icon="fa-exclamation-triangle"/>
+                </header>
                 <sheet>
                     <group>
                         <field name="code"/>
@@ -14,9 +20,11 @@
                     <notebook>
                         <page string="Cláusulas">
                             <field name="clause_ids">
-                                <list editable="bottom">
+                                <list editable="bottom" decoration-danger="not covered">
                                     <field name="code"/>
                                     <field name="name"/>
+                                    <field name="activity_count"/>
+                                    <field name="covered" column_invisible="1"/>
                                 </list>
                             </field>
                         </page>
@@ -51,11 +59,80 @@
         <field name="name">sgi.norm.clause.list</field>
         <field name="model">sgi.norm.clause</field>
         <field name="arch" type="xml">
-            <list string="Cláusulas">
+            <list string="Cláusulas" decoration-danger="not covered">
                 <field name="norm_id"/>
                 <field name="code"/>
                 <field name="name"/>
+                <field name="activity_count"/>
+                <field name="process_ids" widget="many2many_tags" optional="show"/>
+                <field name="covered" column_invisible="1"/>
             </list>
+        </field>
+    </record>
+
+    <!-- 56.23.0: el punto de la norma con su evidencia en el SGI (actividades
+         y procesos que lo cumplen, NC levantadas contra él). -->
+    <record id="sgi_norm_clause_view_form" model="ir.ui.view">
+        <field name="name">sgi.norm.clause.form</field>
+        <field name="model">sgi.norm.clause</field>
+        <field name="arch" type="xml">
+            <form string="Punto de la norma">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_alerts" type="object" class="oe_stat_button"
+                                icon="fa-exclamation-circle" invisible="not alert_count">
+                            <field name="alert_count" widget="statinfo" string="NC"/>
+                        </button>
+                    </div>
+                    <div class="alert alert-danger mb-3" role="alert" invisible="covered or not id">
+                        Ninguna actividad del SGI cumple este punto.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="norm_id"/>
+                            <field name="code"/>
+                        </group>
+                        <group>
+                            <field name="name"/>
+                            <field name="covered" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Evidencia en el SGI" name="evidencia">
+                            <group>
+                                <field name="process_ids" widget="many2many_tags" readonly="1"/>
+                            </group>
+                            <field name="activity_ids" options="{'no_create': True}">
+                                <list>
+                                    <field name="process_id"/>
+                                    <field name="number"/>
+                                    <field name="name"/>
+                                    <field name="responsible_job_ids" widget="many2many_tags" optional="show"/>
+                                    <field name="measure_state" widget="badge" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_norm_clause_view_search" model="ir.ui.view">
+        <field name="name">sgi.norm.clause.search</field>
+        <field name="model">sgi.norm.clause</field>
+        <field name="arch" type="xml">
+            <search string="Puntos de la norma">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="norm_id"/>
+                <field name="activity_ids"/>
+                <filter name="uncovered" string="Sin actividad" domain="[('covered', '=', False)]"/>
+                <filter name="covered" string="Con actividad" domain="[('covered', '=', True)]"/>
+                <group>
+                    <filter name="group_norm" string="Norma" context="{'group_by': 'norm_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -63,6 +140,7 @@
         <field name="name">Cláusulas</field>
         <field name="res_model">sgi.norm.clause</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_group_norm': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Catálogo de cláusulas</p>
             <p>Las cláusulas de las tres normas, para ligar auditorías y hallazgos.</p>

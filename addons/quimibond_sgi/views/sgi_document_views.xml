@@ -14,7 +14,8 @@
                             class="btn-primary" icon="fa-external-link"
                             invisible="sgi_doc_type != 'formulario_odoo'"/>
                     <button name="action_generate_acks" type="object" string="Generar acuses"
-                            class="btn-secondary" invisible="sgi_state not in ('piloto','vigente')"/>
+                            class="btn-secondary" invisible="sgi_state not in ('piloto','vigente')"
+                            groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="sgi_state" widget="statusbar"
                            statusbar_visible="borrador,piloto,vigente,obsoleto"/>
                 </header>
@@ -67,11 +68,34 @@
                             <field name="sgi_revision_legacy" invisible="not sgi_revision_legacy"/>
                             <field name="sgi_issue_date"/>
                             <field name="sgi_next_review_date"/>
+                            <field name="sgi_obsolete_date" invisible="not sgi_obsolete_date"/>
+                            <field name="sgi_obsolete_reason" invisible="not sgi_obsolete_reason"/>
+                            <field name="sgi_replaced_by_process_id" invisible="not sgi_replaced_by_process_id"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
                             <field name="sgi_retention_years"/>
                             <field name="sgi_disposition" invisible="not sgi_retention_years"/>
                         </group>
+                    </group>
+                    <!-- 56.21.0 (E2.36): documento externo. -->
+                    <group string="Documento externo" invisible="sgi_doc_type != 'externo'">
+                        <group>
+                            <field name="sgi_ext_issuer"/>
+                            <field name="sgi_ext_issuer_revision"/>
+                            <field name="sgi_ext_received_date"/>
+                        </group>
+                        <group>
+                            <field name="sgi_ext_deadline"/>
+                            <field name="sgi_ext_implemented_date"/>
+                            <field name="sgi_ext_state" widget="badge"
+                                   decoration-success="sgi_ext_state == 'implantado'"
+                                   decoration-warning="sgi_ext_state == 'por_implantar'"
+                                   decoration-danger="sgi_ext_state == 'vencido'"/>
+                        </group>
+                        <div class="text-muted" colspan="2">
+                            El <b>Proceso SGI</b> de arriba es el proceso dueño: su responsable
+                            recibe el aviso para implantarlo en 10 días hábiles desde la recepción.
+                        </div>
                     </group>
                     <group string="Archivo" invisible="sgi_doc_type == 'formulario_odoo'">
                         <field name="type" widget="radio" options="{'horizontal': true}"
@@ -93,7 +117,7 @@
                         </div>
                     </group>
                     <notebook>
-                        <page string="Migración a Odoo"
+                        <page string="Migración a Odoo" name="migracion"
                               invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo')">
                             <group>
                                 <group>
@@ -118,7 +142,7 @@
                                 archivo y el botón principal abra la vista real.
                             </div>
                         </page>
-                        <page string="Documentos relacionados" invisible="not sgi_is_controlled">
+                        <page string="Documentos relacionados" name="relacionados" invisible="not sgi_is_controlled">
                             <group string="Familia documental">
                                 <field name="sgi_parent_document_id"
                                        help="Enlázalo al procedimiento padre (la nomenclatura solo lo sugiere)."/>
@@ -147,25 +171,25 @@
                                 </field>
                             </group>
                         </page>
-                        <page string="Puestos que aplican">
+                        <page string="Puestos que aplican" name="puestos">
                             <div class="alert alert-info mb-3" role="status">
                                 <b>La difusión depende de esto:</b> el botón
                                 «Generar acuses» crea un acuse por cada empleado
-                                de estos puestos, y «Mis procedimientos» filtra
+                                de estos puestos, y «Mi procedimiento» filtra
                                 por puesto. Un documento vigente sin puestos no
                                 se difunde a nadie.
                             </div>
                             <field name="sgi_job_ids" widget="many2many_tags"/>
                         </page>
-                        <page string="Acuses de lectura">
+                        <page string="Acuses de lectura" name="acuses">
                             <group groups="quimibond_sgi.group_sgi_manager">
                                 <group string="Firma electrónica (app Firma)">
                                     <field name="sgi_sign_template_id"
-                                           options="{'no_create': True}"/>
+                                           options="{'no_create': True}"
+                                           placeholder="La arma el SGI al enviar"/>
                                     <button name="action_sgi_send_sign_requests"
                                             type="object" string="Enviar acuses a firma"
                                             class="btn-secondary" icon="fa-pencil-square-o"
-                                            invisible="not sgi_sign_template_id"
                                             confirm="Se creará una solicitud de firma electrónica por cada empleado con acuse pendiente. ¿Continuar?"/>
                                 </group>
                             </group>
@@ -232,6 +256,7 @@
             <search string="Documentos SGI">
                 <field name="sgi_code"
                        filter_domain="['|', ('sgi_code', 'ilike', self), '&amp;', ('sgi_previous_code', 'ilike', self), ('sgi_previous_code_date', '&gt;=', (context_today() - relativedelta(months=12)).strftime('%Y-%m-%d'))]"/>
+                <field name="sgi_previous_code" string="Clave anterior (Dropbox)"/>
                 <field name="sgi_doc_type_id"/>
                 <field name="name"/>
                 <field name="sgi_area_id"/>
@@ -368,7 +393,9 @@
         <field name="name">sgi.migration.formatos.list</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <list string="Migración de formatos"
+            <!-- 7.4 (56.13.0): multi_edit: MAST selecciona varios renglones y
+                 asigna la clase (o el destino, o el estado) a todos de una vez. -->
+            <list string="Migración de formatos" multi_edit="1"
                   decoration-success="sgi_migration_state in ('migrado', 'baja')"
                   decoration-info="sgi_migration_state == 'en_curso'"
                   decoration-muted="sgi_migration_state == 'na'">

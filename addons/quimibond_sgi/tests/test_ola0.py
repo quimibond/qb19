@@ -179,8 +179,9 @@ class TestOla0Lock(TransactionCase):
         risk = self.env['sgi.risk'].create({
             'name': 'R', 'instrument': 'ryo',
             'eval_probability': '1', 'eval_impact': '1'})
+        # 56.7.0: el usuario termina SUS acciones (regla de escritura).
         line = self.env['sgi.action.line'].create({
-            'risk_id': risk.id, 'name': 'a', 'responsible_id': self.mast.id,
+            'risk_id': risk.id, 'name': 'a', 'responsible_id': self.raso.id,
             'date_commit': fields.Date.today()})
         risk.write({'state': 'cerrado'})
         line.with_user(self.raso).write({'date_done': fields.Date.today()})

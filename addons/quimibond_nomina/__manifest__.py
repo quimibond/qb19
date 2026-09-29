@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.6.0',
+    'version': '19.0.1.7.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
     'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
@@ -31,6 +31,12 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
   que captura RH (días en que hubo tiempo extra) y, si falta, se estima.
   La herencia de la plantilla se configura sola al instalar y se apaga si Odoo
   ya emite el nodo.
+* **ISR sobre el acumulado del mes.** NOI calcula el ISR del mes completo y
+  en la última nómina del mes retiene la diferencia contra lo ya retenido;
+  Odoo calculaba cada periodo por separado. ``payslip._qb_isr_mensual()``
+  hace ese cálculo (tarifa mensual y subsidio de los parámetros de la
+  localización, acumulado de los recibos validados del mes) y las reglas
+  ``ISR`` y ``SUBSIDY`` lo llaman.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',

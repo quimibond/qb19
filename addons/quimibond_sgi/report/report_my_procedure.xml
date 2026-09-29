@@ -109,6 +109,9 @@
                 <div t-if="entry.get('related')" style="margin-top:3px;">
                     <b>Conforme a:</b> <t t-out="entry['related']"/>.
                 </div>
+                <div t-if="entry.get('norms')" style="margin-top:3px;">
+                    <b>Cumple con:</b> <t t-out="entry['norms']"/>.
+                </div>
                 <div t-if="entry.get('instruction')" style="margin-top:3px;">
                     <b>Instructivo:</b> <t t-out="entry['instruction']"/>.
                 </div>
@@ -143,6 +146,7 @@
                             <td style="padding:5px; border:1px solid #000;">
                                 <strong t-out="cover['job'].name"/>
                                 <span t-if="cover['family']" class="text-muted"> · familia <t t-out="cover['family'].name"/></span>
+                                <span t-if="cover.get('teams')" class="text-muted"> · equipos de venta: <t t-out="', '.join(cover['teams'].mapped('name'))"/></span>
                             </td>
                         </tr>
                         <tr>

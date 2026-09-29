@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.56.1.0',
+    'version': '19.0.56.24.1',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -52,6 +52,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'knowledge',
         'website_slides',
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
+        'web_studio',  # 56.5.0: reglas de aprobación nativas para el rol «Aprueba»
     ],
     'data': [
         # security
@@ -88,17 +89,21 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_fase7_data.xml',
         'data/sgi_fase8_data.xml',
         'data/sgi_measure_cron.xml',
+        'data/sgi_approval_cron.xml',
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
         'data/sgi_sign_elearning_data.xml',
+        'data/sgi_doc_change_sign_data.xml',
+        'data/sgi_checklist_cron.xml',
         'data/sgi_coa_data.xml',
         'data/sgi_my_procedure_data.xml',
         'data/sgi_epp_data.xml',
         'data/sgi_pr6_data.xml',
         # views
         'views/sgi_area_views.xml',
+        'report/report_compliance_matrix.xml',
         'views/sgi_norm_views.xml',
         'views/sgi_process_views.xml',
         'views/sgi_process_procedure_views.xml',
@@ -144,7 +149,10 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_settings_views.xml',
         'views/sgi_sign_elearning_views.xml',
         'views/sgi_catalog_views.xml',
+        'views/sgi_mp_change_views.xml',
         'views/sgi_my_procedure_views.xml',
+        'views/sgi_my_pending_views.xml',
+        'views/sgi_approval_native_views.xml',
         'views/sgi_structure_views.xml',
         'views/sgi_coa_views.xml',
         # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el
@@ -167,6 +175,8 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_fmea.xml',
         'report/report_incident.xml',
         'report/report_procedure.xml',
+        'report/report_doc_change.xml',
+        'report/report_sign_sheet.xml',
         'report/report_my_procedure.xml',
         'report/report_master_list.xml',
         'report/report_direction.xml',
@@ -182,6 +192,9 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_master_list_all.xml',
         # menus
         'views/sgi_menus.xml',
+        'views/sgi_business_line_views.xml',
+        'views/sgi_external_doc_views.xml',
+        'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
     ],
     'demo': [
@@ -191,6 +204,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'assets': {
         'web.assets_backend': [
             'quimibond_sgi/static/src/diagram/**/*',
+            'quimibond_sgi/static/src/my_procedure/**/*',
         ],
     },
     'installable': True,

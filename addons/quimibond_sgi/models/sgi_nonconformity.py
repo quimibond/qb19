@@ -68,6 +68,12 @@ class QualityAlert(models.Model):
         ('auditoria_externa', "Auditoría externa"),
         ('reclamacion', "Reclamación de cliente"),
         ('indicador', "Indicador incumplido"),
+        # 56.20.0: E2.27, E2.20, C5.28, E2.29 y E2.39.
+        ('incidente_sst', "Incidente/accidente SST"),
+        ('emergencia', "Emergencia real"),
+        ('scorecard', "Scorecard de cliente"),
+        ('recorrido_csh', "Recorrido de la Comisión de Seguridad e Higiene"),
+        ('riesgo', "Riesgo u oportunidad"),
     ], string="Origen", default='proceso', tracking=True)
     sgi_source_id = fields.Many2one(
         'sgi.alert.source', string="Fuente automática", readonly=True, copy=False,
@@ -192,6 +198,7 @@ class QualityAlert(models.Model):
             if alert.sgi_folio and alert.sgi_classification == 'mayor':
                 Cron._sgi_send_critical_mail(
                     'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
+        alerts._sgi_request_admin_record()
         return alerts
 
     # ------------------------------------------------------------------
@@ -402,8 +409,10 @@ class QualityAlert(models.Model):
             # sudo() porque la reincidencia es un hecho del sistema, no depende de
             # las reglas de registro del usuario en turno; y se excluyen las NCs
             # canceladas (una falsa alarma cancelada no marca a la siguiente).
-            prior = self.sudo().search([
-                ('id', '<', alert.id),
+            # En el formulario (onchange) el registro es un NewId: se usa el
+            # id real; sin él (NC nueva sin guardar) todas cuentan como previas.
+            real_id = alert._origin.id or (alert.id if isinstance(alert.id, int) else False)
+            prior = self.sudo().search(([('id', '<', real_id)] if real_id else []) + [
                 ('sgi_folio', '!=', False),
                 ('sgi_process_id', '=', alert.sgi_process_id.id),
                 ('create_date', '>=', since),
@@ -546,6 +555,8 @@ class QualityAlert(models.Model):
                     lambda a: a.stage_id != new_stage and a.sgi_folio)
         res = super().write(vals)
         Cron = self.env['sgi.cron']
+        if vals.get('sgi_followup_action') == 'administrativa':
+            self._sgi_request_admin_record()
         for alert in newly_mayor:
             Cron._sgi_send_critical_mail(
                 'quimibond_sgi.mail_template_sgi_nc_mayor', alert)
@@ -554,6 +565,18 @@ class QualityAlert(models.Model):
                 alert._sgi_notify_mayor_closed()
             alert._sgi_read_across()
         return res
+
+    def _sgi_request_admin_record(self):
+        """S4.32 (56.20.0): «Acción administrativa» pide el acta al
+        Coordinador de RH (parámetro quimibond_sgi.rh_user_id; si no, Jefe
+        MAST). Una sola actividad por NC."""
+        Cron = self.env['sgi.cron']
+        rh_id = Cron._sgi_rh_user_id()
+        for alert in self.filtered(lambda a: a.sgi_followup_action == 'administrativa'):
+            Cron._sgi_schedule(
+                alert, "Levantar acta administrativa (S4.32)",
+                "La NC %s pide acción administrativa. Levanta el acta con los responsables "
+                "y adjúntala a la NC." % (alert.sgi_folio or alert.name), rh_id)
 
     def _sgi_notify_mayor_closed(self):
         """PROT-05/D7: al cerrar una NC mayor, recordar actualizar AMEF y plan de
@@ -709,6 +732,30 @@ class SgiActionLine(models.Model):
                     "SST, un simulacro o un objetivo integral (exactamente uno, "
                     "no varios ni ninguno).")
 
+    @api.constrains('date_done', 'progress')
+    def _sgi_check_done(self):
+        """3.6: una acción terminada tiene 100 % de avance y una fecha de
+        término que ya pasó (hoy o antes). Antes había una «terminada» con 0 %
+        y fecha futura."""
+        today = fields.Date.context_today(self)
+        for line in self.filtered('date_done'):
+            if line.date_done > today:
+                raise ValidationError(
+                    "La acción «%s» no puede terminar en el futuro (%s). Captura la fecha "
+                    "en que realmente se terminó." % (line.name, line.date_done))
+            if line.progress != '100':
+                raise ValidationError(
+                    "La acción «%s» está al %s%%: para terminarla, el avance debe ser 100%%."
+                    % (line.name, line.progress or '0'))
+
+    @staticmethod
+    def _sgi_done_vals(vals):
+        """Terminar (poner fecha) sin decir el avance lo sube a 100 %;
+        reabrir (quitar la fecha) sin decir el avance lo regresa a 50 %."""
+        if 'date_done' in vals and 'progress' not in vals:
+            vals = dict(vals, progress='100' if vals['date_done'] else '50')
+        return vals
+
     @api.constrains('action_type', 'alert_id')
     def _sgi_check_root_cause_before_capa(self):
         """H8: sin causa raíz no hay acción correctiva/preventiva.
@@ -807,11 +854,12 @@ class SgiActionLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        lines = super().create(vals_list)
+        lines = super().create([self._sgi_done_vals(vals) for vals in vals_list])
         lines._sgi_sync_activity()
         return lines
 
     def write(self, vals):
+        vals = self._sgi_done_vals(vals)
         res = super().write(vals)
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:

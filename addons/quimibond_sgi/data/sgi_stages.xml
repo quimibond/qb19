@@ -90,7 +90,8 @@
         <field name="name">Modificación de documento SGI</field>
         <field name="sgi_is_doc_change" eval="True"/>
         <field name="approver_sequence" eval="True"/>
-        <field name="approval_minimum">2</field>
+        <field name="approval_minimum">1</field>
+        <field name="sgi_sign_required" eval="True"/>
         <field name="requirer_document">optional</field>
         <field name="description">Flujo F-P-G01-06: alta/modificación/baja de documentos controlados del SGI.</field>
     </record>

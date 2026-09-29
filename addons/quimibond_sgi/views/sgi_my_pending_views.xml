@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 56.3.0: «Mis pendientes» en una sola lista con semáforo. -->
+    <record id="sgi_my_pending_view_list" model="ir.ui.view">
+        <field name="name">sgi.my.pending.list</field>
+        <field name="model">sgi.my.pending</field>
+        <field name="arch" type="xml">
+            <list string="Mis pendientes" create="0" edit="0" delete="0"
+                  default_order="state_rank, date_due, id"
+                  decoration-danger="state == 'atrasada'" decoration-warning="state == 'por_vencer'">
+                <field name="state_rank" column_invisible="1"/>
+                <field name="employee_id" string="Persona" optional="hide"/>
+                <field name="kind" string="Tipo"/>
+                <field name="name" string="Qué"/>
+                <field name="process_id" string="Proceso"/>
+                <field name="date_due" string="Vence"/>
+                <field name="state" string="Estado" widget="badge"
+                       decoration-danger="state == 'atrasada'"
+                       decoration-warning="state == 'por_vencer'"
+                       decoration-success="state == 'al_dia'"/>
+                <button name="action_open" type="object" string="Abrir" icon="fa-external-link"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_my_pending_view_search" model="ir.ui.view">
+        <field name="name">sgi.my.pending.search</field>
+        <field name="model">sgi.my.pending</field>
+        <field name="arch" type="xml">
+            <search string="Mis pendientes">
+                <field name="name"/>
+                <field name="employee_id"/>
+                <field name="process_id"/>
+                <filter name="late" string="Atrasadas" domain="[('state', '=', 'atrasada')]"/>
+                <filter name="this_week" string="Vence esta semana"
+                        domain="[('date_due', '&gt;=', context_today().strftime('%Y-%m-%d')), ('date_due', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
+                <filter name="ok" string="Al día" domain="[('state', '=', 'al_dia')]"/>
+                <group>
+                    <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_employee" string="Persona" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+</odoo>

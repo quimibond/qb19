@@ -79,7 +79,7 @@ class SgiActivityRoleCadence(models.Model):
     activity_when = fields.Char(string="Cuándo", compute='_compute_activity_when')
 
     @api.depends('activity_id.measure_cadence', 'activity_id.due_weekday',
-                 'activity_id.due_business_day')
+                 'activity_id.due_business_day', 'activity_id.due_month', 'activity_id.due_day')
     def _compute_activity_when(self):
         Job = self.env['hr.job']
         for role in self:
@@ -143,6 +143,10 @@ class HrJobMyProcedure(models.Model):
                 and activity.due_business_day:
             return ((1, activity.due_business_day),
                     "Día hábil %d del mes" % activity.due_business_day)
+        # 56.20.0: trimestral, semestral y anual con mes y día.
+        months = activity._sgi_due_months() if activity.due_day else []
+        if months:
+            return ((2, months[0] * 100 + activity.due_day), "Cada %s" % activity._sgi_due_label())
         return ((9, 0), "")
 
     def _sgi_mp_role_label(self, role):
@@ -240,6 +244,8 @@ class HrJobMyProcedure(models.Model):
             'manager': self.department_id.manager_id,
             'employees': employees,
             'family': self.sgi_family_id,
+            # 56.16.0: equipos de venta que filtran este procedimiento.
+            'teams': self._sgi_mp_teams(),
             'processes': processes,
             'counts': [(role_labels[c], counts[c]) for c, _l in SGI_ROLE_SELECTION if counts[c]],
         }
@@ -261,14 +267,29 @@ class HrJobMyProcedure(models.Model):
         data['hash'] = self._sgi_my_procedure_hash(data)
         return data
 
+    def _sgi_mp_document_records(self):
+        """Documentos vigentes que aplican al puesto (56.2.0): los que usan
+        las actividades activas donde el puesto tiene rol, directo o por su
+        familia (instructivo, formatos referenciados y procedimiento
+        relacionado, que incluye el instructivo de cada tarjeta), más los
+        documentos que nombran al puesto. Antes solo contaban estos últimos y
+        en producción casi ninguno lo hace: la lista salía vacía."""
+        self.ensure_one()
+        Doc = self.env['documents.document'].sudo()
+        roles = self.env['sgi.activity.role'].sudo().search(self._sgi_roles_domain())
+        activities = roles.activity_id.filtered('active')
+        docs = activities.instruction_id | activities.format_document_ids | activities.related_procedure_id
+        docs |= Doc.search([('sgi_job_ids', 'in', self.ids), ('sgi_doc_type', '!=', 'mi_procedimiento')])
+        if not docs:
+            return Doc
+        return Doc.search([('id', 'in', docs.ids), ('sgi_state', '=', 'vigente')],
+                          order='sgi_doc_type, sgi_code, name')
+
     def _sgi_mp_documents(self):
         """Documentos vigentes que aplican al puesto (para el PDF y la huella;
         la pantalla los muestra con una lista nativa)."""
         self.ensure_one()
-        docs = self.env['documents.document'].sudo().search(
-            [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.ids),
-             ('sgi_doc_type', '!=', 'mi_procedimiento')],
-            order='sgi_doc_type, sgi_code, name')
+        docs = self._sgi_mp_document_records()
         return [{
             'doc': doc, 'code': doc.sgi_code or '', 'name': doc.name or '',
             'type': dict(doc._fields['sgi_doc_type'].selection).get(doc.sgi_doc_type, ''),
@@ -354,6 +375,9 @@ class HrJobMyProcedure(models.Model):
             'outputs': activity.output_deliverable_ids.mapped('name'),
             'related': (activity.related_procedure_id.sgi_code
                         or activity.related_procedure_id.name) if activity.related_procedure_id else '',
+            # 56.23.0: puntos de la norma que cumple. Referencia: no entra en
+            # la huella (ligar puntos no obliga a republicar ni a firmar).
+            'norms': activity._sgi_norm_labels(),
         }
 
     @api.model
@@ -419,7 +443,11 @@ class HrJobMyProcedure(models.Model):
             raise UserError("Solo el Jefe MAST publica «Mi procedimiento».")
         Doc = self.env['documents.document'].sudo()
         published, unchanged, empty = self.env['documents.document'], [], []
+        in_sign, not_sent = [], []
         today = fields.Date.context_today(self)
+        # 56.19.0: con firma en Sign, la revisión nace en borrador y entra en
+        # vigor cuando firman MAST y el jefe directo (sgi_my_procedure_sign).
+        sign = Doc._sgi_mp_sign_required()
         for job in self:
             data = job._sgi_my_procedure_data()
             if not data['total']:
@@ -430,12 +458,18 @@ class HrJobMyProcedure(models.Model):
             if current and current.sgi_content_hash == data['hash']:
                 unchanged.append(job.name)
                 continue
+            if sign and Doc._sgi_mp_pending_sign_doc(code, data['hash']):
+                in_sign.append(job.name)
+                continue
             previous = Doc.with_context(active_test=False).search([('sgi_code', '=', code)])
             revision = (max(previous.mapped('sgi_revision')) + 1) if previous else 0
             report = self.env.ref('quimibond_sgi.action_report_my_procedure')
             pdf, _ = self.env['ir.actions.report'].with_context(
                 sgi_mp_revision=revision, sgi_mp_issue_date=today,
             )._render_qweb_pdf(report.report_name, job.ids)
+            # Si no se puede mandar a firmar (sin correo, sin jefe), la
+            # revisión en borrador no se queda: se deshace y se reporta.
+            savepoint = self.env.cr.savepoint() if sign else None
             doc = Doc.create({
                 'name': "Mi procedimiento — %s (Rev. %02d).pdf" % (job.name, revision),
                 'type': 'binary',
@@ -444,7 +478,7 @@ class HrJobMyProcedure(models.Model):
                 'sgi_is_controlled': True,
                 'sgi_doc_type': 'mi_procedimiento',
                 'sgi_code': code,
-                'sgi_state': 'vigente',
+                'sgi_state': 'borrador' if sign else 'vigente',
                 'sgi_revision': revision,
                 'sgi_issue_date': today,
                 'sgi_job_ids': [(6, 0, [job.id])],
@@ -452,6 +486,17 @@ class HrJobMyProcedure(models.Model):
                 'sgi_owner_id': self.env.user.id,
                 'company_id': job.company_id.id or self.env.company.id,
             })
+            if sign:
+                try:
+                    doc._sgi_mp_send_to_sign(job)
+                except UserError as err:
+                    savepoint.close(rollback=True)
+                    self.env.invalidate_all()
+                    not_sent.append("%s (%s)" % (job.name, err.args[0] if err.args else err))
+                    continue
+                savepoint.close(rollback=False)
+                in_sign.append(job.name)
+                continue
             doc.action_generate_acks()
             doc.message_post(body=Markup(
                 "«Mi procedimiento» de <b>%s</b>, revisión %02d: %d actividades "
@@ -459,11 +504,16 @@ class HrJobMyProcedure(models.Model):
                 job.name, revision, data['total'], sum(len(s['entries']) for s in data['sections']),
                 len(doc.sgi_ack_ids)))
             published |= doc
+            self.env['hr.employee']._sgi_mp_touch_jobs(job)
             _logger.info("SGI Mi procedimiento: %s rev %02d publicado (%s).",
                          code, revision, job.name)
         parts = []
         if published:
             parts.append("%d publicado(s)" % len(published))
+        if in_sign:
+            parts.append("en firma (Sign): %s" % ", ".join(in_sign))
+        if not_sent:
+            parts.append("sin mandar a firma: %s" % "; ".join(not_sent))
         if unchanged:
             parts.append("sin cambios: %s" % ", ".join(unchanged))
         if empty:
@@ -477,7 +527,7 @@ class HrJobMyProcedure(models.Model):
             }
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
-            'params': {'type': 'success' if published else 'warning',
+            'params': {'type': 'success' if published or in_sign else 'warning',
                        'message': "Mi procedimiento: %s." % "; ".join(parts)},
         }
 
@@ -594,16 +644,20 @@ class HrJobMyProcedure(models.Model):
 class HrEmployeeMyProcedure(models.Model):
     _inherit = 'hr.employee'
 
+    sgi_document_ack_ids = fields.One2many('sgi.document.ack', 'employee_id', string="Acuses de lectura")
+    # 56.7.0 (1.8): guardado para filtrar y agrupar (quién ya firmó).
     sgi_my_procedure_ack_state = fields.Selection([
         ('sin_publicar', "Sin publicar"),
         ('pendiente', "Acuse pendiente"),
         ('leido', "Leído y entendido"),
-    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack')
+    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack', store=True, index=True)
 
+    @api.depends('sgi_mp_job_id', 'sgi_document_ack_ids.state', 'sgi_document_ack_ids.document_id')
     def _compute_sgi_my_procedure_ack(self):
         Ack = self.env['sgi.document.ack'].sudo()
         for emp in self:
-            doc = emp.job_id._sgi_my_procedure_current_doc() if emp.job_id else False
+            job = emp.sudo().sgi_mp_job_id
+            doc = job._sgi_my_procedure_current_doc() if job else False
             if not doc:
                 emp.sgi_my_procedure_ack_state = 'sin_publicar'
                 continue

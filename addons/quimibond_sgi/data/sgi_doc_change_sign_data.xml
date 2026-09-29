@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Papeles de firma del cambio documental (56.17.0). -->
+<odoo noupdate="1">
+    <record id="sgi_sign_role_elaboro" model="sign.item.role">
+        <field name="name">SGI · Elaboró</field>
+    </record>
+    <record id="sgi_sign_role_reviso" model="sign.item.role">
+        <field name="name">SGI · Revisó</field>
+    </record>
+    <record id="sgi_sign_role_aprobo" model="sign.item.role">
+        <field name="name">SGI · Aprobó</field>
+    </record>
+    <!-- 56.18.0: acuses de lectura y responsivas de EPP. -->
+    <record id="sgi_sign_role_empleado" model="sign.item.role">
+        <field name="name">SGI · Empleado</field>
+    </record>
+</odoo>

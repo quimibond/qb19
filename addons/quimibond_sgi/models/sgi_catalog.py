@@ -275,22 +275,32 @@ class SgiActivityRole(models.Model):
             activities._sgi_check_roles()
         activities.process_id._sgi_flag_procedure_dirty()
 
+    def _sgi_mp_jobs(self):
+        """Puestos cuyo «Mi procedimiento» depende de estos roles (directos
+        y los de su familia)."""
+        return self.sudo().job_id | self.sudo().family_id.job_ids
+
     @api.model_create_multi
     def create(self, vals_list):
         roles = super().create(vals_list)
         roles._sgi_after_change(roles.activity_id)
+        self.env['hr.employee']._sgi_mp_touch_jobs(roles._sgi_mp_jobs())
         return roles
 
     def write(self, vals):
         before = self.activity_id
+        jobs = self._sgi_mp_jobs()
         res = super().write(vals)
         self._sgi_after_change(before | self.activity_id)
+        self.env['hr.employee']._sgi_mp_touch_jobs(jobs | self._sgi_mp_jobs())
         return res
 
     def unlink(self):
         activities = self.activity_id
+        jobs = self._sgi_mp_jobs()
         res = super().unlink()
         self._sgi_after_change(activities)
+        self.env['hr.employee']._sgi_mp_touch_jobs(jobs)
         return res
 
 
@@ -343,12 +353,20 @@ class HrJob(models.Model):
 
     def _sgi_roles_domain(self):
         """Roles del puesto: los suyos y los de su familia (el puesto hereda
-        las actividades de su familia)."""
+        las actividades de su familia), solo de actividades activas. Los
+        roles de actividades archivadas se quedan en la base (223 en
+        producción, 2026-09-28) pero no cuentan ni se muestran (56.15.0)."""
         families = self.sgi_family_id
         domain = [('job_id', 'in', self.ids)]
         if families:
             domain = ['|'] + domain + [('family_id', 'in', families.ids)]
-        return domain
+        # 56.16.0: con equipos de venta, solo las actividades generales y las
+        # de sus equipos (los de la persona si se calcula para ella).
+        teams = self._sgi_mp_teams()
+        if teams:
+            domain += ['|', ('activity_id.sale_team_ids', '=', False),
+                       ('activity_id.sale_team_ids', 'in', teams.ids)]
+        return [('activity_active', '=', True)] + domain
     sgi_execute_count = fields.Integer(
         string="Ejecuta", compute='_compute_sgi_role_counts')
     sgi_approve_count = fields.Integer(
@@ -369,23 +387,31 @@ class HrJob(models.Model):
             job.sgi_all_role_ids = Role.search(job._sgi_roles_domain()) if job.id else Role
 
     def _compute_sgi_role_counts(self):
-        """Roles propios más los de su familia."""
-        jobs = self.filtered('id')
+        """Roles propios más los de su familia, de actividades activas."""
+        # Con equipos de venta el conteo va por puesto (56.16.0).
+        scoped = self.filtered(lambda j: j.id and j._sgi_mp_teams(for_employee=False))
+        jobs = self.filtered('id') - scoped
         by_job, by_family = {}, {}
+        for job in scoped:
+            for role, count in self.env['sgi.activity.role']._read_group(
+                    job._sgi_roles_domain(), ['role'], ['__count']):
+                by_job[(job.id, role)] = count
         if jobs:
             Role = self.env['sgi.activity.role']
             for job, role, count in Role._read_group(
-                    [('job_id', 'in', jobs.ids)], ['job_id', 'role'], ['__count']):
+                    [('job_id', 'in', jobs.ids), ('activity_active', '=', True)],
+                    ['job_id', 'role'], ['__count']):
                 by_job[(job.id, role)] = count
             if jobs.sgi_family_id:
                 for family, role, count in Role._read_group(
-                        [('family_id', 'in', jobs.sgi_family_id.ids)],
+                        [('family_id', 'in', jobs.sgi_family_id.ids), ('activity_active', '=', True)],
                         ['family_id', 'role'], ['__count']):
                     by_family[(family.id, role)] = count
         for job in self:
             def total(role, job=job):
-                return (by_job.get((job.id, role), 0)
-                        + by_family.get((job.sgi_family_id.id, role), 0))
+                # Con equipos, la familia ya viene en el conteo del puesto.
+                family = 0 if job in scoped else by_family.get((job.sgi_family_id.id, role), 0)
+                return by_job.get((job.id, role), 0) + family
             job.sgi_execute_count = total('ejecuta')
             job.sgi_approve_count = total('aprueba')
             job.sgi_participate_count = total('participa')

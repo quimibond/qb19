@@ -3,15 +3,24 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
 
+# «Sin datos» (56.14.0): sin recepciones con fecha compromiso el OTD valía 0
+# y la calificación quedaba en 30 → «Baja» (84 de 87 proveedores en
+# producción). No tener datos no es desempeño malo.
+SUPPLIER_CLASSES = [
+    ('acreditado', "Acreditado"),
+    ('condicionado', "Condicionado"),
+    ('baja', "Baja"),
+    ('sin_datos', "Sin datos"),
+]
+
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-    sgi_supplier_class = fields.Selection([
-        ('acreditado', "Acreditado"),
-        ('condicionado', "Condicionado"),
-        ('baja', "Baja"),
-    ], string="Clasificación SGI", tracking=True)
+    sgi_supplier_class = fields.Selection(
+        SUPPLIER_CLASSES, string="Clasificación SGI", tracking=True,
+        help="Sin datos: en el periodo evaluado no hubo recepciones con fecha "
+             "compromiso ni NC; no hay con qué calificarlo (no es «Baja»).")
     # Aprobación inicial del proveedor (ISO 9001 8.4.1) — distinta de la
     # evaluación de desempeño. Sin valor = fuera del alcance del SGI (no se
     # bloquea nada); 'bloqueado' impide confirmar órdenes de compra.
@@ -102,13 +111,14 @@ class SgiSupplierEval(models.Model):
     date_from = fields.Date(string="Desde", required=True)
     date_to = fields.Date(string="Hasta", required=True)
     otd_pct = fields.Float(string="OTD %", compute='_compute_metrics', store=True)
+    otd_has_data = fields.Boolean(
+        string="Con datos de entrega", compute='_compute_metrics', store=True,
+        help="Hubo recepciones con fecha compromiso en el periodo. Sin ellas el OTD "
+             "no se calcula (no cuenta como 0 %) y la calificación usa solo la calidad.")
     nc_count = fields.Integer(string="# NC", compute='_compute_metrics', store=True)
     score = fields.Float(string="Calificación", compute='_compute_metrics', store=True)
-    supplier_class = fields.Selection([
-        ('acreditado', "Acreditado"),
-        ('condicionado', "Condicionado"),
-        ('baja', "Baja"),
-    ], string="Clasificación", compute='_compute_metrics', store=True)
+    supplier_class = fields.Selection(
+        SUPPLIER_CLASSES, string="Clasificación", compute='_compute_metrics', store=True)
     notes = fields.Text(string="Notas")
 
     _partner_period_uniq = models.Constraint(
@@ -125,14 +135,25 @@ class SgiSupplierEval(models.Model):
         for ev in self:
             if not ev.partner_id or not ev.date_from or not ev.date_to:
                 ev.otd_pct = ev.score = 0.0
+                ev.otd_has_data = False
                 ev.nc_count = 0
                 ev.supplier_class = False
                 continue
-            ev.otd_pct = ev._sgi_compute_otd()
+            otd = ev._sgi_compute_otd()
+            ev.otd_has_data = otd is not None
+            ev.otd_pct = otd or 0.0
             ev.nc_count = ev._sgi_count_ncs()
             quality_score = max(0.0, 100.0 - ev.nc_count * nc_penalty)
-            ev.score = round(ev.otd_pct * w_otd + quality_score * w_quality, 2)
-            ev.supplier_class = ev._sgi_class_from_score(ev.score)
+            if ev.otd_has_data:
+                ev.score = round(otd * w_otd + quality_score * w_quality, 2)
+                ev.supplier_class = ev._sgi_class_from_score(ev.score)
+            else:
+                # Sin entregas medibles la calificación es solo la calidad. Sin
+                # NC tampoco hay evidencia de nada: «Sin datos», no «Baja». Con
+                # NC en el periodo la calidad sí clasifica (una NC real pesa).
+                ev.score = round(quality_score, 2)
+                ev.supplier_class = (ev._sgi_class_from_score(ev.score)
+                                     if ev.nc_count else 'sin_datos')
 
     def _sgi_class_from_score(self, score):
         if score >= 85:
@@ -152,7 +173,8 @@ class SgiSupplierEval(models.Model):
         fecha compromiso + tolerancia en días (parámetro
         quimibond_sgi.supplier_otd_tolerance_days, default 1). Las recepciones
         sin ninguna fecha compromiso se excluyen del cálculo en vez de contar
-        como tarde."""
+        como tarde. Sin ninguna recepción contable devuelve None (sin datos),
+        no 0.0: el 0 mandaba al proveedor a «Baja» sin evidencia."""
         self.ensure_one()
         tolerance = int(self.env['ir.config_parameter'].sudo().get_param(
             'quimibond_sgi.supplier_otd_tolerance_days', 1))
@@ -175,7 +197,7 @@ class SgiSupplierEval(models.Model):
             if pick.date_done.date() <= limit:
                 on_time += 1
         if not counted:
-            return 0.0
+            return None
         return round(on_time / counted * 100.0, 2)
 
     def _sgi_count_ncs(self):

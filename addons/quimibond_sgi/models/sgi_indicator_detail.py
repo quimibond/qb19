@@ -52,6 +52,36 @@ class SgiIndicatorDetail(models.Model):
         help="Un solo periodo en rojo abre la NC (I-5). Sin marcar, hacen falta "
              "dos periodos seguidos en rojo.")
 
+    # 6.1 (56.12.0): el motivo cuando el cálculo automático no da valor, para
+    # que un indicador que «nunca mide» se vea y se corrija.
+    calc_status = fields.Selection([
+        ('ok', "Calcula"),
+        ('manual', "Manual (se captura)"),
+        ('antes', "Antes de «medir desde»"),
+        ('sin_formula', "Sin fórmula o sin fuente"),
+        ('sin_datos', "Sin datos en el periodo"),
+        ('error', "Error de cálculo"),
+    ], string="Último cálculo", readonly=True, copy=False, index=True)
+    calc_message = fields.Char(string="Motivo", readonly=True, copy=False)
+    calc_checked = fields.Datetime(string="Revisado el", readonly=True, copy=False)
+
+    def _sgi_set_calc(self, status, message=False):
+        self.sudo().write({'calc_status': status, 'calc_message': message or False,
+                           'calc_checked': fields.Datetime.now()})
+
+    def _sgi_calc_diagnose(self, vals):
+        """(estado, motivo) de un resultado de _sgi_measure_vals."""
+        self.ensure_one()
+        if self.calc_mode == 'manual':
+            return 'manual', False
+        if vals.get('state') != 'sin_dato':
+            return 'ok', False
+        missing = self.spec_missing or ''
+        if any(key in missing for key in ('sin fórmula', 'sin fuente', 'sin actividad', 'sin entregable',
+                                          'no dice cuándo')):
+            return 'sin_formula', missing
+        return 'sin_datos', (vals.get('note') or "Sin registros que contar en el periodo.")
+
     def action_set_official(self):
         self.write({'status': 'oficial'})
 

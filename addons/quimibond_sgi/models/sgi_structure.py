@@ -6,7 +6,7 @@ lugar. Solo presentación y navegación; el modelo de datos no cambia.
 Ficha de proceso: arriba dueño, estado, semáforo, actividades atrasadas,
 KPIs en rojo y NC abiertas; pestañas Actividades · Indicadores · Riesgos ·
 Documentos · No conformidades · Con quién se conecta; botones Imprimir
-procedimiento · Pedir un cambio · Ver en diagrama.
+procedimiento · Proponer cambio · Ver en diagrama.
 
 Ficha de actividad: «Ir a hacerlo», «Ver instructivo» y «Ver registros
 recientes».
@@ -59,7 +59,7 @@ class SgiProcessStructure(models.Model):
             process.structure_status = " · ".join(p for p in parts if p)
 
     def action_sgi_request_change(self):
-        """«Pedir un cambio»: abre una solicitud de cambio documental (F-P-G01-06)
+        """«Proponer cambio»: abre una solicitud de cambio documental (F-P-G01-06)
         ya apuntando al procedimiento vigente del proceso. La aprueba MAST y
         edita la actividad; ficha, Mi procedimiento y PDF se regeneran solos."""
         self.ensure_one()
@@ -80,7 +80,7 @@ class SgiProcessStructure(models.Model):
             context['default_sgi_document_id'] = doc.id
         return {
             'type': 'ir.actions.act_window',
-            'name': "Pedir un cambio — %s" % self.display_name,
+            'name': "Proponer cambio — %s" % self.display_name,
             'res_model': 'approval.request',
             'view_mode': 'form',
             'target': 'current',

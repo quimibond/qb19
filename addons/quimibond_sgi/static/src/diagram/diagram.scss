@@ -187,6 +187,11 @@
         &.o_sgi_dg_box_dimmed {
             opacity: .4;
         }
+        &.o_sgi_dg_box_out {
+            opacity: .3;
+            border-style: dashed;
+            filter: grayscale(1);
+        }
         .o_sgi_dg_code {
             font-weight: 700;
             font-size: .78rem;
