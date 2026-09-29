@@ -55,7 +55,7 @@
                         <tr>
                             <td style="padding:5px; border:1px solid #000; background-color:#f0f0f0;"><strong>Documento</strong></td>
                             <td style="padding:5px; border:1px solid #000;">
-                                <t t-if="doc.sgi_document_id"><t t-out="doc.sgi_document_id.sgi_code"/> — <t t-out="doc.sgi_document_id.name"/></t>
+                                <t t-if="doc.sgi_document_id"><t t-out="doc.sgi_document_id.sgi_code"/> — <t t-out="doc.sgi_document_id.sgi_title or doc.sgi_document_id.name"/></t>
                                 <t t-else="">Alta de documento nuevo</t>
                             </td>
                         </tr>

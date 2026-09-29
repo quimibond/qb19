@@ -20,6 +20,7 @@ from . import test_process_map_46
 from . import test_sgi_format_map
 from . import test_format_map_documento
 from . import test_replaced_by_process
+from . import test_clave_anterior
 from . import test_flows_48
 from . import test_ola0
 from . import test_ola1

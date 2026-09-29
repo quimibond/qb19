@@ -20,6 +20,13 @@ def sgi_hide_real_documents(env):
            SET sgi_code = 'REAL~' || id
          WHERE sgi_code IS NOT NULL AND sgi_code NOT LIKE 'REAL~%%'
     """)
+    # Desde 56.32.0 la clave del Dropbox vive también en «Clave anterior» y
+    # se busca siempre: se oculta igual.
+    env.cr.execute("""
+        UPDATE documents_document
+           SET sgi_previous_code = 'REAL~' || id || '~ANT'
+         WHERE sgi_previous_code IS NOT NULL AND sgi_previous_code NOT LIKE 'REAL~%%'
+    """)
     env.cr.execute("""
         UPDATE sgi_format_map
            SET document_id = NULL, document_alt_id = NULL

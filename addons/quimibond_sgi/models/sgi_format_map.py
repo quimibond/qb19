@@ -5,8 +5,6 @@ import re
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
-from .sgi_document import SGI_CODE_REGEX
-
 from .sgi_guard import sgi_require_system
 
 _logger = logging.getLogger(__name__)
@@ -83,8 +81,8 @@ class SgiFormatMap(models.Model):
         for fmap in self:
             for code in filter(None, (fmap.sgi_code, fmap.sgi_code_alt)):
                 code = code.strip()
-                if not (SGI_CODE_REGEX.match(code) or self.env[
-                        'sgi.document.type'].sudo()._sgi_any_match(code)):
+                # C-007: una sola fuente de nomenclatura, los tipos de documento.
+                if not self.env['sgi.document.type'].sudo()._sgi_any_match(code):
                     raise ValidationError(
                         "La clave '%s' no cumple la nomenclatura del SGI "
                         "(ej. F-P-A28-04, F-IT-P-P01-08-01)." % code)
