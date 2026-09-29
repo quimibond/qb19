@@ -789,12 +789,17 @@ class SgiActionLine(models.Model):
     def _compute_state(self):
         today = fields.Date.context_today(self)
         for line in self:
-            if line.date_done:
-                line.state = 'terminada'
-            elif line.date_commit and line.date_commit < today:
-                line.state = 'vencida'
-            else:
-                line.state = 'abierta'
+            line.state = line._sgi_state_on(today)
+
+    def _sgi_state_on(self, today):
+        """Estado de la acción en la fecha ``today`` (56.37.0: el cron lo usa
+        para escribir solo las que cambian, G-024)."""
+        self.ensure_one()
+        if self.date_done:
+            return 'terminada'
+        if self.date_commit and self.date_commit < today:
+            return 'vencida'
+        return 'abierta'
 
     # ------------------------------------------------------------------
     # Acciones como actividades nativas (corazón accionable del SGI)
