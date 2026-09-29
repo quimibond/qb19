@@ -364,3 +364,9 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
   - Con el arreglo en producción, Jose carga E2.01 y S6.07 como «Dueño del proceso».
   - La validación aprobador ≠ ejecutor revisa todo el catálogo y entrega la lista de casos.
 - **Hotfix 57.0.1** (quimibond/qb19#473): el buscador «Del Dropbox a Odoo» tronaba en producción porque `documents.document.name` es jsonb. El build de `main` no lo atrapó porque es staging y no corre las pruebas.
+
+## 2026-09-29 — Un solo paso a producción
+
+- Jose: el arreglo del buscador (57.0.1, quimibond/qb19#473) **no** sale solo. Se junta con la entrega 2, el diagnóstico de indicadores y lo que se haga mientras tanto, y va a `quimibond` en **un solo paso**.
+- Hasta entonces, en producción el Buscador de «Del Dropbox a Odoo» sigue fallando. El resto de la entrega 6 funciona: «Formatos y documentos anteriores», rutinas, avance e importación.
+- quimibond/qb19#473 se redirigió a `main` para entrar en el paquete.
