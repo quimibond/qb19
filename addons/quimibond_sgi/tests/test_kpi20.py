@@ -206,21 +206,13 @@ class TestKpi20Step1(TransactionCase):
         self.assertNotIn(good2, records)
 
     # ------------------------------------------------------------------
-    # Siembra idempotente del calc_mode
+    # Siembra del calc_mode (57.5.0: la pone el XML al instalar; ya no hay
+    # activate_auto_indicators que la repita en cada update, B-001)
     # ------------------------------------------------------------------
-    def test_05_activate_auto_indicators_idempotent(self):
-        Config = self.env['sgi.config']
+    def test_05_auto_indicators_seeded(self):
         ve = self.env.ref('quimibond_sgi.sgi_ind_crecimiento_ventas')
-        # Ya activado al cargar el módulo.
         self.assertEqual(ve.calc_mode, 'crecimiento_ventas')
-        # Regresarlo a manual y reactivar → vuelve a auto.
-        ve.calc_mode = 'manual'
-        Config.activate_auto_indicators()
-        self.assertEqual(ve.calc_mode, 'crecimiento_ventas')
-        # Una decisión de MAST (otro modo) NO se pisa.
-        ve.calc_mode = 'presupuesto_ventas'
-        Config.activate_auto_indicators()
-        self.assertEqual(ve.calc_mode, 'presupuesto_ventas')
+        self.assertFalse(hasattr(self.env['sgi.config'], 'activate_auto_indicators'))
         # CO-03 (proxy) NO se activa en la siembra: queda manual.
         co03 = self.env.ref('quimibond_sgi.sgi_ind_errores_oc')
         self.assertEqual(co03.calc_mode, 'manual')
@@ -422,10 +414,7 @@ class TestKpi20Step2(TransactionCase):
         self.assertNotIn(good, records)
 
     def test_03b_co03_no_se_activa_en_la_siembra(self):
-        # El proxy NO entra en _SGI_AUTO_INDICATORS: MAST lo activa a mano.
-        auto = self.env['sgi.config']._SGI_AUTO_INDICATORS
-        self.assertNotIn('compras_sin_devolucion', auto.values())
-        self.env['sgi.config'].activate_auto_indicators()
+        # El proxy NO se siembra automático: MAST lo activa a mano.
         co03 = self.env.ref('quimibond_sgi.sgi_ind_errores_oc')
         self.assertEqual(co03.calc_mode, 'manual')
 
@@ -461,17 +450,11 @@ class TestKpi20Step2(TransactionCase):
         self.assertEqual(action['res_model'], 'sgi.competence.gap')
 
     def test_05_step2_activation_seed(self):
-        # MA-02, TR-03 y RH-02 se activan en la siembra idempotente.
-        Config = self.env['sgi.config']
+        # MA-02, TR-03 y RH-02 llegan automáticos desde la siembra del XML.
         mapping = {
             'quimibond_sgi.sgi_ind_producido_capacidad': 'produccion_vs_capacidad',
             'quimibond_sgi.sgi_ind_consumo_energia': 'consumo_energia',
             'quimibond_sgi.sgi_ind_capacitacion': 'capacitacion',
         }
-        for xmlid, mode in mapping.items():
-            self.assertEqual(self.env.ref(xmlid).calc_mode, mode)
-            # Vuelve a manual y reactiva → recupera el modo automático.
-            self.env.ref(xmlid).calc_mode = 'manual'
-        Config.activate_auto_indicators()
         for xmlid, mode in mapping.items():
             self.assertEqual(self.env.ref(xmlid).calc_mode, mode)

@@ -2,7 +2,7 @@
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 
 CALC_MODES = [
@@ -243,6 +243,28 @@ class SgiIndicator(models.Model):
             'view_mode': 'graph,list,form',
             'domain': [('indicator_id', '=', self.id)],
             'context': {'default_indicator_id': self.id},
+        }
+
+    def action_sgi_recompute_pending_measures(self):
+        """D-12 (57.5.0): botón «Recalcular mediciones pendientes» de la lista
+        de indicadores, solo para el Administrador SGI. Con indicadores
+        seleccionados recalcula solo esos; sin selección, todos. El cron
+        diario de indicadores hace lo mismo cada día."""
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_admin')):
+            raise AccessError("Solo el Administrador SGI puede recalcular las mediciones pendientes.")
+        result = self.env['sgi.config'].sudo().recompute_pending_measures(
+            indicators=self or None)
+        message = ("%(revisadas)d medición(es) pendiente(s) revisada(s): %(capturadas)d "
+                   "capturada(s) con dato nuevo, %(errores)d con error.") % result
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': "Mediciones pendientes",
+                'message': message,
+                'type': 'warning' if result['errores'] else 'success',
+                'sticky': False,
+            },
         }
 
     # ------------------------------------------------------------------

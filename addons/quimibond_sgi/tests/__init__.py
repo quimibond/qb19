@@ -106,3 +106,4 @@ from . import test_legacy_routine
 from . import test_dropbox_key
 from . import test_indicadores_571
 from . import test_procesos_viejos
+from . import test_siembras_y_funciones

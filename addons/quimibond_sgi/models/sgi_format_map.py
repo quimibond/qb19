@@ -323,86 +323,47 @@ class SgiConfig(models.AbstractModel):
                 Param.set_param(key, value)
         return True
 
-    # Indicadores cuyo cálculo automático ya es confiable. Desde B-001
-    # (auditoría 2026-09) ya no se aplica en cada update: 'manual' puede ser
-    # la decisión de MAST y el update no la distingue de la siembra. Queda
-    # solo para llamarse a mano; se retira con la limpieza de siembras. No incluye CO-03 (compras_sin_devolucion): es un PROXY que
-    # MAST debe validar y activar a mano en la ficha del indicador.
-    _SGI_AUTO_INDICATORS = {
-        'quimibond_sgi.sgi_ind_crecimiento_ventas': 'crecimiento_ventas',
-        'quimibond_sgi.sgi_ind_ots_atendidas': 'ots_atendidas',
-        'quimibond_sgi.sgi_ind_requisiciones': 'requisiciones',
-        'quimibond_sgi.sgi_ind_embarques_sin_error': 'embarques_sin_error',
-        'quimibond_sgi.sgi_ind_producido_capacidad': 'produccion_vs_capacidad',
-        'quimibond_sgi.sgi_ind_consumo_energia': 'consumo_energia',
-        'quimibond_sgi.sgi_ind_capacitacion': 'capacitacion',
-        # MA-03: el revisado de telas (mrp.revision.log) ya opera en producción
-        # (>1,400 registros/mes), así que el modo calidad_pq tiene fuente real.
-        'quimibond_sgi.sgi_ind_calidad_pq': 'calidad_pq',
-    }
-
     @api.model
-    def activate_auto_indicators(self):
-        """Siembra idempotente del calc_mode automático (ver _SGI_AUTO_INDICATORS).
-        Solo actúa donde el indicador sigue en 'manual'."""
-        sgi_require_system(self.env)  # F-008
-        for xmlid, mode in self._SGI_AUTO_INDICATORS.items():
-            indicator = self.env.ref(xmlid, raise_if_not_found=False)
-            if indicator and indicator.calc_mode == 'manual':
-                indicator.calc_mode = mode
-        return True
-
-    @api.model
-    def fix_kpi_seeds(self):
-        """Correcciones puntuales de siembras, idempotentes (solo actúan
-        mientras el valor siga siendo el sembrado — no pisan decisiones de
-        MAST):
-
-        - TR-03 mide MXN facturado del proveedor de energía, no kWh; y su
-          medición 'capturada' en 0 sin proveedor configurado era un verde
-          falso (lower_better con metas 0/0): regresa a pendiente.
-        - AL-02 con objetivo 100 pintaba rojo con UNA sola devolución en el
-          mes; objetivo 99 mantiene la exigencia sin volverla imposible.
-        """
-        sgi_require_system(self.env)  # F-008
-        energia = self.env.ref('quimibond_sgi.sgi_ind_consumo_energia',
-                               raise_if_not_found=False)
-        if energia:
-            if energia.uom == 'kWh':
-                energia.uom = 'MXN'
-            broken = energia.measure_ids.filtered(
-                lambda m: m.state == 'capturado' and not m.value
-                and (m.note or '').startswith('Configure el proveedor'))
-            if broken:
-                broken.write({'state': 'pendiente'})
-        embarques = self.env.ref('quimibond_sgi.sgi_ind_embarques_sin_error',
-                                 raise_if_not_found=False)
-        if embarques and embarques.target_objective == 100 \
-                and embarques.target_acceptable == 98:
-            embarques.target_objective = 99
-        return True
-
-    @api.model
-    def recompute_pending_measures(self):
+    def recompute_pending_measures(self, indicators=None):
         """Re-mide las mediciones PENDIENTES de indicadores automáticos.
         Es la contracara de la deuda B.16: el cron solo crea la medición
         faltante, así que activar un modo o corregir el motor dejaba los
         meses ya generados en blanco para siempre. Solo escribe cuando el
         cálculo ahora sí devuelve valor; sin dato sigue pendiente y no se
-        toca (cero ruido en el chatter). Las validadas jamás se tocan."""
+        toca (cero ruido en el chatter). Las validadas jamás se tocan.
+
+        57.5.0 (D-12, A-006): ya no corre en cada actualización del módulo;
+        lo corre el cron diario de indicadores y el botón «Recalcular
+        mediciones pendientes» del Administrador SGI. Cada medición va en su
+        savepoint: un indicador con error se registra en el log y no detiene
+        a los demás. ``indicators`` acota a esos indicadores. Devuelve
+        ``{'revisadas': n, 'capturadas': n, 'errores': n}``."""
         sgi_require_system(self.env)  # F-008
-        measures = self.env['sgi.indicator.measure'].search([
+        domain = [
             ('state', '=', 'pendiente'),
             ('indicator_id.calc_mode', '!=', 'manual'),
-        ])
+        ]
+        if indicators is not None:
+            domain.append(('indicator_id', 'in', indicators.ids))
+        measures = self.env['sgi.indicator.measure'].search(domain)
+        result = {'revisadas': len(measures), 'capturadas': 0, 'errores': 0}
         for measure in measures:
             indicator = measure.indicator_id
-            date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
-            vals = indicator._sgi_measure_vals(date_from, date_to)
-            if vals.get('state') != 'capturado':
-                continue
-            measure.write(vals)
-        return True
+            try:
+                with self.env.cr.savepoint():
+                    date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
+                    vals = indicator._sgi_measure_vals(date_from, date_to)
+                    if vals.get('state') != 'capturado':
+                        continue
+                    measure.write(vals)
+                    result['capturadas'] += 1
+            except Exception:  # noqa: BLE001 - un indicador no detiene a los demás
+                result['errores'] += 1
+                _logger.exception("SGI: no se pudo recalcular la medición %s de %s.",
+                                  measure.id, indicator.display_name)
+        _logger.info("SGI: mediciones pendientes recalculadas: %(revisadas)d revisadas, "
+                     "%(capturadas)d capturadas, %(errores)d con error.", result)
+        return result
 
     @api.model
     def migrate_document_families(self):
@@ -436,22 +397,6 @@ class SgiConfig(models.AbstractModel):
             "SGI familia documental (H21): %d FK llenados por nomenclatura, "
             "%d sin procedimiento padre vigente (quedan para captura de MAST).",
             filled, unmatched)
-        return True
-
-    @api.model
-    def harden_noupdate(self):
-        """Marca noupdate=True en registros que ya existían ANTES de que su
-        archivo pasara a noupdate=1 (crons, mapeo de claves, áreas y normas —
-        sin esto, el odoo-update seguiría revirtiendo lo que MAST edite ahí).
-        Los procesos y flujos viejos ya no son del módulo desde 57.4.0 (A-002:
-        su XML ID pasó a __export__), así que no se listan."""
-        sgi_require_system(self.env)  # F-008
-        self.env['ir.model.data'].sudo().search([
-            ('module', '=', 'quimibond_sgi'),
-            ('model', 'in', ('ir.cron', 'sgi.format.map',
-                             'sgi.area', 'sgi.norm', 'sgi.norm.clause')),
-            ('noupdate', '=', False),
-        ]).write({'noupdate': True})
         return True
 
     # Entrega 4 (decisión de Jose, 2026-09-29): Dirección dejó de implicar al

@@ -13,6 +13,34 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.5.0 — 2026-09-29
+
+**Cambiado:** la actualización del módulo solo corre `seed_parameters`
+(A-006). `recompute_pending_measures` sale de `data/sgi_parameters.xml` y
+corre todos los días en el cron de indicadores (D-12), cada medición en su
+savepoint (un indicador con error ya no detiene a los demás) y con conteo en
+el log. `migrate_document_families` también sale del update; el método queda
+para llamarse a mano (B-020).
+
+**Agregado:** botón «Recalcular mediciones pendientes» en la lista de
+indicadores, solo para el Administrador SGI (grupo en la vista y revisión en
+el servidor; D-12). Con selección recalcula esos indicadores; sin selección,
+todos.
+
+**Retirado:** `activate_auto_indicators`, `_SGI_AUTO_INDICATORS`,
+`fix_kpi_seeds` y `harden_noupdate` (B-001): ya no se llamaban desde ningún
+lado salvo pruebas. La siembra del modo automático vive en el XML
+`noupdate`.
+
+**Corregido:** «Calidad preventiva» y «Paretos de calidad» con padre fijo
+`quality_control.menu_quality_root` y secuencias 23 y 24, las de producción
+(E-008). Se retiran `ir.ui.menu._sgi_attach_quality_menus`, su `<function>` y
+`SGI_MENU_QUALITY_ENTRIES`. El cron `sgi_cron_my_procedure_stale` queda en
+`<data noupdate="1">`, como ya estaba en la base (A-007).
+
+**Pruebas:** `test_siembras_y_funciones` (nueva); ajustadas `test_fase8`,
+`test_kpi20` y `test_expansion_kpis`.
+
 ## 19.0.57.4.0 — 2026-09-29
 
 **Retirado:** el mapa viejo de procesos sale del módulo (A-002 + B-021,

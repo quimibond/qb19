@@ -165,21 +165,19 @@ class TestOperationalSignals(TransactionCase):
 class TestQualityMenuRelocation(TransactionCase):
 
     def test_01_quality_menus_hang_from_quality_app(self):
-        """Con la app Calidad instalada, el descubrimiento en runtime debe
-        colgar los menús operativos de su raíz (sin ref dura a un xmlid)."""
-        self.env['ir.ui.menu']._sgi_attach_quality_menus()
-        sgi_root = self.env.ref('quimibond_sgi.menu_sgi_root')
-        for xmlid in ('quimibond_sgi.menu_sgi_automotive',
-                      'quimibond_sgi.menu_sgi_dashboards'):
+        """E-008 (57.5.0): los menús operativos cuelgan con padre fijo del
+        raíz de la app Calidad, antes de su Configuración (secuencias 23 y
+        24, las de producción); ya no hay función que los recuelgue."""
+        quality_root = self.env.ref('quality_control.menu_quality_root')
+        self.assertFalse(hasattr(self.env['ir.ui.menu'], '_sgi_attach_quality_menus'))
+        for xmlid, sequence in (('quimibond_sgi.menu_sgi_automotive', 23),
+                                ('quimibond_sgi.menu_sgi_dashboards', 24)):
             menu = self.env.ref(xmlid)
-            self.assertTrue(menu.parent_id, "%s debe tener padre." % xmlid)
-            self.assertNotEqual(
-                menu.parent_id, sgi_root,
-                "%s debe colgar del raíz de la app Calidad, no del SGI "
-                "(quality_control está instalado en este entorno)." % xmlid)
-            # Y antes del menú nativo de Configuración de Calidad.
+            self.assertEqual(menu.parent_id, quality_root,
+                             "%s debe colgar del raíz de la app Calidad." % xmlid)
+            self.assertEqual(menu.sequence, sequence)
             config = self.env['ir.ui.menu'].search([
-                ('parent_id', '=', menu.parent_id.id),
+                ('parent_id', '=', quality_root.id),
                 ('name', 'ilike', 'onfig')], limit=1)
             if config:
                 self.assertLess(

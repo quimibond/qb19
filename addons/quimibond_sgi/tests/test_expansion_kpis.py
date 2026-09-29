@@ -260,27 +260,8 @@ class TestExpansionKpis(TransactionCase):
         empty = self.env['sgi.indicator.measure'].create({
             'indicator_id': ind.id, 'period_date': date(2043, 5, 1),
             'value': 0.0, 'state': 'pendiente'})
-        self.env['sgi.config'].recompute_pending_measures()
+        result = self.env['sgi.config'].recompute_pending_measures()
+        self.assertGreaterEqual(result['capturadas'], 1)
         self.assertEqual(measure.state, 'capturado')
         self.assertEqual(measure.value, 1.5)
         self.assertEqual(empty.state, 'pendiente')
-
-    def test_16_fix_kpi_seeds_idempotente(self):
-        energia = self.env.ref('quimibond_sgi.sgi_ind_consumo_energia')
-        embarques = self.env.ref('quimibond_sgi.sgi_ind_embarques_sin_error')
-        energia.uom = 'kWh'
-        embarques.write({'target_objective': 100, 'target_acceptable': 98})
-        broken = self.env['sgi.indicator.measure'].create({
-            'indicator_id': energia.id, 'period_date': date(2042, 3, 1),
-            'value': 0.0, 'state': 'capturado',
-            'note': "Configure el proveedor de energía en Ajustes para medir "
-                    "este indicador automáticamente."})
-        self.env['sgi.config'].fix_kpi_seeds()
-        self.assertEqual(energia.uom, 'MXN')
-        self.assertEqual(embarques.target_objective, 99)
-        self.assertEqual(broken.state, 'pendiente')
-        # Segunda corrida: no vuelve a tocar nada (una meta ajustada por MAST
-        # a otro valor se respeta).
-        embarques.target_objective = 97
-        self.env['sgi.config'].fix_kpi_seeds()
-        self.assertEqual(embarques.target_objective, 97)
