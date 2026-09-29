@@ -45,7 +45,7 @@ class SgiProcessArchiveTouch(models.Model):
         return res
 
 
-class SgiMyPendingArchivedFilter(models.Model):
+class SgiMyPendingArchivedFilter(models.TransientModel):
     _inherit = 'sgi.my.pending'
 
     @staticmethod
