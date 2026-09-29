@@ -374,7 +374,7 @@ class SgiProcessProcedure(models.Model):
             Cron._sgi_schedule(
                 doc, "Procedimiento vivo cambió: revisar %s" % (doc.sgi_code or doc.name),
                 "Genera una nueva revisión controlada del procedimiento o confirma que el "
-                "cambio no la amerita.", user_id)
+                "cambio no la amerita.", user_id, key='procedimiento_vivo')
 
     def write(self, vals):
         res = super().write(vals)
@@ -1506,7 +1506,7 @@ class SgiActivityLink(models.Model):
                             to.display_name,
                             "dentro de su plazo de %d días hábiles" % link.max_days
                             if link.max_days else "en su periodo"),
-                        owner_user)
+                        owner_user, key='eslabon_atorado:%d' % link.id)
                 elif (now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS \
                         and not link._sgi_chain_nc_open():
                     # Sin NC ligada, o la ligada ya cerró/canceló: este

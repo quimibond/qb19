@@ -29,6 +29,7 @@ import hashlib
 import json
 import logging
 
+from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
 from odoo import api, fields, models
@@ -694,9 +695,12 @@ class SgiCronMyProcedure(models.AbstractModel):
         (documents.document lleva actividades); si nadie ha publicado nada,
         solo queda en el log."""
         sgi_require_system(self.env)  # F-008
+        self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         Job = self.env['hr.job']
         stale = Job._sgi_my_procedure_stale_jobs()
         if not stale:
+            # 56.37.0: todo publicado → el aviso abierto ya no aplica.
+            self._sgi_sweep(['mi_procedimiento_por_publicar'], "todos los puestos ya están publicados")
             return True
         summary = "Mi procedimiento: %d puesto(s) por publicar" % len(stale)
         note = "Puestos con personas cuya revisión no existe o ya no coincide con sus " \
@@ -716,6 +720,10 @@ class SgiCronMyProcedure(models.AbstractModel):
                 [('sgi_doc_type_id.code', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
                 order='sgi_issue_date desc, id desc', limit=1)
         if anchor:
-            self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id())
+            # G-005 (b): el resumen lleva el número de puestos; la clave no. Un
+            # solo aviso aunque cambie el documento ancla.
+            self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id(),
+                               date_deadline=fields.Date.context_today(self) + relativedelta(days=7),
+                               key='mi_procedimiento_por_publicar', anywhere=True)
         _logger.info("SGI Mi procedimiento: %s", note)
         return True

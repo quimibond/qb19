@@ -92,5 +92,6 @@ class SgiCronExternalDoc(models.AbstractModel):
                 "Llegó el %s de %s (rev. %s). Plazo de implantación: %s." % (
                     doc.sgi_ext_received_date, doc.sgi_ext_issuer or "emisor sin capturar",
                     doc.sgi_ext_issuer_revision or "—", doc.sgi_ext_deadline),
-                doc._sgi_ext_owner_user_id())
+                doc._sgi_ext_owner_user_id(), date_deadline=doc.sgi_ext_deadline,
+                key='implantar_externo')
         return len(docs)
