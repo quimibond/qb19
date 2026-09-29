@@ -322,3 +322,29 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
   - 815 filas: 709 cubiertas, 68 reemplazadas, 38 pendientes.
   - 49 procedimientos.
   - 0 errores y 1 aviso: las 38 pendientes no tienen decisión.
+
+## 2026-09-29 — Nuevo orden (red antes de la limpieza) y decisiones de la entrega 2
+
+- **Orden:**
+  - Primero, lo mínimo de la entrega 9: ningún PR se integra a `main` ni a `quimibond` sin el build de desarrollo de Odoo.sh en verde, como check obligatorio en GitHub.
+  - D-23 (llave de `odoo/enterprise`) solo si eso no alcanza.
+  - Después, la entrega 2, empezando por el CHANGELOG, la etiqueta `sgi-antes-de-limpieza`, el retiro de las migraciones viejas y los procesos viejos.
+- **Hallazgo al preparar el check:** Odoo.sh no publica ningún status ni check en GitHub. En quimibond/qb19#472 (cabeza `main`), los únicos checks son `check` y `odoo-tests`, los de GitHub Actions, que no instalan el SGI. Con lo que hay hoy no se puede exigir su build desde las reglas de la rama. Ver las opciones que se le dieron a Jose.
+- **Decisiones de la entrega 2:**
+  - **D-10:** según la recomendación: la aprobación de Studio pasa a un satélite `auto_install` y sale `web_studio` del núcleo.
+  - **D-11:** solo se borran los modelos `x_*` con 0 registros. Los que tienen datos se le enseñan a Jose antes, exportados.
+  - **D-12:** el recálculo de mediciones va en el cron, más un botón solo para el administrador.
+  - **D-13:** se activa `acuerdos_rxd` para E1-02; deja de ser manual.
+  - **D-14:** un correo semanal por persona con sus atrasos de Mis pendientes, que cada quien pueda apagar.
+  - **D-15:** archivar las categorías sin uso.
+  - **D-16:** primero confirmar si CA-02 usa la encuesta 151. Si la usa, se queda.
+  - **D-30:** sí al historial completo.
+- **Otras decisiones:**
+  - **D-22:** sí, el MCP archiva en vez de borrar en `sgi.*`.
+  - **D-24 y D-25:** sí.
+  - **D-26 y D-27:** manuales en Conocimiento, ligados desde el menú; carpeta SGI en Documentos.
+  - **D-29:** el mismo tratamiento que usa el español de Odoo.
+  - **D-31:** licencia OPL-1.
+- **Pendientes:**
+  - **D-28** (normas certificadas y fechas): la pasa Jose.
+  - **D-09** (quién captura eficiencias): recomendación, el supervisor de cada turno; falta que Jose la confirme.
