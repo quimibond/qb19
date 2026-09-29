@@ -107,20 +107,20 @@ id,clave,tipo,estado_sgi,clase,estado_migracion,falta
 3721,F-P-A02-15,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code)
 3722,F-P-A02-16,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code)
 3723,F-P-A02-17,formato,vigente,a,na,"sin clave anterior (sgi_previous_code); 'No aplica' con clase A: contradicción (o clase D, o migrar)"
-3743,F-P-A03-01,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3744,F-P-A03-02,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3746,F-P-A03-04,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3743,F-P-A03-01,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3744,F-P-A03-02,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3746,F-P-A03-04,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3677,F-P-A04-01,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
 3694,F-P-A04-02,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
 4064,F-P-A04-03,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
-3725,F-P-A13-01,formato,vigente,a,en_curso,sin clave anterior (sgi_previous_code); en curso sin liga real (menú o worksheet); solo texto; familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
+3725,F-P-A13-01,formato,vigente,a,en_curso,"sin clave anterior (sgi_previous_code); en curso sin liga real a menú o worksheet, solo texto; familia P-A13: el procedimiento no está entre los 52 (clave huérfana)"
 3726,F-P-A13-02,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code); familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
 3727,F-P-A13-03,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code); familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
 3728,F-P-A13-04,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code); familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
-3729,F-P-A13-05,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
+3729,F-P-A13-05,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A13: el procedimiento no está entre los 52 (clave huérfana)"
 3730,F-P-A13-06,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code); familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
 3731,F-P-A13-07,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code); familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
-3732,F-P-A13-10,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A13: el procedimiento no está entre los 52 (clave huérfana)
+3732,F-P-A13-10,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A13: el procedimiento no está entre los 52 (clave huérfana)"
 3786,F-P-A14-01,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
 3788,F-P-A14-05,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
 3768,F-P-A16-01,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code)
@@ -134,34 +134,34 @@ id,clave,tipo,estado_sgi,clase,estado_migracion,falta
 3776,F-P-A16-09,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code)
 3777,F-P-A16-10,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code)
 3778,F-P-A16-11,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code)
-3801,F-P-A19-01,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3802,F-P-A19-02,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3801,F-P-A19-01,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3802,F-P-A19-02,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3748,F-P-A23-01,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code); familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
 3749,F-P-A23-04,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code); familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
-3750,F-P-A23-06,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
+3750,F-P-A23-06,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A23: el procedimiento no está entre los 52 (clave huérfana)"
 3751,F-P-A23-07,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code); familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
-3752,F-P-A23-08,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
+3752,F-P-A23-08,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A23: el procedimiento no está entre los 52 (clave huérfana)"
 3753,F-P-A23-09,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code); familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
 3754,F-P-A23-10,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code); familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
 3755,F-P-A23-11,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code); familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
-3756,F-P-A23-15,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A23: el procedimiento no está entre los 52 (clave huérfana)
+3756,F-P-A23-15,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A23: el procedimiento no está entre los 52 (clave huérfana)"
 3733,F-P-A26-01,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
-3734,F-P-A26-02,formato,vigente,a,en_curso,sin clave anterior (sgi_previous_code); en curso sin liga real (menú o worksheet); solo texto
-3874,F-P-A28-03,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3875,F-P-A28-04,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3734,F-P-A26-02,formato,vigente,a,en_curso,"sin clave anterior (sgi_previous_code); en curso sin liga real a menú o worksheet, solo texto"
+3874,F-P-A28-03,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3875,F-P-A28-04,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3877,F-P-A28-09,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
 3879,F-P-A28-15,formato,vigente,a,na,"sin clave anterior (sgi_previous_code); 'No aplica' con clase A: contradicción (o clase D, o migrar)"
 3880,F-P-A28-16,formato,vigente,a,na,"sin clave anterior (sgi_previous_code); 'No aplica' con clase A: contradicción (o clase D, o migrar)"
 3884,F-P-A28-20,formato,vigente,a,na,"sin clave anterior (sgi_previous_code); 'No aplica' con clase A: contradicción (o clase D, o migrar)"
-3869,F-P-A30-01,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A30: el procedimiento no está entre los 52 (clave huérfana)
-3870,F-P-A30-02,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A30: el procedimiento no está entre los 52 (clave huérfana)
-3871,F-P-A30-03,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto; familia P-A30: el procedimiento no está entre los 52 (clave huérfana)
-3906,F-P-C01-06,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3869,F-P-A30-01,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A30: el procedimiento no está entre los 52 (clave huérfana)"
+3870,F-P-A30-02,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A30: el procedimiento no está entre los 52 (clave huérfana)"
+3871,F-P-A30-03,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto; familia P-A30: el procedimiento no está entre los 52 (clave huérfana)"
+3906,F-P-C01-06,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3909,F-P-C03-01,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code)
 3910,F-P-C03-02,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code)
-3911,F-P-C03-03,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3912,F-P-C03-04,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3913,F-P-C03-05,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3911,F-P-C03-03,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3912,F-P-C03-04,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3913,F-P-C03-05,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3915,F-P-C04-02,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
 3916,F-P-C04-03,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
 3917,F-P-C04-04,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
@@ -186,58 +186,58 @@ id,clave,tipo,estado_sgi,clase,estado_migracion,falta
 3941,F-P-C17-03,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3942,F-P-C17-04,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3943,F-P-C17-05,formato,vigente,a,pendiente,sin clave anterior (sgi_previous_code)
-3958,F-P-D01-02,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3959,F-P-D01-03,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3960,F-P-D01-05,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3958,F-P-D01-02,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3959,F-P-D01-03,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3960,F-P-D01-05,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3961,F-P-D01-07,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
-3962,F-P-D01-08,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3963,F-P-D01-09,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3964,F-P-D01-10,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3965,F-P-D01-11,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3966,F-P-D01-12,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3967,F-P-D01-16,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3968,F-P-D01-18,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3969,F-P-D01-19,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3962,F-P-D01-08,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3963,F-P-D01-09,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3964,F-P-D01-10,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3965,F-P-D01-11,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3966,F-P-D01-12,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3967,F-P-D01-16,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3968,F-P-D01-18,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3969,F-P-D01-19,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3970,F-P-D01-21,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
-3971,F-P-D01-24,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3972,F-P-D01-26,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3973,F-P-D01-27,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3971,F-P-D01-24,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3972,F-P-D01-26,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3973,F-P-D01-27,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3974,F-P-D01-29,formato,vigente,a,pendiente,sin clave anterior (sgi_previous_code)
-3975,F-P-D01-32,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3976,F-P-D01-33,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3975,F-P-D01-32,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3976,F-P-D01-33,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3977,F-P-D01-34,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3978,F-P-D01-35,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3979,F-P-D01-37,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3980,F-P-D01-38,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
-3981,F-P-D01-39,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3982,F-P-D01-40,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3981,F-P-D01-39,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3982,F-P-D01-40,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3983,F-P-D01-46,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
-3984,F-P-D01-47,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3984,F-P-D01-47,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 4060,F-P-E01-01,formato,vigente,a,pendiente,sin clave anterior (sgi_previous_code)
 4061,F-P-E03-01,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
 3503,F-P-G01-02,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
 4065,F-P-G01-03,formato,vigente,c,migrado,sin clave anterior (sgi_previous_code)
 4066,F-P-G01-05,formato,vigente,d,migrado,sin clave anterior (sgi_previous_code); clase D (sigue como documento) marcada 'migrado' → 'No aplica'
 4068,F-P-G01-08,formato,vigente,d,migrado,sin clave anterior (sgi_previous_code); clase D (sigue como documento) marcada 'migrado' → 'No aplica'
-4069,F-P-G01-09,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+4069,F-P-G01-09,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 4070,F-P-G01-13,formato,vigente,d,na,sin clave anterior (sgi_previous_code)
 4078,F-P-G03-08,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code)
 4079,F-P-G03-09,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code)
-4080,F-P-G04-01,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+4080,F-P-G04-01,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 4082,F-P-G04-03,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
 4085,F-P-G04-06,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
-4087,F-P-G05-02,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+4087,F-P-G05-02,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 4088,F-P-G05-03,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
 4089,F-P-G05-04,formato,vigente,c,pendiente,sin clave anterior (sgi_previous_code)
-4090,F-P-G05-05,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+4090,F-P-G05-05,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3948,F-P-I01-01,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3949,F-P-I01-02,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3950,F-P-I01-03,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
-3659,F-P-M01-02,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3659,F-P-M01-02,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3660,F-P-M01-04,formato,vigente,a,pendiente,sin clave anterior (sgi_previous_code)
-3661,F-P-M01-05,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3662,F-P-M01-06,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
-3664,F-P-M01-08,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3661,F-P-M01-05,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3662,F-P-M01-06,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
+3664,F-P-M01-08,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 4022,F-P-P01-00,formato,vigente,a,pendiente,sin clave anterior (sgi_previous_code)
 4001,F-P-P01-01,formato,vigente,a,pendiente,sin clave anterior (sgi_previous_code)
 3644,F-P-P01-10,formato,vigente,d,pendiente,sin clave anterior (sgi_previous_code); clase D con estado 'pendiente' → 'No aplica (se queda)'
@@ -246,10 +246,10 @@ id,clave,tipo,estado_sgi,clase,estado_migracion,falta
 4030,F-P-P04-03,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 4031,F-P-P04-08,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 4032,F-P-P04-10,formato,vigente,b,migrado,sin clave anterior (sgi_previous_code)
-3806,F-P-S03-02,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+3806,F-P-S03-02,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3807,F-P-S03-03,formato,vigente,a,na,"sin clave anterior (sgi_previous_code); 'No aplica' con clase A: contradicción (o clase D, o migrar)"
 3359,F-P-V01-04,formato,obsoleto,a,pendiente,sin clave anterior (sgi_previous_code); obsoleto con estado 'pendiente' (duplica clave con 5152)
-5152,F-P-V01-04,formato,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+5152,F-P-V01-04,formato,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 3698,F-IT-P-A05-01-01,formato_it,vigente,a,pendiente,sin clave anterior (sgi_previous_code); familia P-A05: el procedimiento no está entre los 52 (clave huérfana)
 3699,F-IT-P-A05-01-06,formato_it,vigente,a,pendiente,sin clave anterior (sgi_previous_code); familia P-A05: el procedimiento no está entre los 52 (clave huérfana)
 3700,F-IT-P-A07-01-01,formato_it,vigente,a,pendiente,sin clave anterior (sgi_previous_code)
@@ -283,12 +283,12 @@ id,clave,tipo,estado_sgi,clase,estado_migracion,falta
 3997,F-IT-P-P01-06-02,formato_it,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 3998,F-IT-P-P01-07-01,formato_it,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 4760,F-IT-P-P01-08-04,formato_it,vigente,a,en_curso,sin clave anterior (sgi_previous_code)
-4761,F-IT-P-P01-08-05,formato_it,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+4761,F-IT-P-P01-08-05,formato_it,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 4762,F-IT-P-P01-08-06,formato_it,vigente,a,en_curso,sin clave anterior (sgi_previous_code)
 4763,F-IT-P-P01-08-07,formato_it,vigente,a,migrado,sin clave anterior (sgi_previous_code)
 4764,F-IT-P-P01-08-08,formato_it,vigente,d,pendiente,sin clave anterior (sgi_previous_code); clase D con estado 'pendiente' → 'No aplica (se queda)'
 4765,F-IT-P-P01-08-09,formato_it,vigente,d,pendiente,sin clave anterior (sgi_previous_code); clase D con estado 'pendiente' → 'No aplica (se queda)'
-4006,F-IT-P-P01-08-13,formato_it,vigente,a,migrado,sin clave anterior (sgi_previous_code); migrado sin liga real (menú o worksheet); solo texto
+4006,F-IT-P-P01-08-13,formato_it,vigente,a,migrado,"sin clave anterior (sgi_previous_code); migrado sin liga real a menú o worksheet, solo texto"
 4007,F-IT-P-P01-10-01,formato_it,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 4008,F-IT-P-P01-10-02,formato_it,vigente,b,migrado,sin clave anterior (sgi_previous_code)
 4766,F-IT-P-P01-10-03,formato_it,vigente,b,migrado,sin clave anterior (sgi_previous_code)
@@ -473,7 +473,7 @@ id,clave,tipo,estado_sgi,clase,estado_migracion,falta
 3566,P-G03,procedimiento,vigente,,migrado,sin clave anterior (sgi_previous_code); estado 'migrado' → debe ser 'En curso' (con pendientes); sin rutinas cargadas (sgi.legacy.routine no existe)
 3567,P-G04,procedimiento,vigente,,migrado,sin clave anterior (sgi_previous_code); estado 'migrado' → debe ser 'En curso' (sustituido); sin rutinas cargadas (sgi.legacy.routine no existe)
 3568,P-G05,procedimiento,vigente,,migrado,sin clave anterior (sgi_previous_code); estado 'migrado' → debe ser 'En curso' (con pendientes); sin rutinas cargadas (sgi.legacy.routine no existe)
-3560,P-I01,procedimiento,vigente,,migrado,va aparte (credenciales): no se importa; retiro por separado
+3560,P-I01,procedimiento,vigente,,migrado,"va aparte por credenciales: no se importa, retiro por separado"
 3570,P-M01,procedimiento,vigente,,migrado,sin clave anterior (sgi_previous_code); estado 'migrado' → debe ser 'En curso' (sustituido); sin rutinas cargadas (sgi.legacy.routine no existe)
 3573,P-P01,procedimiento,vigente,,migrado,sin clave anterior (sgi_previous_code); estado 'migrado' → debe ser 'En curso' (con pendientes); sin rutinas cargadas (sgi.legacy.routine no existe)
 3574,P-P02,procedimiento,vigente,,migrado,sin clave anterior (sgi_previous_code); estado 'migrado' → debe ser 'En curso' (sustituido); sin rutinas cargadas (sgi.legacy.routine no existe)
