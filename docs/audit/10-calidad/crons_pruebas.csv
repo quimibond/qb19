@@ -1,0 +1,27 @@
+xml_id,metodo,intervalo,prueba,archivos,nota
+sgi_cron_sync_approvals,cron_sgi_sync_approvals,1 días,directa,test_approval_native.py,
+sgi_cron_checklists,cron_generate,1 días,indirecta,test_hse_records.py (_sgi_generate) ,El cron mismo no se prueba; en producción las 3 plantillas no generan nada (G-022/H-013)
+sgi_cron_nonconformities,cron_nonconformities,1 días,directa,test_nc_deadlines.py test_ola2.py,
+sgi_cron_overdue_actions,cron_overdue_actions,1 días,directa,test_ola1.py,
+sgi_cron_documents,cron_documents,1 días,directa,test_pr6_external.py test_external_doc.py (_sgi_external_doc_notices),
+sgi_cron_news,cron_news,1 meses,ninguna,,No idempotente (G-012) y sin prueba
+sgi_cron_indicators,cron_indicators,1 días,directa,test_indicators.py test_indicator_plan.py (_sgi_monthly_run_due),G-020 (re-corre cada día tras el día de corrida) sin prueba que lo detecte
+sgi_cron_indicators_weekly,cron_indicators_weekly,1 días,indirecta,test_indicator_plan.py (_sgi_weekly_run_due),
+sgi_cron_audit_program,cron_audit_program,1 días,ninguna,,
+sgi_cron_risk_review,cron_risk_review,1 días,directa,test_pr5_direction.py,
+sgi_cron_supplier_eval,cron_supplier_eval,3 meses,indirecta,test_pr6_external.py (recálculo por botón),
+sgi_cron_calibrations,cron_calibrations,1 días,ninguna,test_calibration.py prueba el bloqueo sin cron,G-006 (bloquea sin distinguir falta de dato) sin prueba; decisión tanda 2 #2 (solo avisa) sin prueba
+sgi_cron_competences,cron_competences,1 días,ninguna,test_competence.py prueba la brecha no el cron,
+sgi_cron_budget_revaluation,cron_budget_revaluation,1 meses,ninguna,,Sale con el presupuesto (A-016)
+sgi_cron_forecast_coverage,cron_forecast_coverage,1 semanas,directa,test_sales_budget.py,Sale con el presupuesto (A-016); G-025
+sgi_cron_legal_requirements,cron_legal_requirements,1 días,directa,test_pr4_docs_legal.py,
+sgi_cron_worker_participation,cron_worker_participation,6 meses,ninguna,,
+sgi_cron_context_review,cron_context_review,1 semanas,ninguna,,
+sgi_cron_emergency_drills,cron_emergency_drills,1 días,directa,test_fase7.py,
+sgi_cron_satisfaction,cron_satisfaction_survey,3 meses,ninguna,,
+sgi_cron_dnc,cron_dnc,3 meses,ninguna,,
+sgi_cron_operational_signals,cron_operational_signals,1 días,directa,test_fase8.py,
+sgi_cron_measure_activities,cron_measure_activities,1 días,indirecta,test_fase10.py test_catalog_fase1.py test_spec.py (_sgi_measure),G-002/G-003 (dominio inválido mide todo) cubierto solo en test_audit_hardening a5
+sgi_cron_my_procedure_stale,cron_my_procedure_stale,1 semanas,directa,test_my_procedure.py,
+sgi_cron_sign_elearning,cron_sign_elearning_sync,1 días,directa,test_sign_elearning.py,
+sgi_cron_weekly_digest,cron_weekly_digest,1 semanas,directa,test_sign_elearning.py,Cron apagado en producción (B-017)
