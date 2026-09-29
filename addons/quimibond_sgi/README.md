@@ -2469,6 +2469,22 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   MAST) para levantar el acta; una por NC.
 - Pruebas: `tests/test_due_long.py`, `tests/test_nc_origins.py`.
 
+### 19.0.56.27.0 — Archivar una regla de aprobación cierra sus avisos
+
+- Al **archivar** una regla de aprobación de Studio (cualquiera, no solo las
+  del SGI), las actividades abiertas de sus solicitudes pendientes se marcan
+  **hechas** con la nota «Regla de aprobación archivada el AAAA-MM-DD por
+  <usuario>; ya no se requiere esta aprobación.». No se aprueba ni se rechaza
+  nada (ningún `studio.approval.entry`).
+- La nota queda en el chatter del documento: Odoo publica ahí el «actividad
+  hecha» con ella; si el aviso estaba en otro registro, se publica aparte.
+- Nada se borra: la actividad queda archivada como historia y la
+  `studio.approval.request` se queda ligada a ella. Mis pendientes ya no la
+  muestra (regla archivada, actividad archivada). Reactivar la regla no
+  recrea avisos; si Studio ya no vuelve a avisar en esos documentos, se
+  acepta: la regla se archivó a propósito.
+- Pruebas: `tests/test_approval_rule_archive.py`.
+
 ### 19.0.56.24.0 — Menú SGI reordenado y sin lo archivado en Mi procedimiento / Mis pendientes
 
 - **Nombres de menú**: el XML trae los nombres que quedaron en producción
