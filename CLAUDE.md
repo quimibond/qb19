@@ -94,7 +94,7 @@ Por eso la regla practica no es "el bump garantiza el update", sino: **sube la v
 
 **Excepciones:** anotalas en `tools/no_bump.txt` con su motivo. Hoy: `quimibond_intelligence`, porque el update automatico destapa errores pre-existentes de Odoo Studio y pinta el build en rojo. Es una deuda, no una politica — al limpiar las vistas de Studio invalidas se saca de la lista.
 
-El CI lo revisa (`tools/check_addons.py`): cambiar archivos sin bump es **advertencia**; agregar un **modelo nuevo** sin bump es error, porque ahi si hay evidencia directa de tablas sin crear.
+El CI lo revisa (`tools/check_addons.py`): cambiar archivos sin bump es **advertencia**; agregar un **modelo nuevo** sin bump es error, porque ahi si hay evidencia directa de tablas sin crear. En `quimibond_sgi` (y en cualquier modulo con `CHANGELOG.md`), subir la version sin agregar su seccion `## <version>` al CHANGELOG del modulo tambien es **error**.
 
 ## Lo que el CI no ve y Odoo.sh sí (reglas para no romper el build)
 

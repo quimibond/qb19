@@ -299,6 +299,55 @@ def check_version_bump(mods, base_ref, exempt):
 
 
 # ---------------------------------------------------------------------------
+# Check 9 — cambia la versión del manifest sin entrada en el CHANGELOG
+#   Auditoría del SGI 2026-09 (K-018, decisión D-30): la historia del módulo
+#   estaba repartida entre el README, 41 migraciones y los commits. Desde el
+#   CHANGELOG reconstruido, el PR que sube la versión agrega su entrada.
+#   ERROR, no advertencia como el check 7: aquí no hay ninguna duda sobre el
+#   mecanismo (el check 7 es aviso porque no se sabe cuándo Odoo.sh corre
+#   `-u`); cumplirlo cuesta una línea y es determinista, y una advertencia se
+#   ignora — justo lo que dejó 41 versiones sin entrada en el README.
+#   Aplica a los módulos de CHANGELOG_MODULES y a cualquiera que ya traiga un
+#   CHANGELOG.md.
+# ---------------------------------------------------------------------------
+
+CHANGELOG_MODULES = {'quimibond_sgi'}
+
+
+def check_changelog(mods, base_ref):
+    changed = set(subprocess.run(
+        ['git', 'diff', '--name-only', '%s...HEAD' % base_ref],
+        capture_output=True, text=True).stdout.split())
+    for name, path in sorted(mods.items()):
+        rel = os.path.relpath(path, '.')
+        log_path = os.path.join(path, 'CHANGELOG.md')
+        if name not in CHANGELOG_MODULES and not os.path.exists(log_path):
+            continue
+        man_rel = os.path.join(rel, '__manifest__.py')
+        old_man = subprocess.run(['git', 'show', '%s:%s' % (base_ref, man_rel)],
+                                 capture_output=True, text=True)
+        if old_man.returncode:
+            continue                     # módulo nuevo: la primera entrada no se exige
+        old_v = re.search(r"""'version'\s*:\s*['"]([^'"]+)['"]""", old_man.stdout)
+        new_v = re.search(r"""'version'\s*:\s*['"]([^'"]+)['"]""",
+                          open(os.path.join(path, '__manifest__.py'), encoding='utf-8').read())
+        if not (old_v and new_v) or old_v.group(1) == new_v.group(1):
+            continue                     # no cambió la versión
+        log_rel = os.path.join(rel, 'CHANGELOG.md')
+        if log_rel not in changed:
+            error(man_rel,
+                  "sube la versión de %s a %s y no cambia %s. Agrega la entrada "
+                  "«## %s — AAAA-MM-DD» con el resumen del cambio."
+                  % (old_v.group(1), new_v.group(1), log_rel, new_v.group(1)))
+            continue
+        text = open(log_path, encoding='utf-8').read()
+        if not re.search(r'^## %s(\s|$)' % re.escape(new_v.group(1)), text, re.M):
+            error(log_rel,
+                  "cambia, pero no trae la sección «## %s» de la versión nueva "
+                  "del manifest." % new_v.group(1))
+
+
+# ---------------------------------------------------------------------------
 # Check 6 — modelos nuevos sin subir la versión del manifest
 #   ERROR (a diferencia del check 7) porque hay evidencia directa: un build de
 #   rama reportó "Model X has no table" justo sobre los modelos agregados sin
@@ -398,6 +447,7 @@ def main():
     if args.base_ref:
         check_new_models_need_bump(mods, args.base_ref)
         check_version_bump(mods, args.base_ref, load_no_bump('.'))
+        check_changelog(mods, args.base_ref)
     else:
         print("(checks de versión omitidos: sin --base-ref)\n")
 
