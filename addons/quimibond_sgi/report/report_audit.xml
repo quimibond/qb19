@@ -37,8 +37,6 @@
                         </table>
                         <h4>Auditados</h4>
                         <p t-esc="', '.join(doc.auditee_ids.mapped('name'))"/>
-                        <h4>Checklist</h4>
-                        <p t-field="doc.survey_id"/>
                     </div>
                 </t>
             </t>

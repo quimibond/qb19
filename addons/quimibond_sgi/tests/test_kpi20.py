@@ -372,47 +372,6 @@ class TestKpi20Step2(TransactionCase):
         self.assertFalse(measure.semaphore)
         self.assertIn('proveedor de energía', measure.note or '')
 
-    # ---------------- CO-03 compras_sin_devolucion (proxy) ----------------
-    def _confirmed_po(self, product, when, with_return=False):
-        vendor = self.env['res.partner'].create({'name': 'Proveedor OC KPI'})
-        po = self.env['purchase.order'].create({
-            'partner_id': vendor.id,
-            'order_line': [(0, 0, {
-                'product_id': product.id, 'product_qty': 10.0,
-                'price_unit': 5.0, 'name': product.name,
-                'date_planned': when})]})
-        po.button_confirm()
-        po.write({'date_approve': when})
-        if with_return:
-            receipt = po.picking_ids[:1]
-            move = receipt.move_ids[:1]
-            self.env['stock.move'].create({
-                'product_id': product.id, 'product_uom_qty': 1.0,
-                'product_uom': product.uom_id.id,
-                'location_id': move.location_dest_id.id,
-                'location_dest_id': move.location_id.id,
-                'state': 'done', 'origin_returned_move_id': move.id})
-        return po
-
-    def test_03_compras_sin_devolucion_proxy(self):
-        product = self.env['product.product'].create({
-            'name': 'Insumo OC KPI', 'type': 'consu', 'purchase_ok': True})
-        when = datetime.datetime(2040, 6, 15, 9, 0, 0)
-        good = self._confirmed_po(product, when)
-        bad = self._confirmed_po(product, when, with_return=True)
-        ind = self._indicator('compras_sin_devolucion', direction='higher_better')
-        value = ind._calc_compras_sin_devolucion(date(2040, 6, 1), date(2040, 6, 30))
-        self.assertEqual(value, 50.0, "1 de 2 OCs sin devolución.")
-        # El source_info deja claro que es un PROXY a validar por MAST.
-        self.assertIn('PROXY', ind.source_info)
-        # Evidencia = las OCs con devolución (el error).
-        measure = self._measure(ind, date(2040, 6, 1))
-        action = measure.action_view_evidence()
-        self.assertEqual(action['res_model'], 'purchase.order')
-        records = self.env['purchase.order'].search(action['domain'])
-        self.assertIn(bad, records)
-        self.assertNotIn(good, records)
-
     def test_03b_co03_no_se_activa_en_la_siembra(self):
         # El proxy NO se siembra automático: MAST lo activa a mano.
         co03 = self.env.ref('quimibond_sgi.sgi_ind_errores_oc')

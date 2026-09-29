@@ -268,13 +268,6 @@ class SgiIndicatorDetail(models.Model):
         ok = len(logs) - len(logs.filtered(lambda l: l.causa_id))
         return self._ratio(ok, len(logs), logs)
 
-    def _detail_preventivo_cumplido(self, date_from, date_to):
-        requests = self.env['maintenance.request'].search([
-            ('maintenance_type', '=', 'preventive'),
-            ('request_date', '>=', date_from), ('request_date', '<=', date_to)])
-        done = len(requests.filtered(lambda r: r.stage_id.done))
-        return self._ratio(done, len(requests), requests)
-
     def _detail_dso_cartera(self, date_from, date_to):
         receivable = self._sgi_receivable_balance(date_to)
         sales_90 = self._sgi_net_invoiced(date_to - relativedelta(days=89), date_to, taxed=True)

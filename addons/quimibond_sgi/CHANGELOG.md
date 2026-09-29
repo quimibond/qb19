@@ -13,6 +13,49 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.6.0 — 2026-09-29
+
+**Cambiado:** E1-02 se mide con `acuerdos_rxd` (D-13). El modo ahora cuenta
+los acuerdos de la Revisión por la Dirección realizada o cerrada con fecha
+límite en el periodo, cumplidos a tiempo (`done_date` ≤ `deadline`; también
+los cumplidos a mano sin acción), con nota «sin acuerdos», fuente del dato y
+evidencia (antes «Este modo aún no tiene vista de evidencia»).
+
+**Retirado:** la encuesta de auditoría legado (B-009, D-011, D-016): campos
+`sgi.audit.survey_id` y `survey_input_ids`, `sgi.audit.finding.survey_line_id`,
+la pestaña «Encuesta (legado)», los botones «Contestar checklist (encuesta)» y
+«Hallazgos de la encuesta» con sus métodos, y el checklist por encuesta del
+plan de auditoría impreso. `data/sgi_audit_data.xml` sale del manifest a
+`docs/historico/quimibond_sgi_data/`. Se queda «Evaluar al auditor».
+También `documents.document.sgi_revision_legacy` (C-017; 0 con dato).
+
+**Retirado:** nueve modos de cálculo sin uso en producción (B-010):
+`desperdicio`, `desperdicio_scrap`, `disponibilidad_mantto`,
+`preventivo_cumplido`, `plantilla_rh`, `inventario_ciclico`,
+`compras_sin_devolucion`, `margen_ventas` y `compras_vs_ventas`, con sus
+cálculos, evidencia, fuente del dato, `_detail_preventivo_cumplido`,
+`_sgi_waste_category_ids` y el ajuste «Categoría del byproduct de
+desperdicio». Las 6 siembras que los usaban toman el modo de producción.
+
+**Migración (pre, `migrations/19.0.57.6.0/pre-migrate.py`):** pasa a
+`manual` cualquier indicador en un modo retirado (hoy 0); archiva la encuesta
+151 si estuviera activa; sus 36 XML IDs pasan a `__export__` con prefijo
+`quimibond_sgi_legado_` (la encuesta no se borra).
+
+**Migración (post, `migrations/19.0.57.6.0/post-migrate.py`):** E1-02 pasa a
+`acuerdos_rxd` solo si está activo, en «manual» y sin términos de fórmula.
+
+**Datos de producción (2026-09-29, lectura):** `sgi.indicator` por
+`calc_mode` (activos y archivados): 0 en los 9 modos retirados y 0 en
+`acuerdos_rxd`. E1-02 = id 171, manual, sin términos, 0 mediciones. Encuesta
+151 archivada, 0 respuestas; 0 `sgi.audit`, 0 hallazgos; 36 XML IDs de la
+encuesta. `sgi_revision_legacy` con dato: 0. Acuerdos de RxD: 0.
+
+**Pruebas:** `test_legado` (nueva); se retiran `TestAuditChecklist`
+(`test_fase8`) y las pruebas de los modos retirados (`test_kpi_fase4`,
+`test_kpi20`, `test_expansion_kpis`); `test_ola_certificable` usa fórmula sin
+términos en vez de `plantilla_rh`.
+
 ## 19.0.57.5.0 — 2026-09-29
 
 **Cambiado:** la actualización del módulo solo corre `seed_parameters`

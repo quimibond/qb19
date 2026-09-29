@@ -71,7 +71,6 @@
                         </group>
                         <group>
                             <field name="sgi_revision"/>
-                            <field name="sgi_revision_legacy" invisible="not sgi_revision_legacy"/>
                             <field name="sgi_issue_date"/>
                             <field name="sgi_next_review_date"/>
                             <field name="sgi_obsolete_date" invisible="not sgi_obsolete_date"/>

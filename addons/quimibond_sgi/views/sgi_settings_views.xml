@@ -186,10 +186,6 @@
                                  help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.">
                             <field name="sgi_pesaje_tolerance_kg"/>
                         </setting>
-                        <setting string="Categoría del byproduct de desperdicio"
-                                 help="Categoría del SALDO para el KPI automático de desperdicio.">
-                            <field name="sgi_waste_categ_id"/>
-                        </setting>
                     </block>
                     <block title="Firmas en Sign" name="sgi_sign">
                         <setting string="«Mi procedimiento» se firma en Sign"

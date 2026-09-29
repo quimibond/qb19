@@ -83,12 +83,6 @@
                             string="Regenerar checklist" icon="fa-refresh"
                             invisible="state not in ('planificada', 'en_ejecucion')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
                             help="Agrega las actividades de los procesos auditados que falten en el checklist (no borra respuestas)."/>
-                    <button name="action_answer_checklist" type="object"
-                            string="Contestar checklist (encuesta)" icon="fa-list-ol"
-                            invisible="state != 'en_ejecucion' or not survey_id" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_generate_findings_from_checklist" type="object"
-                            string="Hallazgos de la encuesta" icon="fa-magic"
-                            invisible="state not in ('en_ejecucion', 'informe') or not survey_input_ids" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_open_report_document" type="object"
                             string="Ver informe" icon="fa-file-pdf-o"
                             invisible="not report_document_id"/>
@@ -198,17 +192,6 @@
                         <page string="Conclusión">
                             <field name="conclusion" nolabel="1"/>
                         </page>
-                        <page string="Encuesta (legado)" name="survey" invisible="not survey_id and state != 'borrador'">
-                            <div class="text-muted mb-2">
-                                Checklist por encuesta de versiones anteriores. Hoy el checklist
-                                sale del proceso (pestaña Checklist); esta encuesta solo se conserva
-                                para auditorías ya contestadas.
-                            </div>
-                            <group>
-                                <field name="survey_id"/>
-                                <field name="survey_input_ids" widget="many2many_tags"/>
-                            </group>
-                        </page>
                     </notebook>
                 </sheet>
                 <chatter/>
@@ -256,7 +239,7 @@
         <field name="search_view_id" ref="sgi_audit_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Programa la primera auditoría</p>
-            <p>Folio AUD- automático, checklist contestable en Encuestas y hallazgos convertibles en NC con un clic. Nadie puede auditar su propio proceso.</p>
+            <p>Folio AUD- automático, checklist que sale de las actividades de los procesos auditados y hallazgos convertibles en NC con un clic. Nadie puede auditar su propio proceso.</p>
         </field>
     </record>
 

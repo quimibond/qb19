@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.5.0',
+    'version': '19.0.57.6.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -74,7 +74,9 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         # 56.35.0 (A-004/D-01): sgi_indicator_formula_data.xml salió del núcleo
         # (IDs de producción); los términos viajan en quimibond_sgi_mapa.
         'data/sgi_risk_data.xml',
-        'data/sgi_audit_data.xml',
+        # 57.6.0 (B-009, D-16): sgi_audit_data.xml (encuesta 151 «Checklist
+        # Auditoría Interna ISO 9001», legado) salió a docs/historico/; sus 36
+        # XML IDs pasan a __export__ y la encuesta se queda archivada.
         'data/sgi_helpdesk_interno.xml',
         'data/sgi_mgmt_review_data.xml',
         'data/sgi_cron.xml',

@@ -11,33 +11,29 @@ CALC_MODES = [
     ('otd_compras', "OTD compras (recepciones a tiempo)"),
     ('produccion_vs_programado', "Producido vs programado"),
     ('reproceso', "Reproceso (kg de órdenes de reproceso vs kg procesados)"),
-    ('desperdicio', "Desperdicio (subproducto SALDO TEJIDO D)"),
-    ('desperdicio_scrap', "Desperdicio (por desechos / scrap)"),
     ('calidad_pq', "Calidad PQ (rollos revisados sin defecto)"),
     ('cumplimiento_programa', "Cumplimiento del programa (MPS)"),
     # 57.1.0: «cierre_nc» (TR-01) pasó a fórmula configurable; ver
     # sgi_indicator_formula._sgi_cierre_nc_formula y la migración 19.0.57.1.0.
+    # 57.6.0 (B-010): se retiran los modos que ningún indicador usa en
+    # producción (desperdicio, desperdicio_scrap, disponibilidad_mantto,
+    # preventivo_cumplido, plantilla_rh, inventario_ciclico,
+    # compras_sin_devolucion, margen_ventas, compras_vs_ventas); la migración
+    # 19.0.57.6.0 pasa a «manual» cualquier indicador que aún los tuviera.
     ('reclamos_cliente', "Reclamos de cliente"),
-    ('disponibilidad_mantto', "Disponibilidad de mantenimiento"),
-    ('preventivo_cumplido', "Preventivo cumplido"),
     ('rotacion_rh', "Rotación de personal"),
-    ('plantilla_rh', "Cobertura de plantilla"),
     ('presupuesto_ventas', "Cumplimiento de presupuesto de ventas"),
     ('crecimiento_ventas', "Crecimiento anual de ventas (vs año anterior)"),
     ('inventario_diferencia', "Diferencia de inventario (valor ajustado vs valor del inventario)"),
-    ('inventario_ciclico', "Diferencia de inventario cíclico (ajustes)"),
     ('ots_atendidas', "Órdenes de trabajo atendidas (mantenimiento)"),
     ('requisiciones', "Requisiciones atendidas (aprobaciones de compra)"),
     ('embarques_sin_error', "Embarques sin error (sin devolución de cliente)"),
     ('produccion_vs_capacidad', "Producido vs capacidad instalada"),
     ('consumo_energia', "Consumo de energía (pesos por tonelada procesada)"),
-    ('compras_sin_devolucion', "Compras sin devolución a proveedor (proxy de errores en OC)"),
     ('capacitacion', "Capacitación (competencias vigentes vs requeridas)"),
     ('satisfaccion_cliente', "Satisfacción del cliente (encuesta)"),
     ('configurable', "Fórmula configurable (numerador y denominador en la ficha)"),
     # Plan de expansión comercial (indicadores EX-*)
-    ('margen_ventas', "Margen sobre órdenes de venta"),
-    ('compras_vs_ventas', "Compras vs ventas facturadas"),
     ('clientes_nuevos', "Clientes nuevos (primera factura)"),
     ('concentracion_top3', "Concentración top 3 clientes (12 meses)"),
     ('facturacion_usd', "Participación de facturación en USD"),
@@ -125,30 +121,21 @@ class SgiIndicator(models.Model):
         'otd_compras': "Inventario → recepciones de compras: recibidas a tiempo vs total.",
         'produccion_vs_programado': "Fabricación → órdenes de producción: producido vs programado.",
         'reproceso': "Fabricación → kg producidos por las órdenes de los tipos de reproceso (parámetro rework_picking_type_ids) ÷ kg de hilo y fibra consumidos en el periodo. Solo líneas en kg.",
-        'desperdicio': "Fabricación → byproduct SALDO (categoría de desperdicio) vs producción.",
-        'desperdicio_scrap': "Inventario → desechos (scrap) del periodo.",
         'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
         'cumplimiento_programa': "Fabricación → cumplimiento del plan maestro (MPS).",
         'reclamos_cliente': "Helpdesk → tickets de reclamación de clientes del periodo.",
-        'disponibilidad_mantto': "Mantenimiento → tiempo de paro vs disponible.",
-        'preventivo_cumplido': "Mantenimiento → OTs preventivas cumplidas a tiempo.",
         'rotacion_rh': "Empleados → bajas del periodo vs plantilla.",
-        'plantilla_rh': "Empleados → puestos cubiertos vs plantilla autorizada.",
         'presupuesto_ventas': "Ventas → facturación real vs presupuesto de ventas APROBADO del periodo (importe en moneda de la compañía; nunca cantidades mezcladas). Sin presupuesto aprobado, cae al parámetro de Ajustes.",
         'crecimiento_ventas': "Contabilidad → facturación neta timbrada del periodo vs el mismo periodo del año anterior (variación %).",
         'inventario_diferencia': "Valuación → |valor de los ajustes de inventario del periodo| ÷ valor del inventario al cierre (capas de valuación, moneda de la compañía).",
-        'inventario_ciclico': "Inventario → ajustes de conteos cíclicos.",
         'ots_atendidas': "Mantenimiento → solicitudes cerradas (etapa terminada) en el periodo vs creadas en el periodo.",
         'requisiciones': "Aprobaciones → requisiciones de compra aprobadas en el periodo vs solicitadas.",
         'embarques_sin_error': "Inventario → embarques a clientes del periodo sin devolución ligada vs total.",
         'produccion_vs_capacidad': "Fabricación → kg producidos del periodo (solo órdenes en kg) vs la capacidad instalada en kg configurada en Ajustes (prorrateada por días si el periodo no es mensual).",
         'consumo_energia': "Contabilidad → facturado del periodo por el proveedor de energía (Ajustes) ÷ toneladas de hilo y fibra consumidas en órdenes (misma base que MA-05). Pesos por tonelada.",
-        'compras_sin_devolucion': "PROXY (a validar por MAST): órdenes de compra confirmadas del periodo sin devolución a proveedor vs total. No mide directamente los 'errores en OC'; MAST debe validar la definición antes de fiarse del dato.",
         'capacitacion': "Empleados → competencias del puesto vigentes (certificación al día) vs requeridas.",
         'configurable': "Fórmula de la pestaña Fórmula: numerador ÷ denominador, cada uno con modelo, filtro, campo de fecha, agregación, factor y ventana.",
         'satisfaccion_cliente': "Encuestas → respuestas de la Encuesta de Satisfacción del Cliente (promedio 1-5 → %).",
-        'margen_ventas': "Ventas → margen de las órdenes confirmadas del periodo vs su subtotal (moneda de la compañía). Depende de la calidad de los costos capturados: úsese como tendencia.",
-        'compras_vs_ventas': "Contabilidad → facturas de proveedor netas del periodo vs facturación neta de clientes (sin impuestos, moneda de la compañía).",
         'clientes_nuevos': "Contabilidad → empresas cuya PRIMERA factura de cliente timbrada cae en el periodo.",
         'concentracion_top3': "Contabilidad → % de la facturación neta de los últimos 12 meses (al cierre del periodo) que concentran los 3 clientes principales.",
         'facturacion_usd': "Contabilidad → % de la facturación neta del periodo emitida en USD (importes en moneda de la compañía).",
@@ -165,6 +152,7 @@ class SgiIndicator(models.Model):
         'dpo_pagos': "Contabilidad → saldo pendiente a proveedores al medir vs compras netas de los últimos 90 días, por 90 (aproximación: estado de pago actual).",
         'desperdicio_kg': "Inventario → kg que entran a las ubicaciones de desperdicio (órdenes y ajustes) ÷ kg de hilo y fibra consumidos en órdenes, en los últimos 3 meses.",
         'margen_ebitda': "Contabilidad → (ingresos − costo de ventas − gastos de operación) ÷ ingresos, últimos 12 meses; sin depreciación, sin otros ingresos ni gastos financieros.",
+        'acuerdos_rxd': "SGI → acuerdos de la Revisión por la Dirección con fecha límite en el periodo cumplidos a tiempo ÷ acuerdos con fecha límite en el periodo.",
         'compras_mp_vs_ventas': "Contabilidad → facturas de proveedor de materia prima (menos notas de crédito) ÷ ingresos (cuentas de ingreso), últimos 3 meses.",
     }
 
@@ -353,43 +341,6 @@ class SgiIndicator(models.Model):
         produced = sum(productions.mapped('qty_produced'))
         return round(produced / programmed * 100.0, 2)
 
-    def _sgi_waste_category_ids(self):
-        """Categoría de subproducto de desperdicio (SALDO TEJIDO D) y sus hijas."""
-        name = self.env['ir.config_parameter'].sudo().get_param(
-            'quimibond_sgi.waste_subproduct_category', 'SubProducto')
-        categ = self.env['product.category'].search([('name', '=', name)], limit=1)
-        if not categ:
-            return self.env['product.category']
-        return self.env['product.category'].search([('id', 'child_of', categ.id)])
-
-    def _calc_desperdicio(self, date_from, date_to):
-        """Desperdicio real = kilos producidos del subproducto SALDO TEJIDO D
-        (categoría SubProducto) sobre los kilos producidos del periodo."""
-        productions = self._sgi_production_done(date_from, date_to)
-        produced = sum(productions.mapped('qty_produced'))
-        if not produced:
-            return None
-        categ_ids = self._sgi_waste_category_ids()
-        if not categ_ids:
-            return None
-        waste_moves = productions.move_byproduct_ids.filtered(
-            lambda m: m.state == 'done' and m.product_id.categ_id.id in categ_ids.ids)
-        waste = sum(waste_moves.mapped('quantity'))
-        return round(waste / produced * 100.0, 2)
-
-    def _calc_desperdicio_scrap(self, date_from, date_to):
-        """Cálculo histórico por desechos (stock.scrap), conservado como modo aparte."""
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        scraps = self.env['stock.scrap'].search([
-            ('state', '=', 'done'),
-            ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
-        ])
-        scrap_qty = sum(scraps.mapped('scrap_qty'))
-        produced = sum(self._sgi_production_done(date_from, date_to).mapped('qty_produced'))
-        if not produced:
-            return None
-        return round(scrap_qty / produced * 100.0, 2)
-
     def _calc_calidad_pq(self, date_from, date_to):
         """% de rollos revisados SIN defecto, según el registro de revisado de
         tela (mrp.revision.log): un defecto se marca con una causa (etiqueta
@@ -431,21 +382,6 @@ class SgiIndicator(models.Model):
             ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
         ]))
 
-    def _calc_disponibilidad_mantto(self, date_from, date_to):
-        # Requiere paros de centros de trabajo; sin datos confiables aún (README).
-        return None
-
-    def _calc_preventivo_cumplido(self, date_from, date_to):
-        Request = self.env['maintenance.request']
-        requests = Request.search([
-            ('maintenance_type', '=', 'preventive'),
-            ('request_date', '>=', date_from), ('request_date', '<=', date_to),
-        ])
-        if not requests:
-            return None
-        done = requests.filtered(lambda r: r.stage_id.done)
-        return round(len(done) / len(requests) * 100.0, 2)
-
     def _calc_rotacion_rh(self, date_from, date_to):
         Employee = self.env['hr.employee'].with_context(active_test=False)
         headcount = self.env['hr.employee'].search_count([])
@@ -455,10 +391,6 @@ class SgiIndicator(models.Model):
             ('departure_date', '>=', date_from), ('departure_date', '<=', date_to),
         ])
         return round(departures / headcount * 100.0, 2)
-
-    def _calc_plantilla_rh(self, date_from, date_to):
-        # Requiere plantilla presupuestada por puesto; captura manual (README).
-        return None
 
     def _sgi_year_budget_amount(self, date_from, date_to):
         """Importe presupuestado del periodo: suma de amount_budget de las líneas
@@ -662,22 +594,6 @@ class SgiIndicator(models.Model):
                     "medir este indicador automáticamente.")
         return ''
 
-    def _calc_compras_sin_devolucion(self, date_from, date_to):
-        """PROXY (a validar por MAST): órdenes de compra confirmadas del periodo
-        sin devolución a proveedor sobre el total. La devolución a proveedor es un
-        movimiento de retorno ligado a las recepciones de la OC."""
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        orders = self.env['purchase.order'].search([
-            ('state', 'in', ('purchase', 'done')),
-            ('date_approve', '>=', dt_from), ('date_approve', '<', dt_to),
-        ])
-        total = len(orders)
-        if not total:
-            return None
-        with_return = orders.filtered(
-            lambda o: o.picking_ids.move_ids.returned_move_ids)
-        return round((total - len(with_return)) / total * 100.0, 2)
-
     def _calc_capacitacion(self, date_from, date_to):
         """% de competencias del puesto VIGENTES (certificación al día) vs las
         requeridas, a través de la vista de brechas (sgi.competence.gap): una
@@ -757,26 +673,6 @@ class SgiIndicator(models.Model):
         method = getattr(self, '_note_%s' % self.calc_mode, None)
         return method(date_from, date_to) if method else ''
 
-    def _calc_inventario_ciclico(self, date_from, date_to):
-        """Diferencia de inventario cíclico: |cantidad ajustada| en el periodo
-        (movimientos de ajuste de inventario) sobre las existencias contadas.
-        Requiere conteos cíclicos activos; ver README."""
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        adj_lines = self.env['stock.move.line'].search([
-            ('move_id.is_inventory', '=', True),
-            ('state', '=', 'done'),
-            ('date', '>=', dt_from), ('date', '<', dt_to),
-        ])
-        if not adj_lines:
-            return None
-        adjusted = sum(abs(line.quantity) for line in adj_lines)
-        # Existencias contadas: proxy = existencias actuales en ubicaciones internas.
-        quants = self.env['stock.quant'].search([('location_id.usage', '=', 'internal')])
-        on_hand = sum(quants.mapped('quantity'))
-        if not on_hand:
-            return None
-        return round(adjusted / on_hand * 100.0, 2)
-
     # ----- KPIs del Plan de Expansión Comercial (EX-*) ---------------------
     # Fuente única: facturas timbradas y órdenes de venta, siempre en importe
     # y moneda de la compañía (misma semántica que _sgi_net_invoiced).
@@ -791,40 +687,6 @@ class SgiIndicator(models.Model):
             ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
         ])
         return -sum(moves.mapped('amount_untaxed_signed'))
-
-    def _calc_margen_ventas(self, date_from, date_to):
-        """Margen ponderado de las órdenes confirmadas del periodo: suma de
-        margen / suma de subtotal, ambos convertidos a moneda de la compañía
-        (las órdenes USD y MXN no se pueden sumar crudas). Requiere el campo
-        margin de Ventas; sin él la captura queda manual."""
-        Order = self.env['sale.order']
-        if 'margin' not in Order._fields:
-            return None
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        company = self._sgi_kpi_company()
-        orders = Order.search([
-            ('state', '=', 'sale'),
-            ('company_id', '=', company.id),
-            ('date_order', '>=', dt_from), ('date_order', '<', dt_to),
-        ])
-        base = margin = 0.0
-        for order in orders:
-            when = order.date_order.date()
-            base += order.currency_id._convert(
-                order.amount_untaxed, company.currency_id, company, when)
-            margin += order.currency_id._convert(
-                order.margin, company.currency_id, company, when)
-        if not base:
-            return None
-        return round(margin / base * 100.0, 2)
-
-    def _calc_compras_vs_ventas(self, date_from, date_to):
-        """Compras netas del periodo como % de la facturación neta: la
-        intensidad de costo que el plan quiere de vuelta en ≤78%."""
-        sales = self._sgi_net_invoiced(date_from, date_to)
-        if not sales:
-            return None
-        return round(self._sgi_net_purchased(date_from, date_to) / sales * 100.0, 2)
 
     def _calc_clientes_nuevos(self, date_from, date_to):
         """Empresas cuya PRIMERA factura timbrada cae en el periodo. Cero
@@ -1141,28 +1003,24 @@ class SgiIndicatorMeasure(models.Model):
         'otd_compras': ('stock.picking', [('picking_type_id.code', '=', 'incoming'), ('state', '=', 'done')], 'date_done', True),
         'produccion_vs_programado': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
         'reproceso': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
-        'desperdicio': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
-        'desperdicio_scrap': ('stock.scrap', [('state', '=', 'done')], 'date_done', True),
         'calidad_pq': ('mrp.revision.log', [], 'create_date', True),
         'cumplimiento_programa': ('mrp.production', [('state', '!=', 'cancel')], 'date_finished', True),
-        'disponibilidad_mantto': ('maintenance.request', [], 'create_date', True),
-        'preventivo_cumplido': ('maintenance.request', [('maintenance_type', '=', 'preventive')], 'create_date', True),
         'crecimiento_ventas': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'inventario_diferencia': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
-        'inventario_ciclico': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),
         'ots_atendidas': ('maintenance.request', [], 'request_date', False),
         'produccion_vs_capacidad': ('mrp.production', [('state', '=', 'done'), ('product_uom_id.name', '=', 'kg')], 'date_finished', True),
-        'margen_ventas': ('sale.order', [('state', '=', 'sale')], 'date_order', True),
-        'compras_vs_ventas': ('account.move', [('move_type', 'in', ('in_invoice', 'in_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'clientes_nuevos': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
         'facturacion_usd': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted'), ('currency_id.name', '=', 'USD')], 'invoice_date', False),
         'notas_credito': ('account.move', [('move_type', '=', 'out_refund'), ('state', '=', 'posted')], 'invoice_date', False),
         'clientes_reactivados': ('account.move', [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')], 'invoice_date', False),
         'pedidos_cancelados': ('sale.order', [('state', 'in', ('sale', 'cancel'))], 'date_order', True),
+        # E1-02 (57.6.0, D-13): los acuerdos de la RxD con fecha límite en el
+        # periodo, el mismo universo que _calc_acuerdos_rxd.
+        'acuerdos_rxd': ('sgi.management.review.agreement', [('review_id.state', 'in', ('realizada', 'cerrada'))], 'deadline', False),
         # desperdicio_kg, margen_ebitda y compras_mp_vs_ventas guardan sus
         # registros en la medición (sgi_indicator_i3.py).
-        # requisiciones, embarques_sin_error, consumo_energia,
-        # compras_sin_devolucion y capacitacion no caben en un dominio de fecha
+        # requisiciones, embarques_sin_error, consumo_energia y
+        # capacitacion no caben en un dominio de fecha
         # simple (categoría/proveedor dinámicos, relación de devolución, o foto de
         # vigencia): su evidencia se resuelve en ramas propias de
         # action_view_evidence.
@@ -1188,22 +1046,6 @@ class SgiIndicatorMeasure(models.Model):
                 'type': 'ir.actions.act_window',
                 'name': "Embarques con devolución — evidencia de %s" % self.period_date,
                 'res_model': 'stock.picking',
-                'view_mode': 'list,form',
-                'domain': [('id', 'in', errors.ids)],
-            }
-        if mode == 'compras_sin_devolucion':
-            # Evidencia = las OCs CON devolución a proveedor (los errores del proxy).
-            dt_from, dt_to = indicator._sgi_dt_bounds(date_from, date_to)
-            orders = self.env['purchase.order'].search([
-                ('state', 'in', ('purchase', 'done')),
-                ('date_approve', '>=', dt_from), ('date_approve', '<', dt_to),
-            ])
-            errors = orders.filtered(
-                lambda o: o.picking_ids.move_ids.returned_move_ids)
-            return {
-                'type': 'ir.actions.act_window',
-                'name': "OCs con devolución — evidencia de %s" % self.period_date,
-                'res_model': 'purchase.order',
                 'view_mode': 'list,form',
                 'domain': [('id', 'in', errors.ids)],
             }
@@ -1347,14 +1189,6 @@ class SgiIndicatorMeasure(models.Model):
                            ('departure_date', '>=', date_from),
                            ('departure_date', '<=', date_to)],
                 'context': {'active_test': False},
-            }
-        elif mode == 'plantilla_rh':
-            return {
-                'type': 'ir.actions.act_window',
-                'name': "Plantilla — evidencia",
-                'res_model': 'hr.job',
-                'view_mode': 'list,form',
-                'domain': [],
             }
         elif mode in self._EVIDENCE:
             model, domain, date_field, is_dt = self._EVIDENCE[mode]
