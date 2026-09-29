@@ -43,8 +43,8 @@ class SgiIncident(models.Model):
     reporter_id = fields.Many2one('res.users', string="Reportado por",
                                   default=lambda self: self.env.user, tracking=True)
     location = fields.Char(string="Lugar")
-    process_id = fields.Many2one('sgi.process', string="Proceso")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
     description = fields.Text(string="Descripción del evento")
     days_lost = fields.Integer(string="Días perdidos")
 

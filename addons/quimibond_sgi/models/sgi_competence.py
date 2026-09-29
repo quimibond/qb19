@@ -90,7 +90,7 @@ class HrDepartmentCompetenceMatrix(models.Model):
         rows = []
         for emp in Employee.search([('department_id', 'child_of', self.id)], order='job_id, name'):
             acks = Ack.search([('employee_id', '=', emp.id),
-                               ('document_id.sgi_doc_type', 'in', ('instructivo', 'formato_it'))])
+                               ('document_id.sgi_doc_type_id.code', 'in', ('instructivo', 'formato_it'))])
             read = len(acks.filtered(lambda a: a.state == 'leido'))
             partners = (emp.user_id.partner_id | emp.work_contact_id) if 'work_contact_id' in emp._fields \
                 else emp.user_id.partner_id

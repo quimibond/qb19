@@ -63,7 +63,8 @@ class SgiProcess(models.Model):
         help="Proceso que tomó el lugar de este al archivarlo. La carga lo "
              "llena con «replaces»; en un proceso archivado sin sucesor se "
              "captura a mano y la siguiente carga mueve al sucesor lo que "
-             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).")
+             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).",
+        ondelete='restrict')
     owner_valid = fields.Boolean(
         string="Dueño válido", compute='_compute_owner_valid',
         help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
@@ -77,7 +78,7 @@ class SgiProcess(models.Model):
         'documents.document', 'sgi_process_id', string="Documentos del proceso")
     procedure_ids = fields.One2many(
         'documents.document', 'sgi_process_id', string="Procedimientos e instructivos",
-        domain=[('sgi_doc_type', 'in', ('procedimiento', 'instructivo')),
+        domain=[('sgi_doc_type_id.code', 'in', ('procedimiento', 'instructivo')),
                 ('sgi_state', '=', 'vigente')])
     indicator_ids = fields.One2many('sgi.indicator', 'process_id', string="Indicadores")
     risk_ids = fields.One2many('sgi.risk', 'process_id', string="Riesgos y oportunidades")

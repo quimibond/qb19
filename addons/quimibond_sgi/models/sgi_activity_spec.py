@@ -277,8 +277,17 @@ class SgiActivitySpec(models.Model):
         timed_input = any(line.max_days or line.due_field for line in self.input_ids)
         periodic = bool(self.due_weekday or self.due_business_day
                         or (self.due_month and self.due_day))
-        external_start = self.block == 'inicial' and self.input_ids and not any(
-            line.deliverable_id.producer_activity_ids for line in self.input_ids)
+        # Arranque externo: actividad de la PRIMERA etapa de su proceso cuyas
+        # entradas no las produce ninguna actividad (llegan de fuera: pedido
+        # del cliente, requisición…); su plazo lo pone quien la dispara.
+        # B-008: antes se leía el bloque fijo «inicial» (campo que se retira);
+        # en producción las 15 actividades «inicial» con entradas están en la
+        # etapa A de su proceso, así que la regla da lo mismo.
+        first_stage = self.process_id.stage_ids[:1]
+        external_start = bool(
+            first_stage and self.stage_id == first_stage and self.input_ids
+            and not any(line.deliverable_id.producer_activity_ids
+                        for line in self.input_ids))
         if not timed_input and not periodic and not external_start:
             add('no_timing', "Sin plazo: pon días a alguna entrada o un vencimiento periódico.")
         if self.due_weekday and self.measure_cadence != 'semanal':

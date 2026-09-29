@@ -144,6 +144,62 @@
         <field name="model_id" ref="model_sgi_document_type"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
+    <!-- F-014 / C-012 (auditoría 2026-09, D-03): los 10 modelos del SGI que
+         ya tenían empresa y no tenían regla. Globales, como las de arriba:
+         vacío = compartido. Los crons corren como superusuario y no las ven.
+         Los ~50 modelos sin empresa (indicadores, riesgos, NC, auditorías,
+         normas, áreas…) son compartidos a propósito: el SGI es de una sola
+         empresa (sgi.config._sgi_company) y no se crean procesos en otra. -->
+    <record id="rule_sgi_health_record_company" model="ir.rule">
+        <field name="name">SGI: Expedientes de salud por empresa</field>
+        <field name="model_id" ref="model_sgi_health_record"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_staff_efficiency_company" model="ir.rule">
+        <field name="name">SGI: Eficiencia de personal por empresa</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_checklist_template_company" model="ir.rule">
+        <field name="name">SGI: Plantillas de checklist por empresa</field>
+        <field name="model_id" ref="model_sgi_checklist_template"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_coa_inbox_company" model="ir.rule">
+        <field name="name">SGI: Bandeja de certificados de análisis por empresa</field>
+        <field name="model_id" ref="model_sgi_coa_inbox"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_csh_inspection_company" model="ir.rule">
+        <field name="name">SGI: Inspecciones de la comisión de seguridad e higiene por empresa</field>
+        <field name="model_id" ref="model_sgi_csh_inspection"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_inventory_value_company" model="ir.rule">
+        <field name="name">SGI: Valor del inventario por empresa</field>
+        <field name="model_id" ref="model_sgi_inventory_value"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_lock_date_log_company" model="ir.rule">
+        <field name="name">SGI: Bitácora de fechas de bloqueo por empresa</field>
+        <field name="model_id" ref="model_sgi_lock_date_log"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_machine_sheet_company" model="ir.rule">
+        <field name="name">SGI: Hojas de máquina por empresa</field>
+        <field name="model_id" ref="model_sgi_machine_sheet"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_sales_budget_company" model="ir.rule">
+        <field name="name">SGI: Presupuestos de ventas por empresa</field>
+        <field name="model_id" ref="model_sgi_sales_budget"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_sales_budget_line_company" model="ir.rule">
+        <field name="name">SGI: Líneas de presupuesto de ventas por empresa</field>
+        <field name="model_id" ref="model_sgi_sales_budget_line"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
 
     <!-- 56.7.0 (auditoría funcional 28-sep-2026): el Usuario SGI lee todo el
          SGI pero solo ESCRIBE lo suyo. Las reglas son de escritura/creación

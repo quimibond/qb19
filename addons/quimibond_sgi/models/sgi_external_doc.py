@@ -35,20 +35,20 @@ class DocumentsDocumentExternal(models.Model):
         ('implantado', "Implantado"),
     ], string="Implantación", compute='_compute_sgi_ext_state', store=True)
 
-    @api.depends('sgi_ext_received_date', 'sgi_doc_type', 'company_id')
+    @api.depends('sgi_ext_received_date', 'sgi_doc_type_id.code', 'company_id')
     def _compute_sgi_ext_deadline(self):
         days = int(self.env['ir.config_parameter'].sudo().get_param(
             'quimibond_sgi.external_doc_days', 10) or 10)
         for doc in self:
             doc.sgi_ext_deadline = sgi_add_business_days(
                 self.env, doc.sgi_ext_received_date, days, doc.company_id) \
-                if doc.sgi_doc_type == 'externo' and doc.sgi_ext_received_date else False
+                if doc.sgi_doc_type_id.code == 'externo' and doc.sgi_ext_received_date else False
 
-    @api.depends('sgi_ext_deadline', 'sgi_ext_implemented_date', 'sgi_doc_type')
+    @api.depends('sgi_ext_deadline', 'sgi_ext_implemented_date', 'sgi_doc_type_id.code')
     def _compute_sgi_ext_state(self):
         today = fields.Date.context_today(self)
         for doc in self:
-            if doc.sgi_doc_type != 'externo' or not doc.sgi_ext_received_date:
+            if doc.sgi_doc_type_id.code != 'externo' or not doc.sgi_ext_received_date:
                 doc.sgi_ext_state = False
             elif doc.sgi_ext_implemented_date:
                 doc.sgi_ext_state = 'implantado'
@@ -79,7 +79,7 @@ class SgiCronExternalDoc(models.AbstractModel):
         Doc = self.env['documents.document'].sudo()
         today = fields.Date.context_today(self)
         soon = sgi_add_business_days(self.env, today, 2)
-        pending = Doc.search([('sgi_doc_type', '=', 'externo'), ('sgi_ext_implemented_date', '=', False),
+        pending = Doc.search([('sgi_doc_type_id.code', '=', 'externo'), ('sgi_ext_implemented_date', '=', False),
                               ('sgi_ext_deadline', '!=', False)])
         pending._compute_sgi_ext_state()  # «Vencido» depende del día
         docs = pending.filtered(lambda d: d.sgi_ext_deadline <= soon)

@@ -36,7 +36,7 @@ class SgiMachineSheet(models.Model):
     area = fields.Selection([('produccion', "Producción"), ('desarrollos', "Desarrollos")], string="Área", default='produccion', required=True)
     revision = fields.Integer(string="Revisión", default=0)
     state = fields.Selection([('borrador', "Borrador"), ('vigente', "Vigente"), ('obsoleta', "Obsoleta")],
-                             default='borrador', required=True, tracking=True)
+                             string="Estado", default='borrador', required=True, tracking=True)
     active = fields.Boolean(default=True)
     yarn_line_ids = fields.One2many('sgi.machine.sheet.yarn', 'sheet_id', string="Materia prima (hilos)")
     pulley_1 = fields.Char(string="Polea 1")

@@ -392,7 +392,7 @@ class SgiDiagramIso(models.AbstractModel):
                 level_of[t] = key
         counts = {}
         for doc in docs:
-            counts.setdefault(level_of.get(doc.sgi_doc_type, 'nivel4'), {}).setdefault(doc.sgi_process_id.id, []).append(doc)
+            counts.setdefault(level_of.get(doc.sgi_doc_type_id.code, 'nivel4'), {}).setdefault(doc.sgi_process_id.id, []).append(doc)
         lanes = []
         for key, label, types in DOC_LEVELS:
             items = []
