@@ -41,12 +41,15 @@ class TestApprovalRuleArchive(TransactionCase):
             lambda m: 'Regla de aprobación archivada' in (m.body or ''))
         self.assertEqual(len(messages), 1, "Una sola nota en el chatter del documento.")
         self.assertEqual(self._entries(), entries_before, "No se aprueba ni se rechaza nada.")
-        self.assertFalse(self.request.exists(), "La solicitud pendiente se quita.")
+        self.assertTrue(self.request.exists(), "Nada se borra: la solicitud se queda.")
+        self.assertEqual(self.request.mail_activity_id, activity,
+                         "La solicitud sigue ligada a su actividad, ya archivada.")
         # Reactivar no recrea el aviso.
         self.rule.action_unarchive()
         self.assertTrue(self.rule.active)
-        self.assertFalse(self.env['studio.approval.request'].sudo().search([('rule_id', '=', self.rule.id)]))
-        self.assertFalse(self.order.activity_ids.filtered(lambda a: a.user_id == self.approver))
+        self.assertFalse(self.order.activity_ids.filtered(lambda a: a.user_id == self.approver),
+                         "Reactivar no crea actividades nuevas en el documento.")
+        self.assertEqual(self._entries(), entries_before)
 
     def test_02_otra_escritura_no_toca_los_avisos(self):
         self.rule.name = 'Regla archivada 1d (renombrada)'

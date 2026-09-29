@@ -14,13 +14,13 @@ una actividad la ARCHIVA (no la borra) y publica en el chatter del documento
 el mensaje «actividad hecha» con la nota; si la actividad no está sobre el
 documento, la nota se publica aparte en el documento.
 
-La `studio.approval.request` se borra después: web_studio la mantiene solo
-mientras la aprobación está pendiente (en producción no hay ni una solicitud
-con su actividad archivada: al aprobar, Studio borra actividad y solicitud),
-y una solicitud huérfana haría que, si la regla se reactiva, Studio crea que
-ya avisó y no vuelva a avisar en ese documento. La actividad archivada queda
-como historia. Reactivar la regla no recrea nada: Studio vuelve a avisar
-cuando alguien pulse otra vez el botón.
+La `studio.approval.request` NO se borra (regla de la casa: nada se borra,
+solo se archiva): queda ligada a su actividad archivada. Mis pendientes ya
+la oculta (`_sgi_open_studio_requests` descarta reglas archivadas, y el
+dominio `mail_activity_id.user_id` no encuentra actividades archivadas).
+Reactivar la regla no recrea nada; si Studio ya no vuelve a avisar en esos
+documentos porque la solicitud existe, se acepta: la regla se archivó a
+propósito.
 """
 import logging
 
@@ -47,7 +47,7 @@ class StudioApprovalRuleArchive(models.Model):
 
     def _sgi_close_open_requests(self):
         """Marca hechas (sin aprobar ni rechazar) las actividades de las
-        solicitudes pendientes de estas reglas y borra las solicitudes.
+        solicitudes pendientes de estas reglas. Las solicitudes se quedan.
 
         sudo(): quien archiva es administrador de Studio, pero las actividades
         son de otros usuarios (los aprobadores) y las solicitudes solo las
@@ -79,6 +79,5 @@ class StudioApprovalRuleArchive(models.Model):
                 record.message_post(body=note, message_type='comment',
                                     subtype_xmlid='mail.mt_note',
                                     author_id=self.env.user.partner_id.id)
-        _logger.info("SGI: reglas de aprobación %s archivadas; %s solicitudes cerradas",
+        _logger.info("SGI: reglas de aprobación %s archivadas; avisos de %s solicitudes cerrados",
                      self.ids, len(requests))
-        requests.unlink()

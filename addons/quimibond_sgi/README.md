@@ -2478,10 +2478,11 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   nada (ningún `studio.approval.entry`).
 - La nota queda en el chatter del documento: Odoo publica ahí el «actividad
   hecha» con ella; si el aviso estaba en otro registro, se publica aparte.
-- La actividad queda archivada como historia; la `studio.approval.request`
-  se borra (Studio solo la guarda mientras la aprobación está pendiente).
-  Reactivar la regla no recrea avisos: Studio vuelve a avisar cuando alguien
-  pulse el botón otra vez.
+- Nada se borra: la actividad queda archivada como historia y la
+  `studio.approval.request` se queda ligada a ella. Mis pendientes ya no la
+  muestra (regla archivada, actividad archivada). Reactivar la regla no
+  recrea avisos; si Studio ya no vuelve a avisar en esos documentos, se
+  acepta: la regla se archivó a propósito.
 - Pruebas: `tests/test_approval_rule_archive.py`.
 
 ### 19.0.56.24.0 — Menú SGI reordenado y sin lo archivado en Mi procedimiento / Mis pendientes
