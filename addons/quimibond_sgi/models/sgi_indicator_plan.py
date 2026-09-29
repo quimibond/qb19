@@ -253,6 +253,11 @@ class SgiCronCalendar(models.AbstractModel):
         today = fields.Date.context_today(self)
         self._sgi_step("escalamiento de planes de mediciones rojas",
                        lambda: self.env['sgi.indicator.measure']._sgi_escalate_red_plans(today))
+        # 57.1.0: los indicadores con «Último cálculo» vacío toman el
+        # diagnóstico de su última medición (todos los días, no solo el día
+        # en que se mide).
+        self._sgi_step("último cálculo de los indicadores sin diagnóstico",
+                       lambda: self.env['sgi.indicator']._sgi_calc_status_backfill())
         if scheduled and not self._sgi_monthly_run_due(today):
             return True
         return super().cron_indicators()

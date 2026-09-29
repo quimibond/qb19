@@ -378,6 +378,58 @@ class SgiIndicatorFormula(models.Model):
                 body += Markup("<br/>El indicador regresa a «prueba».")
             indicator.message_post(body=body)
 
+    # ---- TR-01: del modo «cierre_nc» a fórmula (57.1.0) --------------------
+    # Numerador: NC del SGI (con folio) cerradas en el periodo, por fecha de
+    # cierre. Denominador: NC del SGI levantadas en el periodo, por fecha de
+    # creación, SIN las canceladas. El modo de código contaba también las
+    # canceladas (agosto de 2026: 17 levantadas, 13 canceladas el 28-sep,
+    # ninguna cerrada) y dejaba el % en 0 aunque no hubiera nada que cerrar.
+    _CIERRE_NC_TERMS = [
+        {'role': 'numerator', 'date_field': 'date_close',
+         'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]"},
+        {'role': 'denominator', 'date_field': 'create_date',
+         'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]"},
+    ]
+
+    @api.model
+    def _sgi_cierre_nc_formula(self, indicator_ids=None):
+        """Pasa a fórmula los indicadores que siguen en el modo retirado
+        ``cierre_nc`` (o, con ``indicator_ids``, esos indicadores: la
+        instalación limpia de TR-01). Respeta lo que MAST ya haya puesto:
+
+        - un indicador en otro modo no se toca (solo los que siguen en
+          ``cierre_nc``, activos o archivados, o los que se pasan por id);
+        - si ya tiene términos (fórmula en paralelo), se quedan los suyos;
+        - el modo anterior queda en el chatter (respaldo) y el indicador sigue
+          en prueba.
+
+        Devuelve los ids migrados."""
+        Indicator = self.with_context(active_test=False)
+        if indicator_ids is None:
+            self.env.cr.execute("SELECT id FROM sgi_indicator WHERE calc_mode = 'cierre_nc'")
+            indicators = Indicator.browse([row[0] for row in self.env.cr.fetchall()])
+        else:
+            indicators = Indicator.browse(indicator_ids).exists()
+        model = self.env['ir.model']._get('quality.alert')
+        if not model:
+            return []
+        done = []
+        for indicator in indicators:
+            before = indicator.calc_mode
+            if not indicator.term_ids:
+                indicator.write({'term_ids': [
+                    (0, 0, dict(term, model_id=model.id, aggregation='count', window='period'))
+                    for term in self._CIERRE_NC_TERMS]})
+            if before != 'configurable':
+                indicator.write({'calc_mode': 'configurable'})
+                indicator.message_post(body=Markup(
+                    "57.1.0: el modo de cálculo «%s» se retiró del código; el indicador "
+                    "pasa a <b>fórmula configurable</b> (NC del SGI cerradas en el periodo "
+                    "÷ NC levantadas en el periodo sin las canceladas). Para regresar: "
+                    "modo anterior «%s».") % (before, before))
+            done.append(indicator.id)
+        return done
+
     def _detail_configurable(self, date_from, date_to):
         nums, dens = self._sgi_terms()
         if not nums:

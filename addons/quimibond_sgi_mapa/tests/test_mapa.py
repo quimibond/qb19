@@ -49,7 +49,8 @@ class TestMapaFile(TransactionCase):
         self.assertEqual(len(self.mapa['families']), 14)
         self.assertEqual(len(self.mapa['objectives']), 10)
         self.assertEqual(len(self.mapa['control_plans']), 10)
-        self.assertEqual(sum(len(i['terms']) for i in self.mapa['indicators']), 50)
+        # 52: los 50 de producción + los 2 de TR-01 (quimibond_sgi 57.1.0).
+        self.assertEqual(sum(len(i['terms']) for i in self.mapa['indicators']), 52)
         self.assertEqual((counts['processes'], counts['stages'], counts['activities']),
                          (14, 60, 310), "meta.counts coincide con el contenido.")
 

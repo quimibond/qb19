@@ -269,7 +269,8 @@ class TestKpi20Step2(TransactionCase):
     def test_01_produccion_vs_capacidad(self):
         self.Param.set_param('quimibond_sgi.production_monthly_capacity', '1000')
         product = self.env['product.product'].create(
-            {'name': 'Tela capacidad KPI', 'type': 'consu'})
+            {'name': 'Tela capacidad KPI', 'type': 'consu',
+             'uom_id': self.env.ref('uom.product_uom_kgm').id})  # 57.1.0: MA-02 cuenta kg
         # Periodo libre de demo (2040). Producidos 800 sobre capacidad 1000 = 80%.
         self._production(product, 800.0, datetime.datetime(2040, 6, 15, 8, 0, 0))
         ind = self._indicator('produccion_vs_capacidad')  # mensual por defecto
@@ -289,13 +290,41 @@ class TestKpi20Step2(TransactionCase):
     def test_01b_capacidad_prorratea_semanal(self):
         self.Param.set_param('quimibond_sgi.production_monthly_capacity', '3000')
         product = self.env['product.product'].create(
-            {'name': 'Tela capacidad semanal KPI', 'type': 'consu'})
+            {'name': 'Tela capacidad semanal KPI', 'type': 'consu',
+             'uom_id': self.env.ref('uom.product_uom_kgm').id})  # 57.1.0: MA-02 cuenta kg
         # Semana de 7 días de junio 2040 (30 días) → capacidad prorrateada
         # 3000*7/30 = 700. Producidos 350 → 50%.
         self._production(product, 350.0, datetime.datetime(2040, 6, 3, 8, 0, 0))
         ind = self._indicator('produccion_vs_capacidad', frequency='weekly')
         value = ind._calc_produccion_vs_capacidad(date(2040, 6, 1), date(2040, 6, 7))
         self.assertEqual(value, 50.0)
+
+    def test_01c_capacidad_solo_kg(self):
+        """57.1.0: una orden en metros no se suma a los kg producidos (en
+        agosto de 2026 había 294 órdenes en metros con 1.5 millones de m
+        junto a 710 en kg con 240 t)."""
+        self.Param.set_param('quimibond_sgi.production_monthly_capacity', '1000')
+        kg = self.env['product.product'].create({
+            'name': 'Tela kg MA-02', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_kgm').id})
+        meter = self.env['product.product'].create({
+            'name': 'Tela metros MA-02', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_meter').id})
+        kg_mo = self._production(kg, 600.0, datetime.datetime(2041, 3, 10, 8, 0, 0))
+        m_mo = self._production(meter, 5000.0, datetime.datetime(2041, 3, 11, 8, 0, 0))
+        ind = self._indicator('produccion_vs_capacidad')
+        detail = ind._detail_produccion_vs_capacidad(date(2041, 3, 1), date(2041, 3, 31))
+        self.assertEqual(detail['value'], 60.0, "600 kg ÷ 1000 kg; los 5000 m no cuentan.")
+        self.assertEqual(detail['numerator'], 600.0)
+        self.assertEqual(detail['denominator'], 1000.0)
+        self.assertIn(kg_mo.id, detail['ids'])
+        self.assertNotIn(m_mo.id, detail['ids'])
+        vals = ind._sgi_measure_vals(date(2041, 3, 1), date(2041, 3, 31))
+        self.assertEqual((vals['state'], vals['value']), ('capturado', 60.0))
+        # Sin capacidad: sin dato, no cero.
+        self.Param.set_param('quimibond_sgi.production_monthly_capacity', '0')
+        vals = ind._sgi_measure_vals(date(2041, 3, 1), date(2041, 3, 31))
+        self.assertEqual(vals['state'], 'sin_dato')
 
     # ---------------- TR-03 consumo_energia ----------------
     def _post_bill(self, partner, amount, inv_date, refund=False):

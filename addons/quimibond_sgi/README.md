@@ -110,7 +110,7 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
 | `otd_compras` | Recepciones done vs `date_planned` de la OC | Implementado |
 | `produccion_vs_programado` | `mrp.production` done: qty_produced/product_qty | Implementado |
 | `desperdicio` | `stock.scrap` / producción del periodo | Implementado |
-| `cierre_nc` | NCs cerradas/detectadas en el periodo | Implementado |
+| `cierre_nc` | Retirado en 57.1.0: TR-01 es fórmula configurable (NC del SGI cerradas en el periodo ÷ levantadas en el periodo, sin canceladas) | Retirado |
 | `reclamos_cliente` | Tickets del equipo Reclamaciones | Implementado |
 | `presupuesto_ventas` | Facturado (out_invoice posted) vs `monthly_budget` | Implementado |
 | `preventivo_cumplido` | `maintenance.request` preventivas en etapa "done" | Implementado (aprox.) |

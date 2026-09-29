@@ -14,12 +14,13 @@
    "deliverables": 319,
    "families": 14,
    "indicators": 93,
-   "terms": 50,
+   "terms": 52,
    "objectives": 10,
    "control_plans": 10
   },
   "review": [
-   "res.partner: SHAWMUT CORPORATION (id 1783) sin llave única: se exporta por id + nombre y solo se resuelve en una copia de producción"
+   "res.partner: SHAWMUT CORPORATION (id 1783) sin llave única: se exporta por id + nombre y solo se resuelve en una copia de producción",
+   "TR-01: calc_mode 'configurable' con 2 términos (quimibond_sgi 57.1.0 retiró el modo cierre_nc); en producción lo aplica la migración 19.0.57.1.0 y la próxima exportación ya lo trae así"
   ]
  },
  "tolerant": true,
@@ -27056,13 +27057,42 @@
    "target_objective": 85,
    "target_acceptable": 75,
    "frequency": "monthly",
-   "calc_mode": "cierre_nc",
+   "calc_mode": "configurable",
    "formula": "No conformidades cerradas en su plazo ÷ no conformidades con plazo vencido en el mes × 100",
    "source": "SGI: no conformidades por etapa y fecha",
    "status": "prueba",
    "process": "E2",
    "objective": "Mantener ISO 9001/14001/45001",
-   "terms": []
+   "terms": [
+    {
+     "role": "denominator",
+     "model": "quality.alert",
+     "domain": "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]",
+     "date_field": "create_date",
+     "aggregation": "count",
+     "field_name": null,
+     "field_name_2": null,
+     "delta_unit": "days",
+     "delta_op": "<=",
+     "delta_value": 0,
+     "factor": 1,
+     "window": "period"
+    },
+    {
+     "role": "numerator",
+     "model": "quality.alert",
+     "domain": "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]",
+     "date_field": "date_close",
+     "aggregation": "count",
+     "field_name": null,
+     "field_name_2": null,
+     "delta_unit": "days",
+     "delta_op": "<=",
+     "delta_value": 0,
+     "factor": 1,
+     "window": "period"
+    }
+   ]
   },
   {
    "code": "TR-02",
