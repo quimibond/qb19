@@ -214,3 +214,10 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
    - Los 5 sensibles quedan restringidos a su grupo (RH, Contabilidad, Salud ocupacional o Comisión, según el caso), dentro de la 1c o la 4: `hr.version` (extensión del SGI), `sgi.staff.efficiency.line`, `account.move.line` (campos del SGI), `sgi.competence.gap` y `sgi.csh.finding`.
    - Los otros 5 se quedan: auditorías, evaluaciones legales, fichas de hilo y vista de diagrama.
 5. **Evidencia de Odoo.sh:** Jose pasa las capturas de los builds de las ramas de las entregas 1 y 1b. Mientras, se sigue con la 1c.
+
+## 2026-09-29 — Lotes de entregas
+
+- Para ahorrar builds, las entregas se juntan en **lotes**. El lote 1 es la rama de integración `claude/sgi-lote-1`, con las entregas 1, 1b, 1d y 1c en ese orden, un solo PR a `main` (quimibond/qb19#458) y **un solo build de Odoo.sh**.
+- Los PRs de cada entrega (#452, #455, #456, #457) se quedan abiertos como referencia y se cierran cuando entre el lote.
+- Si el build falla, el programador dice qué entrega lo rompió y lo corrige **en la rama del lote**.
+- La entrega 4 va en el siguiente lote.
