@@ -15,6 +15,13 @@
   - solicitudes de Aprobaciones de categorías archivadas (las cerradas ya
     se excluían por estado);
   - acciones, NC y mediciones de procesos archivados.
+
+Entrega 1b (auditoría 2026-09):
+  - documentos por revisar de procesos archivados;
+  - D-03: el SGI es de UNA sola empresa (`sgi.config._sgi_company`, la
+    principal salvo `quimibond_sgi.sgi_company_id`). Nada de otra empresa
+    entra a Mis pendientes: en producción salían aprobaciones de Studio de
+    pedidos de BDC BOSQUES (empresa 4) a usuarios de la empresa 1.
 """
 from odoo import api, models
 
@@ -23,6 +30,20 @@ _CLOSED_STATES = ('cancel', 'canceled', 'cancelled')
 _PAST_STEP = {
     'action_confirm': ('draft', 'sent', 'to approve'),
 }
+
+
+class SgiConfigCompany(models.AbstractModel):
+    _inherit = 'sgi.config'
+
+    @api.model
+    def _sgi_company(self):
+        """D-03: la única empresa del SGI. Parámetro
+        `quimibond_sgi.sgi_company_id`; por default, la empresa principal."""
+        param = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.sgi_company_id', 0) or 0)
+        company = self.env['res.company'].browse(param).exists() if param else None
+        return company or self.env.ref('base.main_company', raise_if_not_found=False) \
+            or self.env.company
 
 
 class HrJobArchivedFilter(models.Model):
@@ -69,7 +90,34 @@ class SgiMyPendingArchivedFilter(models.TransientModel):
                     a.request_id.category_id))
         if 'aprobacion' in records:
             records['aprobacion'] = self._sgi_open_studio_requests(records['aprobacion'])
+        if 'documento' in records and 'sgi_process_id' in records['documento']._fields:
+            records['documento'] = records['documento'].filtered(lambda d: alive(d.sgi_process_id))
+        company = self.env['sgi.config']._sgi_company()
+        for kind, recs in records.items():
+            records[kind] = recs.filtered(lambda rec: self._sgi_in_company(kind, rec, company))
         return records
+
+    @api.model
+    def _sgi_in_company(self, kind, rec, company):
+        """D-03: el renglón es de la empresa del SGI. Lo que no tiene empresa
+        (documentos compartidos, catálogos) sí entra."""
+        if kind == 'aprobacion':
+            rule = rec.rule_id
+            if not rule.model_name or rule.model_name not in self.env:
+                return True
+            target = self.env[rule.model_name].sudo().browse(rec.res_id).exists()
+        elif kind == 'solicitud':
+            target = rec.request_id
+        elif kind == 'accion':
+            target = rec.alert_id or rec
+        elif kind == 'medicion':
+            target = rec.indicator_id
+        else:
+            target = rec
+        if not target or 'company_id' not in target._fields:
+            return True
+        record_company = target.company_id
+        return not record_company or record_company == company
 
     @api.model
     def _sgi_role_alive(self, holder):

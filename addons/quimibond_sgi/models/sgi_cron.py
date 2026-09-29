@@ -6,6 +6,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
 
+from .sgi_guard import sgi_require_system
+
 _logger = logging.getLogger(__name__)
 
 
@@ -139,6 +141,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_nonconformities(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         Param = self.env['ir.config_parameter'].sudo()
         default_days = int(Param.get_param('quimibond_sgi.nc_escalation_days', 5))
@@ -208,6 +211,7 @@ class SgiCron(models.AbstractModel):
         - > M días: además Dirección (group_sgi_director).
         Idempotente por nivel: el resumen difiere por nivel, así que no duplica
         actividades ya agendadas del mismo nivel."""
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         Param = self.env['ir.config_parameter'].sudo()
         d_mgr = int(Param.get_param('quimibond_sgi.action_escalation_manager_days', 7))
@@ -249,6 +253,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_documents(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         Doc = self.env['documents.document']
         Param = self.env['ir.config_parameter'].sudo()
@@ -321,6 +326,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_news(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         first_this_month = today.replace(day=1)
         first_prev_month = first_this_month - relativedelta(months=1)
@@ -371,6 +377,7 @@ class SgiCron(models.AbstractModel):
         excepción en el refresco de UN presupuesto revertía TODAS las mediciones
         del mes y sus NCs — y al ser mensual, el mes quedaba sin medir hasta una
         corrida manual."""
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         first_this = today.replace(day=1)
         first_prev = first_this - relativedelta(months=1)
@@ -379,7 +386,7 @@ class SgiCron(models.AbstractModel):
         indicators = self.env['sgi.indicator'].search([('frequency', '=', 'monthly')])
         self._sgi_step(
             "foto del valor del inventario (S3-04)",
-            lambda: self.env['sgi.inventory.value'].sgi_snapshot(last_prev))
+            lambda: self.env['sgi.inventory.value']._sgi_snapshot(last_prev))
         self._sgi_step(
             "trayectorias faltantes",
             lambda: self.env['sgi.indicator'].cron_missing_trajectories())
@@ -417,6 +424,7 @@ class SgiCron(models.AbstractModel):
         líneas descubiertas EN HORIZONTE y los pedidos fuera de pronóstico, y crea
         UNA actividad al coordinador con el resumen. Idempotente (dedup por
         resumen). No aplica a presupuestos (P-A28 4.2.2.7)."""
+        sgi_require_system(self.env)  # F-008
         def _fmt(value):
             return '{:,.0f}'.format(value or 0)
         Budget = self.env['sgi.sales.budget']
@@ -547,6 +555,7 @@ class SgiCron(models.AbstractModel):
         """P-A28 Nota 1: en JUNIO, pide al Admin de ventas revaluar las cantidades
         del segundo semestre de cada presupuesto aprobado del año en curso. Corre
         anual pero se protege con la guarda de mes (idempotente el resto del año)."""
+        sgi_require_system(self.env)  # F-008
         if fields.Date.context_today(self).month != 6:
             return True
         return self._sgi_sales_budget_revaluation(
@@ -580,6 +589,7 @@ class SgiCron(models.AbstractModel):
     @api.model
     def cron_indicators_weekly(self):
         """Cron semanal: mide los indicadores de frecuencia semanal de la semana previa."""
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         this_monday = today - relativedelta(days=today.weekday())
         prev_monday = this_monday - relativedelta(days=7)
@@ -743,6 +753,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_audit_program(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         lines = self.env['sgi.audit.program.line'].search([
             ('state', '=', 'pendiente'),
@@ -772,6 +783,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_risk_review(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         risks = self.env['sgi.risk'].search([
             ('next_review_date', '!=', False),
@@ -813,6 +825,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_supplier_eval(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         # Trimestre anterior
         current_q_start_month = ((today.month - 1) // 3) * 3 + 1
@@ -886,6 +899,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_calibrations(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         Equipment = self.env['maintenance.equipment']
         manager_id = self._sgi_manager_user_id()
@@ -950,6 +964,7 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_competences(self):
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         soon = today + relativedelta(days=30)
         manager_id = self._sgi_manager_user_id()
@@ -1010,6 +1025,7 @@ class SgiCron(models.AbstractModel):
         de Satisfacción del Cliente (9001 9.1.2). Las respuestas alimentan el
         KPI CA-02 automáticamente. No envía correos a clientes por sí solo:
         el envío es una acción humana desde la app Encuestas."""
+        sgi_require_system(self.env)  # F-008
         survey = self.env['sgi.indicator']._sgi_satisfaction_survey()
         user_id = self._sgi_sales_admin_user_id()
         if not survey or not user_id:
@@ -1030,6 +1046,7 @@ class SgiCron(models.AbstractModel):
         brechas de competencia abiertas y agenda al coordinador de RH la
         distribución de la encuesta DNC (F-P-A01-17) y el plan de
         capacitación. Idempotente por trimestre."""
+        sgi_require_system(self.env)  # F-008
         survey = self.env.ref('quimibond_sgi.sgi_survey_dnc',
                               raise_if_not_found=False)
         rh_id = self._sgi_rh_user_id()
@@ -1051,6 +1068,7 @@ class SgiCron(models.AbstractModel):
     def cron_emergency_drills(self):
         """Cron diario: vigila los simulacros de los planes de emergencia
         vigentes (14001/45001 8.2). Idempotente por resumen."""
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         soon = today + relativedelta(days=30)
         manager_id = self._sgi_manager_user_id()
@@ -1112,6 +1130,7 @@ class SgiCron(models.AbstractModel):
         en 90 días → actividad al Jefe MAST sugiriendo levantar NC y revisar
         el plan de mantenimiento. (b) Reclamación abierta con SLA vencido →
         actividad al Jefe MAST. Idempotente por resumen."""
+        sgi_require_system(self.env)  # F-008
         now = fields.Datetime.now()
         manager_id = self._sgi_manager_user_id()
         if not manager_id:
@@ -1171,6 +1190,7 @@ class SgiCron(models.AbstractModel):
     def cron_legal_requirements(self):
         """Cron diario: evaluaciones de cumplimiento vencidas y permisos por
         vencer (≤60 días) o vencidos. Idempotente por resumen."""
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         soon = today + relativedelta(days=60)
         manager_id = self._sgi_manager_user_id()
@@ -1238,6 +1258,7 @@ class SgiCron(models.AbstractModel):
         participación de los trabajadores (45001 §5.4). Las respuestas y las
         quejas del canal interno alimentan la entrada 12 de la RxD.
         Idempotente por semestre (el resumen lleva el semestre)."""
+        sgi_require_system(self.env)  # F-008
         survey = self._sgi_participation_survey()
         rh_id = self._sgi_rh_user_id()
         if not survey or not rh_id:
@@ -1257,6 +1278,7 @@ class SgiCron(models.AbstractModel):
     def cron_context_review(self):
         """Cron semanal: partes interesadas (4.1/4.2) con revisión vencida.
         Idempotente por resumen."""
+        sgi_require_system(self.env)  # F-008
         today = fields.Date.context_today(self)
         manager_id = self._sgi_manager_user_id()
         if not manager_id:
@@ -1285,6 +1307,7 @@ class SgiCron(models.AbstractModel):
     def cron_sign_elearning_sync(self):
         """Cron diario: sella acuses cuya firma electrónica ya se completó y
         otorga competencias de cursos eLearning terminados."""
+        sgi_require_system(self.env)  # F-008
         self._sgi_step(
             "acuses firmados vía Sign",
             lambda: self.env['sgi.document.ack']._sgi_sync_from_sign())
@@ -1310,6 +1333,7 @@ class SgiCron(models.AbstractModel):
         """Cron semanal: correo-resumen de pendientes del SGI al Jefe de
         MAST y Dirección. Cada métrica va en su propio savepoint: una
         consulta rota no tumba el resumen."""
+        sgi_require_system(self.env)  # F-008
         emails = self._sgi_critical_mail_emails()
         if not emails:
             return True

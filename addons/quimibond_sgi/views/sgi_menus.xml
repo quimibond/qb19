@@ -20,8 +20,9 @@
          Cada perfil ve su nivel y el de abajo, nunca un menú técnico.
          Los xmlids NO cambian: solo se reparenta y se ajustan grupos. -->
 
-    <!-- 1. Inicio (todos): la persona y su equipo. Mi procedimiento y
-         Mi equipo se declaran en views/sgi_my_procedure_views.xml. -->
+    <!-- 1. Inicio (todos): la persona y su equipo. Sus menús viven aquí y no
+         junto a sus acciones: el padre se tiene que cargar antes que el hijo
+         o una instalación limpia revienta (A-001, auditoría 2026-09). -->
     <menuitem id="menu_sgi_panel" name="Inicio" parent="menu_sgi_root" sequence="10"/>
     <!-- Inicio es solo agrupador. Antes apuntaba al «Panel de procesos»
          (retirado en 45.0.0) y Odoo NO vacía el campo action de un menú
@@ -30,6 +31,18 @@
     <record id="menu_sgi_panel" model="ir.ui.menu">
         <field name="action" eval="False"/>
     </record>
+    <menuitem id="menu_sgi_my_pending" name="Mis pendientes"
+              parent="menu_sgi_panel" action="sgi_my_pending_action_mine"
+              sequence="10"/>
+    <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
+              parent="menu_sgi_panel" action="sgi_my_procedure_action_mine"
+              sequence="20"/>
+    <menuitem id="menu_sgi_my_indicators" name="Mis indicadores"
+              parent="menu_sgi_panel" action="sgi_indicator_action_mine"
+              sequence="30"/>
+    <menuitem id="menu_sgi_my_team" name="Mi equipo"
+              parent="menu_sgi_panel" action="sgi_my_team_action_mine"
+              sequence="40"/>
 
     <!-- 2. Procesos (todos leen; los dueños editan): el mapa es la entrada
          única; lo técnico (actividades, roles, entregables, cadena, flujos)
@@ -87,6 +100,8 @@
               parent="menu_sgi_safety" action="sgi_emergency_plan_action" sequence="20"/>
     <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
               parent="menu_sgi_safety" action="sgi_emergency_drill_action" sequence="30"/>
+    <menuitem id="menu_sgi_epp_deliveries" name="Responsivas de EPP"
+              parent="menu_sgi_safety" action="sgi_epp_delivery_action" sequence="60"/>
 
     <!-- 4. Dirección (Dirección y MAST; el auditor la lee): la cascada de gestión. -->
     <menuitem id="menu_sgi_direction" name="Dirección" parent="menu_sgi_root" sequence="40"

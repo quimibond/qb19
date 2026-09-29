@@ -36,6 +36,8 @@ from odoo.exceptions import UserError
 
 from .sgi_catalog import SGI_ROLE_SELECTION, sgi_normalize_name
 
+from .sgi_guard import sgi_require_system
+
 _logger = logging.getLogger(__name__)
 
 # Orden fijo de las secciones y su título en la hoja.
@@ -690,6 +692,7 @@ class SgiCronMyProcedure(models.AbstractModel):
         sobre la revisión vigente del primer puesto desactualizado
         (documents.document lleva actividades); si nadie ha publicado nada,
         solo queda en el log."""
+        sgi_require_system(self.env)  # F-008
         Job = self.env['hr.job']
         stale = Job._sgi_my_procedure_stale_jobs()
         if not stale:

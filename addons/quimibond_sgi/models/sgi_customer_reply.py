@@ -19,6 +19,8 @@ from odoo.exceptions import UserError
 
 from .sgi_calendar import sgi_add_business_days
 
+from .sgi_guard import sgi_require_system
+
 ACK_DAYS_PARAM = 'quimibond_sgi.complaint_ack_days'
 RESPONSE_DAYS_PARAM = 'quimibond_sgi.complaint_response_days'
 
@@ -175,6 +177,7 @@ class SgiCronCustomerReply(models.AbstractModel):
 
     @api.model
     def cron_nonconformities(self):
+        sgi_require_system(self.env)  # F-008
         res = super().cron_nonconformities()
         today = fields.Date.context_today(self)
         self._sgi_step(

@@ -141,8 +141,9 @@
                         icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
                     <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
                 </button>
+                <field name="sgi_can_sign" invisible="1"/>
                 <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
-                        groups="quimibond_sgi.group_sgi_user">
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
                     <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
                 </button>
             </xpath>
@@ -159,8 +160,9 @@
                         icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
                     <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
                 </button>
+                <field name="sgi_can_sign" invisible="1"/>
                 <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
-                        groups="quimibond_sgi.group_sgi_user">
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
                     <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
                 </button>
             </xpath>
@@ -177,8 +179,9 @@
                         icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
                     <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
                 </button>
+                <field name="sgi_can_sign" invisible="1"/>
                 <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
-                        groups="quimibond_sgi.group_sgi_user">
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
                     <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
                 </button>
             </xpath>
@@ -195,8 +198,9 @@
                         icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
                     <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
                 </button>
+                <field name="sgi_can_sign" invisible="1"/>
                 <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
-                        groups="quimibond_sgi.group_sgi_user">
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
                     <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
                 </button>
             </xpath>

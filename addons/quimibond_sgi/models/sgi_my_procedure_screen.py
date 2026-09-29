@@ -1042,7 +1042,9 @@ class HrEmployeePublicMyTeam(models.Model):
     def action_sgi_print_my_procedure(self):
         """Imprimir desde la ficha pública: el PDF del puesto para esta persona."""
         self.ensure_one()
-        return self.env['hr.employee'].sudo().browse(self.id).action_sgi_print_my_procedure()
+        employee = self.env['hr.employee'].sudo().browse(self.id)
+        self.env['sgi.my.procedure']._sgi_check_in_scope(employee)  # F-007
+        return employee.action_sgi_print_my_procedure()
 
     @api.model
     def _sgi_team(self):

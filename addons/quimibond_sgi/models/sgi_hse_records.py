@@ -4,7 +4,8 @@
 - **Estudios de higiene y exámenes médicos** por trabajador (E2.31, E2.32):
   qué estudio o examen, cuándo se hizo, resultado y cuándo vence. El cron
   diario de competencias avisa a RH 30 días antes y cuando ya venció.
-  Son datos de salud: solo RH y el Jefe MAST los ven.
+  Son datos de salud: solo el grupo «Salud ocupacional (SGI)» y el Jefe MAST
+  los ven (F-004, auditoría 2026-09; antes también «Empleados / Encargado»).
 - **Recorrido de la Comisión de Seguridad e Higiene** (E2.29): el acta del
   recorrido con quién participó y sus hallazgos; cada hallazgo se corrige en
   el momento, se queda sin acción (con motivo) o genera su no conformidad
@@ -14,6 +15,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+from .sgi_guard import sgi_require_system
 
 _HEALTH_KINDS = [
     ('examen_medico', "Examen médico"),
@@ -99,7 +102,7 @@ class HrEmployeeHealth(models.Model):
 
     sgi_health_record_ids = fields.One2many(
         'sgi.health.record', 'employee_id', string="Estudios y exámenes",
-        groups='hr.group_hr_user,quimibond_sgi.group_sgi_manager')
+        groups='quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager')
 
 
 class SgiCronHealth(models.AbstractModel):
@@ -107,6 +110,7 @@ class SgiCronHealth(models.AbstractModel):
 
     @api.model
     def cron_competences(self):
+        sgi_require_system(self.env)  # F-008
         res = super().cron_competences()
         self._sgi_step("estudios de higiene y exámenes médicos por vencer",
                        lambda: self.env['sgi.health.record']._sgi_expiry_notices())

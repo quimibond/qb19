@@ -8,7 +8,8 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
-                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_nc_count" widget="statinfo" string="NC"/>
                 </button>
             </xpath>
@@ -29,7 +30,8 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
-                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_nc_count" widget="statinfo" string="NC"/>
                 </button>
             </xpath>
@@ -44,11 +46,13 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_sgi_my_procedures" type="object" class="oe_stat_button"
-                        icon="fa-book">
+                        icon="fa-book"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_procedure_count" widget="statinfo" string="Mis procedimientos"/>
                 </button>
                 <button name="action_sgi_pending_acks" type="object" class="oe_stat_button"
-                        icon="fa-check-square-o">
+                        icon="fa-check-square-o"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_pending_ack_count" widget="statinfo" string="Acuses pendientes"/>
                 </button>
             </xpath>

@@ -21,6 +21,17 @@ class SgiSignRecordMixin(models.AbstractModel):
     sgi_sign_count = fields.Integer(compute='_compute_sgi_sign_requests')
     sgi_signed = fields.Boolean(string="Firmado", compute='_compute_sgi_sign_requests',
                                 search='_search_sgi_signed')
+    sgi_can_sign = fields.Boolean(
+        compute='_compute_sgi_can_sign',
+        help="El usuario puede pedir firma desde este registro: es Usuario SGI y "
+             "tiene acceso a la app Firma electrónica (I-014, auditoría 2026-09).")
+
+    @api.depends_context('uid')
+    def _compute_sgi_can_sign(self):
+        user = self.env.user
+        can = user.has_group('quimibond_sgi.group_sgi_user') and user.has_group('sign.group_sign_user')
+        for rec in self:
+            rec.sgi_can_sign = can
 
     @api.model
     def _sgi_sign_domain(self, records):
@@ -95,6 +106,7 @@ class ProductProductSign(models.Model):
     _inherit = 'product.product'
 
     sgi_sign_count = fields.Integer(related='product_tmpl_id.sgi_sign_count')
+    sgi_can_sign = fields.Boolean(related='product_tmpl_id.sgi_can_sign')
 
     def action_sgi_sign(self):
         self.ensure_one()
@@ -116,15 +128,26 @@ class SgiSignRequestWizard(models.TransientModel):
     subject = fields.Char(string="Asunto")
 
     def action_confirm(self):
+        """F-003 (auditoría 2026-09): sin sudo(). Antes cualquier usuario interno
+        podía mandar por RPC CUALQUIER plantilla de Sign a cualquier contacto,
+        porque plantilla y solicitud se leían y creaban como superusuario.
+        Ahora solo se firma desde los modelos del SGI, sobre un registro que el
+        usuario puede leer, con una plantilla que Sign le deja ver y con sus
+        propios permisos de Sign."""
         self.ensure_one()
+        if self.res_model not in SGI_SIGN_MODELS:
+            raise UserError("Solo se puede pedir firma desde una orden de compra, una entrega, "
+                            "un lote o un producto.")
         record = self.env[self.res_model].browse(self.res_id).exists()
         if not record:
             raise UserError("El registro ya no existe.")
-        template = self.template_id.sudo()
+        record.check_access('read')
+        template = self.template_id
+        template.check_access('read')
         roles = template.sign_item_ids.mapped('responsible_id')
         if len(roles) != 1:
             raise UserError("La plantilla debe tener campos de UN solo firmante; esta tiene %d." % len(roles))
-        request = self.env['sign.request'].sudo().create({
+        request = self.env['sign.request'].create({
             'template_id': template.id,
             'reference': "%s — %s" % (template.display_name, record.display_name),
             'subject': self.subject or "Firma: %s" % record.display_name,

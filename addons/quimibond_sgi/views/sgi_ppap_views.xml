@@ -153,7 +153,8 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_sgi_ppap" type="object" class="oe_stat_button"
-                        icon="fa-check-circle-o" invisible="not is_company">
+                        icon="fa-check-circle-o" invisible="not is_company"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_ppap_count" widget="statinfo" string="PPAP"/>
                 </button>
             </xpath>
@@ -167,7 +168,8 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_sgi_ppap" type="object" class="oe_stat_button"
-                        icon="fa-check-circle-o">
+                        icon="fa-check-circle-o"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_ppap_count" widget="statinfo" string="PPAP"/>
                 </button>
             </xpath>
