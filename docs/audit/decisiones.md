@@ -278,3 +278,12 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
   - si el aprobador ve como atrasado lo que el ejecutor no ha hecho;
   - corregir a mano el escalamiento de E2.31 y E2.32 (Dirección no puede leer salud);
   - avisar a Elena (16) de sus 174 firmas antes de desplegar a producción.
+
+## 2026-09-29 — Decisiones de Jose antes de pasar los 4 lotes a `quimibond`
+
+- **Equipos en «No usar»:** se liberan los 144. Va en la migración 56.38.1, con respaldo, en la rama `claude/sgi-8a-ajustes`.
+- **Plazos de Mis pendientes:** 5 días hábiles para capturar una medición y 3 para validarla. El acuse de lectura se queda en 5.
+- **Aprobador:** solo ve lo que ya le toca. El atraso del ejecutor le llega al rol que escala.
+- **`quimibond_sgi_mapa`:** no se instala en producción, solo en staging y en una recuperación. Instalarlo no crea registros; su manifest solo trae ACL y vista.
+- **Entrega 6:** se construye en su rama. No se hace merge hasta que producción esté estable con los 4 lotes.
+- **C-008 y E2.31/E2.32:** Jose los corrige a mano, por MCP o en pantalla, con la lista que se le entregó.
