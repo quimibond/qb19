@@ -108,3 +108,13 @@ Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protecc
   - Columnas: `clave, procedimiento, n, rutina, frecuencia, responsable_anterior, estado, actividades_odoo, motivo`.
   - P-I01 no está incluido.
 - Clasificación de los 52 procedimientos: ver «Estado de migración (C-003)» arriba (23 sustituidos, 21 con pendientes, 5 de control operacional, P-I01 aparte).
+
+## 2026-09-29 — aclaraciones durante la tanda 3
+
+- **Aprobaciones de Sandra (E-003):** son `mail.activity` «Conceder aprobación» de la regla de Studio archivada 36, sobre las cotizaciones en borrador PV15254 y PV15323 (**empresa 4, BDC BOSQUES**, no la 1). **Las resuelve Jose por fuera; el programador no las toca.**
+- **Entrega 1b:**
+  - Mis pendientes no muestra avisos de reglas de aprobación archivadas.
+  - Cuando se archiva una regla, se propone qué pasa con sus avisos abiertos.
+  - Nota del programador: Mis pendientes tampoco filtra por empresa; esas dos son de la empresa 4. Va en el mismo PR.
+- **OdooBot:** **no se le cambia la zona horaria**, porque con ese usuario corren todos los procesos automáticos de Odoo. El cron de checklists calcula las 05:30 en `America/Mexico_City` dentro del código. Cualquier otro proceso del SGI que dependa de la zona de OdooBot se lista en G (G-007) y se corrige igual, en código.
+- **Excel de rutinas:** la hoja «Instrucciones» ya dice 49 procedimientos; los datos no cambian.
