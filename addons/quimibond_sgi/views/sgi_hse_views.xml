@@ -393,9 +393,12 @@
         </field>
     </record>
 
+    <!-- F-004: «-hr.group_hr_user» quita el grupo en producción. Un
+         <menuitem groups> solo AGREGA grupos al actualizar (Command.link);
+         sin el «-», el menú seguiría abierto a «Empleados / Encargado». -->
     <menuitem id="menu_sgi_health_records" name="Estudios de higiene y exámenes médicos"
               parent="menu_sgi_safety" action="sgi_health_record_action" sequence="50"
-              groups="quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager"/>
+              groups="quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager,-hr.group_hr_user"/>
     <menuitem id="menu_sgi_csh_inspections" name="Recorridos de la Comisión de Seguridad e Higiene"
               parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="40"/>
     <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist (planta y unidades)"
