@@ -2490,6 +2490,10 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   compra facturada, cancelado), las de roles del SGI con actividad o proceso
   archivado, las solicitudes de categorías archivadas y las acciones, NC y
   mediciones de procesos archivados.
+- **Roles de actividades archivadas**: la migración borra los 223 roles
+  («ejecuta», procesos viejos P-xxx) que ya no se veían y bloqueaban borrar
+  o fusionar puestos viejos. Antes deja un respaldo JSON por proceso,
+  adjunto al proceso archivado («roles_borrados_56.24.0_<clave>.json»).
 - Pruebas: `tests/test_archived_filters.py`.
 
 ### 19.0.56.23.0 — Actividades ligadas a los requisitos de la norma
