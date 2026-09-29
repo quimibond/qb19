@@ -16,6 +16,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
 
+from .sgi_menu_paths import sgi_menu_path
+
 LEVELS = [('bad', 'Falla'), ('warn', 'Aviso'), ('ok', 'Bien')]
 _LEVEL_ORDER = {'bad': 0, 'warn': 1, 'ok': 2}
 
@@ -136,7 +138,7 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line(
                 'bad', "%d proceso(s) sin dueño: %s" % (
                     len(no_owner), ", ".join(no_owner.mapped('code'))),
-                "SGI → Procesos → campo Dueño (el dueño recibe los avisos de riesgos y salud)"))
+                sgi_menu_path('mapa_procesos', "campo Dueño (el dueño recibe los avisos de riesgos y salud)")))
         else:
             lines.append(self._sgi_line('ok', "Todos los procesos tienen dueño."))
         no_activities = env['sgi.process'].search(
@@ -157,11 +159,11 @@ class SgiDiagnostic(models.TransientModel):
         if no_resp:
             lines.append(self._sgi_line(
                 'bad', "%d indicador(es) sin responsable: sus capturas y validaciones caen todas en MAST." % no_resp,
-                "SGI → Medición → Indicadores"))
+                sgi_menu_path('indicadores')))
         if no_proc:
             lines.append(self._sgi_line(
                 'bad', "%d indicador(es) sin proceso: sus rojos NO cuentan en la salud del Panel." % no_proc,
-                "SGI → Medición → Indicadores"))
+                sgi_menu_path('indicadores')))
         Measure = env['sgi.indicator.measure']
         pend = Measure.search_count([('state', '=', 'pendiente')])
         capt = Measure.search_count([('state', '=', 'capturado')])
@@ -173,7 +175,7 @@ class SgiDiagnostic(models.TransientModel):
         if pend:
             lines.append(self._sgi_line(
                 'warn', "%d medición(es) pendientes de captura manual." % pend,
-                "SGI → Medición → Mediciones, filtro Pendientes"))
+                sgi_menu_path('mediciones', "filtro Pendientes")))
         groups = Measure._read_group(
             [('state', '=', 'pendiente')], ['indicator_id'], ['__count'])
         chronic = [ind.code for ind, count in groups if count >= 3]
@@ -210,7 +212,7 @@ class SgiDiagnostic(models.TransientModel):
         if not doc_changes:
             lines.append(self._sgi_line(
                 'warn', "Ninguna revisión documental ha pasado por el flujo de Aprobaciones (F-P-G01-06).",
-                "SGI → Documental → Cambios documentales"))
+                sgi_menu_path('solicitudes_cambio')))
         if not lines:
             lines.append(self._sgi_line('ok', "Difusión documental operando."))
         section("Documental", lines)
@@ -220,16 +222,16 @@ class SgiDiagnostic(models.TransientModel):
         if not env['sgi.policy'].search_count([('state', '=', 'vigente')]):
             lines.append(self._sgi_line(
                 'bad', "No hay Política Integral vigente (la cascada Política → Objetivos → KPIs arranca ahí).",
-                "SGI → Panel → Política Integral"))
+                sgi_menu_path('politica')))
         if not env['sgi.risk'].search_count([]):
             lines.append(self._sgi_line(
                 'bad', "Cero riesgos/oportunidades registrados (6.1 sin evidencia operativa).",
-                "SGI → Riesgos y auditorías → Riesgos y oportunidades"))
+                sgi_menu_path('riesgos')))
         if 'sgi.emergency.plan' in env and not env['sgi.emergency.plan'].search_count(
                 [('state', '=', 'vigente')]):
             lines.append(self._sgi_line(
                 'warn', "No hay planes de emergencia vigentes (14001/45001 8.2).",
-                "SGI → Riesgos y auditorías → Emergencias"))
+                sgi_menu_path('planes_emergencia')))
         budgets_draft = env['sgi.sales.budget'].search_count(
             [('kind', '=', 'presupuesto'), ('state', '=', 'borrador'),
              ('year', '=', today.year)])
@@ -312,14 +314,14 @@ class SgiDiagnostic(models.TransientModel):
         if nc_old:
             lines.append(self._sgi_line(
                 'warn', "%d NC abiertas hace más de 30 días." % nc_old,
-                "SGI → Mejora continua → No Conformidades"))
+                sgi_menu_path('no_conformidades')))
         sources_off = env['sgi.alert.source'].search(
             [('enabled', '=', False), ('suppressed_count', '>', 0)])
         for source in sources_off:
             lines.append(self._sgi_line(
                 'warn', "Fuente «%s» apagada con %d NC omitidas: confirmar que sigue siendo intencional." % (
                     source.name, source.suppressed_count),
-                "SGI → Configuración → Fuentes de NC automáticas"))
+                sgi_menu_path('fuentes_nc')))
         team = env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
                        raise_if_not_found=False)
         if team:
@@ -340,13 +342,13 @@ class SgiDiagnostic(models.TransientModel):
         if not env['sgi.interested.party'].search_count([]):
             lines.append(self._sgi_line(
                 'bad', "Cero partes interesadas registradas (4.2 sin evidencia: es de lo primero que pregunta un auditor de certificación).",
-                "SGI → Panel → Partes interesadas"))
+                sgi_menu_path('partes_interesadas')))
         Legal = env['sgi.legal.requirement']
         legal_total = Legal.search_count([])
         if not legal_total:
             lines.append(self._sgi_line(
                 'bad', "Cero requisitos legales registrados (14001/45001 6.1.3): sin matriz legal no hay evaluación del cumplimiento.",
-                "SGI → Riesgos y auditorías → Requisitos legales"))
+                sgi_menu_path('requisitos_legales')))
         else:
             broken = Legal.search_count(
                 [('compliance_state', 'in', ('no_cumple', 'parcial'))])
@@ -384,7 +386,7 @@ class SgiDiagnostic(models.TransientModel):
             if other_count and not configured_count:
                 lines.append(self._sgi_line(
                     'warn', "El KPI CA-02 lee una encuesta con 0 respuestas mientras otra encuesta de satisfacción acumula %d: re-apunte la fuente en Ajustes o declare el corte." % other_count,
-                    "SGI → Configuración → Ajustes → Encuesta de satisfacción (CA-02)"))
+                    sgi_menu_path('ajustes', "Encuesta de satisfacción (CA-02)")))
         if not lines:
             lines.append(self._sgi_line('ok', "Contexto, matriz legal y competencias con base capturada."))
         section("Contexto y cumplimiento", lines)
@@ -408,7 +410,7 @@ class SgiDiagnostic(models.TransientModel):
             except (TypeError, ValueError):
                 value = 0
             if not value:
-                lines.append(self._sgi_line('warn', msg, "SGI → Configuración → Ajustes"))
+                lines.append(self._sgi_line('warn', msg, sgi_menu_path('ajustes')))
         if not lines:
             lines.append(self._sgi_line('ok', "Ajustes clave configurados."))
         section("Ajustes clave", lines)

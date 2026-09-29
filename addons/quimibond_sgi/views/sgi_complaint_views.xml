@@ -37,7 +37,8 @@ action = {
     'name': 'Reclamaciones de clientes',
     'res_model': 'helpdesk.ticket',
     'view_mode': 'kanban,list,form',
-    'domain': [('team_id', '=', team.id)] if team else [],
+    # E-012: sin el equipo del SGI no se abre TODO Helpdesk: lista vacía.
+    'domain': [('team_id', '=', team.id)] if team else [('id', '=', False)],
     'context': {'default_team_id': team.id} if team else {},
     'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Registra la primera reclamación&lt;/p&gt;
 &lt;p&gt;Captura cliente, producto, lote y metros afectados en la pestaña SGI del
@@ -59,7 +60,7 @@ SGI, ni NC, ni cuentan para el KPI CA-01.&lt;/p&gt;""",
 survey = env.ref('quimibond_sgi.sgi_survey_satisfaction', raise_if_not_found=False)
 action = {
     'type': 'ir.actions.act_window',
-    'name': 'Satisfacción del cliente (respuestas)',
+    'name': 'Satisfacción del cliente',
     'res_model': 'survey.user_input',
     'view_mode': 'list,form',
     'domain': [('survey_id', '=', survey.id)] if survey else [('id', '=', False)],
@@ -75,17 +76,18 @@ CA-02 (Satisfacción del cliente): promedio 1-5 convertido a %.&lt;/p&gt;""",
          El equipo existe desde Fase 4 (alias quejas-sugerencias) pero no tenía
          entrada en el menú del SGI. -->
     <record id="sgi_internal_complaint_action" model="ir.actions.server">
-        <field name="name">Quejas y sugerencias</field>
+        <field name="name">Quejas y sugerencias del personal</field>
         <field name="model_id" ref="helpdesk.model_helpdesk_ticket"/>
         <field name="state">code</field>
         <field name="code">
 team = env.ref('quimibond_sgi.sgi_helpdesk_team_voice', raise_if_not_found=False)
 action = {
     'type': 'ir.actions.act_window',
-    'name': 'Quejas y sugerencias',
+    'name': 'Quejas y sugerencias del personal',
     'res_model': 'helpdesk.ticket',
     'view_mode': 'kanban,list,form',
-    'domain': [('team_id', '=', team.id)] if team else [],
+    # E-012: sin el equipo del SGI no se abre TODO Helpdesk: lista vacía.
+    'domain': [('team_id', '=', team.id)] if team else [('id', '=', False)],
     'context': {'default_team_id': team.id} if team else {},
     'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;La voz del trabajador (45001 5.4)&lt;/p&gt;
 &lt;p&gt;Cualquier queja, sugerencia o condición insegura entra aquí — también por

@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 
 from .sgi_guard import sgi_require_system
+from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -1057,10 +1058,9 @@ class SgiCron(models.AbstractModel):
         self._sgi_schedule(
             survey,
             "Revisar DNC y plan de capacitación (%s)" % label,
-            "Hay %d brecha(s) de competencia abiertas (SGI → Medición → "
-            "Brechas de competencia). Distribuya la encuesta DNC (F-P-A01-17) "
-            "desde la app Encuestas y arme el plan de capacitación del "
-            "periodo." % gaps,
+            "Hay %d brecha(s) de competencia abiertas (%s). Distribuya la "
+            "encuesta DNC (F-P-A01-17) desde la app Encuestas y arme el plan de "
+            "capacitación del periodo." % (gaps, sgi_menu_path('brechas_competencia')),
             rh_id)
         return True
 

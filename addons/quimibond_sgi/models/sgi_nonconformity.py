@@ -8,6 +8,7 @@ from odoo.exceptions import UserError, ValidationError
 
 from .sgi_base import sgi_bypass_allowed
 from .sgi_calendar import sgi_add_business_days
+from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -483,7 +484,7 @@ class QualityAlert(models.Model):
                 raise UserError(
                     "La generación de No Conformidades desde «%s» está "
                     "desactivada.\n\nSi debe volver a generarse, actívela en "
-                    "SGI → Configuración → Fuentes de NC automáticas." % source.name)
+                    "%s." % (source.name, sgi_menu_path('fuentes_nc')))
             return self.browse()
         return self.create(dict(vals, sgi_source_id=source.id if source else False))
 

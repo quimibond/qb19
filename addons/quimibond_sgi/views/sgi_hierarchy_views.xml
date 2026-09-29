@@ -42,10 +42,6 @@
             <p>El diagrama sale del campo «Macroproceso» de cada proceso.</p></field>
     </record>
 
-    <record id="sgi_process_action" model="ir.actions.act_window">
-        <field name="view_mode">sgi_diagram,kanban,list,hierarchy,form</field>
-    </record>
-
     <!-- Diagramas en HTML: componente sgi_diagram (static/src/diagram). Desde
          54.0.0 son el tipo de vista «sgi_diagram» dentro de cada acción
          (views/sgi_diagram_views.xml); el submenú «Diagramas» se retiró. -->
@@ -81,10 +77,6 @@
                 </templates>
             </hierarchy>
         </field>
-    </record>
-
-    <record id="sgi_process_activity_action" model="ir.actions.act_window">
-        <field name="view_mode">list,kanban,sgi_diagram,hierarchy,form</field>
     </record>
 
 </odoo>

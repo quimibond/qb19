@@ -68,6 +68,7 @@ SGI_SPEC_GAPS = [
     ('measure_no_complete', "Entregable sin criterio de completo"),
     ('no_channel', "Sin canal"),
     ('odoo_no_menu', "Canal Odoo sin pantalla"),
+    ('menu_no_visible', "Pantalla que quien la ejecuta no ve"),
     ('external_no_name', "Sistema externo sin nombre"),
     ('no_how', "Sin cómo"),
     ('odoo_measured_manual', "Se hace en Odoo, se mide a mano"),
@@ -85,6 +86,7 @@ SGI_GAP_SEVERITY = {
     'no_output': 'warning', 'no_escalation': 'warning',
     'measure_no_complete': 'warning', 'odoo_measured_manual': 'warning',
     'paper_channel': 'warning', 'mixed_channel': 'warning', 'no_match': 'warning',
+    'menu_no_visible': 'warning',
 }
 
 VAGUE_VERBS_PARAM = 'quimibond_sgi.vague_verbs'
@@ -104,6 +106,18 @@ def sgi_plain(text):
     """Minúsculas y sin acentos, para comparar verbos."""
     text = unicodedata.normalize('NFKD', text or '')
     return ''.join(c for c in text if not unicodedata.combining(c)).lower().strip()
+
+
+def sgi_menu_visible_for(menu, user):
+    """True si el usuario ve el menú: cada menú de la ruta sin grupos o con
+    alguno de los grupos del usuario (los implicados cuentan). E-010."""
+    groups = user.sudo().all_group_ids
+    node = menu.sudo()
+    while node:
+        if node.group_ids and not (node.group_ids & groups):
+            return False
+        node = node.parent_id
+    return True
 
 
 def sgi_safe_domain(text):
@@ -315,6 +329,14 @@ class SgiActivitySpec(models.Model):
             add('no_channel', "Falta dónde se hace (canal).")
         if channel == 'odoo' and not self.odoo_menu_id:
             add('odoo_no_menu', "Canal Odoo sin la pantalla (menú) donde se hace.")
+        if channel == 'odoo' and self.odoo_menu_id:
+            # E-010 (entrega 4): Mi procedimiento le dice al ejecutor una ruta
+            # que su usuario no puede abrir (p. ej. Administración SGI).
+            users = self._sgi_executor_users()
+            if users and not any(sgi_menu_visible_for(self.odoo_menu_id, user) for user in users):
+                add('menu_no_visible', "Nadie de quien la ejecuta ve «%s»: apunta a una "
+                                       "entrada que sí vea (p. ej. Inicio → Mis indicadores) "
+                                       "o dale el grupo." % self.odoo_menu_id.sudo().complete_name)
         if channel in SGI_EXTERNAL_CHANNELS and not (self.external_system or '').strip():
             add('external_no_name', "Falta el nombre del sistema externo.")
         if not self.instruction_id and not (self.how_steps or '').strip():
@@ -336,6 +358,15 @@ class SgiActivitySpec(models.Model):
                                     "«match»." % (line.deliverable_id.name, model.model,
                                                  output.odoo_model_id.model))
         return out
+
+    def _sgi_executor_users(self):
+        """Usuarios activos de los puestos con rol «Ejecuta» (E-010)."""
+        self.ensure_one()
+        jobs = self.role_ids.filtered(lambda r: r.role == 'ejecuta').job_id
+        if not jobs:
+            return self.env['res.users']
+        employees = self.env['hr.employee'].sudo().search([('job_id', 'in', jobs.ids)])
+        return employees.user_id.filtered(lambda u: u.active and not u.share)
 
     def _sgi_refresh_spec_gaps(self):
         """Reescribe los faltantes solo si cambiaron."""

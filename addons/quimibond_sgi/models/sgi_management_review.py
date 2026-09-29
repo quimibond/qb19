@@ -5,6 +5,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_risk import SGI_HIGH_ATTENTION
+from .sgi_menu_paths import sgi_menu_path
 
 
 class SgiManagementReview(models.Model):
@@ -161,7 +162,7 @@ class SgiManagementReview(models.Model):
         total = Requirement.search_count([])
         if not total:
             return ("Sin requisitos legales registrados: capture la matriz "
-                    "legal (SGI → Riesgos y auditorías → Requisitos legales).")
+                    "legal (%s)." % sgi_menu_path('requisitos_legales'))
         today = fields.Date.context_today(self)
         parts = ["%d requisito(s) registrados." % total]
         labels = dict(Requirement._fields['compliance_state'].selection)

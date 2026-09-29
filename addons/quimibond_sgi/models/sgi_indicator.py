@@ -4,6 +4,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
+from .sgi_menu_paths import sgi_menu_path
+
 CALC_MODES = [
     ('manual', "Captura manual"),
     ('otif_ventas', "OTIF ventas (embarques a tiempo)"),
@@ -127,7 +129,7 @@ class SgiIndicator(models.Model):
         'desperdicio_scrap': "Inventario → desechos (scrap) del periodo.",
         'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
         'cumplimiento_programa': "Fabricación → cumplimiento del plan maestro (MPS).",
-        'cierre_nc': "SGI → No Conformidades: cerradas a tiempo vs abiertas.",
+        'cierre_nc': "%s: cerradas a tiempo vs abiertas." % sgi_menu_path('no_conformidades'),
         'reclamos_cliente': "Helpdesk → tickets de reclamación de clientes del periodo.",
         'disponibilidad_mantto': "Mantenimiento → tiempo de paro vs disponible.",
         'preventivo_cumplido': "Mantenimiento → OTs preventivas cumplidas a tiempo.",

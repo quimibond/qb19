@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.56.28.0',
+    'version': '19.0.56.29.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -191,12 +191,13 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',
         'report/report_master_list_all.xml',
-        # menus
-        'views/sgi_menus.xml',
         'views/sgi_business_line_views.xml',
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
+        # menus: TODOS en un archivo y al final (A-025, entrega 4): las
+        # acciones ya están cargadas y el padre va antes que el hijo.
+        'views/sgi_menus.xml',
     ],
     'demo': [
         'demo/sgi_demo_fase3.xml',

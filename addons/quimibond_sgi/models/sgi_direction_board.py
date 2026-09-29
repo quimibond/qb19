@@ -115,10 +115,10 @@ class SgiDirectionBoard(models.TransientModel):
 
     @api.model
     def action_open(self):
-        """Menú Dirección → Tablero de dirección."""
+        """Menú Dirección → Tablero (el título es el nombre del menú, D-005)."""
         board = self.create({})
         return {
-            'type': 'ir.actions.act_window', 'name': "Tablero de dirección",
+            'type': 'ir.actions.act_window', 'name': "Tablero",
             'res_model': 'sgi.direction.board', 'res_id': board.id,
             'view_mode': 'form', 'target': 'current',
         }

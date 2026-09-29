@@ -134,7 +134,7 @@
     </record>
 
     <record id="sgi_incident_action" model="ir.actions.act_window">
-        <field name="name">Incidentes SST</field>
+        <field name="name">Incidentes y accidentes</field>
         <field name="res_model">sgi.incident</field>
         <field name="view_mode">list,form,pivot,activity</field>
         <field name="search_view_id" ref="sgi_incident_view_search"/>

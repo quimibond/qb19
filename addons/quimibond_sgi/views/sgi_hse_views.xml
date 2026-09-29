@@ -196,7 +196,7 @@
     </record>
 
     <record id="sgi_csh_inspection_action" model="ir.actions.act_window">
-        <field name="name">Recorridos de la Comisión de Seguridad e Higiene</field>
+        <field name="name">Recorridos CSH</field>
         <field name="res_model">sgi.csh.inspection</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
@@ -393,18 +393,4 @@
         </field>
     </record>
 
-    <!-- F-004: «-hr.group_hr_user» quita el grupo en producción. Un
-         <menuitem groups> solo AGREGA grupos al actualizar (Command.link);
-         sin el «-», el menú seguiría abierto a «Empleados / Encargado». -->
-    <menuitem id="menu_sgi_health_records" name="Estudios de higiene y exámenes médicos"
-              parent="menu_sgi_safety" action="sgi_health_record_action" sequence="50"
-              groups="quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager,-hr.group_hr_user"/>
-    <menuitem id="menu_sgi_csh_inspections" name="Recorridos de la Comisión de Seguridad e Higiene"
-              parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="40"/>
-    <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist (planta y unidades)"
-              parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="70"/>
-    <menuitem id="menu_sgi_checklist_today" name="Checklists de hoy"
-              parent="maintenance.menu_maintenance_title" action="sgi_checklist_today_action" sequence="1"/>
-    <menuitem id="menu_sgi_checklist_templates" name="Checklists de planta y unidades"
-              parent="menu_sgi_config" action="sgi_checklist_template_action" sequence="60"/>
 </odoo>

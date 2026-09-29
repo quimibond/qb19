@@ -18,7 +18,7 @@ archivan o se religan. Aquí vive lo que la migración y las pruebas comparten:
 """
 import logging
 
-from odoo import models
+from odoo import api, models
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
@@ -130,6 +130,37 @@ class SgiMenuCleanup(models.Model):
             if top not in allowed:
                 offenders |= menu
         return offenders
+
+    @api.model
+    def _sgi_sync_menu_names(self):
+        """Los nombres de menús y acciones del módulo en TODOS los idiomas son
+        los del código (entrega 4). El XML solo escribe la clave en_US del
+        jsonb: si producción tenía el nombre viejo en es_MX (capturado en
+        pantalla), el usuario seguía viéndolo después del update. Corre al
+        final de views/sgi_menus.xml en cada instalación o actualización;
+        es idempotente y solo toca registros cuyos idiomas difieren."""
+        cr = self.env.cr
+        touched = 0
+        for model, table in (('ir.ui.menu', 'ir_ui_menu'),
+                             ('ir.actions.act_window', 'ir_act_window'),
+                             ('ir.actions.server', 'ir_act_server')):
+            cr.execute("""
+                UPDATE {table} t
+                   SET name = (SELECT jsonb_object_agg(k, t.name -> 'en_US')
+                                 FROM jsonb_object_keys(t.name) k)
+                  FROM ir_model_data d
+                 WHERE d.module = 'quimibond_sgi' AND d.model = %s AND d.res_id = t.id
+                   AND t.name ? 'en_US'
+                   AND EXISTS (SELECT 1 FROM jsonb_each(t.name) e
+                                WHERE e.value <> t.name -> 'en_US')
+            """.format(table=table), (model,))
+            touched += cr.rowcount
+            self.env[model].invalidate_model(['name'])
+        if touched:
+            self.env.registry.clear_cache()
+            _logger.info("SGI: %d nombre(s) de menú o acción igualados al código en todos los idiomas.",
+                         touched)
+        return touched
 
     def _sgi_menu_dangling_actions(self):
         """Menús bajo el raíz del SGI cuya acción ya no existe. Odoo no vacía
