@@ -81,9 +81,9 @@ class SgiMyPendingArchivedFilter(models.TransientModel):
             records['accion'] = records['accion'].filtered(lambda l: alive(l.alert_id.sgi_process_id))
         if 'nc' in records and 'sgi_process_id' in records['nc']._fields:
             records['nc'] = records['nc'].filtered(lambda a: alive(a.sgi_process_id))
-        if 'medicion' in records:
-            records['medicion'] = records['medicion'].filtered(
-                lambda m: alive(m.indicator_id.process_id))
+        for kind in ('medicion', 'validacion'):
+            if kind in records:
+                records[kind] = records[kind].filtered(lambda m: alive(m.indicator_id.process_id))
         if 'solicitud' in records:
             records['solicitud'] = records['solicitud'].filtered(
                 lambda a: a.request_id.category_id.active and self._sgi_role_alive(
@@ -110,8 +110,13 @@ class SgiMyPendingArchivedFilter(models.TransientModel):
             target = rec.request_id
         elif kind == 'accion':
             target = rec.alert_id or rec
-        elif kind == 'medicion':
+        elif kind in ('medicion', 'validacion'):
             target = rec.indicator_id
+        elif kind == 'firma':
+            # 56.36.0: la firma es de la empresa del registro que se firma.
+            ref = rec.sign_request_id.reference_doc if 'reference_doc' in rec.sign_request_id._fields \
+                else False
+            target = ref.sudo().exists() if ref else False
         else:
             target = rec
         if not target or 'company_id' not in target._fields:

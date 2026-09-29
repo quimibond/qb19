@@ -473,6 +473,58 @@ class SgiActivitySpec(models.Model):
             return date(day.year, month, min(self.due_day, last))
         return None
 
+    def _sgi_period_start(self, day):
+        """Primer día del periodo que contiene ``day`` (lunes, día 1 del mes o
+        del bloque del año), o None si la actividad no tiene vencimiento
+        periódico. Mismos periodos que ``_sgi_periodic_due``."""
+        self.ensure_one()
+        if self._sgi_periodic_due(day) is None:
+            return None
+        if self.measure_cadence == 'semanal':
+            return day - timedelta(days=day.weekday())
+        if self.measure_cadence == 'mensual':
+            return day.replace(day=1)
+        step = SGI_CADENCE_MONTHS[self.measure_cadence]
+        return date(day.year, ((day.month - 1) // step) * step + 1, 1)
+
+    def _sgi_periodic_state(self, Model, domain, date_field, today):
+        """G-017 (56.36.0): semáforo con el vencimiento de la decisión 5, el
+        mismo «a tiempo» que ``sgi.activity.week.stat``. None si la actividad
+        no tiene vencimiento periódico (entonces manda la ventana de días
+        naturales de su cadencia).
+
+        - Hecha en el periodo en curso, a más tardar en su vencimiento: verde.
+        - Vencido el periodo en curso sin evidencia a tiempo: rojo.
+        - Periodo en curso aún sin vencer: manda el anterior (hecha a tiempo:
+          verde; si no: rojo).
+        """
+        self.ensure_one()
+        due = self._sgi_periodic_due(today)
+        if due is None:
+            return None
+        is_date = Model._fields[date_field].type == 'date'
+
+        def done(start, end):
+            if end < start:
+                return False
+            lo, hi = start, end + timedelta(days=1)
+            if not is_date:
+                lo, hi = datetime.combine(lo, time.min), datetime.combine(hi, time.min)
+            return bool(Model.search_count(domain + [(date_field, '>=', lo), (date_field, '<', hi)],
+                                           limit=1))
+
+        start = self._sgi_period_start(today)
+        if done(start, min(today, due)):
+            return 'verde'
+        if today > due:
+            return 'rojo'
+        prev_day = start - timedelta(days=1)
+        prev_due = self._sgi_periodic_due(prev_day)
+        prev_start = self._sgi_period_start(prev_day)
+        if prev_due and prev_start and done(prev_start, prev_due):
+            return 'verde'
+        return 'rojo'
+
     def _sgi_due_label(self):
         """«15 de marzo» (anual) o «15 de enero, abril, julio y octubre»."""
         self.ensure_one()
