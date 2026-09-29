@@ -12,6 +12,8 @@ from odoo import api, fields, models
 
 from .sgi_calendar import sgi_add_business_days
 
+from .sgi_guard import sgi_require_system
+
 
 class DocumentsDocumentExternal(models.Model):
     _inherit = 'documents.document'
@@ -33,20 +35,20 @@ class DocumentsDocumentExternal(models.Model):
         ('implantado', "Implantado"),
     ], string="Implantación", compute='_compute_sgi_ext_state', store=True)
 
-    @api.depends('sgi_ext_received_date', 'sgi_doc_type', 'company_id')
+    @api.depends('sgi_ext_received_date', 'sgi_doc_type_id.code', 'company_id')
     def _compute_sgi_ext_deadline(self):
         days = int(self.env['ir.config_parameter'].sudo().get_param(
             'quimibond_sgi.external_doc_days', 10) or 10)
         for doc in self:
             doc.sgi_ext_deadline = sgi_add_business_days(
                 self.env, doc.sgi_ext_received_date, days, doc.company_id) \
-                if doc.sgi_doc_type == 'externo' and doc.sgi_ext_received_date else False
+                if doc.sgi_doc_type_id.code == 'externo' and doc.sgi_ext_received_date else False
 
-    @api.depends('sgi_ext_deadline', 'sgi_ext_implemented_date', 'sgi_doc_type')
+    @api.depends('sgi_ext_deadline', 'sgi_ext_implemented_date', 'sgi_doc_type_id.code')
     def _compute_sgi_ext_state(self):
         today = fields.Date.context_today(self)
         for doc in self:
-            if doc.sgi_doc_type != 'externo' or not doc.sgi_ext_received_date:
+            if doc.sgi_doc_type_id.code != 'externo' or not doc.sgi_ext_received_date:
                 doc.sgi_ext_state = False
             elif doc.sgi_ext_implemented_date:
                 doc.sgi_ext_state = 'implantado'
@@ -65,6 +67,7 @@ class SgiCronExternalDoc(models.AbstractModel):
 
     @api.model
     def cron_documents(self):
+        sgi_require_system(self.env)  # F-008
         res = super().cron_documents()
         self._sgi_step("implantación de documentos externos", self._sgi_external_doc_notices)
         return res
@@ -76,7 +79,7 @@ class SgiCronExternalDoc(models.AbstractModel):
         Doc = self.env['documents.document'].sudo()
         today = fields.Date.context_today(self)
         soon = sgi_add_business_days(self.env, today, 2)
-        pending = Doc.search([('sgi_doc_type', '=', 'externo'), ('sgi_ext_implemented_date', '=', False),
+        pending = Doc.search([('sgi_doc_type_id.code', '=', 'externo'), ('sgi_ext_implemented_date', '=', False),
                               ('sgi_ext_deadline', '!=', False)])
         pending._compute_sgi_ext_state()  # «Vencido» depende del día
         docs = pending.filtered(lambda d: d.sgi_ext_deadline <= soon)
@@ -89,5 +92,6 @@ class SgiCronExternalDoc(models.AbstractModel):
                 "Llegó el %s de %s (rev. %s). Plazo de implantación: %s." % (
                     doc.sgi_ext_received_date, doc.sgi_ext_issuer or "emisor sin capturar",
                     doc.sgi_ext_issuer_revision or "—", doc.sgi_ext_deadline),
-                doc._sgi_ext_owner_user_id())
+                doc._sgi_ext_owner_user_id(), date_deadline=doc.sgi_ext_deadline,
+                key='implantar_externo')
         return len(docs)

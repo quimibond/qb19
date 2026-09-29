@@ -330,8 +330,20 @@
                                            widget="many2many_tags" readonly="1"/>
                                 </group>
                                 <group>
-                                    <field name="replaced_document_ids" widget="many2many_tags"
-                                           options="{'no_create': True}"/>
+                                    <!-- D-017 (56.31.0): inverso de «Lo sustituye el
+                                         proceso» del documento; aquí solo se lee. -->
+                                    <field name="replaced_document_ids" readonly="1">
+                                        <list>
+                                            <field name="sgi_code"/>
+                                            <field name="name"/>
+                                            <field name="sgi_state"/>
+                                            <field name="sgi_migration_state"/>
+                                        </list>
+                                    </field>
+                                    <div class="text-muted" colspan="2">
+                                        Se captura en la ficha de cada procedimiento
+                                        («Lo sustituye el proceso»).
+                                    </div>
                                     <field name="channel_odoo_pct" widget="progressbar"/>
                                     <field name="channel_manual_pct" widget="progressbar"/>
                                 </group>
@@ -436,9 +448,9 @@
     </record>
 
     <record id="sgi_process_action" model="ir.actions.act_window">
-        <field name="name">Procesos</field>
+        <field name="name">Mapa de procesos</field>
         <field name="res_model">sgi.process</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">sgi_diagram,kanban,list,hierarchy,form</field>
         <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="sgi_process_view_search"/>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Administración del mapa de procesos</p>

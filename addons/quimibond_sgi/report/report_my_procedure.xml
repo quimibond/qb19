@@ -328,7 +328,7 @@
                         </h4>
                         <p style="margin:0 0 4px 0; font-size:10px;">
                             Con mi firma confirmo que leí y entendí esta revisión de «Mi procedimiento».
-                            El acuse queda registrado en Odoo (SGI → Inicio → Acuses pendientes) contra la
+                            El acuse queda registrado en Odoo (SGI → Inicio → Documentos vigentes, filtro «Mis acuses pendientes») contra la
                             clave <strong t-out="header['code']"/> revisión <strong t-out="header['revision']"/>;
                             una revisión nueva vuelve a pedir la firma.
                         </p>

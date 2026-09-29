@@ -24,11 +24,11 @@ class TestKpiFields(TransactionCase):
 
     def test_02_foto_del_inventario(self):
         Value = self.env['sgi.inventory.value']
-        snapshot = Value.sgi_snapshot(date(2046, 3, 31))
+        snapshot = Value._sgi_snapshot(date(2046, 3, 31))
         if not snapshot:
             self.skipTest("Sin valuación de inventario en esta base.")
         self.assertEqual(snapshot.date, date(2046, 3, 31))
-        again = Value.sgi_snapshot(date(2046, 3, 31))
+        again = Value._sgi_snapshot(date(2046, 3, 31))
         self.assertEqual(snapshot, again, "Idempotente por compañía y mes.")
 
     def test_04_usuario_desactivado_y_baja(self):

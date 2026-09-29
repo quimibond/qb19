@@ -14,20 +14,22 @@ archivan o se religan. Aquí vive lo que la migración y las pruebas comparten:
   mapa diga otro. El mapa aplica solo a lo demás.
 - Cuando un proceso nuevo pasa a «vigente», sus documentos sustituidos pasan
   solos a obsoletos: así los procedimientos viejos se retiran por ola,
-  proceso por proceso, y nunca conviven dos «vigentes» para la misma gente.
+  proceso por proceso, y nunca conviven dos «vigentes» para la misma gente
+  (desde 56.31.0 en ``sgi_process.py``: ``_sgi_obsolete_replaced_documents``).
 """
 import logging
 
-from odoo import models
+from odoo import api, models
 from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
-# Las cinco entradas del SGI. Todo menú bajo el raíz debe descender de una.
+# Las seis entradas del SGI. Todo menú bajo el raíz debe descender de una.
 SGI_MENU_ENTRIES = (
     'quimibond_sgi.menu_sgi_panel',              # Inicio
     'quimibond_sgi.menu_sgi_processes',          # Procesos
     'quimibond_sgi.menu_sgi_improvement_group',  # Mejora
+    'quimibond_sgi.menu_sgi_safety',             # Seguridad y ambiente (56.21.0)
     'quimibond_sgi.menu_sgi_direction',          # Dirección
     'quimibond_sgi.menu_sgi_admin',              # Administración SGI
 )
@@ -108,7 +110,7 @@ class SgiMenuCleanup(models.Model):
     _inherit = 'ir.ui.menu'
 
     def _sgi_menu_tree_offenders(self):
-        """Menús bajo el raíz del SGI que no descienden de una de las cinco
+        """Menús bajo el raíz del SGI que no descienden de una de las seis
         entradas (ni de las dos de Calidad cuando cuelgan del raíz por
         respaldo). Vacío = el árbol está limpio."""
         root = self.env.ref('quimibond_sgi.menu_sgi_root', raise_if_not_found=False)
@@ -130,6 +132,37 @@ class SgiMenuCleanup(models.Model):
                 offenders |= menu
         return offenders
 
+    @api.model
+    def _sgi_sync_menu_names(self):
+        """Los nombres de menús y acciones del módulo en TODOS los idiomas son
+        los del código (entrega 4). El XML solo escribe la clave en_US del
+        jsonb: si producción tenía el nombre viejo en es_MX (capturado en
+        pantalla), el usuario seguía viéndolo después del update. Corre al
+        final de views/sgi_menus.xml en cada instalación o actualización;
+        es idempotente y solo toca registros cuyos idiomas difieren."""
+        cr = self.env.cr
+        touched = 0
+        for model, table in (('ir.ui.menu', 'ir_ui_menu'),
+                             ('ir.actions.act_window', 'ir_act_window'),
+                             ('ir.actions.server', 'ir_act_server')):
+            cr.execute("""
+                UPDATE {table} t
+                   SET name = (SELECT jsonb_object_agg(k, t.name -> 'en_US')
+                                 FROM jsonb_object_keys(t.name) k)
+                  FROM ir_model_data d
+                 WHERE d.module = 'quimibond_sgi' AND d.model = %s AND d.res_id = t.id
+                   AND t.name ? 'en_US'
+                   AND EXISTS (SELECT 1 FROM jsonb_each(t.name) e
+                                WHERE e.value <> t.name -> 'en_US')
+            """.format(table=table), (model,))
+            touched += cr.rowcount
+            self.env[model].invalidate_model(['name'])
+        if touched:
+            self.env.registry.clear_cache()
+            _logger.info("SGI: %d nombre(s) de menú o acción igualados al código en todos los idiomas.",
+                         touched)
+        return touched
+
     def _sgi_menu_dangling_actions(self):
         """Menús bajo el raíz del SGI cuya acción ya no existe. Odoo no vacía
         `action` cuando el menuitem deja de traerla y el menú abre con «El
@@ -145,32 +178,8 @@ class SgiMenuCleanup(models.Model):
 class SgiProcessCleanup(models.Model):
     _inherit = 'sgi.process'
 
-    # --- Punto 5: al poner vigente el proceso, lo que sustituye queda obsoleto
-    def write(self, vals):
-        res = super().write(vals)
-        if vals.get('state') == 'vigente':
-            self._sgi_obsolete_replaced_documents()
-        return res
-
-    def _sgi_obsolete_replaced_documents(self):
-        """Los documentos en «Procedimientos que sustituye» de un proceso
-        vigente pasan a obsoletos. Idempotente: solo toca los vigentes."""
-        for process in self.filtered(lambda p: p.state == 'vigente'):
-            docs = process.replaced_document_ids.filtered(lambda d: d.sgi_state == 'vigente')
-            if not docs:
-                continue
-            reason = "Lo sustituye el proceso %s, que entró en vigor." % process.display_name
-            for doc in docs:
-                doc.sudo().write({'sgi_state': 'obsoleto', 'sgi_obsolete_reason': reason,
-                                  'sgi_replaced_by_process_id': process.id})
-                doc.message_post(body=(
-                    "Obsoleto: lo sustituye el proceso %s, que entró en vigor." % process.display_name))
-            process.message_post(body=(
-                "Al entrar en vigor quedaron obsoletos %d documento(s) sustituido(s): %s." % (
-                    len(docs), ", ".join(docs.mapped(lambda d: d.sgi_code or d.name)))))
-            _logger.info("SGI 45: %s vigente → %d documento(s) sustituido(s) obsoleto(s).",
-                         process.code, len(docs))
-        return True
+    # El obsoletado al entrar en vigor (punto 5) vive en sgi_process.py
+    # desde 56.31.0 (B-004), con la baja tramitada (L-005).
 
     # --- Religado de los procesos viejos al mapa nuevo
     def _sgi_relink_from_archived(self, mapping=None, review_codes=None):

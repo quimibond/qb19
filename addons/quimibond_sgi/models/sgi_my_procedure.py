@@ -29,12 +29,16 @@ import hashlib
 import json
 import logging
 
+from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_catalog import SGI_ROLE_SELECTION, sgi_normalize_name
+
+from .sgi_guard import sgi_require_system
+from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -690,14 +694,19 @@ class SgiCronMyProcedure(models.AbstractModel):
         sobre la revisión vigente del primer puesto desactualizado
         (documents.document lleva actividades); si nadie ha publicado nada,
         solo queda en el log."""
+        sgi_require_system(self.env)  # F-008
+        self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         Job = self.env['hr.job']
         stale = Job._sgi_my_procedure_stale_jobs()
         if not stale:
+            # 56.37.0: todo publicado → el aviso abierto ya no aplica.
+            self._sgi_sweep(['mi_procedimiento_por_publicar'], "todos los puestos ya están publicados")
             return True
         summary = "Mi procedimiento: %d puesto(s) por publicar" % len(stale)
         note = "Puestos con personas cuya revisión no existe o ya no coincide con sus " \
-               "actividades: %s. Publícalos desde SGI → Inicio → Mi procedimiento " \
-               "(«Publicar todos los puestos»)." % ", ".join(stale.mapped('name'))
+               "actividades: %s. Publícalos desde %s " \
+               "(«Publicar todos los puestos»)." % (", ".join(stale.mapped('name')),
+                                                  sgi_menu_path('publicar_mi_procedimiento'))
         # La actividad cuelga de la revisión vigente del primer puesto
         # desactualizado (ahí va a trabajar MAST); si ninguno tiene revisión,
         # de la más reciente publicada.
@@ -708,9 +717,13 @@ class SgiCronMyProcedure(models.AbstractModel):
                 break
         if not anchor:
             anchor = self.env['documents.document'].sudo().search(
-                [('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
+                [('sgi_doc_type_id.code', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
                 order='sgi_issue_date desc, id desc', limit=1)
         if anchor:
-            self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id())
+            # G-005 (b): el resumen lleva el número de puestos; la clave no. Un
+            # solo aviso aunque cambie el documento ancla.
+            self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id(),
+                               date_deadline=fields.Date.context_today(self) + relativedelta(days=7),
+                               key='mi_procedimiento_por_publicar', anywhere=True)
         _logger.info("SGI Mi procedimiento: %s", note)
         return True

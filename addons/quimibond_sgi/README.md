@@ -721,6 +721,34 @@ Jefe MAST.
 
 Ejemplo por MCP: `call_model_method("sgi.process", "load_payload", [payload])`.
 
+### Exportar el mapa: `sgi.process.export_payload(process_codes=None)` (56.35.0)
+
+El inverso exacto de `load_payload` (entrega 3, H-022): devuelve el JSON que
+`load_payload` vuelve a cargar sin duplicar; exportar y cargar con `dry_run`
+sobre la misma base reporta cero cambios. Todo va por llave natural (puesto
+por nombre, familia por código, documento por clave, menú por XML ID,
+ubicación por nombre completo); nada de usuarios ni empleados. Lo usa el
+módulo de datos `quimibond_sgi_mapa` (el SGI se instala vacío, decisión 6).
+
+- **Dominios portables (H-007):** un id fijo en un filtro se vuelve la marca
+  `%(r1)s` y `refs` dice qué registro es: la empresa de la carga
+  (`{"company": true}`), un XML ID de módulo, una llave natural única
+  (`{"key": {"name": "Embarcar", "warehouse_id.name": "Toluca"}}`) o, si no
+  hay, id + nombre (solo se resuelve en una copia de producción; queda en
+  `meta.review`). Una referencia que no existe en la base deja el filtro sin
+  medir (`[('id', '=', 0)]`) con advertencia: nunca mide otra cosa.
+- **`tolerant: true`** (el mapa lo trae): menú, ubicación, centro de trabajo,
+  modelo o campo que no existan en la base son advertencia y se carga sin
+  eso. Sin esa llave siguen siendo error.
+- Llaves nuevas del JSON: `sequence` del rol, `markets`/`teams` de la
+  actividad (referencias), `refs`, `survey`, `require_signed` y `boundary`
+  (frontera del mapa, H-010) del entregable, `objective` y `terms` del
+  indicador, y los bloques `objectives` y `control_plans` (solo encabezado;
+  los puntos de control no viajan). Las familias aceptan puestos por nombre.
+- No se exporta: semáforos y mediciones, faltantes, ligas y flujos (salen de
+  entradas y salidas), `legacy_number`, procedimientos sustituidos (viajan con
+  el documento), responsables de indicadores, nivel y área del indicador.
+
 ### Actividades específicas (19.0.30.0.0)
 
 Cada actividad contesta siete preguntas; lo que falte queda en
@@ -800,6 +828,12 @@ select count(*) from documents_document where sgi_is_controlled and sgi_doc_type
 ```
 
 ## Alcance multiempresa (decisión de arquitectura)
+
+**El SGI es de una sola empresa** (D-03, 56.34.0): la de
+`sgi.config._sgi_company()` (parámetro `quimibond_sgi.sgi_company_id`, por
+default la principal, PNTQ); un proceso no se crea ni se mueve a otra
+(`models/sgi_multicompany.py`), y los 10 modelos con `company_id` que no tenían
+regla ya la tienen (F-014).
 
 La instancia tiene varias compañías. Desde la fase 1 del catálogo
 (v19.0.29.0.0) el **catálogo** (procesos, actividades, roles, ligas, flujos,
@@ -1577,8 +1611,10 @@ unidad del indicador lleva `%`.
   `parallel_value` / `parallel_numerator` / `parallel_denominator`
   («Fórmula en paralelo» en la medición). La regla es migrar un indicador a
   `configurable` solo después de un mes con el mismo número.
-- **Sembradas** (`data/sgi_indicator_formula_data.xml`, noupdate, con ids de
-  producción en los dominios): MA-05 desperdicio, MA-04 reproceso (solo
+- **Sembradas** (hasta 56.34: `data/sgi_indicator_formula_data.xml`; desde
+  56.35.0 salieron del núcleo por A-004 y viajan en el mapa,
+  `quimibond_sgi_mapa`, con referencias portables; sus XML IDs pasaron a
+  `__export__` sin tocar los registros): MA-05 desperdicio, MA-04 reproceso (solo
   Re-proceso Tintorería), AL-01 diferencia de inventario (denominador
   `stock.quant.value` sin campo de fecha: la ventana «acumulado al cierre»
   admite término sin fecha y entonces toma todo lo que hay hoy), TR-03 energía
@@ -1846,6 +1882,63 @@ Ahora es una propuesta **estructurada** (`sgi.activity.change`):
 - No deja enviar sin motivo, sin cambios (al cambiar) ni sin resumen y
   proceso (al agregar). Se retira el asistente de texto `sgi.mp.change.wizard`.
 
+### Decisiones de Jose sobre la entrega 8a (56.38.1)
+
+- **Plazos de Mis pendientes:** capturar medición, 5 días hábiles desde el
+  día en que se mide (`quimibond_sgi.measure_capture_business_days`, antes
+  3); validar, 3 desde la captura; acuse, 5. El aviso «Capturar indicador»
+  de los crons de indicadores vence en la misma fecha
+  (`sgi.indicator.measure._sgi_capture_due()`); antes traía su propio plazo
+  (día 1 + 4 naturales en el mensual, lunes + 2 en el semanal), que en el
+  mensual caía antes o encima del día en que corre el cron.
+- **El aprobador solo ve lo que ya le toca.** El rol «Aprueba» ya no recibe
+  renglón «Aprobar …» porque la actividad vaya atrasada: el semáforo de la
+  actividad sale de la evidencia y no distingue «no la hizo» de «la hizo y
+  falta aprobar». Lo que sí le toca le llega cuando el ejecutor ya actuó: la
+  aprobación nativa del botón (`studio.approval.request`), la solicitud de
+  Aprobaciones o la firma de Sign. El atraso del ejecutor le llega a quien
+  tiene «Escala», pasados sus días hábiles.
+- **Equipos en «No usar» liberados.** `migrations/19.0.56.38.1/post-migrate.py`
+  libera todos los equipos de medición en «No usar» de la empresa del SGI
+  (144 en producción el 29-sep-2026: 143 que bloqueó el cron el 25-sep y el
+  IMB 02, 743, que se creó así), con respaldo en
+  `sgi_equipment_do_not_use_bak_563801` y el cambio en el chatter de cada
+  equipo. **La inspección de calidad sigue rechazando un equipo con la
+  calibración vencida** (`quality.check._sgi_check_equipment_calibrated` la
+  evalúa en línea; no se toca), y el bloqueo automático del cron sigue
+  apagado (`quimibond_sgi.calibration_block_expired`). Un equipo que falle su
+  calibración (fuera de tolerancia) se sigue bloqueando como siempre.
+
+### Mis pendientes con todo adentro (56.36.0, D-04)
+
+Entrega 8a de la auditoría 2026-09 (G-001, I-001, I-006, I-007, I-012,
+G-017, I-021). Mis pendientes es la bandeja oficial:
+
+- **Capturar medición:** solo la `pendiente` de un indicador manual o de uno
+  automático cuyo cálculo falló (`calc_status` error, sin fórmula o manual).
+  Vence el día hábil en que se mide (el N-ésimo del mes siguiente,
+  `quimibond_sgi.monthly_measure_business_day`, o el primero después de la
+  semana) más `quimibond_sgi.measure_capture_business_days` (5 desde
+  56.38.1; antes 3) días hábiles.
+- **Validar medición:** la `capturado`, para el dueño del indicador, 3 días
+  hábiles desde `captured_date` (`quimibond_sgi.measure_validate_business_days`;
+  sin fecha, desde que se creó). Botón «Validar» en el renglón.
+- **Actividad atrasada:** las que la persona ejecuta y Mi procedimiento
+  marca «Atrasada» (el mismo semáforo; desde 56.38.1 ya no las que aprueba).
+  **Escalamiento:** llega a quien tiene «Escala» cuando el atraso pasa de sus
+  días hábiles.
+- **Acuse de lectura** pendiente (vence en `quimibond_sgi.ack_business_days`,
+  5, días hábiles desde que se pidió) y **Firma** de Firma electrónica por
+  hacer (vence en su «Válido hasta» o 3 días hábiles).
+- Semanas como «semana del dd/mm/aaaa»; documentos por su título, sin clave
+  del Dropbox.
+- **Semáforo de la actividad (G-017):** con vencimiento periódico (día de la
+  semana, día hábil del mes, mes y día) «al día» es hecha antes del
+  vencimiento del periodo; la ventana de días naturales queda para las que no
+  tienen vencimiento.
+- **Mi equipo:** el semáforo sale de la persona, así que la gente sin usuario
+  también lo tiene (actividades y acuses).
+
 ### Mis pendientes en una sola lista con semáforo (56.3.0)
 
 - **Pantalla.** Los botones separados (atrasadas, al día, sin medir, acciones,
@@ -2017,7 +2110,7 @@ desde una acción sin proceso activo, la vista mandaba `resId: null` y
 `false` (`static/src/diagram/diagram_view.js`).
 
 Tres mejoras al modo «fórmula configurable» (`models/sgi_indicator_formula.py`)
-y los campos que faltaban (`models/sgi_kpi_fields.py`), para que 28
+y los campos que faltaban (`models/sgi_kpi_*.py`; hasta 56.32 un solo `sgi_kpi_fields.py`), para que 28
 indicadores capturados a mano pasen a fórmula sin programar cada uno.
 
 **1. Fechas relativas en el filtro del término.** Dentro del dominio, entre
@@ -2468,6 +2561,22 @@ mezclados. **El SGI no crea catálogo propio**: usa los objetos de Odoo.
   actividad al Coordinador de RH (`quimibond_sgi.rh_user_id`; si no, Jefe
   MAST) para levantar el acta; una por NC.
 - Pruebas: `tests/test_due_long.py`, `tests/test_nc_origins.py`.
+
+### 19.0.56.27.0 — Archivar una regla de aprobación cierra sus avisos
+
+- Al **archivar** una regla de aprobación de Studio (cualquiera, no solo las
+  del SGI), las actividades abiertas de sus solicitudes pendientes se marcan
+  **hechas** con la nota «Regla de aprobación archivada el AAAA-MM-DD por
+  <usuario>; ya no se requiere esta aprobación.». No se aprueba ni se rechaza
+  nada (ningún `studio.approval.entry`).
+- La nota queda en el chatter del documento: Odoo publica ahí el «actividad
+  hecha» con ella; si el aviso estaba en otro registro, se publica aparte.
+- Nada se borra: la actividad queda archivada como historia y la
+  `studio.approval.request` se queda ligada a ella. Mis pendientes ya no la
+  muestra (regla archivada, actividad archivada). Reactivar la regla no
+  recrea avisos; si Studio ya no vuelve a avisar en esos documentos, se
+  acepta: la regla se archivó a propósito.
+- Pruebas: `tests/test_approval_rule_archive.py`.
 
 ### 19.0.56.24.0 — Menú SGI reordenado y sin lo archivado en Mi procedimiento / Mis pendientes
 

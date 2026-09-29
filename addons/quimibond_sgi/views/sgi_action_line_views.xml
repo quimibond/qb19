@@ -60,6 +60,12 @@
                         domain="[('incident_id', '!=', False)]"/>
                 <filter name="from_drill" string="De Simulacros"
                         domain="[('drill_id', '!=', False)]"/>
+                <filter name="from_objective" string="De Objetivos"
+                        domain="[('objective_id', '!=', False)]"/>
+                <filter name="from_review" string="De la Revisión por la dirección"
+                        domain="[('review_id', '!=', False)]"/>
+                <filter name="from_measure" string="De Indicadores en rojo"
+                        domain="[('measure_id', '!=', False)]"/>
                 <separator/>
                 <filter name="group_responsible" string="Agrupar por responsable"
                         context="{'group_by': 'responsible_id'}"/>
@@ -120,14 +126,16 @@
     </record>
 
     <record id="sgi_action_line_action_all" model="ir.actions.act_window">
-        <field name="name">Todas las acciones</field>
+        <field name="name">Acciones correctivas</field>
         <field name="res_model">sgi.action.line</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_action_line_view_search"/>
         <field name="context">{'search_default_open': 1, 'search_default_overdue': 1, 'search_default_group_responsible': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin acciones registradas</p>
-            <p>Aquí se ven las acciones de todos los responsables — de NCs, riesgos, AMEF e incidentes — agrupadas por responsable.</p>
+            <p>Todas las acciones de todos los responsables: de NC, riesgos, AMEF, incidentes, simulacros,
+            objetivos, revisión por la dirección e indicadores en rojo, agrupadas por responsable.
+            Filtra por origen con «De …» (D-17).</p>
         </field>
     </record>
 </odoo>

@@ -401,6 +401,9 @@ class SgiMyProcedure(models.TransientModel):
         'sgi.activity.role', string="Mis actividades", compute='_compute_lists')
     received_role_ids = fields.Many2many(
         'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_lists')
+    received_late_count = fields.Integer(
+        string="Escalamientos atrasados", compute='_compute_lists',
+        help="Actividades que escalan a este puesto y hoy van atrasadas (I-012).")
     short_role_ids = fields.Many2many(
         'sgi.activity.role', string="Participa o se entera", compute='_compute_lists')
 
@@ -570,7 +573,11 @@ class SgiMyProcedure(models.TransientModel):
                     'detail': Role, 'received': Role, 'short': Role}
             detail = lists['detail']
             wiz.role_ids = detail.ids
-            wiz.received_role_ids = lists['received'].ids
+            # I-012 (56.36.0): los escalamientos atrasados van primero.
+            received = lists['received']
+            late_received = received.filtered(lambda r: r.mp_status == 'atrasada')
+            wiz.received_role_ids = (late_received | (received - late_received)).ids
+            wiz.received_late_count = len(late_received)
             wiz.short_role_ids = lists['short'].ids
             counts = {'al_dia': 0, 'atrasada': 0, 'sin_medir': 0}
             for role in detail:
@@ -617,10 +624,11 @@ class SgiMyProcedure(models.TransientModel):
                 [('sgi_responsible_ids', 'in', user.id), ('sgi_stage_is_closing', '=', False),
                  ('sgi_stage_is_cancel', '=', False)], order='create_date').ids \
                 if 'sgi_responsible_ids' in Alert._fields else False
-            wiz.pending_measure_ids = env['sgi.indicator.measure'].sudo().search(
-                [('indicator_id.responsible_id', '=', user.id),
-                 ('state', 'in', ('pendiente', 'capturado')), ('period_date', '<=', today)],
-                order='period_date', limit=50).ids
+            # G-001 (56.36.0): las mismas mediciones que Mis pendientes
+            # («Capturar» y «Validar»), con sus filtros de archivado y empresa.
+            pending = env['sgi.my.pending']._sgi_pending_records(user)
+            wiz.pending_measure_ids = (pending.get('medicion', env['sgi.indicator.measure'])
+                                       | pending.get('validacion', env['sgi.indicator.measure'])).ids
             mine = env['sgi.indicator'].sudo().search([('responsible_id', '=', user.id)], order='code')
             wiz.indicator_ids = mine.ids
             wiz.official_indicator_ids = mine.filtered(lambda i: i.status == 'oficial').ids
@@ -711,6 +719,11 @@ class SgiMyProcedure(models.TransientModel):
         return self._action_roles("Mis actividades", self.role_ids)
 
     def action_show_received(self):
+        """I-012 (56.36.0): arranca en los atrasados; sin atrasados, todos."""
+        late = self.received_role_ids.filtered(lambda r: r.mp_status == 'atrasada')
+        if late:
+            return self._action_list("Escalamientos atrasados", late, view_mode='list',
+                                     views=[('sgi_activity_role_view_list_mp_received', 'list')])
         return self._action_list("Escalamientos que recibe", self.received_role_ids, view_mode='list',
                                  views=[('sgi_activity_role_view_list_mp_received', 'list')])
 
@@ -1042,7 +1055,9 @@ class HrEmployeePublicMyTeam(models.Model):
     def action_sgi_print_my_procedure(self):
         """Imprimir desde la ficha pública: el PDF del puesto para esta persona."""
         self.ensure_one()
-        return self.env['hr.employee'].sudo().browse(self.id).action_sgi_print_my_procedure()
+        employee = self.env['hr.employee'].sudo().browse(self.id)
+        self.env['sgi.my.procedure']._sgi_check_in_scope(employee)  # F-007
+        return employee.action_sgi_print_my_procedure()
 
     @api.model
     def _sgi_team(self):

@@ -71,6 +71,7 @@
                 <field name="document_id" optional="show"/>
                 <field name="odoo_model_id" optional="hide"/>
                 <field name="orphan" widget="badge" optional="show"/>
+                <field name="boundary" optional="hide"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
         </field>
@@ -98,6 +99,7 @@
                             <field name="document_id" options="{'no_create': True}"/>
                         </group>
                         <group>
+                            <field name="boundary"/>
                             <field name="orphan" invisible="not orphan"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
@@ -153,9 +155,11 @@
                 <field name="input_line_ids" string="Lo recibe"
                        filter_domain="[('input_line_ids.activity_id', 'ilike', self)]"/>
                 <filter name="sin_origen" string="Nadie lo entrega"
-                        domain="[('input_line_ids', '!=', False), ('producer_activity_ids', '=', False)]"/>
+                        domain="[('input_line_ids', '!=', False), ('producer_activity_ids', '=', False), ('boundary', '!=', 'entrada_externa')]"/>
                 <filter name="sin_destino" string="Nadie lo recibe"
-                        domain="[('producer_activity_ids', '!=', False), ('input_line_ids', '=', False)]"/>
+                        domain="[('producer_activity_ids', '!=', False), ('input_line_ids', '=', False), ('boundary', '!=', 'salida_final')]"/>
+                <filter name="frontera" string="Frontera del mapa"
+                        domain="[('boundary', '!=', False)]"/>
                 <filter name="mide" string="Miden actividades"
                         domain="[('odoo_model_id', '!=', False)]"/>
                 <filter name="archived" string="Archivados" domain="[('active', '=', False)]"/>
@@ -217,7 +221,7 @@
     </record>
 
     <record id="sgi_job_family_action" model="ir.actions.act_window">
-        <field name="name">Familias de puestos</field>
+        <field name="name">Familias de puesto</field>
         <field name="res_model">sgi.job.family</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
@@ -308,9 +312,9 @@
     </record>
 
     <record id="sgi_activity_exec_stat_action_who" model="ir.actions.act_window">
-        <field name="name">Quién hace qué</field>
+        <field name="name">Matriz de responsabilidades</field>
         <field name="res_model">sgi.activity.exec.stat</field>
-        <field name="view_mode">pivot,list,graph</field>
+        <field name="view_mode">pivot,sgi_diagram,list,graph</field>
         <field name="view_id" ref="sgi_activity_exec_stat_view_pivot"/>
         <field name="search_view_id" ref="sgi_activity_exec_stat_view_search"/>
         <field name="help" type="html">

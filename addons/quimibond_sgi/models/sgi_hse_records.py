@@ -4,7 +4,8 @@
 - **Estudios de higiene y exámenes médicos** por trabajador (E2.31, E2.32):
   qué estudio o examen, cuándo se hizo, resultado y cuándo vence. El cron
   diario de competencias avisa a RH 30 días antes y cuando ya venció.
-  Son datos de salud: solo RH y el Jefe MAST los ven.
+  Son datos de salud: solo el grupo «Salud ocupacional (SGI)» y el Jefe MAST
+  los ven (F-004, auditoría 2026-09; antes también «Empleados / Encargado»).
 - **Recorrido de la Comisión de Seguridad e Higiene** (E2.29): el acta del
   recorrido con quién participó y sus hallazgos; cada hallazgo se corrige en
   el momento, se queda sin acción (con motivo) o genera su no conformidad
@@ -14,6 +15,8 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+from .sgi_guard import sgi_require_system
 
 _HEALTH_KINDS = [
     ('examen_medico', "Examen médico"),
@@ -99,7 +102,7 @@ class HrEmployeeHealth(models.Model):
 
     sgi_health_record_ids = fields.One2many(
         'sgi.health.record', 'employee_id', string="Estudios y exámenes",
-        groups='hr.group_hr_user,quimibond_sgi.group_sgi_manager')
+        groups='quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager')
 
 
 class SgiCronHealth(models.AbstractModel):
@@ -107,10 +110,15 @@ class SgiCronHealth(models.AbstractModel):
 
     @api.model
     def cron_competences(self):
+        sgi_require_system(self.env)  # F-008
         res = super().cron_competences()
         self._sgi_step("estudios de higiene y exámenes médicos por vencer",
                        lambda: self.env['sgi.health.record']._sgi_expiry_notices())
         return res
+
+
+_CSH_FINDING_GROUPS = ('quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_manager,'
+                       'quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_auditor')
 
 
 class SgiCshInspection(models.Model):
@@ -127,7 +135,10 @@ class SgiCshInspection(models.Model):
     participant_ids = fields.Many2many('hr.employee', string="Integrantes de la Comisión")
     notes = fields.Text(string="Acta / observaciones generales")
     attachment_ids = fields.Many2many('ir.attachment', string="Acta firmada (PDF) y fotos")
-    finding_ids = fields.One2many('sgi.csh.finding', 'inspection_id', string="Hallazgos")
+    # Entrega 4: los hallazgos pueden nombrar personas; los leen la Comisión de
+    # Seguridad e Higiene, el Jefe MAST, Salud ocupacional y el Auditor.
+    finding_ids = fields.One2many('sgi.csh.finding', 'inspection_id', string="Hallazgos",
+                                  groups=_CSH_FINDING_GROUPS)
     finding_count = fields.Integer(compute='_compute_counts', string="Número de hallazgos")
     nc_count = fields.Integer(compute='_compute_counts', string="NC")
     state = fields.Selection([
@@ -138,9 +149,11 @@ class SgiCshInspection(models.Model):
 
     @api.depends('finding_ids.alert_id')
     def _compute_counts(self):
+        # sudo: el conteo lo ve cualquiera; el detalle, solo _CSH_FINDING_GROUPS.
         for rec in self:
-            rec.finding_count = len(rec.finding_ids)
-            rec.nc_count = len(rec.finding_ids.alert_id)
+            findings = rec.sudo().finding_ids
+            rec.finding_count = len(findings)
+            rec.nc_count = len(findings.alert_id)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -151,6 +164,12 @@ class SgiCshInspection(models.Model):
         return super().create(vals_list)
 
     def action_close(self):
+        # D-009 (entrega 4): cierra el recorrido quien ve sus hallazgos.
+        if not self.env.su and not any(self.env.user.has_group(group)
+                                       for group in _CSH_FINDING_GROUPS.split(',')
+                                       if group != 'quimibond_sgi.group_sgi_auditor'):
+            raise UserError("Solo la Comisión de Seguridad e Higiene, Salud ocupacional o el "
+                            "Jefe MAST cierran un recorrido.")
         for rec in self:
             pending = rec.finding_ids.filtered(lambda f: not f.disposition or (
                 f.disposition == 'nc' and not f.alert_id) or (
@@ -169,7 +188,7 @@ class SgiCshInspection(models.Model):
         self.ensure_one()
         return {'type': 'ir.actions.act_window', 'name': "NC del recorrido %s" % self.name,
                 'res_model': 'quality.alert', 'view_mode': 'list,form',
-                'domain': [('id', 'in', self.finding_ids.alert_id.ids)]}
+                'domain': [('id', 'in', self.sudo().finding_ids.alert_id.ids)]}
 
 
 class SgiCshFinding(models.Model):

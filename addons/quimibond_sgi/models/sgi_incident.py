@@ -43,8 +43,8 @@ class SgiIncident(models.Model):
     reporter_id = fields.Many2one('res.users', string="Reportado por",
                                   default=lambda self: self.env.user, tracking=True)
     location = fields.Char(string="Lugar")
-    process_id = fields.Many2one('sgi.process', string="Proceso")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
     description = fields.Text(string="Descripción del evento")
     days_lost = fields.Integer(string="Días perdidos")
 
@@ -80,6 +80,14 @@ class SgiIncident(models.Model):
         eleva a grave/fatal no puede quedarse sin su NC. Se apoya en la
         idempotencia de ambos métodos y sólo dispara para los registros cuya
         severidad ANTES del write no era grave/fatal (sin duplicar avisos)."""
+        # D-06 / D-009 (entrega 4): investigar, cerrar y reabrir es de Jefe
+        # MAST y Salud ocupacional. El reportante solo edita mientras está
+        # «Reportado» (regla de registro) y no cambia el estado.
+        if 'state' in vals and not self.env.su and not self._sgi_can_investigate():
+            if self.filtered(lambda i: i.state != vals['state']):
+                raise UserError(
+                    "Solo el Jefe MAST y Salud ocupacional investigan, cierran o reabren "
+                    "un incidente. Tú puedes reportarlo y consultar cómo se cerró.")
         escalating = self.browse()
         if vals.get('severity') in ('grave', 'fatal'):
             escalating = self.filtered(
@@ -94,6 +102,19 @@ class SgiIncident(models.Model):
             incident._sgi_notify_if_serious()
             incident._sgi_create_alert()
         return res
+
+    def _sgi_locked_records(self):
+        """Un incidente cerrado lo reabre el Jefe MAST o Salud ocupacional
+        (D-06). El candado del mixin solo exceptúa al Jefe MAST."""
+        if self.env.user.has_group('quimibond_sgi.group_sgi_health'):
+            return self.browse()
+        return super()._sgi_locked_records()
+
+    @api.model
+    def _sgi_can_investigate(self):
+        user = self.env.user
+        return user.has_group('quimibond_sgi.group_sgi_manager') \
+            or user.has_group('quimibond_sgi.group_sgi_health')
 
     def _sgi_create_alert(self):
         """Un incidente grave/fatal FUERZA una No Conformidad del SGI (45001 10.2):

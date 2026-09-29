@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Limpieza 19.0.45.0.0: el árbol de cinco entradas, los xmlids retirados,
+"""Limpieza 19.0.45.0.0: el árbol de seis entradas, los xmlids retirados,
 el religado de los procesos viejos y el retiro automático de lo sustituido."""
 from odoo import fields
 from odoo.exceptions import UserError
@@ -29,13 +29,14 @@ class TestCleanup45(TransactionCase):
             vals['sgi_parent_document_id'] = parent.id
         return self.Document.create(vals)
 
-    def test_01_menu_tree_has_five_entries(self):
-        """Todo menú bajo el raíz del SGI desciende de una de las cinco
-        entradas. Falla si alguien cuelga un menú suelto del raíz."""
+    def test_01_menu_tree_has_six_entries(self):
+        """Todo menú bajo el raíz del SGI desciende de una de las seis
+        entradas (Inicio, Procesos, Mejora, Seguridad y ambiente, Dirección,
+        Administración SGI). Falla si alguien cuelga un menú suelto del raíz."""
         Menu = self.env['ir.ui.menu']
         self.assertFalse(
             Menu._sgi_menu_tree_offenders().mapped('complete_name'),
-            "Hay menús fuera de las cinco entradas del SGI.")
+            "Hay menús fuera de las seis entradas del SGI.")
         root = self.env.ref('quimibond_sgi.menu_sgi_root')
         for xmlid in SGI_MENU_ENTRIES:
             self.assertEqual(self.env.ref(xmlid).parent_id, root, "%s debe colgar del raíz." % xmlid)
@@ -79,7 +80,8 @@ class TestCleanup45(TransactionCase):
         other_a = self._doc('DAT-XA', old_a, doc_type='dat', revision=1)  # mapa → new_1
         proc_b = self._doc('P-A92', old_b)                        # mapa → new_2
         risk = self.env['sgi.risk'].create({'name': 'Riesgo viejo', 'process_id': old_a.id})
-        new_2.replaced_document_ids = [(6, 0, proc_a.ids)]
+        # 56.31.0 (C-001): la sustitución se captura en el documento.
+        proc_a.sgi_replaced_by_process_id = new_2
         (old_a | old_b).write({'active': False})
 
         summary = self.Process._sgi_relink_from_archived(
@@ -106,7 +108,8 @@ class TestCleanup45(TransactionCase):
         new = self.Process.create({'code': 'XNEWC', 'name': 'Nuevo C'})
         replaced = self._doc('P-A93', old)
         fmt = self._doc('F-P-A93-01', old, parent=replaced, doc_type='formato')
-        new.replaced_document_ids = [(6, 0, replaced.ids)]
+        replaced.sgi_replaced_by_process_id = new
+        self.assertEqual(new.replaced_document_ids, replaced)
         new.write({'state': 'piloto'})
         self.assertEqual(replaced.sgi_state, 'vigente', "En piloto conviven.")
         new.write({'state': 'vigente'})
@@ -115,6 +118,8 @@ class TestCleanup45(TransactionCase):
         self.assertEqual(replaced.sgi_obsolete_date, fields.Date.context_today(replaced))
         self.assertIn('XNEWC', replaced.sgi_obsolete_reason)
         self.assertEqual(replaced.sgi_replaced_by_process_id, new)
+        # L-005 / P-L8 (56.31.0): y su migración queda en «Baja tramitada».
+        self.assertEqual(replaced.sgi_migration_state, 'baja')
         self.assertEqual(fmt.sgi_state, 'vigente', "Los formatos de la familia siguen vigentes.")
         self.assertTrue(any('obsoleto' in (m.body or '').lower() for m in new.message_ids))
 

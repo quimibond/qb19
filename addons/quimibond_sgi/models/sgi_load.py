@@ -32,6 +32,19 @@ sin empleados activos es error, salvo que tenga vacante aprobada y vigente
 (entonces, advertencia); una familia, solo si todos sus puestos están vacíos.
 Cada proceso es una transacción: si una de sus actividades falla, el proceso
 completo se deshace y se reporta.
+
+Entrega 3 (56.35.0, H-022/H-007): el JSON es también el formato de
+``export_payload`` (sgi_export.py), su inverso exacto. Por eso aquí se
+agregan: puestos de las familias por nombre, ``sequence`` del rol, mercados y
+equipos de venta de la actividad, ``refs`` (dominios portables, ver
+sgi_domain_refs.py), ``survey``/``require_signed``/``boundary`` del
+entregable, ``objective`` y ``terms`` (términos de la fórmula) del indicador,
+y los bloques ``objectives`` y ``control_plans``. ``tolerant: true`` (lo usa
+el mapa, quimibond_sgi_mapa) convierte en advertencia lo que falta en una base
+distinta de la de origen (menú, ubicación, centro de trabajo, modelo o campo
+de un filtro): se carga sin eso y el reporte lo dice. Una referencia de un
+filtro que no existe en la base siempre es advertencia y el filtro queda sin
+medir (``[('id', '=', 0)]``), nunca midiendo otra cosa.
 """
 import json
 import logging
@@ -41,6 +54,7 @@ from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 from .sgi_catalog import SGI_RELATIVE_ROLES
+from . import sgi_domain_refs
 
 _logger = logging.getLogger(__name__)
 
@@ -72,15 +86,16 @@ _DIRECTIONS = {'up': 'higher_better', 'down': 'lower_better',
 # Llaves válidas de cada nivel del JSON. Una llave que no está aquí es error:
 # una llave que se ignora en silencio es como se perdieron los indicadores de
 # C2 (venían dentro del proceso). (llaves, {llave: (tipo, sub-esquema)}).
-_KEYS_ROLE = ({'role', 'job', 'job_id', 'family', 'relative', 'condition', 'after_days'}, {})
+_KEYS_ROLE = ({'role', 'job', 'job_id', 'family', 'relative', 'condition', 'after_days',
+               'sequence'}, {})
 _KEYS_INPUT = ({'code', 'days', 'applies_domain', 'applies_note', 'match',
-                'due_field', 'offset_days'}, {})
+                'due_field', 'offset_days', 'refs'}, {})
 _KEYS_WHERE = ({'channel', 'menu', 'external_system', 'location', 'workcenter', 'place'}, {})
 _KEYS_DUE = ({'weekday', 'business_day', 'month', 'day'}, {})
 _KEYS_MEASURE = ({'method', 'proxy', 'deliverable', 'justification', 'sample_cadence',
                   'cadence'}, {})
 _KEYS_AUTOMATION = ({'current', 'target', 'method'}, {})
-_KEYS_EVIDENCE = ({'source_type', 'model', 'domain', 'date_field', 'user_field'}, {})
+_KEYS_EVIDENCE = ({'source_type', 'model', 'domain', 'date_field', 'user_field', 'refs'}, {})
 _KEYS_ACTIVITY = ({
     'process', 'number', 'step', 'sequence', 'name', 'description', 'odoo_ref',
     'note', 'responsible_role', 'stage', 'section', 'block', 'value_class',
@@ -88,6 +103,7 @@ _KEYS_ACTIVITY = ({
     'formats', 'evidence', 'measure', 'automation',
     'check_against', 'where', 'how_steps', 'done_criteria', 'on_fail', 'due',
     'complies_with',        # 56.23.0: puntos de la norma («9001 8.5.1»)
+    'markets', 'teams',     # 56.35.0: mercados y equipos de venta (referencias)
     'links_to',             # anterior: error propio
 }, {'roles': (list, _KEYS_ROLE), 'inputs': (list, _KEYS_INPUT),
     'where': (dict, _KEYS_WHERE), 'due': (dict, _KEYS_DUE),
@@ -102,16 +118,26 @@ _KEYS_PROCESS = ({
 _KEYS_FAMILY = ({'code', 'name', 'jobs'}, {})
 _KEYS_DELIVERABLE = ({'code', 'name', 'document', 'model', 'domain', 'date_field',
                       'user_field', 'acceptance_criteria', 'complete_domain',
-                      'complete_criteria'}, {})
+                      'complete_criteria', 'refs', 'require_signed', 'survey',
+                      'boundary'}, {})
+_TERM_FIELDS = ('role', 'date_field', 'aggregation', 'field_name', 'field_name_2',
+                'delta_unit', 'delta_op', 'delta_value', 'factor', 'window')
+_KEYS_TERM = ({'model', 'domain', 'refs', *_TERM_FIELDS}, {})
 _KEYS_INDICATOR = ({'code', 'process', 'responsible', 'responsible_employee_id',
-                    'target', 'unit', 'activity', 'deliverable', *_INDICATOR_FIELDS}, {})
+                    'target', 'unit', 'activity', 'deliverable', 'objective', 'terms',
+                    *_INDICATOR_FIELDS}, {'terms': (list, _KEYS_TERM)})
+_KEYS_OBJECTIVE = ({'name', 'description', 'target_year'}, {})
+_KEYS_CONTROL_PLAN = ({'name', 'phase', 'revision', 'notes', 'document', 'partner'}, {})
 _KEYS_PAYLOAD = ({
     'dry_run', 'company_id', 'archive_missing', 'families', 'deliverables',
     'processes', 'activities', 'indicators',
+    'meta', 'tolerant', 'objectives', 'control_plans',     # 56.35.0 (mapa)
     'links', 'flows',       # anteriores: error propio
 }, {'families': (list, _KEYS_FAMILY), 'deliverables': (list, _KEYS_DELIVERABLE),
     'processes': (list, _KEYS_PROCESS), 'activities': (list, _KEYS_ACTIVITY),
-    'indicators': (list, _KEYS_INDICATOR)})
+    'indicators': (list, _KEYS_INDICATOR), 'objectives': (list, _KEYS_OBJECTIVE),
+    'control_plans': (list, _KEYS_CONTROL_PLAN)})
+_BOUNDARIES = ('entrada_externa', 'salida_final')
 
 
 def _unknown_keys(node, schema, path=''):
@@ -202,10 +228,31 @@ def _diff(record, vals):
         elif field.type == 'boolean':
             if bool(current) != bool(value):
                 changed[name] = bool(value)
+        elif field.type in ('date', 'datetime'):
+            convert = fields.Date.to_date if field.type == 'date' else fields.Datetime.to_datetime
+            if (current or False) != (convert(value) if value else False):
+                changed[name] = value or False
         else:
             if (current or False) != (value or False):
                 changed[name] = value or False
     return changed
+
+
+def sgi_ref_search(Model, company, key):
+    """Registros de ``Model`` (con archivados) cuyos campos valen ``key``, de
+    la empresa o compartidos. Si hay varios y solo uno está activo, ese.
+    Es la misma búsqueda con la que export_payload comprueba que la llave es
+    única, así que lo que se exporta con llave se vuelve a encontrar."""
+    domain = [(name, '=', value) for name, value in sorted(key.items())]
+    company_field = Model._fields.get('company_id')
+    if company_field is not None and company_field.store and company_field.type == 'many2one':
+        domain += ['|', ('company_id', '=', False), ('company_id', '=', company.id)]
+    records = Model.search(domain, limit=5)
+    if len(records) > 1 and 'active' in Model._fields:
+        active = records.filtered('active')
+        if len(active) == 1:
+            return active
+    return records
 
 
 class SgiProcessLoad(models.Model):
@@ -279,6 +326,8 @@ class _SgiLoader:
         self.replaces = []      # (código del proceso nuevo, [códigos que sustituye])
         self.publish = []       # códigos de proceso a publicar al final
         self.family_cache = {}
+        self.tolerant = bool(payload.get('tolerant'))
+        self.ref_cache = {}
 
     # ------------------------------------------------------------------
     def run(self):
@@ -294,6 +343,7 @@ class _SgiLoader:
                 self.report.error(key, None, _LEGACY_KEYS[key])
         self._load_families(payload.get('families') or [])
         self._load_deliverables(payload.get('deliverables') or [])
+        self._load_objectives(payload.get('objectives') or [])
         activities_by_process = {}
         for item in payload.get('activities') or []:
             activities_by_process.setdefault(item.get('process'), []).append(item)
@@ -318,6 +368,7 @@ class _SgiLoader:
         self._load_proxies()
         self._load_replaces()
         self._relink_dangling()
+        self._load_control_plans(payload.get('control_plans') or [])
         self._load_indicators(payload.get('indicators') or [])
         self._report_spec_gaps()
         self._load_publish()
@@ -334,6 +385,96 @@ class _SgiLoader:
         except Exception as exc:  # noqa: BLE001 - errores de la BD (unicidad…)
             self.report.error(kind, key, exc)
         return False
+
+    def _missing(self, kind, key, message):
+        """Algo que la base no tiene: error, o advertencia con ``tolerant``."""
+        if not self.tolerant:
+            raise ValidationError(message)
+        self.report.warn(kind, key, "%s Se carga sin eso." % message)
+
+    # ------------------------------------------------------------------
+    # Referencias portables (H-007): ver sgi_domain_refs.py
+    # ------------------------------------------------------------------
+    def _ref(self, ref):
+        """(registro, None) o (None, por qué no se encontró)."""
+        if not isinstance(ref, dict) or not ref.get('model'):
+            return None, "referencia mal formada: %r" % (ref,)
+        cache_key = json.dumps(ref, sort_keys=True, default=str)
+        if cache_key not in self.ref_cache:
+            self.ref_cache[cache_key] = self._ref_resolve(ref)
+        return self.ref_cache[cache_key]
+
+    def _ref_resolve(self, ref):
+        model = ref['model']
+        label = ref.get('xmlid') or ref.get('key') or ref.get('name') or ref.get('id')
+        if model not in self.env:
+            return None, "%s: el modelo no está instalado" % model
+        Model = self.env[model].sudo().with_context(active_test=False)
+        if ref.get('company'):
+            if model == 'res.company':
+                return self.company, None
+            return None, "%s: «company» solo vale para res.company" % model
+        if ref.get('xmlid'):
+            record = self.env.ref(ref['xmlid'], raise_if_not_found=False)
+            if record and record._name == model:
+                return record.sudo(), None
+        if ref.get('key'):
+            records = sgi_ref_search(Model, self.company, ref['key'])
+            if len(records) == 1:
+                return records, None
+            if len(records) > 1:
+                return None, "%s %s es ambiguo (%d registros)" % (model, label, len(records))
+        if ref.get('id'):
+            record = Model.browse(int(ref['id'])).exists()
+            if record and record.display_name == ref.get('name'):
+                return record, None
+        return None, "%s %s no existe en esta base" % (model, label)
+
+    def _portable_domain(self, text, refs, model_name, kind, key, what):
+        """El filtro con sus marcas resueltas. Si falta una referencia, o
+        (con ``tolerant``) el filtro no vale en esta base, queda sin medir y
+        se avisa."""
+        if not text:
+            return text
+        wanted = sgi_domain_refs.names(text)
+        if wanted:
+            resolved, missing = {}, []
+            for name in wanted:
+                ref = (refs or {}).get(name)
+                if ref is None:
+                    raise ValidationError("%s: la marca %%(%s)s no está en «refs»." % (what, name))
+                record, why = self._ref(ref)
+                if record:
+                    resolved[name] = record.id
+                else:
+                    missing.append(why)
+            if missing:
+                self.report.warn(kind, key, "%s: %s. Queda sin medir (%s) hasta que exista." % (
+                    what, "; ".join(missing), sgi_domain_refs.INERT_DOMAIN))
+                return sgi_domain_refs.INERT_DOMAIN
+            text = sgi_domain_refs.fill(text, resolved)[0]
+        if self.tolerant and model_name and model_name in self.env:
+            try:
+                domain = safe_eval(text)
+                if not isinstance(domain, (list, tuple)):
+                    raise ValueError("no es una lista")
+                self.env[model_name].sudo().search_count(list(domain), limit=1)
+            except Exception as exc:  # noqa: BLE001 - el mensaje va al reporte
+                self.report.warn(kind, key, "%s no vale en esta base (%s): %s. Queda sin "
+                                            "medir." % (what, model_name, exc))
+                return sgi_domain_refs.INERT_DOMAIN
+        return text
+
+    def _refs_records(self, refs, kind, key, what):
+        """Lista de referencias → ids de los que existen (avisa los que no)."""
+        ids = []
+        for ref in refs or []:
+            record, why = self._ref(ref)
+            if record:
+                ids.append(record.id)
+            else:
+                self.report.warn(kind, key, "%s: %s." % (what, why))
+        return ids
 
     # ------------------------------------------------------------------
     # Procesos y sus actividades (una transacción por proceso)
@@ -446,16 +587,25 @@ class _SgiLoader:
             vals['state'] = proc['state']
         if proc.get('publish'):
             self.publish.append(code)
+        replaced = None
         if 'replaced_documents' in proc:
-            docs = []
+            # C-001 (56.31.0): la sustitución vive en el DOCUMENTO
+            # (sgi_replaced_by_process_id). La carga la escribe ahí, nunca en
+            # el proceso, y no le quita en silencio un procedimiento a otro
+            # proceso (P-T4).
+            replaced = self.Doc.browse()
             for doc_code in proc['replaced_documents'] or []:
                 doc = self.Doc._sgi_find_by_code(doc_code, states=None)
-                if doc:
-                    docs.append(doc.id)
-                else:
+                if not doc:
                     self.report.warn('process', code,
                                      "Documento sustituido %s no encontrado." % doc_code)
-            vals['replaced_document_ids'] = docs
+                    continue
+                other = doc.sgi_replaced_by_process_id
+                if other and other != process:
+                    raise ValidationError(
+                        "El procedimiento %s ya lo sustituye el proceso %s; quítalo "
+                        "primero de su ficha." % (doc_code, other.code))
+                replaced |= doc
         if process:
             if not process.active:
                 vals['active'] = True
@@ -466,11 +616,28 @@ class _SgiLoader:
         else:
             if not vals.get('name'):
                 raise ValidationError("El proceso nuevo %s necesita «name»." % code)
-            vals['replaced_document_ids'] = [Command.set(vals.get('replaced_document_ids') or [])]
             process = self.Process.create(dict(vals, code=code, company_id=self.company.id))
             self.report.change('process', code, 'created')
+        if replaced is not None:
+            self._set_replaced_documents(process, replaced)
         self.processes[code] = process
         return process
+
+    def _set_replaced_documents(self, process, replaced):
+        """Escribe la sustitución en los documentos: los de la lista apuntan al
+        proceso y los que salieron de ella quedan vacíos (no se borran:
+        restrict, C-014). Solo escribe lo que cambia."""
+        current = self.Doc.search([('sgi_replaced_by_process_id', '=', process.id)])
+        added = replaced - current
+        removed = current - replaced
+        if added:
+            added.write({'sgi_replaced_by_process_id': process.id})
+        if removed:
+            removed.write({'sgi_replaced_by_process_id': False})
+        if added or removed:
+            self.report.change('process', process.code, 'replaced_documents',
+                               ['+%s' % (d.sgi_code or d.id) for d in added]
+                               + ['-%s' % (d.sgi_code or d.id) for d in removed])
 
     def _load_activities(self, process, items, archive_missing):
         seen = set()
@@ -510,7 +677,7 @@ class _SgiLoader:
     def _resolve_deliverables(self, codes, key, what):
         return [self._resolve_deliverable(code, what).id for code in codes or []]
 
-    def _resolve_inputs(self, items):
+    def _resolve_inputs(self, items, key=None):
         """«inputs»: ["C2-PEDIDO"] o [{"code": "C2-PEDIDO", "days": 2,
         "applies_domain": "[...]", "applies_note": "...", "match": "sale_id",
         "due_field": "scheduled_date", "offset_days": -2}].
@@ -532,12 +699,23 @@ class _SgiLoader:
             if deliverable.id in seen:
                 raise ValidationError("Recibe %s dos veces." % code)
             seen.add(deliverable.id)
+            model_name = deliverable.odoo_model_id.model
+            applies = self._portable_domain(
+                extra.get('applies_domain') or False, extra.get('refs'), model_name,
+                'activity', key, "«Aplica cuando» de %s" % code)
+            due_field = extra.get('due_field') or False
+            if due_field and self.tolerant and (
+                    not model_name or model_name not in self.env
+                    or due_field not in self.env[model_name]._fields):
+                self.report.warn('activity', key, "Recibe %s: «vence según %s» no vale en esta "
+                                                  "base; se carga sin él." % (code, due_field))
+                due_field = False
             out.append((deliverable.id, {
                 'max_days': days,
-                'applies_domain': extra.get('applies_domain') or False,
+                'applies_domain': applies or False,
                 'applies_note': extra.get('applies_note') or False,
                 'match_path': extra.get('match') or False,
-                'due_field': extra.get('due_field') or False,
+                'due_field': due_field,
                 'offset_days': offset,
             }))
         return out
@@ -553,7 +731,7 @@ class _SgiLoader:
         if 'links_to' in item:
             raise ValidationError(_LEGACY_KEYS['links_to'])
         if 'where' in item:
-            vals.update(self._where_vals(item['where'] or {}))
+            vals.update(self._where_vals(item['where'] or {}, key))
         if 'due' in item:
             vals.update(self._due_vals(item['due'] or {}))
         if 'outputs' in item:
@@ -600,6 +778,10 @@ class _SgiLoader:
                 else:
                     self.report.warn('activity', key, "Formato %s no encontrado." % code)
             vals['format_document_ids'] = docs
+        for src, dst, what in (('markets', 'fiscal_position_ids', "Mercado"),
+                               ('teams', 'sale_team_ids', "Equipo de venta")):
+            if src in item:
+                vals[dst] = self._refs_records(item[src], 'activity', key, what)
         if 'complies_with' in item:
             clauses = []
             for label in item['complies_with'] or []:
@@ -655,9 +837,11 @@ class _SgiLoader:
         ev = models_ev[0]
         model_name = ev.get('model')
         if not model_name or model_name not in self.env:
-            raise ValidationError("Evidencia: el modelo «%s» no existe." % model_name)
+            self._missing('activity', key, "Evidencia: el modelo «%s» no existe." % model_name)
+            return {}
         Model = self.env[model_name]
-        domain_txt = ev.get('domain') or '[]'
+        domain_txt = self._portable_domain(ev.get('domain') or '[]', ev.get('refs'), model_name,
+                                           'activity', key, "Evidencia")
         try:
             domain = safe_eval(domain_txt)
             if not isinstance(domain, (list, tuple)):
@@ -707,10 +891,12 @@ class _SgiLoader:
                                          "Formato %s no encontrado." % item['document'])
                     else:
                         vals['document_id'] = doc.id
+                model_name = item.get('model') or False
                 if 'model' in item:
-                    model = self.env['ir.model']._get(item['model']) if item['model'] else False
-                    if item['model'] and not model:
-                        raise ValidationError("Modelo %s no existe." % item['model'])
+                    model = self.env['ir.model']._get(model_name) if model_name else False
+                    if model_name and not model:
+                        self._missing('deliverable', key, "Modelo %s no existe." % model_name)
+                        model_name = False
                     vals['odoo_model_id'] = model.id if model else False
                 for src, dst, default in (('domain', 'measure_domain', '[]'),
                                           ('date_field', 'measure_date_field', 'create_date'),
@@ -719,6 +905,32 @@ class _SgiLoader:
                                           ('complete_criteria', 'complete_criteria', False)):
                     if src in item:
                         vals[dst] = item[src] or default
+                for dst, what in (('measure_domain', "El filtro"),
+                                  ('complete_domain', "«Está completo»")):
+                    if vals.get(dst):
+                        vals[dst] = self._portable_domain(
+                            vals[dst], item.get('refs'), model_name, 'deliverable', key, what)
+                if model_name and self.tolerant and model_name in self.env:
+                    Model = self.env[model_name]
+                    for dst in ('measure_date_field', 'measure_user_field'):
+                        if vals.get(dst) and vals[dst] not in Model._fields:
+                            self.report.warn('deliverable', key, "%s no tiene el campo «%s»; se "
+                                                                 "carga sin él." % (model_name, vals[dst]))
+                            vals[dst] = 'create_date' if dst == 'measure_date_field' else False
+                if 'require_signed' in item:
+                    vals['require_signed'] = bool(item['require_signed'])
+                if 'survey' in item:
+                    survey = self.env['survey.survey']
+                    if item['survey']:
+                        survey, why = self._ref(item['survey'])
+                        if not survey:
+                            self.report.warn('deliverable', key, "Encuesta: %s." % why)
+                            survey = self.env['survey.survey']
+                    vals['survey_id'] = survey.id
+                if 'boundary' in item:
+                    if item['boundary'] and item['boundary'] not in _BOUNDARIES:
+                        raise ValidationError("«boundary» va en %s." % ", ".join(_BOUNDARIES))
+                    vals['boundary'] = item['boundary'] or False
                 deliverable = Deliverable.search([('code', '=', key),
                                                   ('company_id', '=', self.company.id)], limit=1)
                 if deliverable:
@@ -751,7 +963,15 @@ class _SgiLoader:
                 if 'name' in item:
                     vals['name'] = item['name']
                 if 'jobs' in item:
-                    ids = [int(j) for j in item['jobs'] or []]
+                    ids = []
+                    for ref in item['jobs'] or []:
+                        if isinstance(ref, str) and not ref.strip().isdigit():
+                            job, error = self._resolve_job(ref)
+                            if error:
+                                raise ValidationError("Familia %s: %s" % (key, error))
+                            ids.append(job.id)
+                        else:
+                            ids.append(int(ref))
                     jobs = Job.browse(ids).exists()
                     missing = sorted(set(ids) - set(jobs.ids))
                     if missing:
@@ -835,7 +1055,8 @@ class _SgiLoader:
             target, target_key = self._role_target(role, key)
             wanted.append((target_key, dict(
                 target, role=role['role'], condition=role.get('condition') or False,
-                after_days=role.get('after_days') or 0, sequence=seq * 10)))
+                after_days=role.get('after_days') or 0,
+                sequence=role.get('sequence') or seq * 10)))
         current = {(r.role,) + r._sgi_target_key(): r for r in activity.role_ids} \
             if activity else {}
         commands, touched = [], False
@@ -864,7 +1085,7 @@ class _SgiLoader:
         vals = self._activity_vals(process, item, index)
         role_cmds, roles_touched = self._roles_commands(activity, item, key) \
             if 'roles' in item else ([], False)
-        input_cmds = self._inputs_commands(activity, item) if 'inputs' in item else []
+        input_cmds = self._inputs_commands(activity, item, key) if 'inputs' in item else []
         if activity:
             if not activity.active:
                 vals['active'] = True
@@ -897,7 +1118,7 @@ class _SgiLoader:
         # restricción de «exactamente un ejecutor» corre aquí dentro.
         activity.flush_recordset()
 
-    def _where_vals(self, where):
+    def _where_vals(self, where, key=None):
         """«where»: dónde se hace. Lo que no viene queda vacío (declarativo)."""
         from .sgi_activity_spec import SGI_EXEC_CHANNELS
         channel = where.get('channel')
@@ -909,8 +1130,9 @@ class _SgiLoader:
         if where.get('menu'):
             menu = self.env.ref(where['menu'], raise_if_not_found=False)
             if not menu or menu._name != 'ir.ui.menu':
-                raise ValidationError("«where.menu»: el menú %s no existe." % where['menu'])
-            vals['odoo_menu_id'] = menu.id
+                self._missing('activity', key, "«where.menu»: el menú %s no existe." % where['menu'])
+            else:
+                vals['odoo_menu_id'] = menu.id
         if where.get('external_system'):
             vals['external_system'] = where['external_system']
         if where.get('location'):
@@ -918,16 +1140,16 @@ class _SgiLoader:
                 ('complete_name', '=', where['location']),
                 ('company_id', 'in', [self.company.id, False])], limit=1)
             if not location:
-                raise ValidationError("«where.location»: la ubicación %s no existe."
-                                      % where['location'])
+                self._missing('activity', key, "«where.location»: la ubicación %s no existe."
+                              % where['location'])
             vals['location_id'] = location.id
         if where.get('workcenter'):
             workcenter = self.env['mrp.workcenter'].search([
                 ('code', '=', where['workcenter']),
                 ('company_id', 'in', [self.company.id, False])], limit=1)
             if not workcenter:
-                raise ValidationError("«where.workcenter»: el centro de trabajo %s no "
-                                      "existe." % where['workcenter'])
+                self._missing('activity', key, "«where.workcenter»: el centro de trabajo %s "
+                                               "no existe." % where['workcenter'])
             vals['workcenter_id'] = workcenter.id
         if where.get('place'):
             vals['place_note'] = where['place']
@@ -956,10 +1178,10 @@ class _SgiLoader:
             vals.update(due_month=str(month), due_day=day)
         return vals
 
-    def _inputs_commands(self, activity, item):
+    def _inputs_commands(self, activity, item, key=None):
         """Comandos para dejar los «recibe» exactamente como vienen (con su
         plazo); vacío si ya están así."""
-        wanted = self._resolve_inputs(item['inputs'])
+        wanted = self._resolve_inputs(item['inputs'], key)
         current = activity.input_ids if activity else self.env['sgi.activity.input']
         keys = ('max_days', 'applies_domain', 'applies_note', 'match_path',
                 'due_field', 'offset_days')
@@ -1191,6 +1413,124 @@ class _SgiLoader:
                     self.report.change('process', code, 'updated', ['state'])
             self._savepoint(run, 'publish', code)
 
+    def _load_terms(self, indicator, items, key):
+        """Deja los términos de la fórmula exactamente como vienen (sin
+        llave natural: se comparan completos y, si cambian, se reemplazan)."""
+        wanted = []
+        for index, item in enumerate(items):
+            what = "Término %d (%s)" % (index + 1, item.get('role'))
+            model_name = item.get('model')
+            model = self.env['ir.model']._get(model_name) if model_name else False
+            if not model or model_name not in self.env:
+                self.report.warn('indicator', key, "%s: el modelo %s no está instalado; no "
+                                                   "se carga." % (what, model_name))
+                continue
+            domain = self._portable_domain(item.get('domain') or '[]', item.get('refs'),
+                                           model_name, 'indicator', key, what)
+            vals = {'model_id': model.id, 'domain': domain or '[]'}
+            for name in _TERM_FIELDS:
+                if name in item:
+                    vals[name] = item[name] if item[name] is not None else False
+            if self.tolerant:
+                Model = self.env[model_name]
+                bad = [vals[f] for f in ('date_field', 'field_name', 'field_name_2')
+                       if vals.get(f) and vals[f] not in Model._fields]
+                if bad:
+                    self.report.warn('indicator', key, "%s: %s no tiene %s; no se carga." % (
+                        what, model_name, ", ".join(bad)))
+                    continue
+            wanted.append(vals)
+        Term = self.env['sgi.indicator.term']
+        names = ['model_id', 'domain', *_TERM_FIELDS]
+
+        def signature(vals):
+            out = []
+            for name in names:
+                field = Term._fields[name]
+                value = vals.get(name, field.default(Term) if callable(field.default) else field.default)
+                if field.type == 'many2one':
+                    value = value.id if hasattr(value, 'id') else (value or False)
+                elif field.type in ('float', 'integer'):
+                    value = round(float(value or 0), 6)
+                else:
+                    value = value or False
+                out.append(value)
+            return tuple(out)
+        current = sorted(signature({n: t[n] for n in names}) for t in indicator.term_ids)
+        if current == sorted(signature(v) for v in wanted):
+            return
+        commands = [Command.delete(t.id) for t in indicator.term_ids]
+        commands += [Command.create(v) for v in wanted]
+        indicator.write({'term_ids': commands})
+        self.report.change('indicator', key, 'updated', ['term_ids'])
+
+    def _load_objectives(self, items):
+        Objective = self.env['sgi.objective'].with_context(active_test=False)
+        for item in items:
+            key = item.get('name')
+
+            def run(item=item, key=key):
+                if not key:
+                    raise ValidationError("Objetivo sin «name».")
+                vals = {name: item[name] or False for name in ('description', 'target_year')
+                        if name in item}
+                objective = Objective.search([('name', '=', key)], limit=2)
+                if len(objective) > 1:
+                    raise ValidationError("Objetivo «%s» ambiguo: hay %d con ese nombre." % (
+                        key, len(objective)))
+                if objective:
+                    if not objective.active:
+                        vals['active'] = True
+                    changed = _diff(objective, vals)
+                    if changed:
+                        objective.write(changed)
+                        self.report.change('objective', key, 'updated', changed)
+                else:
+                    Objective.create(dict(vals, name=key))
+                    self.report.change('objective', key, 'created')
+            self._savepoint(run, 'objective', key)
+
+    def _load_control_plans(self, items):
+        """Encabezado del plan de control (nombre, fase, revisión, notas,
+        especificación, cliente). Los puntos de control (quality.point, por
+        producto) no viajan en el mapa: se capturan en la base."""
+        Plan = self.env['sgi.control.plan'].with_context(active_test=False)
+        for item in items:
+            key = item.get('name')
+
+            def run(item=item, key=key):
+                if not key:
+                    raise ValidationError("Plan de control sin «name».")
+                vals = {name: item[name] or False for name in ('phase', 'revision', 'notes')
+                        if name in item}
+                if 'document' in item:
+                    doc = self.Doc._sgi_find_by_code(item['document'], states=None) \
+                        if item['document'] else self.Doc
+                    if item['document'] and not doc:
+                        self.report.warn('control_plan', key, "Documento %s no encontrado." % item['document'])
+                    else:
+                        vals['document_id'] = doc.id
+                if 'partner' in item:
+                    partner = self.env['res.partner']
+                    if item['partner']:
+                        partner, why = self._ref(item['partner'])
+                        if not partner:
+                            self.report.warn('control_plan', key, "Cliente: %s." % why)
+                            partner = self.env['res.partner']
+                    vals['partner_id'] = partner.id
+                plan = Plan.search([('name', '=', key)], limit=2)
+                if len(plan) > 1:
+                    raise ValidationError("Plan de control «%s» ambiguo." % key)
+                if plan:
+                    changed = _diff(plan, vals)
+                    if changed:
+                        plan.write(changed)
+                        self.report.change('control_plan', key, 'updated', changed)
+                else:
+                    Plan.create(dict(vals, name=key))
+                    self.report.change('control_plan', key, 'created')
+            self._savepoint(run, 'control_plan', key)
+
     def _load_indicators(self, indicators):
         Indicator = self.env['sgi.indicator'].with_context(active_test=False)
         Users = self.env['res.users']
@@ -1228,6 +1568,15 @@ class _SgiLoader:
                     if item['deliverable'] and not deliverable:
                         raise ValidationError("Entregable «%s» no existe." % item['deliverable'])
                     vals['deliverable_id'] = deliverable.id
+                if 'objective' in item:
+                    objective = self.env['sgi.objective']
+                    if item['objective']:
+                        objective = self.env['sgi.objective'].with_context(active_test=False).search(
+                            [('name', '=', item['objective'])], limit=2)
+                        if len(objective) != 1:
+                            raise ValidationError("Objetivo «%s» %s." % (
+                                item['objective'], "ambiguo" if objective else "no existe"))
+                    vals['objective_id'] = objective.id
                 if item.get('responsible_employee_id') and item.get('responsible'):
                     raise ValidationError("Indica «responsible» o «responsible_employee_id», "
                                           "no los dos.")
@@ -1250,6 +1599,11 @@ class _SgiLoader:
                         raise ValidationError("Responsable «%s» no existe (id o login)." % ref)
                     vals['responsible_id'] = user.id
                 indicator = Indicator.search([('code', '=', key)], limit=1)
+                # El estado va al final: cambiar la fórmula regresa el
+                # indicador a «prueba» (sgi_indicator_formula) y el estado del
+                # payload es el que se queda.
+                status = vals.pop('status', None) if 'status' in vals else None
+                has_status = 'status' in item
                 if indicator:
                     if not indicator.active:
                         vals['active'] = True
@@ -1262,8 +1616,15 @@ class _SgiLoader:
                         raise ValidationError("El indicador nuevo %s necesita «name»." % key)
                     # Con responsable, una medición roja validada abre NC.
                     vals.setdefault('nc_on_red', bool(vals.get('responsible_id')))
-                    Indicator.create(dict(vals, code=key))
+                    indicator = Indicator.create(dict(vals, code=key))
                     self.report.change('indicator', key, 'created')
+                if 'terms' in item:
+                    self._load_terms(indicator, item['terms'] or [], key)
+                if has_status:
+                    changed = _diff(indicator, {'status': status})
+                    if changed:
+                        indicator.write(changed)
+                        self.report.change('indicator', key, 'updated', changed)
                 if not vals.get('responsible_id') and not (indicator and indicator.responsible_id):
                     self.report.warn('indicator', key, "Indicador sin responsable.")
             self._savepoint(run, 'indicator', key)

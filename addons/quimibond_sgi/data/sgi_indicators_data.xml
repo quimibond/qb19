@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
+    <!-- B-001 (auditoría 2026-09): el modo automático de los 8 indicadores
+         confiables, la unidad de TR-03 (MXN) y el objetivo de AL-02 (99) se
+         siembran aquí, UNA vez al instalar. Antes los ponían
+         activate_auto_indicators y fix_kpi_seeds en cada update, pisando lo
+         que MAST decidiera. noupdate="1": un update nunca los vuelve a tocar. -->
     <!-- ============================================================= -->
     <!-- KPIs reales F-P-A10-03. calc_mode=manual salvo indicación.    -->
     <!-- nc_on_red arranca en False: se activa tras validar 1 mes vs   -->
@@ -31,10 +36,10 @@
     <record id="sgi_ind_consumo_energia" model="sgi.indicator">
         <field name="code">TR-03</field>
         <field name="name">Consumo de energía</field>
-        <field name="uom">kWh</field>
+        <field name="uom">MXN</field>
         <field name="direction">lower_better</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">consumo_energia</field>
     </record>
     <record id="sgi_ind_separacion_residuos" model="sgi.indicator">
         <field name="code">TR-04</field>
@@ -59,7 +64,7 @@
         <field name="target_objective">20</field>
         <field name="target_acceptable">15</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">crecimiento_ventas</field>
     </record>
     <record id="sgi_ind_presupuesto_ventas" model="sgi.indicator">
         <field name="code">VE-02</field>
@@ -95,7 +100,7 @@
         <field name="target_objective">95</field>
         <field name="target_acceptable">85</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">requisiciones</field>
     </record>
     <record id="sgi_ind_errores_oc" model="sgi.indicator">
         <field name="code">CO-03</field>
@@ -127,10 +132,10 @@
         <field name="sgi_area_id" ref="sgi_area_p"/>
         <field name="uom">%</field>
         <field name="direction">higher_better</field>
-        <field name="target_objective">100</field>
+        <field name="target_objective">99</field>
         <field name="target_acceptable">98</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">embarques_sin_error</field>
     </record>
 
     <!-- ===================== Logística ===================== -->
@@ -179,7 +184,7 @@
         <field name="target_objective">95</field>
         <field name="target_acceptable">88</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">produccion_vs_capacidad</field>
     </record>
     <record id="sgi_ind_calidad_pq" model="sgi.indicator">
         <field name="code">MA-03</field>
@@ -190,7 +195,7 @@
         <field name="target_objective">92.5</field>
         <field name="target_acceptable">85</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">calidad_pq</field>
     </record>
     <record id="sgi_ind_reproceso" model="sgi.indicator">
         <field name="code">MA-04</field>
@@ -260,7 +265,7 @@
         <field name="target_objective">93</field>
         <field name="target_acceptable">88</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">ots_atendidas</field>
     </record>
 
     <!-- ===================== Recursos Humanos ===================== -->
@@ -284,7 +289,7 @@
         <field name="target_objective">85</field>
         <field name="target_acceptable">75</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">manual</field>
+        <field name="calc_mode">capacitacion</field>
     </record>
     <record id="sgi_ind_rotacion" model="sgi.indicator">
         <field name="code">RH-03</field>

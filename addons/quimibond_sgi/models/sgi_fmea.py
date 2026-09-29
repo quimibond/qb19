@@ -23,7 +23,7 @@ class SgiFmea(models.Model):
         ('diseno', "Diseño (DFMEA)"),
     ], string="Tipo", default='proceso', required=True, tracking=True)
     product_tmpl_id = fields.Many2one('product.template', string="Producto")
-    process_id = fields.Many2one('sgi.process', string="Proceso")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
     # Cadena IATF: PFMEA → plan de control. Antes solo se enlazaban vía
     # elementos PPAP (deuda C.25); la relación directa habilita el
     # read-across y los avisos de «actualizar ambos».

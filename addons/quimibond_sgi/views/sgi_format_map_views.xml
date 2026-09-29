@@ -7,9 +7,11 @@
         <field name="model">sgi.format.map</field>
         <field name="arch" type="xml">
             <list>
-                <field name="sgi_code"/>
-                <field name="sgi_code_alt" optional="show"/>
+                <field name="live_label"/>
+                <field name="live_alt_label" optional="show"/>
                 <field name="model_id"/>
+                <field name="document_id" optional="show"/>
+                <field name="sgi_code" optional="hide"/>
                 <field name="note" optional="show"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
@@ -25,18 +27,24 @@
                     <group>
                         <group>
                             <field name="model_id"/>
-                            <field name="sgi_code"/>
-                            <field name="sgi_code_alt"/>
+                            <field name="document_id"/>
+                            <field name="document_alt_id"/>
+                            <field name="live_label"/>
+                            <field name="live_alt_label" invisible="not live_alt_label"/>
                         </group>
                         <group>
                             <field name="active"/>
                             <field name="note"/>
+                            <field name="sgi_code"/>
+                            <field name="sgi_code_alt"/>
                         </group>
                     </group>
                     <div class="text-muted">
-                        La revisión no se captura: se lee del documento
-                        <b>vigente</b> con esa clave en Documentos, tanto en el
-                        formulario como en el PDF impreso.
+                        La clave y la revisión no se capturan: se leen de la
+                        revisión <b>vigente</b> del documento ligado, tanto en el
+                        formulario como en el PDF impreso. Si el documento cambia
+                        de clave o de revisión, el pie cambia solo. La «clave al
+                        ligar» solo se usa mientras no hay documento.
                     </div>
                 </sheet>
             </form>
@@ -50,7 +58,10 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Mapea un formato del SGI a su documento de Odoo</p>
             <p>El registro de Odoo (cotización, OC, remisión…) mostrará e imprimirá
-               la clave y la revisión vigente del formato que sustituye.</p>
+               la clave y la revisión vigente del documento controlado ligado.
+               Los mapeos sin modelo son formatos que el SGI imprime por
+               referencia (responsiva de EPP, etiquetas de calibración, pie del
+               procedimiento…).</p>
         </field>
     </record>
 

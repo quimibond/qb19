@@ -4,7 +4,7 @@
 Acceso con el token del portal (enlace del correo) o como usuario portal
 del proveedor; sin token válido, 403. Solo lectura de lo que el proveedor
 necesita (folio, producto, lote, desviación, plazo) y un formulario de dos
-campos que escribe por `quality.alert.sgi_supplier_answer`.
+campos que escribe por `quality.alert._sgi_supplier_answer`.
 """
 from urllib.parse import quote
 
@@ -41,7 +41,7 @@ class SgiSupplierNcPortal(CustomerPortal):
             return request.redirect('/my')
         base = '/my/nc/%d?access_token=%s' % (alert.id, access_token or '')
         try:
-            alert.sudo().sgi_supplier_answer(cause, action)
+            alert.sudo()._sgi_supplier_answer(cause, action)
         except UserError as exc:
             return request.redirect(base + '&error=%s' % quote(str(exc)))
         return request.redirect(base + '&saved=1')

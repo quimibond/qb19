@@ -27,6 +27,12 @@ la imagen community). Nacen de tres builds rotos de `main` el 2026-09-25:
    56.24.0 en producción («transforms the transient model … into a
    non-transient model», 2026-09-29).
 
+5. **Referencias hacia adelante** (A-001 de la auditoría 2026-09): un
+   `parent`, `action`, `groups`, `ref`, `ref('…')` o `%(…)d` a un XML ID del
+   propio módulo que se define en un archivo (o renglón) posterior del
+   manifest. En producción pasa porque el XML ID ya existe en la base; en una
+   instalación limpia revienta con «External ID not found».
+
 Uso: `python3 tools/check_odoo_views.py [--base-ref origin/main] [ruta/a/addons ...]`
 (sin rutas revisa `addons/` y los módulos de la raíz). Sale con 1 si hay errores.
 """
@@ -221,6 +227,114 @@ def check_view_inherit_order(module_dir):
                 "después (%s). Mueve el archivo del padre antes que el del hijo." % (
                     os.path.relpath(os.path.join(module_dir, rel), ROOT), child, parent,
                     files[parent_index] if parent_index is not None else 'no encontrado'))
+    return errors
+
+
+# ----------------------------------------------------------------------
+# Referencias hacia adelante a XML IDs del propio módulo
+# ----------------------------------------------------------------------
+_EVAL_REF = re.compile(r"\bref\(\s*['\"]([\w.]+)['\"]")
+_PCT_REF = re.compile(r"%\(([\w.]+)\)d")
+_AUTO_PREFIXES = ('model_', 'field_', 'selection__', 'constraint_', 'module_')
+
+
+def _own_xmlid(ref, module):
+    ref = (ref or '').strip().lstrip('-').strip()
+    if not ref:
+        return None
+    if '.' in ref:
+        mod, name = ref.split('.', 1)
+        if mod != module:
+            return None
+        ref = name
+    if ref.startswith(_AUTO_PREFIXES):
+        return None  # los crea el ORM al registrar modelos y campos
+    return ref
+
+
+def _element_refs(element, module):
+    """XML IDs propios que un elemento (y sus hijos) necesita ya cargados."""
+    refs = []
+    for el in element.iter():
+        if not isinstance(el.tag, str):
+            continue
+        attrs = dict(el.attrib)
+        if el.tag == 'menuitem':
+            refs += [attrs.get('parent'), attrs.get('action')]
+        if el.tag == 'template':
+            refs.append(attrs.get('inherit_id'))
+        if el.tag in ('field', 'record', 'menuitem', 'template', 'function', 'delete') and attrs.get('ref'):
+            refs.append(attrs['ref'])
+        for key in ('groups',):
+            refs += (attrs.get(key) or '').split(',')
+        for value in list(attrs.values()) + [el.text or '']:
+            refs += _EVAL_REF.findall(value) if 'ref(' in value else []
+            refs += _PCT_REF.findall(value)
+    return [r for r in (_own_xmlid(x, module) for x in refs) if r]
+
+
+def check_forward_refs(module_dir):
+    """Ningún archivo de datos puede apuntar a un XML ID propio que el
+    manifest define más adelante (en otro archivo o más abajo en el mismo)."""
+    import csv as _csv
+    errors = []
+    module = os.path.basename(module_dir)
+    path = os.path.join(module_dir, '__manifest__.py')
+    if not os.path.exists(path):
+        return errors
+    try:
+        manifest = ast.literal_eval(open(path, encoding='utf-8').read())
+    except (SyntaxError, ValueError):
+        return errors
+    files = [f for f in manifest.get('data') or [] if f.endswith(('.xml', '.csv'))]
+    steps = []  # (archivo, id definido o None, refs, línea)
+    for rel in files:
+        full = os.path.join(module_dir, rel)
+        if not os.path.exists(full):
+            continue
+        if rel.endswith('.csv'):
+            with open(full, encoding='utf-8') as handle:
+                for row in _csv.DictReader(handle):
+                    refs = [_own_xmlid(v, module) for k, v in row.items() if k and k.endswith(':id')]
+                    steps.append((rel, (row.get('id') or '').strip(), [r for r in refs if r], None))
+            continue
+        try:
+            tree = etree.parse(full)
+        except etree.XMLSyntaxError:
+            continue  # ya lo reporta check_views
+
+        def walk(parent):
+            for child in parent:
+                if not isinstance(child.tag, str):
+                    continue
+                if child.tag in ('odoo', 'openerp', 'data'):
+                    walk(child)
+                    continue
+                own_id = _own_xmlid(child.get('id'), module) if child.tag != 'delete' else None
+                if child.tag == 'menuitem':
+                    # Los menús anidados se cargan después del padre.
+                    refs = [r for r in (_own_xmlid(child.get(k), module) for k in ('parent', 'action')) if r]
+                    refs += [r for r in (_own_xmlid(g, module) for g in (child.get('groups') or '').split(',')) if r]
+                    steps.append((rel, own_id, refs, child.sourceline))
+                    for sub in child.findall('menuitem'):
+                        if not sub.get('parent') and own_id:
+                            sub.set('parent', own_id)
+                    walk(child)
+                    continue
+                steps.append((rel, own_id, _element_refs(child, module), child.sourceline))
+        walk(tree.getroot())
+    everywhere = {own_id for _, own_id, _, _ in steps if own_id}
+    loaded = set()
+    for rel, own_id, refs, line in steps:
+        for ref in refs:
+            if ref in everywhere and ref not in loaded and ref != own_id:
+                errors.append(
+                    "%s:%s: usa el XML ID %s.%s, que el manifest define más adelante. En una "
+                    "instalación limpia revienta con «External ID not found»; mueve la definición "
+                    "antes o la referencia después." % (
+                        os.path.relpath(os.path.join(module_dir, rel), ROOT), line or '', module, ref))
+        if own_id:
+            loaded.add(own_id)
     return errors
 
 
@@ -478,13 +592,14 @@ def main(argv):
         errors += check_model_imports(module_dir)
         errors += check_test_imports(module_dir)
         errors += check_view_inherit_order(module_dir)
+        errors += check_forward_refs(module_dir)
         if base_ref:
             errors += check_stale_self_inherits(module_dir, base_ref)
     for err in errors:
         print("ERROR:", err)
     against = " y herencias propias contra %s" % base_ref if base_ref else ""
     print("%d error(es) en vistas RNG, imports de modelos, tipo de modelo en extensiones, registro de tests, "
-          "orden de herencia de vistas%s." % (len(errors), against))
+          "orden de herencia de vistas, referencias hacia adelante%s." % (len(errors), against))
     return 1 if errors else 0
 
 

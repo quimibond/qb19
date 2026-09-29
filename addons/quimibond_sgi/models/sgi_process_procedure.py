@@ -333,7 +333,7 @@ class SgiProcessProcedure(models.Model):
         self.ensure_one()
         return bool(self.env['documents.document'].sudo().search_count([
             ('sgi_process_id', '=', self.id),
-            ('sgi_doc_type', '=', 'procedimiento'),
+            ('sgi_doc_type_id.code', '=', 'procedimiento'),
             ('sgi_is_controlled', '=', True),
             ('sgi_state', 'in', ('piloto', 'vigente')),
         ], limit=1))
@@ -374,7 +374,7 @@ class SgiProcessProcedure(models.Model):
             Cron._sgi_schedule(
                 doc, "Procedimiento vivo cambió: revisar %s" % (doc.sgi_code or doc.name),
                 "Genera una nueva revisión controlada del procedimiento o confirma que el "
-                "cambio no la amerita.", user_id)
+                "cambio no la amerita.", user_id, key='procedimiento_vivo')
 
     def write(self, vals):
         res = super().write(vals)
@@ -389,19 +389,14 @@ class SgiProcessProcedure(models.Model):
         VIVO de aquí (única fuente de verdad)."""
         self.ensure_one()
         docs = self.procedure_ids.filtered(
-            lambda d: d.sgi_doc_type == 'procedimiento' and d.sgi_state == 'vigente')
+            lambda d: d.sgi_doc_type_id.code == 'procedimiento' and d.sgi_state == 'vigente')
         return docs[:1]
 
-    def _sgi_format_revision(self, code):
-        """Revisión viva del documento controlado vigente con esa clave (para el
-        pie F-P-G01-02), o False."""
-        return self.env['sgi.format.map'].sudo()._revision_of(code)
-
-    def _sgi_document_by_code(self, code):
-        """Documento vigente con esa clave (ref. a F-P-S01-01, etc.)."""
-        return self.env['documents.document'].sudo().search([
-            ('sgi_code', '=', code), ('sgi_state', '=', 'vigente'),
-        ], limit=1)
+    def _sgi_format_parts(self, ref):
+        """(clave, revisión) vivas del formato por referencia del mapeo
+        (``format_ref_procedure_print`` para el pie; C-006: ya no por el texto
+        de la clave)."""
+        return self.env['sgi.format.map'].sudo().sgi_ref_parts(ref)
 
     def _sgi_env_risks(self):
         """Riesgos ambientales ligados al proceso (sección 5)."""
@@ -537,7 +532,7 @@ class SgiProcessActivity(models.Model):
         inverse='_inverse_responsible_job_ids', store=True)
     instruction_id = fields.Many2one(
         'documents.document', string="Instructivo",
-        domain=[('sgi_doc_type', '=', 'instructivo')],
+        domain=[('sgi_doc_type_id.code', '=', 'instructivo')],
         help="Instructivo (IT) que explica cómo se hace el paso. El "
              "«Procedimiento relacionado» es otra cosa: el procedimiento que "
              "rige la actividad.")
@@ -573,7 +568,7 @@ class SgiProcessActivity(models.Model):
         help="Claves de formato en rojo que la actividad genera o usa.")
     related_procedure_id = fields.Many2one(
         'documents.document', string="Procedimiento relacionado",
-        domain=[('sgi_doc_type', '=', 'procedimiento')],
+        domain=[('sgi_doc_type_id.code', '=', 'procedimiento')],
         help="Otro procedimiento que rige esta actividad (ej. marca P-A22).")
     odoo_ref = fields.Char(
         string="Dónde se ejecuta en Odoo",
@@ -1074,7 +1069,15 @@ class SgiProcessActivity(models.Model):
                     vals['measure_count_30d'] = Model.search_count(window)
                     vals.update(activity._sgi_measure_executors(Model, domain, date_field))
                     days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-                    if days:
+                    # G-017 (56.36.0): con vencimiento periódico, «a tiempo»
+                    # es antes del vencimiento (decisión 5), no una ventana de
+                    # días naturales. Vive en sgi_activity_spec.
+                    periodic = activity._sgi_periodic_state(
+                        Model, domain, date_field, fields.Date.context_today(activity)) \
+                        if hasattr(activity, '_sgi_periodic_state') else None
+                    if periodic:
+                        vals['measure_state'] = periodic
+                    elif days:
                         in_window = Model.search_count(
                             domain
                             + [(date_field, '>=', now - timedelta(days=days))])
@@ -1272,7 +1275,7 @@ class SgiProcessActivity(models.Model):
             # Los «Formularios de Odoo» del control documental también
             # resuelven su menú desde el texto del destino de migración.
             lambda: self.env['documents.document'].search([
-                ('sgi_doc_type', '=', 'formulario_odoo'),
+                ('sgi_doc_type_id.code', '=', 'formulario_odoo'),
                 ('sgi_odoo_menu_id', '=', False),
                 ('sgi_migration_target', '!=', False),
             ]).action_sgi_resolve_odoo_menu(),
@@ -1503,7 +1506,7 @@ class SgiActivityLink(models.Model):
                             to.display_name,
                             "dentro de su plazo de %d días hábiles" % link.max_days
                             if link.max_days else "en su periodo"),
-                        owner_user)
+                        owner_user, key='eslabon_atorado:%d' % link.id)
                 elif (now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS \
                         and not link._sgi_chain_nc_open():
                     # Sin NC ligada, o la ligada ya cerró/canceló: este

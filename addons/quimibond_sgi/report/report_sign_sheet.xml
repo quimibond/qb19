@@ -39,7 +39,7 @@
                 <t t-call="quimibond_sgi.report_sign_sheet_body">
                     <t t-set="title">CONSTANCIA DE LECTURA</t>
                     <t t-set="lines" t-value="[
-                        '%s — %s, revisión %02d.' % (doc.sgi_code or '', doc.name or '', doc.sgi_revision or 0),
+                        '%s — %s, revisión %02d.' % (doc.sgi_code or '', doc.sgi_title or doc.name or '', doc.sgi_revision or 0),
                         'Leí y entendí este documento y me comprometo a aplicarlo en mi trabajo.',
                     ]"/>
                     <t t-set="rows" t-value="[('Leído y entendido', 'Firma de quien acusa')]"/>
@@ -90,7 +90,7 @@
                 <t t-call="quimibond_sgi.report_sign_sheet_body">
                     <t t-set="title">HOJA DE FIRMAS</t>
                     <t t-set="lines" t-value="[
-                        '%s — %s, revisión %02d.' % (doc.sgi_code or '', doc.name or '', doc.sgi_revision or 0),
+                        '%s — %s, revisión %02d.' % (doc.sgi_code or '', doc.sgi_title or doc.name or '', doc.sgi_revision or 0),
                         'Entra en vigor cuando firmen todos los renglones.',
                     ]"/>
                     <t t-set="rows" t-value="doc._sgi_publish_sign_rows()"/>

@@ -129,10 +129,16 @@
         <field name="model">sgi.activity.role</field>
         <field name="priority">50</field>
         <field name="arch" type="xml">
-            <list create="0" delete="0">
+            <!-- 56.36.0 (I-012): el estado de la actividad que escala. -->
+            <list create="0" delete="0" decoration-danger="mp_status == 'atrasada'">
+                <field name="mp_status" widget="badge"
+                       decoration-success="mp_status == 'al_dia'"
+                       decoration-danger="mp_status == 'atrasada'"
+                       decoration-muted="mp_status == 'sin_medir'"/>
                 <field name="process_id"/>
                 <field name="mp_number" string="Núm."/>
                 <field name="mp_name" string="Actividad"/>
+                <field name="mp_status_detail" string="Detalle" optional="show"/>
                 <field name="after_days" string="Escala a los (días hábiles)"/>
                 <button name="action_open_activity" type="object" string="Ver actividad" icon="fa-file-text-o"/>
             </list>
@@ -274,9 +280,19 @@
                             </field>
                         </page>
                         <page string="Escalamientos" name="escalamientos" invisible="not received_role_ids">
-                            <p class="text-muted">Actividades de otros puestos que escalan a este puesto si se atoran.</p>
+                            <p class="text-muted">Actividades de otros puestos que escalan a este puesto si se atoran.
+                                Las atrasadas van primero; cuando el atraso pasa de sus días hábiles, llegan a Mis pendientes.</p>
+                            <div class="d-flex justify-content-end align-items-center gap-2" invisible="received_late_count == 0">
+                                <span class="text-danger"><field name="received_late_count" class="oe_inline"/> atrasados</span>
+                                <button name="action_show_received" type="object" string="Ver atrasados"
+                                        icon="fa-exclamation-triangle" class="btn-link text-danger"/>
+                            </div>
                             <field name="received_role_ids" nolabel="1" readonly="1">
-                                <list create="0" delete="0">
+                                <list create="0" delete="0" decoration-danger="mp_status == 'atrasada'">
+                                    <field name="mp_status" widget="badge"
+                                           decoration-success="mp_status == 'al_dia'"
+                                           decoration-danger="mp_status == 'atrasada'"
+                                           decoration-muted="mp_status == 'sin_medir'"/>
                                     <field name="process_id"/>
                                     <field name="mp_number" string="Núm."/>
                                     <field name="mp_name" string="Actividad"/>
@@ -302,8 +318,8 @@
                         <page string="Documentos" name="documentos">
                             <field name="document_ids" nolabel="1" readonly="1">
                                 <list create="0" delete="0">
-                                    <field name="sgi_code" string="Clave"/>
-                                    <field name="name"/>
+                                    <field name="sgi_title" string="Documento"/>
+                                    <field name="sgi_code" string="Clave" optional="show"/>
                                     <field name="sgi_doc_type" string="Tipo"/>
                                     <field name="sgi_revision_label" string="Rev."/>
                                     <button name="action_sgi_view_file" type="object" string="Ver archivo"
@@ -626,15 +642,6 @@
         </field>
     </record>
 
-    <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
-              parent="menu_sgi_panel" action="sgi_my_procedure_action_mine"
-              sequence="20"/>
-    <menuitem id="menu_sgi_my_pending" name="Mis pendientes"
-              parent="menu_sgi_panel" action="sgi_my_pending_action_mine"
-              sequence="10"/>
-    <menuitem id="menu_sgi_my_team" name="Mi equipo"
-              parent="menu_sgi_panel" action="sgi_my_team_action_mine"
-              sequence="40"/>
 
     <!-- 56.7.0: Inicio → Mis indicadores. Antes el Usuario SGI no tenía
          menú para ver ni capturar sus indicadores (Indicadores y Mediciones
@@ -651,7 +658,4 @@
             <p>Los indicadores del SGI los asigna MAST; cuando tengas uno, aquí ves su último valor y capturas sus mediciones.</p>
         </field>
     </record>
-    <menuitem id="menu_sgi_my_indicators" name="Mis indicadores"
-              parent="menu_sgi_panel" action="sgi_indicator_action_mine"
-              sequence="30"/>
 </odoo>

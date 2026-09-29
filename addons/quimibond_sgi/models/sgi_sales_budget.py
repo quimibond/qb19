@@ -618,11 +618,15 @@ class SgiSalesBudget(models.Model):
                         "lista.\n\n- %s%s\n\nDa de alta el precio en la lista del "
                         "cliente o aprueba con excepción (constancia en chatter)." % (
                             budget.name, total, "\n- ".join(pairs), more))
-                budget.message_post(
+                # sudo tras la revisión de grupo (entrega 4): Dirección aprueba
+                # sin tener escritura en el presupuesto (ya no implica al Jefe
+                # MAST). El autor del mensaje sigue siendo quien aprueba.
+                budget.sudo().message_post(
                     body="Aprobado con EXCEPCIÓN de cobertura de precios: %d "
                          "producto(s) sin precio en la lista.<br/>- %s" % (
-                             total, "<br/>- ".join(pairs)))
-            budget.state = 'aprobado'
+                             total, "<br/>- ".join(pairs)),
+                    author_id=self.env.user.partner_id.id)
+            budget.sudo().state = 'aprobado'
         return True
 
     def action_set_borrador(self):
@@ -836,12 +840,11 @@ class SgiSalesBudget(models.Model):
             'partner': self.partner_id.name or '',
         }
 
-    # Banner de formato según el tipo: pronóstico = F-P-A28-13, presupuesto = 18.
-    def _sgi_format_code(self, fmap):
+    # Banner de formato según el tipo: el pronóstico usa el documento
+    # alternativo del mapeo; el presupuesto, el principal (C-006).
+    def _sgi_format_use_alt(self, fmap):
         self.ensure_one()
-        if self.kind == 'pronostico':
-            return fmap.sgi_code_alt or 'F-P-A28-13'
-        return fmap.sgi_code
+        return self.kind == 'pronostico'
 
     def action_print_budget(self):
         self.ensure_one()

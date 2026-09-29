@@ -8,6 +8,7 @@ from odoo.exceptions import UserError, ValidationError
 
 from .sgi_base import sgi_bypass_allowed
 from .sgi_calendar import sgi_add_business_days
+from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -84,12 +85,13 @@ class QualityAlert(models.Model):
         ('menor', "Menor"),
         ('observacion', "Observación"),
     ], string="Clasificación", tracking=True)
-    sgi_norm_clause_id = fields.Many2one('sgi.norm.clause', string="Requisito (cláusula)")
+    sgi_norm_clause_id = fields.Many2one('sgi.norm.clause', string="Requisito (cláusula)",
+                                         ondelete='restrict')
     sgi_requester_id = fields.Many2one('res.users', string="Solicitante")
     sgi_requester_job = fields.Char(related='sgi_requester_id.employee_id.job_title',
                                     string="Cargo del solicitante", readonly=True)
     sgi_lead_auditor_id = fields.Many2one('res.users', string="Auditor líder")
-    sgi_process_id = fields.Many2one('sgi.process', string="Proceso detectado")
+    sgi_process_id = fields.Many2one('sgi.process', string="Proceso detectado", ondelete='restrict')
     sgi_responsible_ids = fields.Many2many('res.users', 'sgi_alert_responsible_rel',
                                            'alert_id', 'user_id', string="Responsables a contestar")
     sgi_deviation = fields.Text(string="Desviación detectada")
@@ -483,7 +485,7 @@ class QualityAlert(models.Model):
                 raise UserError(
                     "La generación de No Conformidades desde «%s» está "
                     "desactivada.\n\nSi debe volver a generarse, actívela en "
-                    "SGI → Configuración → Fuentes de NC automáticas." % source.name)
+                    "%s." % (source.name, sgi_menu_path('fuentes_nc')))
             return self.browse()
         return self.create(dict(vals, sgi_source_id=source.id if source else False))
 
@@ -694,7 +696,14 @@ class SgiActionLine(models.Model):
     def _compute_origin_display(self):
         for line in self:
             origin = line._sgi_origin()
-            line.origin_display = origin.display_name if origin else ''
+            # Entrega 4: el origen puede ser un incidente que el usuario no lee
+            # (solo lo ven quien lo reportó, MAST, Salud y Auditor): se dice
+            # qué es, sin abrirlo.
+            if origin and not origin._filtered_access('read'):
+                line.origin_display = "Incidente o accidente" if origin._name == 'sgi.incident' \
+                    else origin._description
+            else:
+                line.origin_display = origin.display_name if origin else ''
 
     def action_mark_done(self):
         """El click más usado del empleado: terminar su acción. Sella la fecha
@@ -780,12 +789,17 @@ class SgiActionLine(models.Model):
     def _compute_state(self):
         today = fields.Date.context_today(self)
         for line in self:
-            if line.date_done:
-                line.state = 'terminada'
-            elif line.date_commit and line.date_commit < today:
-                line.state = 'vencida'
-            else:
-                line.state = 'abierta'
+            line.state = line._sgi_state_on(today)
+
+    def _sgi_state_on(self, today):
+        """Estado de la acción en la fecha ``today`` (56.37.0: el cron lo usa
+        para escribir solo las que cambian, G-024)."""
+        self.ensure_one()
+        if self.date_done:
+            return 'terminada'
+        if self.date_commit and self.date_commit < today:
+            return 'vencida'
+        return 'abierta'
 
     # ------------------------------------------------------------------
     # Acciones como actividades nativas (corazón accionable del SGI)

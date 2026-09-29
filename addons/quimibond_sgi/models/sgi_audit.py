@@ -124,7 +124,7 @@ class SgiAuditProgramLine(models.Model):
 
     program_id = fields.Many2one('sgi.audit.program', string="Programa",
                                  required=True, ondelete='cascade')
-    process_id = fields.Many2one('sgi.process', string="Proceso")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
     planned_month = fields.Selection(MONTH_SELECTION, string="Mes planificado", required=True)
     audit_type = fields.Selection([
         ('interna', "Interna"),
@@ -539,13 +539,13 @@ class SgiAuditFinding(models.Model):
         ('nc_mayor', "No conformidad mayor"),
         ('oportunidad', "Oportunidad de mejora"),
     ], string="Tipo", default='observacion', required=True)
-    norm_clause_id = fields.Many2one('sgi.norm.clause', string="Cláusula")
+    norm_clause_id = fields.Many2one('sgi.norm.clause', string="Cláusula", ondelete='restrict')
     checklist_line_id = fields.Many2one(
         'sgi.audit.checklist.line', string="Pregunta del checklist", readonly=True, ondelete='set null')
     survey_line_id = fields.Many2one('survey.user_input.line',
                                      string="Respuesta del checklist",
                                      readonly=True, copy=False)
-    process_id = fields.Many2one('sgi.process', string="Proceso")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
     description = fields.Text(string="Descripción")
     evidence = fields.Text(string="Evidencia")
     disposition = fields.Selection([

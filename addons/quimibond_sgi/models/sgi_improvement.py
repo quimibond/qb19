@@ -25,8 +25,8 @@ class ProjectTask(models.Model):
         ('recurso', "Recurso"),
         ('otros', "Otros"),
     ], string="Tipo de mejora")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
-    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI")
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
+    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI", ondelete='restrict')
 
     def _sgi_check_can_close_improvement(self):
         for task in self:
