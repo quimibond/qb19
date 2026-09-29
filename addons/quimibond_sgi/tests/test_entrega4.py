@@ -177,3 +177,117 @@ class TestEntrega4Groups(TransactionCase):
         current.with_user(self.user).action_sgi_mark_my_ack_read()
         self.assertEqual(ack.state, 'leido')
         self.assertEqual(current.with_user(self.user).sgi_my_ack_state, 'leido')
+
+
+@tagged('post_install', '-at_install')
+class TestEntrega4SensitiveModels(TransactionCase):
+    """Los 5 modelos sensibles quedan restringidos a su grupo (decisión de
+    Jose, 2026-09-29)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        env = cls.env
+        cls.user = new_test_user(env, login='e4s_user', groups='base.group_user,quimibond_sgi.group_sgi_user')
+        cls.mast = new_test_user(env, login='e4s_mast', groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        cls.capture = new_test_user(env, login='e4s_capture',
+                                    groups='base.group_user,quimibond_sgi.group_sgi_efficiency_capture')
+        cls.payroll = new_test_user(env, login='e4s_payroll',
+                                    groups='base.group_user,hr_payroll.group_hr_payroll_user')
+        cls.hr = new_test_user(env, login='e4s_hr', groups='base.group_user,hr.group_hr_user')
+        cls.csh = new_test_user(env, login='e4s_csh', groups='base.group_user,quimibond_sgi.group_sgi_csh')
+        cls.health = new_test_user(env, login='e4s_health',
+                                   groups='base.group_user,quimibond_sgi.group_sgi_health')
+        cls.auditor = new_test_user(env, login='e4s_auditor',
+                                    groups='base.group_user,quimibond_sgi.group_sgi_auditor')
+        cls.dept = env['hr.department'].create({'name': 'E4 Tejido'})
+        cls.boss_emp = env['hr.employee'].create({'name': 'E4 Jefe', 'user_id': cls.capture.id,
+                                                  'department_id': cls.dept.id})
+        cls.worker = env['hr.employee'].create({'name': 'E4 Tejedor', 'department_id': cls.dept.id})
+
+    # ---- sgi.staff.efficiency(.line): salarios solo para Nómina ----
+    def _sheet(self):
+        sheet = self.env['sgi.staff.efficiency'].create({'period_date': date(2046, 5, 1),
+                                                         'department_id': self.dept.id})
+        line = self.env['sgi.staff.efficiency.line'].create({
+            'sheet_id': sheet.id, 'employee_id': self.worker.id, 'wage_daily': 400.0,
+            'attendance_pct': 5.5, 'efficiency_pct': 2.0})
+        return sheet, line
+
+    def test_01_salaries_only_for_payroll(self):
+        sheet, line = self._sheet()
+        money = ['wage_daily', 'wage_monthly', 'amount']
+        data = line.with_user(self.payroll).read(money)[0]
+        self.assertEqual(data['wage_daily'], 400.0)
+        self.assertTrue(sheet.with_user(self.payroll).read(['amount_total'])[0]['amount_total'])
+        for user in (self.mast, self.capture, self.hr):
+            with self.assertRaises(AccessError, msg=user.login):
+                line.with_user(user).read(['amount'])
+            with self.assertRaises(AccessError, msg=user.login):
+                sheet.with_user(user).read(['amount_total'])
+            # Ven la eficiencia sin el importe.
+            self.assertEqual(line.with_user(user).read(['total_pct'])[0]['total_pct'], 7.5)
+        # Exportar pasa por los mismos groups del campo: no aparece en la
+        # lista de campos exportables de quien no es de Nómina.
+        self.assertNotIn('amount', line.with_user(self.mast).fields_get())
+        Report = self.env['ir.actions.report']
+        name = 'quimibond_sgi.report_staff_efficiency_document'
+        self.assertNotIn(b'A pagar', Report.with_user(self.mast)._render_qweb_html(name, sheet.ids)[0],
+                         "El PDF del Jefe MAST no lleva importes.")
+        self.assertIn(b'A pagar', Report.with_user(self.payroll)._render_qweb_html(name, sheet.ids)[0])
+
+    # ---- hr.version: campos del SGI solo RH ----
+    def test_02_hr_version_fields_only_hr(self):
+        for name in ('sgi_departure_reason_id', 'sgi_departure_registered_at'):
+            self.assertEqual(self.env['hr.version']._fields[name].groups, 'hr.group_hr_user', name)
+        version = self.worker.version_id
+        self.assertTrue(version.with_user(self.hr).read(['sgi_departure_reason_id']))
+
+    # ---- account.move.line: diferencia contra la OC solo para Contabilidad ----
+    def test_03_move_line_field_only_accounting(self):
+        field = self.env['account.move.line']._fields['sgi_po_price_diff']
+        self.assertEqual(field.groups, 'account.group_account_readonly')
+        with self.assertRaises(AccessError):
+            self.env['account.move.line'].with_user(self.user).search_read(
+                [('id', '=', 0)], ['sgi_po_price_diff'])
+
+    # ---- sgi.competence.gap: lo suyo y lo de su equipo ----
+    def test_04_competence_gaps_own_and_team(self):
+        Gap = self.env['sgi.competence.gap']
+        total = Gap.search_count([])
+        self.assertEqual(Gap.with_user(self.hr).search_count([]), total, "RH ve todas.")
+        self.assertEqual(Gap.with_user(self.mast).search_count([]), total, "MAST ve todas.")
+        self.assertEqual(Gap.with_user(self.auditor).search_count([]), total, "El Auditor ve todas.")
+        for user in (self.user, self.capture):
+            for gap in Gap.with_user(user).search([]).sudo():
+                self.assertIn(user, gap.employee_id.user_id | gap.employee_id.parent_id.user_id
+                              | gap.department_id.manager_id.user_id,
+                              "%s solo ve sus brechas y las de su equipo." % user.login)
+        rule = self.env.ref('quimibond_sgi.rule_sgi_competence_gap_user_own')
+        self.assertIn(self.env.ref('quimibond_sgi.group_sgi_user'), rule.groups)
+
+    # ---- sgi.csh.finding: Comisión, Salud, MAST (y el Auditor lee) ----
+    def test_05_csh_findings_restricted(self):
+        inspection = self.env['sgi.csh.inspection'].create({
+            'date': date(2046, 5, 5), 'area': 'Tejido',
+            'finding_ids': [(0, 0, {'description': 'Operador sin guantes', 'severity': 'media'})]})
+        finding = inspection.finding_ids
+        for user in (self.csh, self.health, self.mast):
+            self.assertTrue(finding.with_user(user).read(['description']), user.login)
+        finding.with_user(self.csh).write({'disposition': 'corregido'})
+        self.assertTrue(finding.with_user(self.auditor).read(['description']))
+        with self.assertRaises(AccessError):
+            finding.with_user(self.auditor).write({'description': 'x'})
+        with self.assertRaises(AccessError):
+            finding.with_user(self.user).read(['description'])
+        # El Usuario SGI ve el recorrido y su conteo, no los hallazgos.
+        data = inspection.with_user(self.user).read(['finding_count', 'name'])[0]
+        self.assertEqual(data['finding_count'], 1)
+        with self.assertRaises(AccessError):
+            inspection.with_user(self.user).read(['finding_ids'])
+        with self.assertRaises(UserError):
+            inspection.with_user(self.user).action_close()
+        inspection.with_user(self.csh).action_close()
+        self.assertEqual(inspection.state, 'cerrado')
+        group = self.env.ref('quimibond_sgi.group_sgi_csh')
+        self.assertIn(self.env.ref('quimibond_sgi.group_sgi_user'), group.implied_ids)

@@ -122,9 +122,10 @@ class QualityAlertClaimedMeters(models.Model):
 class AccountMoveLinePoDiff(models.Model):
     _inherit = 'account.move.line'
 
+    # Entrega 4: importe contable, solo para quien ve Contabilidad (lectura).
     sgi_po_price_diff = fields.Monetary(
         string="Diferencia vs orden de compra", compute='_compute_sgi_po_price_diff', store=True,
-        currency_field='currency_id',
+        currency_field='currency_id', groups='account.group_account_readonly',
         help="(precio facturado − precio de la orden de compra) × cantidad (S1-05).")
 
     @api.depends('price_unit', 'quantity', 'purchase_line_id.price_unit', 'move_id.move_type')
@@ -275,11 +276,13 @@ class SgiInventoryValue(models.Model):
 class HrVersionDeparture(models.Model):
     _inherit = 'hr.version'
 
+    # Entrega 4: datos del contrato, solo RH (el indicador los lee con sudo).
     sgi_departure_reason_id = fields.Many2one(
         'hr.departure.reason', string="Motivo de baja (SGI)", compute='_compute_sgi_departure',
-        store=True, help="El motivo de la versión o, si no lo trae, el del empleado (S4-01).")
+        store=True, groups='hr.group_hr_user',
+        help="El motivo de la versión o, si no lo trae, el del empleado (S4-01).")
     sgi_departure_registered_at = fields.Datetime(
-        string="Baja registrada el", readonly=True, copy=False,
+        string="Baja registrada el", readonly=True, copy=False, groups='hr.group_hr_user',
         help="Cuándo se capturó la fecha de baja (S4-01).")
 
     @api.depends('departure_reason_id', 'employee_id.departure_reason_id')

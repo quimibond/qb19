@@ -445,4 +445,58 @@
         <field name="groups" eval="[(4, ref('group_sgi_manager')), (4, ref('group_sgi_health'))]"/>
         <field name="domain_force">[(1, '=', 1)]</field>
     </record>
+
+    <!-- ================================================================
+         Entrega 4 · modelos sensibles (decisión de Jose, 2026-09-29).
+         ================================================================ -->
+
+    <!-- Comisión de Seguridad e Higiene (sgi.csh.finding): los hallazgos de
+         los recorridos pueden nombrar personas. Grupo propio, VACÍO al
+         instalar (Jose decide quién entra); implica Usuario SGI para llegar
+         al menú. Leen y escriben hallazgos la Comisión, Salud ocupacional y
+         el Jefe MAST; el Auditor los lee. El resto de los Usuarios SGI ve el
+         recorrido y su conteo, no los hallazgos. -->
+    <record id="res_groups_privilege_sgi_csh" model="res.groups.privilege">
+        <field name="name">Comisión de Seguridad e Higiene</field>
+        <field name="sequence">23</field>
+        <field name="category_id" ref="module_category_sgi"/>
+    </record>
+    <record id="group_sgi_csh" model="res.groups">
+        <field name="name">Comisión de Seguridad e Higiene (SGI)</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_sgi_csh"/>
+        <field name="implied_ids" eval="[(4, ref('group_sgi_user'))]"/>
+    </record>
+
+    <!-- Brechas de competencia (sgi.competence.gap, vista SQL): el Usuario SGI
+         ve las suyas y las de su equipo (quienes le reportan o su
+         departamento); RH, Jefe MAST y Auditor, todas. -->
+    <record id="rule_sgi_competence_gap_user_own" model="ir.rule">
+        <field name="name">SGI: el usuario ve sus brechas de competencia y las de su equipo</field>
+        <field name="model_id" ref="model_sgi_competence_gap"/>
+        <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
+        <field name="domain_force">['|', '|', ('employee_id.user_id', '=', user.id), ('employee_id.parent_id.user_id', '=', user.id), ('department_id.manager_id.user_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_sgi_competence_gap_all" model="ir.rule">
+        <field name="name">SGI: RH, MAST y Auditor ven todas las brechas de competencia</field>
+        <field name="model_id" ref="model_sgi_competence_gap"/>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user')), (4, ref('group_sgi_manager')), (4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+
+    <!-- Eficiencias de personal: Nómina (dueño de los salarios) ve todas las
+         hojas; las reglas de RH y MAST siguen, pero sin los importes (groups
+         en los campos de models/sgi_staff_efficiency.py). -->
+    <record id="rule_sgi_staff_eff_payroll_all" model="ir.rule">
+        <field name="name">SGI: Nómina ve todas las eficiencias</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency"/>
+        <field name="groups" eval="[(4, ref('hr_payroll.group_hr_payroll_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_sgi_staff_eff_line_payroll_all" model="ir.rule">
+        <field name="name">SGI: Nómina ve todos los renglones de eficiencias</field>
+        <field name="model_id" ref="model_sgi_staff_efficiency_line"/>
+        <field name="groups" eval="[(4, ref('hr_payroll.group_hr_payroll_user'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
 </odoo>

@@ -131,7 +131,7 @@
                 <field name="name"/>
                 <field name="date"/>
                 <field name="area"/>
-                <field name="finding_count"/>
+                <field name="finding_count" string="Hallazgos"/>
                 <field name="nc_count"/>
                 <field name="state" widget="badge" decoration-success="state == 'cerrado'"/>
             </list>
@@ -145,7 +145,8 @@
             <form string="Recorrido de la Comisión de Seguridad e Higiene">
                 <header>
                     <button name="action_close" type="object" string="Cerrar recorrido" class="btn-primary"
-                            invisible="state != 'borrador'"/>
+                            invisible="state != 'borrador'"
+                            groups="quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_reopen" type="object" string="Reabrir" invisible="state != 'cerrado'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
@@ -169,7 +170,10 @@
                             <field name="attachment_ids" widget="many2many_binary"/>
                         </group>
                     </group>
-                    <group string="Hallazgos">
+                    <!-- Entrega 4: los hallazgos solo para la Comisión, Salud
+                         ocupacional, MAST y el Auditor (el conteo lo ven todos). -->
+                    <group string="Hallazgos"
+                           groups="quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_auditor">
                         <field name="finding_ids" nolabel="1" colspan="2" readonly="state == 'cerrado'">
                             <list editable="bottom" decoration-danger="severity == 'alta'">
                                 <field name="sequence" widget="handle"/>
