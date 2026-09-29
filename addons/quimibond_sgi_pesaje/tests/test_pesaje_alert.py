@@ -57,3 +57,11 @@ class TestPesajeAlert(TransactionCase):
             self.env['quality.alert'].search([('production_id', '=', self.mo.id)]),
             "Con la fuente apagada no debe crearse NC por peso.")
         self.assertEqual(source.suppressed_count, 1)
+
+    def test_05_tolerancia_en_ajustes(self):
+        """57.10.0 (A-020): el ajuste es de este módulo y usa la misma clave."""
+        field = self.env['res.config.settings']._fields['sgi_pesaje_tolerance_kg']
+        self.assertEqual(field.config_parameter, 'quimibond_sgi.pesaje_tolerance_kg')
+        self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.pesaje_tolerance_kg', '5.0')
+        self.assertFalse(self._wizard(44.0)._sgi_weight_out_of_tolerance(), "44 kg está dentro de 40 ± 5.")
+        self.assertTrue(self._wizard(46.0)._sgi_weight_out_of_tolerance())

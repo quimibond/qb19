@@ -11,7 +11,8 @@ CALC_MODES = [
     ('otd_compras', "OTD compras (recepciones a tiempo)"),
     ('produccion_vs_programado', "Producido vs programado"),
     ('reproceso', "Reproceso (kg de órdenes de reproceso vs kg procesados)"),
-    ('calidad_pq', "Calidad PQ (rollos revisados sin defecto)"),
+    # 57.10.0 (A-019): «calidad_pq» (MA-03, revisado de tela) lo registra
+    # quimibond_sgi_revisado con selection_add, junto con su cálculo.
     ('cumplimiento_programa', "Cumplimiento del programa (MPS)"),
     # 57.1.0: «cierre_nc» (TR-01) pasó a fórmula configurable; ver
     # sgi_indicator_formula._sgi_cierre_nc_formula y la migración 19.0.57.1.0.
@@ -121,7 +122,6 @@ class SgiIndicator(models.Model):
         'otd_compras': "Inventario → recepciones de compras: recibidas a tiempo vs total.",
         'produccion_vs_programado': "Fabricación → órdenes de producción: producido vs programado.",
         'reproceso': "Fabricación → kg producidos por las órdenes de los tipos de reproceso (parámetro rework_picking_type_ids) ÷ kg de hilo y fibra consumidos en el periodo. Solo líneas en kg.",
-        'calidad_pq': "Piso → revisado de telas: rollos sin defecto vs revisados.",
         'cumplimiento_programa': "Fabricación → cumplimiento del plan maestro (MPS).",
         'reclamos_cliente': "Helpdesk → tickets de reclamación de clientes del periodo.",
         'rotacion_rh': "Empleados → bajas del periodo vs plantilla.",
@@ -340,22 +340,6 @@ class SgiIndicator(models.Model):
             return None
         produced = sum(productions.mapped('qty_produced'))
         return round(produced / programmed * 100.0, 2)
-
-    def _calc_calidad_pq(self, date_from, date_to):
-        """% de rollos revisados SIN defecto, según el registro de revisado de
-        tela (mrp.revision.log): un defecto se marca con una causa (etiqueta
-        TEJIDO-*). Si el módulo de revisado no está instalado, devuelve None."""
-        if 'mrp.revision.log' not in self.env:
-            return None
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        logs = self.env['mrp.revision.log'].search([
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
-        ])
-        total = len(logs)
-        if not total:
-            return None
-        con_defecto = len(logs.filtered(lambda l: l.causa_id))
-        return round((total - con_defecto) / total * 100.0, 2)
 
     def _calc_cumplimiento_programa(self, date_from, date_to):
         """Cumplimiento del programa (MPS semanal): kilos producidos vs kilos
@@ -1003,7 +987,6 @@ class SgiIndicatorMeasure(models.Model):
         'otd_compras': ('stock.picking', [('picking_type_id.code', '=', 'incoming'), ('state', '=', 'done')], 'date_done', True),
         'produccion_vs_programado': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
         'reproceso': ('mrp.production', [('state', '=', 'done')], 'date_finished', True),
-        'calidad_pq': ('mrp.revision.log', [], 'create_date', True),
         'cumplimiento_programa': ('mrp.production', [('state', '!=', 'cancel')], 'date_finished', True),
         'crecimiento_ventas': ('account.move', [('move_type', 'in', ('out_invoice', 'out_refund')), ('state', '=', 'posted')], 'invoice_date', False),
         'inventario_diferencia': ('stock.move.line', [('state', '=', 'done'), ('move_id.is_inventory', '=', True)], 'date', True),

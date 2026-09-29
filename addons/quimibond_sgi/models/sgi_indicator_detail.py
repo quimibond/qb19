@@ -246,15 +246,6 @@ class SgiIndicatorDetail(models.Model):
         cancelled = len(orders.filtered(lambda o: o.state == 'cancel'))
         return self._ratio(cancelled, len(orders), orders)
 
-    def _detail_calidad_pq(self, date_from, date_to):
-        if 'mrp.revision.log' not in self.env:
-            return {'value': None}
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        logs = self.env['mrp.revision.log'].search([
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
-        ok = len(logs) - len(logs.filtered(lambda l: l.causa_id))
-        return self._ratio(ok, len(logs), logs)
-
     def _detail_dso_cartera(self, date_from, date_to):
         receivable = self._sgi_receivable_balance(date_to)
         sales_90 = self._sgi_net_invoiced(date_to - relativedelta(days=89), date_to, taxed=True)

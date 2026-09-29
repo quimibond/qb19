@@ -13,6 +13,39 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.10.0 — 2026-09-29
+
+**Cambiado (A-019):** MA-03 «Calidad PQ» sale del núcleo a
+**`quimibond_sgi_revisado`** 19.0.4.2.0: el modo `calidad_pq` se registra allá
+con `selection_add` (mismo lugar en la lista, después de «reproceso»;
+`ondelete='set default'`), junto con `_calc_calidad_pq`, `_detail_calidad_pq`,
+su fuente, su evidencia y los dos avisos del Diagnóstico. El cálculo es el
+mismo, línea por línea. El núcleo deja el gancho
+`sgi.diagnostic._sgi_floor_quality_lines` y ya no lee `mrp.revision.log`.
+La siembra de MA-03 en una base nueva queda en `manual`; el satélite la pasa a
+`calidad_pq` al instalarse solo si sigue en manual y sin mediciones (B-001).
+
+**Cambiado (A-020):** la tolerancia de peso de rollo
+(`quimibond_sgi.pesaje_tolerance_kg`, misma clave) la siembra y la muestra en
+Ajustes → SGI → Piso **`quimibond_sgi_pesaje`** 19.0.5.2.0
+(`post_init_hook` idempotente y su propia herencia de la vista de ajustes). El
+núcleo ya no la siembra ni declara el campo.
+
+**Migración (pre, `migrations/19.0.57.10.0/pre-migrate.py`):** mueve a los
+satélites el XML ID del valor de selección `calidad_pq` y el del campo de
+ajustes (`ir_model_data.module`, sin borrar). Si `mrp_revisado_telas` no
+estuviera, los indicadores en `calidad_pq` pasan a `manual` con aviso.
+
+**Datos de producción (2026-09-29, lectura):** MA-03 (id 16) activo en
+`calidad_pq`, última medición 08/2026 = 70.88; `quimibond_sgi_revisado`,
+`quimibond_sgi_pesaje`, `mrp_revisado_telas` y `pesaje_rollos_tejido`
+instalados.
+
+**Pruebas (J-018):** `test_kpi_fase4` pasa a
+`quimibond_sgi_revisado/tests/test_calidad_pq.py` sin cambios (test_03) y
+suma el modo registrado desde el satélite (test_04) y la siembra que no pisa
+a MAST (test_05); `quimibond_sgi_pesaje` suma test_05 (ajuste y tolerancia).
+
 ## 19.0.57.9.0 — 2026-09-29
 
 **Cambiado (A-015):** el manifest lista solo las dependencias directas, cada

@@ -181,12 +181,8 @@
                             <field name="sgi_doc_ack_pending_days"/>
                         </setting>
                     </block>
-                    <block title="Piso">
-                        <setting string="Tolerancia de peso de rollo (kg)"
-                                 help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.">
-                            <field name="sgi_pesaje_tolerance_kg"/>
-                        </setting>
-                    </block>
+                    <!-- 57.10.0 (A-020): el bloque «Piso» (tolerancia de peso de
+                         rollo) lo agrega quimibond_sgi_pesaje antes de «Firmas en Sign». -->
                     <block title="Firmas en Sign" name="sgi_sign">
                         <setting string="«Mi procedimiento» se firma en Sign"
                              help="Publicar deja la revisión en borrador y la manda a firmar: MAST elabora, el jefe directo del puesto aprueba. Entra en vigor sola al firmarse.">

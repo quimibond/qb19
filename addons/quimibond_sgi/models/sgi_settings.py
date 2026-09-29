@@ -93,10 +93,8 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='quimibond_sgi.supplier_otd_tolerance_days',
         help="Días de gracia sobre la fecha compromiso para contar una "
              "recepción como a tiempo (comparación por día calendario).")
-    sgi_pesaje_tolerance_kg = fields.Float(
-        string="Tolerancia de peso de rollo (kg)",
-        config_parameter='quimibond_sgi.pesaje_tolerance_kg',
-        help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.")
+    # 57.10.0 (A-020): la tolerancia de peso de rollo (sgi_pesaje_tolerance_kg)
+    # la declara quimibond_sgi_pesaje, dueño del parámetro.
     sgi_monthly_sales_budget = fields.Float(
         string="Presupuesto mensual de ventas (MXN)",
         config_parameter='quimibond_sgi.monthly_sales_budget',
