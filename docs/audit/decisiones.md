@@ -155,10 +155,8 @@ Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protecc
 1. **Grupo «Salud ocupacional (SGI)»:** entra **solo Miguel Medina** (usuario 88, Coordinador de RH). Nadie más: ni Areli ni Dirección.
    - Se asigna en producción **después** de desplegar la entrega 1, que es la que crea el grupo. Va en «Acciones en producción».
    - Con esto se resuelve I-014: el usuario 88 es `quimibond_sgi.rh_user_id`, así que los avisos de exámenes le llegan a alguien que sí puede abrirlos.
-2. **Flujo de ramas: `staging` es un paso obligatorio antes de producción.**
-   - Cada entrega sale en su propia rama, con PR hacia **`staging`**, no hacia `main`.
-   - La instalación limpia y las pruebas del SGI corren en el **build de desarrollo de la rama de la entrega**, antes de pasar a `staging`. Para la entrega 1: `test_cleanup_45`, `test_update_respects_mast` y `test_security_entrega1`.
-   - En `staging` se prueba la actualización sobre la copia de producción de Odoo.sh: que el módulo actualice sin errores y que los datos reales sigan bien.
-   - De `staging` a `main` solo con el visto bueno de Jose y con el resultado del build de staging en el PR.
-   - Cambiar el destino de quimibond/qb19#452 a `staging` y ajustar a este flujo el plan de PRs de la consolidación.
-   - **Pendiente de confirmar:** en GitHub no existe una rama `staging` (el 2026-09-29 hay `main`, `quimibond`, `qbtesting`, `qbtesting-anterior-2026-08-26` y `consolti`).
+2. **Flujo de ramas (corregido por Jose el mismo día; no hay rama `staging`):** rama de desarrollo de cada entrega (p. ej. `claude/sgi-entrega-1`) → PR a **`main`** → PR de `main` a **`quimibond`** (producción).
+   - La instalación limpia y las pruebas del SGI corren en el **build de desarrollo de la rama de la entrega**, antes del PR a `main`. Para la entrega 1: `test_cleanup_45`, `test_update_respects_mast` y `test_security_entrega1`.
+   - `main` hace de paso previo a producción: ahí se prueba la actualización sobre la copia de producción. Ver `docs/RUNBOOK_DESPLIEGUE.md`.
+   - Ninguna entrega se integra a `main` ni pasa a `quimibond` sin el visto bueno de Jose.
+   - quimibond/qb19#452 se queda con destino `main`.
