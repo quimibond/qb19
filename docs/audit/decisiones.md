@@ -221,3 +221,18 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - Los PRs de cada entrega (#452, #455, #456, #457) se quedan abiertos como referencia y se cierran cuando entre el lote.
 - Si el build falla, el programador dice qué entrega lo rompió y lo corrige **en la rama del lote**.
 - La entrega 4 va en el siguiente lote.
+
+## 2026-09-29 — Decisiones de la entrega 4
+
+- **D-17, D-18, D-19 y D-20:** confirmadas como las propuso la consolidación.
+  - D-17: «Acciones correctivas» muestra todas las acciones, con filtro por origen.
+  - D-18: Diagnóstico queda como carpeta con 5 submenús y el Auditor la lee.
+  - D-19: el tablero «Salud del SGI» se archiva a mano si está vacío.
+  - D-20: sin «(SGI)» en los nombres, y «Paretos de calidad».
+- **D-06:** confirmada.
+  - Todos reportan. Solo SST, MAST y Salud ocupacional investigan, cierran y reabren.
+  - El reportante edita mientras el incidente siga «reportado».
+  - **Agregado:** el reportante puede **consultar cómo se cerró su incidente**, la causa y las acciones, sin editarlas. La ISO 45001 pide que el trabajador participe y reciba respuesta.
+- **D-21:** confirmada: «Documentos vigentes» para el Usuario SGI, con título y revisión. **Agregado:** desde ahí se da el acuse de lectura.
+- **Corrección a los modelos sensibles:** los salarios de eficiencias quedan **solo para RH y Nóminas** (Coordinador de RH y Responsable de Nóminas), **no para el Jefe MAST**. Captura de eficiencias y los supervisores ven la eficiencia, sin el importe.
+- La entrega 4 sigue sobre el lote 1 (rama `claude/sgi-entrega-4`).
