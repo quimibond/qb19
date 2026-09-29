@@ -88,3 +88,4 @@ from . import test_norm_compliance
 from . import test_archived_filters
 from . import test_update_respects_mast
 from . import test_security_entrega1
+from . import test_entrega1b
