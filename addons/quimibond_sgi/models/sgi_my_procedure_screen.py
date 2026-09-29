@@ -968,7 +968,13 @@ class HrEmployeePublicMyTeam(models.Model):
         self.ensure_one()
         employee = self.env['hr.employee'].sudo().browse(self.id)
         self.env['sgi.my.procedure']._sgi_check_in_scope(employee)  # F-007
-        return employee.action_sgi_print_my_procedure()
+        # El puesto se lee con sudo (quien no es de RH no lee hr.employee),
+        # pero la acción del reporte se arma con el usuario: con sudo Odoo lo
+        # trata como administrador y, si la compañía no tiene diseño de
+        # documento, le devuelve el asistente «Configurar el diseño» en vez
+        # del PDF.
+        job = employee._sgi_require_job().with_env(self.env)
+        return job.with_context(sgi_mp_employee_id=employee.id).action_sgi_print_my_procedure()
 
     @api.model
     def _sgi_team(self):
