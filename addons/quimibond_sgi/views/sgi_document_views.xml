@@ -70,7 +70,11 @@
                             <field name="sgi_next_review_date"/>
                             <field name="sgi_obsolete_date" invisible="not sgi_obsolete_date"/>
                             <field name="sgi_obsolete_reason" invisible="not sgi_obsolete_reason"/>
-                            <field name="sgi_replaced_by_process_id" invisible="not sgi_replaced_by_process_id"/>
+                            <!-- D-017 (56.31.0): la sustitución se captura AQUÍ (el
+                                 documento manda); visible en todo procedimiento. -->
+                            <field name="sgi_replaced_by_process_id"
+                                   invisible="sgi_doc_type != 'procedimiento' and not sgi_replaced_by_process_id"
+                                   options="{'no_create': True}"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
                             <field name="sgi_retention_years"/>
@@ -118,7 +122,7 @@
                     </group>
                     <notebook>
                         <page string="Migración a Odoo" name="migracion"
-                              invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo')">
+                              invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo', 'procedimiento')">
                             <group>
                                 <group>
                                     <field name="sgi_migration_class"/>
@@ -407,6 +411,8 @@
                 <field name="sgi_migration_target"/>
                 <field name="sgi_migration_point_id" optional="show"/>
                 <field name="sgi_odoo_menu_id" optional="show"/>
+                <field name="sgi_replaced_by_process_id" optional="hide"
+                       options="{'no_create': True}"/>
                 <field name="sgi_migration_state" widget="badge"
                        decoration-success="sgi_migration_state in ('migrado', 'baja')"
                        decoration-warning="sgi_migration_state == 'pendiente'"

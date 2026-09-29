@@ -330,8 +330,20 @@
                                            widget="many2many_tags" readonly="1"/>
                                 </group>
                                 <group>
-                                    <field name="replaced_document_ids" widget="many2many_tags"
-                                           options="{'no_create': True}"/>
+                                    <!-- D-017 (56.31.0): inverso de «Lo sustituye el
+                                         proceso» del documento; aquí solo se lee. -->
+                                    <field name="replaced_document_ids" readonly="1">
+                                        <list>
+                                            <field name="sgi_code"/>
+                                            <field name="name"/>
+                                            <field name="sgi_state"/>
+                                            <field name="sgi_migration_state"/>
+                                        </list>
+                                    </field>
+                                    <div class="text-muted" colspan="2">
+                                        Se captura en la ficha de cada procedimiento
+                                        («Lo sustituye el proceso»).
+                                    </div>
                                     <field name="channel_odoo_pct" widget="progressbar"/>
                                     <field name="channel_manual_pct" widget="progressbar"/>
                                 </group>

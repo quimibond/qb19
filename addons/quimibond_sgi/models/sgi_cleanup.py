@@ -14,7 +14,8 @@ archivan o se religan. Aquí vive lo que la migración y las pruebas comparten:
   mapa diga otro. El mapa aplica solo a lo demás.
 - Cuando un proceso nuevo pasa a «vigente», sus documentos sustituidos pasan
   solos a obsoletos: así los procedimientos viejos se retiran por ola,
-  proceso por proceso, y nunca conviven dos «vigentes» para la misma gente.
+  proceso por proceso, y nunca conviven dos «vigentes» para la misma gente
+  (desde 56.31.0 en ``sgi_process.py``: ``_sgi_obsolete_replaced_documents``).
 """
 import logging
 
@@ -146,32 +147,8 @@ class SgiMenuCleanup(models.Model):
 class SgiProcessCleanup(models.Model):
     _inherit = 'sgi.process'
 
-    # --- Punto 5: al poner vigente el proceso, lo que sustituye queda obsoleto
-    def write(self, vals):
-        res = super().write(vals)
-        if vals.get('state') == 'vigente':
-            self._sgi_obsolete_replaced_documents()
-        return res
-
-    def _sgi_obsolete_replaced_documents(self):
-        """Los documentos en «Procedimientos que sustituye» de un proceso
-        vigente pasan a obsoletos. Idempotente: solo toca los vigentes."""
-        for process in self.filtered(lambda p: p.state == 'vigente'):
-            docs = process.replaced_document_ids.filtered(lambda d: d.sgi_state == 'vigente')
-            if not docs:
-                continue
-            reason = "Lo sustituye el proceso %s, que entró en vigor." % process.display_name
-            for doc in docs:
-                doc.sudo().write({'sgi_state': 'obsoleto', 'sgi_obsolete_reason': reason,
-                                  'sgi_replaced_by_process_id': process.id})
-                doc.message_post(body=(
-                    "Obsoleto: lo sustituye el proceso %s, que entró en vigor." % process.display_name))
-            process.message_post(body=(
-                "Al entrar en vigor quedaron obsoletos %d documento(s) sustituido(s): %s." % (
-                    len(docs), ", ".join(docs.mapped(lambda d: d.sgi_code or d.name)))))
-            _logger.info("SGI 45: %s vigente → %d documento(s) sustituido(s) obsoleto(s).",
-                         process.code, len(docs))
-        return True
+    # El obsoletado al entrar en vigor (punto 5) vive en sgi_process.py
+    # desde 56.31.0 (B-004), con la baja tramitada (L-005).
 
     # --- Religado de los procesos viejos al mapa nuevo
     def _sgi_relink_from_archived(self, mapping=None, review_codes=None):

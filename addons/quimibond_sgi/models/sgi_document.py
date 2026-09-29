@@ -4,7 +4,7 @@ import re
 from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
-from odoo.exceptions import ValidationError, UserError
+from odoo.exceptions import AccessError, ValidationError, UserError
 
 from .sgi_base import sgi_bypass_allowed
 
@@ -108,8 +108,18 @@ class DocumentsDocument(models.Model):
     # 5.2 DOC-2 (56.11.0): cuándo y por qué quedó obsoleto.
     sgi_obsolete_date = fields.Date(string="Obsoleto desde", readonly=True, copy=False)
     sgi_obsolete_reason = fields.Char(string="Motivo de obsolescencia", readonly=True, copy=False)
+    # C-001/C-014/C-015 (56.31.0, decisión 3 de Jose): ÚNICA fuente de verdad
+    # de «qué proceso sustituye a este procedimiento». El proceso solo lee el
+    # inverso (sgi.process.replaced_document_ids). restrict, nunca cascade: un
+    # One2many cuyo inverso es cascade borra las filas que se quitan (C-014).
     sgi_replaced_by_process_id = fields.Many2one(
-        'sgi.process', string="Lo sustituye el proceso", readonly=True, copy=False, index=True)
+        'sgi.process', string="Lo sustituye el proceso", copy=False, index=True,
+        ondelete='restrict', tracking=True,
+        domain="[('active', '=', True)]",
+        help="Proceso de Odoo que sustituye a este procedimiento del Dropbox. El "
+             "procedimiento sigue vigente mientras el proceso esté en borrador o "
+             "piloto; cuando el proceso entra en vigor pasa a obsoleto y a «Baja "
+             "tramitada». Lo captura el Jefe MAST.")
     sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto")
 
     # --- Retención y disposición de registros (ISO 7.5.3; clientes IATF
@@ -419,6 +429,47 @@ class DocumentsDocument(models.Model):
                     "Un documento de tipo «%s» debe estar ligado a su proceso "
                     "(%s)." % (dtype.name, code))
 
+    @api.constrains('sgi_replaced_by_process_id', 'sgi_is_controlled', 'sgi_doc_type_id')
+    def _check_sgi_replaced_by_process(self):
+        """C-015: solo un procedimiento controlado lo sustituye un proceso, y
+        ese proceso está activo y es de la misma empresa."""
+        for doc in self.filtered('sgi_replaced_by_process_id'):
+            process = doc.sgi_replaced_by_process_id
+            if not doc.sgi_is_controlled or doc.sgi_doc_type != 'procedimiento':
+                raise ValidationError(
+                    "Solo un procedimiento controlado puede tener «Lo sustituye el "
+                    "proceso» (%s es %s)." % (
+                        doc.sgi_code or doc.name,
+                        doc.sgi_doc_type_id.name or 'sin tipo'
+                        if doc.sgi_is_controlled else 'no controlado'))
+            if not process.active:
+                raise ValidationError(
+                    "El proceso %s está archivado: no puede sustituir a %s." % (
+                        process.display_name, doc.sgi_code or doc.name))
+            if doc.company_id and process.company_id and doc.company_id != process.company_id:
+                raise ValidationError(
+                    "El proceso %s es de otra empresa que %s." % (
+                        process.display_name, doc.sgi_code or doc.name))
+
+    @api.constrains('sgi_migration_state', 'sgi_replaced_by_process_id')
+    def _check_sgi_procedure_migration_state(self):
+        """L-005 (decisión C-003): un procedimiento no queda «Migrado a Odoo»
+        (o sigue en curso, o su proceso entró en vigor y quedó en baja), y
+        «No aplica» (control operacional) es un procedimiento que ningún
+        proceso sustituye. Solo corre al escribir esos campos."""
+        for doc in self.filtered(lambda d: d.sgi_is_controlled
+                                 and d.sgi_doc_type == 'procedimiento'):
+            if doc.sgi_migration_state == 'migrado':
+                raise ValidationError(
+                    "Un procedimiento no queda «Migrado a Odoo»: está «En curso» "
+                    "hasta que su proceso entre en vigor, y entonces pasa a «Baja "
+                    "tramitada» (%s)." % (doc.sgi_code or doc.name))
+            if doc.sgi_migration_state == 'na' and doc.sgi_replaced_by_process_id:
+                raise ValidationError(
+                    "%s lo sustituye el proceso %s: no puede ser «No aplica (se "
+                    "queda)»." % (doc.sgi_code or doc.name,
+                                  doc.sgi_replaced_by_process_id.display_name))
+
     def _sgi_same_code_docs(self):
         """Otros documentos (activos o archivados) con la misma clave y
         empresa."""
@@ -543,6 +594,38 @@ class DocumentsDocument(models.Model):
                     raise ValidationError(
                         "Ya existe un documento vigente con la clave '%s'." % doc.sgi_code)
 
+    @api.model
+    def _sgi_migrate_procedure_states(self, na_codes=(), skip_codes=()):
+        """L-005 / C-003 (migración 56.31.0): los procedimientos controlados,
+        activos y en vigor que siguen en «Migrado a Odoo» pasan a «En curso»,
+        salvo los de ``na_codes`` (control operacional) que pasan a «No
+        aplica (se queda)» si ningún proceso los sustituye. Los de
+        ``skip_codes`` no se tocan (P-I01, que se retira aparte). Las claves se
+        comparan con la clave del Dropbox (clave anterior, o la clave si aún
+        no se copió). Por SQL, sin chatter; solo toca «migrado», así que no
+        pisa lo que MAST cambie a mano. Devuelve {estado: n}."""
+        self.env.flush_all()
+        cr = self.env.cr
+        cr.execute("""
+            UPDATE documents_document d
+               SET sgi_migration_state = CASE
+                       WHEN coalesce(d.sgi_previous_code, d.sgi_code) = ANY(%(na)s)
+                            AND d.sgi_replaced_by_process_id IS NULL
+                       THEN 'na' ELSE 'en_curso' END
+              FROM sgi_document_type t
+             WHERE t.id = d.sgi_doc_type_id AND t.code = 'procedimiento'
+               AND d.sgi_is_controlled IS TRUE AND d.active IS TRUE
+               AND d.sgi_state IN ('vigente', 'piloto')
+               AND d.sgi_migration_state = 'migrado'
+               AND NOT (coalesce(d.sgi_previous_code, d.sgi_code, '') = ANY(%(skip)s))
+         RETURNING d.sgi_migration_state
+        """, {'na': list(na_codes), 'skip': list(skip_codes)})
+        result = {}
+        for (state,) in cr.fetchall():
+            result[state] = result.get(state, 0) + 1
+        self.invalidate_model(['sgi_migration_state'])
+        return result
+
     def _obsolete_code(self, code, exclude=None):
         """Obsoleta cualquier versión vigente del mismo código (excepto `exclude`)."""
         if not code:
@@ -620,6 +703,11 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        if 'sgi_replaced_by_process_id' in vals and not (
+                self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            # D-017: el documento es la fuente de verdad y lo captura el Jefe MAST.
+            raise AccessError(
+                "Solo el Jefe MAST captura qué proceso sustituye a un procedimiento.")
         if vals.get('sgi_state') == 'obsoleto' and 'sgi_obsolete_date' not in vals:
             vals = dict(vals, sgi_obsolete_date=fields.Date.context_today(self))
         if vals.get('sgi_state') in ('piloto', 'vigente'):
