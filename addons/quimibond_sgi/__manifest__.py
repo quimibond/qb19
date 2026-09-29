@@ -20,7 +20,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.1.0',
+    'version': '19.0.57.4.0',
     'license': 'LGPL-3',
     'application': True,
     'depends': [
@@ -64,7 +64,9 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_sequences_fase2.xml',
         'data/sgi_areas.xml',
         'data/sgi_norms.xml',
-        'data/sgi_process_data.xml',
+        # 57.4.0 (A-002, decisión 6): el SGI se instala sin procesos. El mapa
+        # viejo (sgi_process_data.xml, sgi_process_flows_extra.xml) está en
+        # docs/historico/quimibond_sgi_data/; sus 58 XML IDs pasan a __export__.
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
@@ -84,7 +86,6 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_dnc_survey.xml',
         'data/sgi_control_plans_fase4.xml',
         'data/sgi_format_map_data.xml',
-        'data/sgi_process_flows_extra.xml',
         'data/sgi_parameters.xml',
         'data/sgi_alert_source_data.xml',
         'data/sgi_fase7_data.xml',

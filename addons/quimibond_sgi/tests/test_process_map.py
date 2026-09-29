@@ -9,8 +9,11 @@ class TestProcessMap(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.p_ventas = cls.env.ref('quimibond_sgi.proc_ventas')
-        cls.p_plan = cls.env.ref('quimibond_sgi.proc_planeacion')
+        # Procesos propios: el SGI se instala vacío (decisión 6) y los
+        # procesos viejos proc_* ya no son del módulo (57.4.0, A-002).
+        Process = cls.env['sgi.process']
+        cls.p_ventas = Process.create({'code': 'XPM-A', 'name': 'Proceso XPM A'})
+        cls.p_plan = Process.create({'code': 'XPM-B', 'name': 'Proceso XPM B'})
 
     def test_01_flow_from_equals_to(self):
         with self.assertRaises(ValidationError):

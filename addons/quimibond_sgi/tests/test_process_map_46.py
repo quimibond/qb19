@@ -6,14 +6,31 @@ from odoo.exceptions import UserError
 @tagged('post_install', '-at_install')
 class TestProcessMap46(TransactionCase):
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        # Procesos y flujos propios: los flow_* del mapa viejo ya no son del
+        # módulo (57.4.0, A-002).
+        Process = cls.env['sgi.process']
+        cls.p_a = Process.create({'code': 'XPM-A', 'name': 'Proceso XPM A'})
+        cls.p_b = Process.create({'code': 'XPM-B', 'name': 'Proceso XPM B'})
+
+    def _flow(self, name, model=None):
+        return self.env['sgi.process.flow'].create({
+            'name': name,
+            'from_process_id': self.p_a.id,
+            'to_process_id': self.p_b.id,
+            'odoo_model_id': self.env['ir.model']._get(model).id if model else False,
+        })
+
     def test_01_flow_with_model_opens_records(self):
-        flow = self.env.ref('quimibond_sgi.flow_facturacion_cxc')
+        flow = self._flow('Factura emitida', 'account.move')
         self.assertEqual(flow.odoo_model_id.model, 'account.move')
         action = flow.action_view_records()
         self.assertEqual(action['res_model'], 'account.move')
 
     def test_02_flow_without_model_blocks(self):
-        flow = self.env.ref('quimibond_sgi.flow_ventas_plan_pronostico')
+        flow = self._flow('Pronóstico (sin modelo)')
         self.assertFalse(flow.odoo_model_id)
         with self.assertRaises(UserError):
             flow.action_view_records()

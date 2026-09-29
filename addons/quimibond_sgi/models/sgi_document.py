@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 
 # Nomenclatura documental del Dropbox de PNTQ (áreas G,A,C,D,E,I,M,P,S,V).
 # C-007 (56.32.0): solo la usa la herramienta histórica de carga
-# (tools/carga_documental.py). La nomenclatura vigente vive en los tipos de
+# (docs/historico/quimibond_sgi_tools/carga_documental.py). La nomenclatura vigente vive en los tipos de
 # documento (sgi.document.type: patrón nuevo D-02 + clave heredada).
 SGI_CODE_REGEX = re.compile(
     r'^(MIID'
