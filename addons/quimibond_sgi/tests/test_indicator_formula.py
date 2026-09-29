@@ -139,10 +139,13 @@ class TestIndicatorFormula(TransactionCase):
         self.assertTrue(ind.with_user(admin).can_edit_formula)
 
     def test_07_formulas_sembradas(self):
+        # 56.35.0 (A-004): los términos ya no vienen en el núcleo sino en el
+        # mapa (quimibond_sgi_mapa). En una copia de producción siguen ahí y
+        # se revisan; en una base nueva el indicador no trae fórmula.
         for xmlid in ('sgi_ind_desperdicio', 'sgi_ind_reproceso', 'sgi_ind_diferencia_inventario',
                       'sgi_ind_consumo_energia', 'sgi_ind_ex_compras_ventas'):
             ind = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
-            if not ind:
+            if not ind or not ind.term_ids:
                 continue
             self.assertTrue(ind.has_formula, "%s trae numerador y denominador." % xmlid)
             ind.term_ids._check_term()

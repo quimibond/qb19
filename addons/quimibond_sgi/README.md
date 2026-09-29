@@ -721,6 +721,34 @@ Jefe MAST.
 
 Ejemplo por MCP: `call_model_method("sgi.process", "load_payload", [payload])`.
 
+### Exportar el mapa: `sgi.process.export_payload(process_codes=None)` (56.35.0)
+
+El inverso exacto de `load_payload` (entrega 3, H-022): devuelve el JSON que
+`load_payload` vuelve a cargar sin duplicar; exportar y cargar con `dry_run`
+sobre la misma base reporta cero cambios. Todo va por llave natural (puesto
+por nombre, familia por código, documento por clave, menú por XML ID,
+ubicación por nombre completo); nada de usuarios ni empleados. Lo usa el
+módulo de datos `quimibond_sgi_mapa` (el SGI se instala vacío, decisión 6).
+
+- **Dominios portables (H-007):** un id fijo en un filtro se vuelve la marca
+  `%(r1)s` y `refs` dice qué registro es: la empresa de la carga
+  (`{"company": true}`), un XML ID de módulo, una llave natural única
+  (`{"key": {"name": "Embarcar", "warehouse_id.name": "Toluca"}}`) o, si no
+  hay, id + nombre (solo se resuelve en una copia de producción; queda en
+  `meta.review`). Una referencia que no existe en la base deja el filtro sin
+  medir (`[('id', '=', 0)]`) con advertencia: nunca mide otra cosa.
+- **`tolerant: true`** (el mapa lo trae): menú, ubicación, centro de trabajo,
+  modelo o campo que no existan en la base son advertencia y se carga sin
+  eso. Sin esa llave siguen siendo error.
+- Llaves nuevas del JSON: `sequence` del rol, `markets`/`teams` de la
+  actividad (referencias), `refs`, `survey`, `require_signed` y `boundary`
+  (frontera del mapa, H-010) del entregable, `objective` y `terms` del
+  indicador, y los bloques `objectives` y `control_plans` (solo encabezado;
+  los puntos de control no viajan). Las familias aceptan puestos por nombre.
+- No se exporta: semáforos y mediciones, faltantes, ligas y flujos (salen de
+  entradas y salidas), `legacy_number`, procedimientos sustituidos (viajan con
+  el documento), responsables de indicadores, nivel y área del indicador.
+
 ### Actividades específicas (19.0.30.0.0)
 
 Cada actividad contesta siete preguntas; lo que falte queda en
@@ -1583,8 +1611,10 @@ unidad del indicador lleva `%`.
   `parallel_value` / `parallel_numerator` / `parallel_denominator`
   («Fórmula en paralelo» en la medición). La regla es migrar un indicador a
   `configurable` solo después de un mes con el mismo número.
-- **Sembradas** (`data/sgi_indicator_formula_data.xml`, noupdate, con ids de
-  producción en los dominios): MA-05 desperdicio, MA-04 reproceso (solo
+- **Sembradas** (hasta 56.34: `data/sgi_indicator_formula_data.xml`; desde
+  56.35.0 salieron del núcleo por A-004 y viajan en el mapa,
+  `quimibond_sgi_mapa`, con referencias portables; sus XML IDs pasaron a
+  `__export__` sin tocar los registros): MA-05 desperdicio, MA-04 reproceso (solo
   Re-proceso Tintorería), AL-01 diferencia de inventario (denominador
   `stock.quant.value` sin campo de fecha: la ventana «acumulado al cierre»
   admite término sin fecha y entonces toma todo lo que hay hoy), TR-03 energía

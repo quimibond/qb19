@@ -94,6 +94,7 @@ from . import test_security_entrega1
 from . import test_entrega1b
 from . import test_approval_rule_archive
 from . import test_entrega1c
+from . import test_export_payload
 from . import test_integridad
 from . import test_multicompany
 from . import test_menu_tree

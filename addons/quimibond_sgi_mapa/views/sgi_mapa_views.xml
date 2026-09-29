@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="sgi_mapa_load_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.mapa.load.wizard.form</field>
+        <field name="model">sgi.mapa.load.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Cargar mapa de procesos">
+                <field name="state" invisible="1"/>
+                <field name="dry_run_ok" invisible="1"/>
+                <field name="tested_hash" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="state != 'draft'">
+                    Carga el mapa de procesos del SGI (procesos, etapas, actividades con
+                    sus roles, entregables, familias, indicadores, objetivos y planes de
+                    control). <b>Probar</b> no escribe nada: muestra qué se crearía, qué
+                    se actualizaría y lo que falta en esta base. <b>Cargar</b> solo se
+                    puede después de probar el mismo mapa; se puede repetir sin duplicar.
+                </div>
+                <div class="alert alert-success" role="status"
+                     invisible="state != 'tested' or not dry_run_ok">
+                    La prueba pasó sin errores. Revisa los cambios y las advertencias antes
+                    de cargar.
+                </div>
+                <div class="alert alert-danger" role="alert"
+                     invisible="state == 'draft' or error_count == 0">
+                    Hay <field name="error_count" class="d-inline"/> error(es): un proceso
+                    con errores no se carga completo. Revisa la lista.
+                </div>
+                <group invisible="state == 'loaded'">
+                    <field name="source" widget="radio"/>
+                    <field name="payload_file" filename="payload_filename"
+                           invisible="source != 'archivo'"/>
+                    <field name="payload_filename" invisible="1"/>
+                </group>
+                <group invisible="state == 'draft'">
+                    <field name="summary"/>
+                    <field name="counts" invisible="not counts"/>
+                    <field name="warning_count"/>
+                    <field name="change_count" invisible="1"/>
+                    <field name="confirm" invisible="state != 'tested'"/>
+                </group>
+                <field name="line_ids" invisible="state == 'draft'">
+                    <list decoration-danger="action == 'error'"
+                          decoration-warning="action == 'warning'"
+                          decoration-success="action == 'created'"
+                          decoration-muted="action == 'archived'">
+                        <field name="action" widget="badge"/>
+                        <field name="kind"/>
+                        <field name="key"/>
+                        <field name="message"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_test" type="object" string="Probar (modo de prueba)"
+                            class="btn-primary" invisible="state == 'loaded'"/>
+                    <button name="action_load" type="object" string="Cargar"
+                            class="btn-secondary" invisible="state != 'tested' or not confirm"
+                            confirm="Se escribirá el mapa en la base. ¿Continuar?"/>
+                    <button name="action_export" type="object" string="Descargar el mapa de esta base"
+                            class="btn-link"/>
+                    <button string="Cerrar" special="cancel" class="btn-link"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_mapa_load_wizard_action" model="ir.actions.act_window">
+        <field name="name">Cargar mapa de procesos</field>
+        <field name="res_model">sgi.mapa.load.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <menuitem id="menu_sgi_mapa_load" name="Cargar mapa de procesos"
+              parent="quimibond_sgi.menu_sgi_config" action="sgi_mapa_load_wizard_action"
+              sequence="3" groups="quimibond_sgi.group_sgi_admin"/>
+</odoo>
