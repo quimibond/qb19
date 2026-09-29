@@ -81,8 +81,14 @@ class SgiFormatMap(models.Model):
         for fmap in self:
             for code in filter(None, (fmap.sgi_code, fmap.sgi_code_alt)):
                 code = code.strip()
-                # C-007: una sola fuente de nomenclatura, los tipos de documento.
-                if not self.env['sgi.document.type'].sudo()._sgi_any_match(code):
+                # C-007: la nomenclatura vive en los tipos de documento. La
+                # clave heredada del Dropbox (SGI_CODE_REGEX) sigue valiendo:
+                # al actualizar de 56.28 los tipos aún no exigen clave (la
+                # 56.32.0 lo enciende en su post-migrate, DESPUÉS de cargar
+                # este XML) y sin ese respaldo ninguna clave pasaba (56.38.2).
+                from .sgi_document import SGI_CODE_REGEX
+                if not (SGI_CODE_REGEX.match(code)
+                        or self.env['sgi.document.type'].sudo()._sgi_any_match(code)):
                     raise ValidationError(
                         "La clave '%s' no cumple la nomenclatura del SGI "
                         "(ej. F-P-A28-04, F-IT-P-P01-08-01)." % code)
