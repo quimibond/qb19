@@ -8,7 +8,8 @@
 #   ruta   = nombres separados por «/», igual que complete_name de Odoo
 #   grupos = xmlids en orden alfabético separados por coma; «-» = sin grupos
 #            propios (hereda lo que ve la carpeta)
-# Calidad preventiva y Paretos de calidad cuelgan de la app Calidad y no
+# Calidad preventiva y Paretos de calidad cuelgan de la app Calidad (padre
+# fijo quality_control.menu_quality_root desde 57.5.0, E-008) y no
 # entran aquí. Fuente del árbol: docs/audit/05-menus/arbol_final.md («Del
 # Dropbox a Odoo» desde la entrega 6).
 SGI | menu_sgi_root | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_user

@@ -206,21 +206,13 @@ class TestKpi20Step1(TransactionCase):
         self.assertNotIn(good2, records)
 
     # ------------------------------------------------------------------
-    # Siembra idempotente del calc_mode
+    # Siembra del calc_mode (57.5.0: la pone el XML al instalar; ya no hay
+    # activate_auto_indicators que la repita en cada update, B-001)
     # ------------------------------------------------------------------
-    def test_05_activate_auto_indicators_idempotent(self):
-        Config = self.env['sgi.config']
+    def test_05_auto_indicators_seeded(self):
         ve = self.env.ref('quimibond_sgi.sgi_ind_crecimiento_ventas')
-        # Ya activado al cargar el módulo.
         self.assertEqual(ve.calc_mode, 'crecimiento_ventas')
-        # Regresarlo a manual y reactivar → vuelve a auto.
-        ve.calc_mode = 'manual'
-        Config.activate_auto_indicators()
-        self.assertEqual(ve.calc_mode, 'crecimiento_ventas')
-        # Una decisión de MAST (otro modo) NO se pisa.
-        ve.calc_mode = 'presupuesto_ventas'
-        Config.activate_auto_indicators()
-        self.assertEqual(ve.calc_mode, 'presupuesto_ventas')
+        self.assertFalse(hasattr(self.env['sgi.config'], 'activate_auto_indicators'))
         # CO-03 (proxy) NO se activa en la siembra: queda manual.
         co03 = self.env.ref('quimibond_sgi.sgi_ind_errores_oc')
         self.assertEqual(co03.calc_mode, 'manual')
@@ -269,7 +261,8 @@ class TestKpi20Step2(TransactionCase):
     def test_01_produccion_vs_capacidad(self):
         self.Param.set_param('quimibond_sgi.production_monthly_capacity', '1000')
         product = self.env['product.product'].create(
-            {'name': 'Tela capacidad KPI', 'type': 'consu'})
+            {'name': 'Tela capacidad KPI', 'type': 'consu',
+             'uom_id': self.env.ref('uom.product_uom_kgm').id})  # 57.1.0: MA-02 cuenta kg
         # Periodo libre de demo (2040). Producidos 800 sobre capacidad 1000 = 80%.
         self._production(product, 800.0, datetime.datetime(2040, 6, 15, 8, 0, 0))
         ind = self._indicator('produccion_vs_capacidad')  # mensual por defecto
@@ -289,13 +282,41 @@ class TestKpi20Step2(TransactionCase):
     def test_01b_capacidad_prorratea_semanal(self):
         self.Param.set_param('quimibond_sgi.production_monthly_capacity', '3000')
         product = self.env['product.product'].create(
-            {'name': 'Tela capacidad semanal KPI', 'type': 'consu'})
+            {'name': 'Tela capacidad semanal KPI', 'type': 'consu',
+             'uom_id': self.env.ref('uom.product_uom_kgm').id})  # 57.1.0: MA-02 cuenta kg
         # Semana de 7 días de junio 2040 (30 días) → capacidad prorrateada
         # 3000*7/30 = 700. Producidos 350 → 50%.
         self._production(product, 350.0, datetime.datetime(2040, 6, 3, 8, 0, 0))
         ind = self._indicator('produccion_vs_capacidad', frequency='weekly')
         value = ind._calc_produccion_vs_capacidad(date(2040, 6, 1), date(2040, 6, 7))
         self.assertEqual(value, 50.0)
+
+    def test_01c_capacidad_solo_kg(self):
+        """57.1.0: una orden en metros no se suma a los kg producidos (en
+        agosto de 2026 había 294 órdenes en metros con 1.5 millones de m
+        junto a 710 en kg con 240 t)."""
+        self.Param.set_param('quimibond_sgi.production_monthly_capacity', '1000')
+        kg = self.env['product.product'].create({
+            'name': 'Tela kg MA-02', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_kgm').id})
+        meter = self.env['product.product'].create({
+            'name': 'Tela metros MA-02', 'type': 'consu',
+            'uom_id': self.env.ref('uom.product_uom_meter').id})
+        kg_mo = self._production(kg, 600.0, datetime.datetime(2041, 3, 10, 8, 0, 0))
+        m_mo = self._production(meter, 5000.0, datetime.datetime(2041, 3, 11, 8, 0, 0))
+        ind = self._indicator('produccion_vs_capacidad')
+        detail = ind._detail_produccion_vs_capacidad(date(2041, 3, 1), date(2041, 3, 31))
+        self.assertEqual(detail['value'], 60.0, "600 kg ÷ 1000 kg; los 5000 m no cuentan.")
+        self.assertEqual(detail['numerator'], 600.0)
+        self.assertEqual(detail['denominator'], 1000.0)
+        self.assertIn(kg_mo.id, detail['ids'])
+        self.assertNotIn(m_mo.id, detail['ids'])
+        vals = ind._sgi_measure_vals(date(2041, 3, 1), date(2041, 3, 31))
+        self.assertEqual((vals['state'], vals['value']), ('capturado', 60.0))
+        # Sin capacidad: sin dato, no cero.
+        self.Param.set_param('quimibond_sgi.production_monthly_capacity', '0')
+        vals = ind._sgi_measure_vals(date(2041, 3, 1), date(2041, 3, 31))
+        self.assertEqual(vals['state'], 'sin_dato')
 
     # ---------------- TR-03 consumo_energia ----------------
     def _post_bill(self, partner, amount, inv_date, refund=False):
@@ -393,10 +414,7 @@ class TestKpi20Step2(TransactionCase):
         self.assertNotIn(good, records)
 
     def test_03b_co03_no_se_activa_en_la_siembra(self):
-        # El proxy NO entra en _SGI_AUTO_INDICATORS: MAST lo activa a mano.
-        auto = self.env['sgi.config']._SGI_AUTO_INDICATORS
-        self.assertNotIn('compras_sin_devolucion', auto.values())
-        self.env['sgi.config'].activate_auto_indicators()
+        # El proxy NO se siembra automático: MAST lo activa a mano.
         co03 = self.env.ref('quimibond_sgi.sgi_ind_errores_oc')
         self.assertEqual(co03.calc_mode, 'manual')
 
@@ -432,17 +450,11 @@ class TestKpi20Step2(TransactionCase):
         self.assertEqual(action['res_model'], 'sgi.competence.gap')
 
     def test_05_step2_activation_seed(self):
-        # MA-02, TR-03 y RH-02 se activan en la siembra idempotente.
-        Config = self.env['sgi.config']
+        # MA-02, TR-03 y RH-02 llegan automáticos desde la siembra del XML.
         mapping = {
             'quimibond_sgi.sgi_ind_producido_capacidad': 'produccion_vs_capacidad',
             'quimibond_sgi.sgi_ind_consumo_energia': 'consumo_energia',
             'quimibond_sgi.sgi_ind_capacitacion': 'capacitacion',
         }
-        for xmlid, mode in mapping.items():
-            self.assertEqual(self.env.ref(xmlid).calc_mode, mode)
-            # Vuelve a manual y reactiva → recupera el modo automático.
-            self.env.ref(xmlid).calc_mode = 'manual'
-        Config.activate_auto_indicators()
         for xmlid, mode in mapping.items():
             self.assertEqual(self.env.ref(xmlid).calc_mode, mode)

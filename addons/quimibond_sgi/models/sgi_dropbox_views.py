@@ -122,7 +122,7 @@ class SgiDropboxKey(models.Model):
             SELECT d.id * 10 + 1 AS id,
                    d.sgi_previous_code AS key,
                    t.code AS kind,
-                   coalesce(d.sgi_title, d.name) AS title,
+                   coalesce(d.sgi_title, d.name->>'es_MX', d.name->>'en_US')::varchar AS title,
                    d.id AS document_id,
                    NULL::integer AS routine_id,
                    NULL::integer AS activity_id,

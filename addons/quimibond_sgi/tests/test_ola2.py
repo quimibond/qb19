@@ -49,7 +49,8 @@ class TestOla2Policy(TransactionCase):
         policy = self.Policy.create({'name': 'Política cascada'})
         obj = self.env['sgi.objective'].create(
             {'name': 'Obj', 'policy_id': policy.id})
-        proc = self.env['sgi.process'].search([], limit=1)
+        # Proceso propio: el SGI se instala vacío (decisión 6, J-019).
+        proc = self.env['sgi.process'].create({'code': 'XPM-A', 'name': 'Proceso XPM A'})
         ind = self.env['sgi.indicator'].create({
             'code': 'CAS-01', 'name': 'KPI cascada', 'calc_mode': 'manual',
             'objective_id': obj.id, 'process_id': proc.id})

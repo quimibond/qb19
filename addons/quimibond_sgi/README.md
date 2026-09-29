@@ -110,7 +110,7 @@ Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
 | `otd_compras` | Recepciones done vs `date_planned` de la OC | Implementado |
 | `produccion_vs_programado` | `mrp.production` done: qty_produced/product_qty | Implementado |
 | `desperdicio` | `stock.scrap` / producción del periodo | Implementado |
-| `cierre_nc` | NCs cerradas/detectadas en el periodo | Implementado |
+| `cierre_nc` | Retirado en 57.1.0: TR-01 es fórmula configurable (NC del SGI cerradas en el periodo ÷ levantadas en el periodo, sin canceladas) | Retirado |
 | `reclamos_cliente` | Tickets del equipo Reclamaciones | Implementado |
 | `presupuesto_ventas` | Facturado (out_invoice posted) vs `monthly_budget` | Implementado |
 | `preventivo_cumplido` | `maintenance.request` preventivas en etapa "done" | Implementado (aprox.) |
@@ -299,7 +299,7 @@ Se arman con **Hojas de cálculo / Tableros nativos** (sin JS). Fuentes de datos
 3. **Días festivos** en el calendario 24/7 3 Turnos (festivos MX): configurar en
    *Empleados → Configuración → Tiempo libre → Festivos públicos* (config de instancia).
 4. **Rollout de las 186 telas**: correr el reporte de trabajo
-   `addons/quimibond_sgi/tools/reporte_telas_rollout.py`
+   `docs/historico/quimibond_sgi_tools/reporte_telas_rollout.py` (fuera del módulo desde 57.4.0)
    (`odoo-bin shell --no-http < …`), que lista las telas sin operación TEJIDO/BoM
    completa agrupadas por familia y exporta `/tmp/telas_rollout.csv`. **No** configura
    telas: el criterio (capacidades, tiempos) es de Producción.
@@ -848,7 +848,9 @@ documental) — no intentar hacerlo de golpe.
 
 ## Herramientas de shell (`tools/`)
 
-Scripts de un solo uso, se corren con `odoo-bin shell --no-http < tools/<script>.py`:
+Scripts de un solo uso; desde 57.4.0 viven fuera del módulo, en `docs/historico/quimibond_sgi_tools/`
+(B-018). `post_carga_documental.py` liga a los procesos viejos y **no se vuelve a correr**.
+Se corrían con `odoo-bin shell --no-http < <script>.py`:
 
 - **`reporte_telas_rollout.py`** — lista de trabajo de telas sin operación TEJIDO/BoM
   completa (solo lectura, exporta `/tmp/telas_rollout.csv`).
