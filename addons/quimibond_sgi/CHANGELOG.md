@@ -13,6 +13,21 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.3.0 — 2026-09-29
+
+**Retirado:** las 39 carpetas de migración de 19.0.13.7.0 a 19.0.56.24.0
+(`19.0.13.7.0` … `19.0.56.24.0`; A-026, B-003, A-027). Ninguna vuelve a correr:
+producción está en 19.0.57.0.0 (o 19.0.56.38.2) y todas las bases son copia
+de producción. Su resumen queda abajo, en las líneas **Migración** de cada
+versión, y el código sigue en git (etiqueta `sgi-antes-de-limpieza-56.x` sobre
+`main`, que se pone antes de integrar esta versión).
+Con ellas se van las dos convenciones de nombre (`post-migration.py` contra
+`post-migrate.py`, A-027). Quedan las migraciones ≥ 19.0.56.25.0.
+
+**Retirado:** `models/sgi_groups_cleanup.py` (limpieza de grupos de 56.8.0, ya
+aplicada; solo la llamaba la migración 56.8.0 y llevaba un login fijo) y su
+prueba `tests/test_perm_groups.py` (B-005).
+
 ## 19.0.57.2.0 — 2026-09-29
 
 **Agregado:** este CHANGELOG, reconstruido desde git para las 243 versiones
