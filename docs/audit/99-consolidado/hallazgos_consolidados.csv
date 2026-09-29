@@ -1,0 +1,229 @@
+id_final,ids_absorbidos,tema,severidad,accion,estado,entrega,pr_propuesto,esfuerzo_h,depende_de,resumen
+A-001,,Seguridad crítica e instalación limpia (hecho en código),Alta,Corregir,En PR 452,1,PR452,3.0,—,Instalación limpia revienta por XML IDs usados antes de definirse. Corregido en PR 452 (orden del manifest + regla en check_odoo_views).
+B-001,,Seguridad crítica e instalación limpia (hecho en código),Alta,Eliminar,En PR 452,1,PR452,3.0,—,Siembras que pisaban a MAST en cada update. PR 452 quita 4 de 6; recompute_pending_measures y migrate_document_families siguen (A-006).
+B-004,,Seguridad crítica e instalación limpia (hecho en código),Alta,Corregir,En PR 452,1,PR452,3.0,"B-003, E (árbol)",Limpieza de 45.0.0 (religado de los P-/MP- y árbol de menús).
+F-003,,Seguridad crítica e instalación limpia (hecho en código),Alta,Corregir,En PR 452,1,PR452,2.0,—,"Cualquier usuario interno (37, incluido el contador externo «Erivani contador», id 132) puede crear el asistente por RPC con cualquier template_id, cualquier partner_id…"
+F-004,D-022,Seguridad crítica e instalación limpia (hecho en código),Alta,Decidir,En PR 452,1,PR452,4.0,Pregunta 2,Exámenes médicos abiertos a 20 «Encargados de empleados». PR 452 crea «Salud ocupacional (SGI)»; salarios de eficiencias: depurar los 20 en producción (decisión 2).
+I-013,,Seguridad crítica e instalación limpia (hecho en código),Media,Corregir,En PR 452,1,PR452,1.5,"F-004, pregunta 5",Cabos de salud: (a) menú con -hr.group_hr_user en PR 452; (b) avisos a 88 se resuelven metiendo a 88 al grupo (decisión «Salud ocupacional»); (c) = F-004.
+J-002,,Seguridad crítica e instalación limpia (hecho en código),Media,Corregir,En PR 452,1,PR452,0.5,Entrega 1,Prueba roja hoy.
+F-005,,Seguridad: puertas por RPC y botones de firma,Media,Corregir,Abierto,1,e1-candados-rpc,2.0,—,"Al aprobarse cualquier solicitud que traiga sgi_mp_change_type, se aplica con sudo() la propuesta de sgi_mp_proposal_id."
+F-006,,Seguridad: puertas por RPC y botones de firma,Media,Corregir,Abierto,1,e1-candados-rpc,0.5,—,El método es público y escribe con sudo() sin revisar quién llama ni el estado.
+F-007,,Seguridad: puertas por RPC y botones de firma,Media,Corregir,Abierto,1,e1-candados-rpc,1.5,—,"«Mi equipo» limita a «tu gente, tus departamentos y los puestos de tus procesos» solo en sgi.my.procedure.action_open_for (:771-786)."
+F-008,,Seguridad: puertas por RPC y botones de firma,Media,Corregir,Abierto,1,e1-candados-rpc,2.0,—,"Son AbstractModel: no llevan ACL (está bien, no tienen tabla)."
+F-015,,Seguridad: puertas por RPC y botones de firma,Media,Corregir,Abierto,1,e1-candados-rpc,0.5,—,Es público y crea o sobrescribe con sudo() la «foto» del inventario de cualquier fecha usando las existencias de hoy.
+F-017,,Seguridad: puertas por RPC y botones de firma,Baja,Corregir,Abierto,1,e1-candados-rpc,1.0,F-006,"(a) El proveedor puede reescribir su respuesta después de contestada, sin límite."
+I-014,,Seguridad: puertas por RPC y botones de firma,Media,Corregir,Abierto,1,e1-candados-rpc,1.0,F-003 (entrega 1),Botón «Firmar» visible para usuarios sin permiso de Firma tras F-003. Sigue abierto: la decisión «Salud ocupacional» cita I-014 pero resuelve I-013(b).
+D-001,,Seguridad: fichas estándar y reportes sin grupo,Alta,Corregir,Abierto,1,e1-fichas-estandar,3.0,F (grupos nuevos de F-004),Herencias de fichas estándar con botones inteligentes y pestañas del SGI sin groups.
+E-011,F-016,Seguridad: fichas estándar y reportes sin grupo,Media,Corregir,Abierto,1,e1-fichas-estandar,1.5,F-016,"Salen en Imprimir o Acción de todos los registros de esos modelos y para todos los usuarios de esas apps: el 8D en alertas que no son NC del SGI, la Solicitud de desarro…"
+F-009,,"Seguridad: quién edita incidentes, planes, AMEF, PPAP",Media,Decidir,Decisión pendiente,1,e1-reglas-captura,3.0,Pregunta 3,"Los 36 usuarios SGI leen y editan todos los incidentes y accidentes: personas afectadas, tipo «enfermedad laboral», días perdidos, causas básicas (factores personales) y…"
+F-010,,"Seguridad: quién edita incidentes, planes, AMEF, PPAP",Media,Decidir,Decisión pendiente,1,e1-reglas-captura,4.0,Pregunta 4,"Cualquiera de los 36 usuarios puede reescribir, por ejemplo, el plan de emergencia vigente, un AMEF o la evaluación de un proveedor, y borrar renglones de AMEF, PPAP y h…"
+N-001,,Seguridad: documentos controlados sin propietario,Alta,Agregar,Abierto,1,e1c-docs-sin-propietario,3.0,H-015 (llenar propietarios antes de encender la regla),Pedido de Jose tras L-001: un documento controlado sin propietario no puede quedar abierto a todos los internos sin revisión.
+I-004,E-003 G-014,"Mis pendientes: archivado, empresa y avisos de reglas archivadas",Media,Corregir,Abierto,1b,e1b-mis-pendientes,1.5,Ventas,Corrige E-003: 56.24.0 ya oculta la regla archivada 36; queda filtrar procesos archivados en acción/NC/documento/legal (G-014) y la prueba.
+N-002,,"Mis pendientes: archivado, empresa y avisos de reglas archivadas",Media,Corregir,Abierto,1b,e1b-mis-pendientes,1.5,C-012 (una sola empresa),Entrega 1b: Mis pendientes no filtra por empresa;
+N-003,,"Mis pendientes: archivado, empresa y avisos de reglas archivadas",Media,Agregar,Abierto,1b,e1b-mis-pendientes,2.0,—,Entrega 1b: al archivar una regla de aprobación sus avisos abiertos siguen vivos en la campana;
+K-018,,Limpieza: CHANGELOG antes de retirar migraciones,Alta,Agregar,Abierto,2,e2-changelog,6.0,A-026 (va antes),No hay changelog.
+A-023,B-019,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Corregir,Abierto,2,e2-codigo-muerto,3.0,A-001,Para saber dónde vive algo hay que conocer la historia de los PR.
+B-006,,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Eliminar,Abierto,2,e2-codigo-muerto,1.0,—,"El modelo ya no está en ir.model, pero quedan 15 filas de ir.model.data de otros módulos (ai, calendar, mail, mail_mobile, mass_mailing, portal…: model_inherit__sgi_empl…"
+B-011,,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Eliminar,Abierto,2,e2-codigo-muerto,2.0,—,"Botones que salieron de las vistas cuando se rediseñaron (la pantalla de Mi procedimiento 54.1.0/56.x, los diagramas de 54.0.0)."
+B-012,,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Eliminar,Abierto,2,e2-codigo-muerto,1.0,—,"8 métodos sin llamador se borran, salvo sgi_next_code (lo usa C-004 para la clave nueva)."
+B-013,,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Eliminar,Abierto,2,e2-codigo-muerto,1.0,—,"sgi.activity.role.approval_model_name (related), sgi.audit.checklist.line.audit_state (related), hr.job.sgi_role_ids, sgi.deliverable.link_ids, approval.request.sgi_purc…"
+B-014,,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Eliminar,Abierto,2,e2-codigo-muerto,0.2,—,"La acción «Mapa de procesos» (hierarchy, kanban, list, form) no tiene menú, botón, env.ref ni prueba."
+B-016,,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Documentar,Abierto,2,e2-codigo-muerto,0.0,—,Ya cumplieron: en producción los dos son agrupadores sin acción.
+D-012,,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Eliminar,Abierto,2,e2-codigo-muerto,0.5,E,"Cuatro vistas pivot/graph de quality.alert que nunca se usan: ninguna acción las nombra y Odoo elige por prioridad y luego por id, así que gana la estándar (quality_cont…"
+I-022,G-013,"Limpieza: métodos, campos, acciones y archivos sin uso",Baja,Eliminar,Abierto,2,e2-codigo-muerto,2.0,"B-011, G-013",Las 5 listas de pendientes de Mi procedimiento no se muestran (código muerto): se quitan. Corrige a G-013.
+B-007,,Limpieza pendiente de decisión,Media,Decidir,Decisión pendiente,2,e2-decisiones-limpieza,1.5,Pregunta 2,Los cuatro siguen en ir.model con sus campos.
+B-017,,Limpieza pendiente de decisión,Baja,Decidir,Decisión pendiente,2,e2-decisiones-limpieza,0.5,Pregunta 5,"Es el único cron apagado en producción (id 201, active=false, última corrida 2026-08-24, failure_count=0, así que se apagó a mano)."
+B-022,H-020,Limpieza pendiente de decisión,Baja,Decidir,Decisión pendiente,2,e2-decisiones-limpieza,0.5,Pregunta 6,Categoría activa con 0 solicitudes;
+A-010,,Limpieza: dependencias del manifest,Media,Decidir,Decisión pendiente,2,e2-dependencias,4.0,Pregunta 2,Se depende de Studio para una función que no se usa: 0 roles con regla nativa.
+A-011,,Limpieza: dependencias del manifest,Baja,Eliminar,Abierto,2,e2-dependencias,0.5,—,"Ningún modelo, vista, XML ID ni campo de sale_management se usa."
+A-012,,Limpieza: dependencias del manifest,Baja,Eliminar,Abierto,2,e2-dependencias,0.5,—,La dependencia existe solo para escribir allow_timesheets=False en el proyecto de Desarrollo.
+A-014,,Limpieza: dependencias del manifest,Baja,Decidir,Abierto,2,e2-dependencias,2.0,Pregunta 3,La función «instructivo en Knowledge» (DOC-5) no se usa: 0 actividades con artículo ligado.
+A-015,,Limpieza: dependencias del manifest,Baja,Documentar,Abierto,2,e2-dependencias,0.5,—,"Dependencias redundantes: base y mail (las traen todas), stock (la traen stock_account y sale_stock), hr (hr_skills), quality_control (quality_mrp), approvals (approvals…"
+B-009,D-011 C-017,Limpieza: campos y modos de cálculo legado,Media,Eliminar,Abierto,2,e2-legado,3.0,—,"Todos sin datos en producción: sgi_revision_legacy 0, task_id 0 y responsible_role 0 en activas."
+B-010,,Limpieza: campos y modos de cálculo legado,Media,Eliminar,Decisión pendiente,2,e2-legado,4.0,Pregunta 4,Ningún indicador de producción usa esos 10 modos (read_group por calc_mode).
+A-002,B-021,Limpieza: procesos MP-*/P-* fuera del manifest,Alta,Eliminar,Abierto,2,e2-procesos-viejos,8.0,A-003,"Los procesos MP-/P- y sus 37 flujos, todos archivados en producción, siguen en el manifest."
+A-003,B-018,Limpieza: procesos MP-*/P-* fuera del manifest,Media,Corregir,Abierto,2,e2-procesos-viejos,5.0,—,"Código, pruebas y scripts que dependen de los XML IDs viejos."
+B-002,,Limpieza: procesos MP-*/P-* fuera del manifest,Media,Eliminar,Abierto,2,e2-procesos-viejos,4.0,A (destino de P-VEN),"Siembra del procedimiento P-A28 (Ventas) sobre proc_ventas, hoy archivado."
+E-002,,Reglas comunes para sacar módulos,Alta,Documentar,Abierto,2,e2-reglas-salida,1.0,"A-016, A-017, A-018",57 actividades apuntan a 31 menús del módulo y 23 documentos a 11 (p.
+J-018,,Reglas comunes para sacar módulos,Media,Mover,Abierto,2,e2-reglas-salida,6.0,"A-016, A-017, A-018, B-00x",Pruebas de lo que sale del SGI o es obsoleto.
+A-018,,"Sale del SGI: PPAP, AMEF y MSA",Media,Decidir,Abierto,2,e2-sale-automotriz,12.0,Pregunta 5,Quimibond no está certificada IATF (brief).
+A-017,G-018,Sale del SGI: bitácora contable y valor de inventario,Media,Mover,Abierto,2,e2-sale-contabilidad,4.0,Pregunta 4,Bitácora de bloqueo y valor de inventario salen a contabilidad (decisión 5). sgi_snapshot sí se llama (G-018) pero hay 0 fotos: quitar si nada lo alimenta.
+A-016,A-013 E-014,Sale del SGI: presupuesto de ventas,Media,Decidir,Abierto,2,e2-sale-presupuesto,16.0,Pregunta 1,"El presupuesto y el pronóstico de ventas (P-A28) son planeación comercial, no gestión del SGI."
+A-019,,"Frontera con satélites (revisado, pesaje)",Media,Mover,Abierto,2,e2-satelites,4.0,—,"El núcleo tiene lógica del revisado de telas (mrp.revision.log, del módulo mrp_revisado_telas) protegida con if 'mrp.revision.log' in self.env."
+A-020,,"Frontera con satélites (revisado, pesaje)",Baja,Mover,Abierto,2,e2-satelites,2.0,—,Dependencia al revés: el núcleo siembra el parámetro y muestra el ajuste de un satélite (quimibond_sgi_pesaje).
+A-005,,Limpieza: funciones que corren en cada update,Media,Documentar,Abierto,2,e2-siembras,2.0,—,Borrar en producción = resucitar en el siguiente update.
+A-006,,Limpieza: funciones que corren en cada update,Media,Mover,Abierto,2,e2-siembras,3.0,A-002,"Siete <function> en un archivo sin noupdate, así que corren en cada odoo-update."
+A-007,,Limpieza: funciones que corren en cada update,Media,Documentar,Abierto,2,e2-siembras,1.0,—,harden_noupdate dejó los 26 crons en noupdate=True en la base.
+E-008,,Limpieza: funciones que corren en cada update,Media,Corregir,Abierto,2,e2-siembras,1.0,B-004,"Los dos se declaran con parent=""menu_sgi_root"" y una función los recuelga de Calidad en cada update."
+A-026,B-003 A-027,Limpieza: retirar migraciones ya aplicadas,Media,Decidir,Abierto,2,e2-sin-migraciones,1.0,Pregunta 6,"Producción está en 19.0.56.24.1 y todas las ramas se construyen desde copias de producción (CLAUDE.md), así que ninguna migración volverá a correr."
+B-005,,Limpieza: retirar migraciones ya aplicadas,Baja,Eliminar,Abierto,2,e2-sin-migraciones,0.5,"B-003, F","Limpieza de grupos de 56.8.0, ya aplicada: en producción no existen grupos «SGI» ni «SGI admin»."
+C-004,L-004,Modelo: clave anterior y clave nueva PR-{proceso},Alta,Corregir,Abierto,3,e3-clave-anterior,6.0,"P-2, C-006","Clave del Dropbox vive en sgi_code. Migración sgi_code→sgi_previous_code sobre 490 documentos (L-004), después de C-006."
+C-005,,Modelo: clave anterior y clave nueva PR-{proceso},Alta,Corregir,Abierto,3,e3-clave-anterior,3.0,C-004,(a) Cada cambio de sgi_code sobrescribe sgi_previous_code: un segundo renombre borra la clave del Dropbox.
+C-007,,Modelo: clave anterior y clave nueva PR-{proceso},Media,Decidir,Abierto,3,e3-clave-anterior,3.0,P-2,La nomenclatura está definida dos veces.
+C-009,,Modelo: clave anterior y clave nueva PR-{proceso},Media,Corregir,Abierto,3,e3-clave-anterior,4.0,C-004,Títulos mezclados: 414 de 427 nombres empiezan con la clave del Dropbox («P-D01 DISEÑO Y DESARROLLO.pdf»);
+C-006,,Modelo: pie de formato ligado al documento,Alta,Corregir,Abierto,3,e3-format-map,8.0,C-004,"El pie «Formato controlado» de pedidos, OC, remisiones, NC y demás, y varios reportes, buscan el documento por el texto de la clave del Dropbox (_revision_of(code), _sgi…"
+A-022,,"Modelo: ondelete, requeridos, tipos y archivos",Media,Mover,Abierto,3,e3-integridad,3.0,A-006,Archivos «cajón»: el nombre no dice lo que hay adentro.
+B-008,,"Modelo: ondelete, requeridos, tipos y archivos",Media,Corregir,Abierto,3,e3-integridad,3.0,C (regla de especificación),"Campo del procedimiento viejo, required con default desarrollo: todas las actividades tienen valor (activas: desarrollo 275, final 19, inicial 16)."
+C-010,,"Modelo: ondelete, requeridos, tipos y archivos",Media,Corregir,Abierto,3,e3-integridad,8.0,—,El mismo dato dos veces.
+C-013,C-022,"Modelo: ondelete, requeridos, tipos y archivos",Media,Corregir,Abierto,3,e3-integridad,3.0,—,El default de Odoo es set null (restrict si es requerido).
+C-019,,"Modelo: ondelete, requeridos, tipos y archivos",Baja,Agregar,Abierto,3,e3-integridad,0.5,—,"Visibles para el usuario sin etiqueta propia: sgi.indicator.measure.state, sgi.machine.sheet.state, sgi.indicator.direction, sgi.indicator.calc_mode, sgi.catalog.load.wi…"
+C-021,,"Modelo: ondelete, requeridos, tipos y archivos",Baja,Agregar,Abierto,3,e3-integridad,0.5,—,"Las tablas del SGI son chicas (ack 149, mediciones 120, exec.stat 604, documentos 4,532, de ellos 588 controlados)."
+A-004,,Modelo: exportador y módulo quimibond_sgi_mapa,Alta,Mover,Abierto,3,e3-mapa,3.0,A-002 (patrón),Datos de producción con XML ID.
+H-007,,Modelo: exportador y módulo quimibond_sgi_mapa,Media,Corregir,Abierto,3,e3-mapa,8.0,"H-006, H-022","71 dominios usan IDs fijos de producción (tipos de operación 2, 173, 177, 234…, equipos de venta 1 y 5, de calidad 4 y 7, de helpdesk 14, 16 y 31, categorías de aprobaci…"
+H-010,,Modelo: exportador y módulo quimibond_sgi_mapa,Media,Agregar,Abierto,3,e3-mapa,3.0,Jose/dueños,57 entregables no tienen quien los entregue y 142 no tienen quien los reciba.
+H-014,,Modelo: exportador y módulo quimibond_sgi_mapa,Media,Mover,Abierto,3,e3-mapa,2.0,H-022,"Hay configuración que el código o los dominios necesitan y que se capturó a mano, sin XML ID."
+H-022,,Modelo: exportador y módulo quimibond_sgi_mapa,Media,Agregar,Abierto,3,e3-mapa,24.0,"H-007, H-014, C-004",Hoy no hay exportador.
+J-019,,Modelo: exportador y módulo quimibond_sgi_mapa,Media,Decidir,Decisión pendiente,3,e3-mapa,3.0,"A-003, A-005, decisión 6","Complementa A-003, que solo lista test_process_map, test_procedure, test_process_map_46 y test_flows_48."
+C-012,H-021,Modelo: una sola empresa,Media,Decidir,Decisión pendiente,3,e3-multiempresa,2.0,P-3,Solo 24 tienen company_id (17 por related del padre).
+F-014,,Modelo: una sola empresa,Baja,Agregar,Abierto,3,e3-multiempresa,1.5,—,Solo los 14 modelos de estructura tienen regla global.
+C-001,C-014 D-017 L-003,Modelo: el documento es la fuente de la sustitución,Alta,Corregir,Abierto,3,e3-procedimiento-proceso,10.0,Decisión Jose P-1,Dos fuentes de «procedimiento sustituido». Documento manda (M2O restrict); proceso pasa a One2many inversa; la migración solo respalda (L-003).
+C-002,,Modelo: el documento es la fuente de la sustitución,Media,Corregir,Abierto,3,e3-procedimiento-proceso,3.0,C-001,El obsoletado al poner el proceso en vigor lee la M2M y escribe la M2O: la M2O solo quedaba llena si el documento ya era obsoleto.
+C-015,,Modelo: el documento es la fuente de la sustitución,Media,Agregar,Abierto,3,e3-procedimiento-proceso,1.0,C-001,"sgi_replaced_by_process_id sin restricción: acepta cualquier documento (formato, anexo), procesos archivados y documentos no controlados"
+L-005,C-003,Modelo: el documento es la fuente de la sustitución,Alta,Corregir,Abierto,3,e3-procedimiento-proceso,4.0,"C-003, L-003",Estado de migración de procedimientos: 44 a «En curso» y 5 a «No aplica»; P-I01 aparte (decisión C-003).
+A-025,,Menús y acciones: árbol decidido,Baja,Mover,Abierto,4,e4-arbol,2.0,A-001,Datos dentro de archivos de vistas y menús repartidos: el árbol de menús (decisión 2) no se lee en un solo lugar.
+B-015,A-009,Menús y acciones: árbol decidido,Media,Corregir,Abierto,4,e4-arbol,2.0,A (orden del manifest),"17 act_window definidas dos veces (13 en sgi_diagram_views.xml, 2 hierarchy, 2 ventas). Corrige el conteo de A-009 (15)."
+E-007,D-005,Menús y acciones: árbol decidido,Media,Corregir,Abierto,4,e4-arbol,1.5,—,Nombres distintos de la decisión 2: «Programa de auditorías» → Programa;
+E-010,,Menús y acciones: árbol decidido,Media,Corregir,Abierto,4,e4-arbol,3.0,"E-009, G","19 actividades mandan a su ejecutor a menús que el Usuario SGI no ve: Administración SGI (Indicadores 2392 ×6, Mediciones 2393, Documentos 2383, Solicitudes de cambio 23…"
+E-012,,Menús y acciones: árbol decidido,Baja,Corregir,Abierto,4,e4-arbol,0.3,—,"Si falta el xml_id del equipo, el dominio de respaldo es [] y el menú abre todos los tickets de Helpdesk o todas las alertas de Calidad."
+E-013,,Menús y acciones: árbol decidido,Baja,Corregir,Abierto,4,e4-arbol,0.3,A-025,"En Configuración, Elementos PPAP (2412) y Checklists de planta (2603) tienen las dos secuencia 60."
+E-017,,Menús y acciones: árbol decidido,Baja,Decidir,Decisión pendiente,4,e4-arbol,0.5,Pregunta 3,Está publicado en la app Tableros para el grupo 316 y se abre desde un botón del Tablero de dirección.
+I-009,,Menús y acciones: árbol decidido,Media,Corregir,Abierto,4,e4-arbol,1.5,E (árbol final),Las rutas de menú que se le dicen al usuario no existen.
+D-009,,"Menús y grupos: Dirección, Auditor, Usuario",Media,Corregir,Abierto,4,e4-grupos,1.5,"F-010, F-004",Cualquier Usuario SGI ve y usa botones que cierran o reabren registros de SST y de dirección;
+E-009,F-011,"Menús y grupos: Dirección, Auditor, Usuario",Alta,Corregir,Abierto,4,e4-grupos,1.0,"F-004, F-011, F-012, F-013",Hoy Dirección (319) entra a esos menús porque implica 318 (F-013).
+F-012,,"Menús y grupos: Dirección, Auditor, Usuario",Media,Decidir,Abierto,4,e4-grupos,2.0,Pregunta 5,Antes de darlo a un auditor hay que saber cuatro cosas.
+F-013,,"Menús y grupos: Dirección, Auditor, Usuario",Baja,Decidir,Abierto,4,e4-grupos,1.0,Pregunta 6,"Jorge Manuel Ortiz (35), único miembro, es en la práctica Jefe MAST completo: edita procesos, actividades y roles, aprueba cancelaciones de NC, publica Mi procedimiento…"
+I-015,,"Menús y grupos: Dirección, Auditor, Usuario",Media,Decidir,Decisión pendiente,4,e4-grupos,1.0,"E (árbol), D-002, pregunta 6",El Usuario SGI no tiene en el SGI una lista de documentos vigentes.
+D-007,,"Vistas: confirmaciones, búsquedas y ayudas",Media,Corregir,Abierto,5,e5-fichas,6.0,"C (herencia de mail.thread), G (reglas de cierre)",Seis patrones distintos para el mismo ciclo (registrar → analizar → actuar → verificar → cerrar).
+D-008,,"Vistas: confirmaciones, búsquedas y ayudas",Media,Corregir,Abierto,5,e5-fichas,1.5,—,"Un clic cierra, obsoleta o regresa a borrador sin preguntar."
+D-013,E-016,"Vistas: confirmaciones, búsquedas y ayudas",Baja,Corregir,Abierto,5,e5-fichas,0.5,—,"Filtros por defecto que no existen en la vista de búsqueda del modelo destino: Odoo los ignora en silencio, así que «Ver registros recientes» y la evidencia por cliente…"
+D-014,,"Vistas: confirmaciones, búsquedas y ayudas",Baja,Agregar,Abierto,5,e5-fichas,3.0,—,En catálogos no hay forma de ver lo archivado sin ir a Técnico;
+D-015,E-015,"Vistas: confirmaciones, búsquedas y ayudas",Media,Corregir,Abierto,5,e5-fichas,1.5,A-001 (instalación vacía),Pantalla vacía sin guía o con instrucciones que ya no son ciertas.
+D-016,,"Vistas: confirmaciones, búsquedas y ayudas",Baja,Corregir,Abierto,5,e5-fichas,1.0,"C-017, B-020","Campos técnicos (dominios, rutas de campo, nombres técnicos) al alcance de cualquier usuario que abre la ficha;"
+D-021,,"Vistas: confirmaciones, búsquedas y ayudas",Baja,Corregir,Abierto,5,e5-fichas,0.3,—,"Las pestañas «Desviación y análisis», «Correcciones y acciones» y «Verificación y cierre» no tienen invisible, así que salen también en las alertas de calidad del piso q…"
+A-008,,Vistas: herencias propias y de fichas estándar,Alta,Corregir,Abierto,5,e5-herencias,12.0,—,"Contradicen la regla de CLAUDE.md («un módulo no hereda sus propias vistas»), que nació de los builds rotos de 54.0.0, 54.1.0 y 54.2.0."
+D-018,,Vistas: herencias propias y de fichas estándar,Baja,Corregir,Abierto,5,e5-herencias,0.5,"A-008, A-013","Herencias que dependen del orden o de la primera coincidencia: si el módulo estándar agrega otra vista primaria o un grupo antes, el bloque cambia de lugar sin error."
+D-019,,Vistas: herencias propias y de fichas estándar,Baja,Corregir,Abierto,5,e5-herencias,3.0,"A-008, D-001",Cada herencia agrega un botón o pestaña por su lado;
+D-002,,Vistas: sin claves del Dropbox,Alta,Corregir,Abierto,5,e5-nomenclatura,3.0,"C-004, C-005, C-009",La ficha del documento controlado pone sgi_code como título <h1> con el placeholder «Clave (P-A28 · F-P-G05-01 · IT-P-P01-08 · DAT… · ANEXO 6)» y un párrafo que explica…
+D-003,D-020,Vistas: sin claves del Dropbox,Media,Corregir,Abierto,5,e5-nomenclatura,2.0,"B-019, B-020","Claves del Dropbox en ayudas, textos de pantalla y ejemplos."
+D-004,E-006,Vistas: sin claves del Dropbox,Media,Corregir,Abierto,5,e5-nomenclatura,3.0,"C-006, B-019",Encabezados de reportes impresos con la clave del Dropbox escrita a mano.
+D-006,D-010,Vistas: reclamaciones y Generar NC,Media,Decidir,Abierto,5,e5-reclamaciones,1.0,"G, H","«Reclamaciones de clientes» filtra por el equipo sgi_helpdesk_team_complaints (id 30), que tiene 0 tickets;"
+L-002,L-015 L-021,"Del Dropbox a Odoo: rutinas, buscador, importador y avance",Alta,Agregar,Abierto,6,e6-rutinas,10.0,—,"Las 815 rutinas y su destino (actividad, «lo hace Odoo», pendiente) viven solo en una hoja de cálculo."
+L-006,,"Del Dropbox a Odoo: rutinas, buscador, importador y avance",Alta,Agregar,Abierto,6,e6-rutinas,8.0,"L-002, L-004, C-005",No existe.
+L-008,L-016 L-020,"Del Dropbox a Odoo: rutinas, buscador, importador y avance",Alta,Agregar,Abierto,6,e6-rutinas,12.0,"L-002, L-004, L-005",No hay forma de cargar las 815 rutinas sin capturarlas a mano
+L-009,L-019,"Del Dropbox a Odoo: rutinas, buscador, importador y avance",Media,Agregar,Abierto,6,e6-rutinas,6.0,L-002,E-001 propone por ahora un pivote sobre documentos.
+L-017,,"Del Dropbox a Odoo: rutinas, buscador, importador y avance",Media,Agregar,Abierto,6,e6-rutinas,1.0,L-002,«Procedimientos anteriores» y el tablero necesitan agrupar y ordenar por rutinas cubiertas y pendientes
+L-018,C-016,"Del Dropbox a Odoo: rutinas, buscador, importador y avance",Baja,Documentar,Abierto,6,e6-rutinas,1.0,L-002,"Con el modelo de rutinas, la liga «de qué procedimiento viene esta actividad» es la M2M de la rutina."
+C-011,,Del Dropbox a Odoo: sección y permisos,Baja,Documentar,Abierto,6,e6-seccion,2.0,—,"El destino de migración se guarda de tres formas (texto, menú, worksheet), sin prioridad clara."
+E-001,L-007 I-016 B-020,Del Dropbox a Odoo: sección y permisos,Alta,Agregar,Abierto,6,e6-seccion,8.0,"C-006 → C-004/C-005 (datos de clave anterior), L (rutinas), E-004, E-005",Falta la sección permanente de la decisión 7.
+E-004,,Del Dropbox a Odoo: sección y permisos,Alta,Corregir,Abierto,6,e6-seccion,1.5,"C-011, H","(a) El dominio ('sgi_state','!=','obsoleto') saca de la lista los formatos migrados en cuanto se vuelven obsoletos (decisiones, pregunta 7), y la sección se vaciaría jus…"
+L-010,E-005,Del Dropbox a Odoo: sección y permisos,Media,Corregir,Abierto,6,e6-seccion,2.0,E-005,E-005 resuelve la vista.
+L-011,,Del Dropbox a Odoo: sección y permisos,Media,Corregir,Abierto,6,e6-seccion,1.0,—,50 formatos (48 F y 2 F-IT) de clase A o B en «migrado» y 2 «en curso» solo tienen el destino en texto: el botón «Abrir en Odoo» no funciona.
+L-012,,Del Dropbox a Odoo: sección y permisos,Media,Decidir,Abierto,6,e6-seccion,1.0,Pregunta 3,"118 documentos del Dropbox sin clase: 48 IT, 42 DAT, 15 anexos, 5 protocolos, 5 reglamentos, el MIID, el diagrama y 1 formulario con «x»."
+L-013,,Del Dropbox a Odoo: sección y permisos,Media,Corregir,Abierto,6,e6-seccion,0.5,L-012,"Contradicciones: 6 formatos «No aplica» con clase A (3723, 3807, 3850, 3879, 3880, 3884);"
+L-014,,Del Dropbox a Odoo: sección y permisos,Media,Decidir,Abierto,6,e6-seccion,1.0,C-004,"34 documentos llevan la clave de un procedimiento que no está entre los 52: P-A23 (9 F y 1 R), P-P07 (5 F-IT y 4 IT), P-A13 (8 F), P-A30 (3 F), P-C10 (2 DAT) y P-A05 (2…"
+G-004,I-008 G-021,Lógica: actividades que agendan los crons,Alta,Corregir,Abierto,8,e8-avisos-cron,6.0,G-005,Las actividades de los crons se acumulan.
+G-005,G-025,Lógica: actividades que agendan los crons,Media,Corregir,Abierto,8,e8-avisos-cron,5.0,G-004,"La deduplicación por (resumen, usuario) duplica en tres casos."
+G-010,,Lógica: actividades que agendan los crons,Media,Corregir,Abierto,8,e8-avisos-cron,1.0,—,Verificación de eficacia duplicada y contradictoria.
+G-011,,Lógica: actividades que agendan los crons,Media,Corregir,Abierto,8,e8-avisos-cron,2.0,G-005,Las actividades de los crons nacen vencidas.
+G-012,,Lógica: actividades que agendan los crons,Baja,Corregir,Abierto,8,e8-avisos-cron,1.0,—,NEWS no es idempotente.
+G-024,,Lógica: actividades que agendan los crons,Baja,Corregir,Abierto,8,e8-avisos-cron,1.0,—,Escrituras diarias masivas.
+I-002,,Lógica: actividades que agendan los crons,Alta,Decidir,Decisión pendiente,8,e8-avisos-cron,4.0,"Pregunta 1, G-004, G-005",La campana y Mis pendientes cuentan cosas distintas.
+I-003,,Lógica: actividades que agendan los crons,Alta,Corregir,Abierto,8,e8-avisos-cron,2.0,"G-004, G-005",El trabajo de MAST está en las bandejas de otros.
+G-007,,Lógica: zona horaria y días hábiles,Media,Corregir,Abierto,8,e8-calendario,5.0,A-007,Zona horaria.
+G-008,,Lógica: zona horaria y días hábiles,Media,Corregir,Abierto,8,e8-calendario,3.0,Pregunta 3,"Decisión 5: el cálculo cumple, la captura no la exige."
+G-009,,Lógica: zona horaria y días hábiles,Media,Corregir,Abierto,8,e8-calendario,3.0,Pregunta 3,Plazos de escalamiento en días naturales.
+G-020,,Lógica: zona horaria y días hábiles,Baja,Corregir,Abierto,8,e8-calendario,1.0,—,"Después del día de corrida, el cron mensual vuelve a correr completo cada día (foto, trayectorias, cierre de presupuesto, refresco de todos los presupuestos) mientras el…"
+G-022,,Lógica: zona horaria y días hábiles,Baja,Corregir,Abierto,8,e8-calendario,1.0,G-007,Checklists: el cron no genera nada y no avisa.
+G-006,,Lógica: calibración avisa y no bloquea,Alta,Decidir,Abierto,8,e8-calibracion,3.0,Pregunta 1,El cron bloquea «No usar» todo equipo vencido y le avisa solo a MAST.
+I-005,,Lógica: firma de checklist,Alta,Corregir,Decisión pendiente,8,e8-checklist-pin,2.0,"H-013, pregunta 2",La firma del checklist no identifica a nadie.
+G-002,H-005,Lógica: medición automática sin errores silenciosos,Alta,Corregir,Abierto,8,e8-medicion,3.0,—,except Exception sin savepoint en flujos que tocan la base.
+G-003,,Lógica: medición automática sin errores silenciosos,Media,Corregir,Abierto,8,e8-medicion,2.0,G-002,Un dominio de evidencia inválido mide todo el modelo y sale verde.
+G-019,,Lógica: medición automática sin errores silenciosos,Baja,Corregir,Abierto,8,e8-medicion,2.0,"C-012, F-014",Crons como superusuario y sin filtro de empresa.
+G-026,,Lógica: medición automática sin errores silenciosos,Baja,Corregir,Abierto,8,e8-medicion,1.0,—,Reincidencia guardada con datos de otros registros fuera de depends.
+H-006,,Lógica: medición automática sin errores silenciosos,Media,Corregir,Abierto,8,e8-medicion,2.0,G,10 entregables cuentan registros de otras empresas.
+H-016,,Lógica: medición automática sin errores silenciosos,Media,Agregar,Abierto,8,e8-medicion,2.0,"C-001, C-002","6 actividades citan un procedimiento que sustituye otro proceso: S5.20, S5.21 y S5.22 citan P-A16 (sustituido por C2);"
+H-018,,Lógica: medición automática sin errores silenciosos,Baja,Decidir,Abierto,8,e8-medicion,0.5,Jose,"C2.35 (quien_detecta), S1.01 y S1.18 (solicitante) tienen un ejecutor que no se resuelve a un puesto: no entran en el pendiente de ningún puesto ni en la adherencia."
+G-001,I-006,"Lógica: mediciones, Mis pendientes y escalamientos",Alta,Corregir,Abierto,8,e8-mediciones,6.0,G-013,"Mediciones automáticas salen como «Medir…» y nacen atrasadas. «Validar» es del dueño del indicador en 3 días hábiles (I-006, decisión #3)."
+G-017,,"Lógica: mediciones, Mis pendientes y escalamientos",Media,Corregir,Abierto,8,e8-mediciones,3.0,G-008,Dos definiciones de «a tiempo».
+I-001,,"Lógica: mediciones, Mis pendientes y escalamientos",Alta,Corregir,Abierto,8,e8-mediciones,4.0,"G-017 (qué es «atrasada»), G-001",Mis pendientes no trae las actividades del procedimiento ni las firmas de lectura.
+I-007,,"Lógica: mediciones, Mis pendientes y escalamientos",Media,Corregir,Abierto,8,e8-mediciones,1.0,"C-009, H-019",Textos que confunden en Mis pendientes.
+I-012,,"Lógica: mediciones, Mis pendientes y escalamientos",Media,Corregir,Abierto,8,e8-mediciones,3.0,"I-001, F-013",Dirección tiene 97 escalamientos que no le llegan.
+I-021,,"Lógica: mediciones, Mis pendientes y escalamientos",Baja,Corregir,Abierto,8,e8-mediciones,2.0,"I-001, G-015",Mi equipo está vacío o sin semáforo para la mayoría.
+G-015,,Rendimiento,Alta,Corregir,Abierto,8,e8-rendimiento,6.0,—,Rendimiento de Mi equipo y de la ficha del puesto.
+G-016,,Rendimiento,Media,Corregir,Abierto,8,e8-rendimiento,5.0,G-007,N+1 en el cumplimiento semanal.
+G-023,,Rendimiento,Media,Corregir,Abierto,8,e8-rendimiento,2.0,—,Fusión de puestos por SQL crudo.
+J-003,J-001,"Pruebas: CI, checkers y linters",Alta,Agregar,Decisión pendiente,9,e9-ci,8.0,"Entrega 1 (A-001), J-004",Cómo correr el suite.
+J-021,,"Pruebas: CI, checkers y linters",Media,Agregar,Abierto,9,e9-ci,4.0,—,flake8 del repo: 0 en el SGI.
+J-022,,"Pruebas: CI, checkers y linters",Baja,Agregar,Abierto,9,e9-ci,1.0,—,No hay pre-commit.
+J-023,,"Pruebas: CI, checkers y linters",Media,Agregar,Abierto,9,e9-ci,6.0,Entrega 1,"Qué validan: archivos del manifest, _sql_constraints, parámetros duplicados, env.ref a XML IDs propios inexistentes (también en tests), ACL a modelos inexistentes, <func…"
+J-024,,"Pruebas: CI, checkers y linters",Baja,Mover,Abierto,9,e9-ci,4.0,C-007,"Son candidatas a pytest sin Odoo, igual que check_odoo_views.py: SGI_CODE_REGEX (sgi_document.py:13-25) y la clave nueva PR-{proceso};"
+J-004,,Pruebas: huecos de cobertura,Media,Corregir,Abierto,9,e9-pruebas,3.0,—,Pruebas que dependen de datos de producción.
+J-005,,Pruebas: huecos de cobertura,Alta,Agregar,Abierto,9,e9-pruebas,10.0,F-003…F-018,"Sin prueba negativa para: F-005 (cualquier aprobación aplica la propuesta), F-006 (sgi_supplier_answer por RPC), F-009 (Usuario SGI edita incidentes), F-010, F-013 (Dire…"
+J-006,,Pruebas: huecos de cobertura,Media,Agregar,Abierto,9,e9-pruebas,4.0,"C-001, C-004","Las decisiones del documento como fuente única (sgi_replaced_by_process_id, borrado restrict) y de la clave nueva PR-{proceso} con la validación encendida no tienen prue…"
+J-007,,Pruebas: huecos de cobertura,Media,Agregar,Abierto,9,e9-pruebas,4.0,"G-001, G-013, G-014","test_archived_filters (3 casos) prueba procesos archivados, NC de procesos archivados y categorías archivadas."
+J-008,,Pruebas: huecos de cobertura,Media,Agregar,Abierto,9,e9-pruebas,5.0,G-004…G-020,13 se prueban de forma directa y 4 a través de un helper.
+J-009,,Pruebas: huecos de cobertura,Media,Agregar,Abierto,9,e9-pruebas,2.0,H-006,"Bien cubierta (test_fase10, test_spec, test_catalog_fase1 40-47, 10 archivos de indicadores)."
+J-010,,Pruebas: huecos de cobertura,Media,Agregar,Abierto,9,e9-pruebas,1.0,G (lógica),"No existe la validación «aprobador ≠ solicitante», así que tampoco su prueba."
+J-011,,Pruebas: huecos de cobertura,Media,Agregar,Abierto,9,e9-pruebas,3.0,G-009,"La decisión 5 está cubierta: test_due_long para anual, trimestral y semestral;"
+J-012,,Pruebas: huecos de cobertura,Baja,Agregar,Abierto,9,e9-pruebas,2.0,"D-006, G-010, G-026","Faltan pruebas para G-010 (eficacia duplicada), G-026 (reincidencia fuera de depends: cambiar la NC previa no recalcula) y la decisión tanda 2 #9 («Generar NC» solo en e…"
+J-013,,Pruebas: huecos de cobertura,Media,Agregar,Abierto,9,e9-pruebas,3.0,"C-012, F-014",Ninguna prueba de reglas de empresa sobre modelos sgi..
+J-014,,Pruebas: huecos de cobertura,Baja,Agregar,Abierto,9,e9-pruebas,3.0,F-017,"Sin HttpCase, sin tours y sin pruebas JS."
+J-015,,Pruebas: huecos de cobertura,Baja,Agregar,Abierto,9,e9-pruebas,3.0,—,Unas 19 plantillas se renderizan en pruebas (12 archivos).
+J-016,,Pruebas: huecos de cobertura,Baja,Corregir,Abierto,9,e9-pruebas,0.5,—,23 t-esc en reportes QWeb.
+J-017,,Pruebas: huecos de cobertura,Baja,Corregir,Abierto,9,e9-pruebas,1.0,C,"Etiquetas repetidas en español («Causa raíz», «Proveedor», «Producto», «Fin del periodo de prueba»)."
+J-020,,Pruebas: huecos de cobertura,Baja,Agregar,Abierto,9,e9-pruebas,1.0,—,Cobertura por modelo.
+J-025,,Pruebas: huecos de cobertura,Baja,Corregir,Abierto,9,e9-pruebas,2.0,—,Las pruebas dependen del día en que corren.
+J-026,,Pruebas: huecos de cobertura,Baja,Documentar,Abierto,9,e9-pruebas,1.0,B-010,"Barrido de 24 patrones con grep y AST sobre 1,653 campos, 200 @api.depends, 54 @api.constrains, 77 _order, 322 vistas y 46 plantillas: 0 etiquetas duplicadas entre campo…"
+C-018,K-019,Ayuda en campos y pantallas,Media,Agregar,Abierto,10,e10-help,20.0,—,"608 de prioridad alta: selección, M2O, M2M, booleanos, números o fechas visibles."
+K-001,,Documentación: archivar lo viejo,Alta,Mover,Abierto,10,e10-historico,1.0,—,Es el único manual para el personal y está desactualizado en casi cada ruta.
+K-002,,Documentación: archivar lo viejo,Alta,Mover,Abierto,10,e10-historico,1.0,—,"Declara la v19.0.4.1.0 y le faltan o le sobran piezas: 16 dependencias en vez de 31, 4 grupos en vez de 6, «el Auditor implica Usuario» (falso: lo quita), 10 crons en ve…"
+K-005,,Documentación: archivar lo viejo,Media,Mover,Abierto,10,e10-historico,0.5,A-010,"Es el plan original, anterior a la 19.0.1."
+K-006,,Documentación: archivar lo viejo,Media,Mover,Abierto,10,e10-historico,0.5,—,Es el único diagrama de conjunto y está viejo.
+K-007,,Documentación: archivar lo viejo,Media,Mover,Abierto,10,e10-historico,1.5,—,"Mezcla puntos cerrados y abiertos, y tiene afirmaciones falsas: «sin ir.rule en todo el addon» (hoy hay 32) y «README hasta Fase 4.6»."
+K-008,,Documentación: archivar lo viejo,Baja,Mover,Abierto,10,e10-historico,0.3,—,El «menú objetivo» (Panel / Mi trabajo / Medición / Automotriz) quedó superado por la decisión 2.
+K-009,,Documentación: archivar lo viejo,Media,Documentar,Abierto,10,e10-historico,0.5,—,Chocan los identificadores.
+K-010,,Documentación: archivar lo viejo,Baja,Mover,Abierto,10,e10-historico,0.3,—,"El título dice «Lo que falta programar (29 puntos)», pero los 29 dicen «Hecho»."
+K-011,,Documentación: archivar lo viejo,Media,Mover,Abierto,10,e10-historico,1.0,—,"Es el único recorrido por persona real, y por eso es la mejor plantilla para los manuales por rol."
+K-012,,Documentación: archivar lo viejo,Baja,Mover,Abierto,10,e10-historico,0.2,—,No es del SGI y está muerto.
+K-022,,Manuales por rol y guía de transición,Alta,Agregar,Abierto,10,e10-manuales,30.0,"E-001, E-007, D-002, agente L","No hay manual de Jefe MAST y SGI ni manuales por rol (Usuario SGI, jefe de área, Dirección, Auditor, capturista de planta)."
+K-023,,Manuales por rol y guía de transición,Media,Agregar,Abierto,10,e10-manuales,6.0,"agente L, E-001","Los datos de la transición existen: 427 documentos, el xlsx «rutina por rutina» con 815 rutinas y la clasificación de 52 procedimientos en decisiones.md."
+K-024,,Manuales por rol y guía de transición,Baja,Decidir,Decisión pendiente,10,e10-manuales,0.5,—,El manual dice «carpeta SGI → secciones 00-23».
+A-021,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,1.0,—,Frontera con los satélites.
+A-024,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,0.5,—,"Mezcla de español e inglés en nombres técnicos (la mayoría en inglés: sgi.nonconformity, sgi.incident)."
+A-028,K-014,"Documentación: README, CLAUDE.md, manifest",Media,Corregir,Abierto,10,e10-readme,1.0,—,"La descripción dice «cero Studio» y «calibraciones IATF», y no menciona procesos, actividades, Mi procedimiento ni Mis pendientes."
+A-029,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,0.5,—,"La norma «Requisitos específicos de clientes» y CLI-01…CLI-10 existen solo en producción, sin XML ID."
+A-030,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,0.5,Anexo B,"Liga puntos de control a los planes de control de 2 XML IDs buscando los equipos de calidad por nombre («CALIDAD Materia Prima», «Revisado de Tela») y se traga cualquier…"
+C-020,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,1.0,—,"Mismo concepto con nombres distintos: NC ligada = alert_id (8 modelos), sgi_alert_id (4, incluidos sgi.calibration y sgi.incident, que son propios), nc_alert_id (1)."
+C-023,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,0.0,—,"El escaneo (dominios XML y Python, group_by, vistas de búsqueda, _order) no confirmó ningún compute sin store ni search usado donde Odoo lo exige."
+F-018,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,0.5,—,El PIN del empleado se compara sin límite de intentos (la tableta de planta permite probar PIN por fuerza bruta).
+F-019,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,0.5,F-004,Falta confirmar que los PDF de resultados queden ligados al registro (res_model/res_id) y no «huérfanos» legibles por quien los subió.
+F-021,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,0.3,—,"Los capturistas de checklist capturan con base.group_user desde Mantenimiento → Checklists de hoy (menú 2605, sin grupos), con PIN."
+H-017,,"Documentación: README, CLAUDE.md, manifest",Baja,Documentar,Abierto,10,e10-readme,1.0,C-016,"47 numerales saltados en 8 procesos, sin actividades archivadas que los ocupen: C2 14, S2 9, S1 7, C4 5, C6 5, C3 4, C5 2, S6 1."
+K-003,B-023,"Documentación: README, CLAUDE.md, manifest",Alta,Corregir,Abierto,10,e10-readme,6.0,K-018,"No es un README: es un changelog sin orden, que va de «Fases 1–8» a 56.x y vuelve a 53.x, 54.x y 55.x."
+K-004,,"Documentación: README, CLAUDE.md, manifest",Alta,Agregar,Abierto,10,e10-readme,0.5,—,Ningún documento recoge las decisiones de Jose.
+K-013,,"Documentación: README, CLAUDE.md, manifest",Media,Corregir,Abierto,10,e10-readme,1.0,"A-007, B-004",Vigente.
+K-015,,"Documentación: README, CLAUDE.md, manifest",Baja,Agregar,Abierto,10,e10-readme,1.0,salida de PPAP,No tienen README.
+K-016,,"Documentación: README, CLAUDE.md, manifest",Media,Agregar,Abierto,10,e10-readme,0.3,—,"Documenta 8 módulos, pero no el SGI ni sus satélites, que es el módulo más grande del repo."
+K-017,,Documentación técnica generada,Media,Agregar,Abierto,10,e10-tecnica,8.0,K-021,"Los 102 modelos propios tienen _description, pero solo 21 tienen docstring de clase."
+K-020,,Documentación técnica generada,Media,Documentar,Abierto,10,e10-tecnica,1.0,—,No documentados.
+K-021,,Documentación técnica generada,Alta,Agregar,Abierto,10,e10-tecnica,12.0,—,"No hay diccionario de datos, matriz de seguridad, lista de crons, lista de parámetros ni árbol de menús vigentes."
+C-008,,Acción en producción,Media,Corregir,Acción de Jose,Prod,producción,2.0,—,"Anomalías: 5556 (borrador, clave inválida, duplica a 3518 P-A14);"
+F-001,F-002,Acción en producción,Crítica,Corregir,Acción de Jose,Prod,producción,0.5,Respaldo previo (export CSV),"MCP con CRUD en modelos técnicos. Jose lo aplica en Ajustes (30 solo lectura + 9 desactivados, mcp_propuesta.csv); después qb_mcp_politica."
+F-020,,Acción en producción,Baja,Decidir,Decisión pendiente,Prod,producción,0.3,Pregunta 7,La regla usa child_of user.employee_ids.department_id.
+H-001,I-010,Acción en producción,Alta,Decidir,Acción de Jose,Prod,producción,6.0,Jose,50 de 310 actividades las ejecuta un puesto o familia donde ningún empleado tiene usuario: a nadie le llegan en Mis pendientes y la adherencia por usuario no se puede me…
+H-002,,Acción en producción,Alta,Corregir,Acción de Jose,Prod,producción,1.0,—,El dueño de C4 no tiene usuario.
+H-003,,Acción en producción,Alta,Corregir,Acción de Jose,Prod,producción,2.0,—,15 actividades periódicas sin mes/día: Jose cargó 13 (verificado por MCP); faltan E2.21 (MAST) y S4.30 (RH).
+H-004,,Acción en producción,Alta,Decidir,Acción de Jose,Prod,producción,4.0,Jose,52 entregables no encuentran nada: 46 nunca y 6 en los últimos 90 días.
+H-008,,Acción en producción,Media,Corregir,Abierto,Prod,producción,2.0,—,Entregables que miden lo mismo.
+H-009,,Acción en producción,Media,Corregir,Abierto,Prod,producción,1.0,—,El criterio de «completo» nunca se cumple.
+H-011,,Acción en producción,Media,Corregir,Abierto,Prod,producción,6.0,—,50 actividades no entregan nada.
+H-012,,Acción en producción,Media,Corregir,Abierto,Prod,producción,12.0,H-007,"100 actividades se hacen en Odoo pero se miden «a mano», así que su estado es pendiente para siempre."
+H-013,,Acción en producción,Media,Corregir,Acción de Jose,Prod,producción,1.0,—,Las 3 hojas de checklist no generan nada.
+H-015,,Acción en producción,Media,Corregir,Acción de Jose,Prod,producción,2.0,H-002,487 de 583 vigentes no tienen «Responsable SGI»;
+H-019,,Acción en producción,Baja,Corregir,Abierto,Prod,producción,2.0,C-006,"10 entregables llevan la clave en el nombre, por ejemplo «(F-P-D01-03)», «(F-P-A30-05)» o «(F-IT-P-A10-01-01)» (367, 396, 403, 411, 448, 472, 479, 495, 506, 513), y ning…"
+I-011,,Acción en producción,Media,Decidir,Decisión pendiente,Prod,producción,1.0,"Pregunta 4, F-012, E-009",El auditor no existe y MAST se audita sola.
+I-017,,Acción en producción,Media,Decidir,Decisión pendiente,Prod,producción,0.5,"Pregunta 2, H-002",Tres usuarios del SGI sin empleado.
+I-018,,Acción en producción,Baja,Decidir,Acción de Jose,Prod,producción,0.3,"F-021, D-001",El contador externo ve de más.
+I-019,,Acción en producción,Baja,Decidir,Acción de Jose,Prod,producción,0.5,H-004,"Toda la sección está vacía para todos los roles: 0 incidentes, planes de emergencia, simulacros, recorridos, exámenes, responsivas de EPP y hojas de checklist."
+I-020,,Acción en producción,Baja,Decidir,Acción de Jose,Prod,producción,0.3,"F-020, I-010",El grupo de captura no corresponde al mapa.
+L-001,,Acción en producción,Crítica,Corregir,Resuelto en producción,Prod,producción,1.0,—,"P-I01 abierto a todos: acceso cerrado por Jose (3560 access_internal=none, verificado 2026-09-29). Falta rotar credenciales (Sistemas)."
