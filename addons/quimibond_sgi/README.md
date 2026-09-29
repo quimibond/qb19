@@ -1882,6 +1882,37 @@ Ahora es una propuesta **estructurada** (`sgi.activity.change`):
 - No deja enviar sin motivo, sin cambios (al cambiar) ni sin resumen y
   proceso (al agregar). Se retira el asistente de texto `sgi.mp.change.wizard`.
 
+### Del Dropbox a Odoo: formatos y documentos anteriores (56.39.0)
+
+Entrega 6 de la auditoría 2026-09, bloque 1 (E-001, E-004, E-005, L-010…L-014,
+C-011). Sección permanente **Procesos → Del Dropbox a Odoo** (decisión 7):
+
+- **Formatos y documentos anteriores** es el menú 2419 y la acción 3870 de
+  «Migración de formatos», movidos (mismo id). Ahora trae formatos, F-IT,
+  formularios de Odoo, instructivos, DAT, anexos, protocolos, reglamentos,
+  manual y diagrama, también los obsoletos (filtro «No obsoletos» por
+  defecto, se puede quitar). Filtros: Sin clase, Sin liga real, Clase y estado
+  no cuadran, Familia sin procedimiento. «Abrir en Odoo» lleva al menú o al
+  worksheet que lo sustituye.
+- **Todos consultan; solo el Jefe MAST escribe** la clave anterior, la clase,
+  el estado, el destino, el menú, el worksheet y «Lo sustituye el proceso»:
+  guarda en `documents.document.create/write` (L-010) y celdas de solo
+  lectura para los demás (E-005). El sistema escribe con `sudo` (cron de
+  menús, cambios documentales, baja al entrar en vigor el proceso); no hay
+  contexto de excepción, porque el contexto lo controla el cliente por RPC.
+- `sgi_destination_label` (C-011): menú > worksheet > texto.
+- `sgi_legacy_family` (L-014): la familia del Dropbox por la clave anterior
+  (`F-P-A23-04` → `P-A23`), para agrupar las familias sin procedimiento.
+- El cron de medición resuelve el menú desde el texto también para los
+  documentos de clase A o B (L-011), sin P-I01 ni su familia.
+- Al escribir clase o estado (L-012/L-013): «Migrado» exige clase A, B o C con
+  destino; la clase D es «No aplica»; A, B o C nunca son «No aplica».
+- Migración: instructivos, DAT, anexos, protocolos y reglamentos sin clase
+  pasan a clase D y «No aplica» (respuesta 3 de Jose a L), con respaldo en
+  `documents_document_bak_563900` y sin tocar P-I01 ni su familia.
+- `quimibond_sgi.dropbox_excluded_codes`: claves fuera de la sección (P-I01
+  siempre, aunque el parámetro se vacíe).
+
 ### Mis pendientes con todo adentro (56.36.0, D-04)
 
 Entrega 8a de la auditoría 2026-09 (G-001, I-001, I-006, I-007, I-012,

@@ -80,6 +80,7 @@
                                  documento manda); visible en todo procedimiento. -->
                             <field name="sgi_replaced_by_process_id"
                                    invisible="sgi_doc_type != 'procedimiento' and not sgi_replaced_by_process_id"
+                                   readonly="not sgi_can_edit_transition"
                                    options="{'no_create': True}"/>
                             <field name="sgi_pilot_end_date" invisible="sgi_state != 'piloto'"/>
                             <field name="sgi_owner_id"/>
@@ -117,8 +118,10 @@
                     </group>
                     <group string="Dónde vive en Odoo (este «documento» es una vista, no un archivo)"
                            invisible="sgi_doc_type != 'formulario_odoo'">
-                        <field name="sgi_odoo_menu_id" options="{'no_create': True}"/>
-                        <field name="sgi_migration_point_id" string="…o el worksheet de Calidad"/>
+                        <field name="sgi_odoo_menu_id" options="{'no_create': True}"
+                               readonly="not sgi_can_edit_transition"/>
+                        <field name="sgi_migration_point_id" string="…o el worksheet de Calidad"
+                               readonly="not sgi_can_edit_transition"/>
                         <div class="text-muted" colspan="2">
                             El formato ya no se llena en papel ni en PDF: se captura
                             directo en Odoo. Liga aquí su menú (o su worksheet) y el
@@ -131,14 +134,19 @@
                               invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo', 'procedimiento')">
                             <group>
                                 <group>
-                                    <field name="sgi_migration_class"/>
-                                    <field name="sgi_migration_state"/>
+                                    <field name="sgi_migration_class"
+                                           readonly="not sgi_can_edit_transition"/>
+                                    <field name="sgi_migration_state"
+                                           readonly="not sgi_can_edit_transition"/>
                                 </group>
                                 <group>
-                                    <field name="sgi_migration_target"/>
-                                    <field name="sgi_migration_point_id"/>
+                                    <field name="sgi_migration_target"
+                                           readonly="not sgi_can_edit_transition"/>
+                                    <field name="sgi_migration_point_id"
+                                           readonly="not sgi_can_edit_transition"/>
                                     <field name="sgi_odoo_menu_id"
                                            string="Menú de Odoo destino"
+                                           readonly="not sgi_can_edit_transition"
                                            options="{'no_create': True}"/>
                                     <button name="action_sgi_open_migration_point"
                                             type="object" string="Abrir worksheet"
@@ -219,6 +227,8 @@
                         </page>
                     </notebook>
                     <field name="attachment_id" invisible="1"/>
+                    <!-- E-005 (56.39.0): los datos de transición son de MAST. -->
+                    <field name="sgi_can_edit_transition" invisible="1"/>
                 </sheet>
                 <chatter/>
             </form>
@@ -412,37 +422,52 @@
         <field name="code">action = records.action_sgi_assign_new_code()</field>
     </record>
 
-    <!-- ============ MIGRACIÓN DE FORMATOS A ODOO ============ -->
+    <!-- ============ DEL DROPBOX A ODOO: FORMATOS Y DOCUMENTOS ANTERIORES ============
+         Entrega 6 (56.39.0; E-004, E-005, C-011, L-011…L-014). Antes «Migración
+         de formatos» (mismos xmlids: acción 3870 y menú 2419 conservan su id).
+         Todos consultan; los datos de transición los edita solo el Jefe MAST
+         (readonly en la vista y guarda L-010 en el servidor). -->
     <record id="sgi_migration_view_list" model="ir.ui.view">
         <field name="name">sgi.migration.formatos.list</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <!-- 7.4 (56.13.0): multi_edit: MAST selecciona varios renglones y
-                 asigna la clase (o el destino, o el estado) a todos de una vez. -->
-            <list string="Migración de formatos" multi_edit="1"
+            <!-- 7.4 (56.13.0): multi_edit para MAST (clase, destino o estado a
+                 varios renglones); para los demás las celdas son de solo
+                 lectura (sgi_can_edit_transition). -->
+            <list string="Formatos y documentos anteriores" multi_edit="1" create="0" delete="0"
+                  decoration-muted="sgi_state == 'obsoleto'"
                   decoration-success="sgi_migration_state in ('migrado', 'baja')"
-                  decoration-info="sgi_migration_state == 'en_curso'"
-                  decoration-muted="sgi_migration_state == 'na'">
-                <field name="sgi_code" string="Clave"/>
-                <field name="sgi_previous_code" string="Clave del Dropbox" optional="show"/>
-                <field name="name" string="Formato"/>
-                <field name="sgi_area_id" optional="show"/>
-                <field name="sgi_process_id" optional="hide"/>
-                <field name="sgi_migration_class"/>
-                <field name="sgi_migration_target"/>
-                <field name="sgi_migration_point_id" optional="show"/>
-                <field name="sgi_odoo_menu_id" optional="show"/>
-                <field name="sgi_replaced_by_process_id" optional="hide"
-                       options="{'no_create': True}"/>
+                  decoration-info="sgi_migration_state == 'en_curso'">
+                <field name="sgi_can_edit_transition" column_invisible="1"/>
+                <field name="sgi_doc_type" column_invisible="1"/>
+                <field name="sgi_previous_code" string="Clave anterior" readonly="1"/>
+                <field name="sgi_title" string="Título" readonly="1"/>
+                <field name="sgi_code" string="Clave actual" optional="hide" readonly="1"/>
+                <field name="sgi_doc_type_id" string="Tipo" optional="show" readonly="1"/>
+                <field name="sgi_legacy_family" optional="hide" readonly="1"/>
+                <field name="sgi_process_id" optional="show" readonly="1"/>
+                <field name="sgi_state" optional="show" readonly="1" widget="badge"
+                       decoration-success="sgi_state == 'vigente'"
+                       decoration-warning="sgi_state == 'piloto'"/>
+                <field name="sgi_migration_class" readonly="not sgi_can_edit_transition"/>
+                <field name="sgi_destination_label"/>
+                <field name="sgi_migration_target" optional="hide"
+                       readonly="not sgi_can_edit_transition"/>
+                <field name="sgi_migration_point_id" optional="hide"
+                       readonly="not sgi_can_edit_transition"/>
+                <field name="sgi_odoo_menu_id" optional="hide" options="{'no_create': True}"
+                       readonly="not sgi_can_edit_transition"/>
                 <field name="sgi_migration_state" widget="badge"
+                       readonly="not sgi_can_edit_transition"
                        decoration-success="sgi_migration_state in ('migrado', 'baja')"
                        decoration-warning="sgi_migration_state == 'pendiente'"
                        decoration-info="sgi_migration_state == 'en_curso'"/>
-                <button name="action_sgi_open_migration_point" type="object"
-                        icon="fa-external-link" string="Abrir worksheet"
-                        title="Abrir worksheet" invisible="not sgi_migration_point_id"/>
+                <button name="action_sgi_open_odoo_form" type="object"
+                        icon="fa-external-link" string="Abrir en Odoo" title="Abrir en Odoo"
+                        invisible="not sgi_odoo_menu_id and not sgi_migration_point_id"/>
                 <button name="action_sgi_view_file" type="object" icon="fa-file-pdf-o"
-                        string="Ver archivo" title="Ver archivo"/>
+                        string="Ver archivo" title="Ver archivo"
+                        invisible="sgi_doc_type == 'formulario_odoo'"/>
             </list>
         </field>
     </record>
@@ -451,20 +476,22 @@
         <field name="name">sgi.migration.formatos.kanban</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="sgi_migration_state" string="Migración de formatos">
-                <field name="sgi_code"/>
+            <kanban default_group_by="sgi_migration_state" string="Formatos y documentos anteriores"
+                    create="0" delete="0" group_create="0" group_delete="0" group_edit="0"
+                    records_draggable="0">
+                <field name="sgi_previous_code"/>
                 <field name="sgi_migration_class"/>
-                <field name="sgi_migration_target"/>
+                <field name="sgi_destination_label"/>
                 <templates>
                     <t t-name="card">
                         <div class="p-2">
-                            <strong><field name="sgi_code"/></strong>
-                            <div><field name="name"/></div>
+                            <strong><field name="sgi_previous_code"/></strong>
+                            <div><field name="sgi_title"/></div>
                             <div class="text-muted small">
-                                <field name="sgi_migration_class"/>
+                                <field name="sgi_doc_type_id"/> · <field name="sgi_migration_class"/>
                             </div>
                             <div class="text-muted small">
-                                <field name="sgi_migration_target"/>
+                                <field name="sgi_destination_label"/>
                             </div>
                         </div>
                     </t>
@@ -473,51 +500,130 @@
         </field>
     </record>
 
+    <record id="sgi_dropbox_document_view_form" model="ir.ui.view">
+        <field name="name">sgi.dropbox.document.form</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="Documento anterior" create="0" delete="0" duplicate="0">
+                <header>
+                    <button name="action_sgi_open_odoo_form" type="object" string="Abrir en Odoo"
+                            class="btn-primary" icon="fa-external-link"
+                            invisible="not sgi_odoo_menu_id and not sgi_migration_point_id"/>
+                    <button name="action_sgi_view_file" type="object" string="Ver el anterior"
+                            icon="fa-file-pdf-o" invisible="sgi_doc_type == 'formulario_odoo'"/>
+                    <button name="action_sgi_resolve_odoo_menu" type="object"
+                            string="Resolver menú desde el texto" icon="fa-link"
+                            invisible="sgi_odoo_menu_id or not sgi_migration_target"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <field name="sgi_migration_state" widget="statusbar"
+                           statusbar_visible="pendiente,en_curso,migrado,na"/>
+                </header>
+                <sheet>
+                    <field name="sgi_can_edit_transition" invisible="1"/>
+                    <field name="sgi_doc_type" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="sgi_previous_code" readonly="1" placeholder="Sin clave anterior"/></h1>
+                        <h3><field name="sgi_title" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="El documento">
+                            <field name="sgi_doc_type_id" readonly="1"/>
+                            <field name="sgi_code" string="Clave actual" readonly="1"/>
+                            <field name="sgi_revision" readonly="1"/>
+                            <field name="sgi_state" readonly="1"/>
+                            <field name="sgi_obsolete_reason" readonly="1" invisible="not sgi_obsolete_reason"/>
+                            <field name="sgi_process_id" readonly="1"/>
+                            <field name="sgi_legacy_family" readonly="1"/>
+                            <field name="sgi_parent_document_id" readonly="1"/>
+                        </group>
+                        <group string="Dónde vive en Odoo">
+                            <field name="sgi_destination_label"/>
+                            <field name="sgi_migration_class" readonly="not sgi_can_edit_transition"/>
+                            <field name="sgi_migration_state" readonly="not sgi_can_edit_transition"/>
+                            <field name="sgi_migration_target" readonly="not sgi_can_edit_transition"/>
+                            <field name="sgi_odoo_menu_id" options="{'no_create': True}"
+                                   readonly="not sgi_can_edit_transition"/>
+                            <field name="sgi_migration_point_id" options="{'no_create': True}"
+                                   readonly="not sgi_can_edit_transition"/>
+                        </group>
+                    </group>
+                    <div class="text-muted">
+                        Clase A: una transacción de Odoo lo sustituye. B: un punto de
+                        control con hoja de trabajo. C: Odoo lo imprime como reporte.
+                        D: sigue como documento controlado («No aplica (se queda)»).
+                        Solo el Jefe MAST cambia estos datos.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
     <record id="sgi_migration_view_search" model="ir.ui.view">
         <field name="name">sgi.migration.formatos.search</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <search string="Migración de formatos">
-                <field name="sgi_code"/>
-                <field name="name"/>
+            <search string="Formatos y documentos anteriores">
+                <field name="sgi_previous_code" string="Clave o título"
+                       filter_domain="['|', '|', ('sgi_previous_code', 'ilike', self), ('sgi_code', 'ilike', self), ('sgi_title', 'ilike', self)]"/>
+                <field name="sgi_legacy_family"/>
                 <field name="sgi_migration_target"/>
+                <field name="sgi_doc_type_id"/>
+                <field name="sgi_process_id"/>
+                <filter name="no_obsoletos" string="No obsoletos"
+                        domain="[('sgi_state', '!=', 'obsoleto')]"/>
+                <separator/>
                 <filter name="mig_pendiente" string="Pendientes"
                         domain="[('sgi_migration_state', '=', 'pendiente')]"/>
                 <filter name="mig_en_curso" string="En curso"
                         domain="[('sgi_migration_state', '=', 'en_curso')]"/>
                 <filter name="mig_hechos" string="Migrados / baja"
                         domain="[('sgi_migration_state', 'in', ('migrado', 'baja'))]"/>
+                <filter name="mig_na" string="Siguen como documento"
+                        domain="[('sgi_migration_state', '=', 'na')]"/>
                 <separator/>
                 <filter name="mig_clase_a" string="Clase A" domain="[('sgi_migration_class', '=', 'a')]"/>
                 <filter name="mig_clase_b" string="Clase B" domain="[('sgi_migration_class', '=', 'b')]"/>
-                <filter name="mig_sin_clase" string="Sin clasificar"
+                <filter name="mig_clase_c" string="Clase C" domain="[('sgi_migration_class', '=', 'c')]"/>
+                <filter name="mig_clase_d" string="Clase D" domain="[('sgi_migration_class', '=', 'd')]"/>
+                <separator/>
+                <filter name="mig_sin_clase" string="Sin clase"
                         domain="[('sgi_migration_class', 'in', (False, 'x'))]"/>
+                <filter name="mig_sin_liga" string="Sin liga real"
+                        domain="[('sgi_migration_state', 'in', ('migrado', 'en_curso')), ('sgi_odoo_menu_id', '=', False), ('sgi_migration_point_id', '=', False)]"/>
+                <filter name="mig_no_cuadra" string="Clase y estado no cuadran"
+                        domain="['|', '&amp;', ('sgi_migration_class', '=', 'd'), ('sgi_migration_state', '!=', 'na'), '&amp;', ('sgi_migration_class', 'in', ('a', 'b', 'c')), ('sgi_migration_state', '=', 'na')]"/>
+                <filter name="mig_sin_padre" string="Familia sin procedimiento"
+                        domain="[('sgi_legacy_family', '!=', False), ('sgi_parent_document_id', '=', False)]"/>
                 <group>
                     <filter name="group_mig_state" string="Estado" context="{'group_by': 'sgi_migration_state'}"/>
                     <filter name="group_mig_class" string="Clase" context="{'group_by': 'sgi_migration_class'}"/>
-                    <filter name="group_mig_area" string="Área" context="{'group_by': 'sgi_area_id'}"/>
+                    <filter name="group_mig_type" string="Tipo" context="{'group_by': 'sgi_doc_type_id'}"/>
+                    <filter name="group_mig_family" string="Familia" context="{'group_by': 'sgi_legacy_family'}"/>
+                    <filter name="group_mig_process" string="Proceso" context="{'group_by': 'sgi_process_id'}"/>
                 </group>
             </search>
         </field>
     </record>
 
     <record id="sgi_migration_action" model="ir.actions.act_window">
-        <field name="name">Migración de formatos a Odoo</field>
+        <field name="name">Formatos y documentos anteriores</field>
         <field name="res_model">documents.document</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="domain">[('sgi_is_controlled', '=', True),
-            ('sgi_doc_type', 'in', ('formato', 'formato_it', 'formulario_odoo')),
-            ('sgi_state', '!=', 'obsoleto')]</field>
+            ('sgi_doc_type', 'in', ('formato', 'formato_it', 'formulario_odoo', 'instructivo',
+                                    'dat', 'anexo', 'protocolo', 'reglamento', 'miid', 'diagrama'))]</field>
+        <field name="context">{'search_default_no_obsoletos': 1}</field>
         <field name="search_view_id" ref="sgi_migration_view_search"/>
         <field name="view_ids" eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_migration_view_kanban')}),
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_migration_view_list')}),
-            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_dropbox_document_view_form')})]"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin formatos por migrar</p>
-            <p>Aquí se da seguimiento a la migración de cada formato del SGI a su
-            sustituto en Odoo (transacción, hoja de trabajo de Calidad, reporte, o
-            permanece como documento).</p>
+            <p class="o_view_nocontent_smiling_face">Ningún formato o documento anterior con este filtro</p>
+            <p>Cada formato, instructivo, DAT, anexo, protocolo y reglamento del Dropbox:
+            en qué estado está y dónde vive hoy en Odoo. Busca por la clave anterior
+            o por el título; «Abrir en Odoo» lleva a la pantalla que lo sustituye.</p>
         </field>
     </record>
 </odoo>
