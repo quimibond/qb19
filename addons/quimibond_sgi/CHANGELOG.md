@@ -13,6 +13,40 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.4.0 — 2026-09-29
+
+**Retirado:** el mapa viejo de procesos sale del módulo (A-002 + B-021,
+decisión 6: el SGI se instala sin procesos). `data/sgi_process_data.xml`
+(21 procesos MP-*/P-* y 19 flujos) y `data/sgi_process_flows_extra.xml`
+(18 flujos) dejan el manifest y pasan a `docs/historico/quimibond_sgi_data/`.
+
+**Retirado:** la siembra del piloto P-VEN (`seed_procedure_ventas`, sus
+constantes `_SGI_VENTAS_*` y `_sgi_vigente_docs_by_codes`) y
+`seed_process_purposes` con `_SGI_PROCESS_PURPOSES` (A-003, B-002).
+`harden_noupdate` ya no lista `sgi.process` ni `sgi.process.flow`. Los scripts
+de un solo uso `carga_documental.py`, `post_carga_documental.py` y
+`reporte_telas_rollout.py` salen de `tools/` del módulo a
+`docs/historico/quimibond_sgi_tools/` (B-018).
+
+**Cambiado:** las pruebas crean sus propios procesos (`XPM-A`, `XPM-B`) en
+lugar de usar `proc_*`/`flow_*` o «el primer proceso» de la base
+(`test_process_map`, `test_process_map_46`, `test_flows_48`, `test_ola1`,
+`test_ola2`, `test_format_map_documento`; J-019). Se retira `TestProcedureVentasSeed` con su siembra, y
+`test_flows_48.test_01` (verificaba los flujos del XML). Prueba nueva
+`test_procesos_viejos`.
+
+**Migración (pre, `migrations/19.0.57.4.0/pre-migrate.py`):** los 58 XML IDs
+(21 `sgi.process`, 37 `sgi.process.flow`) pasan a `__export__` con prefijo
+`quimibond_sgi_legado_`; si alguno estuviera activo se archiva. No borra nada.
+
+**Migración (post, `migrations/19.0.57.4.0/post-migrate.py`):** respaldo CSV
+(adjunto en el proceso) de las 7 filas de `sgi.process.responsibility` del
+proceso archivado P-VEN. Las filas se quedan: el modelo no tiene `active`.
+
+**Datos de producción (2026-09-29, lectura):** 58 XML IDs `quimibond_sgi`
+sobre procesos (21) y flujos (37), todos archivados; `sgi.process` 14 activos
+y 25 archivados; `sgi.process.flow` 50 activos y 37 archivados.
+
 ## 19.0.57.3.0 — 2026-09-29
 
 **Retirado:** las 39 carpetas de migración de 19.0.13.7.0 a 19.0.56.24.0

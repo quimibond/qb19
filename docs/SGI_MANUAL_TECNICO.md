@@ -58,7 +58,7 @@ views/     una por modelo + sgi_menus.xml + dashboards + hooks de mapa
 report/    NC (F-P-G05-01), NEWS (F-P-G01-16), CoA, AMEF, incidente, auditoría,
            acta de Revisión por la Dirección
 security/  sgi_security.xml (grupos) + ir.model.access.csv
-tools/     carga_documental.py, post_carga_documental.py, reporte_telas_rollout.py
+tools/     sgi_menu_tree.txt (los scripts de carga están en docs/historico/quimibond_sgi_tools/ desde 57.4.0)
 tests/     ~64 tests (@tagged post_install)
 demo/      sgi_demo_fase3.xml (solo bases con demo)
 ```
@@ -328,7 +328,7 @@ F-P-G05-01 (NC individual) · F-P-G01-16 (NEWS) · CoA por lote (bilingüe, chec
 Revisión por la Dirección. Regla QWeb 19: nada de `t-field` directo en `li`/`td`
 (envolver en `span`).
 
-## 7. Herramientas de migración (`tools/`, se corren con `odoo-bin shell`)
+## 7. Herramientas de migración (`docs/historico/quimibond_sgi_tools/` desde 57.4.0, se corrían con `odoo-bin shell`; `post_carga_documental.py` liga a procesos viejos y no se vuelve a correr)
 
 | Script | Qué hace | Claves de uso |
 |---|---|---|

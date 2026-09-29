@@ -183,8 +183,10 @@ class TestOla1Recurrence(TransactionCase):
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
-        cls.proc = cls.env['sgi.process'].search([], limit=1)
-        cls.proc2 = cls.env['sgi.process'].search([('id', '!=', cls.proc.id)], limit=1)
+        # Procesos propios: el SGI se instala vacío (decisión 6, J-019).
+        Process = cls.env['sgi.process']
+        cls.proc = Process.create({'code': 'XPM-A', 'name': 'Proceso XPM A'})
+        cls.proc2 = Process.create({'code': 'XPM-B', 'name': 'Proceso XPM B'})
         cls.clause = cls.env['sgi.norm.clause'].search([], limit=1)
 
     def _nc(self, **vals):
@@ -335,7 +337,9 @@ class TestOla1AuditFinding(TransactionCase):
         super().setUpClass()
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
-        cls.proc = cls.env['sgi.process'].search([], limit=1)
+        # Proceso propio: el SGI se instala vacío (decisión 6, J-019).
+        cls.proc = cls.env['sgi.process'].create(
+            {'code': 'XPM-A', 'name': 'Proceso XPM A'})
         cls.clause = cls.env['sgi.norm.clause'].search([], limit=1)
         cls.sgi_user = sgi_test_user(cls.env)
 

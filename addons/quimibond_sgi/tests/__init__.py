@@ -104,3 +104,4 @@ from . import test_calibracion_avisos
 from . import test_dropbox_section
 from . import test_legacy_routine
 from . import test_dropbox_key
+from . import test_procesos_viejos

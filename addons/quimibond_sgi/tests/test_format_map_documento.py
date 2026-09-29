@@ -118,7 +118,7 @@ class TestFormatMapDocumento(TransactionCase):
         # Pie del procedimiento impreso.
         g0102 = self._doc('F-P-G01-02', 7)
         self.env.ref('quimibond_sgi.format_ref_procedure_print').document_id = g0102
-        process = self.env['sgi.process'].search([], limit=1)
-        if process:
-            self.assertEqual(process._sgi_format_parts('format_ref_procedure_print'),
-                             ('F-P-G01-02', '07'))
+        # Proceso propio: el SGI se instala vacío (decisión 6, J-019).
+        process = self.env['sgi.process'].create({'code': 'XPM-A', 'name': 'Proceso XPM A'})
+        self.assertEqual(process._sgi_format_parts('format_ref_procedure_print'),
+                         ('F-P-G01-02', '07'))
