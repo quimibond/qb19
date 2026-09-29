@@ -1,0 +1,6 @@
+Archivo: rutinas_A.xlsx
+Filas: 815 · estados: {'cubierta': 709, 'reemplazada': 68, 'pendiente': 38} · procedimientos: 49
+  aviso  pendientes     1
+  [aviso] pendientes fila   : 38 pendientes sin decisión (crear actividad / regla / eliminar)
+RESULTADO: OK (0 errores, 1 avisos)
+exit=0
