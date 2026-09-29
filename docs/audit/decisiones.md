@@ -154,7 +154,7 @@ Faltan dos, que dependen de fechas externas: **E2.21** (revalidación de Protecc
 
 1. **Grupo «Salud ocupacional (SGI)»:** entra **solo Miguel Medina** (usuario 88, Coordinador de RH). Nadie más: ni Areli ni Dirección.
    - Se asigna en producción **después** de desplegar la entrega 1, que es la que crea el grupo. Va en «Acciones en producción».
-   - Con esto se resuelve I-014: el usuario 88 es `quimibond_sgi.rh_user_id`, así que los avisos de exámenes le llegan a alguien que sí puede abrirlos.
+   - Con esto se resuelve I-013 (b), no I-014 (corrección de la consolidación): el usuario 88 es `quimibond_sgi.rh_user_id`, así que los avisos de exámenes le llegan a alguien que sí puede abrirlos.
 2. **Flujo de ramas (corregido por Jose el mismo día; no hay rama `staging`):** rama de desarrollo de cada entrega (p. ej. `claude/sgi-entrega-1`) → PR a **`main`** → PR de `main` a **`quimibond`** (producción).
    - La instalación limpia y las pruebas del SGI corren en el **build de desarrollo de la rama de la entrega**, antes del PR a `main`. Para la entrega 1: `test_cleanup_45`, `test_update_respects_mast` y `test_security_entrega1`.
    - `main` hace de paso previo a producción: ahí se prueba la actualización sobre la copia de producción. Ver `docs/RUNBOOK_DESPLIEGUE.md`.
