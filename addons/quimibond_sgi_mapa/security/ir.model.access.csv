@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sgi_mapa_load_wizard_admin,sgi.mapa.load.wizard.admin,model_sgi_mapa_load_wizard,quimibond_sgi.group_sgi_admin,1,1,1,1
+access_sgi_mapa_load_wizard_line_admin,sgi.mapa.load.wizard.line.admin,model_sgi_mapa_load_wizard_line,quimibond_sgi.group_sgi_admin,1,1,1,1
