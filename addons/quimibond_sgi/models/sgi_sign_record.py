@@ -21,6 +21,17 @@ class SgiSignRecordMixin(models.AbstractModel):
     sgi_sign_count = fields.Integer(compute='_compute_sgi_sign_requests')
     sgi_signed = fields.Boolean(string="Firmado", compute='_compute_sgi_sign_requests',
                                 search='_search_sgi_signed')
+    sgi_can_sign = fields.Boolean(
+        compute='_compute_sgi_can_sign',
+        help="El usuario puede pedir firma desde este registro: es Usuario SGI y "
+             "tiene acceso a la app Firma electrónica (I-014, auditoría 2026-09).")
+
+    @api.depends_context('uid')
+    def _compute_sgi_can_sign(self):
+        user = self.env.user
+        can = user.has_group('quimibond_sgi.group_sgi_user') and user.has_group('sign.group_sign_user')
+        for rec in self:
+            rec.sgi_can_sign = can
 
     @api.model
     def _sgi_sign_domain(self, records):
@@ -95,6 +106,7 @@ class ProductProductSign(models.Model):
     _inherit = 'product.product'
 
     sgi_sign_count = fields.Integer(related='product_tmpl_id.sgi_sign_count')
+    sgi_can_sign = fields.Boolean(related='product_tmpl_id.sgi_can_sign')
 
     def action_sgi_sign(self):
         self.ensure_one()

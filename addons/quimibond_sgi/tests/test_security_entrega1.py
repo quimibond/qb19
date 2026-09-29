@@ -75,6 +75,16 @@ class TestSecurityEntrega1(TransactionCase):
             ('model_id.model', '=', 'sgi.sign.request.wizard')]).mapped('group_id')
         self.assertEqual(groups, self.env.ref('quimibond_sgi.group_sgi_user'))
 
+    def test_04b_sign_button_only_for_who_can_sign(self):
+        """I-014: el botón «Firmar» solo se ve si además hay acceso a Firma
+        electrónica; antes lo veía cualquier Usuario SGI y fallaba al confirmar."""
+        self.assertFalse(self.product.with_user(self.sgi_user).sgi_can_sign)
+        signer = new_test_user(self.env, login='e1_signer', email='e1.signer@example.com',
+                               groups='base.group_user,quimibond_sgi.group_sgi_user,sign.group_sign_user')
+        self.assertTrue(self.product.with_user(signer).sgi_can_sign)
+        variant = self.product.product_variant_id
+        self.assertTrue(variant.with_user(signer).sgi_can_sign)
+
     # ---- F-004 -------------------------------------------------------------
     def test_05_health_group_is_empty_on_install(self):
         group = self.env.ref('quimibond_sgi.group_sgi_health')
