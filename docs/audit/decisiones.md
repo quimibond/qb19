@@ -287,3 +287,19 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - **`quimibond_sgi_mapa`:** no se instala en producción, solo en staging y en una recuperación. Instalarlo no crea registros; su manifest solo trae ACL y vista.
 - **Entrega 6:** se construye en su rama. No se hace merge hasta que producción esté estable con los 4 lotes.
 - **C-008 y E2.31/E2.32:** Jose los corrige a mano, por MCP o en pantalla, con la lista que se le entregó.
+
+## 2026-09-29 — C-008 hecho y listo para producción
+
+- **C-008, hecho por Jose por MCP** (verificado):
+  - 3359, 4995 y 5119 archivados.
+  - 4022 con clave `F-P-P01-02`.
+  - 3760 como formato.
+  - 3644 sigue como formato, porque la validación no deja tipo instructivo con clave `F-P-*`. Después de la 56.32.0 se le asigna `IT-C4-nn` y en el mismo paso se le cambia el tipo.
+- **Areli, en pantalla:**
+  - subir el 5556 como versión nueva del 3518 y archivarlo;
+  - ligar el F-P-A28-13.
+
+  Ninguno de los dos bloquea el despliegue.
+- **E2.31 y E2.32:** sin cambios. El escalamiento a Dirección abre la actividad, no los datos de salud.
+- `main` quedó sincronizado con `quimibond` (quimibond/qb19#467). El PR de producción es quimibond/qb19#468.
+- Entrega 6 en quimibond/qb19#469, sin merge hasta que producción esté estable.
