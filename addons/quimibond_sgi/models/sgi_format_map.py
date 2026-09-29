@@ -263,11 +263,8 @@ class SgiConfig(models.AbstractModel):
         # producto en proceso» (151) entra cuando producción lo confirme.
         'quimibond_sgi.rework_picking_type_ids': '106,107',
         # 57.14.0 (indicadores 2): categorías de producto terminado de C1-04
-        # (319 «Producto Terminado», con sus hijas) y segundos entre el fin de
-        # la operación y el cierre de la orden que en C4-01 cuentan como «el
-        # cierre terminó la operación» (sin término propio).
+        # (319 «Producto Terminado», con sus hijas).
         'quimibond_sgi.finished_product_categ_ids': '319',
-        'quimibond_sgi.c4_stamp_seconds': '60',
         # I-6: día hábil del mes en que se miden los indicadores mensuales.
         'quimibond_sgi.monthly_measure_business_day': '3',
         # I-4: día del mes siguiente en que vence la causa y acción de un rojo.

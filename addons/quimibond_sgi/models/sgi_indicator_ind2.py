@@ -12,16 +12,19 @@ registros que se guardan en la medición, como I-1/I-3) y su ``_calc_<modo>``.
   (``l10n_mx_edi.document`` en ``payment_sent`` del asiento del pago) se
   timbró a más tardar el día 5 del mes siguiente al pago, hora de México.
   Pago sin complemento timbrado = fuera de plazo.
-- S1-05 ``desviacion_precio_compra``: Σ (precio pagado − precio de la OC) ×
+- S1-05 ``desviacion_precio_compra``: Σ |precio pagado − precio de la OC| ×
   cantidad ÷ importe de esas líneas, en líneas de factura de proveedor
-  publicadas que vienen de una OC. Las que no traen OC quedan fuera y se
-  cuentan en la nota.
-- C4-01 ``ordenes_cerradas_48h``: órdenes cuyo término real (la última
-  ``mrp.workorder.date_finished`` de sus operaciones) cae en el periodo,
-  cerradas (``mrp.production.date_finished`` en estado hecho) a más tardar
-  48 h después. Si la operación terminó en el mismo instante del cierre (el
-  cierre la terminó, ``quimibond_sgi.c4_stamp_seconds``), la orden no tiene
-  término propio y queda fuera, contada en la nota.
+  publicadas que vienen de una OC (decisión de Jose: valor absoluto). La nota
+  separa lo pagado de más, lo pagado de menos y la cobertura (líneas e
+  importe con OC contra el total).
+- C4-01 ``ordenes_vencidas_48h`` (definición nueva de Jose, 2026-09-29):
+  foto al cierre de la semana. Órdenes de fabricación abiertas (ni hechas ni
+  canceladas) cuya fecha de fin programada (``mrp.production.date_finished``:
+  en Odoo 19 es la fecha esperada mientras la orden no está hecha, y la real
+  al cerrarla) venció hace más de 48 h ÷ órdenes abiertas. Como el estado de
+  una orden en el pasado no se puede reconstruir (al cerrarla,
+  ``date_finished`` pasa a ser la fecha real), solo se mide la semana recién
+  cerrada, dentro de los 7 días siguientes a su cierre; después, sin dato.
 - C1-04 ``desarrollos_vendidos``: artículos (``product.template`` de las
   categorías de ``quimibond_sgi.finished_product_categ_ids``) dados de alta
   en el mes de hace 6 meses con al menos un pedido de venta confirmado en los
@@ -33,16 +36,18 @@ registros que se guardan en la medición, como I-1/I-3) y su ``_calc_<modo>``.
   motivo, registradas (seguimiento nativo de ``departure_date`` y
   ``departure_reason_id``) a más tardar el día hábil siguiente a la salida.
 - S6-02 ``bajas_accesos_equipo``: bajas del periodo con las actividades
-  «Retirar accesos» y «Recoger equipo» (plan de salida de
-  ``data/sgi_offboarding_plan_data.xml``) hechas a más tardar el día hábil
+  «Retirar accesos» y «Recoger equipo» (tipos de
+  ``data/sgi_offboarding_plan_data.xml``, usados en el plan de producción
+  «Baja de personal»; ver ``_sgi_adopt_offboarding_plan``) hechas a más tardar el día hábil
   siguiente a la salida. Fecha de hecho: el mensaje que Odoo publica al marcar
   la actividad como hecha (``mail_activity_type_id``, subtipo Actividades);
   si no está, ``mail.activity.date_done`` de la actividad archivada.
 
-Los modos con plazo posterior al cierre del periodo (S2-01, C4-01, S4-01,
-S6-02) no se miden antes de que el plazo venza: la medición queda
+Los modos con plazo posterior al cierre del periodo (S2-01, S4-01, S6-02)
+y la foto de C4-01 no se miden antes de que el plazo venza: la medición queda
 «pendiente» y el cron diario la re-mide (``recompute_pending_measures``).
 """
+import logging
 from datetime import datetime, time, timedelta
 
 import pytz
@@ -53,24 +58,34 @@ from odoo import api, fields, models
 from .sgi_calendar import sgi_add_business_days
 from .sgi_indicator_i3 import _param_ids
 
+_logger = logging.getLogger(__name__)
+
 DEFAULT_TZ = 'America/Mexico_City'
 COMPLEMENT_DAY = 5          # día del mes siguiente (Art. 29 CFF, regla 2.7.1.32 RMF)
-CLOSE_HOURS = 48            # C4-01
+OVERDUE_HOURS = 48          # C4-01
+SNAPSHOT_DAYS = 7           # C4-01: días después del cierre en que la foto aún vale
 COHORT_MONTHS = 6           # C1-04
 FINISHED_CATEGS_PARAM = 'quimibond_sgi.finished_product_categ_ids'
-STAMP_SECONDS_PARAM = 'quimibond_sgi.c4_stamp_seconds'
 OFFBOARDING_TYPES = ('quimibond_sgi.sgi_activity_type_retirar_accesos',
                      'quimibond_sgi.sgi_activity_type_recoger_equipo')
+# Plan de producción «Baja de personal» (id 5): qué renglón recibe qué tipo.
+OFFBOARDING_PLAN_NAME = 'Baja de personal'
+OFFBOARDING_RETYPE = (
+    ('Desactivar usuario de Odoo, correo y accesos',
+     'quimibond_sgi.sgi_activity_type_retirar_accesos'),
+    ('Recuperar EPP', 'quimibond_sgi.sgi_activity_type_recuperar_epp'),
+)
+OFFBOARDING_COMPUTER_SUMMARY = "Recoger equipo de cómputo"
 
-IND2_MODES = ('complementos_pago', 'desviacion_precio_compra', 'ordenes_cerradas_48h',
+IND2_MODES = ('complementos_pago', 'desviacion_precio_compra', 'ordenes_vencidas_48h',
               'desarrollos_vendidos', 'cobertura_plantilla', 'bajas_registradas',
               'bajas_accesos_equipo')
 
-# Clave de la ficha → modo. C4-01 NO se activa sola: en producción la fecha
-# de fin de las operaciones la pone el cierre de la orden (ver CHANGELOG).
+# Clave de la ficha → modo.
 IND2_ACTIVATE = {
     'S2-01': 'complementos_pago',
     'S1-05': 'desviacion_precio_compra',
+    'C4-01': 'ordenes_vencidas_48h',
     'C1-04': 'desarrollos_vendidos',
     'RH-01': 'cobertura_plantilla',
     'S4-01': 'bajas_registradas',
@@ -78,6 +93,23 @@ IND2_ACTIVATE = {
 }
 # Sin historia en Odoo: se miden desde el mes siguiente a la activación.
 IND2_FROM_NEXT_MONTH = ('S6-02',)
+
+# Textos de ficha que cambian con las decisiones de Jose (2026-09-29).
+S1_05_OLD_PHRASE = "lista de precios del proveedor"
+S1_05_NEW_PHRASE = "precio de la orden de compra"
+C4_01_FICHA = {
+    'name': "Órdenes vencidas más de 48 horas",
+    'formula': ("Órdenes de fabricación abiertas (ni hechas ni canceladas) con su fecha de "
+                "fin programada vencida hace más de 48 horas al cierre de la semana ÷ "
+                "órdenes abiertas al cierre de la semana × 100"),
+    'source': ("Fabricación: órdenes abiertas y su fecha de fin programada, foto al cierre "
+               "de la semana"),
+    # El número ahora es de órdenes vencidas: más bajo es mejor. Metas espejo
+    # de las anteriores (90 / 80 % a tiempo → 10 / 20 % vencidas).
+    'direction': 'lower_better',
+    'target_objective': 10.0,
+    'target_acceptable': 20.0,
+}
 
 
 class SgiIndicatorInd2(models.Model):
@@ -107,8 +139,8 @@ class SgiIndicatorInd2(models.Model):
             return self._sgi_complement_deadline(date_to) + timedelta(days=1)
         if mode in ('bajas_registradas', 'bajas_accesos_equipo'):
             return sgi_add_business_days(self.env, date_to, 1) + timedelta(days=1)
-        if mode == 'ordenes_cerradas_48h':
-            return date_to + timedelta(days=1 + CLOSE_HOURS // 24)
+        if mode == 'ordenes_vencidas_48h':
+            return date_to + timedelta(days=1)
         return False
 
     def _sgi_measure_vals(self, date_from, date_to):
@@ -214,7 +246,7 @@ class SgiIndicatorInd2(models.Model):
         domain = self._sgi_bill_lines_domain(date_from, date_to)
         lines = Line.search(domain + [('purchase_line_id', '!=', False)])
         without_po = Line.search_count(domain + [('purchase_line_id', '=', False)])
-        deviation = amount = 0.0
+        deviation = amount = over = under = 0.0
         compared = Line
         no_uom = 0
         for line in lines:
@@ -227,14 +259,26 @@ class SgiIndicatorInd2(models.Model):
             paid = line.price_unit * (1.0 - (line.discount or 0.0) / 100.0)
             # A moneda de la compañía con el tipo de cambio de la propia línea.
             rate = line.balance / line.price_subtotal
-            deviation += (paid - agreed) * line.quantity * rate
+            diff = (paid - agreed) * line.quantity * rate
+            if diff > 0:
+                over += diff
+            else:
+                under -= diff
+            deviation += abs(diff)
             amount += line.balance
             compared |= line
         out = self._ratio(round(deviation, 2), round(amount, 2), compared)
-        notes = []
+        total = Line._read_group(domain, [], ['balance:sum'])
+        total_amount = (total[0][0] if total else 0.0) or 0.0
+        money = self._sgi_money
+        notes = [
+            "Pagado de más: %s; pagado de menos: %s (moneda de la compañía)."
+            % (money(over), money(under)),
+            "Cobertura: %d de %d línea(s) con OC; %s de %s del importe."
+            % (len(lines), len(lines) + without_po, money(amount), money(total_amount)),
+        ]
         if without_po:
-            notes.append("%d línea(s) de factura de proveedor del periodo sin OC quedaron "
-                         "fuera (de %d)." % (without_po, without_po + len(lines)))
+            notes.append("%d línea(s) sin OC quedaron fuera." % without_po)
         if no_uom:
             notes.append("%d línea(s) con una unidad que no se convierte a la de la OC "
                          "quedaron fuera." % no_uom)
@@ -242,56 +286,45 @@ class SgiIndicatorInd2(models.Model):
             out['note'] = " ".join(notes)
         return out
 
+    @staticmethod
+    def _sgi_money(amount):
+        return "{:,.2f}".format(amount or 0.0)
+
     def _calc_desviacion_precio_compra(self, date_from, date_to):
         return self._detail_desviacion_precio_compra(date_from, date_to)['value']
 
     # ------------------------------------------------------------------
-    # C4-01 — órdenes cerradas dentro de 48 h de su término real
+    # C4-01 — órdenes abiertas vencidas más de 48 h (foto al cierre)
     # ------------------------------------------------------------------
-    def _detail_ordenes_cerradas_48h(self, date_from, date_to):
-        env = self.env
-        company = self._sgi_kpi_company()
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        raw = env['ir.config_parameter'].sudo().get_param(STAMP_SECONDS_PARAM, '60')
-        stamp = int(raw) if str(raw).strip().isdigit() else 60
-        workorders = env['mrp.workorder'].sudo().search([
-            ('production_id.company_id', '=', company.id),
-            ('production_id.state', '!=', 'cancel'),
-            ('date_finished', '>=', dt_from), ('date_finished', '<', dt_to)])
-        universe = env['mrp.production'].sudo()
-        on_time = stamped = 0
-        for production in workorders.production_id:
-            ops = production.workorder_ids.filtered(lambda w: w.state != 'cancel')
-            if not ops or not all(ops.mapped('date_finished')):
-                continue    # aún le faltan operaciones: no ha terminado
-            end = max(ops.mapped('date_finished'))
-            if not dt_from <= end < dt_to:
-                continue    # su última operación terminó en otro periodo
-            closed = production.date_finished if production.state == 'done' else False
-            if closed and 0 <= (closed - end).total_seconds() <= stamp:
-                stamped += 1
-                continue    # el cierre terminó la operación: no hay término propio
-            universe |= production
-            if closed and closed <= end + timedelta(hours=CLOSE_HOURS):
-                on_time += 1
-        without_ops = env['mrp.production'].sudo().search_count([
-            ('company_id', '=', company.id), ('state', '=', 'done'),
-            ('date_finished', '>=', dt_from), ('date_finished', '<', dt_to),
-            ('workorder_ids', '=', False)])
-        out = self._ratio(on_time, len(universe), universe)
-        notes = []
-        if stamped:
-            notes.append("%d orden(es) fuera: la operación terminó en el mismo momento del "
-                         "cierre (no hay término registrado aparte)." % stamped)
-        if without_ops:
-            notes.append("%d orden(es) cerradas en el periodo sin operaciones quedaron "
-                         "fuera." % without_ops)
-        if notes:
-            out['note'] = " ".join(notes)
+    def _sgi_snapshot_valid(self, date_to):
+        """La foto de C4-01 solo vale en los días siguientes al cierre del
+        periodo: lo abierto HOY se toma como lo abierto al cierre."""
+        today = fields.Date.context_today(self)
+        return date_to < today <= date_to + timedelta(days=SNAPSHOT_DAYS)
+
+    def _detail_ordenes_vencidas_48h(self, date_from, date_to):
+        if not self._sgi_snapshot_valid(date_to):
+            return {'value': None, 'note': (
+                "Es una foto de las órdenes abiertas: solo se mide en los %d días "
+                "siguientes al cierre del periodo; el pasado no se reconstruye."
+                % SNAPSHOT_DAYS)}
+        cut = self._sgi_local_midnight_utc(date_to + timedelta(days=1))
+        orders = self.env['mrp.production'].sudo().search([
+            ('company_id', '=', self._sgi_kpi_company().id),
+            ('state', 'not in', ('done', 'cancel')),
+            ('create_date', '<', cut)])
+        limit = cut - timedelta(hours=OVERDUE_HOURS)
+        overdue = orders.filtered(lambda o: o.date_finished and o.date_finished < limit)
+        out = self._ratio(len(overdue), len(orders), orders)
+        drafts = len(orders.filtered(lambda o: o.state == 'draft'))
+        out['note'] = ("Foto del %s: %d orden(es) abiertas (%d en borrador), %d vencidas "
+                       "hace más de %d h." % (fields.Date.context_today(self).strftime('%d/%m/%Y'),
+                                              len(orders), drafts, len(overdue),
+                                              OVERDUE_HOURS))
         return out
 
-    def _calc_ordenes_cerradas_48h(self, date_from, date_to):
-        return self._detail_ordenes_cerradas_48h(date_from, date_to)['value']
+    def _calc_ordenes_vencidas_48h(self, date_from, date_to):
+        return self._detail_ordenes_vencidas_48h(date_from, date_to)['value']
 
     # ------------------------------------------------------------------
     # C1-04 — desarrollos que se venden en sus primeros 6 meses
@@ -507,8 +540,8 @@ class SgiIndicatorInd2(models.Model):
         """57.14.0: las fichas de «indicadores 2» dejan de ser manuales. Mismo
         criterio que E1-02 en 57.6.0: solo el indicador ACTIVO con esa clave
         que siga en «manual» y sin términos de fórmula. S6-02 no tiene
-        historia (el plan de salida nace hoy): si no tiene «Medir desde», se
-        mide desde el mes siguiente. El modo anterior queda en el chatter.
+        historia (el plan de salida se ajusta hoy): si no tiene «Medir desde»,
+        se mide desde el mes siguiente. El modo anterior queda en el chatter.
         Idempotente. Devuelve {clave: [ids]}."""
         today = fields.Date.context_today(self)
         next_month = today.replace(day=1) + relativedelta(months=1)
@@ -526,6 +559,105 @@ class SgiIndicatorInd2(models.Model):
                     "Para regresar: modo «Captura manual»." % labels.get(mode, mode)))
                 done.setdefault(code, []).append(indicator.id)
         return done
+
+    @api.model
+    def _sgi_update_ind2_fichas(self):
+        """57.14.0 (decisiones de Jose 2026-09-29), textos de ficha:
+
+        - S1-05: en «De dónde sale el dato» (``source``) la frase «lista de
+          precios del proveedor» pasa a «precio de la orden de compra». Solo
+          esa frase.
+        - C4-01: nombre, fórmula y fuente con la definición nueva (órdenes
+          abiertas vencidas más de 48 h, foto al cierre de la semana). El
+          sentido pasa a «más bajo es mejor» con metas espejo (10 / 20) solo si
+          sigue en «más alto es mejor».
+
+        Idempotente; el valor anterior de cada campo queda en el log y en el
+        chatter. Devuelve {clave: [ids]} de lo que cambió."""
+        changed = {}
+
+        def _write(indicator, vals):
+            vals = {k: v for k, v in vals.items() if indicator[k] != v}
+            if not vals:
+                return
+            before = {k: indicator[k] for k in vals}
+            _logger.info("SGI 57.14.0: ficha %s (id %s) antes: %s", indicator.code,
+                         indicator.id, before)
+            indicator.write(vals)
+            indicator.message_post(body="57.14.0: ficha actualizada. Antes: %s" % "; ".join(
+                "%s = %s" % (k, v) for k, v in before.items()))
+            changed.setdefault(indicator.code, []).append(indicator.id)
+
+        for indicator in self.search([('code', '=', 'S1-05')]):
+            source = indicator.source or ''
+            if S1_05_OLD_PHRASE in source:
+                _write(indicator, {'source': source.replace(S1_05_OLD_PHRASE, S1_05_NEW_PHRASE)})
+        for indicator in self.search([('code', '=', 'C4-01')]):
+            vals = {k: C4_01_FICHA[k] for k in ('name', 'formula', 'source')}
+            if indicator.direction == 'higher_better':
+                vals.update({k: C4_01_FICHA[k] for k in
+                             ('direction', 'target_objective', 'target_acceptable')})
+            _write(indicator, vals)
+        return changed
+
+    @api.model
+    def _sgi_adopt_offboarding_plan(self):
+        """57.14.0 (S6-02): el plan de salida es el que ya existe en
+        producción («Baja de personal», id 5), no uno nuevo. Sus renglones
+        «Desactivar usuario de Odoo, correo y accesos» y «Recuperar EPP…»
+        toman los tipos propios «Retirar accesos» y «Recuperar EPP» (EPP no es
+        equipo de cómputo: S6-02 no lo cuenta), y se agrega «Recoger equipo de
+        cómputo» con el tipo «Recoger equipo» (la ficha de S6-02 pide el
+        equipo de cómputo), con el responsable y el plazo del renglón de
+        accesos. Busca por plan (nombre, modelo empleado) y resumen; lo que no
+        encuentra lo avisa en el log y sigue. Idempotente; nada se borra y el
+        tipo anterior de cada renglón queda en el log. Devuelve la lista de
+        cambios."""
+        env = self.env
+        report = []
+        plans = env['mail.activity.plan'].sudo().with_context(active_test=False).search([
+            ('res_model', '=', 'hr.employee'), ('name', '=like', OFFBOARDING_PLAN_NAME + '%')])
+        if not plans:
+            _logger.warning("SGI 57.14.0: no hay plan «%s…» de empleados; S6-02 no tiene plan "
+                            "de salida.", OFFBOARDING_PLAN_NAME)
+            return report
+        for plan in plans:
+            templates = plan.template_ids
+            access_tpl = templates.browse()
+            for prefix, xmlid in OFFBOARDING_RETYPE:
+                act_type = env.ref(xmlid, raise_if_not_found=False)
+                matches = templates.filtered(lambda t: (t.summary or '').startswith(prefix))
+                if not matches or not act_type:
+                    _logger.warning("SGI 57.14.0: el plan %s (id %s) no tiene el renglón «%s…».",
+                                    plan.name, plan.id, prefix)
+                    continue
+                if xmlid == OFFBOARDING_TYPES[0]:
+                    access_tpl = matches[:1]
+                for template in matches.filtered(lambda t: t.activity_type_id != act_type):
+                    _logger.info("SGI 57.14.0: plan %s, renglón %s «%s»: tipo %s (id %s) → %s.",
+                                 plan.id, template.id, template.summary,
+                                 template.activity_type_id.name, template.activity_type_id.id,
+                                 act_type.name)
+                    template.activity_type_id = act_type
+                    report.append(('retype', template.id))
+            computer = env.ref(OFFBOARDING_TYPES[1], raise_if_not_found=False)
+            if computer and not templates.filtered(lambda t: t.activity_type_id == computer):
+                vals = {'plan_id': plan.id, 'activity_type_id': computer.id,
+                        'summary': OFFBOARDING_COMPUTER_SUMMARY,
+                        'responsible_type': 'on_demand'}
+                if access_tpl:
+                    vals.update({
+                        'sequence': access_tpl.sequence,
+                        'responsible_type': access_tpl.responsible_type,
+                        'responsible_id': access_tpl.responsible_id.id,
+                        'delay_count': access_tpl.delay_count,
+                        'delay_unit': access_tpl.delay_unit,
+                        'delay_from': access_tpl.delay_from})
+                template = env['mail.activity.plan.template'].sudo().create(vals)
+                _logger.info("SGI 57.14.0: plan %s: renglón nuevo %s «%s».", plan.id,
+                             template.id, OFFBOARDING_COMPUTER_SUMMARY)
+                report.append(('create', template.id))
+        return report
 
 
 class SgiIndicatorMeasureInd2(models.Model):

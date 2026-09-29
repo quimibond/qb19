@@ -1,20 +1,29 @@
 # -*- coding: utf-8 -*-
-"""57.14.0 (indicadores 2): S2-01, S1-05, C1-04, RH-01, S4-01 y S6-02 dejan
-de ser manuales y se miden con sus modos nuevos.
+"""57.14.0 (indicadores 2 y decisiones de Jose del 2026-09-29).
 
-Llama ``sgi.indicator._sgi_activate_ind2()``: solo el indicador activo con
-esa clave que siga en «manual» y sin términos de fórmula (mismo criterio que
-E1-02 en 57.6.0). Si MAST ya le puso otro modo o una fórmula, no se toca.
-S6-02 no tiene historia (el plan de salida nace en esta versión): si no tiene
-«Medir desde», se mide desde el mes siguiente. El modo anterior queda en el
-chatter. Idempotente.
+1. ``sgi.indicator._sgi_update_ind2_fichas()``: en S1-05 la fuente dice
+   «precio de la orden de compra» en vez de «lista de precios del proveedor»
+   (solo esa frase); C4-01 toma su definición nueva (órdenes abiertas
+   vencidas más de 48 h, foto al cierre de la semana; sentido «más bajo es
+   mejor», metas 10 / 20 si seguía en «más alto es mejor»).
+2. ``sgi.indicator._sgi_adopt_offboarding_plan()``: el plan existente «Baja
+   de personal» (id 5) toma los tipos propios en «Desactivar usuario de Odoo,
+   correo y accesos» (Retirar accesos) y «Recuperar EPP…» (Recuperar EPP) y
+   gana el renglón «Recoger equipo de cómputo» (Recoger equipo). Si no
+   encuentra el plan o un renglón, avisa en el log y sigue.
+3. ``sgi.indicator._sgi_activate_ind2()``: S2-01, S1-05, C4-01, C1-04, RH-01,
+   S4-01 y S6-02 pasan a su modo si siguen activos, en «manual» y sin
+   términos de fórmula (criterio de E1-02 en 57.6.0). S6-02 sin «Medir desde»
+   se mide desde el mes siguiente.
 
-C4-01 NO se activa: en producción la fecha de fin de las operaciones la pone
-el cierre de la orden, así que no hay término real propio (ver CHANGELOG).
+Todo es idempotente, nada se borra y el valor anterior queda en el log (y en
+el chatter del indicador).
 
-Esperado en producción (MCP, solo lectura, 2026-09-29): los seis en prueba,
+Esperado en producción (MCP, solo lectura, 2026-09-29): los siete en prueba,
 manuales, sin términos y sin «Medir desde»: S2-01 (id 121), S1-05 (136),
-C1-04 (151), RH-01 (23), S4-01 (162) y S6-02 (167).
+C4-01 (142), C1-04 (151), RH-01 (23), S4-01 (162) y S6-02 (167). Plan 5 con
+los renglones 19 (accesos, «Por hacer», Mariano Dominguez) y 18 (EPP,
+«Por hacer»).
 """
 import logging
 
@@ -27,6 +36,14 @@ def migrate(cr, version):
     if not version:
         return
     env = api.Environment(cr, SUPERUSER_ID, {})
-    done = env['sgi.indicator']._sgi_activate_ind2()
+    Indicator = env['sgi.indicator']
+    fichas = Indicator._sgi_update_ind2_fichas()
+    _logger.info("SGI 57.14.0: fichas actualizadas: %s (esperado: S1-05 136, C4-01 142).",
+                 fichas)
+    plan = Indicator._sgi_adopt_offboarding_plan()
+    _logger.info("SGI 57.14.0: plan de salida: %s (esperado: renglones 19 y 18 con tipo "
+                 "nuevo y un renglón creado).", plan)
+    done = Indicator._sgi_activate_ind2()
     _logger.info("SGI 57.14.0: indicadores 2 activados: %s (esperado en producción: "
-                 "S2-01 121, S1-05 136, C1-04 151, RH-01 23, S4-01 162, S6-02 167).", done)
+                 "S2-01 121, S1-05 136, C4-01 142, C1-04 151, RH-01 23, S4-01 162, "
+                 "S6-02 167).", done)

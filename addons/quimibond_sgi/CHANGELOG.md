@@ -15,10 +15,10 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 ## 19.0.57.14.0 — 2026-09-29
 
-**Agregado (indicadores 2, aprobado por Jose 2026-09-29):** siete modos de
-cálculo con detalle (numerador, denominador y registros en la medición) en
-`models/sgi_indicator_ind2.py`. Definiciones tomadas de la ficha de cada
-indicador en producción:
+**Agregado (indicadores 2, aprobado por Jose 2026-09-29, con sus decisiones
+del mismo día):** siete modos de cálculo con detalle (numerador, denominador
+y registros en la medición) en `models/sgi_indicator_ind2.py`. Definiciones
+tomadas de la ficha de cada indicador en producción:
 
 - **S2-01** `complementos_pago`: pagos de clientes del periodo (en proceso o
   pagados) aplicados a facturas PPD cuyo complemento
@@ -26,22 +26,25 @@ indicador en producción:
   más tardar el **día 5 inclusive** del mes siguiente al pago, hora de
   México ÷ esos pagos. Sin complemento timbrado = fuera de plazo (se cuenta
   en la nota). Sin `l10n_mx_edi`, sin dato.
-- **S1-05** `desviacion_precio_compra`: Σ (precio pagado − precio de la OC)
-  × cantidad ÷ importe de esas líneas, en líneas de factura de proveedor
-  publicadas (`in_invoice`, `display_type product`) con `purchase_line_id`;
-  precios netos de descuento; la OC se convierte a la unidad
-  (`uom._compute_price`) y moneda (a la fecha de la factura) de la factura, y
-  la desviación a moneda de la compañía con el tipo de cambio de la línea.
-  Con signo: pagar de menos resta. Las líneas sin OC quedan fuera y la nota
-  dice cuántas.
-- **C4-01** `ordenes_cerradas_48h`: órdenes cuyo término real (máx.
-  `mrp.workorder.date_finished`, todas sus operaciones no canceladas con
-  fin) cae en la semana, cerradas (`mrp.production.date_finished` en
-  «hecho») a más tardar 48 h después ÷ esas órdenes. Si la operación terminó
-  hasta `quimibond_sgi.c4_stamp_seconds` (60) antes del cierre, el cierre la
-  terminó y la orden queda fuera (nota). **No se activa**: en producción las
-  operaciones terminan segundos antes del cierre (1-8 s en las 24 órdenes
-  revisadas): las termina el propio cierre.
+- **S1-05** `desviacion_precio_compra`: Σ **|precio pagado − precio de la
+  OC|** × cantidad ÷ importe de esas líneas, en líneas de factura de
+  proveedor publicadas (`in_invoice`, `display_type product`) con
+  `purchase_line_id`; precios netos de descuento; la OC se convierte a la
+  unidad (`uom._compute_price`) y moneda (a la fecha de la factura) de la
+  factura, y la desviación a moneda de la compañía con el tipo de cambio de
+  la línea. Valor absoluto: pagar de menos no compensa lo pagado de más. La
+  nota separa pagado de más, pagado de menos y la cobertura (líneas e
+  importe con OC contra el total del periodo).
+- **C4-01** `ordenes_vencidas_48h` (definición nueva de Jose): foto al
+  cierre de la semana. Órdenes de fabricación de la compañía abiertas (ni
+  hechas ni canceladas; los borradores cuentan) cuya fecha de fin programada
+  venció hace más de 48 h ÷ órdenes abiertas. En Odoo 19
+  `mrp.production.date_finished` es la fecha esperada mientras la orden no
+  está hecha (`_compute_date_finished`) y pasa a la real al cerrarla, así
+  que el pasado no se reconstruye: solo se mide en los 7 días siguientes al
+  cierre de la semana (lo abierto al medir = lo abierto al cierre; las
+  órdenes creadas después del cierre no cuentan); un periodo más viejo sale
+  sin dato. No depende de las operaciones.
 - **C1-04** `desarrollos_vendidos`: artículos (`product.template`, archivados
   incluidos) de las categorías de `quimibond_sgi.finished_product_categ_ids`
   (319 «Producto Terminado» y sus hijas) dados de alta en el mismo periodo de
@@ -59,37 +62,52 @@ indicador en producción:
   `departure_reason_id` ya tienen `tracking=True` en `hr.version` y en el
   empleado; no hizo falta heredarlos).
 - **S6-02** `bajas_accesos_equipo`: bajas del periodo con «Retirar accesos»
-  y «Recoger equipo» hechas a más tardar el día hábil siguiente ÷ bajas.
-  Fecha de hecho: el mensaje que publica `mail.activity._action_done`
-  (`mail_activity_type_id`, subtipo Actividades); de respaldo,
-  `mail.activity.date_done` de la actividad archivada. Plan nativo nuevo
-  «Salida: accesos y equipo (S6-02)» con dos tipos de actividad propios
-  (`data/sgi_offboarding_plan_data.xml`, `noupdate`, responsable «preguntar al
-  lanzar»).
+  y «Recoger equipo» (de cómputo, como pide la ficha) hechas a más tardar el
+  día hábil siguiente ÷ bajas. Fecha de hecho: el mensaje que publica
+  `mail.activity._action_done` (`mail_activity_type_id`, subtipo
+  Actividades); de respaldo, `mail.activity.date_done` de la actividad
+  archivada. **No hay plan nuevo:** se usa el plan existente «Baja de
+  personal» (id 5). `data/sgi_offboarding_plan_data.xml` (`noupdate`) solo
+  trae tres tipos de actividad propios de empleado: «Retirar accesos»,
+  «Recoger equipo» y «Recuperar EPP» (EPP no es equipo de cómputo y S6-02 no
+  lo cuenta).
 
-S2-01, C4-01, S4-01 y S6-02 no se miden antes de que venza su plazo: la
-medición queda «pendiente» con nota y el cron diario la re-mide. El detalle
-de un modo puede traer `note` (lo que quedó fuera) y se agrega a la nota de
+S2-01, S4-01 y S6-02 no se miden antes de que venza su plazo, ni C4-01 antes
+de cerrar la semana: la medición queda «pendiente» con nota y el cron diario
+la re-mide. El detalle de un modo puede traer `note` y se agrega a la nota de
 la medición (`_sgi_measure_vals`). «Ver evidencia» de estos modos abre los
-registros guardados. Parámetros nuevos sembrados:
-`finished_product_categ_ids` = 319 y `c4_stamp_seconds` = 60.
+registros guardados. Parámetro nuevo sembrado: `finished_product_categ_ids`
+= 319.
 
-**Migración** (`post-migrate`): `_sgi_activate_ind2()` pasa a su modo S2-01,
-S1-05, C1-04, RH-01, S4-01 y S6-02 si siguen activos, en «manual» y sin
-términos de fórmula (criterio de E1-02 en 57.6.0); S6-02, sin «Medir desde»,
-se mide desde el mes siguiente. C4-01 queda manual. Idempotente.
+**Migración** (`post-migrate`), idempotente, sin borrar nada y con el valor
+anterior en el log (y en el chatter del indicador):
+
+1. `_sgi_update_ind2_fichas()`: S1-05, en `source`, «lista de precios del
+   proveedor» → «precio de la orden de compra» (solo esa frase). C4-01:
+   nombre «Órdenes vencidas más de 48 horas», fórmula y fuente nuevas; si
+   sigue en «más alto es mejor», pasa a «más bajo es mejor» con metas espejo
+   10 / 20 (antes 90 / 80 a tiempo).
+2. `_sgi_adopt_offboarding_plan()`: en el plan «Baja de personal…» de
+   empleados, «Desactivar usuario de Odoo, correo y accesos» toma el tipo
+   «Retirar accesos» y «Recuperar EPP…» el tipo «Recuperar EPP»; se agrega
+   «Recoger equipo de cómputo» (tipo «Recoger equipo», mismo responsable,
+   secuencia y plazo que el de accesos). Sin plan o sin un renglón: aviso en
+   el log y sigue.
+3. `_sgi_activate_ind2()`: S2-01, S1-05, C4-01, C1-04, RH-01, S4-01 y S6-02
+   pasan a su modo si siguen activos, en «manual» y sin términos de fórmula
+   (criterio de E1-02 en 57.6.0); S6-02, sin «Medir desde», se mide desde el
+   mes siguiente.
 
 **Datos de producción (2026-09-29, lectura):** S2-01 agosto 76 pagos a PPD,
 76 complementos a más tardar el 4-sep (100 %). S1-05 agosto 360 de 1,472
-líneas con OC (24 %; 31 % del importe). C4-01: 2,565 de 10,453 órdenes
-terminadas en 2026 tienen operaciones (agosto 16 %), casi todas de tejido, y
-en las 24 revisadas la operación termina segundos antes del cierre. C1-04 cohorte de marzo
-13 artículos. RH-01: ningún puesto con plantilla. S4-01: 19 bajas desde julio,
-13 sin motivo y la mayoría registrada semanas después (carga del 7-sep).
-S6-02: cero actividades en empleados; ya existe un plan manual «Baja de
-personal» (id 5) con tareas de accesos y EPP de tipo «Por hacer».
+líneas con OC (24 %; 31 % del importe). C4-01 hoy: 433 órdenes abiertas (39
+en borrador), 238 con fin programado vencido antes del 27-sep (≈ 55 %).
+C1-04 cohorte de marzo 13 artículos. RH-01: ningún puesto con plantilla.
+S4-01: 19 bajas desde julio, 13 sin motivo y la mayoría registrada semanas
+después (carga del 7-sep). S6-02: cero actividades en empleados; plan 5 con
+los renglones 18 (EPP) y 19 (accesos, Mariano Dominguez), ambos «Por hacer».
 
-**Pruebas:** `test_indicadores_2` (8 casos, datos propios).
+**Pruebas:** `test_indicadores_2` (9 casos, datos propios).
 
 ## 19.0.57.13.0 — 2026-09-29
 
