@@ -107,3 +107,6 @@ from . import test_dropbox_key
 from . import test_indicadores_571
 from . import test_procesos_viejos
 from . import test_siembras_y_funciones
+from . import test_legado
+from . import test_studio_cleanup
+from . import test_weekly_overdue

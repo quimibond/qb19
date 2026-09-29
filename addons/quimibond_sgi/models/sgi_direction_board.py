@@ -39,16 +39,49 @@ class SgiIndicatorLevel(models.Model):
                                _SEM.get(m.semaphore, '-'))
                 for m in reversed(measures)) or False
 
+    @api.model
+    def _sgi_activate_acuerdos_rxd(self, code='E1-02'):
+        """D-13 (57.6.0): E1-02 deja de ser manual y se mide con
+        ``acuerdos_rxd``. Respeta lo que MAST haya puesto: solo cambia el
+        indicador ACTIVO con esa clave que siga en «manual» y sin términos de
+        fórmula. El modo anterior queda en el chatter. Idempotente. Devuelve
+        los ids cambiados."""
+        indicators = self.search([('code', '=', code), ('calc_mode', '=', 'manual')])
+        done = []
+        for indicator in indicators.filtered(lambda i: not i.term_ids):
+            indicator.write({'calc_mode': 'acuerdos_rxd'})
+            indicator.message_post(body=(
+                "57.6.0 (D-13): el indicador pasa de «Captura manual» a «Acuerdos de la "
+                "RxD cumplidos a tiempo»: se mide solo con los acuerdos de la Revisión por "
+                "la Dirección. Para regresar: modo «Captura manual»."))
+            done.append(indicator.id)
+        return done
+
+    def _sgi_rxd_agreements(self, date_from, date_to):
+        """Acuerdos de la Revisión por la Dirección ya realizada (o cerrada)
+        con fecha límite dentro del periodo: el universo de E1-02."""
+        return self.env['sgi.management.review.agreement'].sudo().search([
+            ('review_id.state', 'in', ('realizada', 'cerrada')),
+            ('deadline', '>=', date_from), ('deadline', '<=', date_to)])
+
     def _calc_acuerdos_rxd(self, date_from, date_to):
-        """E1-02: % de acuerdos de la Revisión por la Dirección con compromiso
-        en el periodo que se terminaron a tiempo. Sin acuerdos → sin dato."""
-        lines = self.env['sgi.action.line'].sudo().search([
-            ('review_id', '!=', False),
-            ('date_commit', '>=', date_from), ('date_commit', '<=', date_to)])
-        if not lines:
+        """E1-02: % de acuerdos de la Revisión por la Dirección con fecha
+        límite en el periodo que se cumplieron a tiempo (``done_date`` ≤
+        ``deadline``). 57.6.0 (D-13): cuenta el acuerdo, no solo su acción;
+        el cumplimiento capturado a mano en un acuerdo sin acción también
+        cuenta. Sin acuerdos en el periodo → sin dato."""
+        agreements = self._sgi_rxd_agreements(date_from, date_to)
+        if not agreements:
             return None
-        on_time = len(lines.filtered(lambda l: l.date_done and l.date_done <= l.date_commit))
-        return round(on_time * 100.0 / len(lines), 2)
+        on_time = len(agreements.filtered(
+            lambda a: a.done_date and a.done_date <= a.deadline))
+        return round(on_time * 100.0 / len(agreements), 2)
+
+    def _note_acuerdos_rxd(self, date_from, date_to):
+        if not self._sgi_rxd_agreements(date_from, date_to):
+            return ("Sin acuerdos de la Revisión por la Dirección con fecha límite "
+                    "en el periodo.")
+        return ''
 
 
 class SgiDirectionBoard(models.TransientModel):

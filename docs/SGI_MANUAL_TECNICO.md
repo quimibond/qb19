@@ -60,7 +60,7 @@ report/    NC (F-P-G05-01), NEWS (F-P-G01-16), CoA, AMEF, incidente, auditoría,
 security/  sgi_security.xml (grupos) + ir.model.access.csv
 tools/     sgi_menu_tree.txt (los scripts de carga están en docs/historico/quimibond_sgi_tools/ desde 57.4.0)
 tests/     ~64 tests (@tagged post_install)
-demo/      sgi_demo_fase3.xml (solo bases con demo)
+demo/      sgi_demo_quality.xml (solo bases con demo)
 ```
 
 ## 3. Modelo de datos

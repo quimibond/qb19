@@ -393,7 +393,6 @@ class SgiMyProcedure(models.TransientModel):
     ok_count = fields.Integer(string="Al día", compute='_compute_lists')
     unmeasured_count = fields.Integer(string="Sin medición automática", compute='_compute_lists')
     pending_ack_count = fields.Integer(string="Firmas pendientes", compute='_compute_lists')
-    pending_count = fields.Integer(string="Acciones abiertas", compute='_compute_counts')
     activity_count = fields.Integer(string="Actividades", compute='_compute_counts')
 
     # Mis actividades (ejecuta / aprueba), escalamientos que recibe y lista corta
@@ -409,12 +408,9 @@ class SgiMyProcedure(models.TransientModel):
 
     # Mis pendientes (viven en el usuario, no en el puesto)
     has_user = fields.Boolean(compute='_compute_lists')
-    pending_action_ids = fields.Many2many(
-        'sgi.action.line', string="Acciones abiertas o vencidas", compute='_compute_lists')
-    pending_nc_ids = fields.Many2many(
-        'quality.alert', string="NC a contestar", compute='_compute_lists')
-    pending_measure_ids = fields.Many2many(
-        'sgi.indicator.measure', string="Mediciones por capturar o validar", compute='_compute_lists')
+    # 57.8.0 (I-022, G-013): las listas de acciones, NC, mediciones, legales
+    # y documentos por revisar salieron de aquí; los pendientes se ven en
+    # «Mis pendientes» (sgi.my.pending, una sola fuente con los filtros).
     # 56.7.0: TODOS los indicadores activos a su cargo (prueba u oficial).
     # Antes la pantalla solo contaba los «oficiales» y como los 93 están en
     # prueba nadie veía sus indicadores.
@@ -424,10 +420,6 @@ class SgiMyProcedure(models.TransientModel):
     official_indicator_ids = fields.Many2many(
         'sgi.indicator', string="Indicadores oficiales a mi cargo", compute='_compute_lists')
     has_obligations = fields.Boolean(compute='_compute_lists')
-    pending_legal_ids = fields.Many2many(
-        'sgi.legal.requirement', string="Requisitos legales por evaluar", compute='_compute_lists')
-    pending_doc_review_ids = fields.Many2many(
-        'documents.document', string="Documentos por revisar (60 días)", compute='_compute_lists')
 
     # Mis documentos
     ack_ids = fields.Many2many(
@@ -555,9 +547,7 @@ class SgiMyProcedure(models.TransientModel):
     def _compute_lists(self):
         Role = self.env['sgi.activity.role'].sudo()
         Ack = self.env['sgi.document.ack'].sudo()
-        Doc = self.env['documents.document'].sudo()
         env = self.env
-        today = fields.Date.context_today(self)
         for wiz in self:
             job = wiz._sgi_mp_job()
             emp = wiz._sgi_mp_employee()
@@ -607,73 +597,33 @@ class SgiMyProcedure(models.TransientModel):
             # --- Mis pendientes: solo con usuario (viven en Odoo, no en el puesto)
             wiz.has_user = bool(user)
             if not user:
-                wiz.pending_action_ids = False
-                wiz.pending_nc_ids = False
-                wiz.pending_measure_ids = False
                 wiz.official_indicator_ids = False
                 wiz.indicator_ids = False
                 wiz.has_obligations = False
-                wiz.pending_legal_ids = False
-                wiz.pending_doc_review_ids = False
                 continue
-            wiz.pending_action_ids = env['sgi.action.line'].sudo().search(
-                [('responsible_id', '=', user.id), ('state', 'in', ('abierta', 'vencida'))],
-                order='date_commit, id').ids
-            Alert = env['quality.alert'].sudo()
-            wiz.pending_nc_ids = Alert.search(
-                [('sgi_responsible_ids', 'in', user.id), ('sgi_stage_is_closing', '=', False),
-                 ('sgi_stage_is_cancel', '=', False)], order='create_date').ids \
-                if 'sgi_responsible_ids' in Alert._fields else False
-            # G-001 (56.36.0): las mismas mediciones que Mis pendientes
-            # («Capturar» y «Validar»), con sus filtros de archivado y empresa.
-            pending = env['sgi.my.pending']._sgi_pending_records(user)
-            wiz.pending_measure_ids = (pending.get('medicion', env['sgi.indicator.measure'])
-                                       | pending.get('validacion', env['sgi.indicator.measure'])).ids
             mine = env['sgi.indicator'].sudo().search([('responsible_id', '=', user.id)], order='code')
             wiz.indicator_ids = mine.ids
             wiz.official_indicator_ids = mine.filtered(lambda i: i.status == 'oficial').ids
             wiz.has_obligations = bool('qb.obligation' in env and env['qb.obligation'].sudo().search_count(
                 [('user_id', '=', user.id), ('state', '=', 'confirmed')]))
-            # DIR-1: requisitos legales del usuario que vencen en 60 días o ya vencieron.
-            soon = fields.Date.add(today, days=60)
-            wiz.pending_legal_ids = env['sgi.legal.requirement'].sudo().search(
-                [('responsible_id', '=', user.id),
-                 '|', ('next_eval_date', '<=', soon), ('expiry_date', '<=', soon)],
-                order='next_eval_date, id').ids
-            # DOC-4: documentos del usuario cuya próxima revisión vence en 60 días.
-            wiz.pending_doc_review_ids = _sgi_readable(Doc.search(
-                [('sgi_owner_id', '=', user.id), ('sgi_is_controlled', '=', True),
-                 ('sgi_state', 'in', ('vigente', 'piloto')),
-                 ('sgi_next_review_date', '!=', False), ('sgi_next_review_date', '<=', soon)],
-                order='sgi_next_review_date, sgi_code'), wiz.env)
 
     # Conteos de los botones inteligentes (54.1.0): cada lista de la pantalla
     # es un botón; la ficha solo muestra lo que es de la persona y del puesto.
     received_count = fields.Integer(compute='_compute_counts')
     short_count = fields.Integer(compute='_compute_counts')
     document_count = fields.Integer(compute='_compute_counts')
-    nc_count = fields.Integer(compute='_compute_counts')
-    measure_count = fields.Integer(compute='_compute_counts')
     indicator_count = fields.Integer(compute='_compute_counts')
-    legal_count = fields.Integer(compute='_compute_counts')
-    doc_review_count = fields.Integer(compute='_compute_counts')
     epp_count = fields.Integer(compute='_compute_counts')
 
-    @api.depends('role_ids', 'received_role_ids', 'short_role_ids', 'document_ids', 'pending_action_ids',
-                 'pending_nc_ids', 'pending_measure_ids', 'indicator_ids', 'pending_legal_ids',
-                 'pending_doc_review_ids', 'epp_delivery_ids')
+    @api.depends('role_ids', 'received_role_ids', 'short_role_ids', 'document_ids',
+                 'indicator_ids', 'epp_delivery_ids')
     def _compute_counts(self):
         for wiz in self:
             wiz.activity_count = len(wiz.role_ids)
             wiz.received_count = len(wiz.received_role_ids)
             wiz.short_count = len(wiz.short_role_ids)
             wiz.document_count = len(wiz.document_ids)
-            wiz.pending_count = len(wiz.pending_action_ids)
-            wiz.nc_count = len(wiz.pending_nc_ids)
-            wiz.measure_count = len(wiz.pending_measure_ids)
             wiz.indicator_count = len(wiz.indicator_ids)
-            wiz.legal_count = len(wiz.pending_legal_ids)
-            wiz.doc_review_count = len(wiz.pending_doc_review_ids)
             wiz.epp_count = len(wiz.epp_delivery_ids)
 
     # ------------------------------------------------------------------
@@ -705,16 +655,6 @@ class SgiMyProcedure(models.TransientModel):
         action['mobile_view_mode'] = 'kanban'
         return action
 
-    def action_show_late(self):
-        return self._action_roles("Atrasadas", self.role_ids.filtered(lambda r: r.mp_status == 'atrasada'))
-
-    def action_show_ok(self):
-        return self._action_roles("Al día", self.role_ids.filtered(lambda r: r.mp_status == 'al_dia'))
-
-    def action_show_unmeasured(self):
-        return self._action_roles("Sin medición automática",
-                                  self.role_ids.filtered(lambda r: (r.mp_status or 'sin_medir') == 'sin_medir'))
-
     def action_show_all(self):
         return self._action_roles("Mis actividades", self.role_ids)
 
@@ -727,38 +667,11 @@ class SgiMyProcedure(models.TransientModel):
         return self._action_list("Escalamientos que recibe", self.received_role_ids, view_mode='list',
                                  views=[('sgi_activity_role_view_list_mp_received', 'list')])
 
-    def action_show_short(self):
-        return self._action_list("Participa o se entera", self.short_role_ids, view_mode='list',
-                                 views=[('sgi_activity_role_view_list_mp_short', 'list')])
-
     def action_show_acks(self):
         return self._action_list("Mis acuses de lectura", self.ack_ids, context={'search_default_pending': 1})
 
-    def action_show_documents(self):
-        return self._action_list("Documentos que aplican al puesto", self.document_ids,
-                                 views=[('sgi_document_view_list', 'list'), ('sgi_document_view_form', 'form')])
-
-    def action_focus_pending(self):
-        return self._action_list("Mis acciones abiertas", self.pending_action_ids)
-
-    def action_show_nc(self):
-        return self._action_list("NC a contestar", self.pending_nc_ids, view_mode='list,form')
-
-    def action_show_measures(self):
-        return self._action_list("Mediciones por capturar o validar", self.pending_measure_ids)
-
     def action_show_indicators(self):
         return self._action_list("Mis indicadores", self.indicator_ids)
-
-    def action_show_legal(self):
-        return self._action_list("Requisitos legales por evaluar", self.pending_legal_ids)
-
-    def action_show_doc_reviews(self):
-        return self._action_list("Documentos por revisar", self.pending_doc_review_ids,
-                                 views=[('sgi_document_view_list', 'list'), ('sgi_document_view_form', 'form')])
-
-    def action_show_epp(self):
-        return self._action_list("Responsivas de EPP", self.epp_delivery_ids)
 
     # ------------------------------------------------------------------
     # Acciones
@@ -845,15 +758,6 @@ class SgiMyProcedure(models.TransientModel):
 
     def action_publish_all(self):
         return self.env['hr.job'].action_sgi_publish_all_my_procedures()
-
-    def action_precheck(self):
-        """Lo que hay que limpiar antes de publicar para toda la planta."""
-        check = self.env['sgi.my.procedure.check'].create({})
-        return {
-            'type': 'ir.actions.act_window', 'res_model': 'sgi.my.procedure.check',
-            'res_id': check.id, 'view_mode': 'form', 'target': 'current',
-            'name': "Revisión previa a publicar",
-        }
 
     def action_open_obligations(self):
         """Mis obligaciones (módulo qb_obligation, si está instalado): la

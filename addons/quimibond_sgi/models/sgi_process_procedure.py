@@ -172,18 +172,6 @@ class SgiProcessProcedure(models.Model):
             process.inbound_reference_ids = Activity.browse(act_ids)
             process.inbound_reference_count = len(act_ids)
 
-    def action_view_inbound_references(self):
-        """Quién me menciona: las actividades ajenas que citan mis
-        procedimientos o usan mis formatos."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Me referencian — %s" % self.name,
-            'res_model': 'sgi.process.activity',
-            'view_mode': 'list,form',
-            'domain': [('id', 'in', self.inbound_reference_ids.ids)],
-        }
-
     chain_stuck_count = fields.Integer(
         string="Eslabones atorados", compute='_compute_chain_link_count',
         help="Ligas de este proceso donde el paso origen entregó pero el "
@@ -324,9 +312,6 @@ class SgiProcessProcedure(models.Model):
     def action_view_red_activities(self):
         return self.action_view_activities([('measure_state', '=', 'rojo')], "En rojo")
 
-    def action_view_no_method_activities(self):
-        return self.action_view_activities([('measure_method', '=', False)], "Sin método")
-
     def _sgi_measure_strict(self):
         """¿El procedimiento del proceso está en piloto o vigente? Entonces
         ninguna actividad puede quedar «sin medir»."""
@@ -419,11 +404,6 @@ class SgiProcessProcedure(models.Model):
             docs |= proc.sgi_family_document_ids
             docs |= proc.sgi_reference_ids
         return docs.sorted(lambda d: (d.sgi_code or '￿', d.name or ''))
-
-    def action_print_procedure(self):
-        self.ensure_one()
-        return self.env.ref(
-            'quimibond_sgi.action_report_procedure').report_action(self)
 
 
 class SgiProcessResponsibility(models.Model):
@@ -922,8 +902,6 @@ class SgiProcessActivity(models.Model):
     # El detalle por semana, usuario y clase vive en sgi.activity.exec.stat
     # (filtrable, agrupable, graficable); aquí quedan los totales de las
     # últimas 4 semanas que escribe el cron desde ese detalle.
-    exec_stat_ids = fields.One2many(
-        'sgi.activity.exec.stat', 'activity_id', string="Ejecuciones por semana")
     recent_exec_stat_ids = fields.Many2many(
         'sgi.activity.exec.stat', string="Últimas 4 semanas",
         compute='_compute_recent_exec_stat_ids')

@@ -50,4 +50,17 @@
             </search>
         </field>
     </record>
+
+    <!-- D-14 (57.7.0): cada quien apaga su correo semanal de atrasados desde
+         su perfil → Preferencias. -->
+    <record id="sgi_res_users_view_form_preferences" model="ir.ui.view">
+        <field name="name">res.users.preferences.sgi.weekly.overdue</field>
+        <field name="model">res.users</field>
+        <field name="inherit_id" ref="base.view_users_form_simple_modif"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='other_preferences']" position="inside">
+                <field name="sgi_weekly_overdue_mail" readonly="0"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

@@ -93,7 +93,6 @@ class SgiActivityRoleApproval(models.Model):
         compute='_compute_approval_model_id', store=True, readonly=False,
         help="Modelo de Odoo cuyo botón queda bloqueado hasta que el puesto aprueba. "
              "Se sugiere el modelo que materializa la actividad.")
-    approval_model_name = fields.Char(related='approval_model_id.model', string="Modelo técnico")
     approval_method = fields.Char(
         string="Botón que se aprueba", compute='_compute_approval_method', store=True, readonly=False,
         help="Método del botón (button_confirm, action_post, button_validate…).")
@@ -357,13 +356,6 @@ class SgiActivityRoleApproval(models.Model):
         self.invalidate_recordset(['approval_conflict_rule_ids'])
         self._sgi_sync_approval_rule()
         return True
-
-    def action_sgi_open_approval_rule(self):
-        self.ensure_one()
-        if not self.approval_rule_id:
-            raise UserError("Aún no hay regla: pulsa «Sincronizar».")
-        return {'type': 'ir.actions.act_window', 'res_model': 'studio.approval.rule',
-                'res_id': self.approval_rule_id.id, 'view_mode': 'form'}
 
     def action_sgi_open_approval_entries(self):
         self.ensure_one()

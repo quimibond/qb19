@@ -125,8 +125,6 @@ class SgiDeliverable(models.Model):
         'sgi.process.activity', compute='_compute_consumers', string="Actividades que lo reciben")
     measured_activity_ids = fields.One2many(
         'sgi.process.activity', 'measure_deliverable_id', string="Se miden con él")
-    link_ids = fields.One2many('sgi.activity.link', 'deliverable_id', string="Ligas",
-                               context={'active_test': False})
     producer_process_ids = fields.Many2many(
         'sgi.process', compute='_compute_processes', string="Procesos que lo entregan")
     consumer_process_ids = fields.Many2many(
@@ -700,13 +698,6 @@ class SgiActivityDeliverables(models.Model):
         if self.instruction_id:
             parts.append(("Instructivo", self.instruction_id.sgi_code or self.instruction_id.name))
         return parts
-
-    def _sgi_sentence(self):
-        """La actividad como una frase del procedimiento, armada de sus piezas
-        (en vez de un párrafo redactado a mano). Texto plano."""
-        return " ".join(
-            "%s: %s." % (label, text) if label else "%s." % text
-            for label, text in self._sgi_sentence_parts())
 
     def _sgi_sentence_html(self):
         """La misma frase para el PDF: cada etiqueta en negritas."""

@@ -119,9 +119,6 @@ class ResConfigSettings(models.TransientModel):
              "mas@quimibond.com o, si no existe, el primer miembro directo del "
              "grupo Jefe MAST y SGI. Al cambiarlo, los avisos abiertos se "
              "reasignan en la siguiente corrida de cada cron (no se duplican).")
-    sgi_waste_categ_id = fields.Many2one(
-        'product.category', string="Categoría del byproduct de desperdicio",
-        help="Categoría del SALDO (desperdicio) para el KPI automático.")
     sgi_purchase_approval_category_id = fields.Many2one(
         'approval.category', string="Categoría de requisiciones de compra",
         help="KPI CO-02 (Requisiciones): categoría de aprobación que cuenta como "
@@ -207,9 +204,6 @@ class ResConfigSettings(models.TransientModel):
         mast_id = int(raw_mast) if raw_mast.isdigit() else 0
         res['sgi_mast_user_id'] = (
             mast_id if mast_id and self.env['res.users'].browse(mast_id).exists() else False)
-        categ_name = Param.get_param('quimibond_sgi.waste_subproduct_category', 'SubProducto')
-        categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
-        res['sgi_waste_categ_id'] = categ.id or False
         raw_critical = Param.get_param('quimibond_sgi.supplier_critical_categ_ids', '') or ''
         res['sgi_supplier_critical_categ_ids'] = [(6, 0, self.env['product.category'].browse(
             [int(x) for x in raw_critical.split(',') if x.strip().isdigit()]).exists().ids)]
@@ -237,9 +231,6 @@ class ResConfigSettings(models.TransientModel):
         Param = self.env['ir.config_parameter'].sudo()
         Param.set_param('quimibond_sgi.rh_user_id', self.sgi_rh_user_id.id or 0)
         Param.set_param('quimibond_sgi.mast_user_id', self.sgi_mast_user_id.id or 0)
-        if self.sgi_waste_categ_id:
-            Param.set_param('quimibond_sgi.waste_subproduct_category',
-                            self.sgi_waste_categ_id.name)
         Param.set_param('quimibond_sgi.purchase_approval_category_id',
                         self.sgi_purchase_approval_category_id.id or 0)
         Param.set_param('quimibond_sgi.supplier_critical_categ_ids',

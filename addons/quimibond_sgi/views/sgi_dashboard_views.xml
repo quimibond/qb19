@@ -31,6 +31,12 @@
         <field name="name">Pareto de alertas de calidad</field>
         <field name="res_model">quality.alert</field>
         <field name="view_mode">pivot,graph,list</field>
+        <!-- 57.8.0 (D-012): el Pareto usa SUS vistas (equipo × etiqueta); sin
+             esto Odoo elegía las estándar de quality_control (menor id). -->
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_quality_alert_view_pivot')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('sgi_quality_alert_view_graph')}),
+            (0, 0, {'view_mode': 'list'})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin datos para el pareto</p>
             <p>Se alimenta de las alertas de calidad del piso (defectos TEJIDO-*).</p>

@@ -14,8 +14,6 @@ from odoo import models, fields, api
 class MaintenanceEquipmentMsa(models.Model):
     _inherit = 'maintenance.equipment'
 
-    sgi_msa_ids = fields.One2many('sgi.msa.study', 'equipment_id',
-                                  string="Estudios MSA")
     sgi_msa_count = fields.Integer(string="# MSA", compute='_compute_sgi_msa_count')
 
     def _compute_sgi_msa_count(self):

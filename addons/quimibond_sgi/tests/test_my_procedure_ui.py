@@ -35,16 +35,18 @@ class TestMyProcedureUi(TransactionCase):
                          self.env.ref('quimibond_sgi.sgi_my_procedure_action_publish'))
         job = self.env['hr.job'].create({'name': 'PUESTO UI'})
         wiz = Screen.create({'job_id': job.id})
-        self.assertEqual((wiz.activity_count, wiz.pending_count), (0, 0))
-        for method in ('action_show_all', 'action_show_late', 'action_show_ok', 'action_show_unmeasured'):
+        self.assertEqual(wiz.activity_count, 0)
+        for method in ('action_show_all',):
             action = getattr(wiz, method)()
             self.assertEqual(action['res_model'], 'sgi.activity.role', method)
             self.assertEqual(action['domain'], [('id', 'in', [])], method)
-        self.assertEqual(wiz.action_focus_pending()['res_model'], 'sgi.action.line')
         self.assertEqual(wiz.action_show_acks()['res_model'], 'sgi.document.ack')
-        self.assertEqual(wiz.action_show_documents()['res_model'], 'documents.document')
-        self.assertEqual(wiz.action_show_nc()['res_model'], 'quality.alert')
-        self.assertEqual(wiz.action_show_epp()['res_model'], 'sgi.epp.delivery')
+        # 57.8.0 (B-011, I-022): los botones sin vista y las listas de
+        # pendientes se retiraron de la pantalla.
+        for gone in ('action_show_late', 'action_show_ok', 'action_show_unmeasured',
+                     'action_focus_pending', 'action_show_documents', 'action_show_nc',
+                     'action_show_epp', 'action_precheck', 'pending_action_ids'):
+            self.assertFalse(hasattr(wiz, gone), gone)
         self.assertFalse(wiz.action_show_received()['context']['create'])
         # 56.7.0: la lista es la vista principal; las tarjetas, en el celular.
         mine = wiz.action_show_all()

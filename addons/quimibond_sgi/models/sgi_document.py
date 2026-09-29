@@ -131,10 +131,6 @@ class DocumentsDocument(models.Model):
     sgi_revision = fields.Integer(string="Revisión", tracking=True)
     sgi_revision_label = fields.Char(
         string="Rev.", compute='_compute_sgi_revision_label')
-    sgi_revision_legacy = fields.Char(
-        string="Revisión (texto anterior)", readonly=True, copy=False,
-        help="Valor de texto que no se pudo convertir a número al migrar "
-             "(p. ej. «A»). Captura la revisión real en «Revisión».")
     sgi_issue_date = fields.Date(string="Fecha de emisión")
     sgi_state = fields.Selection([
         ('borrador', "Borrador"),

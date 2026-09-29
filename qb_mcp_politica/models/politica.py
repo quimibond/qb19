@@ -106,6 +106,27 @@ def es_protegido(model_name):
     )
 
 
+# ---------------------------------------------------------------------------
+# D-22 (Jose, 2026-09-29): en el SGI no se borra por MCP; se archiva. El
+# borrado (``unlink``) de cualquier modelo ``sgi.*`` se rechaza aunque la
+# casilla «Allow Delete» esté marcada. Leer, crear y escribir (incluido
+# ``active = False``) siguen como diga la casilla.
+# ---------------------------------------------------------------------------
+PREFIJOS_SIN_BORRADO = ('sgi.',)
+
+MENSAJE_SIN_BORRADO = (
+    "En el SGI no se borra por MCP: archívalo (active=False) con "
+    "update_record. Si el modelo no tiene «active», ciérralo o cancélalo en "
+    "pantalla (política de Quimibond, decisión D-22)."
+)
+
+
+def es_sin_borrado(model_name, operation):
+    """El MCP no puede borrar registros de este modelo (D-22)."""
+    return (operation == 'unlink' and bool(model_name)
+            and model_name.startswith(PREFIJOS_SIN_BORRADO))
+
+
 def operacion_permitida(model_name, operation):
     """Lo que la política deja pasar, antes de mirar la casilla de Ajustes.
 
@@ -113,6 +134,8 @@ def operacion_permitida(model_name, operation):
     de ``mcp.enabled.model`` Y esta función.
     """
     if es_desactivado(model_name):
+        return False
+    if es_sin_borrado(model_name, operation):
         return False
     if es_protegido(model_name):
         return operation == 'read'

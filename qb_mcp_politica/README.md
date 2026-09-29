@@ -22,6 +22,11 @@ Todo lo demás queda como lo diga la casilla: `sgi.*` y los modelos de negocio
 de la carga (`documents.*`, `approval.*`, `fleet.*`, `maintenance.*`, `hr.*`,
 `quality.*`, `mail.activity`, `mail.message`…) conservan su escritura.
 
+- **Sin borrado en el SGI** (decisión D-22, 19.0.1.1.0): `delete_record` (y
+  cualquier `unlink` por XML-RPC o `call_model_method`) sobre un modelo `sgi.*`
+  se rechaza aunque la casilla «Allow Delete» esté marcada. La herramienta
+  contesta «archívalo (active=False)»; se archiva con `update_record`.
+
 Las listas viven en un solo lugar: `models/politica.py`.
 
 ### Solo lectura

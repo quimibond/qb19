@@ -223,7 +223,7 @@
         <field name="target_objective">0.8</field>
         <field name="target_acceptable">1.2</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">desperdicio</field>
+        <field name="calc_mode">desperdicio_kg</field><!-- 57.6.0 (B-010): antes desperdicio -->
     </record>
 
     <!-- ===================== Calidad ===================== -->
@@ -249,7 +249,7 @@
         <field name="target_objective">94</field>
         <field name="target_acceptable">90</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">disponibilidad_mantto</field>
+        <field name="calc_mode">manual</field><!-- 57.6.0 (B-010): antes disponibilidad_mantto -->
     </record>
     <record id="sgi_ind_preventivo" model="sgi.indicator">
         <field name="code">MT-02</field>
@@ -260,7 +260,7 @@
         <field name="target_objective">95</field>
         <field name="target_acceptable">90</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">preventivo_cumplido</field>
+        <field name="calc_mode">configurable</field><!-- 57.6.0 (B-010): antes preventivo_cumplido -->
     </record>
     <record id="sgi_ind_ots_atendidas" model="sgi.indicator">
         <field name="code">MT-03</field>
@@ -284,7 +284,7 @@
         <field name="target_objective">91</field>
         <field name="target_acceptable">85</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">plantilla_rh</field>
+        <field name="calc_mode">manual</field><!-- 57.6.0 (B-010): antes plantilla_rh -->
     </record>
     <record id="sgi_ind_capacitacion" model="sgi.indicator">
         <field name="code">RH-02</field>

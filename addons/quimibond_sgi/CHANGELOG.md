@@ -13,6 +13,157 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.8.0 — 2026-09-29
+
+**Retirado (B-011):** 27 métodos `action_*` sin botón, menú ni llamador,
+verificados con grep en todo el repo y contra las vistas de producción (0 de
+Studio): en `sgi.my.procedure` `action_show_late/ok/unmeasured/short/
+documents/nc/measures/legal/doc_reviews/epp`, `action_focus_pending` y
+`action_precheck`; en `sgi.process` `action_sgi_view_process_map/sipoc/
+doc_tree`, `action_sgi_view_flows`, `action_print_risk_matrix`,
+`action_print_master_list`, `action_view_inbound_references`,
+`action_view_no_method_activities` y `action_print_procedure`; además
+`sgi.activity.role.action_sgi_open_approval_rule`,
+`approval.request.action_sgi_open_sign_request`,
+`sgi.indicator.measure.action_open_plan`,
+`sgi.process.activity.action_sgi_mp_propose_change`,
+`hr.employee.action_sgi_my_procedure_view` (con
+`hr.job._sgi_my_procedure_view_action`, que solo usaba él) y
+`sgi.sales.budget.action_open_lines`. **Se queda** `action_show_received`: sí
+es botón de la pantalla (el informe lo daba por muerto). Los reportes siguen
+en el menú Imprimir.
+
+**Retirado (I-022, G-013):** las listas de Mi procedimiento que ninguna vista
+mostraba (`pending_action_ids`, `pending_nc_ids`, `pending_measure_ids`,
+`pending_legal_ids`, `pending_doc_review_ids`) y sus conteos; se calculaban en
+cada apertura. Los pendientes viven en «Mis pendientes».
+
+**Retirado (B-012):** `_sgi_done_activities`, `sgi_business_day_of`,
+`_sgi_file_size`, `_sgi_mp_role_label`, `sgi_map_data`, `_sgi_sentence` y
+`_sgi_aggregate`. Se queda `sgi_next_code`.
+
+**Retirado (B-013):** 10 campos no guardados sin uso:
+`sgi.activity.role.approval_model_name`, `sgi.audit.checklist.line.audit_state`,
+`hr.job.sgi_role_ids`, `sgi.deliverable.link_ids`,
+`approval.request.sgi_purchase_order_ids`,
+`sgi.management.review.agreement_action_ids`,
+`sgi.process.activity.sgi_mp_change_ids`, `maintenance.equipment.sgi_msa_ids`,
+`documents.document.sgi_publish_sign_state` y
+`sgi.process.activity.exec_stat_ids`. Se queda `linked_document_ids`.
+
+**Retirado (B-014, D-012):** la acción `sgi_process_hierarchy_action` (sin
+menú) y las vistas `sgi_nc_view_pivot`/`sgi_nc_view_graph` (ninguna acción
+las usaba). **Corregido:** «Pareto de alertas de calidad» usa sus vistas
+(equipo × etiqueta) por `view_ids`; antes ganaban las estándar.
+
+**Cambiado (A-023, B-019):** archivos de datos y vistas renombrados por tema,
+sin cambiar XML IDs ni el orden del manifest: `sgi_sequences_fase2/3/6` →
+`sgi_sequences_audit_risk`, `_quality_sst`, `_policy_budget`;
+`sgi_cron_fase2/3` → `sgi_cron_indicators_audit`, `sgi_cron_calibration_budget`;
+`sgi_control_plans_fase4` → `sgi_control_plans`; `sgi_fase7_data` →
+`sgi_emergency_satisfaction_data`; `sgi_fase8_data` →
+`sgi_operational_signals_data`; `sgi_pr6_data` → `sgi_supplier_nc_data`;
+`views/sgi_pr6_views` → `views/sgi_supplier_audit_sign_views`;
+`demo/sgi_demo_fase3` → `demo/sgi_demo_quality`.
+
+**Migración (post, `migrations/19.0.57.8.0/post-migrate.py`, B-006):** borra
+las 15 filas de `ir_model_data` de otros módulos que apuntaban a
+`sgi.employer.obligation` (solo esas filas; ningún dato).
+
+**Datos de producción (2026-09-29, lectura):** 15 filas `ir.model.data` con
+`sgi_employer_obligation`; 0 vistas de producción que citen los métodos o
+campos retirados fuera del módulo; la acción 4053 sin menú.
+
+**Pruebas:** ajustadas `test_my_procedure_ui`, `test_my_procedure`,
+`test_hierarchy`, `test_structure_sgi`, `test_structure`, `test_spec`,
+`test_fase10`, `test_indicator_detail`, `test_pr4_docs_legal`,
+`test_pr6_external` y `test_cleanup_b10` (los pendientes se prueban en
+`sgi.my.pending`).
+
+## 19.0.57.7.0 — 2026-09-29
+
+**Cambiado (D-11):** `sgi.config.sgi_drop_empty_studio_models` cuenta las
+filas por SQL (archivados incluidos, sin depender de permisos: `x_emp_activity`
+no tiene ninguno) y **no borra ninguno si uno de los cuatro tiene registros**.
+Justo antes de cada borrado vuelve a contar; si ya no es 0, `UserError` y se
+revierte todo. Quita primero los one2many de Studio del propio modelo, reporta
+los modelos acompañantes (`_stage`, `_tag`, `_line…`, que no se borran) y los
+campos que Odoo quitará, y deja cada borrado en `ir.logging`. Se corre a mano
+en el shell (`dry_run=True` por default). No corre en el update.
+
+**Agregado (D-14):** correo semanal por persona con lo atrasado de su «Mis
+pendientes» (`sgi.cron.cron_weekly_overdue_mail`, plantilla
+`mail_template_sgi_weekly_overdue`). Solo a quien tiene algo atrasado; cada
+quien lo apaga en Preferencias (`res.users.sgi_weekly_overdue_mail`, encendido
+por default). Reutiliza el cron `sgi_cron_weekly_digest`, que sale
+**apagado**.
+
+**Retirado:** `sgi.cron.cron_weekly_digest`, el resumen semanal viejo a MAST y
+Dirección (B-017).
+
+**Cambiado (D-15):** «Solicitud de compra SGI» y «Cambio de proceso /
+infraestructura (MOC SGI)» se instalan archivadas; en producción se archivan
+con la familia OP-PTAR (`sgi.config._sgi_archive_unused_catalogs`, con CSV de
+respaldo adjunto; no archiva nada que tenga solicitudes o roles).
+
+**Migración (post, `migrations/19.0.57.7.0/post-migrate.py`):** reescribe el
+cron 201 al correo por persona y lo deja apagado; archiva 13, 14 y OP-PTAR si
+siguen sin uso.
+
+**Datos de producción (2026-09-29, lectura):** `x_calendario_de_obliga`,
+`x_no_conformidades` y `x_actividades_obligato` con 0 registros (también
+archivados); `x_emp_activity` sin permiso de lectura (se cuenta por SQL al
+correr). Acompañantes: `_stage` con 3 registros cada uno, `x_no_conformidades_tag`
+y `x_no_conformidades_line_0ff2d` con 0. `approval.request` en 13 y 14: 0.
+OP-PTAR (57): 2 puestos, 3 empleados, 0 roles.
+
+**Pruebas:** `test_studio_cleanup` y `test_weekly_overdue` (nuevas);
+`test_sign_elearning` sin el digest; `test_ola_certificable` reactiva la
+categoría MOC para probar su candado.
+
+## 19.0.57.6.0 — 2026-09-29
+
+**Cambiado:** E1-02 se mide con `acuerdos_rxd` (D-13). El modo ahora cuenta
+los acuerdos de la Revisión por la Dirección realizada o cerrada con fecha
+límite en el periodo, cumplidos a tiempo (`done_date` ≤ `deadline`; también
+los cumplidos a mano sin acción), con nota «sin acuerdos», fuente del dato y
+evidencia (antes «Este modo aún no tiene vista de evidencia»).
+
+**Retirado:** la encuesta de auditoría legado (B-009, D-011, D-016): campos
+`sgi.audit.survey_id` y `survey_input_ids`, `sgi.audit.finding.survey_line_id`,
+la pestaña «Encuesta (legado)», los botones «Contestar checklist (encuesta)» y
+«Hallazgos de la encuesta» con sus métodos, y el checklist por encuesta del
+plan de auditoría impreso. `data/sgi_audit_data.xml` sale del manifest a
+`docs/historico/quimibond_sgi_data/`. Se queda «Evaluar al auditor».
+También `documents.document.sgi_revision_legacy` (C-017; 0 con dato).
+
+**Retirado:** nueve modos de cálculo sin uso en producción (B-010):
+`desperdicio`, `desperdicio_scrap`, `disponibilidad_mantto`,
+`preventivo_cumplido`, `plantilla_rh`, `inventario_ciclico`,
+`compras_sin_devolucion`, `margen_ventas` y `compras_vs_ventas`, con sus
+cálculos, evidencia, fuente del dato, `_detail_preventivo_cumplido`,
+`_sgi_waste_category_ids` y el ajuste «Categoría del byproduct de
+desperdicio». Las 6 siembras que los usaban toman el modo de producción.
+
+**Migración (pre, `migrations/19.0.57.6.0/pre-migrate.py`):** pasa a
+`manual` cualquier indicador en un modo retirado (hoy 0); archiva la encuesta
+151 si estuviera activa; sus 36 XML IDs pasan a `__export__` con prefijo
+`quimibond_sgi_legado_` (la encuesta no se borra).
+
+**Migración (post, `migrations/19.0.57.6.0/post-migrate.py`):** E1-02 pasa a
+`acuerdos_rxd` solo si está activo, en «manual» y sin términos de fórmula.
+
+**Datos de producción (2026-09-29, lectura):** `sgi.indicator` por
+`calc_mode` (activos y archivados): 0 en los 9 modos retirados y 0 en
+`acuerdos_rxd`. E1-02 = id 171, manual, sin términos, 0 mediciones. Encuesta
+151 archivada, 0 respuestas; 0 `sgi.audit`, 0 hallazgos; 36 XML IDs de la
+encuesta. `sgi_revision_legacy` con dato: 0. Acuerdos de RxD: 0.
+
+**Pruebas:** `test_legado` (nueva); se retiran `TestAuditChecklist`
+(`test_fase8`) y las pruebas de los modos retirados (`test_kpi_fase4`,
+`test_kpi20`, `test_expansion_kpis`); `test_ola_certificable` usa fórmula sin
+términos en vez de `plantilla_rh`.
+
 ## 19.0.57.5.0 — 2026-09-29
 
 **Cambiado:** la actualización del módulo solo corre `seed_parameters`

@@ -23,7 +23,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
 
-from .sgi_calendar import sgi_nth_business_day, _working_dates
+from .sgi_calendar import _working_dates
 
 LOCK_FIELDS = {
     'fiscalyear_lock_date': "Cierre fiscal",
@@ -101,11 +101,6 @@ class SgiLockDateLog(models.Model):
             day = fields.Datetime.context_timestamp(log, log.moved_at).date()
             working = _working_dates(self.env, day.replace(day=1), day, log.company_id)
             log.business_day = len([d for d in working if d <= day])
-
-    @api.model
-    def sgi_business_day_of(self, day, nth, company=None):
-        """El día hábil número ``nth`` del mes de ``day`` (para filtros)."""
-        return sgi_nth_business_day(self.env, day.year, day.month, nth, company)
 
 
 class ResCompanyLockLog(models.Model):

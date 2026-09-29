@@ -379,14 +379,6 @@ class SgiProcess(models.Model):
             'context': {'default_from_process_id': self.id},
         }
 
-    def action_print_risk_matrix(self):
-        """DIR-2 (52.0.0): matriz de riesgos del proceso en PDF."""
-        return self.env.ref('quimibond_sgi.action_report_risk_matrix').report_action(self)
-
-    def action_print_master_list(self):
-        """DOC-3 (51.0.0): lista maestra de documentos del proceso en PDF."""
-        return self.env.ref('quimibond_sgi.action_report_master_list').report_action(self)
-
     def _sgi_master_list_documents(self):
         """Documentos controlados del proceso para la lista maestra: vigentes
         y en piloto, por tipo y clave."""

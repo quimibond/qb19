@@ -194,19 +194,6 @@ class SgiIndicatorDetail(models.Model):
         self.ensure_one()
         return not self.measure_from or date_to >= self.measure_from
 
-    @api.model
-    def _sgi_aggregate(self, measures):
-        """Valor de varias mediciones juntas: suma de numeradores entre suma
-        de denominadores (×100 si el indicador es un %). None si alguna no
-        trae detalle o el denominador suma cero."""
-        measures = measures.filtered(lambda m: m.state in ('capturado', 'validado'))
-        if not measures or any(not m.denominator for m in measures):
-            return None
-        den = sum(measures.mapped('denominator'))
-        num = sum(measures.mapped('numerator'))
-        pct = all(m.value_is_pct for m in measures)
-        return round(num / den * (100.0 if pct else 1.0), 2)
-
     # ---- Detalle por modo: primera tanda (a tiempo, completo, OTIF/OTD,
     # entregas, pedidos, NC, calidad, cartera). Los demás llegan por tandas.
     @staticmethod
@@ -267,13 +254,6 @@ class SgiIndicatorDetail(models.Model):
             ('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
         ok = len(logs) - len(logs.filtered(lambda l: l.causa_id))
         return self._ratio(ok, len(logs), logs)
-
-    def _detail_preventivo_cumplido(self, date_from, date_to):
-        requests = self.env['maintenance.request'].search([
-            ('maintenance_type', '=', 'preventive'),
-            ('request_date', '>=', date_from), ('request_date', '<=', date_to)])
-        done = len(requests.filtered(lambda r: r.stage_id.done))
-        return self._ratio(done, len(requests), requests)
 
     def _detail_dso_cartera(self, date_from, date_to):
         receivable = self._sgi_receivable_balance(date_to)
