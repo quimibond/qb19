@@ -1,0 +1,7 @@
+sgi.activity.role id,sgi.process.activity id,numeral,rol,rol relativo
+598,407,C2.35,ejecuta,quien_detecta
+870,484,S1.01,ejecuta,solicitante
+917,496,S1.18,ejecuta,solicitante
+1643,692,E2.01,aprueba,solicitante
+1465,645,S4.03,aprueba,solicitante
+1577,676,S6.07,aprueba,solicitante

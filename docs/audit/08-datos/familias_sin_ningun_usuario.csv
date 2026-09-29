@@ -1,0 +1,13 @@
+sgi.job.family id,codigo,empleados,con usuario,roles
+58,TEC-MTO,11,0,ejecuta 2
+47,OP-TEJ,26,0,ejecuta 1
+49,OP-INS,17,0,ejecuta 2
+50,LAB,6,0,"ejecuta 3, informa 2, participa 2"
+51,OP-JET,6,0,ejecuta 1
+52,OP-RAMA,6,0,ejecuta 1
+55,OP-CAR,3,0,ejecuta 1
+56,EMP,3,0,ejecuta 1
+53,OP-ABR,6,0,participa 1
+54,OP-DEV,4,0,participa 1
+48,OP-TRA,1,0,participa 1
+57,OP-PTAR,3,0,(sin roles)
