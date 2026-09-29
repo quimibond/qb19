@@ -266,3 +266,15 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
   - **Auditor:** lee los hallazgos de la Comisión, sin escribir, para poder auditar la ISO 45001.
 - **Datos que hace Jose antes de pasar a producción:** ligar F-P-A28-13, el 5556 y la limpieza de C-008 (5556, 3359, 4995, 4022, 3760, 3644, 5119 y 3930).
 - **Borrado de `restrict` en documentos de evidencia y en formatos ligados:** con `restrict`, un documento de esos en la papelera haría fallar todos los días la limpieza automática de Documentos. Quedan con su `ondelete` por default y `set null`.
+
+## 2026-09-29 — Lote 4 integrado a `main`
+
+- Lote 3 con build verde (Jose).
+- Lote 4 (quimibond/qb19#465, `20dbec7`, `quimibond_sgi` 56.38.0): la entrega 8a, con Mis pendientes con todo adentro, los avisos de crons sin duplicar y la calibración sin bloqueo. Entró por instrucción de Jose («Push a main»). La evidencia es el build de `main`.
+- Durante la revisión se corrigió que un jefe, desde Mi equipo, recibiera la liga de firma con token de su gente (`535ea9c`).
+- **Siguen abiertos para Jose:**
+  - si se liberan los 144 equipos en «No usar» (143 los puso el cron el 25-sep; el 743 lo bloqueó Jose al crearlo);
+  - los plazos de Mis pendientes: acuse, 5 días hábiles; captura, 3;
+  - si el aprobador ve como atrasado lo que el ejecutor no ha hecho;
+  - corregir a mano el escalamiento de E2.31 y E2.32 (Dirección no puede leer salud);
+  - avisar a Elena (16) de sus 174 firmas antes de desplegar a producción.
