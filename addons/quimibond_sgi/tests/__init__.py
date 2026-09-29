@@ -86,3 +86,5 @@ from . import test_hse_records
 from . import test_capture_reply
 from . import test_norm_compliance
 from . import test_archived_filters
+from . import test_update_respects_mast
+from . import test_security_entrega1

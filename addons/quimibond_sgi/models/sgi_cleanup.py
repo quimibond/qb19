@@ -23,11 +23,12 @@ from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
-# Las cinco entradas del SGI. Todo menú bajo el raíz debe descender de una.
+# Las seis entradas del SGI. Todo menú bajo el raíz debe descender de una.
 SGI_MENU_ENTRIES = (
     'quimibond_sgi.menu_sgi_panel',              # Inicio
     'quimibond_sgi.menu_sgi_processes',          # Procesos
     'quimibond_sgi.menu_sgi_improvement_group',  # Mejora
+    'quimibond_sgi.menu_sgi_safety',             # Seguridad y ambiente (56.21.0)
     'quimibond_sgi.menu_sgi_direction',          # Dirección
     'quimibond_sgi.menu_sgi_admin',              # Administración SGI
 )
@@ -108,7 +109,7 @@ class SgiMenuCleanup(models.Model):
     _inherit = 'ir.ui.menu'
 
     def _sgi_menu_tree_offenders(self):
-        """Menús bajo el raíz del SGI que no descienden de una de las cinco
+        """Menús bajo el raíz del SGI que no descienden de una de las seis
         entradas (ni de las dos de Calidad cuando cuelgan del raíz por
         respaldo). Vacío = el árbol está limpio."""
         root = self.env.ref('quimibond_sgi.menu_sgi_root', raise_if_not_found=False)
