@@ -13,14 +13,16 @@
                 <field name="price_gap_alert" column_invisible="1"/>
                 <field name="product_id"/>
                 <field name="customer_code" optional="hide"/>
+                <field name="forecast_source" optional="hide" column_invisible="context.get('sgi_hide_coverage')"/>
+                <field name="release_id" optional="hide" column_invisible="context.get('sgi_hide_coverage')"/>
                 <field name="partner_id" optional="show"/>
                 <field name="date"/>
                 <field name="uom_id"/>
                 <field name="qty_budget"/>
-                <field name="qty_forecast" readonly="1" optional="show"/>
+                <field name="qty_forecast" readonly="1" optional="hide"/>
                 <field name="price_unit_currency" readonly="1" optional="show"/>
-                <field name="price_real_unit_currency" readonly="1" optional="show"/>
-                <field name="price_gap_pct" readonly="1" optional="show"/>
+                <field name="price_real_unit_currency" readonly="1" optional="hide"/>
+                <field name="price_gap_pct" readonly="1" optional="hide"/>
                 <field name="price_gap_fx" readonly="1" optional="hide"/>
                 <field name="amount_currency" readonly="1" optional="hide"/>
                 <field name="list_currency_id" optional="hide"/>
@@ -29,7 +31,7 @@
                 <field name="has_list_price" readonly="1" optional="hide"/>
                 <field name="price_source" readonly="1" optional="hide"/>
                 <field name="qty_real" readonly="1" optional="show"/>
-                <field name="qty_net_demand" readonly="1" optional="show"/>
+                <field name="qty_net_demand" readonly="1" optional="hide"/>
                 <field name="amount_real" readonly="1" optional="show"/>
                 <field name="qty_ordered" readonly="1" optional="hide"/>
                 <field name="amount_ordered" readonly="1" optional="hide"/>
@@ -48,9 +50,6 @@
                 <button name="action_view_week_orders" type="object" icon="fa-shopping-cart"
                         string="Ver pedidos de la semana" title="Ver pedidos de la semana"
                         invisible="kind != 'pronostico'"/>
-                <button name="action_create_draft_quotation" type="object" icon="fa-file-o"
-                        string="Crear cotización" title="Crear cotización (borrador)"
-                        invisible="kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')"/>
                 <button name="action_view_month_invoices" type="object" icon="fa-file-text-o"
                         string="Ver facturas del mes" title="Ver facturas del mes"
                         invisible="kind == 'pronostico'"/>
@@ -69,9 +68,6 @@
                     <button name="action_view_week_orders" type="object"
                             string="Ver pedidos de la semana" icon="fa-shopping-cart"
                             invisible="kind != 'pronostico'"/>
-                    <button name="action_create_draft_quotation" type="object"
-                            string="Crear cotización (borrador)" icon="fa-file-o"
-                            invisible="kind != 'pronostico' or coverage_state not in ('sin_pedido', 'parcial')"/>
                     <button name="action_view_month_invoices" type="object"
                             string="Ver facturas del mes" icon="fa-file-text-o"
                             invisible="kind == 'pronostico'"/>
@@ -176,18 +172,6 @@
         </field>
     </record>
 
-    <record id="sgi_sales_budget_line_view_graph_curve" model="ir.ui.view">
-        <field name="name">sgi.sales.budget.line.graph.curve</field>
-        <field name="model">sgi.sales.budget.line</field>
-        <field name="arch" type="xml">
-            <graph string="Curva acumulada (Dirección)" type="line" cumulated="1">
-                <field name="date" interval="month"/>
-                <field name="amount_budget" type="measure"/>
-                <field name="amount_real" type="measure"/>
-            </graph>
-        </field>
-    </record>
-
     <record id="sgi_sales_budget_line_view_search" model="ir.ui.view">
         <field name="name">sgi.sales.budget.line.search</field>
         <field name="model">sgi.sales.budget.line</field>
@@ -248,23 +232,8 @@
                     <!-- Flujo (P-A28 Rev.15): captura → revisado (Admin ventas) →
                          aprobado (alta dirección, solo presupuesto). El pronóstico
                          es documento vivo: solo se marca revisado. -->
-                    <button name="action_download_template" type="object"
-                            string="1. Descargar plantilla" icon="fa-file-excel-o"
-                            invisible="state != 'borrador'"/>
-                    <button name="action_open_import" type="object"
-                            string="2. Importar" icon="fa-upload"
-                            invisible="state != 'borrador'"/>
-                    <button name="action_open_grid_qty" type="object"
-                            string="2. Capturar en la matriz" icon="fa-th"
-                            invisible="state != 'borrador'"/>
-                    <button name="action_preload_from_orders" type="object"
-                            string="Precargar desde pedidos" icon="fa-download"
-                            invisible="kind != 'pronostico' or state != 'borrador'"/>
-                    <button name="action_preload_from_orders" type="object"
-                            string="Precargar (pronóstico + real)" icon="fa-download"
-                            invisible="kind != 'presupuesto' or state != 'borrador'"/>
                     <button name="action_refresh_actuals" type="object"
-                            string="3. Actualizar" icon="fa-refresh"/>
+                            string="Actualizar real" icon="fa-refresh"/>
                     <button name="action_send_to_review" type="object"
                             string="Enviar a revisión" class="btn-primary"
                             invisible="kind != 'presupuesto' or state != 'borrador'"
@@ -277,25 +246,21 @@
                             class="btn-primary"
                             invisible="kind != 'presupuesto' or state != 'revisado'"
                             groups="quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_revise" type="object" string="Revisar (nueva Rev.)"
+                    <button name="action_revise" type="object" string="Nueva revisión"
                             invisible="kind != 'presupuesto' or state != 'aprobado'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_set_borrador" type="object" string="Regresar a borrador"
-                            invisible="state not in ('revisado', 'aprobado')"
+                            invisible="state != 'revisado'"
                             groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_send_to_mps" type="object"
                             string="Enviar demanda al MPS" icon="fa-industry"
                             invisible="not sgi_mps_available or (kind == 'pronostico' and state != 'revisado') or (kind == 'presupuesto' and state != 'aprobado')"/>
                     <field name="sgi_mps_available" invisible="1"/>
-                    <button name="action_open_comparison" type="object"
-                            string="Comparación" icon="fa-bar-chart"/>
                     <button name="action_open_analysis" type="object"
-                            string="Análisis" icon="fa-table"/>
+                            string="Análisis" icon="fa-table" invisible="kind != 'presupuesto'"/>
                     <button name="action_reconcile_invoiced" type="object"
                             string="Conciliar facturado" icon="fa-balance-scale"
                             invisible="kind != 'presupuesto'"/>
-                    <button name="action_open_cumulative" type="object"
-                            string="Curva (Dirección)" icon="fa-line-chart"/>
                     <button name="action_print_budget" type="object"
                             string="Imprimir" icon="fa-print"/>
                     <field name="state" widget="statusbar"
@@ -336,8 +301,6 @@
                         de un golpe).
                         <button name="action_view_no_price" type="object"
                                 string="Ver líneas sin precio" class="btn-link"/>
-                        <button name="action_price_coverage_report" type="object"
-                                string="Auditar cobertura de precios" class="btn-link"/>
                     </div>
                     <field name="needs_justification" invisible="1"/>
                     <div class="alert alert-danger" role="alert"
@@ -583,40 +546,12 @@
         <field name="name">sgi.sales.analysis.pivot.mercado</field>
         <field name="model">sgi.sales.budget.line</field>
         <field name="arch" type="xml">
-            <pivot string="Por mercado">
+            <pivot string="Análisis">
                 <field name="team_id" type="row"/>
                 <field name="date" interval="month" type="col"/>
                 <field name="amount_budget" type="measure"/>
                 <field name="amount_real" type="measure"/>
                 <field name="amount_ordered" type="measure"/>
-            </pivot>
-        </field>
-    </record>
-
-    <record id="sgi_sales_analysis_pivot_cliente" model="ir.ui.view">
-        <field name="name">sgi.sales.analysis.pivot.cliente</field>
-        <field name="model">sgi.sales.budget.line</field>
-        <field name="arch" type="xml">
-            <pivot string="Por cliente">
-                <field name="partner_id" type="row"/>
-                <field name="team_id" type="row"/>
-                <field name="amount_budget" type="measure"/>
-                <field name="amount_real" type="measure"/>
-                <field name="amount_ordered" type="measure"/>
-            </pivot>
-        </field>
-    </record>
-
-    <record id="sgi_sales_analysis_pivot_producto" model="ir.ui.view">
-        <field name="name">sgi.sales.analysis.pivot.producto</field>
-        <field name="model">sgi.sales.budget.line</field>
-        <field name="arch" type="xml">
-            <pivot string="Por producto">
-                <field name="product_id" type="row"/>
-                <field name="amount_budget" type="measure"/>
-                <field name="amount_real" type="measure"/>
-                <field name="qty_budget" type="measure"/>
-                <field name="qty_real" type="measure"/>
             </pivot>
         </field>
     </record>
@@ -635,60 +570,20 @@
     </record>
 
     <record id="sgi_sales_analysis_mercado_action" model="ir.actions.act_window">
-        <field name="name">Por mercado</field>
+        <field name="name">Análisis</field>
         <field name="res_model">sgi.sales.budget.line</field>
-        <field name="view_mode">pivot,list</field>
+        <field name="view_mode">pivot,graph,list</field>
         <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
         <field name="view_ids" eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_mercado')}),
-            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
-        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
-            'search_default_year_current': 1}</field>
-    </record>
-
-    <record id="sgi_sales_analysis_cliente_action" model="ir.actions.act_window">
-        <field name="name">Por cliente</field>
-        <field name="res_model">sgi.sales.budget.line</field>
-        <field name="view_mode">pivot,list</field>
-        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
-        <field name="view_ids" eval="[(5, 0, 0),
-            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_cliente')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('sgi_sales_analysis_graph_global')}),
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
         <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
             'search_default_year_current': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Presupuesto por cliente</p>
-            <p>Las líneas sin cliente (esquema global por producto) se agrupan como
-            «Sin cliente» — no desaparecen.</p>
-        </field>
-    </record>
-
-    <record id="sgi_sales_analysis_producto_action" model="ir.actions.act_window">
-        <field name="name">Por producto</field>
-        <field name="res_model">sgi.sales.budget.line</field>
-        <field name="view_mode">pivot,list</field>
-        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
-        <field name="view_ids" eval="[(5, 0, 0),
-            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_sales_analysis_pivot_producto')}),
-            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_sales_budget_line_view_list')})]"/>
-        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
-            'search_default_year_current': 1}</field>
-    </record>
-
-    <record id="sgi_sales_analysis_global_action" model="ir.actions.act_window">
-        <field name="name">Global (Dirección)</field>
-        <field name="res_model">sgi.sales.budget.line</field>
-        <field name="view_mode">graph</field>
-        <field name="search_view_id" ref="sgi_sales_budget_line_view_search"/>
-        <field name="view_ids" eval="[(5, 0, 0),
-            (0, 0, {'view_mode': 'graph', 'view_id': ref('sgi_sales_analysis_graph_global')})]"/>
-        <field name="context">{'search_default_vigente': 1, 'search_default_presupuesto': 1,
-            'search_default_year_current': 1}</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Panel de Dirección</p>
-            <p>Presupuesto vs facturado por mes, apilado por mercado (solo importes:
-            no se mezclan m y kg). La curva acumulada está en el botón «Curva
-            (Dirección)» de la ficha.</p>
+            <p class="o_view_nocontent_smiling_face">Presupuesto contra facturado</p>
+            <p>Por mercado y mes; agrupe por cliente o producto desde la búsqueda. La
+            gráfica es la de Dirección (importes por mercado; nunca mezcla m y kg).</p>
         </field>
     </record>
 
@@ -709,8 +604,9 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea el presupuesto maestro de ventas</p>
             <p>Un presupuesto por mercado (equipo de ventas) y año (F-P-A28-18).
-            Captura la matriz producto × mes en cantidad y pesos; el real se calcula
-            solo desde lo facturado. En junio, revísalo con «Revisar (nueva Rev.)».</p>
+            Capture las líneas por producto (y cliente) y mes; el real se calcula
+            solo desde lo facturado. Una vez aprobado no se modifica: los ajustes
+            van al estimado de cierre.</p>
         </field>
     </record>
 
@@ -727,10 +623,10 @@
             (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_sales_budget_view_form')})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea el pronóstico semanal por cliente</p>
-            <p>Un pronóstico por cliente y año (F-P-A28-13, forecast). Captura la
-            matriz producto × semana; el real es lo comprometido a entregar
-            (pedidos confirmados por fecha de compromiso). Importa desde el
-            forecast.xlsx con «Importar desde Excel».</p>
+            <p>Un pronóstico por cliente y año (F-P-A28-13). Los clientes con release
+            lo actualizan solo al aplicar su release (Releases de clientes); para los
+            demás, capture las semanas. El real es lo comprometido a entregar
+            (pedidos confirmados por fecha de compromiso).</p>
         </field>
     </record>
 </odoo>

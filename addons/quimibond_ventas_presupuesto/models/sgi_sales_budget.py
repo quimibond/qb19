@@ -711,25 +711,11 @@ class SgiSalesBudget(models.Model):
             'view_mode': 'pivot,list',
             'views': [
                 (self.env.ref(
-                    'quimibond_ventas_presupuesto.sgi_sales_analysis_pivot_cliente').id, 'pivot'),
+                    'quimibond_ventas_presupuesto.sgi_sales_analysis_pivot_mercado').id, 'pivot'),
                 (self.env.ref(
                     'quimibond_ventas_presupuesto.sgi_sales_budget_line_view_list').id, 'list')],
             'domain': [('budget_id', '=', self.id)],
-            'context': {'search_default_group_partner': 1},
-        }
-
-    def action_open_cumulative(self):
-        """Curva acumulada mes a mes (presupuesto vs facturado YTD) — la gráfica
-        de la Revisión por la Dirección."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Curva acumulada — %s" % self.name,
-            'res_model': 'sgi.sales.budget.line',
-            'view_mode': 'graph',
-            'views': [(self.env.ref(
-                'quimibond_ventas_presupuesto.sgi_sales_budget_line_view_graph_curve').id, 'graph')],
-            'domain': [('budget_id', '=', self.id)],
+            'context': {'pivot_row_groupby': ['partner_id']},
         }
 
     # --- Matriz para el reporte F-P-A28-18 -----------------------------------
