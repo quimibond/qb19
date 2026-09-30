@@ -361,6 +361,11 @@
               parent="menu_sgi_metrology" action="sgi_equipment_action_measuring" sequence="10"/>
     <menuitem id="menu_sgi_calibrations" name="Calibraciones" parent="menu_sgi_metrology"
               action="sgi_calibration_action" sequence="20"/>
+    <!-- 57.62.0: laboratorio de Calidad (equipos, préstamo y revisión). -->
+    <menuitem id="menu_sgi_lab_equipment" name="Equipos de laboratorio"
+              parent="menu_sgi_metrology" action="sgi_equipment_action_lab" sequence="15"/>
+    <menuitem id="menu_sgi_lab_verifications" name="Verificaciones de laboratorio"
+              parent="menu_sgi_metrology" action="sgi_calibration_action_lab" sequence="25"/>
     <menuitem id="menu_sgi_msa" name="Estudios MSA" parent="menu_sgi_metrology"
               action="sgi_msa_study_action" sequence="30"/>
 

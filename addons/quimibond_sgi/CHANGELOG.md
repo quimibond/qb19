@@ -13,6 +13,45 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.62.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 3/6, inventario §5 #7):** laboratorio de
+Calidad (C5) sobre lo que ya existía, sin modelos nuevos:
+
+- **Equipo de laboratorio:** casilla «Equipo de laboratorio»
+  (`maintenance.equipment.sgi_is_lab`) en la pestaña «Metrología / EPP (SGI)»
+  del equipo. Menú **Calidad → Calidad preventiva → Metrología → Equipos de
+  laboratorio**, con lista y búsqueda propias (prestados, en el laboratorio,
+  vencidos, NO USAR; agrupar por «Prestado a»). El equipo marcado muestra e
+  imprime el formato del instrumental de laboratorio.
+- **Préstamo:** «Prestado a» (empleado) y «Prestado desde» (se llena sola)
+  con seguimiento: el historial del equipo es la bitácora de préstamos. La
+  ficha muestra la clave vigente del formato de préstamo
+  (`format_ref_lab_loan`).
+- **Verificación de laboratorio:** tipo nuevo de calibración («Verificación
+  de laboratorio») para la revisión periódica del equipo. No mueve las fechas
+  de calibración ni desbloquea; fuera de tolerancia deja el equipo NO USAR y
+  abre la NC de evaluación de impacto, como una calibración. Menú
+  **Metrología → Verificaciones de laboratorio**; la búsqueda de calibraciones
+  separa calibraciones y verificaciones y agrupa por tipo. La ficha de la
+  calibración muestra su formato controlado.
+- Mapeos nuevos (`data/sgi_format_map_data.xml`, noupdate; criterio de
+  57.60.0): verificación → F-P-C05-11 «Bitácora de revisión de equipos de
+  laboratorio»; equipo de laboratorio → F-IT-P-C05-06-07 «Instrumental de
+  laboratorio»; préstamo por referencia → F-P-C05-07. MAST liga el documento
+  en «Formatos en documentos de Odoo» y la revisión sale sola.
+
+**Queda para MAST:** marcar qué equipos son de laboratorio (hoy 148 equipos
+de medición, todos en la categoría EMIP; ninguno se marca solo).
+F-IT-P-C05-07-01 «Calibración del equipo Wesco» no se mapeó: en producción no
+hay ningún equipo «Wesco» dado de alta; al darlo de alta, un mapeo de
+`sgi.calibration` con filtro por ese equipo lo resuelve. F-IT-P-P04-08-01
+(verificación de instrumental, C4) duplica a F-P-C05-11 (bloque 3). Las 46
+calibraciones de producción (todas internas y conformes) no se tocan.
+
+**Pruebas:** `test_laboratorio` (verificación conforme y fuera de
+tolerancia, formatos, préstamo, menús).
+
 ## 19.0.57.61.0 — 2026-09-30
 
 **Agregado (bloque 2 de formularios 2/6):** las órdenes de producción, vales

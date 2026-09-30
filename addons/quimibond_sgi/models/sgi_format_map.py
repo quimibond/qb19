@@ -711,3 +711,17 @@ class StockLot(models.Model):
 class SgiManagementReview(models.Model):
     _name = 'sgi.management.review'
     _inherit = ['sgi.management.review', 'sgi.format.mixin']
+
+
+class SgiCalibration(models.Model):
+    """57.62.0: la verificación de laboratorio imprime su formato
+    (``format_map_lab_verification``)."""
+    _name = 'sgi.calibration'
+    _inherit = ['sgi.calibration', 'sgi.format.mixin']
+
+
+class MaintenanceEquipment(models.Model):
+    """57.62.0: el equipo de laboratorio porta el formato del instrumental
+    (``format_map_lab_equipment``)."""
+    _name = 'maintenance.equipment'
+    _inherit = ['maintenance.equipment', 'sgi.format.mixin']

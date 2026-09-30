@@ -13,7 +13,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
   - **PPAP** — `sgi.ppap`
   - **Metrología**
     - **Equipos de medición** — `maintenance.equipment`
+    - **Equipos de laboratorio** — `maintenance.equipment`
     - **Calibraciones** — `sgi.calibration`
+    - **Verificaciones de laboratorio** — `sgi.calibration`
     - **Estudios MSA** — `sgi.msa.study`
   - **COA recibidos** — `sgi.coa.inbox`; grupos: quality.group_quality_user, quimibond_sgi.group_sgi_manager
 - **Paretos de calidad** — grupos: quality.group_quality_user, quimibond_sgi.group_sgi_manager; bajo `quality_control.menu_quality_root`
@@ -116,7 +118,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **Bitácora de bloqueo contable** — `sgi.lock.date.log`; bajo `account.menu_finance_reports`
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (96)
+## Acciones (98)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -134,6 +136,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_audit_finding_action` | act_window | Hallazgos de auditoría | `sgi.audit.finding` | list,form | sí | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
 | `quimibond_sgi.sgi_audit_program_action` | act_window | Programa de auditorías | `sgi.audit.program` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
 | `quimibond_sgi.sgi_calibration_action` | act_window | Calibraciones | `sgi.calibration` | list,form | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
+| `quimibond_sgi.sgi_calibration_action_lab` | act_window | Verificaciones de laboratorio | `sgi.calibration` | list,form | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `quimibond_sgi.sgi_catalog_load_wizard_action` | act_window | Cargar catálogo | `sgi.catalog.load.wizard` | form |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_checklist_request_action` | act_window | Hojas de checklist | `maintenance.request` | list,form,pivot | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_checklist_template_action` | act_window | Checklists de planta y unidades | `sgi.checklist.template` | list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
@@ -164,6 +167,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_emergency_plan_action` | act_window | Planes de emergencia | `sgi.emergency.plan` | list,sgi_diagram,form,activity | sí | `addons/quimibond_sgi/views/sgi_emergency_views.xml` |
 | `quimibond_sgi.sgi_env_aspect_action` | act_window | Aspectos ambientales | `sgi.env.aspect` | list,form | sí | `addons/quimibond_sgi/views/sgi_env_aspect_views.xml` |
 | `quimibond_sgi.sgi_epp_delivery_action` | act_window | Responsivas de EPP | `sgi.epp.delivery` | list,form | sí | `addons/quimibond_sgi/views/sgi_epp_views.xml` |
+| `quimibond_sgi.sgi_equipment_action_lab` | act_window | Equipos de laboratorio | `maintenance.equipment` | list,form | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `quimibond_sgi.sgi_equipment_action_measuring` | act_window | Equipos de medición | `maintenance.equipment` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `quimibond_sgi.sgi_external_doc_action` | act_window | Documentos externos | `documents.document` | list,form | sí | `addons/quimibond_sgi/views/sgi_external_doc_views.xml` |
 | `quimibond_sgi.sgi_fmea_action` | act_window | AMEF | `sgi.fmea` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_fmea_views.xml` |
@@ -217,7 +221,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list |  | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (334; 63 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (336; 63 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -264,8 +268,10 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `maintenance.equipment` | `quimibond_sgi.maintenance_equipment_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_form` | herencia | `maintenance.hr_equipment_view_form` | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_form_msa` | herencia | `maintenance.hr_equipment_view_form` | `addons/quimibond_sgi/views/sgi_msa_views.xml` |
+| `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_list_lab` | list |  | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_list_measuring` | list |  | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_list_sgi` | herencia | `maintenance.hr_equipment_view_tree` | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
+| `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_search_lab` | search |  | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_search_measuring` | search |  | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.request` | `quimibond_sgi.sgi_checklist_request_view_form` | form |  | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `maintenance.request` | `quimibond_sgi.sgi_checklist_request_view_kanban` | kanban |  | `addons/quimibond_sgi/views/sgi_hse_views.xml` |

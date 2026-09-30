@@ -4,9 +4,11 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_msa.py`.
+57.62.0: el equipo de laboratorio porta el formato del instrumental (``format_map_lab_equipment``).
 
-## Campos (14)
+Archivos: `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_msa.py`.
+
+## Campos (18)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -15,13 +17,17 @@ Archivos: `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sg
 | `sgi_calibration_interval_months` | Integer | Intervalo de calibración (meses) | Cada cuántos meses se calibra el equipo. Con la última calibración define la próxima. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:60` |
 | `sgi_calibration_state` | Selection | Estado de calibración | Vigente, por vencer o vencido según la fecha de la próxima calibración. Se calcula solo y lo actualiza el cron diario. |  |  | compute `_compute_calibration_state`, guardado |  | `addons/quimibond_sgi/models/sgi_calibration.py:71` |
 | `sgi_do_not_use` | Boolean | No usar | Equipo bloqueado (fuera de tolerancia o calibración vencida). |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:78` |
+| `sgi_is_lab` | Boolean | Equipo de laboratorio | Marque si es instrumental o equipo del laboratorio de Calidad: aparece en Equipos de laboratorio, con su revisión y su préstamo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:89` |
 | `sgi_is_measuring` | Boolean | Equipo de medición | Marque si es un equipo de medición: lleva calibraciones y estudios MSA. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:54` |
-| `sgi_is_ppe` | Boolean | Equipo de protección personal (EPP) | Marque si es equipo de protección personal con fecha de vencimiento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:86` |
+| `sgi_is_ppe` | Boolean | Equipo de protección personal (EPP) | Marque si es equipo de protección personal con fecha de vencimiento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:109` |
 | `sgi_last_calibration_date` | Date | Última calibración | Fecha de la última calibración registrada. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:64` |
+| `sgi_loan_date` | Date | Prestado desde | Fecha del préstamo. Se llena sola con la de hoy al prestar el equipo; puede corregirla. |  |  | compute `_compute_sgi_loan_date`, guardado |  | `addons/quimibond_sgi/models/sgi_calibration.py:98` |
+| `sgi_loan_employee_id` | Many2one | Prestado a | Persona que tiene el equipo prestado fuera del laboratorio. Déjelo vacío cuando lo devuelva: el seguimiento del equipo guarda quién lo tuvo y cuándo (préstamo de equipos de laboratorio). |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:93` |
+| `sgi_loan_format_label` | Char | Formato del préstamo | Clave y revisión vigentes del formato de préstamo de equipos de laboratorio, que este registro sustituye. |  |  | compute `_compute_sgi_loan_format_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_calibration.py:103` |
 | `sgi_magnitude` | Char | Magnitud |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:57` |
 | `sgi_msa_count` | Integer | # MSA |  |  |  | compute `_compute_sgi_msa_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_msa.py:17` |
 | `sgi_next_calibration_date` | Date | Próxima calibración | Se calcula como última + intervalo, pero el laboratorio puede fijar otra fecha (prevalece). |  |  | compute `_compute_next_calibration_date`, guardado |  | `addons/quimibond_sgi/models/sgi_calibration.py:66` |
-| `sgi_ppe_expiry_date` | Date | Vencimiento del EPP | Fecha en que vence el equipo de protección. El cron avisa antes de que venza. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:88` |
+| `sgi_ppe_expiry_date` | Date | Vencimiento del EPP | Fecha en que vence el equipo de protección. El cron avisa antes de que venza. |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:111` |
 | `sgi_range` | Char | Rango |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:58` |
 | `sgi_resolution` | Char | Resolución |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_calibration.py:59` |
 
