@@ -7,7 +7,8 @@ class QualityAlert(models.Model):
     _inherit = 'quality.alert'
 
     sgi_incident_id = fields.Many2one(
-        'sgi.incident', string="Incidente SST de origen", readonly=True, copy=False)
+        'sgi.incident', string="Incidente SST de origen", readonly=True, copy=False,
+        help="Incidente o accidente de seguridad del que nació esta NC.")
 
 
 class SgiIncident(models.Model):

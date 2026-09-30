@@ -50,18 +50,26 @@ class HelpdeskTicket(models.Model):
     sgi_is_complaint_team = fields.Boolean(
         related='team_id.sgi_is_complaint', string="Es reclamación (SGI)")
 
-    sgi_sale_order_id = fields.Many2one('sale.order', string="Pedido de venta")
-    sgi_product_id = fields.Many2one('product.product', string="Producto")
-    sgi_lot_id = fields.Many2one('stock.lot', string="Lote")
-    sgi_qty_affected = fields.Float(string="Metros afectados")
+    sgi_sale_order_id = fields.Many2one('sale.order', string="Pedido de venta",
+                                        help="Pedido de venta del producto reclamado.")
+    sgi_product_id = fields.Many2one('product.product', string="Producto",
+                                     help="Producto que el cliente reclama.")
+    sgi_lot_id = fields.Many2one('stock.lot', string="Lote",
+                                 help="Lote del producto reclamado, para rastrear la producción de origen.")
+    sgi_qty_affected = fields.Float(string="Metros afectados",
+                                    help="Metros de producto afectados según la reclamación.")
     sgi_disposition = fields.Selection([
         ('devolucion', "Devolución"),
         ('reposicion', "Reposición"),
         ('nota_credito', "Nota de crédito"),
         ('concesion', "Concesión"),
         ('na', "N/A"),
-    ], string="Disposición")
-    sgi_alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True)
+    ], string="Disposición",
+        help="Qué se hizo con el producto reclamado: devolución, reposición, nota de crédito o concesión al "
+             "cliente.")
+    sgi_alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+                                   help="No conformidad que se generó desde esta reclamación con el botón "
+                                        "«Generar NC».")
 
     def action_sgi_generate_nc(self):
         self.ensure_one()

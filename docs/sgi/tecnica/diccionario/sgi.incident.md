@@ -14,24 +14,24 @@ Archivos: `addons/quimibond_sgi/models/sgi_incident.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action_line_ids` | One2many | Acciones |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:60` |
-| `basic_causes` | Text | Causas básicas (factores personales/de trabajo) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:55` |
-| `date` | Datetime | Fecha y hora |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:29` |
-| `days_lost` | Integer | Días perdidos |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:51` |
-| `description` | Text | Descripción del evento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:50` |
-| `employee_ids` | Many2many | Personas afectadas |  |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:44` |
-| `immediate_causes` | Text | Causas inmediatas (actos/condiciones) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:54` |
-| `incident_type` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:31` |
-| `lack_of_control` | Text | Falta de control (sistema de gestión) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:56` |
-| `location` | Char | Lugar |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:47` |
-| `name` | Char | Título |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:28` |
-| `process_id` | Many2one | Proceso |  |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:48` |
-| `reporter_id` | Many2one | Reportado por |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:45` |
-| `risk_id` | Many2one | Riesgo / IPER relacionado |  |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:58` |
-| `severity` | Selection | Severidad |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:38` |
-| `sgi_alert_id` | Many2one | No Conformidad generada |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:61` |
-| `sgi_area_id` | Many2one | Área SGI |  |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:49` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:64` |
+| `action_line_ids` | One2many | Acciones |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:61` |
+| `basic_causes` | Text | Causas básicas (factores personales/de trabajo) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:56` |
+| `date` | Datetime | Fecha y hora |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:30` |
+| `days_lost` | Integer | Días perdidos |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:52` |
+| `description` | Text | Descripción del evento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:51` |
+| `employee_ids` | Many2many | Personas afectadas |  |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:45` |
+| `immediate_causes` | Text | Causas inmediatas (actos/condiciones) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:55` |
+| `incident_type` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:32` |
+| `lack_of_control` | Text | Falta de control (sistema de gestión) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:57` |
+| `location` | Char | Lugar |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:48` |
+| `name` | Char | Título |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:29` |
+| `process_id` | Many2one | Proceso |  |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:49` |
+| `reporter_id` | Many2one | Reportado por |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:46` |
+| `risk_id` | Many2one | Riesgo / IPER relacionado |  |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:59` |
+| `severity` | Selection | Severidad |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:39` |
+| `sgi_alert_id` | Many2one | No Conformidad generada |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:62` |
+| `sgi_area_id` | Many2one | Área SGI |  |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:50` |
+| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:65` |
 
 ## Métodos públicos (6)
 

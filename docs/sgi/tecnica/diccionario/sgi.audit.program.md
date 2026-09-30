@@ -14,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `line_ids` | One2many | Líneas |  |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:48` |
+| `line_ids` | One2many | Líneas |  |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:51` |
 | `name` | Char | Nombre |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:40` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:43` |
-| `year` | Integer | Año |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:41` |
+| `state` | Selection | Estado | Borrador mientras se arma; aprobado cuando se autoriza (desde ahí se avisa cada auditoría); cerrado al terminar el año. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:44` |
+| `year` | Integer | Año | Año que cubre el programa. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:41` |
 
 ## Métodos públicos (4)
 

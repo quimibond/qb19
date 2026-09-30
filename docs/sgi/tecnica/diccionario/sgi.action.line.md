@@ -14,23 +14,23 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action_type` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:700` |
-| `activity_id` | Many2one | Actividad |  |  | `mail.activity` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:722` |
-| `alert_id` | Many2one | No Conformidad |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:691` |
-| `date_commit` | Date | Compromiso |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:709` |
-| `date_done` | Date | Terminada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:710` |
-| `drill_id` | Many2one | Simulacro |  |  | `sgi.emergency.drill` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:696` |
-| `fmea_line_id` | Many2one | Modo de falla (AMEF) |  |  | `sgi.fmea.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:693` |
-| `incident_id` | Many2one | Incidente SST |  |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:695` |
+| `action_type` | Selection | Tipo | Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la preventiva, una causa potencial. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:750` |
+| `activity_id` | Many2one | Actividad |  |  | `mail.activity` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:782` |
+| `alert_id` | Many2one | No Conformidad | No conformidad a la que pertenece la acción. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:736` |
+| `date_commit` | Date | Compromiso | Fecha en que el responsable se compromete a terminar la acción. Pasada esta fecha, la acción se marca vencida y escala. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:763` |
+| `date_done` | Date | Terminada el | Fecha en que se terminó la acción. Al capturarla, la acción queda terminada. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:766` |
+| `drill_id` | Many2one | Simulacro | Simulacro al que pertenece la acción. |  | `sgi.emergency.drill` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:745` |
+| `fmea_line_id` | Many2one | Modo de falla (AMEF) | Modo de falla del AMEF al que pertenece la acción. |  | `sgi.fmea.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:740` |
+| `incident_id` | Many2one | Incidente SST | Incidente o accidente de seguridad al que pertenece la acción. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:743` |
 | `measure_id` | Many2one | Medición roja | Plan de acción de una medición en rojo (I-4). |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:75` |
-| `name` | Char | Descripción |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:706` |
-| `objective_id` | Many2one | Objetivo integral | Plan de acción del objetivo (ISO 6.2.2). |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:697` |
-| `origin_display` | Char | Origen |  |  |  | compute `_compute_origin_display`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:724` |
-| `progress` | Selection | Avance |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:711` |
-| `responsible_id` | Many2one | Responsable |  | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:707` |
+| `name` | Char | Descripción |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:758` |
+| `objective_id` | Many2one | Objetivo integral | Plan de acción del objetivo (ISO 6.2.2). |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:747` |
+| `origin_display` | Char | Origen |  |  |  | compute `_compute_origin_display`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:784` |
+| `progress` | Selection | Avance | Avance de la acción según el responsable. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:769` |
+| `responsible_id` | Many2one | Responsable | Persona que ejecuta la acción. La ve en Mis pendientes y recibe los avisos de vencimiento. | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:759` |
 | `review_id` | Many2one | Revisión por la Dirección |  |  | `sgi.management.review` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:437` |
-| `risk_id` | Many2one | Riesgo / Oportunidad |  |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:692` |
-| `state` | Selection | Estado |  |  |  | compute `_compute_state`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:716` |
+| `risk_id` | Many2one | Riesgo / Oportunidad | Riesgo u oportunidad al que pertenece la acción. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:738` |
+| `state` | Selection | Estado | Abierta, vencida (pasó el compromiso) o terminada (tiene fecha de término). Se calcula sola. |  |  | compute `_compute_state`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:775` |
 
 ## Métodos públicos (5)
 

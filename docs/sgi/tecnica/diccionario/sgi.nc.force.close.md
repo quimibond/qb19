@@ -12,8 +12,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_id` | Many2one | No Conformidad |  | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:958` |
-| `reason` | Text | Motivo del cierre forzado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:959` |
+| `alert_id` | Many2one | No Conformidad | No conformidad que se va a cerrar sin cumplir los candados. | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1018` |
+| `reason` | Text | Motivo del cierre forzado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1020` |
 
 ## Métodos públicos (1)
 

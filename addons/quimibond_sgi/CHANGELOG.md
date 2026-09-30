@@ -13,6 +13,18 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.33.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help` 1/3: C-018, K-019, D-29):** `help` en
+los 102 campos de prioridad alta de **Mejora** que no lo tenían: NC
+(`quality.alert`, plazos por etapa, respuesta al cliente y al proveedor),
+acciones, auditorías, programa y hallazgos, reclamaciones
+(`helpdesk.ticket`), mejora continua (`project.task`), solicitud de
+desarrollo (`project.project`), recorridos de la CSH y cierre forzado.
+Redactados para quien llena el campo, en «usted» (el tratamiento del
+español de Odoo), sin claves del Dropbox; los calculados dicen de dónde
+salen. Solo texto de ayuda: ningún cambio de comportamiento.
+
 ## 19.0.57.32.0 — 2026-09-30
 
 **Cambiado (entrega 10, `e10-docs-generadas`: K-017):** docstring de 1 a 3

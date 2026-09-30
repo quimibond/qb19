@@ -135,12 +135,17 @@ class SgiCshInspection(models.Model):
 
     name = fields.Char(string="Folio", readonly=True, copy=False, default="Nuevo")
     date = fields.Date(string="Fecha del recorrido", required=True, default=fields.Date.context_today,
-                       tracking=True)
+                       tracking=True,
+                       help="Fecha en que se hizo el recorrido.")
     area = fields.Char(string="Áreas recorridas")
-    department_ids = fields.Many2many('hr.department', string="Departamentos")
-    participant_ids = fields.Many2many('hr.employee', string="Integrantes de la Comisión")
+    department_ids = fields.Many2many('hr.department', string="Departamentos",
+                                      help="Departamentos que se recorrieron.")
+    participant_ids = fields.Many2many('hr.employee', string="Integrantes de la Comisión",
+                                       help="Integrantes de la Comisión de Seguridad e Higiene que "
+                                            "participaron.")
     notes = fields.Text(string="Acta / observaciones generales")
-    attachment_ids = fields.Many2many('ir.attachment', string="Acta firmada (PDF) y fotos")
+    attachment_ids = fields.Many2many('ir.attachment', string="Acta firmada (PDF) y fotos",
+                                      help="Adjunte el acta firmada en PDF y las fotos del recorrido.")
     # Entrega 4: los hallazgos pueden nombrar personas; los leen la Comisión de
     # Seguridad e Higiene, el Jefe MAST, Salud ocupacional y el Auditor.
     finding_ids = fields.One2many('sgi.csh.finding', 'inspection_id', string="Hallazgos",
@@ -150,7 +155,8 @@ class SgiCshInspection(models.Model):
     state = fields.Selection([
         ('borrador', "En captura"),
         ('cerrado', "Cerrado"),
-    ], string="Estado", default='borrador', tracking=True)
+    ], string="Estado", default='borrador', tracking=True,
+        help="En captura mientras se registran los hallazgos; cerrado al terminar.")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
 
     @api.depends('finding_ids.alert_id')
