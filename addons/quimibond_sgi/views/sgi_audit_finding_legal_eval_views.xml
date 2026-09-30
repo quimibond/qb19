@@ -83,7 +83,7 @@
         </field>
     </record>
 
-    <record id="sgi_audit_finding_action" model="ir.actions.act_window">
+    <record id="sgi_audit_finding_list_action" model="ir.actions.act_window">
         <field name="name">Hallazgos de auditoría</field>
         <field name="res_model">sgi.audit.finding</field>
         <field name="view_mode">list,form</field>

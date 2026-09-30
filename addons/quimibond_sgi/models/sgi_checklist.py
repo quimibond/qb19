@@ -40,7 +40,9 @@ class SgiChecklistTemplate(models.Model):
     El cron diario genera las hojas del día."""
     _name = 'sgi.checklist.template'
     # 57.15.0 (G-022): lleva actividades para el aviso «Checklist sin equipos».
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    # 57.67.0: ``hr.mixin``: empleados que la llenan (Many2many a hr.employee)
+    # sin ser de RH (Odoo 19).
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'hr.mixin']
     _description = "Plantilla de checklist de mantenimiento (planta o unidades)"
     _order = 'code, name'
 

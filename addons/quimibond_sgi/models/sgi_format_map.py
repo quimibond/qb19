@@ -79,14 +79,20 @@ class SgiFormatMap(models.Model):
         help="Si un registro cumple el criterio de más de un mapeo del mismo "
              "modelo, se usa el de número más bajo. El mapeo general (sin "
              "criterio) se usa solo cuando ningún otro aplica.")
+    # 57.67.0: los criterios leen también los archivados (``active_test``).
+    # Sin eso, un mapeo con un tipo de operación o centro archivado (en
+    # producción «Traslados internos» de Toluca, id 5) se leía sin criterio,
+    # se calculaba GENERAL y chocaba con el general del modelo.
     picking_type_ids = fields.Many2many(
         'stock.picking.type', 'sgi_format_map_picking_type_rel', 'map_id', 'picking_type_id',
+        context={'active_test': False},
         string="Tipos de operación",
         help="Solo los registros de estos tipos de operación (transferencias, "
              "vales, órdenes de producción) imprimen este formato. Vacío = "
              "cualquier tipo.")
     workcenter_ids = fields.Many2many(
         'mrp.workcenter', 'sgi_format_map_workcenter_rel', 'map_id', 'workcenter_id',
+        context={'active_test': False},
         string="Centros de trabajo",
         help="Solo las órdenes con una operación en alguno de estos centros de "
              "trabajo imprimen este formato. Vacío = cualquier centro.")

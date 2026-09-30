@@ -28,7 +28,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_
 | `origin_display` | Char | Origen |  |  |  | compute `_compute_origin_display`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:812` |
 | `progress` | Selection | Avance | Avance de la acción según el responsable. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:797` |
 | `responsible_id` | Many2one | Responsable | Persona que ejecuta la acción. La ve en Mis pendientes y recibe los avisos de vencimiento. | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:787` |
-| `review_id` | Many2one | Revisión por la Dirección |  |  | `sgi.management.review` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:458` |
+| `review_id` | Many2one | Revisión por la Dirección |  |  | `sgi.management.review` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:460` |
 | `risk_id` | Many2one | Riesgo / Oportunidad | Riesgo u oportunidad al que pertenece la acción. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:766` |
 | `state` | Selection | Estado | Abierta, vencida (pasó el compromiso) o terminada (tiene fecha de término). Se calcula sola. |  |  | compute `_compute_state`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:803` |
 

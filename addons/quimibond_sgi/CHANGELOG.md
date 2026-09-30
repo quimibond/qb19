@@ -13,6 +13,114 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.67.0 — 2026-09-30
+
+Segunda corrida de las pruebas del SGI en el build de **staging** de `main`
+(copia de producción, 57.66.0): 7 fallas y 8 errores de 1000. Cada una se
+clasificó: (a) error real o choque entre ramas, (b) la prueba dependía de la
+fecha real, (c) la prueba chocaba con datos o configuración de producción.
+Ninguna prueba se saltó, quitó ni debilitó.
+
+**Corregido (código):**
+
+- (a) **Menús de Entregables, Flujos entre procesos y Hallazgos con xmlids
+  retirados.** 45.0.0 (limpieza antes de producción, decisión del CEO del
+  2026-09-24) retiró `menu_sgi_deliverables`, `sgi_deliverable_action`,
+  `sgi_process_flow_action` y `sgi_audit_finding_action` (menús de «Datos
+  técnicos» y acciones huérfanas), y `test_cleanup_45` exige que no vuelvan.
+  57.64.0 (menús SGI → Procesos → Entregables y Flujos entre procesos) y
+  57.53.0 (Mejora → Auditorías → Hallazgos) los volvieron a crear con el
+  mismo xmlid. Los menús se quedan (son lo que 57.53/57.64 pidieron) con
+  xmlids nuevos: `menu_sgi_deliverable_list`, `sgi_deliverable_list_action`,
+  `sgi_process_flow_list_action` y `sgi_audit_finding_list_action`
+  (`menu_sgi_process_flows` y `menu_sgi_audit_findings` no estaban
+  retirados y siguen). `test_cleanup_45` no cambia.
+  (`test_cleanup_45` test_02.)
+- (a) **Plan de salida «Baja de personal» (57.14.0, S6-02), otra vez:** en
+  Odoo 19 cambiar el tipo de un renglón del plan también recalcula
+  `responsible_type` («preguntar al lanzar») y `responsible_id` (vacío si el
+  tipo no trae usuario), no solo el resumen (57.66.0). El renglón «Desactivar
+  usuario de Odoo, correo y accesos» perdía a su responsable (en producción,
+  Mariano Domínguez; «Recuperar EPP…», a Blanca Ballesteros) y «Recoger
+  equipo de cómputo», que copia el responsable del renglón de accesos, nacía
+  sin él. `_sgi_adopt_offboarding_plan` escribe tipo, resumen, responsable y
+  nota juntos. Producción (57.13.0) corre la migración 57.14.0 ya corregida;
+  el staging que ya pasó por 57.14.0 conserva el plan sin esos responsables
+  (se recaptura a mano en esa copia). (`test_indicadores_2` test_07; la
+  prueba ahora verifica también que el renglón de accesos conserva su
+  responsable.)
+- (a)+(c) **Candado de evidencia y decisiones: el aviso nombra los registros
+  con sudo.** El nombre del bloqueo LOTO sale de su equipo, y en Odoo un
+  usuario interno solo lee los equipos que sigue (regla nativa de
+  Mantenimiento «Users are allowed to access equipments they follow»; los
+  mecánicos reales están en los grupos de Mantenimiento que ven todo). Al
+  armar el mensaje del candado, el Usuario SGI chocaba con esa regla y la
+  acción se detenía con un AccessError en vez del aviso del candado. El
+  candado sigue igual (mismo estado, mismo grupo); solo el texto del aviso
+  se arma con sudo (`sgi.base.mixin.write`, `unlink` y
+  `_sgi_check_decision`). (`test_loto` test_02.)
+- (a) **Many2many a empleados sin ser de RH (Odoo 19):** escribir un
+  Many2many a `hr.employee` exige leer `hr.employee`, que solo lee RH; Odoo
+  trae `hr.mixin` para eso. El Usuario SGI no podía poner a los ejecutores
+  del permiso de trabajo (`AccessError` al crear). Se agrega `hr.mixin` a
+  `sgi.work.permit` (ejecutores), `sgi.incident` (personas afectadas),
+  `sgi.management.review` (asistentes), `sgi.csh.inspection` (integrantes)
+  y `sgi.checklist.template` (empleados). Sin cambios en la base.
+  (`test_work_permit` test_01 a test_05.)
+- (a)+(c) **Mapeo de formato con tipo de operación archivado:** los
+  criterios (`picking_type_ids`, `workcenter_ids`) se leían sin los
+  archivados, así que un mapeo cuyo único tipo estaba archivado se guardaba
+  como **general** y chocaba con el general del modelo («Ya existe un mapeo
+  general (sin criterio) para Transfer: F-P-A16-01»). En producción la
+  interna del almacén Toluca (tipo 5, «Traslados internos») está archivada.
+  Ambos campos leen con `active_test=False`. (`test_format_map_varios`
+  test_05.)
+
+**Migración:** `19.0.57.67.0/post-migrate.py` borra los registros que
+quedaron con los cuatro xmlids retirados (solo existen en bases que pasaron
+por 57.53.0/57.64.0, como staging; producción está en 57.13.0 y no los tiene)
+y su xmlid; Odoo también los borraría al final del update. Recalcula
+`is_general` de los mapeos de formato y deja en el log lo que cambie.
+Idempotente.
+
+**Pruebas (la prueba estaba mal o no aislaba sus datos):**
+
+- (a) `test_format_map_operaciones` (setUpClass): creaba los formatos F-IT-…
+  con tipo «Formato», cuya nomenclatura (F-P-…) los rechaza; ahora con
+  «Formato de instructivo». Además la interna copiada del almacén heredaba
+  el archivado de producción y la siembra (solo tipos activos) no la
+  encontraba: la copia va activa.
+- (c) `test_format_map_varios` test_05: usa una interna propia y activa;
+  test_05b nueva: un mapeo con un tipo archivado no se vuelve general.
+- (a) `test_nomenclatura_pantallas` test_02: desde 57.44.0 (V-M08) el plan
+  de auditoría imprime su clave en el pie en vivo (`format_ref_audit_plan`,
+  en producción «F-P-G03-03 · Rev. 00»). La prueba busca lo escrito a mano
+  en el reporte **sin el pie** y comprueba que la clave sí sale en el pie.
+- (a) `test_sst_links` test_01: el numeral de la actividad lleva el paso a
+  dos dígitos desde 29.2.0 (`XSL.01`, como `E2.18` en la tabla real); la
+  prueba usaba `XSL.1`. test_02 revisa que la tabla real tenga ese formato.
+- (c) `test_vistas_pulido` TestNcFichaYLista test_03: registraba la acción
+  correctiva antes de la causa raíz; la regla H8 lo impide en la NC con
+  folio, y en la copia de producción la NC lo trae (NCI-2026-0730). La causa
+  raíz va primero; lo que se verifica no cambia.
+- `test_menus_entregables`: xmlids nuevos, ninguno retirado (test_03) y la
+  migración (test_04).
+
+**Sin causa confirmada:** `test_indicadores_2` test_06 sigue (0, 3) en
+staging: «A tiempo» no cuenta, y ni el calendario de producción (id 21,
+lunes a viernes, sin días inhábiles en 2045) ni el seguimiento de
+producción (sí guarda fecha y motivo de salida en `hr.version`) lo explican
+en el código. La falla ahora dice qué vio el indicador (registrada, día
+local, límite, seguimientos encontrados). `test_role_audit` test_07 sigue
+sin tocar (desde 57.13.1).
+
+**Revisadas sin cambio:** los «duplicate key»
+`sgi_staff_efficiency_line_employee_uniq` (`TestExcelMigration` test_03) y
+`sgi_sales_budget_line_product_month_partner_uniq`
+(`quimibond_ventas_presupuesto`, `TestSalesBudgetClient` test_04) son el
+log de `odoo.sql_db` en pruebas que comprueban justo esa restricción; no
+fallaron.
+
 ## 19.0.57.66.0 — 2026-09-30
 
 Pruebas del SGI corridas en el build de **staging** de `main` (base copia de

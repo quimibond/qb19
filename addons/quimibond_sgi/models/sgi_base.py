@@ -99,7 +99,7 @@ class SgiBaseMixin(models.AbstractModel):
             raise AccessError(
                 "%s la toman solo el Jefe MAST y el dueño del proceso. "
                 "Pida a alguno de ellos que la registre.\n\nRegistros: %s"
-                % (self._sgi_decision_label, ", ".join(moving.mapped('display_name'))))
+                % (self._sgi_decision_label, ", ".join(moving.sudo().mapped('display_name'))))
 
     # ------------------------------------------------------------------------
     # Folio con secuencia (patrón centralizado)
@@ -163,6 +163,11 @@ class SgiBaseMixin(models.AbstractModel):
                 and all(r.state in self._sgi_decision_states for r in self)
                 and self._sgi_can_decide())
 
+    # 57.67.0: los mensajes del candado y de las decisiones nombran los
+    # registros con sudo. El nombre puede leer un registro ligado que el
+    # usuario no ve (el LOTO se nombra por su equipo, y un Usuario SGI solo ve
+    # los equipos que sigue): el candado se detenía con un AccessError al
+    # armar el mensaje en vez de con su propio aviso.
     def write(self, vals):
         self._sgi_check_decision(vals)
         if (self._sgi_locked_states and not self.env.su
@@ -177,7 +182,7 @@ class SgiBaseMixin(models.AbstractModel):
                     "modificarse ni reabrirse. Pida al Jefe de MAST reabrirlo "
                     "(cambiar su estado) si hay un error real.\n\n"
                     "Registros bloqueados: %s"
-                    % ", ".join(locked.mapped('display_name')))
+                    % ", ".join(locked.sudo().mapped('display_name')))
         return super().write(vals)
 
     def unlink(self):
@@ -195,7 +200,7 @@ class SgiBaseMixin(models.AbstractModel):
                     "Este registro del SGI está cerrado y es evidencia: no puede "
                     "borrarse. Pida al Jefe de MAST reabrirlo si hay un error "
                     "real.\n\nRegistros bloqueados: %s"
-                    % ", ".join(locked.mapped('display_name')))
+                    % ", ".join(locked.sudo().mapped('display_name')))
         return super().unlink()
 
 
