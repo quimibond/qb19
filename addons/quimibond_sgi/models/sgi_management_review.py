@@ -13,7 +13,9 @@ class SgiManagementReview(models.Model):
     acuerdos y cierre."""
     _name = 'sgi.management.review'
     _description = "Revisión por la Dirección (IT-P-A10-01)"
-    _inherit = ['sgi.base.mixin']
+    # 57.67.0: ``hr.mixin``: asistentes (Many2many a hr.employee) sin ser de
+    # RH (Odoo 19).
+    _inherit = ['sgi.base.mixin', 'hr.mixin']
     _order = 'date desc, folio desc'
     _sgi_sequence_code = 'sgi.management.review'
     _sgi_locked_states = ('cerrada',)

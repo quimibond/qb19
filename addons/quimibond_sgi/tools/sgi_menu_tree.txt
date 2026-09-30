@@ -23,7 +23,7 @@ SGI/Inicio/Eficiencias de mi área | menu_sgi_my_staff_efficiency | quimibond_sg
 SGI/Procesos | menu_sgi_processes | -
 SGI/Procesos/Mapa de procesos | menu_sgi_process_map | -
 SGI/Procesos/Actividades | menu_sgi_activities | -
-SGI/Procesos/Entregables | menu_sgi_deliverables | -
+SGI/Procesos/Entregables | menu_sgi_deliverable_list | -
 SGI/Procesos/Flujos entre procesos | menu_sgi_process_flows | -
 SGI/Procesos/Matriz de responsabilidades | menu_sgi_analysis_who | -
 SGI/Procesos/Puestos y procesos | menu_sgi_jobs_roles | -

@@ -69,7 +69,10 @@ WORK_TYPE_CHECKS = {
 class SgiWorkPermit(models.Model):
     _name = 'sgi.work.permit'
     _description = "Permiso de trabajo de alto riesgo"
-    _inherit = ['sgi.base.mixin', 'sgi.format.mixin']
+    # 57.67.0: ``hr.mixin`` (Odoo 19): escribir un Many2many a hr.employee
+    # exige leer hr.employee, y solo RH lo lee. Sin él, un Usuario SGI no
+    # podía poner a los ejecutores del permiso (AccessError en staging).
+    _inherit = ['sgi.base.mixin', 'sgi.format.mixin', 'hr.mixin']
     _order = 'date_start desc, folio desc'
     _sgi_sequence_code = 'sgi.work.permit'
     _sgi_locked_states = ('cerrado', 'cancelado')

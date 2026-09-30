@@ -7,6 +7,7 @@ from unittest.mock import patch
 from odoo import fields
 from odoo.tests import TransactionCase, tagged
 
+from ..models.sgi_calendar import sgi_add_business_days
 from .common_accounts import sgi_test_payable
 
 
@@ -265,14 +266,28 @@ class TestIndicadores2(TransactionCase):
             self._messages_of(employee).write({'date': registered})
             return employee
 
-        leaver('A tiempo', datetime(2045, 3, 16, 5, 0))       # 15-mar 23:00 hora de México
+        on_time = leaver('A tiempo', datetime(2045, 3, 16, 5, 0))  # 15-mar 23:00 de México
         leaver('Tarde', datetime(2045, 3, 20, 17, 0))
         leaver('Sin motivo', datetime(2045, 3, 14, 17, 0), with_reason=False)
-        detail = self._ind('bajas_registradas')._detail_bajas_registradas(
-            self.period, self.period_end)
+        indicator = self._ind('bajas_registradas')
+        detail = indicator._detail_bajas_registradas(self.period, self.period_end)
         if not detail['denominator']:
             self.skipTest("Sin bajas: el entorno no guardó el seguimiento.")
-        self.assertEqual((detail['numerator'], detail['denominator']), (1, 3))
+        # 57.67.0: en staging sigue (0, 3) sin causa encontrada en el código;
+        # la falla dice ahora qué vio el indicador de «A tiempo»: cuándo quedó
+        # registrada (vacío = sin seguimiento), su día local, el límite y los
+        # seguimientos que encontró.
+        registered = indicator._sgi_departure_registered(on_time).get(on_time.id)
+        tracked = self.env['mail.tracking.value'].sudo().search([
+            ('field_id.name', 'in', ('departure_date', 'departure_reason_id')),
+            ('mail_message_id', 'in', self._messages_of(on_time).ids)])
+        why = "nota=%r; «A tiempo»: registrada=%s, día local=%s, límite=%s; seguimientos=%s" % (
+            detail.get('note'), registered,
+            registered and indicator._sgi_local_date(registered),
+            sgi_add_business_days(self.env, on_time.departure_date, 1),
+            [(t.field_id.model, t.field_id.name, t.new_value_datetime, t.new_value_integer,
+              t.mail_message_id.model, t.mail_message_id.date) for t in tracked])
+        self.assertEqual((detail['numerator'], detail['denominator']), (1, 3), why)
         self.assertEqual(detail['model'], 'hr.employee')
         self.assertIn('sin motivo', detail['note'])
 
@@ -302,6 +317,11 @@ class TestIndicadores2(TransactionCase):
         by_summary = {t.summary: t for t in plan.template_ids}
         self.assertEqual(by_summary['Desactivar usuario de Odoo, correo y accesos']
                          .activity_type_id, accesos)
+        # 57.67.0: cambiar el tipo no le quita al renglón su responsable (Odoo
+        # 19 lo recalcula del tipo).
+        access_line = by_summary['Desactivar usuario de Odoo, correo y accesos']
+        self.assertEqual(access_line.responsible_type, 'other')
+        self.assertEqual(access_line.responsible_id, env.user)
         self.assertEqual(by_summary['Recuperar EPP, uniforme, gafete, locker y herramientas']
                          .activity_type_id, epp, "EPP no es equipo de cómputo.")
         self.assertEqual(by_summary['Encuesta de salida'].activity_type_id, todo)

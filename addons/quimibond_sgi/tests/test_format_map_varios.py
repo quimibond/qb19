@@ -27,6 +27,10 @@ class TestFormatMapVarios(TransactionCase):
             [('company_id', '=', cls.env.company.id)], limit=1)
         cls.type_a = cls.wh.manu_type_id
         cls.type_b = cls.type_a.copy({'name': 'Cocina prueba formato', 'sequence_code': 'ZCOC'})
+        # 57.67.0: interna propia y activa. En producción la interna del
+        # primer almacén (Toluca, id 5) está archivada.
+        cls.type_int = cls.wh.int_type_id.copy({
+            'name': 'Interna prueba formato', 'sequence_code': 'ZINT', 'active': True})
         cls.categ = cls.env['product.category'].create({'name': 'Entretelas prueba formato'})
         cls.categ_child = cls.env['product.category'].create(
             {'name': 'Hija prueba formato', 'parent_id': cls.categ.id})
@@ -84,7 +88,7 @@ class TestFormatMapVarios(TransactionCase):
         self.assertEqual(self._mo().sgi_format_info(), "F-IT-P-P01-08-01")
 
     def test_05_transferencia_interna_con_su_clave(self):
-        internal = self.wh.int_type_id
+        internal = self.type_int
         # Sin mapeo propio, la interna no lleva la clave (el general es solo
         # para salidas, como antes).
         self.assertFalse(self._picking(internal).sgi_format_banner)
@@ -94,6 +98,20 @@ class TestFormatMapVarios(TransactionCase):
         self.assertEqual(self._picking(internal).sgi_format_info(), "F-IT-P-A07-01-02")
         out = self._picking(self.wh.out_type_id, self.env.ref('stock.stock_location_customers'))
         self.assertEqual(out.sgi_format_info(), "F-P-A16-01")
+
+    def test_05b_tipo_archivado_sigue_siendo_criterio(self):
+        """57.67.0: un mapeo con un tipo de operación archivado no se
+        vuelve general (en staging chocaba con el general de salidas:
+        «Ya existe un mapeo general … F-P-A16-01»)."""
+        archived = self.type_int.copy({'name': 'Interna archivada prueba formato',
+                                       'sequence_code': 'ZINA'})
+        archived.active = False
+        fmap = self.Map.create({
+            'model_id': self.m_pick.id, 'sgi_code': 'F-IT-P-A07-01-02',
+            'picking_type_ids': [(6, 0, archived.ids)]})
+        self.assertFalse(fmap.is_general)
+        self.assertEqual(fmap.picking_type_ids, archived)
+        self.assertEqual(self._picking(archived).sgi_format_info(), "F-IT-P-A07-01-02")
 
     def test_06_filtro_adicional(self):
         supplier = self.env.ref('stock.stock_location_suppliers')

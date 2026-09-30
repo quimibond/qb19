@@ -85,11 +85,14 @@ class TestNcFichaYLista(TransactionCase):
         found = Alert.search([('sgi_deadline_overdue', '!=', True), ('id', 'in', (late | fresh).ids)])
         self.assertEqual(found, fresh)
         # Con la contención, la causa raíz y el plan cumplidos deja de estar vencida.
+        # 57.67.0: la causa raíz va antes que la acción correctiva (H8,
+        # ``_sgi_check_root_cause_before_capa``). La regla aplica a la NC con
+        # folio; en la copia de producción la NC lo trae (NCI-2026-…).
+        late.sgi_root_cause = 'Causa'
         for kind in ('contencion', 'correctiva'):
             self.env['sgi.action.line'].create({
                 'alert_id': late.id, 'action_type': kind, 'name': 'Acción %s' % kind,
                 'responsible_id': self.user.id, 'date_commit': datetime.now().date()})
-        late.sgi_root_cause = 'Causa'
         self.assertFalse(late.sgi_deadline_overdue)
         self.assertFalse(Alert.search([('sgi_deadline_overdue', '=', True), ('id', '=', late.id)]))
 

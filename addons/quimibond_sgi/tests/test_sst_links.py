@@ -32,21 +32,23 @@ class TestSstLinks(TransactionCase):
             'name': 'F-P-S02-01 prueba.xlsx', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'formulario_odoo', 'sgi_code': 'F-P-S02-01', 'sgi_revision': 1,
             'sgi_state': 'vigente'})
+        # 57.67.0: el numeral lleva el paso a dos dígitos desde 29.2.0
+        # («%s.%02d», como E2.18 en la tabla real).
         cls.table = (
-            ('XSL.1', 'quimibond_sgi.menu_sgi_env_aspects', "SGI → Aspectos", ('F-P-S02-01',)),
-            ('XSL.2', 'quimibond_sgi.menu_sgi_loto', "SGI → Bloqueo", ('F-P-S02-01', 'F-P-S02-98')),
-            ('XSL.3', 'quimibond_sgi.menu_sgi_work_permits', "SGI → Permisos", ()),
+            ('XSL.01', 'quimibond_sgi.menu_sgi_env_aspects', "SGI → Aspectos", ('F-P-S02-01',)),
+            ('XSL.02', 'quimibond_sgi.menu_sgi_loto', "SGI → Bloqueo", ('F-P-S02-01', 'F-P-S02-98')),
+            ('XSL.03', 'quimibond_sgi.menu_sgi_work_permits', "SGI → Permisos", ()),
             ('XSL.99', 'quimibond_sgi.menu_sgi_loto', "No existe", ()),
         )
 
     def test_01_escribe_solo_lo_vacio_e_idempotente(self):
         act1, act2, act3 = self.acts.sorted('step')
-        self.assertEqual(act1.number, 'XSL.1')
+        self.assertEqual(act1.number, 'XSL.01')
         incidents = self.env.ref('quimibond_sgi.menu_sgi_incidents')
         act3.write({'odoo_menu_id': incidents.id, 'odoo_ref': 'Lo capturó MAST'})
         Activity = self.env['sgi.process.activity']
         written = Activity._sgi_link_activity_screens(self.table, company=self.process.company_id)
-        self.assertEqual(set(written), {'XSL.1', 'XSL.2'})
+        self.assertEqual(set(written), {'XSL.01', 'XSL.02'})
         self.assertEqual(act1.odoo_menu_id, self.env.ref('quimibond_sgi.menu_sgi_env_aspects'))
         self.assertEqual(act1.odoo_ref, "SGI → Aspectos")
         self.assertEqual(act1.format_document_ids, self.doc)
@@ -69,6 +71,9 @@ class TestSstLinks(TransactionCase):
             self.assertTrue(where)
         for number in ('E2.23', 'E2.28', 'E2.30', 'E2.34', 'E2.35', 'E2.37', 'S5.14', 'S4.34'):
             self.assertIn(number, numbers)
+        # Mismo formato que el numeral calculado (paso a dos dígitos o más).
+        for number in numbers:
+            self.assertRegex(number, r'^[A-Z0-9]+\.\d{2,}$')
 
     def test_03_post_migrate_corre(self):
         path = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.54.0', 'post-migrate.py')

@@ -14,11 +14,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_checklist.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `answer` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:186` |
-| `corrective_request_id` | Many2one | Correctivo |  |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:188` |
-| `hint` | Char | Criterio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:185` |
-| `name` | Char | Qué se revisa |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:184` |
-| `note` | Char | Observación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:187` |
-| `request_id` | Many2one |  |  | sí | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:182` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:183` |
+| `answer` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:188` |
+| `corrective_request_id` | Many2one | Correctivo |  |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:190` |
+| `hint` | Char | Criterio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:187` |
+| `name` | Char | Qué se revisa |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:186` |
+| `note` | Char | Observación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:189` |
+| `request_id` | Many2one |  |  | sí | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:184` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:185` |
 
