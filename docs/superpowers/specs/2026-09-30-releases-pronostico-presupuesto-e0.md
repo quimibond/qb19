@@ -100,9 +100,10 @@ en `quimibond_sgi/models/sgi_indicator.py` y el mixin de candados
 |---|---|---|---|
 | M1 | `_compute_unbudgeted` busca facturas en cada lectura | **Confirmado** | Compute no almacenado (`sgi_sales_budget.py:350-354`) que llama `_sgi_team_year_real` (l. 334-348, `search` de todo el año del equipo). Se dispara en cada ficha y en cada lista que muestre el campo. |
 | M2 | KPI VE-02 ≠ reporte | **Confirmado, y son tres cifras distintas** | KPI: facturado **de toda la compañía** (todos los equipos, con fletes y servicios) ÷ presupuesto aprobado (`quimibond_sgi/models/sgi_indicator.py:457-469`, `477-489`). Reporte (`fulfillment_pct`, `sgi_sales_budget.py:173-183`): real **solo de los productos presupuestados** ÷ presupuesto. Cierre de mes (`sgi_cron.py:105-160`): facturado **del equipo**. Además el denominador del KPI **no filtra compañía** (`sgi_indicator.py:450-454`): con un presupuesto aprobado de otra empresa del grupo se sumaría. |
-| M3 | Aprobación doble (código vs Studio 63) | **Por confirmar en producción** | El código deja aprobar a `group_sgi_director` **o** `group_sgi_manager` (`sgi_sales_budget.py:590-591`). La regla Studio 63 no vive en el repo. <!-- STUDIO63 --> |
+| M3 | Aprobación doble (código vs Studio 63) | **Por confirmar en producción** | El código deja aprobar a `group_sgi_director` **o** `group_sgi_manager` (`sgi_sales_budget.py:590-591`). La regla Studio 63 no vive en el repo. En producción la regla 63 (creada el 29-sep) exige la aprobación de **Jacobo Mizrahi** (usuario 9, Director Estratégico) en `action_approve` solo para `kind='presupuesto'`. El grupo `group_sgi_director` es «Dirección de Operaciones» y su único miembro es **Jorge Ortiz**, no Jacobo: el código deja apretar el botón a Jorge y a los Jefes MAST (Blanca Ballesteros, Sergio Gonzales), y la regla de Studio detiene hasta que Jacobo apruebe. Funciona, pero con dos candados que dicen cosas distintas. **Propuesta:** el código valida un grupo nuevo «Aprueba presupuesto de ventas» (Jacobo) sin la salida de MAST y la regla de Studio se retira; o al revés. Decide José. |
 | M4 | El pronóstico exige cliente | **Confirmado** | Cabecera `sgi_sales_budget.py:513-519` y línea `sgi_sales_budget_line.py:369-376`. |
 | M5 | F-P-A28-13 no está en Documentos | No verificable desde el código (es dato de Documentos). Lo reviso en el E1. |
+| M6 (nuevo) | 30 líneas de Confección en unidad «Actividad» | Producción: no es unidad de venta; se corrige en la carga 2026. |
 
 ### 2.4 Hallazgos nuevos
 
@@ -121,8 +122,8 @@ en `quimibond_sgi/models/sgi_indicator.py` y el mixin de candados
 | N4 | La semana comprometida sale de la fecha **del pedido**, no de la línea: `commitment_date or expected_date or date_order` (`sgi_sales_budget_line.py:552-560`). | `_sgi_effective_monday` | Una PO abierta con entregas semanales (Lear 1030782) cuenta todo en una sola semana; la cobertura y la demanda neta quedan mal. Define cómo se generan los pedidos en E2 (un pedido por semana de embarque). |
 | N5 | La cotización por faltante no lleva precio de lista ni PO del cliente (`sgi_sales_budget_line.py:665-709`) y agrupa por `origin` = folio del pronóstico. | `action_create_draft_quotation` | Se reemplaza en E2 por la propuesta de pedido desde la zona firme. |
 | N6 | El importador en modo «reemplazar» borra **todas** las líneas del producto, también las de clientes que no vienen en el archivo (`sgi_sales_budget_import.py:319-320` y `374-375`). | importador | Reimportar una hoja de un cliente borra lo capturado para otros clientes del mismo producto. |
-| N7 | Almacén del MPS = el primero de la compañía (`sgi_sales_budget.py:1142-1148`, `limit=1` sin orden). | `_sgi_mps_warehouse` | Con más de un almacén la demanda puede caer en el equivocado. <!-- ALMACENES --> |
-| N8 | Periodo del MPS: el pronóstico manda lunes y el presupuesto día 1 del mes; si el MPS de la compañía está en meses, las celdas semanales caen en fechas que el MPS no muestra. <!-- MPS_PERIODO --> | `_send_forecast_to_mps` | Hay que agrupar al periodo configurado del MPS. |
+| N7 | Almacén del MPS = el primero de la compañía (`sgi_sales_budget.py:1142-1148`, `limit=1` sin orden). | `_sgi_mps_warehouse` | Con más de un almacén la demanda puede caer en el equivocado. En producción la compañía 1 tiene 3 almacenes activos (Toluca, Centro, Toluca Varios) y los 34 programas del MPS están en Toluca. |
+| N8 | Periodo del MPS: el pronóstico manda lunes y el presupuesto día 1 del mes; si el MPS de la compañía está en meses, las celdas semanales caen en fechas que el MPS no muestra. En producción el MPS es **semanal** (`manufacturing_period = week`): el pronóstico cuadra, pero el presupuesto mensual manda todo el mes a la semana del día 1. Hoy no ha pasado porque las 122 celdas de 2026 están en 0: nadie ha enviado demanda. | `_send_forecast_to_mps` | Hay que agrupar al periodo configurado del MPS. |
 
 **Menores:**
 
@@ -136,7 +137,40 @@ en `quimibond_sgi/models/sgi_indicator.py` y el mixin de candados
 
 ## 3. Faltantes de datos maestros
 
-<!-- DATOS_MAESTROS -->
+Medido en producción el 30-sep-2026 por MCP, solo lectura, compañía 1.
+
+### 3.1 Estado real de los presupuestos (confirma y corrige la sección 4.1 del prompt)
+
+| id | Documento | Total MXN | Líneas | Sin precio de lista | Meses | Observación |
+|---|---|---|---|---|---|---|
+| 137 | Presupuesto Industrial 2026 | 116,354,445.79 | 325 (131 en kg, 194 en m) | 30 (valen $123,243) | ene–oct | Confirmado. 239 desviaciones de precio |
+| 4 | Presupuesto Confección 2026 | 22,465,924.76 | 915 (30 en unidad «Actividad») | **874, que suman $9,796,715** | ene–dic | **Corrección:** las líneas «sin precio» no valen 0; están valuadas al precio de venta «(NO usar)». Es el hallazgo C1 en producción. 517 líneas sin cliente sí valen 0 (no hay lista presupuestal) |
+| 5 | Presupuesto Especiales 2026 | 0 | 12 | 12 | meses nones | Confirmado |
+| 7 | Pronóstico TQ-1 2026 | 11,803,920 | 39 | 0 | 5-ene a 14-sep | Muestra $91.7 M de «facturado no presupuestado»: sospechoso, se revisa en E3 |
+
+- **TQ-1 está presupuestado tres veces:** Industrial $14.97 M (28 líneas),
+  Confección $11.34 M (25 líneas, aunque TQ-1 factura como Industrial) y su
+  pronóstico $11.80 M. Sin TQ-1, a Confección le quedan $11.1 M, de los que
+  solo ~$1.3 M salen de una lista real.
+- **Tres tipos de cambio distintos** porque cada documento tomó el del día en
+  que se recalculó: Confección 17.12-17.14, Industrial 17.63-17.65, pronóstico
+  17.83-17.85 (hallazgo C3 en producción).
+- Parámetros: `budget_planning_rate = 0`, `budget_pricelist_id = 0`,
+  `monthly_sales_budget = 0`, umbrales de cumplimiento y aviso en 80 %.
+  TC del día: 18.071 (1-oct), 17.8413 (30-sep).
+- Ninguna línea tiene `customer_code`.
+
+### 3.2 Faltantes por dato maestro
+
+| Dato | Qué hay | Faltante | Qué propongo |
+|---|---|---|---|
+| **Gramaje y ancho** | Nada en el producto: `x_ancho` (Studio) con 0 productos llenos; `weight` en 42 de 284 vendidos. El dato vive en **`qb.producto.ficha`** (`qb_capacidad_costeo`): 271 de los 284 productos vendidos desde 2025 tienen ficha y **271 tienen rendimiento m/kg**, 203 tienen ancho y **solo 88 tienen gramaje** (el parser deja 0 cuando la referencia trae 2 dígitos: W38, W55; 263 fichas W* en 0). 189 de las 271 fichas no tienen estado. `quimibond_ficha_tecnica_tela` **no está instalado**. | 196 productos vendidos sin gramaje; 13 sin ficha | Para m ↔ kg usar **`rendimiento_m_kg`** de la ficha, que ya cubre 271/284; gramaje × ancho solo como respaldo. Corregir el parser para referencias de 2 dígitos (W38 = 38 g/m²) en `qb_capacidad_costeo`. WC090Q11JNT165: ficha 90 g/m², 1.65 m, 6.54 m/kg; confirma que 90 es el gramaje (el Excel lo calculó con 140). |
+| **Parte del cliente → producto** | No existe `product.customerinfo` en esta base. `L002790184NCPAA` solo aparece en una **nota** de PV11796 (2024). Hoy la PO 1030782 está en **89 pedidos** (uno por semana) con `IWJ045Q22JNT160` en **kg** a 9.725 USD. | Todo el catálogo (Lear, FXI, Woodbridge, Shawmut, Zwisstex, Copo, Contitech: ~25 partes vistas en el correo) | Modelo `qb.customer.part` y una hoja de carga que llenan Jessica y Berenice en la sesión del cuestionario. Primera fila: Lear L002790184NCPAA → IWJ045Q22JNT160 (por confirmar), MT → kg con la ficha. |
+| **Mercado del cliente** | `res.partner` no tiene equipo. `industry_id`: 256 de 266 clientes con venta 2026 sin industria ($55.7 M); solo 10 «Automotriz» ($83.0 M). Etiquetas INDUSTRIAL / CONFECCION en `category_id`. | Mercado presupuestal de 266 clientes | Campo `budget_market_id` (crm.team) propuesto por el equipo de sus facturas 2025-2026 y confirmado por Ventas. World Emblem: 2026 facturado como **Confección** ($3.41 M), 2025 sin equipo ($3.23 M): hay que decidir si es Especiales. |
+| **Listas de precios** | 104 listas activas (88 MXN, 16 USD), 245 reglas, todas de precio fijo. 58 clientes con tarifa propia (~$105 M); 71 con Lista pública; **135 sin lista específica ($29.0 M)**. Ninguna lista se llama «NO usar»: el texto es del presupuesto. | Lista presupuestal (parámetro en 0) y tarifa de 135 clientes | Con precio capturable por línea (E3) la lista deja de ser bloqueante; configurar la lista presupuestal para Confección sin cliente. |
+| **Facturas sin equipo** | **1** en 2026: INV/2026/03/0173 a LEASING LEPEZO, 25-mar, **$11,348,207.32** sin IVA. Es la venta de la **RAMA ICOMATEX IC10** (activo), no tela. | 1 | Confirmado el monto. No es venta de producto: debe quedar fuera del presupuesto de ventas, no asignársele equipo. La validación al publicar tiene que exceptuar ventas de activo (propuesta: aviso configurable, no bloqueo). |
+| **Pedidos del piloto** | Lear 38 pedidos 2026 con 1 PO, en kg USD; FXI 50 pedidos en kg; Saltillo 78 en m; Shawmut 71 en kg; TQ-1 54 en m; Contitech 74 en m. Casi todos con `commitment_date` (un pedido por entrega). Vendedora: Jessica Francisco. | — | Confirma el diseño de E2 de un pedido por PO y semana. **Los clientes piden en MT/LY y nosotros facturamos en kg**: la conversión por parte es obligatoria desde E1. |
+| **Alias y MPS** | No existe el alias `releases@`. MPS: 34 programas, todos en almacén Toluca, periodo **semanal**; 122 celdas de pronóstico 2026, **todas en 0** (nadie ha enviado demanda). | Alias | Se crea en E1. |
 
 ---
 
@@ -165,7 +199,7 @@ en `quimibond_sgi/models/sgi_indicator.py` y el mixin de candados
 | Modelo | Para qué | Campos principales |
 |---|---|---|
 | `qb.release.profile` (Perfil de release) | Cómo manda cada cliente/planta | `partner_id` (empresa), `ship_to_id` (dirección de entrega), `supplier_code` (6PIN0010), `sender_ids`/`sender_domains` (para reconocer el correo), `channel` (correo / portal / EDI), `reader` (`lear_aiag`, `fxi_sum`, `edi_830`, `ia`, `manual`), `date_basis` (embarque / entrega en planta) y `transit_days`, `firm_rule` (N semanas / hasta autorización fab), `firm_weeks`, `ack_required`, `ack_hours`, `ack_template_id`, `cum_managed`, `cum_reset_date`, `cum_tolerance`, `so_mode` (propuesta / automático), `sales_user_id`, `logistics_user_id`, `active` |
-| `qb.customer.part` (Catálogo de partes del cliente) | Parte del cliente → producto | `partner_id`, `ship_to_id` (opcional), `customer_part` (L002790184NCPAA), `customer_description`, `product_id`, `customer_uom` (MT, YD, KG, M2…), `conversion` (`fija` con `factor` / `ficha`: gramaje × ancho de `qb.producto.ficha`), `factor`, `active`. Único por cliente + planta + parte. **Migración**: siembra filas desde los `customer_code` que ya tienen las líneas de pronóstico. |
+| `qb.customer.part` (Catálogo de partes del cliente) | Parte del cliente → producto | `partner_id`, `ship_to_id` (opcional), `customer_part` (L002790184NCPAA), `customer_description`, `product_id`, `customer_uom` (MT, YD, KG, M2…), `conversion` (`fija` con `factor` / `ficha`: `rendimiento_m_kg` de `qb.producto.ficha`, con gramaje × ancho como respaldo), `factor`, `active`. Único por cliente + planta + parte. **Migración**: siembra filas desde los `customer_code` que ya tienen las líneas de pronóstico. |
 | `qb.release` (Release, con chatter) | Un documento recibido = una versión | `profile_id`, `partner_id`, `ship_to_id`, `release_ref` (000174), `release_date`, `version` (consecutivo por perfil), `previous_id`, `message_id`/`attachment_ids`, `reader_used`, `state` (`recibido` → `leido` → `revisado` → `aplicado`; `por_revisar`, `reemplazado`, `descartado`), `error_reason`, `ack_sent_at`, totales de cambio |
 | `qb.release.part` | Encabezado por parte (en Lear, PO, CUM y autorizaciones son **por parte**, no por release) | `release_id`, `customer_part`, `part_id` (catálogo), `product_id`, `customer_po` (1030782), `cum_received`, `in_transit_qty`, `last_receipt_date/qty`, `last_packing_slip`, `fab_auth_qty/date`, `raw_auth_qty/date`, `cum_ours`, `cum_diff`, `cum_state` (cuadra / no cuadra / sin dato) |
 | `qb.release.line` | Detalle semanal | `release_part_id`, `date_customer` (la fecha del release), `date_ship` (embarque = entrega − tránsito), `week` (lunes), `qty_customer` (unidad del cliente), `qty` (unidad del producto), `line_type` (firme / planeado según el release), `zone` (calculada: `firme` / `materia_prima` / `planeado`), `cum_req`, `net_req` |
@@ -177,7 +211,7 @@ en `quimibond_sgi/models/sgi_indicator.py` y el mixin de candados
 | Modelo | Cambio |
 |---|---|
 | `sgi.sales.budget` | `kind` agrega `estimado` (estimado de cierre mensual, uno por mercado-año, se regenera cada mes); `forecast_scope` (`cliente` / `producto`) para permitir el pronóstico de Confección sin cliente; `fx_rate_s1`, `fx_rate_s2` (TC por semestre, obligatorios para aprobar, congelados al aprobar); `origin_budget_id` (la revisión anterior, para comparar); estado `reemplazado` en vez de `obsoleto` para la revisión que queda como histórico comparable. |
-| `sgi.sales.budget.line` | `product_id` opcional + `project_name`, `project_gramaje`, `project_ancho` (proyectos sin artículo); `price_mode` (`lista` / `capturado`), `price_input`, `price_currency_id`, `price_uom` (m / kg) — el importe usa el capturado si lo hay, si no la lista **a la fecha de la línea**, y **0 si no hay regla** (nunca el precio de venta); `release_id`/`release_line_ids` (de qué release salió la cantidad); `source` (`release` / `historico` / `proyecto` / `manual` / `excel`); `qty_kg` y `qty_m` calculadas con la ficha; `partner_shipping_id` opcional. |
+| `sgi.sales.budget.line` | `product_id` opcional + `project_name`, `project_gramaje`, `project_ancho` (proyectos sin artículo); `price_mode` (`lista` / `capturado`), `price_input`, `price_currency_id`, `price_uom` (m / kg) — el importe usa el capturado si lo hay, si no la lista **a la fecha de la línea**, y **0 si no hay regla** (nunca el precio de venta); `release_id`/`release_line_ids` (de qué release salió la cantidad); `source` (`release` / `historico` / `proyecto` / `manual` / `excel`); `qty_kg` y `qty_m` calculadas con el rendimiento m/kg de la ficha; `partner_shipping_id` opcional. |
 | `res.partner` | `budget_market_id` (mercado presupuestal: crm.team) para medir el real sin depender del equipo de la factura. |
 | `account.move` | Validación al publicar una factura de cliente sin equipo de ventas (sección 5 del prompt). Se propone como **aviso bloqueante configurable** (parámetro), porque bloquear de golpe detendría la facturación si hay flujos que hoy no ponen equipo (SAT, anticipos, notas). |
 
@@ -306,10 +340,74 @@ correo → mail.alias → qb.release (recibido)
 
 ## 5. Plan por entregas
 
-<!-- PLAN -->
+Hoy es miércoles 30-sep. La meta dura es que **Ventas presente el
+presupuesto 2027 antes del 31-oct**, así que Jessica necesita el armado listo
+hacia el **23-oct** para tener una semana de ajustes.
+
+**No caben E1 y E3 completos antes del 31-oct** (~220 h entre los dos). Por
+eso propongo partir E1: su núcleo (perfiles, catálogo, lectores de Lear y FXI,
+aplicar al pronóstico y corregir el MPS) es lo que el presupuesto 2027 necesita
+para salir «de los releases»; el buzón, el acuse, las diferencias y el CUM
+pueden llegar en noviembre. E3 va antes que E2, como pide la sección 7 del
+prompt.
+
+| PR | Entrega | Contenido | Horas | Fechas |
+|---|---|---|---|---|
+| — | **E0** (este documento) | Sesión del cuestionario con Jessica y Berenice (2 h) y hoja del catálogo de partes; visto bueno de José | 12 | 30-sep → 2-oct |
+| 1 | **E1a — Núcleo de releases** | Perfiles y catálogo de partes (con migración de `customer_code`); `qb.release*`; lectores **Lear** (texto AIAG) y **FXI** (Excel SUM) como funciones puras con pytest; carga manual del archivo; aplicar al pronóstico repartiendo por año (N3); MPS con la suma de todos los pronósticos y agrupado al periodo del MPS (N1, N2, N8) | 60 | 5-oct → 14-oct |
+| 2 | **E3 — Presupuesto y estimado** | Correcciones C1–C7 y G1–G4: precio 0 sin regla, precio capturable, TC por semestre congelado, real por cliente en cualquier equipo, proyectos sin producto, m ↔ kg con la ficha, gobierno de aprobado. Asistente «Armar presupuesto 2027» (releases + histórico + proyectos), supuestos, estimado de cierre, volumen / precio / TC / mezcla, reportes en m y kg, una sola cifra de cumplimiento (KPI VE-02 = reporte) | 110 | 12-oct → 23-oct |
+| 3 | **Carga única 2026** | Importador del F-P-A28-14 con precios; totales de control al peso (sección 6 del prompt); los 4 borradores actuales quedan como histórico | 12 | 21-oct → 27-oct (necesita el Excel) |
+| 4 | **E1b — Buzón y control** | Alias `releases@` y reenvío desde Google Workspace, perfiles por remitente, acuse automático, diferencias contra el vigente con avisos a Planeación y Compras, conciliación CUM con alerta el mismo día, MPS al aplicar | 50 | 2-nov → 13-nov |
+| 5 | **E2 — Pedidos desde la zona firme** | Propuesta de un pedido por PO y semana de embarque, reducciones controladas, modo propuesta / automático por cliente | 40 | 16-nov → 27-nov |
+| 6+ | **E4 — Resto y métricas** | Lectores Woodbridge (PDF de sistema), Shawmut (xls/csv), Zwisstex y lector genérico de Excel; IA para Contitech y Seiren; EDI de Lear si OpenText da salida; pronóstico de Confección por producto; validación de factura sin equipo; estabilidad, precisión y entregas contra release | 100 | dic → ene |
+| | **Total** | | **≈ 384 h** | |
+
+Supuestos del calendario:
+- Un programador (o su agente) dedicado.
+- José revisa cada PR en 1-2 días.
+- Cada PR sigue el flujo desarrollo → main → quimibond.
+- Las pruebas de Odoo corren en el build de desarrollo de Odoo.sh con
+  `--test-tags /quimibond_ventas_presupuesto`, porque el CI no instala el
+  SGI. Los lectores y la aritmética de la varianza sí corren en pytest del CI.
+- Cada PR sube la versión del manifest y agrega su migración.
 
 ---
 
 ## 6. Riesgos y preguntas
 
-<!-- RIESGOS -->
+### 6.1 Riesgos
+
+| # | Riesgo | Mitigación |
+|---|---|---|
+| R1 | **Calendario del 31-oct.** E1a + E3 suman ~170 h en 3.5 semanas y dependen de insumos externos: el visto bueno, el catálogo de partes y el Excel 2026. | Arrancar E1a con el visto bueno del E0; si el 14-oct E1a no está en `main`, el asistente 2027 arma el presupuesto solo con histórico + proyectos y el release entra después. |
+| R2 | **Unidades.** Los clientes piden en MT, LY o M; Lear, FXI y Shawmut se facturan en **kg**. El CUM, la cobertura y el presupuesto en kg dependen del `rendimiento_m_kg` de la ficha, que sale de un parser y **nadie ha validado**. Además 196 de 284 productos vendidos no tienen gramaje. | Validar la ficha de los ~15 productos del piloto con Calidad antes de E1a; factor fijo por parte en el catálogo como alternativa. |
+| R3 | **Catálogo de partes inexistente.** Hoy la liga Lear → `IWJ045Q22JNT160` solo la sabe la gente. Sin catálogo no se aplica ninguna línea. | Hoja de carga en la sesión del cuestionario; el lector nunca adivina. |
+| R4 | **Pruebas solo en Odoo.sh.** El módulo depende del SGI (Enterprise) y el CI no lo instala; cada ronda de build cuesta tiempo. | Lectores y cálculos como funciones puras con pytest en CI; pruebas de Odoo en el build de la rama antes de cada PR. |
+| R5 | **Migración sobre datos de producción.** `product_id` opcional, estados nuevos y campos de precio sobre las 1,291 líneas actuales. | Migraciones que solo agregan columnas; los 4 borradores quedan intactos como histórico; se verifica con las consultas del runbook. |
+| R6 | **Correo.** El alias necesita un grupo o reenvío en Google Workspace (TI), y Lear podría dejar de mandar el .eml y quedarse solo con EDI. | Carga manual del archivo desde E1a; EDI de Lear en E4. |
+| R7 | **Procedimiento.** El estimado de cierre, el TC por semestre y el cambio de quién revisa modifican el P-A28 y sus formatos (documentos controlados del SGI). | Actualizar el P-A28 en paralelo con E3. |
+| R8 | **Confidencialidad.** Releases y Excel traen volúmenes y precios. | Fixtures anonimizados y nada real en el repo (regla del prompt). |
+
+### 6.2 Preguntas para José
+
+1. **Orden:** ¿apruebas partir E1 (E1a antes del 31-oct, E1b en noviembre) y hacer E3 antes que E2?
+2. **Aprobación del presupuesto:** hoy hay dos candados, el código (grupo Dirección de Operaciones = Jorge Ortiz, o MAST) y la regla Studio 63 (Jacobo). ¿Quién aprueba? Propongo un solo candado en código para Jacobo y retirar la regla 63.
+3. **Revisión del aprobado:** si los ajustes van al estimado de cierre, ¿se conserva el botón «Nueva revisión»? Propongo: solo Dirección y como excepción; el KPI VE-02 mide siempre contra el **aprobado original**.
+4. **Factura sin equipo:** la única de 2026 es la venta de la rama ICOMATEX ($11.35 M) a Leasing Lepezo, no tela. ¿La validación bloquea o avisa, y exceptúa ventas de activo?
+5. **World Emblem:** ¿es Especiales (el prompt) o Confección (sus facturas 2026)?
+6. **TQ-1** está en Industrial, en Confección y en su pronóstico. En la carga 2026 manda el Excel; ¿en 2027 va solo en Industrial?
+7. **Acuse:** ¿automático al recibir, diciendo solo «recibido» y sin comprometer cantidades? ¿Firma Ventas o una cuenta genérica?
+8. **Zona firme para pedidos (E2):** Woodbridge manda 26 semanas «firmes». ¿Se crean pedidos para todo el horizonte firme o solo N semanas por cliente?
+9. **IA (E4):** ¿de acuerdo con que Odoo llame a la API de Claude con la llave en un parámetro del sistema?
+10. **Excel F-P-A28-14:** mándalo fuera del repo (Drive) para el PR 3.
+
+### 6.3 Preguntas para Ventas (Jessica y Berenice)
+
+1. La hoja del catálogo: parte del cliente → producto → unidad → factor, para Lear, FXI, Woodbridge, Shawmut, Zwisstex, Copo, Contitech y TQ-1.
+2. ¿Quién es el responsable de cada cliente? Berenice recibe Lear y FXI pero no contesta en el correo; ventasindustrial@ no escribe desde julio.
+3. Días de tránsito por planta (Juárez, Saltillo, León, Clinton, Silao) y si FXI, Woodbridge y Shawmut aceptan fecha de embarque en vez de entrega.
+4. Fecha de reinicio del CUM por cliente (¿1-ene? ¿año modelo?).
+5. Lear: ¿tenemos usuario en iExchangeWeb y se puede exportar el 830?
+6. TQ-1 y Seiren: ¿qué traen su Excel y su imagen, y cada cuándo?
+7. Plazos reales de acuse (FXI al día siguiente, Woodbridge y Copo 24 h, Lear ?).
+8. Dos releases reales por cliente para armar los fixtures anonimizados.
