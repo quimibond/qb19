@@ -378,3 +378,12 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - **D-11 ampliada:** los acompañantes de Studio también se van: las 3 tablas `_stage` (3 registros cada una, con respaldo CSV antes), `x_no_conformidades_tag`, `x_no_conformidades_line_0ff2d` y el menú 1643. Se borran con el método manual de D-11, junto con su modelo padre.
 - **Mapa:** se vuelve a exportar `quimibond_sgi_mapa` con E1-02 en `acuerdos_rxd` y sin reactivar lo archivado (OP-PTAR).
 - `quimibond` sigue sin cambios hasta el paso único, al terminar la entrega 2.
+
+## 2026-09-30 — Inventario de formularios
+
+- **Bloque 1 (seguridad, salud y ambiente) primero.** Programación (~20 h): ligar las 13 actividades críticas (E2.23, E2.28, E2.30, E2.34, E2.35, E2.37, S5.14, S4.34 y demás del inventario), digitalizar la matriz de aspectos ambientales, el permiso de trabajo de alto riesgo y LOTO, ficha y menú de hallazgos de auditoría y de evaluación legal. La carga del histórico 2026 y la capacitación de MAST las agenda Jose con Areli cuando Carlos tenga usuario.
+- **Clave D-02:** con script, al final del bloque 3. Orden: (1) fusionar duplicados; (2) corregir F-P-E01-01 (luminaria contra aspectos ambientales) y el formato con dos revisiones 0; (3) aplicar la clave, con la del Dropbox como clave anterior. El buscador por clave anterior debe seguir funcionando.
+- **Responsable SGI de cada formato:** el dueño del proceso. Si el dueño no tiene usuario activo, se queda MAST y se entrega la lista a Jose. MAST conserva la aprobación y la publicación.
+- **17 formatos citados que no existen:** para cada uno, propuesta «lo sustituye Odoo (dónde)» o «hay que crearlo». Varios ya existen en Odoo (encuesta de satisfacción, revisión por la dirección, conciliación bancaria).
+- **Un formato por modelo:** pasa al bloque 2, junto con la clave por tipo de operación.
+- **D-009 (vistas):** aprobar/rechazar PPAP, cerrar/reabrir riesgos y marcar obsoletos AMEF, planes de control y planes de emergencia: solo Jefe MAST y dueño del proceso (propuesta aplicada al no haber objeción).
