@@ -18,6 +18,7 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiEppDeliveryLine(models.Model):
+    """Renglón de la responsiva de EPP: artículo, talla y cantidad."""
     _name = 'sgi.epp.delivery.line'
     _description = "Renglón de la responsiva de EPP"
     _order = 'sequence, id'
@@ -37,8 +38,10 @@ class SgiEppDeliverySign(models.Model):
     line_ids = fields.One2many('sgi.epp.delivery.line', 'delivery_id', string="Renglones de EPP")
     items = fields.Text(compute='_compute_items', store=True, readonly=False, required=False)
     sign_request_id = fields.Many2one('sign.request', string="Solicitud de firma (Sign)", readonly=True, copy=False,
-                                      ondelete='set null')
-    sign_state = fields.Selection(related='sign_request_id.state', string="Firma electrónica", store=True)
+                                      ondelete='set null',
+                                      help="Solicitud de firma electrónica de la responsiva.")
+    sign_state = fields.Selection(related='sign_request_id.state', string="Firma electrónica", store=True,
+                                  help="Estado de la firma electrónica.")
 
     @api.depends('line_ids.name', 'line_ids.quantity', 'line_ids.uom', 'line_ids.size')
     def _compute_items(self):

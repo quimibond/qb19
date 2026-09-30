@@ -30,6 +30,8 @@ FINDING_TO_CLASS = {
 
 
 class SgiAuditProgram(models.Model):
+    """Programa anual de auditorías (P-G03). Lo arma MAST (puede sugerir renglones), se aprueba y de
+    cada renglón nace la auditoría."""
     _name = 'sgi.audit.program'
     _description = "Programa anual de auditorías (P-G03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -37,12 +39,15 @@ class SgiAuditProgram(models.Model):
 
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
     year = fields.Integer(string="Año", required=True,
-                          default=lambda self: fields.Date.context_today(self).year)
+                          default=lambda self: fields.Date.context_today(self).year,
+                          help="Año que cubre el programa.")
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('aprobado', "Aprobado"),
         ('cerrado', "Cerrado"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador mientras se arma; aprobado cuando se autoriza (desde ahí se avisa cada auditoría); "
+             "cerrado al terminar el año.")
     line_ids = fields.One2many('sgi.audit.program.line', 'program_id', string="Líneas")
 
     _year_uniq = models.Constraint(
@@ -118,6 +123,8 @@ class SgiAuditProgram(models.Model):
 
 
 class SgiAuditProgramLine(models.Model):
+    """Renglón del programa anual: qué proceso, en qué mes y con qué auditor líder. «Crear
+    auditoría» genera la ``sgi.audit``."""
     _name = 'sgi.audit.program.line'
     _description = "Línea del programa de auditorías"
     _order = 'planned_month, id'
@@ -163,6 +170,8 @@ class SgiAuditProgramLine(models.Model):
 
 
 class SgiAudit(models.Model):
+    """Auditoría interna o a proveedor/cliente (P-G03): planeación, checklist generado del proceso,
+    hallazgos y cierre con informe. Nace del programa anual o a mano."""
     _name = 'sgi.audit'
     _description = "Auditoría interna (P-G03)"
     _inherit = ['sgi.base.mixin']
@@ -176,29 +185,39 @@ class SgiAudit(models.Model):
     )
 
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
-    program_line_id = fields.Many2one('sgi.audit.program.line', string="Línea de programa")
+    program_line_id = fields.Many2one('sgi.audit.program.line', string="Línea de programa",
+                                      help="Renglón del programa anual del que nació esta auditoría.")
     audit_type = fields.Selection([
         ('interna', "Interna"),
         ('externa', "Externa (certificación)"),
         ('cliente', "De cliente"),
         ('proveedor', "A proveedor"),
-    ], string="Tipo", default='interna', required=True, tracking=True)
+    ], string="Tipo", default='interna', required=True, tracking=True,
+        help="Interna, externa de certificación, de un cliente a Quimibond o de Quimibond a un proveedor.")
     # AU-4 (53.0.0): auditorías de cliente (el cliente nos audita: su número
     # de reporte) y a proveedor (auditamos al proveedor: sus hallazgos van a
     # la NC a proveedor, NC-6).
-    partner_id = fields.Many2one('res.partner', string="Cliente / proveedor", tracking=True)
+    partner_id = fields.Many2one('res.partner', string="Cliente / proveedor", tracking=True,
+                                 help="Cliente que audita a Quimibond o proveedor al que se audita.")
     external_report_ref = fields.Char(string="N° de reporte externo", tracking=True,
                                       help="Número del reporte de auditoría del cliente.")
-    norm_ids = fields.Many2many('sgi.norm', string="Normas")
-    process_ids = fields.Many2many('sgi.process', string="Procesos auditados")
-    lead_auditor_id = fields.Many2one('res.users', string="Auditor líder", tracking=True)
+    norm_ids = fields.Many2many('sgi.norm', string="Normas", help="Normas contra las que se audita.")
+    process_ids = fields.Many2many('sgi.process', string="Procesos auditados",
+                                   help="Procesos que cubre la auditoría. De ellos se genera el checklist.")
+    lead_auditor_id = fields.Many2one('res.users', string="Auditor líder", tracking=True,
+                                      help="Responsable de la auditoría. No puede ser dueño de un proceso "
+                                           "auditado.")
     auditor_ids = fields.Many2many('res.users', 'sgi_audit_auditor_rel',
-                                   'audit_id', 'user_id', string="Equipo auditor")
+                                   'audit_id', 'user_id', string="Equipo auditor",
+                                   help="Auditores que acompañan al auditor líder. Deben ser independientes "
+                                        "del proceso auditado.")
     auditee_ids = fields.Many2many('res.users', 'sgi_audit_auditee_rel',
-                                   'audit_id', 'user_id', string="Auditados")
-    date_planned = fields.Date(string="Fecha planificada")
-    date_start = fields.Date(string="Inicio real")
-    date_end = fields.Date(string="Fin real")
+                                   'audit_id', 'user_id', string="Auditados",
+                                   help="Personas auditadas.")
+    date_planned = fields.Date(string="Fecha planificada",
+                               help="Fecha en que se planea realizar la auditoría.")
+    date_start = fields.Date(string="Inicio real", help="Fecha en que empezó la auditoría.")
+    date_end = fields.Date(string="Fin real", help="Fecha en que terminó la auditoría.")
     conclusion = fields.Text(string="Conclusión")
     # Minutas de las reuniones (sustituyen F-P-G03-05 y F-P-G03-06: los
     # asistentes ya viven en auditor_ids/auditee_ids, aquí queda el acta).
@@ -216,7 +235,8 @@ class SgiAudit(models.Model):
         ('en_ejecucion', "En ejecución"),
         ('informe', "Informe"),
         ('cerrada', "Cerrada"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador, planificada, en ejecución, informe o cerrada.")
     finding_ids = fields.One2many('sgi.audit.finding', 'audit_id', string="Hallazgos")
     finding_count = fields.Integer(string="# Hallazgos", compute='_compute_finding_count')
     # AU-1 (50.0.0): checklist generado del proceso, una línea por actividad.
@@ -227,7 +247,23 @@ class SgiAudit(models.Model):
     checklist_nonconforming_count = fields.Integer(compute='_compute_checklist_counts')
     # AU-3 (50.0.0): informe F-P-G03-07 archivado al cerrar.
     report_document_id = fields.Many2one(
-        'documents.document', string="Informe archivado", readonly=True, copy=False)
+        'documents.document', string="Informe archivado", readonly=True, copy=False,
+        help="Informe de la auditoría archivado en Documentos al cerrarla.")
+
+    # V-M07 (57.42.0): título legible de la ficha (el folio va debajo).
+    sgi_heading = fields.Char(string="Título", compute='_compute_sgi_heading')
+
+    @api.depends('audit_type', 'partner_id', 'process_ids', 'date_planned')
+    def _compute_sgi_heading(self):
+        types = dict(self._fields['audit_type'].selection)
+        for audit in self:
+            parts = ["Auditoría %s" % types.get(audit.audit_type, '').lower()]
+            subject = audit.partner_id.display_name or ", ".join(audit.process_ids.mapped('name'))
+            if subject:
+                parts.append(subject)
+            if audit.date_planned:
+                parts.append(audit.date_planned.strftime('%d/%m/%Y'))
+            audit.sgi_heading = " · ".join(parts)
 
     @api.depends('folio', 'audit_type')
     def _compute_name(self):
@@ -460,31 +496,40 @@ class SgiAudit(models.Model):
 
 
 class SgiAuditFinding(models.Model):
+    """Hallazgo de una auditoría con cláusula y evidencia. Si la disposición lo pide, «Generar NC»
+    crea la NC ligada."""
     _name = 'sgi.audit.finding'
     _description = "Hallazgo de auditoría"
     _order = 'audit_id, id'
 
     audit_id = fields.Many2one('sgi.audit', string="Auditoría",
-                               required=True, ondelete='cascade')
+                               required=True, ondelete='cascade',
+                               help="Auditoría a la que pertenece el hallazgo.")
     finding_type = fields.Selection([
         ('conformidad', "Conformidad"),
         ('observacion', "Observación"),
         ('nc_menor', "No conformidad menor"),
         ('nc_mayor', "No conformidad mayor"),
         ('oportunidad', "Oportunidad de mejora"),
-    ], string="Tipo", default='observacion', required=True)
-    norm_clause_id = fields.Many2one('sgi.norm.clause', string="Cláusula", ondelete='restrict')
+    ], string="Tipo", default='observacion', required=True,
+        help="Conformidad, observación, no conformidad menor o mayor, u oportunidad de mejora.")
+    norm_clause_id = fields.Many2one('sgi.norm.clause', string="Cláusula", ondelete='restrict',
+                                     help="Cláusula de la norma a la que se refiere el hallazgo.")
     checklist_line_id = fields.Many2one(
         'sgi.audit.checklist.line', string="Pregunta del checklist", readonly=True, ondelete='set null')
-    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso en el que se encontró el hallazgo.")
     description = fields.Text(string="Descripción")
     evidence = fields.Text(string="Evidencia")
     disposition = fields.Selection([
         ('genera_nc', "Genera NC"),
         ('sin_accion', "Sin acción"),
         ('mejora', "Mejora"),
-    ], string="Disposición")
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True)
+    ], string="Disposición",
+        help="Qué se hace con el hallazgo: generar NC, registrar una mejora o no hacer nada (con motivo). "
+             "Sin disposición la auditoría no se cierra.")
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+                               help="No conformidad generada desde este hallazgo.")
     reason_no_action = fields.Text(string="Justificación sin acción")
 
     @api.depends('audit_id.folio', 'finding_type', 'norm_clause_id')

@@ -21,7 +21,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_compliance_matrix_document</field>
         <field name="report_file">quimibond_sgi.report_compliance_matrix_document</field>
-        <field name="print_report_name">'Matriz de cumplimiento - %s' % (object.code)</field>
+        <field name="print_report_name">'Matriz de cumplimiento - %s' % (object.code or object.name or '')</field>
         <field name="paperformat_id" ref="paperformat_sgi_carta_horizontal"/>
         <field name="binding_model_id" ref="model_sgi_norm"/>
         <field name="binding_type">report</field>
@@ -73,6 +73,10 @@
                             Fuente: «Cumple con» de cada actividad del SGI (solo actividades vigentes).
                             Procesos: los que declaran la norma o tienen alguna actividad ligada a ella.
                         </div>
+                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>

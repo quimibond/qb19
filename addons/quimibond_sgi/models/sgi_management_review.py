@@ -9,6 +9,8 @@ from .sgi_menu_paths import sgi_menu_path
 
 
 class SgiManagementReview(models.Model):
+    """Revisión por la dirección: carga de entradas (auditorías, NC, indicadores, quejas, riesgos…),
+    acuerdos y cierre."""
     _name = 'sgi.management.review'
     _description = "Revisión por la Dirección (IT-P-A10-01)"
     _inherit = ['sgi.base.mixin']
@@ -22,16 +24,20 @@ class SgiManagementReview(models.Model):
     )
 
     name = fields.Char(string="Nombre", compute='_compute_name', store=True)
-    date = fields.Date(string="Fecha", default=fields.Date.context_today, required=True)
-    period_from = fields.Date(string="Periodo desde", required=True)
-    period_to = fields.Date(string="Periodo hasta", required=True)
+    date = fields.Date(string="Fecha", default=fields.Date.context_today, required=True,
+                       help="Fecha de la reunión.")
+    period_from = fields.Date(string="Periodo desde", required=True, help="Inicio del periodo que se revisa.")
+    period_to = fields.Date(string="Periodo hasta", required=True, help="Fin del periodo que se revisa.")
     attendee_ids = fields.Many2many('hr.employee', 'sgi_review_attendee_rel',
-                                    'review_id', 'employee_id', string="Asistentes")
+                                    'review_id', 'employee_id', string="Asistentes",
+                                    help="Personas que asistieron a la revisión.")
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('realizada', "Realizada"),
         ('cerrada', "Cerrada"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador mientras se prepara; realizada al marcarla hecha (sus acuerdos pasan a acciones); "
+             "cerrada por el Jefe MAST y SGI.")
 
     # Entradas 9.3.2 (snapshot readonly)
     prev_agreements_summary = fields.Text(string="1. Acuerdos previos", readonly=True)
@@ -43,14 +49,19 @@ class SgiManagementReview(models.Model):
     # mano. Es la liga con la que E2.14 se mide (match: audit_ids).
     audit_ids = fields.Many2many(
         'sgi.audit', 'sgi_review_audit_rel', 'review_id', 'audit_id',
-        string="Auditorías del periodo")
+        string="Auditorías del periodo",
+        help="Auditorías que cubre la revisión. «Cargar entradas» las toma del periodo; se pueden ajustar.")
     kpi_red_measure_ids = fields.Many2many('sgi.indicator.measure', 'sgi_review_kpi_rel',
                                            'review_id', 'measure_id',
-                                           string="5. Indicadores en rojo", readonly=True)
+                                           string="5. Indicadores en rojo", readonly=True,
+                                           help="Mediciones en rojo del periodo. Se llenan con «Cargar "
+                                                "entradas».")
     supplier_summary = fields.Text(string="6. Proveedores", readonly=True)
     risk_high_ids = fields.Many2many('sgi.risk', 'sgi_review_risk_rel',
                                      'review_id', 'risk_id',
-                                     string="7. Riesgos de atención inmediata/alta", readonly=True)
+                                     string="7. Riesgos de atención inmediata/alta", readonly=True,
+                                     help="Riesgos de atención inmediata o alta. Se llenan con «Cargar "
+                                          "entradas».")
     env_summary = fields.Text(string="8. Desempeño ambiental (scrap)", readonly=True)
     resources_note = fields.Text(string="9. Recursos (calibraciones/capacitación)")
     doc_changes_summary = fields.Text(string="10. Cambios documentales", readonly=True)
@@ -75,6 +86,18 @@ class SgiManagementReview(models.Model):
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',
                                     string="Acuerdos")
 
+
+    # V-M07 (57.42.0): título legible de la ficha (el folio va debajo).
+    sgi_heading = fields.Char(string="Título", compute='_compute_sgi_heading')
+
+    @api.depends('period_from', 'period_to')
+    def _compute_sgi_heading(self):
+        for review in self:
+            if review.period_from and review.period_to:
+                review.sgi_heading = "Revisión por la dirección · %s a %s" % (
+                    review.period_from.strftime('%d/%m/%Y'), review.period_to.strftime('%d/%m/%Y'))
+            else:
+                review.sgi_heading = "Revisión por la dirección"
 
     @api.depends('folio', 'date')
     def _compute_name(self):
@@ -396,6 +419,8 @@ class SgiManagementReview(models.Model):
 
 
 class SgiManagementReviewAgreement(models.Model):
+    """Acuerdo de una revisión por la dirección con responsable y fecha; se sigue como acción o
+    tarea."""
     _name = 'sgi.management.review.agreement'
     _description = "Acuerdo de Revisión por la Dirección"
     _order = 'deadline, id'

@@ -156,10 +156,12 @@ class SlideChannelSgi(models.Model):
         help="Al terminar el curso, el empleado recibe esta competencia al "
              "nivel indicado (cierra la brecha en la DNC).")
     sgi_skill_type_id = fields.Many2one(
-        related='sgi_skill_id.skill_type_id', string="Tipo de competencia")
+        related='sgi_skill_id.skill_type_id', string="Tipo de competencia",
+        help="Tipo de la competencia que otorga el curso.")
     sgi_skill_level_id = fields.Many2one(
         'hr.skill.level', string="Nivel que otorga",
-        domain="[('skill_type_id', '=', sgi_skill_type_id)]")
+        domain="[('skill_type_id', '=', sgi_skill_type_id)]",
+        help="Nivel de competencia que obtiene quien termina el curso.")
 
     def _sgi_employee_for_partner(self, partner):
         Employee = self.env['hr.employee'].sudo()

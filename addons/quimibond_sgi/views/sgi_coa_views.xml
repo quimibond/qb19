@@ -229,7 +229,7 @@
         <field name="context">{'search_default_sin_ligar': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aquí llegan los COA que se mandan al buzón «coa@»</p>
-            <p>Cada PDF «&lt;producto&gt; &lt;factura&gt;.pdf» se liga solo a su salida. Los que no se pudieron ligar esperan aquí: elige la salida y pulsa «Ligar a la salida».</p>
+            <p>Cada PDF «&lt;producto&gt; &lt;factura&gt;.pdf» se liga solo a su salida. Los que no se pudieron ligar esperan aquí: elija la salida y pulse «Ligar a la salida».</p>
         </field>
     </record>
 

@@ -40,6 +40,8 @@ def _check_admin(env):
 
 
 class SgiMapaLoadWizard(models.TransientModel):
+    """Asistente «Cargar mapa de procesos» de ``quimibond_sgi_mapa``: prueba y carga el JSON del
+    módulo o uno subido, y descarga el de la base."""
     _name = 'sgi.mapa.load.wizard'
     _description = "Cargar mapa de procesos SGI"
 
@@ -176,6 +178,7 @@ class SgiMapaLoadWizard(models.TransientModel):
 
 
 class SgiMapaLoadWizardLine(models.TransientModel):
+    """Renglón del resultado de la carga del mapa."""
     _name = 'sgi.mapa.load.wizard.line'
     _description = "Resultado de la carga del mapa SGI"
     _order = 'id'

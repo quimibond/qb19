@@ -20,18 +20,28 @@ class QualityAlertSupplierPortal(models.Model):
 
     sgi_supplier_id = fields.Many2one(
         'res.partner', string="Proveedor", compute='_compute_sgi_supplier_id', store=True,
-        readonly=False, domain=[('supplier_rank', '>', 0)])
+        readonly=False, domain=[('supplier_rank', '>', 0)],
+        help="Proveedor responsable de la NC. Se toma del contacto si es proveedor; se puede cambiar.")
     sgi_supplier_state = fields.Selection([
         ('no_enviada', "Sin enviar"),
         ('enviada', "Enviada al proveedor"),
         ('contestada', "Contestada por el proveedor"),
-    ], string="Respuesta del proveedor", default='no_enviada', tracking=True, copy=False)
-    sgi_supplier_sent_date = fields.Date(string="Enviada el", readonly=True, copy=False)
-    sgi_supplier_due_date = fields.Date(string="Respuesta antes del", readonly=True, copy=False)
-    sgi_supplier_response_date = fields.Datetime(string="Contestada el", readonly=True, copy=False)
+    ], string="Respuesta del proveedor", default='no_enviada', tracking=True, copy=False,
+        help="Situación de la respuesta del proveedor: sin enviar, enviada o contestada por el portal.")
+    sgi_supplier_sent_date = fields.Date(string="Enviada el", readonly=True, copy=False,
+                                         help="Fecha en que la NC se envió al proveedor.")
+    sgi_supplier_due_date = fields.Date(string="Respuesta antes del", readonly=True, copy=False,
+                                        help="Fecha límite para que el proveedor conteste por el portal "
+                                             "(días hábiles del parámetro "
+                                             "quimibond_sgi.nc_days_supplier_response).")
+    sgi_supplier_response_date = fields.Datetime(string="Contestada el", readonly=True, copy=False,
+                                                 help="Fecha y hora en que el proveedor contestó por el "
+                                                      "portal.")
     sgi_supplier_cause = fields.Text(string="Causa según el proveedor", readonly=True, copy=False)
     sgi_supplier_action = fields.Text(string="Acción según el proveedor", readonly=True, copy=False)
-    sgi_supplier_overdue = fields.Boolean(compute='_compute_sgi_supplier_overdue')
+    sgi_supplier_overdue = fields.Boolean(compute='_compute_sgi_supplier_overdue',
+                                          help="Indica que la NC se envió al proveedor y ya pasó su fecha de "
+                                               "respuesta.")
 
     @api.depends('partner_id')
     def _compute_sgi_supplier_id(self):

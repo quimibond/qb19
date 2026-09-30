@@ -58,7 +58,7 @@
                                     <td><span t-field="line.detection"/></td>
                                     <td>
                                         <strong t-att-style="'color:red;' if line.requires_action else ''"
-                                                t-esc="line.npr"/>
+                                                t-out="line.npr"/>
                                     </td>
                                     <td>
                                         <span t-foreach="line.action_line_ids" t-as="act">
@@ -69,6 +69,10 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>

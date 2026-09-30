@@ -6,12 +6,19 @@
         <field name="arch" type="xml">
             <form string="AMEF">
                 <header>
+                    <!-- D-009 (57.41.0): marcar obsoleto, o sacarlo de obsoleto, es del
+                         Jefe MAST y del dueño del proceso (el write() lo exige también por RPC). -->
                     <button name="action_set_vigente" type="object" string="Marcar vigente"
-                            class="btn-primary" invisible="state == 'vigente'"/>
+                            class="btn-primary" invisible="state != 'borrador'"/>
                     <button name="action_set_obsoleto" confirm="El AMEF deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleto"
-                            invisible="state != 'vigente'"/>
+                            invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <button name="action_set_borrador" confirm="El AMEF regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
-                            invisible="state == 'borrador'"/>
+                            invisible="state != 'vigente'"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            confirm="El AMEF sale de obsoleto y regresa a borrador. ¿Desea continuar?"
+                            invisible="state != 'obsoleto'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="borrador,vigente,obsoleto"/>
                 </header>
@@ -97,13 +104,17 @@
                                     <group string="Acciones">
                                         <field name="action_line_ids" nolabel="1"
                                                context="{'default_fmea_line_id': id}">
-                                            <list editable="bottom">
+                                            <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                                            <list editable="bottom" decoration-danger="state == 'vencida'"
+                                                  decoration-muted="state == 'terminada'">
                                                 <field name="action_type"/>
                                                 <field name="name"/>
-                                                <field name="responsible_id"/>
-                                                <field name="date_commit"/>
+                                                <field name="responsible_id" widget="many2one_avatar_user"/>
+                                                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                                 <field name="date_done"/>
-                                                <field name="state"/>
+                                                <field name="progress"/>
+                                                <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                                       decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                             </list>
                                         </field>
                                     </group>
@@ -147,6 +158,9 @@
                 <filter name="vigente" string="Vigentes" domain="[('state','=','vigente')]"/>
                 <filter name="proceso" string="PFMEA" domain="[('fmea_type','=','proceso')]"/>
                 <filter name="diseno" string="DFMEA" domain="[('fmea_type','=','diseno')]"/>
+                <!-- V-M03 (57.43.0): «Míos». -->
+                <separator/>
+                <filter name="mine" string="De mis procesos" domain="[('process_id.owner_id.user_id', '=', uid)]"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'fmea_type'}"/>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>

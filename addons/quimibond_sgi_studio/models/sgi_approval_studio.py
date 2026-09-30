@@ -27,7 +27,8 @@ class SgiActivityRoleStudio(models.Model):
         help="Reglas de aprobación activas en el mismo botón que no mantiene este rol: el documento "
              "pediría dos aprobaciones. Adóptala o quítala antes de sincronizar.")
     approval_rule_id = fields.Many2one(
-        'studio.approval.rule', string="Regla nativa", readonly=True, copy=False, ondelete='set null')
+        'studio.approval.rule', string="Regla nativa", readonly=True, copy=False, ondelete='set null',
+        help="Regla de aprobación de Odoo que el SGI creó para este rol.")
 
     @api.depends('approval_kind', 'approval_model_id', 'approval_method', 'approval_rule_id')
     def _compute_approval_conflicts(self):

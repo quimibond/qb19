@@ -283,7 +283,7 @@
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Dé de alta un indicador</p>
-            <p>Los automáticos se calculan solos de los datos reales de Odoo; captura responsable, objetivo y aceptable, y el semáforo sale solo.</p>
+            <p>Los automáticos se calculan solos de los datos reales de Odoo; capture responsable, objetivo y aceptable, y el semáforo sale solo.</p>
         </field>
     </record>
 
@@ -337,10 +337,13 @@
         <field name="arch" type="xml">
             <form string="Medición">
                 <header>
+                    <!-- V-A06 (57.43.0): un solo primario por estado, en el orden del
+                         statusbar (capturar → validar). Valida el responsable del
+                         indicador o el Jefe MAST (I-006; el servidor lo revisa). -->
                     <button name="action_capture" type="object" string="Marcar capturado"
-                            invisible="state != 'pendiente'"/>
+                            class="btn-primary" invisible="state != 'pendiente'"/>
                     <button name="action_validate" type="object" string="Validar"
-                            class="btn-primary" invisible="state == 'validado'"/>
+                            class="btn-primary" invisible="state != 'capturado' or not sgi_can_validate"/>
                     <button name="action_view_records" type="object"
                             string="Ver registros" icon="fa-list"
                             invisible="not detail_count"/>
@@ -446,15 +449,16 @@
                         </div>
                         <field name="cause" placeholder="Por qué salió en rojo"/>
                         <field name="action_line_ids" context="{'default_measure_id': id}" nolabel="1" colspan="2">
-                            <list editable="bottom"
-                                  decoration-danger="state == 'vencida'"
-                                  decoration-success="state == 'terminada'">
+                            <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                            <list editable="bottom" decoration-danger="state == 'vencida'"
+                                  decoration-muted="state == 'terminada'">
                                 <field name="name"/>
-                                <field name="responsible_id"/>
-                                <field name="date_commit"/>
+                                <field name="responsible_id" widget="many2one_avatar_user"/>
+                                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                 <field name="date_done"/>
                                 <field name="progress"/>
-                                <field name="state"/>
+                                <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                       decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                 <field name="action_type" column_invisible="1"/>
                                 <field name="measure_id" column_invisible="1"/>
                             </list>
@@ -510,6 +514,9 @@
                         domain="[('indicator_id.status','=','oficial')]"/>
                 <filter name="to_validate" string="Por validar"
                         domain="[('state','=','capturado')]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
+                <separator/>
+                <filter name="filter_period" string="Periodo" date="period_date"/>
                 <group>
                     <filter name="group_indicator" string="Indicador" context="{'group_by': 'indicator_id'}"/>
                     <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
@@ -523,6 +530,7 @@
         <field name="name">Mediciones</field>
         <field name="res_model">sgi.indicator.measure</field>
         <field name="view_mode">list,graph,pivot,form</field>
+        <field name="context">{'search_default_pending': 1, 'search_default_mine': 1}</field>
         <field name="search_view_id" ref="sgi_measure_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>

@@ -113,11 +113,13 @@ class SgiIndicatorMeasurePlan(models.Model):
     window_label = fields.Char(related='indicator_id.window_label', string="Ventana")
     cause = fields.Text(string="Causa", help="Por qué salió en rojo (I-4).")
     action_line_ids = fields.One2many('sgi.action.line', 'measure_id', string="Acciones")
-    plan_required = fields.Boolean(compute='_compute_plan', string="Requiere plan")
+    plan_required = fields.Boolean(compute='_compute_plan', string="Requiere plan",
+                                   help="Indica que la medición está en rojo y pide causa y plan de acción.")
     plan_due = fields.Date(compute='_compute_plan', string="Plan antes del",
                            help="Día 10 del mes siguiente al periodo (si es inhábil, el "
                                 "hábil anterior).")
-    plan_done = fields.Boolean(compute='_compute_plan', string="Plan capturado")
+    plan_done = fields.Boolean(compute='_compute_plan', string="Plan capturado",
+                               help="Indica que la medición en rojo ya tiene causa y plan.")
 
     @api.depends('semaphore', 'state', 'small_sample', 'period_date', 'cause',
                  'action_line_ids', 'indicator_id.frequency')

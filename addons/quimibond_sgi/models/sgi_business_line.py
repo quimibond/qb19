@@ -81,10 +81,12 @@ class SgiProcessActivityLine(models.Model):
         help="Departamentos de los puestos que la ejecutan (se calcula).")
     team_filter_id = fields.Many2one(
         'crm.team', string="Equipo (con las generales)",
-        compute='_compute_line_filters', search='_search_team_filter_id')
+        compute='_compute_line_filters', search='_search_team_filter_id',
+        help="Filtro por equipo de ventas que incluye las actividades generales.")
     market_filter_id = fields.Many2one(
         'account.fiscal.position', string="Mercado (con las generales)",
-        compute='_compute_line_filters', search='_search_market_filter_id')
+        compute='_compute_line_filters', search='_search_market_filter_id',
+        help="Filtro por mercado que incluye las actividades generales.")
 
     @api.depends('responsible_job_ids.department_id')
     def _compute_department_ids(self):
@@ -242,12 +244,15 @@ class SgiExecStatLine(models.Model):
     _inherit = 'sgi.activity.exec.stat'
 
     department_id = fields.Many2one(
-        related='job_id.department_id', string="Departamento", store=True, index=True)
+        related='job_id.department_id', string="Departamento", store=True, index=True,
+        help="Departamento del puesto de quien ejecutó.")
     sale_team_ids = fields.Many2many(
         'crm.team', 'sgi_exec_stat_crm_team_rel', 'stat_id', 'team_id',
-        string="Aplica a (equipo de ventas)", compute='_compute_sale_team_ids', store=True)
+        string="Aplica a (equipo de ventas)", compute='_compute_sale_team_ids', store=True,
+        help="Equipos de ventas a los que aplica la actividad. Se calcula solo.")
     team_filter_id = fields.Many2one(
-        related='activity_id.team_filter_id', string="Equipo (con las generales)")
+        related='activity_id.team_filter_id', string="Equipo (con las generales)",
+        help="Filtro por equipo de ventas que incluye las actividades generales.")
 
     @api.depends('activity_id.sale_team_ids')
     def _compute_sale_team_ids(self):
@@ -425,25 +430,31 @@ class SgiIndicatorMeasureSplit(models.Model):
     measure_id = fields.Many2one(
         'sgi.indicator.measure', string="Medición", required=True, ondelete='cascade', index=True)
     indicator_id = fields.Many2one(
-        related='measure_id.indicator_id', string="Indicador", store=True, index=True)
-    period_date = fields.Date(related='measure_id.period_date', string="Periodo", store=True)
-    team_id = fields.Many2one('crm.team', string="Equipo de ventas", ondelete='cascade', index=True)
-    market = fields.Selection(_MARKETS, string="Mercado")
+        related='measure_id.indicator_id', string="Indicador", store=True, index=True,
+        help="Indicador medido.")
+    period_date = fields.Date(related='measure_id.period_date', string="Periodo", store=True,
+                              help="Periodo de la medición.")
+    team_id = fields.Many2one('crm.team', string="Equipo de ventas", ondelete='cascade', index=True,
+                              help="Equipo de ventas del desglose.")
+    market = fields.Selection(_MARKETS, string="Mercado",
+                              help="Mercado del desglose: nacional, exportación o cliente sin país.")
     label = fields.Char(string="Renglón", compute='_compute_label', store=True)
-    value = fields.Float(string="Valor", digits=(16, 2))
-    numerator = fields.Float(string="Numerador", digits=(16, 2))
-    denominator = fields.Float(string="Denominador", digits=(16, 2))
-    sample_size = fields.Integer(string="Casos")
+    value = fields.Float(string="Valor", digits=(16, 2), help="Valor del desglose.")
+    numerator = fields.Float(string="Numerador", digits=(16, 2), help="Numerador del desglose.")
+    denominator = fields.Float(string="Denominador", digits=(16, 2), help="Denominador del desglose.")
+    sample_size = fields.Integer(string="Casos", help="Número de casos del desglose.")
     state = fields.Selection([
         ('capturado', "Calculado"),
         ('sin_dato', "Sin dato"),
-    ], string="Estado", default='capturado', required=True)
+    ], string="Estado", default='capturado', required=True,
+        help="Calculado o sin dato.")
     uom = fields.Char(related='indicator_id.uom', string="Unidad")
     semaphore = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Semáforo", compute='_compute_semaphore', store=True)
+    ], string="Semáforo", compute='_compute_semaphore', store=True,
+        help="Semáforo del desglose. Se calcula solo.")
     detail_model = fields.Char(string="Modelo del detalle")
     detail_ids = fields.Text(string="Registros del detalle")
 

@@ -20,7 +20,8 @@ class SgiProcessActivityKnowledge(models.Model):
         help="Artículo donde se escribe el instructivo. «Publicar como instructivo» lo "
              "congela como revisión del IT.")
     instruction_article_stale = fields.Boolean(
-        string="Artículo cambió desde la última revisión", compute='_compute_instruction_article_stale')
+        string="Artículo cambió desde la última revisión", compute='_compute_instruction_article_stale',
+        help="El artículo de Conocimiento del instructivo cambió después de publicarse como revisión.")
 
     def _sgi_article_hash(self):
         self.ensure_one()
@@ -57,11 +58,15 @@ class DocumentsDocumentArticle(models.Model):
 
 
 class SgiInstructionPublish(models.TransientModel):
+    """Asistente que publica un artículo de Conocimiento como revisión del instructivo (IT) de una
+    actividad, con acuses para los puestos."""
     _name = 'sgi.instruction.publish'
     _description = "Publicar artículo de Knowledge como instructivo (IT)"
 
-    activity_id = fields.Many2one('sgi.process.activity', required=True)
-    article_id = fields.Many2one(related='activity_id.instruction_article_id')
+    activity_id = fields.Many2one('sgi.process.activity', required=True,
+                                  help="Actividad cuyo instructivo se publica.")
+    article_id = fields.Many2one(related='activity_id.instruction_article_id',
+                                 help="Artículo de Conocimiento que se publica como instructivo.")
     code = fields.Char(string="Clave IT", required=True, help="Ej. IT-P-C11-05.")
     job_ids = fields.Many2many('hr.job', string="Puestos que aplican",
                                compute='_compute_job_ids', store=True, readonly=False,

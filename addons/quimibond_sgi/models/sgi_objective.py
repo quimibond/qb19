@@ -15,6 +15,7 @@ def sgi_worst_health(values):
 
 
 class SgiObjective(models.Model):
+    """Objetivo integral del año con sus indicadores y su salud."""
     _name = 'sgi.objective'
     _description = "Objetivo Integral SGI"
     # mail.activity.mixin: las acciones del plan (6.2.2) anclan su actividad
@@ -29,7 +30,7 @@ class SgiObjective(models.Model):
                                     [('state', '=', 'vigente')], limit=1),
                                 ondelete='restrict',
                                 help="Política de la que se despliega este objetivo (cascada ISO).")
-    target_year = fields.Integer(string="Año meta")
+    target_year = fields.Integer(string="Año meta", help="Año en que se debe cumplir el objetivo.")
     indicator_ids = fields.One2many('sgi.indicator', 'objective_id', string="Indicadores")
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_indicator_count')
     # Plan de acción del objetivo (ISO 6.2.2: qué se hará, responsable y

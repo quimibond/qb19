@@ -56,8 +56,10 @@
                 <field name="calibration_type"/>
                 <field name="provider_id"/>
                 <field name="certificate_ref"/>
-                <field name="result" widget="badge"/>
-                <field name="next_date"/>
+                <field name="result" widget="badge"
+                       decoration-success="result == 'conforme'"
+                       decoration-danger="result == 'fuera_tolerancia'"/>
+                <field name="next_date" widget="remaining_days"/>
             </list>
         </field>
     </record>
@@ -72,6 +74,13 @@
                 <field name="certificate_ref"/>
                 <filter name="fuera" string="Fuera de tolerancia"
                         domain="[('result','=','fuera_tolerancia')]"/>
+                <!-- V-M02/V-M03 (57.43.0): lo que vence y filtro de fecha nativo. -->
+                <filter name="due" string="Próximas a vencer"
+                        domain="[('equipment_id.sgi_calibration_state', 'in', ('vencido', 'por_vencer'))]"
+                        help="Calibraciones de equipos vencidos o que vencen en 30 días."/>
+                <separator/>
+                <filter name="filter_date" string="Fecha de calibración" date="date"/>
+                <filter name="filter_next_date" string="Próxima fecha" date="next_date"/>
                 <group>
                     <filter name="group_equipment" string="Equipo" context="{'group_by': 'equipment_id'}"/>
                     <filter name="group_result" string="Resultado" context="{'group_by': 'result'}"/>
@@ -84,6 +93,7 @@
         <field name="name">Calibraciones</field>
         <field name="res_model">sgi.calibration</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_due': 1}</field>
         <field name="search_view_id" ref="sgi_calibration_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Registre la primera calibración</p>
@@ -148,12 +158,73 @@
         </field>
     </record>
 
+    <!-- 57.43.0 (V-A09): lista y búsqueda propias de metrología. Antes la
+         acción usaba la lista estándar de equipos, con el semáforo y el «NO
+         USAR» ocultos. Vistas primarias con prioridad alta: no le ganan a las de
+         Mantenimiento en su app. -->
+    <record id="sgi_equipment_view_list_measuring" model="ir.ui.view">
+        <field name="name">maintenance.equipment.list.sgi.measuring</field>
+        <field name="model">maintenance.equipment</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Equipos de medición" decoration-danger="sgi_do_not_use"
+                  decoration-warning="sgi_calibration_state == 'por_vencer'">
+                <field name="name"/>
+                <field name="category_id" optional="show"/>
+                <field name="serial_no" optional="hide"/>
+                <field name="sgi_magnitude" optional="show"/>
+                <field name="sgi_last_calibration_date" optional="show"/>
+                <field name="sgi_next_calibration_date" widget="remaining_days"/>
+                <field name="sgi_calibration_state" widget="badge"
+                       decoration-success="sgi_calibration_state == 'vigente'"
+                       decoration-warning="sgi_calibration_state == 'por_vencer'"
+                       decoration-danger="sgi_calibration_state == 'vencido'"/>
+                <field name="sgi_do_not_use" string="NO USAR" widget="boolean_toggle" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_equipment_view_search_measuring" model="ir.ui.view">
+        <field name="name">maintenance.equipment.search.sgi.measuring</field>
+        <field name="model">maintenance.equipment</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Equipos de medición">
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="serial_no"/>
+                <field name="sgi_magnitude"/>
+                <filter name="sgi_due" string="Vencido o por vencer"
+                        domain="[('sgi_calibration_state', 'in', ('vencido', 'por_vencer'))]"/>
+                <separator/>
+                <filter name="sgi_expired" string="Vencido"
+                        domain="[('sgi_calibration_state', '=', 'vencido')]"/>
+                <filter name="sgi_expiring" string="Por vencer"
+                        domain="[('sgi_calibration_state', '=', 'por_vencer')]"/>
+                <filter name="sgi_blocked" string="No usar"
+                        domain="[('sgi_do_not_use', '=', True)]"/>
+                <separator/>
+                <filter name="sgi_next_date" string="Próxima calibración" date="sgi_next_calibration_date"/>
+                <group>
+                    <filter name="group_state" string="Estado de calibración"
+                            context="{'group_by': 'sgi_calibration_state'}"/>
+                    <filter name="group_category" string="Categoría" context="{'group_by': 'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_equipment_action_measuring" model="ir.actions.act_window">
         <field name="name">Equipos de medición</field>
         <field name="res_model">maintenance.equipment</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="domain">[('sgi_is_measuring', '=', True)]</field>
-        <field name="context">{'default_sgi_is_measuring': True}</field>
+        <field name="context">{'default_sgi_is_measuring': True, 'search_default_sgi_due': 1}</field>
+        <field name="search_view_id" ref="sgi_equipment_view_search_measuring"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_equipment_view_list_measuring')}),
+            (0, 0, {'view_mode': 'sgi_diagram'}),
+            (0, 0, {'view_mode': 'form'})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Dé de alta los equipos de medición</p>
             <p>Con su frecuencia de calibración; el semáforo avisa los vencimientos 30 días antes.</p>

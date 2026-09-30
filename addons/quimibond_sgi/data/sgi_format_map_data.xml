@@ -163,4 +163,30 @@
         <field name="sgi_code">P-A20</field>
         <field name="note">Bloqueo y etiquetado: registro de P-A20 (sin formato propio todavía)</field>
     </record>
+
+    <!-- 57.44.0 (V-M08): pies de los reportes que perdieron su identificación
+         en 57.20.0. Por referencia porque el mismo modelo imprime más de un
+         formato (plan e informe de auditoría) o es de otra app (NEWS, sobre
+         Aprobaciones). Claves tomadas del propio SGI (README y comentarios de
+         los reportes); MAST liga el documento en «Formatos en documentos de
+         Odoo» y la revisión sale sola. -->
+    <record id="format_ref_audit_plan" model="sgi.format.map">
+        <field name="sgi_code">F-P-G03-03</field>
+        <field name="note">Plan de auditoría</field>
+    </record>
+
+    <record id="format_ref_audit_report" model="sgi.format.map">
+        <field name="sgi_code">F-P-G03-07</field>
+        <field name="note">Informe de auditoría</field>
+    </record>
+
+    <record id="format_ref_master_list" model="sgi.format.map">
+        <field name="sgi_code">F-P-G01-03</field>
+        <field name="note">Lista maestra de información documentada (general y por proceso)</field>
+    </record>
+
+    <record id="format_ref_news" model="sgi.format.map">
+        <field name="sgi_code">F-P-G01-16</field>
+        <field name="note">Boletín NEWS de cambios documentales</field>
+    </record>
 </odoo>
