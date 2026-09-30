@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from lxml import etree
 
+from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_calendar import sgi_test_calendar
@@ -91,3 +92,112 @@ class TestNcFichaYLista(TransactionCase):
         late.sgi_root_cause = 'Causa'
         self.assertFalse(late.sgi_deadline_overdue)
         self.assertFalse(Alert.search([('sgi_deadline_overdue', '=', True), ('id', '=', late.id)]))
+
+
+@tagged('post_install', '-at_install')
+class TestCerradoYDecisiones(TransactionCase):
+    """57.41.0 (V-A03): solo lectura en cerrado; (V-A05, D-009): decisiones del
+    Jefe MAST y del dueño del proceso, revisadas en el servidor."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        groups = 'base.group_user,quimibond_sgi.group_sgi_user'
+        cls.raso = new_test_user(cls.env, login='vp_raso', groups=groups)
+        cls.owner_user = new_test_user(cls.env, login='vp_owner', groups=groups)
+        cls.mast = new_test_user(cls.env, login='vp_mast',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        owner = cls.env['hr.employee'].create({'name': 'Dueña VP', 'user_id': cls.owner_user.id})
+        cls.process = cls.env['sgi.process'].create({
+            'code': 'XVP', 'name': 'Proceso pulido', 'owner_id': owner.id})
+
+    def _risk(self):
+        return self.env['sgi.risk'].create({
+            'name': 'Riesgo VP', 'instrument': 'ryo', 'process_id': self.process.id,
+            'eval_probability': '1', 'eval_impact': '1'})
+
+    def test_01_cerrado_de_solo_lectura_menos_para_mast(self):
+        risk = self._risk()
+        self.assertFalse(risk.with_user(self.raso).sgi_is_locked)
+        risk.write({'state': 'cerrado'})
+        self.assertTrue(risk.with_user(self.raso).sgi_is_locked)
+        self.assertTrue(risk.with_user(self.owner_user).sgi_is_locked)
+        self.assertFalse(risk.with_user(self.mast).sgi_is_locked)
+        # Coherente con el candado del servidor.
+        with self.assertRaises(UserError):
+            risk.with_user(self.owner_user).write({'name': 'Otro'})
+        # Los modelos sin candado nunca se ven cerrados.
+        fmea = self.env['sgi.fmea'].create({'name': 'AMEF VP', 'process_id': self.process.id})
+        self.assertFalse(fmea.with_user(self.raso).sgi_is_locked)
+
+    def test_02_incidente_del_reportante(self):
+        incident = self.env['sgi.incident'].with_user(self.raso).create({'name': 'Resbalón VP'})
+        self.assertFalse(incident.sgi_is_locked, "El reportante edita mientras está reportado.")
+        incident.sudo().state = 'investigacion'
+        self.assertTrue(incident.sgi_is_locked)
+        self.assertFalse(incident.with_user(self.mast).sgi_is_locked)
+
+    def test_03_riesgo_cerrar_y_reabrir(self):
+        risk = self._risk()
+        risk.write({'state': 'controlado'})
+        with self.assertRaises(AccessError):
+            risk.with_user(self.raso).action_set_cerrado()
+        risk.with_user(self.owner_user).action_set_cerrado()
+        self.assertEqual(risk.state, 'cerrado')
+        with self.assertRaises(AccessError):
+            risk.with_user(self.raso).action_set_identificado()
+        # El dueño reabre (solo el estado), aunque el resto siga cerrado.
+        risk.with_user(self.owner_user).action_set_identificado()
+        self.assertEqual(risk.state, 'identificado')
+        # Pasos intermedios siguen abiertos a quien edita el riesgo.
+        risk.with_user(self.owner_user).action_set_en_tratamiento()
+        self.assertEqual(risk.state, 'en_tratamiento')
+
+    def test_04_ppap_aprobar_solo_mast_o_dueno(self):
+        partner = self.env['res.partner'].create({'name': 'Cliente VP', 'is_company': True})
+        product = self.env['product.template'].create({'name': 'Fieltro VP'})
+        ppap = self.env['sgi.ppap'].create({'partner_id': partner.id, 'product_tmpl_id': product.id})
+        ppap.element_ids.write({'state': 'listo'})
+        ppap.action_mark_enviado()
+        with self.assertRaises(AccessError):
+            ppap.with_user(self.raso).action_approve()
+        with self.assertRaises(AccessError):
+            ppap.with_user(self.owner_user).action_reject()
+        # Con un AMEF del proceso en sus elementos, el dueño sí decide.
+        fmea = self.env['sgi.fmea'].create({'name': 'AMEF PPAP', 'process_id': self.process.id})
+        ppap.element_ids[:1].fmea_id = fmea
+        ppap.with_user(self.owner_user).action_set_interino()
+        self.assertEqual(ppap.state, 'interino')
+        with self.assertRaises(AccessError):
+            ppap.with_user(self.raso).action_reset()
+        ppap.with_user(self.mast).action_reset()
+        self.assertEqual(ppap.state, 'preparacion')
+        # Regresar desde «Enviado» no es decisión.
+        ppap.action_mark_enviado()
+        ppap.with_user(self.raso).action_reset()
+        self.assertEqual(ppap.state, 'preparacion')
+
+    def test_05_obsoletos(self):
+        fmea = self.env['sgi.fmea'].create({'name': 'AMEF VP2', 'process_id': self.process.id})
+        fmea.write({'state': 'vigente'})
+        with self.assertRaises(AccessError):
+            fmea.with_user(self.raso).action_set_obsoleto()
+        fmea.with_user(self.owner_user).action_set_obsoleto()
+        self.assertEqual(fmea.state, 'obsoleto')
+        with self.assertRaises(AccessError):
+            fmea.with_user(self.raso).action_set_borrador()
+        plan = self.env['sgi.emergency.plan'].create({
+            'name': 'Sismo VP', 'plan_type': 'sismo', 'responsible_id': self.raso.id})
+        plan.action_set_vigente()
+        # Sin proceso no hay dueño: solo el Jefe MAST.
+        with self.assertRaises(AccessError):
+            plan.with_user(self.owner_user).action_set_obsoleto()
+        plan.with_user(self.mast).action_set_obsoleto()
+        self.assertEqual(plan.state, 'obsoleto')
+        cplan = self.env['sgi.control.plan'].create({'name': 'Plan VP'})
+        cplan.write({'state': 'vigente'})
+        with self.assertRaises(AccessError):
+            cplan.with_user(self.owner_user).action_set_obsoleto()
+        fmea.control_plan_id = cplan
+        cplan.with_user(self.owner_user).action_set_obsoleto()
+        self.assertEqual(cplan.state, 'obsoleto')

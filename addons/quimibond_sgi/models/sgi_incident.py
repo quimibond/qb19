@@ -110,6 +110,17 @@ class SgiIncident(models.Model):
             return self.browse()
         return super()._sgi_locked_records()
 
+    def _sgi_readonly_records(self):
+        """V-A03: fuera de Jefe MAST y Salud ocupacional, el incidente solo es
+        editable para quien lo reportó y mientras siga «Reportado» (regla
+        rule_sgi_incident_user_edit_reported)."""
+        if self.env.su or self._sgi_can_investigate():
+            return self.browse()
+        uid = self.env.uid
+        return self.filtered(
+            lambda i: i.state != 'reportado'
+            or (i._origin.id and uid not in (i._origin.reporter_id.id, i._origin.create_uid.id)))
+
     @api.model
     def _sgi_can_investigate(self):
         user = self.env.user

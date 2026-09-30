@@ -7,12 +7,19 @@
         <field name="arch" type="xml">
             <form string="Plan de emergencia">
                 <header>
+                    <!-- D-009 (57.41.0): marcar obsoleto, o sacarlo de obsoleto, es del
+                         Jefe MAST (el write() lo exige también por RPC). -->
                     <button name="action_set_vigente" type="object" string="Marcar vigente"
-                            class="btn-primary" invisible="state == 'vigente'"/>
+                            class="btn-primary" invisible="state != 'borrador'"/>
                     <button name="action_set_obsoleto" confirm="El plan de emergencia deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleto"
-                            invisible="state != 'vigente'"/>
+                            invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_set_borrador" confirm="El plan de emergencia regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
-                            invisible="state == 'borrador'"/>
+                            invisible="state != 'vigente'"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            confirm="El plan de emergencia sale de obsoleto y regresa a borrador. ¿Desea continuar?"
+                            invisible="state != 'obsoleto'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="borrador,vigente,obsoleto"/>
                 </header>
@@ -127,32 +134,36 @@
                            statusbar_visible="programado,realizado"/>
                 </header>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Realizado" bg_color="text-bg-secondary"
+                            invisible="state != 'realizado'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="folio" readonly="1"/></h1>
                     </div>
                     <group>
                         <group string="Programación">
-                            <field name="plan_id"/>
-                            <field name="plan_type"/>
-                            <field name="date_planned"/>
-                            <field name="date_done"/>
+                            <field name="plan_id" readonly="sgi_is_locked"/>
+                            <field name="plan_type" readonly="sgi_is_locked"/>
+                            <field name="date_planned" readonly="sgi_is_locked"/>
+                            <field name="date_done" readonly="sgi_is_locked"/>
                         </group>
                         <group string="Ejecución">
-                            <field name="participants_count"/>
-                            <field name="duration_minutes"/>
-                            <field name="result" widget="badge"
+                            <field name="participants_count" readonly="sgi_is_locked"/>
+                            <field name="duration_minutes" readonly="sgi_is_locked"/>
+                            <field name="result" readonly="sgi_is_locked" widget="badge"
                                    decoration-success="result == 'satisfactorio'"
                                    decoration-warning="result == 'con_observaciones'"
                                    decoration-danger="result == 'no_satisfactorio'"/>
                         </group>
                     </group>
                     <group string="Hallazgos">
-                        <field name="findings" nolabel="1"
+                        <field name="findings" readonly="sgi_is_locked" nolabel="1"
                                placeholder="Observaciones del simulacro: tiempos, rutas, fallas detectadas…"/>
                     </group>
                     <notebook>
                         <page string="Acciones">
-                            <field name="action_line_ids" context="{'default_drill_id': id}">
+                            <field name="action_line_ids" readonly="sgi_is_locked" context="{'default_drill_id': id}">
                                 <list editable="bottom"
                                       decoration-danger="state == 'vencida'"
                                       decoration-success="state == 'terminada'">

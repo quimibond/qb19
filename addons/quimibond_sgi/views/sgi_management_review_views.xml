@@ -30,6 +30,10 @@
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Cerrada" bg_color="text-bg-secondary"
+                            invisible="state != 'cerrada'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
                         <h1><field name="folio" readonly="1"/></h1>
                     </div>
@@ -43,30 +47,30 @@
                     </div>
                     <group>
                         <group>
-                            <field name="date"/>
-                            <field name="period_from"/>
-                            <field name="period_to"/>
+                            <field name="date" readonly="sgi_is_locked"/>
+                            <field name="period_from" readonly="sgi_is_locked"/>
+                            <field name="period_to" readonly="sgi_is_locked"/>
                         </group>
                         <group>
-                            <field name="attendee_ids" widget="many2many_tags"/>
+                            <field name="attendee_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Entradas (9.3.2)">
                             <group>
-                                <field name="prev_agreements_summary"/>
-                                <field name="nc_summary"/>
-                                <field name="complaints_summary"/>
-                                <field name="audit_summary"/>
-                                <field name="supplier_summary"/>
-                                <field name="env_summary"/>
-                                <field name="doc_changes_summary"/>
-                                <field name="legal_summary"/>
-                                <field name="participation_summary"/>
-                                <field name="resources_note"/>
+                                <field name="prev_agreements_summary" readonly="sgi_is_locked"/>
+                                <field name="nc_summary" readonly="sgi_is_locked"/>
+                                <field name="complaints_summary" readonly="sgi_is_locked"/>
+                                <field name="audit_summary" readonly="sgi_is_locked"/>
+                                <field name="supplier_summary" readonly="sgi_is_locked"/>
+                                <field name="env_summary" readonly="sgi_is_locked"/>
+                                <field name="doc_changes_summary" readonly="sgi_is_locked"/>
+                                <field name="legal_summary" readonly="sgi_is_locked"/>
+                                <field name="participation_summary" readonly="sgi_is_locked"/>
+                                <field name="resources_note" readonly="sgi_is_locked"/>
                             </group>
                             <separator string="4. Auditorías del periodo"/>
-                            <field name="audit_ids">
+                            <field name="audit_ids" readonly="sgi_is_locked">
                                 <list>
                                     <field name="folio"/>
                                     <field name="audit_type"/>
@@ -76,7 +80,7 @@
                                 </list>
                             </field>
                             <separator string="5. Indicadores en rojo"/>
-                            <field name="kpi_red_measure_ids">
+                            <field name="kpi_red_measure_ids" readonly="sgi_is_locked">
                                 <list>
                                     <field name="indicator_id"/>
                                     <field name="period_date"/>
@@ -85,7 +89,7 @@
                                 </list>
                             </field>
                             <separator string="7. Riesgos de atención inmediata/alta"/>
-                            <field name="risk_high_ids">
+                            <field name="risk_high_ids" readonly="sgi_is_locked">
                                 <list>
                                     <field name="folio"/>
                                     <field name="name"/>
@@ -107,7 +111,7 @@
                                 la revisión como Realizada: actividad al responsable, escalamiento si vence y
                                 medición de E1-02.
                             </div>
-                            <field name="agreement_ids">
+                            <field name="agreement_ids" readonly="sgi_is_locked">
                                 <list editable="bottom" decoration-danger="action_state == 'vencida'"
                                       decoration-success="action_state == 'terminada'">
                                     <field name="name"/>

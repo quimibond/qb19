@@ -13,6 +13,37 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.41.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 1: V-A03):** los seis registros que se
+cierran como evidencia (incidente cerrado, riesgo cerrado, auditoría y
+revisión por la dirección cerradas, PPAP aprobado, simulacro realizado)
+muestran sus campos **en solo lectura** y una cinta («Cerrado», «Aprobado»,
+«Realizado»), en lugar de dejar editar y rechazar al guardar. Campo calculado
+`sgi_is_locked` en `sgi.base.mixin`, con la misma regla que el candado de
+`write()`: el Jefe MAST sigue editando. En el incidente, además, fuera de
+Jefe MAST y Salud ocupacional solo lo edita quien lo reportó y mientras siga
+«Reportado» (igual que la regla de registro).
+
+**Seguridad (V-A05, D-009, decisión de Jose):** aprobar, dar interino o
+rechazar un PPAP (y regresarlo a preparación desde esa decisión), cerrar y
+reabrir un riesgo, y marcar obsoleto (o sacar de obsoleto) un AMEF, un plan
+de control o un plan de emergencia lo hacen **solo el Jefe MAST y el dueño
+del proceso**. En la vista, los botones llevan `groups` (Jefe MAST y Dueño de
+proceso); en el servidor, `write()` revisa que el usuario sea Jefe MAST o
+dueño del proceso **del registro** y si no, `AccessError` con el motivo. El
+proceso sale de `process_id` (riesgo, AMEF), de sus AMEF (plan de control) o
+de los AMEF y planes de control de sus elementos (PPAP); el plan de emergencia
+no tiene proceso, así que lo decide solo el Jefe MAST. El dueño puede
+reabrir su riesgo cerrado (solo el estado; el resto sigue cerrado). Un AMEF,
+plan de control o plan de emergencia obsoleto ya no pasa directo a
+«Vigente»: primero «Regresar a borrador» (reservado), después «Marcar
+vigente». Mensajes del candado en «usted».
+
+**Pruebas:** `test_vistas_pulido.TestCerradoYDecisiones` (solo lectura por
+usuario y estado, incidente del reportante, riesgo, PPAP y obsoletos con
+usuario raso, dueño y Jefe MAST).
+
 ## 19.0.57.40.0 — 2026-09-30
 
 **Cambiado (pulido de vistas, bloque 1: V-A01 y V-A02):** la ficha de NC

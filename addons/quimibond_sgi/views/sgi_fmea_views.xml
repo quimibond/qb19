@@ -6,12 +6,19 @@
         <field name="arch" type="xml">
             <form string="AMEF">
                 <header>
+                    <!-- D-009 (57.41.0): marcar obsoleto, o sacarlo de obsoleto, es del
+                         Jefe MAST y del dueño del proceso (el write() lo exige también por RPC). -->
                     <button name="action_set_vigente" type="object" string="Marcar vigente"
-                            class="btn-primary" invisible="state == 'vigente'"/>
+                            class="btn-primary" invisible="state != 'borrador'"/>
                     <button name="action_set_obsoleto" confirm="El AMEF deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleto"
-                            invisible="state != 'vigente'"/>
+                            invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <button name="action_set_borrador" confirm="El AMEF regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
-                            invisible="state == 'borrador'"/>
+                            invisible="state != 'vigente'"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                            confirm="El AMEF sale de obsoleto y regresa a borrador. ¿Desea continuar?"
+                            invisible="state != 'obsoleto'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="borrador,vigente,obsoleto"/>
                 </header>

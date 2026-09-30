@@ -32,6 +32,10 @@ class SgiPpap(models.Model):
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.ppap'
     _sgi_locked_states = ('aprobado',)
+    # D-009 (57.41.0): aprobar, dar interino o rechazar (y regresar desde esas
+    # decisiones) es del Jefe MAST y del dueño del proceso.
+    _sgi_decision_states = ('aprobado', 'interino', 'rechazado')
+    _sgi_decision_label = "Aprobar, dar interino o rechazar un PPAP (o regresarlo a preparación)"
 
     _folio_uniq = models.Constraint(
         'unique(folio)',
@@ -102,6 +106,13 @@ class SgiPpap(models.Model):
                             tmpl.sequence, ppap.level),
                     })
         return True
+
+    def _sgi_decision_processes(self):
+        """El PPAP no tiene proceso propio: decide el dueño del proceso de sus
+        AMEF (directos o del plan de control de sus elementos)."""
+        self.ensure_one()
+        elements = self.sudo().element_ids
+        return elements.fmea_id.process_id | elements.control_plan_id.fmea_ids.process_id
 
     def write(self, vals):
         res = super().write(vals)

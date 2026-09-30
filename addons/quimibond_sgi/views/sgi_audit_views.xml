@@ -125,6 +125,10 @@
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Cerrada" bg_color="text-bg-secondary"
+                            invisible="state != 'cerrada'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_findings" type="object"
                                 class="oe_stat_button" icon="fa-search">
@@ -142,21 +146,21 @@
                     </div>
                     <group>
                         <group string="Alcance">
-                            <field name="audit_type"/>
-                            <field name="partner_id" invisible="audit_type not in ('cliente', 'proveedor')"
+                            <field name="audit_type" readonly="sgi_is_locked"/>
+                            <field name="partner_id" readonly="sgi_is_locked" invisible="audit_type not in ('cliente', 'proveedor')"
                                    required="audit_type in ('cliente', 'proveedor')"/>
-                            <field name="external_report_ref" invisible="audit_type != 'cliente'"/>
-                            <field name="norm_ids" widget="many2many_tags"/>
-                            <field name="process_ids" widget="many2many_tags"/>
+                            <field name="external_report_ref" readonly="sgi_is_locked" invisible="audit_type != 'cliente'"/>
+                            <field name="norm_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="process_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
                             <field name="program_line_id" readonly="1"/>
                         </group>
                         <group string="Equipo y fechas">
-                            <field name="lead_auditor_id"/>
-                            <field name="auditor_ids" widget="many2many_tags"/>
-                            <field name="auditee_ids" widget="many2many_tags"/>
-                            <field name="date_planned"/>
-                            <field name="date_start"/>
-                            <field name="date_end"/>
+                            <field name="lead_auditor_id" readonly="sgi_is_locked"/>
+                            <field name="auditor_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="auditee_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="date_planned" readonly="sgi_is_locked"/>
+                            <field name="date_start" readonly="sgi_is_locked"/>
+                            <field name="date_end" readonly="sgi_is_locked"/>
                         </group>
                     </group>
                     <field name="report_document_id" invisible="1"/>
@@ -168,7 +172,7 @@
                                 auditoría sin actividad en el SGI (se genera al planificar). «Ver registros» abre la evidencia real del entregable;
                                 cada respuesta distinta de Conforme crea su hallazgo.
                             </div>
-                            <field name="checklist_line_ids" readonly="state in ('borrador', 'cerrada')">
+                            <field name="checklist_line_ids" readonly="(state in ('borrador', 'cerrada')) or sgi_is_locked">
                                 <list editable="bottom" create="0"
                                       decoration-danger="answer in ('nc_mayor', 'nc_menor')"
                                       decoration-warning="answer == 'observacion'"
@@ -189,7 +193,7 @@
                             </field>
                         </page>
                         <page string="Hallazgos">
-                            <field name="finding_ids" context="{'default_audit_id': id}">
+                            <field name="finding_ids" readonly="sgi_is_locked" context="{'default_audit_id': id}">
                                 <list editable="bottom">
                                     <field name="finding_type"/>
                                     <field name="norm_clause_id"/>
@@ -212,14 +216,14 @@
                                 los formatos anteriores (ver Del Dropbox a Odoo).
                             </div>
                             <group>
-                                <field name="opening_minutes"
+                                <field name="opening_minutes" readonly="sgi_is_locked"
                                        placeholder="Apertura: alcance confirmado, agenda, criterios, acuerdos..."/>
-                                <field name="closing_minutes"
+                                <field name="closing_minutes" readonly="sgi_is_locked"
                                        placeholder="Cierre: hallazgos presentados, conclusión, plazos de respuesta..."/>
                             </group>
                         </page>
                         <page string="Conclusión">
-                            <field name="conclusion" nolabel="1"/>
+                            <field name="conclusion" readonly="sgi_is_locked" nolabel="1"/>
                         </page>
                     </notebook>
                 </sheet>

@@ -39,6 +39,9 @@ class SgiRisk(models.Model):
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.risk'
     _sgi_locked_states = ('cerrado',)
+    # D-009 (57.41.0): cerrar y reabrir es del Jefe MAST y del dueño del proceso.
+    _sgi_decision_states = ('cerrado',)
+    _sgi_decision_label = "Cerrar o reabrir un riesgo"
 
     _folio_uniq = models.Constraint(
         'unique(folio)',

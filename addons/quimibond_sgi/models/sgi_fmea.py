@@ -11,6 +11,10 @@ class SgiFmea(models.Model):
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.fmea'
+    # D-009 (57.41.0): marcar obsoleto (o sacarlo de obsoleto) es del Jefe
+    # MAST y del dueño del proceso.
+    _sgi_decision_states = ('obsoleto',)
+    _sgi_decision_label = "Marcar obsoleto un AMEF (o sacarlo de obsoleto)"
 
     _folio_uniq = models.Constraint(
         'unique(folio)',
