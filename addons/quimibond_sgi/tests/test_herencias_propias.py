@@ -28,6 +28,9 @@ INTEGRADAS = (
     'sgi_measure_view_list_plan',
     'sgi_indicator_view_form_window',
     'sgi_management_review_view_form_validate',
+    # 57.26.0
+    'sgi_indicator_view_form_level',
+    'sgi_format_banner_mgmt_review',
 )
 
 

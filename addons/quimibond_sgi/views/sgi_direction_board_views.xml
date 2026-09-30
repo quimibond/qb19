@@ -105,15 +105,4 @@
         <field name="code">action = env['sgi.direction.board'].action_open()</field>
     </record>
 
-    <!-- Nivel del indicador en su ficha y lista. -->
-    <record id="sgi_indicator_view_form_level" model="ir.ui.view">
-        <field name="name">sgi.indicator.form.level</field>
-        <field name="model">sgi.indicator</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_indicator_view_form"/>
-        <field name="arch" type="xml">
-            <field name="responsible_id" position="after">
-                <field name="level"/>
-            </field>
-        </field>
-    </record>
 </odoo>

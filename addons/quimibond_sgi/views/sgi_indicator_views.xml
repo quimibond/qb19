@@ -95,6 +95,7 @@
                             <field name="process_id"/>
                             <field name="sgi_area_id"/>
                             <field name="responsible_id"/>
+                            <field name="level"/>
                             <field name="frequency"/>
                             <field name="measure_from"/>
                             <field name="active" invisible="1"/>

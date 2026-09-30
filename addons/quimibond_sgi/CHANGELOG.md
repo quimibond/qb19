@@ -13,6 +13,19 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.26.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 5/9: A-008):** el nivel del
+indicador (tablero de Dirección) va en la ficha del indicador y el banner
+«formato controlado» en la ficha de la revisión por la dirección, cada uno
+en su vista base. Mismo resultado en pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_indicator_view_form_level` (15065),
+`sgi_format_banner_mgmt_review` (14740). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
 ## 19.0.57.25.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 4/9: A-008):** el plan de

@@ -22,6 +22,13 @@
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
+                <!-- Banner «formato controlado» (antes herencia propia en
+                     sgi_format_map_views.xml; A-008, 57.26.0). -->
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
                 <sheet>
                     <div class="oe_title">
                         <h1><field name="folio" readonly="1"/></h1>
