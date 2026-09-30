@@ -487,6 +487,18 @@ class SgiAuditFinding(models.Model):
     alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True)
     reason_no_action = fields.Text(string="Justificación sin acción")
 
+    @api.depends('audit_id.folio', 'finding_type', 'norm_clause_id')
+    def _compute_display_name(self):
+        # 57.53.0: el hallazgo tiene ficha y menú propios; sin esto se leía
+        # «sgi.audit.finding,12».
+        types = dict(self._fields['finding_type'].selection)
+        for finding in self:
+            parts = [finding.audit_id.folio or finding.audit_id.name or '',
+                     types.get(finding.finding_type, '')]
+            if finding.norm_clause_id:
+                parts.append(finding.norm_clause_id.display_name)
+            finding.display_name = " — ".join(p for p in parts if p) or "Hallazgo"
+
     def unlink(self):
         # Los hallazgos de una auditoría cerrada son evidencia: no se borran
         # (salvo MAST). Mientras la auditoría sigue abierta el auditor los edita.

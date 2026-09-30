@@ -130,6 +130,9 @@
               parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="10"/>
     <menuitem id="menu_sgi_audit_list" name="Auditorías realizadas" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
+    <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha. -->
+    <menuitem id="menu_sgi_audit_findings" name="Hallazgos" parent="menu_sgi_audits"
+              action="sgi_audit_finding_action" sequence="30"/>
 
     <!-- ============================================================
          4. Seguridad y ambiente (todos; exámenes médicos solo Salud
@@ -187,6 +190,9 @@
               action="sgi_risk_action" sequence="50"/>
     <menuitem id="menu_sgi_legal" name="Requisitos legales" parent="menu_sgi_direction"
               action="sgi_legal_requirement_action" sequence="60"/>
+    <!-- 57.53.0: evaluaciones del cumplimiento legal con su evidencia. -->
+    <menuitem id="menu_sgi_legal_evaluations" name="Evaluaciones de cumplimiento legal"
+              parent="menu_sgi_direction" action="sgi_legal_evaluation_action" sequence="65"/>
     <menuitem id="menu_sgi_interested_parties" name="Partes interesadas"
               parent="menu_sgi_direction" action="sgi_interested_party_action" sequence="70"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>

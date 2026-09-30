@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.53.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios 4/5):** ficha, búsqueda y menú propios
+de los **hallazgos de auditoría** (`sgi.audit.finding`, ISO 9001 9.2: SGI →
+Mejora → Auditorías → Hallazgos) y de las **evaluaciones del cumplimiento
+legal** (`sgi.legal.evaluation`, ISO 14001/45001 9.1.2: SGI → Dirección →
+Evaluaciones de cumplimiento legal). Antes solo tenían lista dentro de su
+auditoría o requisito y Odoo armaba una ficha genérica. Hallazgos: filtros de
+NC (mayores), observaciones, oportunidades, sin disposición, NC sin generar,
+internas y externas; agrupar por auditoría, tipo, proceso y cláusula; botón
+«Generar NC» en la ficha. Evaluaciones: filtros «No cumple o parcial»,
+«Cumple», «Este año» y por fecha; agrupar por requisito, resultado y año.
+Las dos acciones son de consulta (`create: False`): el hallazgo nace en su
+auditoría y la evaluación en «Registrar evaluación» del requisito, que
+actualiza su estado y levanta la NC. Nombres legibles
+(`_compute_display_name`) en las dos. Vistas en archivo propio
+(`sgi_audit_finding_legal_eval_views.xml`), sin herencias.
+
+**Pruebas:** `test_hallazgos_evaluaciones` (ficha y búsqueda propias, menús
+con su acción, nombres legibles).
+
 ## 19.0.57.52.0 — 2026-09-30
 
 **Agregado (bloque 1 de formularios 3/5):** bloqueo y etiquetado de

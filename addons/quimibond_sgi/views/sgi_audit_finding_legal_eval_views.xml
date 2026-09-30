@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.53.0 (bloque 1 de formularios 4/5): ficha, búsqueda y menú propios
+         de los hallazgos de auditoría (ISO 9001 9.2) y de las evaluaciones del
+         cumplimiento legal (ISO 14001/45001 9.1.2). Antes solo tenían lista y
+         Odoo armaba una ficha genérica. Vistas completas, sin herencias; en
+         archivo propio para no tocar las fichas de auditoría y requisitos. -->
+
+    <!-- ================= HALLAZGOS DE AUDITORÍA ================= -->
+    <record id="sgi_audit_finding_view_form" model="ir.ui.view">
+        <field name="name">sgi.audit.finding.form</field>
+        <field name="model">sgi.audit.finding</field>
+        <field name="arch" type="xml">
+            <form string="Hallazgo de auditoría">
+                <header>
+                    <button name="action_generate_nc" type="object" string="Generar NC"
+                            class="btn-primary" icon="fa-exclamation-triangle"
+                            invisible="alert_id or finding_type in ('conformidad', 'oportunidad')"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Dónde">
+                            <field name="audit_id"/>
+                            <field name="process_id"/>
+                            <field name="norm_clause_id"/>
+                            <field name="checklist_line_id"/>
+                        </group>
+                        <group string="Qué se encontró">
+                            <field name="finding_type"/>
+                            <field name="disposition"/>
+                            <field name="alert_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                        <field name="evidence"/>
+                        <field name="reason_no_action" invisible="disposition != 'sin_accion'"
+                               required="disposition == 'sin_accion'"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_audit_finding_view_search" model="ir.ui.view">
+        <field name="name">sgi.audit.finding.search</field>
+        <field name="model">sgi.audit.finding</field>
+        <field name="arch" type="xml">
+            <search string="Hallazgos de auditoría">
+                <field name="audit_id"/>
+                <field name="process_id"/>
+                <field name="norm_clause_id"/>
+                <field name="description"/>
+                <filter name="nc" string="No conformidades"
+                        domain="[('finding_type', 'in', ('nc_menor', 'nc_mayor'))]"/>
+                <filter name="nc_major" string="No conformidades mayores"
+                        domain="[('finding_type', '=', 'nc_mayor')]"/>
+                <filter name="observation" string="Observaciones"
+                        domain="[('finding_type', '=', 'observacion')]"/>
+                <filter name="improvement" string="Oportunidades de mejora"
+                        domain="[('finding_type', '=', 'oportunidad')]"/>
+                <separator/>
+                <filter name="no_disposition" string="Sin disposición"
+                        domain="[('disposition', '=', False), ('finding_type', '!=', 'conformidad')]"/>
+                <filter name="nc_pending" string="NC sin generar"
+                        domain="[('finding_type', 'in', ('nc_menor', 'nc_mayor')), ('alert_id', '=', False)]"/>
+                <filter name="with_nc" string="Con NC" domain="[('alert_id', '!=', False)]"/>
+                <separator/>
+                <filter name="internal" string="Auditorías internas"
+                        domain="[('audit_id.audit_type', '=', 'interna')]"/>
+                <filter name="external" string="Auditorías externas y de cliente"
+                        domain="[('audit_id.audit_type', 'in', ('externa', 'cliente'))]"/>
+                <group>
+                    <filter name="group_audit" string="Auditoría" context="{'group_by': 'audit_id'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'finding_type'}"/>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_clause" string="Cláusula" context="{'group_by': 'norm_clause_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_audit_finding_action" model="ir.actions.act_window">
+        <field name="name">Hallazgos de auditoría</field>
+        <field name="res_model">sgi.audit.finding</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_audit_finding_view_search"/>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay hallazgos</p>
+            <p>ISO 9001 9.2: los hallazgos se registran dentro de su auditoría (pestaña
+               «Hallazgos» o el checklist). Aquí se consultan todos juntos, por proceso,
+               cláusula o tipo, y se ve cuáles ya tienen su NC.</p>
+        </field>
+    </record>
+
+    <!-- ================= EVALUACIONES DE CUMPLIMIENTO LEGAL ================= -->
+    <record id="sgi_legal_evaluation_view_form" model="ir.ui.view">
+        <field name="name">sgi.legal.evaluation.form</field>
+        <field name="model">sgi.legal.evaluation</field>
+        <field name="arch" type="xml">
+            <form string="Evaluación de cumplimiento legal" create="0">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="requirement_id" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Evaluación">
+                            <field name="date" readonly="1"/>
+                            <field name="result" readonly="1"/>
+                            <field name="user_id" readonly="1" widget="many2one_avatar_user"/>
+                        </group>
+                        <group string="Seguimiento">
+                            <field name="next_date"/>
+                            <field name="alert_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="evidence"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_legal_evaluation_view_search" model="ir.ui.view">
+        <field name="name">sgi.legal.evaluation.search</field>
+        <field name="model">sgi.legal.evaluation</field>
+        <field name="arch" type="xml">
+            <search string="Evaluaciones de cumplimiento legal">
+                <field name="requirement_id"/>
+                <field name="user_id"/>
+                <field name="evidence"/>
+                <filter name="not_compliant" string="No cumple o parcial"
+                        domain="[('result', 'in', ('no_cumple', 'parcial'))]"/>
+                <filter name="compliant" string="Cumple" domain="[('result', '=', 'cumple')]"/>
+                <separator/>
+                <filter name="this_year" string="Este año"
+                        domain="[('date', '&gt;=', context_today().strftime('%Y-01-01'))]"/>
+                <filter name="date" string="Fecha" date="date"/>
+                <group>
+                    <filter name="group_requirement" string="Requisito" context="{'group_by': 'requirement_id'}"/>
+                    <filter name="group_result" string="Resultado" context="{'group_by': 'result'}"/>
+                    <filter name="group_year" string="Año" context="{'group_by': 'date:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_legal_evaluation_action" model="ir.actions.act_window">
+        <field name="name">Evaluaciones de cumplimiento legal</field>
+        <field name="res_model">sgi.legal.evaluation</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_legal_evaluation_view_search"/>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay evaluaciones</p>
+            <p>ISO 14001/45001 9.1.2: la evaluación se registra desde el requisito legal
+               (botón «Registrar evaluación»), que actualiza su estado y levanta la NC si no se
+               cumple. Aquí se consultan todas con su evidencia.</p>
+        </field>
+    </record>
+</odoo>
