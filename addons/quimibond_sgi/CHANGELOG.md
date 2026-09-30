@@ -13,6 +13,18 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.36.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help`: D-29, K-019):** el texto de las ayudas
+de pantalla vacía pasa a «usted» (57.21.0 solo había cambiado los títulos):
+16 acciones que aún decían «elige», «pulsa», «tu acuse», «cuando tengas
+uno», «si cambias…», etc. (desglose de mediciones, quién ejecuta, COA
+recibidos, partes interesadas, planes de control, documentos vigentes,
+formatos anteriores, checklists de hoy, indicadores, mis indicadores,
+cumplimiento de procedimientos, mapa de procesos, evaluación de
+proveedores, acciones correctivas). Fuera el emoji de «Sin brechas de
+competencia» y el ID de plan «(D-17)» de la ayuda de acciones. Solo texto.
+
 ## 19.0.57.35.0 — 2026-09-30
 
 **Cambiado (entrega 10, `e10-help` 3/3: C-018, K-019, D-29):** `help` en

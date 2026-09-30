@@ -53,8 +53,8 @@
         <field name="search_view_id" ref="sgi_current_document_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin documentos vigentes</p>
-            <p>Los documentos controlados vigentes del SGI con su revisión. «Ver» abre el archivo; si te toca
-            firmar la lectura, el renglón dice «Por leer» y el botón «Leído y entendido» deja tu acuse.</p>
+            <p>Los documentos controlados vigentes del SGI con su revisión. «Ver» abre el archivo; si le toca
+            firmar la lectura, el renglón dice «Por leer» y el botón «Leído y entendido» deja su acuse.</p>
         </field>
     </record>
 </odoo>

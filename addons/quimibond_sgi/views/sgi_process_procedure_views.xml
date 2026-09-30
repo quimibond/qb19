@@ -631,7 +631,7 @@
         <field name="search_view_id" ref="sgi_process_activity_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">El procedimiento medido con acciones reales</p>
-            <p>Cada actividad medible contra su cadencia: verde con evidencia en su periodo, rojo sin ella. Agrupa por <b>proceso</b> o por <b>puesto responsable</b> para ver quién cumple su procedimiento — la base de la mejora continua.</p>
+            <p>Cada actividad medible contra su cadencia: verde con evidencia en su periodo, rojo sin ella. Agrupe por <b>proceso</b> o por <b>puesto responsable</b> para ver quién cumple su procedimiento — la base de la mejora continua.</p>
         </field>
     </record>
 

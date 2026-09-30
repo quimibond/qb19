@@ -136,7 +136,7 @@
             <p class="o_view_nocontent_smiling_face">Sin acciones registradas</p>
             <p>Todas las acciones de todos los responsables: de NC, riesgos, AMEF, incidentes, simulacros,
             objetivos, revisión por la dirección e indicadores en rojo, agrupadas por responsable.
-            Filtra por origen con «De …» (D-17).</p>
+            Filtre por origen con «De …».</p>
         </field>
     </record>
 </odoo>
