@@ -18,6 +18,15 @@ Retirado, Seguridad, Migración, Datos de producción.
 **Corregido (las 7 fallas que quedaban de la primera corrida real, build de
 desarrollo 38916808 sobre base nueva con demo):**
 
+- **Archivar o reactivar una actividad** no recalculaba el «Mi procedimiento»
+  guardado en el empleado (solo se hacía al archivar el proceso): quien
+  ejecutaba la actividad archivada la seguía viendo en su procedimiento y en
+  «Mis pendientes». Ahora `sgi.process.activity.write` con `active` marca
+  para recalcular a los empleados de los puestos con rol en ella
+  (`test_role_audit.test_07`, segunda corrida, build 38918236).
+- **Pruebas:** `test_hierarchy.test_04` esperaba la navegación sin el mapa
+  de procesos, que va primero desde 54.0.0.
+
 - **Cambio documental firmado en Sign (56.17.0):** al enviar, el renglón del
   revisor (dueño del proceso) se agregaba al final de la caché de
   aprobadores, después del Jefe MAST que trae la categoría. Con aprobadores

@@ -128,7 +128,8 @@ class TestHierarchy(TransactionCase):
         by_stage = Diagram.data('process_flow', self.proc.id, {'carriles': 'etapa'})
         self.assertEqual(by_stage['layout'], 'columns')
         self.assertIn('Recibe de otros procesos', [lane['label'] for lane in by_stage['lanes']])
-        self.assertEqual([n['kind'] for n in flow['nav']][:2], ['process_flow', 'sipoc'])
+        # 54.0.0 puso el mapa de procesos primero en la navegación.
+        self.assertEqual([n['kind'] for n in flow['nav']][:3], ['process_map', 'process_flow', 'sipoc'])
 
         sipoc = Diagram.data('sipoc', self.proc.id)
         self.assertEqual([lane['key'] for lane in sipoc['lanes']],
