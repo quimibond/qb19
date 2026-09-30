@@ -13,6 +13,39 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.68.0 — 2026-09-30
+
+Tercera corrida de las pruebas del SGI en **staging** (copia de producción):
+2 fallas de 1008.
+
+**Pruebas (la prueba estaba mal):**
+
+- `test_indicadores_2` test_06 (S4-01, bajas registradas al día hábil
+  siguiente): **causa encontrada.** La prueba creaba al empleado y le
+  capturaba la baja en la misma transacción. `mail.thread.create` llama
+  `_track_discard` sobre el registro nuevo (el contrato `hr.version` que
+  Odoo 19 crea con el empleado) y `_track_prepare` no sigue ningún cambio de
+  ese registro hasta el precommit; así, la fecha y el motivo de salida no
+  dejaban seguimiento en **ninguna** base (nueva o copia de producción) y las
+  tres bajas salían «sin registro» o «sin motivo»: (0, 3). La prueba confirma
+  el alta (`flush_all` + precommit) antes de capturar la baja, como pasa en
+  la vida real (alta y baja son dos peticiones). Lo que se verifica no
+  cambia. **El indicador no cambia:** en producción el alta y la baja van en
+  peticiones distintas y el seguimiento sí queda en `hr.version` (lectura
+  2026-09-30: 115 cambios de «Fecha de salida» y 96 de «Motivo de salida» en
+  el contrato, el último del 29-sep; los de antes de Odoo 19 siguen en
+  `hr.employee` y el indicador lee ambos).
+
+**Sin causa confirmada:** `test_role_audit` test_07 (desde 57.13.0). Se
+revisó el camino completo sin encontrar dónde se pierde el recálculo:
+archivar la actividad pasa por `sgi.process.activity.write`, que llama
+`_sgi_mp_touch_jobs` **después** del `write` con los puestos de los roles
+(el rol conserva su puesto, así que la lista no sale vacía), la búsqueda de
+empleados por `sgi_mp_job_id` es la misma que la prueba comprueba, y
+`add_to_compute` marca los cuatro campos guardados que calcula
+`_compute_sgi_mp_roles_stored`; ningún código del SGI escribe esos campos
+directo ni limpia los pendientes del ORM. Se deja sin tocar.
+
 ## 19.0.57.67.0 — 2026-09-30
 
 Segunda corrida de las pruebas del SGI en el build de **staging** de `main`

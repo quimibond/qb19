@@ -257,6 +257,14 @@ class TestIndicadores2(TransactionCase):
 
         def leaver(name, registered, with_reason=True):
             employee = Employee.create({'name': name, 'company_id': self.company.id})
+            # 57.68.0: mail.thread no sigue los cambios de un registro creado
+            # en la misma transacción (``create`` llama ``_track_discard``: el
+            # contrato ``hr.version`` nace con su seguimiento apagado hasta el
+            # precommit). En la vida real el alta y la baja son dos peticiones
+            # distintas; aquí se confirma el alta antes de capturar la baja.
+            # Sin esto ninguna baja dejaba seguimiento, en base nueva o en
+            # copia de producción: (0, 3).
+            self._flush_tracking()
             # 57.66.0: el motivo va explícito también cuando falta (False):
             # la prueba no depende de lo que la base ponga por omisión.
             vals = {'departure_date': departure,
@@ -273,10 +281,9 @@ class TestIndicadores2(TransactionCase):
         detail = indicator._detail_bajas_registradas(self.period, self.period_end)
         if not detail['denominator']:
             self.skipTest("Sin bajas: el entorno no guardó el seguimiento.")
-        # 57.67.0: en staging sigue (0, 3) sin causa encontrada en el código;
-        # la falla dice ahora qué vio el indicador de «A tiempo»: cuándo quedó
-        # registrada (vacío = sin seguimiento), su día local, el límite y los
-        # seguimientos que encontró.
+        # 57.67.0: si falla, dice qué vio el indicador de «A tiempo»: cuándo
+        # quedó registrada (vacío = sin seguimiento), su día local, el límite
+        # y los seguimientos que encontró.
         registered = indicator._sgi_departure_registered(on_time).get(on_time.id)
         tracked = self.env['mail.tracking.value'].sudo().search([
             ('field_id.name', 'in', ('departure_date', 'departure_reason_id')),
