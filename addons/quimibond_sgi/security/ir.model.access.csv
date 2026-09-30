@@ -295,3 +295,12 @@ access_sgi_work_permit_manager,sgi.work.permit.manager,model_sgi_work_permit,gro
 access_sgi_work_permit_check_user,sgi.work.permit.check.user,model_sgi_work_permit_check,group_sgi_user,1,1,1,1
 access_sgi_work_permit_check_auditor,sgi.work.permit.check.auditor,model_sgi_work_permit_check,group_sgi_auditor,1,0,0,0
 access_sgi_work_permit_check_manager,sgi.work.permit.check.manager,model_sgi_work_permit_check,group_sgi_manager,1,1,1,1
+access_sgi_loto_user,sgi.loto.user,model_sgi_loto,group_sgi_user,1,1,1,0
+access_sgi_loto_auditor,sgi.loto.auditor,model_sgi_loto,group_sgi_auditor,1,0,0,0
+access_sgi_loto_manager,sgi.loto.manager,model_sgi_loto,group_sgi_manager,1,1,1,1
+access_sgi_loto_energy_user,sgi.loto.energy.user,model_sgi_loto_energy,group_sgi_user,1,1,1,1
+access_sgi_loto_energy_auditor,sgi.loto.energy.auditor,model_sgi_loto_energy,group_sgi_auditor,1,0,0,0
+access_sgi_loto_energy_manager,sgi.loto.energy.manager,model_sgi_loto_energy,group_sgi_manager,1,1,1,1
+access_sgi_loto_lock_user,sgi.loto.lock.user,model_sgi_loto_lock,group_sgi_user,1,1,1,1
+access_sgi_loto_lock_auditor,sgi.loto.lock.auditor,model_sgi_loto_lock,group_sgi_auditor,1,0,0,0
+access_sgi_loto_lock_manager,sgi.loto.lock.manager,model_sgi_loto_lock,group_sgi_manager,1,1,1,1

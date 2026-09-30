@@ -22,7 +22,7 @@ los dos auto_install.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.51.0',
+    'version': '19.0.57.52.0',
     'license': 'LGPL-3',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -189,6 +189,7 @@ los dos auto_install.
         'report/report_master_list_all.xml',
         'report/report_env_aspect.xml',
         'report/report_work_permit.xml',
+        'report/report_loto.xml',
         'views/sgi_business_line_views.xml',
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
@@ -202,6 +203,7 @@ los dos auto_install.
         # ambiente. Cada ficha completa en su archivo, sin herencias.
         'views/sgi_env_aspect_views.xml',
         'views/sgi_work_permit_views.xml',
+        'views/sgi_loto_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         'views/sgi_menus.xml',

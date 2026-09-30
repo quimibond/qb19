@@ -226,6 +226,11 @@
         <field name="model_id" ref="model_sgi_work_permit"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="rule_sgi_loto_company" model="ir.rule">
+        <field name="name">SGI: Bloqueo y etiquetado por empresa</field>
+        <field name="model_id" ref="model_sgi_loto"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
     <!-- 57.11.0 (A-016): las reglas por empresa de sgi.sales.budget y
          sgi.sales.budget.line las declara quimibond_ventas_presupuesto. -->
 

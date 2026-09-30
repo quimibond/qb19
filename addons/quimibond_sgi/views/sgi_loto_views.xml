@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.52.0: bloqueo y etiquetado de energías, LOTO (NOM-004, S5.14).
+         Ficha propia completa, sin herencias. -->
+    <record id="sgi_loto_view_form" model="ir.ui.view">
+        <field name="name">sgi.loto.form</field>
+        <field name="model">sgi.loto</field>
+        <field name="arch" type="xml">
+            <form string="Bloqueo y etiquetado">
+                <header>
+                    <button name="action_apply" type="object" string="Aplicar bloqueo"
+                            class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_remove" type="object" string="Retirar bloqueo"
+                            class="btn-primary" invisible="state != 'bloqueado'"
+                            confirm="El equipo queda liberado y el bloqueo como evidencia. ¿Desea continuar?"/>
+                    <button name="action_cancel" type="object" string="Cancelar"
+                            confirm="Se cancelará el bloqueo. ¿Desea continuar?"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_reset" type="object" string="Reabrir"
+                            confirm="El bloqueo regresa a borrador. ¿Desea continuar?"
+                            invisible="state not in ('retirado', 'cancelado')"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,bloqueado,retirado"/>
+                </header>
+                <div class="alert alert-info mb-0" role="alert" invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+                <div class="alert alert-warning mb-0" role="alert" invisible="state != 'bloqueado'">
+                    Equipo bloqueado: <field name="active_locks" readonly="1" nolabel="1" class="fw-bold"/> candado(s) puesto(s).
+                    Nadie lo arranca hasta que cada trabajador retire el suyo.
+                </div>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="equipment_id" placeholder="Equipo" readonly="state != 'borrador'"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="Trabajo">
+                            <field name="name" readonly="state != 'borrador'"/>
+                            <field name="responsible_id" readonly="state != 'borrador'"/>
+                            <field name="maintenance_request_id" readonly="state != 'borrador'"/>
+                            <field name="work_permit_id" readonly="state != 'borrador'"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Antes de intervenir">
+                            <field name="affected_notified" readonly="state != 'borrador'"/>
+                            <field name="zero_energy_verified" readonly="state != 'borrador'"/>
+                            <field name="zero_energy_method" readonly="state != 'borrador'"/>
+                            <field name="verified_by_id"/>
+                            <field name="date_applied"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Fuentes de energía" name="energies">
+                            <field name="energy_ids" readonly="state != 'borrador'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="energy_type"/>
+                                    <field name="isolation_point"/>
+                                    <field name="method"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Candados y tarjetas" name="locks">
+                            <field name="lock_ids" readonly="state != 'borrador'">
+                                <list editable="bottom" decoration-muted="date_removed">
+                                    <field name="employee_id"/>
+                                    <field name="lock_number"/>
+                                    <field name="tag_number"/>
+                                    <field name="date_placed"/>
+                                    <field name="date_removed"/>
+                                    <field name="removed_by_id"/>
+                                    <field name="state" column_invisible="1"/>
+                                    <button name="action_remove_lock" type="object" string="Retirar mi candado"
+                                            icon="fa-unlock" invisible="state != 'bloqueado' or date_removed"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Retiro" name="removal">
+                            <group>
+                                <field name="area_notified_end" readonly="state != 'bloqueado'"/>
+                                <field name="removal_note" readonly="state != 'bloqueado'"/>
+                                <field name="date_removed"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_loto_view_list" model="ir.ui.view">
+        <field name="name">sgi.loto.list</field>
+        <field name="model">sgi.loto</field>
+        <field name="arch" type="xml">
+            <list string="Bloqueo y etiquetado"
+                  decoration-warning="state == 'bloqueado'"
+                  decoration-muted="state in ('retirado', 'cancelado')">
+                <field name="folio"/>
+                <field name="equipment_id"/>
+                <field name="name"/>
+                <field name="responsible_id" optional="show"/>
+                <field name="date_applied"/>
+                <field name="date_removed" optional="show"/>
+                <field name="active_locks"/>
+                <field name="state" widget="badge" decoration-warning="state == 'bloqueado'"
+                       decoration-success="state == 'retirado'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_loto_view_search" model="ir.ui.view">
+        <field name="name">sgi.loto.search</field>
+        <field name="model">sgi.loto</field>
+        <field name="arch" type="xml">
+            <search string="Bloqueo y etiquetado">
+                <field name="folio"/>
+                <field name="equipment_id"/>
+                <field name="name"/>
+                <field name="responsible_id"/>
+                <field name="lock_ids" string="Trabajador" filter_domain="[('lock_ids.employee_id', 'ilike', self)]"/>
+                <filter name="locked" string="Equipos bloqueados" domain="[('state', '=', 'bloqueado')]"/>
+                <filter name="draft" string="En preparación" domain="[('state', '=', 'borrador')]"/>
+                <filter name="mine" string="Mis bloqueos" domain="[('responsible_id', '=', uid)]"/>
+                <group>
+                    <filter name="group_equipment" string="Equipo" context="{'group_by': 'equipment_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'date_applied:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_loto_action" model="ir.actions.act_window">
+        <field name="name">Bloqueo y etiquetado</field>
+        <field name="res_model">sgi.loto</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_loto_view_search"/>
+        <field name="context">{'search_default_locked': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre el primer bloqueo</p>
+            <p>NOM-004 e ISO 45001 8.1: antes de intervenir una máquina, avise a los afectados,
+               bloquee cada fuente de energía, ponga un candado y una tarjeta por trabajador y
+               compruebe la energía cero. Al terminar, cada quien retira el suyo.</p>
+        </field>
+    </record>
+</odoo>

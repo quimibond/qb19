@@ -154,4 +154,13 @@
         <field name="sgi_code">F-P-A14-03</field>
         <field name="note">Permiso único de trabajo de alto riesgo (formato por dar de alta)</field>
     </record>
+
+    <!-- 57.52.0: bloqueo y etiquetado. P-A20 no tiene formato propio en el
+         Dropbox: el registro se identifica con su procedimiento hasta que
+         MAST dé de alta el formato y lo cambie aquí. -->
+    <record id="format_map_loto" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_loto"/>
+        <field name="sgi_code">P-A20</field>
+        <field name="note">Bloqueo y etiquetado: registro de P-A20 (sin formato propio todavía)</field>
+    </record>
 </odoo>

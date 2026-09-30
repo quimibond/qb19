@@ -52,6 +52,7 @@ SGI/Seguridad y ambiente/Responsivas de EPP | menu_sgi_epp_deliveries | -
 SGI/Seguridad y ambiente/Hojas de checklist | menu_sgi_checklist_requests | -
 SGI/Seguridad y ambiente/Aspectos ambientales | menu_sgi_env_aspects | -
 SGI/Seguridad y ambiente/Permisos de trabajo de alto riesgo | menu_sgi_work_permits | -
+SGI/Seguridad y ambiente/Bloqueo y etiquetado | menu_sgi_loto | -
 SGI/Dirección | menu_sgi_direction | -
 SGI/Dirección/Tablero | menu_sgi_dashboard_health | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Dirección/Revisión por la dirección | menu_sgi_mgmt_review | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager

@@ -13,6 +13,31 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.52.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios 3/5):** bloqueo y etiquetado de
+energías, LOTO (`sgi.loto`, NOM-004 e ISO 45001 8.1, S5.14; P-A20) en SGI →
+Seguridad y ambiente → Bloqueo y etiquetado. Equipo
+(`maintenance.equipment`), orden de mantenimiento y permiso de trabajo
+opcionales, **fuentes de energía** (eléctrica, neumática, hidráulica,
+mecánica, térmica, química, gravitacional) con su punto de bloqueo, **un
+candado y una tarjeta por trabajador** (uno por persona), aviso a los
+afectados y **energía cero comprobada** (cómo y quién). Flujo borrador →
+bloqueado → retirado (o cancelado): sin todo lo anterior no se aplica; ya
+aplicado, fuentes y candados no se editan; **cada trabajador retira su propio
+candado** («Retirar mi candado»; el Jefe MAST puede hacerlo por él y queda
+quién); el retiro exige que no quede ningún candado, el aviso al responsable
+del área y las condiciones. Un bloqueo aplicado no se cancela. Retirado es
+evidencia (solo MAST reabre). Ficha, lista (abre en «Equipos bloqueados»),
+búsqueda por equipo o trabajador, chatter, folio `LOTO-AAAA-`, ACL, regla por
+empresa y reporte con pie de formato (`format_map_loto`: P-A20 no tiene
+formato propio; el pie imprime el procedimiento hasta que MAST dé de alta el
+formato).
+
+**Pruebas:** `test_loto` (requisitos para aplicar, candados bloqueados al
+aplicar, cada quien retira el suyo, retiro, candado de evidencia, un candado
+por trabajador y reporte).
+
 ## 19.0.57.51.0 — 2026-09-30
 
 **Agregado (bloque 1 de formularios 2/5):** permiso de trabajo de alto riesgo
