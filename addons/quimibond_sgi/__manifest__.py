@@ -22,7 +22,7 @@ los dos auto_install.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.24.0',
+    'version': '19.0.57.25.0',
     'license': 'LGPL-3',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -121,7 +121,6 @@ los dos auto_install.
         'views/sgi_indicator_views.xml',
         'views/sgi_indicator_formula_views.xml',
         'views/sgi_management_review_views.xml',
-        'views/sgi_indicator_plan_views.xml',
         'views/sgi_audit_views.xml',
         'views/sgi_risk_views.xml',
         'views/sgi_legal_views.xml',

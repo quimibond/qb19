@@ -111,6 +111,7 @@
                                    required="direction == 'range'"/>
                             <field name="range_tolerance" invisible="direction != 'range'"/>
                             <field name="calc_mode"/>
+                            <field name="window_label"/>
                             <field name="monthly_budget"
                                    invisible="calc_mode != 'presupuesto_ventas'"/>
                             <field name="activity_id"
@@ -300,6 +301,7 @@
                 <field name="indicator_id"/>
                 <field name="indicator_status" optional="hide"/>
                 <field name="value"/>
+                <field name="window_label" optional="show"/>
                 <field name="numerator" optional="hide"/>
                 <field name="denominator" optional="hide"/>
                 <field name="sample_size" optional="show"/>
@@ -315,6 +317,9 @@
                        decoration-success="semaphore == 'verde'"
                        decoration-warning="semaphore == 'amarillo'"
                        decoration-danger="semaphore == 'rojo'"/>
+                <field name="plan_required" column_invisible="1"/>
+                <field name="plan_done" optional="show" string="Plan"
+                       invisible="not plan_required"/>
                 <field name="state"/>
                 <button name="action_view_evidence" type="object" icon="fa-search-plus"
                         title="Ver evidencia" invisible="source_type == 'manual'"/>
@@ -378,6 +383,7 @@
                         <group>
                             <field name="period_date"/>
                             <field name="value"/>
+                            <field name="window_label"/>
                             <field name="uom"/>
                             <field name="numerator"/>
                             <field name="denominator"/>
@@ -425,6 +431,33 @@
                         <field name="parallel_value"/>
                         <field name="parallel_numerator"/>
                         <field name="parallel_denominator"/>
+                    </group>
+                    <!-- Plan de acción de la medición roja (antes herencia propia en
+                         sgi_indicator_plan_views.xml; A-008, 57.25.0). -->
+                    <field name="plan_required" invisible="1"/>
+                    <field name="plan_done" invisible="1"/>
+                    <group string="Plan de acción (medición roja)" invisible="not plan_required">
+                        <div class="alert alert-danger mb-2" role="alert" colspan="2"
+                             invisible="plan_done">
+                            <b>Falta el plan:</b> causa y al menos una acción con responsable y
+                            fecha, antes del <field name="plan_due" readonly="1" nolabel="1" class="oe_inline"/>.
+                            Después de esa fecha se escala a Dirección.
+                        </div>
+                        <field name="cause" placeholder="Por qué salió en rojo"/>
+                        <field name="action_line_ids" context="{'default_measure_id': id}" nolabel="1" colspan="2">
+                            <list editable="bottom"
+                                  decoration-danger="state == 'vencida'"
+                                  decoration-success="state == 'terminada'">
+                                <field name="name"/>
+                                <field name="responsible_id"/>
+                                <field name="date_commit"/>
+                                <field name="date_done"/>
+                                <field name="progress"/>
+                                <field name="state"/>
+                                <field name="action_type" column_invisible="1"/>
+                                <field name="measure_id" column_invisible="1"/>
+                            </list>
+                        </field>
                     </group>
                     <group string="Nota" name="note">
                         <field name="note" nolabel="1"/>

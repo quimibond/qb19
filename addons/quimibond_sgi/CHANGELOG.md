@@ -13,6 +13,22 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.25.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 4/9: A-008):** el plan de
+acción de la medición roja y la ventana de la medición (ficha y lista de
+mediciones, ficha del indicador) van en `sgi_indicator_views.xml`, y
+«Validar mediciones del periodo» en la ficha de la revisión por la
+dirección. Sale `views/sgi_indicator_plan_views.xml`. Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_measure_view_form_plan` (15030),
+`sgi_measure_view_list_plan` (15031), `sgi_indicator_view_form_window`
+(15032), `sgi_management_review_view_form_validate` (15033). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
 ## 19.0.57.24.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 3/9: A-008):** la trayectoria

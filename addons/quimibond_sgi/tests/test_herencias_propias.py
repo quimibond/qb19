@@ -23,6 +23,11 @@ INTEGRADAS = (
     # 57.24.0
     'sgi_indicator_view_form_trajectory',
     'sgi_measure_view_form_trajectory',
+    # 57.25.0
+    'sgi_measure_view_form_plan',
+    'sgi_measure_view_list_plan',
+    'sgi_indicator_view_form_window',
+    'sgi_management_review_view_form_validate',
 )
 
 

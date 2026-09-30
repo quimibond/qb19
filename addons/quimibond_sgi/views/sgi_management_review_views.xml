@@ -8,6 +8,11 @@
                 <header>
                     <button name="action_load_inputs" type="object" string="Cargar entradas"
                             invisible="state != 'borrador'"/>
+                    <button name="action_validate_measures" type="object"
+                            string="Validar mediciones del periodo"
+                            invisible="state == 'cerrada'"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Valida todas las mediciones capturadas del periodo de esta revisión y abre los rojos que aún no tienen causa ni acción. ¿Continuar?"/>
                     <button name="action_mark_done" type="object" string="Marcar realizada"
                             class="btn-primary" invisible="state != 'borrador'"/>
                     <!-- D-009: cerrar y reabrir la revisión es del Jefe MAST. -->
