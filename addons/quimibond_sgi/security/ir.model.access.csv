@@ -286,3 +286,6 @@ access_sgi_dropbox_progress_director,sgi.dropbox.progress.director,model_sgi_dro
 access_sgi_dropbox_progress_process_owner,sgi.dropbox.progress.process_owner,model_sgi_dropbox_progress,group_sgi_process_owner,1,0,0,0
 access_sgi_legacy_routine_import_manager,sgi.legacy.routine.import.manager,model_sgi_legacy_routine_import,group_sgi_manager,1,1,1,1
 access_sgi_legacy_routine_import_line_manager,sgi.legacy.routine.import.line.manager,model_sgi_legacy_routine_import_line,group_sgi_manager,1,1,1,1
+access_sgi_env_aspect_user,sgi.env.aspect.user,model_sgi_env_aspect,group_sgi_user,1,1,1,0
+access_sgi_env_aspect_auditor,sgi.env.aspect.auditor,model_sgi_env_aspect,group_sgi_auditor,1,0,0,0
+access_sgi_env_aspect_manager,sgi.env.aspect.manager,model_sgi_env_aspect,group_sgi_manager,1,1,1,1

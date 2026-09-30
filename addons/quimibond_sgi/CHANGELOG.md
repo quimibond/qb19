@@ -13,6 +13,30 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.50.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios, seguridad, salud y ambiente, 1/5):**
+matriz de aspectos e impactos ambientales (`sgi.env.aspect`, ISO 14001
+6.1.2, E2.23) en SGI → Seguridad y ambiente → Aspectos ambientales. Un
+renglón por aspecto de una actividad: proceso, área, actividad, tipo de
+aspecto, impacto y condición (normal, anormal, emergencia). Severidad ×
+frecuencia (1 a 5) da el nivel bajo, moderado (desde 5), severo (desde 10) o
+crítico (desde 16), umbrales en `quimibond_sgi.aspect_moderado/severo/critico`;
+es **significativo** con nivel moderado o mayor o con requisito legal
+aplicable. Un aspecto significativo no queda «Evaluado» sin su control
+operacional (texto o documento, E2.34). «Registrar evaluación» sella la
+revisión y programa la siguiente (12 meses por default); «Tratar como riesgo»
+crea el riesgo del instrumento «Aspecto ambiental» (`sgi.risk`) donde viven
+las acciones, sin duplicar el modelo de riesgos. Ficha, lista, búsqueda
+(significativos, sin control, revisión vencida, archivados), chatter, folio
+`AA-`, ACL (Usuario escribe, Auditor lee, MAST todo), regla por empresa y
+reporte «Matriz de aspectos ambientales» con el pie de formato en vivo
+(`format_map_env_aspect`, clave F-P-E01-01, la que cita P-E01; hoy esa clave
+está en «Evaluación luminaria» y se corrige en el bloque 3).
+
+**Pruebas:** `test_env_aspect` (significancia, umbral por parámetro, control
+exigido, riesgo de tratamiento, archivo y reporte).
+
 ## 19.0.57.30.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 9/9: A-008):** la pestaña

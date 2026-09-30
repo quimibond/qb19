@@ -153,6 +153,10 @@
               parent="menu_sgi_safety" action="sgi_epp_delivery_action" sequence="60"/>
     <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist"
               parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="70"/>
+    <!-- 57.50.0 (bloque 1 de formularios): matriz de aspectos e impactos
+         ambientales (E2.23, E2.34). -->
+    <menuitem id="menu_sgi_env_aspects" name="Aspectos ambientales"
+              parent="menu_sgi_safety" action="sgi_env_aspect_action" sequence="80"/>
 
     <!-- ============================================================
          5. Dirección (F-011, decisión 10 de la tanda 2): la carpeta la ven
