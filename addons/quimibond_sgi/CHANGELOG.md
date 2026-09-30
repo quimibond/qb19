@@ -13,6 +13,20 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.64.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 5/6, inventario §4.1 y §5 #11):** menús
+**SGI → Procesos → Entregables** (`sgi.deliverable`, 319 en producción) y
+**SGI → Procesos → Flujos entre procesos** (`sgi.process.flow`, 50), que antes
+solo se veían dentro del proceso, la actividad o el diagrama. Usan su lista,
+ficha y búsqueda propias (ya existían; sin herencias). Flujos abre con el
+filtro «Mapa vigente». La búsqueda de entregables suma el filtro «Sin modelo
+de Odoo» (propios, sin las entradas externas) y agrupa por modelo de Odoo y
+por frontera del mapa. Árbol de menús al día (`tools/sgi_menu_tree.txt`).
+
+**Pruebas:** `test_menus_entregables` (menús con su acción y búsqueda
+propia, filtro sin modelo).
+
 ## 19.0.57.63.0 — 2026-09-30
 
 **Agregado (bloque 2 de formularios 4/6, inventario §5 #8):** etiquetas de

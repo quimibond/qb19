@@ -127,3 +127,4 @@ from . import test_format_map_varios
 from . import test_format_map_operaciones
 from . import test_laboratorio
 from . import test_etiquetas_lote
+from . import test_menus_entregables

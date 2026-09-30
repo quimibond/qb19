@@ -68,6 +68,11 @@
               action="sgi_process_action" sequence="10"/>
     <menuitem id="menu_sgi_activities" name="Actividades" parent="menu_sgi_processes"
               action="sgi_process_activity_action" sequence="20"/>
+    <!-- 57.64.0 (bloque 2 de formularios): entregables y flujos con menú. -->
+    <menuitem id="menu_sgi_deliverables" name="Entregables" parent="menu_sgi_processes"
+              action="sgi_deliverable_action" sequence="22"/>
+    <menuitem id="menu_sgi_process_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
+              action="sgi_process_flow_action" sequence="24"/>
     <menuitem id="menu_sgi_analysis_who" name="Matriz de responsabilidades"
               parent="menu_sgi_processes" action="sgi_activity_exec_stat_action_who" sequence="30"/>
     <menuitem id="menu_sgi_jobs_roles" name="Puestos y procesos"

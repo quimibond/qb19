@@ -40,6 +40,8 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
   - **Procesos**
     - **Mapa de procesos** — `sgi.process`
     - **Actividades** — `sgi.process.activity`
+    - **Entregables** — `sgi.deliverable`
+    - **Flujos entre procesos** — `sgi.process.flow`
     - **Matriz de responsabilidades** — `sgi.activity.exec.stat`
     - **Puestos y procesos** — `hr.job`
     - **Fichas de proceso por máquina** — `sgi.machine.sheet`
@@ -118,7 +120,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **Bitácora de bloqueo contable** — `sgi.lock.date.log`; bajo `account.menu_finance_reports`
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (98)
+## Acciones (100)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -148,6 +150,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_control_plan_action` | act_window | Planes de control | `sgi.control.plan` | list,form | sí | `addons/quimibond_sgi/views/sgi_control_plan_views.xml` |
 | `quimibond_sgi.sgi_csh_inspection_action` | act_window | Recorridos CSH | `sgi.csh.inspection` | list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_current_document_action` | act_window | Documentos vigentes | `documents.document` | list | sí | `addons/quimibond_sgi/views/sgi_current_documents_views.xml` |
+| `quimibond_sgi.sgi_deliverable_action` | act_window | Entregables | `sgi.deliverable` | list,form | sí | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_diagnostic_line_action` | act_window | Diagnóstico del SGI | `sgi.diagnostic.line` | list,form | sí | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `quimibond_sgi.sgi_diagnostic_run_action` | server | Diagnóstico del SGI | `sgi.diagnostic` |  |  | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `quimibond_sgi.sgi_direction_board_action_open` | server | Tablero | `sgi.direction.board` |  |  | `addons/quimibond_sgi/views/sgi_direction_board_views.xml` |
@@ -207,6 +210,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_ppap_element_template_action` | act_window | Elementos PPAP | `sgi.ppap.element.template` | list | sí | `addons/quimibond_sgi/views/sgi_ppap_views.xml` |
 | `quimibond_sgi.sgi_process_action` | act_window | Mapa de procesos | `sgi.process` | sgi_diagram,kanban,list,hierarchy,form | sí | `addons/quimibond_sgi/views/sgi_process_views.xml` |
 | `quimibond_sgi.sgi_process_activity_action` | act_window | Actividades | `sgi.process.activity` | list,kanban,sgi_diagram,hierarchy,form | sí | `addons/quimibond_sgi/views/sgi_process_procedure_views.xml` |
+| `quimibond_sgi.sgi_process_flow_action` | act_window | Flujos entre procesos | `sgi.process.flow` | list,form | sí | `addons/quimibond_sgi/views/sgi_process_views.xml` |
 | `quimibond_sgi.sgi_quality_alert_action_pareto` | act_window | Pareto de alertas de calidad | `quality.alert` | pivot,graph,list | sí | `addons/quimibond_sgi/views/sgi_dashboard_views.xml` |
 | `quimibond_sgi.sgi_risk_action` | act_window | Riesgos y oportunidades | `sgi.risk` | list,kanban,sgi_diagram,pivot,form,activity | sí | `addons/quimibond_sgi/views/sgi_risk_views.xml` |
 | `quimibond_sgi.sgi_risk_category_action` | act_window | Categorías de riesgo | `sgi.risk.category` | list | sí | `addons/quimibond_sgi/views/sgi_risk_views.xml` |
