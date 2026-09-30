@@ -18,6 +18,23 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_format_map_view_search" model="ir.ui.view">
+        <field name="name">sgi.format.map.search</field>
+        <field name="model">sgi.format.map</field>
+        <field name="arch" type="xml">
+            <search string="Formatos impresos">
+                <field name="sgi_code"/>
+                <field name="model_id"/>
+                <field name="document_id"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_model_id" string="Modelo" context="{'group_by': 'model_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_format_map_view_form" model="ir.ui.view">
         <field name="name">sgi.format.map.form</field>
         <field name="model">sgi.format.map</field>
@@ -56,7 +73,7 @@
         <field name="res_model">sgi.format.map</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Mapea un formato del SGI a su documento de Odoo</p>
+            <p class="o_view_nocontent_smiling_face">Mapee un formato del SGI a su documento de Odoo</p>
             <p>El registro de Odoo (cotización, OC, remisión…) mostrará e imprimirá
                la clave y la revisión vigente del documento controlado ligado.
                Los mapeos sin modelo son formatos que el SGI imprime por

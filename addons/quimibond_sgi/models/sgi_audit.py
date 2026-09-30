@@ -609,7 +609,6 @@ class SgiAuditChecklistLine(models.Model):
             'res_model': deliverable.odoo_model_id.model,
             'view_mode': 'list,form',
             'domain': sgi_safe_domain(deliverable.measure_domain),
-            'context': {'search_default_filter_recent': 1},
         }
 
     def _sgi_sync_finding(self):

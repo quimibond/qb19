@@ -9,7 +9,7 @@
                     <button name="action_set_current" type="object" string="Poner en vigor" class="btn-primary"
                             invisible="state != 'borrador'" groups="quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager"/>
                     <button name="action_new_revision" type="object" string="Nueva revisión" invisible="state != 'vigente'"/>
-                    <button name="action_set_obsolete" type="object" string="Marcar obsoleta" invisible="state != 'vigente'"
+                    <button name="action_set_obsolete" confirm="La ficha deja de estar vigente para este artículo y máquina. ¿Desea continuar?" type="object" string="Marcar obsoleta" invisible="state != 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager"/>
                     <field name="state" widget="statusbar" statusbar_visible="borrador,vigente"/>
                 </header>
@@ -118,6 +118,8 @@
                 <filter name="current" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
                 <filter name="draft" string="Borrador" domain="[('state', '=', 'borrador')]"/>
                 <filter name="obsolete" string="Obsoletas" domain="[('state', '=', 'obsoleta')]"/>
+                <separator/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_workcenter" string="Máquina" context="{'group_by': 'workcenter_id'}"/>
                     <filter name="group_product" string="Artículo" context="{'group_by': 'product_id'}"/>
@@ -133,7 +135,7 @@
         <field name="view_mode">list,form</field>
         <field name="context">{'search_default_current': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea la primera ficha de proceso</p>
+            <p class="o_view_nocontent_smiling_face">Cree la primera ficha de proceso</p>
             <p>Los parámetros con los que se corre cada artículo en cada máquina (hilos, poleas, condiciones y tela
             acondicionada con especificación y tolerancia). Sustituye el formato anterior en Excel (ver Del Dropbox a Odoo). Una ficha vigente por
             artículo y máquina; al poner en vigor una nueva la anterior queda obsoleta.</p>

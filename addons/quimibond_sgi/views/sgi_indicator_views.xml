@@ -54,7 +54,7 @@
                             class="btn-primary" invisible="status == 'oficial'"
                             groups="quimibond_sgi.group_sgi_manager"
                             confirm="Revisaste la lista de registros de una medición contra la realidad y el dato es confiable. Desde ahora sus rojos pueden abrir NC. ¿Continuar?"/>
-                    <button name="action_set_trial" type="object" string="Regresar a prueba"
+                    <button name="action_set_trial" confirm="El indicador regresa a «prueba». ¿Desea continuar?" type="object" string="Regresar a prueba"
                             invisible="status == 'prueba'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_view_trend" type="object"
@@ -225,7 +225,7 @@
         <field name="search_view_id" ref="sgi_indicator_view_search"/>
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Da de alta un indicador</p>
+            <p class="o_view_nocontent_smiling_face">Dé de alta un indicador</p>
             <p>Los automáticos se calculan solos de los datos reales de Odoo; captura responsable, objetivo y aceptable, y el semáforo sale solo.</p>
         </field>
     </record>

@@ -112,10 +112,10 @@
                                            context="{'default_company_id': parent.company_id}"/>
                                     <field name="max_days"/>
                                     <field name="applies_note" optional="show"/>
-                                    <field name="applies_domain" optional="hide"/>
-                                    <field name="match_path" optional="hide"/>
-                                    <field name="due_field" optional="hide"/>
-                                    <field name="offset_days" optional="hide"/>
+                                    <field name="applies_domain" optional="hide" groups="quimibond_sgi.group_sgi_manager"/>
+                                    <field name="match_path" optional="hide" groups="quimibond_sgi.group_sgi_manager"/>
+                                    <field name="due_field" optional="hide" groups="quimibond_sgi.group_sgi_manager"/>
+                                    <field name="offset_days" optional="hide" groups="quimibond_sgi.group_sgi_manager"/>
                                 </list>
                             </field>
                             <group>
@@ -142,7 +142,7 @@
                                 <field name="note" placeholder="Solo si hace falta algo que no cabe en los campos"/>
                                 <field name="company_id" groups="base.group_multi_company"/>
                             </group>
-                            <group string="Texto de la versión anterior"
+                            <group string="Texto de la versión anterior" groups="quimibond_sgi.group_sgi_manager"
                                    invisible="not description and not responsible_role">
                                 <field name="responsible_role" readonly="1"
                                        invisible="not responsible_role"/>
@@ -220,7 +220,7 @@
                                            invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
                                            readonly="measure_method == 'entregable'"
                                            placeholder="[('state', '=', 'done')]"/>
-                                    <field name="measure_date_field"
+                                    <field name="measure_date_field" groups="quimibond_sgi.group_sgi_manager"
                                            invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
                                            readonly="measure_method == 'entregable'"/>
                                     <field name="measure_user_field" groups="quimibond_sgi.group_sgi_manager"
@@ -342,7 +342,10 @@
                 <field name="format_document_ids" widget="many2many_tags" optional="hide"/>
                 <field name="value_class" optional="hide"/>
                 <field name="automation_level_current" optional="hide"/>
-                <field name="odoo_ref" optional="hide"/>
+                <!-- D-016: el XML ID es técnico; la columna solo para MAST, el
+                     botón «Ir a hacerlo» sigue leyendo el campo. -->
+                <field name="odoo_ref" optional="hide" groups="quimibond_sgi.group_sgi_manager"/>
+                <field name="odoo_ref" column_invisible="1"/>
                 <field name="odoo_menu_id" optional="hide"/>
                 <field name="measure_method" optional="show"/>
                 <field name="measure_cadence" optional="hide"/>

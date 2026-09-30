@@ -94,7 +94,7 @@
                     </group>
                 </group>
                 <notebook>
-                    <page string="Desviación y análisis">
+                    <page string="Desviación y análisis" invisible="not sgi_folio and id">
                         <group string="Desviación detectada">
                             <field name="sgi_deviation" nolabel="1"/>
                         </group>
@@ -112,7 +112,7 @@
                             <field name="sgi_ishikawa_notes" nolabel="1"/>
                         </group>
                     </page>
-                    <page string="Correcciones y acciones">
+                    <page string="Correcciones y acciones" invisible="not sgi_folio and id">
                         <field name="sgi_action_line_ids">
                             <list editable="bottom" decoration-danger="state == 'vencida'"
                                   decoration-success="state == 'terminada'">
@@ -160,7 +160,7 @@
                             </group>
                         </group>
                     </page>
-                    <page string="Verificación y cierre">
+                    <page string="Verificación y cierre" invisible="not sgi_folio and id">
                         <group>
                             <group string="Eficacia">
                                 <field name="sgi_effectiveness_note"/>
@@ -255,7 +255,7 @@ action = {
         'search_default_sgi_open': 1,
     },
     'search_view_id': search_view and [search_view.id, 'search'] or False,
-    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Levanta la primera No Conformidad&lt;/p&gt;
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Levante la primera No Conformidad&lt;/p&gt;
 &lt;p&gt;El folio (NCI-/NCE-) se asigna solo al guardar. El sistema no permite cerrar sin
 causa raíz, acciones terminadas y eficacia verificada — es el candado, no un error.&lt;/p&gt;""",
 }

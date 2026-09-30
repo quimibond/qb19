@@ -9,9 +9,9 @@
                 <header>
                     <button name="action_set_vigente" type="object" string="Marcar vigente"
                             class="btn-primary" invisible="state == 'vigente'"/>
-                    <button name="action_set_obsoleto" type="object" string="Marcar obsoleto"
+                    <button name="action_set_obsoleto" confirm="El plan de control deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleto"
                             invisible="state != 'vigente'"/>
-                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                    <button name="action_set_borrador" confirm="El plan de control regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"/>
                     <button name="action_open_orphan_points" type="object"
                             string="Ligar puntos sueltos" icon="fa-link"
@@ -115,7 +115,7 @@
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_control_plan_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el primer plan de control</p>
+            <p class="o_view_nocontent_smiling_face">Cree el primer plan de control</p>
             <p>Las características a inspeccionar por producto, con criticidad F/R/S. Cada punto del plan genera las inspecciones de Calidad en piso y alimenta el CoA del lote; lo rechazado se va solo a cuarentena. Si ya hay puntos de calidad sin plan, úsalos con «Ligar puntos sueltos» dentro del plan.</p>
         </field>
     </record>

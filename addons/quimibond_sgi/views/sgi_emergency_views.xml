@@ -9,9 +9,9 @@
                 <header>
                     <button name="action_set_vigente" type="object" string="Marcar vigente"
                             class="btn-primary" invisible="state == 'vigente'"/>
-                    <button name="action_set_obsoleto" type="object" string="Marcar obsoleto"
+                    <button name="action_set_obsoleto" confirm="El plan de emergencia deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleto"
                             invisible="state != 'vigente'"/>
-                    <button name="action_set_borrador" type="object" string="Regresar a borrador"
+                    <button name="action_set_borrador" confirm="El plan de emergencia regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="borrador,vigente,obsoleto"/>
@@ -105,7 +105,7 @@
         <field name="view_mode">list,sgi_diagram,form,activity</field>
         <field name="search_view_id" ref="sgi_emergency_plan_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Da de alta un plan de emergencia</p>
+            <p class="o_view_nocontent_smiling_face">Dé de alta un plan de emergencia</p>
             <p>ISO 14001/45001 8.2: cada escenario con su brigada, frecuencia de simulacro y riesgos ligados. El cron diario avisa cuando el simulacro vence.</p>
         </field>
     </record>
@@ -119,9 +119,9 @@
                 <header>
                     <button name="action_set_realizado" type="object" string="Marcar realizado"
                             class="btn-primary" invisible="state != 'programado'"/>
-                    <button name="action_set_cancelado" type="object" string="Cancelar"
+                    <button name="action_set_cancelado" confirm="Se cancelará el simulacro. ¿Desea continuar?" type="object" string="Cancelar"
                             invisible="state != 'programado'"/>
-                    <button name="action_set_programado" type="object" string="Reabrir"
+                    <button name="action_set_programado" confirm="El simulacro regresa a programado. ¿Desea continuar?" type="object" string="Reabrir"
                             invisible="state == 'programado'"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="programado,realizado"/>
@@ -219,7 +219,7 @@
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_emergency_drill_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Programa un simulacro</p>
+            <p class="o_view_nocontent_smiling_face">Programe un simulacro</p>
             <p>Un simulacro con observaciones o no satisfactorio exige hallazgos y al menos una acción de mejora antes de marcarse realizado.</p>
         </field>
     </record>

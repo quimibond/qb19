@@ -13,6 +13,56 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.21.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-fichas-y-busquedas`: D-007, D-008, D-013,
+E-016, D-014, D-015, E-015, D-016, D-021; D-17 y D-29):**
+
+- **Confirmación en 29 botones** que cierran, reabren, obsoletan, rechazan o
+  regresan a borrador (D-008): proceso («sus actividades salen de Mi
+  procedimiento»), programa y auditoría, revisión por la dirección,
+  recorrido CSH, eficiencias, plan de control, plan de emergencia y
+  simulacro, AMEF, política, incidente, riesgo, ficha de máquina, PPAP e
+  indicador («Regresar a prueba»). Mismo texto base: «¿Desea continuar?».
+- **Búsquedas** (D-014): 14 modelos con búsqueda propia (programa de
+  auditorías, recorridos CSH y revisión por la dirección con estado y año o
+  fecha; política, objetivos, normas, áreas, tipos de documento, plantillas
+  de checklist, categorías de riesgo, formatos impresos, familias de puesto,
+  elementos PPAP con «Archivados»; fuentes de NC con encendidas/apagadas) y
+  «Archivados» en partes interesadas, requisitos legales y fichas de
+  máquina.
+- **Filtros por defecto muertos** (D-013, E-016): fuera
+  `search_default_recent`, `search_default_filter_recent` y
+  `search_default_group_category`; la evidencia por cliente agrupa con
+  `group_by` explícito.
+- **Ayudas** (D-015, E-015): «Hojas de checklist» y «Análisis por empleado»
+  tienen ayuda; la del Pareto ya no habla de «TEJIDO-*». Los títulos de las
+  ayudas de pantalla vacía pasan a «usted» (D-29: el tratamiento del español
+  de Odoo): «Cree el primer AMEF», «Registre…», «Dé de alta…».
+- **Campos técnicos solo para MAST** (D-016): dominios, rutas y campos de
+  fecha de medición de la actividad y del entregable, la columna del XML ID
+  y los bloques «Texto de la versión anterior» de proceso y actividad.
+- **NC** (D-021): «Desviación y análisis», «Correcciones y acciones» y
+  «Verificación y cierre» se ocultan en alertas de calidad sin folio del SGI,
+  como ya hacía «Cliente».
+- **Acción correctiva con historial** (D-007): `sgi.action.line` hereda
+  `mail.thread` (responsable, compromiso y fecha de terminada con
+  seguimiento) y su ficha tiene chatter. D-17 ya estaba: «Acciones
+  correctivas» muestra todas con filtros «De …» por origen.
+
+**Pendiente de D-007 (no va aquí):** evidencia obligatoria al terminar una
+acción (depende de las reglas de cierre del agente G: hoy terminar la
+actividad espejo cierra la acción sin adjunto), título propio de la
+auditoría (hoy solo folio) y la misma secuencia de estados en las seis
+fichas.
+
+**Migración:** ninguna; el update agrega las columnas de `mail.thread` a
+`sgi_action_line`.
+
+**Pruebas:** `test_fichas_busquedas` (búsquedas con filtros y «Archivados»
+en los 17 modelos, `confirm` en los botones de estado de 7 fichas,
+historial de la acción al terminarla).
+
 ## 19.0.57.20.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-nomenclatura-en-pantallas`: D-002, D-003, D-004,

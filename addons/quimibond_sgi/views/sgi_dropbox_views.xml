@@ -341,7 +341,7 @@
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_dropbox_key_view_list')}),
             (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_dropbox_key_view_form')})]"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Escribe la clave del Dropbox</p>
+            <p class="o_view_nocontent_smiling_face">Escriba la clave del Dropbox</p>
             <p>Un procedimiento, formato, instructivo, DAT o rutina del Dropbox: qué es hoy
             y dónde vive en Odoo. «Abrir en Odoo» lleva a la pantalla que lo sustituye.</p>
         </field>

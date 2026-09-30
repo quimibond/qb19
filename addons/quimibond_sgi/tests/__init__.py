@@ -115,3 +115,4 @@ from . import test_rendimiento
 from . import test_checklist_pin
 from . import test_reclamaciones
 from . import test_nomenclatura_pantallas
+from . import test_fichas_busquedas

@@ -10,10 +10,10 @@
                     <button name="action_approve" type="object" string="Aprobar"
                             class="btn-primary" invisible="state != 'borrador'"
                             groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_close" type="object" string="Cerrar"
+                    <button name="action_close" confirm="Se cerrará el programa de auditorías y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
                             invisible="state != 'aprobado'"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_draft" type="object" string="Volver a borrador"
+                    <button name="action_draft" confirm="El programa de auditorías regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Volver a borrador"
                             invisible="state == 'borrador'"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
@@ -58,12 +58,33 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_audit_program_view_search" model="ir.ui.view">
+        <field name="name">sgi.audit.program.search</field>
+        <field name="model">sgi.audit.program</field>
+        <field name="arch" type="xml">
+            <search string="Programas de auditoría">
+                <field name="name"/>
+                <field name="year"/>
+                <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_aprobado" string="Aprobado" domain="[('state', '=', 'aprobado')]"/>
+                <filter name="state_cerrado" string="Cerrado" domain="[('state', '=', 'cerrado')]"/>
+                <separator/>
+                <filter name="this_year" string="Este año" domain="[('year', '=', context_today().year)]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_year" string="Año" context="{'group_by': 'year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_audit_program_action" model="ir.actions.act_window">
         <field name="name">Programa de auditorías</field>
         <field name="res_model">sgi.audit.program</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el programa anual de auditorías</p>
+            <p class="o_view_nocontent_smiling_face">Cree el programa anual de auditorías</p>
             <p>El sistema avisa al auditor líder 15 días antes de cada auditoría programada.</p>
         </field>
     </record>
@@ -88,13 +109,13 @@
                             invisible="not report_document_id"/>
                     <button name="action_report" type="object" string="Elaborar informe"
                             invisible="state != 'en_ejecucion'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_close" type="object" string="Cerrar"
+                    <button name="action_close" confirm="Se cerrará la auditoría y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
                             class="btn-primary" invisible="state != 'informe'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_evaluate_auditors" type="object"
                             string="Evaluar al auditor" icon="fa-star-o"
                             invisible="state not in ('informe', 'cerrada')"
                             help="Abre la encuesta de evaluación del comportamiento del auditor (sustituye el formato anterior; ver Del Dropbox a Odoo); la contesta el auditado."/>
-                    <button name="action_draft" type="object" string="Volver a borrador"
+                    <button name="action_draft" confirm="La auditoría regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Volver a borrador"
                             invisible="state in ('borrador','cerrada')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
@@ -238,7 +259,7 @@
         <field name="view_mode">list,form,activity</field>
         <field name="search_view_id" ref="sgi_audit_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Programa la primera auditoría</p>
+            <p class="o_view_nocontent_smiling_face">Programe la primera auditoría</p>
             <p>Folio AUD- automático, checklist que sale de las actividades de los procesos auditados y hallazgos convertibles en NC con un clic. Nadie puede auditar su propio proceso.</p>
         </field>
     </record>

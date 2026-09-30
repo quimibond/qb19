@@ -109,14 +109,14 @@
                         <group>
                             <field name="odoo_model_id" options="{'no_create': True}"/>
                             <field name="odoo_model_name" invisible="1"/>
-                            <field name="measure_domain" invisible="not odoo_model_id"
+                            <field name="measure_domain" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
-                            <field name="complete_domain" invisible="not odoo_model_id"
+                            <field name="complete_domain" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
                             <field name="complete_criteria" placeholder="Completo significa…"/>
                         </group>
                         <group>
-                            <field name="measure_date_field" invisible="not odoo_model_id"
+                            <field name="measure_date_field" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    placeholder="date_order"/>
                             <field name="measure_user_field" invisible="not odoo_model_id"
                                    placeholder="user_id"/>
@@ -181,6 +181,19 @@
                        decoration-danger="employee_count == 0"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
+        </field>
+    </record>
+
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_job_family_view_search" model="ir.ui.view">
+        <field name="name">sgi.job.family.search</field>
+        <field name="model">sgi.job.family</field>
+        <field name="arch" type="xml">
+            <search string="Familias de puesto">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
         </field>
     </record>
 
@@ -448,6 +461,19 @@
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
                 <field name="active" column_invisible="1"/>
             </list>
+        </field>
+    </record>
+
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_document_type_view_search" model="ir.ui.view">
+        <field name="name">sgi.document.type.search</field>
+        <field name="model">sgi.document.type</field>
+        <field name="arch" type="xml">
+            <search string="Tipos de documento">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
         </field>
     </record>
 

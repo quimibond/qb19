@@ -121,6 +121,7 @@
                         <field name="fmea_line_id"/>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>

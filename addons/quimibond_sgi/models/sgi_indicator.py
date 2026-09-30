@@ -1061,7 +1061,8 @@ class SgiIndicatorMeasure(models.Model):
                 'res_model': 'account.move',
                 'view_mode': 'list,pivot,form',
                 'domain': indicator._sgi_customer_moves_domain(start, date_to),
-                'context': {'search_default_group_by_partner': 1},
+                # D-013: el filtro por defecto no existe en account.move.
+                'context': {'group_by': ['partner_id']},
             }
         if mode == 'concentracion_productos':
             start = date_to - relativedelta(years=1) + relativedelta(days=1)
