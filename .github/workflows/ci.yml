@@ -23,12 +23,18 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install httpx flake8 lxml
+        run: pip install httpx flake8 lxml pytest openpyxl
 
       - name: Lint
         # La configuración vive en `.flake8` (raíz del repo) para que
         # correrlo en local dé exactamente lo mismo que aquí.
         run: flake8 addons/
+
+      - name: Pruebas puras (sin Odoo)
+        # Lógica de releases de quimibond_ventas_presupuesto: emparejamiento
+        # de partes, unidades y lectores. Viven fuera del addon para que
+        # pytest no importe el paquete (que necesita Odoo y Enterprise).
+        run: python -m pytest -q -p no:cacheprovider tests_puros/
 
       - name: Syntax check
         run: python -m py_compile addons/quimibond_intelligence/models/sync_push.py && python -m py_compile addons/quimibond_intelligence/models/sync_pull.py && python -m py_compile addons/quimibond_intelligence/models/supabase_client.py

@@ -10,6 +10,8 @@
               parent="menu_sale_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
     <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
               parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
+    <menuitem id="menu_sale_qb_customer_part" name="Partes del cliente"
+              parent="menu_sale_sgi_planning" action="qb_customer_part_action" sequence="25"/>
     <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
               parent="menu_sale_sgi_planning" sequence="30"/>
     <menuitem id="menu_sale_sgi_analysis_mercado" name="Por mercado"
