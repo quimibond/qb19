@@ -66,20 +66,6 @@ class SgiProcessArchiveTouch(models.Model):
         return res
 
 
-class SgiActivityArchiveTouch(models.Model):
-    _inherit = 'sgi.process.activity'
-
-    def write(self, vals):
-        res = super().write(vals)
-        # 57.13.1: archivar o reactivar una actividad cambia el «Mi
-        # procedimiento» guardado de quienes tienen rol en ella (antes solo
-        # se recalculaba al archivar el proceso; test_role_audit.test_07).
-        if 'active' in vals:
-            roles = self.sudo().with_context(active_test=False).role_ids
-            self.env['hr.employee']._sgi_mp_touch_jobs(roles._sgi_mp_jobs())
-        return res
-
-
 class SgiMyPendingArchivedFilter(models.TransientModel):
     _inherit = 'sgi.my.pending'
 

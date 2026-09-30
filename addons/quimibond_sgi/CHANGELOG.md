@@ -18,12 +18,12 @@ Retirado, Seguridad, Migración, Datos de producción.
 **Corregido (las 7 fallas que quedaban de la primera corrida real, build de
 desarrollo 38916808 sobre base nueva con demo):**
 
-- **Archivar o reactivar una actividad** no recalculaba el «Mi procedimiento»
-  guardado en el empleado (solo se hacía al archivar el proceso): quien
-  ejecutaba la actividad archivada la seguía viendo en su procedimiento y en
-  «Mis pendientes». Ahora `sgi.process.activity.write` con `active` marca
-  para recalcular a los empleados de los puestos con rol en ella
-  (`test_role_audit.test_07`, segunda corrida, build 38918236).
+- **Pendiente, `test_role_audit.test_07`:** al archivar una actividad, el
+  «Mi procedimiento» guardado del empleado sigue trayendo su rol en la prueba
+  (builds 38918236 y 38978978), aunque `sgi.process.activity.write` ya marca
+  el recálculo desde 56.7.0 y la lista del puesto ya lo excluye. Causa sin
+  confirmar. Producción no tiene roles de actividades archivadas (0), así
+  que hoy no afecta.
 - **Pruebas:** `test_hierarchy.test_04` esperaba la navegación sin el mapa
   de procesos, que va primero desde 54.0.0.
 
