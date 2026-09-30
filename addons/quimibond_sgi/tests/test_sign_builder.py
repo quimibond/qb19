@@ -38,11 +38,15 @@ class TestSignBuilder(TransactionCase):
         cls.user = new_test_user(env, login='zs_sb_emp', email='emp.sb@example.com',
                                  groups='base.group_user,quimibond_sgi.group_sgi_user')
         cls.employee = env['hr.employee'].create({'name': 'ZS Operador firma', 'user_id': cls.user.id})
+        # Instructivo con su proceso y la clave IT-{proceso}-{nn} (56.32.0,
+        # D-02): «IT-Z01» sin proceso no cumple la nomenclatura.
+        process = env['sgi.process'].create({'code': 'ZSB', 'name': 'ZS Proceso firmas'})
         cls.doc = env['documents.document'].create({
             'name': 'ZS Instructivo.pdf', 'type': 'binary',
             'datas': base64.b64encode(_blank_pdf(2)), 'mimetype': 'application/pdf',
             'sgi_is_controlled': True, 'sgi_doc_type': 'instructivo',
-            'sgi_code': 'IT-Z01', 'sgi_revision': 0, 'sgi_state': 'vigente',
+            'sgi_code': 'IT-ZSB-01', 'sgi_revision': 0, 'sgi_state': 'vigente',
+            'sgi_process_id': process.id,
         })
         cls.Builder = type(env['sgi.sign.builder'])
 

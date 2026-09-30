@@ -92,7 +92,10 @@ class TestMpChange(TransactionCase):
         self.assertEqual(request.category_id, self.category)
         self.assertEqual(request.request_owner_id, self.user_emp)
         self.assertEqual(request.sgi_activity_id, self.activity)
-        self.assertEqual(request.reference, 'ZMPC / 4.1 Revisar la muestra')
+        # El numeral se calcula (clave del proceso + paso, 29.2.0): «4.1» queda
+        # como numeral anterior y la referencia lleva el numeral vigente.
+        self.assertEqual(self.activity.legacy_number, '4.1')
+        self.assertEqual(request.reference, 'ZMPC / ZMPC.01 Revisar la muestra')
         self.assertIn('La muestra tiene etiqueta y foto', request.reason)
         self.assertEqual(self.activity.done_criteria, 'La muestra tiene etiqueta',
                          "Nada cambia antes de aprobarse.")

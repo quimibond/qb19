@@ -95,6 +95,32 @@ class ProductTemplateLink(models.Model):
             template.sgi_control_plan_id = plan.id if plan else False
 
 
+class SgiControlPlanProposesToProducts(models.Model):
+    _inherit = 'sgi.control.plan'
+
+    # 57.13.0: el plan del artículo es un compute guardado sin dependencias
+    # (el producto no tiene el inverso de product_tmpl_ids), así que solo
+    # corría al crear el producto, cuando aún ningún plan lo incluía: nunca
+    # se proponía. Ahora lo propone el plan al incluir el artículo, a los que
+    # todavía no tienen plan (el que se puso a mano no se toca).
+    def _sgi_propose_to_products(self):
+        templates = self.sudo().product_tmpl_ids.filtered(lambda t: not t.sgi_control_plan_id)
+        for template in templates:
+            template._compute_sgi_control_plan_id()
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        plans = super().create(vals_list)
+        plans._sgi_propose_to_products()
+        return plans
+
+    def write(self, vals):
+        res = super().write(vals)
+        if 'product_tmpl_ids' in vals:
+            self._sgi_propose_to_products()
+        return res
+
+
 class QualityAlertLink(models.Model):
     _inherit = 'quality.alert'
 

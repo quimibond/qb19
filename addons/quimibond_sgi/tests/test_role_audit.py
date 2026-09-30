@@ -126,9 +126,27 @@ class TestRoleAudit(TransactionCase):
         groups = Employee._read_group([('id', '=', self.emp.id)], ['sgi_my_procedure_ack_state'], ['__count'])
         self.assertEqual(groups[0][0], 'sin_publicar', "Guardado: se agrupa por estado de firma.")
         # Archivar la actividad lo saca del procedimiento guardado.
+        # Lo guardado se recalcula al bajar a la base (flush); en la misma
+        # transacción la caché conserva la lista anterior, así que se baja y
+        # se vuelve a leer (en la interfaz cada petición lee de la base).
         activity.active = False
-        self.assertNotIn(role, self.emp.sgi_mp_role_ids)
+        self.env.flush_all()
+        # 57.13.1: la corrida real (build 38916808) falló abajo sin decir en
+        # qué paso. Primero lo que se calcula (el rol ya no cuenta para el
+        # puesto) y luego lo guardado: si falla solo lo guardado, el
+        # recálculo no se disparó (_sgi_mp_touch_jobs), no la lista.
+        self.assertFalse(role.activity_active)
+        self.assertNotIn(role, self.job.with_context(
+            sgi_mp_employee_id=self.emp.id)._sgi_mp_role_lists()['detail'])
+        self.assertIn(self.emp, Employee.sudo().with_context(active_test=False).search(
+            [('sgi_mp_job_id', 'in', role._sgi_mp_jobs().ids)]),
+            "El empleado se encuentra por el puesto del rol (a quién se recalcula).")
+        self.emp.invalidate_recordset(['sgi_mp_role_ids'])
+        self.assertNotIn(role, self.emp.sgi_mp_role_ids,
+                         "La lista del puesto ya no trae el rol, pero lo guardado no se recalculó.")
         activity.active = True
+        self.env.flush_all()
+        self.emp.invalidate_recordset(['sgi_mp_role_ids'])
         self.assertIn(role, self.emp.sgi_mp_role_ids)
         # La pantalla (como Usuario SGI) muestra lo mismo que está guardado.
         screen = self.env['sgi.my.procedure'].with_user(self.user).create({'employee_id': self.emp.id})
@@ -167,11 +185,13 @@ class TestRoleAudit(TransactionCase):
     def test_09_programa_de_auditorias_sin_auditor_no_se_aprueba(self):
         """4.4: el programa no se aprueba con auditorías internas sin auditor
         líder, y solo MAST lo aprueba (el Usuario SGI ni el auditor)."""
-        from odoo.exceptions import AccessError, UserError
+        from odoo.exceptions import UserError
         process = self.env['sgi.process'].create({'code': 'ZROLA', 'name': 'Proceso auditado'})
         program = self.env['sgi.audit.program'].create({'year': 2098, 'line_ids': [
             (0, 0, {'process_id': process.id, 'planned_month': '10'})]})
-        with self.assertRaises((AccessError, UserError)):
+        # Odoo no acepta tuplas en assertRaises (issubclass); AccessError es
+        # subclase de UserError, así que UserError cubre ambos casos.
+        with self.assertRaises(UserError):
             program.with_user(self.user).action_approve()
         with self.assertRaises(UserError):
             program.with_user(self.mast).action_approve()

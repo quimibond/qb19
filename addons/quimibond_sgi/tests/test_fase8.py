@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo.tests import TransactionCase, tagged
 
+from .common_users import sgi_set_mast
+
 
 @tagged('post_install', '-at_install')
 class TestCustomerReturnNc(TransactionCase):
@@ -62,6 +64,11 @@ class TestCustomerReturnNc(TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestOperationalSignals(TransactionCase):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.mast = sgi_set_mast(cls.env)  # base nueva: sin Jefe MAST el cron no avisa
 
     def test_01_repetitive_failure_schedules_activity(self):
         equipment = self.env['maintenance.equipment'].create({

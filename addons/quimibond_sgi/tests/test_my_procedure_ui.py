@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Pantalla «Mi procedimiento» (54.1.0): encabezado de persona, botones
 inteligentes con conteo y tarjetas compactas agrupadas por cadencia."""
+from lxml import etree
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -62,10 +64,21 @@ class TestMyProcedureUi(TransactionCase):
         self.assertIn('data-bs-toggle="collapse"', kanban, "El detalle largo va plegado.")
 
     def test_02_mi_equipo_abre_en_organigrama(self):
-        views = self.env['hr.employee.public'].get_views([(False, 'hierarchy')])
+        # La acción de Mi equipo abre SU organigrama (sgi_my_team_view_hierarchy,
+        # 54.4.0), no el organigrama por omisión de hr.employee.public: en una
+        # base nueva de Odoo 19 el por omisión es el nativo de RH
+        # (js_class="hr_employee_hierarchy"), que no lleva el semáforo. Se
+        # revisa la vista que devuelve la acción.
+        action = self.env['hr.employee.public'].action_open_my_team()
+        view = self.env.ref('quimibond_sgi.sgi_my_team_view_hierarchy')
+        self.assertEqual(action['views'][0], (view.id, 'hierarchy'))
+        views = self.env['hr.employee.public'].get_views([action['views'][0]])
         arch = views['views']['hierarchy']['arch']
-        self.assertIn('parent_field="parent_id"', arch)
+        # Odoo 19 ya no escribe parent_field en el organigrama de empleados
+        # (child_field="child_ids"; parent_field vale parent_id por omisión).
+        root = etree.fromstring(arch)
+        self.assertEqual(root.get('parent_field', 'parent_id'), 'parent_id')
+        self.assertEqual(root.get('child_field', 'child_ids'), 'child_ids')
         self.assertIn('sgi_mp_pending_state', arch, "56.3.0: el semáforo de pendientes por persona.")
-        action = self.env['sgi.my.procedure'].action_open_my_team()
         self.assertEqual(action['view_mode'].split(',')[0], 'hierarchy')
         self.assertEqual(action['views'][0][1], 'hierarchy')

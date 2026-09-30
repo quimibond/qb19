@@ -58,7 +58,12 @@ class TestKpiFields(TransactionCase):
             'partner_id': partner.id, 'date_order': datetime(2046, 3, 10, 12, 0),
             'order_line': [(0, 0, {'product_id': product.id, 'product_uom_qty': 1})]})
         order.action_confirm()
-        self.assertEqual(product.product_tmpl_id.sgi_first_sale_date, date(2046, 3, 10))
+        # Odoo pone date_order = momento de la confirmación
+        # (_prepare_confirmation_values); el campo guarda ese día, no la fecha
+        # capturada en el borrador. La prueba esperaba la del borrador.
+        confirmed = fields.Date.context_today(order, order.date_order)
+        self.assertEqual(confirmed, fields.Date.context_today(order))
+        self.assertEqual(product.product_tmpl_id.sgi_first_sale_date, confirmed)
         picking_type = self.env['stock.picking.type'].search([('code', '=', 'internal')], limit=1)
         if picking_type:
             picking = self.env['stock.picking'].create({

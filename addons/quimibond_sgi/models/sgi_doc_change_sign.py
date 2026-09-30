@@ -217,6 +217,15 @@ class ApprovalRequestSign(models.Model):
         signed._sgi_check_doc_change_ready()
         for req in signed:
             req._sgi_prepare_approvers(req._sgi_sign_signers())
+        if signed:
+            # 57.13.1: el renglón nuevo del revisor entra al final de la caché
+            # de approver_ids (después del Jefe MAST que trae la categoría).
+            # Con aprobadores en orden, Aprobaciones deja «pendiente» al
+            # primero que lee y «en espera» a los demás: el revisor quedaba en
+            # espera, su firma no podía aprobarlo y la solicitud se atoraba.
+            # Se vuelve a leer de la base, en el orden de la secuencia.
+            signed.approver_ids.flush_recordset(['sequence', 'request_id'])
+            signed.invalidate_recordset(['approver_ids'])
         res = super().action_confirm()
         signed._sgi_send_to_sign()
         return res
@@ -261,6 +270,11 @@ class ApprovalRequestSign(models.Model):
                         continue
                     if approver.user_id.partner_id not in done:
                         break
+                    if approver.status == 'waiting':
+                        # Sign ya impuso el orden (y los anteriores quedaron
+                        # aprobados arriba): quien firmó ya puede aprobar. Cubre
+                        # las solicitudes enviadas antes de 57.13.1.
+                        approver.status = 'pending'
                     req.with_user(approver.user_id).sudo().with_context(
                         sgi_sign_sync=True).action_approve(approver=approver)
             if sign.state == 'signed' and not req.sgi_sign_archived:

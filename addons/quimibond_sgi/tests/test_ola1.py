@@ -11,7 +11,7 @@ from dateutil.relativedelta import relativedelta
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
-from .common_users import assert_locked, sgi_test_user
+from .common_users import assert_locked, sgi_set_director, sgi_set_mast, sgi_test_user
 
 
 @tagged('post_install', '-at_install')
@@ -110,6 +110,8 @@ class TestOla1Links(TransactionCase):
         super().setUpClass()
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        # Base nueva: el env es OdooBot (archivado) y no cuenta como Jefe MAST.
+        cls.mast = sgi_set_mast(cls.env)
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
 
@@ -181,6 +183,8 @@ class TestOla1Recurrence(TransactionCase):
         super().setUpClass()
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        # Base nueva: el env es OdooBot (archivado) y no cuenta como Jefe MAST.
+        cls.mast = sgi_set_mast(cls.env)
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
         # Procesos propios: el SGI se instala vacío (decisión 6, J-019).
@@ -286,6 +290,10 @@ class TestOla1Escalation(TransactionCase):
             {'name': 'Resp', 'login': 'ola1_resp'})
         cls.env['hr.employee'].create(
             {'name': 'Resp emp', 'user_id': cls.resp.id, 'parent_id': boss_emp.id})
+        # Base nueva: el env es OdooBot (archivado); Jefe MAST y Dirección
+        # tienen que ser usuarios activos para recibir la escalación.
+        cls.mast = sgi_set_mast(cls.env)
+        cls.director = sgi_set_director(cls.env)
         cls.risk = cls.env['sgi.risk'].create({'name': 'R', 'instrument': 'ryo'})
 
     def _overdue_line(self, days):
@@ -313,6 +321,7 @@ class TestOla1Escalation(TransactionCase):
         summ = self._acts().mapped('summary')
         self.assertTrue(any('escalada al jefe' in s for s in summ))
         self.assertTrue(any('Dirección' in s for s in summ))
+        self.assertEqual(self._acts().filtered(lambda a: 'Dirección' in a.summary).user_id, self.director)
 
     def test_03_idempotent(self):
         self._overdue_line(20)

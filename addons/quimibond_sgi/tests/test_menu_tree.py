@@ -55,9 +55,21 @@ class TestMenuTree(TransactionCase):
         walk(root, [])
         return lines
 
+    def _satellites(self):
+        """Módulos instalados que dependen del SGI (quimibond_sgi_mapa,
+        _studio, _knowledge…): cuelgan sus propios menús del árbol."""
+        deps = self.env['ir.module.module.dependency'].sudo().search([('name', '=', 'quimibond_sgi')])
+        return set(deps.module_id.filtered(lambda m: m.state == 'installed').mapped('name'))
+
     def test_01_tree_matches_file(self):
         expected = _expected_tree()
-        actual = self._menu_lines()
+        # El archivo describe el árbol del núcleo. Con los satélites instalados
+        # (base nueva con todos los módulos del repo; p. ej. «Cargar mapa de
+        # procesos» de quimibond_sgi_mapa) sus menús se quitan de la
+        # comparación; los del núcleo siguen en el mismo orden.
+        satellites = self._satellites()
+        actual = [row for row in self._menu_lines()
+                  if '.' not in row[1] or row[1].split('.', 1)[0] not in satellites]
         missing = [row for row in expected if row not in actual]
         extra = [row for row in actual if row not in expected]
         self.assertFalse(

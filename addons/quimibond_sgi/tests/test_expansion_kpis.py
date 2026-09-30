@@ -108,6 +108,16 @@ class TestExpansionKpis(TransactionCase):
         # línea base preexistente de la BD (copia de producción), como en
         # test_07. Lo cobrado DESPUÉS del cierre sigue contando en el periodo.
         ind = self._indicator('dso_cartera')
+        # Odoo 18+: un cobro en un diario sin cuenta de cobros pendientes no
+        # genera asiento hasta conciliarlo con el banco, y la cartera contable
+        # no baja (en una base nueva el diario de banco viene así). La prueba
+        # le pone la cuenta para que el cobro sí toque la cartera en su fecha.
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'bank'), ('company_id', '=', self.company.id)], limit=1)
+        outstanding = self.env['account.account'].create({
+            'code': 'ZEX1101', 'name': 'Cobros pendientes EX',
+            'account_type': 'asset_current', 'reconcile': True})
+        journal.inbound_payment_method_line_ids.payment_account_id = outstanding
         base0 = ind._sgi_receivable_balance(self.period_end)
         self._invoice('out_invoice', self.customer_a, 600.0, self.period)
         self._invoice('out_invoice', self.customer_b, 300.0, self.period)
@@ -117,7 +127,7 @@ class TestExpansionKpis(TransactionCase):
             ('invoice_date', '=', self.period)])
         self.env['account.payment.register'].with_context(
             active_model='account.move', active_ids=moves.ids).create(
-            {'payment_date': self.period}).action_create_payments()
+            {'payment_date': self.period, 'journal_id': journal.id}).action_create_payments()
         value = ind._calc_dso_cartera(self.period, self.period_end)
         self.assertEqual(value, round((base0 + 300.0) / 900.0 * 90.0, 1))
         # Un cobro del mes siguiente no cambia la foto del cierre.
@@ -127,7 +137,7 @@ class TestExpansionKpis(TransactionCase):
             ('invoice_date', '=', self.period)])
         self.env['account.payment.register'].with_context(
             active_model='account.move', active_ids=late.ids).create(
-            {'payment_date': date(2041, 7, 15)}).action_create_payments()
+            {'payment_date': date(2041, 7, 15), 'journal_id': journal.id}).action_create_payments()
         self.assertEqual(ind._calc_dso_cartera(self.period, self.period_end), value)
 
     def test_07_cartera_vencida(self):

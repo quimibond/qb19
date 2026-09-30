@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import TransactionCase, new_test_user, tagged
 
 
 @tagged('post_install', '-at_install')
@@ -27,8 +27,21 @@ class TestSignElearning(TransactionCase):
             'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento',
             'sgi_code': 'P-G99',
+            # Vigente: los acuses se mandan a firmar sobre la revisión vigente
+            # y un controlado vigente lo lee cualquier usuario interno
+            # (_sgi_share_controlled, 56.7.0). En Odoo 19 Documentos da el
+            # acceso por documento: en la corrida real (build 38916808) el
+            # Jefe MAST de la prueba no leía el borrador ajeno sin carpeta, así
+            # que tampoco habría podido abrirlo para apretar el botón.
+            'sgi_state': 'vigente',
         })
-        result = doc.action_sgi_send_sign_requests()
+        if 'access_internal' in doc._fields:
+            self.assertEqual(doc.access_internal, 'view')
+        # Lo llama el Jefe MAST (candado del método, 56.28.0): el env de la
+        # prueba es OdooBot, que no está en el grupo.
+        mast = new_test_user(self.env, login='zs_sign_mast',
+                             groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        result = doc.with_user(mast).action_sgi_send_sign_requests()
         self.assertEqual(result['params']['type'], 'info')
         with self.assertRaises(UserError):
             doc.with_user(self.user).action_sgi_send_sign_requests()

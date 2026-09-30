@@ -93,6 +93,14 @@ class SgiFormatMap(models.Model):
                         "La clave '%s' no cumple la nomenclatura del SGI "
                         "(ej. F-P-A28-04, F-IT-P-P01-08-01)." % code)
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        # 57.13.0: un @api.constrains solo corre si sus campos vienen en el
+        # alta; sin documento ni clave en los valores, el mapeo vacío pasaba.
+        records._check_target()
+        return records
+
     @api.constrains('document_id', 'sgi_code')
     def _check_target(self):
         for fmap in self:

@@ -72,10 +72,21 @@ class TestFormatMapDocumento(TransactionCase):
         order.invalidate_recordset()
         self.assertEqual(order.sgi_format_info(), "F-P-A28-12")
 
-    def test_04_documento_ligado_no_se_borra(self):
-        with self.assertRaises(Exception), self.cr.savepoint():
-            self.quote.unlink()
-            self.env.flush_all()
+    def test_04_documento_ligado_se_borra_y_el_mapeo_conserva_su_clave(self):
+        # Decisión de Jose (decisiones.md, lote 2, 2026-09-29): los formatos
+        # ligados NO llevan ``restrict`` (un documento en la papelera haría
+        # fallar cada día la limpieza automática de Documentos); quedan en
+        # ``set null``. Esta prueba esperaba el borrado bloqueado, que se
+        # descartó: ahora fija que el mapeo sobrevive con su clave al ligar y
+        # el pie sigue imprimiéndola.
+        self.quote.active = False
+        self.quote.unlink()
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertTrue(self.sale_map.exists())
+        self.assertFalse(self.sale_map.document_id)
+        self.assertEqual(self.sale_map.sgi_code, 'F-P-A28-12')
+        self.assertEqual(self._new_sale().sgi_format_info(), "F-P-A28-12")
 
     def test_05_formatos_por_referencia(self):
         ref = self.env.ref('quimibond_sgi.format_ref_doc_change')
