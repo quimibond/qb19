@@ -212,4 +212,22 @@
         <field name="sgi_code">F-P-C05-07</field>
         <field name="note">Préstamo de equipos de laboratorio (seguimiento del equipo)</field>
     </record>
+
+    <!-- 57.63.0 (bloque 2 de formularios): etiquetas de lote (clase C) que se
+         imprimen desde el lote o la NC; por referencia porque el mismo modelo
+         imprime las tres. -->
+    <record id="format_ref_lot_released" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-02</field>
+        <field name="note">Etiqueta de material liberado</field>
+    </record>
+
+    <record id="format_ref_lot_rejected" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-03</field>
+        <field name="note">Etiqueta de material rechazado</field>
+    </record>
+
+    <record id="format_ref_lot_held" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-04</field>
+        <field name="note">Etiqueta de material detenido</field>
+    </record>
 </odoo>

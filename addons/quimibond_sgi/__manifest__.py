@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.62.0',
+    'version': '19.0.57.63.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -186,6 +186,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_env_aspect.xml',
         'report/report_work_permit.xml',
         'report/report_loto.xml',
+        # 57.63.0: etiquetas de material liberado, rechazado y detenido.
+        'report/report_lot_label.xml',
         'views/sgi_business_line_views.xml',
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',

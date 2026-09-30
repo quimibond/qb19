@@ -13,6 +13,26 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.63.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 4/6, inventario §5 #8):** etiquetas de
+**material liberado, rechazado y detenido** (F-P-C04-02, -03 y -04, clase C,
+hoy en Excel) en el menú Imprimir del **lote** (`stock.lot`) y de la **NC**
+(`quality.alert`: una etiqueta por lote de la NC; sin lote, una con el
+producto y «Sin lote»). Tamaño etiqueta 100 × 76 mm (papel
+`paperformat_sgi_lot_label`), el mismo de las etiquetas Dymo/Zebra del
+almacén (`stock_dymo_labels`, módulo de Consolti en la raíz que no es
+dependencia del SGI: se reutiliza el tamaño, no el módulo). Lleva estado en
+grande con su color, producto con referencia, lote con código de barras,
+cantidad del lote, folio de la NC, fecha, firma y el **pie del formato
+controlado** en vivo (mapeos por referencia `format_ref_lot_released`,
+`format_ref_lot_rejected`, `format_ref_lot_held`, noupdate; MAST liga el
+documento y la revisión sale sola). Archivo `report/report_lot_label.xml`,
+sin herencias.
+
+**Pruebas:** `test_etiquetas_lote` (las tres desde el lote, desde la NC con y
+sin lote, pie con la clave, menú Imprimir).
+
 ## 19.0.57.62.0 — 2026-09-30
 
 **Agregado (bloque 2 de formularios 3/6, inventario §5 #7):** laboratorio de

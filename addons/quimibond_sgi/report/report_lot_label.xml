@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.63.0 (bloque 2 de formularios 4/6): etiquetas de material liberado,
+         rechazado y detenido (F-P-C04-02/03/04, clase C) desde el lote o la
+         NC. Tamaño etiqueta 100 x 76 mm, el mismo de las etiquetas Dymo y
+         Zebra que ya usa el almacén (stock_dymo_labels). La clave y la
+         revisión salen del pie en vivo (format_ref_lot_*). -->
+    <record id="paperformat_sgi_lot_label" model="report.paperformat">
+        <field name="name">SGI Etiqueta 100 x 76 mm</field>
+        <field name="default" eval="False"/>
+        <field name="format">custom</field>
+        <field name="page_height">76</field>
+        <field name="page_width">100</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">2</field>
+        <field name="margin_bottom">2</field>
+        <field name="margin_left">2</field>
+        <field name="margin_right">2</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">96</field>
+    </record>
+
+    <!-- Desde el lote -->
+    <record id="action_report_lot_label_released" model="ir.actions.report">
+        <field name="name">Etiqueta: material liberado</field>
+        <field name="model">stock.lot</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_lot_label_released</field>
+        <field name="report_file">quimibond_sgi.report_lot_label_released</field>
+        <field name="print_report_name">'Etiqueta liberado - %s' % (object.name or '')</field>
+        <field name="paperformat_id" ref="paperformat_sgi_lot_label"/>
+        <field name="binding_model_id" ref="stock.model_stock_lot"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_lot_label_rejected" model="ir.actions.report">
+        <field name="name">Etiqueta: material rechazado</field>
+        <field name="model">stock.lot</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_lot_label_rejected</field>
+        <field name="report_file">quimibond_sgi.report_lot_label_rejected</field>
+        <field name="print_report_name">'Etiqueta rechazado - %s' % (object.name or '')</field>
+        <field name="paperformat_id" ref="paperformat_sgi_lot_label"/>
+        <field name="binding_model_id" ref="stock.model_stock_lot"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_lot_label_held" model="ir.actions.report">
+        <field name="name">Etiqueta: material detenido</field>
+        <field name="model">stock.lot</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_lot_label_held</field>
+        <field name="report_file">quimibond_sgi.report_lot_label_held</field>
+        <field name="print_report_name">'Etiqueta detenido - %s' % (object.name or '')</field>
+        <field name="paperformat_id" ref="paperformat_sgi_lot_label"/>
+        <field name="binding_model_id" ref="stock.model_stock_lot"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Desde la NC (una etiqueta por lote de la NC; sin lote, una con el producto) -->
+    <record id="action_report_alert_label_held" model="ir.actions.report">
+        <field name="name">Etiqueta: material detenido</field>
+        <field name="model">quality.alert</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_alert_label_held</field>
+        <field name="report_file">quimibond_sgi.report_alert_label_held</field>
+        <field name="print_report_name">'Etiqueta detenido - %s' % (object.name or '')</field>
+        <field name="paperformat_id" ref="paperformat_sgi_lot_label"/>
+        <field name="binding_model_id" ref="quality.model_quality_alert"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_alert_label_rejected" model="ir.actions.report">
+        <field name="name">Etiqueta: material rechazado</field>
+        <field name="model">quality.alert</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_alert_label_rejected</field>
+        <field name="report_file">quimibond_sgi.report_alert_label_rejected</field>
+        <field name="print_report_name">'Etiqueta rechazado - %s' % (object.name or '')</field>
+        <field name="paperformat_id" ref="paperformat_sgi_lot_label"/>
+        <field name="binding_model_id" ref="quality.model_quality_alert"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_alert_label_released" model="ir.actions.report">
+        <field name="name">Etiqueta: material liberado</field>
+        <field name="model">quality.alert</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_alert_label_released</field>
+        <field name="report_file">quimibond_sgi.report_alert_label_released</field>
+        <field name="print_report_name">'Etiqueta liberado - %s' % (object.name or '')</field>
+        <field name="paperformat_id" ref="paperformat_sgi_lot_label"/>
+        <field name="binding_model_id" ref="quality.model_quality_alert"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- Caja de la etiqueta. Variables: lbl_status (liberado | rechazado |
+         detenido), lbl_lot (stock.lot o vacío), lbl_product, lbl_alert (NC o
+         vacío) y lbl_rec (registro del pie). -->
+    <template id="sgi_lot_label_box">
+        <t t-set="lbl_conf" t-value="{
+            'liberado': ('MATERIAL LIBERADO', '#1a7f37', 'format_ref_lot_released'),
+            'rechazado': ('MATERIAL RECHAZADO', '#b00020', 'format_ref_lot_rejected'),
+            'detenido': ('MATERIAL DETENIDO', '#b26a00', 'format_ref_lot_held'),
+        }[lbl_status]"/>
+        <div t-att-style="'border:3px solid %s; padding:2mm; height:70mm; overflow:hidden; font-family:Arial, sans-serif; font-size:11px; page-break-after:always;' % lbl_conf[1]">
+            <div style="font-size:8px;">Productora de No Tejidos Quimibond · Calidad</div>
+            <div t-att-style="'background:%s; color:#fff; text-align:center; font-size:22px; font-weight:bold; padding:1mm 0; margin:1mm 0;' % lbl_conf[1]">
+                <span t-out="lbl_conf[0]"/>
+            </div>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <td style="width:28%;"><strong>Producto</strong></td>
+                    <td><span t-if="lbl_product.default_code" t-out="'[%s] ' % lbl_product.default_code"/><span t-out="lbl_product.name or '—'"/></td>
+                </tr>
+                <tr>
+                    <td><strong>Lote</strong></td>
+                    <td style="font-size:14px; font-weight:bold;"><span t-out="lbl_lot.name if lbl_lot else 'Sin lote'"/></td>
+                </tr>
+                <tr t-if="lbl_lot">
+                    <td><strong>Cantidad</strong></td>
+                    <td><span t-out="'%.2f' % lbl_lot.product_qty"/> <span t-out="lbl_product.uom_id.name"/></td>
+                </tr>
+                <tr t-if="lbl_alert">
+                    <td><strong>No conformidad</strong></td>
+                    <td><span t-out="lbl_alert.name"/></td>
+                </tr>
+                <tr>
+                    <td><strong>Fecha</strong></td>
+                    <td><span t-out="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y')"/></td>
+                </tr>
+                <tr>
+                    <td><strong>Firma</strong></td>
+                    <td style="border-bottom:1px solid #000; height:6mm;"><span t-out="user.name"/></td>
+                </tr>
+            </table>
+            <div t-if="lbl_lot" style="text-align:center; margin-top:1mm;">
+                <span t-out="lbl_lot.name" t-options="{'widget': 'barcode', 'symbology': 'Code128', 'width': 600, 'height': 100, 'img_style': 'width:70mm; height:9mm;'}"/>
+            </div>
+            <t t-call="quimibond_sgi.sgi_format_footer">
+                <t t-set="sgi_rec" t-value="lbl_rec"/>
+                <t t-set="sgi_fmt_ref" t-value="lbl_conf[2]"/>
+            </t>
+        </div>
+    </template>
+
+    <template id="sgi_lot_label_lots">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <t t-foreach="docs" t-as="lot">
+                        <t t-call="quimibond_sgi.sgi_lot_label_box">
+                            <t t-set="lbl_lot" t-value="lot"/>
+                            <t t-set="lbl_product" t-value="lot.product_id"/>
+                            <t t-set="lbl_alert" t-value="False"/>
+                            <t t-set="lbl_rec" t-value="lot"/>
+                        </t>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <template id="sgi_lot_label_alerts">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page">
+                    <t t-foreach="docs" t-as="alert">
+                        <t t-foreach="alert.lot_ids or [False]" t-as="lot">
+                            <t t-call="quimibond_sgi.sgi_lot_label_box">
+                                <t t-set="lbl_lot" t-value="lot"/>
+                                <t t-set="lbl_product" t-value="lot.product_id if lot else alert.product_id"/>
+                                <t t-set="lbl_alert" t-value="alert"/>
+                                <t t-set="lbl_rec" t-value="alert"/>
+                            </t>
+                        </t>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_lot_label_released">
+        <t t-call="quimibond_sgi.sgi_lot_label_lots"><t t-set="lbl_status" t-value="'liberado'"/></t>
+    </template>
+    <template id="report_lot_label_rejected">
+        <t t-call="quimibond_sgi.sgi_lot_label_lots"><t t-set="lbl_status" t-value="'rechazado'"/></t>
+    </template>
+    <template id="report_lot_label_held">
+        <t t-call="quimibond_sgi.sgi_lot_label_lots"><t t-set="lbl_status" t-value="'detenido'"/></t>
+    </template>
+    <template id="report_alert_label_released">
+        <t t-call="quimibond_sgi.sgi_lot_label_alerts"><t t-set="lbl_status" t-value="'liberado'"/></t>
+    </template>
+    <template id="report_alert_label_rejected">
+        <t t-call="quimibond_sgi.sgi_lot_label_alerts"><t t-set="lbl_status" t-value="'rechazado'"/></t>
+    </template>
+    <template id="report_alert_label_held">
+        <t t-call="quimibond_sgi.sgi_lot_label_alerts"><t t-set="lbl_status" t-value="'detenido'"/></t>
+    </template>
+</odoo>
