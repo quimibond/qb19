@@ -12,8 +12,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_deliverable.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:448` |
-| `deliverable_id` | Many2one | Entregable (catálogo) | Si viene de un entregable, se calcula sola de quién lo entrega y quién lo recibe; no se edita a mano. |  | `sgi.deliverable` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:444` |
-| `inactive_reason` | Char | Motivo de desactivación | Por qué esta conexión calculada no aplica (obligatorio al desactivarla). |  |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:449` |
-| `origin` | Selection | Origen |  |  |  | compute `_compute_origin`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:452` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:451` |
+| `deliverable_id` | Many2one | Entregable (catálogo) | Si viene de un entregable, se calcula sola de quién lo entrega y quién lo recibe; no se edita a mano. |  | `sgi.deliverable` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:447` |
+| `inactive_reason` | Char | Motivo de desactivación | Por qué esta conexión calculada no aplica (obligatorio al desactivarla). |  |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:452` |
+| `origin` | Selection | Origen |  |  |  | compute `_compute_origin`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:455` |
 

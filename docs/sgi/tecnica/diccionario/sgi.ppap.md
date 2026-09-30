@@ -4,6 +4,8 @@
 
 **PPAP - Proceso de Aprobación de Partes de Producción (P-C15)** (Model). Hereda de: `sgi.base.mixin`.
 
+Expediente PPAP (P-C15) de un producto para un cliente, con sus elementos y la decisión del cliente.
+
 Orden: `folio desc`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_links.py`.
@@ -12,15 +14,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/model
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `date_decision` | Date | Fecha de decisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:67` |
-| `date_submitted` | Date | Fecha de envío |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:66` |
-| `element_ids` | One2many | Elementos |  |  | `sgi.ppap.element` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:68` |
-| `level` | Selection | Nivel |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:45` |
-| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:69` |
-| `partner_id` | Many2one | Cliente |  | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:41` |
-| `product_tmpl_id` | Many2one | Producto |  | sí | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:43` |
-| `reason` | Selection | Motivo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:52` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:59` |
+| `date_decision` | Date | Fecha de decisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:70` |
+| `date_submitted` | Date | Fecha de envío |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:69` |
+| `element_ids` | One2many | Elementos |  |  | `sgi.ppap.element` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:71` |
+| `level` | Selection | Nivel |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:48` |
+| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:72` |
+| `partner_id` | Many2one | Cliente |  | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:44` |
+| `product_tmpl_id` | Many2one | Producto |  | sí | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:46` |
+| `reason` | Selection | Motivo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:55` |
+| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:62` |
 
 ## Métodos públicos (7)
 

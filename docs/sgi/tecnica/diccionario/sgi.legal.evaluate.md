@@ -4,16 +4,18 @@
 
 **Registrar evaluación de cumplimiento legal** (TransientModel).
 
+Asistente para registrar una evaluación de cumplimiento de un requisito legal.
+
 Archivos: `addons/quimibond_sgi/models/sgi_legal.py`.
 
 ## Campos (4)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `evidence` | Text | Evidencia revisada |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:263` |
-| `next_date` | Date | Próxima evaluación |  |  |  | compute `_compute_next_date`, guardado |  | `addons/quimibond_sgi/models/sgi_legal.py:266` |
-| `requirement_id` | Many2one |  |  | sí | `sgi.legal.requirement` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:256` |
-| `result` | Selection | Resultado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:257` |
+| `evidence` | Text | Evidencia revisada |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:266` |
+| `next_date` | Date | Próxima evaluación |  |  |  | compute `_compute_next_date`, guardado |  | `addons/quimibond_sgi/models/sgi_legal.py:269` |
+| `requirement_id` | Many2one |  |  | sí | `sgi.legal.requirement` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:259` |
+| `result` | Selection | Resultado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:260` |
 
 ## Métodos públicos (1)
 

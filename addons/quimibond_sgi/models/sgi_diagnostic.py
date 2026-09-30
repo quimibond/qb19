@@ -23,6 +23,7 @@ _LEVEL_ORDER = {'bad': 0, 'warn': 1, 'ok': 2}
 
 
 class SgiDiagnosticLine(models.TransientModel):
+    """Hallazgo de una corrida del diagnóstico, con cómo corregirlo."""
     _name = 'sgi.diagnostic.line'
     _description = "Hallazgo del diagnóstico del SGI"
     _order = 'sequence, id'
@@ -37,6 +38,8 @@ class SgiDiagnosticLine(models.TransientModel):
 
 
 class SgiDiagnostic(models.TransientModel):
+    """Diagnóstico de configuración y adopción del SGI: una corrida con hallazgos por sección (bien,
+    aviso, mal). Pantalla, no historia."""
     _name = 'sgi.diagnostic'
     _description = "Diagnóstico de configuración y adopción del SGI"
 

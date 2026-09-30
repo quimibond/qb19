@@ -11,6 +11,8 @@ class QualityAlert(models.Model):
 
 
 class SgiIncident(models.Model):
+    """Incidente o accidente de SST (P-S02) con análisis SCAT (causas inmediatas, básicas y falta de
+    control). Todos reportan; SST, MAST y Salud ocupacional investigan y cierran."""
     _name = 'sgi.incident'
     _description = "Incidente / Accidente SST (P-S02, SCAT)"
     _inherit = ['sgi.base.mixin']

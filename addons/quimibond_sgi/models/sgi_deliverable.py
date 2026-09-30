@@ -27,6 +27,7 @@ RE_STAGE = re.compile(r'^\s*([A-Za-z0-9]+(?:\.[0-9]+)*)[\.\)\-:]?\s+(.+?)\s*$')
 
 
 class SgiProcessStage(models.Model):
+    """Etapa de un proceso; agrupa sus actividades."""
     _name = 'sgi.process.stage'
     _description = "Etapa de un proceso SGI"
     _order = 'process_id, sequence, code, id'
@@ -80,6 +81,8 @@ class SgiProcessStage(models.Model):
 
 
 class SgiDeliverable(models.Model):
+    """Entregable: lo que una actividad produce y otra recibe. Si apunta a un modelo de Odoo con
+    dominio, la actividad se mide sola (``complete_domain`` y campos de fecha y usuario)."""
     _name = 'sgi.deliverable'
     _description = "Entregable SGI (lo que pasa de una actividad a otra)"
     _order = 'name'

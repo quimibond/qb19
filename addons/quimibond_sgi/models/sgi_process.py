@@ -10,6 +10,8 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiProcess(models.Model):
+    """Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores,
+    riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo."""
     _name = 'sgi.process'
     _description = "Proceso SGI"
     # mail.activity.mixin es indispensable: el aviso de «eslabón atorado» se
@@ -534,6 +536,8 @@ class SgiProcess(models.Model):
 
 
 class SgiProcessFlow(models.Model):
+    """Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué
+    modelo."""
     _name = 'sgi.process.flow'
     _description = "Flujo entre procesos SGI"
     _order = 'from_process_id, name'

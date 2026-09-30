@@ -4,6 +4,8 @@
 
 **Elemento PPAP (catálogo AIAG)** (Model).
 
+Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía.
+
 Orden: `sequence, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_ppap.py`.
@@ -12,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_ppap.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:25` |
-| `is_psw` | Boolean | Es PSW (elemento 18) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:24` |
-| `name` | Char | Elemento |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:23` |
-| `sequence` | Integer | N° |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:22` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:26` |
+| `is_psw` | Boolean | Es PSW (elemento 18) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:25` |
+| `name` | Char | Elemento |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:24` |
+| `sequence` | Integer | N° |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:23` |
 

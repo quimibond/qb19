@@ -23,6 +23,7 @@ _PAGE_MM = 279.4
 
 
 class SgiSignBuilder(models.AbstractModel):
+    """Arma las plantillas de Sign que usa el SGI (acuses, responsivas, cambios documentales)."""
     _name = 'sgi.sign.builder'
     _description = "Plantillas de Sign armadas por el SGI"
 

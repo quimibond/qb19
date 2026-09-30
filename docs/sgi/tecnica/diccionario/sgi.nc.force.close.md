@@ -4,14 +4,16 @@
 
 **Cierre forzado de No Conformidad** (TransientModel).
 
+Asistente de cierre forzado de una NC con motivo; solo Jefe MAST.
+
 Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
 ## Campos (2)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_id` | Many2one | No Conformidad |  | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:954` |
-| `reason` | Text | Motivo del cierre forzado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:955` |
+| `alert_id` | Many2one | No Conformidad |  | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:958` |
+| `reason` | Text | Motivo del cierre forzado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:959` |
 
 ## Métodos públicos (1)
 

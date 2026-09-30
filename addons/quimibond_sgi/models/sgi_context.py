@@ -13,6 +13,8 @@ from odoo import models, fields, api
 
 
 class SgiInterestedParty(models.Model):
+    """Parte interesada (4.2) con sus necesidades, requisitos legales y riesgos ligados, y revisión
+    periódica."""
     _name = 'sgi.interested.party'
     _description = "Parte interesada (ISO 4.2)"
     # mail.activity.mixin es indispensable: el cron de revisión del contexto

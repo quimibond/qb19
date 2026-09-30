@@ -15,17 +15,17 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`, `addons/quimibond_sgi/mode
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `activity_id` | Many2one |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:167` |
-| `answer` | Selection | Respuesta |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:561` |
-| `audit_id` | Many2one | Auditoría |  | sí | `sgi.audit` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:551` |
-| `can_open_records` | Boolean |  |  |  |  | compute `_compute_can_open_records`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:560` |
-| `deliverables` | Char | Entregable |  |  |  | compute `_compute_question`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:559` |
-| `evidence` | Text | Evidencia | Qué registros se revisaron y qué se encontró. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:567` |
-| `executor` | Char | Quién la ejecuta |  |  |  | compute `_compute_question`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:558` |
-| `finding_id` | Many2one | Hallazgo |  |  | `sgi.audit.finding` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:568` |
+| `answer` | Selection | Respuesta |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:569` |
+| `audit_id` | Many2one | Auditoría |  | sí | `sgi.audit` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:559` |
+| `can_open_records` | Boolean |  |  |  |  | compute `_compute_can_open_records`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:568` |
+| `deliverables` | Char | Entregable |  |  |  | compute `_compute_question`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:567` |
+| `evidence` | Text | Evidencia | Qué registros se revisaron y qué se encontró. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:575` |
+| `executor` | Char | Quién la ejecuta |  |  |  | compute `_compute_question`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:566` |
+| `finding_id` | Many2one | Hallazgo |  |  | `sgi.audit.finding` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:576` |
 | `norm_clause_ids` | Many2many | Requisitos | Puntos de la norma que se auditan con esta pregunta. |  | `sgi.norm.clause` | compute `_compute_norm_clause_ids`, guardado |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:168` |
-| `process_id` | Many2one | Proceso |  |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:556` |
-| `question` | Char | Pregunta |  |  |  | compute `_compute_question`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:557` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:553` |
+| `process_id` | Many2one | Proceso |  |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:564` |
+| `question` | Char | Pregunta |  |  |  | compute `_compute_question`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:565` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:561` |
 
 ## Métodos públicos (3)
 

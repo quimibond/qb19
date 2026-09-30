@@ -128,6 +128,7 @@ class ProjectProjectDevRequest(models.Model):
 
 
 class SgiDevCharacteristic(models.Model):
+    """Característica pedida en una solicitud de desarrollo de producto (valor, tolerancia, método)."""
     _name = 'sgi.dev.characteristic'
     _description = "Característica pedida en la solicitud de desarrollo"
     _order = 'sequence, id'

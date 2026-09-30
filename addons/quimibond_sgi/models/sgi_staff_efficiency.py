@@ -38,6 +38,8 @@ _RECEIVE_SUMMARY = "Recibir eficiencias"
 
 
 class SgiStaffEfficiency(models.Model):
+    """Hoja mensual de eficiencias de personal de un área: carga empleados, calcula y la recibe RH.
+    Los importes solo los ve el grupo de salarios."""
     _name = 'sgi.staff.efficiency'
     _description = "Eficiencias de personal (F-P-A01-32/34)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -181,6 +183,7 @@ class SgiStaffEfficiency(models.Model):
 
 
 class SgiStaffEfficiencyLine(models.Model):
+    """Calificación mensual de un empleado (eficiencia, calidad, orden, asistencia) y su importe."""
     _name = 'sgi.staff.efficiency.line'
     _description = "Calificación mensual de un empleado"
     _order = 'employee_id'

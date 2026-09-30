@@ -36,6 +36,7 @@ class MaintenanceEquipmentMsa(models.Model):
 
 
 class SgiMsaStudy(models.Model):
+    """Estudio de sistema de medición (MSA) de un equipo: GR&R, ndc y veredicto."""
     _name = 'sgi.msa.study'
     _description = "Estudio MSA (IATF 7.1.5.1.1)"
     _inherit = ['sgi.base.mixin']

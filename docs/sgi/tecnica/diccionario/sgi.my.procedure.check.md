@@ -12,11 +12,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `duplicate_job_ids` | Many2many | Puestos duplicados | Puestos con el mismo nombre normalizado. Un empleado en el duplicado sin roles abre su procedimiento y lo ve vacío. |  | `hr.job` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:817` |
-| `job_without_roles_employee_ids` | Many2many | Empleados en un puesto sin roles |  |  | `hr.employee.public` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:824` |
-| `no_job_employee_ids` | Many2many | Empleados sin puesto |  |  | `hr.employee.public` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:821` |
-| `ready_count` | Integer | Puestos listos para publicar | Puestos con roles y con personas. |  |  | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:814` |
-| `roles_without_people_job_ids` | Many2many | Puestos con roles pero sin personas |  |  | `hr.job` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:827` |
+| `duplicate_job_ids` | Many2many | Puestos duplicados | Puestos con el mismo nombre normalizado. Un empleado en el duplicado sin roles abre su procedimiento y lo ve vacío. |  | `hr.job` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:819` |
+| `job_without_roles_employee_ids` | Many2many | Empleados en un puesto sin roles |  |  | `hr.employee.public` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:826` |
+| `no_job_employee_ids` | Many2many | Empleados sin puesto |  |  | `hr.employee.public` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:823` |
+| `ready_count` | Integer | Puestos listos para publicar | Puestos con roles y con personas. |  |  | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:816` |
+| `roles_without_people_job_ids` | Many2many | Puestos con roles pero sin personas |  |  | `hr.job` | compute `_compute_result`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:829` |
 
 ## Métodos públicos (2)
 

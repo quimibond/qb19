@@ -4,6 +4,8 @@
 
 **Eficiencias de personal (F-P-A01-32/34)** (Model). Hereda de: `mail.activity.mixin`, `mail.thread`.
 
+Hoja mensual de eficiencias de personal de un área: carga empleados, calcula y la recibe RH. Los importes solo los ve el grupo de salarios.
+
 Orden: `period_date desc, id desc`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_staff_efficiency.py`.
@@ -12,19 +14,19 @@ Archivos: `addons/quimibond_sgi/models/sgi_staff_efficiency.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `amount_total` | Monetary | Importe total |  |  |  | compute `_compute_amount_total`, sin guardar | _MONEY_GROUPS | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:57` |
-| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:60` |
-| `currency_id` | Many2one |  |  |  | `res.currency` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:59` |
-| `department_id` | Many2one | Área |  |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:49` |
-| `employee_count` | Integer | Número de empleados |  |  |  | compute `_compute_totals`, sin guardar |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:56` |
-| `line_ids` | One2many | Empleados |  |  | `sgi.staff.efficiency.line` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:55` |
-| `name` | Char |  |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:46` |
-| `note` | Text | Observaciones |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:61` |
-| `period_date` | Date | Mes |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:47` |
-| `prepared_by_id` | Many2one | Elaboró (jefe de área) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:50` |
-| `received_by_id` | Many2one | Recibió (coordinador de RH) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:51` |
-| `received_date` | Datetime | Recibida por RH el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:52` |
-| `state` | Selection |  |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:53` |
+| `amount_total` | Monetary | Importe total |  |  |  | compute `_compute_amount_total`, sin guardar | _MONEY_GROUPS | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:59` |
+| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:62` |
+| `currency_id` | Many2one |  |  |  | `res.currency` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:61` |
+| `department_id` | Many2one | Área |  |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:51` |
+| `employee_count` | Integer | Número de empleados |  |  |  | compute `_compute_totals`, sin guardar |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:58` |
+| `line_ids` | One2many | Empleados |  |  | `sgi.staff.efficiency.line` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:57` |
+| `name` | Char |  |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:48` |
+| `note` | Text | Observaciones |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:63` |
+| `period_date` | Date | Mes |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:49` |
+| `prepared_by_id` | Many2one | Elaboró (jefe de área) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:52` |
+| `received_by_id` | Many2one | Recibió (coordinador de RH) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:53` |
+| `received_date` | Datetime | Recibida por RH el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:54` |
+| `state` | Selection |  |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:55` |
 
 ## Métodos públicos (7)
 

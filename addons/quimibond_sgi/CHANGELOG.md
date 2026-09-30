@@ -13,6 +13,17 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.32.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-docs-generadas`: K-017):** docstring de 1 a 3
+líneas en los 83 modelos propios que no tenían (qué representa, quién lo
+crea, qué lo cierra), incluidos los de `quimibond_sgi_knowledge` y
+`quimibond_sgi_mapa`, y en los 8 métodos `cron_*` base sin docstring (NC,
+documentos, NEWS, programa de auditorías, competencias, proveedores, riesgos
+y medición de actividades). De ahí salen las columnas «Qué es» y «Qué hace»
+de `docs/sgi/tecnica/` (`tools/sgi_docs.py`, regenerado). Solo texto: ningún
+cambio de comportamiento.
+
 ## 19.0.57.31.0 — 2026-09-30
 
 **Cambiado (entrega 10, `e10-readme-y-reglas`: K-003, K-004, K-013…K-016,

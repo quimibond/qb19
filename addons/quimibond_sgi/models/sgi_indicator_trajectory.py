@@ -29,6 +29,8 @@ def _quarter_start(day):
 
 
 class SgiIndicatorStep(models.Model):
+    """Escalón trimestral de la meta de un indicador con trayectoria (meta y aceptable desde una
+    fecha)."""
     _name = 'sgi.indicator.step'
     _description = "Escalón trimestral de la meta de un indicador SGI"
     _order = 'indicator_id, date_from'

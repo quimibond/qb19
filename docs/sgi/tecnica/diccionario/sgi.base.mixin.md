@@ -4,13 +4,15 @@
 
 **Cimiento de registros del SGI** (AbstractModel). Hereda de: `mail.activity.mixin`, `mail.thread`.
 
+Cimiento de los registros del SGI: chatter y actividades, folio con secuencia propia (``_sgi_sequence_code``) y agenda de actividades con ``_sgi_schedule_activity``.
+
 Archivos: `addons/quimibond_sgi/models/sgi_base.py`.
 
 ## Campos (1)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `folio` | Char | Folio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_base.py:34` |
+| `folio` | Char | Folio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_base.py:36` |
 
 ## Métodos públicos (3)
 

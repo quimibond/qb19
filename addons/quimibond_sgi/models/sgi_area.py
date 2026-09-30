@@ -3,6 +3,7 @@ from odoo import models, fields, api
 
 
 class SgiArea(models.Model):
+    """Área documental del SGI (G, A, C, D…), ligada a un departamento. Catálogo que trae el módulo."""
     _name = 'sgi.area'
     _description = "Área documental SGI"
     _order = 'code'

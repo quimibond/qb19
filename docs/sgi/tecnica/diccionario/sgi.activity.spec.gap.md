@@ -4,6 +4,8 @@
 
 **Faltante de especificación de una actividad SGI** (Model).
 
+Faltante de especificación de una actividad (sin ejecutor, sin entregable, verbo vago…). Se recalcula; alimenta Diagnóstico → Faltantes de especificación.
+
 Orden: `severity, code, activity_id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_activity_spec.py`.
@@ -12,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_activity_spec.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `activity_id` | Many2one | Actividad |  | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:138` |
-| `code` | Selection | Faltante |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:143` |
-| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:149` |
-| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:148` |
-| `process_id` | Many2one | Proceso |  |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:141` |
-| `severity` | Selection | Severidad |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:144` |
+| `activity_id` | Many2one | Actividad |  | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:140` |
+| `code` | Selection | Faltante |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:145` |
+| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:151` |
+| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:150` |
+| `process_id` | Many2one | Proceso |  |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:143` |
+| `severity` | Selection | Severidad |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:146` |
 

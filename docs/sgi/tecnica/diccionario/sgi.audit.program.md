@@ -4,6 +4,8 @@
 
 **Programa anual de auditorías (P-G03)** (Model). Hereda de: `mail.activity.mixin`, `mail.thread`.
 
+Programa anual de auditorías (P-G03). Lo arma MAST (puede sugerir renglones), se aprueba y de cada renglón nace la auditoría.
+
 Orden: `year desc`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
@@ -12,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `line_ids` | One2many | Líneas |  |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:46` |
-| `name` | Char | Nombre |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:38` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:41` |
-| `year` | Integer | Año |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:39` |
+| `line_ids` | One2many | Líneas |  |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:48` |
+| `name` | Char | Nombre |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:40` |
+| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:43` |
+| `year` | Integer | Año |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:41` |
 
 ## Métodos públicos (4)
 

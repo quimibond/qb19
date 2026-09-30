@@ -4,6 +4,8 @@
 
 **Resultado de la importación de rutinas** (TransientModel).
 
+Renglón del resultado de la importación de rutinas.
+
 Orden: `id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_legacy_routine_import.py`.
@@ -12,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_legacy_routine_import.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:272` |
-| `clave` | Char | Clave |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:274` |
-| `fila` | Char | Fila |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:273` |
-| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:276` |
-| `n` | Char | N.º |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:275` |
-| `wizard_id` | Many2one |  |  | sí | `sgi.legacy.routine.import` |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:271` |
+| `action` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:275` |
+| `clave` | Char | Clave |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:277` |
+| `fila` | Char | Fila |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:276` |
+| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:279` |
+| `n` | Char | N.º |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:278` |
+| `wizard_id` | Many2one |  |  | sí | `sgi.legacy.routine.import` |  |  | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py:274` |
 

@@ -13,6 +13,8 @@ SGI_SIGN_MODELS = ('purchase.order', 'stock.picking', 'stock.lot', 'product.temp
 
 
 class SgiSignRecordMixin(models.AbstractModel):
+    """Mixin para registros que se firman en Sign: solicitudes ligadas, si ya se firmó y los botones
+    de firma."""
     _name = 'sgi.sign.record.mixin'
     _description = "Firmas de Sign ligadas al registro"
 
@@ -118,6 +120,7 @@ class ProductProductSign(models.Model):
 
 
 class SgiSignRequestWizard(models.TransientModel):
+    """Asistente para crear una solicitud de firma ligada a un registro del SGI."""
     _name = 'sgi.sign.request.wizard'
     _description = "Crear solicitud de firma ligada a un registro"
 

@@ -534,6 +534,8 @@ class SgiActivityChange(models.Model):
 
 
 class SgiActivityChangeRole(models.Model):
+    """Renglón «quién hace» de una propuesta de cambio (``sgi.activity.change``): puesto, familia o
+    rol relativo con su papel. Al aprobarse la propuesta pasa a ``sgi.activity.role``."""
     _name = 'sgi.activity.change.role'
     _description = "Quién hace la actividad (propuesta)"
     _order = 'change_id, sequence, id'

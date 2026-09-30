@@ -68,6 +68,8 @@ CALC_MODES = [
 
 
 class SgiIndicator(models.Model):
+    """Indicador del SGI (F-P-A10-03): fórmula o modo de cálculo, metas, frecuencia y semáforo. El
+    cron crea las mediciones del periodo; con ``nc_on_red`` un rojo levanta NC."""
     _name = 'sgi.indicator'
     _description = "Indicador SGI (F-P-A10-03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -924,6 +926,8 @@ class SgiIndicator(models.Model):
 
 
 class SgiIndicatorMeasure(models.Model):
+    """Medición de un indicador en un periodo: valor, semáforo, evidencia y, si sale en rojo, causa
+    y plan. Se calcula sola o se captura; el dueño la valida."""
     _name = 'sgi.indicator.measure'
     _description = "Medición de indicador SGI"
     _order = 'period_date desc, indicator_id'

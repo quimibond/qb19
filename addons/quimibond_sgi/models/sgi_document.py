@@ -1236,6 +1236,8 @@ class DocumentsDocument(models.Model):
 
 
 class SgiDocumentAck(models.Model):
+    """Acuse de lectura de un documento controlado por empleado. Nace al publicar el documento para
+    los puestos aplicables; se cierra al leer o al firmar en Sign."""
     _name = 'sgi.document.ack'
     _description = "Acuse de lectura de documento SGI"
     _order = 'document_id, employee_id'

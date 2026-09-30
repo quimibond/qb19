@@ -78,6 +78,7 @@ class AccountMovePaymentDate(models.Model):
 
 # ---- S3-01 ----------------------------------------------------------------
 class SgiLockDateLog(models.Model):
+    """Bitácora de cambios a las fechas de bloqueo contable, para medir el cierre a tiempo."""
     _name = 'sgi.lock.date.log'
     _description = "Bitácora de fechas de bloqueo contable"
     _order = 'moved_at desc, id desc'
@@ -123,6 +124,7 @@ class ResCompanyLockLog(models.Model):
 
 # ---- S3-04 ----------------------------------------------------------------
 class SgiInventoryValue(models.Model):
+    """Foto del valor del inventario al cierre de cada mes, base del indicador AL-01."""
     _name = 'sgi.inventory.value'
     _description = "Valor del inventario al cierre de mes (cálculo de AL-01)"
     _order = 'date desc, company_id'

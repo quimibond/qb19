@@ -24,6 +24,7 @@ SGI_HIGH_ATTENTION = ('inmediata', 'alto')
 
 
 class SgiRiskCategory(models.Model):
+    """Categoría de riesgo u oportunidad."""
     _name = 'sgi.risk.category'
     _description = "Categoría de riesgo/oportunidad"
     _order = 'name'
@@ -33,6 +34,8 @@ class SgiRiskCategory(models.Model):
 
 
 class SgiRisk(models.Model):
+    """Riesgo u oportunidad con su instrumento (R&O, IPER, aspectos ambientales, patrimonial, FODA),
+    evaluación, nivel residual y acciones. Se reevalúa periódicamente."""
     _name = 'sgi.risk'
     _description = "Riesgo / Oportunidad SGI"
     _inherit = ['sgi.base.mixin']

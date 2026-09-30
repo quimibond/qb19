@@ -125,6 +125,9 @@ class MaintenanceEquipment(models.Model):
 
 
 class SgiCalibration(models.Model):
+    """Calibración o verificación de un equipo de medición (P-C03) con resultado y certificado. Un
+    resultado fuera de tolerancia levanta la NC ligada; la fecha siguiente alimenta el cron de
+    vencimientos."""
     _name = 'sgi.calibration'
     _description = "Calibración de equipo de medición (P-C03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']

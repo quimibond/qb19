@@ -18,6 +18,8 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiAlertSource(models.Model):
+    """Fuente de NC automática (pesaje, calibración, indicador en rojo…). MAST la enciende o apaga
+    sin tocar código; ``quality.alert.sgi_auto_create`` la consulta y cuenta lo suprimido."""
     _name = 'sgi.alert.source'
     _description = "Fuente de NC automática"
     _inherit = ['mail.thread']

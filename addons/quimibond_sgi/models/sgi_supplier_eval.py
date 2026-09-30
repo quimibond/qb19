@@ -82,6 +82,8 @@ class ResPartner(models.Model):
 
 
 class SgiSupplierEval(models.Model):
+    """Evaluación trimestral de un proveedor (8.4): entrega a tiempo, NC y clase. La crea el cron;
+    se puede recalcular y aplicar al contacto."""
     _name = 'sgi.supplier.eval'
     _description = "Evaluación de proveedor SGI (8.4)"
     _order = 'date_to desc, partner_id'

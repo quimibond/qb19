@@ -13,6 +13,7 @@ from odoo.exceptions import UserError
 
 
 class SgiEppDelivery(models.Model):
+    """Responsiva de entrega de EPP a un empleado (S03-02), con renglones y firma en Sign."""
     _name = 'sgi.epp.delivery'
     _description = "Responsiva de entrega de EPP (S03-02)"
     _inherit = ['mail.thread']

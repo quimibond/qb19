@@ -20,6 +20,8 @@ _ACTIONS = [
 
 
 class SgiCatalogLoadWizard(models.TransientModel):
+    """Asistente «Cargar catálogo»: recibe el JSON de ``sgi.process.load_payload``, lo prueba sin
+    escribir y luego lo carga. Solo Administrador SGI."""
     _name = 'sgi.catalog.load.wizard'
     _description = "Cargar catálogo SGI"
 
@@ -101,6 +103,7 @@ class SgiCatalogLoadWizard(models.TransientModel):
 
 
 class SgiCatalogLoadWizardLine(models.TransientModel):
+    """Renglón del resultado de la carga del catálogo (qué se crea, cambia, archiva o falla)."""
     _name = 'sgi.catalog.load.wizard.line'
     _description = "Resultado de la carga del catálogo SGI"
     _order = 'id'

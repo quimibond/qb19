@@ -57,6 +57,8 @@ class DocumentsDocumentArticle(models.Model):
 
 
 class SgiInstructionPublish(models.TransientModel):
+    """Asistente que publica un artículo de Conocimiento como revisión del instructivo (IT) de una
+    actividad, con acuses para los puestos."""
     _name = 'sgi.instruction.publish'
     _description = "Publicar artículo de Knowledge como instructivo (IT)"
 

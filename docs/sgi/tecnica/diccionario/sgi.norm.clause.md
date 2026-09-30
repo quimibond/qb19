@@ -4,6 +4,8 @@
 
 **Cláusula de norma ISO** (Model).
 
+Cláusula de una norma; «Cumple con» liga actividades y procesos a ella y se ve cuáles no tienen cobertura.
+
 Orden: `norm_id, code`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_norm.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`.
@@ -15,10 +17,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_norm.py`, `addons/quimibond_sgi/model
 | `activity_count` | Integer | Actividades |  |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:50` |
 | `activity_ids` | Many2many | Actividades que lo cumplen |  |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:45` |
 | `alert_count` | Integer | NC |  |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:51` |
-| `code` | Char | Numeral |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:27` |
+| `code` | Char | Numeral |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:30` |
 | `covered` | Boolean | Con actividad |  |  |  | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:52` |
-| `name` | Char | Requisito |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:28` |
-| `norm_id` | Many2one | Norma |  | sí | `sgi.norm` |  |  | `addons/quimibond_sgi/models/sgi_norm.py:26` |
+| `name` | Char | Requisito |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_norm.py:31` |
+| `norm_id` | Many2one | Norma |  | sí | `sgi.norm` |  |  | `addons/quimibond_sgi/models/sgi_norm.py:29` |
 | `process_ids` | Many2many | Procesos que lo cumplen |  |  | `sgi.process` | compute `_compute_sgi_evidence`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:48` |
 | `short_label` | Char | Punto |  |  |  | compute `_compute_short_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_norm_compliance.py:44` |
 

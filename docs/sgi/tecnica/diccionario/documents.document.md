@@ -37,7 +37,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_issue_date` | Date | Fecha de emisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:134` |
 | `sgi_job_ids` | Many2many | Puestos a los que aplica |  |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_document.py:144` |
 | `sgi_legacy_family` | Char | Familia del Dropbox | Clave del procedimiento del Dropbox al que pertenece el documento, sacada de su clave anterior (o de su clave si todavía no la tiene). |  |  | compute `_compute_sgi_legacy_family`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:234` |
-| `sgi_legacy_routine_ids` | One2many | Rutinas del procedimiento anterior |  |  | `sgi.legacy.routine` |  | LEGACY_ROUTINE_GROUPS_ATTR | `addons/quimibond_sgi/models/sgi_legacy_routine.py:709` |
+| `sgi_legacy_routine_ids` | One2many | Rutinas del procedimiento anterior |  |  | `sgi.legacy.routine` |  | LEGACY_ROUTINE_GROUPS_ATTR | `addons/quimibond_sgi/models/sgi_legacy_routine.py:712` |
 | `sgi_migration_class` | Selection | Clase de migración | A: el registro de Odoo sustituye al formato. B: se configura como punto de control con hoja de trabajo. C: Odoo lo genera como reporte. D: permanece como documento controlado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:197` |
 | `sgi_migration_point_id` | Many2one | Worksheet destino | Punto de calidad (worksheet) que sustituye a este formato. El botón «Abrir worksheet» salta directo a él. |  | `quality.point` |  |  | `addons/quimibond_sgi/models/sgi_document.py:219` |
 | `sgi_migration_state` | Selection | Estado de migración |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:207` |
@@ -62,12 +62,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_retention_years` | Integer | Retención (años) | Años que el registro/documento se conserva tras quedar obsoleto o cerrado. 0 = sin definir. Clientes automotrices suelen exigir vida del programa + años: captúralo por documento o familia. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:168` |
 | `sgi_revision` | Integer | Revisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:131` |
 | `sgi_revision_label` | Char | Rev. |  |  |  | compute `_compute_sgi_revision_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_document.py:132` |
-| `sgi_routine_count` | Integer | Rutinas |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:712` |
-| `sgi_routine_covered_count` | Integer | Cubiertas |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:714` |
-| `sgi_routine_eliminated_count` | Integer | Eliminadas |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:718` |
-| `sgi_routine_pending_count` | Integer | Pendientes |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:720` |
-| `sgi_routine_replaced_count` | Integer | La hace Odoo |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:716` |
-| `sgi_routine_resolved_pct` | Float | % resuelto |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:722` |
+| `sgi_routine_count` | Integer | Rutinas |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:715` |
+| `sgi_routine_covered_count` | Integer | Cubiertas |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:717` |
+| `sgi_routine_eliminated_count` | Integer | Eliminadas |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:721` |
+| `sgi_routine_pending_count` | Integer | Pendientes |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:723` |
+| `sgi_routine_replaced_count` | Integer | La hace Odoo |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:719` |
+| `sgi_routine_resolved_pct` | Float | % resuelto |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:725` |
 | `sgi_sign_template_auto` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:31` |
 | `sgi_sign_template_id` | Many2one | Plantilla de firma (Sign) | Vacío: el SGI la arma sola (el PDF del documento más una hoja «Leí y entendí» con la firma colocada). Solo si se quiere otra, se elige aquí una plantilla hecha a mano en la app Firma. |  | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:24` |
 | `sgi_sign_template_rev` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:32` |

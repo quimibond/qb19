@@ -240,6 +240,8 @@ class SaleOrder(models.Model):
 
 
 class SgiCoaAttachWizard(models.TransientModel):
+    """Asistente para adjuntar el certificado de análisis (COA) a una entrega y, si se pide,
+    mandarlo al cliente."""
     _name = 'sgi.coa.attach.wizard'
     _description = "Adjuntar COA a la entrega"
 
@@ -287,6 +289,8 @@ class SgiCoaAttachWizard(models.TransientModel):
 
 
 class SgiCoaExceptionWizard(models.TransientModel):
+    """Asistente para validar una salida sin COA con motivo; solo lo usa el puesto de excepción
+    (Jefe de Calidad)."""
     _name = 'sgi.coa.exception.wizard'
     _description = "Validar salida sin COA (Jefe de Calidad)"
 

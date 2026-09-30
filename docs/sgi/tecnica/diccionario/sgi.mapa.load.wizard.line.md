@@ -4,6 +4,8 @@
 
 **Resultado de la carga del mapa SGI** (TransientModel).
 
+Renglón del resultado de la carga del mapa.
+
 Orden: `id`.
 
 Archivos: `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py`.
@@ -12,9 +14,9 @@ Archivos: `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:186` |
-| `key` | Char | Clave |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:185` |
-| `kind` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:184` |
-| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:187` |
-| `wizard_id` | Many2one |  |  | sí | `sgi.mapa.load.wizard` |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:183` |
+| `action` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:189` |
+| `key` | Char | Clave |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:188` |
+| `kind` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:187` |
+| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:190` |
+| `wizard_id` | Many2one |  |  | sí | `sgi.mapa.load.wizard` |  |  | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py:186` |
 

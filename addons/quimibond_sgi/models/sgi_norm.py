@@ -3,6 +3,7 @@ from odoo import models, fields, api
 
 
 class SgiNorm(models.Model):
+    """Norma de referencia (ISO 9001, 14001, 45001 y las que se capturen) con sus cláusulas."""
     _name = 'sgi.norm'
     _description = "Norma ISO"
     _order = 'code'
@@ -19,6 +20,8 @@ class SgiNorm(models.Model):
 
 
 class SgiNormClause(models.Model):
+    """Cláusula de una norma; «Cumple con» liga actividades y procesos a ella y se ve cuáles no
+    tienen cobertura."""
     _name = 'sgi.norm.clause'
     _description = "Cláusula de norma ISO"
     _order = 'norm_id, code'

@@ -11,12 +11,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_alert_id` | Many2one | NC generada |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_integration.py:149` |
-| `sgi_checklist_date` | Date | Día del checklist |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:186` |
-| `sgi_checklist_done_at` | Datetime | Terminado el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:190` |
-| `sgi_checklist_employee_id` | Many2one | Lo llenó |  |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:188` |
-| `sgi_checklist_line_ids` | One2many | Hoja de checklist |  |  | `sgi.checklist.line` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:187` |
-| `sgi_checklist_state` | Selection | Checklist |  |  |  | compute `_compute_sgi_checklist_state`, guardado |  | `addons/quimibond_sgi/models/sgi_checklist.py:191` |
-| `sgi_checklist_template_id` | Many2one | Checklist SGI |  |  | `sgi.checklist.template` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:184` |
+| `sgi_checklist_date` | Date | Día del checklist |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:191` |
+| `sgi_checklist_done_at` | Datetime | Terminado el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:195` |
+| `sgi_checklist_employee_id` | Many2one | Lo llenó |  |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:193` |
+| `sgi_checklist_line_ids` | One2many | Hoja de checklist |  |  | `sgi.checklist.line` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:192` |
+| `sgi_checklist_state` | Selection | Checklist |  |  |  | compute `_compute_sgi_checklist_state`, guardado |  | `addons/quimibond_sgi/models/sgi_checklist.py:196` |
+| `sgi_checklist_template_id` | Many2one | Checklist SGI |  |  | `sgi.checklist.template` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:189` |
 
 ## Métodos públicos (3)
 

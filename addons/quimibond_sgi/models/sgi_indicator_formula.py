@@ -75,6 +75,8 @@ _PLACEHOLDER = re.compile(r"\{(cierre|inicio|hoy|bloqueo)(?:([+-]\d+)(dh|d|h))?\
 
 
 class SgiIndicatorTerm(models.Model):
+    """Término de la fórmula configurable de un indicador: modelo, dominio, campo, agregación y
+    papel (numerador o denominador)."""
     _name = 'sgi.indicator.term'
     _description = "Término de la fórmula de un indicador SGI"
     _order = 'indicator_id, role'

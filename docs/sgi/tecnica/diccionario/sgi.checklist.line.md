@@ -4,6 +4,8 @@
 
 **Punto revisado en una hoja de mantenimiento** (Model).
 
+Punto revisado en una hoja de checklist de mantenimiento (``maintenance.request``), con su respuesta y, si falla, la solicitud correctiva.
+
 Orden: `request_id, sequence, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_checklist.py`.
@@ -12,11 +14,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_checklist.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `answer` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:175` |
-| `corrective_request_id` | Many2one | Correctivo |  |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:177` |
-| `hint` | Char | Criterio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:174` |
-| `name` | Char | Qué se revisa |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:173` |
-| `note` | Char | Observación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:176` |
-| `request_id` | Many2one |  |  | sí | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:171` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:172` |
+| `answer` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:180` |
+| `corrective_request_id` | Many2one | Correctivo |  |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:182` |
+| `hint` | Char | Criterio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:179` |
+| `name` | Char | Qué se revisa |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:178` |
+| `note` | Char | Observación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:181` |
+| `request_id` | Many2one |  |  | sí | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:176` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:177` |
 

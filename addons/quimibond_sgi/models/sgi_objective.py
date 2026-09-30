@@ -15,6 +15,7 @@ def sgi_worst_health(values):
 
 
 class SgiObjective(models.Model):
+    """Objetivo integral del año con sus indicadores y su salud."""
     _name = 'sgi.objective'
     _description = "Objetivo Integral SGI"
     # mail.activity.mixin: las acciones del plan (6.2.2) anclan su actividad

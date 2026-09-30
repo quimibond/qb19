@@ -32,6 +32,8 @@ _HEALTH_RESULTS = [
 
 
 class SgiHealthRecord(models.Model):
+    """Estudio de higiene o examen médico de un trabajador, con resultado y vigencia. Dato sensible:
+    solo Salud ocupacional y Jefe MAST."""
     _name = 'sgi.health.record'
     _description = "Estudio de higiene o examen médico por trabajador"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -124,6 +126,8 @@ _CSH_FINDING_GROUPS = ('quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_mana
 
 
 class SgiCshInspection(models.Model):
+    """Recorrido de la Comisión de Seguridad e Higiene: fecha, áreas, participantes y hallazgos. Se
+    cierra y se puede reabrir."""
     _name = 'sgi.csh.inspection'
     _description = "Recorrido de la Comisión de Seguridad e Higiene"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -194,6 +198,8 @@ class SgiCshInspection(models.Model):
 
 
 class SgiCshFinding(models.Model):
+    """Hallazgo de un recorrido de la Comisión de Seguridad e Higiene, con severidad y responsable;
+    puede generar NC."""
     _name = 'sgi.csh.finding'
     _description = "Hallazgo del recorrido de la Comisión de Seguridad e Higiene"
     _order = 'inspection_id, sequence, id'

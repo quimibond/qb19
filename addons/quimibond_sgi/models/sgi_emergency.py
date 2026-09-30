@@ -13,6 +13,8 @@ from odoo.exceptions import UserError
 
 
 class SgiEmergencyPlan(models.Model):
+    """Plan de emergencia (14001/45001 8.2) con su frecuencia de simulacros; el cron avisa cuando
+    toca el siguiente."""
     _name = 'sgi.emergency.plan'
     _description = "Plan de emergencia (ISO 14001/45001 8.2)"
     _inherit = ['sgi.base.mixin']
@@ -109,6 +111,8 @@ class SgiEmergencyPlan(models.Model):
 
 
 class SgiEmergencyDrill(models.Model):
+    """Simulacro de un plan de emergencia: programado, realizado o cancelado, con resultado,
+    hallazgos y acciones."""
     _name = 'sgi.emergency.drill'
     _description = "Simulacro de emergencia"
     _inherit = ['sgi.base.mixin']

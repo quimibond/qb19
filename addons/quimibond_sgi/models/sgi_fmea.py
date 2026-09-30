@@ -6,6 +6,8 @@ SCALE_1_10 = [(str(i), str(i)) for i in range(1, 11)]
 
 
 class SgiFmea(models.Model):
+    """AMEF de proceso o de diseño (P-C10) con sus líneas y NPR máximo; ligado al plan de control.
+    No pasa a vigente con NPR alto sin acción."""
     _name = 'sgi.fmea'
     _description = "AMEF - Análisis de Modo y Efecto de Falla (P-C10)"
     _inherit = ['sgi.base.mixin']
@@ -144,6 +146,8 @@ class SgiFmea(models.Model):
 
 
 class SgiFmeaLine(models.Model):
+    """Modo de falla de un AMEF: severidad, ocurrencia y detección antes y después de las acciones
+    (NPR)."""
     _name = 'sgi.fmea.line'
     _description = "Línea de AMEF"
     _order = 'fmea_id, sequence, id'

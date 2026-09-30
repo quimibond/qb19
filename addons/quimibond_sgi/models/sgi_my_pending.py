@@ -178,6 +178,8 @@ class SgiIndicatorMeasureDue(models.Model):
 
 
 class SgiMyPending(models.TransientModel):
+    """Mis pendientes: bandeja de cada persona con actividades atrasadas, firmas, acuses, capturas,
+    validaciones y aprobaciones. Se recalcula al abrirla; no guarda historia."""
     _name = 'sgi.my.pending'
     _description = "Mis pendientes (SGI)"
     _order = 'state_rank, date_due, id'

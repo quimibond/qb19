@@ -4,6 +4,8 @@
 
 **Mis pendientes (SGI)** (TransientModel).
 
+Mis pendientes: bandeja de cada persona con actividades atrasadas, firmas, acuses, capturas, validaciones y aprobaciones. Se recalcula al abrirla; no guarda historia.
+
 Orden: `state_rank, date_due, id`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_archived_filters.py`.
@@ -12,16 +14,16 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `date_due` | Date | Vence |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:191` |
-| `employee_id` | Many2one | Persona |  |  | `hr.employee.public` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:187` |
-| `kind` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:188` |
-| `name` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:189` |
-| `process_id` | Many2one | Proceso |  |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:190` |
-| `res_id` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:195` |
-| `res_model` | Char |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:194` |
-| `state` | Selection | Estado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:192` |
-| `state_rank` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:193` |
-| `user_id` | Many2one | Usuario |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:186` |
+| `date_due` | Date | Vence |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:193` |
+| `employee_id` | Many2one | Persona |  |  | `hr.employee.public` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:189` |
+| `kind` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:190` |
+| `name` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:191` |
+| `process_id` | Many2one | Proceso |  |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:192` |
+| `res_id` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:197` |
+| `res_model` | Char |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:196` |
+| `state` | Selection | Estado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:194` |
+| `state_rank` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:195` |
+| `user_id` | Many2one | Usuario |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:188` |
 
 ## Métodos públicos (3)
 

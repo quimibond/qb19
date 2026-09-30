@@ -4,6 +4,8 @@
 
 **Área documental SGI** (Model).
 
+Área documental del SGI (G, A, C, D…), ligada a un departamento. Catálogo que trae el módulo.
+
 Orden: `code`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_area.py`.
@@ -12,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_area.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_area.py:13` |
-| `code` | Char | Clave |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_area.py:10` |
-| `department_id` | Many2one | Departamento |  |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_area.py:12` |
-| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_area.py:11` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_area.py:14` |
+| `code` | Char | Clave |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_area.py:11` |
+| `department_id` | Many2one | Departamento |  |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_area.py:13` |
+| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_area.py:12` |
 

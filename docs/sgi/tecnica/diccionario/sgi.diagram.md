@@ -4,6 +4,8 @@
 
 **Diagramas del SGI (datos para el componente sgi_diagram)** (AbstractModel).
 
+Datos para el componente de diagramas (``static/src/diagram``): flujos de procesos, cadenas de actividades, riesgos y cumplimiento. No guarda registros.
+
 Archivos: `addons/quimibond_sgi/models/sgi_diagram.py`, `addons/quimibond_sgi/models/sgi_diagram_iso.py`.
 
 ## Métodos públicos (3)

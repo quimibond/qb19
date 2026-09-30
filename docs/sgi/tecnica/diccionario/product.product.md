@@ -12,9 +12,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sg
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_can_sign` | Boolean |  |  |  |  | related `product_tmpl_id.sgi_can_sign`, sin guardar |  | `addons/quimibond_sgi/models/sgi_sign_record.py:109` |
-| `sgi_ppap_count` | Integer | PPAP |  |  |  | compute `_compute_sgi_ppap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ppap.py:224` |
-| `sgi_sign_count` | Integer |  |  |  |  | related `product_tmpl_id.sgi_sign_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_sign_record.py:108` |
+| `sgi_can_sign` | Boolean |  |  |  |  | related `product_tmpl_id.sgi_can_sign`, sin guardar |  | `addons/quimibond_sgi/models/sgi_sign_record.py:111` |
+| `sgi_ppap_count` | Integer | PPAP |  |  |  | compute `_compute_sgi_ppap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ppap.py:227` |
+| `sgi_sign_count` | Integer |  |  |  |  | related `product_tmpl_id.sgi_sign_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_sign_record.py:110` |
 
 ## Métodos públicos (4)
 

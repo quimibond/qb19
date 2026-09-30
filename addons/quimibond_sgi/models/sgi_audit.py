@@ -30,6 +30,8 @@ FINDING_TO_CLASS = {
 
 
 class SgiAuditProgram(models.Model):
+    """Programa anual de auditorías (P-G03). Lo arma MAST (puede sugerir renglones), se aprueba y de
+    cada renglón nace la auditoría."""
     _name = 'sgi.audit.program'
     _description = "Programa anual de auditorías (P-G03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -118,6 +120,8 @@ class SgiAuditProgram(models.Model):
 
 
 class SgiAuditProgramLine(models.Model):
+    """Renglón del programa anual: qué proceso, en qué mes y con qué auditor líder. «Crear
+    auditoría» genera la ``sgi.audit``."""
     _name = 'sgi.audit.program.line'
     _description = "Línea del programa de auditorías"
     _order = 'planned_month, id'
@@ -163,6 +167,8 @@ class SgiAuditProgramLine(models.Model):
 
 
 class SgiAudit(models.Model):
+    """Auditoría interna o a proveedor/cliente (P-G03): planeación, checklist generado del proceso,
+    hallazgos y cierre con informe. Nace del programa anual o a mano."""
     _name = 'sgi.audit'
     _description = "Auditoría interna (P-G03)"
     _inherit = ['sgi.base.mixin']
@@ -460,6 +466,8 @@ class SgiAudit(models.Model):
 
 
 class SgiAuditFinding(models.Model):
+    """Hallazgo de una auditoría con cláusula y evidencia. Si la disposición lo pide, «Generar NC»
+    crea la NC ligada."""
     _name = 'sgi.audit.finding'
     _description = "Hallazgo de auditoría"
     _order = 'audit_id, id'

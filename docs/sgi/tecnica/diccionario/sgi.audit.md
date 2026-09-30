@@ -4,6 +4,8 @@
 
 **Auditoría interna (P-G03)** (Model). Hereda de: `sgi.base.mixin`.
 
+Auditoría interna o a proveedor/cliente (P-G03): planeación, checklist generado del proceso, hallazgos y cierre con informe. Nace del programa anual o a mano.
+
 Orden: `date_planned desc, folio desc`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_audit.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`.
@@ -12,30 +14,30 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`, `addons/quimibond_sgi/mode
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `audit_type` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:180` |
-| `auditee_ids` | Many2many | Auditados |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:197` |
-| `auditor_ids` | Many2many | Equipo auditor |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:195` |
-| `checklist_answered_count` | Integer |  |  |  |  | compute `_compute_checklist_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:226` |
-| `checklist_count` | Integer |  |  |  |  | compute `_compute_checklist_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:225` |
-| `checklist_line_ids` | One2many | Checklist |  |  | `sgi.audit.checklist.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:223` |
-| `checklist_nonconforming_count` | Integer |  |  |  |  | compute `_compute_checklist_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:227` |
-| `closing_minutes` | Text | Minuta de cierre | Resumen presentado al auditado: hallazgos, conclusión, plazos. Sustituye el formato F-P-G03-06. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:209` |
-| `conclusion` | Text | Conclusión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:202` |
-| `date_end` | Date | Fin real |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:201` |
-| `date_planned` | Date | Fecha planificada |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:199` |
-| `date_start` | Date | Inicio real |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:200` |
-| `external_report_ref` | Char | N° de reporte externo | Número del reporte de auditoría del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:190` |
-| `finding_count` | Integer | # Hallazgos |  |  |  | compute `_compute_finding_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:221` |
-| `finding_ids` | One2many | Hallazgos |  |  | `sgi.audit.finding` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:220` |
-| `lead_auditor_id` | Many2one | Auditor líder |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:194` |
-| `name` | Char | Nombre |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:178` |
-| `norm_ids` | Many2many | Normas |  |  | `sgi.norm` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:192` |
-| `opening_minutes` | Text | Minuta de apertura | Acuerdos de la reunión de apertura: alcance confirmado, agenda, criterios. Sustituye el formato F-P-G03-05. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:205` |
-| `partner_id` | Many2one | Cliente / proveedor |  |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:189` |
-| `process_ids` | Many2many | Procesos auditados |  |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:193` |
-| `program_line_id` | Many2one | Línea de programa |  |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:179` |
-| `report_document_id` | Many2one | Informe archivado |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:229` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:213` |
+| `audit_type` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:186` |
+| `auditee_ids` | Many2many | Auditados |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:203` |
+| `auditor_ids` | Many2many | Equipo auditor |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:201` |
+| `checklist_answered_count` | Integer |  |  |  |  | compute `_compute_checklist_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:232` |
+| `checklist_count` | Integer |  |  |  |  | compute `_compute_checklist_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:231` |
+| `checklist_line_ids` | One2many | Checklist |  |  | `sgi.audit.checklist.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:229` |
+| `checklist_nonconforming_count` | Integer |  |  |  |  | compute `_compute_checklist_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:233` |
+| `closing_minutes` | Text | Minuta de cierre | Resumen presentado al auditado: hallazgos, conclusión, plazos. Sustituye el formato F-P-G03-06. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:215` |
+| `conclusion` | Text | Conclusión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:208` |
+| `date_end` | Date | Fin real |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:207` |
+| `date_planned` | Date | Fecha planificada |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:205` |
+| `date_start` | Date | Inicio real |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:206` |
+| `external_report_ref` | Char | N° de reporte externo | Número del reporte de auditoría del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:196` |
+| `finding_count` | Integer | # Hallazgos |  |  |  | compute `_compute_finding_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:227` |
+| `finding_ids` | One2many | Hallazgos |  |  | `sgi.audit.finding` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:226` |
+| `lead_auditor_id` | Many2one | Auditor líder |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:200` |
+| `name` | Char | Nombre |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_audit.py:184` |
+| `norm_ids` | Many2many | Normas |  |  | `sgi.norm` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:198` |
+| `opening_minutes` | Text | Minuta de apertura | Acuerdos de la reunión de apertura: alcance confirmado, agenda, criterios. Sustituye el formato F-P-G03-05. |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:211` |
+| `partner_id` | Many2one | Cliente / proveedor |  |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:195` |
+| `process_ids` | Many2many | Procesos auditados |  |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:199` |
+| `program_line_id` | Many2one | Línea de programa |  |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:185` |
+| `report_document_id` | Many2one | Informe archivado |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:235` |
+| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:219` |
 
 ## Métodos públicos (10)
 

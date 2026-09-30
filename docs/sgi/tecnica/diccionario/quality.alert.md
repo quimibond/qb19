@@ -46,7 +46,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond
 | `sgi_followup_action` | Selection | Acción a seguir |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:119` |
 | `sgi_followup_comments` | Text | Comentarios de seguimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:117` |
 | `sgi_incident_id` | Many2one | Incidente SST de origen |  |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:9` |
-| `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1314` |
+| `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1318` |
 | `sgi_is_recurrent` | Boolean | Reincidente |  |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:176` |
 | `sgi_ishikawa_notes` | Text | Notas Ishikawa (5-6M) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:104` |
 | `sgi_lead_auditor_id` | Many2one | Auditor líder |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:93` |

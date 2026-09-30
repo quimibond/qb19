@@ -4,6 +4,8 @@
 
 **Categoría de riesgo/oportunidad** (Model).
 
+Categoría de riesgo u oportunidad.
+
 Orden: `name`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_risk.py`.
@@ -12,6 +14,6 @@ Archivos: `addons/quimibond_sgi/models/sgi_risk.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:32` |
-| `name` | Char | Categoría |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:31` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:33` |
+| `name` | Char | Categoría |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:32` |
 

@@ -18,6 +18,7 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiEppDeliveryLine(models.Model):
+    """Renglón de la responsiva de EPP: artículo, talla y cantidad."""
     _name = 'sgi.epp.delivery.line'
     _description = "Renglón de la responsiva de EPP"
     _order = 'sequence, id'

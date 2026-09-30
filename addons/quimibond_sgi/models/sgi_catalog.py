@@ -126,6 +126,9 @@ class SgiJobFamily(models.Model):
 
 
 class SgiActivityRole(models.Model):
+    """Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, aprueba,
+    participa, informa, escala). Es la fuente de Mi procedimiento, de Mis pendientes y de los
+    aprobadores nativos."""
     _name = 'sgi.activity.role'
     _description = "Rol de un puesto en una actividad SGI"
     _order = 'activity_id, sequence, id'

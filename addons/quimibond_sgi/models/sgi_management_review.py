@@ -9,6 +9,8 @@ from .sgi_menu_paths import sgi_menu_path
 
 
 class SgiManagementReview(models.Model):
+    """Revisión por la dirección: carga de entradas (auditorías, NC, indicadores, quejas, riesgos…),
+    acuerdos y cierre."""
     _name = 'sgi.management.review'
     _description = "Revisión por la Dirección (IT-P-A10-01)"
     _inherit = ['sgi.base.mixin']
@@ -396,6 +398,8 @@ class SgiManagementReview(models.Model):
 
 
 class SgiManagementReviewAgreement(models.Model):
+    """Acuerdo de una revisión por la dirección con responsable y fecha; se sigue como acción o
+    tarea."""
     _name = 'sgi.management.review.agreement'
     _description = "Acuerdo de Revisión por la Dirección"
     _order = 'deadline, id'

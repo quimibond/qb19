@@ -15,6 +15,7 @@ AIAG_SUBMISSION_MAP = {
 
 
 class SgiPpapElementTemplate(models.Model):
+    """Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía."""
     _name = 'sgi.ppap.element.template'
     _description = "Elemento PPAP (catálogo AIAG)"
     _order = 'sequence, id'
@@ -26,6 +27,8 @@ class SgiPpapElementTemplate(models.Model):
 
 
 class SgiPpap(models.Model):
+    """Expediente PPAP (P-C15) de un producto para un cliente, con sus elementos y la decisión del
+    cliente."""
     _name = 'sgi.ppap'
     _description = "PPAP - Proceso de Aprobación de Partes de Producción (P-C15)"
     _inherit = ['sgi.base.mixin']
@@ -233,6 +236,7 @@ class ProductProductPpap(models.Model):
 
 
 class SgiPpapElement(models.Model):
+    """Elemento de un PPAP con su documento, AMEF o plan de control y su estado."""
     _name = 'sgi.ppap.element'
     _description = "Elemento de un PPAP"
     _order = 'ppap_id, sequence, id'

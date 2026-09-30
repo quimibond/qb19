@@ -85,6 +85,8 @@ class SgiIndicatorLevel(models.Model):
 
 
 class SgiDirectionBoard(models.TransientModel):
+    """Tablero de Dirección (I-9): indicadores en rojo, rojos sin plan, procesos atrasados y
+    acuerdos vencidos. Pantalla que se calcula al abrirla."""
     _name = 'sgi.direction.board'
     _description = "Tablero de dirección (I-9)"
 

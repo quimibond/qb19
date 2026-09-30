@@ -19,6 +19,8 @@ SGI_EXEC_CLASSES = [
 
 
 class SgiActivityExecStat(models.Model):
+    """Ejecuciones de una actividad por semana y usuario (cuántos registros del entregable hizo cada
+    quien). Lo llena la medición de actividades; sirve para ver quién la ejecuta de verdad."""
     _name = 'sgi.activity.exec.stat'
     _description = "Ejecuciones de una actividad SGI por semana y usuario"
     _order = 'period_start desc, activity_id, count desc'

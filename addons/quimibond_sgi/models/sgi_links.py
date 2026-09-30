@@ -250,6 +250,7 @@ class StockPickingLink(models.Model):
 
 
 class SgiAcuseAttachWizard(models.TransientModel):
+    """Asistente para adjuntar a una entrega (``stock.picking``) el acuse firmado por el cliente."""
     _name = 'sgi.acuse.attach.wizard'
     _description = "Adjuntar acuse firmado a la entrega"
 

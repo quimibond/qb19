@@ -12,9 +12,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_id` | Many2one | No Conformidad |  | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:983` |
-| `is_manager` | Boolean |  |  |  |  | compute `_compute_is_manager`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:985` |
-| `reason` | Text | Motivo de la cancelación |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:984` |
+| `alert_id` | Many2one | No Conformidad |  | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:987` |
+| `is_manager` | Boolean |  |  |  |  | compute `_compute_is_manager`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:989` |
+| `reason` | Text | Motivo de la cancelación |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:988` |
 
 ## Métodos públicos (1)
 

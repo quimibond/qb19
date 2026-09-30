@@ -36,6 +36,8 @@ _ANSWERS = [('ok', "Bien"), ('falla', "Falla"), ('na', "No aplica")]
 
 
 class SgiChecklistTemplate(models.Model):
+    """Plantilla de checklist de planta o de unidades: puntos, equipos, frecuencia y quién la llena.
+    El cron diario genera las hojas del día."""
     _name = 'sgi.checklist.template'
     # 57.15.0 (G-022): lleva actividades para el aviso «Checklist sin equipos».
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -153,6 +155,7 @@ class SgiChecklistTemplate(models.Model):
 
 
 class SgiChecklistTemplateItem(models.Model):
+    """Punto a revisar de una plantilla de checklist."""
     _name = 'sgi.checklist.template.item'
     _description = "Punto a revisar de una plantilla de checklist"
     _order = 'template_id, sequence, id'
@@ -164,6 +167,8 @@ class SgiChecklistTemplateItem(models.Model):
 
 
 class SgiChecklistLine(models.Model):
+    """Punto revisado en una hoja de checklist de mantenimiento (``maintenance.request``), con su
+    respuesta y, si falla, la solicitud correctiva."""
     _name = 'sgi.checklist.line'
     _description = "Punto revisado en una hoja de mantenimiento"
     _order = 'request_id, sequence, id'
@@ -236,6 +241,8 @@ class MaintenanceRequestChecklist(models.Model):
 
 
 class SgiChecklistFinish(models.TransientModel):
+    """Asistente para terminar una hoja de checklist: quién la llenó y, si está encendido el
+    parámetro, su PIN de empleado."""
     _name = 'sgi.checklist.finish'
     _description = "Terminar checklist: quién lo llenó"
 

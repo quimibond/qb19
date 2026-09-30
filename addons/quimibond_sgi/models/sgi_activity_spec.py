@@ -131,6 +131,8 @@ def sgi_safe_domain(text):
 
 
 class SgiActivitySpecGap(models.Model):
+    """Faltante de especificación de una actividad (sin ejecutor, sin entregable, verbo vago…). Se
+    recalcula; alimenta Diagnóstico → Faltantes de especificación."""
     _name = 'sgi.activity.spec.gap'
     _description = "Faltante de especificación de una actividad SGI"
     _order = 'severity, code, activity_id'

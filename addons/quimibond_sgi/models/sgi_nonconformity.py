@@ -677,6 +677,9 @@ class QualityAlert(models.Model):
 
 
 class SgiActionLine(models.Model):
+    """Acción o corrección con responsable y fecha compromiso. Cuelga de una NC, riesgo, AMEF,
+    incidente, simulacro, medición en rojo, objetivo o acuerdo de la revisión por la dirección;
+    se cierra con «Marcar hecha»."""
     _name = 'sgi.action.line'
     # D-007 (57.21.0): historial y conversación como en NC, incidente y
     # auditoría. Sin mail.activity.mixin: la actividad accionable vive en el
@@ -948,6 +951,7 @@ class SgiActionLine(models.Model):
 
 
 class SgiNcForceClose(models.TransientModel):
+    """Asistente de cierre forzado de una NC con motivo; solo Jefe MAST."""
     _name = 'sgi.nc.force.close'
     _description = "Cierre forzado de No Conformidad"
 

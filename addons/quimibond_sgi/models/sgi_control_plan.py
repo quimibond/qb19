@@ -54,6 +54,8 @@ class QualityPoint(models.Model):
 
 
 class SgiControlPlan(models.Model):
+    """Plan de control (P-C11): puntos de control de calidad por producto y fase, con su AMEF.
+    Estados borrador, vigente y obsoleto."""
     _name = 'sgi.control.plan'
     _description = "Plan de control (P-C11)"
     _inherit = ['sgi.base.mixin']

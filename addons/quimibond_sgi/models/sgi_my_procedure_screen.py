@@ -359,6 +359,8 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
 
 
 class SgiMyProcedure(models.TransientModel):
+    """Pantalla de Mi procedimiento de una persona o un puesto: actividades por rol, documentos,
+    indicadores, EPP y acuse. Se arma al abrirla."""
     _name = 'sgi.my.procedure'
     _description = "Mi procedimiento (pantalla)"
 

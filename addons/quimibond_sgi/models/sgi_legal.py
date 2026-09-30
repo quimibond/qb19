@@ -19,6 +19,8 @@ from odoo.exceptions import UserError
 
 
 class SgiLegalRequirement(models.Model):
+    """Requisito legal u otro requisito (14001/45001 6.1.3): autoridad, evidencia, evaluaciones
+    periódicas y vencimiento de permisos."""
     _name = 'sgi.legal.requirement'
     _description = "Requisito legal / otro requisito (14001·45001 6.1.3)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -250,6 +252,7 @@ class SgiLegalEvaluation(models.Model):
 
 
 class SgiLegalEvaluate(models.TransientModel):
+    """Asistente para registrar una evaluación de cumplimiento de un requisito legal."""
     _name = 'sgi.legal.evaluate'
     _description = "Registrar evaluación de cumplimiento legal"
 

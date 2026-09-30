@@ -24,6 +24,8 @@ MACHINE_PARAMS = [
 
 
 class SgiMachineSheet(models.Model):
+    """Ficha técnica de proceso por máquina: parámetros, hilos y poleas por producto y centro de
+    trabajo, con revisión."""
     _name = 'sgi.machine.sheet'
     _description = "Ficha técnica de proceso por máquina (F-IT-P-P01-08-05)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -108,6 +110,7 @@ class SgiMachineSheet(models.Model):
 
 
 class SgiMachineSheetYarn(models.Model):
+    """Hilo de la ficha de proceso por máquina (tipo, título, porcentaje y consumo)."""
     _name = 'sgi.machine.sheet.yarn'
     _description = "Hilo de la ficha de proceso por máquina"
     _order = 'sequence, id'
@@ -125,6 +128,7 @@ class SgiMachineSheetYarn(models.Model):
 
 
 class SgiMachineSheetParam(models.Model):
+    """Parámetro de proceso de una ficha por máquina (especificación, tolerancia y unidad)."""
     _name = 'sgi.machine.sheet.param'
     _description = "Parámetro de la ficha de proceso por máquina"
     _order = 'section, sequence, id'
