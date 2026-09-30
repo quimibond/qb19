@@ -411,3 +411,33 @@ Supuestos del calendario:
 6. TQ-1 y Seiren: ¿qué traen su Excel y su imagen, y cada cuándo?
 7. Plazos reales de acuse (FXI al día siguiente, Woodbridge y Copo 24 h, Lear ?).
 8. Dos releases reales por cliente para armar los fixtures anonimizados.
+
+---
+
+## 7. Decisiones de José (30-sep-2026)
+
+José aprobó el E0. **E1a arranca el 5-oct.**
+
+| # | Pregunta | Decisión |
+|---|---|---|
+| 1 | Orden | Antes del 31-oct: E1a → E3 → carga 2026. E1b en noviembre, luego E2 y E4. Vale el plan B de R1 (si E1a no está en `main` el 14-oct, el 2027 se arma con histórico + proyectos). |
+| 2 | Aprobación del presupuesto | Un solo candado, en código: grupo nuevo **«Aprueba presupuesto de ventas»** con Jacobo Mizrahi y José J. Mizrahi como suplente. **Sin salida** por MAST ni por Dirección de Operaciones. Se retira la regla Studio 63. |
+| 3 | «Nueva revisión» | Solo el grupo de aprobación, como excepción. El KPI VE-02 mide **siempre contra el aprobado original**; los ajustes van al estimado de cierre. |
+| 4 | Factura sin equipo | **Bloquea** solo si trae producto terminado (tela). Activos, servicios y anticipos pasan con aviso. La venta de la rama ICOMATEX (INV/2026/03/0173) queda fuera del presupuesto. |
+| 5 | World Emblem | **Pendiente**: la respuesta llegó sin elegir entre Especiales y Confección. Si es Especiales, se pone Especiales como equipo del cliente para que sus facturas nuevas caigan ahí. |
+| 6 | TQ-1 en 2027 | Solo Industrial. |
+| 7 | Acuse | Automático, solo «recibido», sin comprometer cantidades, a nombre de la vendedora responsable del perfil. |
+| 8 | Pedidos desde la zona firme (E2) | Solo N semanas por perfil (`so_weeks`, 4 por defecto). El resto del horizonte firme se queda como pronóstico / autorización. |
+| 9 | IA | Sí, solo en perfiles `ia` (Contitech, Seiren). La llave va en una **variable de entorno de Odoo.sh**, no en `ir.config_parameter`. |
+| 10 | Carga 2026 | José manda el Excel por Drive. La carga queda como **presupuesto aprobado 2026**, lo aprueba Jacobo, para que el KPI de este año tenga base. |
+
+Pendientes de José:
+- agendar la sesión con Jessica y Berenice esta semana (cuestionario, catálogo de partes y releases de muestra);
+- pedir a Calidad que valide el rendimiento m/kg de los productos del piloto (R2).
+
+Ajustes al diseño que salen de estas decisiones:
+- `qb.release.profile` agrega `so_weeks` (default 4).
+- `ack_template_id` se firma con `sales_user_id`.
+- El lector IA toma la llave de `os.environ`.
+- `sgi.sales.budget` guarda `approved_original_amount` por mes al aprobar la Rev.1; el KPI lee eso y no la revisión vigente.
+- La carga 2026 crea los documentos por mercado ya aprobados (aprobación registrada a nombre de Jacobo).
