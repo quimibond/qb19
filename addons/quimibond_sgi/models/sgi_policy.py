@@ -16,7 +16,8 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiPolicy(models.Model):
-    """Política integral del SGI con sus objetivos; al hacerla vigente se generan los acuses."""
+    """Política integral del SGI con sus objetivos. Solo una vigente; «Generar acuses» la difunde con
+    firma a los puestos del documento controlado donde se publica."""
     _name = 'sgi.policy'
     _description = "Política integral del SGI"
     _inherit = ['sgi.base.mixin']

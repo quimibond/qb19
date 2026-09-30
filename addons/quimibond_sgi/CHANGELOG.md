@@ -13,6 +13,12 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.37.0 — 2026-09-30
+
+**Corregido (entrega 10, `e10-manuales`):** el docstring de `sgi.policy`
+(57.32.0) decía que los acuses se generan al hacerla vigente; se generan con
+«Generar acuses» sobre el documento controlado ligado. Solo texto.
+
 ## 19.0.57.36.0 — 2026-09-30
 
 **Cambiado (entrega 10, `e10-help`: D-29, K-019):** el texto de las ayudas

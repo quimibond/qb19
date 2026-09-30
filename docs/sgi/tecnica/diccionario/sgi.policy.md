@@ -4,7 +4,7 @@
 
 **Política integral del SGI** (Model). Hereda de: `sgi.base.mixin`.
 
-Política integral del SGI con sus objetivos; al hacerla vigente se generan los acuses.
+Política integral del SGI con sus objetivos. Solo una vigente; «Generar acuses» la difunde con firma a los puestos del documento controlado donde se publica.
 
 Orden: `issue_date desc, folio desc`.
 
@@ -14,14 +14,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_policy.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `document_id` | Many2one | Documento publicado (MIID) | Documento controlado donde se publica la política (p. ej. el MIID). |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_policy.py:37` |
-| `health` | Selection | Salud agregada | Peor color entre los objetivos de la política (cascada abajo→arriba). |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_policy.py:45` |
-| `issue_date` | Date | Fecha de emisión | Fecha de emisión de la política. |  |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:28` |
-| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:26` |
-| `objective_count` | Integer | # Objetivos |  |  |  | compute `_compute_objective_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_policy.py:43` |
-| `objective_ids` | One2many | Objetivos integrales |  |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_policy.py:41` |
-| `policy_text` | Html | Texto de la política |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:27` |
-| `state` | Selection | Estado | Borrador, vigente u obsoleta. Solo una política vigente. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:31` |
+| `document_id` | Many2one | Documento publicado (MIID) | Documento controlado donde se publica la política (p. ej. el MIID). |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_policy.py:38` |
+| `health` | Selection | Salud agregada | Peor color entre los objetivos de la política (cascada abajo→arriba). |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_policy.py:46` |
+| `issue_date` | Date | Fecha de emisión | Fecha de emisión de la política. |  |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:29` |
+| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:27` |
+| `objective_count` | Integer | # Objetivos |  |  |  | compute `_compute_objective_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_policy.py:44` |
+| `objective_ids` | One2many | Objetivos integrales |  |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_policy.py:42` |
+| `policy_text` | Html | Texto de la política |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:28` |
+| `state` | Selection | Estado | Borrador, vigente u obsoleta. Solo una política vigente. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_policy.py:32` |
 
 ## Métodos públicos (6)
 
