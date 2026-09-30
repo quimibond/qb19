@@ -8,7 +8,7 @@ Entregable: lo que una actividad produce y otra recibe. Si apunta a un modelo de
 
 Orden: `name`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_sign_record.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_deliverable_models.py`, `addons/quimibond_sgi/models/sgi_sign_record.py`.
 
 ## Campos (23)
 

@@ -13,6 +13,79 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.65.0 — 2026-09-30
+
+**Cambiado (bloque 2 de formularios 6/6, inventario §3.4 y §5 #12):** 20
+entregables propios sin «Modelo de Odoo» lo reciben porque su nombre dice sin
+duda dónde viven. Tabla `SGI_DELIVERABLE_MODELS`
+(`models/sgi_deliverable_models.py`), método
+`sgi.deliverable._sgi_fill_evident_models`:
+
+| Modelo | Entregables |
+|---|---|
+| Transferencia (`stock.picking`) | C2-ACUSE, C2-CITA, C2-CRUCE, C2-PEDIMENTO, C2-TRANSPORTE, C6-DESCARGA, C6-QUIMICOS |
+| Orden de producción (`mrp.production`) | C3-VIEJAS, C4-PARAMETROS, C4-TARJETA |
+| Control de calidad (`quality.check`) | C5-LIBERADO, C5-PRUEBAS |
+| No conformidad (`quality.alert`) | C5-CONCESION |
+| Orden de compra (`purchase.order`) | S1-FECHA |
+| Factura (`account.move`) | S2-CONTRARRECIBO, S2-PORTAL |
+| Bloqueo de periodo (`sgi.lock.date.log`) | S3-BLOQUEO |
+| Movimiento bancario (`account.bank.statement.line`) | S3-CONCIL-BANCO |
+| Solicitud de mantenimiento (`maintenance.request`) | S5-PREV-HECHO, S5-REPARACION |
+
+Solo el modelo: el filtro «ya está entregado», la fecha y el usuario quedan
+como estaban (`[]`, `create_date`, vacío) para que MAST los afine; ninguna
+actividad se mide con ellos todavía, así que ninguna medición cambia. El
+modelo viaja a sus flujos entre procesos.
+
+**Migración (post):** `migrations/19.0.57.65.0/post-migrate.py` llama al
+método: entregable por código en la empresa del SGI; escribe solo si el
+modelo está vacío (en el log: «modelo vacío → modelo»); se salta el que ya
+mide alguna actividad o cuya fecha o usuario no existe en el modelo.
+Idempotente; nada se borra. Esperado: 20.
+
+**Queda para MAST (96 entregables propios sin modelo; filtro «Sin modelo de
+Odoo» en SGI → Procesos → Entregables).** Con candidato probable, pero no
+evidente por el nombre:
+
+| Entregable | Candidato | Duda |
+|---|---|---|
+| C1-COTIZACION, C1-COSTO | `sale.order` / `project.task` (FT) | ¿La cotización del desarrollo sale del pedido o de la tarea de diseño? |
+| C2-ASN, C2-CARGA, C2-TARIMAS, C2-EXP-DOCS, C2-EXP-CERRADO | `stock.picking` | Pasos del embarque que hoy no dejan dato propio en la entrega |
+| C2-SOL-FECHA | `mail.activity` | Actividad asignada a Planeación |
+| C3-FECHA, C3-PLAN, C3-REPROG, C3-PRONOSTICO | `mrp.production` / `sgi.sales.budget` | Programa semanal y S&OP no son un registro único |
+| C4-EMPACADO, C4-TONO, C4-MONTAJE | `stock.lot` / `quality.check` / `mrp.workorder` | Depende de dónde se registre hoy en planta |
+| C5-CONTENCION | `quality.alert` | La contención es un paso de la NC, no un registro |
+| C6-NEGATIVOS, C6-SORPRESA, S3-SORPRESA | `stock.quant` | Conteos: ¿ajuste de inventario o reporte? |
+| C6-HDS | `stock.picking` / `documents.document` | ¿HDS adjunta a la recepción o en Documentos? |
+| C6-DESP-LISTO, C6-VENTA-DESP | `stock.picking` (VENTA DE DESPERDICIO) / `sale.order` | |
+| S1-ANTICIPO, S1-DISPERSION, S1-PROPUESTA | `account.payment` / `approval.request` | |
+| S1-NECESIDAD-MP, S1-IMPORT, S1-CONFORMIDAD, S1-DIFERENCIA | `purchase.order` | Pasos de la compra sin dato propio |
+| S2-PROMESA, S2-RECORDATORIO, S2-ACLARACION, S2-CASTIGO | `account.move` (seguimiento) / `mail.activity` | |
+| S3-CALC-IMP, S3-DECLARACION | `account.return` | Hoy las 8 declaraciones de 2026 están en «Nuevo» (propuestas, §1 #4) |
+| S3-MOV-REG, S3-POLIZAS-CIERRE | `account.move` | |
+| S4-CAPACITACION, S4-INDUCCION, S4-PROG-CAP | `slide.channel.partner` / `survey.user_input` | La capacitación presencial no pasa por eLearning |
+| S4-INCIDENCIAS | `hr.leave` / `hr.attendance` | |
+| S4-NOMINA, S4-NOMINA-REV, S4-FINIQUITO, S4-AGUINALDO, S4-PTU, S4-CFDI-CONC | `hr.payslip.run` / `hr.payslip` | Nómina en Odoo desde el 1-ene-2027 |
+| S4-ALTA-IMSS, S4-MOD-SALARIO, S4-SOL-ACCESOS | `hr.employee` / `hr.version` / `helpdesk.ticket` | |
+| S5-FLOTILLA | `fleet.vehicle` | ¿Está instalada Flotilla? |
+| S6-ACCESO-BAJA, S6-REV-USUARIOS, S6-VOBO-COMPRA | `helpdesk.ticket` / `res.users` / `approval.request` | |
+
+Sin modelo natural (revisiones y reportes mensuales, trámites con acuse
+externo): C1-REVISION, C2-REVISION, C3-CUMPL, C4-REVISION,
+C5-AUDITORIA, C5-REPORTE, C6-REPORTE, E1-EVAL-INV, E1-FLUJO13, E1-PLAN,
+E1-REPORTE-CONSEJO, E1-RIESGO-FIN, E1-VS-PPTO, E2-MATRIZ-VIG, S1-CONCIL,
+S1-REP, S1-REPORTE, S1-RESP-PROV, S2-REP-CARTERA, S2-REV-CRED, S3-ARQUEO,
+S3-BALANZA, S3-CONCIL-INV, S3-CONT-ELEC, S3-EEFF, S3-FECHA-INV,
+S3-FISCAL-VIGENTE, S3-FLUJO, S3-RESP-REQ, S4-COMISIONES, S4-CREDITOS,
+S4-CUOTAS, S4-DECL-ANUAL, S4-ISN, S4-MATRIZ, S4-PLANTILLA, S4-REPORTE-RH,
+S4-VALES, S5-REPORTE, S5-SERVICIOS, S6-REPORTE, S6-VIGENCIAS. Para estos
+basta con escribir en la actividad «Dónde se ejecuta» el portal o la carpeta.
+
+**Pruebas:** `test_entregables_modelo` (solo lo vacío, respeta lo capturado,
+salta un campo de fecha ajeno al modelo, idempotente, tabla real y
+post-migrate).
+
 ## 19.0.57.64.0 — 2026-09-30
 
 **Agregado (bloque 2 de formularios 5/6, inventario §4.1 y §5 #11):** menús
