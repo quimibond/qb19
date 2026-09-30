@@ -53,6 +53,7 @@
                     <group string="Datos SGI" invisible="not sgi_folio and id">
                         <field name="sgi_folio"/>
                         <field name="sgi_origin_type"/>
+                        <field name="sgi_maintenance_request_id" invisible="not sgi_maintenance_request_id"/>
                         <field name="sgi_classification"/>
                         <field name="sgi_norm_clause_id"/>
                         <field name="sgi_process_id"/>

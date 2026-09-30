@@ -18,6 +18,7 @@
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="sgi_seal_number"
                        invisible="picking_type_code != 'outgoing'"/>
+                <field name="sgi_production_id" invisible="picking_type_code == 'outgoing'"/>
             </xpath>
             <!-- Firmas (antes herencia propia en sgi_supplier_audit_sign_views.xml; A-008, 57.28.0) -->
             <xpath expr="//div[@name='button_box']" position="inside">
@@ -30,6 +31,17 @@
                         groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
                     <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
                 </button>
+            </xpath>
+            <!-- Acuses (antes herencia propia en sgi_links_views.xml; A-008, 57.29.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_acuses" type="object" class="oe_stat_button"
+                        icon="fa-file-text-o" invisible="sgi_acuse_count == 0">
+                    <field name="sgi_acuse_count" widget="statinfo" string="Acuses"/>
+                </button>
+            </xpath>
+            <xpath expr="//form/header" position="inside">
+                <button name="action_sgi_attach_acuse" type="object" string="Adjuntar acuse"
+                        icon="fa-paperclip" invisible="picking_type_code != 'outgoing' or state != 'done'"/>
             </xpath>
         </field>
     </record>
@@ -120,6 +132,7 @@
                     <group>
                         <group string="Especificación del material">
                             <field name="sgi_spec_document_id"/>
+                            <field name="sgi_control_plan_id"/>
                         </group>
                         <group>
                             <button name="action_sgi_open_spec" type="object"

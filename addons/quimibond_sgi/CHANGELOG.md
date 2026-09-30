@@ -13,6 +13,21 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.29.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 8/9: A-008):** la solicitud de
+mantenimiento de origen en la NC, los acuses y la orden de producción en el
+albarán y el plan de control en el producto van en su vista base.
+`sgi_links_views.xml` ya no hereda vistas propias. Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_quality_alert_view_form_links` (15099),
+`sgi_stock_picking_view_form_links` (15102),
+`sgi_product_template_view_form_links` (15097). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
 ## 19.0.57.28.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 7/9: A-008):** la NC a

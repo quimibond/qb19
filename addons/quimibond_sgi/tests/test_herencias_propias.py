@@ -44,6 +44,10 @@ INTEGRADAS = (
     'sgi_stock_picking_view_form_sign',
     'sgi_product_template_view_form_sign',
     'sgi_deliverable_view_form_pr6',
+    # 57.29.0
+    'sgi_quality_alert_view_form_links',
+    'sgi_stock_picking_view_form_links',
+    'sgi_product_template_view_form_links',
 )
 
 
