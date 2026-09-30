@@ -123,3 +123,4 @@ from . import test_work_permit
 from . import test_loto
 from . import test_hallazgos_evaluaciones
 from . import test_sst_links
+from . import test_format_map_varios

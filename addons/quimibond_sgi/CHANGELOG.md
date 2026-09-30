@@ -13,6 +13,35 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.60.0 — 2026-09-30
+
+**Cambiado (bloque 2 de formularios 1/6, decisión «Inventario de
+formularios» 2026-09-30: «un formato por modelo» pasa al bloque 2):**
+`sgi.format.map` admite **varios formatos por modelo**. Cada mapeo puede
+llevar un criterio: tipos de operación (`stock.picking.type`, para
+transferencias, vales y órdenes de producción), centros de trabajo (órdenes
+con una operación en ese centro), categorías de producto (con sus
+subcategorías) y un filtro adicional sobre el registro; y una prioridad
+(`sequence`). El registro imprime el primer mapeo con criterio que cumple y,
+si no cumple ninguno, el **general** del modelo (el que no tiene criterio;
+uno activo por modelo, restricción en Python que sustituye a
+`unique(model_id)`). En «Formatos en documentos de Odoo» la ficha tiene la
+sección «Cuándo aplica», la lista muestra la prioridad y el criterio, y la
+búsqueda filtra generales, con criterio y por referencia. El pie «formato
+controlado» se agrega al PDF nativo de la orden de producción
+(`mrp.report_mrporder`). En las transferencias, el general sigue aplicando
+solo a las salidas; un mapeo con criterio aplica a cualquier tipo.
+
+**Migración (pre):** `migrations/19.0.57.60.0/pre-migrate.py` quita la
+restricción SQL `unique(model_id)` con `IF EXISTS`. Los 22 mapeos de
+producción quedan como generales (`is_general` se calcula verdadero en todos)
+e imprimen la misma clave que antes. Nada se borra.
+
+**Pruebas:** `test_format_map_varios` (general sin criterio, por tipo de
+operación, prioridad, categoría con subcategorías, transferencia interna,
+filtro adicional, un general por modelo, criterios inválidos, pie del reporte
+y `_get_for_model`).
+
 ## 19.0.57.54.0 — 2026-09-30
 
 **Cambiado (bloque 1 de formularios 5/5, decisión «Inventario de
