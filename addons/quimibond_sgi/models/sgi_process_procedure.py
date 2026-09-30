@@ -21,6 +21,8 @@ from odoo import models, fields, api, Command, SUPERUSER_ID
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
+from .sgi_calendar import sgi_today
+
 from .sgi_base import sgi_bypass_allowed
 
 SGI_AUTOMATION_LEVELS = [
@@ -983,6 +985,30 @@ class SgiProcessActivity(models.Model):
         except Exception:
             return []
 
+    def _sgi_measure_domain_strict(self):
+        """57.16.0 (G-003): el dominio de evidencia o el error. Un filtro que
+        no se puede leer ya no se toma como «todo el modelo» (salía verde)."""
+        self.ensure_one()
+        try:
+            domain = safe_eval(self.measure_domain or '[]')
+        except Exception as exc:  # noqa: BLE001 - lo capturó una persona
+            raise ValueError(str(exc) or exc.__class__.__name__) from exc
+        if not isinstance(domain, (list, tuple)):
+            raise ValueError("no es una lista")
+        return list(domain)
+
+    @api.model
+    def _sgi_measure_company_domain(self, Model):
+        """57.16.0 (H-006, G-019, D-03): la medición cuenta solo registros de
+        la empresa del SGI (o sin empresa) cuando el modelo tiene
+        ``company_id`` guardado. Los crons corren como superusuario y sin
+        esto contaban facturas de las empresas 2, 3 y 4."""
+        field = Model._fields.get('company_id')
+        if not field or not field.store or field.type != 'many2one':
+            return []
+        company = self.env['sgi.config']._sgi_company()
+        return [('company_id', 'in', [company.id, False])]
+
     _SGI_EXECUTOR_RESET = {
         'measure_adherence_pct': 0.0,
         'measure_top_users': False, 'measure_count_generic': 0,
@@ -1028,8 +1054,16 @@ class SgiProcessActivity(models.Model):
 
     def _sgi_measure_odoo(self):
         """Recalcula la evidencia de cada actividad medible. Una actividad con
-        dominio o modelo inválido queda sin semáforo, sin tumbar al resto."""
+        dominio o modelo inválido queda sin semáforo, sin tumbar al resto.
+
+        57.16.0 (G-002, G-003, H-005, H-006): cada actividad se mide y se
+        escribe en su propio savepoint; lo que truena queda en «Avisos de
+        medición» (``measure_warning``) y en el log, nunca en silencio. Un
+        filtro de evidencia inválido deja la actividad sin semáforo con el
+        aviso «Filtro de evidencia inválido» (antes contaba todo el modelo y
+        salía verde). Solo cuentan registros de la empresa del SGI."""
         now = fields.Datetime.now()
+        failures = 0
         for activity in self:
             vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
                         measure_count_30d=0, measure_state=False)
@@ -1037,48 +1071,75 @@ class SgiProcessActivity(models.Model):
                 # Un dominio que truena en SQL deja el cursor abortado: sin
                 # savepoint se perdía la medición de todas las demás.
                 with self.env.cr.savepoint():
-                    model_name = activity.measure_model_id.model
-                    Model = self.env.get(model_name) if model_name else None
-                    if Model is None or Model._transient or Model._abstract:
-                        activity.write(vals)
-                        continue
-                    Model = Model.sudo()
-                    date_field = activity.measure_date_field or 'create_date'
-                    if date_field not in Model._fields:
-                        date_field = 'create_date'
-                    domain = activity._sgi_measure_domain()
-                    last = Model.search(
-                        domain, order='%s desc, id desc' % date_field, limit=1)
-                    last_date = last and last[date_field] or False
-                    if last_date and not isinstance(last_date, datetime):
-                        last_date = fields.Datetime.to_datetime(last_date)
-                    vals['measure_last_date'] = last_date
-                    window = domain + [(date_field, '>=', now - timedelta(days=30))]
-                    vals['measure_count_30d'] = Model.search_count(window)
-                    vals.update(activity._sgi_measure_executors(Model, domain, date_field))
-                    days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-                    # G-017 (56.36.0): con vencimiento periódico, «a tiempo»
-                    # es antes del vencimiento (decisión 5), no una ventana de
-                    # días naturales. Vive en sgi_activity_spec.
-                    periodic = activity._sgi_periodic_state(
-                        Model, domain, date_field, fields.Date.context_today(activity)) \
-                        if hasattr(activity, '_sgi_periodic_state') else None
-                    if periodic:
-                        vals['measure_state'] = periodic
-                    elif days:
-                        in_window = Model.search_count(
-                            domain
-                            + [(date_field, '>=', now - timedelta(days=days))])
-                        vals['measure_state'] = 'verde' if in_window else 'rojo'
-                    elif last_date:
-                        vals['measure_state'] = 'verde'
-            except Exception:
-                pass
+                    vals = activity._sgi_measure_odoo_vals(vals, now)
+            except Exception as exc:  # noqa: BLE001 - una actividad no tumba a las demás
+                failures += 1
+                _logger.exception("SGI: no se pudo medir la actividad %s (id %s).",
+                                  activity.display_name, activity.id)
+                vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
+                            measure_count_30d=0, measure_state=False,
+                            measure_warning="No se pudo medir: %s" % (str(exc) or exc.__class__.__name__))
             # Solo se escribe lo que cambió: el cron diario re-mide TODO y la
             # mayoría de los valores no se mueven — escribir igual infla el
-            # write_date y el WAL sin aportar nada.
-            if any(activity[key] != value for key, value in vals.items()):
-                activity.write(vals)
+            # write_date y el WAL sin aportar nada. H-005: la escritura
+            # también va en su savepoint.
+            try:
+                with self.env.cr.savepoint():
+                    if any(activity[key] != value for key, value in vals.items()):
+                        activity.write(vals)
+            except Exception:  # noqa: BLE001
+                failures += 1
+                _logger.exception("SGI: no se pudo guardar la medición de %s (id %s).",
+                                  activity.display_name, activity.id)
+        return failures
+
+    def _sgi_measure_odoo_vals(self, vals, now):
+        """Los valores de medición de UNA actividad (sin escribir)."""
+        self.ensure_one()
+        activity = self
+        model_name = activity.measure_model_id.model
+        Model = self.env.get(model_name) if model_name else None
+        if Model is None or Model._transient or Model._abstract:
+            return vals
+        Model = Model.sudo()
+        date_field = activity.measure_date_field or 'create_date'
+        if date_field not in Model._fields:
+            date_field = 'create_date'
+        try:
+            domain = activity._sgi_measure_domain_strict()
+            # Se prueba el filtro antes de medir: un campo inexistente o no
+            # almacenado pasa el safe_eval y truena al convertirse a SQL.
+            Model.search_count(domain, limit=1)
+        except Exception as exc:  # noqa: BLE001 - dominio capturado por una persona
+            vals['measure_warning'] = "Filtro de evidencia inválido: %s" % (
+                str(exc) or exc.__class__.__name__)
+            _logger.warning("SGI: filtro de evidencia inválido en %s (id %s): %s",
+                            activity.display_name, activity.id, exc)
+            return vals
+        domain = domain + self._sgi_measure_company_domain(Model)
+        last = Model.search(domain, order='%s desc, id desc' % date_field, limit=1)
+        last_date = last and last[date_field] or False
+        if last_date and not isinstance(last_date, datetime):
+            last_date = fields.Datetime.to_datetime(last_date)
+        vals['measure_last_date'] = last_date
+        window = domain + [(date_field, '>=', now - timedelta(days=30))]
+        vals['measure_count_30d'] = Model.search_count(window)
+        vals.update(activity._sgi_measure_executors(Model, domain, date_field))
+        days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
+        # G-017 (56.36.0): con vencimiento periódico, «a tiempo» es antes del
+        # vencimiento (decisión 5), no una ventana de días naturales. Vive en
+        # sgi_activity_spec.
+        periodic = activity._sgi_periodic_state(
+            Model, domain, date_field, sgi_today(activity.env)) \
+            if hasattr(activity, '_sgi_periodic_state') else None
+        if periodic:
+            vals['measure_state'] = periodic
+        elif days:
+            in_window = Model.search_count(domain + [(date_field, '>=', now - timedelta(days=days))])
+            vals['measure_state'] = 'verde' if in_window else 'rojo'
+        elif last_date:
+            vals['measure_state'] = 'verde'
+        return vals
 
     @api.model
     def _sgi_generic_user_ids(self):
@@ -1093,8 +1154,9 @@ class SgiProcessActivity(models.Model):
     @api.model
     def _sgi_exec_window_start(self):
         """Lunes de hace 3 semanas: la ventana de 4 semanas que el cron
-        recalcula y reemplaza en sgi.activity.exec.stat."""
-        today = fields.Date.context_today(self)
+        recalcula y reemplaza en sgi.activity.exec.stat. 57.15.0 (G-007):
+        la semana se corta en hora local (antes, a medianoche UTC)."""
+        today = sgi_today(self.env)
         monday = today - timedelta(days=today.weekday())
         return monday - timedelta(weeks=self._SGI_EXEC_WEEKS - 1)
 
@@ -1278,12 +1340,12 @@ class SgiProcessActivity(models.Model):
                 ('from_activity_id.active', '=', True),
                 ('to_activity_id.active', '=', True)])._sgi_evaluate_chain(),
         )
-        for step in steps:
-            try:
-                step()
-            except Exception:
-                _logger.exception(
-                    "SGI: falló un paso del cron de medición; continúo.")
+        # 57.16.0 (G-002): cada paso en su savepoint (``sgi.cron._sgi_step``):
+        # un error SQL en uno ya no deja la transacción abortada para los
+        # siguientes.
+        Cron = self.env['sgi.cron']
+        for number, step in enumerate(steps, 1):
+            Cron._sgi_step("medición de actividades, paso %d" % number, step)
         return True
 
     def _sgi_checked_measure_domain(self):
@@ -1311,7 +1373,9 @@ class SgiProcessActivity(models.Model):
         if not self.measure_model_id:
             raise UserError(
                 "Esta actividad no tiene modelo de medición ligado.")
-        domain = self._sgi_checked_measure_domain()
+        # 57.16.0 (H-006): los mismos registros que cuenta la medición.
+        domain = self._sgi_checked_measure_domain() + self._sgi_measure_company_domain(
+            self.env[self.measure_model_id.model])
         return {
             'type': 'ir.actions.act_window',
             'name': "%s — evidencia" % (
@@ -1390,6 +1454,9 @@ class SgiProcessActivity(models.Model):
         # cuerpo del procedimiento: no dispara revisión documental (G14).
         if set(vals) - self._SGI_MEASURE_FIELDS:
             self.process_id._sgi_flag_procedure_dirty()
+            # 57.17.0 (G-015): el texto de la actividad entra en la huella de
+            # «Mi procedimiento»: los puestos con rol en ella se recalculan.
+            self.sudo().with_context(active_test=False).role_ids._sgi_mp_jobs()._sgi_mp_mark_dirty()
         return res
 
     def unlink(self):

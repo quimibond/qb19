@@ -234,9 +234,53 @@ class SgiProcess(models.Model):
                 "Al entrar en vigor quedaron obsoletos, con la baja tramitada, %d "
                 "documento(s) sustituido(s): %s." % (
                     len(docs), ", ".join(docs.mapped(lambda d: d.sgi_code or d.name)))))
+            process._sgi_warn_foreign_procedure_refs(docs)
             _logger.info("SGI: %s vigente → %d documento(s) sustituido(s) obsoleto(s) y en baja.",
                          process.code, len(docs))
         return True
+
+    def _sgi_warn_foreign_procedure_refs(self, docs):
+        """57.16.0 (H-016): actividades activas de OTRO proceso que citan como
+        «Procedimiento relacionado» un documento que este proceso acaba de
+        obsoletar. No se cambia nada (la fuente de verdad es el documento,
+        decisión 3): se avisa en el chatter de los dos procesos y al dueño del
+        otro proceso (o al Jefe MAST) para que liguen el procedimiento
+        vigente. Devuelve las actividades encontradas."""
+        self.ensure_one()
+        Activity = self.env['sgi.process.activity'].sudo()
+        refs = Activity.search([
+            ('related_procedure_id', 'in', docs.ids),
+            ('process_id', '!=', self.id), ('process_id', '!=', False)])
+        if not refs:
+            return refs
+        Cron = self.env['sgi.cron']
+        manager_id = Cron._sgi_manager_user_id()
+        lines = []
+        for other in refs.process_id:
+            acts = refs.filtered(lambda a, o=other: a.process_id == o)
+            items = ", ".join("%s (cita %s)" % (
+                a.number or a.name,
+                a.related_procedure_id.sgi_code or a.related_procedure_id.name) for a in acts)
+            state = dict(other._fields['state'].selection).get(other.state, other.state)
+            lines.append("%s [%s]: %s" % (other.display_name, state, items))
+            note = ("El proceso %s entró en vigor y obsoletó procedimientos que estas "
+                    "actividades de %s todavía citan: %s. Liga el procedimiento vigente "
+                    "(o quítalo) en cada actividad." % (
+                        self.display_name, other.display_name, items))
+            other.sudo().message_post(body=note)
+            user_id = other.owner_id.user_id.id or manager_id
+            if user_id:
+                Cron._sgi_step(
+                    "aviso de procedimiento obsoleto citado en %s" % other.display_name,
+                    lambda o=other, n=note, u=user_id: Cron._sgi_schedule(
+                        o, "Actividades citan un procedimiento obsoleto (%s)" % self.code,
+                        n, u, key='procedimiento_obsoleto_citado:%d' % self.id))
+        self.message_post(body=(
+            "Aviso: actividades de otros procesos citan un procedimiento que quedó "
+            "obsoleto: %s." % "; ".join(lines)))
+        _logger.info("SGI: %s vigente → %d actividad(es) de otros procesos citan un "
+                     "procedimiento obsoleto.", self.code, len(refs))
+        return refs
 
     @api.constrains('parent_id')
     def _check_parent_recursion(self):

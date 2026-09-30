@@ -13,6 +13,194 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.18.0 — 2026-09-30
+
+**Agregado (entrega 8, `e8-checklist-pin`: I-005, D-08):** parámetro
+`quimibond_sgi.checklist_pin_required` («PIN obligatorio para firmar
+checklists» en Ajustes → SGI). **Apagado por default**: se firma como hasta
+hoy y, si el empleado no tiene PIN, la hoja dice «(sin PIN registrado)».
+Encendido: un empleado sin PIN en su ficha no puede firmar la hoja
+(«Terminar checklist» lo detiene con el aviso para RH); con PIN, el PIN
+tiene que coincidir, como siempre.
+
+**Cómo encenderlo (cuando RH haya capturado los PIN):** Ajustes → SGI →
+«PIN obligatorio para firmar checklists», o el parámetro
+`quimibond_sgi.checklist_pin_required` = `True` en Ajustes → Técnico →
+Parámetros del sistema. Antes, llenar «Quién lo llena» en cada plantilla. El
+README (puesta en marcha, paso 8) lo documenta.
+
+**Pendiente de D-08 (no es código):** la cuenta de tableta por área la
+decide Jose y la crea Sistemas; el programador no crea usuarios.
+
+**Datos de producción (auditoría I-005):** 163 de 165 empleados sin PIN; por
+eso va apagado. **Migración:** ninguna.
+
+**Pruebas:** `test_checklist_pin` (3 casos, datos propios: apagado firma sin
+PIN, encendido no firma sin PIN y sí con el PIN correcto, ajuste en
+pantalla).
+
+## 19.0.57.17.0 — 2026-09-30
+
+**Cambiado (entrega 8, `e8-rendimiento`: G-015, G-016, G-023):**
+
+- **Mi equipo y la ficha del puesto leen cifras guardadas** (G-015). Campos
+  nuevos en `hr.job`: `sgi_mp_hash_current` (huella de «Mi procedimiento»),
+  `sgi_mp_job_late`, `sgi_mp_job_ok`, `sgi_mp_job_unmeasured`,
+  `sgi_mp_job_total` y `sgi_mp_stats_at`. Los recalcula el cron de medición
+  después de medir (03:00, cuando cambia el semáforo), el aviso semanal de
+  «Mi procedimiento» (solo los puestos marcados) y la migración. Un cambio
+  de roles, del texto de una actividad o una publicación marca el puesto «por
+  recalcular» (`sgi_mp_stats_at` vacío, `_sgi_mp_touch_jobs`) y, mientras
+  tanto, ese puesto se calcula al vuelo **sin escribir** (se puede leer desde
+  una consulta de solo lectura). «Desactualizado» en la ficha compara contra
+  la huella guardada. Límite conocido: un cambio de documento que no toca
+  roles ni actividades (p. ej. la clave del procedimiento relacionado) se
+  refleja en la siguiente corrida nocturna.
+- **Fechas hábiles por corrida** (G-016): `sgi_calendar.SgiWorkdays` pide al
+  calendario los días hábiles de toda la corrida del cumplimiento semanal
+  UNA vez y resuelve `_sgi_due` en memoria (mismo resultado que
+  `sgi_add_business_days`; fuera del rango usa la función normal). «Tiene
+  salida» se pregunta en una consulta por lote en vez de una por registro.
+- **Fusión de puestos** (G-023): `flush_all()` antes del SQL; después, los
+  campos guardados calculados o relacionados que apuntan a `hr.job` (p. ej.
+  `hr.employee.sgi_mp_job_id`, que sale de la versión) se recalculan y el
+  «Mi procedimiento» guardado de los empleados del puesto que se queda se
+  marca para recalcular (`_sgi_merge_recompute`).
+
+**Rendimiento (razonado, sin medir; medir en staging con
+`--log-level=debug_sql`):** un filtro de Mi equipo pasaba por
+`_sgi_my_procedure_data()` de cada puesto (auditoría: 30-80 consultas por
+puesto, más de 100 puestos → 3,000-8,000 consultas por clic); ahora lee
+`hr.job` guardado (una lectura por lote) más los puestos por recalcular. El
+cumplimiento semanal llamaba al calendario (`_work_intervals_batch`) por
+cada registro de entrada de 90 días y por cada una de las 4 semanas, más un
+`search_count` por candidato vencido; ahora una llamada al calendario por
+corrida y una búsqueda por entrada y semana. El costo del cálculo completo
+pasa a una vez por noche (03:00).
+
+**Migración (`migrations/19.0.57.17.0/post-migrate.py`):** llena las cifras
+guardadas de los puestos con roles y personas. Solo campos nuevos.
+
+**Pruebas:** `test_rendimiento` (3 casos, datos propios: días hábiles en
+memoria iguales al calendario con festivos, cifras guardadas y «por
+recalcular», recálculo tras mover el puesto por SQL).
+
+## 19.0.57.16.0 — 2026-09-30
+
+**Corregido (entrega 8, `e8-medicion-robusta`: G-002, H-005, G-003, H-006,
+G-019, H-016, G-026; J-009):**
+
+- **Savepoint por medición** (G-002, H-005): `_sgi_measure_odoo` mide cada
+  actividad en su savepoint y **también escribe** el resultado en uno propio
+  (antes el `write` quedaba fuera y un error cortaba el paso completo). Lo
+  que truena queda en «Avisos de medición» (`measure_warning`: «No se pudo
+  medir: …») y en el log; antes `except Exception: pass`. Los pasos del cron
+  de medición y la medición semanal de cumplimiento van por
+  `sgi.cron._sgi_step`, y `sgi.activity.week.stat._sgi_compute` usa un
+  savepoint por actividad. Las solicitudes de firma de acuses
+  (`sgi_sign_elearning`) también.
+- **Filtro de evidencia inválido → aviso** (G-003): un `measure_domain` que no
+  se puede leer o que nombra un campo inexistente deja la actividad **sin
+  semáforo** con «Filtro de evidencia inválido: <error>». Antes se tomaba
+  como `[]`: contaba todo el modelo y salía verde.
+- **Solo la empresa del SGI** (H-006, G-019, D-03): la medición de
+  actividades, la evidencia que abre «Ver registros» y el cumplimiento
+  semanal cuentan solo registros de `sgi.config._sgi_company()` (o sin
+  empresa) cuando el modelo tiene `company_id` guardado. Los crons de
+  evaluación de proveedores (recepciones), EPP y competencias
+  (certificaciones y formación) filtran igual; calibración ya lo hacía.
+- **Semanas en hora local** (G-007 c, completa 57.15.0): el cumplimiento
+  semanal corta la semana a medianoche de México y compara «a tiempo» con la
+  fecha local de la salida.
+- **Procedimiento de otro proceso** (H-016): al entrar en vigor un proceso,
+  si una actividad activa de OTRO proceso cita como «Procedimiento
+  relacionado» un documento que se acaba de obsoletar, se avisa en el
+  chatter de los dos procesos y con una actividad al dueño del otro proceso
+  (o al Jefe MAST), clave `procedimiento_obsoleto_citado:<proceso>`. No se
+  cambia la liga (decisión 3).
+- **Reincidencia** (G-026): cancelar una NC o cambiarla de proceso recalcula
+  la reincidencia de las NC posteriores de los procesos afectados.
+- **Aprobador ≠ solicitante** (H-018, J-010): ya lo resuelve 57.13.0 (roles
+  relativos); no se duplica. La carga por API sigue avisando sin rechazar
+  hasta que Jose cargue el aprobador de E2.01, S4.03 y S6.07.
+
+**Migración:** ninguna. La próxima corrida del cron de medición deja el aviso
+en las actividades con filtro inválido (H-005: las 8 con registros y sin
+semáforo deberían ganar semáforo o su motivo).
+
+**Pruebas:** `test_medicion_robusta` (6 casos, datos propios: filtro roto,
+error en una actividad sin tumbar a la siguiente, segunda empresa no cuenta
+(J-009), cron completo con una actividad rota, aviso de procedimiento de
+otro proceso y reincidencia recalculada).
+
+## 19.0.57.15.0 — 2026-09-30
+
+**Cambiado (entrega 8, `e8-zona-horaria-y-dias-habiles`: G-007, G-008,
+G-009, G-020, G-022; decisión 4 de la tanda 2):**
+
+- **Hoy en hora de México** (`sgi_calendar.sgi_today`): los crons corren como
+  OdooBot, sin zona, y `context_today` les daba la fecha UTC (desde las 18:00
+  de México ya era «mañana»). Ahora el «hoy» de los crons del SGI, de la
+  medición de actividades, del cumplimiento semanal, de los checklists y de
+  los crons mensual y semanal de indicadores sale de la zona del calendario
+  de días hábiles (`quimibond_sgi.business_calendar_id`; si no tiene,
+  America/Mexico_City). **OdooBot no se toca.** Las semanas de
+  `sgi.activity.week.stat` y `exec.stat` se cortan en hora local.
+- Un datetime se pasa a **fecha local** antes de contar días hábiles
+  (`sgi_business_days`, `sgi_add_business_days`): una entrada de las 19:00 ya
+  no cuenta como del día siguiente.
+- **Escalamientos en días hábiles** (los parámetros siguen siendo números y
+  en Ajustes dicen «días hábiles»): NC sin acción (5 / 3), acción vencida al
+  jefe y a Dirección (7 / 15), plazo de NC vencido a MAST (3), acuse
+  pendiente (7), captura de la medición mensual (4 hábiles después del día 1)
+  y semanal (2 hábiles después del lunes). Los avisos de revisión bienal y de
+  piloto siguen en días naturales (son anticipación, no plazo de trabajo).
+- **Vencimiento en día inhábil se adelanta** al hábil anterior: el semanal
+  por día de la semana y el de mes y día (sin salirse del periodo: un lunes
+  festivo pasa al martes) y el «día 10» del plan de una medición roja.
+- **Cadencia trimestral, semestral o anual sin mes y día** marca «Sin plazo»
+  (`no_timing`, error) aunque una entrada tenga plazo (G-008 a): su «cuándo»
+  salía vacío en Mi procedimiento.
+- **Corrida mensual una sola vez** (G-020): `quimibond_sgi.monthly_run_done`
+  = AAAA-MM; ya no repite foto, trayectorias y cierre de presupuestos cada
+  día mientras el mes anterior siga sin mediciones.
+- **Checklists** (G-022, decisión 14): `schedule_date` a las 08:00 hora local
+  (antes 08:00 UTC = 02:00 en México); los festivos no generan hoja; la
+  semanal sale el primer día hábil de la semana en que corra el cron (una
+  vez por semana, se recupera si el lunes falló); una plantilla sin equipos
+  avisa al Jefe MAST (`checklist_sin_equipos`, un aviso por plantilla que se
+  cierra solo al cargar equipos). `sgi.checklist.template` lleva chatter y
+  actividades (`mail.thread`, `mail.activity.mixin`).
+
+**Migración (`migrations/19.0.57.15.0/post-migrate.py`):**
+
+1. `sgi.config._sgi_load_holidays([2026, 2027, 2028])`: los festivos de la
+   LFT, art. 74 (1-ene, primer lunes de febrero, tercer lunes de marzo,
+   1-may, 16-sep, tercer lunes de noviembre, 25-dic y el 1-oct sexenal), como
+   ausencias globales del calendario del parámetro (21). Idempotente, nada se
+   borra, no se cae al calendario de la compañía. **Los del contrato
+   colectivo no están documentados en el repositorio: no se cargan**; RH los
+   confirma y se capturan a mano en el calendario 21.
+2. `sgi.config._sgi_move_cron_hours()` (los crons son `noupdate`, A-007):
+   checklists 05:30 y medición de actividades 03:00 hora de México; legal,
+   contexto, participación, Sign/eLearning y Mi procedimiento de las
+   20:xx-22:xx de México a las 06:xx del mismo día UTC. Idempotente.
+3. Las actividades de cadencia larga sin mes ni día recalculan faltantes.
+
+**Datos de producción (MCP, solo lectura, 2026-09-30):** calendario 21
+(America/Mexico_City) sin ausencias globales; ninguna ausencia global desde
+2025 en ningún calendario; ningún empleado (calendarios 9, 13, 32) ni centro
+de trabajo (9, 25, 31, 33) usa el 21. Crons 215 (checklists, 22:44 UTC), 196
+(medición, 22:27), 197 y 199 (02:39), 198 (02:39, semestral), 200 (04:20) y
+213 (04:40). Esperado: 21 festivos, 7 crons movidos, 15 actividades con el
+faltante nuevo (C6.21, E1.01-E1.03, E1.10, E2.05, E2.12, E2.21, S3.21,
+S4.22-S4.24, S4.26, S4.30, S6.02). Los crons 184 y 185 son de
+`quimibond_ventas_presupuesto` y no se mueven aquí.
+
+**Pruebas:** `test_zona_horaria` (10 casos, datos propios: calendario de
+México con los festivos de 2027; vencimiento en sábado y en festivo, J-011).
+`test_ola1` y `test_ola2` cuentan la antigüedad en días hábiles.
+
 ## 19.0.57.14.0 — 2026-09-29
 
 **Agregado (indicadores 2, aprobado por Jose 2026-09-29, con sus decisiones

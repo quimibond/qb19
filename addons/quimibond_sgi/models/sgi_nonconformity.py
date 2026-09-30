@@ -7,7 +7,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_base import sgi_bypass_allowed
-from .sgi_calendar import sgi_add_business_days
+from .sgi_calendar import sgi_add_business_days, sgi_business_days
 from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
@@ -307,7 +307,8 @@ class QualityAlert(models.Model):
                         label.lower(), folio, due, what),
                     process_owner_id)
                 scheduled.append(summary)
-            if (today - due).days > mast_after and manager_id:
+            # 57.15.0 (G-009): el umbral de MAST se cuenta en días hábiles.
+            if sgi_business_days(self.env, due, today) > mast_after and manager_id:
                 summary = "NC %s: %s vencida hace más de %d días, escalada a MAST" % (
                     folio, label.lower(), mast_after)
                 Cron._sgi_schedule(
@@ -427,6 +428,18 @@ class QualityAlert(models.Model):
                                and other.sgi_norm_clause_id == alert.sgi_norm_clause_id) else 1
             alert.sgi_recurrence_count = count
             alert.sgi_is_recurrent = count >= 1
+
+    def _sgi_recompute_later_recurrence(self, processes):
+        """Marca para recalcular la reincidencia de las NC con folio de estos
+        procesos creadas después de la primera de ``self`` (G-026)."""
+        if not processes or not self.ids:
+            return
+        later = self.sudo().with_context(active_test=False).search([
+            ('sgi_process_id', 'in', processes.ids), ('sgi_folio', '!=', False),
+            ('id', '>', min(self.ids)), ('id', 'not in', self.ids)])
+        if later:
+            for fname in ('sgi_recurrence_count', 'sgi_is_recurrent'):
+                self.env.add_to_compute(self._fields[fname], later)
 
     def _sgi_read_across(self):
         """H2: al cerrar una NC reincidente ligada a un AMEF, agenda revisión en
@@ -555,7 +568,18 @@ class QualityAlert(models.Model):
             if new_stage.sgi_is_closing_stage:
                 newly_closed = self.filtered(
                     lambda a: a.stage_id != new_stage and a.sgi_folio)
+        # 57.16.0 (G-026): cancelar (o reabrir) una NC o cambiarla de proceso
+        # cambia la reincidencia de las NC posteriores de ese proceso.
+        recurrence_scope = self.env['sgi.process']
+        if 'sgi_process_id' in vals:
+            recurrence_scope = self.sgi_process_id
+        elif 'stage_id' in vals:
+            target = self.env['quality.alert.stage'].browse(vals['stage_id'])
+            if target.sgi_is_cancel_stage or any(self.stage_id.mapped('sgi_is_cancel_stage')):
+                recurrence_scope = self.sgi_process_id
         res = super().write(vals)
+        if 'sgi_process_id' in vals or recurrence_scope:
+            self._sgi_recompute_later_recurrence(recurrence_scope | self.sgi_process_id)
         Cron = self.env['sgi.cron']
         if vals.get('sgi_followup_action') == 'administrativa':
             self._sgi_request_admin_record()

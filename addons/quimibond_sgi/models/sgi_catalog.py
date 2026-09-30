@@ -491,6 +491,29 @@ class HrJob(models.Model):
         return refs
 
     @api.model
+    def _sgi_merge_recompute(self, keep, others):
+        """Tras mover por SQL las referencias de ``others`` a ``keep``: marca
+        para recalcular los campos guardados calculados o relacionados que
+        apuntan a hr.job (siguen con el valor viejo o dependen de uno que se
+        movió) y el procedimiento guardado de los empleados de ``keep``."""
+        for model_name in self.env.registry:
+            Model = self.env[model_name]
+            if Model._abstract or Model._transient or not Model._auto:
+                continue
+            for name, field in Model._fields.items():
+                if (field.type in ('many2one', 'many2many') and field.comodel_name == 'hr.job'
+                        and field.store and (field.compute or field.related)):
+                    records = Model.sudo().with_context(active_test=False).search(
+                        [(name, 'in', (keep | others).ids)])
+                    if records:
+                        self.env.add_to_compute(field, records)
+        # Primero el puesto guardado del empleado; con él ya al día, el
+        # «Mi procedimiento» guardado de quienes quedaron en ``keep``.
+        self.env.flush_all()
+        self.env['hr.employee']._sgi_mp_touch_jobs(keep | others)
+        self.env.flush_all()
+
+    @api.model
     def sgi_merge_duplicate_jobs(self, dry_run=True, company_id=None):
         """Fusiona puestos duplicados (mismo nombre normalizado y empresa) y
         limpia los saltos de línea de los nombres.
@@ -516,6 +539,10 @@ class HrJob(models.Model):
         refs = self._sgi_job_references()
         cr = self.env.cr
         report = {'dry_run': bool(dry_run), 'merged': [], 'renamed': []}
+        if not dry_run:
+            # 57.17.0 (G-023): las escrituras pendientes del ORM van a la base
+            # ANTES del SQL; si no, se aplicaban después y pisaban la fusión.
+            self.env.flush_all()
         for dup_group in groups.values():
             if len(dup_group) < 2:
                 continue
@@ -554,6 +581,11 @@ class HrJob(models.Model):
             })
             if not dry_run:
                 self.env.invalidate_all()
+                # 57.17.0 (G-023): los campos guardados que se calculan a
+                # partir del puesto (p. ej. hr.employee.sgi_mp_job_id, que sale
+                # de la versión) y el «Mi procedimiento» guardado de quienes
+                # quedaron en el puesto que se conserva.
+                self._sgi_merge_recompute(keep, others)
                 others.write({'active': False})
                 for other in others:
                     other.message_post(

@@ -26,7 +26,7 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-from .sgi_calendar import sgi_nth_business_day
+from .sgi_calendar import sgi_nth_business_day, sgi_previous_business_day, sgi_today
 
 from .sgi_guard import sgi_require_system
 
@@ -115,7 +115,8 @@ class SgiIndicatorMeasurePlan(models.Model):
     action_line_ids = fields.One2many('sgi.action.line', 'measure_id', string="Acciones")
     plan_required = fields.Boolean(compute='_compute_plan', string="Requiere plan")
     plan_due = fields.Date(compute='_compute_plan', string="Plan antes del",
-                           help="Día 10 del mes siguiente al periodo.")
+                           help="Día 10 del mes siguiente al periodo (si es inhábil, el "
+                                "hábil anterior).")
     plan_done = fields.Boolean(compute='_compute_plan', string="Plan capturado")
 
     @api.depends('semaphore', 'state', 'small_sample', 'period_date', 'cause',
@@ -123,13 +124,20 @@ class SgiIndicatorMeasurePlan(models.Model):
     def _compute_plan(self):
         day = int(self.env['ir.config_parameter'].sudo().get_param(
             'quimibond_sgi.red_plan_due_day', 10) or 10)
+        adjusted = {}
         for measure in self:
             measure.plan_required = measure._sgi_red_with_data()
             measure.plan_done = bool(measure.cause and measure.action_line_ids)
             if measure.period_date and measure.indicator_id:
                 period_end = measure.indicator_id._sgi_period_bounds(measure.period_date)[1]
-                measure.plan_due = (period_end.replace(day=1)
-                                    + relativedelta(months=1)).replace(day=min(day, 28))
+                due = (period_end.replace(day=1)
+                       + relativedelta(months=1)).replace(day=min(day, 28))
+                # 57.15.0 (decisión 4 de la tanda 2): si el día 10 es
+                # inhábil, se adelanta al hábil anterior del mismo mes.
+                if due not in adjusted:
+                    adjusted[due] = sgi_previous_business_day(
+                        self.env, due, floor=due.replace(day=1))
+                measure.plan_due = adjusted[due]
             else:
                 measure.plan_due = False
 
@@ -213,12 +221,23 @@ class SgiIndicatorMeasurePlan(models.Model):
 class SgiCronCalendar(models.AbstractModel):
     _inherit = 'sgi.cron'
 
+    _SGI_MONTHLY_DONE_PARAM = 'quimibond_sgi.monthly_run_done'
+
     @api.model
     def _sgi_monthly_run_due(self, today):
         """Tercer día hábil del mes (parámetro), o después si el mes anterior
-        sigue sin mediciones (el cron no corrió ese día)."""
-        nth = int(self.env['ir.config_parameter'].sudo().get_param(
-            'quimibond_sgi.monthly_measure_business_day', 3) or 3)
+        sigue sin mediciones (el cron no corrió ese día).
+
+        57.15.0 (G-020): una sola corrida programada por mes. Si ya corrió
+        este mes (``quimibond_sgi.monthly_run_done`` = AAAA-MM) no vuelve a
+        correr aunque el mes anterior siga sin mediciones (todos los
+        indicadores con «medir desde» futuro, o el paso de mediciones
+        falló): antes repetía la foto, las trayectorias y el cierre de
+        presupuestos todos los días."""
+        Param = self.env['ir.config_parameter'].sudo()
+        if Param.get_param(self._SGI_MONTHLY_DONE_PARAM) == today.strftime('%Y-%m'):
+            return False
+        nth = int(Param.get_param('quimibond_sgi.monthly_measure_business_day', 3) or 3)
         run_day = sgi_nth_business_day(self.env, today.year, today.month, nth)
         if today < run_day:
             return False
@@ -243,7 +262,7 @@ class SgiCronCalendar(models.AbstractModel):
         solo el tercer día hábil (o cuando el mes anterior siga sin medir).
         Sin ``scheduled`` (a mano) mide siempre, como antes."""
         sgi_require_system(self.env)  # F-008
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         self._sgi_step("escalamiento de planes de mediciones rojas",
                        lambda: self.env['sgi.indicator.measure']._sgi_escalate_red_plans(today))
         # 57.1.0: los indicadores con «Último cálculo» vacío toman el
@@ -257,12 +276,16 @@ class SgiCronCalendar(models.AbstractModel):
                        lambda: self.env['sgi.config'].recompute_pending_measures())
         if scheduled and not self._sgi_monthly_run_due(today):
             return True
-        return super().cron_indicators()
+        res = super().cron_indicators()
+        if scheduled:
+            self.env['ir.config_parameter'].sudo().set_param(
+                self._SGI_MONTHLY_DONE_PARAM, today.strftime('%Y-%m'))
+        return res
 
     @api.model
     def cron_indicators_weekly(self, scheduled=False):
         sgi_require_system(self.env)  # F-008
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         if scheduled and not self._sgi_weekly_run_due(today):
             return True
         return super().cron_indicators_weekly()

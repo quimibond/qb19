@@ -6,8 +6,6 @@ NC mayor (5 porqués + acción correctiva terminada, refinamiento H1).
 """
 from datetime import date
 
-from dateutil.relativedelta import relativedelta
-
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
@@ -297,10 +295,12 @@ class TestOla1Escalation(TransactionCase):
         cls.risk = cls.env['sgi.risk'].create({'name': 'R', 'instrument': 'ryo'})
 
     def _overdue_line(self, days):
+        # 57.15.0 (G-009): los umbrales (7 y 15) son días hábiles.
+        from ..models.sgi_calendar import sgi_add_business_days, sgi_today
         return self.env['sgi.action.line'].create({
             'risk_id': self.risk.id, 'name': 'Acción %d' % days,
             'responsible_id': self.resp.id,
-            'date_commit': date.today() - relativedelta(days=days)})
+            'date_commit': sgi_add_business_days(self.env, sgi_today(self.env), -days)})
 
     def _acts(self):
         return self.env['mail.activity'].search(
