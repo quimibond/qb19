@@ -1331,12 +1331,6 @@ class TestSalesBudgetAnalysis(TransactionCase):
         moves = self.env['account.move'].search(action['domain'])
         self.assertIn(inv, moves)
 
-    def test_02_cumulative_action(self):
-        budget = self.Budget.create({'year': 2040, 'team_id': self.team.id})
-        action = budget.action_open_cumulative()
-        self.assertEqual(action['res_model'], 'sgi.sales.budget.line')
-        self.assertTrue(any(v[1] == 'graph' for v in action['views']))
-
     def test_03_month_close_note_lists_top_gaps(self):
         self.team.user_id = self.env.user.id
         # Presupuesto grande, facturación baja → brecha; PA mayor brecha que PB.
@@ -1362,7 +1356,8 @@ class TestSalesBudgetAnalysis(TransactionCase):
 
 @tagged('post_install', '-at_install')
 class TestSalesBudgetAnalysisViews(TransactionCase):
-    """5.3: submenú Análisis con 4 vistas; anti-doble conteo; botón de ficha."""
+    """5.3: Análisis (una acción: pivot, gráfica de Dirección y lista desde
+    1.1.0; antes cuatro submenús); anti-doble conteo; botón de ficha."""
 
     @classmethod
     def setUpClass(cls):
@@ -1384,21 +1379,21 @@ class TestSalesBudgetAnalysisViews(TransactionCase):
             budget.state = state
         return budget, line
 
-    def test_01_four_actions_and_views_validate(self):
+    def test_01_analysis_action_and_views_validate(self):
         Line = self.env['sgi.sales.budget.line']
-        for xmlid in ('sgi_sales_analysis_mercado_action',
-                      'sgi_sales_analysis_cliente_action',
-                      'sgi_sales_analysis_producto_action',
-                      'sgi_sales_analysis_global_action'):
-            action = self.env.ref('quimibond_ventas_presupuesto.%s' % xmlid)
-            self.assertEqual(action.res_model, 'sgi.sales.budget.line')
-            self.assertTrue(action.view_ids, "La acción define sus vistas.")
-            for v in action.view_ids:
-                # get_view valida/renderiza la arquitectura de cada vista.
-                Line.get_view(view_id=v.view_id.id, view_type=v.view_mode)
-            ctx = action.context
-            self.assertIn('search_default_vigente', ctx)
-            self.assertIn('search_default_presupuesto', ctx)
+        action = self.env.ref('quimibond_ventas_presupuesto.sgi_sales_analysis_mercado_action')
+        self.assertEqual(action.res_model, 'sgi.sales.budget.line')
+        self.assertEqual(sorted(action.view_ids.mapped('view_mode')), ['graph', 'list', 'pivot'])
+        for v in action.view_ids:
+            # get_view valida/renderiza la arquitectura de cada vista.
+            Line.get_view(view_id=v.view_id.id, view_type=v.view_mode)
+        ctx = action.context
+        self.assertIn('search_default_vigente', ctx)
+        self.assertIn('search_default_presupuesto', ctx)
+        for gone in ('sgi_sales_analysis_cliente_action', 'sgi_sales_analysis_producto_action',
+                     'sgi_sales_analysis_global_action'):
+            self.assertFalse(self.env.ref('quimibond_ventas_presupuesto.%s' % gone,
+                                          raise_if_not_found=False))
 
     def test_02_vigente_filter_excludes_obsolete_and_draft(self):
         appr, appr_line = self._budget_line(2040, 'aprobado')

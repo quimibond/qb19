@@ -41,6 +41,14 @@ class SgiSalesBudgetLine(models.Model):
         help="Presupuesto: vacío = producto para todo el mercado; con cliente = "
              "esa cuenta (un producto no mezcla ambos). Pronóstico: es el cliente "
              "de la cabecera (no editable).")
+    release_id = fields.Many2one(
+        'qb.release', string="Release", index=True, copy=False,
+        help="Release del cliente que escribió la cantidad de esta semana.")
+    forecast_source = fields.Selection([
+        ('manual', "Captura"),
+        ('release', "Release del cliente"),
+    ], string="Origen", default='manual', copy=False,
+        help="Pronóstico: de dónde salió la cantidad.")
     date = fields.Date(string="Mes / Semana", required=True,
                        help="Presupuesto: primer día del mes. Pronóstico: lunes "
                             "de la semana.")

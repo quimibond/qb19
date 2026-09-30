@@ -711,25 +711,11 @@ class SgiSalesBudget(models.Model):
             'view_mode': 'pivot,list',
             'views': [
                 (self.env.ref(
-                    'quimibond_ventas_presupuesto.sgi_sales_analysis_pivot_cliente').id, 'pivot'),
+                    'quimibond_ventas_presupuesto.sgi_sales_analysis_pivot_mercado').id, 'pivot'),
                 (self.env.ref(
                     'quimibond_ventas_presupuesto.sgi_sales_budget_line_view_list').id, 'list')],
             'domain': [('budget_id', '=', self.id)],
-            'context': {'search_default_group_partner': 1},
-        }
-
-    def action_open_cumulative(self):
-        """Curva acumulada mes a mes (presupuesto vs facturado YTD) — la gráfica
-        de la Revisión por la Dirección."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Curva acumulada — %s" % self.name,
-            'res_model': 'sgi.sales.budget.line',
-            'view_mode': 'graph',
-            'views': [(self.env.ref(
-                'quimibond_ventas_presupuesto.sgi_sales_budget_line_view_graph_curve').id, 'graph')],
-            'domain': [('budget_id', '=', self.id)],
+            'context': {'pivot_row_groupby': ['partner_id']},
         }
 
     # --- Matriz para el reporte F-P-A28-18 -----------------------------------
@@ -1128,11 +1114,9 @@ class SgiSalesBudget(models.Model):
 
     def _sgi_forecast_covered_products(self):
         """IDs de productos cubiertos por un pronóstico REVISADO del mismo año y
-        compañía. Esos productos los manda el pronóstico al MPS con su demanda neta;
-        el presupuesto NO debe volverlos a enviar (anti-doble conteo, P-A28 4.2.1 +
-        4.2.2.5). Solo cuenta el pronóstico 'revisado': un borrador NO puede enviar
-        demanda (action_send_to_mps exige 'revisado'), así que omitir sus productos
-        del presupuesto los dejaría SIN demanda en el MPS."""
+        compañía. Informativo: el envío al MPS ya no omite por producto y año
+        sino por producto + cliente + mes (_qb_mps_totals, N2). Solo cuenta el
+        pronóstico 'revisado': un borrador no puede enviar demanda."""
         self.ensure_one()
         forecasts = self.env['sgi.sales.budget'].search([
             ('kind', '=', 'pronostico'), ('year', '=', self.year),
@@ -1141,16 +1125,121 @@ class SgiSalesBudget(models.Model):
 
     def _sgi_mps_warehouse(self):
         self.ensure_one()
+        return self._qb_mps_warehouse(self.company_id)
+
+    @api.model
+    def _qb_mps_warehouse(self, company):
+        """Almacén del MPS: el de los programas que ya existen en la compañía
+        (en producción todos están en Toluca) o, si no hay, el primero por
+        secuencia. Antes era «el primero que devolviera la búsqueda» (N7)."""
+        sched = self.env['mrp.production.schedule'].search(
+            [('company_id', '=', company.id)], limit=1) \
+            if 'mrp.production.schedule' in self.env else None
+        if sched:
+            return sched.warehouse_id
         warehouse = self.env['stock.warehouse'].search(
-            [('company_id', '=', self.company_id.id)], limit=1)
+            [('company_id', '=', company.id)], order='sequence, id', limit=1)
         if not warehouse:
             raise UserError("No hay almacén configurado para la compañía.")
         return warehouse
 
+    @api.model
+    def _qb_mps_split_month(self, first_day, qty, company):
+        """Reparte la cantidad mensual del presupuesto en los periodos del MPS
+        (N8): en un MPS semanal, partes iguales en los lunes que caen en el
+        mes; en uno mensual, todo el día 1. Así el mes no se amontona en la
+        semana del día 1."""
+        period = getattr(company, 'manufacturing_period', 'month') or 'month'
+        if period != 'week':
+            return {first_day: qty}
+        _, next_month = self.env['sgi.sales.budget.line']._sgi_month_bounds(first_day)
+        monday = first_day + timedelta(days=(7 - first_day.weekday()) % 7)
+        mondays = []
+        while monday < next_month:
+            mondays.append(monday)
+            monday += timedelta(weeks=1)
+        if not mondays:
+            return {first_day: qty}
+        return {m: qty / len(mondays) for m in mondays}
+
+    @api.model
+    def _qb_mps_totals(self, products, company):
+        """Demanda TOTAL al MPS por (producto, fecha) en la unidad de venta:
+
+          · suma de la demanda neta de TODOS los pronósticos revisados de la
+            compañía (N1: antes cada pronóstico escribía la celda con lo suyo y
+            el último enviado borraba a los demás clientes);
+          · más el presupuesto aprobado de lo que ningún pronóstico cubre, por
+            producto + cliente + mes (N2: antes bastaba que un cliente
+            pronosticara el producto para quitarlo del presupuesto de todos,
+            todo el año). Una línea global (sin cliente) se omite si cualquier
+            pronóstico trae el producto ese mes.
+
+        Devuelve (demanda, omitidas) con omitidas = líneas de presupuesto que se
+        dejaron fuera por estar cubiertas."""
+        demand = defaultdict(float)
+        omitted = self.env['sgi.sales.budget.line']
+        if not products:
+            return demand, omitted
+        forecast_lines = self.env['sgi.sales.budget.line'].search([
+            ('budget_id.kind', '=', 'pronostico'),
+            ('budget_id.state', '=', 'revisado'),
+            ('company_id', '=', company.id),
+            ('product_id', 'in', products.ids),
+        ])
+        covered_partner, covered_any = set(), set()
+        for line in forecast_lines:
+            partner = line.partner_id.commercial_partner_id.id
+            month = (line.date.year, line.date.month)
+            covered_partner.add((line.product_id.id, partner, month))
+            covered_any.add((line.product_id.id, month))
+            if line.qty_net_demand <= 0:
+                # La semana existe (p. ej. el release la dejó en 0): se escribe
+                # la celda en 0 para que el MPS no conserve la cantidad vieja.
+                demand[(line.product_id, line.date)] += 0.0
+                continue
+            conv = _convert_qty(line.qty_net_demand, line.uom_id,
+                                line.product_id.uom_id)
+            demand[(line.product_id, line.date)] += (
+                conv if conv is not None else line.qty_net_demand)
+        budget_lines = self.env['sgi.sales.budget.line'].search([
+            ('budget_id.kind', '=', 'presupuesto'),
+            ('budget_id.state', '=', 'aprobado'),
+            ('company_id', '=', company.id),
+            ('product_id', 'in', products.ids),
+            ('qty_budget', '>', 0),
+        ])
+        for line in budget_lines:
+            month = (line.date.year, line.date.month)
+            if line.partner_id:
+                key = (line.product_id.id, line.partner_id.commercial_partner_id.id, month)
+                is_covered = key in covered_partner
+            else:
+                is_covered = (line.product_id.id, month) in covered_any
+            if is_covered:
+                omitted |= line
+                continue
+            conv = _convert_qty(line.qty_budget, line.uom_id, line.product_id.uom_id)
+            qty = conv if conv is not None else line.qty_budget
+            for when, part in self._qb_mps_split_month(line.date, qty, company).items():
+                demand[(line.product_id, when)] += part
+        return demand, omitted
+
+    @api.model
+    def _qb_mps_refresh(self, products, company):
+        """Recalcula y escribe en el MPS la demanda total de esos productos.
+        Devuelve (detalle de celdas, líneas de presupuesto omitidas)."""
+        if 'mrp.production.schedule' not in self.env or not products:
+            return [], self.env['sgi.sales.budget.line']
+        demand, omitted = self._qb_mps_totals(products, company)
+        warehouse = self._qb_mps_warehouse(company)
+        return self._sgi_push_forecast_cells(warehouse, demand), omitted
+
     def _sgi_push_forecast_cells(self, warehouse, demand):
         """Vuelca {(product, date): qty en unidad de venta} al forecast del MPS.
-        Crea el schedule si falta; re-envío actualiza sin duplicar. Devuelve el
-        detalle por celda (texto)."""
+        Crea el schedule si falta; re-envío actualiza sin duplicar. `demand`
+        debe traer el TOTAL de la celda (ver _qb_mps_totals), no lo de un solo
+        documento. Devuelve el detalle por celda (texto)."""
         Schedule = self.env['mrp.production.schedule']
         Forecast = self.env['mrp.product.forecast']
         details = []
@@ -1160,27 +1249,32 @@ class SgiSalesBudget(models.Model):
                 ('product_id', '=', product.id),
                 ('warehouse_id', '=', warehouse.id)], limit=1)
             if not sched:
+                if not qty:
+                    continue
                 sched = Schedule.create(
                     {'product_id': product.id, 'warehouse_id': warehouse.id})
             forecast = sched.forecast_ids.filtered(lambda f: f.date == when)[:1]
             if forecast:
                 forecast.forecast_qty = qty  # re-envío: actualiza sin duplicar
-            else:
+            elif qty:
                 Forecast.create({
                     'production_schedule_id': sched.id, 'date': when,
                     'forecast_qty': qty})
+            else:
+                continue
             details.append("%s · %s: %s %s" % (
                 product.default_code or product.name, when,
                 round(qty, 2), product.uom_id.name))
         return details
 
     def action_send_to_mps(self):
-        """Vuelca la demanda al forecast del Programa Maestro (mrp_mps),
-        diferenciada por kind:
+        """Vuelca la demanda al forecast del Programa Maestro (mrp_mps). La
+        celda producto × fecha lleva el TOTAL de todos los pronósticos
+        revisados y presupuestos aprobados de la compañía (_qb_mps_totals):
           · pronóstico → DEMANDA NETA por producto/semana (no el bruto);
-          · presupuesto → qty presupuestada por producto/mes, EXCLUYENDO los
-            productos cubiertos por un pronóstico vigente del mismo periodo (esos
-            los manda el pronóstico) — anti-doble conteo P-A28 4.2.1 / 4.2.2.5.
+          · presupuesto → qty por producto/mes repartida en los periodos del
+            MPS, sin lo que un pronóstico vigente ya cubre para ese cliente y
+            mes (anti-doble conteo P-A28 4.2.1 / 4.2.2.5).
         No crea pedidos de venta; el re-envío actualiza sin duplicar."""
         self.ensure_one()
         if 'mrp.production.schedule' not in self.env:
@@ -1195,47 +1289,31 @@ class SgiSalesBudget(models.Model):
             raise UserError(
                 "Solo se envía la demanda de un pronóstico revisado (P-A28 "
                 "4.2.2.3): el pronóstico no se aprueba, se marca revisado.")
-        warehouse = self._sgi_mps_warehouse()
-        demand = defaultdict(float)
-        for line in self.line_ids:
-            if line.qty_net_demand <= 0:
-                continue
-            conv = _convert_qty(
-                line.qty_net_demand, line.uom_id, line.product_id.uom_id)
-            demand[(line.product_id, line.date)] += (
-                conv if conv is not None else line.qty_net_demand)
-        details = self._sgi_push_forecast_cells(warehouse, demand)
+        details, _omitted = self._qb_mps_refresh(
+            self.line_ids.product_id, self.company_id)
         self.message_post(
-            body="Demanda neta enviada al Programa Maestro (%d celdas):<br/>%s" % (
-                len(details), "<br/>".join(details) or "sin demanda"))
+            body="Demanda neta enviada al Programa Maestro (%d celdas, total de "
+                 "todos los pronósticos y presupuestos vigentes):<br/>%s" % (
+                     len(details), "<br/>".join(details) or "sin demanda"))
         return True
 
     def _send_budget_to_mps(self):
         self.ensure_one()
         if self.state != 'aprobado':
             raise UserError("Solo se envía la demanda de un presupuesto aprobado.")
-        warehouse = self._sgi_mps_warehouse()
-        covered = self._sgi_forecast_covered_products()
-        demand = defaultdict(float)
-        omitted = self.env['product.product']
-        for line in self.line_ids:
-            if line.qty_budget <= 0:
-                continue
-            if line.product_id.id in covered:
-                omitted |= line.product_id  # lo manda el pronóstico vigente
-                continue
-            conv = _convert_qty(
-                line.qty_budget, line.uom_id, line.product_id.uom_id)
-            demand[(line.product_id, line.date)] += (
-                conv if conv is not None else line.qty_budget)
-        details = self._sgi_push_forecast_cells(warehouse, demand)
+        details, omitted = self._qb_mps_refresh(
+            self.line_ids.filtered(lambda l: l.qty_budget > 0).product_id,
+            self.company_id)
+        omitted = omitted.filtered(lambda l: l.budget_id == self)
+        omitted_products = omitted.product_id
         omitted_txt = ", ".join(
-            p.default_code or p.name for p in omitted) or "ninguno"
+            p.default_code or p.name for p in omitted_products) or "ninguno"
         self.message_post(
-            body="Presupuesto → Programa Maestro: enviados %d celda(s); omitidos "
-                 "%d producto(s) por pronóstico vigente (los manda el pronóstico "
-                 "con su demanda neta): %s.<br/>%s" % (
-                     len(details), len(omitted), omitted_txt,
+            body="Presupuesto → Programa Maestro: escritas %d celda(s) con el total "
+                 "vigente; omitidos %d producto(s) por pronóstico vigente del "
+                 "mismo cliente y mes (los manda el pronóstico con su demanda "
+                 "neta): %s.<br/>%s" % (
+                     len(details), len(omitted_products), omitted_txt,
                      "<br/>".join(details) or "sin demanda propia del presupuesto"))
         return True
 
