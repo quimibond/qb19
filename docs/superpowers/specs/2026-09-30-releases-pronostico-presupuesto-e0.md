@@ -19,7 +19,50 @@ Rutas relativas a `addons/quimibond_ventas_presupuesto/` salvo que se diga otra 
 
 ## 1. Cuestionario por cliente
 
-<!-- CUESTIONARIO -->
+**Estado:** prellenado con la evidencia del correo 2026 (memoria de Supabase
+y Gmail, conteo de correos originales del cliente sin RE/FW ni duplicados por
+buzón, jul-sep = «3m»). **Falta la sesión con Jessica Francisco y Berenice
+Vázquez** para confirmar las casillas marcadas «?» y conseguir los 2 releases
+anonimizados por cliente. Las celdas vienen del correo, no de ellas.
+
+Hallazgo que cambia el alcance: **no son dos clientes con release, son ocho**
+(Lear, FXI, Woodbridge Saltillo, Woodbridge León, Shawmut, Zwisstex, Copo/CTM
+y TQ-1), más Contitech y Seiren con forecast mensual o trimestral. Y **Lear ya
+manda EDI** por GXS/OpenText iExchangeWeb (39 avisos «Document Received …
+Release» a innovacion@ en 2026); el .eml de texto es la impresión de esa misma
+transacción.
+
+| Cliente | ¿Release / forecast / solo PO? | Canal y formato | Frecuencia y día | Horizonte | Zona firme / autorizaciones | ¿Embarque o entrega? | Unidad y partes del cliente | CUM | Acuse y plazo | Le llega a / contesta | ¿EDI o portal conectable? |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Lear MTO** (ship-to 5500, proveedor 6PIN0010) | Release semanal | EDI (GXS/OpenText iExchangeWeb) + correo con `QUIMIBOND.eml` de texto AIAG «SUPPLIER SCHEDULE / MATERIAL RELEASE» | Semanal, jueves (a veces miércoles); 13 en 3m | 52 semanas | Fab Auth thru +3 sem, Raw Auth thru +6 sem; líneas Q=P | Ship date | **MT**; L002790184NCPAA (BACK SCRIM 62"), PO 1030782 | Sí: Cum Received, In Transit, Cum Req; Packing Slip = nuestra factura | «Please confirm when you receive»; pide cotejar CUM y promesa de embarque. Plazo ? | berenice.vazquez, innovacion, ventasindustrial; contesta innovacion | **Sí: EDI en iExchangeWeb.** ? si se puede sacar el 830 en archivo o por AS2 |
+| **FXI** (Cd. Juárez / Sta. Teresa) | Release semanal («Delivery Releases») | Correo + Excel `SUM Quimibond MM.DD.YY.xlsx` (reporte SAP «Summary Report» volcado) | Semanal, viernes noche (fechado al lunes); 13 en 3m | 52 semanas + total sem. 27-52 | «High authorization» dentro del lead time; Vendor Authorization y Raw Accum Rcvd | **Entrega en FXI** | **LY (yardas lineales)**; 4002749 (WD3846NT163M2, 163 cm), 4010670 (WD038Q46JNG163); vendor 105925, planta 1500, agreement 5500000269 | Sí: V Cum y Raw Accum Rcvd | Acuse semanal; **acumulados al día siguiente** (si no, 100 % de coincidencia); plan UTS si aumenta; corrida mínima al martes | gilberto, innovacion, berenice.vazquez; cc dl_Expeditadores@fxi.com (siempre) | Mencionan «Manual or EDI»; ? |
+| **Woodbridge – Saltillo Lamination** | Release semanal + PO blanket 6700 (y PO puntual 7516 para T1XX-2 GM) | Correo + 2 PDF de sistema: «Vendor Planning Schedule» (PO064R) y «SUPPLIER RELEASE PLANNING SCHEDULE» (`130551 - Quimibond MM-DD-YYYY.pdf`) | Semanal, lunes a miércoles; 18 en 3m | ~26 semanas, todo firme | Fab Cum y Material Cum | **Due-in (entrega)**, no embarque | **MTR y LY** según parte; 290524, 290530 (WJ053Q22JNT160), 290552; vendor 130551 | Sí: Cum YTD Required / Received | **24 h** (sin respuesta = sin problema) | innovacion, gilberto, ventasindustrial | ? |
+| **Woodbridge – León Lamination** | Release semanal | Mismo PDF (`Release Quimibond WKnn.pdf` + `.D.pdf`) | Semanal, martes a jueves; 21 en 3m | ~26 semanas | Igual que Saltillo | Due-in | 290524L, 290530L; vendor 130551L, PO 6600319 | Sí | 24 h | innovacion, logistica, ventasindustrial | ? |
+| **Shawmut** (Clinton TN; Silao plantas 3150 y 3254) | 3 releases semanales | Correo: `Quimibond TN Release YYYYMMDD.xls` y `SL 3254 Release for Wnn.csv` / «SL 3150». Quimibond devuelve un ASN «EDI 856» en Excel | Semanal, lunes a miércoles; 37 en 3m | TN 16 sem; SL ~13 sem | SL: Mat Auth, Fab Auth, Program End Date | **Delivery** en Clinton | Yardas (inferido); 239361, 244101, 245370, 245646, 252113, 240395, 242803, 240976; PO 70152 | SL: Ordered/Received CYTD | Confirmar embarque de la semana; «no pasar la autorización» | innovacion (Jessica) | Piden 856: ? si tienen portal |
+| **Zwisstex** | Release semanal | Correo + `RELEASE QUIMIBOND CWnn.xlsx` (Material, Description, semanas) | Semanal, martes a jueves; 10 en 3m | ~20 semanas | ? | ? | ? (probablemente m); M208908, M208893, M208899, M101418, M208902 | ? | Sin plazo explícito | innovacion; cc ventasindustrial, logistica | ? |
+| **Copo / CTM** (Silao) | Release semanal o quincenal | Correo + PDF `Quimibond DD_MM_2026.pdf` | Irregular; 4 en 3m | 20 semanas, «Forecast» vs «Firme» | Periodo firme marcado | **Listo para recolección en Quimibond (EXW)**; penalidad si no está | Metros lineales; 362110 (PES 53 g 1600 mm), 362121 (PA 40 g 1630 mm); proveedor 410 | ? | **24 h** (si no, aceptado) | innovacion, logistica | ? |
+| **TQ-1** | Forecast + PO + plan semanal de recolección | Excel `TQ1MX-PCP-05-27 Quimibond soportes.xlsx` (no se pudo leer: muy grande); POs por correo | Irregular; 11 en 3m (último forecast 1-sep) | ? | ? | Recolección | Ambigua («10,000k»); SCR56 / CKS | ? | Confirmar recolecciones | innovacion, ventasindustrial, gilberto, logistica | ? — hoy es el único pronóstico en Odoo (id 7) |
+| **Contitech** (SLP) | Forecast mensual + PO SAP | Tabla en el cuerpo del correo + PDF de PO | ~mensual, irregular; nada desde 22-jul | 6 meses, cubetas mensuales | Por PO | PO con fecha de entrega, FCA Lerma, USD | **M**; XR27028/1640, XR27009/1620, XR27015/1640, XR27037/1680 | No | «Confirmar de recibido» | innovacion, gilberto | ? |
+| **Seiren Viscotec** | Forecast trimestral + PO aparte | Imagen pegada en el correo (sin texto) | ~mensual | 3 meses | PO | ? | ? | No | Solo visibilidad | innovacion, gilberto | ? |
+| **World Emblem** (Especiales) | Solo PO mensual | PDF de PO | Mensual | — | PO | Recolección | m (con equivalencia en yd); PELLON 6315 | No | Confirmar recibido | innovacion | — |
+| **Blancos Milenium** | Solo OC + 15,000 m/semana pactados | PDF de OC | — | — | — | — | m | No | — | gilberto, dirección | — |
+| **Pieles Sintéticas** | Solo pedidos | Pedido en el cuerpo del correo | Esporádico | — | — | — | — | No | Confirmación de pedido | innovacion | — |
+| **IUSA** | Solo PO | Portal Coupa | Esporádico | — | — | — | — | No | — | Coupa | Coupa |
+| **Bader** | Sin evidencia de release ni PO por correo | — | — | — | — | — | — | — | — | — | ? |
+
+Notas:
+- **Quién atiende hoy:** innovacion@ (Jessica) recibe y contesta casi todo;
+  logistica@ confirma fechas y citas; ventasindustrial@ va en copia pero su
+  último correo es del 8-jul; berenice.vazquez recibe Lear y FXI pero no
+  encontré respuestas suyas. **Pregunta para la sesión:** ¿quién es el
+  responsable por cliente en el perfil?
+- **Tres bases de fecha distintas** (Lear embarque, FXI/Woodbridge/Shawmut
+  entrega en planta del cliente, Copo recolección en Quimibond): el perfil
+  necesita `date_basis` y días de tránsito por planta.
+- **Tres unidades** (MT, LY, M) sobre productos que Quimibond vende en metros o
+  kilos: el catálogo de partes necesita el factor por parte.
+- Lear también manda «TOTAL CUM / SHIPPING PLAN WKnn» para cotejar CUM, y
+  Penske avisa las recolecciones de Lear.
 
 ---
 
@@ -218,12 +261,24 @@ correo → mail.alias → qb.release (recibido)
 
 ### 4.5 Qué lector usa cada cliente
 
-<!-- LECTORES -->
+| Cliente | Lector | Entrega | Por qué |
+|---|---|---|---|
+| Lear | `lear_aiag`: texto de ancho fijo del `.eml` adjunto. Encabezado por parte (Release ID, fecha, PO, Item, UM, In Transit, Cum Received, Packing Slip), filas «fecha · Q · Req · Cum Req · Net Req» debajo de «Weekly»/«Prior», pies «Fab/Raw Authorization Cum Qty … Thru». Tolera el salto de página `\f` que repite el encabezado y varias partes por release. | E1 | Determinístico; el layout es AIAG estándar. **Después (E4):** leer el 830 directo de iExchangeWeb si Lear/OpenText dan salida de archivo o AS2; mismo modelo, otro lector. |
+| FXI | `fxi_sum`: Excel de una hoja, bloques de 3 filas por parte (encabezado con Raw Material No., Vendor Authorization, Raw Accum Rcvd, Release #, Release Date AAAAMMDD, Agreement #, UOM; luego `Date`, `Gross need`, `V Cum` con 52 columnas). Números con y sin coma de miles. | E1 | Determinístico (reporte SAP). |
+| Woodbridge (Saltillo y León) | `woodbridge_pdf`: el PDF «SUPPLIER RELEASE PLANNING SCHEDULE» es de sistema (texto extraíble) con Cum YTD, Fab/Material Cum y semanas. | E4 (o E1 si sobra tiempo) | Es determinístico, **no** requiere IA como suponía el prompt. |
+| Shawmut | `shawmut_tn` (.xls) y `shawmut_sl` (.csv) | E4 | Dos layouts fijos. |
+| Zwisstex | `excel_semanas`: lector genérico configurable (fila de encabezado, columna de parte, columnas de fecha). | E4 | Excel simple; el genérico sirve a otros clientes chicos. |
+| Copo / CTM | `copo_pdf` o IA | E4 | PDF de 20 semanas con zona firme marcada; hay que ver si es texto o imagen. |
+| TQ-1 | `excel_semanas` configurado para su hoja, o captura en la matriz | E4 | Excel grande y de uso interno del cliente; primero hay que verlo. |
+| Contitech | IA sobre la tabla del cuerpo, con revisión | E4 | Mensual y en el cuerpo del correo. |
+| Seiren | Captura manual (es una imagen) o IA con visión, con revisión | E4 | Trimestral y sin texto. |
+| World Emblem, Blancos, Pieles, IUSA, Bader | Sin release: pronóstico «estimado por Quimibond» desde el histórico | E3 | — |
 
 ### 4.6 Dónde entra la IA y con qué revisión humana
 
-- **Solo** en perfiles con `reader='ia'` (PDF, captura, correo libre:
-  Woodbridge/Saltillo en E4). Nunca en Lear ni FXI.
+- **Solo** en perfiles con `reader='ia'` (tabla en el cuerpo del correo o
+  imagen: Contitech, Seiren, quizá Copo, en E4). Nunca en Lear, FXI, Woodbridge
+  ni Shawmut, que tienen layout fijo.
 - Odoo llama a la API de Claude con salida JSON cerrada (partes, fechas,
   cantidades, unidad, PO) y guarda el JSON y el texto de origen en el release.
   La llave va en un parámetro del sistema, no en el código.
