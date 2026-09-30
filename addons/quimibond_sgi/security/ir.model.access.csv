@@ -289,3 +289,9 @@ access_sgi_legacy_routine_import_line_manager,sgi.legacy.routine.import.line.man
 access_sgi_env_aspect_user,sgi.env.aspect.user,model_sgi_env_aspect,group_sgi_user,1,1,1,0
 access_sgi_env_aspect_auditor,sgi.env.aspect.auditor,model_sgi_env_aspect,group_sgi_auditor,1,0,0,0
 access_sgi_env_aspect_manager,sgi.env.aspect.manager,model_sgi_env_aspect,group_sgi_manager,1,1,1,1
+access_sgi_work_permit_user,sgi.work.permit.user,model_sgi_work_permit,group_sgi_user,1,1,1,0
+access_sgi_work_permit_auditor,sgi.work.permit.auditor,model_sgi_work_permit,group_sgi_auditor,1,0,0,0
+access_sgi_work_permit_manager,sgi.work.permit.manager,model_sgi_work_permit,group_sgi_manager,1,1,1,1
+access_sgi_work_permit_check_user,sgi.work.permit.check.user,model_sgi_work_permit_check,group_sgi_user,1,1,1,1
+access_sgi_work_permit_check_auditor,sgi.work.permit.check.auditor,model_sgi_work_permit_check,group_sgi_auditor,1,0,0,0
+access_sgi_work_permit_check_manager,sgi.work.permit.check.manager,model_sgi_work_permit_check,group_sgi_manager,1,1,1,1

@@ -144,4 +144,14 @@
         <field name="sgi_code">F-P-E01-01</field>
         <field name="note">Matriz de aspectos e impactos ambientales (clave por corregir en el bloque 3)</field>
     </record>
+
+    <!-- 57.51.0: permiso único de trabajo de alto riesgo. P-A19 y P-A24 lo
+         citan como F-P-A14-03; no hay documento con esa clave en Documentos
+         (inventario 2026-09-30, §3.5): el pie imprime la clave sin revisión
+         hasta que MAST dé de alta el formato. -->
+    <record id="format_map_work_permit" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_work_permit"/>
+        <field name="sgi_code">F-P-A14-03</field>
+        <field name="note">Permiso único de trabajo de alto riesgo (formato por dar de alta)</field>
+    </record>
 </odoo>

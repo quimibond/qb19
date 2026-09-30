@@ -13,6 +13,31 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.51.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios 2/5):** permiso de trabajo de alto riesgo
+(`sgi.work.permit`, ISO 45001 8.1, E2.18; sustituye al permiso único
+F-P-A14-03 que citan P-A19 y P-A24) en SGI → Seguridad y ambiente →
+Permisos de trabajo de alto riesgo. Solicitante, área, lugar, equipo y orden
+de mantenimiento, tipo (alturas, espacio confinado, en caliente, eléctrico,
+otro), personal o contratista, peligros, EPP y **verificaciones** (se
+siembran por tipo según NOM-009, 033, 027 y 029; se pueden quitar o
+agregar). Flujo borrador → solicitado → autorizado → cerrado (o cancelado):
+se solicita con peligros, quién ejecuta, jefe del área y todas las
+verificaciones contestadas sin ningún «No»; ya solicitado, las verificaciones
+no se tocan. **Dos autorizaciones selladas** (usuario y hora) de **personas
+distintas**: el jefe del área indicado (o el Jefe MAST) y Seguridad (Jefe
+MAST; no hay grupo de coordinador de seguridad). Vigencia con aviso de
+«vencido»; el cierre pide las condiciones del área. Cerrado o cancelado es
+evidencia (solo MAST lo reabre, y reabrir borra las autorizaciones). Ficha,
+lista, búsqueda (por autorizar, me toca autorizar, vencidos sin cerrar),
+chatter, folio `PTAR-AAAA-`, ACL, regla por empresa y reporte con pie de
+formato en vivo (`format_map_work_permit`, clave F-P-A14-03, sin documento
+en Documentos: imprime la clave sin revisión hasta que MAST lo dé de alta).
+
+**Pruebas:** `test_work_permit` (verificaciones por tipo, fechas, flujo
+completo con permisos, dos personas distintas, vencido y reporte).
+
 ## 19.0.57.50.0 — 2026-09-30
 
 **Agregado (bloque 1 de formularios, seguridad, salud y ambiente, 1/5):**

@@ -157,6 +157,9 @@
          ambientales (E2.23, E2.34). -->
     <menuitem id="menu_sgi_env_aspects" name="Aspectos ambientales"
               parent="menu_sgi_safety" action="sgi_env_aspect_action" sequence="80"/>
+    <!-- 57.51.0: permiso de trabajo de alto riesgo (E2.18). -->
+    <menuitem id="menu_sgi_work_permits" name="Permisos de trabajo de alto riesgo"
+              parent="menu_sgi_safety" action="sgi_work_permit_action" sequence="90"/>
 
     <!-- ============================================================
          5. Dirección (F-011, decisión 10 de la tanda 2): la carpeta la ven
