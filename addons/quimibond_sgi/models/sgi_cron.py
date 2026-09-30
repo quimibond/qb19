@@ -57,6 +57,9 @@ class MailActivitySgiCron(models.Model):
 
 
 class SgiCron(models.AbstractModel):
+    """Tareas programadas del SGI. Cada método ``cron_*`` es una acción planificada (ver
+    ``docs/sgi/tecnica/crons.md``); agendan actividades con ``_sgi_schedule`` (idempotente por
+    clave) y cada paso corre en su savepoint."""
     _name = 'sgi.cron'
     _description = "Tareas programadas SGI"
 
@@ -470,6 +473,8 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_nonconformities(self):
+        """Cron diario de NC: cierra actividades ya resueltas, recalcula acciones vencidas, avisa y
+        escala los plazos por etapa, escala NC sin acción y pide la verificación de eficacia."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: ficha de la corrida para el cierre por episodio
         today = sgi_today(self.env)
@@ -604,6 +609,8 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_documents(self):
+        """Cron diario de documentos: avisos de revisión bienal, pilotos por vencer y acuses
+        pendientes (un aviso por documento y clave)."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         today = sgi_today(self.env)
@@ -687,6 +694,8 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_news(self):
+        """Cron mensual: si el mes anterior hubo cambios documentales aplicados, agenda al Jefe MAST
+        el boletín NEWS."""
         sgi_require_system(self.env)  # F-008
         today = sgi_today(self.env)
         first_this_month = today.replace(day=1)
@@ -1046,6 +1055,8 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_audit_program(self):
+        """Cron diario: 15 días antes del mes planeado de cada renglón del programa aprobado, agenda
+        al auditor líder (o a MAST) preparar la auditoría."""
         sgi_require_system(self.env)  # F-008
         today = sgi_today(self.env)
         lines = self.env['sgi.audit.program.line'].search([
@@ -1077,6 +1088,8 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_risk_review(self):
+        """Cron diario: riesgos con revisión vencida al dueño del proceso (o a MAST) y riesgos altos
+        sin acción."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         today = sgi_today(self.env)
@@ -1123,6 +1136,8 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_supplier_eval(self):
+        """Cron trimestral: evalúa a los proveedores críticos con las recepciones del trimestre
+        anterior (entrega a tiempo y NC) y avisa a Compras los condicionados y de baja."""
         sgi_require_system(self.env)  # F-008
         today = sgi_today(self.env)
         # Trimestre anterior
@@ -1340,6 +1355,8 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_competences(self):
+        """Cron diario: certificaciones de empleados por vencer (30 días) al empleado y a RH; los
+        satélites y extensiones agregan exámenes y estudios."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         today = sgi_today(self.env)

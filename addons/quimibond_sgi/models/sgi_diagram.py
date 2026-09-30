@@ -70,6 +70,8 @@ def _key(record):
 
 
 class SgiDiagram(models.AbstractModel):
+    """Datos para el componente de diagramas (``static/src/diagram``): flujos de procesos, cadenas
+    de actividades, riesgos y cumplimiento. No guarda registros."""
     _name = 'sgi.diagram'
     _description = "Diagramas del SGI (datos para el componente sgi_diagram)"
 

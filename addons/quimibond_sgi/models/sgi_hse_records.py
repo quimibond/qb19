@@ -32,30 +32,42 @@ _HEALTH_RESULTS = [
 
 
 class SgiHealthRecord(models.Model):
+    """Estudio de higiene o examen médico de un trabajador, con resultado y vigencia. Dato sensible:
+    solo Salud ocupacional y Jefe MAST."""
     _name = 'sgi.health.record'
     _description = "Estudio de higiene o examen médico por trabajador"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'next_date, employee_id'
 
-    employee_id = fields.Many2one('hr.employee', string="Trabajador", required=True, index=True, tracking=True)
-    department_id = fields.Many2one(related='employee_id.department_id', string="Departamento", store=True)
-    job_id = fields.Many2one(related='employee_id.job_id', string="Puesto", store=True)
-    kind = fields.Selection(_HEALTH_KINDS, string="Tipo", required=True, default='examen_medico', tracking=True)
+    employee_id = fields.Many2one('hr.employee', string="Trabajador", required=True, index=True, tracking=True,
+                                  help="Trabajador al que corresponde el registro.")
+    department_id = fields.Many2one(related='employee_id.department_id', string="Departamento", store=True,
+                                    help="Departamento del trabajador.")
+    job_id = fields.Many2one(related='employee_id.job_id', string="Puesto", store=True,
+                             help="Puesto del trabajador.")
+    kind = fields.Selection(_HEALTH_KINDS, string="Tipo", required=True, default='examen_medico', tracking=True,
+                            help="Examen médico o estudio de higiene.")
     name = fields.Char(string="Estudio o examen", required=True, tracking=True,
                        help="Audiometría, espirometría, examen de ingreso, ruido (NOM-011), iluminación (NOM-025)…")
-    date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today, tracking=True)
-    validity_months = fields.Integer(string="Vigencia (meses)", default=12)
+    date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today, tracking=True,
+                       help="Fecha del examen o del estudio.")
+    validity_months = fields.Integer(string="Vigencia (meses)", default=12,
+                                     help="Meses que dura vigente el resultado.")
     next_date = fields.Date(string="Vence", compute='_compute_next_date', store=True, readonly=False,
                             tracking=True, help="Fecha + vigencia; se puede corregir a mano.")
-    result = fields.Selection(_HEALTH_RESULTS, string="Resultado", tracking=True)
-    provider_id = fields.Many2one('res.partner', string="Laboratorio / médico")
+    result = fields.Selection(_HEALTH_RESULTS, string="Resultado", tracking=True,
+                              help="Resultado del examen o del estudio.")
+    provider_id = fields.Many2one('res.partner', string="Laboratorio / médico",
+                                  help="Laboratorio o médico que lo hizo.")
     notes = fields.Text(string="Observaciones y restricciones")
-    attachment_ids = fields.Many2many('ir.attachment', string="Resultados (PDF)")
+    attachment_ids = fields.Many2many('ir.attachment', string="Resultados (PDF)",
+                                      help="Adjunte los resultados en PDF.")
     state = fields.Selection([
         ('vigente', "Vigente"),
         ('por_vencer', "Por vencer (30 días)"),
         ('vencido', "Vencido"),
-    ], string="Vigencia", compute='_compute_state', store=True)
+    ], string="Vigencia", compute='_compute_state', store=True,
+        help="Vigente, por vencer (30 días) o vencido según la fecha y la vigencia. Se calcula solo.")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
 
     @api.depends('date', 'validity_months')
@@ -124,6 +136,8 @@ _CSH_FINDING_GROUPS = ('quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_mana
 
 
 class SgiCshInspection(models.Model):
+    """Recorrido de la Comisión de Seguridad e Higiene: fecha, áreas, participantes y hallazgos. Se
+    cierra y se puede reabrir."""
     _name = 'sgi.csh.inspection'
     _description = "Recorrido de la Comisión de Seguridad e Higiene"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -131,12 +145,17 @@ class SgiCshInspection(models.Model):
 
     name = fields.Char(string="Folio", readonly=True, copy=False, default="Nuevo")
     date = fields.Date(string="Fecha del recorrido", required=True, default=fields.Date.context_today,
-                       tracking=True)
+                       tracking=True,
+                       help="Fecha en que se hizo el recorrido.")
     area = fields.Char(string="Áreas recorridas")
-    department_ids = fields.Many2many('hr.department', string="Departamentos")
-    participant_ids = fields.Many2many('hr.employee', string="Integrantes de la Comisión")
+    department_ids = fields.Many2many('hr.department', string="Departamentos",
+                                      help="Departamentos que se recorrieron.")
+    participant_ids = fields.Many2many('hr.employee', string="Integrantes de la Comisión",
+                                       help="Integrantes de la Comisión de Seguridad e Higiene que "
+                                            "participaron.")
     notes = fields.Text(string="Acta / observaciones generales")
-    attachment_ids = fields.Many2many('ir.attachment', string="Acta firmada (PDF) y fotos")
+    attachment_ids = fields.Many2many('ir.attachment', string="Acta firmada (PDF) y fotos",
+                                      help="Adjunte el acta firmada en PDF y las fotos del recorrido.")
     # Entrega 4: los hallazgos pueden nombrar personas; los leen la Comisión de
     # Seguridad e Higiene, el Jefe MAST, Salud ocupacional y el Auditor.
     finding_ids = fields.One2many('sgi.csh.finding', 'inspection_id', string="Hallazgos",
@@ -146,7 +165,8 @@ class SgiCshInspection(models.Model):
     state = fields.Selection([
         ('borrador', "En captura"),
         ('cerrado', "Cerrado"),
-    ], string="Estado", default='borrador', tracking=True)
+    ], string="Estado", default='borrador', tracking=True,
+        help="En captura mientras se registran los hallazgos; cerrado al terminar.")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
 
     @api.depends('finding_ids.alert_id')
@@ -194,6 +214,8 @@ class SgiCshInspection(models.Model):
 
 
 class SgiCshFinding(models.Model):
+    """Hallazgo de un recorrido de la Comisión de Seguridad e Higiene, con severidad y responsable;
+    puede generar NC."""
     _name = 'sgi.csh.finding'
     _description = "Hallazgo del recorrido de la Comisión de Seguridad e Higiene"
     _order = 'inspection_id, sequence, id'

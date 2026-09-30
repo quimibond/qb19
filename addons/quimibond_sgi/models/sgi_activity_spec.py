@@ -131,20 +131,26 @@ def sgi_safe_domain(text):
 
 
 class SgiActivitySpecGap(models.Model):
+    """Faltante de especificación de una actividad (sin ejecutor, sin entregable, verbo vago…). Se
+    recalcula; alimenta Diagnóstico → Faltantes de especificación."""
     _name = 'sgi.activity.spec.gap'
     _description = "Faltante de especificación de una actividad SGI"
     _order = 'severity, code, activity_id'
 
     activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad", required=True,
-        ondelete='cascade', index=True)
+        ondelete='cascade', index=True,
+        help="Actividad a la que le falta especificación.")
     process_id = fields.Many2one(
-        related='activity_id.process_id', string="Proceso", store=True, index=True)
-    code = fields.Selection(SGI_SPEC_GAPS, string="Faltante", required=True, index=True)
+        related='activity_id.process_id', string="Proceso", store=True, index=True,
+        help="Proceso de la actividad.")
+    code = fields.Selection(SGI_SPEC_GAPS, string="Faltante", required=True, index=True,
+                            help="Qué le falta a la actividad.")
     severity = fields.Selection([
         ('error', "Error (bloquea publicar)"),
         ('warning', "Advertencia"),
-    ], string="Severidad", required=True, index=True)
+    ], string="Severidad", required=True, index=True,
+        help="Un error impide publicar el procedimiento; una advertencia no.")
     message = fields.Char(string="Detalle")
     company_id = fields.Many2one(
         related='activity_id.company_id', string="Empresa", store=True, index=True)
@@ -200,7 +206,8 @@ class SgiActivitySpec(models.Model):
         'stock.location', string="Ubicación",
         help="Ubicación física cuando la actividad mueve o toca material.")
     workcenter_id = fields.Many2one(
-        'mrp.workcenter', string="Centro de trabajo")
+        'mrp.workcenter', string="Centro de trabajo",
+        help="Centro de trabajo donde se hace la actividad.")
     place_note = fields.Char(
         string="Lugar", help="Andén, laboratorio, oficina de embarques…")
     # --- Cómo ---
@@ -966,12 +973,16 @@ class SgiActivityWeekStat(models.Model):
 
     activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad", required=True, ondelete='cascade',
-        index=True, readonly=True)
+        index=True, readonly=True,
+        help="Actividad medida.")
     process_id = fields.Many2one(
-        related='activity_id.process_id', string="Proceso", store=True, index=True)
+        related='activity_id.process_id', string="Proceso", store=True, index=True,
+        help="Proceso de la actividad.")
     exec_channel = fields.Selection(
-        related='activity_id.exec_channel', string="Canal", store=True)
-    period_start = fields.Date(string="Semana", required=True, index=True, readonly=True)
+        related='activity_id.exec_channel', string="Canal", store=True,
+        help="Dónde se hace el trabajo.")
+    period_start = fields.Date(string="Semana", required=True, index=True, readonly=True,
+                               help="Lunes de la semana medida.")
     applicable_count = fields.Integer(string="Aplicables", readonly=True, aggregator='sum')
     done_count = fields.Integer(string="Hechas", readonly=True, aggregator='sum')
     complete_count = fields.Integer(string="Completas", readonly=True, aggregator='sum')
@@ -984,10 +995,12 @@ class SgiActivityWeekStat(models.Model):
         help="Entradas aplicables sin salida y con el plazo vencido al cierre de la semana.")
     completeness_rate = fields.Float(
         string="% completas", compute='_compute_rates', store=True, aggregator='avg',
-        digits=(5, 1))
+        digits=(5, 1),
+        help="Porcentaje de registros de la semana que cumplen el criterio de completo. Se calcula solo.")
     on_time_rate = fields.Float(
         string="% a tiempo", compute='_compute_rates', store=True, aggregator='avg',
-        digits=(5, 1))
+        digits=(5, 1),
+        help="Porcentaje de registros de la semana hechos a tiempo. Se calcula solo.")
     company_id = fields.Many2one(
         related='activity_id.company_id', string="Empresa", store=True, index=True)
 

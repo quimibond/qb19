@@ -139,6 +139,8 @@ def book_to_payload(book):
 
 
 class SgiLegacyRoutineImport(models.TransientModel):
+    """Asistente para importar el libro de rutinas: Probar, confirmar y Cargar. Si el conteo no
+    cuadra, no carga."""
     _name = 'sgi.legacy.routine.import'
     _description = "Importar rutinas del Dropbox"
 
@@ -264,6 +266,7 @@ class SgiLegacyRoutineImport(models.TransientModel):
 
 
 class SgiLegacyRoutineImportLine(models.TransientModel):
+    """Renglón del resultado de la importación de rutinas."""
     _name = 'sgi.legacy.routine.import.line'
     _description = "Resultado de la importación de rutinas"
     _order = 'id'

@@ -13,6 +13,92 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.37.0 — 2026-09-30
+
+**Corregido (entrega 10, `e10-manuales`):** el docstring de `sgi.policy`
+(57.32.0) decía que los acuses se generan al hacerla vigente; se generan con
+«Generar acuses» sobre el documento controlado ligado. Solo texto.
+
+## 19.0.57.36.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help`: D-29, K-019):** el texto de las ayudas
+de pantalla vacía pasa a «usted» (57.21.0 solo había cambiado los títulos):
+16 acciones que aún decían «elige», «pulsa», «tu acuse», «cuando tengas
+uno», «si cambias…», etc. (desglose de mediciones, quién ejecuta, COA
+recibidos, partes interesadas, planes de control, documentos vigentes,
+formatos anteriores, checklists de hoy, indicadores, mis indicadores,
+cumplimiento de procedimientos, mapa de procesos, evaluación de
+proveedores, acciones correctivas). Fuera el emoji de «Sin brechas de
+competencia» y el ID de plan «(D-17)» de la ayuda de acciones. Solo texto.
+
+## 19.0.57.35.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help` 3/3: C-018, K-019, D-29):** `help` en
+los 307 campos de prioridad alta restantes: **Dirección e indicadores**
+(indicador, medición, desglose, términos de fórmula, objetivos, política,
+revisión por la dirección, tablero), riesgos, requisitos legales y partes
+interesadas, seguridad y ambiente (incidentes, emergencias, simulacros,
+estudios y exámenes, EPP, checklists), metrología, AMEF, PPAP, planes de
+control, proveedores, COA, eficiencias de personal y Ajustes del SGI. En
+los campos que otra clase redefine (`calc_mode`, `direction`, `state` de la
+medición) el `help` va en la definición base. Con esto quedan los 589
+campos de prioridad alta que seguían sin ayuda (los otros 19 de la lista de
+608 ya no existen o ya la tenían). También se acorta la ayuda de «Fin de
+piloto» en el cambio documental. Solo texto de ayuda: ningún cambio de
+comportamiento.
+
+## 19.0.57.34.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help` 2/3: C-018, K-019, D-29):** `help` en
+los 175 campos de prioridad alta de **Procesos y Mi procedimiento** que no
+lo tenían: proceso, etapa, actividad, rol, liga, entregable, estadísticas
+de ejecución, faltantes de especificación, propuestas de cambio, Mis
+pendientes, Mi procedimiento (pantalla, chequeo y campos del empleado y del
+puesto), documentos controlados, acuses y cambios documentales
+(`approval.request`). En «usted», para quien llena el campo. Solo texto de
+ayuda: ningún cambio de comportamiento.
+
+## 19.0.57.33.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help` 1/3: C-018, K-019, D-29):** `help` en
+los 102 campos de prioridad alta de **Mejora** que no lo tenían: NC
+(`quality.alert`, plazos por etapa, respuesta al cliente y al proveedor),
+acciones, auditorías, programa y hallazgos, reclamaciones
+(`helpdesk.ticket`), mejora continua (`project.task`), solicitud de
+desarrollo (`project.project`), recorridos de la CSH y cierre forzado.
+Redactados para quien llena el campo, en «usted» (el tratamiento del
+español de Odoo), sin claves del Dropbox; los calculados dicen de dónde
+salen. Solo texto de ayuda: ningún cambio de comportamiento.
+
+## 19.0.57.32.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-docs-generadas`: K-017):** docstring de 1 a 3
+líneas en los 83 modelos propios que no tenían (qué representa, quién lo
+crea, qué lo cierra), incluidos los de `quimibond_sgi_knowledge` y
+`quimibond_sgi_mapa`, y en los 8 métodos `cron_*` base sin docstring (NC,
+documentos, NEWS, programa de auditorías, competencias, proveedores, riesgos
+y medición de actividades). De ahí salen las columnas «Qué es» y «Qué hace»
+de `docs/sgi/tecnica/` (`tools/sgi_docs.py`, regenerado). Solo texto: ningún
+cambio de comportamiento.
+
+## 19.0.57.31.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-readme-y-reglas`: K-003, K-004, K-013…K-016,
+A-021, A-024, A-028…A-030, C-020, C-023, H-017, F-018, F-019, F-021):**
+`README.md` nuevo de menos de 150 líneas (qué es, normas y su estado según
+D-28, instalación vacía, menú, grupos, satélites y lo que el núcleo les
+garantiza, instalar y probar con `--test-tags`, reglas para programar y
+dónde está la documentación). El README anterior (2,784 líneas) pasa entero
+a `docs/historico/sgi/README_quimibond_sgi_hasta_57.30.0.md`. `description`
+del manifest reescrita y licencia **OPL-1** (D-31); lo mismo en los
+satélites, con su propio bump: `quimibond_sgi_knowledge` 1.0.1,
+`_mapa` 1.1.1, `_pesaje` 5.2.1 (la tolerancia se describe como parámetro,
+ya no «±3 kg» fijo), `_plm` 3.0.1, `_revisado` 4.2.2 y `_studio` 1.0.2.
+README corto en `_mapa`, `_pesaje`, `_plm` y `_revisado`. Párrafo del SGI
+en `CLAUDE.md` y sección SGI en `docs/RUNBOOK_DESPLIEGUE.md` (se quita la
+deuda falsa de «6 claves de config con doble declaración»). Sin cambios de
+código ni de datos.
+
 ## 19.0.57.30.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 9/9: A-008):** la pestaña

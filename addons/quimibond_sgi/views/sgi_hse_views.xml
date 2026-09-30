@@ -378,7 +378,7 @@
             (0, 0, {'view_mode': 'form'})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">No hay checklists pendientes hoy</p>
-            <p>Abre la hoja de tu equipo o unidad, marca cada punto y al final «Terminar checklist» con tu nombre y tu PIN.</p>
+            <p>Abra la hoja de su equipo o unidad, marque cada punto y al final pulse «Terminar checklist» con su nombre y su PIN.</p>
         </field>
     </record>
 

@@ -9,7 +9,9 @@ class QualityPoint(models.Model):
     _inherit = 'quality.point'
 
     sgi_control_plan_id = fields.Many2one('sgi.control.plan', string="Plan de control",
-                                          ondelete='set null', index=True)
+                                          ondelete='set null', index=True,
+                                          help="Plan de control al que pertenece este punto de control de "
+                                               "calidad.")
     # Inversa de la liga de migración: qué formatos controlados sustituye
     # este worksheet (para navegar en ambos sentidos).
     sgi_replaced_document_ids = fields.One2many(
@@ -54,6 +56,8 @@ class QualityPoint(models.Model):
 
 
 class SgiControlPlan(models.Model):
+    """Plan de control (P-C11): puntos de control de calidad por producto y fase, con su AMEF.
+    Estados borrador, vigente y obsoleto."""
     _name = 'sgi.control.plan'
     _description = "Plan de control (P-C11)"
     _inherit = ['sgi.base.mixin']
@@ -67,25 +71,30 @@ class SgiControlPlan(models.Model):
 
     name = fields.Char(string="Nombre", required=True, tracking=True)
     partner_id = fields.Many2one('res.partner', string="Cliente",
-                                 domain="[('is_company', '=', True)]")
-    product_tmpl_ids = fields.Many2many('product.template', string="Productos")
+                                 domain="[('is_company', '=', True)]",
+                                 help="Cliente para el que se hace el plan de control.")
+    product_tmpl_ids = fields.Many2many('product.template', string="Productos",
+                                        help="Productos que cubre el plan.")
     phase = fields.Selection([
         ('prototipo', "Prototipo"),
         ('prelanzamiento', "Prelanzamiento"),
         ('produccion', "Producción"),
-    ], string="Fase", default='produccion', required=True, tracking=True)
+    ], string="Fase", default='produccion', required=True, tracking=True,
+        help="Fase del producto: prototipo, prelanzamiento o producción.")
     revision = fields.Char(string="Revisión", default="00", tracking=True)
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('vigente', "Vigente"),
         ('obsoleto', "Obsoleto"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador mientras se arma; vigente cuando aplica; obsoleto cuando se sustituye.")
     point_ids = fields.One2many('quality.point', 'sgi_control_plan_id',
                                 string="Puntos de control")
     point_count = fields.Integer(string="N° de puntos", compute='_compute_point_count')
     fmea_ids = fields.One2many('sgi.fmea', 'control_plan_id', string="AMEF ligados")
     fmea_count = fields.Integer(string="# AMEF", compute='_compute_fmea_count')
-    document_id = fields.Many2one('documents.document', string="Especificación del cliente")
+    document_id = fields.Many2one('documents.document', string="Especificación del cliente",
+                                  help="Especificación del cliente en la que se basa el plan.")
     notes = fields.Text(string="Notas")
 
 

@@ -63,29 +63,43 @@ class ProjectProjectDevRequest(models.Model):
     sgi_is_ft = fields.Boolean(
         string="Proyecto FT (desarrollo)", compute='_compute_sgi_is_ft', store=True, readonly=False,
         help="Se marca solo cuando el nombre empieza con «FT-». Habilita la pestaña Solicitud de desarrollo.")
-    sgi_dev_type = fields.Selection(DEV_TYPES, string="Tipo de desarrollo", default='general')
+    sgi_dev_type = fields.Selection(DEV_TYPES, string="Tipo de desarrollo", default='general',
+                                    help="Tipo de desarrollo que se solicita; define qué datos pide la "
+                                         "solicitud.")
     sgi_dev_format_code = fields.Char(string="Formato", compute='_compute_sgi_dev_format_code')
-    sgi_dev_date = fields.Date(string="Fecha de solicitud")
+    sgi_dev_date = fields.Date(string="Fecha de solicitud",
+                               help="Fecha en que se recibió la solicitud de desarrollo.")
     sgi_dev_requester = fields.Char(string="Nombre del solicitante")
     sgi_dev_use = fields.Text(string="Descripción y uso del producto")
     sgi_dev_spec = fields.Text(string="Especificación del cliente")
-    sgi_dev_sample_m = fields.Float(string="Cantidad de la muestra (m)")
-    sgi_dev_sample_kg = fields.Float(string="Cantidad de la muestra (kg)")
-    sgi_dev_volume = fields.Float(string="Volumen estimado")
-    sgi_dev_volume_uom = fields.Selection([('m', "m / mes"), ('kg', "kg / mes")], string="Unidad del volumen", default='m')
+    sgi_dev_sample_m = fields.Float(string="Cantidad de la muestra (m)",
+                                    help="Cantidad de muestra pedida, en metros.")
+    sgi_dev_sample_kg = fields.Float(string="Cantidad de la muestra (kg)",
+                                     help="Cantidad de muestra pedida, en kilogramos.")
+    sgi_dev_volume = fields.Float(string="Volumen estimado",
+                                  help="Volumen mensual que el cliente estima comprar si el desarrollo se "
+                                       "aprueba.")
+    sgi_dev_volume_uom = fields.Selection([('m', "m / mes"), ('kg', "kg / mes")], string="Unidad del volumen", default='m',
+                                          help="Unidad del volumen estimado: metros o kilogramos por mes.")
     sgi_dev_target_price = fields.Monetary(string="Precio objetivo", currency_field='sgi_dev_currency_id')
     sgi_dev_currency_id = fields.Many2one('res.currency', string="Moneda del precio",
-                                          default=lambda self: self.env.company.currency_id)
+                                          default=lambda self: self.env.company.currency_id,
+                                          help="Moneda del precio objetivo del desarrollo.")
     sgi_dev_norms = fields.Char(string="Norma(s) a cumplir")
     sgi_dev_packaging = fields.Text(string="Datos en la etiqueta y empaque")
     sgi_dev_customer_property = fields.Selection([
         ('muestra', "Muestra del producto"), ('especificacion', "Especificación del producto"),
         ('ambos', "Muestra y especificación"), ('ninguna', "Ninguna"),
-    ], string="Propiedad del cliente recibida")
+    ], string="Propiedad del cliente recibida",
+        help="Qué entregó el cliente para el desarrollo (muestra, especificación, ambas o nada). Es "
+             "propiedad del cliente y se resguarda.")
     sgi_dev_other = fields.Text(string="Otras características")
     sgi_dev_line_ids = fields.One2many('sgi.dev.characteristic', 'project_id', string="Características del producto")
-    sgi_dev_prepared_by_id = fields.Many2one('res.users', string="Elaboró (Diseño y Desarrollo)")
-    sgi_dev_approved_by_id = fields.Many2one('res.users', string="Aprobó (Dirección de Operaciones)")
+    sgi_dev_prepared_by_id = fields.Many2one('res.users', string="Elaboró (Diseño y Desarrollo)",
+                                             help="Persona de Diseño y Desarrollo que elaboró la solicitud.")
+    sgi_dev_approved_by_id = fields.Many2one('res.users', string="Aprobó (Dirección de Operaciones)",
+                                             help="Persona de Dirección de Operaciones que aprueba la "
+                                                  "solicitud de desarrollo.")
 
     @api.depends('name')
     def _compute_sgi_is_ft(self):
@@ -128,6 +142,7 @@ class ProjectProjectDevRequest(models.Model):
 
 
 class SgiDevCharacteristic(models.Model):
+    """Característica pedida en una solicitud de desarrollo de producto (valor, tolerancia, método)."""
     _name = 'sgi.dev.characteristic'
     _description = "Característica pedida en la solicitud de desarrollo"
     _order = 'sequence, id'

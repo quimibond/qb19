@@ -15,17 +15,21 @@ AIAG_SUBMISSION_MAP = {
 
 
 class SgiPpapElementTemplate(models.Model):
+    """Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía."""
     _name = 'sgi.ppap.element.template'
     _description = "Elemento PPAP (catálogo AIAG)"
     _order = 'sequence, id'
 
     sequence = fields.Integer(string="N°", required=True)
     name = fields.Char(string="Elemento", required=True, translate=True)
-    is_psw = fields.Boolean(string="Es PSW (elemento 18)")
+    is_psw = fields.Boolean(string="Es PSW (elemento 18)",
+                            help="Marca el elemento que es la carta de garantía de partes (PSW).")
     active = fields.Boolean(default=True)
 
 
 class SgiPpap(models.Model):
+    """Expediente PPAP (P-C15) de un producto para un cliente, con sus elementos y la decisión del
+    cliente."""
     _name = 'sgi.ppap'
     _description = "PPAP - Proceso de Aprobación de Partes de Producción (P-C15)"
     _inherit = ['sgi.base.mixin']
@@ -39,32 +43,39 @@ class SgiPpap(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', string="Cliente", required=True, tracking=True,
-                                 domain="[('is_company', '=', True)]")
+                                 domain="[('is_company', '=', True)]",
+                                 help="Cliente que aprueba el PPAP.")
     product_tmpl_id = fields.Many2one('product.template', string="Producto", required=True,
-                                      tracking=True)
+                                      tracking=True,
+                                      help="Producto que se somete a aprobación.")
     level = fields.Selection([
         ('1', "Nivel 1"),
         ('2', "Nivel 2"),
         ('3', "Nivel 3"),
         ('4', "Nivel 4"),
         ('5', "Nivel 5"),
-    ], string="Nivel", default='3', required=True)
+    ], string="Nivel", default='3', required=True,
+        help="Nivel de envío que pide el cliente (1 a 5); define qué elementos se entregan.")
     reason = fields.Selection([
         ('nuevo_producto', "Nuevo producto"),
         ('cambio_ingenieria', "Cambio de ingeniería"),
         ('cambio_proceso', "Cambio de proceso"),
         ('recertificacion', "Recertificación"),
         ('solicitud_cliente', "Solicitud del cliente"),
-    ], string="Motivo", default='nuevo_producto', required=True)
+    ], string="Motivo", default='nuevo_producto', required=True,
+        help="Por qué se hace el PPAP.")
     state = fields.Selection([
         ('preparacion', "Preparación"),
         ('enviado', "Enviado"),
         ('aprobado', "Aprobado"),
         ('interino', "Interino"),
         ('rechazado', "Rechazado"),
-    ], string="Estado", default='preparacion', required=True, tracking=True)
-    date_submitted = fields.Date(string="Fecha de envío", readonly=True)
-    date_decision = fields.Date(string="Fecha de decisión", readonly=True)
+    ], string="Estado", default='preparacion', required=True, tracking=True,
+        help="Preparación, enviado, aprobado, interino o rechazado.")
+    date_submitted = fields.Date(string="Fecha de envío", readonly=True,
+                                 help="Fecha en que se envió el PPAP al cliente.")
+    date_decision = fields.Date(string="Fecha de decisión", readonly=True,
+                                help="Fecha en que el cliente aprobó, rechazó o dio aprobación interina.")
     element_ids = fields.One2many('sgi.ppap.element', 'ppap_id', string="Elementos")
     notes = fields.Text(string="Notas")
 
@@ -233,6 +244,7 @@ class ProductProductPpap(models.Model):
 
 
 class SgiPpapElement(models.Model):
+    """Elemento de un PPAP con su documento, AMEF o plan de control y su estado."""
     _name = 'sgi.ppap.element'
     _description = "Elemento de un PPAP"
     _order = 'ppap_id, sequence, id'

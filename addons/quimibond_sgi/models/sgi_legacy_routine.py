@@ -87,6 +87,9 @@ class _Rollback(Exception):
 
 
 class SgiLegacyRoutine(models.Model):
+    """Rutina de un procedimiento del Dropbox y su destino en Odoo (cubierta, reemplazada o
+    pendiente de decisión). Se importa desde el libro «rutina por rutina»; vive en «Del Dropbox a
+    Odoo»."""
     _name = 'sgi.legacy.routine'
     _description = "Rutina del procedimiento anterior"
     _inherit = ['mail.thread']

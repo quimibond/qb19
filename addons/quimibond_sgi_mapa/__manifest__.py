@@ -29,8 +29,8 @@ el que se armó el primero desde lecturas de producción por MCP.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.1.1.0',
-    'license': 'LGPL-3',
+    'version': '19.0.1.1.1',
+    'license': 'OPL-1',
     'depends': ['quimibond_sgi'],
     'data': [
         'security/ir.model.access.csv',

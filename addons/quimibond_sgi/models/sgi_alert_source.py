@@ -18,6 +18,8 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiAlertSource(models.Model):
+    """Fuente de NC automática (pesaje, calibración, indicador en rojo…). MAST la enciende o apaga
+    sin tocar código; ``quality.alert.sgi_auto_create`` la consulta y cuenta lo suprimido."""
     _name = 'sgi.alert.source'
     _description = "Fuente de NC automática"
     _inherit = ['mail.thread']
@@ -52,7 +54,8 @@ class SgiAlertSource(models.Model):
         string="# NC omitidas", readonly=True, copy=False,
         help="Cuántas veces se cumplió la condición mientras la fuente estaba "
              "apagada. Sirve para dimensionar lo que se dejó de registrar.")
-    last_suppressed_on = fields.Datetime(string="Última omisión", readonly=True, copy=False)
+    last_suppressed_on = fields.Datetime(string="Última omisión", readonly=True, copy=False,
+                                         help="Última vez que esta fuente, apagada, dejó de crear una NC.")
 
     _code_uniq = models.Constraint(
         'unique(code)',

@@ -86,7 +86,8 @@ class SgiActivityRoleApproval(models.Model):
         'approval.category', string="Categoría de Aprobaciones", ondelete='set null',
         help="Vacía: «Sincronizar» crea una categoría propia con las personas del puesto.")
     approval_sign_template_id = fields.Many2one(
-        'sign.template', string="Plantilla de Sign", ondelete='set null')
+        'sign.template', string="Plantilla de Sign", ondelete='set null',
+        help="Plantilla de Sign que se firma para aprobar, cuando la aprobación es por firma.")
 
     approval_model_id = fields.Many2one(
         'ir.model', string="Documento que se aprueba", ondelete='set null',
@@ -101,15 +102,21 @@ class SgiActivityRoleApproval(models.Model):
         domain="[('model_id', '=', approval_model_id), ('ttype', 'in', %s), ('store', '=', True)]"
                % (list(CONDITION_FIELD_TYPES),),
         help="Solo cuando la aprobación aplica bajo una condición (ej. total de la orden).")
-    condition_operator = fields.Selection(CONDITION_OPERATORS, string="Operador", default='>')
+    condition_operator = fields.Selection(CONDITION_OPERATORS, string="Operador", default='>',
+                                          help="Cómo se compara el campo con el valor para que la aprobación "
+                                               "aplique.")
     condition_value = fields.Char(string="Valor", help="Número, texto o True/False.")
     approval_domain = fields.Char(string="Condición en Odoo", compute='_compute_approval_domain', store=True)
     approval_user_ids = fields.Many2many(
-        'res.users', string="Personas que aprueban", compute='_compute_approval_users')
+        'res.users', string="Personas que aprueban", compute='_compute_approval_users',
+        help="Personas que hoy aprueban: las del puesto o la familia.")
     approval_state = fields.Selection(
-        APPROVAL_STATES, string="Aprobación en Odoo", compute='_compute_approval_state')
+        APPROVAL_STATES, string="Aprobación en Odoo", compute='_compute_approval_state',
+        help="Si la aprobación ya funciona en Odoo o qué le falta (configurarla, personas en el puesto, otra "
+             "regla en el mismo botón).")
     approval_entry_count = fields.Integer(string="Aprobaciones dadas", compute='_compute_approval_entries')
-    approval_last_date = fields.Datetime(string="Última aprobación", compute='_compute_approval_entries')
+    approval_last_date = fields.Datetime(string="Última aprobación", compute='_compute_approval_entries',
+                                         help="Fecha de la última aprobación dada con esta regla.")
 
     # ------------------------------------------------------------------
     @api.depends('role', 'activity_id.measure_model_id')
