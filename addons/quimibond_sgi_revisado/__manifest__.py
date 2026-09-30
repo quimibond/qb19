@@ -18,8 +18,8 @@ Antes vivía en el núcleo protegido con ``if 'mrp.revision.log' in env``.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Manufacturing/SGI',
-    'version': '19.0.4.2.1',
-    'license': 'LGPL-3',
+    'version': '19.0.4.2.2',
+    'license': 'OPL-1',
     'depends': [
         'quimibond_sgi',
         'mrp_revisado_telas',

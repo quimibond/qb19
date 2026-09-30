@@ -3,27 +3,23 @@
     'name': "Quimibond SGI",
     'summary': "Sistema de Gestión Integral (ISO 9001/14001/45001) sobre apps nativas de Odoo 19",
     'description': """
-Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ).
+Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ):
+ISO 9001 y 14001 certificadas, 45001 en certificación.
 
-SGI completo de PNTQ: mapa de procesos con flujos navegables (el output de un
-proceso es el input del siguiente), control documental con familias y acuses,
-NC con candados, reclamaciones con SLA, mejoras, KPIs automáticos con NC en
-rojo, auditorías, riesgos (5 instrumentos), proveedores, Revisión por la
-Dirección, planes de control, CoA, calibraciones IATF, AMEF, PPAP, incidentes
-SCAT, competencias, claves de formato vivas en pantalla/PDF y migración de
-formatos rastreable.
+Procesos y actividades con responsable por puesto, vencimiento, entregable
+medible y escalamiento; Mis pendientes, Mi procedimiento con firma de
+lectura, control documental, no conformidades, indicadores, auditorías,
+riesgos, seguridad y ambiente, y revisión por la dirección, sobre las apps
+nativas de Odoo.
 
-Extiende apps nativas (Documentos, Aprobaciones, Calidad, Helpdesk, Proyecto,
-Mantenimiento, Encuestas) sin duplicarlas y agrega solo los modelos que Odoo
-no tiene. Sin Studio: la regla de aprobación del botón vive en el satélite
-quimibond_sgi_studio y el instructivo en Conocimiento en quimibond_sgi_knowledge,
-los dos auto_install.
+Se instala vacío: el mapa de procesos va en quimibond_sgi_mapa y se carga a
+mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.30.0',
-    'license': 'LGPL-3',
+    'version': '19.0.57.31.0',
+    'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
     # directas, cada una con lo que la usa. Las que ya traen otras (base,

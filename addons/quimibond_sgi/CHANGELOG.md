@@ -13,6 +13,24 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.31.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-readme-y-reglas`: K-003, K-004, K-013…K-016,
+A-021, A-024, A-028…A-030, C-020, C-023, H-017, F-018, F-019, F-021):**
+`README.md` nuevo de menos de 150 líneas (qué es, normas y su estado según
+D-28, instalación vacía, menú, grupos, satélites y lo que el núcleo les
+garantiza, instalar y probar con `--test-tags`, reglas para programar y
+dónde está la documentación). El README anterior (2,784 líneas) pasa entero
+a `docs/historico/sgi/README_quimibond_sgi_hasta_57.30.0.md`. `description`
+del manifest reescrita y licencia **OPL-1** (D-31); lo mismo en los
+satélites, con su propio bump: `quimibond_sgi_knowledge` 1.0.1,
+`_mapa` 1.1.1, `_pesaje` 5.2.1 (la tolerancia se describe como parámetro,
+ya no «±3 kg» fijo), `_plm` 3.0.1, `_revisado` 4.2.2 y `_studio` 1.0.2.
+README corto en `_mapa`, `_pesaje`, `_plm` y `_revisado`. Párrafo del SGI
+en `CLAUDE.md` y sección SGI en `docs/RUNBOOK_DESPLIEGUE.md` (se quita la
+deuda falsa de «6 claves de config con doble declaración»). Sin cambios de
+código ni de datos.
+
 ## 19.0.57.30.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 9/9: A-008):** la pestaña
