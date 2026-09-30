@@ -8,7 +8,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_epp_delivery_document</field>
         <field name="report_file">quimibond_sgi.report_epp_delivery_document</field>
-        <field name="print_report_name">'Responsiva EPP - %s' % (object.name)</field>
+        <field name="print_report_name">'Responsiva EPP - %s' % (object.name or '')</field>
         <field name="binding_model_id" ref="model_sgi_epp_delivery"/>
         <field name="binding_type">report</field>
     </record>
@@ -36,7 +36,7 @@
                             <tbody>
                                 <t t-if="doc.line_ids">
                                     <tr t-foreach="doc.line_ids" t-as="l">
-                                        <td><span t-out="'%g %s' % (l.quantity, l.uom)"/></td>
+                                        <td><span t-out="'%g %s' % (l.quantity, l.uom or '')"/></td>
                                         <td><span t-out="l.name"/></td>
                                         <td><span t-out="l.size or ''"/></td>
                                         <td><span t-out="l.note or ''"/></td>

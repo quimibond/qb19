@@ -131,7 +131,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_catalog_load_wizard_action` | act_window | Cargar catálogo | `sgi.catalog.load.wizard` | form |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_checklist_request_action` | act_window | Hojas de checklist | `maintenance.request` | list,form,pivot | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_checklist_template_action` | act_window | Checklists de planta y unidades | `sgi.checklist.template` | list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
-| `quimibond_sgi.sgi_checklist_today_action` | act_window | Checklists de hoy | `maintenance.request` | list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
+| `quimibond_sgi.sgi_checklist_today_action` | act_window | Checklists de hoy | `maintenance.request` | kanban,list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_coa_inbox_action` | act_window | COA recibidos | `sgi.coa.inbox` | list,form | sí | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
 | `quimibond_sgi.sgi_competence_gap_action` | act_window | Brechas de competencia (DNC) | `sgi.competence.gap` | pivot,sgi_diagram,list | sí | `addons/quimibond_sgi/views/sgi_competence_views.xml` |
 | `quimibond_sgi.sgi_complaint_action` | server | Reclamaciones de clientes | `helpdesk.ticket` |  |  | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
@@ -207,7 +207,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list |  | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (316; 65 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (321; 63 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -254,7 +254,11 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `maintenance.equipment` | `quimibond_sgi.maintenance_equipment_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_form` | herencia | `maintenance.hr_equipment_view_form` | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_form_msa` | herencia | `maintenance.hr_equipment_view_form` | `addons/quimibond_sgi/views/sgi_msa_views.xml` |
+| `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_list_measuring` | list |  | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_list_sgi` | herencia | `maintenance.hr_equipment_view_tree` | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
+| `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_search_measuring` | search |  | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
+| `maintenance.request` | `quimibond_sgi.sgi_checklist_request_view_form` | form |  | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
+| `maintenance.request` | `quimibond_sgi.sgi_checklist_request_view_kanban` | kanban |  | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `maintenance.request` | `quimibond_sgi.sgi_checklist_request_view_list` | list |  | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `maintenance.request` | `quimibond_sgi.sgi_checklist_request_view_pivot` | pivot |  | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `maintenance.request` | `quimibond_sgi.sgi_format_banner_maintenance_request` | herencia | `maintenance.hr_equipment_request_view_form` | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
@@ -280,12 +284,12 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `purchase.order` | `quimibond_sgi.sgi_purchase_order_view_form_links` | herencia | `purchase.purchase_order_form` | `addons/quimibond_sgi/views/sgi_links_views.xml` |
 | `purchase.order` | `quimibond_sgi.sgi_purchase_order_view_form_sign` | herencia | `purchase.purchase_order_form` | `addons/quimibond_sgi/views/sgi_supplier_audit_sign_views.xml` |
 | `quality.alert` | `quimibond_sgi.quality_alert_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
-| `quality.alert` | `quimibond_sgi.sgi_format_banner_quality_alert` | herencia | `quality_control.quality_alert_view_form` | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
 | `quality.alert` | `quimibond_sgi.sgi_nc_lessons_view_list` | list |  | `addons/quimibond_sgi/views/sgi_nonconformity_views.xml` |
 | `quality.alert` | `quimibond_sgi.sgi_nc_view_activity` | activity |  | `addons/quimibond_sgi/views/sgi_nonconformity_views.xml` |
+| `quality.alert` | `quimibond_sgi.sgi_nc_view_kanban` | kanban |  | `addons/quimibond_sgi/views/sgi_nonconformity_views.xml` |
+| `quality.alert` | `quimibond_sgi.sgi_nc_view_list` | list |  | `addons/quimibond_sgi/views/sgi_nonconformity_views.xml` |
 | `quality.alert` | `quimibond_sgi.sgi_nc_view_search` | search |  | `addons/quimibond_sgi/views/sgi_nonconformity_views.xml` |
 | `quality.alert` | `quimibond_sgi.sgi_quality_alert_view_form` | herencia | `quality_control.quality_alert_view_form` | `addons/quimibond_sgi/views/sgi_nonconformity_views.xml` |
-| `quality.alert` | `quimibond_sgi.sgi_quality_alert_view_form_kpi` | herencia | `quality_control.quality_alert_view_form` | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
 | `quality.alert` | `quimibond_sgi.sgi_quality_alert_view_graph` | graph |  | `addons/quimibond_sgi/views/sgi_dashboard_views.xml` |
 | `quality.alert` | `quimibond_sgi.sgi_quality_alert_view_pivot` | pivot |  | `addons/quimibond_sgi/views/sgi_dashboard_views.xml` |
 | `quality.point` | `quimibond_sgi.sgi_quality_point_view_form` | herencia | `quality.quality_point_view_form` | `addons/quimibond_sgi/views/sgi_control_plan_views.xml` |
@@ -412,6 +416,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.indicator` | `quimibond_sgi.sgi_indicator_view_activity` | activity |  | `addons/quimibond_sgi/views/sgi_indicator_views.xml` |
 | `sgi.indicator` | `quimibond_sgi.sgi_indicator_view_form` | form |  | `addons/quimibond_sgi/views/sgi_indicator_views.xml` |
 | `sgi.indicator` | `quimibond_sgi.sgi_indicator_view_list` | list |  | `addons/quimibond_sgi/views/sgi_indicator_views.xml` |
+| `sgi.indicator` | `quimibond_sgi.sgi_indicator_view_list_mine` | list |  | `addons/quimibond_sgi/views/sgi_my_procedure_views.xml` |
 | `sgi.indicator` | `quimibond_sgi.sgi_indicator_view_search` | search |  | `addons/quimibond_sgi/views/sgi_indicator_views.xml` |
 | `sgi.indicator` | `quimibond_sgi.sgi_indicator_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `sgi.indicator.measure` | `quimibond_sgi.sgi_measure_view_form` | form |  | `addons/quimibond_sgi/views/sgi_indicator_views.xml` |

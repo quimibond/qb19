@@ -20,6 +20,10 @@ class SgiEmergencyPlan(models.Model):
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.emergency.plan'
+    # D-009 (57.41.0): marcar obsoleto (o sacarlo de obsoleto) es del Jefe
+    # MAST (el plan no tiene proceso, así que no hay dueño que decida).
+    _sgi_decision_states = ('obsoleto',)
+    _sgi_decision_label = "Marcar obsoleto un plan de emergencia (o sacarlo de obsoleto)"
 
     name = fields.Char(string="Escenario de emergencia", required=True, tracking=True)
     plan_type = fields.Selection([

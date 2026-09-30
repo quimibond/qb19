@@ -6,15 +6,15 @@ Modelo de otra app que el SGI extiende.
 
 Archivos: `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_incident.py`, `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_kpi_quality.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_sgi/models/sgi_supplier_nc.py`.
 
-## Campos (74)
+## Campos (75)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_action_line_ids` | One2many | Correcciones y acciones |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:155` |
 | `sgi_approved_by` | Many2one | Aprobó | Persona que aprueba el cierre de la no conformidad. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:146` |
 | `sgi_approved_date` | Date | Fecha de aprobación | Fecha en que se aprobó el cierre de la no conformidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:148` |
-| `sgi_cancel_reason` | Text | Motivo de cancelación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:194` |
-| `sgi_cancel_requested_by` | Many2one | Cancelación solicitada por | Quién pidió cancelar la no conformidad. La cancelación la confirma el Jefe MAST y SGI. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:195` |
+| `sgi_cancel_reason` | Text | Motivo de cancelación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:200` |
+| `sgi_cancel_requested_by` | Many2one | Cancelación solicitada por | Quién pidió cancelar la no conformidad. La cancelación la confirma el Jefe MAST y SGI. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:201` |
 | `sgi_claimed_meters` | Float | Metros reclamados | Metros que el cliente reclama en esta NC (C5-01). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_quality.py:24` |
 | `sgi_classification` | Selection | Clasificación | Mayor, menor u observación. Una NC mayor manda un correo crítico al abrirse y exige aplicar la lección aprendida antes de cerrar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:86` |
 | `sgi_complaint_ticket_id` | Many2one | Reclamación ligada | Reclamación de cliente de la que nació esta no conformidad. |  | `helpdesk.ticket` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:150` |
@@ -31,23 +31,24 @@ Archivos: `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond
 | `sgi_customer_response_date` | Date | Respuesta formal al cliente | Fecha en que se envió al cliente la respuesta formal (causa y acciones). |  |  |  |  | `addons/quimibond_sgi/models/sgi_customer_reply.py:65` |
 | `sgi_customer_response_due` | Date | Responder a más tardar | Fecha límite de la respuesta formal: la que pidió el cliente o los días hábiles de su equipo de ventas. Se calcula sola. |  |  | compute `_compute_sgi_customer_dues`, guardado |  | `addons/quimibond_sgi/models/sgi_customer_reply.py:61` |
 | `sgi_customer_response_on_time` | Boolean | Respuesta a tiempo | Indica si la respuesta formal salió a más tardar en su fecha límite. Se calcula sola. |  |  | compute `_compute_sgi_customer_on_time`, guardado |  | `addons/quimibond_sgi/models/sgi_customer_reply.py:71` |
+| `sgi_deadline_overdue` | Boolean | Plazo vencido | Algún plazo de la NC (contención, causa raíz o plan de acción) ya venció sin cumplirse. |  |  | compute `_compute_sgi_deadline_states`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:189` |
 | `sgi_deviation` | Text | Desviación detectada |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:109` |
-| `sgi_document_id` | Many2one | Documento ligado | Documento controlado relacionado con la NC (el que se incumplió o el que hay que cambiar). |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:207` |
+| `sgi_document_id` | Many2one | Documento ligado | Documento controlado relacionado con la NC (el que se incumplió o el que hay que cambiar). |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:213` |
 | `sgi_due_containment` | Date | Contención vence | Fecha límite para registrar la contención, en días hábiles desde que se abrió la NC. La pone el sistema. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:164` |
 | `sgi_due_plan` | Date | Plan de acción vence | Fecha límite para registrar el plan de acción (acción correctiva o preventiva con responsable y compromiso). La pone el sistema. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:170` |
 | `sgi_due_root_cause` | Date | Causa raíz vence | Fecha límite para capturar la causa raíz, en días hábiles desde que se abrió la NC. La pone el sistema. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:167` |
 | `sgi_effectiveness_by` | Many2one | Eficacia verificada por | Persona que verificó que las acciones fueron eficaces. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:121` |
 | `sgi_effectiveness_date` | Date | Fecha de eficacia | Fecha de la verificación de eficacia. Se pide cuando terminan todas las acciones. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:118` |
-| `sgi_effectiveness_due` | Date | Verificar eficacia el | Se fija al terminar la última acción correctiva (90 días por omisión) y agenda la verificación al Jefe MAST. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:189` |
+| `sgi_effectiveness_due` | Date | Verificar eficacia el | Se fija al terminar la última acción correctiva (90 días por omisión) y agenda la verificación al Jefe MAST. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:195` |
 | `sgi_effectiveness_note` | Text | Verificación de eficacia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:117` |
 | `sgi_external_ref` | Char | N° NCR externo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:153` |
-| `sgi_fmea_id` | Many2one | AMEF ligado | AMEF relacionado. Al cerrar una NC mayor, el aviso para actualizarlo se agenda sobre este AMEF. |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:204` |
+| `sgi_fmea_id` | Many2one | AMEF ligado | AMEF relacionado. Al cerrar una NC mayor, el aviso para actualizarlo se agenda sobre este AMEF. |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:210` |
 | `sgi_folio` | Char | Folio SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:63` |
 | `sgi_followup_action` | Selection | Acción a seguir | Consecuencia para los responsables. «Acción administrativa» pide al Coordinador de RH levantar el acta. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:136` |
 | `sgi_followup_comments` | Text | Comentarios de seguimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:132` |
 | `sgi_incident_id` | Many2one | Incidente SST de origen | Incidente o accidente de seguridad del que nació esta NC. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:9` |
-| `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1338` |
-| `sgi_is_recurrent` | Boolean | Reincidente | Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro quimibond_sgi.nc_recurrence_months, 12 de fábrica). |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:219` |
+| `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1385` |
+| `sgi_is_recurrent` | Boolean | Reincidente | Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro quimibond_sgi.nc_recurrence_months, 12 de fábrica). |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:225` |
 | `sgi_ishikawa_notes` | Text | Notas Ishikawa (5-6M) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:116` |
 | `sgi_lead_auditor_id` | Many2one | Auditor líder | Auditor líder de la auditoría que detectó la NC. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:100` |
 | `sgi_lesson_captured` | Boolean | Lección aplicada a AMEF / plan de control / documento | Confírmelo cuando la lección aprendida de esta NC mayor ya se reflejó en el AMEF, el plan de control y/o el documento controlado correspondiente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:126` |
@@ -56,12 +57,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond
 | `sgi_origin_type` | Selection | Origen | De dónde viene la NC: proceso, auditoría, reclamación, indicador, incidente u otra fuente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:68` |
 | `sgi_plan_state` | Selection | Plan de acción | Plazo del plan de acción: hecha cuando hay acción correctiva o preventiva con responsable y compromiso. Se calcula al mostrarlo. |  |  | compute `_compute_sgi_deadline_states`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:181` |
 | `sgi_process_id` | Many2one | Proceso detectado | Proceso en el que se detectó la NC. Su dueño recibe los escalamientos. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:102` |
-| `sgi_recurrence_count` | Integer | Reincidencias | Casos previos del mismo proceso en la ventana de reincidencia (misma cláusula cuenta doble). |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:215` |
+| `sgi_recurrence_count` | Integer | Reincidencias | Casos previos del mismo proceso en la ventana de reincidencia (misma cláusula cuenta doble). |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:221` |
 | `sgi_requester_id` | Many2one | Solicitante | Persona que levanta la no conformidad. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:96` |
 | `sgi_requester_job` | Char | Cargo del solicitante |  |  |  | related `sgi_requester_id.employee_id.job_title`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:98` |
 | `sgi_required_capa` | Boolean | ¿Requirió acción correctiva? | Marque si la NC requirió acción correctiva además de la corrección inmediata. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:133` |
 | `sgi_responsible_ids` | Many2many | Responsables a contestar | Personas que deben contestar la NC. La ven en Mis pendientes hasta que se cierre. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:105` |
-| `sgi_risk_ids` | Many2many | Riesgos ligados | Riesgos del SGI relacionados con esta NC. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:200` |
+| `sgi_risk_ids` | Many2many | Riesgos ligados | Riesgos del SGI relacionados con esta NC. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:206` |
 | `sgi_root_cause` | Text | Causa raíz |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:115` |
 | `sgi_root_cause_state` | Selection | Causa raíz (plazo) | Plazo de la causa raíz: hecha cuando está capturada; vencida si pasó la fecha. Se calcula al mostrarlo. |  |  | compute `_compute_sgi_deadline_states`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:177` |
 | `sgi_sale_team_id` | Many2one | Línea (equipo de venta) | Del pedido de la reclamación o, si no hay, del último pedido del cliente. Fija el plazo de respuesta. |  | `crm.team` | compute `_compute_sgi_sale_team_id`, guardado |  | `addons/quimibond_sgi/models/sgi_customer_reply.py:43` |

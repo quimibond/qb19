@@ -19,7 +19,7 @@ pasa los campos existentes sin borrar datos.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.1.0.1',
+    'version': '19.0.1.1.0',
     'license': 'OPL-1',
     'depends': [
         'quimibond_sgi',

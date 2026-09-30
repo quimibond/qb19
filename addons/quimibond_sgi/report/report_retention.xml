@@ -30,21 +30,25 @@
                         </thead>
                         <tbody>
                             <tr t-foreach="docs.sorted(key=lambda d: (d.sgi_code or '~', d.name or ''))" t-as="doc">
-                                <td t-esc="doc.sgi_code or ''"/>
-                                <td t-esc="doc.name or ''"/>
-                                <td t-esc="dict(doc._fields['sgi_doc_type'].selection).get(doc.sgi_doc_type, '')"/>
-                                <td t-esc="doc.sgi_owner_id.name or ''"/>
+                                <td t-out="doc.sgi_code or ''"/>
+                                <td t-out="doc.name or ''"/>
+                                <td><span t-field="doc.sgi_doc_type"/></td>
+                                <td t-out="doc.sgi_owner_id.name or ''"/>
                                 <td class="text-end">
-                                    <span t-if="doc.sgi_retention_years" t-esc="doc.sgi_retention_years"/>
+                                    <span t-if="doc.sgi_retention_years" t-out="doc.sgi_retention_years"/>
                                     <span t-else="" class="text-danger">SIN DEFINIR</span>
                                 </td>
-                                <td t-esc="dict(doc._fields['sgi_disposition'].selection).get(doc.sgi_disposition, '')"/>
+                                <td><span t-field="doc.sgi_disposition"/></td>
                             </tr>
                         </tbody>
                     </table>
                     <p class="text-muted">Un registro «SIN DEFINIR» no tiene
                     retención capturada: defínela en la ficha SGI del documento
                     (campo «Retención (años)»).</p>
+                    <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                    <t t-call="quimibond_sgi.sgi_format_footer">
+                        <t t-set="sgi_rec" t-value="docs[:1]"/>
+                    </t>
                 </div>
             </t>
         </t>

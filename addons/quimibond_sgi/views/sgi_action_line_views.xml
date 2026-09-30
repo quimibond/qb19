@@ -17,7 +17,7 @@
                 <field name="incident_id" optional="hide"/>
                 <field name="drill_id" optional="hide"/>
                 <field name="responsible_id" widget="many2one_avatar_user"/>
-                <field name="date_commit"/>
+                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                 <field name="progress" optional="show"/>
                 <field name="date_done" optional="show"/>
                 <field name="state" widget="badge"
@@ -49,6 +49,9 @@
                         domain="[('state', '=', 'vencida')]"/>
                 <filter name="done" string="Terminadas"
                         domain="[('state', '=', 'terminada')]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
+                <separator/>
+                <filter name="filter_commit" string="Compromiso" date="date_commit"/>
                 <separator/>
                 <filter name="from_nc" string="De No Conformidades"
                         domain="[('alert_id', '!=', False)]"/>
@@ -86,7 +89,7 @@
             <form string="Acción">
                 <header>
                     <button name="action_mark_done" type="object"
-                            string="Marcar terminada" class="btn-primary"
+                            string="Terminar" class="btn-primary"
                             invisible="date_done"
                             confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
                     <button name="action_open_origin" type="object"
@@ -97,7 +100,7 @@
                 <sheet>
                     <div class="oe_title">
                         <label for="name" string="Acción"/>
-                        <h2><field name="name" placeholder="¿Qué hay que hacer?"/></h2>
+                        <h1><field name="name" placeholder="¿Qué hay que hacer?"/></h1>
                         <div class="text-muted">
                             Origen: <field name="origin_display" readonly="1" nolabel="1" class="oe_inline"/>
                         </div>

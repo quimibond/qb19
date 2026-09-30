@@ -10,7 +10,7 @@ Orden: `code`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibond_sgi/models/sgi_indicator_detail.py`, `addons/quimibond_sgi/models/sgi_indicator_formula.py`, `addons/quimibond_sgi/models/sgi_indicator_i3.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_indicator_p21.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_indicator_trajectory.py`, `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py`.
 
-## Campos (51)
+## Campos (53)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -51,6 +51,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `range_tolerance` | Float | Tolerancia | Fuera del rango pero dentro de esta distancia el semáforo es amarillo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:89` |
 | `responsible_id` | Many2one | Responsable | Dueño del indicador: captura o valida las mediciones y atiende los rojos. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:90` |
 | `sgi_area_id` | Many2one | Área SGI | Área del SGI del indicador. |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:88` |
+| `sgi_next_pending_date` | Date | Próxima captura | Periodo más antiguo con la medición todavía pendiente de capturar. |  |  | compute `_compute_sgi_next_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:244` |
+| `sgi_next_pending_id` | Many2one | Medición pendiente |  |  | `sgi.indicator.measure` | compute `_compute_sgi_next_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:247` |
 | `sgi_process_active` | Boolean | Proceso vigente | El proceso al que pertenece está activo. Sin proceso o con el proceso archivado, queda pendiente de proceso nuevo. |  |  | related `process_id.active`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:84` |
 | `source` | Text | De dónde sale el dato | Qué registros o documentos alimentan la fórmula: «Fecha compromiso del pedido contra fecha de la orden de entrega». |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:119` |
 | `source_info` | Char | Fuente del dato |  |  |  | compute `_compute_source`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:128` |
@@ -66,7 +68,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `uom` | Char | Unidad | % , MXN, unidades, kg, m… |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:95` |
 | `window_label` | Char | Ventana | Qué periodo de datos resume cada medición. |  |  | compute `_compute_window_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:52` |
 
-## Métodos públicos (11)
+## Métodos públicos (12)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -74,6 +76,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `action_recalculate_now` | Botón «Recalcular ahora»: el último periodo cerrado, guardando. |
 | `action_set_official` | — |
 | `action_set_trial` | — |
+| `action_sgi_capture` | «Capturar»: abre en ficha la medición pendiente más antigua; si no hay, la lista de mediciones del indicador. |
 | `action_sgi_measures` | Mis indicadores → «Mediciones»: la lista de mediciones del indicador para capturar la pendiente (primero lo más reciente). |
 | `action_sgi_recompute_pending_measures` | D-12 (57.5.0): botón «Recalcular mediciones pendientes» de la lista de indicadores, solo para el Administrador SGI. Con indicadores seleccionados recalcula solo esos; sin selección, todos. El cron di… |
 | `action_view_trend` | La pregunta real de MAST frente a un KPI: ¿cómo viene la tendencia? Abre las mediciones del indicador en gráfica de línea por periodo. |

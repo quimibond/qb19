@@ -239,6 +239,38 @@ class SgiIndicator(models.Model):
             indicator.display_name = "%s - %s" % (indicator.code, indicator.name) \
                 if indicator.code else indicator.name
 
+    # V-A07 (57.43.0): «Mis indicadores» dice qué periodo falta capturar y lo
+    # abre con un clic.
+    sgi_next_pending_date = fields.Date(
+        string="Próxima captura", compute='_compute_sgi_next_pending',
+        help="Periodo más antiguo con la medición todavía pendiente de capturar.")
+    sgi_next_pending_id = fields.Many2one(
+        'sgi.indicator.measure', string="Medición pendiente", compute='_compute_sgi_next_pending')
+
+    @api.depends('measure_ids.state', 'measure_ids.period_date')
+    def _compute_sgi_next_pending(self):
+        for indicator in self:
+            pending = indicator.measure_ids.filtered(
+                lambda m: m.state == 'pendiente').sorted('period_date')[:1]
+            indicator.sgi_next_pending_id = pending
+            indicator.sgi_next_pending_date = pending.period_date
+
+    def action_sgi_capture(self):
+        """«Capturar»: abre en ficha la medición pendiente más antigua; si no
+        hay, la lista de mediciones del indicador."""
+        self.ensure_one()
+        measure = self.sgi_next_pending_id
+        if not measure:
+            return self.action_sgi_measures()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Capturar — %s" % (self.code or self.name),
+            'res_model': 'sgi.indicator.measure',
+            'view_mode': 'form',
+            'res_id': measure.id,
+            'target': 'current',
+        }
+
     def action_sgi_measures(self):
         """Mis indicadores → «Mediciones»: la lista de mediciones del
         indicador para capturar la pendiente (primero lo más reciente)."""
@@ -977,6 +1009,9 @@ class SgiIndicatorMeasure(models.Model):
         help="Pendiente, capturado, validado o sin dato. El dueño del indicador valida lo capturado.")
     alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
                                help="No conformidad levantada por esta medición en rojo.")
+    # V-A06 (57.43.0): «Validar» solo se ofrece a quien puede validar (I-006).
+    sgi_can_validate = fields.Boolean(
+        string="Puede validar", compute='_compute_sgi_can_validate')
     sgi_nc_suppressed = fields.Boolean(
         string="NC omitida (fuente apagada)", readonly=True, copy=False,
         help="La medición ameritaba NC pero la fuente «Indicador en semáforo rojo» "
@@ -1244,6 +1279,10 @@ class SgiIndicatorMeasure(models.Model):
     _SGI_LOCKED_FIELDS = {'value', 'period_date', 'indicator_id', 'state'}
 
     def write(self, vals):
+        # V-A06 (57.43.0): validar es del responsable del indicador o del Jefe
+        # MAST (I-006) por cualquier vía, no solo con el botón.
+        if vals.get('state') == 'validado' and not self.env.su:
+            self.filtered(lambda m: m.state != 'validado')._sgi_check_validate_access()
         if self._SGI_LOCKED_FIELDS & set(vals.keys()) and not self.env.su:
             locked = self.filtered(lambda m: m.state == 'validado')
             # Re-escribir 'validado' sobre una ya validada no reabre nada.
@@ -1269,6 +1308,14 @@ class SgiIndicatorMeasure(models.Model):
         # El write bloquea la reapertura de validadas para quien no sea MAST.
         self.write({'state': 'pendiente'})
 
+    @api.depends('indicator_id.responsible_id')
+    @api.depends_context('uid')
+    def _compute_sgi_can_validate(self):
+        manager = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        for measure in self:
+            measure.sgi_can_validate = manager or (
+                measure.indicator_id.responsible_id == self.env.user)
+
     def _sgi_check_validate_access(self):
         """Solo el responsable del indicador o el Jefe MAST valida la medición."""
         if self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
@@ -1276,7 +1323,7 @@ class SgiIndicatorMeasure(models.Model):
         for measure in self:
             responsible = measure.indicator_id.responsible_id
             if not responsible or responsible != self.env.user:
-                raise UserError(
+                raise AccessError(
                     "Solo el responsable del indicador %s o el Jefe MAST y SGI "
                     "puede validar su medición." % measure.indicator_id.code)
 

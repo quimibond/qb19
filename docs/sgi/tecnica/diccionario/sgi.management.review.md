@@ -10,7 +10,7 @@ Orden: `date desc, folio desc`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_management_review.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`.
 
-## Campos (22)
+## Campos (23)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -34,6 +34,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_management_review.py`, `addons/quimib
 | `resources_note` | Text | 9. Recursos (calibraciones/capacitación) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:66` |
 | `risk_high_ids` | Many2many | 7. Riesgos de atención inmediata/alta | Riesgos de atención inmediata o alta. Se llenan con «Cargar entradas». |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:60` |
 | `satisfaction_summary` | Text | 14. Satisfacción del cliente | Indicador CA-02 y reclamaciones del periodo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:81` |
+| `sgi_heading` | Char | Título |  |  |  | compute `_compute_sgi_heading`, sin guardar |  | `addons/quimibond_sgi/models/sgi_management_review.py:91` |
 | `state` | Selection | Estado | Borrador mientras se prepara; realizada al marcarla hecha (sus acuerdos pasan a acciones); cerrada por el Jefe MAST y SGI. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:34` |
 | `supplier_summary` | Text | 6. Proveedores |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:59` |
 

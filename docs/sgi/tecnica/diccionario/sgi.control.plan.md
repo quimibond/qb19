@@ -14,18 +14,18 @@ Archivos: `addons/quimibond_sgi/models/sgi_control_plan.py`, `addons/quimibond_s
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `document_id` | Many2one | Especificación del cliente | Especificación del cliente en la que se basa el plan. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:96` |
-| `fmea_count` | Integer | # AMEF |  |  |  | compute `_compute_fmea_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_control_plan.py:95` |
-| `fmea_ids` | One2many | AMEF ligados |  |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:94` |
-| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:72` |
-| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:98` |
-| `partner_id` | Many2one | Cliente | Cliente para el que se hace el plan de control. |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:73` |
-| `phase` | Selection | Fase | Fase del producto: prototipo, prelanzamiento o producción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:78` |
-| `point_count` | Integer | N° de puntos |  |  |  | compute `_compute_point_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_control_plan.py:93` |
-| `point_ids` | One2many | Puntos de control |  |  | `quality.point` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:91` |
-| `product_tmpl_ids` | Many2many | Productos | Productos que cubre el plan. |  | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:76` |
-| `revision` | Char | Revisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:84` |
-| `state` | Selection | Estado | Borrador mientras se arma; vigente cuando aplica; obsoleto cuando se sustituye. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:85` |
+| `document_id` | Many2one | Especificación del cliente | Especificación del cliente en la que se basa el plan. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:100` |
+| `fmea_count` | Integer | # AMEF |  |  |  | compute `_compute_fmea_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_control_plan.py:99` |
+| `fmea_ids` | One2many | AMEF ligados |  |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:98` |
+| `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:76` |
+| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:102` |
+| `partner_id` | Many2one | Cliente | Cliente para el que se hace el plan de control. |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:77` |
+| `phase` | Selection | Fase | Fase del producto: prototipo, prelanzamiento o producción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:82` |
+| `point_count` | Integer | N° de puntos |  |  |  | compute `_compute_point_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_control_plan.py:97` |
+| `point_ids` | One2many | Puntos de control |  |  | `quality.point` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:95` |
+| `product_tmpl_ids` | Many2many | Productos | Productos que cubre el plan. |  | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:80` |
+| `revision` | Char | Revisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:88` |
+| `state` | Selection | Estado | Borrador mientras se arma; vigente cuando aplica; obsoleto cuando se sustituye. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_control_plan.py:89` |
 
 ## Métodos públicos (8)
 

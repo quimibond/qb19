@@ -63,6 +63,10 @@ class SgiControlPlan(models.Model):
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.control.plan'
+    # D-009 (57.41.0): marcar obsoleto (o sacarlo de obsoleto) es del Jefe
+    # MAST y del dueño del proceso de sus AMEF.
+    _sgi_decision_states = ('obsoleto',)
+    _sgi_decision_label = "Marcar obsoleto un plan de control (o sacarlo de obsoleto)"
 
     _folio_uniq = models.Constraint(
         'unique(folio)',
@@ -118,6 +122,11 @@ class SgiControlPlan(models.Model):
             'domain': [('control_plan_id', '=', self.id)],
             'context': {'default_control_plan_id': self.id},
         }
+
+    def _sgi_decision_processes(self):
+        """El plan de control no tiene proceso propio: el de sus AMEF."""
+        self.ensure_one()
+        return self.sudo().fmea_ids.process_id
 
     def action_set_vigente(self):
         for plan in self:

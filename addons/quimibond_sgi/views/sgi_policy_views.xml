@@ -50,10 +50,10 @@
                             string="Generar acuses de difusión"
                             invisible="state != 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_set_borrador" confirm="La política regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="A borrador"
+                    <button name="action_set_borrador" confirm="La política regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"
                             groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_set_obsoleta" confirm="La política deja de estar vigente. ¿Desea continuar?" type="object" string="Obsoletar"
+                    <button name="action_set_obsoleta" confirm="La política deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleta"
                             invisible="state != 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"

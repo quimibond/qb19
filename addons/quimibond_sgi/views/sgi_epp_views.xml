@@ -46,7 +46,10 @@
                             <field name="note"/>
                         </list>
                     </field>
-                    <group string="Resumen del EPP entregado (texto)">
+                    <!-- V-M11 (57.43.0): el EPP se captura en los renglones; el texto
+                         libre solo aparece si ya trae algo y no hay renglones
+                         (responsivas anteriores o el EPP del puesto sugerido). -->
+                    <group string="EPP entregado (texto)" invisible="line_ids or not items">
                         <field name="items" nolabel="1" readonly="state == 'firmada' or line_ids"
                                placeholder="Ej. casco, lentes de seguridad, guantes de nitrilo, protección auditiva..."/>
                     </group>
@@ -93,6 +96,9 @@
                 <field name="items"/>
                 <filter name="pending" string="Sin firmar" domain="[('state', '=', 'entregada')]"/>
                 <filter name="signed" string="Firmadas" domain="[('state', '=', 'firmada')]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
+                <separator/>
+                <filter name="filter_date" string="Fecha de entrega" date="date"/>
                 <group>
                     <filter name="group_employee" string="Empleado" context="{'group_by': 'employee_id'}"/>
                     <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
@@ -106,6 +112,7 @@
         <field name="name">Responsivas de EPP</field>
         <field name="res_model">sgi.epp.delivery</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
         <field name="search_view_id" ref="sgi_epp_delivery_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin responsivas de EPP</p>

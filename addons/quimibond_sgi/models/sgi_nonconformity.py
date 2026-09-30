@@ -185,6 +185,12 @@ class QualityAlert(models.Model):
     sgi_containment_done = fields.Boolean(compute='_compute_sgi_deadline_states',
                                           help="Se marca sola cuando la NC ya tiene al menos una acción de "
                                                "contención registrada.")
+    # 57.40.0 (V-A02): semáforo de la lista de NC y filtro «Plazo vencido».
+    sgi_deadline_overdue = fields.Boolean(
+        string="Plazo vencido", compute='_compute_sgi_deadline_states',
+        search='_search_sgi_deadline_overdue',
+        help="Algún plazo de la NC (contención, causa raíz o plan de acción) "
+             "ya venció sin cumplirse.")
     # --- NC-3: eficacia programada a N días de la última acción correctiva.
     sgi_effectiveness_due = fields.Date(
         string="Verificar eficacia el", readonly=True, copy=False,
@@ -301,6 +307,28 @@ class QualityAlert(models.Model):
             alert.sgi_containment_state = state(containment, alert.sgi_due_containment)
             alert.sgi_root_cause_state = state(bool(alert.sgi_root_cause), alert.sgi_due_root_cause)
             alert.sgi_plan_state = state(plan, alert.sgi_due_plan)
+            alert.sgi_deadline_overdue = 'vencida' in (
+                alert.sgi_containment_state, alert.sgi_root_cause_state, alert.sgi_plan_state)
+
+    @api.model
+    def _search_sgi_deadline_overdue(self, operator, value):
+        """Los estados de plazo no se guardan (dependen de hoy): se calculan
+        sobre las NC con algún plazo ya pasado, que son pocas."""
+        if operator not in ('=', '!=', 'in', 'not in'):
+            raise UserError("Búsqueda no soportada en «Plazo vencido».")
+        if operator in ('in', 'not in'):
+            wanted = any(value or [])
+            positive = wanted if operator == 'in' else not wanted
+        else:
+            positive = bool(value) if operator == '=' else not value
+        today = fields.Date.context_today(self)
+        candidates = self.sudo().search([
+            ('sgi_folio', '!=', False), '|', '|',
+            ('sgi_due_containment', '<', today),
+            ('sgi_due_root_cause', '<', today),
+            ('sgi_due_plan', '<', today)])
+        ids = candidates.filtered('sgi_deadline_overdue').ids
+        return [('id', 'in' if positive else 'not in', ids)]
 
     def _sgi_deadline_owner_user_id(self):
         """Quién responde el plazo: el primer responsable a contestar, si no

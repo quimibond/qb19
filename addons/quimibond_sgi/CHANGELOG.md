@@ -13,6 +13,166 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.44.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 3: documentos e impresos):**
+- **Alta de documento (V-A08):** lo primero y en grande es el título
+  (`name`, con la guía «Título del documento, sin clave»); la clave va
+  después. El título limpio calculado (sin clave ni extensión) se muestra en
+  gris solo si difiere de lo escrito. Sale el placeholder «Nombre del
+  archivo». Acuses del documento de 40 en 40 (V-B11).
+- **Pie de formato controlado (V-M08)** en los reportes que lo perdieron en
+  57.20.0: plan e informe de auditoría, investigación de incidente, AMEF,
+  NEWS, retención, matriz de riesgos, matriz de competencias, matriz de
+  cumplimiento, lista maestra (general y por proceso) y matriz legal. Usa el
+  pie en vivo de `sgi.format.map`: nuevo `sgi_footer_label(registro, ref)`
+  que sirve también para modelos sin el mixin de formato; sin mapeo no pinta
+  nada. **Datos (noupdate, solo altas):** mapeos por referencia
+  `format_ref_audit_plan` (F-P-G03-03), `format_ref_audit_report`
+  (F-P-G03-07), `format_ref_master_list` (F-P-G01-03) y `format_ref_news`
+  (F-P-G01-16), claves tomadas del propio SGI; MAST liga su documento en
+  «Formatos en documentos de Odoo». Los demás imprimen el pie en cuanto MAST
+  mapee su modelo. Quedan sin pie el 8D (su modelo es la NC y mostraría la
+  clave del reporte de NC) y las hojas de firmas (van dentro de otro PDF).
+- **Reporte de NC (V-M09):** en una alerta sin folio dice que no es una NC
+  del SGI (y cómo escalarla) en lugar de salir vacío; en la NC, «Sin
+  desviación registrada», «Sin análisis de 5 porqués registrado», «Sin
+  acciones registradas» y «Eficacia aún sin verificar» en lugar de huecos.
+- **Impresos sin «False» (V-B01):** `t-esc` → `t-out` en 7 reportes; la
+  retención usa `t-field` para tipo y disposición; los nombres de archivo de
+  los PDF y la cantidad de EPP no imprimen «False» cuando falta el dato.
+
+**Pruebas:** `test_vistas_pulido.TestDocumentosEImpresos`.
+
+## 19.0.57.43.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 2: piso y vencimientos):**
+- **Checklists de hoy (V-A04):** la tableta abre una **ficha propia** de la
+  hoja (`sgi_checklist_request_view_form`, primaria, prioridad 90; no es
+  herencia): equipo como título, plantilla y día, la lista de puntos arriba
+  con la respuesta como botones grandes (Bien / Falla / No aplica) y
+  «Terminar checklist» en el encabezado. «Checklists de hoy» abre primero un
+  kanban con una tarjeta grande por equipo o unidad; «Hojas de checklist» usa
+  la misma ficha. La ficha estándar de Mantenimiento no cambia.
+- **Medición (V-A06):** un solo botón principal por estado: «Marcar
+  capturado» en Pendiente y «Validar» solo en Capturado y solo para quien
+  puede validar (campo `sgi_can_validate`: responsable del indicador o Jefe
+  MAST). **Seguridad:** el servidor revisa lo mismo también en una escritura
+  directa del estado (`write`), no solo en el botón, y responde con
+  `AccessError`.
+- **Mis indicadores (V-A07):** lista propia (`sgi_indicator_view_list_mine`):
+  clave, nombre, unidad, último valor, semáforo, próxima captura con días
+  restantes y los botones «Capturar» (abre en ficha la medición pendiente más
+  antigua), «Mediciones» y «Tendencia».
+- **Equipos de medición (V-A09):** lista y búsqueda propias: última y próxima
+  calibración (días restantes), semáforo y «NO USAR» visibles, renglón rojo
+  si no se debe usar; filtros «Vencido o por vencer» (por defecto),
+  «Vencido», «Por vencer», «No usar» y fecha de próxima calibración.
+- **Vencimientos (V-M01):** `remaining_days` en la próxima calibración, la
+  próxima revisión de riesgos (salvo cerrados) y de documentos (salvo
+  obsoletos), la próxima evaluación legal, el compromiso de las acciones
+  (salvo terminadas) y la próxima fecha de estudios y exámenes.
+- **Filtros por defecto (V-M02):** incidentes abiertos, auditorías abiertas,
+  EPP sin firmar, simulacros programados, recorridos CSH en borrador,
+  mediciones pendientes y mías, acuses pendientes, requisitos que no cumplen o
+  sin evaluar, calibraciones de equipos por vencer (filtro nuevo).
+- **Filtros de fecha nativos y «Míos» (V-M03):** incidentes, auditorías,
+  calibraciones, simulacros, EPP, mediciones, requisitos legales, acciones
+  (compromiso) y cambios documentales; «Míos» en incidentes (reporté o tengo
+  una acción), auditorías (líder, auditor o auditado), requisitos legales,
+  cambios documentales, y «De mis procesos» en riesgos y AMEF. En la NC,
+  «Este año» (dominio fijo) pasa a filtro de fecha sobre la fecha de la NC.
+- **Responsiva de EPP (V-M11):** el texto libre solo aparece si ya trae algo
+  y no hay renglones; lo nuevo se captura en los renglones.
+
+**Pruebas:** `test_vistas_pulido.TestPisoYVencimientos` (validar por botón y
+por escritura, «Capturar», vistas del piso, cada `search_default_*` existe).
+
+## 19.0.57.42.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 1: V-M04, V-M06, V-M07, V-M15):**
+- **La misma lista de acciones en las 7 fichas** (NC, incidente, riesgo,
+  AMEF, simulacro, objetivo y medición): tipo, qué, responsable con avatar,
+  compromiso con días restantes (se oculta al terminar), terminada, avance,
+  estado como pastilla; renglón rojo si vencida y gris si terminada. En
+  objetivo y medición el tipo sigue oculto.
+- **Botones con el mismo nombre:** «Regresar a borrador» (antes también «A
+  borrador» y «Volver a borrador»), «Marcar obsoleta» en la política (antes
+  «Obsoletar»), «Terminar» en la ficha de acción (antes «Marcar terminada»).
+  En cada estado el siguiente paso es el único primario y va primero:
+  «Planificar» y «Elaborar informe» en la auditoría, «Cerrar» en la revisión
+  por la dirección, el programa de auditorías y el riesgo controlado;
+  «Registrar evaluación» del riesgo pasa después de los pasos del flujo.
+- **Nombre como título** en las 5 fichas que solo mostraban el folio: PPAP
+  (producto), estudio MSA (equipo), simulacro (plan de emergencia),
+  auditoría («Auditoría interna · procesos o cliente · fecha») y revisión por
+  la dirección («Revisión por la dirección · periodo»); el folio va debajo.
+  Campos calculados sin guardar `sgi_heading` en auditoría y revisión. El
+  programa de auditorías dice «Programa de auditorías 2026»; acción y
+  actividad llevan su título en `<h1>`.
+- **Actividad:** el cumplimiento de la medición deja de ser un `statusbar` en
+  el encabezado y va como pastilla junto al título, igual que la salud del
+  proceso.
+
+**Pruebas:** `test_vistas_pulido.TestFichasCoherentes`.
+
+## 19.0.57.41.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 1: V-A03):** los seis registros que se
+cierran como evidencia (incidente cerrado, riesgo cerrado, auditoría y
+revisión por la dirección cerradas, PPAP aprobado, simulacro realizado)
+muestran sus campos **en solo lectura** y una cinta («Cerrado», «Aprobado»,
+«Realizado»), en lugar de dejar editar y rechazar al guardar. Campo calculado
+`sgi_is_locked` en `sgi.base.mixin`, con la misma regla que el candado de
+`write()`: el Jefe MAST sigue editando. En el incidente, además, fuera de
+Jefe MAST y Salud ocupacional solo lo edita quien lo reportó y mientras siga
+«Reportado» (igual que la regla de registro).
+
+**Seguridad (V-A05, D-009, decisión de Jose):** aprobar, dar interino o
+rechazar un PPAP (y regresarlo a preparación desde esa decisión), cerrar y
+reabrir un riesgo, y marcar obsoleto (o sacar de obsoleto) un AMEF, un plan
+de control o un plan de emergencia lo hacen **solo el Jefe MAST y el dueño
+del proceso**. En la vista, los botones llevan `groups` (Jefe MAST y Dueño de
+proceso); en el servidor, `write()` revisa que el usuario sea Jefe MAST o
+dueño del proceso **del registro** y si no, `AccessError` con el motivo. El
+proceso sale de `process_id` (riesgo, AMEF), de sus AMEF (plan de control) o
+de los AMEF y planes de control de sus elementos (PPAP); el plan de emergencia
+no tiene proceso, así que lo decide solo el Jefe MAST. El dueño puede
+reabrir su riesgo cerrado (solo el estado; el resto sigue cerrado). Un AMEF,
+plan de control o plan de emergencia obsoleto ya no pasa directo a
+«Vigente»: primero «Regresar a borrador» (reservado), después «Marcar
+vigente». Mensajes del candado en «usted».
+
+**Pruebas:** `test_vistas_pulido.TestCerradoYDecisiones` (solo lectura por
+usuario y estado, incidente del reportante, riesgo, PPAP y obsoletos con
+usuario raso, dueño y Jefe MAST).
+
+## 19.0.57.40.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 1: V-A01 y V-A02):** la ficha de NC
+tiene **un solo juego de pestañas**: «Desviación y análisis», «Correcciones y
+acciones», «Cliente», «Ligas SGI» y «Verificación y cierre» van dentro del
+notebook estándar de Calidad, antes de «Descripción»; «Proveedor» al final.
+En una NC con folio se ocultan las páginas de texto libre «Acciones
+correctivas» y «Acciones preventivas» de Calidad (salvo que ya traigan
+texto): las acciones son las del SGI. Los metros reclamados pasan a la
+pestaña «Cliente» (antes una pestaña «Reclamación (SGI)» en toda alerta,
+también en las del piso). Un solo aviso arriba: NC del SGI y formato
+controlado juntos. Datos SGI, responsabilidades y plazos van antes de las
+pestañas. Salen las herencias `sgi_quality_alert_view_form_kpi` y
+`sgi_format_banner_quality_alert` (de 3 herencias sobre la ficha de Calidad a
+1); Odoo las borra al terminar la actualización.
+
+**Agregado (V-A02):** «No conformidades» abre su **lista y kanban propios**
+(`sgi_nc_view_list`, `sgi_nc_view_kanban`, prioridad 90 para no ganarle a las
+de Calidad en su app): folio, título, proceso, clasificación, responsables,
+los tres plazos (contención, causa raíz, plan) como semáforo, etapa y fecha;
+renglón en rojo si algún plazo venció. Filtro «Plazo vencido» con el campo
+calculado buscable `sgi_deadline_overdue`.
+
+**Pruebas:** `test_vistas_pulido` (ficha con un notebook, lista y kanban de la
+acción, filtro «Plazo vencido»).
+
 ## 19.0.57.37.0 — 2026-09-30
 
 **Corregido (entrega 10, `e10-manuales`):** el docstring de `sgi.policy`

@@ -33,8 +33,6 @@
                     <button name="action_sgi_view_legacy_routines" type="object"
                             string="Viene de" icon="fa-history"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-                    <field name="measure_state" widget="statusbar"
-                           invisible="not measure_state"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger"
@@ -53,10 +51,20 @@
                         <field name="measure_warning" nolabel="1" readonly="1"/>
                     </div>
                     <div class="oe_title">
-                        <h2 class="d-flex gap-2">
+                        <h1 class="d-flex gap-2">
                             <field name="number" class="w-auto" readonly="1"/>
                             <field name="name" placeholder="Verbo + qué: «Validar la recepción»"/>
-                        </h2>
+                        </h1>
+                    </div>
+                    <!-- V-M15 (57.42.0): el cumplimiento es un estado de la medición,
+                         no el ciclo de vida de la actividad: va como pastilla junto al
+                         título, igual que la salud del proceso (antes en un statusbar). -->
+                    <div class="mb-2" invisible="not measure_state">
+                        <field name="measure_state" widget="badge" nolabel="1" class="d-inline"
+                               decoration-success="measure_state == 'verde'"
+                               decoration-danger="measure_state == 'rojo'"
+                               decoration-warning="measure_state == 'pendiente'"
+                               decoration-muted="measure_state == 'no_aplica'"/>
                     </div>
                     <group>
                         <group>

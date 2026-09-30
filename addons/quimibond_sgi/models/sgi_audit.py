@@ -250,6 +250,21 @@ class SgiAudit(models.Model):
         'documents.document', string="Informe archivado", readonly=True, copy=False,
         help="Informe de la auditoría archivado en Documentos al cerrarla.")
 
+    # V-M07 (57.42.0): título legible de la ficha (el folio va debajo).
+    sgi_heading = fields.Char(string="Título", compute='_compute_sgi_heading')
+
+    @api.depends('audit_type', 'partner_id', 'process_ids', 'date_planned')
+    def _compute_sgi_heading(self):
+        types = dict(self._fields['audit_type'].selection)
+        for audit in self:
+            parts = ["Auditoría %s" % types.get(audit.audit_type, '').lower()]
+            subject = audit.partner_id.display_name or ", ".join(audit.process_ids.mapped('name'))
+            if subject:
+                parts.append(subject)
+            if audit.date_planned:
+                parts.append(audit.date_planned.strftime('%d/%m/%Y'))
+            audit.sgi_heading = " · ".join(parts)
+
     @api.depends('folio', 'audit_type')
     def _compute_name(self):
         for audit in self:

@@ -10,7 +10,7 @@ Orden: `date_planned desc, folio desc`.
 
 Archivos: `addons/quimibond_sgi/models/sgi_audit.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`.
 
-## Campos (24)
+## Campos (25)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -37,6 +37,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`, `addons/quimibond_sgi/mode
 | `process_ids` | Many2many | Procesos auditados | Procesos que cubre la auditoría. De ellos se genera el checklist. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:205` |
 | `program_line_id` | Many2one | Línea de programa | Renglón del programa anual del que nació esta auditoría. |  | `sgi.audit.program.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:188` |
 | `report_document_id` | Many2one | Informe archivado | Informe de la auditoría archivado en Documentos al cerrarla. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:249` |
+| `sgi_heading` | Char | Título |  |  |  | compute `_compute_sgi_heading`, sin guardar |  | `addons/quimibond_sgi/models/sgi_audit.py:254` |
 | `state` | Selection | Estado | Borrador, planificada, en ejecución, informe o cerrada. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:232` |
 
 ## Métodos públicos (10)

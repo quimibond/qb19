@@ -25,11 +25,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_format_map.py`.
 | `sgi_code` | Char | Clave al ligar | Clave con la que se sembró el mapeo (ej. F-P-A28-04). Solo sirve mientras no hay documento ligado; lo impreso sale del documento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_format_map.py:52` |
 | `sgi_code_alt` | Char | Clave alternativa al ligar | Clave que aplica cuando el registro está confirmado (solo ventas: cotización vs pedido). Vacío = siempre la clave principal. |  |  |  |  | `addons/quimibond_sgi/models/sgi_format_map.py:56` |
 
-## Métodos públicos (7)
+## Métodos públicos (8)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `create` | — |
+| `sgi_footer_label` | V-M08 (57.44.0): clave y revisión del pie «formato controlado» de un reporte (``report/sgi_format_footer.xml``). Con ``ref``, el mapeo por referencia (``format_ref_*``); si no, el del modelo del regi… |
 | `sgi_live_document` | Documento vigente que se imprime con este mapeo (vacío si no hay). |
 | `sgi_live_label` | 'F-P-A28-12 · Rev. 03' \| 'F-P-A28-12' (sin vigente) \| False. |
 | `sgi_live_parts` | (clave, revisión) vivas; revisión False si no hay vigente, y (False, False) si el mapeo no existe. |
