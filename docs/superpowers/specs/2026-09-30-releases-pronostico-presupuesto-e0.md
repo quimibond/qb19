@@ -440,4 +440,4 @@ Ajustes al diseño que salen de estas decisiones:
 - `ack_template_id` se firma con `sales_user_id`.
 - El lector IA toma la llave de `os.environ`.
 - `sgi.sales.budget` guarda `approved_original_amount` por mes al aprobar la Rev.1; el KPI lee eso y no la revisión vigente.
-- La carga 2026 crea los documentos por mercado ya aprobados (aprobación registrada a nombre de Jacobo).
+- La carga 2026 deja los documentos por mercado en revisado; Jacobo los aprueba en Odoo con el botón normal, así queda su aprobación real.
