@@ -20,9 +20,13 @@ class TestHierarchy(TransactionCase):
         cls.proc = Process.create({'code': 'XH1', 'name': 'Proceso H', 'parent_id': cls.macro.id})
         cls.other = Process.create({'code': 'XH2', 'name': 'Otro H'})
         Activity = cls.env['sgi.process.activity']
-        cls.a1 = Activity.create({'process_id': cls.proc.id, 'name': 'Recibir', 'sequence': 10})
-        cls.a2 = Activity.create({'process_id': cls.proc.id, 'name': 'Revisar', 'sequence': 20})
-        cls.a3 = Activity.create({'process_id': cls.proc.id, 'name': 'Liberar', 'sequence': 30})
+        # Con método de medición: test_04 da de alta el PR-XH1 vigente y un
+        # procedimiento vigente no admite actividades sin medir
+        # (_sgi_check_procedure_measures), igual que test_dropbox_key.
+        measured = {'measure_method': 'manual'}
+        cls.a1 = Activity.create({'process_id': cls.proc.id, 'name': 'Recibir', 'sequence': 10, **measured})
+        cls.a2 = Activity.create({'process_id': cls.proc.id, 'name': 'Revisar', 'sequence': 20, **measured})
+        cls.a3 = Activity.create({'process_id': cls.proc.id, 'name': 'Liberar', 'sequence': 30, **measured})
         cls.b1 = Activity.create({'process_id': cls.other.id, 'name': 'Entregar', 'sequence': 10})
         Link = cls.env['sgi.activity.link']
         Link.create({'from_activity_id': cls.a1.id, 'to_activity_id': cls.a2.id, 'name': 'Pedido'})
@@ -124,7 +128,8 @@ class TestHierarchy(TransactionCase):
         by_stage = Diagram.data('process_flow', self.proc.id, {'carriles': 'etapa'})
         self.assertEqual(by_stage['layout'], 'columns')
         self.assertIn('Recibe de otros procesos', [lane['label'] for lane in by_stage['lanes']])
-        self.assertEqual([n['kind'] for n in flow['nav']][:2], ['process_flow', 'sipoc'])
+        # 54.0.0 puso el mapa de procesos primero en la navegación.
+        self.assertEqual([n['kind'] for n in flow['nav']][:3], ['process_map', 'process_flow', 'sipoc'])
 
         sipoc = Diagram.data('sipoc', self.proc.id)
         self.assertEqual([lane['key'] for lane in sipoc['lanes']],

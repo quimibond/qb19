@@ -45,6 +45,19 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_norm_view_search" model="ir.ui.view">
+        <field name="name">sgi.norm.search</field>
+        <field name="model">sgi.norm</field>
+        <field name="arch" type="xml">
+            <search string="Normas">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_norm_action" model="ir.actions.act_window">
         <field name="name">Normas</field>
         <field name="res_model">sgi.norm</field>

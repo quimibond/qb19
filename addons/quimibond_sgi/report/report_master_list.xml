@@ -50,6 +50,11 @@
                         <p class="text-muted" style="font-size:9px;">
                             <span t-out="len(documents)"/> documento(s). Los obsoletos no se listan; se conservan en Documentos con su historial.
                         </p>
+                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                            <t t-set="sgi_fmt_ref" t-value="'format_ref_master_list'"/>
+                        </t>
                     </div>
                 </t>
             </t>
@@ -98,6 +103,10 @@
                             </tr>
                         </tbody>
                     </table>
+                    <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                    <t t-call="quimibond_sgi.sgi_format_footer">
+                        <t t-set="sgi_rec" t-value="docs[:1]"/>
+                    </t>
                 </div>
             </t>
         </t>

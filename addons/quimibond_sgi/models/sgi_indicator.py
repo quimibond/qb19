@@ -56,10 +56,20 @@ CALC_MODES = [
     # Genéricos (P-1): sirven a cualquier actividad o entregable del SGI.
     ('actividad_a_tiempo', "Actividad del SGI: % a tiempo"),
     ('entregable_completo', "Entregable del SGI: % completo"),
+    # Indicadores 2 (57.14.0): cruces entre modelos y plazos (sgi_indicator_ind2.py).
+    ('complementos_pago', "Complementos de pago timbrados en plazo (S2-01)"),
+    ('desviacion_precio_compra', "Desviación del precio de compra contra la OC (S1-05)"),
+    ('ordenes_vencidas_48h', "Órdenes abiertas vencidas más de 48 h, foto al cierre (C4-01)"),
+    ('desarrollos_vendidos', "Desarrollos vendidos en sus primeros 6 meses (C1-04)"),
+    ('cobertura_plantilla', "Cobertura de la plantilla autorizada (RH-01)"),
+    ('bajas_registradas', "Bajas registradas con motivo al día hábil siguiente (S4-01)"),
+    ('bajas_accesos_equipo', "Bajas con accesos y equipo retirados al día hábil siguiente (S6-02)"),
 ]
 
 
 class SgiIndicator(models.Model):
+    """Indicador del SGI (F-P-A10-03): fórmula o modo de cálculo, metas, frecuencia y semáforo. El
+    cron crea las mediciones del periodo; con ``nc_on_red`` un rojo levanta NC."""
     _name = 'sgi.indicator'
     _description = "Indicador SGI (F-P-A10-03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -67,29 +77,41 @@ class SgiIndicator(models.Model):
 
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True)
-    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso que mide el indicador.")
     # Estructura vigente = proceso activo. Guardado para poder filtrar los
     # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
     sgi_process_active = fields.Boolean(
         related='process_id.active', store=True, string="Proceso vigente",
         help="El proceso al que pertenece está activo. Sin proceso o con el "
              "proceso archivado, queda pendiente de proceso nuevo.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
-    responsible_id = fields.Many2one('res.users', string="Responsable")
-    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral", ondelete='restrict')
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
+                                  help="Área del SGI del indicador.")
+    responsible_id = fields.Many2one('res.users', string="Responsable",
+                                     help="Dueño del indicador: captura o valida las mediciones y atiende "
+                                          "los rojos.")
+    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral", ondelete='restrict',
+                                   help="Objetivo integral al que contribuye el indicador.")
     uom = fields.Char(string="Unidad", help="% , MXN, unidades, kg, m…")
     direction = fields.Selection([
         ('higher_better', "Más alto es mejor"),
         ('lower_better', "Más bajo es mejor"),
-    ], string="Sentido", default='higher_better', required=True)
-    target_objective = fields.Float(string="Objetivo")
-    target_acceptable = fields.Float(string="Aceptable")
+    ], string="Sentido", default='higher_better', required=True,
+        help="Si es mejor un valor más alto, más bajo o dentro de un rango. Define el semáforo.")
+    target_objective = fields.Float(string="Objetivo",
+                                    help="Valor meta. Alcanzarlo pone el semáforo en verde.")
+    target_acceptable = fields.Float(string="Aceptable",
+                                     help="Valor mínimo aceptable (o máximo, si más bajo es mejor). Entre "
+                                          "este y el objetivo, el semáforo es amarillo.")
     frequency = fields.Selection([
         ('monthly', "Mensual"),
         ('weekly', "Semanal"),
-    ], string="Frecuencia", default='monthly', required=True)
+    ], string="Frecuencia", default='monthly', required=True,
+        help="Cada cuánto se mide: mensual o semanal.")
     calc_mode = fields.Selection(CALC_MODES, string="Modo de cálculo",
-                                 default='manual', required=True)
+                                 default='manual', required=True,
+                                 help="Cómo se obtiene el valor: captura manual, una fuente automática del "
+                                      "SGI o una fórmula configurable.")
     formula = fields.Text(
         string="Fórmula",
         help="Cómo se calcula, en palabras: «Entregas completas en la fecha "
@@ -101,7 +123,8 @@ class SgiIndicator(models.Model):
     source_type = fields.Selection([
         ('auto', "Automático"),
         ('manual', "Manual"),
-    ], string="Origen del dato", compute='_compute_source', store=True)
+    ], string="Origen del dato", compute='_compute_source', store=True,
+        help="Automático si lo calcula el sistema; manual si se captura. Se calcula del modo de cálculo.")
     source_info = fields.Char(string="Fuente del dato", compute='_compute_source', store=True)
 
     # De dónde sale el valor de cada modo, en lenguaje humano (para el usuario).
@@ -154,6 +177,13 @@ class SgiIndicator(models.Model):
         'margen_ebitda': "Contabilidad → (ingresos − costo de ventas − gastos de operación) ÷ ingresos, últimos 12 meses; sin depreciación, sin otros ingresos ni gastos financieros.",
         'acuerdos_rxd': "SGI → acuerdos de la Revisión por la Dirección con fecha límite en el periodo cumplidos a tiempo ÷ acuerdos con fecha límite en el periodo.",
         'compras_mp_vs_ventas': "Contabilidad → facturas de proveedor de materia prima (menos notas de crédito) ÷ ingresos (cuentas de ingreso), últimos 3 meses.",
+        'complementos_pago': "Contabilidad → pagos de clientes del periodo a facturas PPD cuyo complemento de pago se timbró a más tardar el día 5 del mes siguiente al pago (hora de México) ÷ esos pagos. Se mide cuando vence el plazo.",
+        'desviacion_precio_compra': "Contabilidad → Σ |precio pagado − precio de la OC| × cantidad ÷ importe, en las líneas de factura de proveedor del periodo que vienen de una OC (moneda de la compañía; la OC se convierte a la unidad y moneda de la factura). La nota separa lo pagado de más y de menos y la cobertura con OC.",
+        'ordenes_vencidas_48h': "Fabricación → órdenes confirmadas, en proceso o por cerrar (sin borradores) cuya fecha de fin programada venció hace más de 48 h ÷ esas órdenes, foto al cierre de la semana. Solo se mide en los 7 días siguientes al cierre: el pasado no se reconstruye.",
+        'desarrollos_vendidos': "Ventas → artículos de producto terminado dados de alta en el mismo periodo de hace 6 meses con un pedido de venta confirmado en sus primeros 6 meses ÷ artículos dados de alta.",
+        'cobertura_plantilla': "Empleados → empleados que ocupan cada puesto al cierre del periodo (hasta su plantilla) ÷ «Plantilla autorizada» de los puestos.",
+        'bajas_registradas': "Empleados → bajas del periodo con motivo cuya fecha de salida se registró (seguimiento de Odoo) a más tardar el día hábil siguiente a la salida ÷ bajas del periodo.",
+        'bajas_accesos_equipo': "Empleados → bajas del periodo con «Retirar accesos» y «Recoger equipo» (plan de salida) marcadas como hechas a más tardar el día hábil siguiente a la salida ÷ bajas del periodo.",
     }
 
     @api.depends('calc_mode')
@@ -176,12 +206,14 @@ class SgiIndicator(models.Model):
     # 56.7.0 (1.8): guardados para filtrar «En rojo» y reportar.
     last_measure_id = fields.Many2one('sgi.indicator.measure', string="Última medición",
                                       compute='_compute_last_measure', store=True)
-    last_value = fields.Float(string="Último valor", compute='_compute_last_measure', store=True)
+    last_value = fields.Float(string="Último valor", compute='_compute_last_measure', store=True,
+                              help="Valor de la última medición. Se calcula solo.")
     last_semaphore = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Último semáforo", compute='_compute_last_measure', store=True)
+    ], string="Último semáforo", compute='_compute_last_measure', store=True,
+        help="Semáforo de la última medición. Se calcula solo.")
 
     _code_uniq = models.Constraint(
         'unique(code)',
@@ -206,6 +238,38 @@ class SgiIndicator(models.Model):
         for indicator in self:
             indicator.display_name = "%s - %s" % (indicator.code, indicator.name) \
                 if indicator.code else indicator.name
+
+    # V-A07 (57.43.0): «Mis indicadores» dice qué periodo falta capturar y lo
+    # abre con un clic.
+    sgi_next_pending_date = fields.Date(
+        string="Próxima captura", compute='_compute_sgi_next_pending',
+        help="Periodo más antiguo con la medición todavía pendiente de capturar.")
+    sgi_next_pending_id = fields.Many2one(
+        'sgi.indicator.measure', string="Medición pendiente", compute='_compute_sgi_next_pending')
+
+    @api.depends('measure_ids.state', 'measure_ids.period_date')
+    def _compute_sgi_next_pending(self):
+        for indicator in self:
+            pending = indicator.measure_ids.filtered(
+                lambda m: m.state == 'pendiente').sorted('period_date')[:1]
+            indicator.sgi_next_pending_id = pending
+            indicator.sgi_next_pending_date = pending.period_date
+
+    def action_sgi_capture(self):
+        """«Capturar»: abre en ficha la medición pendiente más antigua; si no
+        hay, la lista de mediciones del indicador."""
+        self.ensure_one()
+        measure = self.sgi_next_pending_id
+        if not measure:
+            return self.action_sgi_measures()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': "Capturar — %s" % (self.code or self.name),
+            'res_model': 'sgi.indicator.measure',
+            'view_mode': 'form',
+            'res_id': measure.id,
+            'target': 'current',
+        }
 
     def action_sgi_measures(self):
         """Mis indicadores → «Mediciones»: la lista de mediciones del
@@ -357,14 +421,10 @@ class SgiIndicator(models.Model):
 
     def _calc_reclamos_cliente(self, date_from, date_to):
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                            raise_if_not_found=False)
-        if not team:
-            return None
-        return float(self.env['helpdesk.ticket'].search_count([
-            ('team_id', '=', team.id),
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
-        ]))
+        # D-006: todos los equipos marcados como reclamación, no un XML ID.
+        domain = self.env['helpdesk.team']._sgi_complaint_domain() + [
+            ('create_date', '>=', dt_from), ('create_date', '<', dt_to)]
+        return float(self.env['helpdesk.ticket'].search_count(domain))
 
     def _calc_rotacion_rh(self, date_from, date_to):
         Employee = self.env['hr.employee'].with_context(active_test=False)
@@ -913,20 +973,24 @@ class SgiIndicator(models.Model):
 
 
 class SgiIndicatorMeasure(models.Model):
+    """Medición de un indicador en un periodo: valor, semáforo, evidencia y, si sale en rojo, causa
+    y plan. Se calcula sola o se captura; el dueño la valida."""
     _name = 'sgi.indicator.measure'
     _description = "Medición de indicador SGI"
     _order = 'period_date desc, indicator_id'
 
     indicator_id = fields.Many2one('sgi.indicator', string="Indicador",
-                                   required=True, ondelete='cascade', index=True)
+                                   required=True, ondelete='cascade', index=True,
+                                   help="Indicador medido.")
     source_type = fields.Selection(related='indicator_id.source_type',
-                                   string="Origen del dato")
+                                   string="Origen del dato",
+                                   help="Si el dato es automático o se captura.")
     source_info = fields.Char(related='indicator_id.source_info',
                               string="Fuente del dato")
     period_date = fields.Date(string="Periodo", required=True,
                               help="Día 1 del mes medido.")
-    value = fields.Float(string="Valor")
-    direction = fields.Selection(related='indicator_id.direction')
+    value = fields.Float(string="Valor", help="Valor medido en el periodo.")
+    direction = fields.Selection(related='indicator_id.direction', help="Sentido del indicador.")
     target_objective = fields.Float(related='indicator_id.target_objective', string="Objetivo")
     target_acceptable = fields.Float(related='indicator_id.target_acceptable', string="Aceptable")
     uom = fields.Char(related='indicator_id.uom', string="Unidad")
@@ -934,14 +998,20 @@ class SgiIndicatorMeasure(models.Model):
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Semáforo", compute='_compute_semaphore', store=True)
+    ], string="Semáforo", compute='_compute_semaphore', store=True,
+        help="Verde, amarillo o rojo según el valor y las metas. Se calcula solo.")
     note = fields.Text(string="Nota")
     state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('capturado', "Capturado"),
         ('validado', "Validado"),
-    ], string="Estado", default='pendiente', required=True)
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True)
+    ], string="Estado", default='pendiente', required=True,
+        help="Pendiente, capturado, validado o sin dato. El dueño del indicador valida lo capturado.")
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+                               help="No conformidad levantada por esta medición en rojo.")
+    # V-A06 (57.43.0): «Validar» solo se ofrece a quien puede validar (I-006).
+    sgi_can_validate = fields.Boolean(
+        string="Puede validar", compute='_compute_sgi_can_validate')
     sgi_nc_suppressed = fields.Boolean(
         string="NC omitida (fuente apagada)", readonly=True, copy=False,
         help="La medición ameritaba NC pero la fuente «Indicador en semáforo rojo» "
@@ -1050,7 +1120,8 @@ class SgiIndicatorMeasure(models.Model):
                 'res_model': 'account.move',
                 'view_mode': 'list,pivot,form',
                 'domain': indicator._sgi_customer_moves_domain(start, date_to),
-                'context': {'search_default_group_by_partner': 1},
+                # D-013: el filtro por defecto no existe en account.move.
+                'context': {'group_by': ['partner_id']},
             }
         if mode == 'concentracion_productos':
             start = date_to - relativedelta(years=1) + relativedelta(days=1)
@@ -1167,9 +1238,7 @@ class SgiIndicatorMeasure(models.Model):
             domain = [('category_id', 'in', categories.ids)] if categories else [('id', '=', False)]
             model, date_field, is_dt = 'approval.request', 'create_date', True
         elif mode == 'reclamos_cliente':
-            team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                                raise_if_not_found=False)
-            domain = [('team_id', '=', team.id)] if team else []
+            domain = self.env['helpdesk.team']._sgi_complaint_domain()
             model, date_field, is_dt = 'helpdesk.ticket', 'create_date', True
         elif mode == 'rotacion_rh':
             return {
@@ -1210,6 +1279,10 @@ class SgiIndicatorMeasure(models.Model):
     _SGI_LOCKED_FIELDS = {'value', 'period_date', 'indicator_id', 'state'}
 
     def write(self, vals):
+        # V-A06 (57.43.0): validar es del responsable del indicador o del Jefe
+        # MAST (I-006) por cualquier vía, no solo con el botón.
+        if vals.get('state') == 'validado' and not self.env.su:
+            self.filtered(lambda m: m.state != 'validado')._sgi_check_validate_access()
         if self._SGI_LOCKED_FIELDS & set(vals.keys()) and not self.env.su:
             locked = self.filtered(lambda m: m.state == 'validado')
             # Re-escribir 'validado' sobre una ya validada no reabre nada.
@@ -1235,6 +1308,14 @@ class SgiIndicatorMeasure(models.Model):
         # El write bloquea la reapertura de validadas para quien no sea MAST.
         self.write({'state': 'pendiente'})
 
+    @api.depends('indicator_id.responsible_id')
+    @api.depends_context('uid')
+    def _compute_sgi_can_validate(self):
+        manager = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        for measure in self:
+            measure.sgi_can_validate = manager or (
+                measure.indicator_id.responsible_id == self.env.user)
+
     def _sgi_check_validate_access(self):
         """Solo el responsable del indicador o el Jefe MAST valida la medición."""
         if self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
@@ -1242,7 +1323,7 @@ class SgiIndicatorMeasure(models.Model):
         for measure in self:
             responsible = measure.indicator_id.responsible_id
             if not responsible or responsible != self.env.user:
-                raise UserError(
+                raise AccessError(
                     "Solo el responsable del indicador %s o el Jefe MAST y SGI "
                     "puede validar su medición." % measure.indicator_id.code)
 

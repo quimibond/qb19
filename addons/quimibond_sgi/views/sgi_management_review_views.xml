@@ -6,20 +6,39 @@
         <field name="arch" type="xml">
             <form string="Revisión por la Dirección">
                 <header>
-                    <button name="action_load_inputs" type="object" string="Cargar entradas"
-                            invisible="state != 'borrador'"/>
+                    <!-- V-M06 (57.42.0): el siguiente paso de cada estado es el único
+                         primario y va primero. -->
                     <button name="action_mark_done" type="object" string="Marcar realizada"
                             class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_close" confirm="Se cerrará la revisión por la dirección y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state != 'realizada'" groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_load_inputs" type="object" string="Cargar entradas"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_validate_measures" type="object"
+                            string="Validar mediciones del periodo"
+                            invisible="state == 'cerrada'"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Valida todas las mediciones capturadas del periodo de esta revisión y abre los rojos que aún no tienen causa ni acción. ¿Continuar?"/>
                     <!-- D-009: cerrar y reabrir la revisión es del Jefe MAST. -->
-                    <button name="action_close" type="object" string="Cerrar"
-                            invisible="state != 'realizada'" groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_draft" type="object" string="Volver a borrador"
+                    <button name="action_draft" confirm="La revisión por la dirección regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
+                <!-- Banner «formato controlado» (antes herencia propia en
+                     sgi_format_map_views.xml; A-008, 57.26.0). -->
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Cerrada" bg_color="text-bg-secondary"
+                            invisible="state != 'cerrada'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
+                        <h1><field name="sgi_heading" readonly="1"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <div class="text-muted mb-2">
                         Flujo: define el periodo → <b>Cargar entradas</b> llena
@@ -31,30 +50,30 @@
                     </div>
                     <group>
                         <group>
-                            <field name="date"/>
-                            <field name="period_from"/>
-                            <field name="period_to"/>
+                            <field name="date" readonly="sgi_is_locked"/>
+                            <field name="period_from" readonly="sgi_is_locked"/>
+                            <field name="period_to" readonly="sgi_is_locked"/>
                         </group>
                         <group>
-                            <field name="attendee_ids" widget="many2many_tags"/>
+                            <field name="attendee_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Entradas (9.3.2)">
                             <group>
-                                <field name="prev_agreements_summary"/>
-                                <field name="nc_summary"/>
-                                <field name="complaints_summary"/>
-                                <field name="audit_summary"/>
-                                <field name="supplier_summary"/>
-                                <field name="env_summary"/>
-                                <field name="doc_changes_summary"/>
-                                <field name="legal_summary"/>
-                                <field name="participation_summary"/>
-                                <field name="resources_note"/>
+                                <field name="prev_agreements_summary" readonly="sgi_is_locked"/>
+                                <field name="nc_summary" readonly="sgi_is_locked"/>
+                                <field name="complaints_summary" readonly="sgi_is_locked"/>
+                                <field name="audit_summary" readonly="sgi_is_locked"/>
+                                <field name="supplier_summary" readonly="sgi_is_locked"/>
+                                <field name="env_summary" readonly="sgi_is_locked"/>
+                                <field name="doc_changes_summary" readonly="sgi_is_locked"/>
+                                <field name="legal_summary" readonly="sgi_is_locked"/>
+                                <field name="participation_summary" readonly="sgi_is_locked"/>
+                                <field name="resources_note" readonly="sgi_is_locked"/>
                             </group>
                             <separator string="4. Auditorías del periodo"/>
-                            <field name="audit_ids">
+                            <field name="audit_ids" readonly="sgi_is_locked">
                                 <list>
                                     <field name="folio"/>
                                     <field name="audit_type"/>
@@ -64,7 +83,7 @@
                                 </list>
                             </field>
                             <separator string="5. Indicadores en rojo"/>
-                            <field name="kpi_red_measure_ids">
+                            <field name="kpi_red_measure_ids" readonly="sgi_is_locked">
                                 <list>
                                     <field name="indicator_id"/>
                                     <field name="period_date"/>
@@ -73,7 +92,7 @@
                                 </list>
                             </field>
                             <separator string="7. Riesgos de atención inmediata/alta"/>
-                            <field name="risk_high_ids">
+                            <field name="risk_high_ids" readonly="sgi_is_locked">
                                 <list>
                                     <field name="folio"/>
                                     <field name="name"/>
@@ -95,7 +114,7 @@
                                 la revisión como Realizada: actividad al responsable, escalamiento si vence y
                                 medición de E1-02.
                             </div>
-                            <field name="agreement_ids">
+                            <field name="agreement_ids" readonly="sgi_is_locked">
                                 <list editable="bottom" decoration-danger="action_state == 'vencida'"
                                       decoration-success="action_state == 'terminada'">
                                     <field name="name"/>
@@ -132,12 +151,32 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_management_review_view_search" model="ir.ui.view">
+        <field name="name">sgi.management.review.search</field>
+        <field name="model">sgi.management.review</field>
+        <field name="arch" type="xml">
+            <search string="Revisiones por la dirección">
+                <field name="name"/>
+                <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_realizada" string="Realizada" domain="[('state', '=', 'realizada')]"/>
+                <filter name="state_cerrada" string="Cerrada" domain="[('state', '=', 'cerrada')]"/>
+                <separator/>
+                <filter name="filter_date" string="Fecha" date="date"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_date" string="Año" context="{'group_by': 'date:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_management_review_action" model="ir.actions.act_window">
         <field name="name">Revisión por la dirección</field>
         <field name="res_model">sgi.management.review</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea la Revisión por la Dirección</p>
+            <p class="o_view_nocontent_smiling_face">Cree la Revisión por la Dirección</p>
             <p>El botón Cargar entradas llena las 10 entradas de la norma con los datos reales del periodo. Los acuerdos se vuelven tareas rastreables.</p>
         </field>
     </record>

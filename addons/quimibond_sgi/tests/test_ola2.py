@@ -222,13 +222,15 @@ class TestOla2ExternalEscalation(TransactionCase):
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
 
     def _nc(self, origin, days_ago):
-        from datetime import datetime, timedelta
+        from ..models.sgi_calendar import sgi_add_business_days, sgi_local_datetime_utc, sgi_today
         alert = self.env['quality.alert'].create({
             'title': 'NC %s' % origin, 'team_id': self.team.id,
             'sgi_origin_type': origin})
         # create_date lo fija el ORM a "ahora"; para probar el umbral lo
-        # retrasamos por SQL.
-        old = datetime.now() - timedelta(days=days_ago)
+        # retrasamos por SQL. 57.15.0 (G-009): el umbral es de días hábiles,
+        # así que la antigüedad también.
+        day = sgi_add_business_days(self.env, sgi_today(self.env), -days_ago)
+        old = sgi_local_datetime_utc(self.env, day, 12)
         self.env.cr.execute(
             "UPDATE quality_alert SET create_date = %s WHERE id = %s",
             (old, alert.id))
@@ -245,7 +247,7 @@ class TestOla2ExternalEscalation(TransactionCase):
             'quimibond_sgi.nc_escalation_days_external')), 3)
 
     def test_02_external_escalates_faster_than_internal(self):
-        # Ambas con 4 días de antigüedad, sin acciones:
+        # Ambas con 4 días hábiles de antigüedad, sin acciones:
         # externa (umbral 3) escala; interna (umbral 5) todavía no.
         ext = self._nc('reclamacion', 4)
         internal = self._nc('proceso', 4)

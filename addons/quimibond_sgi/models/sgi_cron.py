@@ -11,6 +11,9 @@ from markupsafe import escape
 from odoo import models, fields, api
 from odoo.tools import html2plaintext
 
+from .sgi_calendar import (
+    sgi_add_business_days, sgi_business_days, sgi_local_datetime_utc, sgi_today)
+
 from .sgi_guard import sgi_require_system
 from .sgi_menu_paths import sgi_menu_path
 
@@ -54,6 +57,9 @@ class MailActivitySgiCron(models.Model):
 
 
 class SgiCron(models.AbstractModel):
+    """Tareas programadas del SGI. Cada método ``cron_*`` es una acción planificada (ver
+    ``docs/sgi/tecnica/crons.md``); agendan actividades con ``_sgi_schedule`` (idempotente por
+    clave) y cada paso corre en su savepoint."""
     _name = 'sgi.cron'
     _description = "Tareas programadas SGI"
 
@@ -467,9 +473,11 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_nonconformities(self):
+        """Cron diario de NC: cierra actividades ya resueltas, recalcula acciones vencidas, avisa y
+        escala los plazos por etapa, escala NC sin acción y pide la verificación de eficacia."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: ficha de la corrida para el cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         Param = self.env['ir.config_parameter'].sudo()
         default_days = int(Param.get_param('quimibond_sgi.nc_escalation_days', 5))
         external_days = int(Param.get_param('quimibond_sgi.nc_escalation_days_external', 3))
@@ -505,7 +513,9 @@ class SgiCron(models.AbstractModel):
             alert._sgi_supplier_escalation(today)  # NC-6
             days = external_days if alert.sgi_origin_type in (
                 'auditoria_externa', 'reclamacion', 'scorecard') else default_days
-            deadline = fields.Datetime.to_datetime(alert.create_date).date() + relativedelta(days=days)
+            # 57.15.0 (G-009, decisión 4 de la tanda 2): días hábiles desde
+            # el día (local) en que se levantó la NC.
+            deadline = sgi_add_business_days(self.env, alert.create_date, days)
             no_action = not alert.sgi_action_line_ids.filtered(lambda l: l.progress != '0')
 
             # Escalamiento por inacción
@@ -514,7 +524,7 @@ class SgiCron(models.AbstractModel):
                 self._sgi_schedule(
                     alert,
                     "NC sin acción: %s" % (alert.sgi_folio or alert.name),
-                    "La NC lleva más de %d días abierta sin acción registrada." % days,
+                    "La NC lleva más de %d días hábiles abierta sin acción registrada." % days,
                     user_id, date_deadline=deadline, key='nc_sin_accion')
 
             # Verificación de eficacia pendiente. G-010 (56.37.0): al terminar
@@ -553,7 +563,7 @@ class SgiCron(models.AbstractModel):
         actividades ya agendadas del mismo nivel."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         Param = self.env['ir.config_parameter'].sudo()
         d_mgr = int(Param.get_param('quimibond_sgi.action_escalation_manager_days', 7))
         d_dir = int(Param.get_param('quimibond_sgi.action_escalation_director_days', 15))
@@ -568,14 +578,15 @@ class SgiCron(models.AbstractModel):
             origin = line._sgi_origin()
             if not origin:
                 return
-            days = (today - line.date_commit).days
+            # 57.15.0 (G-009): los umbrales se cuentan en días hábiles.
+            days = sgi_business_days(self.env, line.date_commit, today)
             who = line.responsible_id.display_name or '-'
             if days > d_mgr:
                 boss = line.responsible_id.employee_id.parent_id.user_id
                 self._sgi_schedule(
                     origin,
                     "Acción vencida (+%dd) escalada al jefe: %s" % (d_mgr, line.name),
-                    "La acción de %s lleva %d días vencida (compromiso %s); se "
+                    "La acción de %s lleva %d días hábiles vencida (compromiso %s); se "
                     "escala a su jefe directo." % (who, days, line.date_commit),
                     boss.id or manager_fallback, date_deadline=today,
                     key='accion_vencida_jefe:%d' % line.id)
@@ -583,7 +594,7 @@ class SgiCron(models.AbstractModel):
                 self._sgi_schedule(
                     origin,
                     "Acción vencida (+%dd) escalada a Dirección: %s" % (d_dir, line.name),
-                    "La acción de %s lleva %d días vencida (compromiso %s); se "
+                    "La acción de %s lleva %d días hábiles vencida (compromiso %s); se "
                     "escala a Dirección." % (who, days, line.date_commit),
                     director_id, date_deadline=today,
                     key='accion_vencida_direccion:%d' % line.id)
@@ -598,9 +609,11 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_documents(self):
+        """Cron diario de documentos: avisos de revisión bienal, pilotos por vencer y acuses
+        pendientes (un aviso por documento y clave)."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         Doc = self.env['documents.document']
         Param = self.env['ir.config_parameter'].sudo()
         notice_days = int(Param.get_param('quimibond_sgi.doc_review_notice_days', 60))
@@ -653,11 +666,13 @@ class SgiCron(models.AbstractModel):
 
         failures += self._sgi_for_each(pilots, _pilot_notice, "aviso de piloto")
 
-        # Acuses pendientes (umbral configurable, por defecto 7 días).
-        limit_date = fields.Datetime.now() - relativedelta(days=ack_days)
+        # Acuses pendientes (umbral configurable, por defecto 7 días). 57.15.0
+        # (G-009): días hábiles; cuenta el día local en que nació el acuse.
+        limit_day = sgi_add_business_days(self.env, today, -ack_days)
+        limit_date = sgi_local_datetime_utc(self.env, limit_day + relativedelta(days=1), 0)
         acks = self.env['sgi.document.ack'].search([
             ('state', '=', 'pendiente'),
-            ('create_date', '<=', limit_date),
+            ('create_date', '<', limit_date),
         ])
         manager_id = self._sgi_manager_user_id()
 
@@ -666,7 +681,7 @@ class SgiCron(models.AbstractModel):
             self._sgi_schedule(
                 ack.document_id,
                 "Acuse pendiente: %s" % (ack.employee_id.name),
-                "El acuse de lectura lleva más de %d días pendiente." % ack_days,
+                "El acuse de lectura lleva más de %d días hábiles pendiente." % ack_days,
                 user_id, date_deadline=today, key='acuse_pendiente:%d' % ack.id)
 
         failures += self._sgi_for_each(acks, _ack_notice, "acuses pendientes")
@@ -679,8 +694,10 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_news(self):
+        """Cron mensual: si el mes anterior hubo cambios documentales aplicados, agenda al Jefe MAST
+        el boletín NEWS."""
         sgi_require_system(self.env)  # F-008
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         first_this_month = today.replace(day=1)
         first_prev_month = first_this_month - relativedelta(months=1)
 
@@ -748,11 +765,12 @@ class SgiCron(models.AbstractModel):
         del mes y sus NCs — y al ser mensual, el mes quedaba sin medir hasta una
         corrida manual."""
         sgi_require_system(self.env)  # F-008
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         first_this = today.replace(day=1)
         first_prev = first_this - relativedelta(months=1)
         last_prev = first_this - relativedelta(days=1)
-        deadline = first_this + relativedelta(days=4)
+        # 57.15.0 (G-009): la captura vence 4 días hábiles después del día 1.
+        deadline = sgi_add_business_days(self.env, first_this, 4)
         indicators = self.env['sgi.indicator'].search([('frequency', '=', 'monthly')])
         self._sgi_step(
             "foto del valor del inventario (S3-04)",
@@ -780,11 +798,12 @@ class SgiCron(models.AbstractModel):
     def cron_indicators_weekly(self):
         """Cron semanal: mide los indicadores de frecuencia semanal de la semana previa."""
         sgi_require_system(self.env)  # F-008
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         this_monday = today - relativedelta(days=today.weekday())
         prev_monday = this_monday - relativedelta(days=7)
         prev_sunday = this_monday - relativedelta(days=1)
-        deadline = this_monday + relativedelta(days=2)
+        # 57.15.0 (G-009): 2 días hábiles después del lunes.
+        deadline = sgi_add_business_days(self.env, this_monday, 2)
         indicators = self.env['sgi.indicator'].search([('frequency', '=', 'weekly')])
         self._sgi_generate_measures(
             indicators, prev_monday, prev_monday, prev_sunday, deadline,
@@ -805,7 +824,7 @@ class SgiCron(models.AbstractModel):
         aviso vuelva a nacer si la causa reaparece."""
         todo = self.env.ref('mail.mail_activity_data_todo')
         Activity = self.env['mail.activity'].sudo().with_context(active_test=False)
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         closed = []
 
         def _open(model, prefix):
@@ -941,12 +960,12 @@ class SgiCron(models.AbstractModel):
 
     @api.model
     def _sgi_refresh_action_states(self, lines):
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         return self._sgi_write_changed(lines, 'state', lambda line: line._sgi_state_on(today))
 
     @api.model
     def _sgi_refresh_calibration_states(self, equipments):
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         return self._sgi_write_changed(
             equipments, 'sgi_calibration_state', lambda eq: eq._sgi_calibration_state_on(today))
 
@@ -1019,7 +1038,7 @@ class SgiCron(models.AbstractModel):
         self._sgi_schedule(
             indicator, "Indicador %s no calculó" % (indicator.code or indicator.name),
             "%s: %s" % (label, reason or ''), indicator.responsible_id.id or manager_id,
-            date_deadline=fields.Date.context_today(self), key='indicador_no_calcula')
+            date_deadline=sgi_today(self.env), key='indicador_no_calcula')
 
     @api.model
     def _sgi_schedule_deadline(self, anchor, measure, summary, note, user_id, deadline):
@@ -1036,8 +1055,10 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_audit_program(self):
+        """Cron diario: 15 días antes del mes planeado de cada renglón del programa aprobado, agenda
+        al auditor líder (o a MAST) preparar la auditoría."""
         sgi_require_system(self.env)  # F-008
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         lines = self.env['sgi.audit.program.line'].search([
             ('state', '=', 'pendiente'),
             ('program_id.state', '=', 'aprobado'),
@@ -1067,9 +1088,11 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_risk_review(self):
+        """Cron diario: riesgos con revisión vencida al dueño del proceso (o a MAST) y riesgos altos
+        sin acción."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         risks = self.env['sgi.risk'].search([
             ('next_review_date', '!=', False),
             ('next_review_date', '<=', today),
@@ -1113,8 +1136,10 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_supplier_eval(self):
+        """Cron trimestral: evalúa a los proveedores críticos con las recepciones del trimestre
+        anterior (entrega a tiempo y NC) y avisa a Compras los condicionados y de baja."""
         sgi_require_system(self.env)  # F-008
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         # Trimestre anterior
         current_q_start_month = ((today.month - 1) // 3) * 3 + 1
         current_q_start = today.replace(month=current_q_start_month, day=1)
@@ -1124,7 +1149,10 @@ class SgiCron(models.AbstractModel):
         dt_to = fields.Datetime.to_datetime(prev_q_end) + relativedelta(days=1)
 
         Eval = self.env['sgi.supplier.eval']
+        # 57.16.0 (G-019, D-03): solo las recepciones de la empresa del SGI.
+        company = self.env['sgi.config']._sgi_company()
         pickings = self.env['stock.picking'].search([
+            ('company_id', '=', company.id),
             ('picking_type_id.code', '=', 'incoming'),
             ('state', '=', 'done'),
             ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
@@ -1233,7 +1261,7 @@ class SgiCron(models.AbstractModel):
         dictaminar, sgi_calibration.py)."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         Equipment = self.env['maintenance.equipment']
         manager_id = self._sgi_manager_user_id()
         company = self.env['sgi.config']._sgi_company()
@@ -1277,6 +1305,7 @@ class SgiCron(models.AbstractModel):
 
         # EPP por vencer (P-S03).
         ppe = Equipment.search([
+            ('company_id', 'in', (company.id, False)),  # 57.16.0 (G-019)
             ('sgi_is_ppe', '=', True),
             ('sgi_ppe_expiry_date', '!=', False),
         ])
@@ -1326,15 +1355,20 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_competences(self):
+        """Cron diario: certificaciones de empleados por vencer (30 días) al empleado y a RH; los
+        satélites y extensiones agregan exámenes y estudios."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         soon = today + relativedelta(days=30)
         manager_id = self._sgi_manager_user_id()
         rh_id = self._sgi_rh_user_id()
+        # 57.16.0 (G-019, D-03): solo empleados de la empresa del SGI.
+        company = self.env['sgi.config']._sgi_company()
 
         # Certificaciones (hr.employee.skill de tipo certificación) con vigencia.
         certs = self.env['hr.employee.skill'].search([
+            ('employee_id.company_id', '=', company.id),
             ('is_certification', '=', True),
             ('valid_to', '!=', False),
             ('valid_to', '<=', soon),
@@ -1368,6 +1402,7 @@ class SgiCron(models.AbstractModel):
 
         # Currículos / cursos con fecha de fin próxima (hr.resume.line).
         resume_lines = self.env['hr.resume.line'].search([
+            ('employee_id.company_id', '=', company.id),
             ('date_end', '!=', False),
             ('date_end', '<=', soon),
             ('date_end', '>=', today),
@@ -1412,14 +1447,14 @@ class SgiCron(models.AbstractModel):
         user_id = self._sgi_sales_admin_user_id()
         if not survey or not user_id:
             return True
-        label = self._sgi_quarter_label(fields.Date.context_today(self))
+        label = self._sgi_quarter_label(sgi_today(self.env))
         self._sgi_schedule(
             survey,
             "Enviar encuesta de satisfacción del cliente (%s)" % label,
             "Comparta la encuesta con los clientes activos desde la app "
             "Encuestas (botón Compartir). Las respuestas del periodo alimentan "
             "el KPI CA-02 (Satisfacción del cliente) automáticamente.",
-            user_id, date_deadline=self._sgi_quarter_end(fields.Date.context_today(self)),
+            user_id, date_deadline=self._sgi_quarter_end(sgi_today(self.env)),
             key='encuesta_satisfaccion:%s' % label)
         return True
 
@@ -1436,14 +1471,14 @@ class SgiCron(models.AbstractModel):
         if not survey or not rh_id:
             return True
         gaps = self.env['sgi.competence.gap'].search_count([])
-        label = self._sgi_quarter_label(fields.Date.context_today(self))
+        label = self._sgi_quarter_label(sgi_today(self.env))
         self._sgi_schedule(
             survey,
             "Revisar DNC y plan de capacitación (%s)" % label,
             "Hay %d brecha(s) de competencia abiertas (%s). Distribuya la "
             "encuesta DNC (F-P-A01-17) desde la app Encuestas y arme el plan de "
             "capacitación del periodo." % (gaps, sgi_menu_path('brechas_competencia')),
-            rh_id, date_deadline=self._sgi_quarter_end(fields.Date.context_today(self)),
+            rh_id, date_deadline=self._sgi_quarter_end(sgi_today(self.env)),
             key='dnc:%s' % label)
         return True
 
@@ -1453,7 +1488,7 @@ class SgiCron(models.AbstractModel):
         vigentes (14001/45001 8.2). Idempotente por resumen."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         soon = today + relativedelta(days=30)
         manager_id = self._sgi_manager_user_id()
         plans = self.env['sgi.emergency.plan'].search([('state', '=', 'vigente')])
@@ -1522,7 +1557,7 @@ class SgiCron(models.AbstractModel):
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         now = fields.Datetime.now()
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         manager_id = self._sgi_manager_user_id()
         if not manager_id:
             return True
@@ -1553,12 +1588,9 @@ class SgiCron(models.AbstractModel):
 
         failures = self._sgi_for_each(list(by_equipment), _repetitive, "falla repetitiva")
         # (b) Reclamaciones con SLA vencido que siguen abiertas.
-        team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                            raise_if_not_found=False)
         Ticket = self.env['helpdesk.ticket']
-        if team and 'sla_deadline' in Ticket._fields:
-            tickets = Ticket.search([
-                ('team_id', '=', team.id),
+        if 'sla_deadline' in Ticket._fields:
+            tickets = Ticket.search(self.env['helpdesk.team']._sgi_complaint_domain() + [
                 ('stage_id.fold', '=', False),
                 ('sla_deadline', '!=', False),
                 ('sla_deadline', '<', now),
@@ -1585,7 +1617,7 @@ class SgiCron(models.AbstractModel):
         vencer (≤60 días) o vencidos. Idempotente por resumen."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         soon = today + relativedelta(days=60)
         manager_id = self._sgi_manager_user_id()
         Requirement = self.env['sgi.legal.requirement']
@@ -1662,7 +1694,7 @@ class SgiCron(models.AbstractModel):
         rh_id = self._sgi_rh_user_id()
         if not survey or not rh_id:
             return True
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         label = "S%d %d" % (1 if today.month <= 6 else 2, today.year)
         self._sgi_schedule(
             survey,
@@ -1681,7 +1713,7 @@ class SgiCron(models.AbstractModel):
         Idempotente por resumen."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         manager_id = self._sgi_manager_user_id()
         if not manager_id:
             return True

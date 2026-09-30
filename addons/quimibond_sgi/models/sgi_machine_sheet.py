@@ -24,19 +24,28 @@ MACHINE_PARAMS = [
 
 
 class SgiMachineSheet(models.Model):
+    """Ficha técnica de proceso por máquina: parámetros, hilos y poleas por producto y centro de
+    trabajo, con revisión."""
     _name = 'sgi.machine.sheet'
     _description = "Ficha técnica de proceso por máquina (F-IT-P-P01-08-05)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'product_id, workcenter_id, revision desc, id desc'
 
     name = fields.Char(string="Folio", readonly=True, copy=False, default="Nuevo")
-    product_id = fields.Many2one('product.product', string="Artículo", required=True, index=True, tracking=True)
-    workcenter_id = fields.Many2one('mrp.workcenter', string="Máquina / centro de trabajo", required=True, index=True, tracking=True)
-    date = fields.Date(string="Fecha", default=fields.Date.context_today, required=True)
-    area = fields.Selection([('produccion', "Producción"), ('desarrollos', "Desarrollos")], string="Área", default='produccion', required=True)
-    revision = fields.Integer(string="Revisión", default=0)
+    product_id = fields.Many2one('product.product', string="Artículo", required=True, index=True, tracking=True,
+                                 help="Artículo que se fabrica con esta ficha.")
+    workcenter_id = fields.Many2one('mrp.workcenter', string="Máquina / centro de trabajo", required=True, index=True, tracking=True,
+                                    help="Máquina o centro de trabajo de la ficha.")
+    date = fields.Date(string="Fecha", default=fields.Date.context_today, required=True,
+                       help="Fecha de la ficha.")
+    area = fields.Selection([('produccion', "Producción"), ('desarrollos', "Desarrollos")], string="Área", default='produccion', required=True,
+                            help="Si la ficha es de producción o de desarrollos.")
+    revision = fields.Integer(string="Revisión", default=0,
+                              help="Número de revisión de la ficha. «Nueva revisión» lo sube.")
     state = fields.Selection([('borrador', "Borrador"), ('vigente', "Vigente"), ('obsoleta', "Obsoleta")],
-                             string="Estado", default='borrador', required=True, tracking=True)
+                             string="Estado", default='borrador', required=True, tracking=True,
+                             help="Borrador, vigente u obsoleta. Solo una ficha vigente por artículo y "
+                                  "máquina.")
     active = fields.Boolean(default=True)
     yarn_line_ids = fields.One2many('sgi.machine.sheet.yarn', 'sheet_id', string="Materia prima (hilos)")
     pulley_1 = fields.Char(string="Polea 1")
@@ -47,10 +56,14 @@ class SgiMachineSheet(models.Model):
     param_line_ids = fields.One2many('sgi.machine.sheet.param', 'sheet_id', string="Parámetros")
     machine_note = fields.Text(string="Observaciones de máquina")
     fabric_note = fields.Text(string="Observaciones de tela acondicionada")
-    lab_user_id = fields.Many2one('res.users', string="Laboratorista de tejido")
-    mechanic_user_id = fields.Many2one('res.users', string="Mecánico de tejido")
-    approved_by_id = fields.Many2one('res.users', string="Jefe técnico de tejido y acabado")
-    engineering_by_id = fields.Many2one('res.users', string="Jefe de ingeniería de procesos")
+    lab_user_id = fields.Many2one('res.users', string="Laboratorista de tejido",
+                                  help="Laboratorista de tejido que participa en la ficha.")
+    mechanic_user_id = fields.Many2one('res.users', string="Mecánico de tejido",
+                                       help="Mecánico de tejido que participa en la ficha.")
+    approved_by_id = fields.Many2one('res.users', string="Jefe técnico de tejido y acabado",
+                                     help="Jefe técnico de tejido y acabado que aprueba la ficha.")
+    engineering_by_id = fields.Many2one('res.users', string="Jefe de ingeniería de procesos",
+                                        help="Jefe de ingeniería de procesos que revisa la ficha.")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
 
     @api.model_create_multi
@@ -108,6 +121,7 @@ class SgiMachineSheet(models.Model):
 
 
 class SgiMachineSheetYarn(models.Model):
+    """Hilo de la ficha de proceso por máquina (tipo, título, porcentaje y consumo)."""
     _name = 'sgi.machine.sheet.yarn'
     _description = "Hilo de la ficha de proceso por máquina"
     _order = 'sequence, id'
@@ -125,6 +139,7 @@ class SgiMachineSheetYarn(models.Model):
 
 
 class SgiMachineSheetParam(models.Model):
+    """Parámetro de proceso de una ficha por máquina (especificación, tolerancia y unidad)."""
     _name = 'sgi.machine.sheet.param'
     _description = "Parámetro de la ficha de proceso por máquina"
     _order = 'section, sequence, id'

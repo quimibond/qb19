@@ -7,13 +7,18 @@ class QualityAlert(models.Model):
     _inherit = 'quality.alert'
 
     sgi_incident_id = fields.Many2one(
-        'sgi.incident', string="Incidente SST de origen", readonly=True, copy=False)
+        'sgi.incident', string="Incidente SST de origen", readonly=True, copy=False,
+        help="Incidente o accidente de seguridad del que nació esta NC.")
 
 
 class SgiIncident(models.Model):
+    """Incidente o accidente de SST (P-S02) con análisis SCAT (causas inmediatas, básicas y falta de
+    control). Todos reportan; SST, MAST y Salud ocupacional investigan y cierran."""
     _name = 'sgi.incident'
     _description = "Incidente / Accidente SST (P-S02, SCAT)"
-    _inherit = ['sgi.base.mixin']
+    # 57.67.0: ``hr.mixin`` para que quien reporta ponga a las personas
+    # afectadas (Many2many a hr.employee) sin ser de RH (Odoo 19).
+    _inherit = ['sgi.base.mixin', 'hr.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.incident'
     _sgi_locked_states = ('cerrado',)
@@ -25,28 +30,34 @@ class SgiIncident(models.Model):
 
     name = fields.Char(string="Título", required=True, tracking=True)
     date = fields.Datetime(string="Fecha y hora", required=True,
-                           default=fields.Datetime.now, tracking=True)
+                           default=fields.Datetime.now, tracking=True,
+                           help="Fecha y hora en que ocurrió.")
     incident_type = fields.Selection([
         ('lesion', "Lesión / accidente"),
         ('casi_accidente', "Casi accidente"),
         ('dano_propiedad', "Daño a la propiedad"),
         ('ambiental', "Incidente ambiental"),
         ('enfermedad_laboral', "Enfermedad laboral"),
-    ], string="Tipo", default='casi_accidente', required=True, tracking=True)
+    ], string="Tipo", default='casi_accidente', required=True, tracking=True,
+        help="Lesión, casi accidente, daño a la propiedad, incidente ambiental o enfermedad laboral.")
     severity = fields.Selection([
         ('leve', "Leve"),
         ('moderado', "Moderado"),
         ('grave', "Grave"),
         ('fatal', "Fatal"),
-    ], string="Severidad", default='leve', required=True, tracking=True)
-    employee_ids = fields.Many2many('hr.employee', string="Personas afectadas")
+    ], string="Severidad", default='leve', required=True, tracking=True,
+        help="Leve, moderado, grave o fatal. Los graves y fatales avisan de inmediato.")
+    employee_ids = fields.Many2many('hr.employee', string="Personas afectadas", help="Personas afectadas.")
     reporter_id = fields.Many2one('res.users', string="Reportado por",
-                                  default=lambda self: self.env.user, tracking=True)
+                                  default=lambda self: self.env.user, tracking=True,
+                                  help="Persona que reporta. Puede consultar cómo se cerró.")
     location = fields.Char(string="Lugar")
-    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso donde ocurrió.")
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
+                                  help="Área del SGI donde ocurrió.")
     description = fields.Text(string="Descripción del evento")
-    days_lost = fields.Integer(string="Días perdidos")
+    days_lost = fields.Integer(string="Días perdidos", help="Días de trabajo perdidos por el evento.")
 
     # --- Análisis SCAT (3 capas de causas) ---
     immediate_causes = fields.Text(string="Causas inmediatas (actos/condiciones)")
@@ -54,17 +65,21 @@ class SgiIncident(models.Model):
     lack_of_control = fields.Text(string="Falta de control (sistema de gestión)")
 
     risk_id = fields.Many2one('sgi.risk', string="Riesgo / IPER relacionado",
-                              domain="[('instrument', '=', 'iper')]")
+                              domain="[('instrument', '=', 'iper')]",
+                              help="Riesgo de la matriz IPER relacionado con el evento.")
     action_line_ids = fields.One2many('sgi.action.line', 'incident_id', string="Acciones")
     sgi_alert_id = fields.Many2one('quality.alert', string="No Conformidad generada",
-                                   readonly=True, copy=False)
+                                   readonly=True, copy=False,
+                                   help="No conformidad generada desde el incidente.")
 
     state = fields.Selection([
         ('reportado', "Reportado"),
         ('investigacion', "En investigación"),
         ('acciones', "Acciones"),
         ('cerrado', "Cerrado"),
-    ], string="Estado", default='reportado', required=True, tracking=True)
+    ], string="Estado", default='reportado', required=True, tracking=True,
+        help="Reportado, en investigación, acciones o cerrado. No se cierra sin el análisis SCAT ni con "
+             "acciones abiertas.")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -109,6 +124,17 @@ class SgiIncident(models.Model):
         if self.env.user.has_group('quimibond_sgi.group_sgi_health'):
             return self.browse()
         return super()._sgi_locked_records()
+
+    def _sgi_readonly_records(self):
+        """V-A03: fuera de Jefe MAST y Salud ocupacional, el incidente solo es
+        editable para quien lo reportó y mientras siga «Reportado» (regla
+        rule_sgi_incident_user_edit_reported)."""
+        if self.env.su or self._sgi_can_investigate():
+            return self.browse()
+        uid = self.env.uid
+        return self.filtered(
+            lambda i: i.state != 'reportado'
+            or (i._origin.id and uid not in (i._origin.reporter_id.id, i._origin.create_uid.id)))
 
     @api.model
     def _sgi_can_investigate(self):

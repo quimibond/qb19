@@ -1,38 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Campos de liga entrada ↔ salida (2026-09-25). Ver models/sgi_links.py. -->
+    <!-- Campos de liga entrada ↔ salida (2026-09-25). Ver models/sgi_links.py.
+         AMEF, plan de control, PPAP, proveedores críticos y Ajustes ya los traen
+         en su vista base (A-008, 57.27.0). -->
 
-    <!-- C1: tarea del desarrollo en AMEF, plan de control, PPAP, LdM y orden -->
-    <record id="sgi_fmea_view_form_links" model="ir.ui.view">
-        <field name="name">sgi.fmea.form.links</field>
-        <field name="model">sgi.fmea</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_fmea_view_form"/>
-        <field name="arch" type="xml">
-            <field name="control_plan_id" position="after">
-                <field name="sgi_dyd_task_id"/>
-            </field>
-        </field>
-    </record>
-    <record id="sgi_control_plan_view_form_links" model="ir.ui.view">
-        <field name="name">sgi.control.plan.form.links</field>
-        <field name="model">sgi.control.plan</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_control_plan_view_form"/>
-        <field name="arch" type="xml">
-            <field name="document_id" position="after">
-                <field name="sgi_dyd_task_id"/>
-            </field>
-        </field>
-    </record>
-    <record id="sgi_ppap_view_form_links" model="ir.ui.view">
-        <field name="name">sgi.ppap.form.links</field>
-        <field name="model">sgi.ppap</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_ppap_view_form"/>
-        <field name="arch" type="xml">
-            <field name="date_decision" position="after">
-                <field name="sgi_dyd_task_id"/>
-            </field>
-        </field>
-    </record>
+    <!-- C1: tarea del desarrollo en LdM y orden -->
     <record id="sgi_mrp_bom_view_form_links" model="ir.ui.view">
         <field name="name">mrp.bom.form.sgi.links</field>
         <field name="model">mrp.bom</field>
@@ -58,7 +30,7 @@
                         <group string="Desarrollo (C1)">
                             <field name="sgi_dyd_task_id"/>
                         </group>
-                        <group string="Liberación (C4.19)">
+                        <group string="Liberación">
                             <field name="sgi_release_picking_ids" nolabel="1" colspan="2" readonly="1">
                                 <list><field name="name"/><field name="picking_type_id"/><field name="state"/></list>
                             </field>
@@ -66,16 +38,6 @@
                     </group>
                 </page>
             </xpath>
-        </field>
-    </record>
-    <record id="sgi_product_template_view_form_links" model="ir.ui.view">
-        <field name="name">product.template.form.sgi.links</field>
-        <field name="model">product.template</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_product_template_view_form_spec"/>
-        <field name="arch" type="xml">
-            <field name="sgi_spec_document_id" position="after">
-                <field name="sgi_control_plan_id"/>
-            </field>
         </field>
     </record>
     <record id="sgi_project_task_view_form_links" model="ir.ui.view">
@@ -116,18 +78,6 @@
         </field>
     </record>
 
-    <!-- S5.06: la NC muestra de qué solicitud de mantenimiento salió -->
-    <record id="sgi_quality_alert_view_form_links" model="ir.ui.view">
-        <field name="name">quality.alert.form.sgi.links</field>
-        <field name="model">quality.alert</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_quality_alert_view_form"/>
-        <field name="arch" type="xml">
-            <field name="sgi_origin_type" position="after">
-                <field name="sgi_maintenance_request_id" invisible="not sgi_maintenance_request_id"/>
-            </field>
-        </field>
-    </record>
-
     <!-- S1.09: la orden de compra guarda su requisición -->
     <record id="sgi_purchase_order_view_form_links" model="ir.ui.view">
         <field name="name">purchase.order.form.sgi.links</field>
@@ -160,27 +110,6 @@
         </field>
     </record>
 
-    <!-- C2.34 y C4.19: acuses y orden de producción en el traslado -->
-    <record id="sgi_stock_picking_view_form_links" model="ir.ui.view">
-        <field name="name">stock.picking.form.sgi.links</field>
-        <field name="model">stock.picking</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_stock_picking_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_sgi_open_acuses" type="object" class="oe_stat_button"
-                        icon="fa-file-text-o" invisible="sgi_acuse_count == 0">
-                    <field name="sgi_acuse_count" widget="statinfo" string="Acuses"/>
-                </button>
-            </xpath>
-            <xpath expr="//form/header" position="inside">
-                <button name="action_sgi_attach_acuse" type="object" string="Adjuntar acuse"
-                        icon="fa-paperclip" invisible="picking_type_code != 'outgoing' or state != 'done'"/>
-            </xpath>
-            <field name="sgi_seal_number" position="after">
-                <field name="sgi_production_id" invisible="picking_type_code == 'outgoing'"/>
-            </field>
-        </field>
-    </record>
     <record id="sgi_acuse_attach_wizard_view_form" model="ir.ui.view">
         <field name="name">sgi.acuse.attach.wizard.form</field>
         <field name="model">sgi.acuse.attach.wizard</field>
@@ -200,28 +129,4 @@
         </field>
     </record>
 
-    <!-- Proveedores críticos -->
-    <record id="sgi_res_partner_view_form_links" model="ir.ui.view">
-        <field name="name">res.partner.form.sgi.links</field>
-        <field name="model">res.partner</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_res_partner_supplier_view_form"/>
-        <field name="arch" type="xml">
-            <field name="sgi_supplier_status" position="before">
-                <field name="sgi_supplier_critical"/>
-            </field>
-        </field>
-    </record>
-    <record id="sgi_settings_view_form_links" model="ir.ui.view">
-        <field name="name">res.config.settings.form.sgi.links</field>
-        <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="quimibond_sgi.res_config_settings_view_form_sgi"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='sgi_purchase_approval_category_id']/.." position="after">
-                <setting string="Categorías de proveedores críticos"
-                         help="Materia prima y maquila: solo esos proveedores entran a la evaluación trimestral. Vacío = materia prima más las categorías «maquila».">
-                    <field name="sgi_supplier_critical_categ_ids" widget="many2many_tags"/>
-                </setting>
-            </xpath>
-        </field>
-    </record>
 </odoo>

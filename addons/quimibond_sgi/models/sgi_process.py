@@ -10,6 +10,8 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiProcess(models.Model):
+    """Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores,
+    riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo."""
     _name = 'sgi.process'
     _description = "Proceso SGI"
     # mail.activity.mixin es indispensable: el aviso de «eslabón atorado» se
@@ -31,13 +33,18 @@ class SgiProcess(models.Model):
         ('estrategico', "Estratégico"),
         ('soporte', "Soporte"),
     ], string="Tipo", default='cop', required=True,
-        group_expand='_group_expand_process_type')
-    parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True)
+        group_expand='_group_expand_process_type',
+                                    help="Cadena de valor (COP), estratégico o de soporte.")
+    parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True,
+                                help="Macroproceso al que pertenece este proceso.")
     parent_path = fields.Char(index=True)
     child_ids = fields.One2many('sgi.process', 'parent_id', string="Subprocesos")
-    owner_id = fields.Many2one('hr.employee', string="Dueño del proceso")
-    department_id = fields.Many2one('hr.department', string="Departamento")
-    job_ids = fields.Many2many('hr.job', string="Puestos")
+    owner_id = fields.Many2one('hr.employee', string="Dueño del proceso",
+                               help="Empleado dueño del proceso: recibe los escalamientos y aprueba los "
+                                    "cambios a sus actividades.")
+    department_id = fields.Many2one('hr.department', string="Departamento",
+                                    help="Departamento responsable del proceso.")
+    job_ids = fields.Many2many('hr.job', string="Puestos", help="Puestos que participan en el proceso.")
     active = fields.Boolean(default=True)
 
     purpose = fields.Text(
@@ -106,7 +113,9 @@ class SgiProcess(models.Model):
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Salud del proceso", compute='_compute_health')
+    ], string="Salud del proceso", compute='_compute_health',
+        help="Verde sin nada abierto; amarillo con algo abierto; rojo con un riesgo de atención máxima o con "
+             "NC abierta e indicador en rojo a la vez. Se calcula al mostrarlo.")
     document_count = fields.Integer(string="# Documentos", compute='_compute_counts')
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
     risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
@@ -234,9 +243,53 @@ class SgiProcess(models.Model):
                 "Al entrar en vigor quedaron obsoletos, con la baja tramitada, %d "
                 "documento(s) sustituido(s): %s." % (
                     len(docs), ", ".join(docs.mapped(lambda d: d.sgi_code or d.name)))))
+            process._sgi_warn_foreign_procedure_refs(docs)
             _logger.info("SGI: %s vigente → %d documento(s) sustituido(s) obsoleto(s) y en baja.",
                          process.code, len(docs))
         return True
+
+    def _sgi_warn_foreign_procedure_refs(self, docs):
+        """57.16.0 (H-016): actividades activas de OTRO proceso que citan como
+        «Procedimiento relacionado» un documento que este proceso acaba de
+        obsoletar. No se cambia nada (la fuente de verdad es el documento,
+        decisión 3): se avisa en el chatter de los dos procesos y al dueño del
+        otro proceso (o al Jefe MAST) para que liguen el procedimiento
+        vigente. Devuelve las actividades encontradas."""
+        self.ensure_one()
+        Activity = self.env['sgi.process.activity'].sudo()
+        refs = Activity.search([
+            ('related_procedure_id', 'in', docs.ids),
+            ('process_id', '!=', self.id), ('process_id', '!=', False)])
+        if not refs:
+            return refs
+        Cron = self.env['sgi.cron']
+        manager_id = Cron._sgi_manager_user_id()
+        lines = []
+        for other in refs.process_id:
+            acts = refs.filtered(lambda a, o=other: a.process_id == o)
+            items = ", ".join("%s (cita %s)" % (
+                a.number or a.name,
+                a.related_procedure_id.sgi_code or a.related_procedure_id.name) for a in acts)
+            state = dict(other._fields['state'].selection).get(other.state, other.state)
+            lines.append("%s [%s]: %s" % (other.display_name, state, items))
+            note = ("El proceso %s entró en vigor y obsoletó procedimientos que estas "
+                    "actividades de %s todavía citan: %s. Liga el procedimiento vigente "
+                    "(o quítalo) en cada actividad." % (
+                        self.display_name, other.display_name, items))
+            other.sudo().message_post(body=note)
+            user_id = other.owner_id.user_id.id or manager_id
+            if user_id:
+                Cron._sgi_step(
+                    "aviso de procedimiento obsoleto citado en %s" % other.display_name,
+                    lambda o=other, n=note, u=user_id: Cron._sgi_schedule(
+                        o, "Actividades citan un procedimiento obsoleto (%s)" % self.code,
+                        n, u, key='procedimiento_obsoleto_citado:%d' % self.id))
+        self.message_post(body=(
+            "Aviso: actividades de otros procesos citan un procedimiento que quedó "
+            "obsoleto: %s." % "; ".join(lines)))
+        _logger.info("SGI: %s vigente → %d actividad(es) de otros procesos citan un "
+                     "procedimiento obsoleto.", self.code, len(refs))
+        return refs
 
     @api.constrains('parent_id')
     def _check_parent_recursion(self):
@@ -490,16 +543,23 @@ class SgiProcess(models.Model):
 
 
 class SgiProcessFlow(models.Model):
+    """Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué
+    modelo."""
     _name = 'sgi.process.flow'
     _description = "Flujo entre procesos SGI"
     _order = 'from_process_id, name'
 
     name = fields.Char(string="Entregable", required=True)
-    from_process_id = fields.Many2one('sgi.process', string="Proceso origen", required=True, ondelete='cascade')
-    to_process_id = fields.Many2one('sgi.process', string="Proceso destino", required=True, ondelete='cascade')
-    document_id = fields.Many2one('documents.document', string="Formato de entrega")
+    from_process_id = fields.Many2one('sgi.process', string="Proceso origen", required=True, ondelete='cascade',
+                                      help="Proceso que entrega.")
+    to_process_id = fields.Many2one('sgi.process', string="Proceso destino", required=True, ondelete='cascade',
+                                    help="Proceso que recibe.")
+    document_id = fields.Many2one('documents.document', string="Formato de entrega",
+                                  help="Formato con el que se entrega lo que pasa entre los procesos.")
     acceptance_criteria = fields.Text(string="Criterio de aceptación")
-    odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa")
+    odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa",
+                                    help="Modelo de Odoo donde queda el registro de lo que pasa entre "
+                                         "procesos.")
     odoo_model_name = fields.Char(related='odoo_model_id.model', string="Modelo técnico")
     company_id = fields.Many2one(
         related='from_process_id.company_id', string="Empresa", store=True,

@@ -6,7 +6,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_machine_sheet_document</field>
         <field name="report_file">quimibond_sgi.report_machine_sheet_document</field>
-        <field name="print_report_name">'Ficha proceso - %s' % (object.name)</field>
+        <field name="print_report_name">'Ficha proceso - %s' % (object.name or '')</field>
         <field name="binding_model_id" ref="model_sgi_machine_sheet"/>
         <field name="binding_type">report</field>
     </record>

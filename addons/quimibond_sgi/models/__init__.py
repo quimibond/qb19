@@ -28,8 +28,10 @@ from . import sgi_ppap
 from . import sgi_incident
 from . import sgi_competence
 from . import sgi_format_map
+from . import sgi_format_map_seed
 from . import sgi_catalog
 from . import sgi_deliverable
+from . import sgi_deliverable_models
 from . import sgi_load
 from . import sgi_exec_stat
 from . import sgi_load_wizard
@@ -92,3 +94,9 @@ from . import sgi_legacy_routine
 from . import sgi_dropbox_views
 from . import sgi_legacy_routine_import
 from . import sgi_weekly_overdue
+from . import sgi_indicator_ind2
+from . import sgi_business_calendar
+from . import sgi_env_aspect
+from . import sgi_work_permit
+from . import sgi_loto
+from . import sgi_sst_links

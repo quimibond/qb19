@@ -3,27 +3,23 @@
     'name': "Quimibond SGI",
     'summary': "Sistema de Gestión Integral (ISO 9001/14001/45001) sobre apps nativas de Odoo 19",
     'description': """
-Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ).
+Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ):
+ISO 9001 y 14001 certificadas, 45001 en certificación.
 
-SGI completo de PNTQ: mapa de procesos con flujos navegables (el output de un
-proceso es el input del siguiente), control documental con familias y acuses,
-NC con candados, reclamaciones con SLA, mejoras, KPIs automáticos con NC en
-rojo, auditorías, riesgos (5 instrumentos), proveedores, Revisión por la
-Dirección, planes de control, CoA, calibraciones IATF, AMEF, PPAP, incidentes
-SCAT, competencias, claves de formato vivas en pantalla/PDF y migración de
-formatos rastreable.
+Procesos y actividades con responsable por puesto, vencimiento, entregable
+medible y escalamiento; Mis pendientes, Mi procedimiento con firma de
+lectura, control documental, no conformidades, indicadores, auditorías,
+riesgos, seguridad y ambiente, y revisión por la dirección, sobre las apps
+nativas de Odoo.
 
-Extiende apps nativas (Documentos, Aprobaciones, Calidad, Helpdesk, Proyecto,
-Mantenimiento, Encuestas) sin duplicarlas y agrega solo los modelos que Odoo
-no tiene. Sin Studio: la regla de aprobación del botón vive en el satélite
-quimibond_sgi_studio y el instructivo en Conocimiento en quimibond_sgi_knowledge,
-los dos auto_install.
+Se instala vacío: el mapa de procesos va en quimibond_sgi_mapa y se carga a
+mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.13.0',
-    'license': 'LGPL-3',
+    'version': '19.0.57.68.0',
+    'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
     # directas, cada una con lo que la usa. Las que ya traen otras (base,
@@ -103,6 +99,8 @@ los dos auto_install.
         'data/sgi_mp_change_category_data.xml',
         'data/sgi_epp_data.xml',
         'data/sgi_supplier_nc_data.xml',
+        'data/sgi_offboarding_plan_data.xml',
+        'data/sgi_sst_sequences.xml',
         # views
         'views/sgi_area_views.xml',
         'report/report_compliance_matrix.xml',
@@ -120,8 +118,6 @@ los dos auto_install.
         'views/sgi_indicator_views.xml',
         'views/sgi_indicator_formula_views.xml',
         'views/sgi_management_review_views.xml',
-        'views/sgi_indicator_plan_views.xml',
-        'views/sgi_indicator_trajectory_views.xml',
         'views/sgi_audit_views.xml',
         'views/sgi_risk_views.xml',
         'views/sgi_legal_views.xml',
@@ -153,10 +149,9 @@ los dos auto_install.
         'views/sgi_my_procedure_views.xml',
         'views/sgi_my_pending_views.xml',
         'views/sgi_approval_native_views.xml',
-        'views/sgi_structure_views.xml',
         'views/sgi_coa_views.xml',
-        # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el
-        # padre debe cargarse antes; el build de producción reventó por esto).
+        # Firmas (Sign) sobre vistas de otros módulos. Desde 57.28.0 ya no
+        # hereda vistas propias (A-008): sus herencias viven en su vista base.
         'views/sgi_supplier_audit_sign_views.xml',
         'views/sgi_hierarchy_views.xml',
         'views/sgi_links_views.xml',
@@ -188,6 +183,11 @@ los dos auto_install.
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',
         'report/report_master_list_all.xml',
+        'report/report_env_aspect.xml',
+        'report/report_work_permit.xml',
+        'report/report_loto.xml',
+        # 57.63.0: etiquetas de material liberado, rechazado y detenido.
+        'report/report_lot_label.xml',
         'views/sgi_business_line_views.xml',
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
@@ -195,6 +195,14 @@ los dos auto_install.
         'views/sgi_current_documents_views.xml',
         # 57.0.0 (entrega 6): «Del Dropbox a Odoo» (rutinas, buscador, avance).
         'views/sgi_dropbox_views.xml',
+        # 57.14.0 (RH-01): «Plantilla autorizada» en las vistas nativas del puesto.
+        'views/sgi_hr_job_headcount_views.xml',
+        # 57.50.0 y siguientes (bloque 1 de formularios): seguridad, salud y
+        # ambiente. Cada ficha completa en su archivo, sin herencias.
+        'views/sgi_env_aspect_views.xml',
+        'views/sgi_work_permit_views.xml',
+        'views/sgi_loto_views.xml',
+        'views/sgi_audit_finding_legal_eval_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         'views/sgi_menus.xml',

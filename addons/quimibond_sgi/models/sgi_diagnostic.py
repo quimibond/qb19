@@ -23,20 +23,24 @@ _LEVEL_ORDER = {'bad': 0, 'warn': 1, 'ok': 2}
 
 
 class SgiDiagnosticLine(models.TransientModel):
+    """Hallazgo de una corrida del diagnóstico, con cómo corregirlo."""
     _name = 'sgi.diagnostic.line'
     _description = "Hallazgo del diagnóstico del SGI"
     _order = 'sequence, id'
 
     diagnostic_id = fields.Many2one(
-        'sgi.diagnostic', string="Diagnóstico", required=True, ondelete='cascade', index=True)
+        'sgi.diagnostic', string="Diagnóstico", required=True, ondelete='cascade', index=True,
+        help="Corrida del diagnóstico a la que pertenece el hallazgo.")
     sequence = fields.Integer(default=10)
     section = fields.Char(string="Sección", required=True)
-    level = fields.Selection(LEVELS, string="Nivel", required=True)
+    level = fields.Selection(LEVELS, string="Nivel", required=True, help="Qué tan grave es el hallazgo.")
     text = fields.Text(string="Hallazgo", required=True)
     fix = fields.Char(string="Dónde se arregla")
 
 
 class SgiDiagnostic(models.TransientModel):
+    """Diagnóstico de configuración y adopción del SGI: una corrida con hallazgos por sección (bien,
+    aviso, mal). Pantalla, no historia."""
     _name = 'sgi.diagnostic'
     _description = "Diagnóstico de configuración y adopción del SGI"
 
@@ -330,17 +334,18 @@ class SgiDiagnostic(models.TransientModel):
                 'warn', "Fuente «%s» apagada con %d NC omitidas: confirmar que sigue siendo intencional." % (
                     source.name, source.suppressed_count),
                 sgi_menu_path('fuentes_nc')))
-        team = env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                       raise_if_not_found=False)
-        if team:
-            Ticket = env['helpdesk.ticket']
-            sgi_tickets = Ticket.search_count([('team_id', '=', team.id)])
-            others = Ticket.search_count(
-                [('team_id', '!=', team.id), ('team_id.name', 'ilike', 'reclama')])
-            if not sgi_tickets and others:
-                lines.append(self._sgi_line(
-                    'bad', "El equipo SGI de reclamaciones tiene 0 tickets mientras otros equipos de reclamación acumulan %d: el embudo (SLA, Generar NC, KPI CA-01) está desviado." % others,
-                    "canalizar las reclamaciones al equipo del SGI"))
+        # D-006: las reclamaciones son los tickets de los equipos marcados
+        # «Equipo de reclamaciones (SGI)», no los de un XML ID.
+        Ticket = env['helpdesk.ticket']
+        complaint_domain = env['helpdesk.team']._sgi_complaint_domain()
+        sgi_tickets = Ticket.search_count(complaint_domain)
+        others = Ticket.search_count(
+            [('team_id.sgi_is_complaint', '=', False),
+             ('team_id.name', 'ilike', 'reclama')])
+        if not sgi_tickets and others:
+            lines.append(self._sgi_line(
+                'bad', "Los equipos de reclamaciones del SGI tienen 0 tickets mientras otros equipos con «reclama» en el nombre acumulan %d: el embudo (SLA, Generar NC, KPI CA-01) está desviado." % others,
+                "marcar el equipo como «Equipo de reclamaciones (SGI)» en Servicio de asistencia"))
         if not lines:
             lines.append(self._sgi_line('ok', "Mejora continua fluyendo."))
         section("Mejora continua", lines)

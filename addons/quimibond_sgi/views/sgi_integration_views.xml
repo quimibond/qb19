@@ -18,6 +18,30 @@
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="sgi_seal_number"
                        invisible="picking_type_code != 'outgoing'"/>
+                <field name="sgi_production_id" invisible="picking_type_code == 'outgoing'"/>
+            </xpath>
+            <!-- Firmas (antes herencia propia en sgi_supplier_audit_sign_views.xml; A-008, 57.28.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
+            <!-- Acuses (antes herencia propia en sgi_links_views.xml; A-008, 57.29.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_acuses" type="object" class="oe_stat_button"
+                        icon="fa-file-text-o" invisible="sgi_acuse_count == 0">
+                    <field name="sgi_acuse_count" widget="statinfo" string="Acuses"/>
+                </button>
+            </xpath>
+            <xpath expr="//form/header" position="inside">
+                <button name="action_sgi_attach_acuse" type="object" string="Adjuntar acuse"
+                        icon="fa-paperclip" invisible="picking_type_code != 'outgoing' or state != 'done'"/>
             </xpath>
         </field>
     </record>
@@ -56,6 +80,16 @@
                     <field name="sgi_pending_ack_count" widget="statinfo" string="Acuses pendientes"/>
                 </button>
             </xpath>
+            <!-- Mi procedimiento (antes herencia propia en sgi_my_procedure_views.xml; A-008, 57.30.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_open_my_procedure" type="object" class="oe_stat_button"
+                        icon="fa-eye" invisible="not job_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Ver su procedimiento</span>
+                        <field name="sgi_my_procedure_ack_state" class="o_stat_text"/>
+                    </div>
+                </button>
+            </xpath>
         </field>
     </record>
 
@@ -66,6 +100,66 @@
         <field name="inherit_id" ref="hr.view_hr_job_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
+                <!-- Roles y «Mi procedimiento» del puesto (antes herencias propias en
+                     sgi_catalog_views.xml y sgi_my_procedure_views.xml; A-008, 57.30.0). -->
+                <page string="SGI" name="sgi_roles" groups="quimibond_sgi.group_sgi_user">
+                    <group>
+                        <group>
+                            <field name="sgi_family_id"/>
+                            <field name="sgi_team_ids" widget="many2many_tags" readonly="1"
+                                   invisible="not sgi_team_ids"/>
+                        </group>
+                        <group>
+                            <field name="sgi_vacancy_approved"/>
+                            <field name="sgi_vacancy_until"
+                                   invisible="not sgi_vacancy_approved"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="sgi_execute_count"/>
+                            <field name="sgi_approve_count"/>
+                        </group>
+                        <group>
+                            <field name="sgi_participate_count"/>
+                            <field name="sgi_inform_count"/>
+                        </group>
+                    </group>
+                    <div class="mb-2">
+                        <button name="action_sgi_open_my_procedure" type="object"
+                                string="Ver su procedimiento" icon="fa-eye"
+                                class="btn-secondary me-1"/>
+                        <button name="action_sgi_print_my_procedure" type="object"
+                                string="Imprimir «Mi procedimiento»" icon="fa-print"
+                                class="btn-secondary me-1"/>
+                        <button name="action_sgi_publish_my_procedure" type="object"
+                                string="Publicar revisión"
+                                icon="fa-upload" class="btn-primary me-1"
+                                groups="quimibond_sgi.group_sgi_manager"
+                                confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
+                        <button name="action_sgi_open_my_procedure_doc" type="object"
+                                string="Ver revisión vigente" icon="fa-file-pdf-o"
+                                class="btn-link" invisible="not sgi_my_procedure_doc_id"/>
+                        <field name="sgi_my_procedure_doc_id" invisible="1"/>
+                        <field name="sgi_my_procedure_stale" invisible="1"/>
+                        <span class="text-warning ms-2" invisible="not sgi_my_procedure_stale or not sgi_my_procedure_doc_id">
+                            <i class="fa fa-exclamation-triangle"/> Las actividades cambiaron desde la última revisión publicada.
+                        </span>
+                    </div>
+                    <button name="action_sgi_view_roles" type="object"
+                            string="Ver sus actividades" icon="fa-list" class="btn-link"/>
+                    <field name="sgi_all_role_ids" readonly="1">
+                        <list default_order="process_id, role">
+                            <field name="process_id"/>
+                            <field name="activity_id"/>
+                            <field name="role" widget="badge"
+                                   decoration-success="role == 'ejecuta'"
+                                   decoration-warning="role == 'aprueba'"/>
+                            <field name="target_type" optional="hide"/>
+                            <field name="condition" optional="show"/>
+                        </list>
+                    </field>
+                </page>
                 <page string="Documentos SGI aplicables" name="sgi_documents">
                     <field name="sgi_document_ids">
                         <list>
@@ -76,16 +170,23 @@
                         </list>
                     </field>
                 </page>
-                <page string="EPP requerido (SGI)">
+                <page string="EPP requerido">
                     <div class="text-muted mb-2">
-                        El EPP que exige este puesto — fuente única del
-                        F-P-S03-01. El cron de EPP vigila reposiciones; la
+                        El EPP que exige este puesto — fuente única de la
+                        matriz de EPP. El cron de EPP vigila reposiciones; la
                         responsiva de entrega se firma en la ficha del
                         empleado.
                     </div>
                     <field name="sgi_epp_required" nolabel="1"
                            placeholder="Ej. casco, lentes de seguridad, guantes de nitrilo, protección auditiva..."/>
                 </page>
+            </xpath>
+            <!-- Actividades SGI del puesto (antes herencia propia en sgi_catalog_views.xml; A-008, 57.30.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_roles" type="object" class="oe_stat_button"
+                        icon="fa-sitemap" groups="quimibond_sgi.group_sgi_user">
+                    <field name="sgi_role_count" widget="statinfo" string="Actividades SGI"/>
+                </button>
             </xpath>
         </field>
     </record>
@@ -108,6 +209,7 @@
                     <group>
                         <group string="Especificación del material">
                             <field name="sgi_spec_document_id"/>
+                            <field name="sgi_control_plan_id"/>
                         </group>
                         <group>
                             <button name="action_sgi_open_spec" type="object"
@@ -121,6 +223,18 @@
                                placeholder="Indicaciones de manejo y empaque: orientación, apilado máximo, protección, etiquetado..."/>
                     </group>
                 </page>
+            </xpath>
+            <!-- Firmas (antes herencia propia en sgi_supplier_audit_sign_views.xml; A-008, 57.28.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
             </xpath>
         </field>
     </record>

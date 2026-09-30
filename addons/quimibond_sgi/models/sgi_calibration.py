@@ -51,13 +51,18 @@ class MaintenanceEquipment(models.Model):
     _inherit = 'maintenance.equipment'
 
     # --- Equipo de medición (P-C03) ---
-    sgi_is_measuring = fields.Boolean(string="Equipo de medición")
+    sgi_is_measuring = fields.Boolean(string="Equipo de medición",
+                                      help="Marque si es un equipo de medición: lleva calibraciones y "
+                                           "estudios MSA.")
     sgi_magnitude = fields.Char(string="Magnitud")
     sgi_range = fields.Char(string="Rango")
     sgi_resolution = fields.Char(string="Resolución")
     sgi_calibration_interval_months = fields.Integer(string="Intervalo de calibración (meses)",
-                                                     default=12)
-    sgi_last_calibration_date = fields.Date(string="Última calibración")
+                                                     default=12,
+                                                     help="Cada cuántos meses se calibra el equipo. Con la "
+                                                          "última calibración define la próxima.")
+    sgi_last_calibration_date = fields.Date(string="Última calibración",
+                                            help="Fecha de la última calibración registrada.")
     sgi_next_calibration_date = fields.Date(string="Próxima calibración",
                                             compute='_compute_next_calibration_date',
                                             store=True, readonly=False,
@@ -67,7 +72,9 @@ class MaintenanceEquipment(models.Model):
         ('vigente', "Vigente"),
         ('por_vencer', "Por vencer"),
         ('vencido', "Vencido"),
-    ], string="Estado de calibración", compute='_compute_calibration_state', store=True)
+    ], string="Estado de calibración", compute='_compute_calibration_state', store=True,
+        help="Vigente, por vencer o vencido según la fecha de la próxima calibración. Se calcula solo y lo "
+             "actualiza el cron diario.")
     sgi_do_not_use = fields.Boolean(string="No usar", tracking=True,
                                     help="Equipo bloqueado (fuera de tolerancia o calibración vencida).")
     sgi_calibration_ids = fields.One2many('sgi.calibration', 'equipment_id',
@@ -75,9 +82,35 @@ class MaintenanceEquipment(models.Model):
     sgi_calibration_count = fields.Integer(string="N° de calibraciones",
                                            compute='_compute_calibration_count')
 
+    # --- Laboratorio (P-C05; 57.62.0, bloque 2 de formularios) ---
+    # Sin modelo nuevo: el equipo de laboratorio es un equipo de Mantenimiento
+    # marcado; su revisión es una calibración de tipo «Verificación» y el
+    # préstamo queda en el seguimiento del equipo (F-P-C05-07).
+    sgi_is_lab = fields.Boolean(
+        string="Equipo de laboratorio", tracking=True,
+        help="Marque si es instrumental o equipo del laboratorio de Calidad: aparece "
+             "en Equipos de laboratorio, con su revisión y su préstamo.")
+    sgi_loan_employee_id = fields.Many2one(
+        'hr.employee', string="Prestado a", tracking=True,
+        help="Persona que tiene el equipo prestado fuera del laboratorio. Déjelo "
+             "vacío cuando lo devuelva: el seguimiento del equipo guarda quién lo "
+             "tuvo y cuándo (préstamo de equipos de laboratorio).")
+    sgi_loan_date = fields.Date(
+        string="Prestado desde", compute='_compute_sgi_loan_date', store=True,
+        readonly=False, tracking=True,
+        help="Fecha del préstamo. Se llena sola con la de hoy al prestar el equipo; "
+             "puede corregirla.")
+    sgi_loan_format_label = fields.Char(
+        string="Formato del préstamo", compute='_compute_sgi_loan_format_label',
+        help="Clave y revisión vigentes del formato de préstamo de equipos de "
+             "laboratorio, que este registro sustituye.")
+
     # --- EPP (P-S03) ---
-    sgi_is_ppe = fields.Boolean(string="Equipo de protección personal (EPP)")
-    sgi_ppe_expiry_date = fields.Date(string="Vencimiento del EPP")
+    sgi_is_ppe = fields.Boolean(string="Equipo de protección personal (EPP)",
+                                help="Marque si es equipo de protección personal con fecha de vencimiento.")
+    sgi_ppe_expiry_date = fields.Date(string="Vencimiento del EPP",
+                                      help="Fecha en que vence el equipo de protección. El cron avisa antes "
+                                           "de que venza.")
 
     @api.depends('sgi_last_calibration_date', 'sgi_calibration_interval_months')
     def _compute_next_calibration_date(self):
@@ -107,6 +140,20 @@ class MaintenanceEquipment(models.Model):
             return 'por_vencer'
         return 'vigente'
 
+    @api.depends('sgi_loan_employee_id')
+    def _compute_sgi_loan_date(self):
+        today = fields.Date.context_today(self)
+        for eq in self:
+            if not eq.sgi_loan_employee_id:
+                eq.sgi_loan_date = False
+            elif not eq.sgi_loan_date:
+                eq.sgi_loan_date = today
+
+    def _compute_sgi_loan_format_label(self):
+        label = self.env['sgi.format.map'].sudo().sgi_ref_label('format_ref_lab_loan')
+        for eq in self:
+            eq.sgi_loan_format_label = label
+
     @api.depends('sgi_calibration_ids')
     def _compute_calibration_count(self):
         for eq in self:
@@ -125,20 +172,31 @@ class MaintenanceEquipment(models.Model):
 
 
 class SgiCalibration(models.Model):
+    """Calibración o verificación de un equipo de medición (P-C03) con resultado y certificado. Un
+    resultado fuera de tolerancia levanta la NC ligada; la fecha siguiente alimenta el cron de
+    vencimientos."""
     _name = 'sgi.calibration'
     _description = "Calibración de equipo de medición (P-C03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
     equipment_id = fields.Many2one('maintenance.equipment', string="Equipo", required=True,
-                                   domain="[('sgi_is_measuring', '=', True)]", tracking=True)
+                                   domain="[('sgi_is_measuring', '=', True)]", tracking=True,
+                                   help="Equipo de medición calibrado.")
     date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today,
-                       tracking=True)
+                       tracking=True,
+                       help="Fecha en que se hizo la calibración.")
     calibration_type = fields.Selection([
         ('interna', "Interna"),
         ('externa', "Externa"),
-    ], string="Tipo", default='externa', required=True)
-    provider_id = fields.Many2one('res.partner', string="Laboratorio / Proveedor")
+        ('verificacion', "Verificación de laboratorio"),
+    ], string="Tipo", default='externa', required=True,
+        help="Interna (la hace personal de Quimibond), externa (laboratorio) o "
+             "verificación: la revisión periódica del equipo de laboratorio. La "
+             "verificación no cambia las fechas de calibración; fuera de "
+             "tolerancia bloquea el equipo igual que una calibración.")
+    provider_id = fields.Many2one('res.partner', string="Laboratorio / Proveedor",
+                                  help="Laboratorio o proveedor que calibró.")
     certificate_ref = fields.Char(string="N° de certificado")
     # El auditor pide el certificado, no solo su folio: el PDF vive adjunto
     # a la calibración (attachment=True → ir.attachment, no infla la tabla).
@@ -147,11 +205,15 @@ class SgiCalibration(models.Model):
     result = fields.Selection([
         ('conforme', "Conforme"),
         ('fuera_tolerancia', "Fuera de tolerancia"),
-    ], string="Resultado", required=True, default='conforme', tracking=True)
+    ], string="Resultado", required=True, default='conforme', tracking=True,
+        help="Conforme o fuera de tolerancia. Fuera de tolerancia levanta una NC.")
     notes = fields.Text(string="Notas")
     next_date = fields.Date(string="Próxima calibración", compute='_compute_next_date',
-                            store=True, readonly=False)
-    sgi_alert_id = fields.Many2one('quality.alert', string="NC generada", readonly=True)
+                            store=True, readonly=False,
+                            help="Fecha de la siguiente calibración. Se calcula con el intervalo del equipo; "
+                                 "se puede cambiar.")
+    sgi_alert_id = fields.Many2one('quality.alert', string="NC generada", readonly=True,
+                                   help="NC que se levantó por una calibración fuera de tolerancia.")
 
     @api.constrains('calibration_type', 'certificate_ref', 'certificate_file')
     def _check_certificate(self):
@@ -165,9 +227,12 @@ class SgiCalibration(models.Model):
                     "laboratorio: captura el N° de certificado o adjunta el "
                     "PDF (equipo %s)." % cal.equipment_id.name)
 
-    @api.depends('date', 'equipment_id.sgi_calibration_interval_months')
+    @api.depends('date', 'equipment_id.sgi_calibration_interval_months', 'calibration_type')
     def _compute_next_date(self):
         for cal in self:
+            if cal.calibration_type == 'verificacion':
+                cal.next_date = False
+                continue
             months = cal.equipment_id.sgi_calibration_interval_months or 12
             cal.next_date = cal.date + relativedelta(months=months) if cal.date else False
 
@@ -182,6 +247,13 @@ class SgiCalibration(models.Model):
         """Actualiza el equipo y dispara la NC IATF 7.1.5 si aplica."""
         self.ensure_one()
         eq = self.equipment_id
+        if self.calibration_type == 'verificacion':
+            # 57.62.0: la verificación no mueve las fechas ni desbloquea; fuera
+            # de tolerancia bloquea y levanta la NC como una calibración.
+            if self.result != 'conforme':
+                eq.sgi_do_not_use = True
+                self._sgi_create_alert()
+            return
         # Se escriben ambos campos en un solo write: al fijar la fecha explícita en
         # la misma operación que su dependencia (última calibración), el valor
         # explícito prevalece sobre el recálculo (última + intervalo). Así persiste

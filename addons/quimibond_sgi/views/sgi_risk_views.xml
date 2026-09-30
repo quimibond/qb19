@@ -11,13 +11,25 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_risk_category_view_search" model="ir.ui.view">
+        <field name="name">sgi.risk.category.search</field>
+        <field name="model">sgi.risk.category</field>
+        <field name="arch" type="xml">
+            <search string="Categorías de riesgo">
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_risk_category_action" model="ir.actions.act_window">
         <field name="name">Categorías de riesgo</field>
         <field name="res_model">sgi.risk.category</field>
         <field name="view_mode">list</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Catálogo de categorías de riesgo</p>
-            <p>Las categorías del F-P-C09 ya vienen sembradas.</p>
+            <p>Agrupan los riesgos y oportunidades de los procesos (p. ej. operativo, legal, ambiental). Cree la primera con «Nuevo».</p>
         </field>
     </record>
 
@@ -28,26 +40,34 @@
         <field name="arch" type="xml">
             <form string="Riesgo / Oportunidad">
                 <header>
-                    <button name="action_evaluate" type="object"
-                            string="Registrar evaluación" icon="fa-check-square-o"
-                            invisible="state == 'cerrado'"
-                            help="Sella la evaluación de hoy (probabilidad × impacto) y programa la siguiente en enero o julio."/>
                     <button name="action_set_en_tratamiento" type="object"
                             string="Iniciar tratamiento" class="btn-primary"
                             invisible="state != 'identificado'"/>
                     <button name="action_set_controlado" type="object"
                             string="Marcar controlado" class="btn-primary"
                             invisible="state != 'en_tratamiento'"/>
-                    <button name="action_set_cerrado" type="object"
-                            string="Cerrar"
-                            invisible="state != 'controlado'"/>
-                    <button name="action_set_identificado" type="object"
+                    <!-- D-009 (57.41.0): cerrar y reabrir son del Jefe MAST y del
+                         dueño del proceso (el write() lo exige también por RPC). -->
+                    <button name="action_set_cerrado" confirm="Se cerrará el riesgo y dejará de revisarse. ¿Desea continuar?" type="object"
+                            string="Cerrar" class="btn-primary"
+                            invisible="state != 'controlado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
+                    <button name="action_evaluate" type="object"
+                            string="Registrar evaluación" icon="fa-check-square-o"
+                            invisible="state == 'cerrado'"
+                            help="Sella la evaluación de hoy (probabilidad × impacto) y programa la siguiente en enero o julio."/>
+                    <button name="action_set_identificado" confirm="El riesgo se reabre y regresa a «identificado». ¿Desea continuar?" type="object"
                             string="Reabrir"
-                            invisible="state != 'cerrado'"/>
+                            invisible="state != 'cerrado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="identificado,en_tratamiento,controlado,cerrado"/>
                 </header>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Cerrado" bg_color="text-bg-secondary"
+                            invisible="state != 'cerrado'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_sgi_ncs" type="object"
                                 class="oe_stat_button" icon="fa-exclamation-triangle"
@@ -59,33 +79,33 @@
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
                             invisible="active"/>
                     <div class="oe_title">
-                        <h1><field name="name" placeholder="Aspecto / peligro / situación"/></h1>
+                        <h1><field name="name" readonly="sgi_is_locked" placeholder="Aspecto / peligro / situación"/></h1>
                         <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group string="Clasificación">
-                            <field name="instrument"/>
-                            <field name="kind"/>
-                            <field name="category_id"/>
-                            <field name="source"/>
-                            <field name="foda_type" invisible="instrument != 'foda'"
+                            <field name="instrument" readonly="sgi_is_locked"/>
+                            <field name="kind" readonly="sgi_is_locked"/>
+                            <field name="category_id" readonly="sgi_is_locked"/>
+                            <field name="source" readonly="sgi_is_locked"/>
+                            <field name="foda_type" readonly="sgi_is_locked" invisible="instrument != 'foda'"
                                    required="instrument == 'foda'"/>
-                            <field name="condition" invisible="instrument != 'iper'"/>
+                            <field name="condition" readonly="sgi_is_locked" invisible="instrument != 'iper'"/>
                             <field name="active" invisible="1"/>
                             <field name="has_finished_actions" invisible="1"/>
                         </group>
                         <group string="Ubicación">
-                            <field name="process_id"/>
-                            <field name="sgi_area_id"/>
-                            <field name="job_id"/>
-                            <field name="next_review_date"/>
-                            <field name="operational_control_id"
+                            <field name="process_id" readonly="sgi_is_locked"/>
+                            <field name="sgi_area_id" readonly="sgi_is_locked"/>
+                            <field name="job_id" readonly="sgi_is_locked"/>
+                            <field name="next_review_date" readonly="sgi_is_locked"/>
+                            <field name="operational_control_id" readonly="sgi_is_locked"
                                    invisible="instrument != 'ambiental'"/>
                         </group>
                     </group>
                     <group string="Descripción">
-                        <field name="consequence" placeholder="Consecuencia..."/>
-                        <field name="existing_controls" placeholder="Controles existentes..."/>
+                        <field name="consequence" readonly="sgi_is_locked" placeholder="Consecuencia..."/>
+                        <field name="existing_controls" readonly="sgi_is_locked" placeholder="Controles existentes..."/>
                     </group>
                     <div class="text-muted mb-2" invisible="instrument not in ('ryo', 'ambiental')">
                         Escala 1–5 × 1–5. Nivel de atención: ≥16 Inmediata ·
@@ -112,43 +132,44 @@
                     </div>
                     <group string="Evaluación" invisible="instrument == 'foda'">
                         <group string="Inicial">
-                            <field name="last_eval_date"/>
-                            <field name="semaphore" widget="badge"
+                            <field name="last_eval_date" readonly="sgi_is_locked"/>
+                            <field name="semaphore" readonly="sgi_is_locked" widget="badge"
                                    decoration-success="semaphore == 'verde'"
                                    decoration-warning="semaphore == 'amarillo'"
                                    decoration-danger="semaphore == 'rojo'"/>
-                            <field name="high_without_action" invisible="not high_without_action"
+                            <field name="high_without_action" readonly="sgi_is_locked" invisible="not high_without_action"
                                    decoration-danger="high_without_action"/>
-                            <field name="eval_probability"/>
-                            <field name="eval_impact"/>
-                            <field name="score"/>
-                            <field name="attention_level" widget="badge"
+                            <field name="eval_probability" readonly="sgi_is_locked"/>
+                            <field name="eval_impact" readonly="sgi_is_locked"/>
+                            <field name="score" readonly="sgi_is_locked"/>
+                            <field name="attention_level" readonly="sgi_is_locked" widget="badge"
                                    decoration-danger="attention_level in ('inmediata','alto')"
                                    decoration-warning="attention_level in ('media','medio')"
                                    decoration-info="attention_level in ('intermedia','bajo','baja')"/>
                         </group>
                         <group string="Residual" invisible="not has_finished_actions">
-                            <field name="residual_probability"/>
-                            <field name="residual_impact"/>
-                            <field name="residual_score"/>
-                            <field name="residual_level" widget="badge"/>
-                            <field name="residual_note"
+                            <field name="residual_probability" readonly="sgi_is_locked"/>
+                            <field name="residual_impact" readonly="sgi_is_locked"/>
+                            <field name="residual_score" readonly="sgi_is_locked"/>
+                            <field name="residual_level" readonly="sgi_is_locked" widget="badge"/>
+                            <field name="residual_note" readonly="sgi_is_locked"
                                    placeholder="Justificación cuando el riesgo residual no baja (obligatoria para cerrar un riesgo de atención máxima)."/>
                         </group>
                     </group>
                     <notebook>
                         <page string="Acciones">
-                            <field name="action_line_ids" context="{'default_risk_id': id}">
-                                <list editable="bottom"
-                                      decoration-danger="state == 'vencida'"
-                                      decoration-success="state == 'terminada'">
+                            <field name="action_line_ids" readonly="sgi_is_locked" context="{'default_risk_id': id}">
+                                <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                                <list editable="bottom" decoration-danger="state == 'vencida'"
+                                      decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
-                                    <field name="responsible_id"/>
-                                    <field name="date_commit"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>
                                     <field name="progress"/>
-                                    <field name="state"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                           decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                     <field name="alert_id" column_invisible="1"/>
                                 </list>
                             </field>
@@ -201,7 +222,7 @@
                 <field name="process_id"/>
                 <field name="score"/>
                 <field name="attention_level" widget="badge"/>
-                <field name="next_review_date"/>
+                <field name="next_review_date" widget="remaining_days" invisible="state == 'cerrado'"/>
                 <field name="state"/>
             </list>
         </field>
@@ -242,6 +263,9 @@
                 <separator/>
                 <filter name="high" string="Atención alta/inmediata"
                         domain="[('attention_level','in',('inmediata','alto'))]"/>
+                <!-- V-M03 (57.43.0): «Míos». -->
+                <separator/>
+                <filter name="mine" string="De mis procesos" domain="['|', ('process_id.owner_id.user_id', '=', uid), ('create_uid', '=', uid)]"/>
                 <group>
                     <filter name="group_instrument" string="Instrumento" context="{'group_by': 'instrument'}"/>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
@@ -259,7 +283,7 @@
         <field name="search_view_id" ref="sgi_risk_view_search"/>
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Captura el primer riesgo u oportunidad</p>
+            <p class="o_view_nocontent_smiling_face">Capture el primer riesgo u oportunidad</p>
             <p>Los 5 instrumentos en un solo lugar: RyO 5×5, IPER de SST, aspectos ambientales, patrimonial y FODA — con revisión programada.</p>
         </field>
     </record>

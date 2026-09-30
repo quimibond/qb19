@@ -13,6 +13,7 @@ from odoo.exceptions import UserError
 
 
 class SgiEppDelivery(models.Model):
+    """Responsiva de entrega de EPP a un empleado (S03-02), con renglones y firma en Sign."""
     _name = 'sgi.epp.delivery'
     _description = "Responsiva de entrega de EPP (S03-02)"
     _inherit = ['mail.thread']
@@ -20,25 +21,32 @@ class SgiEppDelivery(models.Model):
 
     name = fields.Char(string="Folio", readonly=True, copy=False, default="Nuevo")
     employee_id = fields.Many2one(
-        'hr.employee', string="Empleado", required=True, index=True, ondelete='restrict')
+        'hr.employee', string="Empleado", required=True, index=True, ondelete='restrict',
+        help="Empleado que recibe el equipo de protección.")
     # Almacenado: hr.employee no es legible por cualquier usuario interno en
     # Odoo 19; el candado de firma y can_sign leen este campo, no al empleado.
     user_id = fields.Many2one(related='employee_id.user_id', string="Usuario", store=True)
     job_id = fields.Many2one(
-        'hr.job', string="Puesto al entregar", compute='_compute_job_id', store=True, readonly=False)
-    date = fields.Date(string="Fecha de entrega", default=fields.Date.context_today, required=True)
+        'hr.job', string="Puesto al entregar", compute='_compute_job_id', store=True, readonly=False,
+        help="Puesto del empleado al momento de la entrega.")
+    date = fields.Date(string="Fecha de entrega", default=fields.Date.context_today, required=True,
+                       help="Fecha en que se entregó el equipo.")
     items = fields.Text(
         string="EPP entregado", required=True,
         help="Se propone el EPP requerido del puesto; ajusta lo que realmente se entregó.")
     delivered_by_id = fields.Many2one(
-        'res.users', string="Entregó", default=lambda self: self.env.user, required=True)
+        'res.users', string="Entregó", default=lambda self: self.env.user, required=True,
+        help="Persona que entregó el equipo.")
     note = fields.Text(string="Observaciones")
     state = fields.Selection([
         ('entregada', "Entregada, sin firmar"),
         ('firmada', "Firmada por el empleado"),
-    ], string="Estado", default='entregada', required=True, tracking=True)
-    signed_date = fields.Datetime(string="Firmada el", readonly=True)
-    can_sign = fields.Boolean(compute='_compute_can_sign')
+    ], string="Estado", default='entregada', required=True, tracking=True,
+        help="Entregada sin firmar hasta que el empleado firma la responsiva.")
+    signed_date = fields.Datetime(string="Firmada el", readonly=True,
+                                  help="Fecha y hora en que el empleado firmó.")
+    can_sign = fields.Boolean(compute='_compute_can_sign',
+                              help="Indica si usted puede firmar esta responsiva.")
 
     _SGI_SIGN_FIELDS = {'state', 'signed_date'}
 

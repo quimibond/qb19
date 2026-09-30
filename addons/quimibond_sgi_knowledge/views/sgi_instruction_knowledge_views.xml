@@ -29,7 +29,7 @@
                 </p>
                 <group>
                     <field name="article_id"/>
-                    <field name="code" placeholder="IT-P-C11-05"/>
+                    <field name="code" placeholder="IT-C1-01"/>
                     <field name="job_ids" widget="many2many_tags"/>
                 </group>
                 <footer>

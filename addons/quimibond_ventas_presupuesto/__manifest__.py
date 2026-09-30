@@ -15,6 +15,9 @@ Presupuesto y pronóstico de ventas de Quimibond (procedimiento P-A28).
   incumplimiento, cobertura semanal del pronóstico y revaluación del S2.
 - Liga del presupuesto de gastos (Presupuestos, budget.analytic) con el de
   ventas.
+- Releases de clientes: catálogo de partes del cliente → producto (con
+  sugerencia), perfiles, lectores de Lear (AIAG) y FXI (SUM), aplicación al
+  pronóstico por año y demanda total al MPS.
 
 Salió de quimibond_sgi en 57.11.0 (auditoría A-016, A-013, decisión 5): es
 planeación comercial; el SGI solo lo mide (KPI VE-02, «presupuesto_ventas»,
@@ -26,7 +29,7 @@ pasa los registros existentes sin borrar ni recrear nada.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Sales/Sales',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.1.0',
     'license': 'LGPL-3',
     'depends': [
         'quimibond_sgi',  # sgi.base.mixin, sgi.format.mixin, grupos, crons y KPI
@@ -41,6 +44,8 @@ pasa los registros existentes sin borrar ni recrear nada.
         'data/sgi_sales_budget_parameters.xml',
         'views/sgi_sales_budget_views.xml',
         'views/sgi_budget_analytic_views.xml',
+        'views/qb_customer_part_views.xml',
+        'views/qb_release_views.xml',
         'views/res_config_settings_views.xml',
         'report/report_sales_budget.xml',
         'views/menus.xml',

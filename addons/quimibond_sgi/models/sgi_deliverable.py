@@ -27,6 +27,7 @@ RE_STAGE = re.compile(r'^\s*([A-Za-z0-9]+(?:\.[0-9]+)*)[\.\)\-:]?\s+(.+?)\s*$')
 
 
 class SgiProcessStage(models.Model):
+    """Etapa de un proceso; agrupa sus actividades."""
     _name = 'sgi.process.stage'
     _description = "Etapa de un proceso SGI"
     _order = 'process_id, sequence, code, id'
@@ -80,6 +81,8 @@ class SgiProcessStage(models.Model):
 
 
 class SgiDeliverable(models.Model):
+    """Entregable: lo que una actividad produce y otra recibe. Si apunta a un modelo de Odoo con
+    dominio, la actividad se mide sola (``complete_domain`` y campos de fecha y usuario)."""
     _name = 'sgi.deliverable'
     _description = "Entregable SGI (lo que pasa de una actividad a otra)"
     _order = 'name'
@@ -119,16 +122,19 @@ class SgiDeliverable(models.Model):
 
     producer_activity_ids = fields.Many2many(
         'sgi.process.activity', 'sgi_activity_output_rel', 'deliverable_id', 'activity_id',
-        string="Lo entregan")
+        string="Lo entregan",
+        help="Actividades que producen este entregable.")
     input_line_ids = fields.One2many('sgi.activity.input', 'deliverable_id', string="Lo reciben")
     consumer_activity_ids = fields.Many2many(
         'sgi.process.activity', compute='_compute_consumers', string="Actividades que lo reciben")
     measured_activity_ids = fields.One2many(
         'sgi.process.activity', 'measure_deliverable_id', string="Se miden con él")
     producer_process_ids = fields.Many2many(
-        'sgi.process', compute='_compute_processes', string="Procesos que lo entregan")
+        'sgi.process', compute='_compute_processes', string="Procesos que lo entregan",
+        help="Procesos cuyas actividades producen este entregable.")
     consumer_process_ids = fields.Many2many(
-        'sgi.process', compute='_compute_processes', string="Procesos que lo reciben")
+        'sgi.process', compute='_compute_processes', string="Procesos que lo reciben",
+        help="Procesos cuyas actividades reciben este entregable.")
     orphan = fields.Selection([
         ('sin_origen', "Nadie lo entrega"),
         ('sin_destino', "Nadie lo recibe"),
@@ -525,7 +531,9 @@ class SgiActivityLinkDeliverable(models.Model):
         'sgi.activity.input', string="Renglón «recibe»", index=True, ondelete='cascade',
         readonly=True)
     max_days = fields.Integer(
-        related='input_id.max_days', string="Plazo (días hábiles)")
+        related='input_id.max_days', string="Plazo (días hábiles)",
+        help="Días hábiles que tiene el entregable para llegar a la actividad que lo recibe. Pasado ese "
+             "plazo, el eslabón se ve atorado.")
 
     def _sgi_manual_twins(self):
         Link = self.env['sgi.activity.link'].with_context(active_test=False)
@@ -579,7 +587,8 @@ class SgiActivityDeliverables(models.Model):
         inverse='_inverse_input_deliverables', string="Entregables que recibe")
     output_deliverable_ids = fields.Many2many(
         'sgi.deliverable', 'sgi_activity_output_rel', 'activity_id', 'deliverable_id',
-        string="Entrega")
+        string="Entrega",
+        help="Entregables que produce la actividad.")
     measure_deliverable_id = fields.Many2one(
         'sgi.deliverable', string="Se mide con el entregable", ondelete='restrict', index=True,
         help="Con el método «Por su entregable», la actividad copia el modelo, "

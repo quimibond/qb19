@@ -2,7 +2,8 @@
 <odoo>
     <!-- Ventas → Presupuesto y pronóstico. Vivían en quimibond_sgi/views/sgi_menus.xml;
          mismos XML IDs, así que en producción conservan su id (2438, 2434, 2435,
-         2449, 2444-2447; E-002: documentos y actividades apuntan a 2434). -->
+         2449; E-002: documentos y actividades apuntan a 2434). Los cuatro
+         submenús de análisis (2444-2447) se juntaron en «Análisis» (1.1.0). -->
     <menuitem id="menu_sale_sgi_planning" name="Presupuesto y pronóstico"
               parent="sale.sale_menu_root" sequence="6"
               groups="quimibond_sgi.group_sgi_user"/>
@@ -10,14 +11,12 @@
               parent="menu_sale_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
     <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
               parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
+    <menuitem id="menu_sale_qb_release" name="Releases de clientes"
+              parent="menu_sale_sgi_planning" action="qb_release_action" sequence="22"/>
+    <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
+              parent="menu_sale_sgi_planning" action="qb_release_profile_action" sequence="24"/>
+    <menuitem id="menu_sale_qb_customer_part" name="Partes del cliente"
+              parent="menu_sale_sgi_planning" action="qb_customer_part_action" sequence="25"/>
     <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
-              parent="menu_sale_sgi_planning" sequence="30"/>
-    <menuitem id="menu_sale_sgi_analysis_mercado" name="Por mercado"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_mercado_action" sequence="10"/>
-    <menuitem id="menu_sale_sgi_analysis_cliente" name="Por cliente"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_cliente_action" sequence="20"/>
-    <menuitem id="menu_sale_sgi_analysis_producto" name="Por producto"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_producto_action" sequence="30"/>
-    <menuitem id="menu_sale_sgi_analysis_global" name="Global (Dirección)"
-              parent="menu_sale_sgi_sales_analysis" action="sgi_sales_analysis_global_action" sequence="40"/>
+              parent="menu_sale_sgi_planning" action="sgi_sales_analysis_mercado_action" sequence="30"/>
 </odoo>

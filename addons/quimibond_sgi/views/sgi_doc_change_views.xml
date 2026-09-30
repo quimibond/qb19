@@ -149,6 +149,10 @@
                         domain="[('sgi_change_kind', '=', 'modificacion')]"/>
                 <filter name="bajas" string="Bajas"
                         domain="[('sgi_change_kind', '=', 'baja')]"/>
+                <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
+                <separator/>
+                <filter name="mine" string="Míos" domain="[('request_owner_id', '=', uid)]"/>
+                <filter name="filter_create_date" string="Fecha de solicitud" date="create_date"/>
                 <group>
                     <filter name="group_kind" string="Tipo de cambio"
                             context="{'group_by': 'sgi_change_kind'}"/>
@@ -179,8 +183,8 @@ action = {
     'search_view_id': search_view and [search_view.id, 'search'] or False,
     'domain': [('sgi_is_doc_change', '=', True)],
     'context': {'default_category_id': category.id} if category else {},
-    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Solicita el primer cambio documental&lt;/p&gt;
-&lt;p&gt;Alta, modificación o baja de un documento controlado (F-P-G01-06). Al
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Solicite el primer cambio documental&lt;/p&gt;
+&lt;p&gt;Alta, modificación o baja de un documento controlado. Al
 aprobarse (2 aprobadores en secuencia) el documento se versiona SOLO: nueva
 revisión, obsolescencia de la anterior, acuses generados y salida en el NEWS
 del mes. La revisión nueva se sugiere automáticamente.&lt;/p&gt;""",

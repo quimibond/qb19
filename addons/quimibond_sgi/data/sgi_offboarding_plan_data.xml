@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.14.0 (indicadores 2, S6-02): tipos de actividad propios para el
+     plan de salida que ya existe en producción («Baja de personal», id 5).
+     El plan no se crea aquí: la migración 19.0.57.14.0 le pone estos tipos a
+     sus renglones de accesos y de EPP y le agrega «Recoger equipo de
+     cómputo» (sgi.indicator._sgi_adopt_offboarding_plan). S6-02 cuenta
+     «Retirar accesos» y «Recoger equipo»; «Recuperar EPP» no es equipo de
+     cómputo y no entra. noupdate: RH y TI ajustan textos y plazos. -->
+<odoo noupdate="1">
+    <record id="sgi_activity_type_retirar_accesos" model="mail.activity.type">
+        <field name="name">Retirar accesos</field>
+        <field name="summary">Retirar accesos (usuario de Odoo, correo y sistemas)</field>
+        <field name="res_model">hr.employee</field>
+        <field name="category">default</field>
+        <field name="icon">fa-user-times</field>
+        <field name="delay_count">1</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+    </record>
+    <record id="sgi_activity_type_recoger_equipo" model="mail.activity.type">
+        <field name="name">Recoger equipo</field>
+        <field name="summary">Recoger equipo (cómputo, celular y accesorios)</field>
+        <field name="res_model">hr.employee</field>
+        <field name="category">default</field>
+        <field name="icon">fa-laptop</field>
+        <field name="delay_count">1</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+    </record>
+
+    <record id="sgi_activity_type_recuperar_epp" model="mail.activity.type">
+        <field name="name">Recuperar EPP</field>
+        <field name="summary">Recuperar EPP, uniforme, gafete, locker y herramientas</field>
+        <field name="res_model">hr.employee</field>
+        <field name="category">default</field>
+        <field name="icon">fa-shield</field>
+        <field name="delay_count">0</field>
+        <field name="delay_unit">days</field>
+        <field name="delay_from">current_date</field>
+    </record>
+</odoo>

@@ -35,6 +35,11 @@ class TestIndicadores571(TransactionCase):
         create_date no se escribe por ORM y la cancelación tiene candado."""
         alert = self.Alert.create({'title': 'NC 57.1.0', 'team_id': self.team.id})
         self.assertTrue(alert.sgi_folio, "El equipo interno del SGI pone folio.")
+        # 57.66.0: lo pendiente del ORM baja ANTES del SQL. Si no, el flush
+        # posterior (invalidate_recordset lo hace) reescribía la etapa y las
+        # fechas encima de las de la prueba: en la copia de producción la NC
+        # «cancelada» volvía a contar (50 % en vez de 66.67 %).
+        self.env.flush_all()
         self.env.cr.execute(
             "UPDATE quality_alert SET create_date = %s, date_close = %s WHERE id = %s",
             (created, closed, alert.id))

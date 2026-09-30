@@ -3,13 +3,15 @@ from odoo import models, fields, api
 
 
 class SgiArea(models.Model):
+    """Área documental del SGI (G, A, C, D…), ligada a un departamento. Catálogo que trae el módulo."""
     _name = 'sgi.area'
     _description = "Área documental SGI"
     _order = 'code'
 
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True, translate=False)
-    department_id = fields.Many2one('hr.department', string="Departamento")
+    department_id = fields.Many2one('hr.department', string="Departamento",
+                                    help="Departamento que corresponde al área.")
     active = fields.Boolean(default=True)
 
     _code_uniq = models.Constraint(

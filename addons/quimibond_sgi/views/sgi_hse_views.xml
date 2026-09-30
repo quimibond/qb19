@@ -17,7 +17,7 @@
                 <field name="kind"/>
                 <field name="name"/>
                 <field name="date"/>
-                <field name="next_date"/>
+                <field name="next_date" widget="remaining_days"/>
                 <field name="result" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'vigente'"
@@ -94,7 +94,7 @@
         <field name="search_view_id" ref="sgi_health_record_view_search"/>
         <field name="context">{'search_default_por_vencer': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra el primer estudio o examen</p>
+            <p class="o_view_nocontent_smiling_face">Registre el primer estudio o examen</p>
             <p>Por trabajador: qué se le hizo, cuándo, el resultado y cuándo vence. RH recibe el aviso 30 días antes (E2.31, E2.32).</p>
         </field>
     </record>
@@ -138,16 +138,37 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_csh_inspection_view_search" model="ir.ui.view">
+        <field name="name">sgi.csh.inspection.search</field>
+        <field name="model">sgi.csh.inspection</field>
+        <field name="arch" type="xml">
+            <search string="Recorridos CSH">
+                <field name="name"/>
+                <field name="area"/>
+                <filter name="state_borrador" string="En captura" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_cerrado" string="Cerrado" domain="[('state', '=', 'cerrado')]"/>
+                <separator/>
+                <filter name="filter_date" string="Fecha" date="date"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_area" string="Área" context="{'group_by': 'area'}"/>
+                    <filter name="group_date" string="Año" context="{'group_by': 'date:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_csh_inspection_view_form" model="ir.ui.view">
         <field name="name">sgi.csh.inspection.form</field>
         <field name="model">sgi.csh.inspection</field>
         <field name="arch" type="xml">
             <form string="Recorrido de la Comisión de Seguridad e Higiene">
                 <header>
-                    <button name="action_close" type="object" string="Cerrar recorrido" class="btn-primary"
+                    <button name="action_close" confirm="Se cerrará el recorrido y sus hallazgos dejarán de editarse. ¿Desea continuar?" type="object" string="Cerrar recorrido" class="btn-primary"
                             invisible="state != 'borrador'"
                             groups="quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_reopen" type="object" string="Reabrir" invisible="state != 'cerrado'"
+                    <button name="action_reopen" confirm="El recorrido se reabre y sus hallazgos vuelven a editarse. ¿Desea continuar?" type="object" string="Reabrir" invisible="state != 'cerrado'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
@@ -203,8 +224,9 @@
         <field name="name">Recorridos CSH</field>
         <field name="res_model">sgi.csh.inspection</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_state_borrador': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra el primer recorrido</p>
+            <p class="o_view_nocontent_smiling_face">Registre el primer recorrido</p>
             <p>El acta del recorrido con sus integrantes y hallazgos; cada hallazgo se corrige en el momento, se justifica o genera su no conformidad (E2.29).</p>
         </field>
     </record>
@@ -222,6 +244,24 @@
                 <field name="user_id"/>
                 <field name="last_run"/>
             </list>
+        </field>
+    </record>
+
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_checklist_template_view_search" model="ir.ui.view">
+        <field name="name">sgi.checklist.template.search</field>
+        <field name="model">sgi.checklist.template</field>
+        <field name="arch" type="xml">
+            <search string="Plantillas de checklist">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="user_id"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_frequency" string="Frecuencia" context="{'group_by': 'frequency'}"/>
+                    <filter name="group_user_id" string="Responsable" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -273,7 +313,7 @@
         <field name="res_model">sgi.checklist.template</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Define el primer checklist</p>
+            <p class="o_view_nocontent_smiling_face">Defina el primer checklist</p>
             <p>Qué se revisa y en qué equipos o unidades. Cada día (o cada lunes) se crea una solicitud de mantenimiento preventivo por equipo con la hoja de puntos (S5.15, S5.16, S5.20).</p>
         </field>
     </record>
@@ -311,6 +351,88 @@
         </field>
     </record>
 
+    <!-- 57.43.0 (V-A04): ficha propia de la hoja de checklist para la tableta
+         del piso. Antes se abría la ficha estándar de mantenimiento con el
+         checklist al final. Aquí va primero lo que el operador llena, la
+         respuesta como botones y «Terminar checklist» en el encabezado. Vista
+         primaria con prioridad alta: no le gana a la de Mantenimiento en su app;
+         la ligan las dos acciones de checklist. -->
+    <record id="sgi_checklist_request_view_form" model="ir.ui.view">
+        <field name="name">maintenance.request.form.sgi.checklist.tablet</field>
+        <field name="model">maintenance.request</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="Hoja de checklist" create="0">
+                <header>
+                    <button name="action_sgi_checklist_finish" type="object"
+                            string="Terminar checklist" class="btn-primary"
+                            invisible="sgi_checklist_employee_id"/>
+                    <button name="action_sgi_create_correctives" type="object"
+                            string="Crear correctivos de las fallas"
+                            invisible="sgi_checklist_state != 'con_fallas'"/>
+                    <field name="sgi_checklist_state" widget="statusbar"
+                           statusbar_visible="pendiente,completo"/>
+                </header>
+                <sheet>
+                    <field name="sgi_checklist_template_id" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="equipment_id" readonly="1"/></h1>
+                        <h3>
+                            <field name="sgi_checklist_template_id" readonly="1" class="oe_inline"/>
+                            · <field name="sgi_checklist_date" readonly="1" class="oe_inline"/>
+                        </h3>
+                    </div>
+                    <div class="alert alert-success mb-2" role="status"
+                         invisible="not sgi_checklist_employee_id">
+                        Terminado por <field name="sgi_checklist_employee_id" readonly="1" class="oe_inline"/>
+                        el <field name="sgi_checklist_done_at" readonly="1" class="oe_inline"/>.
+                    </div>
+                    <field name="sgi_checklist_line_ids" nolabel="1"
+                           readonly="sgi_checklist_employee_id">
+                        <list editable="bottom" create="0" delete="0"
+                              decoration-danger="answer == 'falla'">
+                            <field name="sequence" column_invisible="1"/>
+                            <field name="name" readonly="1"/>
+                            <field name="hint" readonly="1" optional="show"/>
+                            <field name="answer" widget="selection_badge" options="{'size': 'lg'}"/>
+                            <field name="note"/>
+                            <field name="corrective_request_id" readonly="1" optional="hide"/>
+                        </list>
+                    </field>
+                    <group string="Datos de la solicitud" invisible="not sgi_checklist_employee_id">
+                        <field name="name" readonly="1"/>
+                        <field name="maintenance_team_id" readonly="1"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- 57.43.0 (V-A04): en la tableta, una tarjeta grande por equipo o unidad. -->
+    <record id="sgi_checklist_request_view_kanban" model="ir.ui.view">
+        <field name="name">maintenance.request.kanban.sgi.checklist</field>
+        <field name="model">maintenance.request</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <kanban create="0" sample="1">
+                <templates>
+                    <t t-name="card">
+                        <field name="equipment_id" class="fs-4 fw-bold"/>
+                        <field name="sgi_checklist_template_id" class="text-muted"/>
+                        <footer>
+                            <field name="sgi_checklist_state" widget="badge"
+                                   decoration-success="sgi_checklist_state == 'completo'"
+                                   decoration-danger="sgi_checklist_state == 'con_fallas'"
+                                   decoration-warning="sgi_checklist_state == 'pendiente'"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_checklist_request_action" model="ir.actions.act_window">
         <field name="name">Hojas de checklist</field>
         <field name="res_model">maintenance.request</field>
@@ -318,23 +440,29 @@
         <field name="domain">[('sgi_checklist_template_id', '!=', False)]</field>
         <field name="view_ids" eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_checklist_request_view_list')}),
-            (0, 0, {'view_mode': 'form'}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_checklist_request_view_form')}),
             (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_checklist_request_view_pivot')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay hojas de checklist</p>
+            <p>Cada hoja es un checklist contestado (una solicitud de mantenimiento). Se generan solas según la
+            frecuencia de cada plantilla de checklist activa; también puede crear una a mano con «Nuevo».</p>
+        </field>
     </record>
 
     <!-- Tableta compartida: solo las hojas de hoy que faltan de firmar. -->
     <record id="sgi_checklist_today_action" model="ir.actions.act_window">
         <field name="name">Checklists de hoy</field>
         <field name="res_model">maintenance.request</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">kanban,list,form</field>
         <field name="domain">[('sgi_checklist_template_id', '!=', False), ('sgi_checklist_employee_id', '=', False), ('sgi_checklist_date', '=', context_today().strftime('%Y-%m-%d'))]</field>
         <field name="context">{'create': False}</field>
         <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_checklist_request_view_kanban')}),
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_checklist_request_view_list')}),
-            (0, 0, {'view_mode': 'form'})]"/>
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_checklist_request_view_form')})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">No hay checklists pendientes hoy</p>
-            <p>Abre la hoja de tu equipo o unidad, marca cada punto y al final «Terminar checklist» con tu nombre y tu PIN.</p>
+            <p>Abra la hoja de su equipo o unidad, marque cada punto y al final pulse «Terminar checklist» con su nombre y su PIN.</p>
         </field>
     </record>
 

@@ -1,0 +1,31 @@
+                     SUPPLIER SCHEDULE / MATERIAL RELEASE
+   Supplier: 9ZZZ0001 Ship-To: 9900
+   PROVEEDOR DE PRUEBA SA           Cliente Prueba Trim Ops
+   Calle Uno 100                    Planta Prueba
+    Release ID: 000901 Release Date: 01/07/27
+Purchase Order: 7000001 Buyer: ZZ01
+   Item Number: LX00000001AA UM: MT In Transit Qty: 1,200
+               BACK SCRIM PES/100        Receipt Date: 01/04/27 22:27
+               IH LAMINATED 62"          Receipt Qty: 1,200
+ Supplier Item: Revision: N
+                                               Cum Received: 50,000
+       Contact:
+                                       Packing Slip/Shipper: INV/2027/01/0001
+Ship/Dlvy Pattern:
+         Ship Ship
+Interval Date Time Reference Q Req Qty Cum Req Qty Net Req Qty
+-------- -------- ----- ---------- - ------------ ------------- ------------
+         Prior 0 50,000
+Weekly 12/28/26 P 3,000 53,000 1,800
+         01/04/27 P 3,000 56,000 3,000
+         01/11/27 P 2,500 58,500 2,500
+                     SUPPLIER SCHEDULE / MATERIAL RELEASE
+   Supplier: 9ZZZ0001 Ship-To: 9900
+    Release ID: 000901 Release Date: 01/07/27
+Purchase Order: 7000001 Buyer: ZZ01
+   Item Number: LX00000001AA UM: MT In Transit Qty: 1,200
+         01/18/27 P 2,500 61,000 2,500
+         01/25/27 P 0 61,000 0
+Fab Authorization Cum Qty: 56,000 Thru: 01/10/27
+Raw Authorization Cum Qty: 61,000 Thru: 01/31/27
+Approved By:_____________________________

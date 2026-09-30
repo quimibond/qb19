@@ -13,17 +13,36 @@ tableta compartida (un usuario por tableta, responsable de la plantilla). Al
 terminar, «Terminar checklist» pide quién lo llenó (empleado) y su PIN de
 empleado (el mismo del quiosco de asistencia y del piso de producción): la
 hoja guarda el empleado y la hora, y así se mide por persona.
+
+57.15.0 (G-007, G-022, decisión 14 de la tanda 2): las hojas están listas a
+las 05:30 de México (el cron se mueve a esa hora) con ``schedule_date`` a las
+08:00 hora local (antes 08:00 UTC = 02:00 en México). Los festivos del
+calendario del SGI no generan hoja; la semanal se genera el primer día hábil
+de la semana en que corra el cron (si el lunes es festivo o el cron no corrió,
+el martes), una sola vez por semana. Una plantilla sin equipos avisa al Jefe
+MAST en vez de no generar nada en silencio.
 """
-from datetime import datetime, time
+import logging
+from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+from .sgi_calendar import sgi_is_business_day, sgi_local_datetime_utc, sgi_today
+
+_logger = logging.getLogger(__name__)
 
 _ANSWERS = [('ok', "Bien"), ('falla', "Falla"), ('na', "No aplica")]
 
 
 class SgiChecklistTemplate(models.Model):
+    """Plantilla de checklist de planta o de unidades: puntos, equipos, frecuencia y quién la llena.
+    El cron diario genera las hojas del día."""
     _name = 'sgi.checklist.template'
+    # 57.15.0 (G-022): lleva actividades para el aviso «Checklist sin equipos».
+    # 57.67.0: ``hr.mixin``: empleados que la llenan (Many2many a hr.employee)
+    # sin ser de RH (Odoo 19).
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'hr.mixin']
     _description = "Plantilla de checklist de mantenimiento (planta o unidades)"
     _order = 'code, name'
 
@@ -32,9 +51,14 @@ class SgiChecklistTemplate(models.Model):
     frequency = fields.Selection([
         ('diaria', "Diaria (lunes a viernes)"),
         ('semanal', "Semanal (lunes)"),
-    ], string="Frecuencia", required=True, default='diaria')
-    equipment_ids = fields.Many2many('maintenance.equipment', string="Equipos o unidades", required=True)
-    maintenance_team_id = fields.Many2one('maintenance.team', string="Equipo de mantenimiento")
+    ], string="Frecuencia", required=True, default='diaria',
+        help="Diaria (de lunes a viernes) o semanal (los lunes). El cron genera las hojas a esa frecuencia.")
+    equipment_ids = fields.Many2many('maintenance.equipment', string="Equipos o unidades", required=True,
+                                     help="Equipos o unidades que se revisan con esta plantilla. Cada uno "
+                                          "tiene su hoja.")
+    maintenance_team_id = fields.Many2one('maintenance.team', string="Equipo de mantenimiento",
+                                          help="Equipo de mantenimiento al que llegan las hojas y las "
+                                               "correctivas.")
     user_id = fields.Many2one('res.users', string="Responsable de llenarlo",
                               help="Usuario que ve las hojas: el de la tableta compartida o el jefe del área.")
     employee_ids = fields.Many2many(
@@ -42,19 +66,25 @@ class SgiChecklistTemplate(models.Model):
         string="Quién lo llena", help="Electromecánicos o choferes que pueden firmar la hoja. Vacío: cualquiera.")
     item_ids = fields.One2many('sgi.checklist.template.item', 'template_id', string="Puntos a revisar")
     active = fields.Boolean(default=True)
-    last_run = fields.Date(string="Última generación", readonly=True)
+    last_run = fields.Date(string="Última generación", readonly=True,
+                           help="Último día en que se generaron hojas de esta plantilla.")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
 
     def _sgi_due_today(self, day):
         self.ensure_one()
-        if day.weekday() >= 5:
+        if not sgi_is_business_day(self.env, day, self.company_id):
             return False
-        return self.frequency == 'diaria' or day.weekday() == 0
+        if self.frequency == 'diaria':
+            return True
+        # Semanal: el primer día hábil de la semana en que corra el cron; una
+        # vez por semana (idempotente aunque el lunes haya fallado).
+        monday = day - timedelta(days=day.weekday())
+        return not (self.last_run and monday <= self.last_run <= day)
 
     def _sgi_generate(self, day=None):
         """Una solicitud preventiva por equipo, con la hoja de puntos. No
         duplica: si ya existe la del día para ese equipo, no crea otra."""
-        day = day or fields.Date.context_today(self)
+        day = day or sgi_today(self.env)
         Request = self.env['maintenance.request'].sudo()
         created = Request
         for template in self:
@@ -71,7 +101,7 @@ class SgiChecklistTemplate(models.Model):
                         "%s " % template.code if template.code else '', template.name, equipment.name, day),
                     'equipment_id': equipment.id,
                     'maintenance_type': 'preventive',
-                    'schedule_date': datetime.combine(day, time(8, 0)),
+                    'schedule_date': sgi_local_datetime_utc(self.env, day, 8, 0, template.company_id),
                     'user_id': (template.user_id or equipment.technician_user_id).id,
                     'sgi_checklist_template_id': template.id,
                     'sgi_checklist_date': day,
@@ -99,12 +129,41 @@ class SgiChecklistTemplate(models.Model):
     @api.model
     def cron_generate(self):
         """Cron diario: las plantillas que tocan hoy."""
-        day = fields.Date.context_today(self)
+        day = sgi_today(self.env)
         templates = self.search([]).filtered(lambda t: t._sgi_due_today(day))
+        self._sgi_warn_without_equipment(templates)
         return len(templates._sgi_generate(day))
+
+    @api.model
+    def _sgi_warn_without_equipment(self, templates):
+        """G-022: una plantilla activa sin equipos no genera hojas; el Jefe MAST
+        recibe un aviso por plantilla (uno por episodio) y el aviso se cierra
+        solo cuando la plantilla ya tiene equipos."""
+        Cron = self.env['sgi.cron']._sgi_new_run()
+        manager_id = Cron._sgi_manager_user_id()
+        empty = templates.filtered(lambda t: not t.equipment_ids)
+        for template in empty:
+            _logger.warning("SGI checklist: la plantilla %s no tiene equipos; no genera hojas.",
+                            template.display_name)
+            Cron._sgi_step(
+                "aviso de plantilla sin equipos %s" % template.id,
+                lambda template=template: Cron._sgi_schedule(
+                    template, "Checklist sin equipos: %s" % template.name,
+                    "La plantilla «%s» no tiene equipos o unidades: el cron no genera "
+                    "hojas. Agrega los equipos en la plantilla." % template.name,
+                    manager_id, date_deadline=sgi_today(self.env),
+                    key='checklist_sin_equipos'))
+        # Solo las plantillas que tocaban hoy se revisan: las demás conservan
+        # su aviso hasta su día.
+        stale = self.env['mail.activity'].sudo().with_context(active_test=False).search([
+            ('res_model', '=', self._name), ('res_id', 'in', (templates - empty).ids),
+            ('sgi_cron_key', '=', 'checklist_sin_equipos'), ('sgi_episode_closed', '=', False)])
+        Cron._sgi_close_activities(stale, "la plantilla ya tiene equipos")
+        return empty
 
 
 class SgiChecklistTemplateItem(models.Model):
+    """Punto a revisar de una plantilla de checklist."""
     _name = 'sgi.checklist.template.item'
     _description = "Punto a revisar de una plantilla de checklist"
     _order = 'template_id, sequence, id'
@@ -116,6 +175,8 @@ class SgiChecklistTemplateItem(models.Model):
 
 
 class SgiChecklistLine(models.Model):
+    """Punto revisado en una hoja de checklist de mantenimiento (``maintenance.request``), con su
+    respuesta y, si falla, la solicitud correctiva."""
     _name = 'sgi.checklist.line'
     _description = "Punto revisado en una hoja de mantenimiento"
     _order = 'request_id, sequence, id'
@@ -134,17 +195,22 @@ class MaintenanceRequestChecklist(models.Model):
     _inherit = 'maintenance.request'
 
     sgi_checklist_template_id = fields.Many2one('sgi.checklist.template', string="Checklist SGI",
-                                                readonly=True, index=True)
-    sgi_checklist_date = fields.Date(string="Día del checklist", readonly=True, index=True)
+                                                readonly=True, index=True,
+                                                help="Plantilla de la que salió esta hoja de checklist.")
+    sgi_checklist_date = fields.Date(string="Día del checklist", readonly=True, index=True,
+                                     help="Día al que corresponde la hoja de checklist.")
     sgi_checklist_line_ids = fields.One2many('sgi.checklist.line', 'request_id', string="Hoja de checklist")
     sgi_checklist_employee_id = fields.Many2one(
-        'hr.employee', string="Lo llenó", readonly=True, index=True, tracking=True, copy=False)
-    sgi_checklist_done_at = fields.Datetime(string="Terminado el", readonly=True, copy=False)
+        'hr.employee', string="Lo llenó", readonly=True, index=True, tracking=True, copy=False,
+        help="Empleado que llenó la hoja (se registra al terminarla, con su PIN si está encendido).")
+    sgi_checklist_done_at = fields.Datetime(string="Terminado el", readonly=True, copy=False,
+                                            help="Fecha y hora en que se terminó la hoja.")
     sgi_checklist_state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('completo', "Completo"),
         ('con_fallas', "Con fallas"),
-    ], string="Checklist", compute='_compute_sgi_checklist_state', store=True)
+    ], string="Checklist", compute='_compute_sgi_checklist_state', store=True,
+        help="Pendiente, completo o con fallas según las respuestas de la hoja. Se calcula solo.")
 
     @api.depends('sgi_checklist_line_ids.answer')
     def _compute_sgi_checklist_state(self):
@@ -188,19 +254,33 @@ class MaintenanceRequestChecklist(models.Model):
 
 
 class SgiChecklistFinish(models.TransientModel):
+    """Asistente para terminar una hoja de checklist: quién la llenó y, si está encendido el
+    parámetro, su PIN de empleado."""
     _name = 'sgi.checklist.finish'
     _description = "Terminar checklist: quién lo llenó"
 
-    request_id = fields.Many2one('maintenance.request', required=True, ondelete='cascade')
-    allowed_employee_ids = fields.Many2many('hr.employee', compute='_compute_allowed_employee_ids')
+    request_id = fields.Many2one('maintenance.request', required=True, ondelete='cascade',
+                                 help="Hoja de checklist que se termina.")
+    allowed_employee_ids = fields.Many2many('hr.employee', compute='_compute_allowed_employee_ids',
+                                            help="Personas que pueden firmar esta hoja: las de «Quién lo "
+                                                 "llena» en la plantilla.")
     employee_id = fields.Many2one('hr.employee', string="¿Quién lo llenó?", required=True,
-                                  domain="allowed_employee_ids and [('id', 'in', allowed_employee_ids)] or []")
+                                  domain="allowed_employee_ids and [('id', 'in', allowed_employee_ids)] or []",
+                                  help="Elija a la persona que llenó la hoja.")
     pin = fields.Char(string="PIN del empleado")
 
     @api.depends('request_id')
     def _compute_allowed_employee_ids(self):
         for wiz in self:
             wiz.allowed_employee_ids = wiz.request_id.sgi_checklist_template_id.employee_ids
+
+    @api.model
+    def _sgi_pin_required(self):
+        """57.18.0 (I-005, D-08): ``quimibond_sgi.checklist_pin_required``.
+        Apagado por default: RH captura los PIN antes de encenderlo."""
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.checklist_pin_required', '') or ''
+        return value.strip().lower() in ('1', 'true', 'yes', 'si', 'sí')
 
     def action_confirm(self):
         self.ensure_one()
@@ -216,6 +296,11 @@ class SgiChecklistFinish(models.TransientModel):
             raise UserError("%s no está en la lista de quién llena este checklist." % self.employee_id.name)
         # sudo: el PIN es un campo de RH; el usuario de la tableta no lo lee.
         real_pin = self.employee_id.sudo().pin
+        if not real_pin and self._sgi_pin_required():
+            raise UserError(
+                "%s no tiene PIN registrado y el PIN es obligatorio para firmar el "
+                "checklist. Pide a RH que lo capture en su ficha de empleado (el mismo "
+                "del quiosco de asistencia)." % self.employee_id.name)
         if real_pin and (self.pin or '') != real_pin:
             raise UserError("PIN incorrecto para %s." % self.employee_id.name)
         req.sudo().write({'sgi_checklist_employee_id': self.employee_id.id,

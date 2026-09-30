@@ -4,6 +4,7 @@ import re
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
+from odoo.tools.safe_eval import safe_eval
 
 from .sgi_guard import sgi_require_system
 
@@ -27,10 +28,18 @@ class SgiFormatMap(models.Model):
     Los mapeos sin modelo (``model_id`` vacío) son los formatos que el código
     usa por referencia (``format_ref_*`` en ``data/sgi_format_map_data.xml``):
     responsiva de EPP, etiquetas de calibración, pie del procedimiento, etc.
+
+    57.60.0 (bloque 2 de formularios): un modelo puede tener **varios**
+    mapeos. El que no tiene criterio es el **general** del modelo (uno activo
+    por modelo, como antes); los que tienen criterio (tipo de operación,
+    centro de trabajo, categoría de producto o filtro) aplican solo a los
+    registros que lo cumplen, en orden de prioridad (``sequence``). Así cada
+    orden de producción, vale o transferencia imprime su propia clave, y el
+    registro que no cumple ningún criterio sigue con la general.
     """
     _name = 'sgi.format.map'
     _description = "Formato SGI en documentos de Odoo"
-    _order = 'sgi_code'
+    _order = 'model_name, sequence, sgi_code, id'
 
     model_id = fields.Many2one('ir.model', string="Modelo de Odoo",
                                ondelete='cascade',
@@ -62,10 +71,185 @@ class SgiFormatMap(models.Model):
     active = fields.Boolean(default=True)
     note = fields.Char(string="Nota")
 
-    _model_uniq = models.Constraint(
-        'unique(model_id)',
-        "Ya existe un mapeo de formato para este modelo.",
-    )
+    # --- 57.60.0: cuándo aplica (varios formatos por modelo) -----------------
+    # 57.60.0: sale ``unique(model_id)``; la regla ahora es un mapeo GENERAL
+    # activo por modelo (``_check_single_general``) y los demás con criterio.
+    sequence = fields.Integer(
+        string="Prioridad", default=10,
+        help="Si un registro cumple el criterio de más de un mapeo del mismo "
+             "modelo, se usa el de número más bajo. El mapeo general (sin "
+             "criterio) se usa solo cuando ningún otro aplica.")
+    # 57.67.0: los criterios leen también los archivados (``active_test``).
+    # Sin eso, un mapeo con un tipo de operación o centro archivado (en
+    # producción «Traslados internos» de Toluca, id 5) se leía sin criterio,
+    # se calculaba GENERAL y chocaba con el general del modelo.
+    picking_type_ids = fields.Many2many(
+        'stock.picking.type', 'sgi_format_map_picking_type_rel', 'map_id', 'picking_type_id',
+        context={'active_test': False},
+        string="Tipos de operación",
+        help="Solo los registros de estos tipos de operación (transferencias, "
+             "vales, órdenes de producción) imprimen este formato. Vacío = "
+             "cualquier tipo.")
+    workcenter_ids = fields.Many2many(
+        'mrp.workcenter', 'sgi_format_map_workcenter_rel', 'map_id', 'workcenter_id',
+        context={'active_test': False},
+        string="Centros de trabajo",
+        help="Solo las órdenes con una operación en alguno de estos centros de "
+             "trabajo imprimen este formato. Vacío = cualquier centro.")
+    product_categ_ids = fields.Many2many(
+        'product.category', 'sgi_format_map_product_categ_rel', 'map_id', 'categ_id',
+        string="Categorías de producto",
+        help="Solo los registros cuyo producto es de estas categorías (o de sus "
+             "subcategorías) imprimen este formato. Vacío = cualquier producto.")
+    record_domain = fields.Char(
+        string="Filtro adicional",
+        help="Condición opcional sobre el registro, por ejemplo "
+             "[('location_dest_id.usage', '=', 'supplier')] para las "
+             "devoluciones a proveedor. Vacío = sin filtro.")
+    is_general = fields.Boolean(
+        string="General del modelo", compute='_compute_is_general', store=True,
+        help="Sin criterio: aplica a todo registro del modelo que no cumpla el "
+             "criterio de otro mapeo.")
+    selector_label = fields.Char(string="Cuándo aplica", compute='_compute_selector_label')
+
+    _SGI_SELECTOR_FIELDS = ('picking_type_ids', 'workcenter_ids', 'product_categ_ids',
+                            'record_domain')
+
+    def _sgi_domain(self):
+        """Filtro adicional como lista (vacío si no hay o es ``[]``)."""
+        self.ensure_one()
+        text = (self.record_domain or '').strip()
+        if not text:
+            return []
+        domain = safe_eval(text)
+        if not isinstance(domain, (list, tuple)):
+            raise ValueError("no es una lista")
+        return list(domain)
+
+    @api.depends('picking_type_ids', 'workcenter_ids', 'product_categ_ids', 'record_domain')
+    def _compute_is_general(self):
+        for fmap in self:
+            fmap.is_general = not (
+                fmap.picking_type_ids or fmap.workcenter_ids or fmap.product_categ_ids
+                or (fmap.record_domain or '').strip() not in ('', '[]'))
+
+    @api.depends('picking_type_ids', 'workcenter_ids', 'product_categ_ids', 'record_domain',
+                 'model_id')
+    def _compute_selector_label(self):
+        for fmap in self:
+            parts = []
+            if fmap.picking_type_ids:
+                parts.append("Tipo: %s" % ", ".join(fmap.picking_type_ids.mapped('name')))
+            if fmap.workcenter_ids:
+                parts.append("Centro: %s" % ", ".join(fmap.workcenter_ids.mapped('name')))
+            if fmap.product_categ_ids:
+                parts.append("Categoría: %s" % ", ".join(fmap.product_categ_ids.mapped('name')))
+            if (fmap.record_domain or '').strip() not in ('', '[]'):
+                parts.append("Filtro: %s" % fmap.record_domain.strip())
+            if parts:
+                fmap.selector_label = " · ".join(parts)
+            else:
+                fmap.selector_label = "General del modelo" if fmap.model_id else "Por referencia"
+
+    @api.constrains('model_id', 'picking_type_ids', 'workcenter_ids', 'product_categ_ids',
+                    'record_domain')
+    def _check_selectors(self):
+        """El criterio necesita modelo y que el modelo tenga de dónde leerlo."""
+        for fmap in self:
+            if fmap.is_general:
+                continue
+            if not fmap.model_id or fmap.model_id.model not in self.env:
+                raise ValidationError(
+                    "El mapeo %s tiene criterio pero no modelo: el criterio solo "
+                    "aplica a los registros de un modelo de Odoo." % (fmap.sgi_code or fmap.id))
+            Model = self.env[fmap.model_id.model]
+            if fmap.picking_type_ids and 'picking_type_id' not in Model._fields:
+                raise ValidationError(
+                    "%s no tiene tipo de operación: quite los tipos de operación "
+                    "del mapeo %s." % (fmap.model_id.name, fmap.sgi_code))
+            if fmap.workcenter_ids and not (
+                    'workorder_ids' in Model._fields or 'workcenter_id' in Model._fields):
+                raise ValidationError(
+                    "%s no tiene centro de trabajo: quite los centros de trabajo "
+                    "del mapeo %s." % (fmap.model_id.name, fmap.sgi_code))
+            if fmap.product_categ_ids and not (
+                    'product_id' in Model._fields or 'move_ids' in Model._fields):
+                raise ValidationError(
+                    "%s no tiene producto: quite las categorías de producto del "
+                    "mapeo %s." % (fmap.model_id.name, fmap.sgi_code))
+            try:
+                Model.sudo().search_count(fmap._sgi_domain(), limit=1)
+            except Exception as exc:  # noqa: BLE001 - el mensaje va al usuario
+                raise ValidationError(
+                    "Filtro adicional inválido para %s en el mapeo %s: %s" % (
+                        fmap.model_id.name, fmap.sgi_code, exc))
+
+    @api.constrains('model_id', 'active', 'picking_type_ids', 'workcenter_ids',
+                    'product_categ_ids', 'record_domain')
+    def _check_single_general(self):
+        """Un solo mapeo general activo por modelo (antes: ``unique(model_id)``)."""
+        for fmap in self.filtered(lambda m: m.model_id and m.active and m.is_general):
+            twins = self.search([
+                ('model_id', '=', fmap.model_id.id), ('id', '!=', fmap.id),
+                ('is_general', '=', True)])
+            if twins:
+                raise ValidationError(
+                    "Ya existe un mapeo general (sin criterio) para %s: %s. Dele a "
+                    "este un criterio (tipo de operación, centro de trabajo, "
+                    "categoría o filtro) o archive el otro." % (
+                        fmap.model_id.name, twins[0].sgi_code or twins[0].id))
+
+    def _sgi_record_products(self, record):
+        if 'product_id' in record._fields:
+            return record.product_id
+        if 'move_ids' in record._fields:
+            return record.move_ids.product_id
+        return self.env['product.product']
+
+    def _sgi_matches(self, record):
+        """Si ``record`` cumple todos los criterios de este mapeo."""
+        self.ensure_one()
+        record = record.sudo()
+        if self.picking_type_ids:
+            ptype = record.picking_type_id if 'picking_type_id' in record._fields else False
+            if not ptype or ptype.id not in self.picking_type_ids.ids:
+                return False
+        if self.workcenter_ids:
+            centers = self.env['mrp.workcenter']
+            if 'workcenter_id' in record._fields:
+                centers |= record.workcenter_id
+            if 'workorder_ids' in record._fields:
+                centers |= record.workorder_ids.workcenter_id
+            if not set(centers.ids) & set(self.workcenter_ids.ids):
+                return False
+        if self.product_categ_ids:
+            categs = self._sgi_record_products(record).categ_id
+            allowed = self.env['product.category'].sudo().search(
+                [('id', 'child_of', self.product_categ_ids.ids)])
+            if not categs or not set(categs.ids) & set(allowed.ids):
+                return False
+        try:
+            domain = self._sgi_domain()
+            if domain and not record.filtered_domain(domain):
+                return False
+        except Exception:  # noqa: BLE001 - un filtro roto no tumba la impresión
+            _logger.warning("SGI: filtro inválido en el mapeo de formato %s (%s).",
+                            self.id, self.record_domain)
+            return False
+        return True
+
+    @api.model
+    def _sgi_map_for(self, record):
+        """Mapeo que aplica a ``record``: el primero con criterio que cumple
+        (por prioridad) o, si ninguno, el general del modelo. Vacío si no hay."""
+        record = record[:1]
+        if not record:
+            return self.browse()
+        maps = self.sudo().search([('model_name', '=', record._name)])
+        for fmap in maps.filtered(lambda m: not m.is_general):
+            if fmap._sgi_matches(record):
+                return fmap
+        return maps.filtered('is_general')[:1]
 
     @api.depends('document_id.sgi_code', 'document_id.sgi_revision', 'document_id.sgi_state',
                  'document_alt_id.sgi_code', 'document_alt_id.sgi_revision',
@@ -119,7 +303,10 @@ class SgiFormatMap(models.Model):
 
     @api.model
     def _get_for_model(self, model_name):
-        return self.search([('model_name', '=', model_name)], limit=1)
+        """Mapeo general del modelo (el primero si no hay general). Para el
+        registro concreto use ``_sgi_map_for``, que respeta los criterios."""
+        return self.search([('model_name', '=', model_name)],
+                           order='is_general desc, sequence, id', limit=1)
 
     # --- Resolución en vivo (C-006) -----------------------------------------
     @api.model
@@ -193,6 +380,24 @@ class SgiFormatMap(models.Model):
     @api.model
     def sgi_ref_label(self, name):
         return self._sgi_ref(name).sgi_live_label()
+
+    @api.model
+    def sgi_footer_label(self, record, ref=False):
+        """V-M08 (57.44.0): clave y revisión del pie «formato controlado» de un
+        reporte (``report/sgi_format_footer.xml``). Con ``ref``, el mapeo por
+        referencia (``format_ref_*``); si no, el del modelo del registro: con el
+        mixin de formato respeta sus reglas por registro, y sin él busca el
+        mapeo del modelo (MAST lo da de alta en «Formatos en documentos de
+        Odoo»). Sin mapeo devuelve False y el pie no se pinta."""
+        if ref:
+            return self.sudo().sgi_ref_label(ref)
+        record = record[:1] if record else record
+        if not record:
+            return False
+        if 'sgi_format_banner' in record._fields:
+            return record.sudo().sgi_format_info()
+        fmap = self.sudo()._sgi_map_for(record)
+        return fmap.sgi_live_label() if fmap else False
 
     @api.model
     def sgi_ref_document(self, name):
@@ -270,6 +475,9 @@ class SgiConfig(models.AbstractModel):
         # Re-proceso Tintorería (106) y Re-proceso Acabado (107); «Acabado
         # producto en proceso» (151) entra cuando producción lo confirme.
         'quimibond_sgi.rework_picking_type_ids': '106,107',
+        # 57.14.0 (indicadores 2): categorías de producto terminado de C1-04
+        # (319 «Producto Terminado», con sus hijas).
+        'quimibond_sgi.finished_product_categ_ids': '319',
         # I-6: día hábil del mes en que se miden los indicadores mensuales.
         'quimibond_sgi.monthly_measure_business_day': '3',
         # I-4: día del mes siguiente en que vence la causa y acción de un rojo.
@@ -435,7 +643,9 @@ class SgiFormatMixin(models.AbstractModel):
         string="Formato SGI", compute='_compute_sgi_format_banner')
 
     def _sgi_format_applies(self):
-        """Si este registro en particular porta la clave (hook por modelo)."""
+        """Si este registro en particular porta la clave del mapeo GENERAL
+        (hook por modelo). Un mapeo con criterio ya dice a qué registros
+        aplica, así que este hook no lo filtra (57.60.0)."""
         self.ensure_one()
         return True
 
@@ -449,8 +659,8 @@ class SgiFormatMixin(models.AbstractModel):
         """'F-P-A28-04 · Rev. 03' | 'F-P-A28-04' (sin doc vigente) | False.
         Clave y revisión salen del documento ligado al mapeo (C-006)."""
         self.ensure_one()
-        fmap = self.env['sgi.format.map'].sudo()._get_for_model(self._name)
-        if not fmap or not self._sgi_format_applies():
+        fmap = self.env['sgi.format.map'].sudo()._sgi_map_for(self)
+        if not fmap or (fmap.is_general and not self._sgi_format_applies()):
             return False
         return fmap.sgi_live_label(alt=self._sgi_format_use_alt(fmap))
 
@@ -507,3 +717,17 @@ class StockLot(models.Model):
 class SgiManagementReview(models.Model):
     _name = 'sgi.management.review'
     _inherit = ['sgi.management.review', 'sgi.format.mixin']
+
+
+class SgiCalibration(models.Model):
+    """57.62.0: la verificación de laboratorio imprime su formato
+    (``format_map_lab_verification``)."""
+    _name = 'sgi.calibration'
+    _inherit = ['sgi.calibration', 'sgi.format.mixin']
+
+
+class MaintenanceEquipment(models.Model):
+    """57.62.0: el equipo de laboratorio porta el formato del instrumental
+    (``format_map_lab_equipment``)."""
+    _name = 'maintenance.equipment'
+    _inherit = ['maintenance.equipment', 'sgi.format.mixin']

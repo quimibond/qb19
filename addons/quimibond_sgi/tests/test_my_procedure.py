@@ -18,6 +18,12 @@ class TestMyProcedure(TransactionCase):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
         sgi_test_calendar(cls.env)
+        # 57.66.0: publicar sin firma en Sign (la firma se prueba en
+        # test_my_procedure_sign, con PDF de verdad). Si la base tiene
+        # «Mi procedimiento con firma» encendido, publicar arma la hoja de
+        # firmas con PyPDF2 y en modo prueba Odoo entrega HTML en vez de PDF
+        # («EOF marker not found»).
+        cls.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.mp_sign_required', 'False')
         Job = cls.env['hr.job']
         cls.job = Job.create({'name': 'PLANEADOR PRUEBA MP'})
         cls.job_boss = Job.create({'name': 'GERENTE PRUEBA MP'})

@@ -17,7 +17,7 @@ sin fecha capturada.
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_calendar import sgi_add_business_days
+from .sgi_calendar import sgi_add_business_days, sgi_today
 
 from .sgi_guard import sgi_require_system
 
@@ -50,18 +50,27 @@ class QualityAlertCustomerReply(models.Model):
         store=True, readonly=False,
         help="Día en que llegó la reclamación (el del ticket, si lo hay). Desde aquí corren los plazos.")
     sgi_customer_ack_due = fields.Date(
-        string="Acusar recibo a más tardar", compute='_compute_sgi_customer_dues', store=True)
-    sgi_customer_ack_date = fields.Date(string="Acuse de recibo al cliente", tracking=True, copy=False)
+        string="Acusar recibo a más tardar", compute='_compute_sgi_customer_dues', store=True,
+        help="Fecha límite para acusar recibo al cliente: días hábiles desde que llegó la reclamación "
+             "(parámetro quimibond_sgi.complaint_ack_days). Se calcula sola.")
+    sgi_customer_ack_date = fields.Date(string="Acuse de recibo al cliente", tracking=True, copy=False,
+                                        help="Fecha en que se acusó recibo de la reclamación al cliente.")
     sgi_customer_deadline = fields.Date(
         string="Plazo pedido por el cliente", copy=False,
         help="Si el cliente fijó su propio plazo de respuesta, sustituye el de la línea.")
     sgi_customer_response_due = fields.Date(
-        string="Responder a más tardar", compute='_compute_sgi_customer_dues', store=True)
-    sgi_customer_response_date = fields.Date(string="Respuesta formal al cliente", tracking=True, copy=False)
+        string="Responder a más tardar", compute='_compute_sgi_customer_dues', store=True,
+        help="Fecha límite de la respuesta formal: la que pidió el cliente o los días hábiles de su equipo "
+             "de ventas. Se calcula sola.")
+    sgi_customer_response_date = fields.Date(string="Respuesta formal al cliente", tracking=True, copy=False,
+                                             help="Fecha en que se envió al cliente la respuesta formal "
+                                                  "(causa y acciones).")
     sgi_customer_ack_on_time = fields.Boolean(
-        string="Acuse a tiempo", compute='_compute_sgi_customer_on_time', store=True)
+        string="Acuse a tiempo", compute='_compute_sgi_customer_on_time', store=True,
+        help="Indica si el acuse al cliente se dio a más tardar en su fecha límite. Se calcula sola.")
     sgi_customer_response_on_time = fields.Boolean(
-        string="Respuesta a tiempo", compute='_compute_sgi_customer_on_time', store=True)
+        string="Respuesta a tiempo", compute='_compute_sgi_customer_on_time', store=True,
+        help="Indica si la respuesta formal salió a más tardar en su fecha límite. Se calcula sola.")
     # C5.20
     sgi_shipped_status = fields.Selection([
         ('no', "No se embarcó"),
@@ -179,7 +188,7 @@ class SgiCronCustomerReply(models.AbstractModel):
     def cron_nonconformities(self):
         sgi_require_system(self.env)  # F-008
         res = super().cron_nonconformities()
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         self._sgi_step(
             "acuse y respuesta al cliente (C5.19)",
             lambda: self.env['quality.alert'].search([

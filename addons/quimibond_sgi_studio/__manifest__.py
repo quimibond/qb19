@@ -19,8 +19,8 @@ instala y le pasa los campos existentes sin borrar datos.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.1.0.1',
-    'license': 'LGPL-3',
+    'version': '19.0.1.0.2',
+    'license': 'OPL-1',
     'depends': [
         'quimibond_sgi',
         'web_studio',

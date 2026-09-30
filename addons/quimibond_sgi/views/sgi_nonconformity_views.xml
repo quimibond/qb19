@@ -21,17 +21,31 @@
                         groups="quimibond_sgi.group_sgi_user"
                         invisible="not sgi_folio or sgi_stage_is_closing or sgi_stage_is_cancel"/>
             </xpath>
+            <!-- 57.40.0 (V-A01): un solo aviso arriba (NC del SGI y formato
+                 controlado; antes eran dos, el segundo en sgi_format_map_views.xml)
+                 y un solo juego de pestañas: las del SGI van dentro del notebook
+                 estándar de Calidad, antes de «Descripción». Las páginas de
+                 texto libre «Acciones correctivas» y «Acciones preventivas» se
+                 ocultan en una NC con folio (sus acciones son las del SGI), salvo
+                 que ya traigan texto. -->
             <xpath expr="//sheet" position="before">
-                <div class="alert alert-info mb-0" role="status" invisible="not sgi_folio">
-                    <i class="fa fa-thumb-tack" title="NC del SGI"/> <b>NC del SGI</b> — folio
-                    <field name="sgi_folio" readonly="1" class="oe_inline fw-bold"/>.
-                    Para cerrarla: causa raíz + acciones terminadas + verificación
-                    de eficacia (las mayores además piden los 5 porqués y la
-                    lección aplicada). Pasa la etapa a «Cerrada» cuando todo
-                    esté completo.
+                <div class="alert alert-info mb-0" role="status"
+                     invisible="not sgi_folio and not sgi_format_banner">
+                    <div invisible="not sgi_folio">
+                        <i class="fa fa-thumb-tack" title="NC del SGI"/> <b>NC del SGI</b> — folio
+                        <field name="sgi_folio" readonly="1" class="oe_inline fw-bold"/>.
+                        Para cerrarla: causa raíz + acciones terminadas + verificación
+                        de eficacia (las mayores además piden los 5 porqués y la
+                        lección aplicada). Pase la etapa a «Cerrada» cuando todo
+                        esté completo.
+                    </div>
+                    <div invisible="not sgi_format_banner">
+                        <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado:
+                        <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                    </div>
                 </div>
             </xpath>
-            <xpath expr="//sheet" position="inside">
+            <xpath expr="//sheet/notebook" position="before">
                 <field name="sgi_stage_is_closing" invisible="1"/>
                 <field name="sgi_stage_is_cancel" invisible="1"/>
                 <field name="sgi_is_recurrent" invisible="1"/>
@@ -53,6 +67,7 @@
                     <group string="Datos SGI" invisible="not sgi_folio and id">
                         <field name="sgi_folio"/>
                         <field name="sgi_origin_type"/>
+                        <field name="sgi_maintenance_request_id" invisible="not sgi_maintenance_request_id"/>
                         <field name="sgi_classification"/>
                         <field name="sgi_norm_clause_id"/>
                         <field name="sgi_process_id"/>
@@ -93,100 +108,143 @@
                         <field name="sgi_containment_done" invisible="1"/>
                     </group>
                 </group>
-                <notebook>
-                    <page string="Desviación y análisis">
-                        <group string="Desviación detectada">
-                            <field name="sgi_deviation" nolabel="1"/>
+            </xpath>
+            <xpath expr="//sheet/notebook/page[@name='description']" position="before">
+                <page string="Desviación y análisis" name="sgi_analysis" invisible="not sgi_folio and id">
+                    <group string="Desviación detectada">
+                        <field name="sgi_deviation" nolabel="1"/>
+                    </group>
+                    <group string="5 Porqués">
+                        <field name="sgi_why_1"/>
+                        <field name="sgi_why_2"/>
+                        <field name="sgi_why_3"/>
+                        <field name="sgi_why_4"/>
+                        <field name="sgi_why_5"/>
+                    </group>
+                    <group string="Causa raíz">
+                        <field name="sgi_root_cause" nolabel="1"/>
+                    </group>
+                    <group string="Notas Ishikawa (5-6M)">
+                        <field name="sgi_ishikawa_notes" nolabel="1"/>
+                    </group>
+                </page>
+                <page string="Correcciones y acciones" name="sgi_actions" invisible="not sgi_folio and id">
+                    <field name="sgi_action_line_ids">
+                        <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                        <list editable="bottom" decoration-danger="state == 'vencida'"
+                              decoration-muted="state == 'terminada'">
+                            <field name="action_type"/>
+                            <field name="name"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="date_commit" widget="remaining_days" invisible="date_done"/>
+                            <field name="date_done"/>
+                            <field name="progress"/>
+                            <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                   decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
+                        </list>
+                    </field>
+                </page>
+                <!-- 56.22.0: C5.19 (acuse y respuesta formal) y C5.20 (producto embarcado). -->
+                <page string="Cliente" name="sgi_customer" invisible="not sgi_folio and id">
+                    <group>
+                        <group string="Acuse y respuesta (C5.19)" invisible="not sgi_customer_reply_required">
+                            <field name="sgi_sale_team_id"/>
+                            <field name="sgi_customer_received_date"/>
+                            <field name="sgi_customer_ack_due"/>
+                            <field name="sgi_customer_ack_date"/>
+                            <field name="sgi_customer_ack_on_time" invisible="not sgi_customer_ack_date"/>
+                            <field name="sgi_customer_deadline"/>
+                            <field name="sgi_customer_response_due"/>
+                            <field name="sgi_customer_response_date"/>
+                            <field name="sgi_customer_response_on_time" invisible="not sgi_customer_response_date"/>
                         </group>
-                        <group string="5 Porqués">
-                            <field name="sgi_why_1"/>
-                            <field name="sgi_why_2"/>
-                            <field name="sgi_why_3"/>
-                            <field name="sgi_why_4"/>
-                            <field name="sgi_why_5"/>
+                        <group string="Producto ya embarcado (C5.20)">
+                            <field name="sgi_shipped_status"/>
+                            <field name="sgi_customer_notice_date" invisible="sgi_shipped_status not in ('si', 'posible')"/>
+                            <field name="sgi_customer_notice_note" invisible="sgi_shipped_status not in ('si', 'posible')"/>
                         </group>
-                        <group string="Causa raíz">
-                            <field name="sgi_root_cause" nolabel="1"/>
+                    </group>
+                    <!-- C5-01: antes en su propia pestaña «Reclamación (SGI)» (sgi_kpi_fields_views.xml), visible en toda alerta. -->
+                    <group string="Reclamación (C5-01)">
+                        <field name="sgi_claimed_meters"/>
+                    </group>
+                    <field name="sgi_customer_reply_required" invisible="1"/>
+                </page>
+                <page string="Ligas SGI" name="sgi_links" invisible="not sgi_folio">
+                    <group>
+                        <group string="Trazabilidad">
+                            <field name="sgi_fmea_id"/>
+                            <field name="sgi_document_id"/>
                         </group>
-                        <group string="Notas Ishikawa (5-6M)">
-                            <field name="sgi_ishikawa_notes" nolabel="1"/>
+                        <group string="Riesgos ligados">
+                            <field name="sgi_risk_ids" nolabel="1"
+                                   widget="many2many_tags"/>
                         </group>
-                    </page>
-                    <page string="Correcciones y acciones">
-                        <field name="sgi_action_line_ids">
-                            <list editable="bottom" decoration-danger="state == 'vencida'"
-                                  decoration-success="state == 'terminada'">
-                                <field name="action_type"/>
-                                <field name="name"/>
-                                <field name="responsible_id"/>
-                                <field name="date_commit"/>
-                                <field name="date_done"/>
-                                <field name="progress"/>
-                                <field name="state"/>
-                            </list>
-                        </field>
-                    </page>
-                    <!-- 56.22.0: C5.19 (acuse y respuesta formal) y C5.20 (producto embarcado). -->
-                    <page string="Cliente" invisible="not sgi_folio and id">
+                    </group>
+                </page>
+                <page string="Verificación y cierre" name="sgi_close" invisible="not sgi_folio and id">
+                    <group>
+                        <group string="Eficacia">
+                            <field name="sgi_effectiveness_note"/>
+                            <field name="sgi_effectiveness_date"/>
+                            <field name="sgi_effectiveness_by"/>
+                            <field name="sgi_lesson_captured"
+                                   invisible="sgi_classification != 'mayor'"/>
+                        </group>
+                        <group string="Seguimiento">
+                            <field name="sgi_required_capa"/>
+                            <field name="sgi_followup_action"/>
+                            <field name="sgi_followup_comments"/>
+                        </group>
+                    </group>
+                    <group>
                         <group>
-                            <group string="Acuse y respuesta (C5.19)" invisible="not sgi_customer_reply_required">
-                                <field name="sgi_sale_team_id"/>
-                                <field name="sgi_customer_received_date"/>
-                                <field name="sgi_customer_ack_due"/>
-                                <field name="sgi_customer_ack_date"/>
-                                <field name="sgi_customer_ack_on_time" invisible="not sgi_customer_ack_date"/>
-                                <field name="sgi_customer_deadline"/>
-                                <field name="sgi_customer_response_due"/>
-                                <field name="sgi_customer_response_date"/>
-                                <field name="sgi_customer_response_on_time" invisible="not sgi_customer_response_date"/>
-                            </group>
-                            <group string="Producto ya embarcado (C5.20)">
-                                <field name="sgi_shipped_status"/>
-                                <field name="sgi_customer_notice_date" invisible="sgi_shipped_status not in ('si', 'posible')"/>
-                                <field name="sgi_customer_notice_note" invisible="sgi_shipped_status not in ('si', 'posible')"/>
-                            </group>
-                        </group>
-                        <field name="sgi_customer_reply_required" invisible="1"/>
-                    </page>
-                    <page string="Ligas SGI" invisible="not sgi_folio">
-                        <group>
-                            <group string="Trazabilidad">
-                                <field name="sgi_fmea_id"/>
-                                <field name="sgi_document_id"/>
-                            </group>
-                            <group string="Riesgos ligados">
-                                <field name="sgi_risk_ids" nolabel="1"
-                                       widget="many2many_tags"/>
-                            </group>
-                        </group>
-                    </page>
-                    <page string="Verificación y cierre">
-                        <group>
-                            <group string="Eficacia">
-                                <field name="sgi_effectiveness_note"/>
-                                <field name="sgi_effectiveness_date"/>
-                                <field name="sgi_effectiveness_by"/>
-                                <field name="sgi_lesson_captured"
-                                       invisible="sgi_classification != 'mayor'"/>
-                            </group>
-                            <group string="Seguimiento">
-                                <field name="sgi_required_capa"/>
-                                <field name="sgi_followup_action"/>
-                                <field name="sgi_followup_comments"/>
-                            </group>
+                            <field name="sgi_verified_by"/>
+                            <field name="sgi_verified_date"/>
                         </group>
                         <group>
-                            <group>
-                                <field name="sgi_verified_by"/>
-                                <field name="sgi_verified_date"/>
-                            </group>
-                            <group>
-                                <field name="sgi_approved_by"/>
-                                <field name="sgi_approved_date"/>
-                            </group>
+                            <field name="sgi_approved_by"/>
+                            <field name="sgi_approved_date"/>
                         </group>
-                    </page>
-                </notebook>
+                    </group>
+                </page>
+            </xpath>
+            <xpath expr="//sheet/notebook/page[@name='corrective_actions']" position="attributes">
+                <attribute name="invisible">sgi_folio and not action_corrective</attribute>
+            </xpath>
+            <xpath expr="//sheet/notebook/page[@name='preventive_actions']" position="attributes">
+                <attribute name="invisible">sgi_folio and not action_preventive</attribute>
+            </xpath>
+            <!-- NC a proveedor (antes herencia propia en sgi_supplier_audit_sign_views.xml; A-008, 57.28.0) -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_send_to_supplier" type="object"
+                        string="Enviar al proveedor" icon="fa-paper-plane"
+                        groups="quimibond_sgi.group_sgi_user"
+                        invisible="not sgi_folio or sgi_supplier_state != 'no_enviada' or sgi_stage_is_closing or sgi_stage_is_cancel"
+                        confirm="Se envía al proveedor el enlace del portal con la NC (producto, lote, desviación). ¿Continuar?"/>
+            </xpath>
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Proveedor" name="sgi_supplier" invisible="not sgi_folio">
+                    <group>
+                        <group>
+                            <field name="sgi_supplier_id"/>
+                            <field name="sgi_supplier_state" widget="badge"
+                                   decoration-success="sgi_supplier_state == 'contestada'"
+                                   decoration-warning="sgi_supplier_state == 'enviada'"/>
+                            <field name="sgi_supplier_overdue" invisible="not sgi_supplier_overdue"
+                                   decoration-danger="sgi_supplier_overdue"/>
+                        </group>
+                        <group>
+                            <field name="sgi_supplier_sent_date"/>
+                            <field name="sgi_supplier_due_date"/>
+                            <field name="sgi_supplier_response_date"/>
+                        </group>
+                    </group>
+                    <group string="Respuesta del proveedor (portal)" invisible="sgi_supplier_state != 'contestada'">
+                        <field name="sgi_supplier_cause"/>
+                        <field name="sgi_supplier_action"/>
+                    </group>
+                </page>
             </xpath>
         </field>
     </record>
@@ -205,8 +263,10 @@
                 <separator/>
                 <filter name="sgi_open" string="Abiertas"
                         domain="[('stage_id.sgi_is_closing_stage','=',False),('stage_id.sgi_is_cancel_stage','=',False)]"/>
-                <filter name="sgi_this_year" string="Este año"
-                        domain="[('create_date','&gt;=', (context_today().replace(month=1, day=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="sgi_overdue" string="Plazo vencido"
+                        domain="[('sgi_deadline_overdue', '=', True)]"/>
+                <!-- V-M03 (57.43.0): fecha nativa (antes «Este año», un dominio fijo en create_date). -->
+                <filter name="sgi_this_year" string="Fecha de la NC" date="date_assign"/>
                 <separator/>
                 <filter name="sgi_mayores" string="Mayores"
                         domain="[('sgi_classification','=','mayor')]"/>
@@ -229,6 +289,92 @@
         </field>
     </record>
 
+    <!-- 57.40.0 (V-A02): lista y kanban propios de «No conformidades». Antes
+         la acción abría los de Calidad, sin folio, proceso ni plazos. Vistas
+         primarias con prioridad alta: no le ganan a las de Calidad en su app. -->
+    <record id="sgi_nc_view_list" model="ir.ui.view">
+        <field name="name">quality.alert.sgi.nc.list</field>
+        <field name="model">quality.alert</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="No conformidades" decoration-danger="sgi_deadline_overdue"
+                  decoration-muted="sgi_stage_is_cancel">
+                <field name="sgi_folio"/>
+                <field name="title"/>
+                <field name="sgi_process_id"/>
+                <field name="sgi_origin_type" optional="hide"/>
+                <field name="sgi_classification" widget="badge"
+                       decoration-danger="sgi_classification == 'mayor'"
+                       decoration-warning="sgi_classification == 'menor'"/>
+                <field name="sgi_responsible_ids" widget="many2many_avatar_user"/>
+                <field name="sgi_containment_state" widget="badge"
+                       decoration-success="sgi_containment_state == 'hecha'"
+                       decoration-danger="sgi_containment_state == 'vencida'"
+                       decoration-warning="sgi_containment_state == 'pendiente'"/>
+                <field name="sgi_root_cause_state" widget="badge"
+                       decoration-success="sgi_root_cause_state == 'hecha'"
+                       decoration-danger="sgi_root_cause_state == 'vencida'"
+                       decoration-warning="sgi_root_cause_state == 'pendiente'"/>
+                <field name="sgi_plan_state" widget="badge"
+                       decoration-success="sgi_plan_state == 'hecha'"
+                       decoration-danger="sgi_plan_state == 'vencida'"
+                       decoration-warning="sgi_plan_state == 'pendiente'"/>
+                <field name="stage_id"/>
+                <field name="date_assign"/>
+                <field name="team_id" optional="hide"/>
+                <field name="sgi_deadline_overdue" column_invisible="1"/>
+                <field name="sgi_stage_is_cancel" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_nc_view_kanban" model="ir.ui.view">
+        <field name="name">quality.alert.sgi.nc.kanban</field>
+        <field name="model">quality.alert</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="stage_id" class="o_kanban_small_column" sample="1">
+                <field name="sgi_deadline_overdue"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between">
+                            <field name="sgi_folio" class="fw-bold"/>
+                            <field name="sgi_classification" widget="badge"
+                                   decoration-danger="sgi_classification == 'mayor'"
+                                   decoration-warning="sgi_classification == 'menor'"/>
+                        </div>
+                        <field name="title"/>
+                        <field name="sgi_process_id" class="text-muted"/>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <field name="sgi_containment_state" widget="badge"
+                                   decoration-success="sgi_containment_state == 'hecha'"
+                                   decoration-danger="sgi_containment_state == 'vencida'"
+                                   decoration-warning="sgi_containment_state == 'pendiente'"/>
+                            <field name="sgi_root_cause_state" widget="badge"
+                                   decoration-success="sgi_root_cause_state == 'hecha'"
+                                   decoration-danger="sgi_root_cause_state == 'vencida'"
+                                   decoration-warning="sgi_root_cause_state == 'pendiente'"/>
+                            <field name="sgi_plan_state" widget="badge"
+                                   decoration-success="sgi_plan_state == 'hecha'"
+                                   decoration-danger="sgi_plan_state == 'vencida'"
+                                   decoration-warning="sgi_plan_state == 'pendiente'"/>
+                        </div>
+                        <div t-if="record.sgi_deadline_overdue.raw_value" class="text-danger small">
+                            <i class="fa fa-clock-o" title="Plazo vencido"/> Plazo vencido
+                        </div>
+                        <footer>
+                            <div class="d-flex">
+                                <field name="priority" widget="priority"/>
+                                <field name="activity_ids" widget="kanban_activity" class="ms-2"/>
+                            </div>
+                            <field name="sgi_responsible_ids" widget="many2many_avatar_user" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <!-- Tablero de NC como acción de servidor: inyecta el equipo NC Internas
          por default y acota a los equipos SGI. Sin el default de equipo, una
          NC creada desde este menú caía en las etapas nativas de Calidad
@@ -242,11 +388,17 @@ team_int = env.ref('quimibond_sgi.sgi_quality_team_internal', raise_if_not_found
 team_ext = env.ref('quimibond_sgi.sgi_quality_team_external', raise_if_not_found=False)
 teams = [t.id for t in (team_int, team_ext) if t]
 search_view = env.ref('quimibond_sgi.sgi_nc_view_search', raise_if_not_found=False)
+kanban_view = env.ref('quimibond_sgi.sgi_nc_view_kanban', raise_if_not_found=False)
+list_view = env.ref('quimibond_sgi.sgi_nc_view_list', raise_if_not_found=False)
 action = {
     'type': 'ir.actions.act_window',
     'name': 'No conformidades',
     'res_model': 'quality.alert',
     'view_mode': 'kanban,list,sgi_diagram,form,activity',
+    # 57.40.0 (V-A02): lista y kanban propios (folio, proceso, plazos).
+    'views': [(kanban_view.id if kanban_view else False, 'kanban'),
+              (list_view.id if list_view else False, 'list'),
+              (False, 'sgi_diagram'), (False, 'form'), (False, 'activity')],
     # E-012: sin los equipos del SGI no se abre TODO Calidad: lista vacía.
     'domain': [('team_id', 'in', teams)] if teams else [('id', '=', False)],
     'context': {
@@ -255,7 +407,7 @@ action = {
         'search_default_sgi_open': 1,
     },
     'search_view_id': search_view and [search_view.id, 'search'] or False,
-    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Levanta la primera No Conformidad&lt;/p&gt;
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Levante la primera No Conformidad&lt;/p&gt;
 &lt;p&gt;El folio (NCI-/NCE-) se asigna solo al guardar. El sistema no permite cerrar sin
 causa raíz, acciones terminadas y eficacia verificada — es el candado, no un error.&lt;/p&gt;""",
 }

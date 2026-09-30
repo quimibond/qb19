@@ -14,7 +14,8 @@
                 <field name="authority" optional="hide"/>
                 <field name="responsible_id" optional="show" widget="many2one_avatar_user"/>
                 <field name="last_eval_date" optional="show"/>
-                <field name="next_eval_date"/>
+                <field name="next_eval_date" widget="remaining_days"
+                       invisible="compliance_state == 'no_aplica'"/>
                 <field name="expiry_date" optional="hide"/>
                 <field name="compliance_state" widget="badge"
                        decoration-success="compliance_state == 'cumple'"
@@ -163,6 +164,12 @@
                 <filter name="ambiental" string="Ambiental (14001)" domain="[('system', '=', 'ambiental')]"/>
                 <filter name="sst" string="SST (45001)" domain="[('system', '=', 'sst')]"/>
                 <filter name="calidad" string="Calidad / cliente" domain="[('system', '=', 'calidad')]"/>
+                <separator/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
+                <separator/>
+                <filter name="mine" string="Míos" domain="[('responsible_id', '=', uid)]"/>
+                <filter name="filter_next_eval" string="Próxima evaluación" date="next_eval_date"/>
                 <group>
                     <filter name="group_system" string="Sistema" context="{'group_by': 'system'}"/>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
@@ -177,8 +184,9 @@
         <field name="name">Requisitos legales</field>
         <field name="res_model">sgi.legal.requirement</field>
         <field name="view_mode">list,sgi_diagram,form</field>
+        <field name="context">{'search_default_no_cumple': 1, 'search_default_pendiente': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra la matriz de requisitos legales</p>
+            <p class="o_view_nocontent_smiling_face">Registre la matriz de requisitos legales</p>
             <p>NOMs, permisos, licencias y requisitos de cliente (14001/45001
             §6.1.3). Cada requisito lleva su frecuencia de evaluación del
             cumplimiento (§9.1.2): el cron avisa cuando toca evaluar y un

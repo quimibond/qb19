@@ -88,7 +88,7 @@
         <field name="search_view_id" ref="sgi_measure_split_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin desglose todavía</p>
-            <p>En un indicador con fórmula, elige «Desglose: por equipo de ventas» o «por mercado». La medición oficial sigue siendo el total; aquí queda cada renglón.</p>
+            <p>En un indicador con fórmula, elija «Desglose: por equipo de ventas» o «por mercado». La medición oficial sigue siendo el total; aquí queda cada renglón.</p>
         </field>
     </record>
 

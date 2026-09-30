@@ -6,11 +6,17 @@ SCALE_1_10 = [(str(i), str(i)) for i in range(1, 11)]
 
 
 class SgiFmea(models.Model):
+    """AMEF de proceso o de diseño (P-C10) con sus líneas y NPR máximo; ligado al plan de control.
+    No pasa a vigente con NPR alto sin acción."""
     _name = 'sgi.fmea'
     _description = "AMEF - Análisis de Modo y Efecto de Falla (P-C10)"
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.fmea'
+    # D-009 (57.41.0): marcar obsoleto (o sacarlo de obsoleto) es del Jefe
+    # MAST y del dueño del proceso.
+    _sgi_decision_states = ('obsoleto',)
+    _sgi_decision_label = "Marcar obsoleto un AMEF (o sacarlo de obsoleto)"
 
     _folio_uniq = models.Constraint(
         'unique(folio)',
@@ -21,9 +27,12 @@ class SgiFmea(models.Model):
     fmea_type = fields.Selection([
         ('proceso', "Proceso (PFMEA)"),
         ('diseno', "Diseño (DFMEA)"),
-    ], string="Tipo", default='proceso', required=True, tracking=True)
-    product_tmpl_id = fields.Many2one('product.template', string="Producto")
-    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    ], string="Tipo", default='proceso', required=True, tracking=True,
+        help="De proceso (PFMEA) o de diseño (DFMEA).")
+    product_tmpl_id = fields.Many2one('product.template', string="Producto",
+                                      help="Producto que analiza el AMEF.")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso que analiza el AMEF.")
     # Cadena IATF: PFMEA → plan de control. Antes solo se enlazaban vía
     # elementos PPAP (deuda C.25); la relación directa habilita el
     # read-across y los avisos de «actualizar ambos».
@@ -32,15 +41,17 @@ class SgiFmea(models.Model):
         help="Plan de control que materializa los controles de este AMEF "
              "(cadena IATF PFMEA → plan de control).")
     revision = fields.Char(string="Revisión", default="00", tracking=True)
-    date = fields.Date(string="Fecha", default=fields.Date.context_today)
-    team_ids = fields.Many2many('res.users', string="Equipo AMEF")
+    date = fields.Date(string="Fecha", default=fields.Date.context_today, help="Fecha del AMEF.")
+    team_ids = fields.Many2many('res.users', string="Equipo AMEF", help="Personas que hicieron el AMEF.")
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('vigente', "Vigente"),
         ('obsoleto', "Obsoleto"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador, vigente u obsoleto. No pasa a vigente con un NPR alto sin acción.")
     line_ids = fields.One2many('sgi.fmea.line', 'fmea_id', string="Modos de falla")
-    max_npr = fields.Integer(string="NPR máximo", compute='_compute_max_npr', store=True)
+    max_npr = fields.Integer(string="NPR máximo", compute='_compute_max_npr', store=True,
+                             help="El NPR más alto de sus modos de falla. Se calcula solo.")
     # Ligas inversas (H7): NCs del SGI que apuntan a este AMEF.
     sgi_nc_ids = fields.One2many('quality.alert', 'sgi_fmea_id', string="NCs ligadas")
     sgi_nc_count = fields.Integer(string="# NCs ligadas",
@@ -144,6 +155,8 @@ class SgiFmea(models.Model):
 
 
 class SgiFmeaLine(models.Model):
+    """Modo de falla de un AMEF: severidad, ocurrencia y detección antes y después de las acciones
+    (NPR)."""
     _name = 'sgi.fmea.line'
     _description = "Línea de AMEF"
     _order = 'fmea_id, sequence, id'

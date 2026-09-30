@@ -7,14 +7,41 @@
         <field name="model">sgi.format.map</field>
         <field name="arch" type="xml">
             <list>
+                <field name="sequence" widget="handle"/>
                 <field name="live_label"/>
                 <field name="live_alt_label" optional="show"/>
                 <field name="model_id"/>
+                <field name="selector_label" optional="show"/>
                 <field name="document_id" optional="show"/>
                 <field name="sgi_code" optional="hide"/>
                 <field name="note" optional="show"/>
                 <field name="active" widget="boolean_toggle"/>
             </list>
+        </field>
+    </record>
+
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_format_map_view_search" model="ir.ui.view">
+        <field name="name">sgi.format.map.search</field>
+        <field name="model">sgi.format.map</field>
+        <field name="arch" type="xml">
+            <search string="Formatos impresos">
+                <field name="sgi_code"/>
+                <field name="model_id"/>
+                <field name="document_id"/>
+                <field name="picking_type_ids"/>
+                <!-- 57.60.0: varios formatos por modelo. -->
+                <filter name="general" string="Generales del modelo"
+                        domain="[('model_id', '!=', False), ('is_general', '=', True)]"/>
+                <filter name="specific" string="Con criterio"
+                        domain="[('is_general', '=', False)]"/>
+                <filter name="by_ref" string="Por referencia" domain="[('model_id', '=', False)]"/>
+                <separator/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_model_id" string="Modelo" context="{'group_by': 'model_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -39,6 +66,30 @@
                             <field name="sgi_code_alt"/>
                         </group>
                     </group>
+                    <!-- 57.60.0: varios formatos por modelo. -->
+                    <group string="Cuándo aplica" invisible="not model_id">
+                        <group>
+                            <field name="model_name" invisible="1"/>
+                            <field name="is_general"/>
+                            <field name="sequence"/>
+                            <field name="picking_type_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                            <field name="workcenter_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="product_categ_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"/>
+                            <field name="record_domain" widget="domain"
+                                   options="{'model': 'model_name'}"/>
+                        </group>
+                    </group>
+                    <div class="text-muted mb-2" invisible="not model_id">
+                        Sin criterio, el mapeo es el <b>general</b> del modelo (uno
+                        por modelo). Con criterio aplica solo a los registros que lo
+                        cumplen; si un registro cumple varios, gana la prioridad más
+                        baja, y si no cumple ninguno lleva el general.
+                    </div>
                     <div class="text-muted">
                         La clave y la revisión no se capturan: se leen de la
                         revisión <b>vigente</b> del documento ligado, tanto en el
@@ -56,7 +107,7 @@
         <field name="res_model">sgi.format.map</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Mapea un formato del SGI a su documento de Odoo</p>
+            <p class="o_view_nocontent_smiling_face">Mapee un formato del SGI a su documento de Odoo</p>
             <p>El registro de Odoo (cotización, OC, remisión…) mostrará e imprimirá
                la clave y la revisión vigente del documento controlado ligado.
                Los mapeos sin modelo son formatos que el SGI imprime por
@@ -142,20 +193,8 @@
         </field>
     </record>
 
-    <record id="sgi_format_banner_quality_alert" model="ir.ui.view">
-        <field name="name">quality.alert.form.sgi.format</field>
-        <field name="model">quality.alert</field>
-        <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet" position="before">
-                <div class="alert alert-info mb-0" role="alert"
-                     invisible="not sgi_format_banner">
-                    📋 Formato controlado del SGI:
-                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
-                </div>
-            </xpath>
-        </field>
-    </record>
+    <!-- quality.alert: desde 57.40.0 (V-A01) el aviso de formato controlado
+         va dentro del aviso único de la NC (sgi_nonconformity_views.xml). -->
 
     <record id="sgi_format_banner_stock_lot" model="ir.ui.view">
         <field name="name">stock.lot.form.sgi.format</field>
@@ -172,18 +211,4 @@
         </field>
     </record>
 
-    <record id="sgi_format_banner_mgmt_review" model="ir.ui.view">
-        <field name="name">sgi.management.review.form.sgi.format</field>
-        <field name="model">sgi.management.review</field>
-        <field name="inherit_id" ref="sgi_management_review_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet" position="before">
-                <div class="alert alert-info mb-0" role="alert"
-                     invisible="not sgi_format_banner">
-                    📋 Formato controlado del SGI:
-                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
-                </div>
-            </xpath>
-        </field>
-    </record>
 </odoo>

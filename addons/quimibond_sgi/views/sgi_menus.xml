@@ -68,6 +68,14 @@
               action="sgi_process_action" sequence="10"/>
     <menuitem id="menu_sgi_activities" name="Actividades" parent="menu_sgi_processes"
               action="sgi_process_activity_action" sequence="20"/>
+    <!-- 57.64.0 (bloque 2 de formularios): entregables y flujos con menú.
+         57.67.0: con xmlids nuevos; menu_sgi_deliverables,
+         sgi_deliverable_action y sgi_process_flow_action se retiraron en
+         45.0.0 y no vuelven (SGI_REMOVED_XMLIDS, test_cleanup_45). -->
+    <menuitem id="menu_sgi_deliverable_list" name="Entregables" parent="menu_sgi_processes"
+              action="sgi_deliverable_list_action" sequence="22"/>
+    <menuitem id="menu_sgi_process_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
+              action="sgi_process_flow_list_action" sequence="24"/>
     <menuitem id="menu_sgi_analysis_who" name="Matriz de responsabilidades"
               parent="menu_sgi_processes" action="sgi_activity_exec_stat_action_who" sequence="30"/>
     <menuitem id="menu_sgi_jobs_roles" name="Puestos y procesos"
@@ -130,6 +138,11 @@
               parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="10"/>
     <menuitem id="menu_sgi_audit_list" name="Auditorías realizadas" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
+    <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha.
+         57.67.0: acción con xmlid nuevo (sgi_audit_finding_action se retiró
+         en 45.0.0 como acción huérfana y no vuelve). -->
+    <menuitem id="menu_sgi_audit_findings" name="Hallazgos" parent="menu_sgi_audits"
+              action="sgi_audit_finding_list_action" sequence="30"/>
 
     <!-- ============================================================
          4. Seguridad y ambiente (todos; exámenes médicos solo Salud
@@ -153,6 +166,16 @@
               parent="menu_sgi_safety" action="sgi_epp_delivery_action" sequence="60"/>
     <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist"
               parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="70"/>
+    <!-- 57.50.0 (bloque 1 de formularios): matriz de aspectos e impactos
+         ambientales (E2.23, E2.34). -->
+    <menuitem id="menu_sgi_env_aspects" name="Aspectos ambientales"
+              parent="menu_sgi_safety" action="sgi_env_aspect_action" sequence="80"/>
+    <!-- 57.51.0: permiso de trabajo de alto riesgo (E2.18). -->
+    <menuitem id="menu_sgi_work_permits" name="Permisos de trabajo de alto riesgo"
+              parent="menu_sgi_safety" action="sgi_work_permit_action" sequence="90"/>
+    <!-- 57.52.0: bloqueo y etiquetado de energías (S5.14). -->
+    <menuitem id="menu_sgi_loto" name="Bloqueo y etiquetado"
+              parent="menu_sgi_safety" action="sgi_loto_action" sequence="100"/>
 
     <!-- ============================================================
          5. Dirección (F-011, decisión 10 de la tanda 2): la carpeta la ven
@@ -177,6 +200,9 @@
               action="sgi_risk_action" sequence="50"/>
     <menuitem id="menu_sgi_legal" name="Requisitos legales" parent="menu_sgi_direction"
               action="sgi_legal_requirement_action" sequence="60"/>
+    <!-- 57.53.0: evaluaciones del cumplimiento legal con su evidencia. -->
+    <menuitem id="menu_sgi_legal_evaluations" name="Evaluaciones de cumplimiento legal"
+              parent="menu_sgi_direction" action="sgi_legal_evaluation_action" sequence="65"/>
     <menuitem id="menu_sgi_interested_parties" name="Partes interesadas"
               parent="menu_sgi_direction" action="sgi_interested_party_action" sequence="70"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
@@ -345,6 +371,11 @@
               parent="menu_sgi_metrology" action="sgi_equipment_action_measuring" sequence="10"/>
     <menuitem id="menu_sgi_calibrations" name="Calibraciones" parent="menu_sgi_metrology"
               action="sgi_calibration_action" sequence="20"/>
+    <!-- 57.62.0: laboratorio de Calidad (equipos, préstamo y revisión). -->
+    <menuitem id="menu_sgi_lab_equipment" name="Equipos de laboratorio"
+              parent="menu_sgi_metrology" action="sgi_equipment_action_lab" sequence="15"/>
+    <menuitem id="menu_sgi_lab_verifications" name="Verificaciones de laboratorio"
+              parent="menu_sgi_metrology" action="sgi_calibration_action_lab" sequence="25"/>
     <menuitem id="menu_sgi_msa" name="Estudios MSA" parent="menu_sgi_metrology"
               action="sgi_msa_study_action" sequence="30"/>
 

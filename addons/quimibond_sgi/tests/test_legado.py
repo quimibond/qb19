@@ -51,7 +51,11 @@ class TestLegado(TransactionCase):
 
     def test_02_e1_02_se_activa_solo_si_sigue_manual_sin_formula(self):
         Indicator = self.env['sgi.indicator']
-        Indicator.search([('code', '=', 'E1-02')]).write({'code': 'E1-02-OTRO'})
+        # 57.66.0: también el archivado, y bajando el cambio antes del
+        # create() (índice único de la clave; producción tiene su E1-02).
+        Indicator.with_context(active_test=False).search(
+            [('code', '=', 'E1-02')]).write({'code': 'E1-02-OTRO'})
+        Indicator.flush_model(['code'])
         manual = Indicator.create({'code': 'E1-02', 'name': 'Acuerdos', 'calc_mode': 'manual'})
         self.assertEqual(Indicator._sgi_activate_acuerdos_rxd(), [manual.id])
         self.assertEqual(manual.calc_mode, 'acuerdos_rxd')

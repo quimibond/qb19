@@ -36,6 +36,7 @@ class MaintenanceEquipmentMsa(models.Model):
 
 
 class SgiMsaStudy(models.Model):
+    """Estudio de sistema de medición (MSA) de un equipo: GR&R, ndc y veredicto."""
     _name = 'sgi.msa.study'
     _description = "Estudio MSA (IATF 7.1.5.1.1)"
     _inherit = ['sgi.base.mixin']
@@ -44,17 +45,21 @@ class SgiMsaStudy(models.Model):
 
     equipment_id = fields.Many2one('maintenance.equipment', string="Equipo de medición",
                                    required=True, tracking=True,
-                                   domain=[('sgi_is_measuring', '=', True)])
+                                   domain=[('sgi_is_measuring', '=', True)],
+                                   help="Equipo de medición estudiado.")
     study_type = fields.Selection([
         ('grr_variable', "Gage R&R (variables)"),
         ('atributos', "Estudio por atributos"),
         ('sesgo_linealidad', "Sesgo / linealidad"),
         ('estabilidad', "Estabilidad"),
-    ], string="Tipo de estudio", default='grr_variable', required=True, tracking=True)
+    ], string="Tipo de estudio", default='grr_variable', required=True, tracking=True,
+        help="Tipo de estudio del sistema de medición.")
     date = fields.Date(string="Fecha", required=True,
-                       default=fields.Date.context_today, tracking=True)
+                       default=fields.Date.context_today, tracking=True,
+                       help="Fecha del estudio.")
     characteristic = fields.Char(string="Característica medida")
-    point_id = fields.Many2one('quality.point', string="Punto de control")
+    point_id = fields.Many2one('quality.point', string="Punto de control",
+                               help="Punto de control de calidad en el que se usa el equipo.")
     grr_pct = fields.Float(string="% GRR", digits=(5, 2),
                            help="Porcentaje de variación del sistema de medición "
                                 "(solo Gage R&R de variables).")

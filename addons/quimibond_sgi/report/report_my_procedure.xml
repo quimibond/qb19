@@ -21,7 +21,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_my_procedure_document</field>
         <field name="report_file">quimibond_sgi.report_my_procedure_document</field>
-        <field name="print_report_name">'Mi procedimiento - %s' % (object.name)</field>
+        <field name="print_report_name">'Mi procedimiento - %s' % (object.name or '')</field>
         <field name="paperformat_id" ref="paperformat_sgi_carta"/>
         <field name="binding_model_id" ref="hr.model_hr_job"/>
         <field name="binding_type">report</field>
@@ -316,7 +316,7 @@
                                 <t t-out="epp_signed.signed_date" t-options="{'widget': 'date'}"/>.
                             </t>
                             <t t-else="">
-                                La responsiva de entrega (F-P-S03-02) se firma en Odoo (Mi procedimiento → Mi EPP).
+                                La responsiva de entrega se firma en Odoo (Mi procedimiento → Mi EPP).
                             </t>
                         </p>
                     </t>

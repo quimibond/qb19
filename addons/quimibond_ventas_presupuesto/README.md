@@ -21,6 +21,45 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Releases de clientes (19.0.1.1.0, E1a)
+
+Diseño: `docs/superpowers/specs/2026-09-30-releases-pronostico-presupuesto-e0.md`.
+
+- **Partes del cliente** (`qb.customer.part`, Ventas → Presupuesto y
+  pronóstico → Partes del cliente): parte del cliente (+ planta, PO y unidad
+  MT/LY/M2/KG) → producto. «Sugerir producto» propone el producto con lo que
+  ya está en Odoo:
+  - nuestra referencia escrita en la descripción del cliente;
+  - pedidos que mencionan la parte o su PO;
+  - lo que se le ha vendido al cliente;
+  - gramaje y ancho contra la ficha (`qb.producto.ficha`, si
+    `qb_capacidad_costeo` está instalado).
+
+  Ventas confirma. Solo una parte **confirmada** se usa al aplicar un
+  release. La cantidad se convierte con el rendimiento m/kg de la ficha o con
+  un factor fijo; sin ese dato la semana no se aplica.
+- **Perfiles de release** (`qb.release.profile`): lector, fechas de embarque o
+  de entrega (con días de tránsito), zona firme (N semanas o hasta la
+  autorización Fab), semanas a pedido, acuse y CUM.
+- **Releases** (`qb.release`, con partes y semanas):
+  - se sube el archivo y se oprime «Leer», con los lectores de Lear (texto
+    AIAG, también dentro de un .eml) y de FXI (Excel SUM);
+  - Ventas lo revisa y oprime «Aplicar»: reescribe el pronóstico del cliente
+    desde la primera semana del release, repartido por año (crea el
+    pronóstico del año siguiente si hace falta);
+  - las semanas que el release ya no trae quedan en 0;
+  - el release anterior queda «reemplazado».
+- **MPS**: cada celda producto × fecha lleva la **suma** de todos los
+  pronósticos revisados y presupuestos aprobados de la compañía.
+  - Antes el último documento enviado pisaba a los demás clientes.
+  - El presupuesto solo se omite para el cliente y el mes que un pronóstico
+    ya cubre.
+  - En un MPS semanal, el mes del presupuesto se reparte en sus lunes.
+- La lógica que no necesita Odoo vive en `release/` (`part_match.py`,
+  `units.py`, `lear_aiag.py`, `fxi_sum.py`). Se prueba con pytest en el CI
+  desde `tests_puros/ventas_presupuesto/`, fuera del addon para que pytest no
+  lo importe.
+
 ## Qué se queda en el SGI
 
 El KPI VE-02 (`presupuesto_ventas`) y su evidencia leen
@@ -57,3 +96,7 @@ borrador con la misma condición.
 `tests/test_sales_budget.py` (las 117 que vivían en el SGI) y
 `tests/test_sales_budget_sgi.py` (multiempresa, Dirección y el cron de
 cobertura corrido dos veces, que vivían en otras pruebas del SGI).
+`tests/test_customer_part.py` y `tests/test_release.py` (catálogo de partes,
+releases y la suma del MPS): corren en el build de Odoo.sh con
+`--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y
+las unidades: `pytest tests_puros/` (sin Odoo, en el CI).

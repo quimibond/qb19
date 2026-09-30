@@ -21,6 +21,10 @@
                                  help="Apagado: solo avisa (resumen diario al Coordinador de Laboratorio y al Jefe de Calidad). Encendido: además marca «No usar».">
                             <field name="sgi_calibration_block_expired"/>
                         </setting>
+                        <setting string="PIN obligatorio para firmar checklists"
+                                 help="Apagado: quien no tiene PIN firma y la hoja dice «sin PIN registrado». Encendido (D-08): sin PIN no se firma. Encender cuando RH haya capturado los PIN.">
+                            <field name="sgi_checklist_pin_required"/>
+                        </setting>
                         <setting string="Jefe MAST y SGI"
                                  help="Recibe los avisos automáticos del SGI sin dueño. Vacío: mas@quimibond.com o el primer miembro directo del grupo.">
                             <field name="sgi_mast_user_id"/>
@@ -28,15 +32,19 @@
                     </block>
                     <block title="KPIs automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"
-                                 help="KPI CO-02: categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
+                                 help="Indicador Requisiciones (CO-02): categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
                             <field name="sgi_purchase_approval_category_id"/>
                         </setting>
+                        <setting string="Categorías de proveedores críticos"
+                                 help="Materia prima y maquila: solo esos proveedores entran a la evaluación trimestral. Vacío = materia prima más las categorías «maquila».">
+                            <field name="sgi_supplier_critical_categ_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Capacidad instalada mensual de producción"
-                                 help="KPI MA-02: capacidad mensual en la misma unidad que la producción (kg). Para periodos no mensuales se prorratea por días. 0 = captura manual.">
+                                 help="Indicador Producido vs capacidad (MA-02): capacidad mensual en la misma unidad que la producción (kg). Para periodos no mensuales se prorratea por días. 0 = captura manual.">
                             <field name="sgi_production_monthly_capacity"/>
                         </setting>
                         <setting string="Proveedor de energía"
-                                 help="KPI TR-03: proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
+                                 help="Indicador Consumo de energía (TR-03): proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
                             <field name="sgi_energy_partner_id"/>
                             <field name="sgi_satisfaction_survey_id"
                                    context="{'active_test': False}"/>
@@ -54,12 +62,12 @@
                                         class="btn-link" icon="fa-arrow-right"/>
                             </div>
                         </setting>
-                        <setting string="Días para escalar una NC sin acciones"
-                                 help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST.">
+                        <setting string="Días hábiles para escalar una NC sin acciones"
+                                 help="NC interna sin acciones tras estos días hábiles (sin fines de semana ni festivos del calendario del SGI) → actividad al responsable y aviso a MAST.">
                             <field name="sgi_nc_escalation_days"/>
                         </setting>
-                        <setting string="Días para escalar una NC externa/cliente"
-                                 help="Auditoría externa y reclamaciones de cliente escalan más rápido que las internas.">
+                        <setting string="Días hábiles para escalar una NC externa/cliente"
+                                 help="Auditoría externa y reclamaciones de cliente escalan más rápido que las internas (días hábiles).">
                             <field name="sgi_nc_escalation_days_external"/>
                         </setting>
                         <setting string="Plazos por etapa de una NC (días hábiles)"
@@ -77,12 +85,12 @@
                                 <field name="sgi_nc_days_plan"/>
                             </div>
                             <div class="row">
-                                <label for="sgi_nc_escalation_mast_days" class="col-lg-6 o_light_label">Días vencido antes de escalar a MAST</label>
+                                <label for="sgi_nc_escalation_mast_days" class="col-lg-6 o_light_label">Días hábiles vencido antes de escalar a MAST</label>
                                 <field name="sgi_nc_escalation_mast_days"/>
                             </div>
                         </setting>
                         <setting string="Días hábiles para que el proveedor conteste una NC"
-                                 help="NC a proveedor por el portal (NC-6): plazo de respuesta; vencido, aviso al comprador y escalamiento a MAST.">
+                                 help="NC a proveedor por el portal: plazo de respuesta; vencido, aviso al comprador y escalamiento a MAST.">
                             <field name="sgi_nc_days_supplier_response"/>
                         </setting>
                         <setting string="Días para verificar la eficacia de una NC"
@@ -93,12 +101,12 @@
                                  help="Una NC reincide si en estos meses hubo otra del mismo proceso (misma cláusula pesa doble). Al cerrarla se exige acción correctiva.">
                             <field name="sgi_nc_recurrence_months"/>
                         </setting>
-                        <setting string="Escalar acción vencida al jefe (días)"
-                                 help="Acción vencida más de estos días → además del responsable, se avisa a su jefe directo (fallback Jefe MAST).">
+                        <setting string="Escalar acción vencida al jefe (días hábiles)"
+                                 help="Acción vencida más de estos días hábiles → además del responsable, se avisa a su jefe directo (fallback Jefe MAST).">
                             <field name="sgi_action_escalation_manager_days"/>
                         </setting>
-                        <setting string="Escalar acción vencida a Dirección (días)"
-                                 help="Acción vencida más de estos días → además, se avisa a Dirección.">
+                        <setting string="Escalar acción vencida a Dirección (días hábiles)"
+                                 help="Acción vencida más de estos días hábiles → además, se avisa a Dirección.">
                             <field name="sgi_action_escalation_director_days"/>
                         </setting>
                         <setting string="NPR que exige acción en el AMEF"
@@ -144,8 +152,8 @@
                                  help="Días de anticipación del aviso de vencimiento de una prueba piloto.">
                             <field name="sgi_doc_pilot_notice_days"/>
                         </setting>
-                        <setting string="Días para reclamar un acuse pendiente"
-                                 help="Un acuse de lectura sin firmar tras estos días genera recordatorio.">
+                        <setting string="Días hábiles para reclamar un acuse pendiente"
+                                 help="Un acuse de lectura sin firmar tras estos días hábiles genera recordatorio.">
                             <field name="sgi_doc_ack_pending_days"/>
                         </setting>
                     </block>

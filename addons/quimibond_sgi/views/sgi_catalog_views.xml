@@ -109,14 +109,16 @@
                         <group>
                             <field name="odoo_model_id" options="{'no_create': True}"/>
                             <field name="odoo_model_name" invisible="1"/>
-                            <field name="measure_domain" invisible="not odoo_model_id"
+                            <field name="measure_domain" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
-                            <field name="complete_domain" invisible="not odoo_model_id"
+                            <field name="complete_domain" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
+                            <field name="require_signed" invisible="not odoo_model_id"/>
+                            <field name="survey_id"/>
                             <field name="complete_criteria" placeholder="Completo significa…"/>
                         </group>
                         <group>
-                            <field name="measure_date_field" invisible="not odoo_model_id"
+                            <field name="measure_date_field" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    placeholder="date_order"/>
                             <field name="measure_user_field" invisible="not odoo_model_id"
                                    placeholder="user_id"/>
@@ -162,8 +164,33 @@
                         domain="[('boundary', '!=', False)]"/>
                 <filter name="mide" string="Miden actividades"
                         domain="[('odoo_model_id', '!=', False)]"/>
+                <!-- 57.64.0: los que aún no dicen dónde viven en Odoo. -->
+                <filter name="sin_modelo" string="Sin modelo de Odoo"
+                        domain="[('odoo_model_id', '=', False), ('boundary', '!=', 'entrada_externa')]"
+                        help="Entregables propios (no entradas externas) sin modelo de Odoo: no se pueden medir solos."/>
+                <separator/>
                 <filter name="archived" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_model" string="Modelo de Odoo"
+                            context="{'group_by': 'odoo_model_id'}"/>
+                    <filter name="group_boundary" string="Frontera del mapa"
+                            context="{'group_by': 'boundary'}"/>
+                </group>
             </search>
+        </field>
+    </record>
+
+    <!-- 57.64.0 (bloque 2 de formularios): menú propio de Entregables. -->
+    <record id="sgi_deliverable_list_action" model="ir.actions.act_window">
+        <field name="name">Entregables</field>
+        <field name="res_model">sgi.deliverable</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_deliverable_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay entregables</p>
+            <p>Un entregable es lo que una actividad le pasa a otra (un pedido
+               confirmado, un lote liberado). Con su modelo de Odoo, la actividad
+               que lo entrega se mide sola.</p>
         </field>
     </record>
 
@@ -181,6 +208,19 @@
                        decoration-danger="employee_count == 0"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
+        </field>
+    </record>
+
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_job_family_view_search" model="ir.ui.view">
+        <field name="name">sgi.job.family.search</field>
+        <field name="model">sgi.job.family</field>
+        <field name="arch" type="xml">
+            <search string="Familias de puesto">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
         </field>
     </record>
 
@@ -319,7 +359,7 @@
         <field name="search_view_id" ref="sgi_activity_exec_stat_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Quién ejecuta cada actividad</p>
-            <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambia las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
+            <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambie las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
         </field>
     </record>
 
@@ -451,6 +491,19 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_document_type_view_search" model="ir.ui.view">
+        <field name="name">sgi.document.type.search</field>
+        <field name="model">sgi.document.type</field>
+        <field name="arch" type="xml">
+            <search string="Tipos de documento">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_document_type_action" model="ir.actions.act_window">
         <field name="name">Tipos de documento</field>
         <field name="res_model">sgi.document.type</field>
@@ -461,57 +514,4 @@
         </field>
     </record>
 
-    <!-- ====== Puesto: sus roles en el catálogo ====== -->
-    <record id="sgi_hr_job_view_form_roles" model="ir.ui.view">
-        <field name="name">sgi.hr.job.form.roles</field>
-        <field name="model">hr.job</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_job_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_sgi_view_roles" type="object" class="oe_stat_button"
-                        icon="fa-sitemap" groups="quimibond_sgi.group_sgi_user">
-                    <field name="sgi_role_count" widget="statinfo" string="Actividades SGI"/>
-                </button>
-            </xpath>
-            <xpath expr="//page[@name='sgi_documents']" position="before">
-                <page string="SGI" name="sgi_roles" groups="quimibond_sgi.group_sgi_user">
-                    <group>
-                        <group>
-                            <field name="sgi_family_id"/>
-                            <field name="sgi_team_ids" widget="many2many_tags" readonly="1"
-                                   invisible="not sgi_team_ids"/>
-                        </group>
-                        <group>
-                            <field name="sgi_vacancy_approved"/>
-                            <field name="sgi_vacancy_until"
-                                   invisible="not sgi_vacancy_approved"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group>
-                            <field name="sgi_execute_count"/>
-                            <field name="sgi_approve_count"/>
-                        </group>
-                        <group>
-                            <field name="sgi_participate_count"/>
-                            <field name="sgi_inform_count"/>
-                        </group>
-                    </group>
-                    <button name="action_sgi_view_roles" type="object"
-                            string="Ver sus actividades" icon="fa-list" class="btn-link"/>
-                    <field name="sgi_all_role_ids" readonly="1">
-                        <list default_order="process_id, role">
-                            <field name="process_id"/>
-                            <field name="activity_id"/>
-                            <field name="role" widget="badge"
-                                   decoration-success="role == 'ejecuta'"
-                                   decoration-warning="role == 'aprueba'"/>
-                            <field name="target_type" optional="hide"/>
-                            <field name="condition" optional="show"/>
-                        </list>
-                    </field>
-                </page>
-            </xpath>
-        </field>
-    </record>
 </odoo>

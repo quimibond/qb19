@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_report_fmea" model="ir.actions.report">
-        <field name="name">AMEF (P-C10)</field>
+        <field name="name">AMEF</field>
         <field name="model">sgi.fmea</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_fmea_document</field>
@@ -16,7 +16,7 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <h2 class="text-center">AMEF — P-C10</h2>
+                        <h2 class="text-center">AMEF</h2>
                         <table class="table table-sm table-bordered mt-3">
                             <tr>
                                 <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
@@ -58,7 +58,7 @@
                                     <td><span t-field="line.detection"/></td>
                                     <td>
                                         <strong t-att-style="'color:red;' if line.requires_action else ''"
-                                                t-esc="line.npr"/>
+                                                t-out="line.npr"/>
                                     </td>
                                     <td>
                                         <span t-foreach="line.action_line_ids" t-as="act">
@@ -69,6 +69,10 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>

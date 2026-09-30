@@ -85,18 +85,26 @@ class SgiIndicatorLevel(models.Model):
 
 
 class SgiDirectionBoard(models.TransientModel):
+    """Tablero de Dirección (I-9): indicadores en rojo, rojos sin plan, procesos atrasados y
+    acuerdos vencidos. Pantalla que se calcula al abrirla."""
     _name = 'sgi.direction.board'
     _description = "Tablero de dirección (I-9)"
 
-    date = fields.Date(string="Fecha", default=fields.Date.context_today, readonly=True)
-    objective_ids = fields.Many2many('sgi.objective', string="Objetivos integrales", compute='_compute_board')
-    indicator_ids = fields.Many2many('sgi.indicator', string="Indicadores de dirección", compute='_compute_board')
+    date = fields.Date(string="Fecha", default=fields.Date.context_today, readonly=True,
+                       help="Fecha del tablero.")
+    objective_ids = fields.Many2many('sgi.objective', string="Objetivos integrales", compute='_compute_board',
+                                     help="Objetivos integrales del año.")
+    indicator_ids = fields.Many2many('sgi.indicator', string="Indicadores de dirección", compute='_compute_board',
+                                     help="Indicadores que sigue la Dirección.")
     red_no_plan_measure_ids = fields.Many2many(
-        'sgi.indicator.measure', string="Rojos sin causa ni plan", compute='_compute_board')
+        'sgi.indicator.measure', string="Rojos sin causa ni plan", compute='_compute_board',
+        help="Mediciones en rojo que todavía no tienen causa ni plan de acción.")
     overdue_agreement_ids = fields.Many2many(
-        'sgi.action.line', string="Acuerdos de la RxD vencidos", compute='_compute_board')
+        'sgi.action.line', string="Acuerdos de la RxD vencidos", compute='_compute_board',
+        help="Acuerdos de la revisión por la dirección que ya vencieron.")
     delayed_process_ids = fields.Many2many(
-        'sgi.process', string="Procesos con más atrasos", compute='_compute_board')
+        'sgi.process', string="Procesos con más atrasos", compute='_compute_board',
+        help="Procesos con más actividades atrasadas.")
     indicator_count = fields.Integer(compute='_compute_board')
     indicator_note = fields.Char(string="Nota de indicadores", compute='_compute_board')
     red_count = fields.Integer(compute='_compute_board')

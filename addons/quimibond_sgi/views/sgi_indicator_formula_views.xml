@@ -29,48 +29,4 @@
         </field>
     </record>
 
-    <record id="sgi_indicator_view_form_formula" model="ir.ui.view">
-        <field name="name">sgi.indicator.form.formula</field>
-        <field name="model">sgi.indicator</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_indicator_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//notebook/page[1]" position="before">
-                <page string="Fórmula" name="formula">
-                    <div class="alert alert-info mb-2" role="alert">
-                        Numerador y denominador salen de los registros de Odoo que
-                        indique cada término; varios términos con el mismo papel se
-                        suman (factor −1 resta) y sin denominador el indicador vale
-                        su numerador (sin registros = 0). En el filtro valen fechas
-                        relativas: '{cierre}', '{cierre-30d}', '{cierre-2dh}' (días
-                        hábiles), '{cierre-48h}', '{inicio}', '{hoy}' y '{bloqueo}'
-                        (bloqueo contable). «Contar donde B − A cumple» y «Promedio
-                        de B − A» comparan dos fechas del mismo registro. Solo el
-                        administrador del SGI edita los términos; cualquier cambio
-                        regresa el indicador a «prueba» y queda en el chatter.
-                        «Recalcular ahora» prueba la fórmula sin esperar al cron.
-                    </div>
-                    <field name="has_formula" invisible="1"/>
-                    <field name="can_edit_formula" invisible="1"/>
-                    <field name="term_ids" context="{'default_indicator_id': id}"
-                           readonly="not can_edit_formula"/>
-                    <field name="formula_text" readonly="1" nolabel="1" invisible="not term_ids"/>
-                </page>
-            </xpath>
-        </field>
-    </record>
-
-    <record id="sgi_measure_view_form_formula" model="ir.ui.view">
-        <field name="name">sgi.indicator.measure.form.formula</field>
-        <field name="model">sgi.indicator.measure</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_measure_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//group[@name='note']" position="before">
-                <group string="Fórmula en paralelo" invisible="not parallel_denominator">
-                    <field name="parallel_value"/>
-                    <field name="parallel_numerator"/>
-                    <field name="parallel_denominator"/>
-                </group>
-            </xpath>
-        </field>
-    </record>
 </odoo>

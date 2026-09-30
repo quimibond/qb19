@@ -133,4 +133,101 @@
         <field name="sgi_code">F-P-C03-02</field>
         <field name="note">Etiqueta de equipo fuera de servicio</field>
     </record>
+
+    <!-- 57.50.0 (bloque 1 de formularios): matriz de aspectos ambientales.
+         P-E01 cita F-P-E01-01 como la matriz; hoy esa clave está en el
+         documento «Evaluación luminaria» (4060). La corrección de la clave es
+         del bloque 3 (decisiones 2026-09-30); mientras, el pie imprime la
+         clave que cita el procedimiento. -->
+    <record id="format_map_env_aspect" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_env_aspect"/>
+        <field name="sgi_code">F-P-E01-01</field>
+        <field name="note">Matriz de aspectos e impactos ambientales (clave por corregir en el bloque 3)</field>
+    </record>
+
+    <!-- 57.51.0: permiso único de trabajo de alto riesgo. P-A19 y P-A24 lo
+         citan como F-P-A14-03; no hay documento con esa clave en Documentos
+         (inventario 2026-09-30, §3.5): el pie imprime la clave sin revisión
+         hasta que MAST dé de alta el formato. -->
+    <record id="format_map_work_permit" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_work_permit"/>
+        <field name="sgi_code">F-P-A14-03</field>
+        <field name="note">Permiso único de trabajo de alto riesgo (formato por dar de alta)</field>
+    </record>
+
+    <!-- 57.52.0: bloqueo y etiquetado. P-A20 no tiene formato propio en el
+         Dropbox: el registro se identifica con su procedimiento hasta que
+         MAST dé de alta el formato y lo cambie aquí. -->
+    <record id="format_map_loto" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_loto"/>
+        <field name="sgi_code">P-A20</field>
+        <field name="note">Bloqueo y etiquetado: registro de P-A20 (sin formato propio todavía)</field>
+    </record>
+
+    <!-- 57.44.0 (V-M08): pies de los reportes que perdieron su identificación
+         en 57.20.0. Por referencia porque el mismo modelo imprime más de un
+         formato (plan e informe de auditoría) o es de otra app (NEWS, sobre
+         Aprobaciones). Claves tomadas del propio SGI (README y comentarios de
+         los reportes); MAST liga el documento en «Formatos en documentos de
+         Odoo» y la revisión sale sola. -->
+    <record id="format_ref_audit_plan" model="sgi.format.map">
+        <field name="sgi_code">F-P-G03-03</field>
+        <field name="note">Plan de auditoría</field>
+    </record>
+
+    <record id="format_ref_audit_report" model="sgi.format.map">
+        <field name="sgi_code">F-P-G03-07</field>
+        <field name="note">Informe de auditoría</field>
+    </record>
+
+    <record id="format_ref_master_list" model="sgi.format.map">
+        <field name="sgi_code">F-P-G01-03</field>
+        <field name="note">Lista maestra de información documentada (general y por proceso)</field>
+    </record>
+
+    <record id="format_ref_news" model="sgi.format.map">
+        <field name="sgi_code">F-P-G01-16</field>
+        <field name="note">Boletín NEWS de cambios documentales</field>
+    </record>
+
+    <!-- 57.62.0 (bloque 2 de formularios): laboratorio de Calidad (P-C05).
+         Mapeos con criterio (57.60.0): la verificación imprime la bitácora de
+         revisión de equipos y el equipo de laboratorio el formato de
+         instrumental; el préstamo se usa por referencia en la ficha. -->
+    <record id="format_map_lab_verification" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_calibration"/>
+        <field name="sgi_code">F-P-C05-11</field>
+        <field name="record_domain">[('calibration_type', '=', 'verificacion')]</field>
+        <field name="note">Bitácora de revisión de equipos de laboratorio (verificaciones)</field>
+    </record>
+
+    <record id="format_map_lab_equipment" model="sgi.format.map">
+        <field name="model_id" ref="maintenance.model_maintenance_equipment"/>
+        <field name="sgi_code">F-IT-P-C05-06-07</field>
+        <field name="record_domain">[('sgi_is_lab', '=', True)]</field>
+        <field name="note">Instrumental de laboratorio (equipos marcados de laboratorio)</field>
+    </record>
+
+    <record id="format_ref_lab_loan" model="sgi.format.map">
+        <field name="sgi_code">F-P-C05-07</field>
+        <field name="note">Préstamo de equipos de laboratorio (seguimiento del equipo)</field>
+    </record>
+
+    <!-- 57.63.0 (bloque 2 de formularios): etiquetas de lote (clase C) que se
+         imprimen desde el lote o la NC; por referencia porque el mismo modelo
+         imprime las tres. -->
+    <record id="format_ref_lot_released" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-02</field>
+        <field name="note">Etiqueta de material liberado</field>
+    </record>
+
+    <record id="format_ref_lot_rejected" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-03</field>
+        <field name="note">Etiqueta de material rechazado</field>
+    </record>
+
+    <record id="format_ref_lot_held" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-04</field>
+        <field name="note">Etiqueta de material detenido</field>
+    </record>
 </odoo>

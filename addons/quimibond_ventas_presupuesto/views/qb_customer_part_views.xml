@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="qb_customer_part_view_list" model="ir.ui.view">
+        <field name="name">qb.customer.part.list</field>
+        <field name="model">qb.customer.part</field>
+        <field name="arch" type="xml">
+            <list string="Partes del cliente" decoration-muted="state == 'sin_producto'"
+                  decoration-warning="state == 'sugerido'" decoration-success="state == 'confirmado'">
+                <field name="partner_id"/>
+                <field name="ship_to_id" optional="show"/>
+                <field name="customer_part"/>
+                <field name="customer_description" optional="show"/>
+                <field name="customer_uom"/>
+                <field name="product_id"/>
+                <field name="match_confidence" optional="show"/>
+                <field name="match_score" optional="hide"/>
+                <field name="state"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_customer_part_view_form" model="ir.ui.view">
+        <field name="name">qb.customer.part.form</field>
+        <field name="model">qb.customer.part</field>
+        <field name="arch" type="xml">
+            <form string="Parte del cliente">
+                <header>
+                    <button name="action_suggest_product" type="object" string="Sugerir producto"
+                            invisible="state == 'confirmado'"/>
+                    <button name="action_confirm" type="object" string="Confirmar" class="btn-primary"
+                            invisible="state == 'confirmado'"/>
+                    <button name="action_reset" type="object" string="Quitar confirmación"
+                            invisible="state != 'confirmado'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Cómo lo pide el cliente">
+                            <field name="partner_id"/>
+                            <field name="ship_to_id"/>
+                            <field name="customer_part"/>
+                            <field name="customer_description"/>
+                            <field name="customer_po"/>
+                            <field name="customer_uom"/>
+                        </group>
+                        <group string="Qué es para Quimibond">
+                            <field name="product_id"/>
+                            <field name="conversion"/>
+                            <field name="factor" invisible="conversion != 'fija'"/>
+                            <field name="confirmed_by_id" invisible="state != 'confirmado'"/>
+                            <field name="confirmed_date" invisible="state != 'confirmado'"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="Sugerencia" invisible="not match_confidence">
+                        <field name="match_confidence"/>
+                        <field name="match_score"/>
+                        <field name="match_reasons"/>
+                        <field name="match_alternatives"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_customer_part_view_search" model="ir.ui.view">
+        <field name="name">qb.customer.part.search</field>
+        <field name="model">qb.customer.part</field>
+        <field name="arch" type="xml">
+            <search string="Partes del cliente">
+                <field name="customer_part"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <filter name="pendientes" string="Por confirmar" domain="[('state', '!=', 'confirmado')]"/>
+                <filter name="confirmadas" string="Confirmadas" domain="[('state', '=', 'confirmado')]"/>
+                <separator/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_customer_part_action" model="ir.actions.act_window">
+        <field name="name">Partes del cliente</field>
+        <field name="res_model">qb.customer.part</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_pendientes': 1, 'search_default_group_partner': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre las partes de sus clientes</p>
+            <p>Cada release trae el número de parte del cliente y su unidad. Aquí se liga
+               a su producto: use «Sugerir producto» y confirme. Una parte sin confirmar
+               detiene esa línea del release.</p>
+        </field>
+    </record>
+
+    <record id="qb_customer_part_action_suggest" model="ir.actions.server">
+        <field name="name">Sugerir producto</field>
+        <field name="model_id" ref="model_qb_customer_part"/>
+        <field name="binding_model_id" ref="model_qb_customer_part"/>
+        <field name="state">code</field>
+        <field name="code">records.action_suggest_product()</field>
+    </record>
+</odoo>

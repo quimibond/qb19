@@ -20,6 +20,23 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_policy_view_search" model="ir.ui.view">
+        <field name="name">sgi.policy.search</field>
+        <field name="model">sgi.policy</field>
+        <field name="arch" type="xml">
+            <search string="Políticas">
+                <field name="name"/>
+                <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_vigente" string="Vigente" domain="[('state', '=', 'vigente')]"/>
+                <filter name="state_obsoleta" string="Obsoleta" domain="[('state', '=', 'obsoleta')]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_policy_view_form" model="ir.ui.view">
         <field name="name">sgi.policy.form</field>
         <field name="model">sgi.policy</field>
@@ -33,10 +50,10 @@
                             string="Generar acuses de difusión"
                             invisible="state != 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_set_borrador" type="object" string="A borrador"
+                    <button name="action_set_borrador" confirm="La política regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"
                             groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_set_obsoleta" type="object" string="Obsoletar"
+                    <button name="action_set_obsoleta" confirm="La política deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleta"
                             invisible="state != 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"
@@ -94,7 +111,7 @@
         <field name="res_model">sgi.policy</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Publica la política integral</p>
+            <p class="o_view_nocontent_smiling_face">Publique la política integral</p>
             <p>Es la cabeza de la Línea Dorada: de ella se despliegan los objetivos integrales, sus indicadores y los procesos. Solo una política puede estar vigente.</p>
         </field>
     </record>

@@ -54,7 +54,7 @@
                             class="btn-primary" invisible="status == 'oficial'"
                             groups="quimibond_sgi.group_sgi_manager"
                             confirm="Revisaste la lista de registros de una medición contra la realidad y el dato es confiable. Desde ahora sus rojos pueden abrir NC. ¿Continuar?"/>
-                    <button name="action_set_trial" type="object" string="Regresar a prueba"
+                    <button name="action_set_trial" confirm="El indicador regresa a «prueba». ¿Desea continuar?" type="object" string="Regresar a prueba"
                             invisible="status == 'prueba'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_view_trend" type="object"
@@ -95,6 +95,7 @@
                             <field name="process_id"/>
                             <field name="sgi_area_id"/>
                             <field name="responsible_id"/>
+                            <field name="level"/>
                             <field name="frequency"/>
                             <field name="measure_from"/>
                             <field name="active" invisible="1"/>
@@ -102,9 +103,16 @@
                         <group string="Meta y cálculo">
                             <field name="uom"/>
                             <field name="direction"/>
-                            <field name="target_objective"/>
-                            <field name="target_acceptable"/>
+                            <field name="target_objective" invisible="direction == 'range'" string="Meta final"/>
+                            <field name="target_acceptable" invisible="direction == 'range'"
+                                   string="Aceptable (meta final)"/>
+                            <field name="range_min" invisible="direction != 'range'"
+                                   required="direction == 'range'"/>
+                            <field name="range_max" invisible="direction != 'range'"
+                                   required="direction == 'range'"/>
+                            <field name="range_tolerance" invisible="direction != 'range'"/>
                             <field name="calc_mode"/>
+                            <field name="window_label"/>
                             <field name="monthly_budget"
                                    invisible="calc_mode != 'presupuesto_ventas'"/>
                             <field name="activity_id"
@@ -129,6 +137,7 @@
                     <group string="Cómo se calcula">
                         <field name="formula" placeholder="Qué se divide entre qué, en palabras"/>
                         <field name="source" placeholder="De qué registros o documentos sale"/>
+                        <field name="baseline_date"/>
                         <field name="baseline_value"/>
                         <field name="target_date"/>
                     </group>
@@ -142,6 +151,54 @@
                         <i class="fa fa-pencil" title="Captura manual"/> <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
                     </div>
                     <notebook>
+                        <!-- Trayectoria (antes herencia propia en
+                             sgi_indicator_trajectory_views.xml; A-008, 57.24.0). -->
+                        <page string="Trayectoria" name="trajectory" invisible="direction == 'range'">
+                            <div class="alert alert-info mb-2" role="alert">
+                                Los escalones trimestrales se interpolan entre el arranque
+                                («Arranque desde» y «Valor de arranque») y la meta final
+                                («Llegar a la meta el»). El aceptable de cada escalón guarda la
+                                misma distancia que el de la meta final. Corregir un trimestre a
+                                mano exige motivo, queda en el chatter y se respeta al regenerar.
+                                Cada medición se evalúa contra el escalón de su trimestre.
+                            </div>
+                            <button name="action_generate_trajectory" type="object"
+                                    string="Generar trayectoria" class="btn-primary mb-2"
+                                    groups="quimibond_sgi.group_sgi_manager"/>
+                            <field name="has_trajectory" invisible="1"/>
+                            <field name="step_ids" context="{'default_indicator_id': id}">
+                                <list editable="bottom" decoration-info="manual">
+                                    <field name="name"/>
+                                    <field name="date_from" column_invisible="1"/>
+                                    <field name="objective"/>
+                                    <field name="acceptable"/>
+                                    <field name="manual"/>
+                                    <field name="reason"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- Modo «fórmula configurable» (antes herencia propia en
+                             sgi_indicator_formula_views.xml; A-008, 57.23.0). -->
+                        <page string="Fórmula" name="formula">
+                            <div class="alert alert-info mb-2" role="alert">
+                                Numerador y denominador salen de los registros de Odoo que
+                                indique cada término; varios términos con el mismo papel se
+                                suman (factor −1 resta) y sin denominador el indicador vale
+                                su numerador (sin registros = 0). En el filtro valen fechas
+                                relativas: '{cierre}', '{cierre-30d}', '{cierre-2dh}' (días
+                                hábiles), '{cierre-48h}', '{inicio}', '{hoy}' y '{bloqueo}'
+                                (bloqueo contable). «Contar donde B − A cumple» y «Promedio
+                                de B − A» comparan dos fechas del mismo registro. Solo el
+                                administrador del SGI edita los términos; cualquier cambio
+                                regresa el indicador a «prueba» y queda en el chatter.
+                                «Recalcular ahora» prueba la fórmula sin esperar al cron.
+                            </div>
+                            <field name="has_formula" invisible="1"/>
+                            <field name="can_edit_formula" invisible="1"/>
+                            <field name="term_ids" context="{'default_indicator_id': id}"
+                                   readonly="not can_edit_formula"/>
+                            <field name="formula_text" readonly="1" nolabel="1" invisible="not term_ids"/>
+                        </page>
                         <page string="Mediciones">
                             <field name="measure_ids" context="{'default_indicator_id': id}">
                                 <list editable="bottom"
@@ -225,8 +282,8 @@
         <field name="search_view_id" ref="sgi_indicator_view_search"/>
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Da de alta un indicador</p>
-            <p>Los automáticos se calculan solos de los datos reales de Odoo; captura responsable, objetivo y aceptable, y el semáforo sale solo.</p>
+            <p class="o_view_nocontent_smiling_face">Dé de alta un indicador</p>
+            <p>Los automáticos se calculan solos de los datos reales de Odoo; capture responsable, objetivo y aceptable, y el semáforo sale solo.</p>
         </field>
     </record>
 
@@ -245,6 +302,7 @@
                 <field name="indicator_id"/>
                 <field name="indicator_status" optional="hide"/>
                 <field name="value"/>
+                <field name="window_label" optional="show"/>
                 <field name="numerator" optional="hide"/>
                 <field name="denominator" optional="hide"/>
                 <field name="sample_size" optional="show"/>
@@ -260,6 +318,9 @@
                        decoration-success="semaphore == 'verde'"
                        decoration-warning="semaphore == 'amarillo'"
                        decoration-danger="semaphore == 'rojo'"/>
+                <field name="plan_required" column_invisible="1"/>
+                <field name="plan_done" optional="show" string="Plan"
+                       invisible="not plan_required"/>
                 <field name="state"/>
                 <button name="action_view_evidence" type="object" icon="fa-search-plus"
                         title="Ver evidencia" invisible="source_type == 'manual'"/>
@@ -276,10 +337,13 @@
         <field name="arch" type="xml">
             <form string="Medición">
                 <header>
+                    <!-- V-A06 (57.43.0): un solo primario por estado, en el orden del
+                         statusbar (capturar → validar). Valida el responsable del
+                         indicador o el Jefe MAST (I-006; el servidor lo revisa). -->
                     <button name="action_capture" type="object" string="Marcar capturado"
-                            invisible="state != 'pendiente'"/>
+                            class="btn-primary" invisible="state != 'pendiente'"/>
                     <button name="action_validate" type="object" string="Validar"
-                            class="btn-primary" invisible="state == 'validado'"/>
+                            class="btn-primary" invisible="state != 'capturado' or not sgi_can_validate"/>
                     <button name="action_view_records" type="object"
                             string="Ver registros" icon="fa-list"
                             invisible="not detail_count"/>
@@ -323,6 +387,7 @@
                         <group>
                             <field name="period_date"/>
                             <field name="value"/>
+                            <field name="window_label"/>
                             <field name="uom"/>
                             <field name="numerator"/>
                             <field name="denominator"/>
@@ -333,8 +398,11 @@
                             <field name="indicator_status" widget="badge"
                                    decoration-success="indicator_status == 'oficial'"
                                    decoration-muted="indicator_status == 'prueba'"/>
-                            <field name="target_objective"/>
-                            <field name="target_acceptable"/>
+                            <field name="target_objective" invisible="direction == 'range'"/>
+                            <field name="target_acceptable" invisible="direction == 'range'"/>
+                            <field name="direction" invisible="1"/>
+                            <field name="range_min" invisible="direction != 'range'"/>
+                            <field name="range_max" invisible="direction != 'range'"/>
                             <field name="semaphore" widget="badge"/>
                             <field name="small_sample" invisible="not small_sample"/>
                             <field name="alert_id" readonly="1"/>
@@ -360,6 +428,39 @@
                                 <button name="action_view_evidence" type="object" string="Registros"
                                         icon="fa-list" invisible="not detail_ids"/>
                                 <field name="detail_ids" column_invisible="1"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Fórmula en paralelo" invisible="not parallel_denominator">
+                        <field name="parallel_value"/>
+                        <field name="parallel_numerator"/>
+                        <field name="parallel_denominator"/>
+                    </group>
+                    <!-- Plan de acción de la medición roja (antes herencia propia en
+                         sgi_indicator_plan_views.xml; A-008, 57.25.0). -->
+                    <field name="plan_required" invisible="1"/>
+                    <field name="plan_done" invisible="1"/>
+                    <group string="Plan de acción (medición roja)" invisible="not plan_required">
+                        <div class="alert alert-danger mb-2" role="alert" colspan="2"
+                             invisible="plan_done">
+                            <b>Falta el plan:</b> causa y al menos una acción con responsable y
+                            fecha, antes del <field name="plan_due" readonly="1" nolabel="1" class="oe_inline"/>.
+                            Después de esa fecha se escala a Dirección.
+                        </div>
+                        <field name="cause" placeholder="Por qué salió en rojo"/>
+                        <field name="action_line_ids" context="{'default_measure_id': id}" nolabel="1" colspan="2">
+                            <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                            <list editable="bottom" decoration-danger="state == 'vencida'"
+                                  decoration-muted="state == 'terminada'">
+                                <field name="name"/>
+                                <field name="responsible_id" widget="many2one_avatar_user"/>
+                                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
+                                <field name="date_done"/>
+                                <field name="progress"/>
+                                <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                       decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
+                                <field name="action_type" column_invisible="1"/>
+                                <field name="measure_id" column_invisible="1"/>
                             </list>
                         </field>
                     </group>
@@ -413,6 +514,9 @@
                         domain="[('indicator_id.status','=','oficial')]"/>
                 <filter name="to_validate" string="Por validar"
                         domain="[('state','=','capturado')]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
+                <separator/>
+                <filter name="filter_period" string="Periodo" date="period_date"/>
                 <group>
                     <filter name="group_indicator" string="Indicador" context="{'group_by': 'indicator_id'}"/>
                     <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
@@ -426,6 +530,7 @@
         <field name="name">Mediciones</field>
         <field name="res_model">sgi.indicator.measure</field>
         <field name="view_mode">list,graph,pivot,form</field>
+        <field name="context">{'search_default_pending': 1, 'search_default_mine': 1}</field>
         <field name="search_view_id" ref="sgi_measure_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>

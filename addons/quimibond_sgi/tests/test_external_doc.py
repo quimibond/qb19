@@ -2,9 +2,8 @@
 """Documento externo (E2.36, 56.21.0): emisor, revisión del emisor,
 recepción, proceso dueño y plazo de implantación de 10 días hábiles."""
 from datetime import date
-from unittest.mock import patch
 
-from odoo.tests import TransactionCase, tagged, new_test_user
+from odoo.tests import TransactionCase, freeze_time, tagged, new_test_user
 
 from .common_calendar import sgi_test_calendar
 from .common_documents import sgi_hide_real_documents
@@ -38,11 +37,13 @@ class TestExternalDoc(TransactionCase):
     def test_02_aviso_al_dueno_del_proceso(self):
         doc = self._doc(sgi_ext_received_date=date(2046, 3, 2))
         Cron = self.env['sgi.cron']
-        with patch('odoo.fields.Date.context_today', return_value=date(2046, 3, 14)):
+        # 57.66.0: el cron usa el «hoy» del SGI (sgi_today, 57.15.0), no
+        # context_today: se congela el reloj en vez de parchar context_today.
+        with freeze_time('2046-03-14 12:00:00'):
             Cron._sgi_external_doc_notices()
         activity = doc.activity_ids.filtered(lambda a: 'EXT-Z01' in (a.summary or ''))
         self.assertEqual(activity.user_id, self.owner)
-        with patch('odoo.fields.Date.context_today', return_value=date(2046, 3, 20)):
+        with freeze_time('2046-03-20 12:00:00'):
             Cron._sgi_external_doc_notices()
         self.assertEqual(doc.sgi_ext_state, 'vencido')
         self.assertTrue(doc.activity_ids.filtered(lambda a: (a.summary or '').startswith('Vencido')))

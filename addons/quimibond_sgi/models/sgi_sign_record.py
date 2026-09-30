@@ -13,6 +13,8 @@ SGI_SIGN_MODELS = ('purchase.order', 'stock.picking', 'stock.lot', 'product.temp
 
 
 class SgiSignRecordMixin(models.AbstractModel):
+    """Mixin para registros que se firman en Sign: solicitudes ligadas, si ya se firmó y los botones
+    de firma."""
     _name = 'sgi.sign.record.mixin'
     _description = "Firmas de Sign ligadas al registro"
 
@@ -118,13 +120,15 @@ class ProductProductSign(models.Model):
 
 
 class SgiSignRequestWizard(models.TransientModel):
+    """Asistente para crear una solicitud de firma ligada a un registro del SGI."""
     _name = 'sgi.sign.request.wizard'
     _description = "Crear solicitud de firma ligada a un registro"
 
     res_model = fields.Char(required=True)
-    res_id = fields.Integer(required=True)
-    template_id = fields.Many2one('sign.template', string="Plantilla de firma", required=True)
-    partner_id = fields.Many2one('res.partner', string="Firmante", required=True)
+    res_id = fields.Integer(required=True, help="Registro al que se liga la firma.")
+    template_id = fields.Many2one('sign.template', string="Plantilla de firma", required=True,
+                                  help="Plantilla de Sign que se firma.")
+    partner_id = fields.Many2one('res.partner', string="Firmante", required=True, help="Persona que firma.")
     subject = fields.Char(string="Asunto")
 
     def action_confirm(self):

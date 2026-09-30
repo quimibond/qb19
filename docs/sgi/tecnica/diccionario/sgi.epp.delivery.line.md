@@ -1,0 +1,24 @@
+<!-- Generado por tools/sgi_docs.py a partir del código. No editar a mano: correr `python3 tools/sgi_docs.py`. -->
+
+# `sgi.epp.delivery.line`
+
+**Renglón de la responsiva de EPP** (Model).
+
+Renglón de la responsiva de EPP: artículo, talla y cantidad.
+
+Orden: `sequence, id`.
+
+Archivos: `addons/quimibond_sgi/models/sgi_epp_sign.py`.
+
+## Campos (7)
+
+| Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
+|---|---|---|---|---|---|---|---|---|
+| `delivery_id` | Many2one |  |  | sí | `sgi.epp.delivery` |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:26` |
+| `name` | Char | Artículo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:30` |
+| `note` | Char | Observaciones |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:32` |
+| `quantity` | Float | Cantidad |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:28` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:27` |
+| `size` | Char | Talla |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:31` |
+| `uom` | Selection | Unidad |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:29` |
+

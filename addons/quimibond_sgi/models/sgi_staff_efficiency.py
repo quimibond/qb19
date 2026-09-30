@@ -38,6 +38,8 @@ _RECEIVE_SUMMARY = "Recibir eficiencias"
 
 
 class SgiStaffEfficiency(models.Model):
+    """Hoja mensual de eficiencias de personal de un área: carga empleados, calcula y la recibe RH.
+    Los importes solo los ve el grupo de salarios."""
     _name = 'sgi.staff.efficiency'
     _description = "Eficiencias de personal (F-P-A01-32/34)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -45,13 +47,20 @@ class SgiStaffEfficiency(models.Model):
 
     name = fields.Char(compute='_compute_name', store=True)
     period_date = fields.Date(string="Mes", required=True,
-                              default=lambda self: fields.Date.context_today(self).replace(day=1))
-    department_id = fields.Many2one('hr.department', string="Área", default=lambda self: self._sgi_default_department())
-    prepared_by_id = fields.Many2one('res.users', string="Elaboró (jefe de área)", default=lambda self: self.env.user)
-    received_by_id = fields.Many2one('res.users', string="Recibió (coordinador de RH)")
-    received_date = fields.Datetime(string="Recibida por RH el", readonly=True, copy=False)
+                              default=lambda self: fields.Date.context_today(self).replace(day=1),
+                              help="Mes que se califica.")
+    department_id = fields.Many2one('hr.department', string="Área", default=lambda self: self._sgi_default_department(),
+                                    help="Área de la hoja.")
+    prepared_by_id = fields.Many2one('res.users', string="Elaboró (jefe de área)", default=lambda self: self.env.user,
+                                     help="Jefe de área que elabora la hoja.")
+    received_by_id = fields.Many2one('res.users', string="Recibió (coordinador de RH)",
+                                     help="Coordinador de RH que recibe la hoja.")
+    received_date = fields.Datetime(string="Recibida por RH el", readonly=True, copy=False,
+                                    help="Fecha y hora en que RH recibió la hoja.")
     state = fields.Selection([('borrador', "Borrador"), ('cerrado', "Cerrado"), ('recibido', "Recibido por RH")],
-                             default='borrador', required=True, tracking=True)
+                             default='borrador', required=True, tracking=True,
+                             help="Borrador mientras se captura; cerrado por el jefe de área; recibido por "
+                                  "RH.")
     line_ids = fields.One2many('sgi.staff.efficiency.line', 'sheet_id', string="Empleados")
     employee_count = fields.Integer(string="Número de empleados", compute='_compute_totals')
     amount_total = fields.Monetary(string="Importe total", compute='_compute_amount_total', currency_field='currency_id',
@@ -181,23 +190,34 @@ class SgiStaffEfficiency(models.Model):
 
 
 class SgiStaffEfficiencyLine(models.Model):
+    """Calificación mensual de un empleado (eficiencia, calidad, orden, asistencia) y su importe."""
     _name = 'sgi.staff.efficiency.line'
     _description = "Calificación mensual de un empleado"
     _order = 'employee_id'
 
-    sheet_id = fields.Many2one('sgi.staff.efficiency', string="Hoja mensual", required=True, ondelete='cascade')
-    employee_id = fields.Many2one('hr.employee', string="Empleado", required=True, ondelete='restrict')
-    job_id = fields.Many2one(related='employee_id.job_id', string="Puesto", store=True)
-    department_id = fields.Many2one(related='employee_id.department_id', string="Área", store=True)
+    sheet_id = fields.Many2one('sgi.staff.efficiency', string="Hoja mensual", required=True, ondelete='cascade',
+                               help="Hoja mensual a la que pertenece la calificación.")
+    employee_id = fields.Many2one('hr.employee', string="Empleado", required=True, ondelete='restrict',
+                                  help="Empleado calificado.")
+    job_id = fields.Many2one(related='employee_id.job_id', string="Puesto", store=True,
+                             help="Puesto del empleado.")
+    department_id = fields.Many2one(related='employee_id.department_id', string="Área", store=True,
+                                    help="Área del empleado.")
     wage_daily = fields.Monetary(string="Salario diario", currency_field='currency_id',
                                  compute='_compute_wage_daily', store=True, readonly=False, groups=_MONEY_GROUPS)
     wage_monthly = fields.Monetary(string="Salario mensual (×30)", compute='_compute_wage_monthly',
                                    currency_field='currency_id', groups=_MONEY_GROUPS)
-    attendance_pct = fields.Float(string="Asistencia (máx. 5.5 %)", digits=(5, 2))
-    housekeeping_pct = fields.Float(string="Orden y limpieza (máx. 2 %)", digits=(5, 2))
-    efficiency_pct = fields.Float(string="Eficiencia (máx. 2 %)", digits=(5, 2))
-    quality_pct = fields.Float(string="Calidad (máx. 2 %)", digits=(5, 2))
-    total_pct = fields.Float(string="Total (%)", compute='_compute_total_pct', digits=(5, 2), store=True)
+    attendance_pct = fields.Float(string="Asistencia (máx. 5.5 %)", digits=(5, 2),
+                                  help="Porcentaje por asistencia, hasta 5.5 %.")
+    housekeeping_pct = fields.Float(string="Orden y limpieza (máx. 2 %)", digits=(5, 2),
+                                    help="Porcentaje por orden y limpieza, hasta 2 %.")
+    efficiency_pct = fields.Float(string="Eficiencia (máx. 2 %)", digits=(5, 2),
+                                  help="Porcentaje por eficiencia, hasta 2 %.")
+    quality_pct = fields.Float(string="Calidad (máx. 2 %)", digits=(5, 2),
+                               help="Porcentaje por calidad, hasta 2 %.")
+    total_pct = fields.Float(string="Total (%)", compute='_compute_total_pct', digits=(5, 2), store=True,
+                             help="Suma de asistencia, orden y limpieza, eficiencia y calidad. Se calcula "
+                                  "sola.")
     amount = fields.Monetary(string="A pagar", compute='_compute_amounts', currency_field='currency_id', store=True,
                              groups=_MONEY_GROUPS)
     real_minutes = fields.Float(string="Tiempo real (min)", readonly=True)

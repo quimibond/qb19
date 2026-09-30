@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_report_mgmt_review" model="ir.actions.report">
-        <field name="name">Acta de Revisión por la Dirección (F-IT-P-A10-01-01)</field>
+        <field name="name">Acta de revisión por la dirección</field>
         <field name="model">sgi.management.review</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_mgmt_review_document</field>
@@ -15,8 +15,7 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <h2 class="text-center">Acta de Revisión por la Dirección</h2>
-                        <h5 class="text-center text-muted">F-IT-P-A10-01-01</h5>
+                        <h2 class="text-center">Acta de revisión por la dirección</h2>
                         <table class="table table-sm table-bordered mt-3">
                             <tr>
                                 <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
@@ -30,7 +29,7 @@
                         </table>
 
                         <h4>Asistentes</h4>
-                        <p t-esc="', '.join(doc.attendee_ids.mapped('name'))"/>
+                        <p t-out="', '.join(doc.attendee_ids.mapped('name'))"/>
 
                         <h4>Entradas (9.3.2)</h4>
                         <p><strong>1. Acuerdos previos:</strong><br/>
@@ -86,6 +85,11 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- Pie «formato controlado» (C-006); antes era una herencia
+                             propia en sgi_format_footer.xml (A-008, 57.22.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>

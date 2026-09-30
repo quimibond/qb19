@@ -200,7 +200,7 @@ class SgiCronSalesBudget(models.AbstractModel):
     @api.model
     def _sgi_sales_budget_revaluation(self, year):
         """Agenda al Admin de ventas una actividad de revaluación del S2 por cada
-        presupuesto aprobado del año (enlaza a la acción «Revisar (nueva Rev.)»).
+        presupuesto aprobado del año (enlaza a la acción «Nueva revisión»).
         Idempotente (dedup por resumen)."""
         sales_admin_id = self._sgi_sales_admin_user_id()
         if not sales_admin_id:
@@ -215,7 +215,7 @@ class SgiCronSalesBudget(models.AbstractModel):
                 "Revaluar cantidades del S2 — P-A28 Nota 1",
                 "Revaluación de mitad de año (P-A28 Nota 1): revisa y ajusta las "
                 "cantidades del segundo semestre del presupuesto %s. Si cambian, "
-                "genera la siguiente revisión con «Revisar (nueva Rev.)»." % (
+                "genera la siguiente revisión con «Nueva revisión»." % (
                     budget.folio or budget.name),
                 sales_admin_id, date_deadline=date(year, 6, 30),
                 key='revaluar_s2:%d' % year)
