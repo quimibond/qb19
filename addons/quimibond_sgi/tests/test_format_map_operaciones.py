@@ -14,6 +14,12 @@ from .common_documents import sgi_hide_real_documents
 _MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _doc_type(code):
+    """Tipo de documento de la clave heredada: F-IT-… es formato de
+    instructivo; F-P-…, formato."""
+    return 'formato_it' if code.startswith('F-IT-') else 'formato'
+
+
 @tagged('post_install', '-at_install')
 class TestFormatMapOperaciones(TransactionCase):
 
@@ -32,12 +38,18 @@ class TestFormatMapOperaciones(TransactionCase):
         cls.wh = wh
         cls.t_carda = wh.manu_type_id.copy({'name': 'ZQ Carda prueba', 'sequence_code': 'ZQC'})
         cls.t_v10 = wh.manu_type_id.copy({'name': 'ZQ V10 prueba', 'sequence_code': 'ZQV'})
-        cls.t_int = wh.int_type_id.copy({'name': 'ZQ Reetiquetado prueba', 'sequence_code': 'ZQR'})
+        # 57.67.0: activo. En producción la interna del primer almacén
+        # (Toluca, id 5) está archivada y la copia lo heredaba: la siembra
+        # busca solo tipos activos y no encontraba «ZQ Reetiquetado prueba».
+        cls.t_int = wh.int_type_id.copy({'name': 'ZQ Reetiquetado prueba', 'sequence_code': 'ZQR',
+                                         'active': True})
         Doc = cls.env['documents.document']
 
         def doc(code):
+            # 57.67.0: una clave F-IT-… es «Formato de instructivo»; el tipo
+            # «Formato» (F-P-…) la rechaza por nomenclatura.
             return Doc.create({'name': '%s prueba.xlsx' % code, 'type': 'binary',
-                               'sgi_is_controlled': True, 'sgi_doc_type': 'formato',
+                               'sgi_is_controlled': True, 'sgi_doc_type': _doc_type(code),
                                'sgi_code': code, 'sgi_revision': 2, 'sgi_state': 'vigente'})
         cls.doc_ot = doc('F-P-P02-01')
         cls.doc_ree = doc('F-IT-P-A07-01-02')
@@ -106,7 +118,8 @@ class TestFormatMapOperaciones(TransactionCase):
             [('sgi_code', '=', 'F-IT-P-P01-02-02')]).unlink()
         doc = self.env['documents.document'].create({
             'name': 'F-IT-P-P01-02-02 prueba.xlsx', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'formato', 'sgi_code': 'F-IT-P-P01-02-02', 'sgi_revision': 1,
+            'sgi_doc_type': _doc_type('F-IT-P-P01-02-02'), 'sgi_code': 'F-IT-P-P01-02-02',
+            'sgi_revision': 1,
             'sgi_state': 'vigente'})
         base = self.wh.manu_type_id
         kitchen = base.copy({'name': 'ZQ Kitchen EN', 'sequence_code': 'ZQK'})

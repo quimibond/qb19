@@ -12,7 +12,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_archived_filters.py`, `addons/quimibo
 |---|---|---|---|---|---|---|---|---|
 | `sgi_all_role_ids` | Many2many | Actividades SGI (propias y de su familia) | Actividades del SGI del puesto: las propias y las de su familia de puestos. |  | `sgi.activity.role` | compute `_compute_sgi_all_role_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:406` |
 | `sgi_approve_count` | Integer | Aprueba |  |  |  | compute `_compute_sgi_role_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:398` |
-| `sgi_authorized_headcount` | Integer | Plantilla autorizada | Personas que Dirección autoriza para este puesto. RH-01 (cobertura de plantilla) compara contra ella a los empleados que lo ocupan. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_ind2.py:743` |
+| `sgi_authorized_headcount` | Integer | Plantilla autorizada | Personas que Dirección autoriza para este puesto. RH-01 (cobertura de plantilla) compara contra ella a los empleados que lo ocupan. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_ind2.py:754` |
 | `sgi_document_ids` | Many2many | Documentos aplicables | Documentos controlados que aplican a este puesto. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_integration.py:192` |
 | `sgi_epp_required` | Text | EPP requerido (S03-01) | Equipo de protección personal que exige este puesto. Sustituye el formato F-P-S03-01; fuente única para RH y SST. |  |  |  |  | `addons/quimibond_sgi/models/sgi_integration.py:198` |
 | `sgi_execute_count` | Integer | Ejecuta |  |  |  | compute `_compute_sgi_role_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_catalog.py:396` |

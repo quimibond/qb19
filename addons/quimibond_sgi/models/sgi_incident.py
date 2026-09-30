@@ -16,7 +16,9 @@ class SgiIncident(models.Model):
     control). Todos reportan; SST, MAST y Salud ocupacional investigan y cierran."""
     _name = 'sgi.incident'
     _description = "Incidente / Accidente SST (P-S02, SCAT)"
-    _inherit = ['sgi.base.mixin']
+    # 57.67.0: ``hr.mixin`` para que quien reporta ponga a las personas
+    # afectadas (Many2many a hr.employee) sin ser de RH (Odoo 19).
+    _inherit = ['sgi.base.mixin', 'hr.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.incident'
     _sgi_locked_states = ('cerrado',)

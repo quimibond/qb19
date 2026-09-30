@@ -68,11 +68,14 @@
               action="sgi_process_action" sequence="10"/>
     <menuitem id="menu_sgi_activities" name="Actividades" parent="menu_sgi_processes"
               action="sgi_process_activity_action" sequence="20"/>
-    <!-- 57.64.0 (bloque 2 de formularios): entregables y flujos con menú. -->
-    <menuitem id="menu_sgi_deliverables" name="Entregables" parent="menu_sgi_processes"
-              action="sgi_deliverable_action" sequence="22"/>
+    <!-- 57.64.0 (bloque 2 de formularios): entregables y flujos con menú.
+         57.67.0: con xmlids nuevos; menu_sgi_deliverables,
+         sgi_deliverable_action y sgi_process_flow_action se retiraron en
+         45.0.0 y no vuelven (SGI_REMOVED_XMLIDS, test_cleanup_45). -->
+    <menuitem id="menu_sgi_deliverable_list" name="Entregables" parent="menu_sgi_processes"
+              action="sgi_deliverable_list_action" sequence="22"/>
     <menuitem id="menu_sgi_process_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
-              action="sgi_process_flow_action" sequence="24"/>
+              action="sgi_process_flow_list_action" sequence="24"/>
     <menuitem id="menu_sgi_analysis_who" name="Matriz de responsabilidades"
               parent="menu_sgi_processes" action="sgi_activity_exec_stat_action_who" sequence="30"/>
     <menuitem id="menu_sgi_jobs_roles" name="Puestos y procesos"
@@ -135,9 +138,11 @@
               parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="10"/>
     <menuitem id="menu_sgi_audit_list" name="Auditorías realizadas" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
-    <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha. -->
+    <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha.
+         57.67.0: acción con xmlid nuevo (sgi_audit_finding_action se retiró
+         en 45.0.0 como acción huérfana y no vuelve). -->
     <menuitem id="menu_sgi_audit_findings" name="Hallazgos" parent="menu_sgi_audits"
-              action="sgi_audit_finding_action" sequence="30"/>
+              action="sgi_audit_finding_list_action" sequence="30"/>
 
     <!-- ============================================================
          4. Seguridad y ambiente (todos; exámenes médicos solo Salud

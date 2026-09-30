@@ -142,7 +142,9 @@ class SgiCshInspection(models.Model):
     cierra y se puede reabrir."""
     _name = 'sgi.csh.inspection'
     _description = "Recorrido de la Comisión de Seguridad e Higiene"
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    # 57.67.0: ``hr.mixin``: integrantes (Many2many a hr.employee) sin ser de
+    # RH (Odoo 19).
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'hr.mixin']
     _order = 'date desc, id desc'
 
     name = fields.Char(string="Folio", readonly=True, copy=False, default="Nuevo")

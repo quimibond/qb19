@@ -181,7 +181,7 @@
     </record>
 
     <!-- 57.64.0 (bloque 2 de formularios): menú propio de Entregables. -->
-    <record id="sgi_deliverable_action" model="ir.actions.act_window">
+    <record id="sgi_deliverable_list_action" model="ir.actions.act_window">
         <field name="name">Entregables</field>
         <field name="res_model">sgi.deliverable</field>
         <field name="view_mode">list,form</field>

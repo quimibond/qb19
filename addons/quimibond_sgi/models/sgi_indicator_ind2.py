@@ -689,8 +689,19 @@ class SgiIndicatorInd2(models.Model):
                     # editable): cambiar solo el tipo lo reemplazaba por el
                     # resumen del tipo nuevo y el renglón de RH perdía su
                     # texto («Desactivar usuario de Odoo, correo y accesos»).
-                    template.write({'activity_type_id': act_type.id,
-                                    'summary': template.summary})
+                    # 57.67.0: lo mismo con el responsable y la nota: Odoo 19
+                    # también los recalcula del tipo (``responsible_type``
+                    # queda «preguntar al lanzar» y ``responsible_id`` vacío
+                    # si el tipo no trae usuario). El renglón de accesos
+                    # perdía su responsable y «Recoger equipo de cómputo»,
+                    # que lo copia, nacía sin él.
+                    template.write({
+                        'activity_type_id': act_type.id,
+                        'summary': template.summary,
+                        'responsible_type': template.responsible_type,
+                        'responsible_id': template.responsible_id.id,
+                        'note': template.note,
+                    })
                     report.append(('retype', template.id))
             computer = env.ref(OFFBOARDING_TYPES[1], raise_if_not_found=False)
             if computer and not templates.filtered(lambda t: t.activity_type_id == computer):

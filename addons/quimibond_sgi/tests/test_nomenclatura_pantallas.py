@@ -31,11 +31,18 @@ class TestNomenclaturaPantallas(TransactionCase):
     HARDCODED = ('— F-P-G05-01', 'F-IT-P-A10-01-01', 'F-P-G03-03', 'F-P-G03-05',
                  'F-P-G03-06', 'F-P-G03-07', 'P-S02', 'P-C10', 'P-C07', 'F-P-G01-16')
 
+    # 57.67.0: el pie en vivo sale del mapeo (``format_ref_audit_plan``
+    # imprime F-P-G03-03 desde 57.44.0, V-M08; en la copia de producción con
+    # su revisión: «F-P-G03-03 · Rev. 00»). Lo escrito a mano se busca en el
+    # resto del reporte, sin el pie.
+    FOOTER = re.compile(r'Formato controlado del SGI:.*?PNTQ', re.S)
+
     def _render(self, report_name, records):
         html = self.env['ir.actions.report']._render_qweb_html(
             report_name, records.ids)[0].decode()
+        body = self.FOOTER.sub('', html)
         for text in self.HARDCODED:
-            self.assertNotIn(text, html, "%s imprime «%s» escrito a mano." % (report_name, text))
+            self.assertNotIn(text, body, "%s imprime «%s» escrito a mano." % (report_name, text))
         return html
 
     def test_02_render_nc_incident_review_audit(self):
@@ -55,7 +62,12 @@ class TestNomenclaturaPantallas(TransactionCase):
         audit = self.env['sgi.audit'].create({
             'audit_type': 'interna', 'process_ids': [(6, 0, process.ids)],
             'date_start': date(2045, 3, 10), 'date_end': date(2045, 3, 11)})
-        self.assertIn('Plan de auditoría',
-                      self._render('quimibond_sgi.report_audit_plan_document', audit))
+        html = self._render('quimibond_sgi.report_audit_plan_document', audit)
+        self.assertIn('Plan de auditoría', html)
+        # La clave sí sale, pero del pie en vivo (mapeo por referencia).
+        code = self.env['sgi.format.map'].sgi_ref_parts('format_ref_audit_plan')[0]
+        if code:
+            footer = ''.join(self.FOOTER.findall(html))
+            self.assertIn(code, footer)
         html = self._render('quimibond_sgi.report_audit_report_document', audit)
         self.assertIn('Reunión de apertura', html)
