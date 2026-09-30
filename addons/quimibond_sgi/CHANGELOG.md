@@ -13,6 +13,58 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.13.1 — 2026-09-29
+
+**Corregido (las 7 fallas que quedaban de la primera corrida real, build de
+desarrollo 38916808 sobre base nueva con demo):**
+
+- **Pendiente, `test_role_audit.test_07`:** al archivar una actividad, el
+  «Mi procedimiento» guardado del empleado sigue trayendo su rol en la prueba
+  (builds 38918236 y 38978978), aunque `sgi.process.activity.write` ya marca
+  el recálculo desde 56.7.0 y la lista del puesto ya lo excluye. Causa sin
+  confirmar. Producción no tiene roles de actividades archivadas (0), así
+  que hoy no afecta.
+- **Pruebas:** `test_hierarchy.test_04` esperaba la navegación sin el mapa
+  de procesos, que va primero desde 54.0.0.
+
+- **Cambio documental firmado en Sign (56.17.0):** al enviar, el renglón del
+  revisor (dueño del proceso) se agregaba al final de la caché de
+  aprobadores, después del Jefe MAST que trae la categoría. Con aprobadores
+  en orden, Aprobaciones dejó «pendiente» al Jefe MAST y «en espera» al
+  revisor; al firmar el revisor, su aprobación fallaba (se registra y la
+  firma no se revierte), el cron la reintentaba sin éxito y la solicitud
+  quedaba atorada. Ahora se relee la lista en el orden de la secuencia antes
+  de enviar, y la sincronización con Sign pasa a «pendiente» al aprobador que
+  ya firmó si seguía en espera (Sign ya impuso el orden). **Producción
+  (lectura, 2026-09-29):** la categoría 12 «Modificación de documento SGI»
+  tiene firma y orden, pero no hay ninguna solicitud enviada a firma: nadie
+  se atoró todavía.
+- **Imprimir «Mi procedimiento» desde el perfil público:** la acción del
+  reporte se armaba con sudo; Odoo trata a sudo como administrador y, en una
+  compañía sin diseño de documento, devolvía el asistente «Configurar el
+  diseño» a cualquier usuario. El puesto se sigue leyendo con sudo; la
+  acción, con el usuario.
+
+**Pruebas:**
+
+- (B) `test_hierarchy` test_04: las actividades del PR-XH1 vigente con método
+  de medición (`_sgi_check_procedure_measures`).
+- (A) `test_mp_change` test_02: el numeral se calcula desde 29.2.0 (clave del
+  proceso + paso): «4.1» queda como numeral anterior y la referencia es
+  «ZMPC / ZMPC.01 …».
+- (B) `test_my_procedure_ui` test_02: revisa la vista que abre la acción de
+  Mi equipo (`sgi_my_team_view_hierarchy`, 54.4.0), no el organigrama por
+  omisión de `hr.employee.public` (en Odoo 19 el nativo de RH). La acción
+  siempre usó la suya: en producción el semáforo sí se ve. También llama a
+  `action_open_my_team` en `hr.employee.public` (el modelo donde vive).
+- (B) `test_sign_elearning`: el documento de la prueba nace vigente (lo lee
+  todo usuario interno, 56.7.0); en Odoo 19 el Jefe MAST no leía el borrador
+  ajeno sin carpeta.
+- `test_role_audit` test_07: sin causa confirmada (el recálculo de lo
+  guardado al archivar la actividad); se agregan aserciones intermedias para
+  que la próxima corrida diga si falla la lista del puesto, la búsqueda del
+  empleado o el recálculo. Ninguna aserción se quitó.
+
 ## 19.0.57.13.0 — 2026-09-29
 
 **Corregido (entrega 8, primer bloque; H-018, J-010; decisión de Jose

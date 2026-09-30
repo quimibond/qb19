@@ -131,8 +131,19 @@ class TestRoleAudit(TransactionCase):
         # se vuelve a leer (en la interfaz cada petición lee de la base).
         activity.active = False
         self.env.flush_all()
+        # 57.13.1: la corrida real (build 38916808) falló abajo sin decir en
+        # qué paso. Primero lo que se calcula (el rol ya no cuenta para el
+        # puesto) y luego lo guardado: si falla solo lo guardado, el
+        # recálculo no se disparó (_sgi_mp_touch_jobs), no la lista.
+        self.assertFalse(role.activity_active)
+        self.assertNotIn(role, self.job.with_context(
+            sgi_mp_employee_id=self.emp.id)._sgi_mp_role_lists()['detail'])
+        self.assertIn(self.emp, Employee.sudo().with_context(active_test=False).search(
+            [('sgi_mp_job_id', 'in', role._sgi_mp_jobs().ids)]),
+            "El empleado se encuentra por el puesto del rol (a quién se recalcula).")
         self.emp.invalidate_recordset(['sgi_mp_role_ids'])
-        self.assertNotIn(role, self.emp.sgi_mp_role_ids)
+        self.assertNotIn(role, self.emp.sgi_mp_role_ids,
+                         "La lista del puesto ya no trae el rol, pero lo guardado no se recalculó.")
         activity.active = True
         self.env.flush_all()
         self.emp.invalidate_recordset(['sgi_mp_role_ids'])
