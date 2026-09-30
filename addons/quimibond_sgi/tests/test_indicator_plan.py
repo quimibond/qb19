@@ -8,6 +8,7 @@ from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
 from ..models.sgi_calendar import sgi_nth_business_day
+from .common_calendar import sgi_test_calendar
 
 
 @tagged('post_install', '-at_install')
@@ -25,6 +26,10 @@ class TestIndicatorPlan(TransactionCase):
                                   groups='base.group_user,quimibond_sgi.group_sgi_user')
         cls.manager = new_test_user(env, login='plan_manager',
                                     groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        # 57.66.0: días hábiles de lunes a viernes, sin los festivos ni la
+        # zona del calendario de la base (el plazo del plan se recorre al
+        # hábil anterior).
+        sgi_test_calendar(env)
 
     def _red(self, code, period=date(2047, 5, 1), **vals):
         base = {'code': code, 'name': 'KPI %s' % code, 'direction': 'higher_better',
@@ -96,11 +101,16 @@ class TestIndicatorPlan(TransactionCase):
         director = new_test_user(self.env, login='plan_director',
                                  groups='base.group_user,quimibond_sgi.group_sgi_director')
         indicator, measure = self._red('ZP-03', period=date(2030, 1, 1))
-        self.Measure._sgi_escalate_red_plans(date(2030, 2, 9))
+        # 57.15.0 (decisión 4 de la tanda 2): el día 10 de febrero de 2030 es
+        # domingo; el plazo se adelanta al viernes 8. La prueba se escribió
+        # antes (esperaba el 10) y el sábado 9 ya escalaba.
+        self.assertEqual(measure.plan_due, date(2030, 2, 8))
+        self.Measure._sgi_escalate_red_plans(date(2030, 2, 7))
+        self.Measure._sgi_escalate_red_plans(date(2030, 2, 8))
         escalations = self.Activity.search([('res_model', '=', 'sgi.indicator'),
                                             ('res_id', '=', indicator.id),
                                             ('summary', 'ilike', 'escalado a Dirección')])
-        self.assertFalse(escalations, "Antes del día 10 no escala.")
+        self.assertFalse(escalations, "Hasta el día del plazo no escala.")
         self.Measure._sgi_escalate_red_plans(date(2030, 2, 11))
         escalations = self.Activity.search([('res_model', '=', 'sgi.indicator'),
                                             ('res_id', '=', indicator.id),

@@ -46,13 +46,41 @@ class SgiFormatMapSeed(models.Model):
     _inherit = 'sgi.format.map'
 
     @api.model
+    def _sgi_seed_lang_order(self):
+        """Idiomas en que se busca el nombre de un tipo de operación: es_MX
+        primero (Quimibond los nombró en español), luego los demás instalados
+        y al final en_US. Una migración corre sin idioma (en_US) y el nombre
+        es traducible: en inglés «Carda» no existe."""
+        installed = [code for code, _name in self.env['res.lang'].get_installed()]
+        order = [code for code in ('es_MX',) if code in installed]
+        order += [code for code in installed if code not in order and code != 'en_US']
+        return order + ['en_US']
+
+    @api.model
+    def _sgi_picking_type_by_name(self, PType, name, company):
+        """(tipo, cuántos): el tipo de operación ACTIVO de ``company`` que se
+        llama exactamente ``name`` en el primer idioma (``_sgi_seed_lang_order``)
+        donde hay uno solo. Si en ninguno hay exactamente uno, (vacío, el
+        mayor número de coincidencias visto: 0 = no existe, 2+ = ambiguo)."""
+        seen = 0
+        for lang in self._sgi_seed_lang_order():
+            found = PType.with_context(lang=lang).search(
+                [('name', '=', name), ('company_id', '=', company.id)])
+            if len(found) == 1:
+                return found, 1
+            seen = max(seen, len(found))
+        return PType.browse(), seen
+
+    @api.model
     def _sgi_seed_operation_maps(self, table=SGI_OPERATION_FORMAT_MAPS, company=None):
         """Crea los mapeos con criterio de ``table`` que falten. Devuelve la
         lista de claves creadas."""
         company = company or self.env['sgi.config']._sgi_company()
         Map = self.sudo().with_context(active_test=False)
         Doc = self.env['documents.document'].sudo()
-        PType = self.env['stock.picking.type'].sudo().with_context(active_test=False)
+        # 57.66.0: solo tipos activos (el build de staging contaba los
+        # archivados: «Cocina Entretelas (2)», «Tintorería (3)»).
+        PType = self.env['stock.picking.type'].sudo()
         created = []
         for model_name, code, type_names, domain, sequence, note in table:
             model = self.env['ir.model']._get(model_name)
@@ -75,11 +103,11 @@ class SgiFormatMapSeed(models.Model):
             types = PType.browse()
             missing = []
             for name in type_names:
-                found = PType.search([('name', '=', name), ('company_id', '=', company.id)])
-                if len(found) == 1:
+                found, count = self._sgi_picking_type_by_name(PType, name, company)
+                if found:
                     types |= found
                 else:
-                    missing.append("%s (%d)" % (name, len(found)))
+                    missing.append("%s (%d)" % (name, count))
             if missing:
                 _logger.warning("SGI formatos C4/C6: %s: tipos de operación no encontrados o "
                                 "ambiguos en %s: %s; se salta.", code, company.display_name,

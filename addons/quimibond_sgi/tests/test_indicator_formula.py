@@ -7,6 +7,8 @@ from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
+from .common_calendar import sgi_test_calendar
+
 
 @tagged('post_install', '-at_install')
 class TestIndicatorFormula(TransactionCase):
@@ -172,6 +174,10 @@ class TestIndicatorFormula(TransactionCase):
     def test_09_comparar_dos_fechas_del_registro(self):
         # 56.15.0: antes usaba sgi.employer.obligation (retirado); la bitácora
         # de bloqueo contable tiene dos fechas: A = «antes», B = «después».
+        # 57.66.0: con la zona de producción (México). La fecha se trataba
+        # como medianoche UTC y caía en el día anterior: «del sábado 17 al
+        # martes 20» contaba 1 hábil en la copia de producción.
+        sgi_test_calendar(self.env, tz='America/Mexico_City')
         ind = self.Indicator.create({'code': 'ZF-09', 'name': 'Fechas', 'calc_mode': 'configurable'})
         Log = self.env['sgi.lock.date.log']
         model = self.env['ir.model']._get('sgi.lock.date.log')

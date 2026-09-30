@@ -249,16 +249,17 @@ class TestIndicadores2(TransactionCase):
     # ---- S4-01 -----------------------------------------------------------
     def test_06_bajas_registradas_al_dia_siguiente(self):
         env = self.env
-        reason = env['hr.departure.reason'].search([], limit=1) \
-            or env['hr.departure.reason'].create({'name': 'Renuncia prueba'})
+        # 57.66.0: motivo propio (no el primero de la base).
+        reason = env['hr.departure.reason'].create({'name': 'Renuncia prueba S4-01'})
         Employee = env['hr.employee']
         departure = date(2045, 3, 14)            # martes: vence el miércoles 15
 
         def leaver(name, registered, with_reason=True):
             employee = Employee.create({'name': name, 'company_id': self.company.id})
-            vals = {'departure_date': departure}
-            if with_reason:
-                vals['departure_reason_id'] = reason.id
+            # 57.66.0: el motivo va explícito también cuando falta (False):
+            # la prueba no depende de lo que la base ponga por omisión.
+            vals = {'departure_date': departure,
+                    'departure_reason_id': reason.id if with_reason else False}
             employee.write(vals)
             self._flush_tracking()
             self._messages_of(employee).write({'date': registered})
@@ -342,6 +343,9 @@ class TestIndicadores2(TransactionCase):
         codes = ('S2-01', 'S1-05', 'C1-04', 'RH-01', 'S4-01', 'S6-02', 'C4-01')
         for existing in Indicator.with_context(active_test=False).search([('code', 'in', codes)]):
             existing.code = existing.code + '-PROD'
+        # 57.66.0: create() no baja lo pendiente del ORM; sin esto el INSERT
+        # chocaba con la clave real (índice único) en la copia de producción.
+        Indicator.flush_model(['code'])
         created = {code: Indicator.create({'code': code, 'name': code, 'calc_mode': 'manual'})
                    for code in codes}
         created['S1-05'].calc_mode = 'configurable'      # decisión de MAST: no se toca
@@ -361,6 +365,7 @@ class TestIndicadores2(TransactionCase):
         for existing in Indicator.with_context(active_test=False).search(
                 [('code', 'in', ('S1-05', 'C4-01'))]):
             existing.code = existing.code + '-PROD'
+        Indicator.flush_model(['code'])  # 57.66.0: ver test_08
         s105 = Indicator.create({
             'code': 'S1-05', 'name': 'Desviación de precio de compra', 'calc_mode': 'manual',
             'source': "Líneas de factura de proveedor contra lista de precios del proveedor"})

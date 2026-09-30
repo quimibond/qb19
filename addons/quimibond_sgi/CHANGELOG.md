@@ -13,6 +13,117 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.66.0 — 2026-09-30
+
+Pruebas del SGI corridas en el build de **staging** de `main` (base copia de
+producción, no base nueva): 14 fallas y 9 errores de 938. Cada una se
+clasificó: (a) error real o choque entre ramas, (b) la prueba dependía de la
+fecha real, (c) la prueba chocaba con datos de producción. Ninguna prueba se
+saltó, quitó ni debilitó.
+
+**Corregido (código):**
+
+- (a) **Plan de salida «Baja de personal» (57.14.0, S6-02):** al cambiarle el
+  tipo a un renglón, Odoo 19 recalcula `summary` desde el tipo (compute
+  guardado y editable) y el renglón perdía su texto: «Desactivar usuario de
+  Odoo, correo y accesos» quedaba como «Retirar accesos (usuario de Odoo,
+  correo y sistemas)», y la segunda corrida ya no encontraba el renglón por
+  su prefijo. `_sgi_adopt_offboarding_plan` escribe tipo y resumen juntos.
+  Producción (57.13.0) aún no corre la migración 57.14.0: la corre ya
+  corregida. (`test_indicadores_2` test_07, `KeyError`.)
+- (a) **Fórmula configurable, «días hábiles» entre dos fechas:** una fecha
+  (`Date`) se volvía medianoche UTC y `sgi_business_days` la pasaba a la
+  zona del calendario; con el de producción (America/Mexico_City) caía en el
+  día anterior y «del sábado 17 al martes 20» contaba 1 hábil en vez de 2.
+  Ahora una fecha va tal cual y solo un datetime cambia de zona
+  (`sgi.indicator.term._sgi_delta`). (`test_indicator_formula` test_09.)
+- (a) **«Hoy» del SGI en los estados calculados:** el estado del documento
+  externo (`sgi_ext_state`) y la vigencia de estudios y exámenes
+  (`sgi.health.record.state`) usaban `context_today` (UTC para OdooBot)
+  mientras sus crons de aviso usan `sgi_today` (57.15.0): después de las
+  18:00 de México el estado y el aviso podían diferir un día. Ambos usan
+  `sgi_today`.
+- (a) **Acción «Actividades» del SGI:** hasta 45.0.0 abría agrupada por
+  proceso (`search_default_group_process`); quitar el campo del XML no lo
+  borra de la base y la copia de producción lo seguía teniendo. El contexto
+  va explícito (`{}`). (`test_procedure` TestProcedureActivityMenu test_01.)
+- (a) **Mapeos de formato por tipo de operación (57.61.0):** la migración
+  corre sin idioma (en_US) y el nombre del tipo de operación es traducible;
+  además contaba los archivados. En staging saltó «Carda» y «V10-» (0),
+  «Cocina Entretelas» (2), «Tintorería» (3) y «Salida de consumibles» (0).
+  `_sgi_seed_operation_maps` busca solo tipos **activos** y el nombre en
+  **es_MX primero** (luego los demás idiomas instalados y en_US), y toma un
+  tipo solo si en ese idioma hay exactamente uno
+  (`_sgi_picking_type_by_name`). Prueba nueva:
+  `test_format_map_operaciones` test_05 (nombre en inglés distinto del
+  español y un duplicado archivado).
+
+**Migración:** `19.0.57.66.0/post-migrate.py` vuelve a llamar
+`_sgi_seed_operation_maps()` para las bases que ya pasaron por 57.61.0
+(staging); respeta los mapeos que existan (mismo documento o clave, activos
+o archivados). Idempotente. En producción (es_MX, compañía 1) cada nombre
+existe una sola vez y activo: Carda 80, V10- 89, Cocina Entretelas 82,
+Tintorería 88, Salida de consumibles 242.
+
+**Pruebas (la prueba estaba mal o no aislaba sus datos):**
+
+- (b) `test_external_doc` test_02 y `test_hse_records` test_01: parchaban
+  `fields.Date.context_today`, pero desde 57.15.0 los crons usan
+  `sgi_today` (reloj real): congelan el reloj con `freeze_time`.
+- (b→a) `test_hse_records` test_03: esperaba «semanal: solo los lunes»;
+  desde 57.15.0 (G-022, decisión 14) la semanal sale el primer día hábil de
+  la semana en que corra el cron, una vez por semana. La prueba verifica eso
+  (el martes sale si el lunes no corrió; tras generar, no; la semana
+  siguiente, sí; el sábado, no) con calendario propio de lunes a viernes.
+- (b→a) `test_indicator_plan` test_03: el día 10 de febrero de 2030 es
+  domingo y desde 57.15.0 el plazo del plan se adelanta al viernes 8; el
+  sábado 9 ya escalaba. Verifica el plazo (8) y que no escala hasta ese día.
+  Calendario propio de lunes a viernes en la clase.
+- (a) `test_fichas_busquedas` test_03: el seguimiento de `mail.thread` se
+  escribe en el precommit del cursor; la prueba lo corre (como
+  `test_indicadores_2`) y además exige el renglón de `date_done`.
+- (c) `test_fichas_busquedas` test_02: los botones llevan `groups` y Odoo
+  los quita de la vista a quien no está en el grupo; OdooBot no lo está en
+  la copia de producción. La ficha se pide como Jefe MAST.
+- (c) `test_audit_pr3` test_04: el pie del informe sale del mapeo por
+  referencia `format_ref_audit_report` (noupdate, MAST lo edita) y del
+  documento vigente; la prueba oculta los documentos reales y fija su mapeo
+  (como `test_laboratorio` y `test_etiquetas_lote`).
+- (c) `test_ola1` test_02: la Dirección que recibe la escalación es el primer
+  miembro activo del grupo; en producción es el usuario 9. `sgi_set_director`
+  (en `tests/common_users.py`) saca de Dirección, dentro de la prueba, a los
+  demás miembros directos activos.
+- (c) `test_indicadores_2` test_08 y test_09, `test_legado` test_02: renombran
+  el indicador real (S2-01, S1-05, E1-02) y luego crean el suyo, pero
+  `create()` no baja lo pendiente del ORM y el INSERT chocaba con el índice
+  único. Se baja el cambio antes (`flush_model`); `test_legado` busca también
+  archivados.
+- (c) `test_indicadores_2` test_06: motivo de salida propio y «sin motivo»
+  explícito (`False`), sin depender del primer motivo ni de lo que la base
+  ponga por omisión. **Causa no confirmada** con el log (la falla dice solo
+  «value diff»); si vuelve a fallar, el log dirá cuál de las dos cifras.
+- (c) `test_indicadores_571` test_01 y test_02: lo pendiente del ORM baja
+  antes de fijar etapa y fechas por SQL; si no, el flush posterior las
+  reescribía y la NC «cancelada» volvía a contar (50 % en vez de 66.67 %).
+- (c) `test_my_procedure` (test_04, 08, 12, 13, 15): con «Mi procedimiento
+  con firma» encendido en la base, publicar arma la hoja de firmas con PyPDF2
+  y en modo prueba Odoo entrega HTML («EOF marker not found»). La clase
+  publica sin firma (la firma se prueba en `test_my_procedure_sign`, con PDF
+  de verdad).
+- `tests/common_calendar.py`: `sgi_test_calendar(env, tz=...)` para probar
+  con la zona de producción (`test_indicator_formula` test_09).
+
+**Pendiente:** `test_role_audit` test_07 (desde 57.13.1): sin causa
+encontrada en el código (el recálculo de lo guardado en el empleado al
+archivar la actividad se marca con `add_to_compute` y el `flush_all` lo
+corre); se deja sin tocar.
+
+**Revisadas** (patrones de staging en las pruebas nuevas de #487; sin otro
+cambio que la test_05 de arriba): `test_format_map_varios`, `test_format_map_operaciones`,
+`test_laboratorio`, `test_etiquetas_lote`, `test_menus_entregables` y
+`test_entregables_modelo` ya aíslan sus mapeos y documentos y usan fechas y
+claves propias.
+
 ## 19.0.57.65.0 — 2026-09-30
 
 **Cambiado (bloque 2 de formularios 6/6, inventario §3.4 y §5 #12):** 20

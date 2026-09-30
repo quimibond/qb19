@@ -5,6 +5,8 @@ puesto, AU-3 informe F-P-G03-07 archivado al cerrar."""
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestAuditPr3(TransactionCase):
@@ -12,6 +14,13 @@ class TestAuditPr3(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # 57.66.0: el pie del informe sale del mapeo por referencia
+        # (noupdate, MAST lo edita y lo liga a su documento) y del documento
+        # vigente: en la copia de producción la prueba fija el suyo, como
+        # test_laboratorio y test_etiquetas_lote.
+        sgi_hide_real_documents(cls.env)
+        cls.env.ref('quimibond_sgi.format_ref_audit_report').write(
+            {'sgi_code': 'F-P-G03-07', 'document_id': False, 'active': True})
         cls.job_exec = cls.env['hr.job'].create({'name': 'PLANEADOR AUD PRUEBA'})
         cls.job_other = cls.env['hr.job'].create({'name': 'CONTADOR AUD PRUEBA'})
         cls.family = cls.env['sgi.job.family'].create({

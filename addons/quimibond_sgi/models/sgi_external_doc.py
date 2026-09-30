@@ -48,7 +48,10 @@ class DocumentsDocumentExternal(models.Model):
 
     @api.depends('sgi_ext_deadline', 'sgi_ext_implemented_date', 'sgi_doc_type_id.code')
     def _compute_sgi_ext_state(self):
-        today = fields.Date.context_today(self)
+        # 57.66.0: el «hoy» del SGI (zona del calendario), como el cron de
+        # avisos; con context_today de OdooBot (UTC) el estado y el aviso
+        # podían diferir un día después de las 18:00 de México.
+        today = sgi_today(self.env)
         for doc in self:
             if doc.sgi_doc_type_id.code != 'externo' or not doc.sgi_ext_received_date:
                 doc.sgi_ext_state = False

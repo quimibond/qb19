@@ -3,10 +3,11 @@
 trabajador, recorrido de la Comisión de Seguridad e Higiene y checklists de
 planta y unidades como hojas de mantenimiento."""
 from datetime import date
-from unittest.mock import patch
 
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase, tagged, new_test_user
+from odoo.tests import TransactionCase, freeze_time, tagged, new_test_user
+
+from .common_calendar import sgi_test_calendar
 
 
 @tagged('post_install', '-at_install')
@@ -18,6 +19,9 @@ class TestHseRecords(TransactionCase):
         cls.rh = new_test_user(cls.env, login='zs_hse_rh', groups='base.group_user,hr.group_hr_user')
         cls.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.rh_user_id', cls.rh.id)
         cls.employee = cls.env['hr.employee'].create({'name': 'ZS Tejedor'})
+        # 57.66.0: días hábiles de lunes a viernes sin festivos cargados (el
+        # calendario de producción tiene su zona y sus festivos).
+        sgi_test_calendar(cls.env)
 
     def test_01_examen_vence_y_avisa_a_rh(self):
         Health = self.env['sgi.health.record']
@@ -26,7 +30,8 @@ class TestHseRecords(TransactionCase):
         new = Health.create({'employee_id': self.employee.id, 'name': 'Audiometría',
                              'date': date(2046, 1, 10), 'validity_months': 12, 'result': 'apto'})
         self.assertEqual(new.next_date, date(2047, 1, 10))
-        with patch('odoo.fields.Date.context_today', return_value=date(2046, 12, 20)):
+        # 57.66.0: el cron usa sgi_today (57.15.0), no context_today.
+        with freeze_time('2046-12-20 12:00:00'):
             Health._sgi_expiry_notices()
         self.assertEqual(new.state, 'por_vencer')
         self.assertEqual(new.activity_ids.user_id, self.rh)
@@ -61,10 +66,17 @@ class TestHseRecords(TransactionCase):
                          (0, 0, {'name': 'Luces'})],
         })
         monday, tuesday = date(2046, 3, 5), date(2046, 3, 6)
+        saturday, next_tuesday = date(2046, 3, 10), date(2046, 3, 13)
         self.assertTrue(template._sgi_due_today(monday))
-        self.assertFalse(template._sgi_due_today(tuesday), "Semanal: solo los lunes.")
+        self.assertFalse(template._sgi_due_today(saturday), "Día inhábil: no sale.")
+        # 57.15.0 (G-022, decisión 14): la semanal sale el primer día hábil
+        # de la semana en que corra el cron (si el lunes falló, sale el
+        # martes), una vez por semana.
+        self.assertTrue(template._sgi_due_today(tuesday), "El lunes no corrió: sale el martes.")
         request = template._sgi_generate(monday)
         self.assertEqual(len(request), 1)
+        self.assertFalse(template._sgi_due_today(tuesday), "Semanal: una vez por semana.")
+        self.assertTrue(template._sgi_due_today(next_tuesday), "La semana siguiente sí.")
         self.assertEqual(request.maintenance_type, 'preventive')
         self.assertEqual(len(request.sgi_checklist_line_ids), 2)
         self.assertFalse(template._sgi_generate(monday), "No duplica la del día.")

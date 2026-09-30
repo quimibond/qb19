@@ -95,3 +95,38 @@ class TestFormatMapOperaciones(TransactionCase):
         spec.loader.exec_module(module)
         module.migrate(self.env.cr, '19.0.57.60.0')
         self.assertEqual(self.Map._sgi_seed_operation_maps(), [])
+
+    def test_05_nombre_en_espanol_y_archivados(self):
+        """57.66.0: la migración corre sin idioma (en_US) y el nombre del tipo
+        de operación es traducible; en staging «Carda» no aparecía en inglés
+        y los archivados volvían ambiguos a «Cocina Entretelas» y
+        «Tintorería». Se busca en es_MX primero y solo entre los activos."""
+        self.env['res.lang']._activate_lang('es_MX')
+        self.Map.with_context(active_test=False).search(
+            [('sgi_code', '=', 'F-IT-P-P01-02-02')]).unlink()
+        doc = self.env['documents.document'].create({
+            'name': 'F-IT-P-P01-02-02 prueba.xlsx', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'formato', 'sgi_code': 'F-IT-P-P01-02-02', 'sgi_revision': 1,
+            'sgi_state': 'vigente'})
+        base = self.wh.manu_type_id
+        kitchen = base.copy({'name': 'ZQ Kitchen EN', 'sequence_code': 'ZQK'})
+        kitchen.with_context(lang='es_MX').name = 'ZQ Cocina ES'
+        archived = base.copy({'name': 'ZQ Kitchen EN viejo', 'sequence_code': 'ZQW'})
+        archived.with_context(lang='es_MX').name = 'ZQ Cocina ES'
+        archived.active = False
+        self.assertNotEqual(kitchen.with_context(lang='en_US').name, 'ZQ Cocina ES')
+        PType = self.env['stock.picking.type'].sudo()
+        found, count = self.Map._sgi_picking_type_by_name(PType, 'ZQ Cocina ES', self.company)
+        self.assertEqual((found, count), (kitchen, 1), "El archivado no cuenta.")
+        table = (('mrp.production', 'F-IT-P-P01-02-02', ('ZQ Cocina ES',), '', 10, 'Cocina'),)
+        # Como la migración: sin idioma en el contexto.
+        created = self.Map.with_context(lang=None)._sgi_seed_operation_maps(
+            table, company=self.company)
+        self.assertEqual(created, ['F-IT-P-P01-02-02'])
+        fmap = self.Map.search([('document_id', '=', doc.id)])
+        self.assertEqual(fmap.picking_type_ids, kitchen)
+        # Dos activos con el mismo nombre: ambiguo, no se elige ninguno.
+        archived.active = True
+        found, count = self.Map._sgi_picking_type_by_name(PType, 'ZQ Cocina ES', self.company)
+        self.assertFalse(found)
+        self.assertEqual(count, 2)

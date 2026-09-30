@@ -6,6 +6,8 @@ from lxml import etree
 
 from odoo.tests import TransactionCase, tagged
 
+from .common_users import sgi_test_user
+
 
 @tagged('post_install', '-at_install')
 class TestFichasBusquedas(TransactionCase):
@@ -29,7 +31,13 @@ class TestFichasBusquedas(TransactionCase):
                                 "%s sin filtro «Archivados»." % model)
 
     def test_02_state_buttons_confirm(self):
-        """D-008: cerrar, obsoletar o regresar a borrador pide confirmación."""
+        """D-008: cerrar, obsoletar o regresar a borrador pide confirmación.
+
+        57.66.0: la ficha se pide como Jefe MAST. Los botones llevan
+        ``groups`` (MAST, Salud, dueño del proceso) y Odoo quita de la vista
+        lo que el usuario no puede ver; el env de la prueba es OdooBot, que en
+        la copia de producción no está en esos grupos."""
+        manager = sgi_test_user(self.env, login='fichas_confirm_mast')
         checks = {
             'sgi.process': ['action_sgi_set_draft'],
             'sgi.incident': ['action_set_cerrado', 'action_set_reportado'],
@@ -40,7 +48,7 @@ class TestFichasBusquedas(TransactionCase):
             'sgi.risk': ['action_set_cerrado', 'action_set_identificado'],
         }
         for model, buttons in checks.items():
-            doc = etree.fromstring(self.env[model].get_view(view_type='form')['arch'])
+            doc = etree.fromstring(self.env[model].with_user(manager).get_view(view_type='form')['arch'])
             for name in buttons:
                 nodes = doc.xpath("//button[@name='%s']" % name)
                 self.assertTrue(nodes, "%s: falta el botón %s" % (model, name))
@@ -55,7 +63,19 @@ class TestFichasBusquedas(TransactionCase):
         line = self.env['sgi.action.line'].create({
             'risk_id': risk.id, 'name': 'Instalar guarda', 'responsible_id': self.env.user.id,
             'date_commit': date.today() + timedelta(days=10)})
+        self._flush_tracking()
+        line.invalidate_recordset(['message_ids'])
         before = len(line.message_ids)
         line.action_mark_done()
-        line.flush_recordset()
+        # 57.66.0: el seguimiento de mail.thread se escribe en el precommit
+        # del cursor (al confirmar), no en el flush: sin correrlo, el conteo
+        # dependía de si otra cosa lo había disparado antes.
+        self._flush_tracking()
+        line.invalidate_recordset(['message_ids'])
         self.assertGreater(len(line.message_ids), before, "Terminar queda en el historial.")
+        tracked = line.message_ids.tracking_value_ids.field_id.mapped('name')
+        self.assertIn('date_done', tracked, "El historial dice cuándo se terminó.")
+
+    def _flush_tracking(self):
+        self.env.flush_all()
+        self.env.cr.precommit.run()
