@@ -14,15 +14,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/model
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `date_decision` | Date | Fecha de decisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:70` |
-| `date_submitted` | Date | Fecha de envío |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:69` |
-| `element_ids` | One2many | Elementos |  |  | `sgi.ppap.element` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:71` |
-| `level` | Selection | Nivel |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:48` |
-| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:72` |
-| `partner_id` | Many2one | Cliente |  | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:44` |
-| `product_tmpl_id` | Many2one | Producto |  | sí | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:46` |
-| `reason` | Selection | Motivo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:55` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:62` |
+| `date_decision` | Date | Fecha de decisión | Fecha en que el cliente aprobó, rechazó o dio aprobación interina. |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:77` |
+| `date_submitted` | Date | Fecha de envío | Fecha en que se envió el PPAP al cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:75` |
+| `element_ids` | One2many | Elementos |  |  | `sgi.ppap.element` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:79` |
+| `level` | Selection | Nivel | Nivel de envío que pide el cliente (1 a 5); define qué elementos se entregan. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:51` |
+| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:80` |
+| `partner_id` | Many2one | Cliente | Cliente que aprueba el PPAP. | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:45` |
+| `product_tmpl_id` | Many2one | Producto | Producto que se somete a aprobación. | sí | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:48` |
+| `reason` | Selection | Motivo | Por qué se hace el PPAP. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:59` |
+| `state` | Selection | Estado | Preparación, enviado, aprobado, interino o rechazado. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:67` |
 
 ## Métodos públicos (7)
 

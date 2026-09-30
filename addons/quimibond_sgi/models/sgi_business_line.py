@@ -430,25 +430,31 @@ class SgiIndicatorMeasureSplit(models.Model):
     measure_id = fields.Many2one(
         'sgi.indicator.measure', string="Medición", required=True, ondelete='cascade', index=True)
     indicator_id = fields.Many2one(
-        related='measure_id.indicator_id', string="Indicador", store=True, index=True)
-    period_date = fields.Date(related='measure_id.period_date', string="Periodo", store=True)
-    team_id = fields.Many2one('crm.team', string="Equipo de ventas", ondelete='cascade', index=True)
-    market = fields.Selection(_MARKETS, string="Mercado")
+        related='measure_id.indicator_id', string="Indicador", store=True, index=True,
+        help="Indicador medido.")
+    period_date = fields.Date(related='measure_id.period_date', string="Periodo", store=True,
+                              help="Periodo de la medición.")
+    team_id = fields.Many2one('crm.team', string="Equipo de ventas", ondelete='cascade', index=True,
+                              help="Equipo de ventas del desglose.")
+    market = fields.Selection(_MARKETS, string="Mercado",
+                              help="Mercado del desglose: nacional, exportación o cliente sin país.")
     label = fields.Char(string="Renglón", compute='_compute_label', store=True)
-    value = fields.Float(string="Valor", digits=(16, 2))
-    numerator = fields.Float(string="Numerador", digits=(16, 2))
-    denominator = fields.Float(string="Denominador", digits=(16, 2))
-    sample_size = fields.Integer(string="Casos")
+    value = fields.Float(string="Valor", digits=(16, 2), help="Valor del desglose.")
+    numerator = fields.Float(string="Numerador", digits=(16, 2), help="Numerador del desglose.")
+    denominator = fields.Float(string="Denominador", digits=(16, 2), help="Denominador del desglose.")
+    sample_size = fields.Integer(string="Casos", help="Número de casos del desglose.")
     state = fields.Selection([
         ('capturado', "Calculado"),
         ('sin_dato', "Sin dato"),
-    ], string="Estado", default='capturado', required=True)
+    ], string="Estado", default='capturado', required=True,
+        help="Calculado o sin dato.")
     uom = fields.Char(related='indicator_id.uom', string="Unidad")
     semaphore = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Semáforo", compute='_compute_semaphore', store=True)
+    ], string="Semáforo", compute='_compute_semaphore', store=True,
+        help="Semáforo del desglose. Se calcula solo.")
     detail_model = fields.Char(string="Modelo del detalle")
     detail_ids = fields.Text(string="Registros del detalle")
 

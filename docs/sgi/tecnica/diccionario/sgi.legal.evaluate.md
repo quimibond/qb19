@@ -12,10 +12,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_legal.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `evidence` | Text | Evidencia revisada |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:266` |
-| `next_date` | Date | Próxima evaluación |  |  |  | compute `_compute_next_date`, guardado |  | `addons/quimibond_sgi/models/sgi_legal.py:269` |
-| `requirement_id` | Many2one |  |  | sí | `sgi.legal.requirement` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:259` |
-| `result` | Selection | Resultado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:260` |
+| `evidence` | Text | Evidencia revisada |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:280` |
+| `next_date` | Date | Próxima evaluación | Fecha de la próxima evaluación, según la frecuencia del requisito. Se puede cambiar. |  |  | compute `_compute_next_date`, guardado |  | `addons/quimibond_sgi/models/sgi_legal.py:283` |
+| `requirement_id` | Many2one |  | Requisito que se evalúa. | sí | `sgi.legal.requirement` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:272` |
+| `result` | Selection | Resultado | Resultado de la evaluación. «No cumple» levanta una NC. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:273` |
 
 ## Métodos públicos (1)
 

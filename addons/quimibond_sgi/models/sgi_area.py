@@ -10,7 +10,8 @@ class SgiArea(models.Model):
 
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True, translate=False)
-    department_id = fields.Many2one('hr.department', string="Departamento")
+    department_id = fields.Many2one('hr.department', string="Departamento",
+                                    help="Departamento que corresponde al área.")
     active = fields.Boolean(default=True)
 
     _code_uniq = models.Constraint(

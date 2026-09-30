@@ -22,7 +22,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_objective.py`.
 | `indicator_ids` | One2many | Indicadores |  |  | `sgi.indicator` |  |  | `addons/quimibond_sgi/models/sgi_objective.py:34` |
 | `name` | Char | Objetivo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_objective.py:26` |
 | `policy_id` | Many2one | Política integral | Política de la que se despliega este objetivo (cascada ISO). |  | `sgi.policy` |  |  | `addons/quimibond_sgi/models/sgi_objective.py:28` |
-| `target_year` | Integer | Año meta |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_objective.py:33` |
+| `target_year` | Integer | Año meta | Año en que se debe cumplir el objetivo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_objective.py:33` |
 
 ## Métodos públicos (1)
 

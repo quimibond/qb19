@@ -13,10 +13,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models
 | `sgi_acuse_attachment_ids` | One2many | Acuses firmados |  |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_links.py:215` |
 | `sgi_acuse_count` | Integer | Acuses |  |  |  | compute `_compute_sgi_acuse_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_links.py:217` |
 | `sgi_coa_attachment_ids` | Many2many | COA | Certificados de análisis del embarque (uno por producto). |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:105` |
-| `sgi_coa_date` | Datetime | COA adjuntado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:109` |
-| `sgi_coa_sent_date` | Datetime | COA enviado al cliente |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:112` |
-| `sgi_coa_status` | Selection | Estado del COA |  |  |  | compute `_compute_sgi_coa_status`, guardado |  | `addons/quimibond_sgi/models/sgi_coa.py:114` |
-| `sgi_coa_uid` | Many2one | COA adjuntado por |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:110` |
+| `sgi_coa_date` | Datetime | COA adjuntado | Fecha y hora en que se adjuntó el COA. |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:109` |
+| `sgi_coa_sent_date` | Datetime | COA enviado al cliente | Fecha y hora en que se envió el COA al cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:114` |
+| `sgi_coa_status` | Selection | Estado del COA | No aplica, pendiente, adjunto o enviado. Se calcula solo. |  |  | compute `_compute_sgi_coa_status`, guardado |  | `addons/quimibond_sgi/models/sgi_coa.py:117` |
+| `sgi_coa_uid` | Many2one | COA adjuntado por | Quién adjuntó el COA. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:111` |
 | `sgi_delivery_picking_id` | Many2one | Entrega que surte | Orden de entrega del mismo pedido que este traslado interno surte: la abierta con la fecha programada más próxima, o la última si todas están hechas. Se puede corregir a mano. |  | `stock.picking` | compute `_compute_sgi_delivery_picking`, guardado |  | `addons/quimibond_sgi/models/sgi_release.py:49` |
 | `sgi_export_crossing_datetime` | Datetime | Cruce (exportación) | Fecha y hora en que la mercancía cruzó la frontera (C2-05). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_sales.py:51` |
 | `sgi_export_file_closed_date` | Date | Expediente cerrado | Fecha en que quedó completo el expediente de exportación (C2-05). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_sales.py:54` |

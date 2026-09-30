@@ -56,39 +56,49 @@ class SgiRisk(models.Model):
         ('ambiental', "Aspecto ambiental"),
         ('patrimonial', "Patrimonial"),
         ('foda', "FODA"),
-    ], string="Instrumento", default='ryo', required=True, tracking=True)
+    ], string="Instrumento", default='ryo', required=True, tracking=True,
+        help="Con qué instrumento se evalúa: riesgos y oportunidades, IPER, aspecto ambiental, patrimonial o "
+             "FODA.")
     kind = fields.Selection([
         ('riesgo', "Riesgo"),
         ('oportunidad', "Oportunidad"),
-    ], string="Tipo", default='riesgo', required=True)
-    category_id = fields.Many2one('sgi.risk.category', string="Categoría")
+    ], string="Tipo", default='riesgo', required=True,
+        help="Riesgo u oportunidad.")
+    category_id = fields.Many2one('sgi.risk.category', string="Categoría",
+                                  help="Categoría del riesgo u oportunidad.")
     source = fields.Selection([
         ('interno', "Interno"),
         ('externo', "Externo"),
-    ], string="Origen", default='interno')
-    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    ], string="Origen", default='interno',
+        help="Si el riesgo viene de dentro o de fuera de la empresa.")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso al que pertenece el riesgo. Su dueño recibe las revisiones.")
     # Estructura vigente = proceso activo. Guardado para poder filtrar los
     # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
     sgi_process_active = fields.Boolean(
         related='process_id.active', store=True, string="Proceso vigente",
         help="El proceso al que pertenece está activo. Sin proceso o con el "
              "proceso archivado, queda pendiente de proceso nuevo.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
-    job_id = fields.Many2one('hr.job', string="Puesto")
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
+                                  help="Área del SGI del riesgo.")
+    job_id = fields.Many2one('hr.job', string="Puesto", help="Puesto expuesto al riesgo (IPER).")
     existing_controls = fields.Text(string="Controles existentes")
     operational_control_id = fields.Many2one('documents.document',
-                                             string="Control operacional (ambiental)")
+                                             string="Control operacional (ambiental)",
+                                             help="Documento de control operacional del aspecto ambiental.")
     condition = fields.Selection([
         ('rutinaria', "Rutinaria"),
         ('no_rutinaria', "No rutinaria"),
         ('emergencia', "Emergencia"),
-    ], string="Condición (IPER)")
+    ], string="Condición (IPER)",
+        help="En la matriz IPER, si la actividad es rutinaria, no rutinaria o de emergencia.")
     foda_type = fields.Selection([
         ('fortaleza', "Fortaleza"),
         ('oportunidad', "Oportunidad"),
         ('debilidad', "Debilidad"),
         ('amenaza', "Amenaza"),
-    ], string="Tipo FODA")
+    ], string="Tipo FODA",
+        help="En el análisis FODA: fortaleza, oportunidad, debilidad o amenaza.")
 
     action_line_ids = fields.One2many('sgi.action.line', 'risk_id', string="Acciones")
     # Ligas inversas (H7): NCs del SGI que apuntan a este riesgo.
@@ -97,41 +107,56 @@ class SgiRisk(models.Model):
         string="NCs ligadas")
     sgi_nc_count = fields.Integer(string="# NCs ligadas",
                                   compute='_compute_sgi_nc_count')
-    next_review_date = fields.Date(string="Próxima revisión")
+    next_review_date = fields.Date(string="Próxima revisión",
+                                   help="Fecha de la próxima reevaluación. Al vencer, llega un aviso al "
+                                        "dueño del proceso.")
     state = fields.Selection([
         ('identificado', "Identificado"),
         ('en_tratamiento', "En tratamiento"),
         ('controlado', "Controlado"),
         ('cerrado', "Cerrado"),
-    ], string="Estado", default='identificado', required=True, tracking=True)
+    ], string="Estado", default='identificado', required=True, tracking=True,
+        help="Identificado, en tratamiento, controlado o cerrado.")
     active = fields.Boolean(default=True)
 
     # Evaluación inicial
-    eval_probability = fields.Selection(SCALE_1_5, string="Probabilidad")
-    eval_impact = fields.Selection(SCALE_1_5, string="Impacto / Severidad")
-    score = fields.Integer(string="Nivel de riesgo", compute='_compute_score', store=True)
+    eval_probability = fields.Selection(SCALE_1_5, string="Probabilidad",
+                                        help="Probabilidad de que ocurra, de 1 a 5.")
+    eval_impact = fields.Selection(SCALE_1_5, string="Impacto / Severidad",
+                                   help="Impacto o severidad, de 1 a 5.")
+    score = fields.Integer(string="Nivel de riesgo", compute='_compute_score', store=True,
+                           help="Probabilidad × impacto. Se calcula solo.")
     attention_level = fields.Selection(ATTENTION_LEVELS, string="Nivel de atención",
-                                       compute='_compute_score', store=True)
+                                       compute='_compute_score', store=True,
+                                       help="Nivel de atención según el puntaje y el instrumento. Se calcula "
+                                            "solo.")
 
     # Evaluación residual
-    residual_probability = fields.Selection(SCALE_1_5, string="Probabilidad residual")
-    residual_impact = fields.Selection(SCALE_1_5, string="Impacto residual")
-    residual_score = fields.Integer(string="Riesgo residual", compute='_compute_residual', store=True)
+    residual_probability = fields.Selection(SCALE_1_5, string="Probabilidad residual",
+                                            help="Probabilidad después de las acciones, de 1 a 5.")
+    residual_impact = fields.Selection(SCALE_1_5, string="Impacto residual",
+                                       help="Impacto después de las acciones, de 1 a 5.")
+    residual_score = fields.Integer(string="Riesgo residual", compute='_compute_residual', store=True,
+                                    help="Probabilidad residual × impacto residual. Se calcula solo.")
     residual_level = fields.Selection(ATTENTION_LEVELS, string="Nivel residual",
-                                      compute='_compute_residual', store=True)
+                                      compute='_compute_residual', store=True,
+                                      help="Nivel de atención después de las acciones. Se calcula solo.")
     residual_note = fields.Text(
         string="Justificación del riesgo residual",
         help="Obligatoria para controlar/cerrar un riesgo de atención máxima si "
              "el riesgo residual no baja respecto al inicial.")
     has_finished_actions = fields.Boolean(string="Acciones terminadas",
-                                          compute='_compute_has_finished_actions')
+                                          compute='_compute_has_finished_actions',
+                                          help="Indica que todas sus acciones ya terminaron.")
     # DIR-2 (52.0.0): evaluación periódica. Cada evaluación sella la fecha y
     # propone la siguiente (enero o julio); un riesgo alto sin acción abierta
     # queda marcado para el dueño del proceso y para Dirección.
-    last_eval_date = fields.Date(string="Última evaluación", readonly=True, copy=False)
+    last_eval_date = fields.Date(string="Última evaluación", readonly=True, copy=False,
+                                 help="Fecha de la última evaluación. La registra «Registrar evaluación».")
     semaphore = fields.Selection([
         ('verde', "Verde"), ('amarillo', "Amarillo"), ('rojo', "Rojo"),
-    ], string="Semáforo", compute='_compute_semaphore', store=True)
+    ], string="Semáforo", compute='_compute_semaphore', store=True,
+        help="Semáforo según el nivel de atención. Se calcula solo.")
     high_without_action = fields.Boolean(
         string="Alto sin acción abierta", compute='_compute_high_without_action', store=True,
         help="Riesgo de atención alta o inmediata, no cerrado, sin ninguna acción de "

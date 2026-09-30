@@ -14,14 +14,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_competence.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `current_level_id` | Many2one | Nivel actual |  |  | `hr.skill.level` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:44` |
-| `current_progress` | Integer | % actual |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_competence.py:46` |
-| `department_id` | Many2one | Departamento |  |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:39` |
-| `employee_id` | Many2one | Empleado |  |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:38` |
-| `gap` | Integer | Brecha (%) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_competence.py:47` |
-| `job_id` | Many2one | Puesto |  |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:40` |
-| `required_level_id` | Many2one | Nivel requerido |  |  | `hr.skill.level` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:43` |
-| `required_progress` | Integer | % requerido |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_competence.py:45` |
-| `skill_id` | Many2one | Competencia |  |  | `hr.skill` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:41` |
-| `skill_type_id` | Many2one | Tipo |  |  | `hr.skill.type` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:42` |
+| `current_level_id` | Many2one | Nivel actual | Nivel que hoy tiene el empleado en la competencia. |  | `hr.skill.level` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:50` |
+| `current_progress` | Integer | % actual |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_competence.py:53` |
+| `department_id` | Many2one | Departamento | Departamento del empleado. |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:40` |
+| `employee_id` | Many2one | Empleado | Empleado con la brecha. |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:38` |
+| `gap` | Integer | Brecha (%) | Diferencia entre el nivel requerido y el actual, en porcentaje. |  |  |  |  | `addons/quimibond_sgi/models/sgi_competence.py:54` |
+| `job_id` | Many2one | Puesto | Puesto que requiere la competencia. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:42` |
+| `required_level_id` | Many2one | Nivel requerido | Nivel que el puesto requiere. |  | `hr.skill.level` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:48` |
+| `required_progress` | Integer | % requerido |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_competence.py:52` |
+| `skill_id` | Many2one | Competencia | Competencia con brecha. |  | `hr.skill` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:44` |
+| `skill_type_id` | Many2one | Tipo | Tipo de competencia. |  | `hr.skill.type` |  |  | `addons/quimibond_sgi/models/sgi_competence.py:46` |
 

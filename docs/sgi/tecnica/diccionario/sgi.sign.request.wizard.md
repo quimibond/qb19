@@ -12,11 +12,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_sign_record.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `partner_id` | Many2one | Firmante |  | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:130` |
-| `res_id` | Integer |  |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:128` |
+| `partner_id` | Many2one | Firmante | Persona que firma. | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:131` |
+| `res_id` | Integer |  | Registro al que se liga la firma. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:128` |
 | `res_model` | Char |  |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:127` |
-| `subject` | Char | Asunto |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:131` |
-| `template_id` | Many2one | Plantilla de firma |  | sí | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:129` |
+| `subject` | Char | Asunto |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:132` |
+| `template_id` | Many2one | Plantilla de firma | Plantilla de Sign que se firma. | sí | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:129` |
 
 ## Métodos públicos (1)
 

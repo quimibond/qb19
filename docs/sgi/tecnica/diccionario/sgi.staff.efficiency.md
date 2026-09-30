@@ -14,19 +14,19 @@ Archivos: `addons/quimibond_sgi/models/sgi_staff_efficiency.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `amount_total` | Monetary | Importe total |  |  |  | compute `_compute_amount_total`, sin guardar | _MONEY_GROUPS | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:59` |
-| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:62` |
-| `currency_id` | Many2one |  |  |  | `res.currency` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:61` |
-| `department_id` | Many2one | Área |  |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:51` |
-| `employee_count` | Integer | Número de empleados |  |  |  | compute `_compute_totals`, sin guardar |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:58` |
-| `line_ids` | One2many | Empleados |  |  | `sgi.staff.efficiency.line` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:57` |
+| `amount_total` | Monetary | Importe total |  |  |  | compute `_compute_amount_total`, sin guardar | _MONEY_GROUPS | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:66` |
+| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:69` |
+| `currency_id` | Many2one |  |  |  | `res.currency` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:68` |
+| `department_id` | Many2one | Área | Área de la hoja. |  | `hr.department` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:52` |
+| `employee_count` | Integer | Número de empleados |  |  |  | compute `_compute_totals`, sin guardar |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:65` |
+| `line_ids` | One2many | Empleados |  |  | `sgi.staff.efficiency.line` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:64` |
 | `name` | Char |  |  |  |  | compute `_compute_name`, guardado |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:48` |
-| `note` | Text | Observaciones |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:63` |
-| `period_date` | Date | Mes |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:49` |
-| `prepared_by_id` | Many2one | Elaboró (jefe de área) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:52` |
-| `received_by_id` | Many2one | Recibió (coordinador de RH) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:53` |
-| `received_date` | Datetime | Recibida por RH el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:54` |
-| `state` | Selection |  |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:55` |
+| `note` | Text | Observaciones |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:70` |
+| `period_date` | Date | Mes | Mes que se califica. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:49` |
+| `prepared_by_id` | Many2one | Elaboró (jefe de área) | Jefe de área que elabora la hoja. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:54` |
+| `received_by_id` | Many2one | Recibió (coordinador de RH) | Coordinador de RH que recibe la hoja. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:56` |
+| `received_date` | Datetime | Recibida por RH el | Fecha y hora en que RH recibió la hoja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:58` |
+| `state` | Selection |  | Borrador mientras se captura; cerrado por el jefe de área; recibido por RH. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:60` |
 
 ## Métodos públicos (7)
 

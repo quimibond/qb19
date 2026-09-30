@@ -37,13 +37,15 @@ class SgiLegalRequirement(models.Model):
         ('permiso', "Permiso / licencia / registro"),
         ('cliente', "Requisito de cliente"),
         ('corporativo', "Requisito corporativo / otro"),
-    ], string="Tipo", default='nom', required=True, tracking=True)
+    ], string="Tipo", default='nom', required=True, tracking=True,
+        help="Ley o reglamento, norma oficial mexicana, permiso o licencia, requisito de cliente u otro.")
     system = fields.Selection([
         ('ambiental', "Ambiental (14001)"),
         ('sst', "Seguridad y salud (45001)"),
         ('calidad', "Calidad (9001 / cliente)"),
         ('varios', "Transversal"),
-    ], string="Sistema", default='ambiental', required=True, tracking=True)
+    ], string="Sistema", default='ambiental', required=True, tracking=True,
+        help="Norma a la que corresponde: ambiental, seguridad y salud, calidad o transversal.")
     reference = fields.Char(
         string="Referencia", tracking=True,
         help="Instrumento y artículo/numeral (ej. NOM-052-SEMARNAT-2005, "
@@ -59,17 +61,20 @@ class SgiLegalRequirement(models.Model):
         help="Con qué se demuestra el cumplimiento: registro, bitácora, "
              "dictamen, constancia, documento controlado…")
     process_ids = fields.Many2many(
-        'sgi.process', string="Procesos donde aplica")
+        'sgi.process', string="Procesos donde aplica",
+        help="Procesos a los que aplica el requisito.")
     risk_ids = fields.Many2many(
         'sgi.risk', string="Riesgos ligados",
         help="Riesgos (IPER/ambiental) cuyo control responde a este requisito.")
     document_ids = fields.Many2many(
         'documents.document', string="Documentos de evidencia",
-        domain=[('sgi_is_controlled', '=', True)])
+        domain=[('sgi_is_controlled', '=', True)],
+        help="Documentos controlados que prueban el cumplimiento.")
     # DIR-1 (51.0.0): responsable obligatorio; las evaluaciones son registros.
     responsible_id = fields.Many2one(
         'res.users', string="Responsable de la evaluación", tracking=True,
-        required=True, default=lambda self: self.env.user)
+        required=True, default=lambda self: self.env.user,
+        help="Persona que evalúa el cumplimiento y recibe los avisos.")
     evaluation_ids = fields.One2many(
         'sgi.legal.evaluation', 'requirement_id', string="Evaluaciones")
     evaluation_count = fields.Integer(compute='_compute_evaluation_count')
@@ -80,8 +85,10 @@ class SgiLegalRequirement(models.Model):
 
     # --- Evaluación del cumplimiento (9.1.2) ---
     eval_frequency_months = fields.Integer(
-        string="Frecuencia de evaluación (meses)", default=12)
-    last_eval_date = fields.Date(string="Última evaluación", tracking=True)
+        string="Frecuencia de evaluación (meses)", default=12,
+        help="Cada cuántos meses se evalúa el cumplimiento. El cron avisa cuando vence.")
+    last_eval_date = fields.Date(string="Última evaluación", tracking=True,
+                                 help="Fecha de la última evaluación de cumplimiento.")
     next_eval_date = fields.Date(
         string="Próxima evaluación", compute='_compute_next_eval_date',
         store=True, readonly=False,
@@ -93,13 +100,15 @@ class SgiLegalRequirement(models.Model):
         ('parcial', "Cumple parcialmente"),
         ('no_cumple', "No cumple"),
         ('no_aplica', "No aplica"),
-    ], string="Cumplimiento", default='pendiente', required=True, tracking=True)
+    ], string="Cumplimiento", default='pendiente', required=True, tracking=True,
+        help="Resultado de la última evaluación de cumplimiento.")
     eval_note = fields.Text(
         string="Notas de la última evaluación",
         help="Qué se revisó y qué se encontró (queda también en el chatter "
              "por el tracking del estado).")
     alert_id = fields.Many2one(
-        'quality.alert', string="NC de incumplimiento", readonly=True, copy=False)
+        'quality.alert', string="NC de incumplimiento", readonly=True, copy=False,
+        help="NC levantada por incumplimiento del requisito.")
     active = fields.Boolean(default=True)
 
     @api.depends('last_eval_date', 'eval_frequency_months')
@@ -237,17 +246,21 @@ class SgiLegalEvaluation(models.Model):
     _order = 'date desc, id desc'
 
     requirement_id = fields.Many2one(
-        'sgi.legal.requirement', string="Requisito", required=True, ondelete='cascade', index=True)
-    date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today)
+        'sgi.legal.requirement', string="Requisito", required=True, ondelete='cascade', index=True,
+        help="Requisito evaluado.")
+    date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today,
+                       help="Fecha de la evaluación.")
     result = fields.Selection([
         ('cumple', "Cumple"),
         ('parcial', "Cumple parcialmente"),
         ('no_cumple', "No cumple"),
         ('no_aplica', "No aplica"),
-    ], string="Resultado", required=True)
+    ], string="Resultado", required=True,
+        help="Resultado de la evaluación.")
     evidence = fields.Text(string="Evidencia revisada")
-    next_date = fields.Date(string="Próxima evaluación")
-    user_id = fields.Many2one('res.users', string="Evaluó", default=lambda self: self.env.user)
+    next_date = fields.Date(string="Próxima evaluación", help="Fecha de la siguiente evaluación.")
+    user_id = fields.Many2one('res.users', string="Evaluó", default=lambda self: self.env.user,
+                              help="Persona que evaluó.")
     alert_id = fields.Many2one(related='requirement_id.alert_id', string="NC")
 
 
@@ -256,18 +269,21 @@ class SgiLegalEvaluate(models.TransientModel):
     _name = 'sgi.legal.evaluate'
     _description = "Registrar evaluación de cumplimiento legal"
 
-    requirement_id = fields.Many2one('sgi.legal.requirement', required=True)
+    requirement_id = fields.Many2one('sgi.legal.requirement', required=True, help="Requisito que se evalúa.")
     result = fields.Selection([
         ('cumple', "Cumple"),
         ('parcial', "Cumple parcialmente"),
         ('no_cumple', "No cumple"),
         ('no_aplica', "No aplica"),
-    ], string="Resultado", required=True, default='cumple')
+    ], string="Resultado", required=True, default='cumple',
+        help="Resultado de la evaluación. «No cumple» levanta una NC.")
     evidence = fields.Text(string="Evidencia revisada", required=True)
     # Sin required=True: en un transitorio el calculado se llena después del
     # INSERT y la columna NOT NULL lo rechazaba. Se exige al confirmar.
     next_date = fields.Date(string="Próxima evaluación", compute='_compute_next_date',
-                            store=True, readonly=False)
+                            store=True, readonly=False,
+                            help="Fecha de la próxima evaluación, según la frecuencia del requisito. Se "
+                                 "puede cambiar.")
 
     @api.depends('requirement_id', 'result')
     def _compute_next_date(self):

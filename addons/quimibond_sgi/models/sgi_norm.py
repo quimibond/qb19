@@ -26,7 +26,8 @@ class SgiNormClause(models.Model):
     _description = "Cláusula de norma ISO"
     _order = 'norm_id, code'
 
-    norm_id = fields.Many2one('sgi.norm', string="Norma", required=True, ondelete='cascade')
+    norm_id = fields.Many2one('sgi.norm', string="Norma", required=True, ondelete='cascade',
+                              help="Norma a la que pertenece la cláusula.")
     code = fields.Char(string="Numeral", required=True)
     name = fields.Char(string="Requisito", required=True)
 

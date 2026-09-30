@@ -14,9 +14,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_load_wizard.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:114` |
-| `key` | Char | Clave |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:113` |
-| `kind` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:112` |
-| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:115` |
-| `wizard_id` | Many2one |  |  | sí | `sgi.catalog.load.wizard` |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:111` |
+| `action` | Selection | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:116` |
+| `key` | Char | Clave |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:115` |
+| `kind` | Char | Qué |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:114` |
+| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:117` |
+| `wizard_id` | Many2one |  |  | sí | `sgi.catalog.load.wizard` |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:113` |
 

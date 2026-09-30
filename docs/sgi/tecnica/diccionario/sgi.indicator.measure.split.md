@@ -14,21 +14,21 @@ Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `denominator` | Float | Denominador |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:440` |
-| `detail_ids` | Text | Registros del detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:453` |
-| `detail_model` | Char | Modelo del detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:452` |
-| `indicator_id` | Many2one | Indicador |  |  |  | related `measure_id.indicator_id`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:432` |
-| `label` | Char | Renglón |  |  |  | compute `_compute_label`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:437` |
-| `market` | Selection | Mercado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:436` |
+| `denominator` | Float | Denominador | Denominador del desglose. |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:444` |
+| `detail_ids` | Text | Registros del detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:459` |
+| `detail_model` | Char | Modelo del detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:458` |
+| `indicator_id` | Many2one | Indicador | Indicador medido. |  |  | related `measure_id.indicator_id`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:432` |
+| `label` | Char | Renglón |  |  |  | compute `_compute_label`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:441` |
+| `market` | Selection | Mercado | Mercado del desglose: nacional, exportación o cliente sin país. |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:439` |
 | `measure_id` | Many2one | Medición |  | sí | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:430` |
-| `numerator` | Float | Numerador |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:439` |
-| `period_date` | Date | Periodo |  |  |  | related `measure_id.period_date`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:434` |
-| `sample_size` | Integer | Casos |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:441` |
-| `semaphore` | Selection | Semáforo |  |  |  | compute `_compute_semaphore`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:447` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:442` |
-| `team_id` | Many2one | Equipo de ventas |  |  | `crm.team` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:435` |
-| `uom` | Char | Unidad |  |  |  | related `indicator_id.uom`, sin guardar |  | `addons/quimibond_sgi/models/sgi_business_line.py:446` |
-| `value` | Float | Valor |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:438` |
+| `numerator` | Float | Numerador | Numerador del desglose. |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:443` |
+| `period_date` | Date | Periodo | Periodo de la medición. |  |  | related `measure_id.period_date`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:435` |
+| `sample_size` | Integer | Casos | Número de casos del desglose. |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:445` |
+| `semaphore` | Selection | Semáforo | Semáforo del desglose. Se calcula solo. |  |  | compute `_compute_semaphore`, guardado |  | `addons/quimibond_sgi/models/sgi_business_line.py:452` |
+| `state` | Selection | Estado | Calculado o sin dato. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:446` |
+| `team_id` | Many2one | Equipo de ventas | Equipo de ventas del desglose. |  | `crm.team` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:437` |
+| `uom` | Char | Unidad |  |  |  | related `indicator_id.uom`, sin guardar |  | `addons/quimibond_sgi/models/sgi_business_line.py:451` |
+| `value` | Float | Valor | Valor del desglose. |  |  |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:442` |
 
 ## Métodos públicos (1)
 

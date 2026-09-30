@@ -14,18 +14,18 @@ Archivos: `addons/quimibond_sgi/models/sgi_emergency.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `document_id` | Many2one | Plan documentado |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:37` |
-| `drill_count` | Integer | # Simulacros |  |  |  | compute `_compute_drill_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_emergency.py:53` |
-| `drill_frequency_months` | Integer | Frecuencia de simulacro (meses) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:41` |
-| `drill_ids` | One2many | Simulacros |  |  | `sgi.emergency.drill` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:48` |
-| `last_drill_date` | Date | Último simulacro |  |  |  | compute `_compute_drill_dates`, guardado |  | `addons/quimibond_sgi/models/sgi_emergency.py:54` |
-| `location` | Char | Ubicación / zona |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:34` |
+| `document_id` | Many2one | Plan documentado | Documento controlado con el plan de emergencia. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:39` |
+| `drill_count` | Integer | # Simulacros |  |  |  | compute `_compute_drill_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_emergency.py:59` |
+| `drill_frequency_months` | Integer | Frecuencia de simulacro (meses) | Cada cuántos meses se hace un simulacro de este plan. |  |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:45` |
+| `drill_ids` | One2many | Simulacros |  |  | `sgi.emergency.drill` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:54` |
+| `last_drill_date` | Date | Último simulacro | Fecha del último simulacro realizado. Se calcula sola. |  |  | compute `_compute_drill_dates`, guardado |  | `addons/quimibond_sgi/models/sgi_emergency.py:60` |
+| `location` | Char | Ubicación / zona |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:35` |
 | `name` | Char | Escenario de emergencia |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:24` |
-| `next_drill_date` | Date | Próximo simulacro |  |  |  | compute `_compute_drill_dates`, guardado |  | `addons/quimibond_sgi/models/sgi_emergency.py:56` |
-| `plan_type` | Selection | Tipo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:25` |
-| `responsible_id` | Many2one | Responsable (brigada) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:35` |
-| `risk_ids` | Many2many | Riesgos ligados (IPER/ambiental) |  |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:39` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:43` |
+| `next_drill_date` | Date | Próximo simulacro | Fecha en que toca el siguiente simulacro, según la frecuencia. Se calcula sola. |  |  | compute `_compute_drill_dates`, guardado |  | `addons/quimibond_sgi/models/sgi_emergency.py:63` |
+| `plan_type` | Selection | Tipo | Tipo de emergencia que atiende el plan. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:25` |
+| `responsible_id` | Many2one | Responsable (brigada) | Responsable del plan (brigada). Recibe los avisos de simulacros. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:36` |
+| `risk_ids` | Many2many | Riesgos ligados (IPER/ambiental) | Riesgos de seguridad o aspectos ambientales que atiende el plan. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:42` |
+| `state` | Selection | Estado | Borrador, vigente u obsoleto. Solo los vigentes llevan simulacros. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_emergency.py:48` |
 
 ## Métodos públicos (4)
 

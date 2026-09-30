@@ -49,9 +49,14 @@ class SgiChecklistTemplate(models.Model):
     frequency = fields.Selection([
         ('diaria', "Diaria (lunes a viernes)"),
         ('semanal', "Semanal (lunes)"),
-    ], string="Frecuencia", required=True, default='diaria')
-    equipment_ids = fields.Many2many('maintenance.equipment', string="Equipos o unidades", required=True)
-    maintenance_team_id = fields.Many2one('maintenance.team', string="Equipo de mantenimiento")
+    ], string="Frecuencia", required=True, default='diaria',
+        help="Diaria (de lunes a viernes) o semanal (los lunes). El cron genera las hojas a esa frecuencia.")
+    equipment_ids = fields.Many2many('maintenance.equipment', string="Equipos o unidades", required=True,
+                                     help="Equipos o unidades que se revisan con esta plantilla. Cada uno "
+                                          "tiene su hoja.")
+    maintenance_team_id = fields.Many2one('maintenance.team', string="Equipo de mantenimiento",
+                                          help="Equipo de mantenimiento al que llegan las hojas y las "
+                                               "correctivas.")
     user_id = fields.Many2one('res.users', string="Responsable de llenarlo",
                               help="Usuario que ve las hojas: el de la tableta compartida o el jefe del área.")
     employee_ids = fields.Many2many(
@@ -59,7 +64,8 @@ class SgiChecklistTemplate(models.Model):
         string="Quién lo llena", help="Electromecánicos o choferes que pueden firmar la hoja. Vacío: cualquiera.")
     item_ids = fields.One2many('sgi.checklist.template.item', 'template_id', string="Puntos a revisar")
     active = fields.Boolean(default=True)
-    last_run = fields.Date(string="Última generación", readonly=True)
+    last_run = fields.Date(string="Última generación", readonly=True,
+                           help="Último día en que se generaron hojas de esta plantilla.")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
 
     def _sgi_due_today(self, day):
@@ -187,17 +193,22 @@ class MaintenanceRequestChecklist(models.Model):
     _inherit = 'maintenance.request'
 
     sgi_checklist_template_id = fields.Many2one('sgi.checklist.template', string="Checklist SGI",
-                                                readonly=True, index=True)
-    sgi_checklist_date = fields.Date(string="Día del checklist", readonly=True, index=True)
+                                                readonly=True, index=True,
+                                                help="Plantilla de la que salió esta hoja de checklist.")
+    sgi_checklist_date = fields.Date(string="Día del checklist", readonly=True, index=True,
+                                     help="Día al que corresponde la hoja de checklist.")
     sgi_checklist_line_ids = fields.One2many('sgi.checklist.line', 'request_id', string="Hoja de checklist")
     sgi_checklist_employee_id = fields.Many2one(
-        'hr.employee', string="Lo llenó", readonly=True, index=True, tracking=True, copy=False)
-    sgi_checklist_done_at = fields.Datetime(string="Terminado el", readonly=True, copy=False)
+        'hr.employee', string="Lo llenó", readonly=True, index=True, tracking=True, copy=False,
+        help="Empleado que llenó la hoja (se registra al terminarla, con su PIN si está encendido).")
+    sgi_checklist_done_at = fields.Datetime(string="Terminado el", readonly=True, copy=False,
+                                            help="Fecha y hora en que se terminó la hoja.")
     sgi_checklist_state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('completo', "Completo"),
         ('con_fallas', "Con fallas"),
-    ], string="Checklist", compute='_compute_sgi_checklist_state', store=True)
+    ], string="Checklist", compute='_compute_sgi_checklist_state', store=True,
+        help="Pendiente, completo o con fallas según las respuestas de la hoja. Se calcula solo.")
 
     @api.depends('sgi_checklist_line_ids.answer')
     def _compute_sgi_checklist_state(self):
@@ -246,10 +257,14 @@ class SgiChecklistFinish(models.TransientModel):
     _name = 'sgi.checklist.finish'
     _description = "Terminar checklist: quién lo llenó"
 
-    request_id = fields.Many2one('maintenance.request', required=True, ondelete='cascade')
-    allowed_employee_ids = fields.Many2many('hr.employee', compute='_compute_allowed_employee_ids')
+    request_id = fields.Many2one('maintenance.request', required=True, ondelete='cascade',
+                                 help="Hoja de checklist que se termina.")
+    allowed_employee_ids = fields.Many2many('hr.employee', compute='_compute_allowed_employee_ids',
+                                            help="Personas que pueden firmar esta hoja: las de «Quién lo "
+                                                 "llena» en la plantilla.")
     employee_id = fields.Many2one('hr.employee', string="¿Quién lo llenó?", required=True,
-                                  domain="allowed_employee_ids and [('id', 'in', allowed_employee_ids)] or []")
+                                  domain="allowed_employee_ids and [('id', 'in', allowed_employee_ids)] or []",
+                                  help="Elija a la persona que llenó la hoja.")
     pin = fields.Char(string="PIN del empleado")
 
     @api.depends('request_id')

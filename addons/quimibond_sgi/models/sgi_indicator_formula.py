@@ -83,8 +83,10 @@ class SgiIndicatorTerm(models.Model):
 
     indicator_id = fields.Many2one('sgi.indicator', required=True, ondelete='cascade', index=True)
     role = fields.Selection([('numerator', "Numerador"), ('denominator', "Denominador")],
-                            string="Parte de la fórmula", required=True, default='numerator')
-    model_id = fields.Many2one('ir.model', string="Modelo", required=True, ondelete='cascade')
+                            string="Parte de la fórmula", required=True, default='numerator',
+                            help="Si el término va en el numerador o en el denominador.")
+    model_id = fields.Many2one('ir.model', string="Modelo", required=True, ondelete='cascade',
+                               help="Modelo de Odoo del que se leen los registros.")
     model_name = fields.Char(related='model_id.model', string="Modelo técnico")
     domain = fields.Text(string="Filtro", default='[]', required=True,
                          help="Dominio de Odoo, p. ej. [('state', '=', 'done')].")
@@ -93,19 +95,26 @@ class SgiIndicatorTerm(models.Model):
                                   "recorta la ventana. Vacío solo con ventana «Acumulado al "
                                   "cierre»: entonces cuenta todo lo que hay hoy (p. ej. las "
                                   "existencias).")
-    aggregation = fields.Selection(AGGREGATIONS, string="Agregación", required=True, default='count')
+    aggregation = fields.Selection(AGGREGATIONS, string="Agregación", required=True, default='count',
+                                   help="Cómo se agrega: contar registros, sumar un campo, o contar y "
+                                        "promediar la diferencia entre dos fechas.")
     field_name = fields.Char(string="Campo a sumar / fecha A",
                              help="Campo numérico a sumar; en las agregaciones de fechas, la fecha A (inicio).")
     field_name_2 = fields.Char(string="Fecha B (fin)",
                                help="Segunda fecha del registro para las agregaciones «B − A».")
-    delta_unit = fields.Selection(DELTA_UNITS, string="Unidad", default='days')
-    delta_op = fields.Selection(DELTA_OPS, string="Condición", default='<=')
+    delta_unit = fields.Selection(DELTA_UNITS, string="Unidad", default='days',
+                                  help="Unidad de la diferencia entre fechas.")
+    delta_op = fields.Selection(DELTA_OPS, string="Condición", default='<=',
+                                help="Condición que debe cumplir la diferencia entre las dos fechas para "
+                                     "contar.")
     delta_value = fields.Float(string="N", digits=(16, 2),
                                help="Días, horas o el día del mes siguiente, según la unidad.")
     factor = fields.Float(string="Factor", default=1.0, digits=(16, 6),
                           help="Multiplica el resultado: −1 invierte el signo, 0.001 pasa "
                                "kg a toneladas.")
-    window = fields.Selection(WINDOWS, string="Ventana", required=True, default='period')
+    window = fields.Selection(WINDOWS, string="Ventana", required=True, default='period',
+                              help="Qué periodo se lee: el del indicador, 3 o 12 meses móviles, o acumulado "
+                                   "al cierre.")
 
     # 55.0.0: varios términos por papel se suman (antes: uno por papel).
 
@@ -341,11 +350,13 @@ class SgiIndicatorFormula(models.Model):
     _inherit = 'sgi.indicator'
 
     term_ids = fields.One2many('sgi.indicator.term', 'indicator_id', string="Términos de la fórmula")
-    has_formula = fields.Boolean(compute='_compute_has_formula')
+    has_formula = fields.Boolean(compute='_compute_has_formula',
+                                 help="Indica si el indicador tiene términos de fórmula.")
     formula_text = fields.Text(string="Fórmula configurada", compute='_compute_has_formula')
     # depends_context uid: la caché es una por transacción; sin esto el valor
     # calculado para un usuario se reutiliza para otro (with_user).
-    can_edit_formula = fields.Boolean(compute='_compute_can_edit_formula', depends_context=('uid',))
+    can_edit_formula = fields.Boolean(compute='_compute_can_edit_formula', depends_context=('uid',),
+                                      help="Indica si usted puede editar la fórmula.")
 
     def _compute_can_edit_formula(self):
         allowed = self.env.user.has_group('quimibond_sgi.group_sgi_admin')
@@ -558,5 +569,9 @@ class SgiIndicatorMeasureFormula(models.Model):
         help="Lo que daría la fórmula configurada del indicador en este "
              "periodo, mientras el indicador sigue en su modo de código. "
              "Cuando coincidan un mes, se migra.")
-    parallel_numerator = fields.Float(string="Numerador (fórmula)", digits=(16, 2))
-    parallel_denominator = fields.Float(string="Denominador (fórmula)", digits=(16, 2))
+    parallel_numerator = fields.Float(string="Numerador (fórmula)", digits=(16, 2),
+                                      help="Numerador calculado con la fórmula configurable, para compararlo "
+                                           "con el modo actual.")
+    parallel_denominator = fields.Float(string="Denominador (fórmula)", digits=(16, 2),
+                                        help="Denominador calculado con la fórmula configurable, para "
+                                             "compararlo con el modo actual.")

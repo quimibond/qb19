@@ -14,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_kpi_account.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `company_id` | Many2one | Compañía |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:132` |
-| `currency_id` | Many2one |  |  |  |  | related `company_id.currency_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:136` |
-| `date` | Date | Cierre | Último día del mes al que corresponde la foto. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:133` |
-| `quant_count` | Integer | # Existencias |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:137` |
-| `taken_at` | Datetime | Tomada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:138` |
-| `value` | Monetary | Valor del inventario |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:135` |
+| `company_id` | Many2one | Compañía |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:135` |
+| `currency_id` | Many2one |  |  |  |  | related `company_id.currency_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:139` |
+| `date` | Date | Cierre | Último día del mes al que corresponde la foto. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:136` |
+| `quant_count` | Integer | # Existencias |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:140` |
+| `taken_at` | Datetime | Tomada el | Fecha y hora en que se tomó la foto del inventario. |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:141` |
+| `value` | Monetary | Valor del inventario |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_account.py:138` |
 

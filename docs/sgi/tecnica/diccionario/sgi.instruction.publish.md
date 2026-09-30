@@ -12,10 +12,10 @@ Archivos: `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `activity_id` | Many2one |  |  | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:66` |
-| `article_id` | Many2one |  |  |  |  | related `activity_id.instruction_article_id`, sin guardar |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:67` |
-| `code` | Char | Clave IT | Ej. IT-P-C11-05. | sí |  |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:68` |
-| `job_ids` | Many2many | Puestos que aplican | Por omisión, los que ejecutan la actividad. |  | `hr.job` | compute `_compute_job_ids`, guardado |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:69` |
+| `activity_id` | Many2one |  | Actividad cuyo instructivo se publica. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:66` |
+| `article_id` | Many2one |  | Artículo de Conocimiento que se publica como instructivo. |  |  | related `activity_id.instruction_article_id`, sin guardar |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:68` |
+| `code` | Char | Clave IT | Ej. IT-P-C11-05. | sí |  |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:70` |
+| `job_ids` | Many2many | Puestos que aplican | Por omisión, los que ejecutan la actividad. |  | `hr.job` | compute `_compute_job_ids`, guardado |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:71` |
 
 ## Métodos públicos (1)
 

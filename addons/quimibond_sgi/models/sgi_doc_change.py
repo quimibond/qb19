@@ -56,9 +56,7 @@ class ApprovalRequest(models.Model):
                                help="Marque si el cambio se prueba primero en piloto antes de quedar "
                                     "vigente.")
     sgi_pilot_start = fields.Date(string="Inicio de piloto", help="Fecha en que empieza la prueba piloto.")
-    sgi_pilot_end = fields.Date(string="Fin de piloto",
-                                help="Fecha en que termina la prueba piloto. Antes de esa fecha llega un "
-                                     "aviso para decidir.")
+    sgi_pilot_end = fields.Date(string="Fin de piloto", help="Fecha en que termina la prueba piloto.")
     sgi_reason = fields.Text(string="Motivo del cambio")
     sgi_changes = fields.Text(string="Descripción de cambios")
     sgi_affected_process_ids = fields.Many2many('sgi.process', string="Procesos afectados",

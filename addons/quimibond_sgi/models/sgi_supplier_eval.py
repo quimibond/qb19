@@ -28,17 +28,23 @@ class ResPartner(models.Model):
         ('nuevo', "Nuevo (sin aprobar)"),
         ('aprobado', "Aprobado"),
         ('bloqueado', "Bloqueado"),
-    ], string="Aprobación SGI (8.4.1)", tracking=True, copy=False)
+    ], string="Aprobación SGI (8.4.1)", tracking=True, copy=False,
+        help="Aprobación inicial del proveedor (9001 8.4.1). Vacío: fuera del SGI. Bloqueado: no se pueden "
+             "confirmar órdenes de compra.")
     sgi_supplier_approved_by = fields.Many2one('res.users', string="Aprobado por",
-                                               readonly=True, copy=False)
+                                               readonly=True, copy=False,
+                                               help="Quién aprobó al proveedor.")
     sgi_supplier_approved_date = fields.Date(string="Fecha de aprobación",
-                                             readonly=True, copy=False)
+                                             readonly=True, copy=False,
+                                             help="Fecha en que se aprobó al proveedor.")
     sgi_supplier_critical = fields.Boolean(
         string="Proveedor crítico",
         help="Materia prima o maquila: entra a la evaluación trimestral aunque en el "
              "periodo no haya comprado productos de las categorías críticas.")
-    sgi_supplier_score = fields.Float(string="Calificación SGI")
-    sgi_last_eval_date = fields.Date(string="Última evaluación")
+    sgi_supplier_score = fields.Float(string="Calificación SGI",
+                                      help="Calificación de la última evaluación trimestral del proveedor.")
+    sgi_last_eval_date = fields.Date(string="Última evaluación",
+                                     help="Fecha de la última evaluación de desempeño del proveedor.")
     sgi_eval_ids = fields.One2many('sgi.supplier.eval', 'partner_id', string="Evaluaciones SGI")
     sgi_eval_count = fields.Integer(string="# Evaluaciones", compute='_compute_sgi_eval_count')
 
@@ -109,18 +115,22 @@ class SgiSupplierEval(models.Model):
         return set(Categ.search([('id', 'child_of', categs.ids)]).ids)
 
     partner_id = fields.Many2one('res.partner', string="Proveedor",
-                                 required=True, ondelete='cascade', index=True)
-    date_from = fields.Date(string="Desde", required=True)
-    date_to = fields.Date(string="Hasta", required=True)
-    otd_pct = fields.Float(string="OTD %", compute='_compute_metrics', store=True)
+                                 required=True, ondelete='cascade', index=True,
+                                 help="Proveedor evaluado.")
+    date_from = fields.Date(string="Desde", required=True, help="Inicio del periodo evaluado.")
+    date_to = fields.Date(string="Hasta", required=True, help="Fin del periodo evaluado.")
+    otd_pct = fields.Float(string="OTD %", compute='_compute_metrics', store=True,
+                           help="Porcentaje de recepciones a tiempo en el periodo. Se calcula solo.")
     otd_has_data = fields.Boolean(
         string="Con datos de entrega", compute='_compute_metrics', store=True,
         help="Hubo recepciones con fecha compromiso en el periodo. Sin ellas el OTD "
              "no se calcula (no cuenta como 0 %) y la calificación usa solo la calidad.")
     nc_count = fields.Integer(string="# NC", compute='_compute_metrics', store=True)
-    score = fields.Float(string="Calificación", compute='_compute_metrics', store=True)
+    score = fields.Float(string="Calificación", compute='_compute_metrics', store=True,
+                         help="Entrega a tiempo y calidad, con los pesos de Ajustes. Se calcula sola.")
     supplier_class = fields.Selection(
-        SUPPLIER_CLASSES, string="Clasificación", compute='_compute_metrics', store=True)
+        SUPPLIER_CLASSES, string="Clasificación", compute='_compute_metrics', store=True,
+        help="Acreditado, condicionado, baja o sin datos, según la calificación. Se calcula sola.")
     notes = fields.Text(string="Notas")
 
     _partner_period_uniq = models.Constraint(

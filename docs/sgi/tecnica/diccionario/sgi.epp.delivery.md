@@ -14,20 +14,20 @@ Archivos: `addons/quimibond_sgi/models/sgi_epp.py`, `addons/quimibond_sgi/models
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `can_sign` | Boolean |  |  |  |  | compute `_compute_can_sign`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:42` |
-| `date` | Date | Fecha de entrega |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:30` |
-| `delivered_by_id` | Many2one | Entregó |  | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_epp.py:34` |
-| `employee_id` | Many2one | Empleado |  | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_epp.py:23` |
+| `can_sign` | Boolean |  | Indica si usted puede firmar esta responsiva. |  |  | compute `_compute_can_sign`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:48` |
+| `date` | Date | Fecha de entrega | Fecha en que se entregó el equipo. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:32` |
+| `delivered_by_id` | Many2one | Entregó | Persona que entregó el equipo. | sí | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_epp.py:37` |
+| `employee_id` | Many2one | Empleado | Empleado que recibe el equipo de protección. | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_epp.py:23` |
 | `items` | Text |  |  |  |  | compute `_compute_items`, guardado |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:39` |
-| `job_id` | Many2one | Puesto al entregar |  |  | `hr.job` | compute `_compute_job_id`, guardado |  | `addons/quimibond_sgi/models/sgi_epp.py:28` |
+| `job_id` | Many2one | Puesto al entregar | Puesto del empleado al momento de la entrega. |  | `hr.job` | compute `_compute_job_id`, guardado |  | `addons/quimibond_sgi/models/sgi_epp.py:29` |
 | `line_ids` | One2many | Renglones de EPP |  |  | `sgi.epp.delivery.line` |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:38` |
 | `name` | Char | Folio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:22` |
-| `note` | Text | Observaciones |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:36` |
-| `sign_request_id` | Many2one | Solicitud de firma (Sign) |  |  | `sign.request` |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:40` |
-| `sign_state` | Selection | Firma electrónica |  |  |  | related `sign_request_id.state`, guardado |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:42` |
-| `signed_date` | Datetime | Firmada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:41` |
-| `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:37` |
-| `user_id` | Many2one | Usuario |  |  |  | related `employee_id.user_id`, guardado |  | `addons/quimibond_sgi/models/sgi_epp.py:27` |
+| `note` | Text | Observaciones |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:40` |
+| `sign_request_id` | Many2one | Solicitud de firma (Sign) | Solicitud de firma electrónica de la responsiva. |  | `sign.request` |  |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:40` |
+| `sign_state` | Selection | Firma electrónica | Estado de la firma electrónica. |  |  | related `sign_request_id.state`, guardado |  | `addons/quimibond_sgi/models/sgi_epp_sign.py:43` |
+| `signed_date` | Datetime | Firmada el | Fecha y hora en que el empleado firmó. |  |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:46` |
+| `state` | Selection | Estado | Entregada sin firmar hasta que el empleado firma la responsiva. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_epp.py:41` |
+| `user_id` | Many2one | Usuario |  |  |  | related `employee_id.user_id`, guardado |  | `addons/quimibond_sgi/models/sgi_epp.py:28` |
 
 ## Métodos públicos (6)
 

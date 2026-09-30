@@ -12,12 +12,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_diagnostic.py`, `addons/quimibond_sgi
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `bad_count` | Integer | Fallas |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:48` |
-| `date` | Date | Fecha |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:46` |
-| `line_ids` | One2many | Hallazgos |  |  | `sgi.diagnostic.line` |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:47` |
-| `ok_count` | Integer | En orden |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:50` |
-| `summary` | Text | Resumen |  |  |  | compute `_compute_summary`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:51` |
-| `warn_count` | Integer | Avisos |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:49` |
+| `bad_count` | Integer | Fallas |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:49` |
+| `date` | Date | Fecha |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:47` |
+| `line_ids` | One2many | Hallazgos |  |  | `sgi.diagnostic.line` |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:48` |
+| `ok_count` | Integer | En orden |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:51` |
+| `summary` | Text | Resumen |  |  |  | compute `_compute_summary`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:52` |
+| `warn_count` | Integer | Avisos |  |  |  | compute `_compute_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:50` |
 
 ## Métodos públicos (3)
 

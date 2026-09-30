@@ -63,8 +63,10 @@ class SgiInstructionPublish(models.TransientModel):
     _name = 'sgi.instruction.publish'
     _description = "Publicar artículo de Knowledge como instructivo (IT)"
 
-    activity_id = fields.Many2one('sgi.process.activity', required=True)
-    article_id = fields.Many2one(related='activity_id.instruction_article_id')
+    activity_id = fields.Many2one('sgi.process.activity', required=True,
+                                  help="Actividad cuyo instructivo se publica.")
+    article_id = fields.Many2one(related='activity_id.instruction_article_id',
+                                 help="Artículo de Conocimiento que se publica como instructivo.")
     code = fields.Char(string="Clave IT", required=True, help="Ej. IT-P-C11-05.")
     job_ids = fields.Many2many('hr.job', string="Puestos que aplican",
                                compute='_compute_job_ids', store=True, readonly=False,

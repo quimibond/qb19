@@ -14,11 +14,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_machine_sheet.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `name` | Char | Condición |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:139` |
-| `section` | Selection | Sección |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:138` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:137` |
-| `sheet_id` | Many2one |  |  | sí | `sgi.machine.sheet` |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:136` |
-| `spec` | Char | Especificación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:140` |
-| `tolerance` | Char | Tolerancia (±) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:141` |
-| `unit` | Char | Unidad |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:142` |
+| `name` | Char | Condición |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:150` |
+| `section` | Selection | Sección |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:149` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:148` |
+| `sheet_id` | Many2one |  |  | sí | `sgi.machine.sheet` |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:147` |
+| `spec` | Char | Especificación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:151` |
+| `tolerance` | Char | Tolerancia (±) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:152` |
+| `unit` | Char | Unidad |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:153` |
 

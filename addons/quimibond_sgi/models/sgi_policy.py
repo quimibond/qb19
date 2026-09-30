@@ -26,12 +26,14 @@ class SgiPolicy(models.Model):
     name = fields.Char(string="Nombre", required=True, tracking=True)
     policy_text = fields.Html(string="Texto de la política")
     issue_date = fields.Date(string="Fecha de emisión",
-                             default=fields.Date.context_today)
+                             default=fields.Date.context_today,
+                             help="Fecha de emisión de la política.")
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('vigente', "Vigente"),
         ('obsoleta', "Obsoleta"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador, vigente u obsoleta. Solo una política vigente.")
     document_id = fields.Many2one(
         'documents.document', string="Documento publicado (MIID)",
         domain=[('sgi_is_controlled', '=', True)],

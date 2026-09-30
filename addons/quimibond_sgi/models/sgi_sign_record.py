@@ -125,9 +125,10 @@ class SgiSignRequestWizard(models.TransientModel):
     _description = "Crear solicitud de firma ligada a un registro"
 
     res_model = fields.Char(required=True)
-    res_id = fields.Integer(required=True)
-    template_id = fields.Many2one('sign.template', string="Plantilla de firma", required=True)
-    partner_id = fields.Many2one('res.partner', string="Firmante", required=True)
+    res_id = fields.Integer(required=True, help="Registro al que se liga la firma.")
+    template_id = fields.Many2one('sign.template', string="Plantilla de firma", required=True,
+                                  help="Plantilla de Sign que se firma.")
+    partner_id = fields.Many2one('res.partner', string="Firmante", required=True, help="Persona que firma.")
     subject = fields.Char(string="Asunto")
 
     def action_confirm(self):

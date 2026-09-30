@@ -14,15 +14,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_msa.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `characteristic` | Char | Característica medida |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:57` |
-| `date` | Date | Fecha |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:55` |
-| `equipment_id` | Many2one | Equipo de medición |  | sí | `maintenance.equipment` |  |  | `addons/quimibond_sgi/models/sgi_msa.py:46` |
-| `grr_pct` | Float | % GRR | Porcentaje de variación del sistema de medición (solo Gage R&R de variables). |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:59` |
-| `ndc` | Integer | ndc (categorías distintas) | Número de categorías distintas; AIAG pide ≥ 5. |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:62` |
-| `notes` | Text | Notas / referencia del reporte |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:72` |
-| `point_id` | Many2one | Punto de control |  |  | `quality.point` |  |  | `addons/quimibond_sgi/models/sgi_msa.py:58` |
-| `study_type` | Selection | Tipo de estudio |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:49` |
-| `verdict` | Selection | Veredicto | Para Gage R&R se calcula de los umbrales AIAG (%GRR <10 / 10-30 / >30); para los demás tipos se captura a mano. |  |  | compute `_compute_verdict`, guardado |  | `addons/quimibond_sgi/models/sgi_msa.py:64` |
+| `characteristic` | Char | Característica medida |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:60` |
+| `date` | Date | Fecha | Fecha del estudio. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:57` |
+| `equipment_id` | Many2one | Equipo de medición | Equipo de medición estudiado. | sí | `maintenance.equipment` |  |  | `addons/quimibond_sgi/models/sgi_msa.py:46` |
+| `grr_pct` | Float | % GRR | Porcentaje de variación del sistema de medición (solo Gage R&R de variables). |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:63` |
+| `ndc` | Integer | ndc (categorías distintas) | Número de categorías distintas; AIAG pide ≥ 5. |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:66` |
+| `notes` | Text | Notas / referencia del reporte |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:76` |
+| `point_id` | Many2one | Punto de control | Punto de control de calidad en el que se usa el equipo. |  | `quality.point` |  |  | `addons/quimibond_sgi/models/sgi_msa.py:61` |
+| `study_type` | Selection | Tipo de estudio | Tipo de estudio del sistema de medición. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_msa.py:50` |
+| `verdict` | Selection | Veredicto | Para Gage R&R se calcula de los umbrales AIAG (%GRR <10 / 10-30 / >30); para los demás tipos se captura a mano. |  |  | compute `_compute_verdict`, guardado |  | `addons/quimibond_sgi/models/sgi_msa.py:68` |
 
 ## Métodos públicos (2)
 

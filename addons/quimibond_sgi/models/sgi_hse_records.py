@@ -39,25 +39,35 @@ class SgiHealthRecord(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'next_date, employee_id'
 
-    employee_id = fields.Many2one('hr.employee', string="Trabajador", required=True, index=True, tracking=True)
-    department_id = fields.Many2one(related='employee_id.department_id', string="Departamento", store=True)
-    job_id = fields.Many2one(related='employee_id.job_id', string="Puesto", store=True)
-    kind = fields.Selection(_HEALTH_KINDS, string="Tipo", required=True, default='examen_medico', tracking=True)
+    employee_id = fields.Many2one('hr.employee', string="Trabajador", required=True, index=True, tracking=True,
+                                  help="Trabajador al que corresponde el registro.")
+    department_id = fields.Many2one(related='employee_id.department_id', string="Departamento", store=True,
+                                    help="Departamento del trabajador.")
+    job_id = fields.Many2one(related='employee_id.job_id', string="Puesto", store=True,
+                             help="Puesto del trabajador.")
+    kind = fields.Selection(_HEALTH_KINDS, string="Tipo", required=True, default='examen_medico', tracking=True,
+                            help="Examen médico o estudio de higiene.")
     name = fields.Char(string="Estudio o examen", required=True, tracking=True,
                        help="Audiometría, espirometría, examen de ingreso, ruido (NOM-011), iluminación (NOM-025)…")
-    date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today, tracking=True)
-    validity_months = fields.Integer(string="Vigencia (meses)", default=12)
+    date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today, tracking=True,
+                       help="Fecha del examen o del estudio.")
+    validity_months = fields.Integer(string="Vigencia (meses)", default=12,
+                                     help="Meses que dura vigente el resultado.")
     next_date = fields.Date(string="Vence", compute='_compute_next_date', store=True, readonly=False,
                             tracking=True, help="Fecha + vigencia; se puede corregir a mano.")
-    result = fields.Selection(_HEALTH_RESULTS, string="Resultado", tracking=True)
-    provider_id = fields.Many2one('res.partner', string="Laboratorio / médico")
+    result = fields.Selection(_HEALTH_RESULTS, string="Resultado", tracking=True,
+                              help="Resultado del examen o del estudio.")
+    provider_id = fields.Many2one('res.partner', string="Laboratorio / médico",
+                                  help="Laboratorio o médico que lo hizo.")
     notes = fields.Text(string="Observaciones y restricciones")
-    attachment_ids = fields.Many2many('ir.attachment', string="Resultados (PDF)")
+    attachment_ids = fields.Many2many('ir.attachment', string="Resultados (PDF)",
+                                      help="Adjunte los resultados en PDF.")
     state = fields.Selection([
         ('vigente', "Vigente"),
         ('por_vencer', "Por vencer (30 días)"),
         ('vencido', "Vencido"),
-    ], string="Vigencia", compute='_compute_state', store=True)
+    ], string="Vigencia", compute='_compute_state', store=True,
+        help="Vigente, por vencer (30 días) o vencido según la fecha y la vigencia. Se calcula solo.")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company, required=True)
 
     @api.depends('date', 'validity_months')

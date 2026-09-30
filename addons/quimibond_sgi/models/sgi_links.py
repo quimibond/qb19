@@ -254,7 +254,8 @@ class SgiAcuseAttachWizard(models.TransientModel):
     _name = 'sgi.acuse.attach.wizard'
     _description = "Adjuntar acuse firmado a la entrega"
 
-    picking_id = fields.Many2one('stock.picking', required=True)
+    picking_id = fields.Many2one('stock.picking', required=True,
+                                 help="Entrega a la que se adjunta el acuse firmado.")
     file = fields.Binary(string="Acuse firmado", required=True)
     file_name = fields.Char(string="Nombre del archivo")
     note = fields.Char(string="Nota")

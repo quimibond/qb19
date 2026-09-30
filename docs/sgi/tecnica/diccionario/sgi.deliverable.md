@@ -35,8 +35,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sg
 | `orphan` | Selection | Cabo suelto | Un entregable que alguien recibe pero nadie entrega (o al revés) es un hueco en la cadena, salvo que esté marcado como frontera. |  |  | compute `_compute_processes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:138` |
 | `producer_activity_ids` | Many2many | Lo entregan | Actividades que producen este entregable. |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:123` |
 | `producer_process_ids` | Many2many | Procesos que lo entregan | Procesos cuyas actividades producen este entregable. |  | `sgi.process` | compute `_compute_processes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_deliverable.py:132` |
-| `require_signed` | Boolean | Exige firmado | Cuenta como completo solo si el registro tiene una solicitud de Sign firmada ligada a él (REG-1). |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:173` |
-| `survey_id` | Many2one | Encuesta | El entregable es una respuesta terminada de esta encuesta (REG-2). |  | `survey.survey` |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:176` |
+| `require_signed` | Boolean | Exige firmado | Cuenta como completo solo si el registro tiene una solicitud de Sign firmada ligada a él (REG-1). |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:174` |
+| `survey_id` | Many2one | Encuesta | El entregable es una respuesta terminada de esta encuesta (REG-2). |  | `survey.survey` |  |  | `addons/quimibond_sgi/models/sgi_sign_record.py:177` |
 
 ## Métodos públicos (4)
 

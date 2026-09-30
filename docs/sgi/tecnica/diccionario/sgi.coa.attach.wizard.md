@@ -12,10 +12,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `attachment_ids` | Many2many | COA (PDF) | Uno por producto. Se acepta el nombre que ya usa el laboratorio. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:249` |
-| `picking_id` | Many2one | Entrega |  | sí | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:248` |
-| `recipient_ids` | Many2many | Destinatarios |  |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:252` |
-| `send` | Boolean | Enviar al cliente |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:255` |
+| `attachment_ids` | Many2many | COA (PDF) | Uno por producto. Se acepta el nombre que ya usa el laboratorio. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:254` |
+| `picking_id` | Many2one | Entrega | Entrega a la que se adjunta el COA. | sí | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:252` |
+| `recipient_ids` | Many2many | Destinatarios | Contactos del cliente a los que se envía el COA. |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:257` |
+| `send` | Boolean | Enviar al cliente | Marque para enviar el COA al cliente por correo al adjuntarlo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:261` |
 
 ## Métodos públicos (2)
 

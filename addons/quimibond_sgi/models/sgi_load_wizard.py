@@ -32,8 +32,10 @@ class SgiCatalogLoadWizard(models.TransientModel):
         ('draft', "Captura"),
         ('tested', "Probado"),
         ('loaded', "Cargado"),
-    ], string="Estado", default='draft', readonly=True)
-    dry_run_ok = fields.Boolean(readonly=True)
+    ], string="Estado", default='draft', readonly=True,
+        help="Captura, probado (sin escribir nada) o cargado.")
+    dry_run_ok = fields.Boolean(readonly=True,
+                                help="Indica que la prueba salió sin errores y ya se puede cargar.")
     summary = fields.Text(string="Resumen", readonly=True)
     line_ids = fields.One2many(
         'sgi.catalog.load.wizard.line', 'wizard_id', string="Resultado", readonly=True)

@@ -26,7 +26,8 @@ class SgiInterestedParty(models.Model):
     party_type = fields.Selection([
         ('interna', "Interna"),
         ('externa', "Externa"),
-    ], string="Tipo", default='externa', required=True)
+    ], string="Tipo", default='externa', required=True,
+        help="Interna o externa a la empresa.")
     category = fields.Selection([
         ('cliente', "Cliente"),
         ('trabajador', "Trabajadores"),
@@ -35,7 +36,8 @@ class SgiInterestedParty(models.Model):
         ('corporativo', "Accionistas / corporativo"),
         ('comunidad', "Comunidad / vecinos"),
         ('otro', "Otra"),
-    ], string="Categoría", default='cliente', required=True, tracking=True)
+    ], string="Categoría", default='cliente', required=True, tracking=True,
+        help="Grupo al que pertenece la parte interesada.")
     needs = fields.Text(
         string="Necesidades y expectativas", required=True,
         help="Qué espera esta parte del SGI (calidad, cumplimiento legal, "
@@ -48,18 +50,23 @@ class SgiInterestedParty(models.Model):
         string="Cómo se atiende",
         help="Con qué proceso, documento, requisito legal o control se "
              "responde a la expectativa adoptada.")
-    process_ids = fields.Many2many('sgi.process', string="Procesos relacionados")
+    process_ids = fields.Many2many('sgi.process', string="Procesos relacionados",
+                                   help="Procesos que atienden sus necesidades.")
     risk_ids = fields.Many2many(
         'sgi.risk', string="Riesgos/oportunidades ligados",
         help="Riesgos u oportunidades (incluido FODA) que nacen de esta parte.")
     legal_ids = fields.Many2many(
-        'sgi.legal.requirement', string="Requisitos legales ligados")
+        'sgi.legal.requirement', string="Requisitos legales ligados",
+        help="Requisitos legales que nacen de esta parte interesada.")
     review_frequency_months = fields.Integer(
-        string="Frecuencia de revisión (meses)", default=12)
-    last_review_date = fields.Date(string="Última revisión", tracking=True)
+        string="Frecuencia de revisión (meses)", default=12,
+        help="Cada cuántos meses se revisan sus necesidades. El cron avisa cuando vence.")
+    last_review_date = fields.Date(string="Última revisión", tracking=True,
+                                   help="Fecha de la última revisión de sus necesidades.")
     next_review_date = fields.Date(
         string="Próxima revisión", compute='_compute_next_review_date',
-        store=True, readonly=False)
+        store=True, readonly=False,
+        help="Fecha de la próxima revisión, según la frecuencia. Se puede cambiar.")
     active = fields.Boolean(default=True)
 
     @api.depends('last_review_date', 'review_frequency_months')

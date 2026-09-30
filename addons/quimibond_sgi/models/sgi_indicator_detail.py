@@ -61,9 +61,11 @@ class SgiIndicatorDetail(models.Model):
         ('sin_formula', "Sin fórmula o sin fuente"),
         ('sin_datos', "Sin datos en el periodo"),
         ('error', "Error de cálculo"),
-    ], string="Último cálculo", readonly=True, copy=False, index=True)
+    ], string="Último cálculo", readonly=True, copy=False, index=True,
+        help="Resultado del último cálculo automático y, si no dio valor, por qué.")
     calc_message = fields.Char(string="Motivo", readonly=True, copy=False)
-    calc_checked = fields.Datetime(string="Revisado el", readonly=True, copy=False)
+    calc_checked = fields.Datetime(string="Revisado el", readonly=True, copy=False,
+                                   help="Última vez que se revisó el cálculo automático.")
 
     def _sgi_set_calc(self, status, message=False):
         self.sudo().write({'calc_status': status, 'calc_message': message or False,
@@ -282,8 +284,9 @@ class SgiIndicatorMeasureDetail(models.Model):
 
     state = fields.Selection(selection_add=[('sin_dato', "Sin dato")],
                              ondelete={'sin_dato': 'set default'})
-    numerator = fields.Float(string="Numerador", digits=(16, 2))
-    denominator = fields.Float(string="Denominador", digits=(16, 2))
+    numerator = fields.Float(string="Numerador", digits=(16, 2), help="Numerador del cálculo.")
+    denominator = fields.Float(string="Denominador", digits=(16, 2),
+                               help="Denominador del cálculo (la base contra la que se mide).")
     sample_size = fields.Integer(string="Casos", help="Registros que forman la medición.")
     small_sample = fields.Boolean(
         string="Muestra chica", compute='_compute_small_sample', store=True,
@@ -294,7 +297,8 @@ class SgiIndicatorMeasureDetail(models.Model):
     detail_count = fields.Integer(string="Registros", compute='_compute_detail_count')
     value_is_pct = fields.Boolean(compute='_compute_value_is_pct')
     indicator_status = fields.Selection(related='indicator_id.status',
-                                        string="Estado del indicador")
+                                        string="Estado del indicador",
+                                        help="Si el indicador es oficial o está a prueba.")
 
     @api.depends('sample_size', 'state', 'detail_ids')
     def _compute_small_sample(self):

@@ -14,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_ppap.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:26` |
-| `is_psw` | Boolean | Es PSW (elemento 18) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:25` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:27` |
+| `is_psw` | Boolean | Es PSW (elemento 18) | Marca el elemento que es la carta de garantía de partes (PSW). |  |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:25` |
 | `name` | Char | Elemento |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:24` |
 | `sequence` | Integer | N° |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_ppap.py:23` |
 

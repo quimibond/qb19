@@ -1045,9 +1045,10 @@ class SgiNcCancel(models.TransientModel):
     _name = 'sgi.nc.cancel'
     _description = "Cancelación de No Conformidad"
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True)
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True,
+                               help="No conformidad que se cancela.")
     reason = fields.Text(string="Motivo de la cancelación", required=True)
-    is_manager = fields.Boolean(compute='_compute_is_manager')
+    is_manager = fields.Boolean(compute='_compute_is_manager', help="Indica si usted es Jefe MAST y SGI.")
 
     @api.depends_context('uid')
     def _compute_is_manager(self):

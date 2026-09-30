@@ -13,6 +13,22 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.35.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help` 3/3: C-018, K-019, D-29):** `help` en
+los 307 campos de prioridad alta restantes: **Dirección e indicadores**
+(indicador, medición, desglose, términos de fórmula, objetivos, política,
+revisión por la dirección, tablero), riesgos, requisitos legales y partes
+interesadas, seguridad y ambiente (incidentes, emergencias, simulacros,
+estudios y exámenes, EPP, checklists), metrología, AMEF, PPAP, planes de
+control, proveedores, COA, eficiencias de personal y Ajustes del SGI. En
+los campos que otra clase redefine (`calc_mode`, `direction`, `state` de la
+medición) el `help` va en la definición base. Con esto quedan los 589
+campos de prioridad alta que seguían sin ayuda (los otros 19 de la lista de
+608 ya no existen o ya la tenían). También se acorta la ayuda de «Fin de
+piloto» en el cambio documental. Solo texto de ayuda: ningún cambio de
+comportamiento.
+
 ## 19.0.57.34.0 — 2026-09-30
 
 **Cambiado (entrega 10, `e10-help` 2/3: C-018, K-019, D-29):** `help` en
