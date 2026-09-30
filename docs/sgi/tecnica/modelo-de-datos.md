@@ -61,7 +61,7 @@ Modelos que definen el núcleo y sus satélites (112) y modelos de otras apps qu
 | [`sgi.epp.delivery.line`](diccionario/sgi.epp.delivery.line.md) | Renglón de la responsiva de EPP | Renglón de la responsiva de EPP: artículo, talla y cantidad. | Model | 7 | `addons/quimibond_sgi/models/sgi_epp_sign.py` |
 | [`sgi.fmea`](diccionario/sgi.fmea.md) | AMEF - Análisis de Modo y Efecto de Falla (P-C10) | AMEF de proceso o de diseño (P-C10) con sus líneas y NPR máximo; ligado al plan de control. No pasa a vigente con NPR alto sin acción. | Model | 13 | `addons/quimibond_sgi/models/sgi_fmea.py` |
 | [`sgi.fmea.line`](diccionario/sgi.fmea.line.md) | Línea de AMEF | Modo de falla de un AMEF: severidad, ocurrencia y detección antes y después de las acciones (NPR). | Model | 18 | `addons/quimibond_sgi/models/sgi_fmea.py` |
-| [`sgi.format.map`](diccionario/sgi.format.map.md) | Formato SGI en documentos de Odoo | Mapeo formato SGI ↔ documento de Odoo que lo sustituye. | Model | 10 | `addons/quimibond_sgi/models/sgi_format_map.py` |
+| [`sgi.format.map`](diccionario/sgi.format.map.md) | Formato SGI en documentos de Odoo | Mapeo formato SGI ↔ documento de Odoo que lo sustituye. | Model | 17 | `addons/quimibond_sgi/models/sgi_format_map.py` |
 | [`sgi.format.mixin`](diccionario/sgi.format.mixin.md) | Mixin: clave de formato SGI | Agrega al modelo la clave del formato SGI que sustituye (pantalla y PDF). | AbstractModel | 1 | `addons/quimibond_sgi/models/sgi_format_map.py` |
 | [`sgi.health.record`](diccionario/sgi.health.record.md) | Estudio de higiene o examen médico por trabajador | Estudio de higiene o examen médico de un trabajador, con resultado y vigencia. Dato sensible: solo Salud ocupacional y Jefe MAST. | Model | 14 | `addons/quimibond_sgi/models/sgi_hse_records.py` |
 | [`sgi.incident`](diccionario/sgi.incident.md) | Incidente / Accidente SST (P-S02, SCAT) | Incidente o accidente de SST (P-S02) con análisis SCAT (causas inmediatas, básicas y falta de control). Todos reportan; SST, MAST y Salud ocupacional investigan y cierran. | Model | 18 | `addons/quimibond_sgi/models/sgi_incident.py` |
@@ -145,7 +145,7 @@ Modelos que definen el núcleo y sus satélites (112) y modelos de otras apps qu
 | [`ir.ui.menu`](diccionario/ir.ui.menu.md) | 0 | `addons/quimibond_sgi/models/sgi_cleanup.py` |
 | [`ir.ui.view`](diccionario/ir.ui.view.md) | 1 | `addons/quimibond_sgi/models/sgi_diagram_view.py` |
 | [`mail.activity`](diccionario/mail.activity.md) | 3 | `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py` |
-| [`maintenance.equipment`](diccionario/maintenance.equipment.md) | 14 | `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_msa.py` |
+| [`maintenance.equipment`](diccionario/maintenance.equipment.md) | 18 | `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_msa.py` |
 | [`maintenance.request`](diccionario/maintenance.request.md) | 7 | `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py` |
 | [`mrp.bom`](diccionario/mrp.bom.md) | 0 | `addons/quimibond_sgi/models/sgi_links.py` |
 | [`mrp.eco`](diccionario/mrp.eco.md) | 6 | `addons/quimibond_sgi_plm/models/mrp_eco.py` |

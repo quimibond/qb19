@@ -189,4 +189,45 @@
         <field name="sgi_code">F-P-G01-16</field>
         <field name="note">Boletín NEWS de cambios documentales</field>
     </record>
+
+    <!-- 57.62.0 (bloque 2 de formularios): laboratorio de Calidad (P-C05).
+         Mapeos con criterio (57.60.0): la verificación imprime la bitácora de
+         revisión de equipos y el equipo de laboratorio el formato de
+         instrumental; el préstamo se usa por referencia en la ficha. -->
+    <record id="format_map_lab_verification" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_calibration"/>
+        <field name="sgi_code">F-P-C05-11</field>
+        <field name="record_domain">[('calibration_type', '=', 'verificacion')]</field>
+        <field name="note">Bitácora de revisión de equipos de laboratorio (verificaciones)</field>
+    </record>
+
+    <record id="format_map_lab_equipment" model="sgi.format.map">
+        <field name="model_id" ref="maintenance.model_maintenance_equipment"/>
+        <field name="sgi_code">F-IT-P-C05-06-07</field>
+        <field name="record_domain">[('sgi_is_lab', '=', True)]</field>
+        <field name="note">Instrumental de laboratorio (equipos marcados de laboratorio)</field>
+    </record>
+
+    <record id="format_ref_lab_loan" model="sgi.format.map">
+        <field name="sgi_code">F-P-C05-07</field>
+        <field name="note">Préstamo de equipos de laboratorio (seguimiento del equipo)</field>
+    </record>
+
+    <!-- 57.63.0 (bloque 2 de formularios): etiquetas de lote (clase C) que se
+         imprimen desde el lote o la NC; por referencia porque el mismo modelo
+         imprime las tres. -->
+    <record id="format_ref_lot_released" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-02</field>
+        <field name="note">Etiqueta de material liberado</field>
+    </record>
+
+    <record id="format_ref_lot_rejected" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-03</field>
+        <field name="note">Etiqueta de material rechazado</field>
+    </record>
+
+    <record id="format_ref_lot_held" model="sgi.format.map">
+        <field name="sgi_code">F-P-C04-04</field>
+        <field name="note">Etiqueta de material detenido</field>
+    </record>
 </odoo>

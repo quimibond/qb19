@@ -13,6 +13,229 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.65.0 — 2026-09-30
+
+**Cambiado (bloque 2 de formularios 6/6, inventario §3.4 y §5 #12):** 20
+entregables propios sin «Modelo de Odoo» lo reciben porque su nombre dice sin
+duda dónde viven. Tabla `SGI_DELIVERABLE_MODELS`
+(`models/sgi_deliverable_models.py`), método
+`sgi.deliverable._sgi_fill_evident_models`:
+
+| Modelo | Entregables |
+|---|---|
+| Transferencia (`stock.picking`) | C2-ACUSE, C2-CITA, C2-CRUCE, C2-PEDIMENTO, C2-TRANSPORTE, C6-DESCARGA, C6-QUIMICOS |
+| Orden de producción (`mrp.production`) | C3-VIEJAS, C4-PARAMETROS, C4-TARJETA |
+| Control de calidad (`quality.check`) | C5-LIBERADO, C5-PRUEBAS |
+| No conformidad (`quality.alert`) | C5-CONCESION |
+| Orden de compra (`purchase.order`) | S1-FECHA |
+| Factura (`account.move`) | S2-CONTRARRECIBO, S2-PORTAL |
+| Bloqueo de periodo (`sgi.lock.date.log`) | S3-BLOQUEO |
+| Movimiento bancario (`account.bank.statement.line`) | S3-CONCIL-BANCO |
+| Solicitud de mantenimiento (`maintenance.request`) | S5-PREV-HECHO, S5-REPARACION |
+
+Solo el modelo: el filtro «ya está entregado», la fecha y el usuario quedan
+como estaban (`[]`, `create_date`, vacío) para que MAST los afine; ninguna
+actividad se mide con ellos todavía, así que ninguna medición cambia. El
+modelo viaja a sus flujos entre procesos.
+
+**Migración (post):** `migrations/19.0.57.65.0/post-migrate.py` llama al
+método: entregable por código en la empresa del SGI; escribe solo si el
+modelo está vacío (en el log: «modelo vacío → modelo»); se salta el que ya
+mide alguna actividad o cuya fecha o usuario no existe en el modelo.
+Idempotente; nada se borra. Esperado: 20.
+
+**Queda para MAST (96 entregables propios sin modelo; filtro «Sin modelo de
+Odoo» en SGI → Procesos → Entregables).** Con candidato probable, pero no
+evidente por el nombre:
+
+| Entregable | Candidato | Duda |
+|---|---|---|
+| C1-COTIZACION, C1-COSTO | `sale.order` / `project.task` (FT) | ¿La cotización del desarrollo sale del pedido o de la tarea de diseño? |
+| C2-ASN, C2-CARGA, C2-TARIMAS, C2-EXP-DOCS, C2-EXP-CERRADO | `stock.picking` | Pasos del embarque que hoy no dejan dato propio en la entrega |
+| C2-SOL-FECHA | `mail.activity` | Actividad asignada a Planeación |
+| C3-FECHA, C3-PLAN, C3-REPROG, C3-PRONOSTICO | `mrp.production` / `sgi.sales.budget` | Programa semanal y S&OP no son un registro único |
+| C4-EMPACADO, C4-TONO, C4-MONTAJE | `stock.lot` / `quality.check` / `mrp.workorder` | Depende de dónde se registre hoy en planta |
+| C5-CONTENCION | `quality.alert` | La contención es un paso de la NC, no un registro |
+| C6-NEGATIVOS, C6-SORPRESA, S3-SORPRESA | `stock.quant` | Conteos: ¿ajuste de inventario o reporte? |
+| C6-HDS | `stock.picking` / `documents.document` | ¿HDS adjunta a la recepción o en Documentos? |
+| C6-DESP-LISTO, C6-VENTA-DESP | `stock.picking` (VENTA DE DESPERDICIO) / `sale.order` | |
+| S1-ANTICIPO, S1-DISPERSION, S1-PROPUESTA | `account.payment` / `approval.request` | |
+| S1-NECESIDAD-MP, S1-IMPORT, S1-CONFORMIDAD, S1-DIFERENCIA | `purchase.order` | Pasos de la compra sin dato propio |
+| S2-PROMESA, S2-RECORDATORIO, S2-ACLARACION, S2-CASTIGO | `account.move` (seguimiento) / `mail.activity` | |
+| S3-CALC-IMP, S3-DECLARACION | `account.return` | Hoy las 8 declaraciones de 2026 están en «Nuevo» (propuestas, §1 #4) |
+| S3-MOV-REG, S3-POLIZAS-CIERRE | `account.move` | |
+| S4-CAPACITACION, S4-INDUCCION, S4-PROG-CAP | `slide.channel.partner` / `survey.user_input` | La capacitación presencial no pasa por eLearning |
+| S4-INCIDENCIAS | `hr.leave` / `hr.attendance` | |
+| S4-NOMINA, S4-NOMINA-REV, S4-FINIQUITO, S4-AGUINALDO, S4-PTU, S4-CFDI-CONC | `hr.payslip.run` / `hr.payslip` | Nómina en Odoo desde el 1-ene-2027 |
+| S4-ALTA-IMSS, S4-MOD-SALARIO, S4-SOL-ACCESOS | `hr.employee` / `hr.version` / `helpdesk.ticket` | |
+| S5-FLOTILLA | `fleet.vehicle` | ¿Está instalada Flotilla? |
+| S6-ACCESO-BAJA, S6-REV-USUARIOS, S6-VOBO-COMPRA | `helpdesk.ticket` / `res.users` / `approval.request` | |
+
+Sin modelo natural (revisiones y reportes mensuales, trámites con acuse
+externo): C1-REVISION, C2-REVISION, C3-CUMPL, C4-REVISION,
+C5-AUDITORIA, C5-REPORTE, C6-REPORTE, E1-EVAL-INV, E1-FLUJO13, E1-PLAN,
+E1-REPORTE-CONSEJO, E1-RIESGO-FIN, E1-VS-PPTO, E2-MATRIZ-VIG, S1-CONCIL,
+S1-REP, S1-REPORTE, S1-RESP-PROV, S2-REP-CARTERA, S2-REV-CRED, S3-ARQUEO,
+S3-BALANZA, S3-CONCIL-INV, S3-CONT-ELEC, S3-EEFF, S3-FECHA-INV,
+S3-FISCAL-VIGENTE, S3-FLUJO, S3-RESP-REQ, S4-COMISIONES, S4-CREDITOS,
+S4-CUOTAS, S4-DECL-ANUAL, S4-ISN, S4-MATRIZ, S4-PLANTILLA, S4-REPORTE-RH,
+S4-VALES, S5-REPORTE, S5-SERVICIOS, S6-REPORTE, S6-VIGENCIAS. Para estos
+basta con escribir en la actividad «Dónde se ejecuta» el portal o la carpeta.
+
+**Pruebas:** `test_entregables_modelo` (solo lo vacío, respeta lo capturado,
+salta un campo de fecha ajeno al modelo, idempotente, tabla real y
+post-migrate).
+
+## 19.0.57.64.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 5/6, inventario §4.1 y §5 #11):** menús
+**SGI → Procesos → Entregables** (`sgi.deliverable`, 319 en producción) y
+**SGI → Procesos → Flujos entre procesos** (`sgi.process.flow`, 50), que antes
+solo se veían dentro del proceso, la actividad o el diagrama. Usan su lista,
+ficha y búsqueda propias (ya existían; sin herencias). Flujos abre con el
+filtro «Mapa vigente». La búsqueda de entregables suma el filtro «Sin modelo
+de Odoo» (propios, sin las entradas externas) y agrupa por modelo de Odoo y
+por frontera del mapa. Árbol de menús al día (`tools/sgi_menu_tree.txt`).
+
+**Pruebas:** `test_menus_entregables` (menús con su acción y búsqueda
+propia, filtro sin modelo).
+
+## 19.0.57.63.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 4/6, inventario §5 #8):** etiquetas de
+**material liberado, rechazado y detenido** (F-P-C04-02, -03 y -04, clase C,
+hoy en Excel) en el menú Imprimir del **lote** (`stock.lot`) y de la **NC**
+(`quality.alert`: una etiqueta por lote de la NC; sin lote, una con el
+producto y «Sin lote»). Tamaño etiqueta 100 × 76 mm (papel
+`paperformat_sgi_lot_label`), el mismo de las etiquetas Dymo/Zebra del
+almacén (`stock_dymo_labels`, módulo de Consolti en la raíz que no es
+dependencia del SGI: se reutiliza el tamaño, no el módulo). Lleva estado en
+grande con su color, producto con referencia, lote con código de barras,
+cantidad del lote, folio de la NC, fecha, firma y el **pie del formato
+controlado** en vivo (mapeos por referencia `format_ref_lot_released`,
+`format_ref_lot_rejected`, `format_ref_lot_held`, noupdate; MAST liga el
+documento y la revisión sale sola). Archivo `report/report_lot_label.xml`,
+sin herencias.
+
+**Pruebas:** `test_etiquetas_lote` (las tres desde el lote, desde la NC con y
+sin lote, pie con la clave, menú Imprimir).
+
+## 19.0.57.62.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 3/6, inventario §5 #7):** laboratorio de
+Calidad (C5) sobre lo que ya existía, sin modelos nuevos:
+
+- **Equipo de laboratorio:** casilla «Equipo de laboratorio»
+  (`maintenance.equipment.sgi_is_lab`) en la pestaña «Metrología / EPP (SGI)»
+  del equipo. Menú **Calidad → Calidad preventiva → Metrología → Equipos de
+  laboratorio**, con lista y búsqueda propias (prestados, en el laboratorio,
+  vencidos, NO USAR; agrupar por «Prestado a»). El equipo marcado muestra e
+  imprime el formato del instrumental de laboratorio.
+- **Préstamo:** «Prestado a» (empleado) y «Prestado desde» (se llena sola)
+  con seguimiento: el historial del equipo es la bitácora de préstamos. La
+  ficha muestra la clave vigente del formato de préstamo
+  (`format_ref_lab_loan`).
+- **Verificación de laboratorio:** tipo nuevo de calibración («Verificación
+  de laboratorio») para la revisión periódica del equipo. No mueve las fechas
+  de calibración ni desbloquea; fuera de tolerancia deja el equipo NO USAR y
+  abre la NC de evaluación de impacto, como una calibración. Menú
+  **Metrología → Verificaciones de laboratorio**; la búsqueda de calibraciones
+  separa calibraciones y verificaciones y agrupa por tipo. La ficha de la
+  calibración muestra su formato controlado.
+- Mapeos nuevos (`data/sgi_format_map_data.xml`, noupdate; criterio de
+  57.60.0): verificación → F-P-C05-11 «Bitácora de revisión de equipos de
+  laboratorio»; equipo de laboratorio → F-IT-P-C05-06-07 «Instrumental de
+  laboratorio»; préstamo por referencia → F-P-C05-07. MAST liga el documento
+  en «Formatos en documentos de Odoo» y la revisión sale sola.
+
+**Queda para MAST:** marcar qué equipos son de laboratorio (hoy 148 equipos
+de medición, todos en la categoría EMIP; ninguno se marca solo).
+F-IT-P-C05-07-01 «Calibración del equipo Wesco» no se mapeó: en producción no
+hay ningún equipo «Wesco» dado de alta; al darlo de alta, un mapeo de
+`sgi.calibration` con filtro por ese equipo lo resuelve. F-IT-P-P04-08-01
+(verificación de instrumental, C4) duplica a F-P-C05-11 (bloque 3). Las 46
+calibraciones de producción (todas internas y conformes) no se tocan.
+
+**Pruebas:** `test_laboratorio` (verificación conforme y fuera de
+tolerancia, formatos, préstamo, menús).
+
+## 19.0.57.61.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 2/6):** las órdenes de producción, vales
+y transferencias de C4 (Producción) y C6 (Almacén e inventarios) imprimen su
+propia clave con los mapeos por criterio de 57.60.0. Tabla
+`SGI_OPERATION_FORMAT_MAPS` (`models/sgi_format_map_seed.py`), método
+`sgi.format.map._sgi_seed_operation_maps`:
+
+| Modelo | Clave (doc) | Cuándo aplica |
+|---|---|---|
+| Orden de producción | F-P-P02-01 OT entretelas (3999) | Tipos Carda (80), V10- (89), V18 (90) |
+| Orden de producción | F-IT-P-P01-02-02 Orden de cocina (3993) | Tipo Cocina Entretelas (82) |
+| Orden de producción | F-IT-P-P01-12-01 OT teñido (5057) | Tipo Tintorería (88) |
+| Transferencia | F-IT-P-A07-01-02 Reetiquetado y empaque (3701) | Tipo Reetiquetado (209) |
+| Transferencia | F-IT-P-A07-01-01 Requisición de refacciones y consumibles (3700) | Tipos Salida de consumibles (242) y Salida Refacciones a Gasto (264) |
+| Transferencia | F-IT-P-A05-01-06 Devolución a proveedor (3699) | Filtro: destino ubicación de proveedor (prioridad 20) |
+| Transferencia | F-P-A07-04 Devoluciones de cliente (3708) | Filtro: origen ubicación de cliente (prioridad 20) |
+
+Las demás órdenes siguen con la general F-IT-P-P01-08-01 (tarjeta viajera) y
+las salidas con F-P-A16-01, sin cambio.
+
+**Migración (post):** `migrations/19.0.57.61.0/post-migrate.py` llama al
+método: formato por clave vigente, tipos de operación por nombre exacto en la
+empresa del SGI (no tienen XML ID). Nunca pisa: si ya hay un mapeo del modelo
+con ese documento o esa clave (activo o archivado), se respeta y queda en el
+log; si falta el formato o un tipo, o un nombre es ambiguo, el renglón se
+salta. Idempotente; nada se borra. Esperado: 7 mapeos.
+
+**Queda para MAST (no se pudo determinar con certeza):**
+
+| Qué | Por qué quedó fuera |
+|---|---|
+| F-IT-P-P01-01-03 «Orden de producción de carda» (3989) | La carda imprime F-P-P02-01 (propuesta del inventario: 3989 duplica a 3999); fusionar o reasignar es del bloque 3 |
+| F-P-P01-01 «Orden de trabajo» (4001) | Está en la carpeta de Mantenimiento; hay que abrir el archivo para saber si es de producción o duplica a F-P-M01-01 |
+| Cocina Acabado (81, 1,020 órdenes en 2026) y Cocina Tintorería (83, 2,010) | ¿Usan la orden de cocina F-IT-P-P01-02-02 (instructivo de cocina de entretelas) o la formulación F-IT-P-P01-13-03 / check list F-IT-P-P01-15-01? |
+| Re-proceso Tintorería (106, 40) y Re-proceso Acabado (107, 2) | ¿Llevan la OT de teñido F-IT-P-P01-12-01? |
+| Termofijado (152, 31 órdenes) | No aparece activo en los tipos de la empresa 1; si es línea de entretelas, agregarlo a F-P-P02-01 |
+| Acabado (79), Acabado producto en proceso (151), Estiramiento (112), Encogimiento (263), Corte y perforado (84), Tejido tramado (87) y desarrollo (86), conversiones | Sin formato de orden propio identificado: siguen con la tarjeta viajera general (que es del tejido circular, IT-P-P01-08) |
+| F-P-P01-02 Bitácora de actividades de TAC (4022) | Es una bitácora, no un documento de Odoo identificado |
+| F-IT-P-A07-01-03 / -04 Lista de embarque (nacional / exportación) | La general de salidas imprime F-P-A16-01, cuyo archivo es «CITAS» (inventario §3.6): MAST decide cuál queda antes de cambiar el general |
+| F-IT-P-A07-01-05 Bitácora de embarques, -06 Rollos por embarque, -07/-08 Sellos | Bitácoras y controles, no un tipo de operación |
+| F-IT-P-A05-01-01 Vale de salida de laboratorio (C5, 3698) | Ningún tipo de operación de laboratorio identificado |
+| Requisición MP (113), Requisición PP y PT (210), Requisición tintorería (236) | Sin formato controlado identificado para esas requisiciones |
+
+**Pruebas:** `test_format_map_operaciones` (crea lo que falta, respeta el
+mapeo existente aunque esté archivado, salta clave o tipo inexistente,
+idempotente, tabla real y post-migrate).
+
+## 19.0.57.60.0 — 2026-09-30
+
+**Cambiado (bloque 2 de formularios 1/6, decisión «Inventario de
+formularios» 2026-09-30: «un formato por modelo» pasa al bloque 2):**
+`sgi.format.map` admite **varios formatos por modelo**. Cada mapeo puede
+llevar un criterio: tipos de operación (`stock.picking.type`, para
+transferencias, vales y órdenes de producción), centros de trabajo (órdenes
+con una operación en ese centro), categorías de producto (con sus
+subcategorías) y un filtro adicional sobre el registro; y una prioridad
+(`sequence`). El registro imprime el primer mapeo con criterio que cumple y,
+si no cumple ninguno, el **general** del modelo (el que no tiene criterio;
+uno activo por modelo, restricción en Python que sustituye a
+`unique(model_id)`). En «Formatos en documentos de Odoo» la ficha tiene la
+sección «Cuándo aplica», la lista muestra la prioridad y el criterio, y la
+búsqueda filtra generales, con criterio y por referencia. El pie «formato
+controlado» se agrega al PDF nativo de la orden de producción
+(`mrp.report_mrporder`). En las transferencias, el general sigue aplicando
+solo a las salidas; un mapeo con criterio aplica a cualquier tipo.
+
+**Migración (pre):** `migrations/19.0.57.60.0/pre-migrate.py` quita la
+restricción SQL `unique(model_id)` con `IF EXISTS`. Los 22 mapeos de
+producción quedan como generales (`is_general` se calcula verdadero en todos)
+e imprimen la misma clave que antes. Nada se borra.
+
+**Pruebas:** `test_format_map_varios` (general sin criterio, por tipo de
+operación, prioridad, categoría con subcategorías, transferencia interna,
+filtro adicional, un general por modelo, criterios inválidos, pie del reporte
+y `_get_for_model`).
+
 ## 19.0.57.54.0 — 2026-09-30
 
 **Cambiado (bloque 1 de formularios 5/5, decisión «Inventario de

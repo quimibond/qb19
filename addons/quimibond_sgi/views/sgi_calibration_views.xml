@@ -6,6 +6,12 @@
         <field name="model">sgi.calibration</field>
         <field name="arch" type="xml">
             <form string="Calibración">
+                <!-- 57.62.0: formato controlado (verificación de laboratorio). -->
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
                 <sheet>
                     <div class="oe_title">
                         <label for="equipment_id" string="Equipo"/>
@@ -34,7 +40,9 @@
                         como NO USAR y genera la NC de evaluación de impacto
                         (qué producto se midió con él). La <b>Próxima fecha</b>
                         actualiza el semáforo del equipo: avisa 30 días antes
-                        y al vencer también lo bloquea.
+                        y al vencer también lo bloquea. Una <b>Verificación de
+                        laboratorio</b> (revisión periódica del equipo) no cambia
+                        las fechas; fuera de tolerancia bloquea el equipo igual.
                     </div>
                     <group string="Notas">
                         <field name="notes" nolabel="1"/>
@@ -74,6 +82,12 @@
                 <field name="certificate_ref"/>
                 <filter name="fuera" string="Fuera de tolerancia"
                         domain="[('result','=','fuera_tolerancia')]"/>
+                <separator/>
+                <filter name="calibrations" string="Calibraciones"
+                        domain="[('calibration_type', '!=', 'verificacion')]"/>
+                <filter name="verifications" string="Verificaciones de laboratorio"
+                        domain="[('calibration_type', '=', 'verificacion')]"/>
+                <separator/>
                 <!-- V-M02/V-M03 (57.43.0): lo que vence y filtro de fecha nativo. -->
                 <filter name="due" string="Próximas a vencer"
                         domain="[('equipment_id.sgi_calibration_state', 'in', ('vencido', 'por_vencer'))]"
@@ -84,6 +98,7 @@
                 <group>
                     <filter name="group_equipment" string="Equipo" context="{'group_by': 'equipment_id'}"/>
                     <filter name="group_result" string="Resultado" context="{'group_by': 'result'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'calibration_type'}"/>
                 </group>
             </search>
         </field>
@@ -101,12 +116,34 @@
         </field>
     </record>
 
+    <!-- 57.62.0: verificaciones del laboratorio (revisión periódica del
+         equipo, F-P-C05-11) sobre las mismas calibraciones. -->
+    <record id="sgi_calibration_action_lab" model="ir.actions.act_window">
+        <field name="name">Verificaciones de laboratorio</field>
+        <field name="res_model">sgi.calibration</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('calibration_type', '=', 'verificacion')]</field>
+        <field name="context">{'default_calibration_type': 'verificacion'}</field>
+        <field name="search_view_id" ref="sgi_calibration_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre la revisión de un equipo de laboratorio</p>
+            <p>La verificación no mueve las fechas de calibración; fuera de tolerancia deja el equipo NO USAR y abre la NC de evaluación de impacto.</p>
+        </field>
+    </record>
+
     <!-- ================= maintenance.equipment: extensión SGI ================= -->
     <record id="sgi_equipment_view_form" model="ir.ui.view">
         <field name="name">maintenance.equipment.form.sgi</field>
         <field name="model">maintenance.equipment</field>
         <field name="inherit_id" ref="maintenance.hr_equipment_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-info mb-0" role="alert"
+                     invisible="not sgi_format_banner">
+                    📋 Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+            </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_calibrations" type="object" class="oe_stat_button"
                         icon="fa-check-square-o" invisible="not sgi_is_measuring"
@@ -139,6 +176,13 @@
                         <group string="Equipo de protección personal (EPP)">
                             <field name="sgi_is_ppe"/>
                             <field name="sgi_ppe_expiry_date" invisible="not sgi_is_ppe"/>
+                        </group>
+                        <group string="Laboratorio">
+                            <field name="sgi_is_lab"/>
+                            <field name="sgi_loan_employee_id" invisible="not sgi_is_lab"/>
+                            <field name="sgi_loan_date" invisible="not sgi_is_lab or not sgi_loan_employee_id"/>
+                            <field name="sgi_loan_format_label"
+                                   invisible="not sgi_is_lab or not sgi_loan_format_label"/>
                         </group>
                     </group>
                 </page>
@@ -228,6 +272,78 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Dé de alta los equipos de medición</p>
             <p>Con su frecuencia de calibración; el semáforo avisa los vencimientos 30 días antes.</p>
+        </field>
+    </record>
+
+    <!-- 57.62.0 (bloque 2 de formularios): equipos de laboratorio de Calidad
+         (F-IT-P-C05-06-07) con su préstamo (F-P-C05-07). Vistas primarias con
+         prioridad alta: no le ganan a las de Mantenimiento en su app. -->
+    <record id="sgi_equipment_view_list_lab" model="ir.ui.view">
+        <field name="name">maintenance.equipment.list.sgi.lab</field>
+        <field name="model">maintenance.equipment</field>
+        <field name="priority">91</field>
+        <field name="arch" type="xml">
+            <list string="Equipos de laboratorio" decoration-danger="sgi_do_not_use"
+                  decoration-info="sgi_loan_employee_id">
+                <field name="name"/>
+                <field name="category_id" optional="show"/>
+                <field name="serial_no" optional="hide"/>
+                <field name="sgi_is_measuring" optional="hide"/>
+                <field name="sgi_next_calibration_date" widget="remaining_days" optional="show"/>
+                <field name="sgi_calibration_state" widget="badge" optional="show"
+                       decoration-success="sgi_calibration_state == 'vigente'"
+                       decoration-warning="sgi_calibration_state == 'por_vencer'"
+                       decoration-danger="sgi_calibration_state == 'vencido'"/>
+                <field name="sgi_do_not_use" string="NO USAR" widget="boolean_toggle" readonly="1"/>
+                <field name="sgi_loan_employee_id"/>
+                <field name="sgi_loan_date"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_equipment_view_search_lab" model="ir.ui.view">
+        <field name="name">maintenance.equipment.search.sgi.lab</field>
+        <field name="model">maintenance.equipment</field>
+        <field name="priority">91</field>
+        <field name="arch" type="xml">
+            <search string="Equipos de laboratorio">
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="serial_no"/>
+                <field name="sgi_loan_employee_id"/>
+                <filter name="sgi_lent" string="Prestados"
+                        domain="[('sgi_loan_employee_id', '!=', False)]"/>
+                <filter name="sgi_in_lab" string="En el laboratorio"
+                        domain="[('sgi_loan_employee_id', '=', False)]"/>
+                <separator/>
+                <filter name="sgi_due" string="Vencido o por vencer"
+                        domain="[('sgi_calibration_state', 'in', ('vencido', 'por_vencer'))]"/>
+                <filter name="sgi_blocked" string="No usar"
+                        domain="[('sgi_do_not_use', '=', True)]"/>
+                <separator/>
+                <filter name="sgi_loan_date" string="Prestado desde" date="sgi_loan_date"/>
+                <group>
+                    <filter name="group_loan" string="Prestado a"
+                            context="{'group_by': 'sgi_loan_employee_id'}"/>
+                    <filter name="group_category" string="Categoría" context="{'group_by': 'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_equipment_action_lab" model="ir.actions.act_window">
+        <field name="name">Equipos de laboratorio</field>
+        <field name="res_model">maintenance.equipment</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('sgi_is_lab', '=', True)]</field>
+        <field name="context">{'default_sgi_is_lab': True}</field>
+        <field name="search_view_id" ref="sgi_equipment_view_search_lab"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_equipment_view_list_lab')}),
+            (0, 0, {'view_mode': 'form'})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Marque los equipos del laboratorio</p>
+            <p>En la ficha del equipo, pestaña «Metrología / EPP (SGI)», marque «Equipo de laboratorio». Para prestarlo, capture a quién; al devolverlo, deje el campo vacío: el seguimiento guarda el historial.</p>
         </field>
     </record>
 </odoo>

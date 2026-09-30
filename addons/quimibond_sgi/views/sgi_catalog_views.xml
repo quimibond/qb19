@@ -164,8 +164,33 @@
                         domain="[('boundary', '!=', False)]"/>
                 <filter name="mide" string="Miden actividades"
                         domain="[('odoo_model_id', '!=', False)]"/>
+                <!-- 57.64.0: los que aún no dicen dónde viven en Odoo. -->
+                <filter name="sin_modelo" string="Sin modelo de Odoo"
+                        domain="[('odoo_model_id', '=', False), ('boundary', '!=', 'entrada_externa')]"
+                        help="Entregables propios (no entradas externas) sin modelo de Odoo: no se pueden medir solos."/>
+                <separator/>
                 <filter name="archived" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_model" string="Modelo de Odoo"
+                            context="{'group_by': 'odoo_model_id'}"/>
+                    <filter name="group_boundary" string="Frontera del mapa"
+                            context="{'group_by': 'boundary'}"/>
+                </group>
             </search>
+        </field>
+    </record>
+
+    <!-- 57.64.0 (bloque 2 de formularios): menú propio de Entregables. -->
+    <record id="sgi_deliverable_action" model="ir.actions.act_window">
+        <field name="name">Entregables</field>
+        <field name="res_model">sgi.deliverable</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_deliverable_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay entregables</p>
+            <p>Un entregable es lo que una actividad le pasa a otra (un pedido
+               confirmado, un lote liberado). Con su modelo de Odoo, la actividad
+               que lo entrega se mide sola.</p>
         </field>
     </record>
 

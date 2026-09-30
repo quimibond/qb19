@@ -40,4 +40,14 @@
             </t>
         </xpath>
     </template>
+
+    <!-- 57.60.0: la orden de producción imprime la clave del mapeo que le
+         aplica (tipo de operación, centro de trabajo…), no una sola por modelo. -->
+    <template id="report_mrporder_sgi" inherit_id="mrp.report_mrporder">
+        <xpath expr="//div[hasclass('page')]" position="inside">
+            <t t-call="quimibond_sgi.sgi_format_footer">
+                <t t-set="sgi_rec" t-value="o"/>
+            </t>
+        </xpath>
+    </template>
 </odoo>

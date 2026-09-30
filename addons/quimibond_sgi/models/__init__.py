@@ -28,8 +28,10 @@ from . import sgi_ppap
 from . import sgi_incident
 from . import sgi_competence
 from . import sgi_format_map
+from . import sgi_format_map_seed
 from . import sgi_catalog
 from . import sgi_deliverable
+from . import sgi_deliverable_models
 from . import sgi_load
 from . import sgi_exec_stat
 from . import sgi_load_wizard

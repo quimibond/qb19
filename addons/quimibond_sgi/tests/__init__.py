@@ -123,3 +123,9 @@ from . import test_work_permit
 from . import test_loto
 from . import test_hallazgos_evaluaciones
 from . import test_sst_links
+from . import test_format_map_varios
+from . import test_format_map_operaciones
+from . import test_laboratorio
+from . import test_etiquetas_lote
+from . import test_menus_entregables
+from . import test_entregables_modelo
