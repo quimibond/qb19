@@ -1571,12 +1571,9 @@ class SgiCron(models.AbstractModel):
 
         failures = self._sgi_for_each(list(by_equipment), _repetitive, "falla repetitiva")
         # (b) Reclamaciones con SLA vencido que siguen abiertas.
-        team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                            raise_if_not_found=False)
         Ticket = self.env['helpdesk.ticket']
-        if team and 'sla_deadline' in Ticket._fields:
-            tickets = Ticket.search([
-                ('team_id', '=', team.id),
+        if 'sla_deadline' in Ticket._fields:
+            tickets = Ticket.search(self.env['helpdesk.team']._sgi_complaint_domain() + [
                 ('stage_id.fold', '=', False),
                 ('sla_deadline', '!=', False),
                 ('sla_deadline', '<', now),

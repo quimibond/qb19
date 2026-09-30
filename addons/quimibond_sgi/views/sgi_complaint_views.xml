@@ -6,11 +6,16 @@
         <field name="inherit_id" ref="helpdesk.helpdesk_ticket_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
+                <!-- D-006/D-010 (decisión 9): solo en equipos de reclamaciones del SGI. -->
                 <button name="action_sgi_generate_nc" type="object" string="Generar NC"
-                        class="btn-secondary" invisible="sgi_alert_id"/>
+                        class="btn-secondary"
+                        invisible="sgi_alert_id or not sgi_is_complaint_team"
+                        groups="quimibond_sgi.group_sgi_user"/>
             </xpath>
             <xpath expr="//sheet" position="inside">
-                <group string="Datos de la reclamación (SGI)">
+                <field name="sgi_is_complaint_team" invisible="1"/>
+                <group string="Datos de la reclamación" name="sgi_complaint_data"
+                       invisible="not sgi_is_complaint_team">
                     <group>
                         <field name="sgi_sale_order_id"/>
                         <field name="sgi_product_id"/>
@@ -26,26 +31,42 @@
         </field>
     </record>
 
+    <!-- D-006 (decisión 9): la marca que decide qué equipos son reclamación. -->
+    <record id="sgi_helpdesk_team_view_form" model="ir.ui.view">
+        <field name="name">sgi.helpdesk.team.form.inherit</field>
+        <field name="model">helpdesk.team</field>
+        <field name="inherit_id" ref="helpdesk.helpdesk_team_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@id='after-sales']" position="inside">
+                <setting groups="quimibond_sgi.group_sgi_manager"
+                         help="Sus tickets son reclamaciones de clientes del SGI: menú Reclamaciones, indicador de reclamaciones y botón «Generar NC»">
+                    <field name="sgi_is_complaint"/>
+                </setting>
+            </xpath>
+        </field>
+    </record>
+
     <record id="sgi_complaint_action" model="ir.actions.server">
         <field name="name">Reclamaciones de clientes</field>
         <field name="model_id" ref="helpdesk.model_helpdesk_ticket"/>
         <field name="state">code</field>
         <field name="code">
-team = env.ref('quimibond_sgi.sgi_helpdesk_team_complaints', raise_if_not_found=False)
+# D-006 (decisión 9): todos los equipos marcados «Equipo de reclamaciones
+# (SGI)»; sin ninguno marcado, lista vacía (E-012: nunca TODO Helpdesk).
+teams = env['helpdesk.team'].search([('sgi_is_complaint', '=', True)])
 action = {
     'type': 'ir.actions.act_window',
     'name': 'Reclamaciones de clientes',
     'res_model': 'helpdesk.ticket',
     'view_mode': 'kanban,list,form',
-    # E-012: sin el equipo del SGI no se abre TODO Helpdesk: lista vacía.
-    'domain': [('team_id', '=', team.id)] if team else [('id', '=', False)],
-    'context': {'default_team_id': team.id} if team else {},
-    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Registra la primera reclamación&lt;/p&gt;
-&lt;p&gt;Captura cliente, producto, lote y metros afectados en la pestaña SGI del
-ticket; el SLA de primera respuesta corre solo. Si procede, el botón
-&lt;b&gt;Generar NC&lt;/b&gt; abre la No Conformidad ya ligada. Importante: las
-reclamaciones deben entrar por ESTE equipo — en otros equipos no hay SLA
-SGI, ni NC, ni cuentan para el KPI CA-01.&lt;/p&gt;""",
+    'domain': [('team_id', 'in', teams.ids)] if teams else [('id', '=', False)],
+    'context': {'default_team_id': teams[0].id} if len(teams) == 1 else {},
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Registre la primera reclamación&lt;/p&gt;
+&lt;p&gt;Aquí salen los tickets de los equipos marcados como «Equipo de
+reclamaciones (SGI)» en Servicio de asistencia. Capture pedido, producto,
+lote y metros afectados en el bloque «Datos de la reclamación» del ticket.
+Si procede, el botón &lt;b&gt;Generar NC&lt;/b&gt; abre la No Conformidad ya
+ligada.&lt;/p&gt;""",
 }
         </field>
     </record>

@@ -108,7 +108,9 @@ class TestAuditHardening(TransactionCase):
     # A1 — «Generar NC» de reclamación es idempotente
     # ------------------------------------------------------------------
     def test_a1_complaint_nc_idempotent(self):
-        ticket = self.env['helpdesk.ticket'].create({'name': 'Reclamación A1'})
+        ticket = self.env['helpdesk.ticket'].create({
+            'name': 'Reclamación A1',
+            'team_id': self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints').id})
         action = ticket.action_sgi_generate_nc()
         alert_id = action['res_id']
         self.assertTrue(ticket.sgi_alert_id)

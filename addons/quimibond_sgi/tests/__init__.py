@@ -113,3 +113,4 @@ from . import test_zona_horaria
 from . import test_medicion_robusta
 from . import test_rendimiento
 from . import test_checklist_pin
+from . import test_reclamaciones

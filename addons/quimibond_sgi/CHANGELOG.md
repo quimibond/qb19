@@ -13,6 +13,38 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.19.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-reclamaciones`: D-006, D-010; decisión 9 de la
+tanda 2):** qué equipo es de reclamaciones lo decide la marca nueva
+`helpdesk.team.sgi_is_complaint` («Equipo de reclamaciones (SGI)», en la
+ficha del equipo → Posventa, solo Jefe MAST), no el XML ID
+`sgi_helpdesk_team_complaints`. La leen:
+
+- el menú «Reclamaciones de clientes» (todos los equipos marcados; sin
+  ninguno, lista vacía como antes);
+- el indicador de reclamaciones (`reclamos_cliente`, CA-01) y su vista de
+  evidencia: **empieza a contar los tickets reales** (15 en producción)
+  donde antes contaba los 0 del equipo del SGI;
+- el aviso de SLA vencido, la revisión por la dirección y el diagnóstico
+  (que ahora avisa si hay tickets en equipos con «reclama» en el nombre sin
+  marcar).
+
+En el ticket, el bloque «Datos de la reclamación» y el botón «Generar NC»
+solo salen en equipos marcados (antes salían en los 228 tickets de Sistemas);
+«Generar NC» además pide Usuario SGI y el método se niega fuera de un equipo
+marcado. Ayudas de «Reclamaciones de clientes» y «Mejora continua»
+corregidas (hablaban de pestañas que no existen); sin «(SGI)» en los grupos.
+
+**Migración (post):** marca el equipo del SGI y, en la empresa del SGI, los
+equipos llamados exactamente «Reclamaciones entretelas» y «ATENCION A
+CLIENTES» (esperado: 30, 2 y 14). Idempotente; ningún ticket cambia de
+equipo. «Reclamación Industrial» (11, 0 tickets) no se marca.
+
+**Pruebas:** `test_reclamaciones` (3 casos: marca idempotente por nombre,
+«Generar NC» solo en equipos marcados, menú e indicador por la marca);
+`test_audit_hardening` A1 crea su ticket en el equipo del SGI.
+
 ## 19.0.57.18.0 — 2026-09-30
 
 **Agregado (entrega 8, `e8-checklist-pin`: I-005, D-08):** parámetro
