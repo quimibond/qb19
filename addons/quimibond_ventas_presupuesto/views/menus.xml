@@ -10,6 +10,10 @@
               parent="menu_sale_sgi_planning" action="sgi_sales_budget_action" sequence="10"/>
     <menuitem id="menu_sale_sgi_sales_forecast" name="Pronósticos"
               parent="menu_sale_sgi_planning" action="sgi_sales_forecast_action" sequence="20"/>
+    <menuitem id="menu_sale_qb_release" name="Releases de clientes"
+              parent="menu_sale_sgi_planning" action="qb_release_action" sequence="22"/>
+    <menuitem id="menu_sale_qb_release_profile" name="Perfiles de release"
+              parent="menu_sale_sgi_planning" action="qb_release_profile_action" sequence="24"/>
     <menuitem id="menu_sale_qb_customer_part" name="Partes del cliente"
               parent="menu_sale_sgi_planning" action="qb_customer_part_action" sequence="25"/>
     <menuitem id="menu_sale_sgi_sales_analysis" name="Análisis"
