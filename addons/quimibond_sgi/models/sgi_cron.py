@@ -1134,7 +1134,10 @@ class SgiCron(models.AbstractModel):
         dt_to = fields.Datetime.to_datetime(prev_q_end) + relativedelta(days=1)
 
         Eval = self.env['sgi.supplier.eval']
+        # 57.16.0 (G-019, D-03): solo las recepciones de la empresa del SGI.
+        company = self.env['sgi.config']._sgi_company()
         pickings = self.env['stock.picking'].search([
+            ('company_id', '=', company.id),
             ('picking_type_id.code', '=', 'incoming'),
             ('state', '=', 'done'),
             ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
@@ -1287,6 +1290,7 @@ class SgiCron(models.AbstractModel):
 
         # EPP por vencer (P-S03).
         ppe = Equipment.search([
+            ('company_id', 'in', (company.id, False)),  # 57.16.0 (G-019)
             ('sgi_is_ppe', '=', True),
             ('sgi_ppe_expiry_date', '!=', False),
         ])
@@ -1342,9 +1346,12 @@ class SgiCron(models.AbstractModel):
         soon = today + relativedelta(days=30)
         manager_id = self._sgi_manager_user_id()
         rh_id = self._sgi_rh_user_id()
+        # 57.16.0 (G-019, D-03): solo empleados de la empresa del SGI.
+        company = self.env['sgi.config']._sgi_company()
 
         # Certificaciones (hr.employee.skill de tipo certificación) con vigencia.
         certs = self.env['hr.employee.skill'].search([
+            ('employee_id.company_id', '=', company.id),
             ('is_certification', '=', True),
             ('valid_to', '!=', False),
             ('valid_to', '<=', soon),
@@ -1378,6 +1385,7 @@ class SgiCron(models.AbstractModel):
 
         # Currículos / cursos con fecha de fin próxima (hr.resume.line).
         resume_lines = self.env['hr.resume.line'].search([
+            ('employee_id.company_id', '=', company.id),
             ('date_end', '!=', False),
             ('date_end', '<=', soon),
             ('date_end', '>=', today),

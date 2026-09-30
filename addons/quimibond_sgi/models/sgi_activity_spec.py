@@ -23,7 +23,8 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 from .sgi_calendar import (
-    sgi_add_business_days, sgi_nth_business_day, sgi_previous_business_day, sgi_today)
+    sgi_add_business_days, sgi_local_date, sgi_local_datetime_utc, sgi_nth_business_day,
+    sgi_previous_business_day, sgi_today)
 from .sgi_process_procedure import SgiProcessActivity as _BaseActivity
 
 _logger = logging.getLogger(__name__)
@@ -1003,21 +1004,29 @@ class SgiActivityWeekStat(models.Model):
         today = sgi_today(self.env)
         monday = today - timedelta(days=today.weekday())
         periods = [monday - timedelta(weeks=n) for n in range(weeks - 1, -1, -1)]
+        failures = 0
         for act in activities:
+            # 57.16.0 (G-002): savepoint por actividad; un dominio que truena en
+            # SQL ya no deja abortada la transacción para las demás.
             try:
-                rows = [act._sgi_week_counts(start) for start in periods]
+                with self.env.cr.savepoint():
+                    self._sgi_compute_one(act, periods)
             except Exception:  # noqa: BLE001 - un dominio malo no tumba a las demás
+                failures += 1
                 _logger.exception("SGI: no se pudo medir la semana de %s", act.display_name)
-                continue
-            existing = {s.period_start: s for s in self.search([
-                ('activity_id', '=', act.id), ('period_start', 'in', periods)])}
-            for start, counts in zip(periods, rows):
-                stat = existing.get(start)
-                if stat:
-                    if any(stat[k] != v for k, v in counts.items()):
-                        stat.write(counts)
-                else:
-                    self.create(dict(counts, activity_id=act.id, period_start=start))
+        return failures
+
+    def _sgi_compute_one(self, act, periods):
+        rows = [act._sgi_week_counts(start) for start in periods]
+        existing = {s.period_start: s for s in self.search([
+            ('activity_id', '=', act.id), ('period_start', 'in', periods)])}
+        for start, counts in zip(periods, rows):
+            stat = existing.get(start)
+            if stat:
+                if any(stat[k] != v for k, v in counts.items()):
+                    stat.write(counts)
+            else:
+                self.create(dict(counts, activity_id=act.id, period_start=start))
 
 
 class SgiActivityWeekCounts(models.Model):
@@ -1027,8 +1036,11 @@ class SgiActivityWeekCounts(models.Model):
         """Conteos de la semana que empieza el lunes ``start``."""
         self.ensure_one()
         env = self.env
-        week_start = datetime.combine(start, time.min)
-        week_end = week_start + timedelta(days=7)
+        # 57.16.0 (G-007 c): la semana se corta a medianoche de México, no UTC.
+        week_start = sgi_local_datetime_utc(env, start, 0)
+        week_end = sgi_local_datetime_utc(env, start + timedelta(days=7), 0)
+        week_end_day = start + timedelta(days=7)
+        Activity = env['sgi.process.activity']
         counts = dict(applicable_count=0, done_count=0, complete_count=0,
                       timed_count=0, on_time_count=0, late_open_count=0)
         output = self._sgi_output_deliverable()
@@ -1038,6 +1050,9 @@ class SgiActivityWeekCounts(models.Model):
         if Out is not None and out_date not in Out._fields:
             out_date = 'create_date'
         out_domain = sgi_safe_domain(output.measure_domain) if output else []
+        if Out is not None:
+            # 57.16.0 (H-006): solo la empresa del SGI.
+            out_domain = out_domain + Activity._sgi_measure_company_domain(Out)
         # Hechas y completas.
         done = Out.browse()
         if Out is not None:
@@ -1057,7 +1072,7 @@ class SgiActivityWeekCounts(models.Model):
             in_date = deliverable.measure_date_field or 'create_date'
             if in_date not in In._fields:
                 in_date = 'create_date'
-            base = line._sgi_applicable_domain()
+            base = line._sgi_applicable_domain() + Activity._sgi_measure_company_domain(In)
             counts['applicable_count'] += In.search_count(
                 base + [(in_date, '>=', week_start), (in_date, '<', week_end)])
             if not line._sgi_has_deadline() or Out is None:
@@ -1072,7 +1087,7 @@ class SgiActivityWeekCounts(models.Model):
                 (in_date, '<', week_end)])
             for rec in candidates:
                 due = line._sgi_due(rec, in_date)
-                if due is None or due >= week_end.date():
+                if due is None or due >= week_end_day:
                     continue
                 if same:
                     delivered = Out.search_count(out_domain + [
@@ -1097,14 +1112,14 @@ class SgiActivityWeekCounts(models.Model):
                 if due is None:
                     continue
                 counts['timed_count'] += 1
-                if rec[out_date] and fields.Datetime.to_datetime(rec[out_date]).date() <= due:
+                if rec[out_date] and sgi_local_date(env, rec[out_date]) <= due:
                     counts['on_time_count'] += 1
             break   # la primera entrada con plazo que se liga es la que manda
         # Periódicas: a tiempo si se hizo antes del vencimiento del periodo.
         if Out is not None and not counts['timed_count'] and (
                 self.due_weekday or self.due_business_day or (self.due_month and self.due_day)):
             for rec in done:
-                day = fields.Datetime.to_datetime(rec[out_date]).date()
+                day = sgi_local_date(env, rec[out_date])
                 due = self._sgi_periodic_due(day)
                 if due is None:
                     continue
@@ -1116,10 +1131,11 @@ class SgiActivityWeekCounts(models.Model):
     @api.model
     def cron_measure_activities(self):
         res = super().cron_measure_activities()
-        try:
+
+        def _weekly():
             measurable = self.search([('measure_method', '=', 'entregable')]) | self.search(
                 [('input_ids.deliverable_id.odoo_model_id', '!=', False)])
             self.env['sgi.activity.week.stat']._sgi_compute(measurable)
-        except Exception:  # noqa: BLE001
-            _logger.exception("SGI: falló la medición semanal de cumplimiento.")
+        # 57.16.0 (G-002): en su savepoint.
+        self.env['sgi.cron']._sgi_step("medición semanal de cumplimiento", _weekly)
         return res

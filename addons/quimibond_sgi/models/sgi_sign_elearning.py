@@ -85,19 +85,22 @@ class DocumentsDocumentSign(models.Model):
                 skipped.append(ack.employee_id.name)
                 continue
             try:
-                request = self.env['sign.request'].sudo().create({
-                    'template_id': template.id,
-                    'reference': "Acuse %s — %s" % (
-                        self.sgi_code or self.name, ack.employee_id.name),
-                    'subject': "Firma de acuse de lectura: %s" % (
-                        self.sgi_code or self.name),
-                    'request_item_ids': [(0, 0, {
-                        'partner_id': partner.id,
-                        'role_id': roles.id,
-                    })],
-                })
-                ack.sudo().sign_request_id = request
-                sent += 1
+                # 57.16.0 (G-002): savepoint por solicitud; un error SQL al
+                # crear una ya no aborta la transacción para las demás.
+                with self.env.cr.savepoint():
+                    request = self.env['sign.request'].sudo().create({
+                        'template_id': template.id,
+                        'reference': "Acuse %s — %s" % (
+                            self.sgi_code or self.name, ack.employee_id.name),
+                        'subject': "Firma de acuse de lectura: %s" % (
+                            self.sgi_code or self.name),
+                        'request_item_ids': [(0, 0, {
+                            'partner_id': partner.id,
+                            'role_id': roles.id,
+                        })],
+                    })
+                    ack.sudo().sign_request_id = request
+                    sent += 1
             except Exception:
                 _logger.exception(
                     "SGI Sign: falló la solicitud de firma del acuse de %s "
