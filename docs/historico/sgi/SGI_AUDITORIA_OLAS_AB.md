@@ -1,5 +1,7 @@
 # SGI — Mapa de hallazgos G· y su tratamiento (Olas A + B)
 
+> **Histórico.** Archivado el 2026-09-30. Sus IDs «G11…G21» se citan como `OLAS-G11…`; no son los G-001… de la auditoría de 2026-09-29 ni los G1…G13 de la auditoría funcional.
+
 > **Procedencia y alcance de este documento.**
 > Este mapa está **reconstruido a partir de la evidencia versionada en el
 > propio repo** (mensajes de commit de `9c91dd0`, `f0b58ac`, `ec36895`, los

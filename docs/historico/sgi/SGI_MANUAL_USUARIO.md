@@ -1,5 +1,7 @@
 # Manual de Usuario — SGI en Odoo (Quimibond)
 
+> **NO USAR.** Manual archivado el 2026-09-30: describe la versión ≈19.0.13; 11 rutas de menú ya no existen y enseña a buscar por clave del Dropbox. Los manuales vigentes están en `docs/sgi/usuarios/`.
+
 **Para:** todo el personal de PNTQ que usa el Sistema de Gestión Integral.
 **Dónde:** en Odoo, menú **SGI** (ícono teal con flechas y palomita).
 **Qué es:** nuestro SGI de siempre (ISO 9001 / 14001 / 45001) — los mismos formatos,

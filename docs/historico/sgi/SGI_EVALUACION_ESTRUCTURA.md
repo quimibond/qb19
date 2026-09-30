@@ -1,5 +1,7 @@
 # SGI — Evaluación de estructura, menús y cierre de flujos
 
+> **Histórico.** Archivado el 2026-09-30: foto de la 19.0.14.1. El «menú objetivo» quedó superado por la decisión 2 (árbol vigente en `addons/quimibond_sgi/tools/sgi_menu_tree.txt`).
+
 Evaluación contra: estructura de alto nivel de ISO 9001:2015 / 14001:2015 /
 45001:2018 (cláusulas 4–10, ciclo PDCA), requisitos IATF citados por el propio
 addon, y mejores prácticas de desarrollo de módulos Odoo. Verificada contra el

@@ -1,5 +1,7 @@
 # Manual Técnico — Quimibond SGI para Odoo 19
 
+> **NO USAR.** Manual archivado el 2026-09-30: describe la versión 19.0.4.1.0 (grupos, crons, ramas y reglas de versión ya no son así). La técnica vigente está en `docs/sgi/tecnica/` (generada con `tools/sgi_docs.py`).
+
 **Módulos:** `quimibond_sgi` v19.0.4.1.0 + puentes `quimibond_sgi_plm`, `quimibond_sgi_pesaje`, `quimibond_sgi_revisado`
 **Plataforma:** Odoo 19 Enterprise en Odoo.sh · **Repo:** `quimibond/qb19` (carpeta `addons/`)
 **Audiencia:** desarrolladores, administrador del sistema, consultor Odoo.

@@ -1,5 +1,7 @@
 # SGI Quimibond en Odoo 19 — Blueprint de Implementación
 
+> **Histórico.** Archivado el 2026-09-30: plan original, anterior a la 19.0.1. El principio 5 (conservar claves del Dropbox en pantalla) quedó revocado por la decisión 1.
+
 **Objetivo:** migrar el Sistema de Gestión Integral de PNTQ (ISO 9001:2015 + ISO 14001:2015 + ISO 45001:2018) de Dropbox/Excel a Odoo 19 Enterprise (Odoo.sh), reutilizando al máximo las apps nativas y construyendo custom solo lo que Odoo no tiene. El SGI deja de ser un archivero: se alimenta de la operación real (ventas, compras, producción, RRHH, mantenimiento) y actúa sobre ella (alertas, actividades, aprobaciones, KPIs automáticos, NCs que nacen solas).
 
 **Base de este documento:**

@@ -1,5 +1,7 @@
 # SGI — Lo que falta programar (CEO, 2026-09-25)
 
+> **Histórico.** Archivado el 2026-09-30: los 29 puntos están hechos. Sus «Listo cuando» sirven como casos de prueba de los manuales por rol.
+
 Lista de programación para que el SGI quede completo, ordenada por los cinco
 niveles de la estructura (empresa, proceso, actividad, persona, registro), más
 mejora y documentos. Cada punto dice qué hace, cómo se construye y cuándo se da

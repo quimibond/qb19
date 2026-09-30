@@ -1,5 +1,7 @@
 # Auditoría funcional de `quimibond_sgi` por rol — 28-sep-2026
 
+> **Histórico.** Archivado el 2026-09-30. Sus IDs «G1…G13» y «C1…C19» se citan como `FUNC-G1…` y `FUNC-C1…`. Producción ya no está en 56.1.0.
+
 **Alcance.** El código es el de `main` (19.0.56.6.2) más la rama del PR #436
 (19.0.56.7.0). Los datos son los reales de producción, leídos **solo en lectura**
 con el conector de Odoo. Producción tiene instalada la **19.0.56.1.0**.

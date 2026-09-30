@@ -1,5 +1,7 @@
 # SGI — Deuda técnica y mejoras propuestas
 
+> **Histórico.** Archivado el 2026-09-30: foto de la 19.0.14. Varias afirmaciones ya no son ciertas (hoy sí hay `ir.rule`). Los pendientes que sigan abiertos viven en `docs/audit/99-consolidado.md`.
+
 Fuente: análisis exhaustivo del código de `quimibond_sgi` v19.0.14.0.0 y satélites
 (agosto 2026, mismo barrido que generó `SGI_DIAGRAMA_FLUJOS.html`). Cada punto está
 verificado contra el código; se indica archivo y, cuando aplica, el método.
