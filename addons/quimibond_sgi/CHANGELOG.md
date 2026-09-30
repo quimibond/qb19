@@ -13,6 +13,54 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.61.0 — 2026-09-30
+
+**Agregado (bloque 2 de formularios 2/6):** las órdenes de producción, vales
+y transferencias de C4 (Producción) y C6 (Almacén e inventarios) imprimen su
+propia clave con los mapeos por criterio de 57.60.0. Tabla
+`SGI_OPERATION_FORMAT_MAPS` (`models/sgi_format_map_seed.py`), método
+`sgi.format.map._sgi_seed_operation_maps`:
+
+| Modelo | Clave (doc) | Cuándo aplica |
+|---|---|---|
+| Orden de producción | F-P-P02-01 OT entretelas (3999) | Tipos Carda (80), V10- (89), V18 (90) |
+| Orden de producción | F-IT-P-P01-02-02 Orden de cocina (3993) | Tipo Cocina Entretelas (82) |
+| Orden de producción | F-IT-P-P01-12-01 OT teñido (5057) | Tipo Tintorería (88) |
+| Transferencia | F-IT-P-A07-01-02 Reetiquetado y empaque (3701) | Tipo Reetiquetado (209) |
+| Transferencia | F-IT-P-A07-01-01 Requisición de refacciones y consumibles (3700) | Tipos Salida de consumibles (242) y Salida Refacciones a Gasto (264) |
+| Transferencia | F-IT-P-A05-01-06 Devolución a proveedor (3699) | Filtro: destino ubicación de proveedor (prioridad 20) |
+| Transferencia | F-P-A07-04 Devoluciones de cliente (3708) | Filtro: origen ubicación de cliente (prioridad 20) |
+
+Las demás órdenes siguen con la general F-IT-P-P01-08-01 (tarjeta viajera) y
+las salidas con F-P-A16-01, sin cambio.
+
+**Migración (post):** `migrations/19.0.57.61.0/post-migrate.py` llama al
+método: formato por clave vigente, tipos de operación por nombre exacto en la
+empresa del SGI (no tienen XML ID). Nunca pisa: si ya hay un mapeo del modelo
+con ese documento o esa clave (activo o archivado), se respeta y queda en el
+log; si falta el formato o un tipo, o un nombre es ambiguo, el renglón se
+salta. Idempotente; nada se borra. Esperado: 7 mapeos.
+
+**Queda para MAST (no se pudo determinar con certeza):**
+
+| Qué | Por qué quedó fuera |
+|---|---|
+| F-IT-P-P01-01-03 «Orden de producción de carda» (3989) | La carda imprime F-P-P02-01 (propuesta del inventario: 3989 duplica a 3999); fusionar o reasignar es del bloque 3 |
+| F-P-P01-01 «Orden de trabajo» (4001) | Está en la carpeta de Mantenimiento; hay que abrir el archivo para saber si es de producción o duplica a F-P-M01-01 |
+| Cocina Acabado (81, 1,020 órdenes en 2026) y Cocina Tintorería (83, 2,010) | ¿Usan la orden de cocina F-IT-P-P01-02-02 (instructivo de cocina de entretelas) o la formulación F-IT-P-P01-13-03 / check list F-IT-P-P01-15-01? |
+| Re-proceso Tintorería (106, 40) y Re-proceso Acabado (107, 2) | ¿Llevan la OT de teñido F-IT-P-P01-12-01? |
+| Termofijado (152, 31 órdenes) | No aparece activo en los tipos de la empresa 1; si es línea de entretelas, agregarlo a F-P-P02-01 |
+| Acabado (79), Acabado producto en proceso (151), Estiramiento (112), Encogimiento (263), Corte y perforado (84), Tejido tramado (87) y desarrollo (86), conversiones | Sin formato de orden propio identificado: siguen con la tarjeta viajera general (que es del tejido circular, IT-P-P01-08) |
+| F-P-P01-02 Bitácora de actividades de TAC (4022) | Es una bitácora, no un documento de Odoo identificado |
+| F-IT-P-A07-01-03 / -04 Lista de embarque (nacional / exportación) | La general de salidas imprime F-P-A16-01, cuyo archivo es «CITAS» (inventario §3.6): MAST decide cuál queda antes de cambiar el general |
+| F-IT-P-A07-01-05 Bitácora de embarques, -06 Rollos por embarque, -07/-08 Sellos | Bitácoras y controles, no un tipo de operación |
+| F-IT-P-A05-01-01 Vale de salida de laboratorio (C5, 3698) | Ningún tipo de operación de laboratorio identificado |
+| Requisición MP (113), Requisición PP y PT (210), Requisición tintorería (236) | Sin formato controlado identificado para esas requisiciones |
+
+**Pruebas:** `test_format_map_operaciones` (crea lo que falta, respeta el
+mapeo existente aunque esté archivado, salta clave o tipo inexistente,
+idempotente, tabla real y post-migrate).
+
 ## 19.0.57.60.0 — 2026-09-30
 
 **Cambiado (bloque 2 de formularios 1/6, decisión «Inventario de

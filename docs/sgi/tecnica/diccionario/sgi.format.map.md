@@ -8,7 +8,7 @@ Mapeo formato SGI ↔ documento de Odoo que lo sustituye.
 
 Orden: `model_name, sequence, sgi_code, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_format_map.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_format_map_seed.py`.
 
 ## Campos (17)
 
