@@ -13,6 +13,21 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.23.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 2/9: A-008):** la pestaña
+«Fórmula» de la ficha del indicador y el bloque «Fórmula en paralelo» de la
+medición van en su vista base (`sgi_indicator_views.xml`);
+`sgi_indicator_formula_views.xml` queda solo con la lista de términos. Mismo
+resultado en pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_indicator_view_form_formula` (15028),
+`sgi_measure_view_form_formula` (15029). Idempotente; solo `ir_ui_view` +
+`ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
 ## 19.0.57.22.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 1/9: A-008):** el pie

@@ -142,6 +142,28 @@
                         <i class="fa fa-pencil" title="Captura manual"/> <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
                     </div>
                     <notebook>
+                        <!-- Modo «fórmula configurable» (antes herencia propia en
+                             sgi_indicator_formula_views.xml; A-008, 57.23.0). -->
+                        <page string="Fórmula" name="formula">
+                            <div class="alert alert-info mb-2" role="alert">
+                                Numerador y denominador salen de los registros de Odoo que
+                                indique cada término; varios términos con el mismo papel se
+                                suman (factor −1 resta) y sin denominador el indicador vale
+                                su numerador (sin registros = 0). En el filtro valen fechas
+                                relativas: '{cierre}', '{cierre-30d}', '{cierre-2dh}' (días
+                                hábiles), '{cierre-48h}', '{inicio}', '{hoy}' y '{bloqueo}'
+                                (bloqueo contable). «Contar donde B − A cumple» y «Promedio
+                                de B − A» comparan dos fechas del mismo registro. Solo el
+                                administrador del SGI edita los términos; cualquier cambio
+                                regresa el indicador a «prueba» y queda en el chatter.
+                                «Recalcular ahora» prueba la fórmula sin esperar al cron.
+                            </div>
+                            <field name="has_formula" invisible="1"/>
+                            <field name="can_edit_formula" invisible="1"/>
+                            <field name="term_ids" context="{'default_indicator_id': id}"
+                                   readonly="not can_edit_formula"/>
+                            <field name="formula_text" readonly="1" nolabel="1" invisible="not term_ids"/>
+                        </page>
                         <page string="Mediciones">
                             <field name="measure_ids" context="{'default_indicator_id': id}">
                                 <list editable="bottom"
@@ -362,6 +384,11 @@
                                 <field name="detail_ids" column_invisible="1"/>
                             </list>
                         </field>
+                    </group>
+                    <group string="Fórmula en paralelo" invisible="not parallel_denominator">
+                        <field name="parallel_value"/>
+                        <field name="parallel_numerator"/>
+                        <field name="parallel_denominator"/>
                     </group>
                     <group string="Nota" name="note">
                         <field name="note" nolabel="1"/>

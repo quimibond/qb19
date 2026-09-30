@@ -17,6 +17,9 @@ _spec.loader.exec_module(herencias)
 # Una línea por versión que integra herencias (se agregan en cada commit).
 INTEGRADAS = (
     'report_nc_document_sgi', 'report_coa_document_sgi', 'report_mgmt_review_document_sgi',
+    # 57.23.0
+    'sgi_indicator_view_form_formula',
+    'sgi_measure_view_form_formula',
 )
 
 
