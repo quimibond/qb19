@@ -13,6 +13,46 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.54.0 — 2026-09-30
+
+**Cambiado (bloque 1 de formularios 5/5, decisión «Inventario de
+formularios» 2026-09-30):** las actividades críticas de seguridad, salud y
+ambiente del inventario (§3.3) quedan ligadas a su pantalla de Odoo («Menú de
+Odoo» y «Dónde se ejecuta en Odoo») y a su formato vigente. Tabla
+`SGI_SST_ACTIVITY_LINKS` (`models/sgi_sst_links.py`), método
+`sgi.process.activity._sgi_link_activity_screens`:
+
+| Actividad | Pantalla | Formatos |
+|---|---|---|
+| E2.18 permiso de alto riesgo | Permisos de trabajo de alto riesgo (nuevo) | (ya tenía 4) |
+| E2.21 Protección Civil | Planes de emergencia | — |
+| E2.23 aspectos ambientales | Aspectos ambientales (nuevo) | — (F-P-E01-01 mal asignada) |
+| E2.28 estadística de incidentes | Incidentes y accidentes | F-P-S02-01, F-P-S02-02 |
+| E2.30 programa anual de SST | Objetivos integrales | — |
+| E2.33 control de plagas | Mantenimiento → Solicitudes | — |
+| E2.34 controles operacionales | Aspectos ambientales (nuevo) | F-P-E03-01 |
+| E2.35 consulta a trabajadores | Encuestas | F-P-A10-05 |
+| E2.37 evaluación de auditores | Auditorías realizadas | — (F-IT-P-C06-03-01 no existe) |
+| S4.34 aviso de accidente al IMSS | Incidentes y accidentes | F-P-S02-01 |
+| S5.14 LOTO | Bloqueo y etiquetado (nuevo) | — |
+| C5.23 MP o proveedor nuevo | Calidad → Puntos de control | F-P-C04-06 |
+| C4.24 revisión del crudo | Manufactura → Órdenes de trabajo | F-IT-P-P01-08-03 |
+| C2.39 certificado T-MEC | Inventario → Entregas | F-P-A16-04 |
+
+No cambia «Dónde se hace» (`exec_channel`: hoy papel, correo o sistema
+externo): pasa a Odoo cuando las pantallas tengan uso.
+
+**Migración (post):** `migrations/19.0.57.54.0/post-migrate.py` llama al
+método: actividad por numeral en la empresa del SGI, menú por XML ID y
+formato por su clave vigente (los documentos del Dropbox no tienen XML ID).
+Escribe cada campo **solo si está vacío**; lo que ya estaba queda en el log
+con su valor, y lo escrito con «vacío → nuevo». Idempotente; nada se borra.
+Esperado: 14 actividades (E2.18 conserva sus formatos). Marca «cambió» el
+procedimiento de E2, S4, S5, C2, C4 y C5.
+
+**Pruebas:** `test_sst_links` (solo lo vacío, respeta lo capturado, clave
+inexistente, idempotente, menús de la tabla real y el post-migrate).
+
 ## 19.0.57.53.0 — 2026-09-30
 
 **Agregado (bloque 1 de formularios 4/5):** ficha, búsqueda y menú propios

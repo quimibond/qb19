@@ -97,3 +97,4 @@ from . import sgi_business_calendar
 from . import sgi_env_aspect
 from . import sgi_work_permit
 from . import sgi_loto
+from . import sgi_sst_links
