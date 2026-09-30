@@ -78,16 +78,20 @@ class AccountMovePaymentDate(models.Model):
 
 # ---- S3-01 ----------------------------------------------------------------
 class SgiLockDateLog(models.Model):
+    """Bitácora de cambios a las fechas de bloqueo contable, para medir el cierre a tiempo."""
     _name = 'sgi.lock.date.log'
     _description = "Bitácora de fechas de bloqueo contable"
     _order = 'moved_at desc, id desc'
 
     company_id = fields.Many2one('res.company', string="Compañía", required=True, index=True)
-    lock_field = fields.Selection(list(LOCK_FIELDS.items()), string="Fecha de bloqueo", required=True)
-    date_before = fields.Date(string="Antes")
-    date_after = fields.Date(string="Después")
-    moved_at = fields.Datetime(string="Movida el", required=True, default=fields.Datetime.now)
-    user_id = fields.Many2one('res.users', string="Quién", default=lambda self: self.env.user)
+    lock_field = fields.Selection(list(LOCK_FIELDS.items()), string="Fecha de bloqueo", required=True,
+                                  help="Qué fecha de bloqueo contable se movió.")
+    date_before = fields.Date(string="Antes", help="Fecha de bloqueo antes del cambio.")
+    date_after = fields.Date(string="Después", help="Fecha de bloqueo después del cambio.")
+    moved_at = fields.Datetime(string="Movida el", required=True, default=fields.Datetime.now,
+                               help="Fecha y hora del cambio.")
+    user_id = fields.Many2one('res.users', string="Quién", default=lambda self: self.env.user,
+                              help="Quién movió la fecha de bloqueo.")
     business_day = fields.Integer(
         string="Día hábil del mes", compute='_compute_business_day', store=True,
         help="Número de día hábil del mes (calendario del SGI) en que se movió (S3-01).")
@@ -123,6 +127,7 @@ class ResCompanyLockLog(models.Model):
 
 # ---- S3-04 ----------------------------------------------------------------
 class SgiInventoryValue(models.Model):
+    """Foto del valor del inventario al cierre de cada mes, base del indicador AL-01."""
     _name = 'sgi.inventory.value'
     _description = "Valor del inventario al cierre de mes (cálculo de AL-01)"
     _order = 'date desc, company_id'
@@ -133,7 +138,8 @@ class SgiInventoryValue(models.Model):
     value = fields.Monetary(string="Valor del inventario", currency_field='currency_id')
     currency_id = fields.Many2one(related='company_id.currency_id')
     quant_count = fields.Integer(string="# Existencias")
-    taken_at = fields.Datetime(string="Tomada el", default=fields.Datetime.now)
+    taken_at = fields.Datetime(string="Tomada el", default=fields.Datetime.now,
+                               help="Fecha y hora en que se tomó la foto del inventario.")
 
     _company_date_uniq = models.Constraint(
         'unique(company_id, date)', "Ya hay una foto del inventario para ese mes.")

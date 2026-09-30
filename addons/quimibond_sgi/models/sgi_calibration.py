@@ -51,13 +51,18 @@ class MaintenanceEquipment(models.Model):
     _inherit = 'maintenance.equipment'
 
     # --- Equipo de medición (P-C03) ---
-    sgi_is_measuring = fields.Boolean(string="Equipo de medición")
+    sgi_is_measuring = fields.Boolean(string="Equipo de medición",
+                                      help="Marque si es un equipo de medición: lleva calibraciones y "
+                                           "estudios MSA.")
     sgi_magnitude = fields.Char(string="Magnitud")
     sgi_range = fields.Char(string="Rango")
     sgi_resolution = fields.Char(string="Resolución")
     sgi_calibration_interval_months = fields.Integer(string="Intervalo de calibración (meses)",
-                                                     default=12)
-    sgi_last_calibration_date = fields.Date(string="Última calibración")
+                                                     default=12,
+                                                     help="Cada cuántos meses se calibra el equipo. Con la "
+                                                          "última calibración define la próxima.")
+    sgi_last_calibration_date = fields.Date(string="Última calibración",
+                                            help="Fecha de la última calibración registrada.")
     sgi_next_calibration_date = fields.Date(string="Próxima calibración",
                                             compute='_compute_next_calibration_date',
                                             store=True, readonly=False,
@@ -67,7 +72,9 @@ class MaintenanceEquipment(models.Model):
         ('vigente', "Vigente"),
         ('por_vencer', "Por vencer"),
         ('vencido', "Vencido"),
-    ], string="Estado de calibración", compute='_compute_calibration_state', store=True)
+    ], string="Estado de calibración", compute='_compute_calibration_state', store=True,
+        help="Vigente, por vencer o vencido según la fecha de la próxima calibración. Se calcula solo y lo "
+             "actualiza el cron diario.")
     sgi_do_not_use = fields.Boolean(string="No usar", tracking=True,
                                     help="Equipo bloqueado (fuera de tolerancia o calibración vencida).")
     sgi_calibration_ids = fields.One2many('sgi.calibration', 'equipment_id',
@@ -76,8 +83,11 @@ class MaintenanceEquipment(models.Model):
                                            compute='_compute_calibration_count')
 
     # --- EPP (P-S03) ---
-    sgi_is_ppe = fields.Boolean(string="Equipo de protección personal (EPP)")
-    sgi_ppe_expiry_date = fields.Date(string="Vencimiento del EPP")
+    sgi_is_ppe = fields.Boolean(string="Equipo de protección personal (EPP)",
+                                help="Marque si es equipo de protección personal con fecha de vencimiento.")
+    sgi_ppe_expiry_date = fields.Date(string="Vencimiento del EPP",
+                                      help="Fecha en que vence el equipo de protección. El cron avisa antes "
+                                           "de que venza.")
 
     @api.depends('sgi_last_calibration_date', 'sgi_calibration_interval_months')
     def _compute_next_calibration_date(self):
@@ -125,20 +135,27 @@ class MaintenanceEquipment(models.Model):
 
 
 class SgiCalibration(models.Model):
+    """Calibración o verificación de un equipo de medición (P-C03) con resultado y certificado. Un
+    resultado fuera de tolerancia levanta la NC ligada; la fecha siguiente alimenta el cron de
+    vencimientos."""
     _name = 'sgi.calibration'
     _description = "Calibración de equipo de medición (P-C03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
     equipment_id = fields.Many2one('maintenance.equipment', string="Equipo", required=True,
-                                   domain="[('sgi_is_measuring', '=', True)]", tracking=True)
+                                   domain="[('sgi_is_measuring', '=', True)]", tracking=True,
+                                   help="Equipo de medición calibrado.")
     date = fields.Date(string="Fecha", required=True, default=fields.Date.context_today,
-                       tracking=True)
+                       tracking=True,
+                       help="Fecha en que se hizo la calibración.")
     calibration_type = fields.Selection([
         ('interna', "Interna"),
         ('externa', "Externa"),
-    ], string="Tipo", default='externa', required=True)
-    provider_id = fields.Many2one('res.partner', string="Laboratorio / Proveedor")
+    ], string="Tipo", default='externa', required=True,
+        help="Interna (la hace personal de Quimibond) o externa (laboratorio).")
+    provider_id = fields.Many2one('res.partner', string="Laboratorio / Proveedor",
+                                  help="Laboratorio o proveedor que calibró.")
     certificate_ref = fields.Char(string="N° de certificado")
     # El auditor pide el certificado, no solo su folio: el PDF vive adjunto
     # a la calibración (attachment=True → ir.attachment, no infla la tabla).
@@ -147,11 +164,15 @@ class SgiCalibration(models.Model):
     result = fields.Selection([
         ('conforme', "Conforme"),
         ('fuera_tolerancia', "Fuera de tolerancia"),
-    ], string="Resultado", required=True, default='conforme', tracking=True)
+    ], string="Resultado", required=True, default='conforme', tracking=True,
+        help="Conforme o fuera de tolerancia. Fuera de tolerancia levanta una NC.")
     notes = fields.Text(string="Notas")
     next_date = fields.Date(string="Próxima calibración", compute='_compute_next_date',
-                            store=True, readonly=False)
-    sgi_alert_id = fields.Many2one('quality.alert', string="NC generada", readonly=True)
+                            store=True, readonly=False,
+                            help="Fecha de la siguiente calibración. Se calcula con el intervalo del equipo; "
+                                 "se puede cambiar.")
+    sgi_alert_id = fields.Many2one('quality.alert', string="NC generada", readonly=True,
+                                   help="NC que se levantó por una calibración fuera de tolerancia.")
 
     @api.constrains('calibration_type', 'certificate_ref', 'certificate_file')
     def _check_certificate(self):

@@ -21,6 +21,8 @@ def sgi_bypass_allowed(env):
 
 
 class SgiBaseMixin(models.AbstractModel):
+    """Cimiento de los registros del SGI: chatter y actividades, folio con secuencia propia
+    (``_sgi_sequence_code``) y agenda de actividades con ``_sgi_schedule_activity``."""
     _name = 'sgi.base.mixin'
     _description = "Cimiento de registros del SGI"
     _inherit = ['mail.thread', 'mail.activity.mixin']

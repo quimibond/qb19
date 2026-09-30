@@ -632,7 +632,7 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Ningún formato o documento anterior con este filtro</p>
             <p>Cada formato, instructivo, DAT, anexo, protocolo y reglamento del Dropbox:
-            en qué estado está y dónde vive hoy en Odoo. Busca por la clave anterior
+            en qué estado está y dónde vive hoy en Odoo. Busque por la clave anterior
             o por el título; «Abrir en Odoo» lleva a la pantalla que lo sustituye.</p>
         </field>
     </record>

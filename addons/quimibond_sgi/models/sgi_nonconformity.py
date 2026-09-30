@@ -61,8 +61,10 @@ class QualityAlert(models.Model):
     _inherit = 'quality.alert'
 
     sgi_folio = fields.Char(string="Folio SGI", readonly=True, copy=False, index=True, tracking=True)
-    sgi_stage_is_closing = fields.Boolean(related='stage_id.sgi_is_closing_stage')
-    sgi_stage_is_cancel = fields.Boolean(related='stage_id.sgi_is_cancel_stage')
+    sgi_stage_is_closing = fields.Boolean(related='stage_id.sgi_is_closing_stage',
+                                          help="Indica si la etapa actual es de cierre.")
+    sgi_stage_is_cancel = fields.Boolean(related='stage_id.sgi_is_cancel_stage',
+                                         help="Indica si la etapa actual es de cancelación.")
     sgi_origin_type = fields.Selection([
         ('proceso', "Proceso"),
         ('auditoria_interna', "Auditoría interna"),
@@ -75,7 +77,8 @@ class QualityAlert(models.Model):
         ('scorecard', "Scorecard de cliente"),
         ('recorrido_csh', "Recorrido de la Comisión de Seguridad e Higiene"),
         ('riesgo', "Riesgo u oportunidad"),
-    ], string="Origen", default='proceso', tracking=True)
+    ], string="Origen", default='proceso', tracking=True,
+        help="De dónde viene la NC: proceso, auditoría, reclamación, indicador, incidente u otra fuente.")
     sgi_source_id = fields.Many2one(
         'sgi.alert.source', string="Fuente automática", readonly=True, copy=False,
         index=True, ondelete='set null',
@@ -84,16 +87,25 @@ class QualityAlert(models.Model):
         ('mayor', "Mayor"),
         ('menor', "Menor"),
         ('observacion', "Observación"),
-    ], string="Clasificación", tracking=True)
+    ], string="Clasificación", tracking=True,
+        help="Mayor, menor u observación. Una NC mayor manda un correo crítico al abrirse y exige aplicar la "
+             "lección aprendida antes de cerrar.")
     sgi_norm_clause_id = fields.Many2one('sgi.norm.clause', string="Requisito (cláusula)",
-                                         ondelete='restrict')
-    sgi_requester_id = fields.Many2one('res.users', string="Solicitante")
+                                         ondelete='restrict',
+                                         help="Cláusula de la norma que se incumplió.")
+    sgi_requester_id = fields.Many2one('res.users', string="Solicitante",
+                                       help="Persona que levanta la no conformidad.")
     sgi_requester_job = fields.Char(related='sgi_requester_id.employee_id.job_title',
                                     string="Cargo del solicitante", readonly=True)
-    sgi_lead_auditor_id = fields.Many2one('res.users', string="Auditor líder")
-    sgi_process_id = fields.Many2one('sgi.process', string="Proceso detectado", ondelete='restrict')
+    sgi_lead_auditor_id = fields.Many2one('res.users', string="Auditor líder",
+                                          help="Auditor líder de la auditoría que detectó la NC.")
+    sgi_process_id = fields.Many2one('sgi.process', string="Proceso detectado", ondelete='restrict',
+                                     help="Proceso en el que se detectó la NC. Su dueño recibe los "
+                                          "escalamientos.")
     sgi_responsible_ids = fields.Many2many('res.users', 'sgi_alert_responsible_rel',
-                                           'alert_id', 'user_id', string="Responsables a contestar")
+                                           'alert_id', 'user_id', string="Responsables a contestar",
+                                           help="Personas que deben contestar la NC. La ven en Mis "
+                                                "pendientes hasta que se cierre.")
     sgi_deviation = fields.Text(string="Desviación detectada")
     sgi_why_1 = fields.Char(string="¿Por qué? 1")
     sgi_why_2 = fields.Char(string="¿Por qué? 2")
@@ -103,8 +115,11 @@ class QualityAlert(models.Model):
     sgi_root_cause = fields.Text(string="Causa raíz")
     sgi_ishikawa_notes = fields.Text(string="Notas Ishikawa (5-6M)")
     sgi_effectiveness_note = fields.Text(string="Verificación de eficacia")
-    sgi_effectiveness_date = fields.Date(string="Fecha de eficacia")
-    sgi_effectiveness_by = fields.Many2one('res.users', string="Eficacia verificada por")
+    sgi_effectiveness_date = fields.Date(string="Fecha de eficacia",
+                                         help="Fecha de la verificación de eficacia. Se pide cuando terminan "
+                                              "todas las acciones.")
+    sgi_effectiveness_by = fields.Many2one('res.users', string="Eficacia verificada por",
+                                           help="Persona que verificó que las acciones fueron eficaces.")
     # Último eslabón de la línea dorada (IATF 10.2.3): la lección de una NC mayor
     # se lleva al AMEF / plan de control / documento. Se atestigua explícitamente
     # (queda en el chatter por tracking) y es requisito para cerrar la NC mayor.
@@ -115,17 +130,26 @@ class QualityAlert(models.Model):
              "reflejó en el AMEF, el plan de control y/o el documento controlado "
              "correspondiente.")
     sgi_followup_comments = fields.Text(string="Comentarios de seguimiento")
-    sgi_required_capa = fields.Boolean(string="¿Requirió acción correctiva?")
+    sgi_required_capa = fields.Boolean(string="¿Requirió acción correctiva?",
+                                       help="Marque si la NC requirió acción correctiva además de la "
+                                            "corrección inmediata.")
     sgi_followup_action = fields.Selection([
         ('exhorto', "Exhorto"),
         ('administrativa', "Acción administrativa"),
         ('na', "N/A"),
-    ], string="Acción a seguir")
-    sgi_verified_by = fields.Many2one('res.users', string="Verificó")
-    sgi_verified_date = fields.Date(string="Fecha de verificación")
-    sgi_approved_by = fields.Many2one('res.users', string="Aprobó")
-    sgi_approved_date = fields.Date(string="Fecha de aprobación")
-    sgi_complaint_ticket_id = fields.Many2one('helpdesk.ticket', string="Reclamación ligada", readonly=True)
+    ], string="Acción a seguir",
+        help="Consecuencia para los responsables. «Acción administrativa» pide al Coordinador de RH levantar "
+             "el acta.")
+    sgi_verified_by = fields.Many2one('res.users', string="Verificó",
+                                      help="Persona que verifica la NC antes de su aprobación.")
+    sgi_verified_date = fields.Date(string="Fecha de verificación", help="Fecha de la verificación.")
+    sgi_approved_by = fields.Many2one('res.users', string="Aprobó",
+                                      help="Persona que aprueba el cierre de la no conformidad.")
+    sgi_approved_date = fields.Date(string="Fecha de aprobación",
+                                    help="Fecha en que se aprobó el cierre de la no conformidad.")
+    sgi_complaint_ticket_id = fields.Many2one('helpdesk.ticket', string="Reclamación ligada", readonly=True,
+                                              help="Reclamación de cliente de la que nació esta no "
+                                                   "conformidad.")
     sgi_external_ref = fields.Char(string="N° NCR externo")
 
     sgi_action_line_ids = fields.One2many('sgi.action.line', 'alert_id', string="Correcciones y acciones")
@@ -137,16 +161,30 @@ class QualityAlert(models.Model):
     # con una fecha capturada: contención = acción de contención registrada;
     # causa raíz = campo capturado; plan = acción correctiva/preventiva con
     # responsable y compromiso.
-    sgi_due_containment = fields.Date(string="Contención vence", readonly=True, copy=False)
-    sgi_due_root_cause = fields.Date(string="Causa raíz vence", readonly=True, copy=False)
-    sgi_due_plan = fields.Date(string="Plan de acción vence", readonly=True, copy=False)
+    sgi_due_containment = fields.Date(string="Contención vence", readonly=True, copy=False,
+                                      help="Fecha límite para registrar la contención, en días hábiles desde "
+                                           "que se abrió la NC. La pone el sistema.")
+    sgi_due_root_cause = fields.Date(string="Causa raíz vence", readonly=True, copy=False,
+                                     help="Fecha límite para capturar la causa raíz, en días hábiles desde "
+                                          "que se abrió la NC. La pone el sistema.")
+    sgi_due_plan = fields.Date(string="Plan de acción vence", readonly=True, copy=False,
+                               help="Fecha límite para registrar el plan de acción (acción correctiva o "
+                                    "preventiva con responsable y compromiso). La pone el sistema.")
     sgi_containment_state = fields.Selection(
-        _SGI_DEADLINE_STATES, string="Contención", compute='_compute_sgi_deadline_states')
+        _SGI_DEADLINE_STATES, string="Contención", compute='_compute_sgi_deadline_states',
+        help="Plazo de la contención: hecha cuando hay una acción de contención; vencida si pasó la fecha "
+             "sin ella. Se calcula al mostrarlo.")
     sgi_root_cause_state = fields.Selection(
-        _SGI_DEADLINE_STATES, string="Causa raíz (plazo)", compute='_compute_sgi_deadline_states')
+        _SGI_DEADLINE_STATES, string="Causa raíz (plazo)", compute='_compute_sgi_deadline_states',
+        help="Plazo de la causa raíz: hecha cuando está capturada; vencida si pasó la fecha. Se calcula al "
+             "mostrarlo.")
     sgi_plan_state = fields.Selection(
-        _SGI_DEADLINE_STATES, string="Plan de acción", compute='_compute_sgi_deadline_states')
-    sgi_containment_done = fields.Boolean(compute='_compute_sgi_deadline_states')
+        _SGI_DEADLINE_STATES, string="Plan de acción", compute='_compute_sgi_deadline_states',
+        help="Plazo del plan de acción: hecha cuando hay acción correctiva o preventiva con responsable y "
+             "compromiso. Se calcula al mostrarlo.")
+    sgi_containment_done = fields.Boolean(compute='_compute_sgi_deadline_states',
+                                          help="Se marca sola cuando la NC ya tiene al menos una acción de "
+                                               "contención registrada.")
     # 57.40.0 (V-A02): semáforo de la lista de NC y filtro «Plazo vencido».
     sgi_deadline_overdue = fields.Boolean(
         string="Plazo vencido", compute='_compute_sgi_deadline_states',
@@ -161,16 +199,21 @@ class QualityAlert(models.Model):
     # --- NC-4: cancelación con motivo aprobado por el Jefe MAST.
     sgi_cancel_reason = fields.Text(string="Motivo de cancelación", readonly=True, copy=False)
     sgi_cancel_requested_by = fields.Many2one(
-        'res.users', string="Cancelación solicitada por", readonly=True, copy=False)
+        'res.users', string="Cancelación solicitada por", readonly=True, copy=False,
+        help="Quién pidió cancelar la no conformidad. La cancelación la confirma el Jefe MAST y SGI.")
 
     # Ligas reales del SGI (H7): trazabilidad NC <-> riesgo <-> AMEF <-> documento.
     sgi_risk_ids = fields.Many2many(
         'sgi.risk', 'sgi_alert_risk_rel', 'alert_id', 'risk_id',
-        string="Riesgos ligados")
-    sgi_fmea_id = fields.Many2one('sgi.fmea', string="AMEF ligado")
+        string="Riesgos ligados",
+        help="Riesgos del SGI relacionados con esta NC.")
+    sgi_fmea_id = fields.Many2one('sgi.fmea', string="AMEF ligado",
+                                  help="AMEF relacionado. Al cerrar una NC mayor, el aviso para actualizarlo "
+                                       "se agenda sobre este AMEF.")
     sgi_document_id = fields.Many2one(
         'documents.document', string="Documento ligado",
-        domain=[('sgi_is_controlled', '=', True)])
+        domain=[('sgi_is_controlled', '=', True)],
+        help="Documento controlado relacionado con la NC (el que se incumplió o el que hay que cambiar).")
 
     # Detector de reincidencia (H2): NCs previas del mismo proceso en la ventana
     # de reincidencia; una misma cláusula pesa doble. Se congela al crear/
@@ -180,7 +223,9 @@ class QualityAlert(models.Model):
         help="Casos previos del mismo proceso en la ventana de reincidencia "
              "(misma cláusula cuenta doble).")
     sgi_is_recurrent = fields.Boolean(
-        string="Reincidente", compute='_compute_sgi_recurrence', store=True)
+        string="Reincidente", compute='_compute_sgi_recurrence', store=True,
+        help="Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro "
+             "quimibond_sgi.nc_recurrence_months, 12 de fábrica).")
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -705,6 +750,9 @@ class QualityAlert(models.Model):
 
 
 class SgiActionLine(models.Model):
+    """Acción o corrección con responsable y fecha compromiso. Cuelga de una NC, riesgo, AMEF,
+    incidente, simulacro, medición en rojo, objetivo o acuerdo de la revisión por la dirección;
+    se cierra con «Marcar hecha»."""
     _name = 'sgi.action.line'
     # D-007 (57.21.0): historial y conversación como en NC, incidente y
     # auditoría. Sin mail.activity.mixin: la actividad accionable vive en el
@@ -713,12 +761,17 @@ class SgiActionLine(models.Model):
     _description = "Acción / corrección de No Conformidad"
     _order = 'date_commit, id'
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='cascade')
-    risk_id = fields.Many2one('sgi.risk', string="Riesgo / Oportunidad", ondelete='cascade')
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='cascade',
+                               help="No conformidad a la que pertenece la acción.")
+    risk_id = fields.Many2one('sgi.risk', string="Riesgo / Oportunidad", ondelete='cascade',
+                              help="Riesgo u oportunidad al que pertenece la acción.")
     fmea_line_id = fields.Many2one('sgi.fmea.line', string="Modo de falla (AMEF)",
-                                   ondelete='cascade')
-    incident_id = fields.Many2one('sgi.incident', string="Incidente SST", ondelete='cascade')
-    drill_id = fields.Many2one('sgi.emergency.drill', string="Simulacro", ondelete='cascade')
+                                   ondelete='cascade',
+                                   help="Modo de falla del AMEF al que pertenece la acción.")
+    incident_id = fields.Many2one('sgi.incident', string="Incidente SST", ondelete='cascade',
+                                  help="Incidente o accidente de seguridad al que pertenece la acción.")
+    drill_id = fields.Many2one('sgi.emergency.drill', string="Simulacro", ondelete='cascade',
+                               help="Simulacro al que pertenece la acción.")
     objective_id = fields.Many2one('sgi.objective', string="Objetivo integral",
                                    ondelete='cascade',
                                    help="Plan de acción del objetivo (ISO 6.2.2).")
@@ -727,22 +780,32 @@ class SgiActionLine(models.Model):
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
         ('preventiva', "Acción preventiva"),
-    ], string="Tipo", default='correccion', required=True)
+    ], string="Tipo", default='correccion', required=True,
+        help="Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la "
+             "preventiva, una causa potencial.")
     name = fields.Char(string="Descripción", required=True)
     responsible_id = fields.Many2one('res.users', string="Responsable", required=True,
-                                     tracking=True)
-    date_commit = fields.Date(string="Compromiso", required=True, tracking=True)
-    date_done = fields.Date(string="Terminada el", tracking=True)
+                                     tracking=True,
+                                     help="Persona que ejecuta la acción. La ve en Mis pendientes y recibe "
+                                          "los avisos de vencimiento.")
+    date_commit = fields.Date(string="Compromiso", required=True, tracking=True,
+                              help="Fecha en que el responsable se compromete a terminar la acción. Pasada "
+                                   "esta fecha, la acción se marca vencida y escala.")
+    date_done = fields.Date(string="Terminada el", tracking=True,
+                            help="Fecha en que se terminó la acción. Al capturarla, la acción queda "
+                                 "terminada.")
     progress = fields.Selection([
         ('0', "0%"),
         ('50', "50%"),
         ('100', "100%"),
-    ], string="Avance", default='0')
+    ], string="Avance", default='0',
+        help="Avance de la acción según el responsable.")
     state = fields.Selection([
         ('abierta', "Abierta"),
         ('vencida', "Vencida"),
         ('terminada', "Terminada"),
-    ], string="Estado", compute='_compute_state', store=True)
+    ], string="Estado", compute='_compute_state', store=True,
+        help="Abierta, vencida (pasó el compromiso) o terminada (tiene fecha de término). Se calcula sola.")
     # Actividad nativa que hace accionable la acción en el registro origen.
     activity_id = fields.Many2one('mail.activity', string="Actividad",
                                   readonly=True, copy=False, index=True)
@@ -976,10 +1039,12 @@ class SgiActionLine(models.Model):
 
 
 class SgiNcForceClose(models.TransientModel):
+    """Asistente de cierre forzado de una NC con motivo; solo Jefe MAST."""
     _name = 'sgi.nc.force.close'
     _description = "Cierre forzado de No Conformidad"
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True)
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True,
+                               help="No conformidad que se va a cerrar sin cumplir los candados.")
     reason = fields.Text(string="Motivo del cierre forzado", required=True)
 
     def action_confirm(self):
@@ -1008,9 +1073,10 @@ class SgiNcCancel(models.TransientModel):
     _name = 'sgi.nc.cancel'
     _description = "Cancelación de No Conformidad"
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True)
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True,
+                               help="No conformidad que se cancela.")
     reason = fields.Text(string="Motivo de la cancelación", required=True)
-    is_manager = fields.Boolean(compute='_compute_is_manager')
+    is_manager = fields.Boolean(compute='_compute_is_manager', help="Indica si usted es Jefe MAST y SGI.")
 
     @api.depends_context('uid')
     def _compute_is_manager(self):

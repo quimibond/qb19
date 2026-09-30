@@ -170,11 +170,64 @@ timestamp y parte los tracebacks.
 1. **4 vistas Studio inválidas** (`res.groups`, `account.move`, `mrp.bom.line`,
    `purchase.order.line`). Son la razón por la que `quimibond_intelligence` está
    en `tools/no_bump.txt`. Limpiarlas desbloquea el update automático.
-2. **6 claves de config con doble declaración** dentro de `quimibond_sgi`
-   (ver manual técnico §11). Hoy sobreviven por el orden de carga del manifest.
-3. **`taxes_id` en `purchase.order.line`** — algún cliente externo por `/jsonrpc`
+2. **`taxes_id` en `purchase.order.line`** — algún cliente externo por `/jsonrpc`
    quedó con el nombre viejo; en Odoo 19 es `tax_ids`. Y `/jsonrpc` desaparece
    en Odoo 22.
+
+## SGI (`quimibond_sgi` y satélites)
+
+Además de lo general. El SGI no entra al CI de GitHub (depende de
+Enterprise): lo que se valida al cargarlo solo se ve en Odoo.sh.
+
+### Antes del PR a `main`
+
+- `python3 tools/check_odoo_views.py --base-ref origin/main` y
+  `python3 tools/check_addons.py --base-ref origin/main` en cero.
+- Pruebas en el **build de desarrollo** de la rama, solo con `--test-tags`
+  (el suite completo se detiene en las pruebas de nómina):
+
+```bash
+odoo-bin -u quimibond_sgi --test-tags /quimibond_sgi,/quimibond_sgi_pesaje,/quimibond_sgi_revisado,/quimibond_sgi_knowledge,/quimibond_sgi_studio --stop-after-init --no-http
+```
+
+  Guarda el log. `main` es la copia de producción (staging) y **no corre las
+  pruebas del SGI**: no sustituye este paso.
+
+### Actualizar
+
+`odoo-update` recibe los módulos **separados por comas, sin espacios** (igual
+que `-u` de Odoo):
+
+```bash
+odoo-update quimibond_sgi,quimibond_sgi_pesaje,quimibond_sgi_plm,quimibond_sgi_revisado,quimibond_sgi_knowledge,quimibond_sgi_studio
+odoosh-restart http && odoosh-restart cron
+```
+
+`quimibond_sgi_mapa` **no** se instala en producción.
+
+### Verificar
+
+```sql
+-- versión instalada = la del manifest
+SELECT name, latest_version, state FROM ir_module_module WHERE name LIKE 'quimibond_sgi%' ORDER BY 1;
+```
+
+```bash
+# lo que reportaron las migraciones y los avisos del SGI
+grep -E "quimibond_sgi" ~/logs/update.log | grep -E "WARNING|ERROR|migrat" | tail -40
+```
+
+- **Menú:** SGI → las cinco entradas y «Procesos → Del Dropbox a Odoo»
+  visibles para Jefe MAST; el árbol esperado está en
+  `addons/quimibond_sgi/tools/sgi_menu_tree.txt` (`test_menu_tree` lo compara).
+- **Crons:** están en `noupdate`; un cambio de cron llega solo por migración.
+  En Ajustes → Técnico → Acciones planificadas, los «SGI …» activos y sin
+  `failure_count`.
+- **Herencias propias:** 0. Si el log dice «no puede ser localizado en la
+  vista padre» sobre una vista `quimibond_sgi.*`, falta un `pre-migrate` que
+  borre la herencia vieja (ver `CLAUDE.md`).
+- **Cambios en el CHANGELOG** con la marca **Migración**: leer qué reportan en
+  el log y compararlo con lo esperado en la entrada.
 
 ## Las señales de situación llegan a Supabase
 

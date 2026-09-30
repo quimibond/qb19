@@ -13,6 +13,8 @@ from odoo.exceptions import UserError
 
 
 class SgiEmergencyPlan(models.Model):
+    """Plan de emergencia (14001/45001 8.2) con su frecuencia de simulacros; el cron avisa cuando
+    toca el siguiente."""
     _name = 'sgi.emergency.plan'
     _description = "Plan de emergencia (ISO 14001/45001 8.2)"
     _inherit = ['sgi.base.mixin']
@@ -32,21 +34,27 @@ class SgiEmergencyPlan(models.Model):
         ('emergencia_medica', "Emergencia médica"),
         ('inundacion', "Inundación"),
         ('otro', "Otro"),
-    ], string="Tipo", default='incendio', required=True, tracking=True)
+    ], string="Tipo", default='incendio', required=True, tracking=True,
+        help="Tipo de emergencia que atiende el plan.")
     location = fields.Char(string="Ubicación / zona")
     responsible_id = fields.Many2one('res.users', string="Responsable (brigada)",
-                                     tracking=True)
+                                     tracking=True,
+                                     help="Responsable del plan (brigada). Recibe los avisos de simulacros.")
     document_id = fields.Many2one('documents.document', string="Plan documentado",
-                                  domain=[('sgi_is_controlled', '=', True)])
+                                  domain=[('sgi_is_controlled', '=', True)],
+                                  help="Documento controlado con el plan de emergencia.")
     risk_ids = fields.Many2many('sgi.risk', string="Riesgos ligados (IPER/ambiental)",
-                                domain=[('instrument', 'in', ('iper', 'ambiental'))])
+                                domain=[('instrument', 'in', ('iper', 'ambiental'))],
+                                help="Riesgos de seguridad o aspectos ambientales que atiende el plan.")
     drill_frequency_months = fields.Integer(string="Frecuencia de simulacro (meses)",
-                                            default=12)
+                                            default=12,
+                                            help="Cada cuántos meses se hace un simulacro de este plan.")
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('vigente', "Vigente"),
         ('obsoleto', "Obsoleto"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador, vigente u obsoleto. Solo los vigentes llevan simulacros.")
     drill_ids = fields.One2many('sgi.emergency.drill', 'plan_id', string="Simulacros")
     # drill_count vive en su PROPIO compute: compartir método con los campos
     # almacenados de fechas (store=True) mezclaba store/compute_sudo en el
@@ -54,9 +62,12 @@ class SgiEmergencyPlan(models.Model):
     # producción (además de recomputar de más).
     drill_count = fields.Integer(string="# Simulacros", compute='_compute_drill_count')
     last_drill_date = fields.Date(string="Último simulacro",
-                                  compute='_compute_drill_dates', store=True)
+                                  compute='_compute_drill_dates', store=True,
+                                  help="Fecha del último simulacro realizado. Se calcula sola.")
     next_drill_date = fields.Date(string="Próximo simulacro",
-                                  compute='_compute_drill_dates', store=True)
+                                  compute='_compute_drill_dates', store=True,
+                                  help="Fecha en que toca el siguiente simulacro, según la frecuencia. Se "
+                                       "calcula sola.")
 
     _folio_uniq = models.Constraint(
         'unique(folio)', "Ya existe un plan de emergencia con ese folio.")
@@ -113,6 +124,8 @@ class SgiEmergencyPlan(models.Model):
 
 
 class SgiEmergencyDrill(models.Model):
+    """Simulacro de un plan de emergencia: programado, realizado o cancelado, con resultado,
+    hallazgos y acciones."""
     _name = 'sgi.emergency.drill'
     _description = "Simulacro de emergencia"
     _inherit = ['sgi.base.mixin']
@@ -122,18 +135,22 @@ class SgiEmergencyDrill(models.Model):
     _sgi_locked_states = ('realizado',)
 
     plan_id = fields.Many2one('sgi.emergency.plan', string="Plan de emergencia",
-                              required=True, ondelete='cascade', index=True)
-    plan_type = fields.Selection(related='plan_id.plan_type', store=True)
+                              required=True, ondelete='cascade', index=True,
+                              help="Plan de emergencia que se practica.")
+    plan_type = fields.Selection(related='plan_id.plan_type', store=True, help="Tipo de emergencia del plan.")
     date_planned = fields.Date(string="Fecha programada", required=True,
-                               default=fields.Date.context_today, tracking=True)
-    date_done = fields.Date(string="Fecha realizada", tracking=True)
+                               default=fields.Date.context_today, tracking=True,
+                               help="Fecha en que se programa el simulacro.")
+    date_done = fields.Date(string="Fecha realizada", tracking=True,
+                            help="Fecha en que se hizo el simulacro.")
     participants_count = fields.Integer(string="Participantes")
-    duration_minutes = fields.Integer(string="Duración (min)")
+    duration_minutes = fields.Integer(string="Duración (min)", help="Duración del simulacro en minutos.")
     result = fields.Selection([
         ('satisfactorio', "Satisfactorio"),
         ('con_observaciones', "Con observaciones"),
         ('no_satisfactorio', "No satisfactorio"),
-    ], string="Resultado", tracking=True)
+    ], string="Resultado", tracking=True,
+        help="Resultado del simulacro. Con observaciones o no satisfactorio, registre acciones.")
     findings = fields.Text(string="Hallazgos / observaciones")
     action_line_ids = fields.One2many('sgi.action.line', 'drill_id',
                                       string="Acciones")
@@ -141,7 +158,8 @@ class SgiEmergencyDrill(models.Model):
         ('programado', "Programado"),
         ('realizado', "Realizado"),
         ('cancelado', "Cancelado"),
-    ], string="Estado", default='programado', required=True, tracking=True)
+    ], string="Estado", default='programado', required=True, tracking=True,
+        help="Programado, realizado o cancelado.")
 
     _folio_uniq = models.Constraint(
         'unique(folio)', "Ya existe un simulacro con ese folio.")

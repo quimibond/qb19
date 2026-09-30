@@ -334,7 +334,7 @@
         <field name="search_view_id" ref="sgi_activity_exec_stat_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Quién ejecuta cada actividad</p>
-            <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambia las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
+            <p>Por proceso y actividad, las ejecuciones de cada clase: <b>correcto</b> (el puesto asignado), <b>otro puesto</b>, <b>cuenta genérica</b>, <b>sin empleado</b> y <b>sistema</b>. Cambie las columnas a <i>Puesto</i> para ver qué hace cada puesto que no le toca. Lo llena el cron de medición cada noche.</p>
         </field>
     </record>
 

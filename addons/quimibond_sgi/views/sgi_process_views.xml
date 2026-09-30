@@ -454,7 +454,7 @@
         <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="sgi_process_view_search"/>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Administración del mapa de procesos</p>
-            <p>Edita las fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
+            <p>Edite las fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
     </record>
 
 </odoo>

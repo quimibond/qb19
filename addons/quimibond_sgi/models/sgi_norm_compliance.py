@@ -44,13 +44,16 @@ class SgiNormClauseEvidence(models.Model):
     short_label = fields.Char(string="Punto", compute='_compute_short_label')
     activity_ids = fields.Many2many(
         'sgi.process.activity', 'sgi_activity_norm_clause_rel', 'clause_id', 'activity_id',
-        string="Actividades que lo cumplen")
+        string="Actividades que lo cumplen",
+        help="Actividades que cumplen con esta cláusula («Cumple con»).")
     process_ids = fields.Many2many(
-        'sgi.process', string="Procesos que lo cumplen", compute='_compute_sgi_evidence')
+        'sgi.process', string="Procesos que lo cumplen", compute='_compute_sgi_evidence',
+        help="Procesos cuyas actividades cumplen con la cláusula.")
     activity_count = fields.Integer(string="Actividades", compute='_compute_sgi_evidence')
     alert_count = fields.Integer(string="NC", compute='_compute_sgi_evidence')
     covered = fields.Boolean(string="Con actividad", compute='_compute_sgi_evidence',
-                             search='_search_covered')
+                             search='_search_covered',
+                             help="Indica si al menos una actividad cumple con la cláusula.")
 
     @api.depends('code', 'norm_id.code')
     def _compute_short_label(self):

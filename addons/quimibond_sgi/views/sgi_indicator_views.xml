@@ -283,7 +283,7 @@
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Dé de alta un indicador</p>
-            <p>Los automáticos se calculan solos de los datos reales de Odoo; captura responsable, objetivo y aceptable, y el semáforo sale solo.</p>
+            <p>Los automáticos se calculan solos de los datos reales de Odoo; capture responsable, objetivo y aceptable, y el semáforo sale solo.</p>
         </field>
     </record>
 

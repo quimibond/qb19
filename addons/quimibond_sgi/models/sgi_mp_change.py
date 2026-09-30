@@ -67,13 +67,17 @@ class ApprovalRequestMpChange(models.Model):
     sgi_activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad del procedimiento", index='btree_not_null',
         help="Actividad de «Mi procedimiento» a la que se propone el cambio.")
-    sgi_mp_change_type = fields.Selection(MP_CHANGE_TYPES, string="Tipo de propuesta")
+    sgi_mp_change_type = fields.Selection(MP_CHANGE_TYPES, string="Tipo de propuesta",
+                                          help="Qué propone la persona: agregar una actividad, cambiar esta "
+                                               "o quitarla.")
     sgi_mp_proposal_id = fields.Many2one(
-        'sgi.activity.change', string="Propuesta", readonly=True, copy=False, index='btree_not_null')
+        'sgi.activity.change', string="Propuesta", readonly=True, copy=False, index='btree_not_null',
+        help="Propuesta de cambio a la actividad que se aprueba con esta solicitud.")
     sgi_mp_diff_html = fields.Html(
         related='sgi_mp_proposal_id.diff_snapshot', string="Qué cambia", sanitize=False)
     sgi_mp_apply_scheduled = fields.Boolean(
-        string="Cambio aplicado", readonly=True, copy=False)
+        string="Cambio aplicado", readonly=True, copy=False,
+        help="Se marca cuando la propuesta aprobada ya se aplicó a la actividad.")
 
     _SGI_MP_FIELDS = ('sgi_mp_change_type', 'sgi_mp_proposal_id')
 
@@ -187,9 +191,14 @@ class SgiActivityChange(models.Model):
         ('borrador', "Borrador"),
         ('enviada', "Enviada"),
         ('aplicada', "Aplicada"),
-    ], string="Estado", default='borrador', required=True, readonly=True)
-    change_type = fields.Selection(MP_CHANGE_TYPES, string="Qué propones", required=True, default='cambiar')
-    activity_id = fields.Many2one('sgi.process.activity', string="Actividad", readonly=True, index=True)
+    ], string="Estado", default='borrador', required=True, readonly=True,
+        help="Borrador mientras se escribe; enviada cuando está en aprobación; aplicada cuando el cambio ya "
+             "quedó en la actividad.")
+    change_type = fields.Selection(MP_CHANGE_TYPES, string="Qué propones", required=True, default='cambiar',
+                                   help="Agregar una actividad nueva, cambiar esta o quitarla.")
+    activity_id = fields.Many2one('sgi.process.activity', string="Actividad", readonly=True, index=True,
+                                  help="Actividad a la que se refiere la propuesta. Vacío si se propone una "
+                                       "actividad nueva.")
 
     # 56.7.0: lo aprobado es lo que se aplica. Enviada la propuesta, solo MAST
     # (o el sistema, al aprobar) la toca; en borrador, solo quien la hizo.
@@ -210,11 +219,14 @@ class SgiActivityChange(models.Model):
     def unlink(self):
         self._sgi_check_editable()
         return super().unlink()
-    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso al que pertenece la actividad propuesta.")
     allowed_process_ids = fields.Many2many(
         'sgi.process', 'sgi_activity_change_allowed_process_rel', 'change_id', 'process_id',
-        string="Procesos del puesto")
-    job_id = fields.Many2one('hr.job', string="Puesto de quien propone", readonly=True)
+        string="Procesos del puesto",
+        help="Procesos en los que participa el puesto de quien propone.")
+    job_id = fields.Many2one('hr.job', string="Puesto de quien propone", readonly=True,
+                             help="Puesto de la persona que hace la propuesta.")
     request_id = fields.Many2one('approval.request', string="Solicitud", readonly=True, copy=False)
     reason = fields.Text(string="Por qué")
     attachment = fields.Binary(string="Adjunto", attachment=True)
@@ -225,20 +237,31 @@ class SgiActivityChange(models.Model):
     description = fields.Text(string="Descripción")
     how_steps = fields.Text(string="Cómo (pasos)")
     instruction_id = fields.Many2one(
-        'documents.document', string="Instructivo", domain=[('sgi_doc_type_id.code', '=', 'instructivo')])
+        'documents.document', string="Instructivo", domain=[('sgi_doc_type_id.code', '=', 'instructivo')],
+        help="Instructivo que explica cómo se hace la actividad.")
     format_document_ids = fields.Many2many(
         'documents.document', 'sgi_activity_change_format_rel', 'change_id', 'document_id',
-        string="Formatos referenciados", domain=[('sgi_is_controlled', '=', True)])
+        string="Formatos referenciados", domain=[('sgi_is_controlled', '=', True)],
+        help="Formatos controlados que se usan en la actividad.")
     related_procedure_id = fields.Many2one(
         'documents.document', string="Procedimiento relacionado",
-        domain=[('sgi_doc_type_id.code', '=', 'procedimiento')])
-    measure_cadence = fields.Selection(_activity_selection('measure_cadence'), string="Cadencia esperada")
-    due_weekday = fields.Selection(_activity_selection('due_weekday'), string="Vence el (semanal)")
-    due_business_day = fields.Integer(string="Vence el día hábil (mensual)")
-    due_month = fields.Selection(_activity_selection('due_month'), string="Vence en el mes")
-    due_day = fields.Integer(string="Vence el día")
-    exec_channel = fields.Selection(_activity_selection('exec_channel'), string="Dónde se hace")
-    odoo_menu_id = fields.Many2one('ir.ui.menu', string="Menú de Odoo")
+        domain=[('sgi_doc_type_id.code', '=', 'procedimiento')],
+        help="Procedimiento que rige la actividad.")
+    measure_cadence = fields.Selection(_activity_selection('measure_cadence'), string="Cadencia esperada",
+                                       help="Cada cuánto se espera que la actividad se haga.")
+    due_weekday = fields.Selection(_activity_selection('due_weekday'), string="Vence el (semanal)",
+                                   help="Para actividades semanales: día de la semana en que vence.")
+    due_business_day = fields.Integer(string="Vence el día hábil (mensual)",
+                                      help="Para actividades mensuales: día hábil del mes en que vence (por "
+                                           "ejemplo, 3 = tercer día hábil).")
+    due_month = fields.Selection(_activity_selection('due_month'), string="Vence en el mes",
+                                 help="Mes en que vence la actividad, si es anual.")
+    due_day = fields.Integer(string="Vence el día", help="Día del mes en que vence la actividad.")
+    exec_channel = fields.Selection(_activity_selection('exec_channel'), string="Dónde se hace",
+                                    help="Dónde se hace el trabajo (Odoo, correo, papel…), no cómo se mide.")
+    odoo_menu_id = fields.Many2one('ir.ui.menu', string="Menú de Odoo",
+                                   help="Menú de Odoo donde se hace la actividad; de ahí sale el botón «Ir a "
+                                        "hacerlo».")
     external_system = fields.Char(string="Sistema externo")
     place_note = fields.Char(string="Lugar")
     check_against = fields.Char(string="Contra qué se compara")
@@ -534,6 +557,8 @@ class SgiActivityChange(models.Model):
 
 
 class SgiActivityChangeRole(models.Model):
+    """Renglón «quién hace» de una propuesta de cambio (``sgi.activity.change``): puesto, familia o
+    rol relativo con su papel. Al aprobarse la propuesta pasa a ``sgi.activity.role``."""
     _name = 'sgi.activity.change.role'
     _description = "Quién hace la actividad (propuesta)"
     _order = 'change_id, sequence, id'

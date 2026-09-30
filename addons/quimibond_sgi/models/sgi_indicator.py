@@ -68,6 +68,8 @@ CALC_MODES = [
 
 
 class SgiIndicator(models.Model):
+    """Indicador del SGI (F-P-A10-03): fórmula o modo de cálculo, metas, frecuencia y semáforo. El
+    cron crea las mediciones del periodo; con ``nc_on_red`` un rojo levanta NC."""
     _name = 'sgi.indicator'
     _description = "Indicador SGI (F-P-A10-03)"
     _inherit = ['mail.thread', 'mail.activity.mixin']
@@ -75,29 +77,41 @@ class SgiIndicator(models.Model):
 
     code = fields.Char(string="Clave", required=True, index=True)
     name = fields.Char(string="Nombre", required=True)
-    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict')
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso que mide el indicador.")
     # Estructura vigente = proceso activo. Guardado para poder filtrar los
     # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
     sgi_process_active = fields.Boolean(
         related='process_id.active', store=True, string="Proceso vigente",
         help="El proceso al que pertenece está activo. Sin proceso o con el "
              "proceso archivado, queda pendiente de proceso nuevo.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
-    responsible_id = fields.Many2one('res.users', string="Responsable")
-    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral", ondelete='restrict')
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
+                                  help="Área del SGI del indicador.")
+    responsible_id = fields.Many2one('res.users', string="Responsable",
+                                     help="Dueño del indicador: captura o valida las mediciones y atiende "
+                                          "los rojos.")
+    objective_id = fields.Many2one('sgi.objective', string="Objetivo integral", ondelete='restrict',
+                                   help="Objetivo integral al que contribuye el indicador.")
     uom = fields.Char(string="Unidad", help="% , MXN, unidades, kg, m…")
     direction = fields.Selection([
         ('higher_better', "Más alto es mejor"),
         ('lower_better', "Más bajo es mejor"),
-    ], string="Sentido", default='higher_better', required=True)
-    target_objective = fields.Float(string="Objetivo")
-    target_acceptable = fields.Float(string="Aceptable")
+    ], string="Sentido", default='higher_better', required=True,
+        help="Si es mejor un valor más alto, más bajo o dentro de un rango. Define el semáforo.")
+    target_objective = fields.Float(string="Objetivo",
+                                    help="Valor meta. Alcanzarlo pone el semáforo en verde.")
+    target_acceptable = fields.Float(string="Aceptable",
+                                     help="Valor mínimo aceptable (o máximo, si más bajo es mejor). Entre "
+                                          "este y el objetivo, el semáforo es amarillo.")
     frequency = fields.Selection([
         ('monthly', "Mensual"),
         ('weekly', "Semanal"),
-    ], string="Frecuencia", default='monthly', required=True)
+    ], string="Frecuencia", default='monthly', required=True,
+        help="Cada cuánto se mide: mensual o semanal.")
     calc_mode = fields.Selection(CALC_MODES, string="Modo de cálculo",
-                                 default='manual', required=True)
+                                 default='manual', required=True,
+                                 help="Cómo se obtiene el valor: captura manual, una fuente automática del "
+                                      "SGI o una fórmula configurable.")
     formula = fields.Text(
         string="Fórmula",
         help="Cómo se calcula, en palabras: «Entregas completas en la fecha "
@@ -109,7 +123,8 @@ class SgiIndicator(models.Model):
     source_type = fields.Selection([
         ('auto', "Automático"),
         ('manual', "Manual"),
-    ], string="Origen del dato", compute='_compute_source', store=True)
+    ], string="Origen del dato", compute='_compute_source', store=True,
+        help="Automático si lo calcula el sistema; manual si se captura. Se calcula del modo de cálculo.")
     source_info = fields.Char(string="Fuente del dato", compute='_compute_source', store=True)
 
     # De dónde sale el valor de cada modo, en lenguaje humano (para el usuario).
@@ -191,12 +206,14 @@ class SgiIndicator(models.Model):
     # 56.7.0 (1.8): guardados para filtrar «En rojo» y reportar.
     last_measure_id = fields.Many2one('sgi.indicator.measure', string="Última medición",
                                       compute='_compute_last_measure', store=True)
-    last_value = fields.Float(string="Último valor", compute='_compute_last_measure', store=True)
+    last_value = fields.Float(string="Último valor", compute='_compute_last_measure', store=True,
+                              help="Valor de la última medición. Se calcula solo.")
     last_semaphore = fields.Selection([
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Último semáforo", compute='_compute_last_measure', store=True)
+    ], string="Último semáforo", compute='_compute_last_measure', store=True,
+        help="Semáforo de la última medición. Se calcula solo.")
 
     _code_uniq = models.Constraint(
         'unique(code)',
@@ -956,20 +973,24 @@ class SgiIndicator(models.Model):
 
 
 class SgiIndicatorMeasure(models.Model):
+    """Medición de un indicador en un periodo: valor, semáforo, evidencia y, si sale en rojo, causa
+    y plan. Se calcula sola o se captura; el dueño la valida."""
     _name = 'sgi.indicator.measure'
     _description = "Medición de indicador SGI"
     _order = 'period_date desc, indicator_id'
 
     indicator_id = fields.Many2one('sgi.indicator', string="Indicador",
-                                   required=True, ondelete='cascade', index=True)
+                                   required=True, ondelete='cascade', index=True,
+                                   help="Indicador medido.")
     source_type = fields.Selection(related='indicator_id.source_type',
-                                   string="Origen del dato")
+                                   string="Origen del dato",
+                                   help="Si el dato es automático o se captura.")
     source_info = fields.Char(related='indicator_id.source_info',
                               string="Fuente del dato")
     period_date = fields.Date(string="Periodo", required=True,
                               help="Día 1 del mes medido.")
-    value = fields.Float(string="Valor")
-    direction = fields.Selection(related='indicator_id.direction')
+    value = fields.Float(string="Valor", help="Valor medido en el periodo.")
+    direction = fields.Selection(related='indicator_id.direction', help="Sentido del indicador.")
     target_objective = fields.Float(related='indicator_id.target_objective', string="Objetivo")
     target_acceptable = fields.Float(related='indicator_id.target_acceptable', string="Aceptable")
     uom = fields.Char(related='indicator_id.uom', string="Unidad")
@@ -977,14 +998,17 @@ class SgiIndicatorMeasure(models.Model):
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Semáforo", compute='_compute_semaphore', store=True)
+    ], string="Semáforo", compute='_compute_semaphore', store=True,
+        help="Verde, amarillo o rojo según el valor y las metas. Se calcula solo.")
     note = fields.Text(string="Nota")
     state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('capturado', "Capturado"),
         ('validado', "Validado"),
-    ], string="Estado", default='pendiente', required=True)
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True)
+    ], string="Estado", default='pendiente', required=True,
+        help="Pendiente, capturado, validado o sin dato. El dueño del indicador valida lo capturado.")
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+                               help="No conformidad levantada por esta medición en rojo.")
     # V-A06 (57.43.0): «Validar» solo se ofrece a quien puede validar (I-006).
     sgi_can_validate = fields.Boolean(
         string="Puede validar", compute='_compute_sgi_can_validate')

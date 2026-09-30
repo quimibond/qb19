@@ -51,11 +51,14 @@ class ApprovalCategorySign(models.Model):
 class ApprovalRequestSign(models.Model):
     _inherit = 'approval.request'
 
-    sgi_sign_required = fields.Boolean(related='category_id.sgi_sign_required')
+    sgi_sign_required = fields.Boolean(related='category_id.sgi_sign_required',
+                                       help="Indica si la categoría exige firma en Sign para aprobar.")
     sgi_sign_request_id = fields.Many2one(
-        'sign.request', string="Firma (Sign)", readonly=True, copy=False)
+        'sign.request', string="Firma (Sign)", readonly=True, copy=False,
+        help="Solicitud de firma en Sign ligada a esta aprobación.")
     sgi_sign_state = fields.Selection(
-        related='sgi_sign_request_id.state', string="Estado de la firma")
+        related='sgi_sign_request_id.state', string="Estado de la firma",
+        help="Estado de la firma en Sign.")
     sgi_sign_progress = fields.Char(
         string="Firmas", compute='_compute_sgi_sign_progress')
     sgi_change_attachment_id = fields.Many2one(
