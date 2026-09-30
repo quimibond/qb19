@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 57.50.0 (bloque 1 de formularios, 2026-09-30): folios de los
+         registros de seguridad, salud y ambiente que pasan del papel a Odoo. -->
+    <record id="sgi_seq_env_aspect" model="ir.sequence">
+        <field name="name">Aspectos ambientales SGI</field>
+        <field name="code">sgi.env.aspect</field>
+        <field name="prefix">AA-</field>
+        <field name="padding">3</field>
+        <field name="number_increment">1</field>
+    </record>
+    <record id="sgi_seq_work_permit" model="ir.sequence">
+        <field name="name">Permisos de trabajo de alto riesgo SGI</field>
+        <field name="code">sgi.work.permit</field>
+        <field name="prefix">PTAR-%(range_year)s-</field>
+        <field name="padding">3</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+    <record id="sgi_seq_loto" model="ir.sequence">
+        <field name="name">Bloqueo y etiquetado SGI</field>
+        <field name="code">sgi.loto</field>
+        <field name="prefix">LOTO-%(range_year)s-</field>
+        <field name="padding">3</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+</odoo>

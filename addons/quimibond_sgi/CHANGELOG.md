@@ -13,6 +13,141 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.54.0 — 2026-09-30
+
+**Cambiado (bloque 1 de formularios 5/5, decisión «Inventario de
+formularios» 2026-09-30):** las actividades críticas de seguridad, salud y
+ambiente del inventario (§3.3) quedan ligadas a su pantalla de Odoo («Menú de
+Odoo» y «Dónde se ejecuta en Odoo») y a su formato vigente. Tabla
+`SGI_SST_ACTIVITY_LINKS` (`models/sgi_sst_links.py`), método
+`sgi.process.activity._sgi_link_activity_screens`:
+
+| Actividad | Pantalla | Formatos |
+|---|---|---|
+| E2.18 permiso de alto riesgo | Permisos de trabajo de alto riesgo (nuevo) | (ya tenía 4) |
+| E2.21 Protección Civil | Planes de emergencia | — |
+| E2.23 aspectos ambientales | Aspectos ambientales (nuevo) | — (F-P-E01-01 mal asignada) |
+| E2.28 estadística de incidentes | Incidentes y accidentes | F-P-S02-01, F-P-S02-02 |
+| E2.30 programa anual de SST | Objetivos integrales | — |
+| E2.33 control de plagas | Mantenimiento → Solicitudes | — |
+| E2.34 controles operacionales | Aspectos ambientales (nuevo) | F-P-E03-01 |
+| E2.35 consulta a trabajadores | Encuestas | F-P-A10-05 |
+| E2.37 evaluación de auditores | Auditorías realizadas | — (F-IT-P-C06-03-01 no existe) |
+| S4.34 aviso de accidente al IMSS | Incidentes y accidentes | F-P-S02-01 |
+| S5.14 LOTO | Bloqueo y etiquetado (nuevo) | — |
+| C5.23 MP o proveedor nuevo | Calidad → Puntos de control | F-P-C04-06 |
+| C4.24 revisión del crudo | Manufactura → Órdenes de trabajo | F-IT-P-P01-08-03 |
+| C2.39 certificado T-MEC | Inventario → Entregas | F-P-A16-04 |
+
+No cambia «Dónde se hace» (`exec_channel`: hoy papel, correo o sistema
+externo): pasa a Odoo cuando las pantallas tengan uso.
+
+**Migración (post):** `migrations/19.0.57.54.0/post-migrate.py` llama al
+método: actividad por numeral en la empresa del SGI, menú por XML ID y
+formato por su clave vigente (los documentos del Dropbox no tienen XML ID).
+Escribe cada campo **solo si está vacío**; lo que ya estaba queda en el log
+con su valor, y lo escrito con «vacío → nuevo». Idempotente; nada se borra.
+Esperado: 14 actividades (E2.18 conserva sus formatos). Marca «cambió» el
+procedimiento de E2, S4, S5, C2, C4 y C5.
+
+**Pruebas:** `test_sst_links` (solo lo vacío, respeta lo capturado, clave
+inexistente, idempotente, menús de la tabla real y el post-migrate).
+
+## 19.0.57.53.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios 4/5):** ficha, búsqueda y menú propios
+de los **hallazgos de auditoría** (`sgi.audit.finding`, ISO 9001 9.2: SGI →
+Mejora → Auditorías → Hallazgos) y de las **evaluaciones del cumplimiento
+legal** (`sgi.legal.evaluation`, ISO 14001/45001 9.1.2: SGI → Dirección →
+Evaluaciones de cumplimiento legal). Antes solo tenían lista dentro de su
+auditoría o requisito y Odoo armaba una ficha genérica. Hallazgos: filtros de
+NC (mayores), observaciones, oportunidades, sin disposición, NC sin generar,
+internas y externas; agrupar por auditoría, tipo, proceso y cláusula; botón
+«Generar NC» en la ficha. Evaluaciones: filtros «No cumple o parcial»,
+«Cumple», «Este año» y por fecha; agrupar por requisito, resultado y año.
+Las dos acciones son de consulta (`create: False`): el hallazgo nace en su
+auditoría y la evaluación en «Registrar evaluación» del requisito, que
+actualiza su estado y levanta la NC. Nombres legibles
+(`_compute_display_name`) en las dos. Vistas en archivo propio
+(`sgi_audit_finding_legal_eval_views.xml`), sin herencias.
+
+**Pruebas:** `test_hallazgos_evaluaciones` (ficha y búsqueda propias, menús
+con su acción, nombres legibles).
+
+## 19.0.57.52.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios 3/5):** bloqueo y etiquetado de
+energías, LOTO (`sgi.loto`, NOM-004 e ISO 45001 8.1, S5.14; P-A20) en SGI →
+Seguridad y ambiente → Bloqueo y etiquetado. Equipo
+(`maintenance.equipment`), orden de mantenimiento y permiso de trabajo
+opcionales, **fuentes de energía** (eléctrica, neumática, hidráulica,
+mecánica, térmica, química, gravitacional) con su punto de bloqueo, **un
+candado y una tarjeta por trabajador** (uno por persona), aviso a los
+afectados y **energía cero comprobada** (cómo y quién). Flujo borrador →
+bloqueado → retirado (o cancelado): sin todo lo anterior no se aplica; ya
+aplicado, fuentes y candados no se editan; **cada trabajador retira su propio
+candado** («Retirar mi candado»; el Jefe MAST puede hacerlo por él y queda
+quién); el retiro exige que no quede ningún candado, el aviso al responsable
+del área y las condiciones. Un bloqueo aplicado no se cancela. Retirado es
+evidencia (solo MAST reabre). Ficha, lista (abre en «Equipos bloqueados»),
+búsqueda por equipo o trabajador, chatter, folio `LOTO-AAAA-`, ACL, regla por
+empresa y reporte con pie de formato (`format_map_loto`: P-A20 no tiene
+formato propio; el pie imprime el procedimiento hasta que MAST dé de alta el
+formato).
+
+**Pruebas:** `test_loto` (requisitos para aplicar, candados bloqueados al
+aplicar, cada quien retira el suyo, retiro, candado de evidencia, un candado
+por trabajador y reporte).
+
+## 19.0.57.51.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios 2/5):** permiso de trabajo de alto riesgo
+(`sgi.work.permit`, ISO 45001 8.1, E2.18; sustituye al permiso único
+F-P-A14-03 que citan P-A19 y P-A24) en SGI → Seguridad y ambiente →
+Permisos de trabajo de alto riesgo. Solicitante, área, lugar, equipo y orden
+de mantenimiento, tipo (alturas, espacio confinado, en caliente, eléctrico,
+otro), personal o contratista, peligros, EPP y **verificaciones** (se
+siembran por tipo según NOM-009, 033, 027 y 029; se pueden quitar o
+agregar). Flujo borrador → solicitado → autorizado → cerrado (o cancelado):
+se solicita con peligros, quién ejecuta, jefe del área y todas las
+verificaciones contestadas sin ningún «No»; ya solicitado, las verificaciones
+no se tocan. **Dos autorizaciones selladas** (usuario y hora) de **personas
+distintas**: el jefe del área indicado (o el Jefe MAST) y Seguridad (Jefe
+MAST; no hay grupo de coordinador de seguridad). Vigencia con aviso de
+«vencido»; el cierre pide las condiciones del área. Cerrado o cancelado es
+evidencia (solo MAST lo reabre, y reabrir borra las autorizaciones). Ficha,
+lista, búsqueda (por autorizar, me toca autorizar, vencidos sin cerrar),
+chatter, folio `PTAR-AAAA-`, ACL, regla por empresa y reporte con pie de
+formato en vivo (`format_map_work_permit`, clave F-P-A14-03, sin documento
+en Documentos: imprime la clave sin revisión hasta que MAST lo dé de alta).
+
+**Pruebas:** `test_work_permit` (verificaciones por tipo, fechas, flujo
+completo con permisos, dos personas distintas, vencido y reporte).
+
+## 19.0.57.50.0 — 2026-09-30
+
+**Agregado (bloque 1 de formularios, seguridad, salud y ambiente, 1/5):**
+matriz de aspectos e impactos ambientales (`sgi.env.aspect`, ISO 14001
+6.1.2, E2.23) en SGI → Seguridad y ambiente → Aspectos ambientales. Un
+renglón por aspecto de una actividad: proceso, área, actividad, tipo de
+aspecto, impacto y condición (normal, anormal, emergencia). Severidad ×
+frecuencia (1 a 5) da el nivel bajo, moderado (desde 5), severo (desde 10) o
+crítico (desde 16), umbrales en `quimibond_sgi.aspect_moderado/severo/critico`;
+es **significativo** con nivel moderado o mayor o con requisito legal
+aplicable. Un aspecto significativo no queda «Evaluado» sin su control
+operacional (texto o documento, E2.34). «Registrar evaluación» sella la
+revisión y programa la siguiente (12 meses por default); «Tratar como riesgo»
+crea el riesgo del instrumento «Aspecto ambiental» (`sgi.risk`) donde viven
+las acciones, sin duplicar el modelo de riesgos. Ficha, lista, búsqueda
+(significativos, sin control, revisión vencida, archivados), chatter, folio
+`AA-`, ACL (Usuario escribe, Auditor lee, MAST todo), regla por empresa y
+reporte «Matriz de aspectos ambientales» con el pie de formato en vivo
+(`format_map_env_aspect`, clave F-P-E01-01, la que cita P-E01; hoy esa clave
+está en «Evaluación luminaria» y se corrige en el bloque 3).
+
+**Pruebas:** `test_env_aspect` (significancia, umbral por parámetro, control
+exigido, riesgo de tratamiento, archivo y reporte).
+
 ## 19.0.57.44.0 — 2026-09-30
 
 **Cambiado (pulido de vistas, bloque 3: documentos e impresos):**

@@ -19,7 +19,7 @@
 | `quimibond_sgi.group_sgi_salary` | Salarios de eficiencias (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_csh` | Comisión de Seguridad e Higiene (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 
-## Permisos por modelo (290 renglones del CSV)
+## Permisos por modelo (308 renglones del CSV)
 
 l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso efectivo suma lo que implican los grupos y lo que quitan las reglas.
 
@@ -155,6 +155,9 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.emergency.plan` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.emergency.plan` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.emergency.plan` | `group_sgi_user` | lec | quimibond_sgi |
+| `sgi.env.aspect` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.env.aspect` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.env.aspect` | `group_sgi_user` | lec | quimibond_sgi |
 | `sgi.epp.delivery` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.epp.delivery` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.epp.delivery` | `group_sgi_user` | lec | quimibond_sgi |
@@ -219,6 +222,15 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.lock.date.log` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.lock.date.log` | `group_sgi_manager` | l | quimibond_sgi |
 | `sgi.lock.date.log` | `group_sgi_user` | l | quimibond_sgi |
+| `sgi.loto` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.loto` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.loto` | `group_sgi_user` | lec | quimibond_sgi |
+| `sgi.loto.energy` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.loto.energy` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.loto.energy` | `group_sgi_user` | lecb | quimibond_sgi |
+| `sgi.loto.lock` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.loto.lock` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.loto.lock` | `group_sgi_user` | lecb | quimibond_sgi |
 | `sgi.machine.sheet` | `base.group_user` | l | quimibond_sgi |
 | `sgi.machine.sheet` | `mrp.group_mrp_user` | lec | quimibond_sgi |
 | `sgi.machine.sheet` | `quimibond_sgi.group_sgi_manager` | lecb | quimibond_sgi |
@@ -307,6 +319,12 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.supplier.eval` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.supplier.eval` | `group_sgi_user` | lec | quimibond_sgi |
 | `sgi.supplier.eval` | `purchase.group_purchase_user` | lec | quimibond_sgi |
+| `sgi.work.permit` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.work.permit` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.work.permit` | `group_sgi_user` | lec | quimibond_sgi |
+| `sgi.work.permit.check` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.work.permit.check` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.work.permit.check` | `group_sgi_user` | lecb | quimibond_sgi |
 | `sign.request` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sign.request` | `group_sgi_manager` | l | quimibond_sgi |
 | `sign.template` | `group_sgi_manager` | l | quimibond_sgi |
@@ -316,7 +334,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `stock.picking` | `group_sgi_auditor` | l | quimibond_sgi |
 | `survey.user.input` | `group_sgi_auditor` | l | quimibond_sgi |
 
-## Reglas de registro (58)
+## Reglas de registro (61)
 
 | Regla | Nombre | Modelo | Dominio | Grupos | Archivo |
 |---|---|---|---|---|---|
@@ -345,6 +363,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `quimibond_sgi.rule_sgi_document_type_company` | SGI: Tipos de documento por empresa | `sgi.document.type` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_dropbox_key_readable_document` | SGI: clave anterior solo de documentos que el usuario puede leer | `sgi.dropbox.key` | `['\|', ('document_id', '=', False), ('document_id', 'any', [])]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_dropbox_progress_company` | SGI: avance de la transición por empresa | `sgi.dropbox.progress` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_env_aspect_company` | SGI: Aspectos ambientales por empresa | `sgi.env.aspect` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_health_record_company` | SGI: Expedientes de salud por empresa | `sgi.health.record` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_incident_auditor_read` | SGI: Auditor y Dirección leen todos los incidentes | `sgi.incident` | `[(1, '=', 1)]` | [(4, ref('group_sgi_auditor'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_incident_sst_all` | SGI: MAST y Salud ocupacional investigan todos los incidentes | `sgi.incident` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager')), (4, ref('group_sgi_health'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
@@ -357,6 +376,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `quimibond_sgi.rule_sgi_legal_manager_all` | SGI: MAST evalúa cualquier requisito legal | `sgi.legal.requirement` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_legal_user_own` | SGI: el usuario evalúa solo sus requisitos legales | `sgi.legal.requirement` | `[('responsible_id', '=', user.id)]` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_lock_date_log_company` | SGI: Bitácora de fechas de bloqueo por empresa | `sgi.lock.date.log` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_loto_company` | SGI: Bloqueo y etiquetado por empresa | `sgi.loto` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_machine_sheet_company` | SGI: Hojas de máquina por empresa | `sgi.machine.sheet` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_measure_manager_all` | SGI: MAST captura cualquier indicador | `sgi.indicator.measure` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_measure_split_manager_all` | SGI: MAST recalcula el desglose de cualquier indicador | `sgi.indicator.measure.split` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
@@ -378,3 +398,4 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `quimibond_sgi.rule_sgi_staff_eff_line_payroll_all` | SGI: Salarios de eficiencias ve todos los renglones | `sgi.staff.efficiency.line` | `[(1, '=', 1)]` | [(4, ref('group_sgi_salary'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_staff_eff_payroll_all` | SGI: Salarios de eficiencias ve todas las hojas | `sgi.staff.efficiency` | `[(1, '=', 1)]` | [(4, ref('group_sgi_salary'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_staff_efficiency_company` | SGI: Eficiencia de personal por empresa | `sgi.staff.efficiency` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_work_permit_company` | SGI: Permisos de trabajo de alto riesgo por empresa | `sgi.work.permit` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |

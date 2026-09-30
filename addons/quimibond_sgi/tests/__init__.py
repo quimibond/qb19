@@ -118,3 +118,8 @@ from . import test_nomenclatura_pantallas
 from . import test_fichas_busquedas
 from . import test_herencias_propias
 from . import test_vistas_pulido
+from . import test_env_aspect
+from . import test_work_permit
+from . import test_loto
+from . import test_hallazgos_evaluaciones
+from . import test_sst_links

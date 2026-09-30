@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.44.0',
+    'version': '19.0.57.54.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -100,6 +100,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_epp_data.xml',
         'data/sgi_supplier_nc_data.xml',
         'data/sgi_offboarding_plan_data.xml',
+        'data/sgi_sst_sequences.xml',
         # views
         'views/sgi_area_views.xml',
         'report/report_compliance_matrix.xml',
@@ -182,6 +183,9 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',
         'report/report_master_list_all.xml',
+        'report/report_env_aspect.xml',
+        'report/report_work_permit.xml',
+        'report/report_loto.xml',
         'views/sgi_business_line_views.xml',
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
@@ -191,6 +195,12 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_dropbox_views.xml',
         # 57.14.0 (RH-01): «Plantilla autorizada» en las vistas nativas del puesto.
         'views/sgi_hr_job_headcount_views.xml',
+        # 57.50.0 y siguientes (bloque 1 de formularios): seguridad, salud y
+        # ambiente. Cada ficha completa en su archivo, sin herencias.
+        'views/sgi_env_aspect_views.xml',
+        'views/sgi_work_permit_views.xml',
+        'views/sgi_loto_views.xml',
+        'views/sgi_audit_finding_legal_eval_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         'views/sgi_menus.xml',

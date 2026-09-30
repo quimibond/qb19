@@ -42,6 +42,7 @@ SGI/Mejora/Quejas y sugerencias del personal | menu_sgi_internal_complaints | -
 SGI/Mejora/Auditorías | menu_sgi_audits | -
 SGI/Mejora/Auditorías/Programa | menu_sgi_audit_programs | -
 SGI/Mejora/Auditorías/Auditorías realizadas | menu_sgi_audit_list | -
+SGI/Mejora/Auditorías/Hallazgos | menu_sgi_audit_findings | -
 SGI/Seguridad y ambiente | menu_sgi_safety | -
 SGI/Seguridad y ambiente/Incidentes y accidentes | menu_sgi_incidents | -
 SGI/Seguridad y ambiente/Planes de emergencia | menu_sgi_emergency_plans | -
@@ -50,6 +51,9 @@ SGI/Seguridad y ambiente/Recorridos CSH | menu_sgi_csh_inspections | -
 SGI/Seguridad y ambiente/Estudios de higiene y exámenes médicos | menu_sgi_health_records | quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager
 SGI/Seguridad y ambiente/Responsivas de EPP | menu_sgi_epp_deliveries | -
 SGI/Seguridad y ambiente/Hojas de checklist | menu_sgi_checklist_requests | -
+SGI/Seguridad y ambiente/Aspectos ambientales | menu_sgi_env_aspects | -
+SGI/Seguridad y ambiente/Permisos de trabajo de alto riesgo | menu_sgi_work_permits | -
+SGI/Seguridad y ambiente/Bloqueo y etiquetado | menu_sgi_loto | -
 SGI/Dirección | menu_sgi_direction | -
 SGI/Dirección/Tablero | menu_sgi_dashboard_health | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Dirección/Revisión por la dirección | menu_sgi_mgmt_review | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
@@ -57,6 +61,7 @@ SGI/Dirección/Política integral | menu_sgi_policy | -
 SGI/Dirección/Objetivos integrales | menu_sgi_objectives | -
 SGI/Dirección/Riesgos y oportunidades | menu_sgi_risks | -
 SGI/Dirección/Requisitos legales | menu_sgi_legal | -
+SGI/Dirección/Evaluaciones de cumplimiento legal | menu_sgi_legal_evaluations | -
 SGI/Dirección/Partes interesadas | menu_sgi_interested_parties | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Dirección/Satisfacción del cliente | menu_sgi_satisfaction | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Administración SGI | menu_sgi_admin | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager

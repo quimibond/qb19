@@ -94,3 +94,7 @@ from . import sgi_legacy_routine_import
 from . import sgi_weekly_overdue
 from . import sgi_indicator_ind2
 from . import sgi_business_calendar
+from . import sgi_env_aspect
+from . import sgi_work_permit
+from . import sgi_loto
+from . import sgi_sst_links

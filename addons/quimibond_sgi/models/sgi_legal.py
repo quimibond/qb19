@@ -263,6 +263,14 @@ class SgiLegalEvaluation(models.Model):
                               help="Persona que evaluó.")
     alert_id = fields.Many2one(related='requirement_id.alert_id', string="NC")
 
+    @api.depends('requirement_id', 'date')
+    def _compute_display_name(self):
+        # 57.53.0: la evaluación tiene ficha y menú propios.
+        for evaluation in self:
+            evaluation.display_name = "%s — %s" % (
+                evaluation.requirement_id.reference or evaluation.requirement_id.name or '',
+                evaluation.date or '')
+
 
 class SgiLegalEvaluate(models.TransientModel):
     """Asistente para registrar una evaluación de cumplimiento de un requisito legal."""

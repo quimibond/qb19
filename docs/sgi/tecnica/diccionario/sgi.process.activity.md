@@ -8,7 +8,7 @@ Actividad (numeral) del Desarrollo del procedimiento (sección 4).
 
 Orden: `process_id, sequence, step, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_hierarchy.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`, `addons/quimibond_sgi/models/sgi_structure.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_hierarchy.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_norm_compliance.py`, `addons/quimibond_sgi/models/sgi_sst_links.py`, `addons/quimibond_sgi/models/sgi_structure.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py`.
 
 ## Campos (87)
 

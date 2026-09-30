@@ -134,6 +134,36 @@
         <field name="note">Etiqueta de equipo fuera de servicio</field>
     </record>
 
+    <!-- 57.50.0 (bloque 1 de formularios): matriz de aspectos ambientales.
+         P-E01 cita F-P-E01-01 como la matriz; hoy esa clave está en el
+         documento «Evaluación luminaria» (4060). La corrección de la clave es
+         del bloque 3 (decisiones 2026-09-30); mientras, el pie imprime la
+         clave que cita el procedimiento. -->
+    <record id="format_map_env_aspect" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_env_aspect"/>
+        <field name="sgi_code">F-P-E01-01</field>
+        <field name="note">Matriz de aspectos e impactos ambientales (clave por corregir en el bloque 3)</field>
+    </record>
+
+    <!-- 57.51.0: permiso único de trabajo de alto riesgo. P-A19 y P-A24 lo
+         citan como F-P-A14-03; no hay documento con esa clave en Documentos
+         (inventario 2026-09-30, §3.5): el pie imprime la clave sin revisión
+         hasta que MAST dé de alta el formato. -->
+    <record id="format_map_work_permit" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_work_permit"/>
+        <field name="sgi_code">F-P-A14-03</field>
+        <field name="note">Permiso único de trabajo de alto riesgo (formato por dar de alta)</field>
+    </record>
+
+    <!-- 57.52.0: bloqueo y etiquetado. P-A20 no tiene formato propio en el
+         Dropbox: el registro se identifica con su procedimiento hasta que
+         MAST dé de alta el formato y lo cambie aquí. -->
+    <record id="format_map_loto" model="sgi.format.map">
+        <field name="model_id" ref="model_sgi_loto"/>
+        <field name="sgi_code">P-A20</field>
+        <field name="note">Bloqueo y etiquetado: registro de P-A20 (sin formato propio todavía)</field>
+    </record>
+
     <!-- 57.44.0 (V-M08): pies de los reportes que perdieron su identificación
          en 57.20.0. Por referencia porque el mismo modelo imprime más de un
          formato (plan e informe de auditoría) o es de otra app (NEWS, sobre

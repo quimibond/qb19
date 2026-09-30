@@ -57,6 +57,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Auditorías**
       - **Programa** — `sgi.audit.program`
       - **Auditorías realizadas** — `sgi.audit`
+      - **Hallazgos** — `sgi.audit.finding`
   - **Seguridad y ambiente**
     - **Incidentes y accidentes** — `sgi.incident`
     - **Planes de emergencia** — `sgi.emergency.plan`
@@ -65,6 +66,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Estudios de higiene y exámenes médicos** — `sgi.health.record`; grupos: quimibond_sgi.group_sgi_health, quimibond_sgi.group_sgi_manager, -hr.group_hr_user
     - **Responsivas de EPP** — `sgi.epp.delivery`
     - **Hojas de checklist** — `maintenance.request`
+    - **Aspectos ambientales** — `sgi.env.aspect`
+    - **Permisos de trabajo de alto riesgo** — `sgi.work.permit`
+    - **Bloqueo y etiquetado** — `sgi.loto`
   - **Dirección** — grupos: -quimibond_sgi.group_sgi_director, -quimibond_sgi.group_sgi_manager, -quimibond_sgi.group_sgi_auditor
     - **Tablero** — `sgi.direction.board`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
     - **Revisión por la dirección** — `sgi.management.review`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
@@ -72,6 +76,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Objetivos integrales** — `sgi.objective`
     - **Riesgos y oportunidades** — `sgi.risk`
     - **Requisitos legales** — `sgi.legal.requirement`
+    - **Evaluaciones de cumplimiento legal** — `sgi.legal.evaluation`
     - **Partes interesadas** — `sgi.interested.party`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
     - **Satisfacción del cliente** — `survey.user.input`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
   - **Administración SGI** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
@@ -111,7 +116,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **Bitácora de bloqueo contable** — `sgi.lock.date.log`; bajo `account.menu_finance_reports`
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (91)
+## Acciones (96)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -126,6 +131,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_alert_source_action` | act_window | Fuentes de NC automáticas | `sgi.alert.source` | list,form | sí | `addons/quimibond_sgi/views/sgi_alert_source_views.xml` |
 | `quimibond_sgi.sgi_area_action` | act_window | Áreas | `sgi.area` | list,form | sí | `addons/quimibond_sgi/views/sgi_area_views.xml` |
 | `quimibond_sgi.sgi_audit_action` | act_window | Auditorías realizadas | `sgi.audit` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
+| `quimibond_sgi.sgi_audit_finding_action` | act_window | Hallazgos de auditoría | `sgi.audit.finding` | list,form | sí | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
 | `quimibond_sgi.sgi_audit_program_action` | act_window | Programa de auditorías | `sgi.audit.program` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
 | `quimibond_sgi.sgi_calibration_action` | act_window | Calibraciones | `sgi.calibration` | list,form | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `quimibond_sgi.sgi_catalog_load_wizard_action` | act_window | Cargar catálogo | `sgi.catalog.load.wizard` | form |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
@@ -156,6 +162,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_dropbox_routine_action` | act_window | Rutina por rutina | `sgi.legacy.routine` | list,form,pivot | sí | `addons/quimibond_sgi/views/sgi_dropbox_views.xml` |
 | `quimibond_sgi.sgi_emergency_drill_action` | act_window | Simulacros | `sgi.emergency.drill` | list,form | sí | `addons/quimibond_sgi/views/sgi_emergency_views.xml` |
 | `quimibond_sgi.sgi_emergency_plan_action` | act_window | Planes de emergencia | `sgi.emergency.plan` | list,sgi_diagram,form,activity | sí | `addons/quimibond_sgi/views/sgi_emergency_views.xml` |
+| `quimibond_sgi.sgi_env_aspect_action` | act_window | Aspectos ambientales | `sgi.env.aspect` | list,form | sí | `addons/quimibond_sgi/views/sgi_env_aspect_views.xml` |
 | `quimibond_sgi.sgi_epp_delivery_action` | act_window | Responsivas de EPP | `sgi.epp.delivery` | list,form | sí | `addons/quimibond_sgi/views/sgi_epp_views.xml` |
 | `quimibond_sgi.sgi_equipment_action_measuring` | act_window | Equipos de medición | `maintenance.equipment` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `quimibond_sgi.sgi_external_doc_action` | act_window | Documentos externos | `documents.document` | list,form | sí | `addons/quimibond_sgi/views/sgi_external_doc_views.xml` |
@@ -172,8 +179,10 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_inventory_value_action` | act_window | Valor del inventario por mes | `sgi.inventory.value` | list | sí | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
 | `quimibond_sgi.sgi_job_family_action` | act_window | Familias de puesto | `sgi.job.family` | list,form | sí | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_legacy_routine_import_action` | act_window | Importar rutinas | `sgi.legacy.routine.import` | form |  | `addons/quimibond_sgi/views/sgi_dropbox_views.xml` |
+| `quimibond_sgi.sgi_legal_evaluation_action` | act_window | Evaluaciones de cumplimiento legal | `sgi.legal.evaluation` | list,form | sí | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
 | `quimibond_sgi.sgi_legal_requirement_action` | act_window | Requisitos legales | `sgi.legal.requirement` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_legal_views.xml` |
 | `quimibond_sgi.sgi_lock_date_log_action` | act_window | Bitácora de bloqueo contable | `sgi.lock.date.log` | list | sí | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
+| `quimibond_sgi.sgi_loto_action` | act_window | Bloqueo y etiquetado | `sgi.loto` | list,form | sí | `addons/quimibond_sgi/views/sgi_loto_views.xml` |
 | `quimibond_sgi.sgi_machine_sheet_action` | act_window | Fichas de proceso por máquina | `sgi.machine.sheet` | list,form | sí | `addons/quimibond_sgi/views/sgi_machine_sheet_views.xml` |
 | `quimibond_sgi.sgi_management_review_action` | act_window | Revisión por la dirección | `sgi.management.review` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_management_review_views.xml` |
 | `quimibond_sgi.sgi_measure_action` | act_window | Mediciones | `sgi.indicator.measure` | list,graph,pivot,form | sí | `addons/quimibond_sgi/views/sgi_indicator_views.xml` |
@@ -204,10 +213,11 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_staff_efficiency_line_action` | act_window | Análisis por empleado | `sgi.staff.efficiency.line` | pivot,list | sí | `addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml` |
 | `quimibond_sgi.sgi_supplier_eval_action` | act_window | Evaluación de proveedores | `sgi.supplier.eval` | list,form | sí | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `quimibond_sgi.sgi_supplier_eval_recompute_action` | server | Recalcular métricas (SGI) | `sgi.supplier.eval` |  |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
+| `quimibond_sgi.sgi_work_permit_action` | act_window | Permisos de trabajo de alto riesgo | `sgi.work.permit` | list,form | sí | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list |  | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (321; 63 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (334; 63 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -341,7 +351,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.audit` | `quimibond_sgi.sgi_audit_view_form` | form |  | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
 | `sgi.audit` | `quimibond_sgi.sgi_audit_view_list` | list |  | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
 | `sgi.audit` | `quimibond_sgi.sgi_audit_view_search` | search |  | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
+| `sgi.audit.finding` | `quimibond_sgi.sgi_audit_finding_view_form` | form |  | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
 | `sgi.audit.finding` | `quimibond_sgi.sgi_audit_finding_view_list` | list |  | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
+| `sgi.audit.finding` | `quimibond_sgi.sgi_audit_finding_view_search` | search |  | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
 | `sgi.audit.program` | `quimibond_sgi.sgi_audit_program_view_form` | form |  | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
 | `sgi.audit.program` | `quimibond_sgi.sgi_audit_program_view_list` | list |  | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
 | `sgi.audit.program` | `quimibond_sgi.sgi_audit_program_view_search` | search |  | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
@@ -395,6 +407,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.emergency.plan` | `quimibond_sgi.sgi_emergency_plan_view_list` | list |  | `addons/quimibond_sgi/views/sgi_emergency_views.xml` |
 | `sgi.emergency.plan` | `quimibond_sgi.sgi_emergency_plan_view_search` | search |  | `addons/quimibond_sgi/views/sgi_emergency_views.xml` |
 | `sgi.emergency.plan` | `quimibond_sgi.sgi_emergency_plan_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
+| `sgi.env.aspect` | `quimibond_sgi.sgi_env_aspect_view_form` | form |  | `addons/quimibond_sgi/views/sgi_env_aspect_views.xml` |
+| `sgi.env.aspect` | `quimibond_sgi.sgi_env_aspect_view_list` | list |  | `addons/quimibond_sgi/views/sgi_env_aspect_views.xml` |
+| `sgi.env.aspect` | `quimibond_sgi.sgi_env_aspect_view_search` | search |  | `addons/quimibond_sgi/views/sgi_env_aspect_views.xml` |
 | `sgi.epp.delivery` | `quimibond_sgi.sgi_epp_delivery_view_form` | form |  | `addons/quimibond_sgi/views/sgi_epp_views.xml` |
 | `sgi.epp.delivery` | `quimibond_sgi.sgi_epp_delivery_view_list` | list |  | `addons/quimibond_sgi/views/sgi_epp_views.xml` |
 | `sgi.epp.delivery` | `quimibond_sgi.sgi_epp_delivery_view_search` | search |  | `addons/quimibond_sgi/views/sgi_epp_views.xml` |
@@ -444,12 +459,17 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.legacy.routine` | `quimibond_sgi.sgi_legacy_routine_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dropbox_views.xml` |
 | `sgi.legacy.routine.import` | `quimibond_sgi.sgi_legacy_routine_import_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dropbox_views.xml` |
 | `sgi.legal.evaluate` | `quimibond_sgi.sgi_legal_evaluate_view_form` | form |  | `addons/quimibond_sgi/views/sgi_legal_views.xml` |
+| `sgi.legal.evaluation` | `quimibond_sgi.sgi_legal_evaluation_view_form` | form |  | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
 | `sgi.legal.evaluation` | `quimibond_sgi.sgi_legal_evaluation_view_list` | list |  | `addons/quimibond_sgi/views/sgi_legal_views.xml` |
+| `sgi.legal.evaluation` | `quimibond_sgi.sgi_legal_evaluation_view_search` | search |  | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
 | `sgi.legal.requirement` | `quimibond_sgi.sgi_legal_requirement_view_form` | form |  | `addons/quimibond_sgi/views/sgi_legal_views.xml` |
 | `sgi.legal.requirement` | `quimibond_sgi.sgi_legal_requirement_view_list` | list |  | `addons/quimibond_sgi/views/sgi_legal_views.xml` |
 | `sgi.legal.requirement` | `quimibond_sgi.sgi_legal_requirement_view_search` | search |  | `addons/quimibond_sgi/views/sgi_legal_views.xml` |
 | `sgi.legal.requirement` | `quimibond_sgi.sgi_legal_requirement_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `sgi.lock.date.log` | `quimibond_sgi.sgi_lock_date_log_view_list` | list |  | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
+| `sgi.loto` | `quimibond_sgi.sgi_loto_view_form` | form |  | `addons/quimibond_sgi/views/sgi_loto_views.xml` |
+| `sgi.loto` | `quimibond_sgi.sgi_loto_view_list` | list |  | `addons/quimibond_sgi/views/sgi_loto_views.xml` |
+| `sgi.loto` | `quimibond_sgi.sgi_loto_view_search` | search |  | `addons/quimibond_sgi/views/sgi_loto_views.xml` |
 | `sgi.machine.sheet` | `quimibond_sgi.sgi_machine_sheet_view_form` | form |  | `addons/quimibond_sgi/views/sgi_machine_sheet_views.xml` |
 | `sgi.machine.sheet` | `quimibond_sgi.sgi_machine_sheet_view_list` | list |  | `addons/quimibond_sgi/views/sgi_machine_sheet_views.xml` |
 | `sgi.machine.sheet` | `quimibond_sgi.sgi_machine_sheet_view_search` | search |  | `addons/quimibond_sgi/views/sgi_machine_sheet_views.xml` |
@@ -523,6 +543,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_form` | form |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_list` | list |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_search` | search |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
+| `sgi.work.permit` | `quimibond_sgi.sgi_work_permit_view_form` | form |  | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
+| `sgi.work.permit` | `quimibond_sgi.sgi_work_permit_view_list` | list |  | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
+| `sgi.work.permit` | `quimibond_sgi.sgi_work_permit_view_search` | search |  | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `slide.channel` | `quimibond_sgi.sgi_slide_channel_view_list` | list |  | `addons/quimibond_sgi/views/sgi_sign_elearning_views.xml` |
 | `stock.lot` | `quimibond_sgi.sgi_format_banner_stock_lot` | herencia | `stock.view_production_lot_form` | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
 | `stock.lot` | `quimibond_sgi.sgi_stock_lot_view_form` | herencia | `stock.view_production_lot_form` | `addons/quimibond_sgi/views/sgi_control_plan_views.xml` |

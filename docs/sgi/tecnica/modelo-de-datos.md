@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (106) y modelos de otras apps que extienden (48). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (112) y modelos de otras apps que extienden (48). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -56,6 +56,7 @@ Modelos que definen el núcleo y sus satélites (106) y modelos de otras apps qu
 | [`sgi.dyd.task.mixin`](diccionario/sgi.dyd.task.mixin.md) | Liga a la tarea del desarrollo | Liga a la tarea del proyecto de desarrollo (Diseño y Desarrollo). | AbstractModel | 1 | `addons/quimibond_sgi/models/sgi_links.py` |
 | [`sgi.emergency.drill`](diccionario/sgi.emergency.drill.md) | Simulacro de emergencia | Simulacro de un plan de emergencia: programado, realizado o cancelado, con resultado, hallazgos y acciones. | Model | 10 | `addons/quimibond_sgi/models/sgi_emergency.py` |
 | [`sgi.emergency.plan`](diccionario/sgi.emergency.plan.md) | Plan de emergencia (ISO 14001/45001 8.2) | Plan de emergencia (14001/45001 8.2) con su frecuencia de simulacros; el cron avisa cuando toca el siguiente. | Model | 12 | `addons/quimibond_sgi/models/sgi_emergency.py` |
+| [`sgi.env.aspect`](diccionario/sgi.env.aspect.md) | Aspecto e impacto ambiental (ISO 14001 6.1.2) | — | Model | 24 | `addons/quimibond_sgi/models/sgi_env_aspect.py` |
 | [`sgi.epp.delivery`](diccionario/sgi.epp.delivery.md) | Responsiva de entrega de EPP (S03-02) | Responsiva de entrega de EPP a un empleado (S03-02), con renglones y firma en Sign. | Model | 14 | `addons/quimibond_sgi/models/sgi_epp.py` |
 | [`sgi.epp.delivery.line`](diccionario/sgi.epp.delivery.line.md) | Renglón de la responsiva de EPP | Renglón de la responsiva de EPP: artículo, talla y cantidad. | Model | 7 | `addons/quimibond_sgi/models/sgi_epp_sign.py` |
 | [`sgi.fmea`](diccionario/sgi.fmea.md) | AMEF - Análisis de Modo y Efecto de Falla (P-C10) | AMEF de proceso o de diseño (P-C10) con sus líneas y NPR máximo; ligado al plan de control. No pasa a vigente con NPR alto sin acción. | Model | 13 | `addons/quimibond_sgi/models/sgi_fmea.py` |
@@ -80,6 +81,9 @@ Modelos que definen el núcleo y sus satélites (106) y modelos de otras apps qu
 | [`sgi.legal.evaluation`](diccionario/sgi.legal.evaluation.md) | Evaluación del cumplimiento de un requisito legal | DIR-1 (51.0.0): cada evaluación del cumplimiento es un registro con resultado, evidencia y fecha de la siguiente (9.1.2: conservar evidencia). | Model | 7 | `addons/quimibond_sgi/models/sgi_legal.py` |
 | [`sgi.legal.requirement`](diccionario/sgi.legal.requirement.md) | Requisito legal / otro requisito (14001·45001 6.1.3) | Requisito legal u otro requisito (14001/45001 6.1.3): autoridad, evidencia, evaluaciones periódicas y vencimiento de permisos. | Model | 21 | `addons/quimibond_sgi/models/sgi_legal.py` |
 | [`sgi.lock.date.log`](diccionario/sgi.lock.date.log.md) | Bitácora de fechas de bloqueo contable | Bitácora de cambios a las fechas de bloqueo contable, para medir el cierre a tiempo. | Model | 7 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
+| [`sgi.loto`](diccionario/sgi.loto.md) | Bloqueo y etiquetado de energías (LOTO) | — | Model | 18 | `addons/quimibond_sgi/models/sgi_loto.py` |
+| [`sgi.loto.energy`](diccionario/sgi.loto.energy.md) | Fuente de energía del bloqueo | — | Model | 5 | `addons/quimibond_sgi/models/sgi_loto.py` |
+| [`sgi.loto.lock`](diccionario/sgi.loto.lock.md) | Candado y tarjeta de un trabajador | — | Model | 8 | `addons/quimibond_sgi/models/sgi_loto.py` |
 | [`sgi.machine.sheet`](diccionario/sgi.machine.sheet.md) | Ficha técnica de proceso por máquina (F-IT-P-P01-08-05) | Ficha técnica de proceso por máquina: parámetros, hilos y poleas por producto y centro de trabajo, con revisión. | Model | 22 | `addons/quimibond_sgi/models/sgi_machine_sheet.py` |
 | [`sgi.machine.sheet.param`](diccionario/sgi.machine.sheet.param.md) | Parámetro de la ficha de proceso por máquina | Parámetro de proceso de una ficha por máquina (especificación, tolerancia y unidad). | Model | 7 | `addons/quimibond_sgi/models/sgi_machine_sheet.py` |
 | [`sgi.machine.sheet.yarn`](diccionario/sgi.machine.sheet.yarn.md) | Hilo de la ficha de proceso por máquina | Hilo de la ficha de proceso por máquina (tipo, título, porcentaje y consumo). | Model | 9 | `addons/quimibond_sgi/models/sgi_machine_sheet.py` |
@@ -114,6 +118,8 @@ Modelos que definen el núcleo y sus satélites (106) y modelos de otras apps qu
 | [`sgi.staff.efficiency`](diccionario/sgi.staff.efficiency.md) | Eficiencias de personal (F-P-A01-32/34) | Hoja mensual de eficiencias de personal de un área: carga empleados, calcula y la recibe RH. Los importes solo los ve el grupo de salarios. | Model | 13 | `addons/quimibond_sgi/models/sgi_staff_efficiency.py` |
 | [`sgi.staff.efficiency.line`](diccionario/sgi.staff.efficiency.line.md) | Calificación mensual de un empleado | Calificación mensual de un empleado (eficiencia, calidad, orden, asistencia) y su importe. | Model | 17 | `addons/quimibond_sgi/models/sgi_staff_efficiency.py` |
 | [`sgi.supplier.eval`](diccionario/sgi.supplier.eval.md) | Evaluación de proveedor SGI (8.4) | Evaluación trimestral de un proveedor (8.4): entrega a tiempo, NC y clase. La crea el cron; se puede recalcular y aplicar al contacto. | Model | 9 | `addons/quimibond_sgi/models/sgi_supplier_eval.py` |
+| [`sgi.work.permit`](diccionario/sgi.work.permit.md) | Permiso de trabajo de alto riesgo | — | Model | 25 | `addons/quimibond_sgi/models/sgi_work_permit.py` |
+| [`sgi.work.permit.check`](diccionario/sgi.work.permit.check.md) | Verificación o EPP del permiso de trabajo | — | Model | 6 | `addons/quimibond_sgi/models/sgi_work_permit.py` |
 
 ## Modelos de otras apps que el SGI extiende
 
@@ -168,4 +174,4 @@ Modelos que definen el núcleo y sus satélites (106) y modelos de otras apps qu
 | [`stock.picking`](diccionario/stock.picking.md) | 17 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_release.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`studio.approval.rule`](diccionario/studio.approval.rule.md) | 1 | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`, `addons/quimibond_sgi_studio/models/studio_approval_rule_archive.py` |
 
-Modelos propios sin docstring de clase: 0 de 106.
+Modelos propios sin docstring de clase: 6 de 112.
