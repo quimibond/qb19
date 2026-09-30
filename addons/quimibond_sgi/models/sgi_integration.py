@@ -190,7 +190,8 @@ class HrJob(models.Model):
     _inherit = 'hr.job'
 
     sgi_document_ids = fields.Many2many('documents.document', 'sgi_document_job_rel',
-                                        'job_id', 'document_id', string="Documentos aplicables")
+                                        'job_id', 'document_id', string="Documentos aplicables",
+                                        help="Documentos controlados que aplican a este puesto.")
     # Determinación del EPP por puesto (sustituye F-P-S03-01): la fuente
     # única vive en el puesto; la ficha del empleado la muestra en solo
     # lectura. La responsiva de entrega (S03-02) sigue documental.

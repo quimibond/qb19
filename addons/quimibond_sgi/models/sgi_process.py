@@ -33,13 +33,18 @@ class SgiProcess(models.Model):
         ('estrategico', "Estratégico"),
         ('soporte', "Soporte"),
     ], string="Tipo", default='cop', required=True,
-        group_expand='_group_expand_process_type')
-    parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True)
+        group_expand='_group_expand_process_type',
+                                    help="Cadena de valor (COP), estratégico o de soporte.")
+    parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True,
+                                help="Macroproceso al que pertenece este proceso.")
     parent_path = fields.Char(index=True)
     child_ids = fields.One2many('sgi.process', 'parent_id', string="Subprocesos")
-    owner_id = fields.Many2one('hr.employee', string="Dueño del proceso")
-    department_id = fields.Many2one('hr.department', string="Departamento")
-    job_ids = fields.Many2many('hr.job', string="Puestos")
+    owner_id = fields.Many2one('hr.employee', string="Dueño del proceso",
+                               help="Empleado dueño del proceso: recibe los escalamientos y aprueba los "
+                                    "cambios a sus actividades.")
+    department_id = fields.Many2one('hr.department', string="Departamento",
+                                    help="Departamento responsable del proceso.")
+    job_ids = fields.Many2many('hr.job', string="Puestos", help="Puestos que participan en el proceso.")
     active = fields.Boolean(default=True)
 
     purpose = fields.Text(
@@ -108,7 +113,9 @@ class SgiProcess(models.Model):
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Salud del proceso", compute='_compute_health')
+    ], string="Salud del proceso", compute='_compute_health',
+        help="Verde sin nada abierto; amarillo con algo abierto; rojo con un riesgo de atención máxima o con "
+             "NC abierta e indicador en rojo a la vez. Se calcula al mostrarlo.")
     document_count = fields.Integer(string="# Documentos", compute='_compute_counts')
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
     risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
@@ -543,11 +550,16 @@ class SgiProcessFlow(models.Model):
     _order = 'from_process_id, name'
 
     name = fields.Char(string="Entregable", required=True)
-    from_process_id = fields.Many2one('sgi.process', string="Proceso origen", required=True, ondelete='cascade')
-    to_process_id = fields.Many2one('sgi.process', string="Proceso destino", required=True, ondelete='cascade')
-    document_id = fields.Many2one('documents.document', string="Formato de entrega")
+    from_process_id = fields.Many2one('sgi.process', string="Proceso origen", required=True, ondelete='cascade',
+                                      help="Proceso que entrega.")
+    to_process_id = fields.Many2one('sgi.process', string="Proceso destino", required=True, ondelete='cascade',
+                                    help="Proceso que recibe.")
+    document_id = fields.Many2one('documents.document', string="Formato de entrega",
+                                  help="Formato con el que se entrega lo que pasa entre los procesos.")
     acceptance_criteria = fields.Text(string="Criterio de aceptación")
-    odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa")
+    odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa",
+                                    help="Modelo de Odoo donde queda el registro de lo que pasa entre "
+                                         "procesos.")
     odoo_model_name = fields.Char(related='odoo_model_id.model', string="Modelo técnico")
     company_id = fields.Many2one(
         related='from_process_id.company_id', string="Empresa", store=True,

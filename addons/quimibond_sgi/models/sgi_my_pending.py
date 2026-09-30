@@ -186,13 +186,18 @@ class SgiMyPending(models.TransientModel):
     _SGI_REQUEST_DAYS = 3  # días para contestar una solicitud de Aprobaciones
 
     user_id = fields.Many2one('res.users', string="Usuario", readonly=True)
-    employee_id = fields.Many2one('hr.employee.public', string="Persona", readonly=True)
-    kind = fields.Selection(PENDING_KINDS, string="Tipo", required=True, readonly=True)
+    employee_id = fields.Many2one('hr.employee.public', string="Persona", readonly=True,
+                                  help="Persona a la que le toca el pendiente.")
+    kind = fields.Selection(PENDING_KINDS, string="Tipo", required=True, readonly=True,
+                            help="Qué hay que hacer: acción, NC, medición, validación, acuse, firma, "
+                                 "aprobación…")
     name = fields.Char(string="Qué", readonly=True)
-    process_id = fields.Many2one('sgi.process', string="Proceso", readonly=True, ondelete='restrict')
-    date_due = fields.Date(string="Vence", readonly=True)
-    state = fields.Selection(PENDING_STATES, string="Estado", readonly=True)
-    state_rank = fields.Integer(readonly=True)
+    process_id = fields.Many2one('sgi.process', string="Proceso", readonly=True, ondelete='restrict',
+                                 help="Proceso del pendiente.")
+    date_due = fields.Date(string="Vence", readonly=True, help="Fecha en que vence el pendiente.")
+    state = fields.Selection(PENDING_STATES, string="Estado", readonly=True,
+                             help="Atrasado, por vencer o al día.")
+    state_rank = fields.Integer(readonly=True, help="Orden para mostrar primero lo atrasado.")
     res_model = fields.Char(readonly=True)
     res_id = fields.Integer(readonly=True)
 
@@ -629,8 +634,10 @@ class SgiMyPending(models.TransientModel):
 class SgiMyProcedurePending(models.TransientModel):
     _inherit = 'sgi.my.procedure'
 
-    pending_total = fields.Integer(string="Mis pendientes", compute='_compute_pending_summary')
-    pending_late = fields.Integer(string="Pendientes atrasados", compute='_compute_pending_summary')
+    pending_total = fields.Integer(string="Mis pendientes", compute='_compute_pending_summary',
+                                   help="Total de pendientes de la persona.")
+    pending_late = fields.Integer(string="Pendientes atrasados", compute='_compute_pending_summary',
+                                  help="Pendientes atrasados de la persona.")
 
     @api.depends('employee_id')
     @api.depends_context('uid')
@@ -674,10 +681,12 @@ class HrEmployeePublicPending(models.Model):
 
     sgi_mp_pending_total = fields.Integer(
         string="Pendientes", compute='_compute_sgi_mp_pending',
-        search='_search_sgi_mp_pending_total')
+        search='_search_sgi_mp_pending_total',
+        help="Total de pendientes de la persona en Mis pendientes.")
     sgi_mp_pending_late = fields.Integer(
         string="Pendientes atrasados", compute='_compute_sgi_mp_pending',
-        search='_search_sgi_mp_pending_late')
+        search='_search_sgi_mp_pending_late',
+        help="Pendientes atrasados de la persona en Mis pendientes.")
     sgi_mp_pending_state = fields.Selection(
         PENDING_STATES, string="Semáforo", compute='_compute_sgi_mp_pending',
         search='_search_sgi_mp_pending_state',

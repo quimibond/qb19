@@ -20,7 +20,8 @@ class SgiProcessActivityKnowledge(models.Model):
         help="Artículo donde se escribe el instructivo. «Publicar como instructivo» lo "
              "congela como revisión del IT.")
     instruction_article_stale = fields.Boolean(
-        string="Artículo cambió desde la última revisión", compute='_compute_instruction_article_stale')
+        string="Artículo cambió desde la última revisión", compute='_compute_instruction_article_stale',
+        help="El artículo de Conocimiento del instructivo cambió después de publicarse como revisión.")
 
     def _sgi_article_hash(self):
         self.ensure_one()

@@ -65,7 +65,8 @@ class DocumentsDocumentMyProcedure(models.Model):
 
     sgi_doc_type = fields.Selection(
         selection_add=[('mi_procedimiento', "Mi procedimiento (MP)")],
-        ondelete={'mi_procedimiento': 'set null'})
+        ondelete={'mi_procedimiento': 'set null'},
+        help="Tipo de documento en forma de código (se calcula del tipo de documento).")
     # Huella del contenido con el que se generó el PDF: una revisión nueva
     # solo cuando cambia (no cada vez que alguien imprime).
     sgi_content_hash = fields.Char(
@@ -77,11 +78,13 @@ class SgiActivityRoleCadence(models.Model):
 
     # Para agrupar la vista «Mi procedimiento» por cadencia.
     cadence = fields.Selection(
-        related='activity_id.measure_cadence', string="Cadencia", store=True)
+        related='activity_id.measure_cadence', string="Cadencia", store=True,
+        help="Cada cuánto se espera la actividad.")
     activity_active = fields.Boolean(
         related='activity_id.active', string="Actividad activa", store=True)
     activity_menu_id = fields.Many2one(
-        related='activity_id.odoo_menu_id', string="Menú de Odoo")
+        related='activity_id.odoo_menu_id', string="Menú de Odoo",
+        help="Menú de Odoo donde se hace la actividad.")
     activity_when = fields.Char(string="Cuándo", compute='_compute_activity_when')
 
     @api.depends('activity_id.measure_cadence', 'activity_id.due_weekday',
@@ -105,7 +108,8 @@ class HrJobMyProcedure(models.Model):
 
     sgi_my_procedure_doc_id = fields.Many2one(
         'documents.document', string="Mi procedimiento (vigente)",
-        compute='_compute_sgi_my_procedure_doc')
+        compute='_compute_sgi_my_procedure_doc',
+        help="Revisión vigente del Mi procedimiento del puesto, publicada por el Jefe MAST y SGI.")
     sgi_my_procedure_stale = fields.Boolean(
         string="Mi procedimiento desactualizado",
         compute='_compute_sgi_my_procedure_doc',
@@ -748,7 +752,9 @@ class HrEmployeeMyProcedure(models.Model):
         # deja leer a quien no es de RH campos fuera del perfil público: al
         # leer cualquier campo de un empleado (el nombre del jefe, en el PDF)
         # el prefetch lo arrastraba y todo tronaba.
-        prefetch=False)
+        prefetch=False,
+                                                  help="Si la persona ya firmó de leído su Mi procedimiento "
+                                                       "vigente. Se calcula solo.")
 
     @api.depends('sgi_mp_job_id', 'sgi_document_ack_ids.state', 'sgi_document_ack_ids.document_id')
     def _compute_sgi_my_procedure_ack(self):

@@ -98,7 +98,9 @@ class SgiProcessProcedure(models.Model):
         ('verde', "Todo con evidencia"),
         ('gris', "Hay actividades sin evidencia aún"),
         ('rojo', "Hay actividades en rojo"),
-    ], string="Estado de medición", compute='_compute_measure_status', store=True)
+    ], string="Estado de medición", compute='_compute_measure_status', store=True,
+        help="Resumen de la medición de sus actividades: todo con evidencia, alguna sin evidencia aún o "
+             "alguna en rojo. Se calcula solo.")
     chain_link_ids = fields.Many2many(
         'sgi.activity.link', string="Ligas entre actividades",
         compute='_compute_chain_link_ids')
@@ -109,9 +111,11 @@ class SgiProcessProcedure(models.Model):
         'res.users', string="Responsable del documento",
         help="Elabora / es dueño del procedimiento (bloque de firmas).")
     doc_approver_id = fields.Many2one(
-        'res.users', string="Aprueba")
+        'res.users', string="Aprueba",
+        help="Quien aprueba el procedimiento del proceso. Por omisión, el dueño del proceso.")
     doc_vobo_id = fields.Many2one(
-        'res.users', string="Vo.Bo.")
+        'res.users', string="Vo.Bo.",
+        help="Quien da el visto bueno al procedimiento del proceso.")
 
     # Campos del cuerpo del procedimiento cuya edición diverge del PDF
     # controlado. 'purpose' (sección 1, OBJETIVO) también se imprime en el
@@ -461,7 +465,8 @@ class SgiProcessActivity(models.Model):
 
     process_id = fields.Many2one(
         'sgi.process', string="Proceso", required=True, ondelete='cascade',
-        index=True)
+        index=True,
+        help="Proceso al que pertenece la actividad.")
     company_id = fields.Many2one(
         related='process_id.company_id', string="Empresa", store=True,
         index=True)
@@ -488,7 +493,8 @@ class SgiProcessActivity(models.Model):
     # «sección» y un bloque fijo inicial/desarrollo/final.
     stage_id = fields.Many2one(
         'sgi.process.stage', string="Etapa", index=True, ondelete='set null',
-        domain="[('process_id', '=', process_id)]")
+        domain="[('process_id', '=', process_id)]",
+        help="Etapa del proceso a la que pertenece la actividad.")
     block = fields.Selection([
         ('inicial', "Actividades iniciales"),
         ('desarrollo', "Desarrollo"),
@@ -522,15 +528,19 @@ class SgiProcessActivity(models.Model):
         ('va', "Agrega valor"),
         ('nva_n', "No agrega valor, necesaria"),
         ('nva', "No agrega valor (desperdicio)"),
-    ], string="Clase de valor")
+    ], string="Clase de valor",
+        help="Si la actividad agrega valor al cliente, es necesaria sin agregarlo o es desperdicio.")
     # Nivel de automatización (fase 5 completa el resto: minutos, volumen,
     # horas liberables). El nivel actual se necesita ya: una actividad
     # automática no lleva rol «ejecuta».
     automation_level_current = fields.Selection(
         SGI_AUTOMATION_LEVELS, string="Automatización actual",
-        default='manual', required=True)
+        default='manual', required=True,
+        help="Qué tan automatizada está hoy la actividad. Una actividad automática no lleva quien la "
+             "ejecute.")
     automation_level_target = fields.Selection(
-        SGI_AUTOMATION_LEVELS, string="Automatización meta")
+        SGI_AUTOMATION_LEVELS, string="Automatización meta",
+        help="Nivel de automatización al que se quiere llevar la actividad.")
     automation_method = fields.Selection([
         ('estandar_odoo', "Estándar de Odoo"),
         ('accion_automatizada', "Acción automatizada"),
@@ -538,7 +548,8 @@ class SgiProcessActivity(models.Model):
         ('integracion', "Integración"),
         ('agente_ia', "Agente de IA"),
         ('otro', "Otro"),
-    ], string="Método de automatización")
+    ], string="Método de automatización",
+        help="Cómo se automatiza o se automatizaría la actividad.")
     responsible_role = fields.Char(
         string="Rol responsable",
         help="Nombre del rol en negritas del procedimiento (no siempre mapea a "
@@ -569,7 +580,8 @@ class SgiProcessActivity(models.Model):
         'sgi.activity.link', 'to_activity_id', string="Recibe de")
     next_activity_ids = fields.Many2many(
         'sgi.process.activity', string="Siguientes pasos",
-        compute='_compute_chain')
+        compute='_compute_chain',
+        help="Actividades que reciben lo que esta entrega.")
     prev_activity_ids = fields.Many2many(
         'sgi.process.activity', string="Pasos anteriores",
         compute='_compute_chain')
@@ -599,11 +611,14 @@ class SgiProcessActivity(models.Model):
                 activity.write({'role_ids': commands})
 
     executor_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Ejecuta", compute='_compute_role_views')
+        'sgi.activity.role', string="Ejecuta", compute='_compute_role_views',
+        help="Roles que ejecutan la actividad.")
     approver_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Aprueba", compute='_compute_role_views')
+        'sgi.activity.role', string="Aprueba", compute='_compute_role_views',
+        help="Roles que aprueban la actividad.")
     informed_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Se entera", compute='_compute_role_views')
+        'sgi.activity.role', string="Se entera", compute='_compute_role_views',
+        help="Roles que se enteran de la actividad.")
 
     @api.depends('role_ids.role')
     def _compute_role_views(self):
@@ -862,14 +877,20 @@ class SgiProcessActivity(models.Model):
     ], string="Cadencia esperada", default='evento',
         help="Cada cuánto DEBE haber evidencia. «Por evento» solo cuenta, "
              "sin juzgar cumplimiento (actividades que dependen de demanda).")
-    measure_last_date = fields.Datetime("Última ejecución", readonly=True)
-    measure_count_30d = fields.Integer("Ejecuciones (30 días)", readonly=True)
+    measure_last_date = fields.Datetime("Última ejecución", readonly=True,
+                                        help="Fecha de la última ejecución registrada. Lo escribe la "
+                                             "medición diaria.")
+    measure_count_30d = fields.Integer("Ejecuciones (30 días)", readonly=True,
+                                       help="Ejecuciones registradas en los últimos 30 días. Lo escribe la "
+                                            "medición diaria.")
     measure_state = fields.Selection([
         ('verde', "En cumplimiento"),
         ('rojo', "Sin evidencia en su periodo"),
         ('pendiente', "Pendiente de conector/registro"),
         ('no_aplica', "No se mide"),
-    ], string="Cumplimiento", readonly=True)
+    ], string="Cumplimiento", readonly=True,
+        help="En cumplimiento, sin evidencia en su periodo, pendiente de conector o no se mide. Lo escribe "
+             "la medición diaria.")
 
     # --- Cómo se mide (toda actividad tiene un método) ---
     measure_method = fields.Selection([
@@ -898,7 +919,8 @@ class SgiProcessActivity(models.Model):
     sample_cadence = fields.Selection([
         ('semanal', "Semanal"),
         ('mensual', "Mensual"),
-    ], string="Cadencia de muestreo")
+    ], string="Cadencia de muestreo",
+        help="Cada cuánto se verifica una muestra, cuando la actividad se mide por muestreo.")
     measure_justification = fields.Text(
         string="Por qué no se mide",
         help="Obligatoria con «No aplica»: dónde se mide su resultado.")
@@ -916,7 +938,8 @@ class SgiProcessActivity(models.Model):
     # últimas 4 semanas que escribe el cron desde ese detalle.
     recent_exec_stat_ids = fields.Many2many(
         'sgi.activity.exec.stat', string="Últimas 4 semanas",
-        compute='_compute_recent_exec_stat_ids')
+        compute='_compute_recent_exec_stat_ids',
+        help="Ejecuciones de las últimas 4 semanas por persona.")
     measure_adherence_pct = fields.Float(
         string="Adherencia (%)", readonly=True, digits=(5, 1),
         aggregator='avg',
@@ -1480,25 +1503,30 @@ class SgiActivityLink(models.Model):
 
     from_activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad origen", required=True,
-        ondelete='cascade', index=True)
+        ondelete='cascade', index=True,
+        help="Actividad que entrega.")
     to_activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad destino", required=True,
-        ondelete='cascade', index=True)
+        ondelete='cascade', index=True,
+        help="Actividad que recibe.")
     name = fields.Char(
         string="Entregable / condición", required=True,
         help="Qué pasa de un paso al otro: el pedido confirmado, el programa "
              "semanal, el lote liberado…")
     from_process_id = fields.Many2one(
         related='from_activity_id.process_id', string="Proceso origen",
-        store=True)
+        store=True,
+        help="Proceso de la actividad que entrega.")
     to_process_id = fields.Many2one(
         related='to_activity_id.process_id', string="Proceso destino",
-        store=True)
+        store=True,
+        help="Proceso de la actividad que recibe.")
     company_id = fields.Many2one(
         related='from_activity_id.company_id', string="Empresa", store=True,
         index=True)
     is_cross_process = fields.Boolean(
-        string="Cruza procesos", compute='_compute_cross', store=True)
+        string="Cruza procesos", compute='_compute_cross', store=True,
+        help="Se marca sola cuando el entregable pasa de un proceso a otro.")
 
     # --- Flujo del eslabón (fase 3): ¿el paso siguiente sigue al anterior? ---
     chain_state = fields.Selection([
@@ -1515,7 +1543,8 @@ class SgiActivityLink(models.Model):
              "plazo, son días hábiles desde que se entregó.")
     atorado_since = fields.Datetime("Atorado desde", readonly=True)
     nc_alert_id = fields.Many2one(
-        'quality.alert', string="NC generada", readonly=True, copy=False)
+        'quality.alert', string="NC generada", readonly=True, copy=False,
+        help="No conformidad que se levantó por este eslabón atorado.")
 
     # Campos que escribe el cron: no son contenido del procedimiento.
     _SGI_MEASURE_FIELDS = {

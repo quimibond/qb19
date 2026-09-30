@@ -22,7 +22,8 @@ class DocumentsDocumentExternal(models.Model):
         string="Emisor", help="Quién emite el documento (cliente, norma, autoridad, proveedor).")
     sgi_ext_issuer_revision = fields.Char(
         string="Revisión del emisor", help="Revisión o edición como la trae el emisor.")
-    sgi_ext_received_date = fields.Date(string="Fecha de recepción")
+    sgi_ext_received_date = fields.Date(string="Fecha de recepción",
+                                        help="Fecha en que se recibió el documento externo.")
     sgi_ext_deadline = fields.Date(
         string="Implantar a más tardar", compute='_compute_sgi_ext_deadline', store=True,
         help="Recepción + 10 días hábiles (parámetro quimibond_sgi.external_doc_days).")
@@ -33,7 +34,8 @@ class DocumentsDocumentExternal(models.Model):
         ('por_implantar', "Por implantar"),
         ('vencido', "Vencido"),
         ('implantado', "Implantado"),
-    ], string="Implantación", compute='_compute_sgi_ext_state', store=True)
+    ], string="Implantación", compute='_compute_sgi_ext_state', store=True,
+        help="Por implantar, vencido (pasó el plazo) o implantado. Se calcula solo.")
 
     @api.depends('sgi_ext_received_date', 'sgi_doc_type_id.code', 'company_id')
     def _compute_sgi_ext_deadline(self):

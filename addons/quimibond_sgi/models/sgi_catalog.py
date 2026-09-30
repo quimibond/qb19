@@ -75,7 +75,8 @@ class SgiJobFamily(models.Model):
     name = fields.Char(string="Familia", required=True)
     job_ids = fields.Many2many(
         'hr.job', 'sgi_job_family_rel', 'family_id', 'job_id',
-        string="Puestos")
+        string="Puestos",
+        help="Puestos que forman la familia. Lo asignado a la familia les toca a todos.")
     company_id = fields.Many2one(
         'res.company', string="Empresa", required=True, index=True,
         default=lambda self: self.env.company)
@@ -135,18 +136,24 @@ class SgiActivityRole(models.Model):
 
     activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad", required=True,
-        ondelete='cascade', index=True)
+        ondelete='cascade', index=True,
+        help="Actividad a la que se asigna el rol.")
     role = fields.Selection(
-        SGI_ROLE_SELECTION, string="Rol", required=True, default='ejecuta')
+        SGI_ROLE_SELECTION, string="Rol", required=True, default='ejecuta',
+        help="Ejecuta (la hace), aprueba, participa, se entera o escala (recibe el atraso).")
     # A quién toca: un puesto, una familia de puestos o un rol relativo
     # (el solicitante, quien detecta…). Exactamente uno según target_type.
     target_type = fields.Selection(
-        SGI_ROLE_TARGETS, string="Asignado a", required=True, default='job')
+        SGI_ROLE_TARGETS, string="Asignado a", required=True, default='job',
+        help="A quién toca: un puesto, una familia de puestos o un rol relativo (el solicitante, quien "
+             "detecta, el dueño del proceso…).")
     job_id = fields.Many2one(
-        'hr.job', string="Puesto", ondelete='restrict', index=True)
+        'hr.job', string="Puesto", ondelete='restrict', index=True,
+        help="Puesto al que se asigna el rol (cuando «Asignado a» es puesto).")
     family_id = fields.Many2one(
         'sgi.job.family', string="Familia de puestos", ondelete='restrict',
-        index=True)
+        index=True,
+        help="Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia).")
     relative_role = fields.Selection(
         SGI_RELATIVE_ROLES, string="Rol relativo",
         help="Rol que no es de un puesto fijo. «Dueño del proceso»: el dueño del "
@@ -167,7 +174,8 @@ class SgiActivityRole(models.Model):
     sequence = fields.Integer(string="Secuencia", default=10)
     process_id = fields.Many2one(
         related='activity_id.process_id', string="Proceso", store=True,
-        index=True)
+        index=True,
+        help="Proceso de la actividad.")
     company_id = fields.Many2one(
         related='activity_id.company_id', string="Empresa", store=True,
         index=True)
@@ -397,7 +405,8 @@ class HrJob(models.Model):
         string="Actividades SGI", compute='_compute_sgi_role_counts')
     sgi_all_role_ids = fields.Many2many(
         'sgi.activity.role', string="Actividades SGI (propias y de su familia)",
-        compute='_compute_sgi_all_role_ids')
+        compute='_compute_sgi_all_role_ids',
+        help="Actividades del SGI del puesto: las propias y las de su familia de puestos.")
 
     def _compute_sgi_all_role_ids(self):
         Role = self.env['sgi.activity.role']

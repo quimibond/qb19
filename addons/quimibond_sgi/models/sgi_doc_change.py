@@ -10,7 +10,10 @@ from odoo.exceptions import UserError, ValidationError
 class ApprovalCategory(models.Model):
     _inherit = 'approval.category'
 
-    sgi_is_doc_change = fields.Boolean(string="Cambio documental SGI")
+    sgi_is_doc_change = fields.Boolean(string="Cambio documental SGI",
+                                       help="Marque si esta categoría de aprobación es la de cambios a "
+                                            "documentos del SGI. Al aprobarse, la solicitud versiona el "
+                                            "documento y genera acuses.")
     sgi_is_moc = fields.Boolean(
         string="Gestión del cambio SGI (MOC)",
         help="Cambios de proceso, infraestructura o plantilla (9001 §6.3, "
@@ -21,36 +24,54 @@ class ApprovalCategory(models.Model):
 class ApprovalRequest(models.Model):
     _inherit = 'approval.request'
 
-    sgi_is_doc_change = fields.Boolean(related='category_id.sgi_is_doc_change', store=True)
-    sgi_is_moc = fields.Boolean(related='category_id.sgi_is_moc', store=True)
+    sgi_is_doc_change = fields.Boolean(related='category_id.sgi_is_doc_change', store=True,
+                                       help="Se marca sola cuando la categoría es de cambio documental del "
+                                            "SGI.")
+    sgi_is_moc = fields.Boolean(related='category_id.sgi_is_moc', store=True,
+                                help="Se marca sola cuando la categoría es de gestión del cambio.")
     sgi_moc_risk_note = fields.Text(
         string="Evaluación de riesgos del cambio",
         help="45001 §8.1.3 / 9001 §6.3: riesgos del cambio para calidad, "
              "ambiente y SST, y cómo se controlan. Obligatoria para aprobar.")
-    sgi_document_id = fields.Many2one('documents.document', string="Documento afectado")
+    sgi_document_id = fields.Many2one('documents.document', string="Documento afectado",
+                                      help="Documento controlado que se modifica o se da de baja.")
     sgi_change_kind = fields.Selection([
         ('alta', "Alta"),
         ('modificacion', "Modificación"),
         ('baja', "Baja"),
-    ], string="Tipo de cambio")
+    ], string="Tipo de cambio",
+        help="Alta de un documento nuevo, modificación de uno existente o baja.")
     sgi_what_changes = fields.Selection([
         ('formato', "Formato"),
         ('contenido', "Contenido"),
-    ], string="¿Qué se modifica?")
+    ], string="¿Qué se modifica?",
+        help="Si cambia solo el formato (presentación) o el contenido del documento.")
     sgi_current_revision = fields.Integer(related='sgi_document_id.sgi_revision',
-                                          string="Revisión vigente", readonly=True)
-    sgi_new_revision = fields.Integer(string="Nueva revisión")
-    sgi_pilot = fields.Boolean(string="Prueba piloto")
-    sgi_pilot_start = fields.Date(string="Inicio de piloto")
-    sgi_pilot_end = fields.Date(string="Fin de piloto")
+                                          string="Revisión vigente", readonly=True,
+                                          help="Revisión vigente del documento antes del cambio.")
+    sgi_new_revision = fields.Integer(string="Nueva revisión",
+                                      help="Número de la revisión que tendrá el documento al aplicar el "
+                                           "cambio.")
+    sgi_pilot = fields.Boolean(string="Prueba piloto",
+                               help="Marque si el cambio se prueba primero en piloto antes de quedar "
+                                    "vigente.")
+    sgi_pilot_start = fields.Date(string="Inicio de piloto", help="Fecha en que empieza la prueba piloto.")
+    sgi_pilot_end = fields.Date(string="Fin de piloto",
+                                help="Fecha en que termina la prueba piloto. Antes de esa fecha llega un "
+                                     "aviso para decidir.")
     sgi_reason = fields.Text(string="Motivo del cambio")
     sgi_changes = fields.Text(string="Descripción de cambios")
-    sgi_affected_process_ids = fields.Many2many('sgi.process', string="Procesos afectados")
-    sgi_applied = fields.Boolean(string="Cambio aplicado al documento", copy=False)
+    sgi_affected_process_ids = fields.Many2many('sgi.process', string="Procesos afectados",
+                                                help="Procesos a los que afecta el cambio del documento.")
+    sgi_applied = fields.Boolean(string="Cambio aplicado al documento", copy=False,
+                                 help="Se marca cuando el cambio aprobado ya se aplicó al documento (nueva "
+                                      "revisión).")
     # DOC-1 (51.0.0): si el cambio traía el archivo nuevo, la revisión nueva
     # es un documento nuevo (la anterior queda obsoleta) y se liga aquí.
     sgi_new_document_id = fields.Many2one(
-        'documents.document', string="Revisión publicada", readonly=True, copy=False)
+        'documents.document', string="Revisión publicada", readonly=True, copy=False,
+        help="Documento de la revisión nueva, cuando el cambio trajo el archivo. La revisión anterior queda "
+             "obsoleta.")
 
     @api.onchange('sgi_document_id', 'sgi_change_kind')
     def _onchange_sgi_suggest_revision(self):

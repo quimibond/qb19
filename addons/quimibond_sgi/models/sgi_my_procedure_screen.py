@@ -227,16 +227,20 @@ class HrEmployeeMyProcedureTab(models.Model):
         prefetch=False)
     sgi_mp_role_ids = fields.Many2many(
         'sgi.activity.role', 'hr_employee_sgi_mp_role_rel', 'employee_id', 'role_id',
-        string="Mis actividades", compute='_compute_sgi_mp_roles_stored', store=True)
+        string="Mis actividades", compute='_compute_sgi_mp_roles_stored', store=True,
+        help="Actividades que la persona ejecuta o aprueba por su puesto o su familia. Se calcula solo.")
     sgi_mp_received_role_ids = fields.Many2many(
         'sgi.activity.role', 'hr_employee_sgi_mp_received_rel', 'employee_id', 'role_id',
-        string="Escalamientos que recibe", compute='_compute_sgi_mp_roles_stored', store=True)
+        string="Escalamientos que recibe", compute='_compute_sgi_mp_roles_stored', store=True,
+        help="Actividades cuyo atraso le escala a esta persona. Se calcula solo.")
     sgi_mp_short_role_ids = fields.Many2many(
         'sgi.activity.role', 'hr_employee_sgi_mp_short_rel', 'employee_id', 'role_id',
-        string="Participa o se entera", compute='_compute_sgi_mp_roles_stored', store=True)
+        string="Participa o se entera", compute='_compute_sgi_mp_roles_stored', store=True,
+        help="Actividades en las que la persona participa o solo se entera. Se calcula solo.")
     sgi_mp_process_ids = fields.Many2many(
         'sgi.process', 'hr_employee_sgi_mp_process_rel', 'employee_id', 'process_id',
-        string="Procesos donde participa", compute='_compute_sgi_mp_roles_stored', store=True)
+        string="Procesos donde participa", compute='_compute_sgi_mp_roles_stored', store=True,
+        help="Procesos en los que participa la persona por su puesto o su familia. Se calcula solo.")
 
     @api.depends('sgi_mp_job_id', 'sgi_mp_job_id.sgi_family_id', 'user_id')
     def _compute_sgi_mp_roles_stored(self):
@@ -290,7 +294,8 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
     """Las piezas de una actividad como campos, para la tarjeta nativa."""
     _inherit = 'sgi.activity.role'
 
-    mp_status = fields.Selection(_MP_STATUS, string="Estado", compute='_compute_mp_pieces')
+    mp_status = fields.Selection(_MP_STATUS, string="Estado", compute='_compute_mp_pieces',
+                                 help="Al día, atrasada o sin medición automática. Se calcula al mostrarlo.")
     mp_status_detail = fields.Char(string="Detalle del estado", compute='_compute_mp_pieces')
     mp_number = fields.Char(string="Numeral", compute='_compute_mp_pieces')
     mp_name = fields.Char(related='activity_id.name', string="Nombre de la actividad")
@@ -306,8 +311,11 @@ class SgiActivityRoleMyProcedureScreen(models.Model):
     mp_norms = fields.Char(string="Cumple con", compute='_compute_mp_pieces')
     mp_external = fields.Char(related='activity_id.external_system', string="Se hace en")
     mp_instruction_id = fields.Many2one(
-        related='activity_id.instruction_id', string="Instructivo")
-    mp_can_go = fields.Boolean(string="Se puede ir a hacer", compute='_compute_mp_pieces')
+        related='activity_id.instruction_id', string="Instructivo",
+        help="Instructivo de la actividad.")
+    mp_can_go = fields.Boolean(string="Se puede ir a hacer", compute='_compute_mp_pieces',
+                               help="Indica si la actividad tiene un menú de Odoo al que se puede ir con «Ir "
+                                    "a hacerlo».")
 
     @api.depends('activity_id', 'activity_id.measure_state', 'activity_id.measure_last_date',
                  'activity_id.how_steps', 'activity_id.done_criteria', 'activity_id.on_fail',
@@ -367,10 +375,14 @@ class SgiMyProcedure(models.TransientModel):
     # hr.employee.public: mismo id que hr.employee y legible por cualquier
     # usuario interno (hr.employee no lo es en Odoo 19). Las lecturas de
     # fondo van con sudo sobre hr.employee.
-    employee_id = fields.Many2one('hr.employee.public', string="Ver como: empleado")
+    employee_id = fields.Many2one('hr.employee.public', string="Ver como: empleado",
+                                  help="Elija una persona para ver su procedimiento. Solo se ven las "
+                                       "personas permitidas (usted, su equipo o todas si es MAST o "
+                                       "Dirección).")
     employee_avatar = fields.Binary(related='employee_id.avatar_128', string="Foto")
     job_id = fields.Many2one(
-        'hr.job', string="Ver como: puesto", compute='_compute_job_id', store=True, readonly=False)
+        'hr.job', string="Ver como: puesto", compute='_compute_job_id', store=True, readonly=False,
+        help="Elija un puesto para ver su procedimiento. Se llena con el puesto de la persona elegida.")
     can_pick = fields.Boolean(compute='_compute_scope')
     can_publish = fields.Boolean(compute='_compute_scope')
     allowed_employee_ids = fields.Many2many(
@@ -383,17 +395,23 @@ class SgiMyProcedure(models.TransientModel):
         ('no_aplica', "No aplica"),
         ('pendiente', "Pendiente de firma"),
         ('leido', "Leído y entendido"),
-    ], compute='_compute_ack')
+    ], compute='_compute_ack',
+        help="Si el Mi procedimiento del puesto está publicado y si la persona ya lo firmó.")
     ack_label = fields.Char(compute='_compute_ack')
     doc_id = fields.Many2one('documents.document', compute='_compute_ack')
 
     # Quién soy
-    boss_id = fields.Many2one('hr.employee.public', string="Mi jefe", compute='_compute_who')
-    department_id = fields.Many2one('hr.department', string="Área", compute='_compute_who')
-    family_id = fields.Many2one('sgi.job.family', string="Familia de puestos", compute='_compute_who')
-    process_ids = fields.Many2many('sgi.process', string="Procesos donde participa", compute='_compute_who')
+    boss_id = fields.Many2one('hr.employee.public', string="Mi jefe", compute='_compute_who',
+                              help="Jefe directo de la persona.")
+    department_id = fields.Many2one('hr.department', string="Área", compute='_compute_who',
+                                    help="Área de la persona.")
+    family_id = fields.Many2one('sgi.job.family', string="Familia de puestos", compute='_compute_who',
+                                help="Familia de puestos del puesto.")
+    process_ids = fields.Many2many('sgi.process', string="Procesos donde participa", compute='_compute_who',
+                                   help="Procesos en los que participa el puesto.")
     job_employee_ids = fields.Many2many(
-        'hr.employee.public', string="Personas en el puesto", compute='_compute_who')
+        'hr.employee.public', string="Personas en el puesto", compute='_compute_who',
+        help="Personas que ocupan el puesto.")
 
     # Estado en una línea
     late_count = fields.Integer(string="Atrasadas", compute='_compute_lists')
@@ -404,14 +422,17 @@ class SgiMyProcedure(models.TransientModel):
 
     # Mis actividades (ejecuta / aprueba), escalamientos que recibe y lista corta
     role_ids = fields.Many2many(
-        'sgi.activity.role', string="Mis actividades", compute='_compute_lists')
+        'sgi.activity.role', string="Mis actividades", compute='_compute_lists',
+        help="Actividades que la persona ejecuta o aprueba.")
     received_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_lists')
+        'sgi.activity.role', string="Escalamientos que recibe", compute='_compute_lists',
+        help="Actividades cuyo atraso le escala a la persona.")
     received_late_count = fields.Integer(
         string="Escalamientos atrasados", compute='_compute_lists',
         help="Actividades que escalan a este puesto y hoy van atrasadas (I-012).")
     short_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Participa o se entera", compute='_compute_lists')
+        'sgi.activity.role', string="Participa o se entera", compute='_compute_lists',
+        help="Actividades en las que la persona participa o solo se entera.")
 
     # Mis pendientes (viven en el usuario, no en el puesto)
     has_user = fields.Boolean(compute='_compute_lists')
@@ -423,21 +444,25 @@ class SgiMyProcedure(models.TransientModel):
     # prueba nadie veía sus indicadores.
     indicator_ids = fields.Many2many(
         'sgi.indicator', 'sgi_my_procedure_indicator_rel', string="Mis indicadores",
-        compute='_compute_lists')
+        compute='_compute_lists',
+        help="Indicadores a cargo de la persona.")
     official_indicator_ids = fields.Many2many(
         'sgi.indicator', string="Indicadores oficiales a mi cargo", compute='_compute_lists')
     has_obligations = fields.Boolean(compute='_compute_lists')
 
     # Mis documentos
     ack_ids = fields.Many2many(
-        'sgi.document.ack', string="Mis acuses de lectura", compute='_compute_lists')
+        'sgi.document.ack', string="Mis acuses de lectura", compute='_compute_lists',
+        help="Acuses de lectura de la persona.")
     document_ids = fields.Many2many(
-        'documents.document', string="Documentos que aplican al puesto", compute='_compute_lists')
+        'documents.document', string="Documentos que aplican al puesto", compute='_compute_lists',
+        help="Documentos controlados que aplican al puesto.")
 
     # EPP del puesto y responsivas de entrega del empleado (PER-2)
     epp_required = fields.Text(string="EPP requerido por el puesto", compute='_compute_lists')
     epp_delivery_ids = fields.Many2many(
-        'sgi.epp.delivery', string="Responsivas de EPP", compute='_compute_lists')
+        'sgi.epp.delivery', string="Responsivas de EPP", compute='_compute_lists',
+        help="Responsivas de equipo de protección personal de la persona.")
     epp_pending_sign = fields.Boolean(string="Responsiva de EPP por firmar", compute='_compute_lists')
     epp_label = fields.Char(string="EPP", compute='_compute_lists')
 
@@ -822,13 +847,16 @@ class SgiMyProcedureCheck(models.TransientModel):
              "abre su procedimiento y lo ve vacío.")
     no_job_employee_ids = fields.Many2many(
         'hr.employee.public', 'sgi_mp_check_nojob_rel', string="Empleados sin puesto",
-        compute='_compute_result')
+        compute='_compute_result',
+        help="Personas sin puesto: no tienen Mi procedimiento.")
     job_without_roles_employee_ids = fields.Many2many(
         'hr.employee.public', 'sgi_mp_check_noroles_rel', string="Empleados en un puesto sin roles",
-        compute='_compute_result')
+        compute='_compute_result',
+        help="Personas cuyo puesto no tiene ninguna actividad del SGI.")
     roles_without_people_job_ids = fields.Many2many(
         'hr.job', 'sgi_mp_check_nopeople_rel', string="Puestos con roles pero sin personas",
-        compute='_compute_result')
+        compute='_compute_result',
+        help="Puestos con actividades del SGI pero sin nadie que los ocupe.")
 
     @api.model
     def action_open(self):
@@ -865,7 +893,8 @@ class HrEmployeePublicMyTeam(models.Model):
         help="Actividades del puesto (ejecuta o aprueba) que hoy están atrasadas.")
     sgi_mp_ok = fields.Integer(string="Al día", compute='_compute_sgi_mp_stats')
     sgi_mp_unmeasured = fields.Integer(string="Sin medición automática", compute='_compute_sgi_mp_stats')
-    sgi_mp_total = fields.Integer(string="Actividades", compute='_compute_sgi_mp_stats')
+    sgi_mp_total = fields.Integer(string="Actividades", compute='_compute_sgi_mp_stats',
+                                  help="Número de actividades del SGI que le tocan a la persona.")
     sgi_mp_acks_pending = fields.Integer(
         string="Firmas pendientes", compute='_compute_sgi_mp_stats',
         search='_search_sgi_mp_acks_pending',
@@ -874,7 +903,8 @@ class HrEmployeePublicMyTeam(models.Model):
         ('sin_publicar', "Sin publicar"),
         ('pendiente', "Acuse pendiente"),
         ('leido', "Leído y entendido"),
-    ], string="Mi procedimiento", compute='_compute_sgi_mp_stats', search='_search_sgi_mp_ack_state')
+    ], string="Mi procedimiento", compute='_compute_sgi_mp_stats', search='_search_sgi_mp_ack_state',
+        help="Si la persona ya firmó de leído su Mi procedimiento vigente.")
 
     @api.model
     def _sgi_mp_job_stats(self, jobs):

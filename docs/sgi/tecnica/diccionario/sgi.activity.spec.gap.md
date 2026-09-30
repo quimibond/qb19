@@ -14,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_activity_spec.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `activity_id` | Many2one | Actividad |  | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:140` |
-| `code` | Selection | Faltante |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:145` |
-| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:151` |
-| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:150` |
-| `process_id` | Many2one | Proceso |  |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:143` |
-| `severity` | Selection | Severidad |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:146` |
+| `activity_id` | Many2one | Actividad | Actividad a la que le falta especificación. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:140` |
+| `code` | Selection | Faltante | Qué le falta a la actividad. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:147` |
+| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:155` |
+| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:154` |
+| `process_id` | Many2one | Proceso | Proceso de la actividad. |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:144` |
+| `severity` | Selection | Severidad | Un error impide publicar el procedimiento; una advertencia no. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:149` |
 

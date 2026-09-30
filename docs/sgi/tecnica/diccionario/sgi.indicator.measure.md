@@ -42,7 +42,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `small_sample` | Boolean | Muestra chica | Menos casos que el mínimo (quimibond_sgi.indicator_min_sample): se mide, pero no abre NC. |  |  | compute `_compute_small_sample`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:288` |
 | `source_info` | Char | Fuente del dato |  |  |  | related `indicator_id.source_info`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:939` |
 | `source_type` | Selection | Origen del dato |  |  |  | related `indicator_id.source_type`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:937` |
-| `split_ids` | One2many | Desglose |  |  | `sgi.indicator.measure.split` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:413` |
+| `split_ids` | One2many | Desglose |  |  | `sgi.indicator.measure.split` |  |  | `addons/quimibond_sgi/models/sgi_business_line.py:418` |
 | `state` | Selection |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:283` |
 | `target_acceptable` | Float | Aceptable |  |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:226` |
 | `target_objective` | Float | Objetivo |  |  |  | related `None`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py:225` |

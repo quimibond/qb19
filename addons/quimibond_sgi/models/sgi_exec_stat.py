@@ -27,15 +27,18 @@ class SgiActivityExecStat(models.Model):
 
     activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad", required=True,
-        ondelete='cascade', index=True, readonly=True)
+        ondelete='cascade', index=True, readonly=True,
+        help="Actividad medida.")
     process_id = fields.Many2one(
         related='activity_id.process_id', string="Proceso", store=True,
-        index=True)
+        index=True,
+        help="Proceso de la actividad.")
     period_start = fields.Date(
         string="Semana", required=True, index=True, readonly=True,
         help="Lunes de la semana medida.")
     user_id = fields.Many2one(
-        'res.users', string="Usuario", index=True, readonly=True)
+        'res.users', string="Usuario", index=True, readonly=True,
+        help="Usuario que hizo los registros.")
     employee_id = fields.Many2one(
         'hr.employee', string="Empleado", readonly=True,
         help="Empleado del usuario al momento de medir.")
@@ -43,12 +46,14 @@ class SgiActivityExecStat(models.Model):
         'hr.job', string="Puesto", readonly=True,
         help="Puesto del empleado al momento de medir.")
     family_id = fields.Many2one(
-        'sgi.job.family', string="Familia", readonly=True)
+        'sgi.job.family', string="Familia", readonly=True,
+        help="Familia de puestos por la que la persona tiene la actividad.")
     exec_class = fields.Selection(
         SGI_EXEC_CLASSES, string="Clase", readonly=True,
         help="Vacía cuando el ejecutor de la actividad es un rol relativo "
              "(solicitante, quien detecta…): no hay contra quién comparar.")
-    count = fields.Integer(string="Ejecuciones", aggregator='sum', readonly=True)
+    count = fields.Integer(string="Ejecuciones", aggregator='sum', readonly=True,
+                           help="Número de registros de la actividad hechos por el usuario en la semana.")
     company_id = fields.Many2one(
         related='activity_id.company_id', string="Empresa", store=True,
         index=True)

@@ -61,7 +61,9 @@ def sgi_legacy_family(code):
 class DocumentsDocument(models.Model):
     _inherit = 'documents.document'
 
-    sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True, index=True)
+    sgi_is_controlled = fields.Boolean(string="Documento controlado SGI", tracking=True, index=True,
+                                       help="Marque si es un documento controlado del SGI: lleva clave, "
+                                            "revisión, estado y acuses.")
     sgi_code = fields.Char(string="Clave SGI", index=True, tracking=True)
     # C-004/C-005 (56.32.0): la clave anterior es DEFINITIVA (la del Dropbox,
     # copiada por la migración 56.32.0) y se busca siempre (búsqueda «Clave
@@ -87,7 +89,9 @@ class DocumentsDocument(models.Model):
     # que lo usan; escribirlo resuelve el tipo por su código.
     sgi_doc_type_id = fields.Many2one(
         'sgi.document.type', string="Tipo de documento", index=True,
-        tracking=True, ondelete='restrict')
+        tracking=True, ondelete='restrict',
+        help="Tipo de documento (procedimiento, instructivo, formato…). Define el patrón de la clave y si "
+             "exige validación.")
     sgi_doc_type = fields.Selection([
         ('miid', "Manual (MIID)"),
         ('procedimiento', "Procedimiento (P)"),
@@ -116,8 +120,10 @@ class DocumentsDocument(models.Model):
         'ir.ui.menu', string="Menú de Odoo",
         help="Menú donde vive el formulario que sustituye a este documento. "
              "El botón «Abrir en Odoo» salta directo a él.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
-    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI", ondelete='restrict')
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
+                                  help="Área del SGI a la que pertenece el documento.")
+    sgi_process_id = fields.Many2one('sgi.process', string="Proceso SGI", ondelete='restrict',
+                                     help="Proceso del SGI al que pertenece el documento.")
     # P-3: el documento apunta al cambio documental que lo dejó así (alta,
     # modificación o baja aprobada). Es la liga con la que E2.02 «Publicar el
     # documento vigente» se mide contra su entrada (match: sgi_doc_change_id).
@@ -128,10 +134,12 @@ class DocumentsDocument(models.Model):
              "(la de alta, o la última modificación o baja aplicada).")
     # Revisión como número: se compara, se ordena y no se captura «A» ni
     # «00» por omisión. La etiqueta de dos dígitos es para imprimir.
-    sgi_revision = fields.Integer(string="Revisión", tracking=True)
+    sgi_revision = fields.Integer(string="Revisión", tracking=True,
+                                  help="Número de revisión del documento (00, 01…). Cada revisión aprobada "
+                                       "lo sube en uno.")
     sgi_revision_label = fields.Char(
         string="Rev.", compute='_compute_sgi_revision_label')
-    sgi_issue_date = fields.Date(string="Fecha de emisión")
+    sgi_issue_date = fields.Date(string="Fecha de emisión", help="Fecha de emisión de esta revisión.")
     sgi_state = fields.Selection([
         ('borrador', "Borrador"),
         ('piloto', "Prueba piloto"),
@@ -140,12 +148,19 @@ class DocumentsDocument(models.Model):
     ], string="Estado SGI", tracking=True, index=True,
         help="Solo los documentos controlados del SGI llevan estado; los demás "
              "archivos de Documentos quedan sin él (2026-09-25).")
-    sgi_owner_id = fields.Many2one('res.users', string="Responsable SGI")
+    sgi_owner_id = fields.Many2one('res.users', string="Responsable SGI",
+                                   help="Persona responsable del documento: recibe los avisos de revisión y "
+                                        "de acuses pendientes.")
     sgi_job_ids = fields.Many2many('hr.job', 'sgi_document_job_rel', 'document_id', 'job_id',
-                                   string="Puestos a los que aplica")
-    sgi_next_review_date = fields.Date(string="Próxima revisión")
+                                   string="Puestos a los que aplica",
+                                   help="Puestos que deben conocer el documento. Al publicarlo, a sus "
+                                        "personas les llega el acuse de lectura.")
+    sgi_next_review_date = fields.Date(string="Próxima revisión",
+                                       help="Fecha de la próxima revisión del documento. Antes de esa fecha "
+                                            "llegan dos avisos al responsable.")
     # 5.2 DOC-2 (56.11.0): cuándo y por qué quedó obsoleto.
-    sgi_obsolete_date = fields.Date(string="Obsoleto desde", readonly=True, copy=False)
+    sgi_obsolete_date = fields.Date(string="Obsoleto desde", readonly=True, copy=False,
+                                    help="Fecha en que el documento dejó de estar vigente.")
     sgi_obsolete_reason = fields.Char(string="Motivo de obsolescencia", readonly=True, copy=False)
     # C-001/C-014/C-015 (56.31.0, decisión 3 de Jose): ÚNICA fuente de verdad
     # de «qué proceso sustituye a este procedimiento». El proceso solo lee el
@@ -159,7 +174,8 @@ class DocumentsDocument(models.Model):
              "procedimiento sigue vigente mientras el proceso esté en borrador o "
              "piloto; cuando el proceso entra en vigor pasa a obsoleto y a «Baja "
              "tramitada». Lo captura el Jefe MAST.")
-    sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto")
+    sgi_pilot_end_date = fields.Date(string="Fin de prueba piloto",
+                                     help="Fecha en que termina la prueba piloto del documento.")
 
     # --- Retención y disposición de registros (ISO 7.5.3; clientes IATF
     # suelen imponer retenciones largas). 0 = sin definir: el filtro «Sin
@@ -189,9 +205,11 @@ class DocumentsDocument(models.Model):
              "después de esta revisión vigente. Genere una nueva revisión "
              "controlada o confirme que el cambio no la amerita.")
     sgi_procedure_dirty_since = fields.Datetime(
-        string="Divergencia desde", readonly=True, copy=False)
+        string="Divergencia desde", readonly=True, copy=False,
+        help="Desde cuándo las actividades del procedimiento no coinciden con la revisión vigente.")
     sgi_procedure_dirty_by = fields.Many2one(
-        'res.users', string="Divergencia registrada por", readonly=True, copy=False)
+        'res.users', string="Divergencia registrada por", readonly=True, copy=False,
+        help="Quién cambió las actividades del procedimiento después de la revisión vigente.")
 
     # --- Seguimiento de migración del formato a Odoo ---
     sgi_migration_class = fields.Selection([
@@ -210,7 +228,9 @@ class DocumentsDocument(models.Model):
         ('migrado', "Migrado a Odoo"),
         ('baja', "Baja tramitada"),
         ('na', "No aplica (se queda)"),
-    ], string="Estado de migración", default='pendiente', tracking=True)
+    ], string="Estado de migración", default='pendiente', tracking=True,
+        help="Avance del paso de este documento del Dropbox a Odoo: pendiente, en curso, migrado, baja "
+             "tramitada o se queda.")
     sgi_migration_target = fields.Char(string="Destino en Odoo",
         help="Objeto/menú de Odoo que sustituye a este formato (p.ej. 'SGI > No Conformidades').")
     # Liga REAL al destino (H-migración): del formato al worksheet con un
@@ -443,7 +463,9 @@ class DocumentsDocument(models.Model):
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     # 56.7.0 (1.8): guardados para filtrar y reportar la difusión.
     sgi_ack_count = fields.Integer(string="# Acuses", compute='_compute_sgi_ack_stats', store=True)
-    sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats', store=True)
+    sgi_ack_read_pct = fields.Float(string="% Difusión", compute='_compute_sgi_ack_stats', store=True,
+                                    help="Porcentaje de acuses de lectura ya firmados sobre los pedidos. Se "
+                                         "calcula solo.")
 
     # --- Relación documental por FK real (P-A28 -> IT/F/F-IT/DAT P-A28-*) ---
     # H21: la familia se define por un enlace explícito y editable, no por regex.
@@ -1243,15 +1265,20 @@ class SgiDocumentAck(models.Model):
     _order = 'document_id, employee_id'
     _rec_name = 'document_id'
 
-    document_id = fields.Many2one('documents.document', string="Documento", required=True, ondelete='cascade')
+    document_id = fields.Many2one('documents.document', string="Documento", required=True, ondelete='cascade',
+                                  help="Documento que se debe leer.")
     sgi_code = fields.Char(related='document_id.sgi_code', string="Clave", store=True)
-    employee_id = fields.Many2one('hr.employee', string="Empleado", required=True, ondelete='cascade')
+    employee_id = fields.Many2one('hr.employee', string="Empleado", required=True, ondelete='cascade',
+                                  help="Persona que debe leer el documento.")
     user_id = fields.Many2one('res.users', related='employee_id.user_id', string="Usuario", store=True)
     state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('leido', "Leído y entendido"),
-    ], string="Estado", default='pendiente', required=True)
-    ack_date = fields.Datetime(string="Fecha de acuse", readonly=True)
+    ], string="Estado", default='pendiente', required=True,
+        help="Pendiente hasta que la persona firma «Leído y entendido». Los pendientes aparecen en Mis "
+             "pendientes.")
+    ack_date = fields.Datetime(string="Fecha de acuse", readonly=True,
+                               help="Fecha y hora en que la persona firmó de leído.")
 
     _doc_employee_uniq = models.Constraint(
         'unique(document_id, employee_id)',

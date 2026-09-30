@@ -14,15 +14,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_mp_change.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `after_days` | Integer | Escala a los (días hábiles) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:565` |
-| `change_id` | Many2one |  |  | sí | `sgi.activity.change` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:543` |
-| `condition` | Char | Condición |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:566` |
-| `family_id` | Many2one | Familia de puestos |  |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:563` |
-| `job_id` | Many2one | Puesto |  |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:562` |
-| `relative_role` | Selection | Rol relativo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:564` |
-| `role` | Selection | Rol |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:559` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:544` |
-| `target_type` | Selection | Asignado a |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:560` |
+| `after_days` | Integer | Escala a los (días hábiles) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:588` |
+| `change_id` | Many2one |  |  | sí | `sgi.activity.change` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:566` |
+| `condition` | Char | Condición |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:589` |
+| `family_id` | Many2one | Familia de puestos |  |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:586` |
+| `job_id` | Many2one | Puesto |  |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:585` |
+| `relative_role` | Selection | Rol relativo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:587` |
+| `role` | Selection | Rol |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:582` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:567` |
+| `target_type` | Selection | Asignado a |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:583` |
 
 ## Métodos públicos (3)
 

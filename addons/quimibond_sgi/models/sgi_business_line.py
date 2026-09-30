@@ -81,10 +81,12 @@ class SgiProcessActivityLine(models.Model):
         help="Departamentos de los puestos que la ejecutan (se calcula).")
     team_filter_id = fields.Many2one(
         'crm.team', string="Equipo (con las generales)",
-        compute='_compute_line_filters', search='_search_team_filter_id')
+        compute='_compute_line_filters', search='_search_team_filter_id',
+        help="Filtro por equipo de ventas que incluye las actividades generales.")
     market_filter_id = fields.Many2one(
         'account.fiscal.position', string="Mercado (con las generales)",
-        compute='_compute_line_filters', search='_search_market_filter_id')
+        compute='_compute_line_filters', search='_search_market_filter_id',
+        help="Filtro por mercado que incluye las actividades generales.")
 
     @api.depends('responsible_job_ids.department_id')
     def _compute_department_ids(self):
@@ -242,12 +244,15 @@ class SgiExecStatLine(models.Model):
     _inherit = 'sgi.activity.exec.stat'
 
     department_id = fields.Many2one(
-        related='job_id.department_id', string="Departamento", store=True, index=True)
+        related='job_id.department_id', string="Departamento", store=True, index=True,
+        help="Departamento del puesto de quien ejecutó.")
     sale_team_ids = fields.Many2many(
         'crm.team', 'sgi_exec_stat_crm_team_rel', 'stat_id', 'team_id',
-        string="Aplica a (equipo de ventas)", compute='_compute_sale_team_ids', store=True)
+        string="Aplica a (equipo de ventas)", compute='_compute_sale_team_ids', store=True,
+        help="Equipos de ventas a los que aplica la actividad. Se calcula solo.")
     team_filter_id = fields.Many2one(
-        related='activity_id.team_filter_id', string="Equipo (con las generales)")
+        related='activity_id.team_filter_id', string="Equipo (con las generales)",
+        help="Filtro por equipo de ventas que incluye las actividades generales.")
 
     @api.depends('activity_id.sale_team_ids')
     def _compute_sale_team_ids(self):

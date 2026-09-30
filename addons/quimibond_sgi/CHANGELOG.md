@@ -13,6 +13,17 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.34.0 — 2026-09-30
+
+**Cambiado (entrega 10, `e10-help` 2/3: C-018, K-019, D-29):** `help` en
+los 175 campos de prioridad alta de **Procesos y Mi procedimiento** que no
+lo tenían: proceso, etapa, actividad, rol, liga, entregable, estadísticas
+de ejecución, faltantes de especificación, propuestas de cambio, Mis
+pendientes, Mi procedimiento (pantalla, chequeo y campos del empleado y del
+puesto), documentos controlados, acuses y cambios documentales
+(`approval.request`). En «usted», para quien llena el campo. Solo texto de
+ayuda: ningún cambio de comportamiento.
+
 ## 19.0.57.33.0 — 2026-09-30
 
 **Cambiado (entrega 10, `e10-help` 1/3: C-018, K-019, D-29):** `help` en

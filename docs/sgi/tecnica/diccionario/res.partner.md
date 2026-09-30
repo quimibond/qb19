@@ -11,11 +11,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_coa_recipient_ids` | Many2many | Reciben el COA | Contactos a quienes se manda el COA. Vacío: el contacto de la entrega. |  | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:59` |
-| `sgi_complaint_count` | Integer | # Reclamaciones |  |  |  | compute `_compute_sgi_partner_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_integration.py:303` |
+| `sgi_complaint_count` | Integer | # Reclamaciones |  |  |  | compute `_compute_sgi_partner_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_integration.py:304` |
 | `sgi_eval_count` | Integer | # Evaluaciones |  |  |  | compute `_compute_sgi_eval_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:43` |
 | `sgi_eval_ids` | One2many | Evaluaciones SGI |  |  | `sgi.supplier.eval` |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:42` |
 | `sgi_last_eval_date` | Date | Última evaluación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:41` |
-| `sgi_nc_count` | Integer | # NC |  |  |  | compute `_compute_sgi_partner_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_integration.py:304` |
+| `sgi_nc_count` | Integer | # NC |  |  |  | compute `_compute_sgi_partner_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_integration.py:305` |
 | `sgi_ppap_count` | Integer | PPAP |  |  |  | compute `_compute_sgi_ppap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ppap.py:176` |
 | `sgi_requires_coa` | Boolean | Requiere COA en cada embarque | Cada salida a este cliente (o a sus direcciones de entrega) debe llevar el certificado de análisis adjunto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:55` |
 | `sgi_supplier_approved_by` | Many2one | Aprobado por |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:32` |
