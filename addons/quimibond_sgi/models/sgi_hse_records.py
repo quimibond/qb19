@@ -78,7 +78,9 @@ class SgiHealthRecord(models.Model):
 
     @api.depends('next_date')
     def _compute_state(self):
-        today = fields.Date.context_today(self)
+        # 57.66.0: el «hoy» del SGI, el mismo que usa el cron de avisos
+        # (_sgi_expiry_notices); antes el estado usaba context_today.
+        today = sgi_today(self.env)
         for rec in self:
             if not rec.next_date or rec.next_date > today + relativedelta(days=30):
                 rec.state = 'vigente'

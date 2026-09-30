@@ -27,9 +27,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `indicator_status` | Selection | Estado del indicador | Si el indicador es oficial o está a prueba. |  |  | related `indicator_id.status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:299` |
 | `note` | Text | Nota |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1003` |
 | `numerator` | Float | Numerador | Numerador del cálculo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:287` |
-| `parallel_denominator` | Float | Denominador (fórmula) | Denominador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:575` |
-| `parallel_numerator` | Float | Numerador (fórmula) | Numerador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:572` |
-| `parallel_value` | Float | Valor de la fórmula | Lo que daría la fórmula configurada del indicador en este periodo, mientras el indicador sigue en su modo de código. Cuando coincidan un mes, se migra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:567` |
+| `parallel_denominator` | Float | Denominador (fórmula) | Denominador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:579` |
+| `parallel_numerator` | Float | Numerador (fórmula) | Numerador calculado con la fórmula configurable, para compararlo con el modo actual. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:576` |
+| `parallel_value` | Float | Valor de la fórmula | Lo que daría la fórmula configurada del indicador en este periodo, mientras el indicador sigue en su modo de código. Cuando coincidan un mes, se migra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_formula.py:571` |
 | `period_date` | Date | Periodo | Día 1 del mes medido. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:990` |
 | `plan_done` | Boolean | Plan capturado | Indica que la medición en rojo ya tiene causa y plan. |  |  | compute `_compute_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:121` |
 | `plan_due` | Date | Plan antes del | Día 10 del mes siguiente al periodo (si es inhábil, el hábil anterior). |  |  | compute `_compute_plan`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:118` |

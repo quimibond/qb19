@@ -17,7 +17,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_
 | `sgi_epp_delivery_ids` | One2many | Responsivas de EPP |  |  | `sgi.epp.delivery` |  |  | `addons/quimibond_sgi/models/sgi_epp.py:122` |
 | `sgi_epp_pending_count` | Integer | Responsivas sin firmar |  |  |  | compute `_compute_sgi_epp_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:124` |
 | `sgi_epp_required` | Text | EPP requerido por el puesto |  |  |  | related `job_id.sgi_epp_required`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:121` |
-| `sgi_health_record_ids` | One2many | Estudios y exámenes |  |  | `sgi.health.record` |  | quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager | `addons/quimibond_sgi/models/sgi_hse_records.py:117` |
+| `sgi_health_record_ids` | One2many | Estudios y exámenes |  |  | `sgi.health.record` |  | quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager | `addons/quimibond_sgi/models/sgi_hse_records.py:119` |
 | `sgi_mp_job_id` | Many2one | Puesto (Mi procedimiento) |  |  | `hr.job` | related `current_version_id.job_id`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:222` |
 | `sgi_mp_process_ids` | Many2many | Procesos donde participa | Procesos en los que participa la persona por su puesto o su familia. Se calcula solo. |  | `sgi.process` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:240` |
 | `sgi_mp_received_role_ids` | Many2many | Escalamientos que recibe | Actividades cuyo atraso le escala a esta persona. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:232` |

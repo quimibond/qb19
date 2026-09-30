@@ -244,6 +244,8 @@ class SgiIndicatorTerm(models.Model):
         a, b = record[self.field_name], record[self.field_name_2]
         if not a or not b:
             return None
+        # 57.66.0: los valores tal como vienen, para los días hábiles (abajo).
+        raw_a, raw_b = a, b
         if isinstance(a, datetime) and not isinstance(b, datetime):
             b = datetime.combine(b, datetime.min.time())
         elif isinstance(b, datetime) and not isinstance(a, datetime):
@@ -256,9 +258,11 @@ class SgiIndicatorTerm(models.Model):
             limit = (a_date.replace(day=1) + relativedelta(months=1)) + timedelta(days=int(self.delta_value) - 1)
             return b_date <= limit
         if self.delta_unit == 'business_days':
-            a_dt = a if isinstance(a, datetime) else datetime.combine(a, datetime.min.time())
-            b_dt = b if isinstance(b, datetime) else datetime.combine(b, datetime.min.time())
-            return float(sgi_business_days(self.env, a_dt, b_dt)) if b_dt > a_dt else 0.0
+            # 57.66.0: una fecha (Date) ya es local y va tal cual; solo un
+            # datetime (UTC) se pasa a la zona del calendario. Antes la fecha
+            # se volvía medianoche UTC y, con el calendario de México, caía en
+            # el día anterior: del sábado 17 al martes 20 contaba 1 hábil.
+            return float(sgi_business_days(self.env, raw_a, raw_b)) if b > a else 0.0
         seconds = (b - a).total_seconds()
         return seconds / 3600.0 if self.delta_unit == 'hours' else seconds / 86400.0
 

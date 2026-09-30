@@ -684,7 +684,13 @@ class SgiIndicatorInd2(models.Model):
                                  plan.id, template.id, template.summary,
                                  template.activity_type_id.name, template.activity_type_id.id,
                                  act_type.name)
-                    template.activity_type_id = act_type
+                    # 57.66.0: el resumen va en la misma escritura. En Odoo 19
+                    # ``summary`` se calcula del tipo (compute guardado y
+                    # editable): cambiar solo el tipo lo reemplazaba por el
+                    # resumen del tipo nuevo y el renglón de RH perdía su
+                    # texto («Desactivar usuario de Odoo, correo y accesos»).
+                    template.write({'activity_type_id': act_type.id,
+                                    'summary': template.summary})
                     report.append(('retype', template.id))
             computer = env.ref(OFFBOARDING_TYPES[1], raise_if_not_found=False)
             if computer and not templates.filtered(lambda t: t.activity_type_id == computer):
