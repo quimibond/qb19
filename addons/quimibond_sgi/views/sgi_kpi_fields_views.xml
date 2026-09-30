@@ -26,21 +26,9 @@
         </field>
     </record>
 
-    <!-- C5-01: metros reclamados -->
-    <record id="sgi_quality_alert_view_form_kpi" model="ir.ui.view">
-        <field name="name">quality.alert.form.sgi.kpi</field>
-        <field name="model">quality.alert</field>
-        <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet/notebook" position="inside">
-                <page string="Reclamación (SGI)" name="sgi_claim">
-                    <group>
-                        <field name="sgi_claimed_meters"/>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
+    <!-- C5-01: metros reclamados. Desde 57.40.0 (V-A01) van en la pestaña
+         «Cliente» de la NC (sgi_nonconformity_views.xml), ya no en una
+         pestaña «Reclamación (SGI)» en toda alerta. -->
 
     <!-- S1-05: diferencia contra la orden de compra en la línea de factura -->
     <record id="sgi_account_move_view_form_kpi" model="ir.ui.view">

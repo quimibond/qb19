@@ -159,20 +159,8 @@
         </field>
     </record>
 
-    <record id="sgi_format_banner_quality_alert" model="ir.ui.view">
-        <field name="name">quality.alert.form.sgi.format</field>
-        <field name="model">quality.alert</field>
-        <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet" position="before">
-                <div class="alert alert-info mb-0" role="alert"
-                     invisible="not sgi_format_banner">
-                    📋 Formato controlado del SGI:
-                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
-                </div>
-            </xpath>
-        </field>
-    </record>
+    <!-- quality.alert: desde 57.40.0 (V-A01) el aviso de formato controlado
+         va dentro del aviso único de la NC (sgi_nonconformity_views.xml). -->
 
     <record id="sgi_format_banner_stock_lot" model="ir.ui.view">
         <field name="name">stock.lot.form.sgi.format</field>

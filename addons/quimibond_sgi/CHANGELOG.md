@@ -13,6 +13,32 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.40.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 1: V-A01 y V-A02):** la ficha de NC
+tiene **un solo juego de pestañas**: «Desviación y análisis», «Correcciones y
+acciones», «Cliente», «Ligas SGI» y «Verificación y cierre» van dentro del
+notebook estándar de Calidad, antes de «Descripción»; «Proveedor» al final.
+En una NC con folio se ocultan las páginas de texto libre «Acciones
+correctivas» y «Acciones preventivas» de Calidad (salvo que ya traigan
+texto): las acciones son las del SGI. Los metros reclamados pasan a la
+pestaña «Cliente» (antes una pestaña «Reclamación (SGI)» en toda alerta,
+también en las del piso). Un solo aviso arriba: NC del SGI y formato
+controlado juntos. Datos SGI, responsabilidades y plazos van antes de las
+pestañas. Salen las herencias `sgi_quality_alert_view_form_kpi` y
+`sgi_format_banner_quality_alert` (de 3 herencias sobre la ficha de Calidad a
+1); Odoo las borra al terminar la actualización.
+
+**Agregado (V-A02):** «No conformidades» abre su **lista y kanban propios**
+(`sgi_nc_view_list`, `sgi_nc_view_kanban`, prioridad 90 para no ganarle a las
+de Calidad en su app): folio, título, proceso, clasificación, responsables,
+los tres plazos (contención, causa raíz, plan) como semáforo, etapa y fecha;
+renglón en rojo si algún plazo venció. Filtro «Plazo vencido» con el campo
+calculado buscable `sgi_deadline_overdue`.
+
+**Pruebas:** `test_vistas_pulido` (ficha con un notebook, lista y kanban de la
+acción, filtro «Plazo vencido»).
+
 ## 19.0.57.30.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 9/9: A-008):** la pestaña
