@@ -1454,6 +1454,9 @@ class SgiProcessActivity(models.Model):
         # cuerpo del procedimiento: no dispara revisión documental (G14).
         if set(vals) - self._SGI_MEASURE_FIELDS:
             self.process_id._sgi_flag_procedure_dirty()
+            # 57.17.0 (G-015): el texto de la actividad entra en la huella de
+            # «Mi procedimiento»: los puestos con rol en ella se recalculan.
+            self.sudo().with_context(active_test=False).role_ids._sgi_mp_jobs()._sgi_mp_mark_dirty()
         return res
 
     def unlink(self):

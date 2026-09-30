@@ -13,6 +13,52 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.17.0 — 2026-09-30
+
+**Cambiado (entrega 8, `e8-rendimiento`: G-015, G-016, G-023):**
+
+- **Mi equipo y la ficha del puesto leen cifras guardadas** (G-015). Campos
+  nuevos en `hr.job`: `sgi_mp_hash_current` (huella de «Mi procedimiento»),
+  `sgi_mp_job_late`, `sgi_mp_job_ok`, `sgi_mp_job_unmeasured`,
+  `sgi_mp_job_total` y `sgi_mp_stats_at`. Los recalcula el cron de medición
+  después de medir (03:00, cuando cambia el semáforo), el aviso semanal de
+  «Mi procedimiento» (solo los puestos marcados) y la migración. Un cambio
+  de roles, del texto de una actividad o una publicación marca el puesto «por
+  recalcular» (`sgi_mp_stats_at` vacío, `_sgi_mp_touch_jobs`) y, mientras
+  tanto, ese puesto se calcula al vuelo **sin escribir** (se puede leer desde
+  una consulta de solo lectura). «Desactualizado» en la ficha compara contra
+  la huella guardada. Límite conocido: un cambio de documento que no toca
+  roles ni actividades (p. ej. la clave del procedimiento relacionado) se
+  refleja en la siguiente corrida nocturna.
+- **Fechas hábiles por corrida** (G-016): `sgi_calendar.SgiWorkdays` pide al
+  calendario los días hábiles de toda la corrida del cumplimiento semanal
+  UNA vez y resuelve `_sgi_due` en memoria (mismo resultado que
+  `sgi_add_business_days`; fuera del rango usa la función normal). «Tiene
+  salida» se pregunta en una consulta por lote en vez de una por registro.
+- **Fusión de puestos** (G-023): `flush_all()` antes del SQL; después, los
+  campos guardados calculados o relacionados que apuntan a `hr.job` (p. ej.
+  `hr.employee.sgi_mp_job_id`, que sale de la versión) se recalculan y el
+  «Mi procedimiento» guardado de los empleados del puesto que se queda se
+  marca para recalcular (`_sgi_merge_recompute`).
+
+**Rendimiento (razonado, sin medir; medir en staging con
+`--log-level=debug_sql`):** un filtro de Mi equipo pasaba por
+`_sgi_my_procedure_data()` de cada puesto (auditoría: 30-80 consultas por
+puesto, más de 100 puestos → 3,000-8,000 consultas por clic); ahora lee
+`hr.job` guardado (una lectura por lote) más los puestos por recalcular. El
+cumplimiento semanal llamaba al calendario (`_work_intervals_batch`) por
+cada registro de entrada de 90 días y por cada una de las 4 semanas, más un
+`search_count` por candidato vencido; ahora una llamada al calendario por
+corrida y una búsqueda por entrada y semana. El costo del cálculo completo
+pasa a una vez por noche (03:00).
+
+**Migración (`migrations/19.0.57.17.0/post-migrate.py`):** llena las cifras
+guardadas de los puestos con roles y personas. Solo campos nuevos.
+
+**Pruebas:** `test_rendimiento` (3 casos, datos propios: días hábiles en
+memoria iguales al calendario con festivos, cifras guardadas y «por
+recalcular», recálculo tras mover el puesto por SQL).
+
 ## 19.0.57.16.0 — 2026-09-30
 
 **Corregido (entrega 8, `e8-medicion-robusta`: G-002, H-005, G-003, H-006,

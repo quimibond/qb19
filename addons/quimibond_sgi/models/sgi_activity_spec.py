@@ -23,7 +23,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 from .sgi_calendar import (
-    sgi_add_business_days, sgi_local_date, sgi_local_datetime_utc, sgi_nth_business_day,
+    SgiWorkdays, sgi_add_business_days, sgi_local_date, sgi_local_datetime_utc, sgi_nth_business_day,
     sgi_previous_business_day, sgi_today)
 from .sgi_process_procedure import SgiProcessActivity as _BaseActivity
 
@@ -619,22 +619,28 @@ class SgiActivityInputSpec(models.Model):
         self.ensure_one()
         return bool(self.max_days or self.due_field)
 
-    def _sgi_due(self, record, in_date):
+    def _sgi_due(self, record, in_date, workdays=None):
         """Fecha (date) en que vence la actividad para ``record`` (un registro
         de la entrada): la fecha del campo «vence según» más el margen, o la
         fecha de llegada (``in_date``) más los días hábiles del plazo. None si
-        el registro no trae la fecha."""
+        el registro no trae la fecha. ``workdays`` (``SgiWorkdays``, 57.17.0)
+        evita consultar el calendario por cada registro."""
         self.ensure_one()
         company = self.activity_id.company_id
+
+        def add(base, days):
+            if workdays is not None:
+                return workdays.add(base, days)
+            return sgi_add_business_days(self.env, base, days, company)
         if self.due_field:
             base = record[self.due_field.strip()]
             if not base:
                 return None
-            return sgi_add_business_days(self.env, base, self.offset_days, company)
+            return add(base, self.offset_days)
         base = record[in_date]
         if not base:
             return None
-        return sgi_add_business_days(self.env, base, self.max_days, company)
+        return add(base, self.max_days)
 
     @api.constrains('applies_domain', 'deliverable_id')
     def _check_applies_domain(self):
@@ -1005,19 +1011,24 @@ class SgiActivityWeekStat(models.Model):
         monday = today - timedelta(days=today.weekday())
         periods = [monday - timedelta(weeks=n) for n in range(weeks - 1, -1, -1)]
         failures = 0
+        # 57.17.0 (G-016): los días hábiles de toda la corrida se piden al
+        # calendario una sola vez (antes, una vez por cada registro de entrada
+        # y por cada una de las 4 semanas).
+        workdays = SgiWorkdays(
+            self.env, periods[0] - timedelta(days=self._LOOKBACK_DAYS + 7), today + timedelta(days=90))
         for act in activities:
             # 57.16.0 (G-002): savepoint por actividad; un dominio que truena en
             # SQL ya no deja abortada la transacción para las demás.
             try:
                 with self.env.cr.savepoint():
-                    self._sgi_compute_one(act, periods)
+                    self._sgi_compute_one(act, periods, workdays)
             except Exception:  # noqa: BLE001 - un dominio malo no tumba a las demás
                 failures += 1
                 _logger.exception("SGI: no se pudo medir la semana de %s", act.display_name)
         return failures
 
-    def _sgi_compute_one(self, act, periods):
-        rows = [act._sgi_week_counts(start) for start in periods]
+    def _sgi_compute_one(self, act, periods, workdays=None):
+        rows = [act._sgi_week_counts(start, workdays) for start in periods]
         existing = {s.period_start: s for s in self.search([
             ('activity_id', '=', act.id), ('period_start', 'in', periods)])}
         for start, counts in zip(periods, rows):
@@ -1032,8 +1043,9 @@ class SgiActivityWeekStat(models.Model):
 class SgiActivityWeekCounts(models.Model):
     _inherit = 'sgi.process.activity'
 
-    def _sgi_week_counts(self, start):
-        """Conteos de la semana que empieza el lunes ``start``."""
+    def _sgi_week_counts(self, start, workdays=None):
+        """Conteos de la semana que empieza el lunes ``start``. ``workdays``
+        (57.17.0, G-016): días hábiles de la corrida, calculados una vez."""
         self.ensure_one()
         env = self.env
         # 57.16.0 (G-007 c): la semana se corta a medianoche de México, no UTC.
@@ -1085,18 +1097,22 @@ class SgiActivityWeekCounts(models.Model):
             candidates = In.search(base + [
                 (in_date, '>=', week_end - timedelta(days=self.env['sgi.activity.week.stat']._LOOKBACK_DAYS)),
                 (in_date, '<', week_end)])
+            overdue_ids = []
             for rec in candidates:
-                due = line._sgi_due(rec, in_date)
-                if due is None or due >= week_end_day:
-                    continue
+                due = line._sgi_due(rec, in_date, workdays)
+                if due is not None and due < week_end_day:
+                    overdue_ids.append(rec.id)
+            if overdue_ids:
+                # 57.17.0 (G-016): «tiene salida» en UNA consulta por lote,
+                # no una por registro.
                 if same:
-                    delivered = Out.search_count(out_domain + [
-                        ('id', '=', rec.id), (out_date, '<', week_end)], limit=1)
+                    delivered = set(Out.search(out_domain + [
+                        ('id', 'in', overdue_ids), (out_date, '<', week_end)]).ids)
                 else:
-                    delivered = Out.search_count(out_domain + [
-                        (line.match_path, '=', rec.id), (out_date, '<', week_end)], limit=1)
-                if not delivered:
-                    counts['late_open_count'] += 1
+                    delivered = set(Out.search(out_domain + [
+                        (line.match_path, 'in', overdue_ids), (out_date, '<', week_end)]
+                    ).mapped(line.match_path).ids)
+                counts['late_open_count'] += len(set(overdue_ids) - delivered)
             # A tiempo: salidas de la semana contra su entrada. Si la salida
             # apunta a varias entradas (la revisión por la dirección y sus
             # auditorías), manda la última: la salida no podía hacerse antes.
@@ -1108,7 +1124,7 @@ class SgiActivityWeekCounts(models.Model):
                     source = sources.sorted(in_date)[-1:] if sources else sources
                 if not source or not source[in_date]:
                     continue
-                due = line._sgi_due(source, in_date)
+                due = line._sgi_due(source, in_date, workdays)
                 if due is None:
                     continue
                 counts['timed_count'] += 1
@@ -1137,5 +1153,10 @@ class SgiActivityWeekCounts(models.Model):
                 [('input_ids.deliverable_id.odoo_model_id', '!=', False)])
             self.env['sgi.activity.week.stat']._sgi_compute(measurable)
         # 57.16.0 (G-002): en su savepoint.
-        self.env['sgi.cron']._sgi_step("medición semanal de cumplimiento", _weekly)
+        Cron = self.env['sgi.cron']
+        Cron._sgi_step("medición semanal de cumplimiento", _weekly)
+        # 57.17.0 (G-015): con el semáforo nuevo, las cifras guardadas de
+        # «Mi procedimiento» de cada puesto (Mi equipo las lee de ahí).
+        Cron._sgi_step("cifras de Mi procedimiento por puesto",
+                       lambda: self.env['hr.job']._sgi_mp_refresh_all())
         return res

@@ -21,6 +21,7 @@ semanal (a tiempo / vencido) y el escalamiento.
   adelanta al hábil anterior.
 - ``sgi_lft_holidays(year)``: los descansos obligatorios de la LFT, art. 74.
 """
+from bisect import bisect_left, bisect_right
 from datetime import date, datetime, time, timedelta
 
 import pytz
@@ -191,3 +192,32 @@ def sgi_nth_business_day(env, year, month, nth, company=None):
     if not dates:
         return last
     return dates[min(nth, len(dates)) - 1]
+
+
+class SgiWorkdays:
+    """57.17.0 (G-016): los días hábiles de un rango, calculados UNA vez por
+    corrida. ``add`` da lo mismo que ``sgi_add_business_days`` sin volver a
+    consultar el calendario mientras la fecha caiga en el rango; fuera de él
+    usa la función normal."""
+
+    def __init__(self, env, start, end, company=None):
+        self.env = env
+        self.company = company
+        self.start = start
+        self.end = end
+        self.dates = sorted(_working_dates(env, start, end, company))
+
+    def add(self, start, days):
+        day = sgi_local_date(self.env, start, self.company)
+        if not days:
+            return day
+        if days > 0:
+            if day + timedelta(days=1) >= self.start:
+                index = bisect_right(self.dates, day) + days - 1
+                if index < len(self.dates):
+                    return self.dates[index]
+        elif day - timedelta(days=1) <= self.end:
+            index = bisect_left(self.dates, day) + days
+            if index >= 0:
+                return self.dates[index]
+        return sgi_add_business_days(self.env, day, days, self.company)

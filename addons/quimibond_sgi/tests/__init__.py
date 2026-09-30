@@ -111,3 +111,4 @@ from . import test_weekly_overdue
 from . import test_indicadores_2
 from . import test_zona_horaria
 from . import test_medicion_robusta
+from . import test_rendimiento

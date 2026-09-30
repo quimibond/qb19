@@ -263,6 +263,8 @@ class HrEmployeeMyProcedureTab(models.Model):
         jobs = jobs.exists() if jobs else jobs
         if not jobs:
             return
+        # 57.17.0 (G-015): las cifras guardadas del puesto ya no valen.
+        jobs._sgi_mp_mark_dirty()
         employees = self.sudo().with_context(active_test=False).search([('sgi_mp_job_id', 'in', jobs.ids)])
         if not employees:
             return
@@ -874,18 +876,13 @@ class HrEmployeePublicMyTeam(models.Model):
 
     @api.model
     def _sgi_mp_job_stats(self, jobs):
-        """{puesto: (atrasadas, al día, sin medir, total)} una vez por puesto."""
+        """{puesto: (atrasadas, al día, sin medir, total)} una vez por puesto.
+        57.17.0 (G-015): lee las cifras guardadas en el puesto; solo los
+        puestos «por recalcular» se arman al vuelo."""
         stats = {}
-        for job in jobs.sudo():
-            if not job:
-                continue
-            data = job._sgi_my_procedure_data()
-            counts = {'atrasada': 0, 'al_dia': 0, 'sin_medir': 0}
-            for section in data['sections']:
-                for entry in section['entries']:
-                    counts[entry['status']] += 1
-            stats[job.id] = (counts['atrasada'], counts['al_dia'], counts['sin_medir'],
-                             sum(counts.values()))
+        for job_id, vals in jobs.sudo()._sgi_mp_stats_map().items():
+            stats[job_id] = (vals['sgi_mp_job_late'], vals['sgi_mp_job_ok'],
+                             vals['sgi_mp_job_unmeasured'], vals['sgi_mp_job_total'])
         return stats
 
     @api.model
