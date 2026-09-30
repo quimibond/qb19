@@ -255,7 +255,8 @@
                        decoration-success="sgi_state == 'vigente'"
                        decoration-warning="sgi_state == 'piloto'"
                        decoration-info="sgi_state == 'borrador'"/>
-                <field name="sgi_next_review_date" optional="show"/>
+                <field name="sgi_next_review_date" widget="remaining_days" optional="show"
+                       invisible="sgi_state == 'obsoleto'"/>
                 <field name="sgi_retention_years" optional="hide"/>
                 <field name="sgi_disposition" optional="hide"/>
                 <field name="sgi_ack_read_pct" widget="percentage" optional="show"/>
@@ -392,6 +393,7 @@
         <field name="name">Acuses de lectura</field>
         <field name="res_model">sgi.document.ack</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_pending': 1}</field>
         <field name="search_view_id" ref="sgi_document_ack_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin acuses de lectura pendientes</p>

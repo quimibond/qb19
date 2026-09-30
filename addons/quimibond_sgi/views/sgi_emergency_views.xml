@@ -217,6 +217,9 @@
                         domain="[('state','=','programado')]"/>
                 <filter name="no_satisfactorios" string="No satisfactorios"
                         domain="[('result','=','no_satisfactorio')]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
+                <separator/>
+                <filter name="filter_date_planned" string="Fecha programada" date="date_planned"/>
                 <group>
                     <filter name="group_plan" string="Plan" context="{'group_by': 'plan_id'}"/>
                     <filter name="group_result" string="Resultado" context="{'group_by': 'result'}"/>
@@ -229,6 +232,7 @@
         <field name="name">Simulacros</field>
         <field name="res_model">sgi.emergency.drill</field>
         <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_programados': 1}</field>
         <field name="search_view_id" ref="sgi_emergency_drill_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Programe un simulacro</p>

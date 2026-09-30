@@ -222,7 +222,7 @@
                 <field name="process_id"/>
                 <field name="score"/>
                 <field name="attention_level" widget="badge"/>
-                <field name="next_review_date"/>
+                <field name="next_review_date" widget="remaining_days" invisible="state == 'cerrado'"/>
                 <field name="state"/>
             </list>
         </field>
@@ -263,6 +263,9 @@
                 <separator/>
                 <filter name="high" string="Atención alta/inmediata"
                         domain="[('attention_level','in',('inmediata','alto'))]"/>
+                <!-- V-M03 (57.43.0): «Míos». -->
+                <separator/>
+                <filter name="mine" string="De mis procesos" domain="['|', ('process_id.owner_id.user_id', '=', uid), ('create_uid', '=', uid)]"/>
                 <group>
                     <filter name="group_instrument" string="Instrumento" context="{'group_by': 'instrument'}"/>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>

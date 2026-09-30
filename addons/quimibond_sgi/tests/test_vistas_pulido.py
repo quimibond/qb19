@@ -243,3 +243,81 @@ class TestFichasCoherentes(TransactionCase):
         arch = _arch(self.env, 'sgi.process.activity', 'form')
         self.assertFalse(arch.xpath("//header/field[@name='measure_state']"))
         self.assertTrue(arch.xpath("//sheet//field[@name='measure_state'][@widget='badge']"))
+
+
+@tagged('post_install', '-at_install')
+class TestPisoYVencimientos(TransactionCase):
+    """57.43.0 (bloque 2): tableta de checklist, medición capturar → validar,
+    «Mis indicadores», metrología, vencimientos y filtros."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        groups = 'base.group_user,quimibond_sgi.group_sgi_user'
+        cls.owner = new_test_user(cls.env, login='vp_kpi_owner', groups=groups)
+        cls.raso = new_test_user(cls.env, login='vp_kpi_raso', groups=groups)
+        cls.indicator = cls.env['sgi.indicator'].create({
+            'code': 'ZVP1', 'name': 'KPI pulido', 'calc_mode': 'manual',
+            'responsible_id': cls.owner.id})
+
+    def _measure(self, day, **vals):
+        return self.env['sgi.indicator.measure'].create(dict({
+            'indicator_id': self.indicator.id,
+            'period_date': datetime(2031, day, 1).date()}, **vals))
+
+    def test_01_validar_solo_responsable_o_mast(self):
+        measure = self._measure(1, value=10.0, state='capturado')
+        self.assertTrue(measure.with_user(self.owner).sgi_can_validate)
+        self.assertFalse(measure.with_user(self.raso).sgi_can_validate)
+        # Por el botón y por escritura directa (RPC).
+        with self.assertRaises(AccessError):
+            measure.with_user(self.raso).action_validate()
+        with self.assertRaises(AccessError):
+            measure.with_user(self.raso).write({'state': 'validado'})
+        measure.with_user(self.owner).action_validate()
+        self.assertEqual(measure.state, 'validado')
+        arch = _arch(self.env, 'sgi.indicator.measure', 'form', 'quimibond_sgi.sgi_measure_view_form')
+        primaries = [b.get('name') for b in arch.xpath("//header/button[contains(@class, 'btn-primary')]")]
+        self.assertEqual(sorted(primaries), ['action_capture', 'action_validate'])
+
+    def test_02_mis_indicadores_capturar(self):
+        late = self._measure(2, state='pendiente')
+        self._measure(3, state='pendiente')
+        self.assertEqual(self.indicator.sgi_next_pending_id, late)
+        action = self.indicator.action_sgi_capture()
+        self.assertEqual((action['res_model'], action['res_id']), ('sgi.indicator.measure', late.id))
+        late.write({'value': 5.0, 'state': 'capturado'})
+        self.assertNotEqual(self.indicator.sgi_next_pending_id, late)
+        mine = self.env.ref('quimibond_sgi.sgi_indicator_action_mine')
+        self.assertEqual(mine.view_ids[:1].view_id, self.env.ref('quimibond_sgi.sgi_indicator_view_list_mine'))
+
+    def test_03_vistas_del_piso(self):
+        today = self.env.ref('quimibond_sgi.sgi_checklist_today_action')
+        form = self.env.ref('quimibond_sgi.sgi_checklist_request_view_form')
+        self.assertIn(form, today.view_ids.view_id)
+        self.assertIn(form, self.env.ref('quimibond_sgi.sgi_checklist_request_action').view_ids.view_id)
+        arch = _arch(self.env, 'maintenance.request', 'form', 'quimibond_sgi.sgi_checklist_request_view_form')
+        self.assertTrue(arch.xpath("//header/button[@name='action_sgi_checklist_finish']"))
+        self.assertTrue(arch.xpath("//field[@name='answer'][@widget='selection_badge']"))
+        # La ficha estándar de Mantenimiento sigue siendo la de su app.
+        default_form = self.env['maintenance.request'].get_views([(False, 'form')])['views']['form']['id']
+        self.assertNotEqual(default_form, form.id)
+        _arch(self.env, 'maintenance.request', 'kanban', 'quimibond_sgi.sgi_checklist_request_view_kanban')
+        equipment = self.env.ref('quimibond_sgi.sgi_equipment_action_measuring')
+        self.assertEqual(equipment.search_view_id, self.env.ref('quimibond_sgi.sgi_equipment_view_search_measuring'))
+        _arch(self.env, 'maintenance.equipment', 'list', 'quimibond_sgi.sgi_equipment_view_list_measuring')
+
+    def test_04_filtros_por_defecto_existen(self):
+        """Cada search_default_* de las acciones tocadas existe en su búsqueda."""
+        for xmlid in ('sgi_incident_action', 'sgi_audit_action', 'sgi_epp_delivery_action',
+                      'sgi_emergency_drill_action', 'sgi_csh_inspection_action', 'sgi_measure_action',
+                      'sgi_document_ack_action', 'sgi_legal_requirement_action',
+                      'sgi_calibration_action', 'sgi_equipment_action_measuring'):
+            action = self.env.ref('quimibond_sgi.%s' % xmlid)
+            view = action.search_view_id
+            arch = _arch(self.env, action.res_model, 'search', view.get_external_id()[view.id]) \
+                if view else _arch(self.env, action.res_model, 'search')
+            names = {f.get('name') for f in arch.xpath('//filter')}
+            context = action.context or ''
+            for key in [k for k in context.replace('"', "'").split("'") if k.startswith('search_default_')]:
+                self.assertIn(key[len('search_default_'):], names, "%s: %s" % (xmlid, key))

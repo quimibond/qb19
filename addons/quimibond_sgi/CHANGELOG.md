@@ -13,6 +13,50 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.43.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 2: piso y vencimientos):**
+- **Checklists de hoy (V-A04):** la tableta abre una **ficha propia** de la
+  hoja (`sgi_checklist_request_view_form`, primaria, prioridad 90; no es
+  herencia): equipo como título, plantilla y día, la lista de puntos arriba
+  con la respuesta como botones grandes (Bien / Falla / No aplica) y
+  «Terminar checklist» en el encabezado. «Checklists de hoy» abre primero un
+  kanban con una tarjeta grande por equipo o unidad; «Hojas de checklist» usa
+  la misma ficha. La ficha estándar de Mantenimiento no cambia.
+- **Medición (V-A06):** un solo botón principal por estado: «Marcar
+  capturado» en Pendiente y «Validar» solo en Capturado y solo para quien
+  puede validar (campo `sgi_can_validate`: responsable del indicador o Jefe
+  MAST). **Seguridad:** el servidor revisa lo mismo también en una escritura
+  directa del estado (`write`), no solo en el botón, y responde con
+  `AccessError`.
+- **Mis indicadores (V-A07):** lista propia (`sgi_indicator_view_list_mine`):
+  clave, nombre, unidad, último valor, semáforo, próxima captura con días
+  restantes y los botones «Capturar» (abre en ficha la medición pendiente más
+  antigua), «Mediciones» y «Tendencia».
+- **Equipos de medición (V-A09):** lista y búsqueda propias: última y próxima
+  calibración (días restantes), semáforo y «NO USAR» visibles, renglón rojo
+  si no se debe usar; filtros «Vencido o por vencer» (por defecto),
+  «Vencido», «Por vencer», «No usar» y fecha de próxima calibración.
+- **Vencimientos (V-M01):** `remaining_days` en la próxima calibración, la
+  próxima revisión de riesgos (salvo cerrados) y de documentos (salvo
+  obsoletos), la próxima evaluación legal, el compromiso de las acciones
+  (salvo terminadas) y la próxima fecha de estudios y exámenes.
+- **Filtros por defecto (V-M02):** incidentes abiertos, auditorías abiertas,
+  EPP sin firmar, simulacros programados, recorridos CSH en borrador,
+  mediciones pendientes y mías, acuses pendientes, requisitos que no cumplen o
+  sin evaluar, calibraciones de equipos por vencer (filtro nuevo).
+- **Filtros de fecha nativos y «Míos» (V-M03):** incidentes, auditorías,
+  calibraciones, simulacros, EPP, mediciones, requisitos legales, acciones
+  (compromiso) y cambios documentales; «Míos» en incidentes (reporté o tengo
+  una acción), auditorías (líder, auditor o auditado), requisitos legales,
+  cambios documentales, y «De mis procesos» en riesgos y AMEF. En la NC,
+  «Este año» (dominio fijo) pasa a filtro de fecha sobre la fecha de la NC.
+- **Responsiva de EPP (V-M11):** el texto libre solo aparece si ya trae algo
+  y no hay renglones; lo nuevo se captura en los renglones.
+
+**Pruebas:** `test_vistas_pulido.TestPisoYVencimientos` (validar por botón y
+por escritura, «Capturar», vistas del piso, cada `search_default_*` existe).
+
 ## 19.0.57.42.0 — 2026-09-30
 
 **Cambiado (pulido de vistas, bloque 1: V-M04, V-M06, V-M07, V-M15):**

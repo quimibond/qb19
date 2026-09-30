@@ -17,7 +17,7 @@
                 <field name="incident_id" optional="hide"/>
                 <field name="drill_id" optional="hide"/>
                 <field name="responsible_id" widget="many2one_avatar_user"/>
-                <field name="date_commit"/>
+                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                 <field name="progress" optional="show"/>
                 <field name="date_done" optional="show"/>
                 <field name="state" widget="badge"
@@ -49,6 +49,9 @@
                         domain="[('state', '=', 'vencida')]"/>
                 <filter name="done" string="Terminadas"
                         domain="[('state', '=', 'terminada')]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
+                <separator/>
+                <filter name="filter_commit" string="Compromiso" date="date_commit"/>
                 <separator/>
                 <filter name="from_nc" string="De No Conformidades"
                         domain="[('alert_id', '!=', False)]"/>

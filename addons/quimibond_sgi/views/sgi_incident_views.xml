@@ -123,6 +123,11 @@
                 <filter name="lesion" string="Lesiones" domain="[('incident_type','=','lesion')]"/>
                 <filter name="casi" string="Casi accidentes"
                         domain="[('incident_type','=','casi_accidente')]"/>
+                <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
+                <separator/>
+                <filter name="mine" string="Míos"
+                        domain="['|', '|', ('reporter_id', '=', uid), ('create_uid', '=', uid), ('action_line_ids.responsible_id', '=', uid)]"/>
+                <filter name="filter_date" string="Fecha" date="date"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'incident_type'}"/>
                     <filter name="group_severity" string="Severidad" context="{'group_by': 'severity'}"/>
@@ -148,6 +153,7 @@
         <field name="name">Incidentes y accidentes</field>
         <field name="res_model">sgi.incident</field>
         <field name="view_mode">list,form,pivot,activity</field>
+        <field name="context">{'search_default_abiertos': 1}</field>
         <field name="search_view_id" ref="sgi_incident_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Reporte un incidente SST — el casi-accidente también cuenta</p>
