@@ -93,3 +93,38 @@ def test_no_evidence_is_no_match():
     part = {'part': '900009', 'description': 'MATERIAL'}
     assert pm.rank(part, [_cand('WJ053Q22JNT160')]) == []
     assert pm.classify([]) == 'sin_match'
+
+
+def test_invoice_note_beats_sibling_variant():
+    # La nota de factura liga la parte con la variante I (la que se factura),
+    # aunque la variante sin I también se le haya vendido al cliente.
+    part = {'part': 'LX00000001AA', 'description': 'BACK SCRIM PES/100 62"'}
+    candidates = [
+        _cand('IWJ045Q22JNT160', sold_to_customer=True, n_orders=10, invoice_notes=40),
+        _cand('WJ045Q22JNT160', sold_to_customer=True, n_orders=12),
+    ]
+    ranked = pm.rank(part, candidates)
+    assert ranked[0]['default_code'] == 'IWJ045Q22JNT160'
+    assert pm.classify(ranked) == 'alta'
+    assert 'nota' in ranked[0]['reasons'][0]
+
+
+def test_two_digit_grammage_in_customer_description():
+    part = {'part': '900524', 'description': 'Circular Knit Quimibond WJ60Q21JNT160 (63")'}
+    ranked = pm.rank(part, [_cand('WJ060Q21JNT160', sold_to_customer=True),
+                            _cand('WJ053Q22JNT160', sold_to_customer=True)])
+    assert ranked[0]['default_code'] == 'WJ060Q21JNT160'
+    assert pm.canonical_code('WJ60Q21JNT160') == 'WJ060Q21JNT160'
+    assert pm.canonical_code('WD3846NT163M2') == 'WD3846NT163M2'  # 4 dígitos: no se toca
+
+
+def test_width_conflict_is_never_high():
+    # Parte /1640 (164 cm) facturada como producto de 168 cm: Ventas confirma.
+    part = {'part': 'XR99037/1640', 'description': 'PES Crepe 90 gr/m2'}
+    ranked = pm.rank(part, [
+        _cand('ZC090Q11JNT168', invoice_notes=2, mentions_part=True, sold_to_customer=True,
+              n_orders=7),
+        _cand('ZC090Q11JNT165', with_po=True, sold_to_customer=True, n_orders=3),
+    ])
+    assert ranked[0]['conflict']
+    assert pm.classify(ranked) == 'media'

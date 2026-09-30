@@ -8,8 +8,9 @@ confirmado detiene la aplicación de esa línea del release (nunca se adivina).
 
 El producto se SUGIERE con ``release/part_match.py`` (Python puro) a partir de
 lo que ya está en Odoo: la referencia escrita en la descripción del cliente,
-los pedidos que mencionan la parte o su PO, lo que se le ha vendido al
-cliente y el gramaje/ancho de la ficha (``qb.producto.ficha`` si
+la nota de factura que trae la parte debajo de la línea del producto (así la
+escribe hoy Ventas), los pedidos que mencionan la parte o su PO, lo que se le
+ha vendido al cliente y el gramaje/ancho de la ficha (``qb.producto.ficha`` si
 ``qb_capacidad_costeo`` está instalado). Ventas confirma.
 """
 from datetime import timedelta
@@ -144,6 +145,28 @@ class QbCustomerPart(models.Model):
                 '|', ('order_line.name', 'ilike', part_text),
                 ('note', 'ilike', part_text)])
             mentions = set(orders.order_line.filtered('product_id').product_id.ids)
+        # Facturas cuya nota trae la parte: la liga que ya escribe Ventas
+        # («IWJ045Q22JNT160 / NÚMERO DE PARTE L002790184NCPAA»). El producto es
+        # el de la línea inmediata anterior a la nota.
+        invoice_notes = {}
+        if len(part_text) >= 4:
+            notes = self.env['account.move.line'].sudo().search([
+                ('display_type', '=', 'line_note'),
+                ('name', 'ilike', part_text),
+                ('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
+                ('parent_state', '=', 'posted'),
+                ('move_id.commercial_partner_id', '=', partner.id),
+                ('company_id', '=', self.company_id.id),
+            ], limit=500)
+            for move in notes.move_id:
+                lines = move.invoice_line_ids.sorted(lambda ln: (ln.sequence, ln.id))
+                last_product = False
+                for line in lines:
+                    if line.display_type == 'product' and line.product_id:
+                        last_product = line.product_id.id
+                    elif line in notes and last_product:
+                        invoice_notes[last_product] = invoice_notes.get(last_product, 0) + 1
+                        break
         # Pedidos con la PO del cliente.
         with_po = set()
         po = (self.customer_po or '').strip()
@@ -163,7 +186,7 @@ class QbCustomerPart(models.Model):
             embedded |= set(Product.search([
                 ('default_code', 'ilike', base), ('sale_ok', '=', True)], limit=10).ids)
 
-        ids = set(sold) | mentions | with_po | embedded
+        ids = set(sold) | set(invoice_notes) | mentions | with_po | embedded
         products = Product.browse(sorted(ids))
         ficha = self._qb_ficha_by_product(products)
         candidates = []
@@ -176,6 +199,7 @@ class QbCustomerPart(models.Model):
                 'width_m': width_m or None,
                 'sold_to_customer': product.id in sold,
                 'n_orders': len(sold.get(product.id, ())),
+                'invoice_notes': invoice_notes.get(product.id, 0),
                 'mentions_part': product.id in mentions,
                 'with_po': product.id in with_po,
             })

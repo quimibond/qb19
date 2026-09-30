@@ -99,3 +99,23 @@ class TestCustomerPart(TransactionCase):
         self._part(ship_to_id=self.plant.id)  # otra planta: se vale
         with self.assertRaises(Exception), self.cr.savepoint():
             self._part()
+
+    def test_07_invoice_note_links_part(self):
+        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        for _i in range(2):
+            move = self.env['account.move'].create({
+                'move_type': 'out_invoice', 'partner_id': self.plant.id,
+                'invoice_line_ids': [
+                    (0, 0, {'product_id': self.fabric_kg.id, 'quantity': 10, 'price_unit': 5,
+                            'account_id': income.id, 'tax_ids': [(6, 0, [])]}),
+                    (0, 0, {'display_type': 'line_note',
+                            'name': 'ZZT045Q22JNT160 / NUMERO DE PARTE LX00000009AA'}),
+                    (0, 0, {'product_id': self.other.id, 'quantity': 1, 'price_unit': 5,
+                            'account_id': income.id, 'tax_ids': [(6, 0, [])]}),
+                ]})
+            move.action_post()
+        part = self._part(customer_part='LX00000009AA', customer_description='SCRIM')
+        part.action_suggest_product()
+        self.assertEqual(part.product_id, self.fabric_kg)
+        self.assertEqual(part.match_confidence, 'alta')
+        self.assertIn('nota', part.match_reasons)

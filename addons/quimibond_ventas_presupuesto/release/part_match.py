@@ -7,11 +7,14 @@ porqué. Lo usa ``qb.customer.part`` para sugerir el producto y se prueba con
 pytest fuera de Odoo.
 
 Evidencia, de más a menos fuerte:
-  1. La descripción del cliente trae nuestra referencia (FXI: «WD3846NT163M2»).
-  2. Un pedido nuestro menciona la parte del cliente en una línea o nota.
-  3. El producto se ha vendido con la PO que trae el release.
-  4. El producto se le ha vendido a ese cliente.
-  5. Gramaje y ancho de la descripción contra la ficha o contra el código.
+  1. La descripción del cliente trae nuestra referencia (Shawmut, FXI).
+  2. Una factura nuestra trae la parte en la nota que sigue a la línea del
+     producto («IWJ045Q22JNT160 / NÚMERO DE PARTE L002790184NCPAA»): así la
+     escribe hoy Ventas, y es la liga que ya existe.
+  3. Un pedido nuestro menciona la parte del cliente en una línea o nota.
+  4. El producto se ha vendido con la PO que trae el release.
+  5. El producto se le ha vendido a ese cliente.
+  6. Gramaje y ancho de la descripción contra la ficha o contra el código.
 Un gramaje o ancho que no cuadra resta: dos telas del mismo cliente se
 distinguen por ahí.
 
@@ -23,6 +26,8 @@ import re
 # --- Puntajes ---------------------------------------------------------------
 SCORE_CODE_EXACT = 100
 SCORE_CODE_NEAR = 80
+SCORE_INVOICE_NOTE = 100
+SCORE_INVOICE_NOTE_FREQUENCY_MAX = 10
 SCORE_ORDER_MENTIONS_PART = 60
 SCORE_ORDER_WITH_PO = 40
 SCORE_SOLD_TO_CUSTOMER = 25
@@ -31,6 +36,7 @@ SCORE_GRAMMAGE_OK = 20
 SCORE_GRAMMAGE_BAD = -30
 SCORE_WIDTH_OK = 15
 SCORE_WIDTH_BAD = -20
+SCORE_WIDTH_OFF = -10
 
 GRAMMAGE_TOL = 2.0     # g/m²
 GRAMMAGE_BAD = 5.0
@@ -71,10 +77,17 @@ def normalize_code(code):
     return re.sub(r'[\s\-_.]', '', (code or '').upper())
 
 
+def canonical_code(code):
+    """Código normalizado con el gramaje a 3 dígitos: los clientes a veces
+    escriben «WJ60Q21JNT160» por «WJ060Q21JNT160»."""
+    code = normalize_code(code)
+    return re.sub(r'^([A-Z]+)(\d{2})(?=[A-Z])', r'\g<1>0\2', code)
+
+
 def base_code(code):
     """Código sin los adornos que no cambian la tela: sufijo M2 (se vende por
     metro cuadrado) y prefijo I (variante de facturación)."""
-    code = normalize_code(code)
+    code = canonical_code(code)
     if code.endswith('M2') and len(code) > 6:
         code = code[:-2]
     if code.startswith('I') and len(code) > 6 and code[1:2].isalpha():
@@ -146,14 +159,16 @@ def score_candidate(part, candidate):
     part: dict con 'part', 'description', 'po' (opcional).
     candidate: dict con 'product_id', 'default_code', 'grammage', 'width_m'
       (de la ficha, opcionales), 'sold_to_customer' (bool), 'n_orders' (int),
+      'invoice_notes' (int: facturas cuya nota con la parte sigue a la línea
+      de este producto),
       'mentions_part' (bool: un pedido nuestro menciona la parte),
       'with_po' (bool: vendido con la PO del release)."""
     info = parse_customer_part(part.get('part'), part.get('description'))
     code = normalize_code(candidate.get('default_code'))
     score, reasons = 0, []
 
-    embedded = {normalize_code(c) for c in info['codes']}
-    if code and code in embedded:
+    embedded = {canonical_code(c) for c in info['codes']}
+    if code and canonical_code(code) in embedded:
         score += SCORE_CODE_EXACT
         reasons.append("la descripción del cliente trae la referencia %s" % code)
     elif code and base_code(code) in {base_code(c) for c in embedded}:
@@ -161,6 +176,11 @@ def score_candidate(part, candidate):
         reasons.append("la descripción trae la referencia %s (sin M2 / prefijo)"
                        % code)
 
+    invoice_notes = candidate.get('invoice_notes') or 0
+    if invoice_notes:
+        score += SCORE_INVOICE_NOTE + min(SCORE_INVOICE_NOTE_FREQUENCY_MAX, invoice_notes)
+        reasons.append("%d factura(s) nuestras traen la parte %s en la nota de este "
+                       "producto" % (invoice_notes, part.get('part')))
     if candidate.get('mentions_part'):
         score += SCORE_ORDER_MENTIONS_PART
         reasons.append("un pedido nuestro menciona la parte %s" % part.get('part'))
@@ -189,8 +209,8 @@ def score_candidate(part, candidate):
         if diff <= WIDTH_TOL_CM:
             score += SCORE_WIDTH_OK
             reasons.append("ancho %g ≈ %g cm" % (info['width_cm'], width_cm))
-        elif diff > WIDTH_BAD_CM:
-            score += SCORE_WIDTH_BAD
+        else:
+            score += SCORE_WIDTH_BAD if diff > WIDTH_BAD_CM else SCORE_WIDTH_OFF
             reasons.append("ancho distinto: cliente %g, producto %g cm"
                            % (info['width_cm'], width_cm))
     return score, reasons
@@ -199,7 +219,8 @@ def score_candidate(part, candidate):
 def rank(part, candidates, limit=5):
     """Candidatos ordenados por puntaje (mayor primero), solo los positivos.
 
-    Devuelve [{'product_id', 'default_code', 'score', 'reasons'}]."""
+    Devuelve [{'product_id', 'default_code', 'score', 'reasons', 'conflict'}];
+    conflict = el gramaje o el ancho del cliente no cuadran con el producto."""
     ranked = []
     for candidate in candidates:
         score, reasons = score_candidate(part, candidate)
@@ -209,6 +230,7 @@ def rank(part, candidates, limit=5):
                 'default_code': candidate.get('default_code'),
                 'score': score,
                 'reasons': reasons,
+                'conflict': any('distinto' in r for r in reasons),
             })
     ranked.sort(key=lambda r: (-r['score'], r['default_code'] or ''))
     return ranked[:limit]
@@ -216,10 +238,13 @@ def rank(part, candidates, limit=5):
 
 def classify(ranked):
     """'alta' si el primero es claro, 'media' si hay candidato pero Ventas
-    confirma, 'sin_match' si no hay nada que sugerir."""
+    confirma, 'sin_match' si no hay nada que sugerir. Un candidato cuyo gramaje
+    o ancho no cuadra con lo que dice el cliente nunca es 'alta', aunque las
+    facturas lo respalden (puede ser una sustitución puntual)."""
     if not ranked or ranked[0]['score'] < MEDIUM_SCORE:
         return 'sin_match'
     margin = ranked[0]['score'] - (ranked[1]['score'] if len(ranked) > 1 else 0)
-    if ranked[0]['score'] >= HIGH_SCORE and margin >= HIGH_MARGIN:
+    if (ranked[0]['score'] >= HIGH_SCORE and margin >= HIGH_MARGIN
+            and not ranked[0].get('conflict')):
         return 'alta'
     return 'media'
