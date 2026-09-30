@@ -13,6 +13,29 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.30.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 9/9: A-008):** la pestaña
+«SGI» del puesto (roles, familia, vacante y los botones de «Mi
+procedimiento») y el botón «Actividades SGI» van en la herencia del puesto
+(`sgi_integration_views.xml`); el botón «Ver su procedimiento» en la del
+empleado; el filtro «Mis actividades» con todos los roles del puesto y su
+familia en la búsqueda de actividades; «Ir a hacerlo», «Ver registros
+recientes», «Ver instructivo» y «Registrar hallazgo» en el encabezado de la
+ficha de actividad. Sale `views/sgi_structure_views.xml`. **Con esto el SGI
+ya no hereda ninguna vista propia** (de 32 herencias propias a 0; sobre
+vistas del SGI quedan solo las de los satélites). Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_hr_job_view_form_roles` (15007),
+`sgi_hr_job_view_form_my_procedure` (15039),
+`sgi_hr_employee_view_form_my_procedure` (15040),
+`sgi_process_activity_view_search_my_procedure` (15041),
+`sgi_process_activity_view_form_structure` (15044). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
 ## 19.0.57.29.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 8/9: A-008):** la solicitud de

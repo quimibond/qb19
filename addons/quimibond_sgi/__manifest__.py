@@ -22,7 +22,7 @@ los dos auto_install.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.29.0',
+    'version': '19.0.57.30.0',
     'license': 'LGPL-3',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -152,7 +152,6 @@ los dos auto_install.
         'views/sgi_my_procedure_views.xml',
         'views/sgi_my_pending_views.xml',
         'views/sgi_approval_native_views.xml',
-        'views/sgi_structure_views.xml',
         'views/sgi_coa_views.xml',
         # Firmas (Sign) sobre vistas de otros módulos. Desde 57.28.0 ya no
         # hereda vistas propias (A-008): sus herencias viven en su vista base.

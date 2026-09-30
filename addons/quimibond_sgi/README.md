@@ -1437,7 +1437,7 @@ dentro de la prueba (45.0.5).
 
 ## Estructura del SGI, pasos 3 y 4: ficha de proceso y ficha de actividad (19.0.44.1.0)
 
-`models/sgi_structure.py`, `views/sgi_structure_views.xml`. Solo presentación
+`models/sgi_structure.py` (las vistas viven desde 57.30.0 en la ficha de la actividad, `views/sgi_process_procedure_views.xml`). Solo presentación
 y navegación; el modelo de datos no cambia.
 
 - **Ficha de proceso (nivel 2):** arriba el semáforo y una línea de estado

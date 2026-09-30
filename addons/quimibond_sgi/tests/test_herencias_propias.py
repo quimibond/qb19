@@ -48,6 +48,12 @@ INTEGRADAS = (
     'sgi_quality_alert_view_form_links',
     'sgi_stock_picking_view_form_links',
     'sgi_product_template_view_form_links',
+    # 57.30.0
+    'sgi_hr_job_view_form_roles',
+    'sgi_hr_job_view_form_my_procedure',
+    'sgi_hr_employee_view_form_my_procedure',
+    'sgi_process_activity_view_search_my_procedure',
+    'sgi_process_activity_view_form_structure',
 )
 
 
@@ -90,3 +96,14 @@ class TestHerenciasPropias(TransactionCase):
             'quimibond_sgi.report_nc_document', alert.ids)[0].decode()
         if alert.sudo().sgi_format_info():
             self.assertIn('Formato controlado del SGI', html)
+
+    def test_04_ninguna_herencia_propia(self):
+        """57.30.0: ninguna vista del SGI hereda otra vista del SGI (regla de
+        CLAUDE.md: un módulo no hereda sus propias vistas)."""
+        Data = self.env['ir.model.data']
+        own = Data.search([('module', '=', 'quimibond_sgi'), ('model', '=', 'ir.ui.view')])
+        own_ids = set(own.mapped('res_id'))
+        views = self.env['ir.ui.view'].with_context(active_test=False).browse(list(own_ids)).exists()
+        offenders = views.filtered(lambda v: v.inherit_id.id in own_ids)
+        self.assertFalse(offenders, "Herencias propias: %s" % ", ".join(
+            offenders.mapped(lambda v: v.xml_id or v.name)))

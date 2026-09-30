@@ -12,10 +12,19 @@
                 <header>
                     <button name="action_open_odoo" type="object"
                             string="Ir a hacerlo" icon="fa-play"
-                            invisible="not odoo_action_id and not odoo_menu_id and not measure_model_id and not odoo_ref"/>
-                    <button name="action_view_measure_records" type="object"
-                            string="Ver evidencia" icon="fa-check-square-o"
+                            invisible="not odoo_action_id and not odoo_menu_id and not measure_model_id and not odoo_ref"
+                            class="btn-primary"/>
+                    <!-- «Ver registros recientes», instructivo y hallazgo (antes herencia
+                         propia en sgi_structure_views.xml; A-008, 57.30.0). -->
+                    <button name="action_view_recent_records" type="object"
+                            string="Ver registros recientes" icon="fa-check-square-o"
                             invisible="not measure_model_id"/>
+                    <button name="action_open_instruction" type="object"
+                            string="Ver instructivo" icon="fa-book"
+                            invisible="not instruction_id"/>
+                    <button name="action_sgi_register_finding" type="object"
+                            string="Registrar hallazgo" icon="fa-flag"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_open_next" type="object"
                             string="Siguiente paso" icon="fa-arrow-right"
                             invisible="not next_activity_ids"/>
@@ -438,8 +447,10 @@
                        help="El mercado (posición fiscal) elegido más las actividades que aplican a todos."/>
                 <field name="department_ids" string="Departamento"/>
                 <separator/>
+                <!-- «Mis actividades» de Inicio: todos los roles del puesto (y de su
+                     familia), no solo «ejecuta» (antes herencia propia; A-008). -->
                 <filter name="my_activities" string="Mis actividades"
-                        domain="[('responsible_job_ids.employee_ids.user_id', '=', uid)]"/>
+                        domain="['|', '|', ('responsible_job_ids.employee_ids.user_id', '=', uid), ('role_ids.job_id.employee_ids.user_id', '=', uid), ('role_ids.family_id.job_ids.employee_ids.user_id', '=', uid)]"/>
                 <filter name="no_responsible" string="Sin responsable"
                         domain="[('responsible_job_ids', '=', False), ('responsible_role', '=', False)]"/>
                 <filter name="no_executor" string="Sin puesto que la ejecuta"
