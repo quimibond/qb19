@@ -129,36 +129,6 @@
                         </div>
                     </group>
                     <notebook>
-                        <page string="Migración a Odoo" name="migracion"
-                              invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo', 'procedimiento')">
-                            <group>
-                                <group>
-                                    <field name="sgi_migration_class"
-                                           readonly="not sgi_can_edit_transition"/>
-                                    <field name="sgi_migration_state"
-                                           readonly="not sgi_can_edit_transition"/>
-                                </group>
-                                <group>
-                                    <field name="sgi_migration_target"
-                                           readonly="not sgi_can_edit_transition"/>
-                                    <field name="sgi_migration_point_id"
-                                           readonly="not sgi_can_edit_transition"/>
-                                    <field name="sgi_odoo_menu_id"
-                                           string="Menú de Odoo destino"
-                                           readonly="not sgi_can_edit_transition"
-                                           options="{'no_create': True}"/>
-                                    <button name="action_sgi_open_migration_point"
-                                            type="object" string="Abrir worksheet"
-                                            icon="fa-external-link" class="btn-secondary"
-                                            invisible="not sgi_migration_point_id"/>
-                                </group>
-                            </group>
-                            <div class="text-muted" invisible="sgi_migration_state != 'migrado'">
-                                Ya migrado: cambia el <b>Tipo de documento</b> a
-                                «Formulario de Odoo (vista)» para que deje de pedir
-                                archivo y el botón principal abra la vista real.
-                            </div>
-                        </page>
                         <page string="Documentos relacionados" name="relacionados" invisible="not sgi_is_controlled">
                             <group string="Familia documental">
                                 <field name="sgi_parent_document_id"
@@ -177,7 +147,7 @@
                                     </list>
                                 </field>
                             </group>
-                            <group string="Referencias a otras familias (P-A22, P-C01… — captura MAST)">
+                            <group string="Referencias a otras familias (captura MAST)">
                                 <field name="sgi_reference_ids" nolabel="1"
                                        domain="[('sgi_is_controlled', '=', True)]">
                                     <list>
@@ -223,6 +193,38 @@
                                     <field name="ack_date"/>
                                 </list>
                             </field>
+                        </page>
+                        <!-- D-002: material de «Del Dropbox a Odoo», al final y solo MAST. -->
+                        <page string="Migración a Odoo" name="migracion"
+                              groups="quimibond_sgi.group_sgi_manager"
+                              invisible="sgi_doc_type not in ('formato', 'formato_it', 'formulario_odoo', 'procedimiento')">
+                            <group>
+                                <group>
+                                    <field name="sgi_migration_class"
+                                           readonly="not sgi_can_edit_transition"/>
+                                    <field name="sgi_migration_state"
+                                           readonly="not sgi_can_edit_transition"/>
+                                </group>
+                                <group>
+                                    <field name="sgi_migration_target"
+                                           readonly="not sgi_can_edit_transition"/>
+                                    <field name="sgi_migration_point_id"
+                                           readonly="not sgi_can_edit_transition"/>
+                                    <field name="sgi_odoo_menu_id"
+                                           string="Menú de Odoo destino"
+                                           readonly="not sgi_can_edit_transition"
+                                           options="{'no_create': True}"/>
+                                    <button name="action_sgi_open_migration_point"
+                                            type="object" string="Abrir worksheet"
+                                            icon="fa-external-link" class="btn-secondary"
+                                            invisible="not sgi_migration_point_id"/>
+                                </group>
+                            </group>
+                            <div class="text-muted" invisible="sgi_migration_state != 'migrado'">
+                                Ya migrado: cambia el <b>Tipo de documento</b> a
+                                «Formulario de Odoo (vista)» para que deje de pedir
+                                archivo y el botón principal abra la vista real.
+                            </div>
                         </page>
                     </notebook>
                     <field name="attachment_id" invisible="1"/>
@@ -311,7 +313,7 @@
             (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sube el primer documento controlado</p>
-            <p>Con su clave en el nombre (P-A28, F-P-G05-01...). La revisión, vigencia y difusión se controlan desde aquí.</p>
+            <p>El nombre es el título, sin clave; la clave (PR-C1, F-C1-01…) va en su campo. La revisión, vigencia y difusión se controlan desde aquí.</p>
         </field>
     </record>
 

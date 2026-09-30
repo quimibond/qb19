@@ -135,7 +135,7 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Crea la primera ficha de proceso</p>
             <p>Los parámetros con los que se corre cada artículo en cada máquina (hilos, poleas, condiciones y tela
-            acondicionada con especificación y tolerancia). Sustituye el Excel F-IT-P-P01-08-05. Una ficha vigente por
+            acondicionada con especificación y tolerancia). Sustituye el formato anterior en Excel (ver Del Dropbox a Odoo). Una ficha vigente por
             artículo y máquina; al poner en vigor una nueva la anterior queda obsoleta.</p>
         </field>
     </record>

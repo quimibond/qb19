@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_report_incident" model="ir.actions.report">
-        <field name="name">Investigación de Incidente SST (P-S02)</field>
+        <field name="name">Investigación de incidente</field>
         <field name="model">sgi.incident</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_incident_document</field>
@@ -15,7 +15,7 @@
             <t t-foreach="docs" t-as="doc">
                 <t t-call="web.external_layout">
                     <div class="page">
-                        <h2 class="text-center">Investigación de Incidente SST — P-S02 (SCAT)</h2>
+                        <h2 class="text-center">Investigación de incidente (SCAT)</h2>
                         <table class="table table-sm table-bordered mt-3">
                             <tr>
                                 <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>

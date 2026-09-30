@@ -14,7 +14,7 @@
                         confirm="Se envía al proveedor el enlace del portal con la NC (producto, lote, desviación). ¿Continuar?"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="Proveedor (NC-6)" name="sgi_supplier" invisible="not sgi_folio">
+                <page string="Proveedor" name="sgi_supplier" invisible="not sgi_folio">
                     <group>
                         <group>
                             <field name="sgi_supplier_id"/>

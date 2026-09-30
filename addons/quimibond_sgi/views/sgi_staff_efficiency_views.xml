@@ -138,7 +138,7 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Abre la hoja de eficiencias del mes</p>
             <p>Una hoja por mes y área con la calificación de cada empleado (asistencia, orden y limpieza, eficiencia,
-            calidad) y el monto del incentivo. Sustituye los Excel F-P-A01-32 y F-P-A01-34. La eficiencia se propone
+            calidad) y el monto del incentivo. Sustituye los formatos anteriores en Excel (ver Del Dropbox a Odoo). La eficiencia se propone
             desde las órdenes de trabajo del mes.</p>
         </field>
     </record>

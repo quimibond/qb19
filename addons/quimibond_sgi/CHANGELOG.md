@@ -13,6 +13,41 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.20.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-nomenclatura-en-pantallas`: D-002, D-003, D-004,
+D-020, E-006; decisión 1 y D-02):** la clave del Dropbox deja de estar
+escrita a mano en pantallas y reportes. El `<h1>` del documento con el
+título limpio ya venía de 56.32.0.
+
+- **11 nombres de reporte** (menú Imprimir) sin clave: «Reporte de no
+  conformidad», «Plan de auditoría», «Acta de revisión por la dirección»,
+  «Cambio documental», «AMEF», «Investigación de incidente», «Boletín
+  NEWS», «Certificado de calidad / Certificate of Analysis», «Imprimir
+  procedimiento», «Lista maestra de documentos», «Matriz de competencias».
+  El PDF del cambio documental se descarga como «Cambio documental - …».
+- **Encabezados impresos** (NC, plan e informe de auditoría con «Reunión de
+  apertura/cierre», acta de revisión, AMEF, incidente, NEWS, CoA, Mi
+  procedimiento) sin clave. La identificación del formato sale solo del pie
+  en vivo (`sgi_format_footer`, C-006); la lista maestra completa pierde su
+  pie fijo «F-P-G01-03», que no tiene mapeo.
+- **Textos de 12 vistas:** ayudas de auditoría, cambio documental, ficha de
+  máquina, eficiencias, EPP del puesto, categorías de riesgo (ya no promete
+  categorías sembradas), placeholder del entregable, ayuda de «Documentos»
+  («El nombre es el título, sin clave»), «Encuesta DNC», grupo de
+  referencias; claves de desarrollo fuera (NC-6, C4.19, «Master Spec»,
+  «(SGI)» en «EPP requerido»); los indicadores de Ajustes se nombran
+  («Indicador Requisiciones (CO-02)»).
+- **Documento:** la pestaña «Migración a Odoo» pasa al final y solo la ve el
+  Jefe MAST. En las listas de documentos del puesto (Mi procedimiento) va
+  primero el título y después la clave.
+
+**Migración:** ninguna (los reportes no son `noupdate`; el update renombra).
+
+**Pruebas:** `test_nomenclatura_pantallas` (ningún reporte del SGI con clave
+del Dropbox en el nombre ni en el archivo; render de NC, incidente, acta,
+plan e informe de auditoría sin la clave escrita a mano).
+
 ## 19.0.57.19.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-reclamaciones`: D-006, D-010; decisión 9 de la

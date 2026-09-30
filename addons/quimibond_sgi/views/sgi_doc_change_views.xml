@@ -180,7 +180,7 @@ action = {
     'domain': [('sgi_is_doc_change', '=', True)],
     'context': {'default_category_id': category.id} if category else {},
     'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Solicita el primer cambio documental&lt;/p&gt;
-&lt;p&gt;Alta, modificación o baja de un documento controlado (F-P-G01-06). Al
+&lt;p&gt;Alta, modificación o baja de un documento controlado. Al
 aprobarse (2 aprobadores en secuencia) el documento se versiona SOLO: nueva
 revisión, obsolescencia de la anterior, acuses generados y salida en el NEWS
 del mes. La revisión nueva se sugiere automáticamente.&lt;/p&gt;""",

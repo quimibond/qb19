@@ -58,7 +58,7 @@
                         <group string="Desarrollo (C1)">
                             <field name="sgi_dyd_task_id"/>
                         </group>
-                        <group string="Liberación (C4.19)">
+                        <group string="Liberación">
                             <field name="sgi_release_picking_ids" nolabel="1" colspan="2" readonly="1">
                                 <list><field name="name"/><field name="picking_type_id"/><field name="state"/></list>
                             </field>

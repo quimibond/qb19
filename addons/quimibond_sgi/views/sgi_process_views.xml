@@ -43,7 +43,7 @@
                     </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
-                        <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal F-P-A12-01)"/></h1>
+                        <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal de producción)"/></h1>
                     </div>
                     <group>
                         <group string="La entrega">
@@ -84,7 +84,7 @@
                 <filter name="documentales" string="Documentales (sin modelo)"
                         domain="[('odoo_model_id', '=', False)]"/>
                 <separator/>
-                <filter name="manual" string="Capturados a mano (anteriores)"
+                <filter name="manual" string="Capturados a mano"
                         domain="[('deliverable_id', '=', False)]"/>
                 <filter name="inactive" string="Apagados o reemplazados"
                         domain="[('active', '=', False)]"/>

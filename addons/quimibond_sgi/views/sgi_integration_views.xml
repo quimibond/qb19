@@ -76,10 +76,10 @@
                         </list>
                     </field>
                 </page>
-                <page string="EPP requerido (SGI)">
+                <page string="EPP requerido">
                     <div class="text-muted mb-2">
-                        El EPP que exige este puesto — fuente única del
-                        F-P-S03-01. El cron de EPP vigila reposiciones; la
+                        El EPP que exige este puesto — fuente única de la
+                        matriz de EPP. El cron de EPP vigila reposiciones; la
                         responsiva de entrega se firma en la ficha del
                         empleado.
                     </div>

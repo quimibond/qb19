@@ -135,7 +135,7 @@
                 </button>
             </xpath>
             <xpath expr="//sheet" position="inside">
-                <group string="SGI - Plan de control / Master Spec">
+                <group string="Plan de control">
                     <group>
                         <field name="sgi_control_plan_id"/>
                         <field name="sgi_characteristic"/>

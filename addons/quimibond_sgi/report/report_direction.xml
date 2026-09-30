@@ -58,7 +58,7 @@
 
     <!-- PER-3 (52.0.0): matriz de competencias puesto × persona por área. -->
     <record id="action_report_competence_matrix" model="ir.actions.report">
-        <field name="name">Matriz de competencias (SGI)</field>
+        <field name="name">Matriz de competencias</field>
         <field name="model">hr.department</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_competence_matrix_document</field>
