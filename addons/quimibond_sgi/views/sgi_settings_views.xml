@@ -35,6 +35,10 @@
                                  help="Indicador Requisiciones (CO-02): categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
                             <field name="sgi_purchase_approval_category_id"/>
                         </setting>
+                        <setting string="Categorías de proveedores críticos"
+                                 help="Materia prima y maquila: solo esos proveedores entran a la evaluación trimestral. Vacío = materia prima más las categorías «maquila».">
+                            <field name="sgi_supplier_critical_categ_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Capacidad instalada mensual de producción"
                                  help="Indicador Producido vs capacidad (MA-02): capacidad mensual en la misma unidad que la producción (kg). Para periodos no mensuales se prorratea por días. 0 = captura manual.">
                             <field name="sgi_production_monthly_capacity"/>

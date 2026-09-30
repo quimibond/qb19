@@ -1,38 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Campos de liga entrada ↔ salida (2026-09-25). Ver models/sgi_links.py. -->
+    <!-- Campos de liga entrada ↔ salida (2026-09-25). Ver models/sgi_links.py.
+         AMEF, plan de control, PPAP, proveedores críticos y Ajustes ya los traen
+         en su vista base (A-008, 57.27.0). -->
 
-    <!-- C1: tarea del desarrollo en AMEF, plan de control, PPAP, LdM y orden -->
-    <record id="sgi_fmea_view_form_links" model="ir.ui.view">
-        <field name="name">sgi.fmea.form.links</field>
-        <field name="model">sgi.fmea</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_fmea_view_form"/>
-        <field name="arch" type="xml">
-            <field name="control_plan_id" position="after">
-                <field name="sgi_dyd_task_id"/>
-            </field>
-        </field>
-    </record>
-    <record id="sgi_control_plan_view_form_links" model="ir.ui.view">
-        <field name="name">sgi.control.plan.form.links</field>
-        <field name="model">sgi.control.plan</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_control_plan_view_form"/>
-        <field name="arch" type="xml">
-            <field name="document_id" position="after">
-                <field name="sgi_dyd_task_id"/>
-            </field>
-        </field>
-    </record>
-    <record id="sgi_ppap_view_form_links" model="ir.ui.view">
-        <field name="name">sgi.ppap.form.links</field>
-        <field name="model">sgi.ppap</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_ppap_view_form"/>
-        <field name="arch" type="xml">
-            <field name="date_decision" position="after">
-                <field name="sgi_dyd_task_id"/>
-            </field>
-        </field>
-    </record>
+    <!-- C1: tarea del desarrollo en LdM y orden -->
     <record id="sgi_mrp_bom_view_form_links" model="ir.ui.view">
         <field name="name">mrp.bom.form.sgi.links</field>
         <field name="model">mrp.bom</field>
@@ -200,28 +172,4 @@
         </field>
     </record>
 
-    <!-- Proveedores críticos -->
-    <record id="sgi_res_partner_view_form_links" model="ir.ui.view">
-        <field name="name">res.partner.form.sgi.links</field>
-        <field name="model">res.partner</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_res_partner_supplier_view_form"/>
-        <field name="arch" type="xml">
-            <field name="sgi_supplier_status" position="before">
-                <field name="sgi_supplier_critical"/>
-            </field>
-        </field>
-    </record>
-    <record id="sgi_settings_view_form_links" model="ir.ui.view">
-        <field name="name">res.config.settings.form.sgi.links</field>
-        <field name="model">res.config.settings</field>
-        <field name="inherit_id" ref="quimibond_sgi.res_config_settings_view_form_sgi"/>
-        <field name="arch" type="xml">
-            <xpath expr="//field[@name='sgi_purchase_approval_category_id']/.." position="after">
-                <setting string="Categorías de proveedores críticos"
-                         help="Materia prima y maquila: solo esos proveedores entran a la evaluación trimestral. Vacío = materia prima más las categorías «maquila».">
-                    <field name="sgi_supplier_critical_categ_ids" widget="many2many_tags"/>
-                </setting>
-            </xpath>
-        </field>
-    </record>
 </odoo>

@@ -44,6 +44,7 @@
                         <group>
                             <field name="revision"/>
                             <field name="document_id"/>
+                            <field name="sgi_dyd_task_id"/>
                         </group>
                     </group>
                     <notebook>

@@ -31,6 +31,12 @@ INTEGRADAS = (
     # 57.26.0
     'sgi_indicator_view_form_level',
     'sgi_format_banner_mgmt_review',
+    # 57.27.0
+    'sgi_fmea_view_form_links',
+    'sgi_control_plan_view_form_links',
+    'sgi_ppap_view_form_links',
+    'sgi_res_partner_view_form_links',
+    'sgi_settings_view_form_links',
 )
 
 

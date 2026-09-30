@@ -33,6 +33,7 @@
                             <field name="reason"/>
                             <field name="date_submitted"/>
                             <field name="date_decision"/>
+                            <field name="sgi_dyd_task_id"/>
                         </group>
                     </group>
                     <notebook>

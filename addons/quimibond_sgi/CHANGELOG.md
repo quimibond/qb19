@@ -13,6 +13,23 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.27.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 6/9: A-008):** la tarea del
+desarrollo en AMEF, plan de control y PPAP, «Proveedor crítico» en la
+pestaña SGI del proveedor y «Categorías de proveedores críticos» en Ajustes
+van en su vista base. `sgi_links_views.xml` queda con sus herencias sobre
+vistas de OTROS módulos (y las tres sobre NC, albarán y producto que salen
+en 8/9). Mismo resultado en pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_fmea_view_form_links` (15092),
+`sgi_control_plan_view_form_links` (15093), `sgi_ppap_view_form_links`
+(15094), `sgi_res_partner_view_form_links` (15104),
+`sgi_settings_view_form_links` (15105). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
 ## 19.0.57.26.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 5/9: A-008):** el nivel del
