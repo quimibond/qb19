@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.22.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 1/9: A-008):** el pie
+«formato controlado» de los reportes de No Conformidad, Certificado de
+calidad y Acta de revisión por la dirección va dentro de cada plantilla (se
+imprime igual). `report/sgi_format_footer.xml` queda solo con el pie y sus
+herencias sobre reportes de OTROS módulos (venta, compra, albarán).
+
+**Migración (pre):** `migrations/herencias_propias.py` (nuevo, lo cargan por
+ruta los pre-migrate de 57.22.0 en adelante) borra de la base las herencias
+propias integradas, antes de cargar los XML: solo `ir_ui_view` +
+`ir_model_data` de vistas `quimibond_sgi.*` con `inherit_id`; una vista de
+otro módulo que heredara una de ellas se re-apunta al padre y se avisa en el
+log. Idempotente. Aquí: `report_nc_document_sgi` (14745),
+`report_coa_document_sgi` (14746) y `report_mgmt_review_document_sgi`
+(14747).
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen; el
+borrado es idempotente y re-apunta una hija ajena; el pie sigue en el
+reporte de NC).
+
 ## 19.0.57.21.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-fichas-y-busquedas`: D-007, D-008, D-013,

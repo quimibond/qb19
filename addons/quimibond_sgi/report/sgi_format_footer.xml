@@ -37,29 +37,4 @@
             </t>
         </xpath>
     </template>
-
-    <!-- Reportes propios del SGI -->
-    <template id="report_nc_document_sgi" inherit_id="quimibond_sgi.report_nc_document">
-        <xpath expr="//div[hasclass('page')]" position="inside">
-            <t t-call="quimibond_sgi.sgi_format_footer">
-                <t t-set="sgi_rec" t-value="doc"/>
-            </t>
-        </xpath>
-    </template>
-
-    <template id="report_coa_document_sgi" inherit_id="quimibond_sgi.report_coa_document">
-        <xpath expr="//div[hasclass('page')]" position="inside">
-            <t t-call="quimibond_sgi.sgi_format_footer">
-                <t t-set="sgi_rec" t-value="doc"/>
-            </t>
-        </xpath>
-    </template>
-
-    <template id="report_mgmt_review_document_sgi" inherit_id="quimibond_sgi.report_mgmt_review_document">
-        <xpath expr="//div[hasclass('page')]" position="inside">
-            <t t-call="quimibond_sgi.sgi_format_footer">
-                <t t-set="sgi_rec" t-value="doc"/>
-            </t>
-        </xpath>
-    </template>
 </odoo>

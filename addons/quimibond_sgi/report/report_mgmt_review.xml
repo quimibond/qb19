@@ -85,6 +85,11 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- Pie «formato controlado» (C-006); antes era una herencia
+                             propia en sgi_format_footer.xml (A-008, 57.22.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>
