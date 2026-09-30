@@ -7,6 +7,10 @@
         <field name="arch" type="xml">
             <form string="Programa de auditorías">
                 <header>
+                    <button name="action_suggest_lines" type="object" string="Programa sugerido"
+                            icon="fa-magic" invisible="state != 'borrador'"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
+                            help="Una línea por proceso vigente o en piloto, repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
                     <button name="action_approve" type="object" string="Aprobar"
                             class="btn-primary" invisible="state != 'borrador'"
                             groups="quimibond_sgi.group_sgi_manager"/>
@@ -25,6 +29,7 @@
                     <field name="line_ids">
                         <list editable="bottom">
                             <field name="process_id"/>
+                            <field name="partner_id" optional="hide"/>
                             <field name="planned_month"/>
                             <field name="audit_type"/>
                             <field name="norm_ids" widget="many2many_tags"/>
@@ -138,6 +143,9 @@
                     <group>
                         <group string="Alcance">
                             <field name="audit_type"/>
+                            <field name="partner_id" invisible="audit_type not in ('cliente', 'proveedor')"
+                                   required="audit_type in ('cliente', 'proveedor')"/>
+                            <field name="external_report_ref" invisible="audit_type != 'cliente'"/>
                             <field name="norm_ids" widget="many2many_tags"/>
                             <field name="process_ids" widget="many2many_tags"/>
                             <field name="program_line_id" readonly="1"/>

@@ -13,6 +13,26 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.28.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 7/9: A-008):** la NC a
+proveedor (botón «Enviar al proveedor» y pestaña «Proveedor») va en la ficha
+de NC; cliente o proveedor auditado en la auditoría; «Programa sugerido» y
+la columna de proveedor en el programa de auditorías; los botones de firma
+en albarán y producto; «Exige firmado» y encuesta en el entregable. Todo en
+su vista base; `sgi_supplier_audit_sign_views.xml` queda con el asistente de
+firma y las herencias sobre vistas de otros módulos. Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_quality_alert_view_form_supplier` (15070),
+`sgi_audit_view_form_pr6` (15071), `sgi_audit_program_view_form_pr6`
+(15072), `sgi_stock_picking_view_form_sign` (15077),
+`sgi_product_template_view_form_sign` (15079),
+`sgi_deliverable_view_form_pr6` (15080). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
 ## 19.0.57.27.0 — 2026-09-30
 
 **Cambiado (entrega 5, `e5-herencias-propias` 6/9: A-008):** la tarea del

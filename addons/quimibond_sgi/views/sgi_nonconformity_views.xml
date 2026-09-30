@@ -188,6 +188,37 @@
                     </page>
                 </notebook>
             </xpath>
+            <!-- NC a proveedor (antes herencia propia en sgi_supplier_audit_sign_views.xml; A-008, 57.28.0) -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_send_to_supplier" type="object"
+                        string="Enviar al proveedor" icon="fa-paper-plane"
+                        groups="quimibond_sgi.group_sgi_user"
+                        invisible="not sgi_folio or sgi_supplier_state != 'no_enviada' or sgi_stage_is_closing or sgi_stage_is_cancel"
+                        confirm="Se envía al proveedor el enlace del portal con la NC (producto, lote, desviación). ¿Continuar?"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Proveedor" name="sgi_supplier" invisible="not sgi_folio">
+                    <group>
+                        <group>
+                            <field name="sgi_supplier_id"/>
+                            <field name="sgi_supplier_state" widget="badge"
+                                   decoration-success="sgi_supplier_state == 'contestada'"
+                                   decoration-warning="sgi_supplier_state == 'enviada'"/>
+                            <field name="sgi_supplier_overdue" invisible="not sgi_supplier_overdue"
+                                   decoration-danger="sgi_supplier_overdue"/>
+                        </group>
+                        <group>
+                            <field name="sgi_supplier_sent_date"/>
+                            <field name="sgi_supplier_due_date"/>
+                            <field name="sgi_supplier_response_date"/>
+                        </group>
+                    </group>
+                    <group string="Respuesta del proveedor (portal)" invisible="sgi_supplier_state != 'contestada'">
+                        <field name="sgi_supplier_cause"/>
+                        <field name="sgi_supplier_action"/>
+                    </group>
+                </page>
+            </xpath>
         </field>
     </record>
 

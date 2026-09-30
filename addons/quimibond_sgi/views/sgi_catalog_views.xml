@@ -113,6 +113,8 @@
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
                             <field name="complete_domain" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
+                            <field name="require_signed" invisible="not odoo_model_id"/>
+                            <field name="survey_id"/>
                             <field name="complete_criteria" placeholder="Completo significa…"/>
                         </group>
                         <group>

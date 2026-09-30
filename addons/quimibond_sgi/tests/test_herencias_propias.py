@@ -37,6 +37,13 @@ INTEGRADAS = (
     'sgi_ppap_view_form_links',
     'sgi_res_partner_view_form_links',
     'sgi_settings_view_form_links',
+    # 57.28.0
+    'sgi_quality_alert_view_form_supplier',
+    'sgi_audit_view_form_pr6',
+    'sgi_audit_program_view_form_pr6',
+    'sgi_stock_picking_view_form_sign',
+    'sgi_product_template_view_form_sign',
+    'sgi_deliverable_view_form_pr6',
 )
 
 

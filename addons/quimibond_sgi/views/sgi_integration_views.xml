@@ -19,6 +19,18 @@
                 <field name="sgi_seal_number"
                        invisible="picking_type_code != 'outgoing'"/>
             </xpath>
+            <!-- Firmas (antes herencia propia en sgi_supplier_audit_sign_views.xml; A-008, 57.28.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
         </field>
     </record>
 
@@ -121,6 +133,18 @@
                                placeholder="Indicaciones de manejo y empaque: orientación, apilado máximo, protección, etiquetado..."/>
                     </group>
                 </page>
+            </xpath>
+            <!-- Firmas (antes herencia propia en sgi_supplier_audit_sign_views.xml; A-008, 57.28.0) -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
             </xpath>
         </field>
     </record>
