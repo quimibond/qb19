@@ -12,12 +12,12 @@ class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
     sgi_nc_escalation_days = fields.Integer(
-        string="Días para escalar una NC sin acciones",
+        string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',
         help="NC interna sin acciones tras estos días → actividad al responsable "
              "y aviso a MAST.")
     sgi_nc_escalation_days_external = fields.Integer(
-        string="Días para escalar una NC externa/cliente",
+        string="Días hábiles para escalar una NC externa/cliente",
         config_parameter='quimibond_sgi.nc_escalation_days_external',
         help="Las NC de auditoría externa y reclamaciones de cliente escalan más "
              "rápido que las internas.")
@@ -31,7 +31,7 @@ class ResConfigSettings(models.TransientModel):
         string="Plazo del plan de acción de una NC (días hábiles)",
         config_parameter='quimibond_sgi.nc_days_plan')
     sgi_nc_escalation_mast_days = fields.Integer(
-        string="Días vencido un plazo de NC antes de escalar a MAST",
+        string="Días hábiles vencido un plazo de NC antes de escalar a MAST",
         config_parameter='quimibond_sgi.nc_escalation_mast_days')
     sgi_nc_days_supplier_response = fields.Integer(
         string="Días hábiles para que el proveedor conteste una NC (portal)",
@@ -49,7 +49,7 @@ class ResConfigSettings(models.TransientModel):
         string="Aviso de piloto por vencer (días)",
         config_parameter='quimibond_sgi.doc_pilot_notice_days')
     sgi_doc_ack_pending_days = fields.Integer(
-        string="Días para reclamar un acuse pendiente",
+        string="Días hábiles para reclamar un acuse pendiente",
         config_parameter='quimibond_sgi.doc_ack_pending_days')
     sgi_nc_recurrence_months = fields.Integer(
         string="Ventana de reincidencia de NC (meses)",
@@ -57,12 +57,12 @@ class ResConfigSettings(models.TransientModel):
         help="Una NC del SGI cuenta como reincidente si en este número de meses "
              "hubo otra NC del mismo proceso (misma cláusula pesa doble).")
     sgi_action_escalation_manager_days = fields.Integer(
-        string="Días para escalar una acción vencida al jefe",
+        string="Días hábiles para escalar una acción vencida al jefe",
         config_parameter='quimibond_sgi.action_escalation_manager_days',
         help="Acción vencida por más de estos días → además del responsable, "
              "se avisa a su jefe directo (fallback Jefe MAST).")
     sgi_action_escalation_director_days = fields.Integer(
-        string="Días para escalar una acción vencida a Dirección",
+        string="Días hábiles para escalar una acción vencida a Dirección",
         config_parameter='quimibond_sgi.action_escalation_director_days',
         help="Acción vencida por más de estos días → además, se avisa a "
              "Dirección.")

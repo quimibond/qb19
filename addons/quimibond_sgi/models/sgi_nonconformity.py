@@ -7,7 +7,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_base import sgi_bypass_allowed
-from .sgi_calendar import sgi_add_business_days
+from .sgi_calendar import sgi_add_business_days, sgi_business_days
 from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
@@ -307,7 +307,8 @@ class QualityAlert(models.Model):
                         label.lower(), folio, due, what),
                     process_owner_id)
                 scheduled.append(summary)
-            if (today - due).days > mast_after and manager_id:
+            # 57.15.0 (G-009): el umbral de MAST se cuenta en días hábiles.
+            if sgi_business_days(self.env, due, today) > mast_after and manager_id:
                 summary = "NC %s: %s vencida hace más de %d días, escalada a MAST" % (
                     folio, label.lower(), mast_after)
                 Cron._sgi_schedule(

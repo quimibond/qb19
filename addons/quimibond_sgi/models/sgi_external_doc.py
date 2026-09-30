@@ -10,7 +10,7 @@ cuando ya venció.
 """
 from odoo import api, fields, models
 
-from .sgi_calendar import sgi_add_business_days
+from .sgi_calendar import sgi_add_business_days, sgi_today
 
 from .sgi_guard import sgi_require_system
 
@@ -77,7 +77,7 @@ class SgiCronExternalDoc(models.AbstractModel):
         """Aviso al dueño del proceso: 2 días hábiles antes del plazo de
         implantación y al vencer. Una actividad por documento y aviso."""
         Doc = self.env['documents.document'].sudo()
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         soon = sgi_add_business_days(self.env, today, 2)
         pending = Doc.search([('sgi_doc_type_id.code', '=', 'externo'), ('sgi_ext_implemented_date', '=', False),
                               ('sgi_ext_deadline', '!=', False)])

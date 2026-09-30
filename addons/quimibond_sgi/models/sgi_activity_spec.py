@@ -22,7 +22,8 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
-from .sgi_calendar import sgi_add_business_days, sgi_nth_business_day
+from .sgi_calendar import (
+    sgi_add_business_days, sgi_nth_business_day, sgi_previous_business_day, sgi_today)
 from .sgi_process_procedure import SgiProcessActivity as _BaseActivity
 
 _logger = logging.getLogger(__name__)
@@ -304,6 +305,14 @@ class SgiActivitySpec(models.Model):
                         for line in self.input_ids))
         if not timed_input and not periodic and not external_start:
             add('no_timing', "Sin plazo: pon días a alguna entrada o un vencimiento periódico.")
+        elif (self.measure_cadence in SGI_CADENCE_MONTHS
+              and not (self.due_month or self.due_day)):
+            # 57.15.0 (G-008 a): una trimestral, semestral o anual sin mes ni
+            # día no dice «cuándo» en Mi procedimiento aunque una entrada
+            # tenga plazo. (Con uno solo de los dos lo marca due_mismatch.)
+            add('no_timing', "Cadencia %s sin mes y día de vencimiento." % dict(
+                self._fields['measure_cadence'].selection).get(
+                    self.measure_cadence, self.measure_cadence).lower())
         if self.due_weekday and self.measure_cadence != 'semanal':
             add('due_mismatch', "Vence un día de la semana pero la cadencia no es semanal.")
         if self.due_business_day and self.measure_cadence != 'mensual':
@@ -454,11 +463,17 @@ class SgiActivitySpec(models.Model):
         return self.output_deliverable_ids.filtered('odoo_model_id')[:1]
 
     def _sgi_periodic_due(self, day):
-        """Fecha de vencimiento del periodo que contiene ``day`` (o None)."""
+        """Fecha de vencimiento del periodo que contiene ``day`` (o None).
+
+        57.15.0 (decisión 4 de la tanda 2, G-008 c): el vencimiento semanal o
+        de mes y día que cae en día inhábil (fin de semana o festivo del
+        calendario) se adelanta al hábil anterior, sin salirse del periodo."""
         self.ensure_one()
         if self.due_weekday and self.measure_cadence == 'semanal':
             monday = day - timedelta(days=day.weekday())
-            return monday + timedelta(days=int(self.due_weekday))
+            return sgi_previous_business_day(
+                self.env, monday + timedelta(days=int(self.due_weekday)), floor=monday,
+                company=self.company_id)
         if self.due_business_day and self.measure_cadence == 'mensual':
             return sgi_nth_business_day(self.env, day.year, day.month, self.due_business_day,
                                         self.company_id)
@@ -470,7 +485,9 @@ class SgiActivitySpec(models.Model):
             block_start = ((day.month - 1) // step) * step + 1
             month = next(m for m in months if block_start <= m < block_start + step)
             last = calendar.monthrange(day.year, month)[1]
-            return date(day.year, month, min(self.due_day, last))
+            return sgi_previous_business_day(
+                self.env, date(day.year, month, min(self.due_day, last)),
+                floor=date(day.year, block_start, 1), company=self.company_id)
         return None
 
     def _sgi_period_start(self, day):
@@ -983,7 +1000,7 @@ class SgiActivityWeekStat(models.Model):
     @api.model
     def _sgi_compute(self, activities, weeks=4):
         """Recalcula las últimas ``weeks`` semanas de cada actividad medible."""
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         monday = today - timedelta(days=today.weekday())
         periods = [monday - timedelta(weeks=n) for n in range(weeks - 1, -1, -1)]
         for act in activities:

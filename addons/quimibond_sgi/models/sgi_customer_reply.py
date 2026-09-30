@@ -17,7 +17,7 @@ sin fecha capturada.
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_calendar import sgi_add_business_days
+from .sgi_calendar import sgi_add_business_days, sgi_today
 
 from .sgi_guard import sgi_require_system
 
@@ -179,7 +179,7 @@ class SgiCronCustomerReply(models.AbstractModel):
     def cron_nonconformities(self):
         sgi_require_system(self.env)  # F-008
         res = super().cron_nonconformities()
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         self._sgi_step(
             "acuse y respuesta al cliente (C5.19)",
             lambda: self.env['quality.alert'].search([

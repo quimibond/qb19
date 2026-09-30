@@ -13,6 +13,74 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.15.0 — 2026-09-30
+
+**Cambiado (entrega 8, `e8-zona-horaria-y-dias-habiles`: G-007, G-008,
+G-009, G-020, G-022; decisión 4 de la tanda 2):**
+
+- **Hoy en hora de México** (`sgi_calendar.sgi_today`): los crons corren como
+  OdooBot, sin zona, y `context_today` les daba la fecha UTC (desde las 18:00
+  de México ya era «mañana»). Ahora el «hoy» de los crons del SGI, de la
+  medición de actividades, del cumplimiento semanal, de los checklists y de
+  los crons mensual y semanal de indicadores sale de la zona del calendario
+  de días hábiles (`quimibond_sgi.business_calendar_id`; si no tiene,
+  America/Mexico_City). **OdooBot no se toca.** Las semanas de
+  `sgi.activity.week.stat` y `exec.stat` se cortan en hora local.
+- Un datetime se pasa a **fecha local** antes de contar días hábiles
+  (`sgi_business_days`, `sgi_add_business_days`): una entrada de las 19:00 ya
+  no cuenta como del día siguiente.
+- **Escalamientos en días hábiles** (los parámetros siguen siendo números y
+  en Ajustes dicen «días hábiles»): NC sin acción (5 / 3), acción vencida al
+  jefe y a Dirección (7 / 15), plazo de NC vencido a MAST (3), acuse
+  pendiente (7), captura de la medición mensual (4 hábiles después del día 1)
+  y semanal (2 hábiles después del lunes). Los avisos de revisión bienal y de
+  piloto siguen en días naturales (son anticipación, no plazo de trabajo).
+- **Vencimiento en día inhábil se adelanta** al hábil anterior: el semanal
+  por día de la semana y el de mes y día (sin salirse del periodo: un lunes
+  festivo pasa al martes) y el «día 10» del plan de una medición roja.
+- **Cadencia trimestral, semestral o anual sin mes y día** marca «Sin plazo»
+  (`no_timing`, error) aunque una entrada tenga plazo (G-008 a): su «cuándo»
+  salía vacío en Mi procedimiento.
+- **Corrida mensual una sola vez** (G-020): `quimibond_sgi.monthly_run_done`
+  = AAAA-MM; ya no repite foto, trayectorias y cierre de presupuestos cada
+  día mientras el mes anterior siga sin mediciones.
+- **Checklists** (G-022, decisión 14): `schedule_date` a las 08:00 hora local
+  (antes 08:00 UTC = 02:00 en México); los festivos no generan hoja; la
+  semanal sale el primer día hábil de la semana en que corra el cron (una
+  vez por semana, se recupera si el lunes falló); una plantilla sin equipos
+  avisa al Jefe MAST (`checklist_sin_equipos`, un aviso por plantilla que se
+  cierra solo al cargar equipos). `sgi.checklist.template` lleva chatter y
+  actividades (`mail.thread`, `mail.activity.mixin`).
+
+**Migración (`migrations/19.0.57.15.0/post-migrate.py`):**
+
+1. `sgi.config._sgi_load_holidays([2026, 2027, 2028])`: los festivos de la
+   LFT, art. 74 (1-ene, primer lunes de febrero, tercer lunes de marzo,
+   1-may, 16-sep, tercer lunes de noviembre, 25-dic y el 1-oct sexenal), como
+   ausencias globales del calendario del parámetro (21). Idempotente, nada se
+   borra, no se cae al calendario de la compañía. **Los del contrato
+   colectivo no están documentados en el repositorio: no se cargan**; RH los
+   confirma y se capturan a mano en el calendario 21.
+2. `sgi.config._sgi_move_cron_hours()` (los crons son `noupdate`, A-007):
+   checklists 05:30 y medición de actividades 03:00 hora de México; legal,
+   contexto, participación, Sign/eLearning y Mi procedimiento de las
+   20:xx-22:xx de México a las 06:xx del mismo día UTC. Idempotente.
+3. Las actividades de cadencia larga sin mes ni día recalculan faltantes.
+
+**Datos de producción (MCP, solo lectura, 2026-09-30):** calendario 21
+(America/Mexico_City) sin ausencias globales; ninguna ausencia global desde
+2025 en ningún calendario; ningún empleado (calendarios 9, 13, 32) ni centro
+de trabajo (9, 25, 31, 33) usa el 21. Crons 215 (checklists, 22:44 UTC), 196
+(medición, 22:27), 197 y 199 (02:39), 198 (02:39, semestral), 200 (04:20) y
+213 (04:40). Esperado: 21 festivos, 7 crons movidos, 15 actividades con el
+faltante nuevo (C6.21, E1.01-E1.03, E1.10, E2.05, E2.12, E2.21, S3.21,
+S4.22-S4.24, S4.26, S4.30, S6.02). Los crons 184 y 185 son de
+`quimibond_ventas_presupuesto` y no se mueven aquí.
+
+**Pruebas:** `test_zona_horaria` (10 casos, datos propios: calendario de
+México con los festivos de 2027; vencimiento en sábado y en festivo, J-011).
+`test_ola1` y `test_ola2` cuentan la antigüedad en días hábiles.
+
 ## 19.0.57.14.0 — 2026-09-29
 
 **Agregado (indicadores 2, aprobado por Jose 2026-09-29, con sus decisiones

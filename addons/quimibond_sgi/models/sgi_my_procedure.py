@@ -35,6 +35,8 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .sgi_calendar import sgi_today
+
 from .sgi_catalog import SGI_ROLE_SELECTION, sgi_normalize_name
 
 from .sgi_guard import sgi_require_system
@@ -720,7 +722,7 @@ class SgiCronMyProcedure(models.AbstractModel):
             # G-005 (b): el resumen lleva el número de puestos; la clave no. Un
             # solo aviso aunque cambie el documento ancla.
             self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id(),
-                               date_deadline=fields.Date.context_today(self) + relativedelta(days=7),
+                               date_deadline=sgi_today(self.env) + relativedelta(days=7),
                                key='mi_procedimiento_por_publicar', anywhere=True)
         _logger.info("SGI Mi procedimiento: %s", note)
         return True

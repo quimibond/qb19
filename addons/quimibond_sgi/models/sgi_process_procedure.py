@@ -21,6 +21,8 @@ from odoo import models, fields, api, Command, SUPERUSER_ID
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
+from .sgi_calendar import sgi_today
+
 from .sgi_base import sgi_bypass_allowed
 
 SGI_AUTOMATION_LEVELS = [
@@ -1061,7 +1063,7 @@ class SgiProcessActivity(models.Model):
                     # es antes del vencimiento (decisión 5), no una ventana de
                     # días naturales. Vive en sgi_activity_spec.
                     periodic = activity._sgi_periodic_state(
-                        Model, domain, date_field, fields.Date.context_today(activity)) \
+                        Model, domain, date_field, sgi_today(activity.env)) \
                         if hasattr(activity, '_sgi_periodic_state') else None
                     if periodic:
                         vals['measure_state'] = periodic
@@ -1093,8 +1095,9 @@ class SgiProcessActivity(models.Model):
     @api.model
     def _sgi_exec_window_start(self):
         """Lunes de hace 3 semanas: la ventana de 4 semanas que el cron
-        recalcula y reemplaza en sgi.activity.exec.stat."""
-        today = fields.Date.context_today(self)
+        recalcula y reemplaza en sgi.activity.exec.stat. 57.15.0 (G-007):
+        la semana se corta en hora local (antes, a medianoche UTC)."""
+        today = sgi_today(self.env)
         monday = today - timedelta(days=today.weekday())
         return monday - timedelta(weeks=self._SGI_EXEC_WEEKS - 1)
 

@@ -16,6 +16,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .sgi_calendar import sgi_today
+
 from .sgi_guard import sgi_require_system
 
 _HEALTH_KINDS = [
@@ -77,7 +79,7 @@ class SgiHealthRecord(models.Model):
     def _sgi_expiry_notices(self):
         """Cron diario: RH recibe una actividad por estudio o examen por
         vencer (30 días) y otra cuando ya venció."""
-        today = fields.Date.context_today(self)
+        today = sgi_today(self.env)
         records = self.sudo().search([('next_date', '!=', False),
                                       ('next_date', '<=', today + relativedelta(days=30))])
         records._compute_state()

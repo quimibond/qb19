@@ -13,17 +13,32 @@ tableta compartida (un usuario por tableta, responsable de la plantilla). Al
 terminar, «Terminar checklist» pide quién lo llenó (empleado) y su PIN de
 empleado (el mismo del quiosco de asistencia y del piso de producción): la
 hoja guarda el empleado y la hora, y así se mide por persona.
+
+57.15.0 (G-007, G-022, decisión 14 de la tanda 2): las hojas están listas a
+las 05:30 de México (el cron se mueve a esa hora) con ``schedule_date`` a las
+08:00 hora local (antes 08:00 UTC = 02:00 en México). Los festivos del
+calendario del SGI no generan hoja; la semanal se genera el primer día hábil
+de la semana en que corra el cron (si el lunes es festivo o el cron no corrió,
+el martes), una sola vez por semana. Una plantilla sin equipos avisa al Jefe
+MAST en vez de no generar nada en silencio.
 """
-from datetime import datetime, time
+import logging
+from datetime import timedelta
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+from .sgi_calendar import sgi_is_business_day, sgi_local_datetime_utc, sgi_today
+
+_logger = logging.getLogger(__name__)
 
 _ANSWERS = [('ok', "Bien"), ('falla', "Falla"), ('na', "No aplica")]
 
 
 class SgiChecklistTemplate(models.Model):
     _name = 'sgi.checklist.template'
+    # 57.15.0 (G-022): lleva actividades para el aviso «Checklist sin equipos».
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = "Plantilla de checklist de mantenimiento (planta o unidades)"
     _order = 'code, name'
 
@@ -47,14 +62,19 @@ class SgiChecklistTemplate(models.Model):
 
     def _sgi_due_today(self, day):
         self.ensure_one()
-        if day.weekday() >= 5:
+        if not sgi_is_business_day(self.env, day, self.company_id):
             return False
-        return self.frequency == 'diaria' or day.weekday() == 0
+        if self.frequency == 'diaria':
+            return True
+        # Semanal: el primer día hábil de la semana en que corra el cron; una
+        # vez por semana (idempotente aunque el lunes haya fallado).
+        monday = day - timedelta(days=day.weekday())
+        return not (self.last_run and monday <= self.last_run <= day)
 
     def _sgi_generate(self, day=None):
         """Una solicitud preventiva por equipo, con la hoja de puntos. No
         duplica: si ya existe la del día para ese equipo, no crea otra."""
-        day = day or fields.Date.context_today(self)
+        day = day or sgi_today(self.env)
         Request = self.env['maintenance.request'].sudo()
         created = Request
         for template in self:
@@ -71,7 +91,7 @@ class SgiChecklistTemplate(models.Model):
                         "%s " % template.code if template.code else '', template.name, equipment.name, day),
                     'equipment_id': equipment.id,
                     'maintenance_type': 'preventive',
-                    'schedule_date': datetime.combine(day, time(8, 0)),
+                    'schedule_date': sgi_local_datetime_utc(self.env, day, 8, 0, template.company_id),
                     'user_id': (template.user_id or equipment.technician_user_id).id,
                     'sgi_checklist_template_id': template.id,
                     'sgi_checklist_date': day,
@@ -99,9 +119,37 @@ class SgiChecklistTemplate(models.Model):
     @api.model
     def cron_generate(self):
         """Cron diario: las plantillas que tocan hoy."""
-        day = fields.Date.context_today(self)
+        day = sgi_today(self.env)
         templates = self.search([]).filtered(lambda t: t._sgi_due_today(day))
+        self._sgi_warn_without_equipment(templates)
         return len(templates._sgi_generate(day))
+
+    @api.model
+    def _sgi_warn_without_equipment(self, templates):
+        """G-022: una plantilla activa sin equipos no genera hojas; el Jefe MAST
+        recibe un aviso por plantilla (uno por episodio) y el aviso se cierra
+        solo cuando la plantilla ya tiene equipos."""
+        Cron = self.env['sgi.cron']._sgi_new_run()
+        manager_id = Cron._sgi_manager_user_id()
+        empty = templates.filtered(lambda t: not t.equipment_ids)
+        for template in empty:
+            _logger.warning("SGI checklist: la plantilla %s no tiene equipos; no genera hojas.",
+                            template.display_name)
+            Cron._sgi_step(
+                "aviso de plantilla sin equipos %s" % template.id,
+                lambda template=template: Cron._sgi_schedule(
+                    template, "Checklist sin equipos: %s" % template.name,
+                    "La plantilla «%s» no tiene equipos o unidades: el cron no genera "
+                    "hojas. Agrega los equipos en la plantilla." % template.name,
+                    manager_id, date_deadline=sgi_today(self.env),
+                    key='checklist_sin_equipos'))
+        # Solo las plantillas que tocaban hoy se revisan: las demás conservan
+        # su aviso hasta su día.
+        stale = self.env['mail.activity'].sudo().with_context(active_test=False).search([
+            ('res_model', '=', self._name), ('res_id', 'in', (templates - empty).ids),
+            ('sgi_cron_key', '=', 'checklist_sin_equipos'), ('sgi_episode_closed', '=', False)])
+        Cron._sgi_close_activities(stale, "la plantilla ya tiene equipos")
+        return empty
 
 
 class SgiChecklistTemplateItem(models.Model):

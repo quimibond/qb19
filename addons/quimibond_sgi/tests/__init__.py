@@ -109,3 +109,4 @@ from . import test_legado
 from . import test_studio_cleanup
 from . import test_weekly_overdue
 from . import test_indicadores_2
+from . import test_zona_horaria
