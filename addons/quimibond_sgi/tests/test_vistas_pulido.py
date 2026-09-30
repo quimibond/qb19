@@ -321,3 +321,44 @@ class TestPisoYVencimientos(TransactionCase):
             context = action.context or ''
             for key in [k for k in context.replace('"', "'").split("'") if k.startswith('search_default_')]:
                 self.assertIn(key[len('search_default_'):], names, "%s: %s" % (xmlid, key))
+
+
+@tagged('post_install', '-at_install')
+class TestDocumentosEImpresos(TransactionCase):
+    """57.44.0 (bloque 3): alta de documento, pie de formato en los reportes
+    que lo perdieron, NC imprimible solo con folio y datos vacíos."""
+
+    def _html(self, report, records):
+        html, _kind = self.env['ir.actions.report']._render_qweb_html(report, records.ids)
+        return html.decode() if isinstance(html, bytes) else html
+
+    def test_01_alta_de_documento_con_titulo(self):
+        arch = _arch(self.env, 'documents.document', 'form', 'quimibond_sgi.sgi_document_view_form')
+        title = arch.xpath("//div[contains(@class, 'oe_title')]/h1/field")
+        self.assertEqual(title[0].get('name'), 'name')
+        self.assertIn('sin clave', title[0].get('placeholder'))
+
+    def test_02_pie_por_modelo_y_por_referencia(self):
+        Map = self.env['sgi.format.map']
+        incident = self.env['sgi.incident'].create({'name': 'Golpe VP'})
+        self.assertFalse(Map.sgi_footer_label(incident), "Sin mapeo no hay pie.")
+        Map.create({'model_id': self.env['ir.model']._get('sgi.incident').id,
+                    'sgi_code': 'F-P-S02-01', 'note': 'Prueba'})
+        self.assertTrue(Map.sgi_footer_label(incident).startswith('F-P-S02-01'))
+        self.assertIn('F-P-S02-01', self._html('quimibond_sgi.report_incident_document', incident))
+        self.assertTrue(Map.sgi_footer_label(incident, 'format_ref_audit_plan').startswith('F-P-G03-03'))
+        audit = self.env['sgi.audit'].create({'audit_type': 'interna'})
+        self.assertIn('F-P-G03-03', self._html('quimibond_sgi.report_audit_plan_document', audit))
+
+    def test_03_nc_solo_con_folio_y_sin_vacios(self):
+        floor = self.env['quality.alert'].create({'title': 'Alerta de piso VP'})
+        self.assertFalse(floor.sgi_folio)
+        self.assertIn('no es una No Conformidad', self._html('quimibond_sgi.report_nc_document', floor))
+        nc = self.env['quality.alert'].create({
+            'title': 'NC VP', 'team_id': self.env.ref('quimibond_sgi.sgi_quality_team_internal').id,
+            'stage_id': self.env.ref('quimibond_sgi.sgi_nc_int_stage_open').id})
+        self.assertTrue(nc.sgi_folio)
+        html = self._html('quimibond_sgi.report_nc_document', nc)
+        self.assertIn('Sin análisis de 5 porqués', html)
+        self.assertIn('Sin acciones registradas', html)
+        self.assertNotIn('>False<', html)

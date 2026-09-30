@@ -13,6 +13,37 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.44.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 3: documentos e impresos):**
+- **Alta de documento (V-A08):** lo primero y en grande es el título
+  (`name`, con la guía «Título del documento, sin clave»); la clave va
+  después. El título limpio calculado (sin clave ni extensión) se muestra en
+  gris solo si difiere de lo escrito. Sale el placeholder «Nombre del
+  archivo». Acuses del documento de 40 en 40 (V-B11).
+- **Pie de formato controlado (V-M08)** en los reportes que lo perdieron en
+  57.20.0: plan e informe de auditoría, investigación de incidente, AMEF,
+  NEWS, retención, matriz de riesgos, matriz de competencias, matriz de
+  cumplimiento, lista maestra (general y por proceso) y matriz legal. Usa el
+  pie en vivo de `sgi.format.map`: nuevo `sgi_footer_label(registro, ref)`
+  que sirve también para modelos sin el mixin de formato; sin mapeo no pinta
+  nada. **Datos (noupdate, solo altas):** mapeos por referencia
+  `format_ref_audit_plan` (F-P-G03-03), `format_ref_audit_report`
+  (F-P-G03-07), `format_ref_master_list` (F-P-G01-03) y `format_ref_news`
+  (F-P-G01-16), claves tomadas del propio SGI; MAST liga su documento en
+  «Formatos en documentos de Odoo». Los demás imprimen el pie en cuanto MAST
+  mapee su modelo. Quedan sin pie el 8D (su modelo es la NC y mostraría la
+  clave del reporte de NC) y las hojas de firmas (van dentro de otro PDF).
+- **Reporte de NC (V-M09):** en una alerta sin folio dice que no es una NC
+  del SGI (y cómo escalarla) en lugar de salir vacío; en la NC, «Sin
+  desviación registrada», «Sin análisis de 5 porqués registrado», «Sin
+  acciones registradas» y «Eficacia aún sin verificar» en lugar de huecos.
+- **Impresos sin «False» (V-B01):** `t-esc` → `t-out` en 7 reportes; la
+  retención usa `t-field` para tipo y disposición; los nombres de archivo de
+  los PDF y la cantidad de EPP no imprimen «False» cuando falta el dato.
+
+**Pruebas:** `test_vistas_pulido.TestDocumentosEImpresos`.
+
 ## 19.0.57.43.0 — 2026-09-30
 
 **Cambiado (pulido de vistas, bloque 2: piso y vencimientos):**

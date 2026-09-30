@@ -43,14 +43,20 @@
                         <!-- D-002 / C-009 (56.32.0): el título limpio manda; la
                              clave vigente va debajo y la del Dropbox solo como
                              dato («Clave anterior»). El archivo no se renombra. -->
-                        <h1><field name="sgi_title" readonly="1" invisible="not sgi_title"/></h1>
+                        <!-- V-A08 (57.44.0): en el alta, lo primero que se escribe es el
+                             título, en grande y con una guía clara; la clave va después.
+                             El título limpio (sin clave ni extensión) se muestra en gris
+                             solo cuando difiere de lo escrito. -->
+                        <h1><field name="name" placeholder="Título del documento, sin clave (p. ej. Recepción de materia prima)"/></h1>
+                        <div class="text-muted" invisible="not sgi_title or sgi_title == name">
+                            Título: <field name="sgi_title" readonly="1" class="oe_inline"/>
+                        </div>
                         <h3 class="text-muted">
                             <field name="sgi_code" placeholder="Clave (PR-C1 · F-C1-01 · IT-C1-01 · DA-C1-01)"/>
                         </h3>
                         <div class="text-muted" invisible="not sgi_previous_code">
                             Clave anterior: <field name="sgi_previous_code" readonly="1" class="oe_inline"/>
                         </div>
-                        <field name="name" placeholder="Nombre del archivo"/>
                         <div class="text-muted" invisible="not sgi_is_controlled">
                             Clave nueva: PR-{proceso} para procedimientos,
                             F-{proceso}-nn, IT-{proceso}-nn y DA-{proceso}-nn. Solo
@@ -180,8 +186,9 @@
                                             confirm="Se creará una solicitud de firma electrónica por cada empleado con acuse pendiente. ¿Continuar?"/>
                                 </group>
                             </group>
+                            <!-- V-B11 (57.44.0): un acuse por empleado; de 40 en 40. -->
                             <field name="sgi_ack_ids">
-                                <list decoration-warning="state == 'pendiente'"
+                                <list limit="40" decoration-warning="state == 'pendiente'"
                                       decoration-success="state == 'leido'">
                                     <field name="employee_id"/>
                                     <field name="state" widget="badge"

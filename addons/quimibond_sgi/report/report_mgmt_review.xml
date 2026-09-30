@@ -29,7 +29,7 @@
                         </table>
 
                         <h4>Asistentes</h4>
-                        <p t-esc="', '.join(doc.attendee_ids.mapped('name'))"/>
+                        <p t-out="', '.join(doc.attendee_ids.mapped('name'))"/>
 
                         <h4>Entradas (9.3.2)</h4>
                         <p><strong>1. Acuerdos previos:</strong><br/>

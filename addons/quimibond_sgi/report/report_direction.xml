@@ -50,6 +50,10 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>
@@ -63,7 +67,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_competence_matrix_document</field>
         <field name="report_file">quimibond_sgi.report_competence_matrix_document</field>
-        <field name="print_report_name">'Matriz de competencias - %s' % (object.name)</field>
+        <field name="print_report_name">'Matriz de competencias - %s' % (object.name or '')</field>
         <field name="binding_model_id" ref="hr.model_hr_department"/>
         <field name="binding_type">report</field>
     </record>
@@ -95,6 +99,10 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>

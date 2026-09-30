@@ -23,7 +23,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_doc_change_document</field>
         <field name="report_file">quimibond_sgi.report_doc_change_document</field>
-        <field name="print_report_name">'Cambio documental - %s' % (object.name)</field>
+        <field name="print_report_name">'Cambio documental - %s' % (object.name or '')</field>
         <field name="paperformat_id" ref="paperformat_sgi_doc_change"/>
     </record>
 

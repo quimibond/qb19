@@ -78,6 +78,10 @@
                                 </tr>
                             </tbody>
                         </table>
+                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
+                        <t t-call="quimibond_sgi.sgi_format_footer">
+                            <t t-set="sgi_rec" t-value="doc"/>
+                        </t>
                     </div>
                 </t>
             </t>

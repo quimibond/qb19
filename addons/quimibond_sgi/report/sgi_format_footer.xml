@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Pie "formato controlado" para PDFs. Recibe sgi_rec (el registro); la
-         clave y revisión salen del mapeo sgi.format.map + Documentos, en vivo. -->
+    <!-- Pie "formato controlado" para PDFs. Recibe sgi_rec (el registro) y,
+         opcional, sgi_fmt_ref (el mapeo por referencia, format_ref_*, cuando el
+         modelo imprime más de un formato); la clave y revisión salen del mapeo
+         sgi.format.map + Documentos, en vivo. Sin mapeo no pinta nada.
+         57.44.0 (V-M08): sirve también para modelos sin el mixin de formato. -->
     <template id="sgi_format_footer">
-        <t t-set="sgi_fmt" t-value="sgi_rec and sgi_rec.sudo().sgi_format_info()"/>
+        <t t-set="sgi_fmt" t-value="sgi_rec and sgi_rec.env['sgi.format.map'].sgi_footer_label(sgi_rec, sgi_fmt_ref or False)"/>
         <div t-if="sgi_fmt" class="text-muted mt-3"
              style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
             Formato controlado del SGI: <span class="fw-bold" t-out="sgi_fmt"/> · PNTQ

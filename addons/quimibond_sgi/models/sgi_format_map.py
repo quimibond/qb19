@@ -195,6 +195,24 @@ class SgiFormatMap(models.Model):
         return self._sgi_ref(name).sgi_live_label()
 
     @api.model
+    def sgi_footer_label(self, record, ref=False):
+        """V-M08 (57.44.0): clave y revisión del pie «formato controlado» de un
+        reporte (``report/sgi_format_footer.xml``). Con ``ref``, el mapeo por
+        referencia (``format_ref_*``); si no, el del modelo del registro: con el
+        mixin de formato respeta sus reglas por registro, y sin él busca el
+        mapeo del modelo (MAST lo da de alta en «Formatos en documentos de
+        Odoo»). Sin mapeo devuelve False y el pie no se pinta."""
+        if ref:
+            return self.sudo().sgi_ref_label(ref)
+        record = record[:1] if record else record
+        if not record:
+            return False
+        if 'sgi_format_banner' in record._fields:
+            return record.sudo().sgi_format_info()
+        fmap = self.sudo()._get_for_model(record._name)
+        return fmap.sgi_live_label() if fmap else False
+
+    @api.model
     def sgi_ref_document(self, name):
         return self._sgi_ref(name).sgi_live_document()
 
