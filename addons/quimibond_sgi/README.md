@@ -56,6 +56,21 @@ módulo: **cero Studio, cero automation rules de UI**.
    procedimientos" filtran por puesto.
 7. En dev/staging los **crons están desactivados**: pruébalos con
    Ajustes → Técnico → Acciones planificadas → "Ejecutar manualmente".
+8. **PIN obligatorio para firmar checklists** (D-08, desde 57.18.0; **apagado**
+   por default). Antes de encenderlo, RH captura el PIN de cada empleado que
+   llena checklists (Empleados → ficha → pestaña de ajustes de RH, el mismo PIN
+   del quiosco de asistencia) y se llena «Quién lo llena» en cada plantilla.
+   Para encenderlo: Ajustes → SGI → «PIN obligatorio para firmar checklists»
+   (o el parámetro `quimibond_sgi.checklist_pin_required` = `True` en
+   Ajustes → Técnico → Parámetros del sistema). Encendido, un empleado sin PIN
+   no puede firmar la hoja; apagado, firma y la hoja dice «(sin PIN
+   registrado)». Revisar antes cuántos faltan:
+   `hr.employee` con `pin` vacío en la empresa 1.
+9. **Festivos del calendario del SGI** (desde 57.15.0): la migración carga
+   los de la LFT, art. 74 (2026-2028) en el calendario del parámetro
+   `quimibond_sgi.business_calendar_id`. Los del contrato colectivo y los años
+   siguientes se agregan a mano como ausencias globales de ese calendario (o
+   con `env['sgi.config']._sgi_load_holidays([2029])` para la LFT).
 
 ## Fase 2 — Gestión y Medición (v19.0.2.0.0)
 

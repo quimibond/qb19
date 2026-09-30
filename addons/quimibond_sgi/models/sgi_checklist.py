@@ -250,6 +250,14 @@ class SgiChecklistFinish(models.TransientModel):
         for wiz in self:
             wiz.allowed_employee_ids = wiz.request_id.sgi_checklist_template_id.employee_ids
 
+    @api.model
+    def _sgi_pin_required(self):
+        """57.18.0 (I-005, D-08): ``quimibond_sgi.checklist_pin_required``.
+        Apagado por default: RH captura los PIN antes de encenderlo."""
+        value = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.checklist_pin_required', '') or ''
+        return value.strip().lower() in ('1', 'true', 'yes', 'si', 'sí')
+
     def action_confirm(self):
         self.ensure_one()
         req = self.request_id
@@ -264,6 +272,11 @@ class SgiChecklistFinish(models.TransientModel):
             raise UserError("%s no está en la lista de quién llena este checklist." % self.employee_id.name)
         # sudo: el PIN es un campo de RH; el usuario de la tableta no lo lee.
         real_pin = self.employee_id.sudo().pin
+        if not real_pin and self._sgi_pin_required():
+            raise UserError(
+                "%s no tiene PIN registrado y el PIN es obligatorio para firmar el "
+                "checklist. Pide a RH que lo capture en su ficha de empleado (el mismo "
+                "del quiosco de asistencia)." % self.employee_id.name)
         if real_pin and (self.pin or '') != real_pin:
             raise UserError("PIN incorrecto para %s." % self.employee_id.name)
         req.sudo().write({'sgi_checklist_employee_id': self.employee_id.id,

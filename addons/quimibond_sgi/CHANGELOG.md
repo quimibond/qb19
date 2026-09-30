@@ -13,6 +13,32 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.18.0 — 2026-09-30
+
+**Agregado (entrega 8, `e8-checklist-pin`: I-005, D-08):** parámetro
+`quimibond_sgi.checklist_pin_required` («PIN obligatorio para firmar
+checklists» en Ajustes → SGI). **Apagado por default**: se firma como hasta
+hoy y, si el empleado no tiene PIN, la hoja dice «(sin PIN registrado)».
+Encendido: un empleado sin PIN en su ficha no puede firmar la hoja
+(«Terminar checklist» lo detiene con el aviso para RH); con PIN, el PIN
+tiene que coincidir, como siempre.
+
+**Cómo encenderlo (cuando RH haya capturado los PIN):** Ajustes → SGI →
+«PIN obligatorio para firmar checklists», o el parámetro
+`quimibond_sgi.checklist_pin_required` = `True` en Ajustes → Técnico →
+Parámetros del sistema. Antes, llenar «Quién lo llena» en cada plantilla. El
+README (puesta en marcha, paso 8) lo documenta.
+
+**Pendiente de D-08 (no es código):** la cuenta de tableta por área la
+decide Jose y la crea Sistemas; el programador no crea usuarios.
+
+**Datos de producción (auditoría I-005):** 163 de 165 empleados sin PIN; por
+eso va apagado. **Migración:** ninguna.
+
+**Pruebas:** `test_checklist_pin` (3 casos, datos propios: apagado firma sin
+PIN, encendido no firma sin PIN y sí con el PIN correcto, ajuste en
+pantalla).
+
 ## 19.0.57.17.0 — 2026-09-30
 
 **Cambiado (entrega 8, `e8-rendimiento`: G-015, G-016, G-023):**

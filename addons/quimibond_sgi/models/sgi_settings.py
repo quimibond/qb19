@@ -110,6 +110,13 @@ class ResConfigSettings(models.TransientModel):
              "Encendido: además marca «No usar» cada equipo vencido y manda el "
              "correo crítico. La inspección de calidad rechaza un equipo vencido "
              "en cualquier caso.")
+    sgi_checklist_pin_required = fields.Boolean(
+        string="PIN obligatorio para firmar checklists",
+        config_parameter='quimibond_sgi.checklist_pin_required',
+        help="Apagado (default): quien no tiene PIN firma la hoja y queda «(sin PIN "
+             "registrado)». Encendido (D-08): sin PIN capturado en su ficha de "
+             "empleado no se firma. Encender solo cuando RH haya capturado los PIN "
+             "(el mismo del quiosco de asistencia).")
     sgi_mast_user_id = fields.Many2one(
         'res.users', string="Jefe MAST y SGI",
         help="Recibe los avisos automáticos del SGI que no tienen dueño "
