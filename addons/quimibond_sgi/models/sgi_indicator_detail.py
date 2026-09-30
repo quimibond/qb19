@@ -174,6 +174,10 @@ class SgiIndicatorDetail(models.Model):
             vals['state'] = 'pendiente'
             return vals
         detail = self._sgi_compute_detail(date_from, date_to) or {}
+        # 57.14.0: el modo puede explicar su dato (p. ej. cuántos registros
+        # quedaron fuera) con ``note`` en el detalle.
+        if detail.get('note'):
+            vals['note'] = "\n".join(n for n in (note, detail['note']) if n)
         ids = list(detail.get('ids') or [])
         vals.update({
             'numerator': detail.get('numerator'),

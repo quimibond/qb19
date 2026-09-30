@@ -22,7 +22,7 @@ los dos auto_install.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.13.1',
+    'version': '19.0.57.14.0',
     'license': 'LGPL-3',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -103,6 +103,7 @@ los dos auto_install.
         'data/sgi_mp_change_category_data.xml',
         'data/sgi_epp_data.xml',
         'data/sgi_supplier_nc_data.xml',
+        'data/sgi_offboarding_plan_data.xml',
         # views
         'views/sgi_area_views.xml',
         'report/report_compliance_matrix.xml',
@@ -195,6 +196,8 @@ los dos auto_install.
         'views/sgi_current_documents_views.xml',
         # 57.0.0 (entrega 6): «Del Dropbox a Odoo» (rutinas, buscador, avance).
         'views/sgi_dropbox_views.xml',
+        # 57.14.0 (RH-01): «Plantilla autorizada» en las vistas nativas del puesto.
+        'views/sgi_hr_job_headcount_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         'views/sgi_menus.xml',

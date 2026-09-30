@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.14.0 (RH-01): «Plantilla autorizada» en la ficha y la lista del
+         puesto. Hereda las vistas nativas de hr (no una del SGI). -->
+    <record id="sgi_hr_job_view_form_headcount" model="ir.ui.view">
+        <field name="name">sgi.hr.job.form.headcount</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="before">
+                <group name="sgi_headcount">
+                    <field name="sgi_authorized_headcount"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_hr_job_view_list_headcount" model="ir.ui.view">
+        <field name="name">sgi.hr.job.list.headcount</field>
+        <field name="model">hr.job</field>
+        <field name="inherit_id" ref="hr.view_hr_job_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="sgi_authorized_headcount" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
