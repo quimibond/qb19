@@ -68,16 +68,17 @@
                         </page>
                         <page string="Acciones">
                             <field name="action_line_ids" readonly="sgi_is_locked" context="{'default_incident_id': id}">
-                                <list editable="bottom"
-                                      decoration-danger="state == 'vencida'"
-                                      decoration-success="state == 'terminada'">
+                                <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                                <list editable="bottom" decoration-danger="state == 'vencida'"
+                                      decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
-                                    <field name="responsible_id"/>
-                                    <field name="date_commit"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>
                                     <field name="progress"/>
-                                    <field name="state"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                           decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                 </list>
                             </field>
                         </page>

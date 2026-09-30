@@ -130,15 +130,17 @@
                 </page>
                 <page string="Correcciones y acciones" name="sgi_actions" invisible="not sgi_folio and id">
                     <field name="sgi_action_line_ids">
+                        <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
                         <list editable="bottom" decoration-danger="state == 'vencida'"
-                              decoration-success="state == 'terminada'">
+                              decoration-muted="state == 'terminada'">
                             <field name="action_type"/>
                             <field name="name"/>
-                            <field name="responsible_id"/>
-                            <field name="date_commit"/>
+                            <field name="responsible_id" widget="many2one_avatar_user"/>
+                            <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                             <field name="date_done"/>
                             <field name="progress"/>
-                            <field name="state"/>
+                            <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                   decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                         </list>
                     </field>
                 </page>

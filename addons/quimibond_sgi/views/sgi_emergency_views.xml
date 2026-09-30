@@ -139,11 +139,11 @@
                             invisible="state != 'realizado'"/>
                     <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
+                        <h1><field name="plan_id" readonly="sgi_is_locked" placeholder="Plan de emergencia"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group string="Programación">
-                            <field name="plan_id" readonly="sgi_is_locked"/>
                             <field name="plan_type" readonly="sgi_is_locked"/>
                             <field name="date_planned" readonly="sgi_is_locked"/>
                             <field name="date_done" readonly="sgi_is_locked"/>
@@ -164,16 +164,17 @@
                     <notebook>
                         <page string="Acciones">
                             <field name="action_line_ids" readonly="sgi_is_locked" context="{'default_drill_id': id}">
-                                <list editable="bottom"
-                                      decoration-danger="state == 'vencida'"
-                                      decoration-success="state == 'terminada'">
+                                <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                                <list editable="bottom" decoration-danger="state == 'vencida'"
+                                      decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
-                                    <field name="responsible_id"/>
-                                    <field name="date_commit"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>
                                     <field name="progress"/>
-                                    <field name="state"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                           decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                 </list>
                             </field>
                         </page>

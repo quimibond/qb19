@@ -13,6 +13,34 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.42.0 — 2026-09-30
+
+**Cambiado (pulido de vistas, bloque 1: V-M04, V-M06, V-M07, V-M15):**
+- **La misma lista de acciones en las 7 fichas** (NC, incidente, riesgo,
+  AMEF, simulacro, objetivo y medición): tipo, qué, responsable con avatar,
+  compromiso con días restantes (se oculta al terminar), terminada, avance,
+  estado como pastilla; renglón rojo si vencida y gris si terminada. En
+  objetivo y medición el tipo sigue oculto.
+- **Botones con el mismo nombre:** «Regresar a borrador» (antes también «A
+  borrador» y «Volver a borrador»), «Marcar obsoleta» en la política (antes
+  «Obsoletar»), «Terminar» en la ficha de acción (antes «Marcar terminada»).
+  En cada estado el siguiente paso es el único primario y va primero:
+  «Planificar» y «Elaborar informe» en la auditoría, «Cerrar» en la revisión
+  por la dirección, el programa de auditorías y el riesgo controlado;
+  «Registrar evaluación» del riesgo pasa después de los pasos del flujo.
+- **Nombre como título** en las 5 fichas que solo mostraban el folio: PPAP
+  (producto), estudio MSA (equipo), simulacro (plan de emergencia),
+  auditoría («Auditoría interna · procesos o cliente · fecha») y revisión por
+  la dirección («Revisión por la dirección · periodo»); el folio va debajo.
+  Campos calculados sin guardar `sgi_heading` en auditoría y revisión. El
+  programa de auditorías dice «Programa de auditorías 2026»; acción y
+  actividad llevan su título en `<h1>`.
+- **Actividad:** el cumplimiento de la medición deja de ser un `statusbar` en
+  el encabezado y va como pastilla junto al título, igual que la salud del
+  proceso.
+
+**Pruebas:** `test_vistas_pulido.TestFichasCoherentes`.
+
 ## 19.0.57.41.0 — 2026-09-30
 
 **Cambiado (pulido de vistas, bloque 1: V-A03):** los seis registros que se

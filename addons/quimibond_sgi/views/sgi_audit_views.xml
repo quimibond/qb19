@@ -7,24 +7,24 @@
         <field name="arch" type="xml">
             <form string="Programa de auditorías">
                 <header>
-                    <button name="action_suggest_lines" type="object" string="Programa sugerido"
-                            icon="fa-magic" invisible="state != 'borrador'"
-                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
-                            help="Una línea por proceso vigente o en piloto, repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
                     <button name="action_approve" type="object" string="Aprobar"
                             class="btn-primary" invisible="state != 'borrador'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_close" confirm="Se cerrará el programa de auditorías y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
-                            invisible="state != 'aprobado'"
+                            class="btn-primary" invisible="state != 'aprobado'"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_draft" confirm="El programa de auditorías regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Volver a borrador"
+                    <button name="action_suggest_lines" type="object" string="Programa sugerido"
+                            icon="fa-magic" invisible="state != 'borrador'"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
+                            help="Una línea por proceso vigente o en piloto, repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
+                    <button name="action_draft" confirm="El programa de auditorías regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <h1><field name="year"/></h1>
+                        <h1>Programa de auditorías <field name="year" class="oe_inline"/></h1>
                     </div>
                     <field name="line_ids">
                         <list editable="bottom">
@@ -101,10 +101,16 @@
         <field name="arch" type="xml">
             <form string="Auditoría">
                 <header>
+                    <!-- V-M06 (57.42.0): el siguiente paso de cada estado es el único
+                         primario y va primero. -->
                     <button name="action_plan" type="object" string="Planificar"
-                            invisible="state != 'borrador'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                            class="btn-primary" invisible="state != 'borrador'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_start" type="object" string="Iniciar"
                             class="btn-primary" invisible="state != 'planificada'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_report" type="object" string="Elaborar informe"
+                            class="btn-primary" invisible="state != 'en_ejecucion'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_close" confirm="Se cerrará la auditoría y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state != 'informe'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_generate_checklist" type="object"
                             string="Regenerar checklist" icon="fa-refresh"
                             invisible="state not in ('planificada', 'en_ejecucion')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
@@ -112,15 +118,11 @@
                     <button name="action_open_report_document" type="object"
                             string="Ver informe" icon="fa-file-pdf-o"
                             invisible="not report_document_id"/>
-                    <button name="action_report" type="object" string="Elaborar informe"
-                            invisible="state != 'en_ejecucion'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_close" confirm="Se cerrará la auditoría y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
-                            class="btn-primary" invisible="state != 'informe'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_evaluate_auditors" type="object"
                             string="Evaluar al auditor" icon="fa-star-o"
                             invisible="state not in ('informe', 'cerrada')"
                             help="Abre la encuesta de evaluación del comportamiento del auditor (sustituye el formato anterior; ver Del Dropbox a Odoo); la contesta el auditado."/>
-                    <button name="action_draft" confirm="La auditoría regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Volver a borrador"
+                    <button name="action_draft" confirm="La auditoría regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state in ('borrador','cerrada')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
@@ -142,7 +144,8 @@
                         </button>
                     </div>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
+                        <h1><field name="sgi_heading" readonly="1"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group string="Alcance">

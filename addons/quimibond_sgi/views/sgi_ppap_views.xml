@@ -34,12 +34,12 @@
                             invisible="state != 'aprobado'"/>
                     <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
+                        <h1><field name="product_tmpl_id" readonly="sgi_is_locked" placeholder="Producto"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group>
                             <field name="partner_id" readonly="sgi_is_locked"/>
-                            <field name="product_tmpl_id" readonly="sgi_is_locked"/>
                             <field name="level" readonly="sgi_is_locked"/>
                         </group>
                         <group>

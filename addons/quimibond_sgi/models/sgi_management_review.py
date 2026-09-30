@@ -76,6 +76,18 @@ class SgiManagementReview(models.Model):
                                     string="Acuerdos")
 
 
+    # V-M07 (57.42.0): título legible de la ficha (el folio va debajo).
+    sgi_heading = fields.Char(string="Título", compute='_compute_sgi_heading')
+
+    @api.depends('period_from', 'period_to')
+    def _compute_sgi_heading(self):
+        for review in self:
+            if review.period_from and review.period_to:
+                review.sgi_heading = "Revisión por la dirección · %s a %s" % (
+                    review.period_from.strftime('%d/%m/%Y'), review.period_to.strftime('%d/%m/%Y'))
+            else:
+                review.sgi_heading = "Revisión por la dirección"
+
     @api.depends('folio', 'date')
     def _compute_name(self):
         for review in self:

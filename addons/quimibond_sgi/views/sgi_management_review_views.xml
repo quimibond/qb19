@@ -6,6 +6,12 @@
         <field name="arch" type="xml">
             <form string="Revisión por la Dirección">
                 <header>
+                    <!-- V-M06 (57.42.0): el siguiente paso de cada estado es el único
+                         primario y va primero. -->
+                    <button name="action_mark_done" type="object" string="Marcar realizada"
+                            class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_close" confirm="Se cerrará la revisión por la dirección y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state != 'realizada'" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_load_inputs" type="object" string="Cargar entradas"
                             invisible="state != 'borrador'"/>
                     <button name="action_validate_measures" type="object"
@@ -13,12 +19,8 @@
                             invisible="state == 'cerrada'"
                             groups="quimibond_sgi.group_sgi_manager"
                             confirm="Valida todas las mediciones capturadas del periodo de esta revisión y abre los rojos que aún no tienen causa ni acción. ¿Continuar?"/>
-                    <button name="action_mark_done" type="object" string="Marcar realizada"
-                            class="btn-primary" invisible="state != 'borrador'"/>
                     <!-- D-009: cerrar y reabrir la revisión es del Jefe MAST. -->
-                    <button name="action_close" confirm="Se cerrará la revisión por la dirección y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
-                            invisible="state != 'realizada'" groups="quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_draft" confirm="La revisión por la dirección regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Volver a borrador"
+                    <button name="action_draft" confirm="La revisión por la dirección regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
@@ -35,7 +37,8 @@
                             invisible="state != 'cerrada'"/>
                     <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
+                        <h1><field name="sgi_heading" readonly="1"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <div class="text-muted mb-2">
                         Flujo: define el periodo → <b>Cargar entradas</b> llena

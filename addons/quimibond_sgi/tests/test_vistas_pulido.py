@@ -201,3 +201,45 @@ class TestCerradoYDecisiones(TransactionCase):
         fmea.control_plan_id = cplan
         cplan.with_user(self.owner_user).action_set_obsoleto()
         self.assertEqual(cplan.state, 'obsoleto')
+
+
+@tagged('post_install', '-at_install')
+class TestFichasCoherentes(TransactionCase):
+    """57.42.0 (V-M04, V-M06, V-M07, V-M15): misma lista de acciones, botones
+    con el mismo nombre y el nombre como título."""
+
+    FICHAS = ('sgi.incident', 'sgi.risk', 'sgi.fmea', 'sgi.emergency.drill', 'sgi.objective',
+              'sgi.indicator.measure', 'quality.alert', 'sgi.audit', 'sgi.management.review',
+              'sgi.msa.study', 'sgi.ppap', 'sgi.action.line', 'sgi.process.activity',
+              'sgi.policy', 'sgi.audit.program')
+
+    def test_01_fichas_cargan(self):
+        for model in self.FICHAS:
+            arch = _arch(self.env, model, 'form')
+            self.assertTrue(arch.xpath('//sheet'), model)
+
+    def test_02_botones_con_el_mismo_nombre(self):
+        viejos = {'A borrador', 'Volver a borrador', 'Obsoletar', 'Marcar terminada'}
+        for model in self.FICHAS:
+            arch = _arch(self.env, model, 'form')
+            labels = {b.get('string') for b in arch.xpath('//header/button')}
+            self.assertFalse(labels & viejos, "%s: %s" % (model, labels & viejos))
+
+    def test_03_titulo_legible(self):
+        process = self.env['sgi.process'].create({'code': 'XVPT', 'name': 'Compras VP'})
+        audit = self.env['sgi.audit'].create({
+            'audit_type': 'interna', 'process_ids': [(6, 0, process.ids)]})
+        self.assertIn('Compras VP', audit.sgi_heading)
+        self.assertNotIn(audit.folio, audit.sgi_heading)
+        arch = _arch(self.env, 'sgi.audit', 'form')
+        self.assertTrue(arch.xpath("//div[contains(@class, 'oe_title')]/h1/field[@name='sgi_heading']"))
+        for model, field in (('sgi.ppap', 'product_tmpl_id'), ('sgi.msa.study', 'equipment_id'),
+                             ('sgi.emergency.drill', 'plan_id'),
+                             ('sgi.management.review', 'sgi_heading')):
+            arch = _arch(self.env, model, 'form')
+            self.assertTrue(arch.xpath("//div[contains(@class, 'oe_title')]/h1/field[@name='%s']" % field), model)
+
+    def test_04_actividad_sin_statusbar_de_medicion(self):
+        arch = _arch(self.env, 'sgi.process.activity', 'form')
+        self.assertFalse(arch.xpath("//header/field[@name='measure_state']"))
+        self.assertTrue(arch.xpath("//sheet//field[@name='measure_state'][@widget='badge']"))
