@@ -18,12 +18,12 @@
     </record>
 
     <record id="action_report_doc_change" model="ir.actions.report">
-        <field name="name">Cambio documental (F-P-G01-06)</field>
+        <field name="name">Cambio documental</field>
         <field name="model">approval.request</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_doc_change_document</field>
         <field name="report_file">quimibond_sgi.report_doc_change_document</field>
-        <field name="print_report_name">'F-P-G01-06 - %s' % (object.name)</field>
+        <field name="print_report_name">'Cambio documental - %s' % (object.name)</field>
         <field name="paperformat_id" ref="paperformat_sgi_doc_change"/>
     </record>
 

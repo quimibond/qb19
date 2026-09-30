@@ -43,7 +43,7 @@
                     </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
-                        <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal F-P-A12-01)"/></h1>
+                        <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal de producción)"/></h1>
                     </div>
                     <group>
                         <group string="La entrega">
@@ -84,7 +84,7 @@
                 <filter name="documentales" string="Documentales (sin modelo)"
                         domain="[('odoo_model_id', '=', False)]"/>
                 <separator/>
-                <filter name="manual" string="Capturados a mano (anteriores)"
+                <filter name="manual" string="Capturados a mano"
                         domain="[('deliverable_id', '=', False)]"/>
                 <filter name="inactive" string="Apagados o reemplazados"
                         domain="[('active', '=', False)]"/>
@@ -202,7 +202,7 @@
                             class="btn-primary" invisible="state == 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager"
                             confirm="Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?"/>
-                    <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
+                    <button name="action_sgi_set_draft" confirm="El proceso deja de estar vigente y sus actividades salen de Mi procedimiento hasta que se vuelva a publicar. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_sgi_request_change" type="object"
                             string="Proponer cambio" icon="fa-lightbulb-o"/>
@@ -348,7 +348,7 @@
                                     <field name="channel_manual_pct" widget="progressbar"/>
                                 </group>
                             </group>
-                            <group string="Texto de la versión anterior"
+                            <group string="Texto de la versión anterior" groups="quimibond_sgi.group_sgi_manager"
                                    invisible="not inputs and not outputs and not start_trigger and not end_trigger">
                                 <field name="start_trigger" readonly="1" invisible="not start_trigger"/>
                                 <field name="end_trigger" readonly="1" invisible="not end_trigger"/>

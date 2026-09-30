@@ -30,6 +30,7 @@
                       groups="quimibond_sgi.group_sgi_user">
                     <group>
                         <group string="Aprobación (8.4.1)">
+                            <field name="sgi_supplier_critical"/>
                             <field name="sgi_supplier_status" widget="badge"
                                    decoration-success="sgi_supplier_status == 'aprobado'"
                                    decoration-danger="sgi_supplier_status == 'bloqueado'"

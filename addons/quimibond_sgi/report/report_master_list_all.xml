@@ -36,12 +36,12 @@
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin documentos controlados</p>
             <p>La lista maestra sale en vivo de Documentos: cada documento controlado con su clave, revisión,
-            área, responsable y estado. Sustituye el Excel F-P-G01-03. Imprímela con Acción → Lista maestra.</p>
+            área, responsable y estado. Sustituye la lista maestra en Excel. Imprímala con Acción → Lista maestra.</p>
         </field>
     </record>
 
     <record id="action_report_master_list_all" model="ir.actions.report">
-        <field name="name">Lista maestra de documentos (F-P-G01-03)</field>
+        <field name="name">Lista maestra de documentos</field>
         <field name="model">documents.document</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_master_list_all_document</field>
@@ -77,9 +77,6 @@
                             </tr>
                         </tbody>
                     </table>
-                    <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
-                        Formato controlado del SGI: F-P-G01-03 · PNTQ
-                    </div>
                 </div>
             </t>
         </t>

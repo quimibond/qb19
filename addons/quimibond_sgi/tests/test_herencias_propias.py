@@ -1,0 +1,109 @@
+# -*- coding: utf-8 -*-
+"""57.22.0+ (entrega 5, `e5-herencias-propias`, A-008): el SGI no hereda sus
+propias vistas. Las herencias integradas a su padre no existen tras la
+instalación, y el borrado del pre-migrate (``migrations/herencias_propias.py``)
+es idempotente y re-apunta hijas ajenas."""
+import importlib.util
+import os
+
+from odoo.tests import TransactionCase, tagged
+
+_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                     'migrations', 'herencias_propias.py')
+_spec = importlib.util.spec_from_file_location('quimibond_sgi_herencias_test', _path)
+herencias = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(herencias)
+
+# Una línea por versión que integra herencias (se agregan en cada commit).
+INTEGRADAS = (
+    'report_nc_document_sgi', 'report_coa_document_sgi', 'report_mgmt_review_document_sgi',
+    # 57.23.0
+    'sgi_indicator_view_form_formula',
+    'sgi_measure_view_form_formula',
+    # 57.24.0
+    'sgi_indicator_view_form_trajectory',
+    'sgi_measure_view_form_trajectory',
+    # 57.25.0
+    'sgi_measure_view_form_plan',
+    'sgi_measure_view_list_plan',
+    'sgi_indicator_view_form_window',
+    'sgi_management_review_view_form_validate',
+    # 57.26.0
+    'sgi_indicator_view_form_level',
+    'sgi_format_banner_mgmt_review',
+    # 57.27.0
+    'sgi_fmea_view_form_links',
+    'sgi_control_plan_view_form_links',
+    'sgi_ppap_view_form_links',
+    'sgi_res_partner_view_form_links',
+    'sgi_settings_view_form_links',
+    # 57.28.0
+    'sgi_quality_alert_view_form_supplier',
+    'sgi_audit_view_form_pr6',
+    'sgi_audit_program_view_form_pr6',
+    'sgi_stock_picking_view_form_sign',
+    'sgi_product_template_view_form_sign',
+    'sgi_deliverable_view_form_pr6',
+    # 57.29.0
+    'sgi_quality_alert_view_form_links',
+    'sgi_stock_picking_view_form_links',
+    'sgi_product_template_view_form_links',
+    # 57.30.0
+    'sgi_hr_job_view_form_roles',
+    'sgi_hr_job_view_form_my_procedure',
+    'sgi_hr_employee_view_form_my_procedure',
+    'sgi_process_activity_view_search_my_procedure',
+    'sgi_process_activity_view_form_structure',
+)
+
+
+@tagged('post_install', '-at_install')
+class TestHerenciasPropias(TransactionCase):
+
+    def test_01_integradas_no_existen(self):
+        for name in INTEGRADAS:
+            self.assertFalse(self.env.ref('quimibond_sgi.%s' % name, raise_if_not_found=False),
+                             "%s sigue existiendo: debía integrarse a su padre." % name)
+
+    def test_02_borrado_idempotente_y_reapunta_ajenas(self):
+        View = self.env['ir.ui.view']
+        parent = self.env.ref('quimibond_sgi.sgi_audit_view_form')
+        own = View.create({
+            'name': 'herencia propia de prueba', 'model': 'sgi.audit', 'inherit_id': parent.id,
+            'arch': '<field name="norm_ids" position="after"><field name="folio"/></field>'})
+        self.env['ir.model.data'].create({
+            'module': 'quimibond_sgi', 'name': 'zz_test_herencia_propia',
+            'model': 'ir.ui.view', 'res_id': own.id})
+        foreign = View.create({
+            'name': 'herencia ajena de prueba', 'model': 'sgi.audit', 'inherit_id': own.id,
+            'arch': '<field name="folio" position="attributes">'
+                    '<attribute name="readonly">1</attribute></field>'})
+        self.env.flush_all()
+        deleted = herencias.borrar_herencias(self.env.cr, 'prueba', ('zz_test_herencia_propia',))
+        self.assertEqual(len(deleted), 1)
+        self.env.invalidate_all()
+        self.assertFalse(own.exists())
+        self.assertEqual(foreign.inherit_id, parent, "La ajena se re-apunta al padre.")
+        self.assertFalse(self.env['ir.model.data'].search_count([
+            ('module', '=', 'quimibond_sgi'), ('name', '=', 'zz_test_herencia_propia')]))
+        self.assertEqual(herencias.borrar_herencias(self.env.cr, 'prueba', ('zz_test_herencia_propia',)), [])
+
+    def test_03_pie_de_formato_en_reportes_propios(self):
+        """El pie que agregaban las herencias QWeb sigue saliendo."""
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal')
+        alert = self.env['quality.alert'].create({'title': 'NC pie', 'team_id': team.id})
+        html = self.env['ir.actions.report']._render_qweb_html(
+            'quimibond_sgi.report_nc_document', alert.ids)[0].decode()
+        if alert.sudo().sgi_format_info():
+            self.assertIn('Formato controlado del SGI', html)
+
+    def test_04_ninguna_herencia_propia(self):
+        """57.30.0: ninguna vista del SGI hereda otra vista del SGI (regla de
+        CLAUDE.md: un módulo no hereda sus propias vistas)."""
+        Data = self.env['ir.model.data']
+        own = Data.search([('module', '=', 'quimibond_sgi'), ('model', '=', 'ir.ui.view')])
+        own_ids = set(own.mapped('res_id'))
+        views = self.env['ir.ui.view'].with_context(active_test=False).browse(list(own_ids)).exists()
+        offenders = views.filtered(lambda v: v.inherit_id.id in own_ids)
+        self.assertFalse(offenders, "Herencias propias: %s" % ", ".join(
+            offenders.mapped(lambda v: v.xml_id or v.name)))

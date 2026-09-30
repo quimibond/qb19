@@ -109,14 +109,16 @@
                         <group>
                             <field name="odoo_model_id" options="{'no_create': True}"/>
                             <field name="odoo_model_name" invisible="1"/>
-                            <field name="measure_domain" invisible="not odoo_model_id"
+                            <field name="measure_domain" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
-                            <field name="complete_domain" invisible="not odoo_model_id"
+                            <field name="complete_domain" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    widget="domain" options="{'model': 'odoo_model_name'}"/>
+                            <field name="require_signed" invisible="not odoo_model_id"/>
+                            <field name="survey_id"/>
                             <field name="complete_criteria" placeholder="Completo significa…"/>
                         </group>
                         <group>
-                            <field name="measure_date_field" invisible="not odoo_model_id"
+                            <field name="measure_date_field" invisible="not odoo_model_id" groups="quimibond_sgi.group_sgi_manager"
                                    placeholder="date_order"/>
                             <field name="measure_user_field" invisible="not odoo_model_id"
                                    placeholder="user_id"/>
@@ -181,6 +183,19 @@
                        decoration-danger="employee_count == 0"/>
                 <field name="company_id" groups="base.group_multi_company" optional="hide"/>
             </list>
+        </field>
+    </record>
+
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_job_family_view_search" model="ir.ui.view">
+        <field name="name">sgi.job.family.search</field>
+        <field name="model">sgi.job.family</field>
+        <field name="arch" type="xml">
+            <search string="Familias de puesto">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
         </field>
     </record>
 
@@ -451,6 +466,19 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_document_type_view_search" model="ir.ui.view">
+        <field name="name">sgi.document.type.search</field>
+        <field name="model">sgi.document.type</field>
+        <field name="arch" type="xml">
+            <search string="Tipos de documento">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_document_type_action" model="ir.actions.act_window">
         <field name="name">Tipos de documento</field>
         <field name="res_model">sgi.document.type</field>
@@ -461,57 +489,4 @@
         </field>
     </record>
 
-    <!-- ====== Puesto: sus roles en el catálogo ====== -->
-    <record id="sgi_hr_job_view_form_roles" model="ir.ui.view">
-        <field name="name">sgi.hr.job.form.roles</field>
-        <field name="model">hr.job</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_job_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_sgi_view_roles" type="object" class="oe_stat_button"
-                        icon="fa-sitemap" groups="quimibond_sgi.group_sgi_user">
-                    <field name="sgi_role_count" widget="statinfo" string="Actividades SGI"/>
-                </button>
-            </xpath>
-            <xpath expr="//page[@name='sgi_documents']" position="before">
-                <page string="SGI" name="sgi_roles" groups="quimibond_sgi.group_sgi_user">
-                    <group>
-                        <group>
-                            <field name="sgi_family_id"/>
-                            <field name="sgi_team_ids" widget="many2many_tags" readonly="1"
-                                   invisible="not sgi_team_ids"/>
-                        </group>
-                        <group>
-                            <field name="sgi_vacancy_approved"/>
-                            <field name="sgi_vacancy_until"
-                                   invisible="not sgi_vacancy_approved"/>
-                        </group>
-                    </group>
-                    <group>
-                        <group>
-                            <field name="sgi_execute_count"/>
-                            <field name="sgi_approve_count"/>
-                        </group>
-                        <group>
-                            <field name="sgi_participate_count"/>
-                            <field name="sgi_inform_count"/>
-                        </group>
-                    </group>
-                    <button name="action_sgi_view_roles" type="object"
-                            string="Ver sus actividades" icon="fa-list" class="btn-link"/>
-                    <field name="sgi_all_role_ids" readonly="1">
-                        <list default_order="process_id, role">
-                            <field name="process_id"/>
-                            <field name="activity_id"/>
-                            <field name="role" widget="badge"
-                                   decoration-success="role == 'ejecuta'"
-                                   decoration-warning="role == 'aprueba'"/>
-                            <field name="target_type" optional="hide"/>
-                            <field name="condition" optional="show"/>
-                        </list>
-                    </field>
-                </page>
-            </xpath>
-        </field>
-    </record>
 </odoo>

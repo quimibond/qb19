@@ -465,69 +465,6 @@
         </field>
     </record>
 
-    <!-- hr.job: pestaña SGI → botones de «Mi procedimiento» -->
-    <record id="sgi_hr_job_view_form_my_procedure" model="ir.ui.view">
-        <field name="name">sgi.hr.job.form.my.procedure</field>
-        <field name="model">hr.job</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_job_view_form_roles"/>
-        <field name="arch" type="xml">
-            <xpath expr="//page[@name='sgi_roles']//button[@name='action_sgi_view_roles']" position="before">
-                <div class="mb-2">
-                    <button name="action_sgi_open_my_procedure" type="object"
-                            string="Ver su procedimiento" icon="fa-eye"
-                            class="btn-secondary me-1"/>
-                    <button name="action_sgi_print_my_procedure" type="object"
-                            string="Imprimir «Mi procedimiento»" icon="fa-print"
-                            class="btn-secondary me-1"/>
-                    <button name="action_sgi_publish_my_procedure" type="object"
-                            string="Publicar revisión"
-                            icon="fa-upload" class="btn-primary me-1"
-                            groups="quimibond_sgi.group_sgi_manager"
-                            confirm="Se archiva el PDF como documento controlado del puesto y todos los empleados del puesto quedan con acuse pendiente. Si el contenido no cambió, no pasa nada. ¿Continuar?"/>
-                    <button name="action_sgi_open_my_procedure_doc" type="object"
-                            string="Ver revisión vigente" icon="fa-file-pdf-o"
-                            class="btn-link" invisible="not sgi_my_procedure_doc_id"/>
-                    <field name="sgi_my_procedure_doc_id" invisible="1"/>
-                    <field name="sgi_my_procedure_stale" invisible="1"/>
-                    <span class="text-warning ms-2" invisible="not sgi_my_procedure_stale or not sgi_my_procedure_doc_id">
-                        <i class="fa fa-exclamation-triangle"/> Las actividades cambiaron desde la última revisión publicada.
-                    </span>
-                </div>
-            </xpath>
-        </field>
-    </record>
-
-    <!-- hr.employee: botón «Mi procedimiento» (imprime el de su puesto) -->
-    <record id="sgi_hr_employee_view_form_my_procedure" model="ir.ui.view">
-        <field name="name">sgi.hr.employee.form.my.procedure</field>
-        <field name="model">hr.employee</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_hr_employee_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//div[@name='button_box']" position="inside">
-                <button name="action_sgi_open_my_procedure" type="object" class="oe_stat_button"
-                        icon="fa-eye" invisible="not job_id">
-                    <div class="o_stat_info">
-                        <span class="o_stat_text">Ver su procedimiento</span>
-                        <field name="sgi_my_procedure_ack_state" class="o_stat_text"/>
-                    </div>
-                </button>
-            </xpath>
-        </field>
-    </record>
-
-    <!-- «Mis actividades» de Inicio: todos los roles del puesto (y de su
-         familia), no solo «ejecuta». -->
-    <record id="sgi_process_activity_view_search_my_procedure" model="ir.ui.view">
-        <field name="name">sgi.process.activity.search.my.procedure</field>
-        <field name="model">sgi.process.activity</field>
-        <field name="inherit_id" ref="quimibond_sgi.sgi_process_activity_view_search"/>
-        <field name="arch" type="xml">
-            <filter name="my_activities" position="attributes">
-                <attribute name="domain">['|', '|', ('responsible_job_ids.employee_ids.user_id', '=', uid), ('role_ids.job_id.employee_ids.user_id', '=', uid), ('role_ids.family_id.job_ids.employee_ids.user_id', '=', uid)]</attribute>
-            </filter>
-        </field>
-    </record>
-
     <!-- ====== Mi equipo: lista nativa sobre hr.employee.public ====== -->
     <record id="sgi_my_team_view_list" model="ir.ui.view">
         <field name="name">sgi.my.team.list</field>
@@ -654,7 +591,7 @@
         <field name="domain">[('responsible_id', '=', uid)]</field>
         <field name="context">{'create': False}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">No tienes indicadores a tu cargo</p>
+            <p class="o_view_nocontent_smiling_face">No tiene indicadores a su cargo</p>
             <p>Los indicadores del SGI los asigna MAST; cuando tengas uno, aquí ves su último valor y capturas sus mediciones.</p>
         </field>
     </record>

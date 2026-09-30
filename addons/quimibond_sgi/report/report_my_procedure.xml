@@ -316,7 +316,7 @@
                                 <t t-out="epp_signed.signed_date" t-options="{'widget': 'date'}"/>.
                             </t>
                             <t t-else="">
-                                La responsiva de entrega (F-P-S03-02) se firma en Odoo (Mi procedimiento → Mi EPP).
+                                La responsiva de entrega se firma en Odoo (Mi procedimiento → Mi EPP).
                             </t>
                         </p>
                     </t>

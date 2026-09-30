@@ -124,5 +124,6 @@ class SgiProcessActivityStructure(models.Model):
         """«Ver registros recientes»: la evidencia real, la más nueva primero."""
         action = self.action_view_measure_records()
         action['name'] = "%s — registros recientes" % (self.name or self.number or '')
-        action['context'] = dict(action.get('context') or {}, search_default_recent=1)
+        # D-013: el filtro «recent» no existe en los modelos destino y Odoo
+        # lo ignoraba en silencio; se quitó la llave.
         return action

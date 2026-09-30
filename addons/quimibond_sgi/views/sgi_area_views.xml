@@ -12,6 +12,20 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_area_view_search" model="ir.ui.view">
+        <field name="name">sgi.area.search</field>
+        <field name="model">sgi.area</field>
+        <field name="arch" type="xml">
+            <search string="Áreas">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="department_id"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_area_view_form" model="ir.ui.view">
         <field name="name">sgi.area.form</field>
         <field name="model">sgi.area</field>

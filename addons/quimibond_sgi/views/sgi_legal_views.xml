@@ -163,6 +163,8 @@
                 <filter name="ambiental" string="Ambiental (14001)" domain="[('system', '=', 'ambiental')]"/>
                 <filter name="sst" string="SST (45001)" domain="[('system', '=', 'sst')]"/>
                 <filter name="calidad" string="Calidad / cliente" domain="[('system', '=', 'calidad')]"/>
+                <separator/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
                 <group>
                     <filter name="group_system" string="Sistema" context="{'group_by': 'system'}"/>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
@@ -178,7 +180,7 @@
         <field name="res_model">sgi.legal.requirement</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra la matriz de requisitos legales</p>
+            <p class="o_view_nocontent_smiling_face">Registre la matriz de requisitos legales</p>
             <p>NOMs, permisos, licencias y requisitos de cliente (14001/45001
             §6.1.3). Cada requisito lleva su frecuencia de evaluación del
             cumplimiento (§9.1.2): el cron avisa cuando toca evaluar y un

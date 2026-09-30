@@ -13,6 +13,277 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.30.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 9/9: A-008):** la pestaña
+«SGI» del puesto (roles, familia, vacante y los botones de «Mi
+procedimiento») y el botón «Actividades SGI» van en la herencia del puesto
+(`sgi_integration_views.xml`); el botón «Ver su procedimiento» en la del
+empleado; el filtro «Mis actividades» con todos los roles del puesto y su
+familia en la búsqueda de actividades; «Ir a hacerlo», «Ver registros
+recientes», «Ver instructivo» y «Registrar hallazgo» en el encabezado de la
+ficha de actividad. Sale `views/sgi_structure_views.xml`. **Con esto el SGI
+ya no hereda ninguna vista propia** (de 32 herencias propias a 0; sobre
+vistas del SGI quedan solo las de los satélites). Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_hr_job_view_form_roles` (15007),
+`sgi_hr_job_view_form_my_procedure` (15039),
+`sgi_hr_employee_view_form_my_procedure` (15040),
+`sgi_process_activity_view_search_my_procedure` (15041),
+`sgi_process_activity_view_form_structure` (15044). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.29.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 8/9: A-008):** la solicitud de
+mantenimiento de origen en la NC, los acuses y la orden de producción en el
+albarán y el plan de control en el producto van en su vista base.
+`sgi_links_views.xml` ya no hereda vistas propias. Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_quality_alert_view_form_links` (15099),
+`sgi_stock_picking_view_form_links` (15102),
+`sgi_product_template_view_form_links` (15097). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.28.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 7/9: A-008):** la NC a
+proveedor (botón «Enviar al proveedor» y pestaña «Proveedor») va en la ficha
+de NC; cliente o proveedor auditado en la auditoría; «Programa sugerido» y
+la columna de proveedor en el programa de auditorías; los botones de firma
+en albarán y producto; «Exige firmado» y encuesta en el entregable. Todo en
+su vista base; `sgi_supplier_audit_sign_views.xml` queda con el asistente de
+firma y las herencias sobre vistas de otros módulos. Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_quality_alert_view_form_supplier` (15070),
+`sgi_audit_view_form_pr6` (15071), `sgi_audit_program_view_form_pr6`
+(15072), `sgi_stock_picking_view_form_sign` (15077),
+`sgi_product_template_view_form_sign` (15079),
+`sgi_deliverable_view_form_pr6` (15080). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.27.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 6/9: A-008):** la tarea del
+desarrollo en AMEF, plan de control y PPAP, «Proveedor crítico» en la
+pestaña SGI del proveedor y «Categorías de proveedores críticos» en Ajustes
+van en su vista base. `sgi_links_views.xml` queda con sus herencias sobre
+vistas de OTROS módulos (y las tres sobre NC, albarán y producto que salen
+en 8/9). Mismo resultado en pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_fmea_view_form_links` (15092),
+`sgi_control_plan_view_form_links` (15093), `sgi_ppap_view_form_links`
+(15094), `sgi_res_partner_view_form_links` (15104),
+`sgi_settings_view_form_links` (15105). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.26.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 5/9: A-008):** el nivel del
+indicador (tablero de Dirección) va en la ficha del indicador y el banner
+«formato controlado» en la ficha de la revisión por la dirección, cada uno
+en su vista base. Mismo resultado en pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_indicator_view_form_level` (15065),
+`sgi_format_banner_mgmt_review` (14740). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.25.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 4/9: A-008):** el plan de
+acción de la medición roja y la ventana de la medición (ficha y lista de
+mediciones, ficha del indicador) van en `sgi_indicator_views.xml`, y
+«Validar mediciones del periodo» en la ficha de la revisión por la
+dirección. Sale `views/sgi_indicator_plan_views.xml`. Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_measure_view_form_plan` (15030),
+`sgi_measure_view_list_plan` (15031), `sgi_indicator_view_form_window`
+(15032), `sgi_management_review_view_form_validate` (15033). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.24.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 3/9: A-008):** la trayectoria
+del indicador (pestaña «Trayectoria», meta final, rango y fecha de arranque)
+y el rango de la medición van en su vista base (`sgi_indicator_views.xml`).
+Sale `views/sgi_indicator_trajectory_views.xml`. Mismo resultado en
+pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_indicator_view_form_trajectory` (15034),
+`sgi_measure_view_form_trajectory` (15035). Idempotente; solo `ir_ui_view` + `ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.23.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 2/9: A-008):** la pestaña
+«Fórmula» de la ficha del indicador y el bloque «Fórmula en paralelo» de la
+medición van en su vista base (`sgi_indicator_views.xml`);
+`sgi_indicator_formula_views.xml` queda solo con la lista de términos. Mismo
+resultado en pantalla.
+
+**Migración (pre):** borra con `migrations/herencias_propias.py` las
+herencias integradas: `sgi_indicator_view_form_formula` (15028),
+`sgi_measure_view_form_formula` (15029). Idempotente; solo `ir_ui_view` +
+`ir_model_data`.
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen).
+
+## 19.0.57.22.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-herencias-propias` 1/9: A-008):** el pie
+«formato controlado» de los reportes de No Conformidad, Certificado de
+calidad y Acta de revisión por la dirección va dentro de cada plantilla (se
+imprime igual). `report/sgi_format_footer.xml` queda solo con el pie y sus
+herencias sobre reportes de OTROS módulos (venta, compra, albarán).
+
+**Migración (pre):** `migrations/herencias_propias.py` (nuevo, lo cargan por
+ruta los pre-migrate de 57.22.0 en adelante) borra de la base las herencias
+propias integradas, antes de cargar los XML: solo `ir_ui_view` +
+`ir_model_data` de vistas `quimibond_sgi.*` con `inherit_id`; una vista de
+otro módulo que heredara una de ellas se re-apunta al padre y se avisa en el
+log. Idempotente. Aquí: `report_nc_document_sgi` (14745),
+`report_coa_document_sgi` (14746) y `report_mgmt_review_document_sgi`
+(14747).
+
+**Pruebas:** `test_herencias_propias` (las integradas ya no existen; el
+borrado es idempotente y re-apunta una hija ajena; el pie sigue en el
+reporte de NC).
+
+## 19.0.57.21.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-fichas-y-busquedas`: D-007, D-008, D-013,
+E-016, D-014, D-015, E-015, D-016, D-021; D-17 y D-29):**
+
+- **Confirmación en 29 botones** que cierran, reabren, obsoletan, rechazan o
+  regresan a borrador (D-008): proceso («sus actividades salen de Mi
+  procedimiento»), programa y auditoría, revisión por la dirección,
+  recorrido CSH, eficiencias, plan de control, plan de emergencia y
+  simulacro, AMEF, política, incidente, riesgo, ficha de máquina, PPAP e
+  indicador («Regresar a prueba»). Mismo texto base: «¿Desea continuar?».
+- **Búsquedas** (D-014): 14 modelos con búsqueda propia (programa de
+  auditorías, recorridos CSH y revisión por la dirección con estado y año o
+  fecha; política, objetivos, normas, áreas, tipos de documento, plantillas
+  de checklist, categorías de riesgo, formatos impresos, familias de puesto,
+  elementos PPAP con «Archivados»; fuentes de NC con encendidas/apagadas) y
+  «Archivados» en partes interesadas, requisitos legales y fichas de
+  máquina.
+- **Filtros por defecto muertos** (D-013, E-016): fuera
+  `search_default_recent`, `search_default_filter_recent` y
+  `search_default_group_category`; la evidencia por cliente agrupa con
+  `group_by` explícito.
+- **Ayudas** (D-015, E-015): «Hojas de checklist» y «Análisis por empleado»
+  tienen ayuda; la del Pareto ya no habla de «TEJIDO-*». Los títulos de las
+  ayudas de pantalla vacía pasan a «usted» (D-29: el tratamiento del español
+  de Odoo): «Cree el primer AMEF», «Registre…», «Dé de alta…».
+- **Campos técnicos solo para MAST** (D-016): dominios, rutas y campos de
+  fecha de medición de la actividad y del entregable, la columna del XML ID
+  y los bloques «Texto de la versión anterior» de proceso y actividad.
+- **NC** (D-021): «Desviación y análisis», «Correcciones y acciones» y
+  «Verificación y cierre» se ocultan en alertas de calidad sin folio del SGI,
+  como ya hacía «Cliente».
+- **Acción correctiva con historial** (D-007): `sgi.action.line` hereda
+  `mail.thread` (responsable, compromiso y fecha de terminada con
+  seguimiento) y su ficha tiene chatter. D-17 ya estaba: «Acciones
+  correctivas» muestra todas con filtros «De …» por origen.
+
+**Pendiente de D-007 (no va aquí):** evidencia obligatoria al terminar una
+acción (depende de las reglas de cierre del agente G: hoy terminar la
+actividad espejo cierra la acción sin adjunto), título propio de la
+auditoría (hoy solo folio) y la misma secuencia de estados en las seis
+fichas.
+
+**Migración:** ninguna; el update agrega las columnas de `mail.thread` a
+`sgi_action_line`.
+
+**Pruebas:** `test_fichas_busquedas` (búsquedas con filtros y «Archivados»
+en los 17 modelos, `confirm` en los botones de estado de 7 fichas,
+historial de la acción al terminarla).
+
+## 19.0.57.20.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-nomenclatura-en-pantallas`: D-002, D-003, D-004,
+D-020, E-006; decisión 1 y D-02):** la clave del Dropbox deja de estar
+escrita a mano en pantallas y reportes. El `<h1>` del documento con el
+título limpio ya venía de 56.32.0.
+
+- **11 nombres de reporte** (menú Imprimir) sin clave: «Reporte de no
+  conformidad», «Plan de auditoría», «Acta de revisión por la dirección»,
+  «Cambio documental», «AMEF», «Investigación de incidente», «Boletín
+  NEWS», «Certificado de calidad / Certificate of Analysis», «Imprimir
+  procedimiento», «Lista maestra de documentos», «Matriz de competencias».
+  El PDF del cambio documental se descarga como «Cambio documental - …».
+- **Encabezados impresos** (NC, plan e informe de auditoría con «Reunión de
+  apertura/cierre», acta de revisión, AMEF, incidente, NEWS, CoA, Mi
+  procedimiento) sin clave. La identificación del formato sale solo del pie
+  en vivo (`sgi_format_footer`, C-006); la lista maestra completa pierde su
+  pie fijo «F-P-G01-03», que no tiene mapeo.
+- **Textos de 12 vistas:** ayudas de auditoría, cambio documental, ficha de
+  máquina, eficiencias, EPP del puesto, categorías de riesgo (ya no promete
+  categorías sembradas), placeholder del entregable, ayuda de «Documentos»
+  («El nombre es el título, sin clave»), «Encuesta DNC», grupo de
+  referencias; claves de desarrollo fuera (NC-6, C4.19, «Master Spec»,
+  «(SGI)» en «EPP requerido»); los indicadores de Ajustes se nombran
+  («Indicador Requisiciones (CO-02)»).
+- **Documento:** la pestaña «Migración a Odoo» pasa al final y solo la ve el
+  Jefe MAST. En las listas de documentos del puesto (Mi procedimiento) va
+  primero el título y después la clave.
+
+**Migración:** ninguna (los reportes no son `noupdate`; el update renombra).
+
+**Pruebas:** `test_nomenclatura_pantallas` (ningún reporte del SGI con clave
+del Dropbox en el nombre ni en el archivo; render de NC, incidente, acta,
+plan e informe de auditoría sin la clave escrita a mano).
+
+## 19.0.57.19.0 — 2026-09-30
+
+**Cambiado (entrega 5, `e5-reclamaciones`: D-006, D-010; decisión 9 de la
+tanda 2):** qué equipo es de reclamaciones lo decide la marca nueva
+`helpdesk.team.sgi_is_complaint` («Equipo de reclamaciones (SGI)», en la
+ficha del equipo → Posventa, solo Jefe MAST), no el XML ID
+`sgi_helpdesk_team_complaints`. La leen:
+
+- el menú «Reclamaciones de clientes» (todos los equipos marcados; sin
+  ninguno, lista vacía como antes);
+- el indicador de reclamaciones (`reclamos_cliente`, CA-01) y su vista de
+  evidencia: **empieza a contar los tickets reales** (15 en producción)
+  donde antes contaba los 0 del equipo del SGI;
+- el aviso de SLA vencido, la revisión por la dirección y el diagnóstico
+  (que ahora avisa si hay tickets en equipos con «reclama» en el nombre sin
+  marcar).
+
+En el ticket, el bloque «Datos de la reclamación» y el botón «Generar NC»
+solo salen en equipos marcados (antes salían en los 228 tickets de Sistemas);
+«Generar NC» además pide Usuario SGI y el método se niega fuera de un equipo
+marcado. Ayudas de «Reclamaciones de clientes» y «Mejora continua»
+corregidas (hablaban de pestañas que no existen); sin «(SGI)» en los grupos.
+
+**Migración (post):** marca el equipo del SGI y, en la empresa del SGI, los
+equipos llamados exactamente «Reclamaciones entretelas» y «ATENCION A
+CLIENTES» (esperado: 30, 2 y 14). Idempotente; ningún ticket cambia de
+equipo. «Reclamación Industrial» (11, 0 tickets) no se marca.
+
+**Pruebas:** `test_reclamaciones` (3 casos: marca idempotente por nombre,
+«Generar NC» solo en equipos marcados, menú e indicador por la marca);
+`test_audit_hardening` A1 crea su ticket en el equipo del SGI.
+
 ## 19.0.57.18.0 — 2026-09-30
 
 **Agregado (entrega 8, `e8-checklist-pin`: I-005, D-08):** parámetro

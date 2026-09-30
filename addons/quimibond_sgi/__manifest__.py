@@ -22,7 +22,7 @@ los dos auto_install.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.18.0',
+    'version': '19.0.57.30.0',
     'license': 'LGPL-3',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -121,8 +121,6 @@ los dos auto_install.
         'views/sgi_indicator_views.xml',
         'views/sgi_indicator_formula_views.xml',
         'views/sgi_management_review_views.xml',
-        'views/sgi_indicator_plan_views.xml',
-        'views/sgi_indicator_trajectory_views.xml',
         'views/sgi_audit_views.xml',
         'views/sgi_risk_views.xml',
         'views/sgi_legal_views.xml',
@@ -154,10 +152,9 @@ los dos auto_install.
         'views/sgi_my_procedure_views.xml',
         'views/sgi_my_pending_views.xml',
         'views/sgi_approval_native_views.xml',
-        'views/sgi_structure_views.xml',
         'views/sgi_coa_views.xml',
-        # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el
-        # padre debe cargarse antes; el build de producción reventó por esto).
+        # Firmas (Sign) sobre vistas de otros módulos. Desde 57.28.0 ya no
+        # hereda vistas propias (A-008): sus herencias viven en su vista base.
         'views/sgi_supplier_audit_sign_views.xml',
         'views/sgi_hierarchy_views.xml',
         'views/sgi_links_views.xml',

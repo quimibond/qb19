@@ -94,7 +94,7 @@
         <field name="search_view_id" ref="sgi_health_record_view_search"/>
         <field name="context">{'search_default_por_vencer': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra el primer estudio o examen</p>
+            <p class="o_view_nocontent_smiling_face">Registre el primer estudio o examen</p>
             <p>Por trabajador: qué se le hizo, cuándo, el resultado y cuándo vence. RH recibe el aviso 30 días antes (E2.31, E2.32).</p>
         </field>
     </record>
@@ -138,16 +138,37 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_csh_inspection_view_search" model="ir.ui.view">
+        <field name="name">sgi.csh.inspection.search</field>
+        <field name="model">sgi.csh.inspection</field>
+        <field name="arch" type="xml">
+            <search string="Recorridos CSH">
+                <field name="name"/>
+                <field name="area"/>
+                <filter name="state_borrador" string="En captura" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_cerrado" string="Cerrado" domain="[('state', '=', 'cerrado')]"/>
+                <separator/>
+                <filter name="filter_date" string="Fecha" date="date"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_area" string="Área" context="{'group_by': 'area'}"/>
+                    <filter name="group_date" string="Año" context="{'group_by': 'date:year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_csh_inspection_view_form" model="ir.ui.view">
         <field name="name">sgi.csh.inspection.form</field>
         <field name="model">sgi.csh.inspection</field>
         <field name="arch" type="xml">
             <form string="Recorrido de la Comisión de Seguridad e Higiene">
                 <header>
-                    <button name="action_close" type="object" string="Cerrar recorrido" class="btn-primary"
+                    <button name="action_close" confirm="Se cerrará el recorrido y sus hallazgos dejarán de editarse. ¿Desea continuar?" type="object" string="Cerrar recorrido" class="btn-primary"
                             invisible="state != 'borrador'"
                             groups="quimibond_sgi.group_sgi_csh,quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager"/>
-                    <button name="action_reopen" type="object" string="Reabrir" invisible="state != 'cerrado'"
+                    <button name="action_reopen" confirm="El recorrido se reabre y sus hallazgos vuelven a editarse. ¿Desea continuar?" type="object" string="Reabrir" invisible="state != 'cerrado'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
@@ -204,7 +225,7 @@
         <field name="res_model">sgi.csh.inspection</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra el primer recorrido</p>
+            <p class="o_view_nocontent_smiling_face">Registre el primer recorrido</p>
             <p>El acta del recorrido con sus integrantes y hallazgos; cada hallazgo se corrige en el momento, se justifica o genera su no conformidad (E2.29).</p>
         </field>
     </record>
@@ -222,6 +243,24 @@
                 <field name="user_id"/>
                 <field name="last_run"/>
             </list>
+        </field>
+    </record>
+
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_checklist_template_view_search" model="ir.ui.view">
+        <field name="name">sgi.checklist.template.search</field>
+        <field name="model">sgi.checklist.template</field>
+        <field name="arch" type="xml">
+            <search string="Plantillas de checklist">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="user_id"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_frequency" string="Frecuencia" context="{'group_by': 'frequency'}"/>
+                    <filter name="group_user_id" string="Responsable" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
 
@@ -273,7 +312,7 @@
         <field name="res_model">sgi.checklist.template</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Define el primer checklist</p>
+            <p class="o_view_nocontent_smiling_face">Defina el primer checklist</p>
             <p>Qué se revisa y en qué equipos o unidades. Cada día (o cada lunes) se crea una solicitud de mantenimiento preventivo por equipo con la hoja de puntos (S5.15, S5.16, S5.20).</p>
         </field>
     </record>
@@ -320,6 +359,11 @@
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_checklist_request_view_list')}),
             (0, 0, {'view_mode': 'form'}),
             (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_checklist_request_view_pivot')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay hojas de checklist</p>
+            <p>Cada hoja es un checklist contestado (una solicitud de mantenimiento). Se generan solas según la
+            frecuencia de cada plantilla de checklist activa; también puede crear una a mano con «Nuevo».</p>
+        </field>
     </record>
 
     <!-- Tableta compartida: solo las hojas de hoy que faltan de firmar. -->

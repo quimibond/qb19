@@ -257,13 +257,11 @@ class SgiManagementReview(models.Model):
     def _sgi_load_complaints(self):
         self.ensure_one()
         dt_from, dt_to = self._sgi_bounds()
-        team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints', raise_if_not_found=False)
-        if not team:
+        if not self.env['helpdesk.team'].search_count([('sgi_is_complaint', '=', True)]):
             return "Sin equipo de reclamaciones configurado."
-        tickets = self.env['helpdesk.ticket'].search([
-            ('team_id', '=', team.id),
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
-        ])
+        tickets = self.env['helpdesk.ticket'].search(
+            self.env['helpdesk.team']._sgi_complaint_domain() + [
+                ('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
         total = len(tickets)
         sla_ok = len(tickets.filtered(
             lambda t: 'sla_reached_late' in t._fields and not t.sla_reached_late))

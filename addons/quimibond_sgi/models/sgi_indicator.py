@@ -372,14 +372,10 @@ class SgiIndicator(models.Model):
 
     def _calc_reclamos_cliente(self, date_from, date_to):
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                            raise_if_not_found=False)
-        if not team:
-            return None
-        return float(self.env['helpdesk.ticket'].search_count([
-            ('team_id', '=', team.id),
-            ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
-        ]))
+        # D-006: todos los equipos marcados como reclamación, no un XML ID.
+        domain = self.env['helpdesk.team']._sgi_complaint_domain() + [
+            ('create_date', '>=', dt_from), ('create_date', '<', dt_to)]
+        return float(self.env['helpdesk.ticket'].search_count(domain))
 
     def _calc_rotacion_rh(self, date_from, date_to):
         Employee = self.env['hr.employee'].with_context(active_test=False)
@@ -1065,7 +1061,8 @@ class SgiIndicatorMeasure(models.Model):
                 'res_model': 'account.move',
                 'view_mode': 'list,pivot,form',
                 'domain': indicator._sgi_customer_moves_domain(start, date_to),
-                'context': {'search_default_group_by_partner': 1},
+                # D-013: el filtro por defecto no existe en account.move.
+                'context': {'group_by': ['partner_id']},
             }
         if mode == 'concentracion_productos':
             start = date_to - relativedelta(years=1) + relativedelta(days=1)
@@ -1182,9 +1179,7 @@ class SgiIndicatorMeasure(models.Model):
             domain = [('category_id', 'in', categories.ids)] if categories else [('id', '=', False)]
             model, date_field, is_dt = 'approval.request', 'create_date', True
         elif mode == 'reclamos_cliente':
-            team = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                                raise_if_not_found=False)
-            domain = [('team_id', '=', team.id)] if team else []
+            domain = self.env['helpdesk.team']._sgi_complaint_domain()
             model, date_field, is_dt = 'helpdesk.ticket', 'create_date', True
         elif mode == 'rotacion_rh':
             return {

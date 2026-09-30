@@ -20,6 +20,23 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_alert_source_view_search" model="ir.ui.view">
+        <field name="name">sgi.alert.source.search</field>
+        <field name="model">sgi.alert.source</field>
+        <field name="arch" type="xml">
+            <search string="Fuentes de NC">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="enabled" string="Encendidas" domain="[('enabled', '=', True)]"/>
+                <filter name="disabled" string="Apagadas" domain="[('enabled', '=', False)]"/>
+                <group>
+                    <filter name="group_trigger_type" string="Disparador" context="{'group_by': 'trigger_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_alert_source_view_form" model="ir.ui.view">
         <field name="name">sgi.alert.source.form</field>
         <field name="model">sgi.alert.source</field>

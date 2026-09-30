@@ -60,7 +60,7 @@
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_external_doc_view_list')}),
             (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_document_view_form')})]"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra el primer documento externo</p>
+            <p class="o_view_nocontent_smiling_face">Registre el primer documento externo</p>
             <p>Norma, especificación de cliente, NOM o manual de proveedor: quién lo emite, su revisión, cuándo llegó y qué proceso lo aplica. Hay 10 días hábiles desde la recepción para implantarlo; el dueño del proceso recibe el aviso.</p>
         </field>
     </record>

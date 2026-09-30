@@ -678,6 +678,10 @@ class QualityAlert(models.Model):
 
 class SgiActionLine(models.Model):
     _name = 'sgi.action.line'
+    # D-007 (57.21.0): historial y conversación como en NC, incidente y
+    # auditoría. Sin mail.activity.mixin: la actividad accionable vive en el
+    # registro origen (``activity_id``).
+    _inherit = ['mail.thread']
     _description = "Acción / corrección de No Conformidad"
     _order = 'date_commit, id'
 
@@ -697,9 +701,10 @@ class SgiActionLine(models.Model):
         ('preventiva', "Acción preventiva"),
     ], string="Tipo", default='correccion', required=True)
     name = fields.Char(string="Descripción", required=True)
-    responsible_id = fields.Many2one('res.users', string="Responsable", required=True)
-    date_commit = fields.Date(string="Compromiso", required=True)
-    date_done = fields.Date(string="Terminada el")
+    responsible_id = fields.Many2one('res.users', string="Responsable", required=True,
+                                     tracking=True)
+    date_commit = fields.Date(string="Compromiso", required=True, tracking=True)
+    date_done = fields.Date(string="Terminada el", tracking=True)
     progress = fields.Selection([
         ('0', "0%"),
         ('50', "50%"),

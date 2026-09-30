@@ -11,13 +11,25 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_risk_category_view_search" model="ir.ui.view">
+        <field name="name">sgi.risk.category.search</field>
+        <field name="model">sgi.risk.category</field>
+        <field name="arch" type="xml">
+            <search string="Categorías de riesgo">
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_risk_category_action" model="ir.actions.act_window">
         <field name="name">Categorías de riesgo</field>
         <field name="res_model">sgi.risk.category</field>
         <field name="view_mode">list</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Catálogo de categorías de riesgo</p>
-            <p>Las categorías del F-P-C09 ya vienen sembradas.</p>
+            <p>Agrupan los riesgos y oportunidades de los procesos (p. ej. operativo, legal, ambiental). Cree la primera con «Nuevo».</p>
         </field>
     </record>
 
@@ -38,10 +50,10 @@
                     <button name="action_set_controlado" type="object"
                             string="Marcar controlado" class="btn-primary"
                             invisible="state != 'en_tratamiento'"/>
-                    <button name="action_set_cerrado" type="object"
+                    <button name="action_set_cerrado" confirm="Se cerrará el riesgo y dejará de revisarse. ¿Desea continuar?" type="object"
                             string="Cerrar"
                             invisible="state != 'controlado'"/>
-                    <button name="action_set_identificado" type="object"
+                    <button name="action_set_identificado" confirm="El riesgo se reabre y regresa a «identificado». ¿Desea continuar?" type="object"
                             string="Reabrir"
                             invisible="state != 'cerrado'"/>
                     <field name="state" widget="statusbar"
@@ -259,7 +271,7 @@
         <field name="search_view_id" ref="sgi_risk_view_search"/>
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Captura el primer riesgo u oportunidad</p>
+            <p class="o_view_nocontent_smiling_face">Capture el primer riesgo u oportunidad</p>
             <p>Los 5 instrumentos en un solo lugar: RyO 5×5, IPER de SST, aspectos ambientales, patrimonial y FODA — con revisión programada.</p>
         </field>
     </record>
