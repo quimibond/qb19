@@ -1331,6 +1331,32 @@ baja la capa de los meses siguientes. El KP2032T11GO152 I al revés es la
 OP de conversión del importado valuando a 31.82 $/m algo que se vende a
 9.39: un problema de la receta de importación, no del promedio.
 
+### De dónde vienen los promedios rotos: cargas manuales de costo
+
+`product.value` guarda cada cambio de costo. En 2026 hubo cargas masivas
+desde la cuenta de Jose: **12–14 de enero** (1,800 productos), **3 de
+julio** (596) y **24 de agosto** (329, 21:46 UTC). La del 24 de agosto
+puso el costo absorbido completo del modelo (MP + conversión de todos los
+centros) como costo de Odoo: WJ053Q22JNT160 de 4.16 a 10.23, A55BL172 de
+3.46 a 8.15, jersey 60 de 7.16 a 13.79, IWD038Q46JNT159 de 49.9 a 122.8.
+Desde entonces cada venta sale a ese costo y cada producción entra a
+materia prima (más la tarifa de tejido desde septiembre), así que el
+promedio baja despacio y el costo de ventas lleva la conversión dos veces:
+en el promedio y en los gastos del mes. Eso es lo que la capa ha estado
+compensando. Las cargas de enero explican el primer trimestre caro.
+
+Con Odoo 19 cambiar el costo **no genera asiento**: queda en
+`product.value` y mueve la valuación por quants, no el mayor. Por eso las
+cuentas de inventario por producto quedaron negativas (A55BL172 −$349K,
+WJ053 −$551K, WN075 −$590K, IWD038 kg −$629K, WP4032NG152 −$500K): salió
+más valor del que entró. Lo cuadra sólo el inventario físico.
+
+El 1-oct se regresaron 27 productos al costo de producción de julio a
+septiembre ($782,660 menos de valuación, sin asiento). Es deshacer, para
+esos 27, la carga del 24 de agosto. Regla desde aquí: **no cargar costos a
+mano**; si la conversión debe estar en el inventario, va por el asiento del
+cuadre, no sobreescribiendo el promedio.
+
 ### Lo que cambió en el módulo (v1.68)
 
 - `qb.costo.absorcion.traza`: la traza por lotes (órdenes absorbidas desde
