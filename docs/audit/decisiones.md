@@ -392,3 +392,10 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 
 - **Producción en 57.68.0** (PR #492, 30-sep). Jose actualizó `quimibond_sgi` desde Apps; Knowledge, Studio, Revisado y PLM quedaron en su versión nueva. Verificado por MCP: 7 mapeos de formato por tipo de operación, plan 5 con responsables (Mariano Domínguez, Blanca Ballesteros) y la línea «Recoger equipo de cómputo».
 - **Propuesta de formatos aprobada completa** («arranca con los formatos»). Arranca el bloque 3 en `claude/sgi-formatos-bloque-3` (57.70.0 en adelante): fusiones y duplicados (§3), F-P-E01-01, responsable = dueño del proceso (C4 se queda con MAST mientras Francisco González no tenga usuario), clave D-02 al final con la del Dropbox como clave anterior, y de los 17 formatos citados que no existen solo lo que se puede hacer en código; la corrección de citas en rutinas es de MAST.
+
+### 2026-10-01 (tarde): producción en 57.88.0
+
+- PR #503 (main → quimibond). El build de producción aplicó las migraciones; el `odoo-update` manual posterior falló por *lock timeout* en `product_template` (usuarios conectados) y no cambió nada.
+- Log de producción: D-02 con 328 claves nuevas, 5 procedimientos a control operacional (CO-E2-01…05), 1 sin cambio (IT-C4-01); 25 mapeos de impresión con la clave nueva; 238 formatos cambian de responsable y 54 de C4 se quedan con MAST; 7 duplicados obsoletos sin archivar; 57.85 sin equipos nuevos; 57.88 con 378 empleados recalculados y 0 distintos.
+- Decisiones de Jose sobre D-02: los 21 procedimientos «En curso» conservan su clave; los de «No aplica (se queda)» pasan a `CO-{proceso}-{nn}`; los formularios de Odoo no cambian (L-004); protocolos `PROT-{proceso}-{nn}`; anexos siguen a su padre; reglamentos conservan su nombre.
+- `TestRoleAudit.test_07` resuelto en 57.88 (asignar recordsets, no `.ids`, en many2many guardados). Staging: sin pruebas del SGI en rojo.
