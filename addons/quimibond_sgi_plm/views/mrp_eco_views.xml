@@ -15,7 +15,7 @@
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="SGI - Control de cambios" name="sgi_change_control">
+                <page string="SGI" name="sgi_change_control">
                     <group>
                         <group string="PPAP">
                             <field name="sgi_requires_ppap"/>

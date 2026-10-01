@@ -160,7 +160,7 @@
                         </list>
                     </field>
                 </page>
-                <page string="Documentos SGI aplicables" name="sgi_documents">
+                <page string="Documentos aplicables" name="sgi_documents">
                     <field name="sgi_document_ids">
                         <list>
                             <field name="sgi_code"/>

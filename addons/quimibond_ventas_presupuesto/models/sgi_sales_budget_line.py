@@ -242,11 +242,19 @@ class SgiSalesBudgetLine(models.Model):
             return pricelist
         return self.env['product.pricelist']
 
-    def _sgi_min_plausible(self):
+    def _sgi_min_plausible(self, product=None):
         """Umbral (moneda compañía) por debajo del cual un precio resuelto se toma
-        como placebo (placeholder $1) aunque venga de una regla."""
+        como placebo (placeholder $1) aunque venga de una regla.
+
+        1.3.0: el mínimo propio del producto manda; si no tiene, el de su
+        categoría más cercana (subcategorías heredan); si ninguno, el general de
+        Ajustes. Devuelve (umbral, origen) con origen None para el general."""
+        if product:
+            own = product.product_tmpl_id.sudo()._sgi_budget_min_price()
+            if own:
+                return own
         return float(self.env['ir.config_parameter'].sudo().get_param(
-            'quimibond_sgi.price_min_plausible', 5.0) or 0)
+            'quimibond_sgi.price_min_plausible', 5.0) or 0), None
 
     def _sgi_pricelist_price(self):
         """(precio_compañía, texto_origen, moneda_lista, precio_en_lista, hay_precio)
@@ -297,7 +305,7 @@ class SgiSalesBudgetLine(models.Model):
         fell_to_sale = (not rule_id) or (
             rule.applied_on == '3_global' and rule.base == 'list_price'
             and rule.compute_price != 'fixed')
-        min_plausible = self._sgi_min_plausible()
+        min_plausible, min_origin = self._sgi_min_plausible(product)
         implausible = (not fell_to_sale) and price < min_plausible
         has_price = (not fell_to_sale) and (not implausible)
         if fell_to_sale:
@@ -306,11 +314,12 @@ class SgiSalesBudgetLine(models.Model):
                           pricelist.name, '{:,.2f}'.format(price),
                           company_currency.name))
         elif implausible:
-            source = ("Lista '%s': regla implausible < %s %s (%s %s — placeholder, "
+            source = ("Lista '%s': regla implausible < %s %s%s (%s %s — placeholder, "
                       "NO usar)" % (
                           pricelist.name, '{:,.2f}'.format(min_plausible),
-                          company_currency.name, '{:,.2f}'.format(price),
-                          company_currency.name))
+                          company_currency.name,
+                          " [mínimo propio del %s]" % min_origin if min_origin else "",
+                          '{:,.2f}'.format(price), company_currency.name))
         elif list_currency and list_currency != company_currency:
             source = "Lista '%s': %.4g %s × %.4g = %s %s" % (
                 pricelist.name, raw, list_currency.name, rate,
@@ -318,6 +327,10 @@ class SgiSalesBudgetLine(models.Model):
         else:
             source = "Lista '%s': %s %s" % (
                 pricelist.name, '{:,.2f}'.format(price), company_currency.name)
+        if has_price and min_origin:
+            # Constancia de la excepción: el precio pasó con el mínimo propio.
+            source += " [mínimo propio del %s: %s]" % (
+                min_origin, '{:,.2f}'.format(min_plausible))
         return price, source, list_currency, raw, has_price
 
     def _sgi_planning_factor(self, list_currency, company_currency):

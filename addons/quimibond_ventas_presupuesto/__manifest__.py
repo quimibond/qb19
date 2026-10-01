@@ -29,7 +29,7 @@ pasa los registros existentes sin borrar ni recrear nada.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Sales/Sales',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.3.1',
     'license': 'LGPL-3',
     'depends': [
         'quimibond_sgi',  # sgi.base.mixin, sgi.format.mixin, grupos, crons y KPI
@@ -42,6 +42,7 @@ pasa los registros existentes sin borrar ni recrear nada.
         'security/security.xml',
         'data/sgi_sales_budget_data.xml',
         'data/sgi_sales_budget_parameters.xml',
+        'views/product_views.xml',
         'views/sgi_sales_budget_views.xml',
         'views/sgi_budget_analytic_views.xml',
         'views/qb_customer_part_views.xml',

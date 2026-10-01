@@ -126,24 +126,24 @@ class TestRoleAudit(TransactionCase):
         groups = Employee._read_group([('id', '=', self.emp.id)], ['sgi_my_procedure_ack_state'], ['__count'])
         self.assertEqual(groups[0][0], 'sin_publicar', "Guardado: se agrupa por estado de firma.")
         # Archivar la actividad lo saca del procedimiento guardado.
-        # Lo guardado se recalcula al bajar a la base (flush); en la misma
-        # transacción la caché conserva la lista anterior, así que se baja y
-        # se vuelve a leer (en la interfaz cada petición lee de la base).
-        activity.active = False
+        # 57.88.0: era la ÚNICA actividad del puesto, así que la lista queda
+        # vacía. El cálculo asignaba ``.ids`` (``[]``) y en Odoo 19 una lista
+        # vacía asignada a un many2many guardado no cambia nada: el rol se
+        # quedaba guardado (el diagnóstico de la 57.87.0 en staging: un solo
+        # cálculo, con la caché ya archivada, y lo guardado seguía en
+        # [rol]). Se archiva con ``write`` como en la interfaz: pasa por
+        # ``_sgi_refresh_spec_gaps``, que borra faltantes y baja todo a la
+        # base a mitad del write.
+        self.assertTrue(activity.spec_gap_ids, "La actividad nueva trae faltantes: el archivo los borra.")
+        activity.write({'active': False})
         self.env.flush_all()
-        # 57.13.1: la corrida real (build 38916808) falló abajo sin decir en
-        # qué paso. Primero lo que se calcula (el rol ya no cuenta para el
-        # puesto) y luego lo guardado: si falla solo lo guardado, el
-        # recálculo no se disparó (_sgi_mp_touch_jobs), no la lista.
         self.assertFalse(role.activity_active)
         self.assertNotIn(role, self.job.with_context(
             sgi_mp_employee_id=self.emp.id)._sgi_mp_role_lists()['detail'])
-        self.assertIn(self.emp, Employee.sudo().with_context(active_test=False).search(
-            [('sgi_mp_job_id', 'in', role._sgi_mp_jobs().ids)]),
-            "El empleado se encuentra por el puesto del rol (a quién se recalcula).")
-        self.emp.invalidate_recordset(['sgi_mp_role_ids'])
+        self.env.invalidate_all()
         self.assertNotIn(role, self.emp.sgi_mp_role_ids,
                          "La lista del puesto ya no trae el rol, pero lo guardado no se recalculó.")
+        self.assertNotIn(process, self.emp.sgi_mp_process_ids)
         activity.active = True
         self.env.flush_all()
         self.emp.invalidate_recordset(['sgi_mp_role_ids'])
@@ -159,6 +159,44 @@ class TestRoleAudit(TransactionCase):
         self.assertIn(self.mine, self.env['sgi.indicator'].search([('last_semaphore', '=', 'rojo')]))
         self.assertTrue(self.env['documents.document']._fields['sgi_ack_count'].store)
         self.assertTrue(self.env['sgi.indicator']._fields['spec_missing'].store)
+
+    def test_07b_listas_que_quedan_vacias_se_vacian(self):
+        """57.88.0: las cuatro listas guardadas se vacían cuando su contenido
+        desaparece (antes, una lista vacía no se escribía): escalamientos y
+        «participa» de una actividad archivada, y todo lo de un proceso
+        archivado."""
+        other_job = self.env['hr.job'].create({'name': 'PUESTO EJECUTOR LISTAS'})
+        process = self.env['sgi.process'].create({'code': 'ZROLV', 'name': 'Proceso listas'})
+        escala = self.env['sgi.process.activity'].create({
+            'process_id': process.id, 'name': 'Escala al puesto', 'number': '1.1',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': other_job.id}),
+                         (0, 0, {'role': 'escala', 'job_id': self.job.id, 'after_days': 3})]})
+        participa = self.env['sgi.process.activity'].create({
+            'process_id': process.id, 'name': 'El puesto participa', 'number': '1.2',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': other_job.id}),
+                         (0, 0, {'role': 'participa', 'job_id': self.job.id})]})
+        ejecuta = self.env['sgi.process.activity'].create({
+            'process_id': process.id, 'name': 'El puesto ejecuta', 'number': '1.3',
+            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': self.job.id})]})
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertTrue(self.emp.sgi_mp_received_role_ids & escala.role_ids)
+        self.assertTrue(self.emp.sgi_mp_short_role_ids & participa.role_ids)
+        self.assertIn(process, self.emp.sgi_mp_process_ids)
+        # Sin escalamientos ni «participa»: esas dos listas quedan vacías
+        # mientras «Mis actividades» sigue con la que ejecuta.
+        (escala | participa).write({'active': False})
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertFalse(self.emp.sgi_mp_received_role_ids & escala.role_ids)
+        self.assertFalse(self.emp.sgi_mp_short_role_ids & participa.role_ids)
+        self.assertIn(ejecuta.role_ids, self.emp.sgi_mp_role_ids)
+        # Proceso archivado: fuera sus roles y el proceso.
+        process.write({'active': False})
+        self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertFalse(self.emp.sgi_mp_role_ids & ejecuta.role_ids)
+        self.assertNotIn(process, self.emp.sgi_mp_process_ids)
 
     def test_08_accion_terminada_exige_100_y_fecha_pasada(self):
         """3.6 (como Usuario SGI): terminar pone 100 %; no se puede terminar en

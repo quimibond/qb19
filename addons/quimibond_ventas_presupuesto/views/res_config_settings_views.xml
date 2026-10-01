@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Ajustes → SGI → KPIs automáticos: los del presupuesto y del pronóstico
+    <!-- Ajustes → SGI → Indicadores automáticos: los del presupuesto y del pronóstico
          de ventas (antes en la vista de ajustes de quimibond_sgi, A-016). -->
     <record id="res_config_settings_view_form_sales_budget" model="ir.ui.view">
         <field name="name">res.config.settings.view.form.inherit.sgi.sales.budget</field>
@@ -21,7 +21,7 @@
                     <field name="sgi_budget_pricelist_id"/>
                 </setting>
                 <setting string="Precio de lista mínimo plausible"
-                         help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla.">
+                         help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla. Excepciones: «Precio mínimo plausible propio» en el producto (pestaña Ventas) o en la categoría (vale para sus subcategorías).">
                     <field name="sgi_price_min_plausible"/>
                 </setting>
                 <setting string="Tolerancia de desviación de precio (%)"

@@ -26,7 +26,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_staff_efficiency.py`.
 | `prepared_by_id` | Many2one | Elaboró (jefe de área) | Jefe de área que elabora la hoja. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:54` |
 | `received_by_id` | Many2one | Recibió (coordinador de RH) | Coordinador de RH que recibe la hoja. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:56` |
 | `received_date` | Datetime | Recibida por RH el | Fecha y hora en que RH recibió la hoja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:58` |
-| `state` | Selection |  | Borrador mientras se captura; cerrado por el jefe de área; recibido por RH. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:60` |
+| `state` | Selection | Estado | Borrador mientras se captura; cerrado por el jefe de área; recibido por RH. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_staff_efficiency.py:60` |
 
 ## Métodos públicos (7)
 

@@ -165,7 +165,7 @@
                                 NC: <field name="nc_count"/>
                             </span>
                             <span class="text-danger" t-if="record.red_kpi_count.raw_value">
-                                KPI rojos: <field name="red_kpi_count"/>
+                                Indicadores en rojo: <field name="red_kpi_count"/>
                             </span>
                             <span class="text-danger" t-if="record.chain_stuck_count.raw_value">
                                 Atorados: <field name="chain_stuck_count"/>
@@ -238,47 +238,19 @@
                          lo que se captura aquí: la ficha y el texto del
                          procedimiento. -->
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_sgi_view_diagram" type="object" class="oe_stat_button"
-                                icon="fa-sitemap" invisible="not id">
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">Diagrama</span>
-                            </div>
-                        </button>
-                        <button name="action_view_activities" type="object" class="oe_stat_button"
-                                icon="fa-list-ol">
-                            <field name="activity_count" widget="statinfo" string="Actividades"/>
-                        </button>
+                        <!-- V-B09 (57.81.0): primero las alertas (solo aparecen con algo
+                             que atender), después los catálogos; así no quedan detrás de «Más». -->
                         <button name="action_view_red_activities" type="object" class="oe_stat_button"
                                 icon="fa-times-circle" invisible="activity_red_count == 0">
                             <field name="activity_red_count" widget="statinfo" string="Sin evidencia"/>
                         </button>
-                        <button name="action_open_indicators" type="object" class="oe_stat_button"
-                                icon="fa-tachometer">
-                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
-                        </button>
                         <button name="action_open_red_kpis" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-circle" invisible="red_kpi_count == 0">
-                            <field name="red_kpi_count" widget="statinfo" string="KPI en rojo"/>
-                        </button>
-                        <button name="action_open_risks" type="object" class="oe_stat_button"
-                                icon="fa-bolt">
-                            <field name="risk_count" widget="statinfo" string="Riesgos"/>
+                            <field name="red_kpi_count" widget="statinfo" string="Indicadores en rojo"/>
                         </button>
                         <button name="action_open_high_risks" type="object" class="oe_stat_button"
                                 icon="fa-fire" invisible="open_high_risk_count == 0">
                             <field name="open_high_risk_count" widget="statinfo" string="Riesgos altos"/>
-                        </button>
-                        <button name="action_open_documents" type="object" class="oe_stat_button"
-                                icon="fa-file-text-o">
-                            <field name="document_count" widget="statinfo" string="Documentos"/>
-                        </button>
-                        <button name="action_open_flows" type="object" class="oe_stat_button"
-                                icon="fa-exchange">
-                            <field name="flow_count" widget="statinfo" string="Conexiones"/>
-                        </button>
-                        <button name="action_view_chain" type="object" class="oe_stat_button"
-                                icon="fa-link" invisible="chain_link_count == 0">
-                            <field name="chain_link_count" widget="statinfo" string="Ligas"/>
                         </button>
                         <button name="action_open_ncs" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-triangle" invisible="nc_count == 0">
@@ -291,6 +263,36 @@
                         <button name="action_view_spec_gaps" type="object" class="oe_stat_button"
                                 icon="fa-wrench" invisible="spec_error_count == 0 and spec_warning_count == 0">
                             <field name="spec_error_count" widget="statinfo" string="Faltantes"/>
+                        </button>
+                        <button name="action_sgi_view_diagram" type="object" class="oe_stat_button"
+                                icon="fa-sitemap" invisible="not id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Diagrama</span>
+                            </div>
+                        </button>
+                        <button name="action_view_activities" type="object" class="oe_stat_button"
+                                icon="fa-list-ol">
+                            <field name="activity_count" widget="statinfo" string="Actividades"/>
+                        </button>
+                        <button name="action_open_indicators" type="object" class="oe_stat_button"
+                                icon="fa-tachometer">
+                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
+                        </button>
+                        <button name="action_open_risks" type="object" class="oe_stat_button"
+                                icon="fa-bolt">
+                            <field name="risk_count" widget="statinfo" string="Riesgos"/>
+                        </button>
+                        <button name="action_open_documents" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o">
+                            <field name="document_count" widget="statinfo" string="Documentos"/>
+                        </button>
+                        <button name="action_open_flows" type="object" class="oe_stat_button"
+                                icon="fa-exchange">
+                            <field name="flow_count" widget="statinfo" string="Conexiones"/>
+                        </button>
+                        <button name="action_view_chain" type="object" class="oe_stat_button"
+                                icon="fa-link" invisible="chain_link_count == 0">
+                            <field name="chain_link_count" widget="statinfo" string="Ligas"/>
                         </button>
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"

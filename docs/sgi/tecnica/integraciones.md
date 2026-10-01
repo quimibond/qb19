@@ -14,6 +14,7 @@ Archivos fuera del SGI y sus satélites que nombran modelos `sgi.*`. Al renombra
 | `addons/quimibond_intelligence/models/senales/rh.py` | `sgi.competence.gap` |
 | `addons/quimibond_ventas_presupuesto/data/sgi_sales_budget_data.xml` | `sgi.format.map` |
 | `addons/quimibond_ventas_presupuesto/data/sgi_sales_budget_parameters.xml` | `sgi.config` |
+| `addons/quimibond_ventas_presupuesto/models/qb_release.py` | `sgi.sales.budget`, `sgi.sales.budget.line` |
 | `addons/quimibond_ventas_presupuesto/models/sgi_budget_analytic.py` | `sgi.sales.budget` |
 | `addons/quimibond_ventas_presupuesto/models/sgi_cron.py` | `sgi.cron`, `sgi.indicator`, `sgi.sales.budget`, `sgi.sales.budget.line` |
 | `addons/quimibond_ventas_presupuesto/models/sgi_sales_budget.py` | `sgi.base.mixin`, `sgi.format.mixin`, `sgi.sales.budget`, `sgi.sales.budget.import`, `sgi.sales.budget.line` |

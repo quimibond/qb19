@@ -289,6 +289,56 @@ class QbCostoFactores(models.Model):
              'ociosa. Bajo IAS 2 va al resultado del período, NO al costo del '
              'producto — por eso el modelo reparte menos que el gasto total, '
              'y esa diferencia es deliberada.')
+    ocioso_absorbido_month = fields.Float(
+        string='Subabsorción de centros absorbidos/mes',
+        help='La ociosidad de los centros que ya capitalizan por workcenter: '
+             'horas normales del centro (capacidad normal ÷ throughput por '
+             'máquina) × tarifa por hora, menos lo que Odoo capitalizó de '
+             'verdad. Es el gasto del centro que se quedó en resultados '
+             'porque las máquinas corrieron menos horas que las normales — '
+             'correcto bajo IAS 2, pero sin esta línea la conciliación lo '
+             'leía como brecha. En sep-2026 TEJIDO absorbió 12,095 h de '
+             '16,840 normales: $470K sin explicar que no eran brecha.')
+    absorcion_vendida_month = fields.Float(
+        string='Conversión absorbida ya en costo de ventas/mes',
+        help='De lo que Odoo capitalizó por workcenter (este mes y los '
+             'anteriores desde el corte), la parte que llegó a una entrega a '
+             'cliente EN este período, siguiendo los lotes: salida de la '
+             'orden absorbida → consumo en tintorería/acabado → salida → '
+             'entrega. Es lo que ya está en 501.01.01 dentro del costo '
+             'promedio, y por eso la capa de valoración NO lo resta. En '
+             'sep-2026: $344,667 de $1,197,422 abonados (28.8%).')
+    absorcion_en_inventario = fields.Float(
+        string='Conversión absorbida en inventario al cierre',
+        help='Lo capitalizado desde el corte que al cierre del período '
+             'sigue en lotes de tejido, teñido o producto terminado (o en '
+             'órdenes abiertas). Es el saldo que la traza del mes siguiente '
+             'carga a ventas conforme se entregue. Abono acumulado = vendida '
+             'acumulada + este saldo + lo no trazable.')
+    absorcion_sin_lote_month = fields.Float(
+        string='Conversión absorbida sin lote (no trazable)',
+        help='Conversión de órdenes absorbidas cuya salida terminada no '
+             'lleva lote: no se puede seguir hasta la venta. Si crece, '
+             'revisa el seguimiento por lote de esos productos.')
+    costo_primo_gl_month = fields.Float(
+        string='Costo primo del mayor/mes (sin capa)',
+        help='Saldo del mes de la cuenta de costo primo (parámetro '
+             '`capa_cuenta_costo_primo`, default 501.01.01) SIN el diario de '
+             'capa (`capa_diario_code`, default CAPA): el costo promedio que '
+             'Odoo cargó a ventas, antes de corregirlo.')
+    mp_vendida_month = fields.Float(
+        string='MP vendida del modelo/mes', compute='_compute_capa_propuesta',
+        help='Σ mp_total de los costos por producto del período: la materia '
+             'prima a último costo de lo que se vendió.')
+    capa_propuesta_month = fields.Float(
+        string='Capa de valoración propuesta/mes',
+        compute='_compute_capa_propuesta',
+        help='Costo primo del mayor sin capa − MP vendida del modelo − '
+             'conversión absorbida ya en ventas. Es el asiento Dr puente / '
+             'Cr costo primo que deja el costo de ventas en MP de reposición '
+             'más la conversión real del mes. Restar el abono completo en '
+             'vez de la parte vendida anula la absorción en resultados.')
+
     entretela_m_denom_month = fields.Float(string='Metros entretela/mes')
     fab_weight_share = fields.Float(string='Share peso')
     factor_fab_kg = fields.Float(string='Factor fabricación $/kg')
@@ -366,6 +416,21 @@ class QbCostoFactores(models.Model):
                 body='Período REABIERTO (%s vez/veces). Motivo: %s'
                      % (rec.reaperturas, rec.motivo_reapertura))
         return True
+
+    @api.depends('costo_primo_gl_month', 'absorcion_vendida_month')
+    def _compute_capa_propuesta(self):
+        Producto = self.env['qb.costo.producto']
+        for rec in self:
+            mp = 0.0
+            if rec.id:
+                grupos = Producto._read_group(
+                    [('period', '=', rec.period),
+                     ('company_id', '=', rec.company_id.id)],
+                    [], ['mp_total:sum'])
+                mp = (grupos[0][0] or 0.0) if grupos else 0.0
+            rec.mp_vendida_month = mp
+            rec.capa_propuesta_month = (
+                rec.costo_primo_gl_month - mp - rec.absorcion_vendida_month)
 
 
 class QbCostoProducto(models.Model):
@@ -818,6 +883,65 @@ class QbCostoProducto(models.Model):
                 for o in self.env['qb.ociosidad'].search(
                     [('centro_id', 'in', centros.ids)])}
 
+    def _costo_normal_absorbidos(self, centros):
+        """Lo que los centros absorbidos capitalizarían a capacidad normal.
+
+        Σ por centro fabril de horas normales × tarifa por hora. Las horas
+        normales salen de la misma capacidad normal que usa el denominador
+        de capa (`qb.ociosidad`: capturada, o calendario × throughput),
+        divididas entre el throughput por máquina; la tarifa es el promedio
+        de los workcenters del centro que la tienen. Contra el abono real a
+        la cuenta de costos fabriles aplicados, la diferencia es la
+        subabsorción del centro.
+        """
+        centros = centros.filtered(
+            lambda c: c.nature in ('fabril_directo', 'fabril_indirecto')
+            and c.std_output_per_hour > 0)
+        if not centros:
+            return 0.0
+        caps = self._capacidad_normal_map(centros)
+        total = 0.0
+        for c in centros:
+            tarifas = [w.costs_hour for w in c.workcenter_ids
+                       if w.costs_hour > 0]
+            if not tarifas:
+                continue
+            unidades = caps.get(c.id) or c.capacidad_normal or 0.0
+            horas = unidades / c.std_output_per_hour
+            total += horas * sum(tarifas) / len(tarifas)
+        return total
+
+    def _costo_primo_gl_month(self, date_from, date_to):
+        """Saldo del mes de la cuenta de costo primo SIN el diario de capa.
+
+        Es el costo promedio que Odoo cargó a ventas tal cual, antes de la
+        corrección: la base de la capa propuesta. La cuenta y el diario son
+        parámetros porque el plan de cuentas es de la empresa, no del
+        módulo; los defaults son los de Quimibond (501.01.01, diario CAPA).
+        Sin cuenta configurada (base de prueba) devuelve 0.
+        """
+        Config = self.env['qb.costeo.factor.config']
+        codigo = Config.get_param_text('capa_cuenta_costo_primo', '501.01.01')
+        cuenta = self.env['account.account'].search(
+            [('code', '=', codigo)], limit=1)
+        if not cuenta:
+            return 0.0
+        diario = Config.get_param_text('capa_diario_code', 'CAPA')
+        diarios = self.env['account.journal'].search(
+            [('code', '=', diario), ('company_id', '=', self.env.company.id)])
+        self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
+        self.env.cr.execute("""
+            SELECT COALESCE(SUM(aml.balance), 0)
+            FROM account_move_line aml
+            WHERE aml.account_id = %s
+              AND aml.parent_state = 'posted'
+              AND aml.company_id = %s
+              AND aml.date >= %s AND aml.date < %s
+              AND NOT (aml.journal_id = ANY(%s))
+        """, (cuenta.id, self.env.company.id, date_from, date_to,
+              list(diarios.ids)))
+        return float(self.env.cr.fetchone()[0] or 0.0)
+
     def _denominador_capacidad(self, centros, date_from, date_to,
                                restar_by_month=None, caps=None):
         """Denominador del factor de fabricación: capacidad NORMAL del centro,
@@ -964,7 +1088,11 @@ class QbCostoProducto(models.Model):
         fab_by_month = self._pool_by_month(FAB_BUCKETS, fab_from, date_to,
                                            es_variable=False,
                                            excluir_centros=excluir)
-        energia_by_month = self._pool_by_month(('energia',), date_from, date_to)
+        # La energía del centro absorbido ya viaja en su tarifa por hora
+        # (la luz de tejido es parte de los $99/h): si se queda en el pool
+        # de energía se cobra dos veces.
+        energia_by_month = self._pool_by_month(('energia',), date_from,
+                                               date_to, excluir_centros=excluir)
         op_by_month = self._pool_by_month(('operacion',), date_from, date_to)
         ventas_by_month = self._pool_by_month(('ventas',), date_from, date_to,
                                               sign=-1.0)
@@ -1194,7 +1322,21 @@ class QbCostoProducto(models.Model):
         # normal en el denominador, un mes al 60% de utilización daría una
         # energía por kilo 40% baja — justo al revés de la realidad física.
         # (El override manual sigue mandando sobre los dos.)
-        kg_energia = Config.get_param('denominador_kg_override', 0.0) or kg_real
+        #
+        # Y se divide entre los kilos de TODA la planta, con los centros
+        # absorbidos dentro. El gas de las calderas y el agua de tintorería
+        # siguen en el pool (sus centros están en capa), pero el único centro
+        # con denominador en kilos era tejido: al absorberse, `kg_real` quedó
+        # en 0 y septiembre de 2026 salió con energía $0/kg — $918K/mes que
+        # ningún producto cargaba. El kilo tejido sigue existiendo aunque
+        # su gasto ya no esté en el pool.
+        kg_energia = Config.get_param('denominador_kg_override', 0.0)
+        if not kg_energia:
+            kg_energia = kg_real
+            if excluir:
+                kg_energia = self._production_month_avg(
+                    Centro.search([('es_denominador_kg', '=', True)]),
+                    date_from, date_to)
         energia_por_kg = (Config.get_param('energia_por_kg', 0.0)
                           or (energia_pool / kg_energia if kg_energia else 0.0))
         op_pct = (Config.get_param('op_pct_override', 0.0)
@@ -1219,6 +1361,15 @@ class QbCostoProducto(models.Model):
         fab_absorbible = fab_pool * (ws * util_kg + (1 - ws) * util_m)
         fab_ocioso = max(fab_pool - fab_absorbible, 0.0)
 
+        # La misma lectura para los centros que ya capitalizan por
+        # workcenter. Odoo abona a 504.01.0099 solo las horas que de verdad
+        # corrieron; lo que el centro costó por encima de eso se quedó en
+        # resultados y no es brecha, es su ociosidad. Se mide contra la
+        # tarifa: horas normales (capacidad normal ÷ throughput por máquina)
+        # × tarifa promedio de sus workcenters, menos el abono real.
+        ocioso_absorbido = max(
+            self._costo_normal_absorbidos(absorbidos) - absorcion_bruta, 0.0)
+
         # ¿El costo unitario de este período se puede comparar con otro?
         #
         # La fabricación se divide entre capacidad normal, así que no se mueve
@@ -1237,6 +1388,17 @@ class QbCostoProducto(models.Model):
         # Da igual si es subregistro o paro real: en los dos casos el unitario
         # no compara contra un mes normal, y quien lea el reporte tiene que
         # saberlo sin ir a investigar.
+        # De lo capitalizado por workcenter, ¿cuánto ya salió a ventas? Se
+        # siguen los lotes desde la orden absorbida hasta la entrega. Es la
+        # cifra que la capa de valoración NO debe restar (ya está en el
+        # costo de ventas) — y el resto es inventario, no gasto del mes.
+        traza = {'vendida': 0.0, 'en_inventario': 0.0, 'sin_lote': 0.0}
+        if absorbidos:
+            traza = self.env['qb.costo.absorcion.traza'].trazar(
+                absorbidos, min(absorbidos.mapped('fecha_absorcion')),
+                period, date_to)
+        costo_primo_gl = self._costo_primo_gl_month(period, date_to)
+
         util_pond = ws * util_kg + (1 - ws) * util_m
         conf_parcial = Config.get_param('utilizacion_min_comparable', 0.70)
         conf_mala = Config.get_param('utilizacion_min_utilizable', 0.40)
@@ -1296,6 +1458,11 @@ class QbCostoProducto(models.Model):
             'confiabilidad': confiabilidad,
             'confiabilidad_detalle': conf_detalle,
             'fab_ocioso_month': fab_ocioso,
+            'ocioso_absorbido_month': ocioso_absorbido,
+            'absorcion_vendida_month': traza['vendida'],
+            'absorcion_en_inventario': traza['en_inventario'],
+            'absorcion_sin_lote_month': traza['sin_lote'],
+            'costo_primo_gl_month': costo_primo_gl,
             'fab_pool_con_centro_pct': fab_con_centro_pct,
             'entretela_m_denom_month': entretela_m,
             'fab_weight_share': ws,

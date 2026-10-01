@@ -58,7 +58,7 @@ class SgiStaffEfficiency(models.Model):
     received_date = fields.Datetime(string="Recibida por RH el", readonly=True, copy=False,
                                     help="Fecha y hora en que RH recibió la hoja.")
     state = fields.Selection([('borrador', "Borrador"), ('cerrado', "Cerrado"), ('recibido', "Recibido por RH")],
-                             default='borrador', required=True, tracking=True,
+                             string="Estado", default='borrador', required=True, tracking=True,
                              help="Borrador mientras se captura; cerrado por el jefe de área; recibido por "
                                   "RH.")
     line_ids = fields.One2many('sgi.staff.efficiency.line', 'sheet_id', string="Empleados")

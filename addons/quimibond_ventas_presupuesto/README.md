@@ -16,10 +16,56 @@ propios, sin borrar datos»).
   reglas por empresa, 10 accesos, la secuencia `PPV-AAAA-`, el pie de
   formato `format_map_sales_budget`, los 9 parámetros `quimibond_sgi.budget_*`,
   `price_*`, `forecast_*` y `sales_budget_alert_pct` (mismas claves) y sus
-  ajustes en Ajustes → SGI → KPIs automáticos.
+  ajustes en Ajustes → SGI → Indicadores automáticos.
 - Avisos en el motor de crons del SGI (`sgi.cron`): cierre de mes (gancho
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
+
+## Pruebas de staging (19.0.1.3.1, 2026-10-01)
+
+Solo pruebas; el código no cambia.
+
+- `test_ajustes_130` (`TestBudgetMinPriceException`, casos 3 y 4): cada
+  línea creaba su propio presupuesto del mismo mercado y año, y el segundo
+  chocaba con la regla «un presupuesto no obsoleto por mercado y año». La
+  clase usa un solo presupuesto y le agrega líneas. Error de la prueba.
+- `test_sales_budget` (`TestSalesBudgetLifecycle55.test_05`): esperaba
+  «omitidos 1» y el chatter decía 0. Desde 1.1.0 (N2) el presupuesto se
+  omite por producto + cliente + **mes** del pronóstico, y la semana del
+  pronóstico era el lunes de 2040-06-03, o sea 2040-05-28 (mayo) contra la
+  línea de junio. No es regresión ni dato de producción: la prueba no se
+  actualizó con N2. Ahora la semana es la del 2040-06-04.
+
+## Ajustes del CEO (19.0.1.3.0, 2026-10-01)
+
+- **Precio mínimo plausible propio** (producto, pestaña Ventas; categoría,
+  vale para sus subcategorías): excepción al umbral general de Ajustes ($5)
+  para productos que de verdad cuestan menos (tiras perforadas Perfoquim a
+  $0.55–$1.28/m). Manda el del producto, luego el de la categoría más
+  cercana y al final el general, que no cambia. Con 0.01 se acepta cualquier
+  precio mayor que cero; el origen del precio de la línea dice «mínimo propio
+  del producto / categoría '…'». Visible para el Admin de ventas y el Jefe
+  MAST.
+- **«Actualizar real» en «Revisado»** recalcula también el precio de lista sin
+  regresar el documento a borrador: el precio sale de la lista, no de la
+  captura, y el gate «sin precio» de la aprobación pide justo corregir la lista
+  y refrescar. Si algún precio cambia queda constancia en el chatter (líneas,
+  importe antes y después, sin precio antes y después). Los crons y «Conciliar
+  facturado» siguen refrescando el precio solo en borrador; lo aprobado sigue
+  congelado.
+
+## Pantallas (19.0.1.2.0, revisión de vistas V-M10)
+
+- La lista de líneas y la matriz de la ficha suman al pie la cantidad
+  presupuestada y facturada y los importes presupuestado, facturado y pedido
+  (este último en la lista, columna opcional).
+- En el encabezado del presupuesto o pronóstico solo queda el flujo (enviar a
+  revisión o marcar revisado, aprobar, nueva revisión, regresar a borrador y
+  enviar demanda al MPS). «Análisis» es botón inteligente; «Actualizar real»,
+  «Conciliar facturado» e «Importar desde Excel» están en el engrane
+  (Acción) de la ficha, y el PDF en el menú Imprimir.
+- Las migas dicen lo mismo que el menú: «Presupuestos», «Pronósticos» y
+  «Releases de clientes» (V-M12).
 
 ## Releases de clientes (19.0.1.1.0, E1a)
 
@@ -96,6 +142,7 @@ borrador con la misma condición.
 `tests/test_sales_budget.py` (las 117 que vivían en el SGI) y
 `tests/test_sales_budget_sgi.py` (multiempresa, Dirección y el cron de
 cobertura corrido dos veces, que vivían en otras pruebas del SGI).
+`tests/test_ajustes_130.py` (mínimo propio y precio en revisado),
 `tests/test_customer_part.py` y `tests/test_release.py` (catálogo de partes,
 releases y la suma del MPS): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y

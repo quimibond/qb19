@@ -354,6 +354,13 @@
                        decoration-warning="confiabilidad == 'parcial'"
                        decoration-danger="confiabilidad == 'mala'"/>
                 <field name="fab_ocioso_month" optional="show"/>
+                <field name="ocioso_absorbido_month" optional="show"/>
+                <field name="absorcion_vendida_month" optional="show" sum="Total"/>
+                <field name="absorcion_en_inventario" optional="hide"/>
+                <field name="absorcion_sin_lote_month" optional="hide"/>
+                <field name="costo_primo_gl_month" optional="hide" sum="Total"/>
+                <field name="mp_vendida_month" optional="hide" sum="Total"/>
+                <field name="capa_propuesta_month" optional="show" sum="Total"/>
                 <field name="factor_fab_kg"/>
                 <field name="factor_fab_m"/>
                 <field name="energia_por_kg"/>
@@ -428,6 +435,13 @@
                             <field name="confiabilidad_detalle" readonly="1"
                                    invisible="confiabilidad == 'ok'"/>
                             <field name="fab_ocioso_month"/>
+                            <field name="ocioso_absorbido_month"/>
+                            <field name="absorcion_vendida_month"/>
+                            <field name="absorcion_en_inventario"/>
+                            <field name="absorcion_sin_lote_month"/>
+                            <field name="costo_primo_gl_month"/>
+                            <field name="mp_vendida_month"/>
+                            <field name="capa_propuesta_month"/>
                             <field name="entretela_m_denom_month"/>
                         </group>
                     </group>

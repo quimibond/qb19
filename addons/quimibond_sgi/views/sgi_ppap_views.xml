@@ -100,7 +100,12 @@
                 <field name="level"/>
                 <field name="reason"/>
                 <field name="date_submitted"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-info="state in ('preparacion', 'enviado')"
+                       decoration-success="state == 'aprobado'"
+                       decoration-warning="state == 'interino'"
+                       decoration-danger="state == 'rechazado'"/>
             </list>
         </field>
     </record>

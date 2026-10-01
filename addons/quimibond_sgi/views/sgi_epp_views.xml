@@ -134,7 +134,7 @@
                 </button>
             </xpath>
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="EPP (SGI)" name="sgi_epp" groups="quimibond_sgi.group_sgi_user,hr.group_hr_user">
+                <page string="EPP" name="sgi_epp" groups="quimibond_sgi.group_sgi_user,hr.group_hr_user">
                     <group string="EPP requerido por el puesto (S03-01)">
                         <field name="sgi_epp_required" nolabel="1" readonly="1"/>
                     </group>

@@ -20,6 +20,8 @@ vive en sgi_sales_budget_line.py, solo separada por tamaño.
 from collections import defaultdict
 from datetime import date, timedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
@@ -441,7 +443,7 @@ class SgiSalesBudget(models.Model):
             raise UserError(
                 "La conciliación de facturado aplica al presupuesto (el pronóstico "
                 "mide compromiso, no facturación).")
-        self.action_refresh_actuals()
+        self._sgi_refresh_actuals()
         d = self._sgi_reconcile_data()
         ccy = (d['currency'].name or '') + ' '
 
@@ -923,14 +925,64 @@ class SgiSalesBudget(models.Model):
         }
 
     def action_refresh_actuals(self):
-        """Recalcula la foto de facturado/pedido Y el precio de lista de las líneas
-        (los computes almacenados no se refrescan solos al cambiar facturas o la
-        lista de precios). El precio solo cambia en borradores (ver _compute_price)."""
+        """«Actualizar real» (engrane): recalcula la foto de facturado/pedido Y
+        el precio de lista de las líneas (los computes almacenados no se
+        refrescan solos al cambiar facturas o la lista de precios).
+
+        1.3.0: el precio se recalcula en borrador Y en revisado. En revisado no
+        se reabre el documento: el precio no se captura, sale de la lista, y lo
+        que el Admin de ventas revisó (productos, clientes, cantidades) no
+        cambia; el gate de «sin precio» de la aprobación pide justo corregir la
+        lista y refrescar. Antes había que regresarlo a borrador, actualizar y
+        volver a enviarlo. Si el precio cambia en un revisado, queda constancia
+        en el chatter (líneas, importe antes y después) para que Dirección
+        apruebe sabiendo. Aprobado y obsoleto siguen congelados."""
+        self._sgi_refresh_actuals(price_states=('borrador', 'revisado'))
+        return True
+
+    def _sgi_refresh_actuals(self, price_states=('borrador',)):
+        """Foto de facturado/pedido de todas las líneas y precio de lista de las
+        de presupuestos en `price_states`. Los crons y la conciliación usan el
+        default (solo borrador): un revisado solo cambia de precio a mano."""
         lines = self.mapped('line_ids')
-        # El precio solo se refresca en borradores: lo aprobado queda congelado.
-        lines.filtered(lambda l: l.budget_id.state == 'borrador')._compute_price()
+        reviewed = self.filtered(
+            lambda b: b.state == 'revisado' and 'revisado' in price_states)
+        before = {
+            budget.id: (budget.amount_budget_total, budget.no_price_count,
+                        {l.id: (l.price_unit_budget, l.has_list_price)
+                         for l in budget.line_ids})
+            for budget in reviewed}
+        to_price = lines.filtered(lambda l: l.budget_id.state in price_states)
+        draft_lines = to_price.filtered(lambda l: l.budget_id.state != 'revisado')
+        draft_lines._compute_price()
+        reviewed_lines = to_price - draft_lines
+        if reviewed_lines:
+            # Asignar el precio pasa por write(), que regresa a borrador un
+            # revisado al tocar price_unit_budget (campo de captura). Aquí el
+            # cambio sale de la lista, no de la captura: se escribe con el
+            # bypass del candado. sudo porque el bypass solo cuenta para
+            # sistema o MAST y el Admin de ventas es quien lo usa; antes se
+            # exige que el usuario pueda escribir las líneas.
+            reviewed_lines.check_access('write')
+            reviewed_lines.sudo().with_context(sgi_bypass_lock=True)._compute_price()
         lines._compute_real()
         lines._compute_ordered()
+        for budget in reviewed:
+            amount_before, no_price_before, prices = before[budget.id]
+            changed = budget.line_ids.filtered(
+                lambda l: prices.get(l.id) != (l.price_unit_budget, l.has_list_price))
+            if not changed:
+                continue
+            ccy = budget.currency_id.name or ''
+            budget.message_post(body=Markup(
+                "Precio de lista recalculado en <b>revisado</b> por %s: %d "
+                "línea(s) cambiaron. Importe %s %s → %s %s; sin precio de lista: "
+                "%d → %d. El documento sigue revisado (el precio sale de la "
+                "lista, no de la captura).") % (
+                    self.env.user.name, len(changed),
+                    '{:,.2f}'.format(amount_before), ccy,
+                    '{:,.2f}'.format(budget.amount_budget_total), ccy,
+                    no_price_before, budget.no_price_count))
         return True
 
     # --- Consumo de pronóstico → demanda al MPS ------------------------------

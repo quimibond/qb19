@@ -7,6 +7,10 @@
         <field name="report_name">quimibond_ventas_presupuesto.report_sales_budget_document</field>
         <field name="report_file">quimibond_ventas_presupuesto.report_sales_budget_document</field>
         <field name="print_report_name">'PPV-%s-%s' % (object.team_id.name or '', object.year or '')</field>
+        <!-- 1.2.0 (V-M10): se imprime desde el menú Imprimir, no desde un botón
+             del encabezado. -->
+        <field name="binding_model_id" ref="model_sgi_sales_budget"/>
+        <field name="binding_type">report</field>
     </record>
 
     <template id="report_sales_budget_document">

@@ -13,6 +13,454 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.88.0 — 2026-10-01
+
+**Corregido: «Mi procedimiento» guardado no se vaciaba** (`TestRoleAudit.test_07`,
+«La lista del puesto ya no trae el rol, pero lo guardado no se recalculó»,
+fallaba desde 57.13.0).
+
+- **Causa** (diagnóstico de la 57.87.0 en staging): al archivar la actividad,
+  el único cálculo de `hr.employee.sgi_mp_role_ids` corre dentro del write
+  (`flush_all` de un `unlink` en `_sgi_refresh_spec_gaps`), con la caché ya
+  archivada (`act.active` y `role.activity_active` en `False`); la búsqueda
+  baja `activity_active` a la base antes de consultar y el filtro en Python
+  descarta la actividad, así que la lista calculada sí sale vacía. Pero
+  `_compute_sgi_mp_roles_stored` la asignaba como `.ids`, y en Odoo 19 una
+  lista vacía asignada a un many2many es una **lista de comandos vacía**
+  (`Many2many.write_batch`): no cambia nada. Lo guardado seguía en
+  `[3565]` antes y después del cálculo, y nada lo volvía a calcular. No era la
+  base atrasada ni el orden del flush: cualquier lista que quedara vacía
+  (última actividad o proceso archivado, último escalamiento o «participa»,
+  cambio a un puesto sin roles) conservaba lo de antes.
+- **Arreglo**: el cálculo guardado (y el del puesto y el empleado público)
+  asigna recordsets, que siempre son `Command.set(...)`, también vacío.
+  `hr.job._sgi_mp_role_lists` filtra además en Python el proceso archivado
+  (ya filtraba la actividad), para no depender de lo que la base tenga a
+  medio write.
+- **Pruebas**: `test_07` archiva con `write` como la interfaz (pasa por
+  `_sgi_refresh_spec_gaps`) y revisa también `sgi_mp_process_ids`; se quita
+  el diagnóstico de la 57.87.0. Nueva `test_07b`: escalamientos y
+  «participa» que se quedan sin nada, y proceso archivado, vacían sus listas.
+
+**Migración** (`migrations/19.0.57.88.0/post-migrate.py`): recalcula las
+cuatro listas guardadas de todos los empleados (activos y archivados) y
+registra, lista por lista, cuántos cambiaron y su conteo antes→después.
+Idempotente.
+
+**Datos de producción** (lectura por MCP, 2026-10-01): 0 empleados con un rol
+de actividad archivada o de proceso archivado (de los 25 archivados) en lo
+guardado; los 129 empleados con roles tienen puestos (83) con lista no vacía,
+así que «Mis actividades» no tenía roles viejos. Los cambios posibles se
+limitan a escalamientos, «participa» o procesos que se quedaron sin
+reemplazo; el log de la migración da el número.
+
+## 19.0.57.87.0 — 2026-10-01
+
+**Diagnóstico de `TestRoleAudit.test_07`** (`test_role_audit`, «La lista del
+puesto ya no trae el rol, pero lo guardado no se recalculó»; falla desde
+57.13.0 en base nueva y en staging y la lectura del código no encontró la
+causa). Solo cambia la prueba: ningún código de producción, y la aserción es
+la misma (el texto original sigue al principio del mensaje). Al archivar la
+actividad y hacer el flush, la prueba envuelve con `unittest.mock.patch.object`,
+sin cambiar lo que hacen, `hr.employee._sgi_mp_touch_jobs`,
+`hr.employee._compute_sgi_mp_roles_stored` y `sgi.activity.role._sgi_mp_jobs`.
+Si la aserción falla, el mensaje del FAIL trae, después de
+`--- diagnóstico test_07 (57.87.0)`:
+
+- **Fotos** `[antes de archivar]`, `[archivada, antes del flush]`,
+  `[después del flush]`, `[tras invalidate_recordset]`: `caché emp.roles`
+  (lo que el ORM tiene en memoria para el empleado; `sin caché` si no hay) y
+  `base emp.roles` (SQL directo a `hr_employee_sgi_mp_role_rel`, sin flush);
+  `caché act.active` y `caché role.activity_active`; `base (act.active,
+  role.activity_active)` (SQL); `pendiente`: si el empleado sigue marcado
+  para recalcular `sgi_mp_role_ids` y el rol para `activity_active`
+  (`env.transaction.tocompute`), y qué campos de `hr.employee` y de
+  `sgi.activity.role` quedan por calcular.
+- **`touch`**: cada llamada a `_sgi_mp_touch_jobs` con los puestos que
+  recibió, si el empleado quedó marcado para recalcular antes y después, y
+  desde dónde se llamó (archivo, línea y función).
+- **`_sgi_mp_jobs`**: roles y puestos que devolvió.
+- **`compute`**: cuántas veces corrió el cálculo guardado y cuántas con el
+  empleado; en cada una, los ids, `su`, el contexto, la pila (doce cuadros:
+  si vino del flush o de una lectura) y, cuando incluye al empleado, la foto
+  de caché y base **antes** y **después** del cálculo.
+- Al final: el valor del ORM tras `invalidate_recordset` y tras
+  `invalidate_all`, la base, la lista del puesto en ese momento y el puesto
+  guardado del empleado contra el del rol.
+
+Cómo leerlo: si `compute` no corrió con el empleado, el recálculo nunca se
+disparó o se descartó (ver `pendiente` y `touch`); si corrió y en `después`
+la caché ya no trae el rol pero la base sí, la escritura del Many2many se
+comparó contra una caché que no coincidía con la base (Odoo solo borra las
+filas que ve en caché); si la caché y la base traen el rol después del
+cálculo, el cálculo vio la actividad todavía activa (ver `caché act.active` y
+`caché role.activity_active` en `antes`).
+
+## 19.0.57.86.0 — 2026-10-01
+
+Pruebas que fallaron en el build de staging (base = copia de producción con
+57.82.0–57.85.0 ya migradas, D-02 incluida): 4 fallos y 4 errores de 1064.
+`TestRoleAudit.test_07` queda pendiente aparte. Solo cambian pruebas; ningún
+código de producción.
+
+**Corregido (pruebas, error de la prueba):** `test_formatos_bloque3`,
+`TestBloque3ClaveD02` no arrancaba (`KeyError: 'protocolo'` en `setUpClass`):
+el helper `_doc` tomaba el tipo de un diccionario fijo de siete códigos y D-02
+pide además «protocolo» y «reglamento». Fallaba en cualquier base, no solo en
+staging. Ahora `_type(code)` resuelve el tipo como la migración (código,
+compañía o global, activo o archivado) con el xmlid de fábrica
+(`sgi_doc_type_<código>`) de respaldo; en producción «Protocolo» es el id 10
+(`quimibond_sgi.sgi_doc_type_protocolo`, global, activo).
+
+**Corregido (pruebas, choque con datos de producción):** `test_reclamaciones`
+caso 4 creaba el señuelo «Reclamación Industrial» y Helpdesk le derivaba el
+alias `reclamacion-industrial`, que en la copia de producción ya usa el
+equipo real (UserError al crear). Los equipos de la prueba llevan
+`alias_name` propio (`sgi-prueba-…`); el nombre en inglés y en español sigue
+igual, que es lo que la prueba mide.
+
+**Corregido (pruebas, efecto de D-02):** `test_excel_migration` caso 1
+esperaba la clave literal F-P-D01-26 en la solicitud de desarrollo; tras D-02
+el documento ligado al mapeo se llama F-C1-15 con clave anterior F-P-D01-26 y
+la clave viva es la nueva, que es el comportamiento correcto
+(`sgi_dev_format_code` sale de `sgi_live_parts()` del mapeo). La prueba compara
+contra la clave viva del mapeo `format_ref_dev_carda` y, si no es F-P-D01-26,
+exige que sea la del documento cuya clave anterior es F-P-D01-26. En una base
+nueva sigue siendo F-P-D01-26.
+
+**Corregido (pruebas, efecto de D-02):** `test_sgi_format_map` caso 4 (la
+remisión lleva banner y la recepción no) leía el mapeo real de
+`stock.picking`, que D-02 renombra (F-P-A16-01 → clave nueva) y
+`sgi_hide_real_documents` desliga. Como ya hacía `test_format_map_varios`, la
+prueba archiva los mapeos reales de remisiones y siembra el suyo con
+F-P-A16-01. Revisadas las demás pruebas con claves literales F-P-/F-IT-:
+todas corrieron y pasaron en el mismo build de staging (siembran sus
+documentos o fijan sus mapeos); las de `TestBloque3ClaveD02` no habían
+corrido y usan solo documentos propios.
+
+**En `quimibond_ventas_presupuesto` 19.0.1.3.1** (detalle en su README):
+`test_ajustes_130` (choque de presupuestos de la misma prueba) y
+`test_sales_budget` caso 5.5-v (semana del pronóstico en mayo).
+
+## 19.0.57.85.0 — 2026-10-01
+
+**Corregido (reclamaciones, D-006 / decisión 9):** la 57.19.0 debía marcar
+como reclamación los equipos 2 («Reclamaciones entretelas») y 14 («ATENCION A
+CLIENTES») y en producción solo marcó el 30 (el del XML ID); Jose marcó 2 y 14
+a mano el 2026-10-01. **Causa:** `helpdesk.team.name` es traducible y la
+migración corre sin `lang`, así que `search([('name', 'in', …)])` comparó solo
+la llave `en_US` del JSONB; los equipos 2 y 14 (creados en 2022 y 2023)
+tienen ese nombre solo en `es_MX` y en `en_US` guardan otro texto. **Arreglo:**
+`helpdesk.team._sgi_complaint_teams_by_name` compara el nombre en cada idioma
+instalado, sin distinguir mayúsculas ni espacios de los extremos;
+`_sgi_mark_complaint_teams` lo usa y sigue solo AGREGANDO la marca.
+
+**Migración (post):** vuelve a correr la marca con la búsqueda corregida.
+Solo agrega donde falta: nunca desmarca ni mueve tickets. En producción no
+cambia nada (30, 2 y 14 ya están marcados); sirve para bases copiadas de
+producción antes del arreglo a mano. «Reclamación Industrial» (11) sigue sin
+marcar.
+
+**Pruebas:** `test_reclamaciones` caso 4 (equipo con nombre en español solo en
+`es_MX`: la búsqueda vieja no lo ve, la nueva sí; mayúsculas distintas; un
+señuelo con otro nombre no se marca; una segunda corrida no escribe nada).
+
+**En `quimibond_ventas_presupuesto` 19.0.1.3.0** (mismo PR; ese módulo no
+tiene CHANGELOG, el detalle va en su README):
+- «Precio mínimo plausible propio» en el producto y en la categoría
+  (subcategorías heredan) para que las tiras perforadas a menos de $5/m
+  (AP4032BL10.0/2 I a $1.28; KF4032T11BL1.2/0 y KF4032T11GO1.2/0 TE a $0.55)
+  cuenten como precio real sin bajar el umbral general.
+- «Actualizar real» recalcula el precio de lista también en «Revisado», sin
+  regresarlo a borrador, con constancia en el chatter si algo cambia.
+
+**Pendiente de decisión (sin código):**
+- Equipo de ventas por cliente en el contacto (`res.partner`): lo decide Jose
+  con Ventas.
+- P-C13 #3, aviso por antigüedad en cuarentena: propuesta para Areli.
+
+## 19.0.57.84.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 3/3, D-02; decisiones de Jose del
+2026-09-30, «Clave D-02: con script, al final del bloque 3», y del
+2026-10-01 sobre las tres preguntas abiertas):**
+`documents.document._sgi_apply_d02` aplica la clave nueva con
+`_sgi_assign_new_code` (56.32.0). Numeración determinista (proceso, prefijo,
+clave del Dropbox); el consecutivo sigue al más alto existente. Todas las
+revisiones de una clave van juntas y cada documento deja «Clave nueva …
+(antes …)» en su chatter.
+
+| Qué | Clave nueva |
+|---|---|
+| Formatos y formatos de instructivo (consecutivo compartido) | `F-{proceso}-{nn}` |
+| Instructivos | `IT-{proceso}-{nn}` |
+| DAT | `DA-{proceso}-{nn}` |
+| Protocolos | `PROT-{proceso}-{nn}` (patrón nuevo del tipo) |
+| Procedimientos del Dropbox «No aplica (se queda)» que ningún proceso sustituye | pasan a tipo **Control operacional**, `CO-{proceso}-{nn}` (patrón del tipo: antes `CO-{seq:02d}`) |
+
+**Conservan su clave (decisiones de Jose, 2026-10-01):**
+
+- **Procedimientos del Dropbox «En curso»:** hasta que su proceso entre en
+  vigor y queden obsoletos (se dan de baja con su clave).
+- **Formularios de Odoo** (L-004): no pasan a `F-{proceso}-{nn}`. Son
+  pantallas; lo que imprimen ya lleva la clave del formato ligado por el
+  mapeo.
+- **Anexos:** siguen a su documento padre. **Reglamentos** (por ejemplo, el
+  Reglamento Interior): están registrados ante la autoridad con ese nombre y
+  clave.
+- MIID, diagramas, obsoletos y P-I01 con su familia.
+
+- **No renombra archivos ni toca la clave anterior** (la del Dropbox, de
+  56.32.0): el buscador «Del Dropbox a Odoo», la búsqueda «Clave SGI» y
+  `_sgi_find_by_code` siguen encontrando cada documento por su clave vieja,
+  **sin límite de tiempo** (C-005; el inventario decía «12 meses», pero eso
+  cambió en 56.32.0). También los controles operacionales y los protocolos.
+- Los mapeos de formato imprimen solos la clave nueva (apuntan al documento,
+  C-006); su «Clave al ligar» se actualiza cuando era la vieja. Los mapeos
+  sin documento siguen encontrando el suyo por la clave anterior (el de
+  bloqueo y etiquetado, «P-A20», imprime CO-E2-04). Las ligas con
+  actividades no cambian.
+- Los controles operacionales ya no son procedimientos: salen de
+  «Procedimientos anteriores» y del conteo de procedimientos de «Avance de la
+  transición», y entran en **«Formatos y documentos anteriores»** y en los
+  documentos del avance (`sgi_migration_action`, `action_open_documents` y
+  `sgi.dropbox.progress` incluyen el tipo «Control operacional»). Sus rutinas
+  y su clave anterior no cambian.
+- `data/sgi_document_types.xml` (noupdate, solo bases nuevas) trae los
+  patrones `CO-{process}-{seq:02d}` y `PROT-{process}-{seq:02d}`; en
+  producción los pone la migración si el tipo sigue con el de fábrica.
+
+**Migración (post):** `migrations/19.0.57.84.0/post-migrate.py`. Idempotente
+(la segunda corrida no cambia nada); en el log, cada «vieja → nueva», los
+patrones de tipo con su valor anterior y cada documento sin cambio con su
+motivo. Esperado en producción (MCP, 2026-10-01, después de 57.82.0):
+
+- **5 controles operacionales**, todos de E2: P-A17 → CO-E2-01, P-A18 →
+  CO-E2-02, P-A19 → CO-E2-03, P-A20 → CO-E2-04, P-S03 → CO-E2-05. Siguen
+  como procedimiento los **21 «En curso»**, 5556 (borrador con clave
+  inválida, C-008) y P-I01.
+- **328 claves nuevas:** C1 33, C2 21, C3 3, C4 67, C5 64, C6 6, E1 1, E2 49,
+  S1 11, S2 7, S3 9, S4 41, S5 16 (instructivos 42, formatos 183, F-IT 63,
+  DAT 35, protocolos 5: PROT-01…05 → PROT-E2-01…05). IT-C4-01 (3644) ya la
+  tenía. Conservan su clave 66 formularios de Odoo, 15 anexos y 4
+  reglamentos.
+- «Clave al ligar» al día en los 25 mapeos ligados a un formato o F-IT.
+
+**Corregido (57.82.0, antes de llegar a producción):** el informe de otras
+referencias al duplicado (`_sgi_b3_other_references`) cuenta cada campo
+dentro de un savepoint: un error de SQL en un modelo ajeno ya no deja la
+transacción de la migración abortada.
+
+**Pruebas:** `test_formatos_bloque3` `TestBloque3ClaveD02` (numeración
+determinista con F y F-IT juntos, todas las revisiones, procedimiento «En
+curso» sin tocar, «No aplica (se queda)» → `CO-{proceso}-{nn}` con su tipo,
+protocolo → `PROT-{proceso}-{nn}`, anexo con padre, reglamento y formulario
+de Odoo sin tocar, búsqueda por clave anterior con `_sgi_find_by_code`, la
+búsqueda de Documentos y el buscador `sgi.dropbox.key` también para CO y
+PROT, «Formatos y documentos anteriores» con los CO, mapeos con y sin
+documento, ligas de actividades, idempotencia y post-migrate).
+
+## 19.0.57.83.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 2/3, propuesta de formatos §2, decisión
+del 2026-09-30 «Responsable SGI de cada formato: el dueño del proceso»):**
+`documents.document._sgi_owner_from_process` pone como responsable SGI de
+cada formato vigente o en piloto (formato, F-IT, DAT, anexo y formulario de
+Odoo) al usuario del dueño de su proceso (`sgi_process_id.owner_id.user_id`)
+si está activo y es interno. Solo toca los que hoy tiene el Jefe MAST (el
+custodio de 56.28.0, `_sgi_manager_user_id`): lo ya reasignado se respeta.
+Si el dueño no tiene usuario, el formato se queda con MAST y sale en el log.
+P-I01 y su familia quedan fuera. MAST conserva la aprobación y la
+publicación.
+
+**Migración (post):** `migrations/19.0.57.83.0/post-migrate.py`, después de
+las bajas de 57.82.0. Idempotente; en el log, por proceso, los ids y el
+cambio «Blanca Ballesteros → dueño». Esperado en producción (MCP,
+2026-10-01): **238** cambian (C1 32 y C2 31 → Jessica Francisco; C3 7 →
+Paris Villordo; C5 60 → Oscar González; C6 10 → Cynthia Santana; E1 5 y S1
+14 → Jorge Manuel Ortiz; S2 7 y S3 9 → Irma Luna; S4 45 → Miguel Medina; S5
+18 → Manuel Juárez); se quedan con MAST E2 70 (la dueña es MAST) y C4 64
+(Francisco González no tiene usuario: 54 en el log y 10 de P-I01).
+
+**Para Jose:** la lista de los 64 formatos de C4 que se quedan con MAST está
+en `docs/sgi/transicion/formatos-bloque-3.md` §2. Pasan a su dueño en cuanto
+Francisco González tenga usuario (ver D-08, «manufactura@»).
+
+**No se hizo:** la familia P-A13 (7 formatos en S2, que la propuesta daba
+por mal asignada a S4) no se movió: sus formatos son reportes
+administrativos (anticipos, compras, facturación, inventario, importaciones)
+y una lista de asistencia; no es un error evidente. Quedan con Irma Luna
+hasta que MAST decida su proceso.
+
+**Pruebas:** `test_formatos_bloque3` `TestBloque3Responsable` (dueño con
+usuario, sin usuario, usuario inactivo, dueña MAST, lo reasignado se
+respeta, instructivo, obsoleto y P-I01 fuera, idempotencia y post-migrate).
+
+## 19.0.57.82.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 1/3, propuesta de formatos aprobada por
+Jose el 2026-10-01, §3 y §1):** duplicados y datos malos de los formatos
+controlados. Tablas y métodos en `models/sgi_formatos_bloque3.py`
+(`documents.document._sgi_formatos_bloque3` y sus pasos
+`_sgi_b3_merge_duplicates`, `_sgi_b3_link_formats`, `_sgi_b3_uncontrol`,
+`_sgi_b3_recode`, `_sgi_b3_register_odoo_forms`). Cada documento se localiza
+por id **y** se verifica su clave (o clave anterior) y su empresa; si no
+coincide, se salta con aviso. Lo que cambia queda en el log con su valor
+anterior y en el chatter del documento.
+
+- **Dar de baja no es archivar.** En Documentos, archivar manda a la
+  papelera y Odoo **borra** lo archivado a los 30 días
+  (`documents.deletion_delay`). Los duplicados quedan activos, **obsoletos**,
+  con «Motivo de obsolescencia» y «Baja tramitada» (como los procedimientos
+  que sustituye un proceso, 45.0.0). Antes de darlos de baja, sus ligas en
+  actividades pasan al formato que se conserva. Ninguno está en
+  `sgi.format.map`; uno que lo estuviera se salta.
+- Bajas: F-IT-P-P04-07-01 (4026, duplicado de F-IT-P-C05-07-01),
+  F-P-A23-08 (3752 → F-P-A16-07), F-P-P04-02 (4023 → F-P-C05-02; C1.11 pasa
+  a F-P-C05-02), F-P-A13-01 (3725 → F-P-A01-49), F-P-C17-05 (3943 → vale
+  F-IT-P-A05-01-01), F-IT-P-P01-01-03 (3989 → F-P-P02-01; C4.14) y
+  F-P-P01-01 (4001, sin actividad).
+- Ligas nuevas: C2.43 ← F-P-A28-04 (3875), C6.12 ← F-IT-P-A05-01-01 (3698),
+  E2.37 ← F-IT-P-G03-01-01 (4063, evaluación de auditores, §1 #8).
+- **F-P-V01-04 (5152)** era un reporte de visita **lleno** con la misma
+  revisión 0 que el obsoleto 3359: deja de ser documento controlado (no se
+  borra). 3359 sigue archivado.
+- **F-P-E01-01:** la «Evaluación luminaria» (4060) pasa a **F-P-S01-02**
+  (estudio de higiene de SST, NOM-025; familia P-S01, la primera libre) en la
+  clave y en la clave anterior, para que la búsqueda por clave anterior no la
+  confunda con la matriz; F-P-E01-01 queda en el nombre del archivo, el
+  chatter y el seguimiento. Se liga a E2.31 (estudios de higiene y
+  evaluaciones NOM). F-P-E01-01 queda libre para la matriz de aspectos
+  ambientales: el PDF de la matriz (mapeo 42) imprime «F-P-E01-01» sin
+  revisión hasta que exista el documento.
+- **Altas como «Formulario de Odoo»** (sin archivo; lo que se llena es la
+  pantalla): **F-P-A28-13** «Pronóstico de ventas» (C2, menú Pronósticos,
+  ligado a C2.40 y como documento alternativo del mapeo de
+  `sgi.sales.budget`, que ya imprimía esa clave sin documento) y
+  **F-P-A28-11** «Encuesta de satisfacción del cliente» (E2, menú SGI →
+  Dirección → Satisfacción del cliente, ligado a E2.12).
+
+**Migración (post):** `migrations/19.0.57.82.0/post-migrate.py`. Idempotente;
+nada se borra ni se archiva. Esperado en producción (MCP, 2026-10-01): 7
+bajas, 5 actividades con formatos cambiados (C1.11, C2.43, C4.14, C5.16,
+C6.12) más E2.31, E2.37, C2.40 y E2.12, 1 documento deja de ser controlado,
+1 clave corregida y 2 altas. Marca «cambió» el procedimiento de C1, C2, C4,
+C5, C6 y E2.
+
+**Queda para MAST** (detalle en `docs/sgi/transicion/formatos-bloque-3.md`):
+restaurar de la papelera, si se conservan, los 3 controlados archivados
+(3359, 5119, 4995: Odoo los borra hacia el 29-oct); subir la matriz de
+aspectos ambientales **en blanco** (no hay ninguna en Documentos: 4850 es una
+carpeta y 4868 es la matriz llena de MAST) y ligarla a E2.23 y al mapeo 42;
+ligar F-P-A16-07 a su actividad de C2 (no hay una evidente); confirmar el
+contenido de 4001; configurar la encuesta de satisfacción en Ajustes; decidir
+el proceso de la familia P-A13 (no se movió a S4: son reportes
+administrativos); corregir las citas de 13 de los 17 formatos citados que no
+existen y dar de alta F-P-A14-03, F-P-A06-04 y, si aplica, F-P-C05-10.
+
+**Pruebas:** `test_formatos_bloque3` (fusión con ligas, baja sin archivar,
+el que imprime un mapeo se respeta, clave o empresa distinta se salta,
+registro lleno, clave equivocada libre y búsqueda por clave anterior, alta de
+formulario de Odoo sin archivo con su mapeo, idempotencia, tablas reales y
+post-migrate).
+## 19.0.57.81.0 — 2026-10-01
+
+**Cambiado (pulido de vistas, bloque 5: textos y pulido; revisión del
+2026-09-30):**
+- **Migas iguales al menú (V-M12):** las acciones se llaman como su menú
+  («Programa», «Hallazgos», «Ajustes»); el menú y la acción «Auditorías
+  realizadas» pasan a «Auditorías» (también muestra las de borrador y las
+  planificadas); incidentes dicen «Incidentes y accidentes» en lista,
+  búsqueda, pivote y actividades, y la ficha «Incidente o accidente»;
+  «Revisión por la dirección» con minúscula. Árbol de menús al día. «Eficiencias
+  de mi área» y «Hojas mensuales» comparten acción y siguen como estaban.
+- **Sin emojis (V-B02):** el aviso de formato controlado usa el ícono
+  `fa-file-text-o` en lugar de 📋 (12 avisos).
+- **Sin sufijo «SGI» (V-B03):** dentro de la app, «Áreas», «Documentos»,
+  «Documento controlado», «Cambio documental», «Gestión del cambio (MOC)»,
+  «Formato en documento de Odoo», «Datos de la NC», «Ligas», «Recalcular
+  métricas». En fichas de otras apps la pestaña se llama «SGI» (contacto,
+  equipo, transferencia, tarea; «EPP» en el empleado y «Documentos
+  aplicables» en el puesto, que ya tienen otras pestañas del SGI). El ECO
+  de PLM va en `quimibond_sgi_plm` 3.1.0.
+- **Glosario (V-B04)** en el README y barrido de etiquetas, ayudas,
+  marcadores y confirmaciones: «no conformidad» (NC, sin «NCs»),
+  «certificado de calidad (CoA)», «indicador» (no «KPI»), «casi accidente»,
+  «Jefe MAST». Los reportes impresos no cambian.
+- **Etiqueta «Estado» (V-B05)** en la hoja de eficiencias de personal.
+- **Ayudas (V-B07):** «Puestos y procesos» explica qué muestra y de dónde
+  salen los puestos; sin claves internas («D-08») en la ayuda de Ajustes. La
+  del Pareto del revisado va en `quimibond_sgi_revisado`.
+- **«Descartar» (V-B08)** en el botón para salir de los asistentes (NC,
+  CoA, requisitos legales, propuestas de cambio, firmas…).
+- **Botones inteligentes (V-B09):** «% Difusión» del documento solo con
+  `statinfo`; en el proceso, primero los de alerta (sin evidencia,
+  indicadores en rojo, riesgos altos, NC abiertas, acciones vencidas,
+  faltantes) y después los catálogos.
+- **Fichas con título (V-B10):** área, familia de puestos, norma, punto de
+  la norma, estudio o examen (trabajador y estudio) y plantilla de checklist,
+  que además tiene chatter.
+- **Mi equipo (V-B14):** el total de los pendientes es «Total de la página»
+  (son calculados: no hay subtotales al agrupar); «pendientes atrasados» en
+  masculino en todas partes.
+- **Búsqueda de acciones (V-B17):** las agrupaciones van en `<group>` con
+  etiqueta corta («Responsable», «Estado», «Fecha compromiso»).
+
+`quimibond_ventas_presupuesto` (misma 19.0.1.2.0): migas «Presupuestos»,
+«Pronósticos» y «Releases de clientes». `quimibond_sgi_revisado` (misma
+4.3.0): menú «Pareto de defectos de revisado» (sin paréntesis).
+
+**Pruebas:** `test_vistas_pulido_45.TestTextosYPulido`.
+
+## 19.0.57.80.0 — 2026-10-01
+
+**Cambiado (pulido de vistas, bloque 4: listas, análisis y vistas
+faltantes; revisión del 2026-09-30):**
+- **Pastillas y barras (V-M05):** el estado va como pastilla de color en las
+  listas de auditorías, incidentes, riesgos, AMEF, PPAP, planes de control,
+  políticas, simulacros, mediciones, acuses y desglose de mediciones (y en
+  las listas de solo lectura de la pestaña SGI de órdenes y tareas). El
+  avance de la acción (selección 0/50/100 %) es pastilla en la lista global
+  y botones en su ficha; la calificación de la evaluación de proveedores es
+  barra de avance. Las listas **editables** dentro de las fichas (acciones,
+  mediciones del indicador, elementos del PPAP) se quedan como estaban: una
+  pastilla no se edita.
+- **Paretos ordenados (V-M13):** el Pareto de alertas de calidad sale de
+  mayor a menor (gráfica `order="desc"`, pivote por conteo). El del revisado
+  va en `quimibond_sgi_revisado` 4.3.0.
+- **Programa y auditorías (V-M14):** la lista del programa dice auditorías
+  programadas, hechas y el avance (campos calculados sin guardar
+  `line_count`, `line_done_count`, `progress_pct`); la de auditorías suma
+  procesos auditados, cliente o proveedor (opcional), fin real y auditor con
+  avatar.
+- **Historial en mediciones y evaluaciones de proveedor (V-M16):**
+  `sgi.indicator.measure` y `sgi.supplier.eval` heredan `mail.thread` y
+  tienen chatter. Se sigue el valor, el estado y la nota de la medición, y la
+  calificación, la clasificación y las notas de la evaluación. Sin columnas
+  nuevas (mail.thread no guarda nada en la tabla del modelo).
+- **Mediciones de 12 en 12 (V-B11)** en la ficha del indicador, la más
+  reciente arriba.
+- **Vistas que faltaban (V-B12):** calendario de auditorías (fecha
+  planificada), simulacros (fecha programada) y próximas calibraciones, con
+  color por estado o resultado; kanban por estado de acciones e incidentes
+  (sin arrastrar: el estado sale de los botones); gráfica mensual de
+  incidentes por tipo; panel lateral por tipo de documento y proceso en
+  Documentos.
+- **`multi_edit` (V-B13)** en las listas de acciones, riesgos, documentos y
+  requisitos legales.
+- **Lecciones aprendidas (V-B15)** con la búsqueda de NC (folio, proceso,
+  mayores, fecha). La búsqueda y el menú de hallazgos ya existían (57.53.0 y
+  57.67.0).
+- **Vista de actividades (V-B18)** en calibraciones, requisitos legales,
+  estudios y exámenes, recorridos CSH, objetivos y fichas de máquina.
+
+`quimibond_ventas_presupuesto` 19.0.1.2.0 (V-M10): sumas en cantidad e
+importe de las líneas y encabezado con solo el flujo (detalle en su README).
+
+**Pruebas:** `test_vistas_pulido_45.TestListasYAnalisis`;
+`quimibond_ventas_presupuesto/tests/test_sales_budget_views.py`;
+`quimibond_sgi_revisado/tests/test_pareto_revisado.py`.
+
 ## 19.0.57.68.0 — 2026-09-30
 
 Tercera corrida de las pruebas del SGI en **staging** (copia de producción):

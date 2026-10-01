@@ -116,10 +116,13 @@ class TestHorasExtraRecibo(TransactionCase):
                                for c, h in (horas or {}).items()],
         })
         for code, amount in (lineas or {}).items():
+            # ``total`` explícito: en Odoo 19 es almacenado sin cómputo (lo
+            # escribe compute_sheet); sin él la línea suma 0.
             self.env['hr.payslip.line'].create({
                 'slip_id': slip.id, 'salary_rule_id': self.rules[code].id, 'name': code,
-                'amount': amount, 'quantity': 1.0, 'rate': 100.0, 'sequence': 5,
+                'amount': amount, 'quantity': 1.0, 'rate': 100.0, 'total': amount, 'sequence': 5,
             })
+            self.assertEqual(slip._qb_nomina_line_total(code), amount, 'la línea %s no quedó en el recibo' % code)
         return slip
 
     @staticmethod
@@ -198,10 +201,22 @@ class TestHorasExtraRecibo(TransactionCase):
 
     @mute_logger(LOG)
     def test_horas_sin_lineas(self):
+        # Sin líneas HE_EXEMPT/HE_TAX y sin importe en la percepción 019: no
+        # hay de dónde sacar ImportePagado → no se inventa el nodo.
+        slip = self._recibo({'HE_DOBLE': 9})
+        cv = {'percepcion_list': [{'tipo_percepcion': '019', 'clave': 'P19', 'concepto': 'Horas extra'}]}
+        slip._qb_add_horas_extra(cv)
+        self.assertEqual(cv[KEY_HORAS_EXTRA], {})
+
+    def test_horas_sin_lineas_toma_el_importe_de_la_percepcion(self):
+        # Desde 19.0.1.3.0 ImportePagado sale de la percepción 019 del CFDI
+        # (gravado + exento) y las líneas son sólo el respaldo: con importe
+        # en la percepción el nodo sale aunque el recibo no traiga líneas.
         slip = self._recibo({'HE_DOBLE': 9})
         cv = self._cv()
         slip._qb_add_horas_extra(cv)
-        self.assertEqual(cv[KEY_HORAS_EXTRA], {})
+        self.assertEqual(cv[KEY_HORAS_EXTRA], {
+            1: [{'tipo_horas': '01', 'horas_extra': 9, 'dias': 3, 'importe_pagado': '746.56'}]})
 
     def test_dos_percepciones_019_se_fusionan_en_una(self):
         """Lo que sale hoy de Odoo: P19_2 exenta y P19 gravada por separado.

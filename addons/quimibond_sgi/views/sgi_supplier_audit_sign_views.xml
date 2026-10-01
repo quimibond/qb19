@@ -18,7 +18,7 @@
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Enviar a firma" class="btn-primary"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
