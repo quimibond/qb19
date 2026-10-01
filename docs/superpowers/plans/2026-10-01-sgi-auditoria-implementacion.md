@@ -116,17 +116,18 @@ git fetch origin main && git checkout -B claude/sgi-57-90-candados origin/main
 fuente de cada una es la entrada del CHANGELOG indicada; aquí solo se listan
 para encontrarlas. Las nuevas se agregan arriba con fecha.
 
-| Clave | Fecha | Decisión | Dónde |
+El CHANGELOG mezcla dos series que son decisiones distintas: `D-xx` (dos dígitos, decisiones de Jose de la auditoría de septiembre) y `D-0xx` (tres dígitos, hallazgos de diseño de la auditoría 2026-09). La tabla las separa.
+
+| Serie | Clave | Decisión (resumen) | Primera entrada del CHANGELOG |
 |---|---|---|---|
-| D-02 | 2026-09-30 | Claves nuevas `F|IT|DA|PROT|CO-{proceso}-{nn}`; la anterior en `sgi_previous_code` | CHANGELOG 57.84.0 |
-| D-03 | 2026-09-29 | El SGI es solo de la compañía 1 | CHANGELOG 57.89.0 |
-| D-04 | — | Mis pendientes convive con las actividades nativas | CHANGELOG (buscar «D-04») |
-| D-08 | — | PIN sin límite de intentos | CHANGELOG (buscar «D-08») |
-| D-14 | — | Correo semanal de atrasos apagado por omisión | CHANGELOG 57.7.0 |
-| D-15 | — | Categoría MOC y «Solicitud de compra SGI» archivadas | CHANGELOG (buscar «D-15») |
+| D-xx | D-03 | El SGI es solo de la compañía 1 | (llenar con el grep) |
+| D-xx | D-04 | Mis pendientes con todo adentro (convive con las actividades nativas) | `models/sgi_my_pending.py:11` (no está en el CHANGELOG) |
 ```
 
-Completar la tabla con `grep -on "D-[0-9]\{2,3\}" addons/quimibond_sgi/CHANGELOG.md | sort -u -t: -k2` (una fila por clave, con la primera entrada que la menciona).
+Llenar una fila por clave con
+`grep -rnoE "D-[0-9]{2,3}\b" addons/quimibond_sgi/CHANGELOG.md addons/quimibond_sgi/models addons/quimibond_sgi/README.md | awk -F: '!seen[$3]++'`
+(algunas claves, como D-04, solo aparecen en el código)
+(la primera línea donde aparece cada clave); el resumen sale del texto de esa entrada. No inventar decisiones: si una clave no tiene texto claro, dejar «ver CHANGELOG línea N».
 
 - [ ] **Step 3: Commit**
 
@@ -156,7 +157,6 @@ no se pierde ni se altera por error.
 - La respuesta del proveedor se guarda escapada en el chatter."""
 from datetime import date
 
-from markupsafe import Markup
 from psycopg2 import IntegrityError
 
 from odoo.exceptions import AccessError, UserError
@@ -195,18 +195,37 @@ class TestCandadosEvidencia(TransactionCase):
     def _doc(self, state='vigente', code='F-ZK1-01'):
         return self.env['documents.document'].create({
             'name': 'K01 %s' % code, 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'formato', 'sgi_code': code, 'sgi_state': state})
+            'sgi_doc_type': 'formato', 'sgi_code': code, 'sgi_state': state,
+            # «formato» exige proceso con clave nueva (_check_sgi_code).
+            'sgi_process_id': self.process.id})
 
     def _closable_nc(self):
+        # La segunda NC del mismo proceso sale reincidente y pide una acción
+        # CORRECTIVA terminada (_sgi_check_can_close): se registra correctiva.
         alert = self.env['quality.alert'].create({
             'title': 'K01 NC', 'team_id': self.team_int.id,
             'sgi_process_id': self.process.id})
         self.env['sgi.action.line'].create({
             'alert_id': alert.id, 'name': 'Corregir K01', 'responsible_id': self.env.user.id,
+            'action_type': 'correctiva',
             'date_commit': date.today(), 'date_done': date.today(), 'progress': '100'})
         alert.write({'sgi_root_cause': 'Causa K01', 'sgi_effectiveness_note': 'Eficaz',
                      'sgi_effectiveness_date': date.today()})
         return alert
+
+    def _assert_restricted(self, record):
+        # Mismo patrón que test_integridad: «restrict» lo frena la base
+        # (IntegrityError) o el ORM (UserError); cualquiera vale.
+        raised = None
+        try:
+            with mute_logger('odoo.sql_db'), self.env.cr.savepoint():
+                record.unlink()
+                self.env.flush_all()
+        except (IntegrityError, UserError) as exc:
+            raised = exc
+        self.assertIsNotNone(raised, "%s se borró estando en uso." % record.display_name)
+        self.env.invalidate_all()
+        self.assertTrue(record.exists())
 
     # ---- K-01 ---------------------------------------------------------------
     def test_01_documento_controlado_no_va_a_la_papelera(self):
@@ -234,10 +253,10 @@ class TestCandadosEvidencia(TransactionCase):
         doc = self._doc(code='F-ZK1-05')
         self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.employee.id})
         # La autolimpieza de la papelera corre como superusuario: lo que la
-        # detiene es la llave foránea, no el candado de Python.
-        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError), self.cr.savepoint():
-            doc.sudo().unlink()
-            self.env.flush_all()
+        # detiene es la llave foránea, no el candado de Python. Se archiva
+        # primero para seguir el camino real (papelera → borrado).
+        doc.sudo().write({'active': False})
+        self._assert_restricted(doc.sudo())
 
     # ---- K-02 ---------------------------------------------------------------
     def test_05_nc_con_folio_no_se_borra(self):
@@ -251,9 +270,7 @@ class TestCandadosEvidencia(TransactionCase):
         self.env['sgi.action.line'].create({
             'alert_id': alert.id, 'name': 'Acción K02', 'responsible_id': self.env.user.id,
             'date_commit': date.today()})
-        with mute_logger('odoo.sql_db'), self.assertRaises(IntegrityError), self.cr.savepoint():
-            alert.sudo().unlink()
-            self.env.flush_all()
+        self._assert_restricted(alert.sudo())
 
     # ---- FUNC-C13 -----------------------------------------------------------
     def test_07_usuario_sgi_no_cierra_una_nc(self):
@@ -310,7 +327,7 @@ git commit -m "quimibond_sgi: pruebas de los candados de evidencia (fallan antes
 git push -u origin claude/sgi-57-90-candados
 ```
 
-Esperado en el log del build (`--test-tags /quimibond_sgi`): FAIL en test_01, 03, 04, 05, 06, 07, 09 y 10; test_02 y test_08 pasan.
+Esperado en el log del build (`--test-tags /quimibond_sgi`): FAIL en test_01, 04, 06, 07, 09 y 10; test_02 y test_08 pasan. test_03 y test_05 pueden pasar ya antes del código (Documents puede negarse a borrar un documento activo y el usuario de Calidad puede no tener permiso de borrar: `AccessError` es subclase de `UserError`); si pasan, no es error, el candado los cubre igual.
 
 ### Task 1.2: K-01, documento controlado sin papelera ni borrado
 
@@ -365,7 +382,50 @@ Revisar si `documents.document` en Odoo 19 manda a la papelera por otro método 
                                   ondelete='restrict', help="Documento que se debe leer.")
 ```
 
-Antes de cambiarlo, comprobar que ningún código del SGI borra documentos con acuses: `grep -rn "unlink()" addons/quimibond_sgi*/models | grep -i doc` (en la auditoría salió vacío). Si Mi procedimiento republica borrando el documento anterior, cambiar ese camino a obsoleto.
+Antes de cambiarlo, comprobar que ningún código del SGI borra documentos con acuses: `grep -rn "unlink()" addons/quimibond_sgi*/models | grep -i doc` (en la auditoría y en la revisión del plan salió vacío). Si Mi procedimiento republica borrando el documento anterior, cambiar ese camino a obsoleto.
+
+- [ ] **Step 3b: Que la limpieza nocturna de la papelera no se atore**
+
+Con `restrict`, si el Jefe MAST archiva un controlado con acuses, a los 30 días la autolimpieza de Documents intenta borrarlo junto con los demás de la papelera; la llave foránea aborta el lote completo y desde entonces la papelera no se vacía nunca. Hay que sacar esos documentos del lote.
+
+1. Ubicar el método de la autolimpieza en Odoo 19 (en Odoo 18 es un `@api.autovacuum` llamado `_gc_clear_bin` en `documents.document`). En el shell de Odoo.sh: `grep -n "autovacuum\|def _gc_\|deletion_delay" /home/odoo/src/enterprise/documents/models/*.py`.
+2. Sobrescribirlo en `sgi_document.py` (ajustar el nombre si cambió). Mientras corre, los controlados con acuses se reactivan como obsoletos para salir de la papelera, con nota en el chatter:
+
+```python
+    @api.autovacuum
+    def _gc_clear_bin(self):
+        """57.90.0 (K-01): la papelera no borra un controlado con acuses
+        (evidencia de difusión, ISO 7.5). Se rescata como obsoleto y se avisa
+        en su historial; el resto de la papelera se vacía como siempre."""
+        rescued = self.with_context(active_test=False).search([
+            ('active', '=', False), ('sgi_is_controlled', '=', True),
+            ('sgi_ack_ids', '!=', False)])
+        if rescued:
+            rescued.with_context(sgi_bypass_lock=True).write(
+                {'active': True, 'sgi_state': 'obsoleto'})
+            for doc in rescued:
+                doc.message_post(body="Rescatado de la papelera: tiene acuses de lectura "
+                                      "y es evidencia. Quedó obsoleto.")
+            _logger.info("SGI: %d documentos controlados rescatados de la papelera: %s",
+                         len(rescued), rescued.ids)
+        return super()._gc_clear_bin()
+```
+
+Confirmar el nombre del One2many de acuses en `documents.document` (`grep -n "sgi.document.ack'" models/sgi_document.py`; si no existe un One2many, buscar con `self.env['sgi.document.ack'].search([...]).document_id`). Confirmar que `_logger` existe en el archivo.
+
+3. Prueba en `test_candados_evidencia.py`:
+
+```python
+    def test_11_la_papelera_rescata_lo_que_tiene_acuses(self):
+        doc = self._doc(code='F-ZK1-06')
+        self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.employee.id})
+        doc.with_user(self.mast).write({'active': False})
+        self.env['documents.document']._gc_clear_bin()
+        self.assertTrue(doc.exists() and doc.active)
+        self.assertEqual(doc.sgi_state, 'obsoleto')
+```
+
+Si Documents solo borra lo que lleva más de `documents.deletion_delay` días en la papelera, la prueba no necesita esperar: el rescate corre antes del borrado sin mirar la fecha.
 
 - [ ] **Step 4: Checadores locales** (sección 0, punto 4). Esperado: 0 errores.
 
@@ -426,7 +486,7 @@ git commit -m "quimibond_sgi: una NC con folio no se borra y sus acciones no se 
                 raise UserError(
                     "La NC %s solo la cierra el Jefe MAST o el dueño del proceso (%s). "
                     "Pídale que revise la eficacia y la cierre."
-                    % (alert.sgi_folio, alert.sgi_process_id.owner_id.name or "sin dueño"))
+                    % (alert.sgi_folio, alert.sgi_process_id.owner_id.sudo().name or "sin dueño"))
 ```
 
 Y el método, junto a `_sgi_check_stage_move`:
@@ -476,9 +536,15 @@ Callers verificados en la auditoría: solo `data/*_cron.xml` (corren como OdooBo
 - [ ] **Step 2: Agregar los cuatro a la prueba de F-008** en `tests/test_entrega1c.py::test_04_sgi_processes_only_for_the_system`
 
 ```python
-        with self.assertRaises(AccessError):
-            self.env['sgi.process.activity'].with_user(self.user).cron_measure_activities()
+        for model, method in (('sgi.activity.role', 'cron_sgi_sync_approvals'),
+                              ('sgi.checklist.template', 'cron_generate'),
+                              ('sgi.process.activity', 'cron_measure_activities'),
+                              ('sgi.indicator', 'cron_missing_trajectories')):
+            with self.assertRaises(AccessError):
+                getattr(self.env[model].with_user(self.user), method)()
 ```
+
+`tests/test_studio_cleanup.py` sigue pasando con la guarda nueva (`AccessError` es subclase de `UserError`).
 
 - [ ] **Step 3: Commit**
 
@@ -553,10 +619,17 @@ git commit -m "quimibond_sgi: respuesta del proveedor y motivos escapados en el 
   `cron_missing_trajectories` y `sgi_drop_empty_studio_models` solo los corre el sistema.
 - **K-07:** respuesta del proveedor por el portal y motivos de cierre forzado y
   cancelación escapados en el chatter (`Markup`), con tope de 5,000 caracteres.
+  Queda para 57.92.0: prueba `HttpCase` del portal y código de error en lugar
+  de texto libre en la URL.
+- **Cambiado:** `sgi_drop_empty_studio_models` ya no lo corre el Administrador
+  SGI; solo el shell o un administrador del sistema.
+- **Papelera:** la autolimpieza de Documents rescata como obsoleto un
+  controlado con acuses en lugar de intentar borrarlo (sin esto, la llave
+  foránea atoraba la limpieza de toda la papelera).
 
 **Migración:** ninguna. El ORM rehace las dos llaves foráneas al actualizar.
 
-**Pruebas:** `test_candados_evidencia` (nueva, 10 casos); `test_entrega1c.test_04` ampliada.
+**Pruebas:** `test_candados_evidencia` (nueva, 11 casos); `test_entrega1c.test_04` ampliada.
 ```
 
 - [ ] **Step 3: Documentación técnica generada**
@@ -575,7 +648,7 @@ git commit -m "quimibond_sgi 19.0.57.90.0: candados de evidencia"
 git push
 ```
 
-Esperado en el build de la rama: `test_candados_evidencia` 10/10 OK y ningún fallo nuevo en `--test-tags /quimibond_sgi` respecto del build de `main`. Si una prueba existente borra NC o documentos controlados, corregir la prueba (borrar primero lo dependiente o usar `sgi_bypass` como MAST), nunca quitar el candado.
+Esperado en el build de la rama: `test_candados_evidencia` 11/11 OK y ningún fallo nuevo en `--test-tags /quimibond_sgi` respecto del build de `main`. Si una prueba existente borra NC o documentos controlados, corregir la prueba (borrar primero lo dependiente o usar `sgi_bypass` como MAST), nunca quitar el candado.
 
 - [ ] **Step 6: Verificación después del despliegue a producción** (solo lectura)
 
@@ -702,6 +775,8 @@ y el `help` en «usted»:
                     "automática no salen aquí: revíselas en Mi procedimiento.</p>",
 ```
 
+El filtro por omisión aplica también a `action_show_pending` (botón de Mi procedimiento), que es lo deseado; Mi equipo agrupa por persona y no lo recibe.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -729,7 +804,8 @@ git commit -am "quimibond_sgi: Mis pendientes abre desplegada con lo atrasado y 
                             "Lleva al menú donde se hace, no a la ficha del catálogo.")
         doc = self.env['documents.document'].create({
             'name': 'Leer 8A', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-01', 'sgi_state': 'vigente'})
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-01', 'sgi_state': 'vigente',
+            'sgi_process_id': self.process.id})
         ack = self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.emp.id})
         row = self.Pending.create({'kind': 'acuse', 'name': 'Leer', 'employee_id': self.emp.id,
                                    'res_model': 'sgi.document.ack', 'res_id': ack.id})
@@ -818,10 +894,12 @@ Respeta D-04: las actividades nativas siguen existiendo; Mis pendientes solo las
         self.assertEqual(row['state'], 'atrasada')
         self.assertIn('Revisar aviso 8A', row['name'])
         self.assertFalse(self._row('aviso', far.id), "Solo vencidos o de los próximos 7 días.")
+        # La NC de la prueba no tiene responsables: su aviso no se cubre con el renglón «nc».
         # Lo que ya tiene renglón propio no se duplica.
         doc = self.env['documents.document'].create({
             'name': 'Acuse aviso 8A', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-02', 'sgi_state': 'vigente'})
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-02', 'sgi_state': 'vigente',
+            'sgi_process_id': self.process.id})
         dup = doc.activity_schedule('mail.mail_activity_data_todo', date_deadline=self.today,
                                     summary='Acuse 8A', user_id=self.user.id)
         dup.sgi_cron_key = 'acuse_pendiente:1'
@@ -862,6 +940,9 @@ NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
             covered |= records['aprobacion'].mapped('mail_activity_id')
         covered |= env['sgi.action.line'].sudo().search(
             [('activity_id', 'in', notices.ids)]).mapped('activity_id')
+        # Los avisos de plazo de una NC ya salen en su renglón «nc».
+        nc_ids = set(records['nc'].ids) if records.get('nc') else set()
+        covered |= notices.filtered(lambda a: a.res_model == 'quality.alert' and a.res_id in nc_ids)
         has_key = 'sgi_cron_key' in Activity._fields
 
         def own_row(act):
@@ -912,7 +993,7 @@ Método nuevo:
             raise UserError("El aviso ya no existe.")
         if act.user_id != self.env.user:
             raise UserError("Solo la persona a quien está asignado el aviso puede marcarlo hecho.")
-        act.action_done()
+        act.action_feedback(feedback="Hecho desde Mis pendientes.")
         self.unlink()
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 ```
@@ -951,13 +1032,14 @@ README (Jefe MAST, NC, CoA). Lee las fuentes del módulo: no necesita datos."""
 import os
 import re
 
-from odoo.modules.module import get_module_path
 from odoo.tests import BaseCase, tagged
 
+# Solo formas que no pueden ser tercera persona. «pide», «revisa», «agrega»,
+# «elige», «levanta» o «contesta» también son «usted/él» («Persona que levanta
+# la NC»): como imperativo de «tú» solo cuentan al inicio de oración o tras «¿».
 TUTEO = re.compile(
-    r"\b(tienes|puedes|quieres|confirmas|leíste|tu|tus|te ligue|pide|elige|revisa|"
-    r"captura el|apruébala|apágalo|adjúntala|agrega|programa el|contesta|levanta|usa el)\b",
-    re.IGNORECASE)
+    r"\b(tienes|puedes|quieres|confirmas|leíste|tu|tus|te ligue|apruébala|apágalo|adjúntala)\b"
+    r"|(?:^|[.!?¿:]\s*)(Pide|Elige|Revisa|Agrega|Captura|Programa|Contesta|Levanta|Usa)\b")
 GLOSARIO = re.compile(r"Jefe de MAST|\bNCs\b|\bCOA\b|No Conformidad\b")
 # Cadenas entre comillas en .py y valores/atributos en .xml.
 QUOTED = re.compile(r"\"([^\"\n]{4,})\"|'([^'\n]{4,})'")
@@ -965,7 +1047,7 @@ SKIP_DIRS = {'tests', 'migrations', 'static', 'tools', 'demo'}
 
 
 def _offending(pattern):
-    root = get_module_path('quimibond_sgi')
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     hits = []
     for folder, dirs, files in os.walk(root):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
@@ -1007,13 +1089,14 @@ import os, re, sys
 sys.path.insert(0, 'tests')
 src = open('tests/test_usted.py', encoding='utf-8').read()
 ns = {}
-exec(src.split('@tagged')[0].replace('from odoo.modules.module import get_module_path', 'get_module_path = lambda m: "."').replace('from odoo.tests import BaseCase, tagged', ''), ns)
+exec(src.split('@tagged')[0].replace('from odoo.tests import BaseCase, tagged', '')
+     .replace('os.path.dirname(os.path.dirname(os.path.abspath(__file__)))', '"."'), ns)
 for pattern in ('TUTEO', 'GLOSARIO'):
     print("\n".join(ns['_offending'](ns[pattern])))
 EOF
 ```
 
-Esperado: unas 35 líneas de tuteo y unas 40 de glosario (la auditoría las listó en `sgi_my_procedure_views.xml:191`, `sgi_my_pending.py:666`, `sgi_my_procedure_screen.py:757-799,1053`, `sgi_current_documents*.py/xml`, `data/sgi_mail_templates.xml:81,87,105`, `sgi_weekly_overdue.py:32`, `sgi_nonconformity.py:445,677,1094,1105`, `sgi_coa*.py/xml`, `sgi_mp_change*.py/xml`, `sgi_incident.py:105`, `sgi_checklist.py:302`, `sgi_document.py:452,672`, `sgi_doc_change_sign.py:251`, `sgi_supplier_nc.py:72`, `sgi_integration.py:283`, `data/sgi_mp_change_category_data.xml:12`, y las notas de los crons en `sgi_cron.py`). Si la expresión da falsos positivos (por ejemplo, «Revisa» como sustantivo en un nombre de etapa), afinarla en la prueba con una lista de excepciones explícita y comentada, no relajarla.
+Esperado: alrededor de 35 a 50 líneas de tuteo y unas 70 de glosario (con la expresión amplia la revisión del plan contó 111 y 74; la acotada quita los verbos ambiguos). La prueba solo mira cadenas entre comillas: los textos dentro de nodos XML (cuerpos de reportes y `body_html` de plantillas) se revisan a mano con `grep -n "tienes\|puedes\|\btu\b" report/*.xml data/sgi_mail_templates.xml` (la auditoría las listó en `sgi_my_procedure_views.xml:191`, `sgi_my_pending.py:666`, `sgi_my_procedure_screen.py:757-799,1053`, `sgi_current_documents*.py/xml`, `data/sgi_mail_templates.xml:81,87,105`, `sgi_weekly_overdue.py:32`, `sgi_nonconformity.py:445,677,1094,1105`, `sgi_coa*.py/xml`, `sgi_mp_change*.py/xml`, `sgi_incident.py:105`, `sgi_checklist.py:302`, `sgi_document.py:452,672`, `sgi_doc_change_sign.py:251`, `sgi_supplier_nc.py:72`, `sgi_integration.py:283`, `data/sgi_mp_change_category_data.xml:12`, y las notas de los crons en `sgi_cron.py`). Si la expresión da falsos positivos (por ejemplo, «Revisa» como sustantivo en un nombre de etapa), afinarla en la prueba con una lista de excepciones explícita y comentada, no relajarla.
 
 - [ ] **Step 2: Reescribir cada cadena.** Ejemplos de reemplazo:
 
@@ -1030,7 +1113,9 @@ Esperado: unas 35 líneas de tuteo y unas 40 de glosario (la auditoría las list
 | COA | CoA |
 | ⚠ en asuntos de correo | [Urgente] |
 
-Las plantillas de correo (`data/sgi_mail_templates.xml`) son `noupdate`: si el registro está en un bloque `noupdate="1"`, agregar `migrations/19.0.57.91.0/post-migrate.py` que reescriba `subject` y `body_html` de esas plantillas por xmlid (`env.ref(...)`), registrando antes y después en el log.
+Las plantillas de correo (`data/sgi_mail_templates.xml`) son `noupdate` y MAST puede haberlas ajustado (`data/sgi_mail_templates.xml:7`). Cambiar el XML basta para bases nuevas; para producción, una post-migración que reescriba `subject` y `body_html` **pisa lo que MAST haya editado**, así que por la regla 9 necesita el visto bueno escrito de Jose en el PR. Alternativa sin migración: que MAST corrija los tres textos desde Ajustes → Técnico → Plantillas de correo, y anotarlo en la pista de datos.
+
+`report/report_nc.xml:22` dice «no es una No Conformidad»; si el barrido lo cambia, actualizar la aserción de `tests/test_vistas_pulido.py:359`.
 
 - [ ] **Step 3: Commit**
 
