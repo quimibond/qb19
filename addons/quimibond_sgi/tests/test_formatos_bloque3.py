@@ -39,9 +39,23 @@ class _Bloque3Common(TransactionCase):
         cls.Doc = cls.env['documents.document']
         cls.company = cls.env['sgi.config']._sgi_company()
         cls.job = cls.env['hr.job'].create({'name': 'ZB3 Puesto bloque 3'})
-        cls.t = {code: cls.env['sgi.document.type'].search([('code', '=', code)], limit=1)
-                 for code in ('formato', 'formato_it', 'instructivo', 'dat', 'anexo',
-                              'formulario_odoo', 'procedimiento')}
+        cls.t = {}
+
+    @classmethod
+    def _type(cls, code):
+        """Tipo de documento por código, resuelto como la migración (código,
+        compañía o global, activo o archivado) con el xmlid de fábrica como
+        respaldo. Antes era un diccionario fijo de siete códigos y D-02 pedía
+        «protocolo» y «reglamento», que no estaban (KeyError en staging)."""
+        if code not in cls.t:
+            Type = cls.env['sgi.document.type'].sudo().with_context(active_test=False)
+            dtype = Type.search([('code', '=', code), ('company_id', 'in', (cls.company.id, False))],
+                                order='company_id', limit=1)
+            if not dtype:
+                dtype = cls.env.ref('quimibond_sgi.sgi_doc_type_%s' % code, raise_if_not_found=False)
+            assert dtype, "Falta el tipo de documento %r en la base." % code
+            cls.t[code] = dtype
+        return cls.t[code]
 
     @classmethod
     def _process(cls, code, owner=None):
@@ -59,7 +73,7 @@ class _Bloque3Common(TransactionCase):
     @classmethod
     def _doc(cls, code, dtype, process, **extra):
         vals = {'name': '%s prueba.xlsx' % code, 'type': 'binary', 'sgi_is_controlled': True,
-                'sgi_doc_type_id': cls.t[dtype].id, 'sgi_code': code, 'sgi_state': 'vigente',
+                'sgi_doc_type_id': cls._type(dtype).id, 'sgi_code': code, 'sgi_state': 'vigente',
                 'sgi_process_id': process.id}
         vals.update(extra)
         doc = cls.Doc.create(vals)

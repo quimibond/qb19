@@ -1742,9 +1742,12 @@ class TestSalesBudgetLifecycle55(TransactionCase):
     def test_05_budget_mps_omits_forecast_covered(self):
         team = self._team('L55 mps')
         fc = self._forecast(team)
+        # Desde 1.1.0 (N2) la cobertura es por producto + cliente + MES de la
+        # semana: la semana tiene que caer en junio, como la línea del
+        # presupuesto. El lunes de 2040-06-03 es 2040-05-28 (mayo) y no cubría.
         self.Line.create({
             'budget_id': fc.id, 'product_id': self.product.id,
-            'date': self._monday(date(2040, 6, 3)), 'uom_id': self.uom_m.id,
+            'date': self._monday(date(2040, 6, 6)), 'uom_id': self.uom_m.id,
             'qty_budget': 10.0})
         fc.state = 'revisado'
         budget = self.Budget.create({'year': 2040, 'team_id': team.id})

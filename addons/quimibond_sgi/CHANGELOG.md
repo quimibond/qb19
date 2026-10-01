@@ -13,6 +13,52 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.86.0 — 2026-10-01
+
+Pruebas que fallaron en el build de staging (base = copia de producción con
+57.82.0–57.85.0 ya migradas, D-02 incluida): 4 fallos y 4 errores de 1064.
+`TestRoleAudit.test_07` queda pendiente aparte. Solo cambian pruebas; ningún
+código de producción.
+
+**Corregido (pruebas, error de la prueba):** `test_formatos_bloque3`,
+`TestBloque3ClaveD02` no arrancaba (`KeyError: 'protocolo'` en `setUpClass`):
+el helper `_doc` tomaba el tipo de un diccionario fijo de siete códigos y D-02
+pide además «protocolo» y «reglamento». Fallaba en cualquier base, no solo en
+staging. Ahora `_type(code)` resuelve el tipo como la migración (código,
+compañía o global, activo o archivado) con el xmlid de fábrica
+(`sgi_doc_type_<código>`) de respaldo; en producción «Protocolo» es el id 10
+(`quimibond_sgi.sgi_doc_type_protocolo`, global, activo).
+
+**Corregido (pruebas, choque con datos de producción):** `test_reclamaciones`
+caso 4 creaba el señuelo «Reclamación Industrial» y Helpdesk le derivaba el
+alias `reclamacion-industrial`, que en la copia de producción ya usa el
+equipo real (UserError al crear). Los equipos de la prueba llevan
+`alias_name` propio (`sgi-prueba-…`); el nombre en inglés y en español sigue
+igual, que es lo que la prueba mide.
+
+**Corregido (pruebas, efecto de D-02):** `test_excel_migration` caso 1
+esperaba la clave literal F-P-D01-26 en la solicitud de desarrollo; tras D-02
+el documento ligado al mapeo se llama F-C1-15 con clave anterior F-P-D01-26 y
+la clave viva es la nueva, que es el comportamiento correcto
+(`sgi_dev_format_code` sale de `sgi_live_parts()` del mapeo). La prueba compara
+contra la clave viva del mapeo `format_ref_dev_carda` y, si no es F-P-D01-26,
+exige que sea la del documento cuya clave anterior es F-P-D01-26. En una base
+nueva sigue siendo F-P-D01-26.
+
+**Corregido (pruebas, efecto de D-02):** `test_sgi_format_map` caso 4 (la
+remisión lleva banner y la recepción no) leía el mapeo real de
+`stock.picking`, que D-02 renombra (F-P-A16-01 → clave nueva) y
+`sgi_hide_real_documents` desliga. Como ya hacía `test_format_map_varios`, la
+prueba archiva los mapeos reales de remisiones y siembra el suyo con
+F-P-A16-01. Revisadas las demás pruebas con claves literales F-P-/F-IT-:
+todas corrieron y pasaron en el mismo build de staging (siembran sus
+documentos o fijan sus mapeos); las de `TestBloque3ClaveD02` no habían
+corrido y usan solo documentos propios.
+
+**En `quimibond_ventas_presupuesto` 19.0.1.3.1** (detalle en su README):
+`test_ajustes_130` (choque de presupuestos de la misma prueba) y
+`test_sales_budget` caso 5.5-v (semana del pronóstico en mayo).
+
 ## 19.0.57.85.0 — 2026-10-01
 
 **Corregido (reclamaciones, D-006 / decisión 9):** la 57.19.0 debía marcar

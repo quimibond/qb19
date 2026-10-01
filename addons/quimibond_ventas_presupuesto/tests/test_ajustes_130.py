@@ -28,6 +28,9 @@ class TestBudgetMinPriceException(TransactionCase):
         cls.categ_child = cls.env['product.category'].create({
             'name': 'Perfoquim prueba', 'parent_id': cls.categ_parent.id})
         cls.categ_plain = cls.env['product.category'].create({'name': 'Sin excepción'})
+        # Un solo presupuesto por clase: hay uno no obsoleto por mercado y año,
+        # así que crear uno por línea chocaba en las pruebas que piden dos.
+        cls.budget = cls.Budget.create({'year': 2047, 'team_id': cls.team.id})
 
     def _product(self, categ, own_min=0.0):
         return self.env['product.product'].create({
@@ -44,9 +47,8 @@ class TestBudgetMinPriceException(TransactionCase):
             'compute_price': 'fixed', 'fixed_price': price})
         client = self.env['res.partner'].create({'name': 'Cli mínimo', 'is_company': True})
         client.property_product_pricelist = pl
-        budget = self.Budget.create({'year': 2047, 'team_id': self.team.id})
         return self.Line.create({
-            'budget_id': budget.id, 'product_id': product.id,
+            'budget_id': self.budget.id, 'product_id': product.id,
             'date': date(2047, 6, 1), 'uom_id': self.uom_m.id,
             'qty_budget': 10.0, 'partner_id': client.id})
 

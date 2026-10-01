@@ -15,9 +15,11 @@ class TestReclamaciones(TransactionCase):
         Team = cls.env['helpdesk.team']
         company = cls.env['sgi.config']._sgi_company()
         cls.team_complaint = Team.create({
-            'name': 'Reclamaciones entretelas', 'company_id': company.id})
+            'name': 'Reclamaciones entretelas', 'company_id': company.id,
+            'alias_name': 'sgi-prueba-reclamaciones-entretelas'})
         cls.team_other = Team.create({
-            'name': 'Tickets de Sistemas prueba', 'company_id': company.id})
+            'name': 'Tickets de Sistemas prueba', 'company_id': company.id,
+            'alias_name': 'sgi-prueba-tickets-sistemas'})
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente reclamación prueba'})
 
     def test_01_mark_by_name_idempotent(self):
@@ -72,13 +74,19 @@ class TestReclamaciones(TransactionCase):
         Team = self.env['helpdesk.team']
         company = self.env['sgi.config']._sgi_company()
         team = Team.with_context(lang='en_US').create({
-            'name': 'Complaints interlinings', 'company_id': company.id})
+            'name': 'Complaints interlinings', 'company_id': company.id,
+            'alias_name': 'sgi-prueba-complaints-interlinings'})
         team.with_context(lang='es_MX').name = 'Reclamaciones entretelas'
         team_case = Team.with_context(lang='en_US').create({
-            'name': 'Customer care', 'company_id': company.id})
+            'name': 'Customer care', 'company_id': company.id,
+            'alias_name': 'sgi-prueba-customer-care'})
         team_case.with_context(lang='es_MX').name = 'Atencion a Clientes '
+        # Alias propio: el que Helpdesk deriva del nombre
+        # («reclamacion-industrial») ya lo usa el equipo real en una copia de
+        # producción y el alta revienta con UserError.
         decoy = Team.with_context(lang='en_US').create({
-            'name': 'Reclamación Industrial', 'company_id': company.id})
+            'name': 'Reclamación Industrial', 'company_id': company.id,
+            'alias_name': 'sgi-prueba-decoy-reclamacion'})
         self.assertEqual(team.with_context(lang='en_US').name, 'Complaints interlinings')
         # Reproduce el fallo de la 57.19.0: la búsqueda sin idioma no lo ve.
         old = Team.with_context(active_test=False, lang=None).search([
