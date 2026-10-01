@@ -665,6 +665,17 @@ class QualityAlert(models.Model):
             alert._sgi_read_across()
         return res
 
+    def unlink(self):
+        """57.90.0 (K-02): una NC con folio es evidencia (ISO 10.2) y su folio
+        no puede dejar hueco. Se cancela con «Cancelar NC»."""
+        if not sgi_bypass_allowed(self.env):
+            with_folio = self.filtered('sgi_folio')
+            if with_folio:
+                raise UserError(
+                    "Una NC con folio no se borra: use «Cancelar NC» y capture el motivo. (%s)"
+                    % ", ".join(with_folio.mapped('sgi_folio')))
+        return super().unlink()
+
     def _sgi_request_admin_record(self):
         """S4.32 (56.20.0): «Acción administrativa» pide el acta al
         Coordinador de RH (parámetro quimibond_sgi.rh_user_id; si no, Jefe
@@ -761,7 +772,7 @@ class SgiActionLine(models.Model):
     _description = "Acción / corrección de No Conformidad"
     _order = 'date_commit, id'
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='cascade',
+    alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='restrict',
                                help="No conformidad a la que pertenece la acción.")
     risk_id = fields.Many2one('sgi.risk', string="Riesgo / Oportunidad", ondelete='cascade',
                               help="Riesgo u oportunidad al que pertenece la acción.")
