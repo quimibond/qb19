@@ -1251,8 +1251,15 @@ costear.
 Antes de corregir: (1) enero–agosto están bloqueados al 31-ago (sin
 bloqueo duro); (2) la capa de junio se cargó a 115.04.01, no al puente;
 (3) la MP del modelo de enero a julio es la del recálculo del 31-ago y los
-períodos están en borrador —cerrarlos antes de usar la tabla—; (4) no se
-sabe con qué base calculó el contador sus capas (enero fue por día).
+períodos están en borrador —cerrarlos antes de usar la tabla—; (4) las
+capas de enero a agosto NO las calculó el contador: salieron de la
+plataforma anterior (Supabase, «CAPA del mes a aplicar» = 501.01.01 −
+MP recursiva de BOM − ajustes ya posteados), con la MP de ese momento y
+en enero por día. La diferencia contra la tabla es deriva del modelo
+(base de precios y BOMs de entonces contra el módulo de hoy), no un error
+de registro, y además el primer trimestre traía BOMs con MOD y gastos
+como productos token (RSI56, archivados el 1-abr), que contaminaban el
+promedio desde adentro.
 
 ### ¿Es capa o es materia prima? Los 20 productos
 
@@ -1373,9 +1380,10 @@ cuadre, no sobreescribiendo el promedio.
 
 ### Lo que sigue
 
-1. Preguntar al contador con qué base calculó las capas de enero a agosto
-   antes de llamar «exceso» a los $2.67M; decidir fecha y forma de la
-   corrección (un asiento en septiembre u octubre, o reabrir meses).
+1. No reexpresar enero–agosto: cada capa fue la mejor estimación de su
+   mes y el puente se cuadra contra el físico de todas formas. Si se
+   quiere el año sobre un solo modelo, va dentro del asiento del cuadre,
+   no como corrección aparte.
 2. Cerrar los períodos del módulo de enero a agosto para congelar la MP.
 3. Revaluar los promedios rotos del barrido con el contador.
 4. Octubre: la traza arranca con $852,755 en inventario; con el módulo
