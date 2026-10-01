@@ -101,9 +101,9 @@ La operan las personas indicadas desde la interfaz de Odoo. Quien desarrolla sol
 **Files:**
 - Create: `docs/audit/decisiones.md`
 
-- [ ] **Step 1: Rama.** Se trabaja en la rama asignada a la sesión (`claude/confident-mendel-8yg7xu`, ya basada en `main`); si se trabaja fuera de esa sesión: `git fetch origin main && git checkout -B claude/sgi-57-90-candados origin/main`.
+- [x] **Step 1: Rama.** Se trabaja en la rama asignada a la sesión (`claude/confident-mendel-8yg7xu`, ya basada en `main`); si se trabaja fuera de esa sesión: `git fetch origin main && git checkout -B claude/sgi-57-90-candados origin/main`.
 
-- [ ] **Step 2: Crear el índice de decisiones** que `CLAUDE.md:53`, `addons/quimibond_sgi/README.md:149` y `qb_mcp_politica/README.md:6` citan y no existe
+- [x] **Step 2: Crear el índice de decisiones** que `CLAUDE.md:53`, `addons/quimibond_sgi/README.md:149` y `qb_mcp_politica/README.md:6` citan y no existe
 
 ```markdown
 # Decisiones de Jose sobre el SGI
@@ -125,7 +125,7 @@ Llenar una fila por clave con
 (algunas claves, como D-04, solo aparecen en el código)
 (la primera línea donde aparece cada clave); el resumen sale del texto de esa entrada. No inventar decisiones: si una clave no tiene texto claro, dejar «ver CHANGELOG línea N».
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/audit/decisiones.md
@@ -138,7 +138,7 @@ git commit -m "docs: índice de decisiones D-xx del SGI (la referencia de CLAUDE
 - Create: `addons/quimibond_sgi/tests/test_candados_evidencia.py`
 - Modify: `addons/quimibond_sgi/tests/__init__.py` (agregar al final)
 
-- [ ] **Step 1: Escribir las pruebas**
+- [x] **Step 1: Escribir las pruebas**
 
 ```python
 # -*- coding: utf-8 -*-
@@ -311,7 +311,7 @@ En `tests/__init__.py`, al final:
 from . import test_candados_evidencia
 ```
 
-- [ ] **Step 2: Revisar contra el código real antes de empujar**
+- [x] **Step 2: Revisar contra el código real antes de empujar**
 
 Confirmar que existen los nombres usados: `documents.group_documents_manager` (en el shell de Odoo.sh: `grep -n "group_documents_manager" /home/odoo/src/enterprise/documents/security/*.xml`; si el nombre cambió en Odoo 19, usar el de ese archivo), `sgi_quality_team_internal`, `sgi_nc_int_stage_closed`, `_sgi_supplier_answer(cause, action)` (`models/sgi_supplier_nc.py`), `sgi_supplier_state`. Si `_sgi_supplier_answer` tiene otra firma, ajustar la llamada.
 
@@ -330,7 +330,7 @@ Esperado en el log del build (`--test-tags /quimibond_sgi`): FAIL en test_01, 04
 **Files:**
 - Modify: `addons/quimibond_sgi/models/sgi_document.py`
 
-- [ ] **Step 1: Candado al archivar, al inicio de `DocumentsDocument.write`** (antes de `self._sgi_check_transition_write(vals)`, ~l.1124)
+- [x] **Step 1: Candado al archivar, al inicio de `DocumentsDocument.write`** (antes de `self._sgi_check_transition_write(vals)`, ~l.1124)
 
 ```python
     def write(self, vals):
@@ -342,7 +342,7 @@ Esperado en el log del build (`--test-tags /quimibond_sgi`): FAIL en test_01, 04
         self._sgi_check_transition_write(vals)
 ```
 
-- [ ] **Step 2: El método del candado y `unlink`**, junto a `_sgi_check_transition_write` (~l.1057)
+- [x] **Step 2: El método del candado y `unlink`**, junto a `_sgi_check_transition_write` (~l.1057)
 
 ```python
     _SGI_TRASH_LOCKED_STATES = ('vigente', 'piloto', 'obsoleto')
@@ -371,7 +371,7 @@ Confirmar que `sgi_bypass_allowed` y `UserError` ya están importados en `sgi_do
 
 Revisar si `documents.document` en Odoo 19 manda a la papelera por otro método que no pase por `write` (`action_archive` llama a `write({'active': False})`). En el shell de Odoo.sh: `grep -n "def action_archive\|def action_move\|def _move_to_trash\|active = False" /home/odoo/src/enterprise/documents/models/*.py`. Si algún camino escribe `active` por SQL, sobrescribirlo también con `_sgi_check_can_trash()` y agregar su caso a `test_01`.
 
-- [ ] **Step 3: El acuse detiene el borrado físico** (l.1268)
+- [x] **Step 3: El acuse detiene el borrado físico** (l.1268)
 
 ```python
     document_id = fields.Many2one('documents.document', string="Documento", required=True,
@@ -380,7 +380,7 @@ Revisar si `documents.document` en Odoo 19 manda a la papelera por otro método 
 
 Antes de cambiarlo, comprobar que ningún código del SGI borra documentos con acuses: `grep -rn "unlink()" addons/quimibond_sgi*/models | grep -i doc` (en la auditoría y en la revisión del plan salió vacío). Si Mi procedimiento republica borrando el documento anterior, cambiar ese camino a obsoleto.
 
-- [ ] **Step 3b: Que la limpieza nocturna de la papelera no se atore**
+- [x] **Step 3b: Que la limpieza nocturna de la papelera no se atore**
 
 Con `restrict`, si el Jefe MAST archiva un controlado con acuses, a los 30 días la autolimpieza de Documents intenta borrarlo junto con los demás de la papelera; la llave foránea abortaría el lote completo y la papelera dejaría de vaciarse. Para no depender del nombre del método de Documents en Odoo 19 (no verificable fuera de Odoo.sh), un `@api.autovacuum` propio rescata a diario esos documentos: los saca de la papelera mucho antes de los 30 días.
 
@@ -418,9 +418,9 @@ Prueba en `test_candados_evidencia.py`:
         self.assertEqual(doc.sgi_state, 'obsoleto')
 ```
 
-- [ ] **Step 4: Checadores locales** (sección 0, punto 4). Esperado: 0 errores.
+- [x] **Step 4: Checadores locales** (sección 0, punto 4). Esperado: 0 errores.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add addons/quimibond_sgi/models/sgi_document.py
@@ -432,7 +432,7 @@ git commit -m "quimibond_sgi: un documento controlado no va a la papelera ni se 
 **Files:**
 - Modify: `addons/quimibond_sgi/models/sgi_nonconformity.py`
 
-- [ ] **Step 1: `unlink` en `QualityAlert`**, después de `write` (~l.668)
+- [x] **Step 1: `unlink` en `QualityAlert`**, después de `write` (~l.668)
 
 ```python
     def unlink(self):
@@ -447,7 +447,7 @@ git commit -m "quimibond_sgi: un documento controlado no va a la papelera ni se 
         return super().unlink()
 ```
 
-- [ ] **Step 2: Las acciones detienen el borrado de su NC** (l.764)
+- [x] **Step 2: Las acciones detienen el borrado de su NC** (l.764)
 
 ```python
     alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='restrict',
@@ -456,7 +456,7 @@ git commit -m "quimibond_sgi: un documento controlado no va a la papelera ni se 
 
 Revisar que ninguna prueba ni código borre NC con acciones: `grep -rn "quality.alert'\].*unlink\|alert.*\.unlink()" addons/quimibond_sgi*/ | grep -v "def unlink"`. Si alguna prueba lo hace, borrar primero las acciones en esa prueba.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add addons/quimibond_sgi/models/sgi_nonconformity.py
@@ -468,7 +468,7 @@ git commit -m "quimibond_sgi: una NC con folio no se borra y sus acciones no se 
 **Files:**
 - Modify: `addons/quimibond_sgi/models/sgi_nonconformity.py` (`_sgi_check_stage_move`, ~l.431)
 
-- [ ] **Step 1: Agregar el chequeo dentro del ciclo `for alert in self:`**, después del de cancelación
+- [x] **Step 1: Agregar el chequeo dentro del ciclo `for alert in self:`**, después del de cancelación
 
 ```python
             # 57.90.0 (FUNC-C13): cerrar es de quien responde por el proceso.
@@ -493,7 +493,7 @@ Y el método, junto a `_sgi_check_stage_move`:
 
 El chequeo solo aplica a NC con folio (el ciclo ya hace `continue` sin folio). Las pruebas existentes cierran como superusuario (`test_nc_flow.test_02`), así que no cambian; verificado con `grep` en la auditoría: ninguna prueba cierra con `with_user` de un usuario sin MAST.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add addons/quimibond_sgi/models/sgi_nonconformity.py
@@ -506,7 +506,7 @@ git commit -m "quimibond_sgi: solo el Jefe MAST o el dueño del proceso cierran 
 - Modify: `models/sgi_approval_native.py`, `models/sgi_checklist.py`, `models/sgi_process_procedure.py`, `models/sgi_indicator_trajectory.py`, `models/sgi_catalog.py`
 - Modify: `tests/test_entrega1c.py` (`test_04`)
 
-- [ ] **Step 1: Guarda en la primera línea de cada método**
+- [x] **Step 1: Guarda en la primera línea de cada método**
 
 En cada archivo agregar el import (respetando el orden de imports; `sgi_guard` no define modelos, importarlo a nivel de módulo es seguro):
 
@@ -524,7 +524,7 @@ En `sgi_drop_empty_studio_models` (`sgi_catalog.py`), reemplazar la guarda de `g
 
 Callers verificados en la auditoría: solo `data/*_cron.xml` (corren como OdooBot, `_is_superuser()`), `sgi_cron.py:780` (dentro del cron) y pruebas como superusuario. No hay botones que los llamen.
 
-- [ ] **Step 2: Agregar los cuatro a la prueba de F-008** en `tests/test_entrega1c.py::test_04_sgi_processes_only_for_the_system`
+- [x] **Step 2: Agregar los cuatro a la prueba de F-008** en `tests/test_entrega1c.py::test_04_sgi_processes_only_for_the_system`
 
 ```python
         for model, method in (('sgi.activity.role', 'cron_sgi_sync_approvals'),
@@ -537,7 +537,7 @@ Callers verificados en la auditoría: solo `data/*_cron.xml` (corren como OdooBo
 
 `tests/test_studio_cleanup.py` sigue pasando con la guarda nueva (`AccessError` es subclase de `UserError`).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add addons/quimibond_sgi/models addons/quimibond_sgi/tests/test_entrega1c.py
@@ -549,7 +549,7 @@ git commit -m "quimibond_sgi: cuatro procesos de cron y el borrado de modelos de
 **Files:**
 - Modify: `models/sgi_supplier_nc.py` (l.115-117), `models/sgi_nonconformity.py` (l.1062, 1100, 1117)
 
-- [ ] **Step 1: Proveedor**
+- [x] **Step 1: Proveedor**
 
 ```python
 from markupsafe import Markup
@@ -559,7 +559,7 @@ from markupsafe import Markup
         ) % (cause[:5000], action[:5000]))
 ```
 
-- [ ] **Step 2: Motivos de cierre forzado y cancelación** en `sgi_nonconformity.py` (agregar `from markupsafe import Markup` a los imports). Mismo patrón en los tres `message_post`:
+- [x] **Step 2: Motivos de cierre forzado y cancelación** en `sgi_nonconformity.py` (agregar `from markupsafe import Markup` a los imports). Mismo patrón en los tres `message_post`:
 
 ```python
         alert.message_post(body=Markup(
@@ -578,7 +578,7 @@ from markupsafe import Markup
                 Markup("<br/>Solicitada por %s.") % requested_by.name if requested_by else ''))
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add addons/quimibond_sgi/models/sgi_supplier_nc.py addons/quimibond_sgi/models/sgi_nonconformity.py
@@ -590,9 +590,9 @@ git commit -m "quimibond_sgi: respuesta del proveedor y motivos escapados en el 
 **Files:**
 - Modify: `addons/quimibond_sgi/__manifest__.py`, `addons/quimibond_sgi/CHANGELOG.md`, `docs/sgi/tecnica/*` (generado)
 
-- [ ] **Step 1: Subir la versión** a `'19.0.57.90.0'`.
+- [x] **Step 1: Subir la versión** a `'19.0.57.90.0'`.
 
-- [ ] **Step 2: Entrada del CHANGELOG** arriba de la de 57.89.0
+- [x] **Step 2: Entrada del CHANGELOG** arriba de la de 57.89.0
 
 ```markdown
 ## 19.0.57.90.0 — 2026-10-XX
@@ -624,13 +624,13 @@ git commit -m "quimibond_sgi: respuesta del proveedor y motivos escapados en el 
 **Pruebas:** `test_candados_evidencia` (nueva, 11 casos); `test_entrega1c.test_04` ampliada.
 ```
 
-- [ ] **Step 3: Documentación técnica generada**
+- [x] **Step 3: Documentación técnica generada**
 
 ```bash
 python3 tools/sgi_docs.py && python3 tools/sgi_docs.py --check
 ```
 
-- [ ] **Step 4: Checadores** (sección 0, punto 4). Esperado: 0 errores.
+- [x] **Step 4: Checadores** (sección 0, punto 4). Esperado: 0 errores.
 
 - [ ] **Step 5: Commit y push; leer el build**
 

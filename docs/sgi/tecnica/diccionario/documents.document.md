@@ -74,7 +74,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_state` | Selection | Estado SGI | Solo los documentos controlados del SGI llevan estado; los demás archivos de Documentos quedan sin él (2026-09-25). |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:143` |
 | `sgi_title` | Char | Título | Nombre del documento sin la clave ni la extensión del archivo. El archivo conserva su nombre original. |  |  | compute `_compute_sgi_title`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:83` |
 
-## Métodos públicos (14)
+## Métodos públicos (15)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -91,4 +91,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `action_sgi_view_file` | Abre el archivo del documento para previsualizarlo en el navegador. |
 | `create` | — |
 | `init` | Un solo VIGENTE por clave, garantizado en BD (la validación Python sola permite condición de carrera). |
+| `unlink` | — |
 | `write` | — |

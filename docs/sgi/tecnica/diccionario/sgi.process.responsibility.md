@@ -14,12 +14,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_process_procedure.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `company_id` | Many2one | Empresa |  |  |  | related `process_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:425` |
-| `job_id` | Many2one | Puesto | Puesto de hr.job al que corresponde el rol. | sí | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:428` |
-| `name` | Char | Rol en el procedimiento | Nombre del rol tal como aparece en el procedimiento (no siempre mapea 1:1 al puesto de hr.job). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:431` |
-| `process_id` | Many2one | Proceso |  | sí | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:421` |
-| `responsibilities` | Text | Responsabilidades |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:435` |
-| `sequence` | Integer | Secuencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:424` |
+| `company_id` | Many2one | Empresa |  |  |  | related `process_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:426` |
+| `job_id` | Many2one | Puesto | Puesto de hr.job al que corresponde el rol. | sí | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:429` |
+| `name` | Char | Rol en el procedimiento | Nombre del rol tal como aparece en el procedimiento (no siempre mapea 1:1 al puesto de hr.job). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:432` |
+| `process_id` | Many2one | Proceso |  | sí | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:422` |
+| `responsibilities` | Text | Responsabilidades |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:436` |
+| `sequence` | Integer | Secuencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:425` |
 
 ## Métodos públicos (3)
 

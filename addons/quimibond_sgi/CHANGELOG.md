@@ -13,6 +13,48 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.90.0 — 2026-10-01
+
+**Seguridad: candados de evidencia** (auditoría 2026-10: K-01, K-02, K-06, K-07, FUNC-C13).
+
+- **K-01:** un documento controlado (vigente, en piloto u obsoleto) no se manda
+  a la papelera (archivar) ni se borra, salvo el Jefe MAST o el sistema; el
+  mensaje depende del estado. `sgi.document.ack.document_id` pasa a
+  `ondelete='restrict'`.
+- **Papelera:** un vaciado automático diario (`_gc_sgi_rescue_trashed_with_acks`)
+  reactiva (`action_unarchive`) uno por uno, con savepoint, todo documento en la
+  papelera que tenga acuses de lectura. Los vigentes y en piloto pasan a obsoleto
+  con motivo; los que ya eran obsoletos conservan su fecha; los borradores y los
+  no controlados conservan su estado. Un borrador o un documento no controlado
+  con acuses regresa de la papelera cada noche: para retirarlo, el Jefe MAST
+  debe borrar antes sus acuses. Si `documents.deletion_delay` es de 0 a 1 día,
+  la limpieza propia de Documents podría correr una vez antes del rescate.
+- **K-02:** una NC con folio no se borra (se usa «Cancelar NC»);
+  `sgi.action.line.alert_id` pasa a `ondelete='restrict'`. Efecto colateral:
+  una alerta sin folio que tenga acciones tampoco se puede borrar ya.
+- **FUNC-C13:** solo el Jefe MAST, el sistema o el usuario dueño del proceso
+  cierran una NC con folio; el asistente de cierre forzado sigue funcionando.
+- **K-06:** `cron_sgi_sync_approvals`, `cron_generate`, `cron_measure_activities`,
+  `cron_missing_trajectories` y `sgi_drop_empty_studio_models` solo los corre el
+  sistema (`sgi_require_system`).
+- **Cambiado:** el Administrador SGI pierde `sgi_drop_empty_studio_models`.
+- **K-07:** la respuesta del proveedor (portal) y los motivos de cierre forzado
+  y cancelación se escapan con `Markup` en el chatter; el texto del proveedor
+  se corta a 5,000 caracteres. Queda para 57.92.0: prueba `HttpCase` del portal
+  y código de error en lugar de texto libre en la URL.
+- **Documentación:** `docs/audit/decisiones.md` (índice de decisiones D-xx / D-0xx).
+
+**Migración:** ninguna. El ORM rehace las dos llaves foráneas al actualizar.
+
+**Pruebas:** `test_candados_evidencia` (nueva, 16 casos: `test_01` a `test_16`);
+`test_entrega1c.test_04` ampliada.
+
+**Verificación pendiente en Odoo.sh:** (1) si Documents de Odoo 19 manda a la
+papelera por algún camino distinto de `write(active=False)` (grep en
+`enterprise/documents/models`); (2) cómo se comporta `action_unarchive` con un
+documento dentro de una carpeta en la papelera; (3) vigilar el log por «SGI: no
+se pudo rescatar el documento».
+
 ## 19.0.57.89.0 — 2026-10-01
 
 **Corregido: fichas que no abrían por una regla de aprobación con un campo
