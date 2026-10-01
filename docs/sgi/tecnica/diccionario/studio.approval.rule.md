@@ -10,10 +10,11 @@ Archivos: `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`, `addons/q
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_role_id` | Many2one | Rol SGI que aprueba | Renglón «Aprueba» de la actividad del procedimiento que mantiene esta regla. |  | `sgi.activity.role` |  |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:17` |
+| `sgi_role_id` | Many2one | Rol SGI que aprueba | Renglón «Aprueba» de la actividad del procedimiento que mantiene esta regla. |  | `sgi.activity.role` |  |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:23` |
 
-## Métodos públicos (1)
+## Métodos públicos (2)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `create` | — |
 | `write` | — |

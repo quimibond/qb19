@@ -19,3 +19,13 @@ núcleo en 57.9.0 (auditoría A-010, decisión D-10 de Jose).
   2026-09-29: 11 roles con regla y 11 reglas activas con rol.
 - **Pruebas:** `tests/test_approval_studio.py` y
   `tests/test_approval_rule_archive.py` (se mudaron del núcleo).
+- **19.0.1.0.3 (2026-10-01): ninguna regla guarda un campo que su documento
+  no tiene.** `studio.approval.rule` limpia `domain` al crear y escribir con
+  `sgi_sanitize_domain` del núcleo, y la regla del rol se arma con
+  `_sgi_clean_approval_domain()`. Motivo: las reglas 65 (`sgi.audit.program`),
+  66 (`sgi.ppap`) y 67 (`sgi.control.plan`) heredaron `[('company_id', '=', 1)]`
+  de su rol y Studio reventaba al abrir esas fichas. La migración
+  (`migrations/19.0.1.0.3/post-migrate.py`) revisa todas las reglas, quita
+  solo las hojas inválidas y registra antes → después; en producción, 65, 66
+  y 67 quedan sin condición y 64 (`budget.analytic`) no cambia. Prueba:
+  `test_approval_studio.test_07`.
