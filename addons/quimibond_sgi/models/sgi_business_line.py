@@ -341,7 +341,8 @@ class SgiIndicatorLine(models.Model):
         """El total como siempre y, si se desglosa, un renglón por equipo o
         por mercado."""
         vals = super()._sgi_measure_vals(date_from, date_to)
-        if self.measure_split == 'none' or self.calc_mode != 'configurable' or self._sgi_split_problem():
+        if self.measure_split == 'none' or self.calc_mode != 'configurable' \
+                or self._sgi_snapshot_blocked(date_from) or self._sgi_split_problem():
             return vals
         rows = [(5, 0, 0)]
         for row_vals, key in self._sgi_split_keys():

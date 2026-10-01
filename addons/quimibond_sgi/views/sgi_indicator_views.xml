@@ -98,6 +98,7 @@
                             <field name="level"/>
                             <field name="frequency"/>
                             <field name="measure_from"/>
+                            <field name="snapshot" invisible="calc_mode == 'manual'"/>
                             <field name="active" invisible="1"/>
                         </group>
                         <group string="Meta y cálculo">

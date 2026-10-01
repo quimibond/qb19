@@ -8,7 +8,7 @@ from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 
-from .common_accounts import sgi_test_payable
+from .common_accounts import sgi_test_payable, sgi_test_sales_accounts
 
 
 @tagged('post_install', '-at_install')
@@ -24,6 +24,7 @@ class TestExpansionKpis(TransactionCase):
             'name': 'No tejido EX', 'type': 'consu', 'uom_id': cls.uom.id})
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
+        sgi_test_sales_accounts(cls.env, cls.income)
         cls.expense = cls.env['account.account'].search(
             [('account_type', '=', 'expense')], limit=1)
         cls.customer_a = cls.env['res.partner'].create({'name': 'Cliente EX-A'})
