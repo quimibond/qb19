@@ -110,6 +110,10 @@ SGI_B3_ODOO_FORMS = (
     },
 )
 
+# --- Paso 2 (57.71.0) ------------------------------------------------------
+# Tipos que cuentan como «formato» para el responsable (propuesta §2: 378).
+SGI_FORMAT_DOC_TYPES = ('formato', 'formato_it', 'dat', 'anexo', 'formulario_odoo')
+
 
 class DocumentsDocumentBloque3(models.Model):
     _inherit = 'documents.document'
@@ -422,3 +426,52 @@ class DocumentsDocumentBloque3(models.Model):
             'recode': self._sgi_b3_recode(company=company),
             'forms': self._sgi_b3_register_odoo_forms(company=company),
         }
+
+    # --- paso 2: responsable SGI = dueño del proceso -------------------------
+    @api.model
+    def _sgi_owner_from_process(self, company=None, ids=None, types=SGI_FORMAT_DOC_TYPES):
+        """Responsable SGI de cada formato vigente (o en piloto) = el usuario
+        del dueño de su proceso (``sgi_process_id.owner_id.user_id``) si está
+        activo y es interno. Solo toca los que hoy tiene el Jefe MAST (el
+        custodio que puso 56.28.0): lo que alguien ya reasignó se respeta. Si
+        el dueño no tiene usuario, el formato se queda con MAST. Fuera P-I01 y
+        su familia. ``ids`` limita el alcance (pruebas). Devuelve
+        ``{'changed': {proceso: (usuario, [ids])}, 'no_user': {proceso: [ids]},
+        'mast': {proceso: [ids]}}``."""
+        company = self._sgi_b3_company(company)
+        result = {'changed': {}, 'no_user': {}, 'mast': {}}
+        custodian = self.env['res.users'].sudo().browse(
+            self.env['sgi.cron'].sudo()._sgi_manager_user_id() or []).exists()
+        if not custodian:
+            _logger.warning("SGI responsables: no hay Jefe MAST (custodio); no se cambia nada.")
+            return result
+        domain = [('sgi_is_controlled', '=', True), ('active', '=', True),
+                  ('sgi_state', 'in', ('piloto', 'vigente')),
+                  ('sgi_doc_type_id.code', 'in', list(types)),
+                  ('sgi_owner_id', '=', custodian.id),
+                  ('sgi_process_id.company_id', '=', company.id)] \
+            + self._sgi_dropbox_excluded_domain()
+        if ids is not None:
+            domain.append(('id', 'in', list(ids)))
+        docs = self.sudo().search(domain, order='id')
+        for process in docs.mapped('sgi_process_id').sorted('code'):
+            pdocs = docs.filtered(lambda d, p=process: d.sgi_process_id == p)
+            employee = process.sudo().owner_id
+            user = employee.user_id
+            if user and user.active and not user.share and user != custodian:
+                pdocs.write({'sgi_owner_id': user.id})
+                result['changed'][process.code] = (user.id, pdocs.ids)
+                _logger.info("SGI responsables: %s: %d formato(s) %s → %s (dueño %s). Ids: %s",
+                             process.code, len(pdocs), custodian.name, user.name,
+                             employee.name, pdocs.ids)
+            elif user == custodian:
+                result['mast'][process.code] = pdocs.ids
+                _logger.info("SGI responsables: %s: %d formato(s) se quedan con %s (es la dueña "
+                             "del proceso).", process.code, len(pdocs), custodian.name)
+            else:
+                result['no_user'][process.code] = pdocs.ids
+                _logger.warning("SGI responsables: %s: el dueño %s no tiene usuario activo e "
+                                "interno; %d formato(s) se quedan con %s: %s", process.code,
+                                employee.name or "(sin dueño)", len(pdocs), custodian.name,
+                                ", ".join(pdocs.mapped('sgi_code')))
+        return result

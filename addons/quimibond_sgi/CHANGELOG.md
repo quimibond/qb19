@@ -13,6 +13,42 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.71.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 2/3, propuesta de formatos §2, decisión
+del 2026-09-30 «Responsable SGI de cada formato: el dueño del proceso»):**
+`documents.document._sgi_owner_from_process` pone como responsable SGI de
+cada formato vigente o en piloto (formato, F-IT, DAT, anexo y formulario de
+Odoo) al usuario del dueño de su proceso (`sgi_process_id.owner_id.user_id`)
+si está activo y es interno. Solo toca los que hoy tiene el Jefe MAST (el
+custodio de 56.28.0, `_sgi_manager_user_id`): lo ya reasignado se respeta.
+Si el dueño no tiene usuario, el formato se queda con MAST y sale en el log.
+P-I01 y su familia quedan fuera. MAST conserva la aprobación y la
+publicación.
+
+**Migración (post):** `migrations/19.0.57.71.0/post-migrate.py`, después de
+las bajas de 57.70.0. Idempotente; en el log, por proceso, los ids y el
+cambio «Blanca Ballesteros → dueño». Esperado en producción (MCP,
+2026-10-01): **238** cambian (C1 32 y C2 31 → Jessica Francisco; C3 7 →
+Paris Villordo; C5 60 → Oscar González; C6 10 → Cynthia Santana; E1 5 y S1
+14 → Jorge Manuel Ortiz; S2 7 y S3 9 → Irma Luna; S4 45 → Miguel Medina; S5
+18 → Manuel Juárez); se quedan con MAST E2 70 (la dueña es MAST) y C4 64
+(Francisco González no tiene usuario: 54 en el log y 10 de P-I01).
+
+**Para Jose:** la lista de los 64 formatos de C4 que se quedan con MAST está
+en `docs/sgi/transicion/formatos-bloque-3.md` §2. Pasan a su dueño en cuanto
+Francisco González tenga usuario (ver D-08, «manufactura@»).
+
+**No se hizo:** la familia P-A13 (7 formatos en S2, que la propuesta daba
+por mal asignada a S4) no se movió: sus formatos son reportes
+administrativos (anticipos, compras, facturación, inventario, importaciones)
+y una lista de asistencia; no es un error evidente. Quedan con Irma Luna
+hasta que MAST decida su proceso.
+
+**Pruebas:** `test_formatos_bloque3` `TestBloque3Responsable` (dueño con
+usuario, sin usuario, usuario inactivo, dueña MAST, lo reasignado se
+respeta, instructivo, obsoleto y P-I01 fuera, idempotencia y post-migrate).
+
 ## 19.0.57.70.0 — 2026-10-01
 
 **Cambiado (bloque 3 de formularios 1/3, propuesta de formatos aprobada por

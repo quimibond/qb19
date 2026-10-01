@@ -73,16 +73,109 @@ llena es la pantalla) dos claves que citan las rutinas y no existían:
    `quimibond_sgi.satisfaction_survey_id = 0`); sin eso el menú, el cron y el
    indicador CA-02 no la ven.
 
-## 2. Los 17 formatos citados que no existen (propuesta §1)
+## 2. Responsable SGI = dueño del proceso (57.71.0)
 
-En código solo se hizo lo seguro: las altas de F-P-A28-13 y F-P-A28-11 (arriba)
+### Qué hizo el sistema
+
+El responsable SGI de cada formato vigente (formato, F-IT, DAT, anexo y
+formulario de Odoo) pasa de MAST al usuario del dueño de su proceso
+(SGI → Procesos → dueño del proceso). Solo se tocaron los que tenía MAST;
+lo que alguien ya había reasignado se respeta. MAST conserva la aprobación y
+la publicación (decisión del 2026-09-30).
+
+| Proceso | Formatos | Nuevo responsable SGI |
+|---|---|---|
+| C1 Desarrollo y alta | 32 | Jessica Francisco |
+| C2 Pedido a entrega | 31 (con F-P-A28-13) | Jessica Francisco |
+| C3 Planeación | 7 | Paris César Villordo |
+| C5 Calidad de producto | 60 | Oscar González |
+| C6 Almacén | 10 | Cynthia Santana |
+| E1 Dirección | 5 | Jorge Manuel Ortiz |
+| S1 Compra a pago | 14 | Jorge Manuel Ortiz |
+| S2 Facturación y cobranza | 7 | Irma Luna |
+| S3 Contabilidad y costos | 9 | Irma Luna |
+| S4 RH y nómina | 45 | Miguel Medina |
+| S5 Mantenimiento | 18 | Manuel Juárez |
+| **Cambian** | **238** | |
+| E2 Gestión del SGI | 70 (con F-P-A28-11) | Blanca Ballesteros (la dueña es MAST) |
+| C4 Producción | 64 | **Se quedan con MAST**: el dueño no tiene usuario |
+
+### Para Jose: formatos que se quedan con MAST porque el dueño no tiene usuario
+
+**C4 Producción**, dueño Francisco González Hernández (empleado 564, Jefe de
+Manufactura), **sin usuario de Odoo**. Son 64: los 54 de abajo y 10 de la
+familia P-I01 (7 DAT y F-P-I01-01 a -03), que ninguna migración toca. En
+cuanto Francisco González tenga usuario (o se le ligue uno; ver la decisión
+D-08 sobre «manufactura@»), basta con que MAST los reasigne o con volver a
+correr `documents.document._sgi_owner_from_process()` desde un shell.
+
+| # | Clave (Dropbox) | Título |
+|---|---|---|
+| 1 | DAT P-P01-01 | TABLA DE VISCOSIDADES |
+| 2 | DAT P-P01-02 | FORMULA 26 |
+| 3 | DAT P-P01-03 | Tabla de metraje para Jumbos (REV 01) |
+| 4 | F-IT-P-P01-01-01 | Resultados de Laboratorio |
+| 5 | F-IT-P-P01-01-02 | Gráfica de control |
+| 6 | F-IT-P-P01-01-04 | CHECK LIST CARDA (REV 02) |
+| 7 | F-IT-P-P01-01-05 | Analisis de resistencias |
+| 8 | F-IT-P-P01-02-01 | Check List Cocina |
+| 9 | F-IT-P-P01-02-02 | Orden de cocina |
+| 10 | F-IT-P-P01-03-01 | BITACORA DE OPERACION (1) |
+| 11 | F-IT-P-P01-04-01 | BITACORA DE OPERACION V18 |
+| 12 | F-IT-P-P01-06-01 | CHECK LIST MÁQ. TEJIDO |
+| 13 | F-IT-P-P01-06-02 | Calificacion de calidad en tejido |
+| 14 | F-IT-P-P01-07-01 | CHEK LIST CORTE Y PERFORADO |
+| 15 | F-IT-P-P01-08-01 | TARJETA VIAJERA (Formulario de Odoo) |
+| 16 | F-IT-P-P01-08-02 | BITÁCORA DE TEJIDO CIRCULAR (Formulario de Odoo) |
+| 17 | F-IT-P-P01-08-03 | CONTROL DE REVISADO DE TEJIDO (Formulario de Odoo) |
+| 18 | F-IT-P-P01-08-04 | CONTROL DE OPERACIÓN MAQUINA DE TEJIDO |
+| 19 | F-IT-P-P01-08-05 | FICHA TÉCNICA DE CONTROL DE PROCESO MÁQUINAS CIRCULARES |
+| 20 | F-IT-P-P01-08-06 | REV CRUDO |
+| 21 | F-IT-P-P01-08-07 | Check List Status Maquina Circular |
+| 22 | F-IT-P-P01-08-08 | MANEJO DE MATERIAL EN MAQUINA DE TEJIDO CIRCULAR WJ035Q22HNT200 |
+| 23 | F-IT-P-P01-08-09 | MANEJO DE MATERIAL EN REVISADO DE TEJIDO CIRCULAR WJ035Q22HNT200 |
+| 24 | F-IT-P-P01-08-13 | REGISTRO DE TELA CON ACEITE |
+| 25 | F-IT-P-P01-10-01 | IDENTIFICACIÓN DE ROLLOS DE TELA BASE QUE PASA DE RAMA A PUNTOS |
+| 26 | F-IT-P-P01-10-02 | Check list Rama |
+| 27 | F-IT-P-P01-10-03 | Identificación de Rollos en Rama |
+| 28 | F-IT-P-P01-10-04 | IDENTIFICACION DE ROLLOS DE TELA BASE QUE PASAN DE RAMA A PUNTOS (2) |
+| 29 | F-IT-P-P01-10-05 | BITACORA DE OPERACIÓN (1) |
+| 30 | F-IT-P-P01-10-06 | ANCHOS DE TELA EN RAMA |
+| 31 | F-IT-P-P01-12-01 | Orden de Trabajo (Teñido) |
+| 32 | F-IT-P-P01-12-02 | SEGUIMIENTO DE TONO DE TINTORERIA |
+| 33 | F-IT-P-P01-12-03 | SEGUIMIENTO DE TONO DE RAMA |
+| 34 | F-IT-P-P01-12-04 | Bitacora de Condiciones de Operación del Jet Scholl 1 y 2 |
+| 35 | F-IT-P-P01-13-01 | RESULTADOS DE TELA ACABADA |
+| 36 | F-IT-P-P01-13-02 | Escala de Color (01) |
+| 37 | F-IT-P-P01-13-03 | Formulación para Laboratorio de Tintorería (01) |
+| 38 | F-IT-P-P01-13-04 | MASTER DE COLOR |
+| 39 | F-IT-P-P01-13-05 | AUTORIZACIÓN DE TONOS |
+| 40 | F-IT-P-P01-13-06 | IGUALACION DE TONO |
+| 41 | F-IT-P-P01-15-01 | CHECK LIST PARA COCINA DE COLORES |
+| 42 | F-IT-P-P01-20-01 | CONTROL DE PRUEBAS DE JARRAS |
+| 43 | F-IT-P-P01-20-05 | PARAMETROS DE AGUA PARA PROCESO (1) |
+| 44 | F-IT-P-P04-08-01 | BITACORA DE VERIFICACIÓN DE INSTRUMENTAL DE LABORATORIO |
+| 45 | F-IT-P-P07-01-02 | BITACORA DE ANTIESPUMANTE |
+| 46 | F-IT-P-P07-01-03 | BITACORA DE FLOCULANTE |
+| 47 | F-IT-P-P07-01-04 | BITACORA DE COAGULANTE |
+| 48 | F-IT-P-P07-01-05 | BITACORA DE SOSA CAUSTICA |
+| 49 | F-IT-P-P07-02-06 | PARAMETROS DE AGUA PARA PROCESO |
+| 50 | F-P-P01-02 | BITACORA DE REGISTRO DE ACTIVIDADES DE TAC |
+| 51 | F-P-P02-01 | Orden de trabajo producción entretelas |
+| 52 | F-P-P04-03 | REPORTE DE PRUEBA DE SOLVENTE |
+| 53 | F-P-P04-08 | CONTROL DE PROCESO MAQUINA DE TEJIDO |
+| 54 | F-P-P04-10 | COMPARATIVO DE PRODUCTOS QUÍMICOS |
+
+## Anexo. Los 17 formatos citados que no existen (propuesta §1)
+
+En código solo se hizo lo seguro: las altas de F-P-A28-13 y F-P-A28-11 (sección 1)
 y la liga de F-IT-P-G03-01-01 a E2.37.
 Lo demás es de MAST: corregir la cita en la rutina (`sgi.legacy.routine`) y en
 la próxima revisión del procedimiento, o dar de alta el formato.
 
 | # | Clave citada | Qué hacer | Con qué |
 |---|---|---|---|
-| 1 | F-P-A28-11 | **Hecho** (alta). Configurar la encuesta 152 en Ajustes del SGI | — |
+| 1 | F-P-A28-11 | **Hecho** (alta, sección 1). Configurar la encuesta 152 en Ajustes del SGI | — |
 | 2 | F-IT-P-A10-01-01 | Corregir la cita | F-P-A10-01 (minuta, doc 3762, mapeo 8). La cita de P-A14 n.9 (E1.04) es F-P-A10-03 |
 | 3 | F-P-A25-01 | Corregir la cita: la conciliación vive en Contabilidad | Conciliación bancaria; firma del contador con el cierre de periodo |
 | 4 | F-P-A25-02 | **Decisión:** usar Declaración fiscal (`account.return`, 8 en «Nuevo») con el acuse del SAT, o dar de alta el Excel | — |

@@ -11,6 +11,7 @@ import importlib.util
 import os
 
 from odoo.tests import TransactionCase, tagged
+from odoo.tests.common import new_test_user
 
 from ..models.sgi_formatos_bloque3 import (
     SGI_B3_LINKS, SGI_B3_MERGES, SGI_B3_ODOO_FORMS, SGI_B3_RECODE, SGI_B3_UNCONTROL)
@@ -224,3 +225,63 @@ class TestBloque3DatosMalos(_Bloque3Common):
         self.assertEqual(again['uncontrol'], {})
         self.assertEqual(again['recode'], {})
         self.assertEqual(again['forms'], {})
+
+
+@tagged('post_install', '-at_install')
+class TestBloque3Responsable(_Bloque3Common):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        groups = 'base.group_user,quimibond_sgi.group_sgi_user'
+        cls.mast = new_test_user(cls.env, login='zb3_mast',
+                                 groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        cls.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.mast_user_id', str(cls.mast.id))
+        cls.owner_user = new_test_user(cls.env, login='zb3_duenio', groups=groups)
+        cls.gone_user = new_test_user(cls.env, login='zb3_baja', groups=groups)
+        cls.gone_user.active = False
+        cls.reassigned = new_test_user(cls.env, login='zb3_otro', groups=groups)
+        Employee = cls.env['hr.employee']
+        cls.p_ok = cls._process('XB5', Employee.create({'name': 'ZB3 Dueño', 'user_id': cls.owner_user.id}))
+        cls.p_nouser = cls._process('XB6', Employee.create({'name': 'ZB3 Sin usuario'}))
+        cls.p_gone = cls._process('XB7', Employee.create({'name': 'ZB3 Inactivo',
+                                                          'user_id': cls.gone_user.id}))
+        cls.p_mast = cls._process('XB8', Employee.create({'name': 'ZB3 MAST', 'user_id': cls.mast.id}))
+        own = {'sgi_owner_id': cls.mast.id}
+        cls.f_ok = cls._doc('F-P-A84-01', 'formato', cls.p_ok, **own)
+        cls.fit_ok = cls._doc('F-IT-P-A84-01-01', 'formato_it', cls.p_ok, **own)
+        cls.form_ok = cls._doc('F-P-A84-02', 'formulario_odoo', cls.p_ok, **own)
+        cls.it_ok = cls._doc('IT-P-A84-01', 'instructivo', cls.p_ok, **own)
+        cls.obs_ok = cls._doc('F-P-A84-03', 'formato', cls.p_ok, sgi_state='obsoleto', **own)
+        cls.kept_ok = cls._doc('F-P-A84-04', 'formato', cls.p_ok, sgi_owner_id=cls.reassigned.id)
+        cls.pi01 = cls._doc('F-P-I01-84', 'formato', cls.p_ok, **own)
+        cls.f_nouser = cls._doc('F-P-A85-01', 'formato', cls.p_nouser, **own)
+        cls.f_gone = cls._doc('F-P-A86-01', 'formato', cls.p_gone, **own)
+        cls.f_mast = cls._doc('F-P-A87-01', 'formato', cls.p_mast, **own)
+        cls.mine = (cls.f_ok | cls.fit_ok | cls.form_ok | cls.it_ok | cls.obs_ok | cls.kept_ok
+                    | cls.pi01 | cls.f_nouser | cls.f_gone | cls.f_mast)
+
+    def test_01_dueno_con_usuario_toma_sus_formatos(self):
+        result = self.Doc._sgi_owner_from_process(company=self.company, ids=self.mine.ids)
+        self.assertEqual(result['changed'], {'XB5': (self.owner_user.id, sorted(
+            (self.f_ok | self.fit_ok | self.form_ok).ids))})
+        for doc in (self.f_ok, self.fit_ok, self.form_ok):
+            self.assertEqual(doc.sgi_owner_id, self.owner_user)
+        self.assertEqual(self.it_ok.sgi_owner_id, self.mast, "Un instructivo no es formato.")
+        self.assertEqual(self.obs_ok.sgi_owner_id, self.mast, "Obsoleto: no se toca.")
+        self.assertEqual(self.kept_ok.sgi_owner_id, self.reassigned, "Lo ya reasignado se respeta.")
+        self.assertEqual(self.pi01.sgi_owner_id, self.mast, "P-I01 queda fuera siempre.")
+
+    def test_02_sin_usuario_se_queda_con_mast_y_se_lista(self):
+        result = self.Doc._sgi_owner_from_process(company=self.company, ids=self.mine.ids)
+        self.assertEqual(result['no_user'], {'XB6': self.f_nouser.ids, 'XB7': self.f_gone.ids})
+        self.assertEqual(result['mast'], {'XB8': self.f_mast.ids})
+        for doc in (self.f_nouser, self.f_gone, self.f_mast):
+            self.assertEqual(doc.sgi_owner_id, self.mast)
+        again = self.Doc._sgi_owner_from_process(company=self.company, ids=self.mine.ids)
+        self.assertEqual(again['changed'], {}, "Idempotente.")
+
+    def test_03_post_migrate_corre(self):
+        _run_migration(self.env, '19.0.57.71.0')
+        self.assertEqual(self.f_ok.sgi_owner_id, self.owner_user)
+        self.assertEqual(self.f_nouser.sgi_owner_id, self.mast)
