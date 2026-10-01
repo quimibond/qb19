@@ -403,8 +403,18 @@ for k, v in cv.items():                      # las llaves del módulo de Odoo, y
    datos de la sección 8: 244 → 6,622.08; 345 → 6,104.34; 11 → 11,908.72;
    464 → 9,707.31. La corrida 117 (semana 38) no es última del mes y no se
    mueve: neto 302,757.31.
-7. **Tests** (no corren en el CI porque dependen de Enterprise):
-   `odoo-bin ... --test-tags /quimibond_nomina --stop-after-init`.
+7. **Tests** (no corren en el CI porque dependen de Enterprise; sí en cada
+   build de desarrollo de Odoo.sh). Sólo los de este módulo, desde el shell
+   del build: `odoo-bin -c ~/.config/odoo/odoo.conf -d <base del build>
+   --test-tags /quimibond_nomina --stop-after-init --no-http`.
+
+   Al armar recibos a mano en una prueba: en Odoo 19
+   `hr.payslip.line.total` es un campo almacenado **sin cómputo** (lo escribe
+   `compute_sheet`), así que la línea se crea con `total` explícito; con sólo
+   `amount` queda en 0 y el módulo la lee como «sin línea» (19.0.1.7.1: por
+   eso fallaban 5 de 27 en cada build y Odoo cortaba la suite completa al
+   quinto fallo). En producción las líneas sí traen `total` y el CFDI no se
+   veía afectado.
 
 ## Datos que cuesta trabajo redescubrir
 
