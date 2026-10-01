@@ -21,6 +21,21 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pruebas de staging (19.0.1.3.1, 2026-10-01)
+
+Solo pruebas; el código no cambia.
+
+- `test_ajustes_130` (`TestBudgetMinPriceException`, casos 3 y 4): cada
+  línea creaba su propio presupuesto del mismo mercado y año, y el segundo
+  chocaba con la regla «un presupuesto no obsoleto por mercado y año». La
+  clase usa un solo presupuesto y le agrega líneas. Error de la prueba.
+- `test_sales_budget` (`TestSalesBudgetLifecycle55.test_05`): esperaba
+  «omitidos 1» y el chatter decía 0. Desde 1.1.0 (N2) el presupuesto se
+  omite por producto + cliente + **mes** del pronóstico, y la semana del
+  pronóstico era el lunes de 2040-06-03, o sea 2040-05-28 (mayo) contra la
+  línea de junio. No es regresión ni dato de producción: la prueba no se
+  actualizó con N2. Ahora la semana es la del 2040-06-04.
+
 ## Ajustes del CEO (19.0.1.3.0, 2026-10-01)
 
 - **Precio mínimo plausible propio** (producto, pestaña Ventas; categoría,

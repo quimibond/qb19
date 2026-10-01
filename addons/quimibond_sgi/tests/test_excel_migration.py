@@ -22,7 +22,16 @@ class TestExcelMigration(TransactionCase):
     def test_01_proyecto_ft_solicitud_de_desarrollo(self):
         project = self.env['project.project'].create({'name': 'FT-099-2046 WR135Q46JNT165', 'sgi_dev_type': 'carda'})
         self.assertTrue(project.sgi_is_ft, "El nombre FT-… marca el proyecto como desarrollo.")
-        self.assertEqual(project.sgi_dev_format_code, 'F-P-D01-26')
+        # La clave sale viva del documento ligado al mapeo: F-P-D01-26 en una
+        # base nueva; en una copia de producción con D-02 (57.84.0) es la
+        # clave nueva del documento cuya clave anterior es F-P-D01-26.
+        fmap = self.env.ref('quimibond_sgi.format_ref_dev_carda')
+        expected = fmap.sgi_live_parts()[0]
+        self.assertEqual(project.sgi_dev_format_code, expected)
+        if expected != 'F-P-D01-26':
+            renamed = self.env['documents.document']._sgi_find_by_code('F-P-D01-26', states=None)
+            self.assertEqual(renamed.sgi_code, expected,
+                             "La clave nueva es la del documento de la clave anterior F-P-D01-26.")
         project.action_sgi_dev_load_lines()
         names = project.sgi_dev_line_ids.mapped('name')
         self.assertIn("Tipo de fibra", names)
@@ -31,7 +40,7 @@ class TestExcelMigration(TransactionCase):
         self.assertEqual(len(project.sgi_dev_line_ids), n, "Volver a proponer no duplica renglones.")
         other = self.env['project.project'].create({'name': 'Mantenimiento ZK'})
         self.assertFalse(other.sgi_is_ft)
-        self.assertTrue(project.sgi_dev_format_info().startswith('F-P-D01-26'))
+        self.assertTrue(project.sgi_dev_format_info().startswith(expected))
         html = self.env['ir.actions.report']._render_qweb_html('quimibond_sgi.report_dev_request_document', project.ids)[0]
         self.assertIn(b'Solicitud de desarrollo', html)
 
