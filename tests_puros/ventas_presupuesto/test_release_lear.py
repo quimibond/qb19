@@ -69,3 +69,11 @@ def test_duplicated_week_is_rejected():
     text = _text().replace('01/25/27 P 0 61,000 0', '01/18/27 P 0 61,000 0')
     with pytest.raises(lear.LearReleaseError):
         lear.parse(text)
+
+
+def test_description_with_single_space_before_receipt():
+    # Así viene el release real: un solo espacio antes de «Receipt Date:».
+    text = _text().replace('BACK SCRIM PES/100        Receipt Date:', 'BACK SCRIM PES/100 0.5MM Receipt Date:') \
+        .replace('IH LAMINATED 62"          Receipt Qty:', 'IH LAMINATED 62" Receipt Qty:')
+    part = lear.parse(text)['parts'][0]
+    assert part['description'] == 'BACK SCRIM PES/100 0.5MM IH LAMINATED 62"'
