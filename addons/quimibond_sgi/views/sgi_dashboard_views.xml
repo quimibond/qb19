@@ -10,7 +10,8 @@
         <field name="name">sgi.quality.alert.pivot</field>
         <field name="model">quality.alert</field>
         <field name="arch" type="xml">
-            <pivot string="Alertas de calidad" sample="1">
+            <!-- V-M13 (57.80.0): Pareto de verdad, de mayor a menor. -->
+            <pivot string="Alertas de calidad" sample="1" default_order="__count desc">
                 <field name="team_id" type="row"/>
                 <field name="tag_ids" type="col"/>
             </pivot>
@@ -21,7 +22,7 @@
         <field name="name">sgi.quality.alert.graph</field>
         <field name="model">quality.alert</field>
         <field name="arch" type="xml">
-            <graph string="Alertas de calidad" type="bar" sample="1">
+            <graph string="Alertas de calidad" type="bar" sample="1" order="desc">
                 <field name="tag_ids"/>
             </graph>
         </field>

@@ -32,7 +32,7 @@
                         </group>
                         <group string="Liberación">
                             <field name="sgi_release_picking_ids" nolabel="1" colspan="2" readonly="1">
-                                <list><field name="name"/><field name="picking_type_id"/><field name="state"/></list>
+                                <list><field name="name"/><field name="picking_type_id"/><field name="state" widget="badge"/></list>
                             </field>
                         </group>
                     </group>
@@ -61,15 +61,15 @@
                         </group>
                         <group string="Órdenes de muestra">
                             <field name="sgi_production_ids" nolabel="1" colspan="2" readonly="1">
-                                <list><field name="name"/><field name="product_id"/><field name="state"/></list>
+                                <list><field name="name"/><field name="product_id"/><field name="state" widget="badge"/></list>
                             </field>
                         </group>
                         <group string="Planes de control y PPAP">
                             <field name="sgi_control_plan_ids" nolabel="1" colspan="2" readonly="1">
-                                <list><field name="name"/><field name="revision"/><field name="state"/></list>
+                                <list><field name="name"/><field name="revision"/><field name="state" widget="badge"/></list>
                             </field>
                             <field name="sgi_ppap_ids" nolabel="1" colspan="2" readonly="1">
-                                <list><field name="display_name"/><field name="partner_id"/><field name="state"/></list>
+                                <list><field name="display_name"/><field name="partner_id"/><field name="state" widget="badge"/></list>
                             </field>
                         </group>
                     </group>

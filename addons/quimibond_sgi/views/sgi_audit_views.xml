@@ -56,6 +56,10 @@
         <field name="arch" type="xml">
             <list string="Programas de auditoría" decoration-muted="state == 'borrador'" decoration-success="state == 'cerrado'">
                 <field name="year"/>
+                <!-- V-M14 (57.80.0): cuántas auditorías lleva y cuántas se hicieron. -->
+                <field name="line_count"/>
+                <field name="line_done_count"/>
+                <field name="progress_pct" widget="progressbar"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'cerrado'"
                        decoration-info="state == 'aprobado'"/>
@@ -240,12 +244,19 @@
         <field name="model">sgi.audit</field>
         <field name="arch" type="xml">
             <list string="Auditorías" decoration-muted="state == 'borrador'" decoration-info="state in ('planificada', 'en_ejecucion', 'informe')" decoration-success="state == 'cerrada'">
+                <!-- V-M14 (57.80.0): qué se auditó, a quién y cuándo terminó. -->
                 <field name="folio"/>
                 <field name="audit_type"/>
+                <field name="process_ids" widget="many2many_tags"/>
+                <field name="partner_id" optional="hide"/>
                 <field name="date_planned"/>
-                <field name="lead_auditor_id"/>
+                <field name="date_end" optional="show"/>
+                <field name="lead_auditor_id" widget="many2one_avatar_user"/>
                 <field name="finding_count"/>
-                <field name="state"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'borrador'"
+                       decoration-info="state in ('planificada', 'en_ejecucion', 'informe')"
+                       decoration-success="state == 'cerrada'"/>
             </list>
         </field>
     </record>
@@ -273,10 +284,26 @@
         </field>
     </record>
 
+    <!-- V-B12 (57.80.0): las auditorías en el calendario por fecha
+         planificada, con color por estado. -->
+    <record id="sgi_audit_view_calendar" model="ir.ui.view">
+        <field name="name">sgi.audit.calendar</field>
+        <field name="model">sgi.audit</field>
+        <field name="arch" type="xml">
+            <calendar string="Auditorías" date_start="date_planned" color="state"
+                      mode="month" quick_create="0" event_open_popup="0">
+                <field name="audit_type"/>
+                <field name="lead_auditor_id"/>
+                <field name="process_ids" widget="many2many_tags"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
     <record id="sgi_audit_action" model="ir.actions.act_window">
         <field name="name">Auditorías realizadas</field>
         <field name="res_model">sgi.audit</field>
-        <field name="view_mode">list,form,activity</field>
+        <field name="view_mode">list,calendar,form,activity</field>
         <field name="context">{'search_default_open': 1}</field>
         <field name="search_view_id" ref="sgi_audit_view_search"/>
         <field name="help" type="html">

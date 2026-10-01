@@ -21,6 +21,17 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Pantallas (19.0.1.2.0, revisión de vistas V-M10)
+
+- La lista de líneas y la matriz de la ficha suman al pie la cantidad
+  presupuestada y facturada y los importes presupuestado, facturado y pedido
+  (este último en la lista, columna opcional).
+- En el encabezado del presupuesto o pronóstico solo queda el flujo (enviar a
+  revisión o marcar revisado, aprobar, nueva revisión, regresar a borrador y
+  enviar demanda al MPS). «Análisis» es botón inteligente; «Actualizar real»,
+  «Conciliar facturado» e «Importar desde Excel» están en el engrane
+  (Acción) de la ficha, y el PDF en el menú Imprimir.
+
 ## Releases de clientes (19.0.1.1.0, E1a)
 
 Diseño: `docs/superpowers/specs/2026-09-30-releases-pronostico-presupuesto-e0.md`.

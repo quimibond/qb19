@@ -26,7 +26,8 @@
                        decoration-success="semaphore == 'verde'"
                        decoration-warning="semaphore == 'amarillo'"
                        decoration-danger="semaphore == 'rojo'"/>
-                <field name="state" optional="hide"/>
+                <field name="state" optional="hide" widget="badge"
+                       decoration-muted="state == 'sin_dato'"/>
                 <field name="detail_ids" column_invisible="1"/>
                 <button name="action_view_evidence" type="object" string="Registros"
                         icon="fa-list" invisible="not detail_ids"/>

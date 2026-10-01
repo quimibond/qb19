@@ -15,7 +15,11 @@
                        decoration-success="health == 'verde'"
                        decoration-warning="health == 'amarillo'"
                        decoration-danger="health == 'rojo'"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-info="state == 'borrador'"
+                       decoration-success="state == 'vigente'"
+                       decoration-muted="state == 'obsoleta'"/>
             </list>
         </field>
     </record>

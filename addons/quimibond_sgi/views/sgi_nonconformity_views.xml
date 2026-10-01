@@ -504,6 +504,8 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
         <field name="res_model">quality.alert</field>
         <field name="view_mode">list,form</field>
         <field name="view_id" ref="sgi_nc_lessons_view_list"/>
+        <!-- V-B15 (57.80.0): la búsqueda de NC (folio, proceso, mayores…), no la de Calidad. -->
+        <field name="search_view_id" ref="sgi_nc_view_search"/>
         <field name="domain">[('sgi_folio', '!=', False), ('sgi_lesson_captured', '=', True)]</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay lecciones aprendidas</p>

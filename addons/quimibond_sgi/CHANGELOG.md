@@ -13,6 +13,55 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.80.0 — 2026-10-01
+
+**Cambiado (pulido de vistas, bloque 4: listas, análisis y vistas
+faltantes; revisión del 2026-09-30):**
+- **Pastillas y barras (V-M05):** el estado va como pastilla de color en las
+  listas de auditorías, incidentes, riesgos, AMEF, PPAP, planes de control,
+  políticas, simulacros, mediciones, acuses y desglose de mediciones (y en
+  las listas de solo lectura de la pestaña SGI de órdenes y tareas). El
+  avance de la acción (selección 0/50/100 %) es pastilla en la lista global
+  y botones en su ficha; la calificación de la evaluación de proveedores es
+  barra de avance. Las listas **editables** dentro de las fichas (acciones,
+  mediciones del indicador, elementos del PPAP) se quedan como estaban: una
+  pastilla no se edita.
+- **Paretos ordenados (V-M13):** el Pareto de alertas de calidad sale de
+  mayor a menor (gráfica `order="desc"`, pivote por conteo). El del revisado
+  va en `quimibond_sgi_revisado` 4.3.0.
+- **Programa y auditorías (V-M14):** la lista del programa dice auditorías
+  programadas, hechas y el avance (campos calculados sin guardar
+  `line_count`, `line_done_count`, `progress_pct`); la de auditorías suma
+  procesos auditados, cliente o proveedor (opcional), fin real y auditor con
+  avatar.
+- **Historial en mediciones y evaluaciones de proveedor (V-M16):**
+  `sgi.indicator.measure` y `sgi.supplier.eval` heredan `mail.thread` y
+  tienen chatter. Se sigue el valor, el estado y la nota de la medición, y la
+  calificación, la clasificación y las notas de la evaluación. Sin columnas
+  nuevas (mail.thread no guarda nada en la tabla del modelo).
+- **Mediciones de 12 en 12 (V-B11)** en la ficha del indicador, la más
+  reciente arriba.
+- **Vistas que faltaban (V-B12):** calendario de auditorías (fecha
+  planificada), simulacros (fecha programada) y próximas calibraciones, con
+  color por estado o resultado; kanban por estado de acciones e incidentes
+  (sin arrastrar: el estado sale de los botones); gráfica mensual de
+  incidentes por tipo; panel lateral por tipo de documento y proceso en
+  Documentos.
+- **`multi_edit` (V-B13)** en las listas de acciones, riesgos, documentos y
+  requisitos legales.
+- **Lecciones aprendidas (V-B15)** con la búsqueda de NC (folio, proceso,
+  mayores, fecha). La búsqueda y el menú de hallazgos ya existían (57.53.0 y
+  57.67.0).
+- **Vista de actividades (V-B18)** en calibraciones, requisitos legales,
+  estudios y exámenes, recorridos CSH, objetivos y fichas de máquina.
+
+`quimibond_ventas_presupuesto` 19.0.1.2.0 (V-M10): sumas en cantidad e
+importe de las líneas y encabezado con solo el flujo (detalle en su README).
+
+**Pruebas:** `test_vistas_pulido_45.TestListasYAnalisis`;
+`quimibond_ventas_presupuesto/tests/test_sales_budget_views.py`;
+`quimibond_sgi_revisado/tests/test_pareto_revisado.py`.
+
 ## 19.0.57.68.0 — 2026-09-30
 
 Tercera corrida de las pruebas del SGI en **staging** (copia de producción):

@@ -212,7 +212,8 @@
         <field name="name">sgi.risk.list</field>
         <field name="model">sgi.risk</field>
         <field name="arch" type="xml">
-            <list string="Riesgos y oportunidades"
+            <!-- V-B13 (57.80.0): multi_edit para reasignar o mover la próxima revisión de varios. -->
+            <list string="Riesgos y oportunidades" multi_edit="1"
                   decoration-danger="attention_level in ('inmediata','alto')"
                   decoration-warning="attention_level in ('media','medio')">
                 <field name="folio"/>
@@ -223,7 +224,11 @@
                 <field name="score"/>
                 <field name="attention_level" widget="badge"/>
                 <field name="next_review_date" widget="remaining_days" invisible="state == 'cerrado'"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'identificado'"
+                       decoration-info="state == 'en_tratamiento'"
+                       decoration-success="state in ('controlado', 'cerrado')"/>
             </list>
         </field>
     </record>

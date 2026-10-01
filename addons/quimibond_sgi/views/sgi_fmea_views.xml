@@ -141,7 +141,11 @@
                 <field name="process_id"/>
                 <field name="product_tmpl_id"/>
                 <field name="max_npr"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-info="state == 'borrador'"
+                       decoration-success="state == 'vigente'"
+                       decoration-muted="state == 'obsoleto'"/>
             </list>
         </field>
     </record>

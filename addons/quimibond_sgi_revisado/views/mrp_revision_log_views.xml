@@ -5,7 +5,8 @@
         <field name="name">mrp.revision.log.pivot.sgi</field>
         <field name="model">mrp.revision.log</field>
         <field name="arch" type="xml">
-            <pivot string="Defectos de revisado" sample="1">
+            <!-- 4.3.0 (V-M13): Pareto de verdad, de mayor a menor. -->
+            <pivot string="Defectos de revisado" sample="1" default_order="__count desc">
                 <field name="causa_id" type="row"/>
             </pivot>
         </field>
@@ -15,7 +16,7 @@
         <field name="name">mrp.revision.log.graph.sgi</field>
         <field name="model">mrp.revision.log</field>
         <field name="arch" type="xml">
-            <graph string="Defectos de revisado" type="bar" sample="1">
+            <graph string="Defectos de revisado" type="bar" sample="1" order="desc">
                 <field name="causa_id"/>
             </graph>
         </field>
@@ -31,6 +32,8 @@
                 <field name="causa_id"/>
                 <filter name="con_defecto" string="Con defecto"
                         domain="[('causa_id', '!=', False)]"/>
+                <separator/>
+                <filter name="filter_date" string="Fecha de revisado" date="create_date"/>
                 <group>
                     <filter name="group_causa" string="Causa (defecto)"
                             context="{'group_by': 'causa_id'}"/>
@@ -47,6 +50,11 @@
         <field name="view_mode">pivot,graph,list</field>
         <field name="search_view_id" ref="mrp_revision_log_view_search"/>
         <field name="context">{'search_default_con_defecto': 1, 'search_default_group_causa': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin rollos revisados con defecto</p>
+            <p>Cada rollo que el revisado registra con una causa (etiqueta TEJIDO-…) cuenta aquí, de la causa más frecuente a la menos frecuente.
+            Use «Fecha de revisado» para ver un mes o una semana y compare antes de decidir qué atacar primero.</p>
+        </field>
     </record>
 
     <menuitem id="menu_sgi_dashboard_defectos" name="Pareto de defectos (revisado)"

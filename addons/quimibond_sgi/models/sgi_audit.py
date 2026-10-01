@@ -49,6 +49,13 @@ class SgiAuditProgram(models.Model):
         help="Borrador mientras se arma; aprobado cuando se autoriza (desde ahí se avisa cada auditoría); "
              "cerrado al terminar el año.")
     line_ids = fields.One2many('sgi.audit.program.line', 'program_id', string="Líneas")
+    # V-M14 (57.80.0): avance del programa en la lista (sin guardar).
+    line_count = fields.Integer(string="Auditorías programadas", compute='_compute_progress',
+                                help="Renglones del programa.")
+    line_done_count = fields.Integer(string="Auditorías hechas", compute='_compute_progress',
+                                     help="Renglones cuya auditoría ya se cerró.")
+    progress_pct = fields.Float(string="Avance", compute='_compute_progress',
+                                help="Auditorías cerradas entre auditorías programadas, en %.")
 
     _year_uniq = models.Constraint(
         'unique(year)',
@@ -59,6 +66,15 @@ class SgiAuditProgram(models.Model):
     def _compute_name(self):
         for program in self:
             program.name = "Programa de auditorías %s" % (program.year or '')
+
+    @api.depends('line_ids.state')
+    def _compute_progress(self):
+        for program in self:
+            total = len(program.line_ids)
+            done = len(program.line_ids.filtered(lambda line: line.state == 'cerrada'))
+            program.line_count = total
+            program.line_done_count = done
+            program.progress_pct = round(100.0 * done / total, 1) if total else 0.0
 
     def action_approve(self):
         """4.4: solo MAST aprueba, y cada auditoría interna del programa

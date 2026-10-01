@@ -7,7 +7,9 @@
         <field name="name">sgi.action.line.list.global</field>
         <field name="model">sgi.action.line</field>
         <field name="arch" type="xml">
-            <list string="Acciones" decoration-danger="state == 'vencida'"
+            <!-- V-B13 (57.80.0): multi_edit para reasignar responsable o compromiso
+                 de varias acciones a la vez. -->
+            <list string="Acciones" multi_edit="1" decoration-danger="state == 'vencida'"
                   decoration-muted="state == 'terminada'">
                 <field name="name"/>
                 <field name="origin_display" string="Origen"/>
@@ -18,7 +20,10 @@
                 <field name="drill_id" optional="hide"/>
                 <field name="responsible_id" widget="many2one_avatar_user"/>
                 <field name="date_commit" widget="remaining_days" invisible="date_done"/>
-                <field name="progress" optional="show"/>
+                <!-- V-M05 (57.80.0): avance como pastilla (es selección 0/50/100 %). -->
+                <field name="progress" optional="show" widget="badge"
+                       decoration-success="progress == '100'"
+                       decoration-warning="progress == '50'"/>
                 <field name="date_done" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'terminada'"
@@ -112,7 +117,7 @@
                             <field name="date_commit"/>
                         </group>
                         <group string="Ejecución">
-                            <field name="progress"/>
+                            <field name="progress" widget="selection_badge"/>
                             <field name="date_done"/>
                         </group>
                     </group>
@@ -129,10 +134,40 @@
         </field>
     </record>
 
+    <!-- V-B12 (57.80.0): tablero por estado (abiertas, vencidas, terminadas)
+         para revisarlas desde el celular. El estado se calcula solo: no se
+         arrastran tarjetas entre columnas. -->
+    <record id="sgi_action_line_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.action.line.kanban</field>
+        <field name="model">sgi.action.line</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column"
+                    records_draggable="0" group_create="0" quick_create="0" sample="1">
+                <field name="date_done"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold"/>
+                        <field name="origin_display" class="text-muted"/>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <field name="progress" widget="badge"
+                                   decoration-success="progress == '100'"
+                                   decoration-warning="progress == '50'"/>
+                            <field name="date_commit" widget="remaining_days" invisible="date_done"/>
+                        </div>
+                        <footer>
+                            <field name="action_type" class="text-muted small"/>
+                            <field name="responsible_id" widget="many2one_avatar_user" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_action_line_action_all" model="ir.actions.act_window">
         <field name="name">Acciones correctivas</field>
         <field name="res_model">sgi.action.line</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
         <field name="search_view_id" ref="sgi_action_line_view_search"/>
         <field name="context">{'search_default_open': 1, 'search_default_overdue': 1, 'search_default_group_responsible': 1}</field>
         <field name="help" type="html">

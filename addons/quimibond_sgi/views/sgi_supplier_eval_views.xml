@@ -15,7 +15,7 @@
                 <field name="otd_has_data" column_invisible="1"/>
                 <field name="otd_pct" invisible="not otd_has_data"/>
                 <field name="nc_count"/>
-                <field name="score"/>
+                <field name="score" widget="progressbar"/>
                 <field name="supplier_class" widget="badge"
                        decoration-success="supplier_class == 'acreditado'"
                        decoration-warning="supplier_class == 'condicionado'"
@@ -54,7 +54,7 @@
                                 periodo. La calificación usa solo la calidad (NC).
                             </div>
                             <field name="nc_count"/>
-                            <field name="score"/>
+                            <field name="score" widget="progressbar"/>
                             <field name="supplier_class" widget="badge"
                                    decoration-success="supplier_class == 'acreditado'"
                                    decoration-warning="supplier_class == 'condicionado'"
@@ -66,6 +66,8 @@
                         <field name="notes" nolabel="1"/>
                     </group>
                 </sheet>
+                <!-- V-M16 (57.80.0): recálculos y cambios de clase. -->
+                <chatter/>
             </form>
         </field>
     </record>

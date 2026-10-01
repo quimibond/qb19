@@ -69,7 +69,7 @@
                             <field name="otd_has_data" column_invisible="1"/>
                             <field name="otd_pct" invisible="not otd_has_data"/>
                             <field name="nc_count"/>
-                            <field name="score"/>
+                            <field name="score" widget="progressbar"/>
                             <field name="supplier_class" widget="badge"
                                    decoration-success="supplier_class == 'acreditado'"
                                    decoration-warning="supplier_class == 'condicionado'"
