@@ -29,7 +29,9 @@ en certificación (auditoría de septiembre de 2026, resultado pendiente). IATF
 - `administracion/`: el manual del Jefe MAST y SGI para configurar y mantener
   el sistema.
 - `transicion/`: cómo pasar del Dropbox a Odoo y qué pasó con cada
-  procedimiento.
+  procedimiento; el bloque 3 de formatos (duplicados, responsables y clave
+  nueva) y lo que queda para MAST, en
+  [transicion/formatos-bloque-3.md](transicion/formatos-bloque-3.md).
 - `tecnica/`: documentación generada del código (modelos, campos, menús,
   seguridad, crons, parámetros).
 

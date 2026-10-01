@@ -53,7 +53,9 @@
             <field name="code">control_operacional</field>
             <field name="name">Control operacional (CO)</field>
             <field name="sequence">40</field>
-            <field name="prefix_pattern">CO-{seq:02d}</field>
+            <!-- D-02 (decisión de Jose, 2026-10-01): por proceso, como los demás.
+                 En producción lo pone la migración 19.0.57.84.0. -->
+            <field name="prefix_pattern">CO-{process}-{seq:02d}</field>
             <field name="requires_process" eval="False"/>
             <field name="code_required" eval="True"/>
         </record>
@@ -88,6 +90,8 @@
             <field name="sequence">65</field>
             <field name="requires_process" eval="False"/>
             <field name="code_required" eval="True"/>
+            <!-- D-02 (2026-10-01): PROT-{proceso}-{nn}; la heredada PROT-nn se sigue aceptando. -->
+            <field name="prefix_pattern">PROT-{process}-{seq:02d}</field>
             <field name="legacy_code_regex">^PROT-\d{2}$</field>
         </record>
         <record id="sgi_doc_type_diagrama" model="sgi.document.type">
