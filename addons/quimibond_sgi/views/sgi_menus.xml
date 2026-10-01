@@ -136,7 +136,7 @@
     <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_improvement_group" sequence="70"/>
     <menuitem id="menu_sgi_audit_programs" name="Programa"
               parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="10"/>
-    <menuitem id="menu_sgi_audit_list" name="Auditorías realizadas" parent="menu_sgi_audits"
+    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
               action="sgi_audit_action" sequence="20"/>
     <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha.
          57.67.0: acción con xmlid nuevo (sgi_audit_finding_action se retiró
@@ -388,7 +388,7 @@
               parent="menu_sgi_dashboards" action="sgi_quality_alert_action_pareto" sequence="10"/>
 
     <!-- COA recibidos por correo (buzón «coa@»): los que no se ligaron solos. -->
-    <menuitem id="menu_sgi_coa_inbox" name="COA recibidos"
+    <menuitem id="menu_sgi_coa_inbox" name="CoA recibidos"
               parent="menu_sgi_automotive" action="sgi_coa_inbox_action" sequence="60"
               groups="quality.group_quality_user,quimibond_sgi.group_sgi_manager"/>
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""57.72.0 (bloque 3 de formularios 3/3, D-02; decisión de Jose del
+"""57.84.0 (bloque 3 de formularios 3/3, D-02; decisión de Jose del
 2026-09-30: «con script, al final del bloque 3»): clave nueva
 ``F-{proceso}-{nn}``, ``IT-{proceso}-{nn}`` y ``DA-{proceso}-{nn}`` con la
 del Dropbox como clave anterior (``documents.document._sgi_apply_d02``).
@@ -19,7 +19,7 @@ Fuera: formularios de Odoo (L-004, conservan su clave), procedimientos
 procedimientos del Dropbox por proceso), tipos sin patrón (anexo, protocolo,
 reglamento, MIID, diagrama), obsoletos y P-I01 con su familia.
 
-Esperado en producción (MCP, solo lectura, 2026-10-01, después de 57.70.0):
+Esperado en producción (MCP, solo lectura, 2026-10-01, después de 57.82.0):
 323 claves nuevas: C1 33, C2 21, C3 3, C4 67, C5 64, C6 6, E1 1, E2 44, S1 11,
 S2 7, S3 9, S4 41, S5 16 (instructivos 42, formatos 183, F-IT 63, DAT 35).
 IT-C4-01 (3644) ya tenía clave nueva: los instructivos de C4 siguen en
@@ -38,5 +38,5 @@ def migrate(cr, version):
         return
     env = api.Environment(cr, SUPERUSER_ID, {})
     result = env['documents.document']._sgi_apply_d02()
-    _logger.info("SGI 57.72.0 (D-02): %d clave(s) nuevas; %d sin cambio (motivos en el log).",
+    _logger.info("SGI 57.84.0 (D-02): %d clave(s) nuevas; %d sin cambio (motivos en el log).",
                  len(result['done']), len(result['skipped']))

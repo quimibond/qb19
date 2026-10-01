@@ -4,12 +4,12 @@
 
 Tres pasos, cada uno con su migración y en este orden:
 
-1. **57.70.0 — Duplicados y datos malos** (propuesta §3): pasa las ligas de
+1. **57.82.0 — Duplicados y datos malos** (propuesta §3): pasa las ligas de
    las actividades al formato que se conserva, da de baja el duplicado,
    quita «controlado» al registro lleno F-P-V01-04, libera F-P-E01-01 (la
    luminaria pasa a SST) y da de alta F-P-A28-13 como «Formulario de Odoo».
-2. **57.71.0 — Responsable SGI = dueño del proceso** (propuesta §2).
-3. **57.72.0 — Clave nueva D-02** con la del Dropbox como clave anterior.
+2. **57.83.0 — Responsable SGI = dueño del proceso** (propuesta §2).
+3. **57.84.0 — Clave nueva D-02** con la del Dropbox como clave anterior.
 
 Reglas de todas las migraciones de datos: idempotentes; dejan en el log el
 valor anterior de lo que cambian; cada documento se localiza por id **y** se
@@ -28,7 +28,7 @@ from odoo import api, fields, models
 
 _logger = logging.getLogger(__name__)
 
-# --- Paso 1 (57.70.0) ------------------------------------------------------
+# --- Paso 1 (57.82.0) ------------------------------------------------------
 # (id duplicado, clave, id que se conserva o None, clave, motivo). El motivo
 # queda en «Motivo de obsolescencia» y en el chatter.
 SGI_B3_MERGES = (
@@ -110,11 +110,11 @@ SGI_B3_ODOO_FORMS = (
     },
 )
 
-# --- Paso 2 (57.71.0) ------------------------------------------------------
+# --- Paso 2 (57.83.0) ------------------------------------------------------
 # Tipos que cuentan como «formato» para el responsable (propuesta §2: 378).
 SGI_FORMAT_DOC_TYPES = ('formato', 'formato_it', 'dat', 'anexo', 'formulario_odoo')
 
-# --- Paso 3 (57.72.0) ------------------------------------------------------
+# --- Paso 3 (57.84.0) ------------------------------------------------------
 # Tipos que reciben clave nueva D-02. Fuera, por decisión ya escrita en el
 # código: formularios de Odoo (L-004: conservan su clave), externos y «Mi
 # procedimiento». Fuera, por pregunta abierta: los procedimientos

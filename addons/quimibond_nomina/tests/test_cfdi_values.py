@@ -44,10 +44,15 @@ class TestCfdiValues(TransactionCase):
             'struct_id': self.struct.id, 'date_from': date(2026, 9, 14), 'date_to': date(2026, 9, 20),
         })
         for code, amount in (lineas or {}).items():
+            # En Odoo 19 ``hr.payslip.line.total`` es un campo almacenado SIN
+            # cómputo: lo escribe el motor de nómina (compute_sheet), no sale
+            # de amount × quantity × rate. Una línea creada a mano sin
+            # ``total`` queda en 0 y el módulo la lee como «sin línea».
             self.env['hr.payslip.line'].create({
                 'slip_id': slip.id, 'salary_rule_id': self.rules[code].id, 'name': code,
-                'amount': amount, 'quantity': 1.0, 'rate': 100.0, 'sequence': 5,
+                'amount': amount, 'quantity': 1.0, 'rate': 100.0, 'total': amount, 'sequence': 5,
             })
+            self.assertEqual(slip._qb_nomina_line_total(code), amount, 'la línea %s no quedó en el recibo' % code)
         return slip
 
     def test_sdi_y_sbc_salen_de_las_lineas(self):

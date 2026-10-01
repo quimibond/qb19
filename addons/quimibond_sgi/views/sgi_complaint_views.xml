@@ -65,7 +65,7 @@ action = {
 &lt;p&gt;Aquí salen los tickets de los equipos marcados como «Equipo de
 reclamaciones (SGI)» en Servicio de asistencia. Capture pedido, producto,
 lote y metros afectados en el bloque «Datos de la reclamación» del ticket.
-Si procede, el botón &lt;b&gt;Generar NC&lt;/b&gt; abre la No Conformidad ya
+Si procede, el botón &lt;b&gt;Generar NC&lt;/b&gt; abre la no conformidad ya
 ligada.&lt;/p&gt;""",
 }
         </field>
@@ -87,7 +87,7 @@ action = {
     'domain': [('survey_id', '=', survey.id)] if survey else [('id', '=', False)],
     'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Aún no hay respuestas de clientes&lt;/p&gt;
 &lt;p&gt;La encuesta se comparte desde la app Encuestas (el cron trimestral se lo
-recuerda al Admin de Ventas). Cada respuesta alimenta AUTOMÁTICAMENTE el KPI
+recuerda al Admin de Ventas). Cada respuesta alimenta AUTOMÁTICAMENTE el indicador
 CA-02 (Satisfacción del cliente): promedio 1-5 convertido a %.&lt;/p&gt;""",
 }
         </field>

@@ -12,9 +12,13 @@
                             string="Puntos sin actividad" icon="fa-exclamation-triangle"/>
                 </header>
                 <sheet>
+                    <!-- V-B10 (57.81.0): el nombre como título. -->
+                    <div class="oe_title">
+                        <label for="name" string="Norma"/>
+                        <h1><field name="name"/></h1>
+                    </div>
                     <group>
                         <field name="code"/>
-                        <field name="name"/>
                         <field name="active"/>
                     </group>
                     <notebook>
@@ -100,13 +104,17 @@
                     <div class="alert alert-danger mb-3" role="alert" invisible="covered or not id">
                         Ninguna actividad del SGI cumple este punto.
                     </div>
+                    <!-- V-B10 (57.81.0): el punto de la norma como título. -->
+                    <div class="oe_title">
+                        <label for="name" string="Punto de la norma"/>
+                        <h1><field name="name"/></h1>
+                    </div>
                     <group>
                         <group>
                             <field name="norm_id"/>
                             <field name="code"/>
                         </group>
                         <group>
-                            <field name="name"/>
                             <field name="covered" invisible="1"/>
                         </group>
                     </group>

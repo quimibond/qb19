@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Bloque 3 de formularios (57.70.0 a 57.72.0): duplicados, registro lleno,
+"""Bloque 3 de formularios (57.82.0 a 57.84.0): duplicados, registro lleno,
 clave equivocada, alta de formulario de Odoo, responsable = dueño del
 proceso y clave nueva D-02 con la búsqueda por clave anterior.
 
@@ -25,7 +25,7 @@ def _run_migration(env, version):
     spec = importlib.util.spec_from_file_location('sgi_mig_%s' % version.replace('.', '_'), path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    module.migrate(env.cr, '19.0.57.68.0')
+    module.migrate(env.cr, '19.0.57.81.0')
 
 
 class _Bloque3Common(TransactionCase):
@@ -217,7 +217,7 @@ class TestBloque3DatosMalos(_Bloque3Common):
                          "Idempotente: la clave ya existe.")
 
     def test_04_post_migrate_corre(self):
-        _run_migration(self.env, '19.0.57.70.0')
+        _run_migration(self.env, '19.0.57.82.0')
         # Idempotente: la segunda corrida no cambia nada.
         again = self.Doc._sgi_formatos_bloque3()
         self.assertEqual(again['merges'], {})
@@ -282,7 +282,7 @@ class TestBloque3Responsable(_Bloque3Common):
         self.assertEqual(again['changed'], {}, "Idempotente.")
 
     def test_03_post_migrate_corre(self):
-        _run_migration(self.env, '19.0.57.71.0')
+        _run_migration(self.env, '19.0.57.83.0')
         self.assertEqual(self.f_ok.sgi_owner_id, self.owner_user)
         self.assertEqual(self.f_nouser.sgi_owner_id, self.mast)
 
@@ -375,6 +375,6 @@ class TestBloque3ClaveD02(_Bloque3Common):
         self.assertEqual(sorted(act.format_document_ids.mapped('sgi_code')), ['F-XB9-01', 'F-XB9-02'])
 
     def test_05_post_migrate_corre(self):
-        _run_migration(self.env, '19.0.57.72.0')
+        _run_migration(self.env, '19.0.57.84.0')
         self.assertTrue(self.f1.sgi_code.startswith('F-XB9-'))
         self.assertEqual(self.f1.sgi_previous_code, 'F-P-A88-01')

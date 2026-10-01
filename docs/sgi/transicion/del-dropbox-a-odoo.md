@@ -33,7 +33,7 @@ revisión impresas en el PDF.
 - La clave anterior del Dropbox **no** aparece en las pantallas del día a
   día: solo en «Del Dropbox a Odoo». En pantalla se usa la clave nueva
   (`PR-{proceso}`, `F-{proceso}-{nn}`, `IT-…`, `DA-…`); los archivos no se
-  renombraron. Desde 57.72.0 (octubre de 2026) los formatos, formatos de
+  renombraron. Desde 57.84.0 (octubre de 2026) los formatos, formatos de
   instructivo, instructivos y DAT ya tienen su clave nueva; los procedimientos
   y los formularios de Odoo conservan la del Dropbox
   ([formatos-bloque-3.md](formatos-bloque-3.md) §3).

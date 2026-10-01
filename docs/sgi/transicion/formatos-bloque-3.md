@@ -8,7 +8,7 @@ hacer MAST a mano.
 
 Cifras: lectura de producción por MCP, solo lectura, compañía 1, 2026-10-01.
 
-## 1. Duplicados y datos malos (57.70.0)
+## 1. Duplicados y datos malos (57.82.0)
 
 ### Qué hizo el sistema
 
@@ -73,7 +73,7 @@ llena es la pantalla) dos claves que citan las rutinas y no existían:
    `quimibond_sgi.satisfaction_survey_id = 0`); sin eso el menú, el cron y el
    indicador CA-02 no la ven.
 
-## 2. Responsable SGI = dueño del proceso (57.71.0)
+## 2. Responsable SGI = dueño del proceso (57.83.0)
 
 ### Qué hizo el sistema
 
@@ -166,7 +166,7 @@ correr `documents.document._sgi_owner_from_process()` desde un shell.
 | 53 | F-P-P04-08 | CONTROL DE PROCESO MAQUINA DE TEJIDO |
 | 54 | F-P-P04-10 | COMPARATIVO DE PRODUCTOS QUÍMICOS |
 
-## 3. Clave nueva D-02 (57.72.0)
+## 3. Clave nueva D-02 (57.84.0)
 
 ### Qué hizo el sistema
 
@@ -200,7 +200,7 @@ Esperado en producción: **323** claves nuevas (C1 33, C2 21, C3 3, C4 67, C5
 
 | Qué | Por qué |
 |---|---|
-| Formularios de Odoo (66 con las altas de 57.70.0) | Decisión L-004 (56.32.0): conservan su clave vieja |
+| Formularios de Odoo (66 con las altas de 57.82.0) | Decisión L-004 (56.32.0): conservan su clave vieja |
 | Procedimientos (P-xxx) | **Pregunta abierta** (abajo) |
 | Anexos, protocolos, reglamentos, MIID y diagramas | Su tipo no tiene patrón de clave nueva |
 | Obsoletos | Se dan de baja con su clave |

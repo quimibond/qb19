@@ -41,7 +41,7 @@ SGI_SST_ACTIVITY_LINKS = (
      "Encuestas → encuesta anual de consulta y participación de los trabajadores",
      ('F-P-A10-05',)),
     ('E2.37', 'quimibond_sgi.menu_sgi_audit_list',
-     "SGI → Mejora → Auditorías → Auditorías realizadas", ()),
+     "SGI → Mejora → Auditorías → Auditorías", ()),
     ('S4.34', 'quimibond_sgi.menu_sgi_incidents',
      "SGI → Seguridad y ambiente → Incidentes y accidentes (aviso ST-7 al IMSS "
      "adjunto al accidente)", ('F-P-S02-01',)),

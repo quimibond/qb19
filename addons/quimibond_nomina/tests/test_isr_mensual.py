@@ -40,9 +40,11 @@ class TestIsrMensual(TransactionCase):
             'struct_id': self.struct.id, 'date_from': date_from, 'date_to': date_to,
         })
         for code, total in (lineas or {}).items():
+            # ``total`` explícito: en Odoo 19 es almacenado sin cómputo (lo
+            # escribe compute_sheet); sin él el acumulado del mes suma 0.
             self.env['hr.payslip.line'].create({
                 'slip_id': slip.id, 'salary_rule_id': self.rules[code].id, 'name': code,
-                'amount': total, 'quantity': 1.0, 'rate': 100.0, 'sequence': 5,
+                'amount': total, 'quantity': 1.0, 'rate': 100.0, 'total': total, 'sequence': 5,
             })
         if state:
             slip.write({'state': state})

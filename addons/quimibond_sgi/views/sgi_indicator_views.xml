@@ -71,9 +71,9 @@
                          invisible="responsible_id and process_id">
                         <b>Configuración incompleta:</b> sin
                         <b>responsable</b> las capturas y validaciones caen en el
-                        Jefe MAST, y sin <b>proceso</b> los rojos de este KPI NO
+                        Jefe MAST, y sin <b>proceso</b> los rojos de este indicador NO
                         cuentan en la salud del Panel. Es la causa de que un
-                        proceso se vea «verde» con KPIs en rojo.
+                        proceso se vea «verde» con indicadores en rojo.
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
                             invisible="active"/>
@@ -200,8 +200,9 @@
                             <field name="formula_text" readonly="1" nolabel="1" invisible="not term_ids"/>
                         </page>
                         <page string="Mediciones">
+                            <!-- V-B11 (57.80.0): de 12 en 12, la más reciente arriba. -->
                             <field name="measure_ids" context="{'default_indicator_id': id}">
-                                <list editable="bottom"
+                                <list editable="bottom" limit="12" default_order="period_date desc"
                                       decoration-success="semaphore == 'verde'"
                                       decoration-warning="semaphore == 'amarillo'"
                                       decoration-danger="semaphore == 'rojo'"
@@ -321,7 +322,12 @@
                 <field name="plan_required" column_invisible="1"/>
                 <field name="plan_done" optional="show" string="Plan"
                        invisible="not plan_required"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-info="state == 'pendiente'"
+                       decoration-warning="state == 'capturado'"
+                       decoration-success="state == 'validado'"
+                       decoration-muted="state == 'sin_dato'"/>
                 <button name="action_view_evidence" type="object" icon="fa-search-plus"
                         title="Ver evidencia" invisible="source_type == 'manual'"/>
                 <field name="alert_id" readonly="1"/>
@@ -420,7 +426,8 @@
                                 <field name="numerator" optional="show"/>
                                 <field name="denominator" optional="show"/>
                                 <field name="sample_size" optional="show"/>
-                                <field name="state" optional="hide"/>
+                                <field name="state" optional="hide" widget="badge"
+                                       decoration-muted="state == 'sin_dato'"/>
                                 <field name="semaphore" widget="badge"
                                        decoration-success="semaphore == 'verde'"
                                        decoration-warning="semaphore == 'amarillo'"
@@ -468,6 +475,8 @@
                         <field name="note" nolabel="1"/>
                     </group>
                 </sheet>
+                <!-- V-M16 (57.80.0): quién capturó, corrigió o validó. -->
+                <chatter/>
             </form>
         </field>
     </record>

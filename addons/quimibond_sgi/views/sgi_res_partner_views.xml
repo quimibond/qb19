@@ -25,7 +25,7 @@
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="SGI Proveedor" name="sgi_supplier"
+                <page string="SGI" name="sgi_supplier"
                       invisible="not is_company and not supplier_rank"
                       groups="quimibond_sgi.group_sgi_user">
                     <group>
@@ -40,7 +40,7 @@
                             <field name="sgi_supplier_approved_date"
                                    invisible="sgi_supplier_status != 'aprobado'"/>
                         </group>
-                        <group string="Clasificación SGI">
+                        <group string="Clasificación">
                             <field name="sgi_supplier_class" widget="badge"
                                    decoration-success="sgi_supplier_class == 'acreditado'"
                                    decoration-warning="sgi_supplier_class == 'condicionado'"
@@ -52,7 +52,7 @@
                     </group>
                     <div groups="quimibond_sgi.group_sgi_manager">
                         <button name="action_sgi_approve_supplier" type="object"
-                                string="Aprobar proveedor (SGI)" class="btn-primary"
+                                string="Aprobar proveedor" class="btn-primary"
                                 invisible="sgi_supplier_status == 'aprobado'"/>
                         <button name="action_sgi_block_supplier" type="object"
                                 string="Bloquear proveedor" class="btn-secondary"
@@ -69,7 +69,7 @@
                             <field name="otd_has_data" column_invisible="1"/>
                             <field name="otd_pct" invisible="not otd_has_data"/>
                             <field name="nc_count"/>
-                            <field name="score"/>
+                            <field name="score" widget="progressbar"/>
                             <field name="supplier_class" widget="badge"
                                    decoration-success="supplier_class == 'acreditado'"
                                    decoration-warning="supplier_class == 'condicionado'"

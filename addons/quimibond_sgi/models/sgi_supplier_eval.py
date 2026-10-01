@@ -92,6 +92,8 @@ class SgiSupplierEval(models.Model):
     se puede recalcular y aplicar al contacto."""
     _name = 'sgi.supplier.eval'
     _description = "Evaluación de proveedor SGI (8.4)"
+    # V-M16 (57.80.0): recálculos y cambios de clase quedan en el chatter.
+    _inherit = ['mail.thread']
     _order = 'date_to desc, partner_id'
 
     @api.model
@@ -126,12 +128,12 @@ class SgiSupplierEval(models.Model):
         help="Hubo recepciones con fecha compromiso en el periodo. Sin ellas el OTD "
              "no se calcula (no cuenta como 0 %) y la calificación usa solo la calidad.")
     nc_count = fields.Integer(string="# NC", compute='_compute_metrics', store=True)
-    score = fields.Float(string="Calificación", compute='_compute_metrics', store=True,
+    score = fields.Float(string="Calificación", compute='_compute_metrics', store=True, tracking=True,
                          help="Entrega a tiempo y calidad, con los pesos de Ajustes. Se calcula sola.")
     supplier_class = fields.Selection(
-        SUPPLIER_CLASSES, string="Clasificación", compute='_compute_metrics', store=True,
+        SUPPLIER_CLASSES, string="Clasificación", compute='_compute_metrics', store=True, tracking=True,
         help="Acreditado, condicionado, baja o sin datos, según la calificación. Se calcula sola.")
-    notes = fields.Text(string="Notas")
+    notes = fields.Text(string="Notas", tracking=True)
 
     _partner_period_uniq = models.Constraint(
         'unique(partner_id, date_from, date_to)',

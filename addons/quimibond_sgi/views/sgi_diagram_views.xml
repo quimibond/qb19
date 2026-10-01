@@ -150,7 +150,11 @@
         <field name="name">Puestos y procesos</field>
         <field name="res_model">hr.job</field>
         <field name="view_mode">sgi_diagram,list,form</field>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin puestos</p></field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin puestos con actividades del SGI</p>
+            <p>Cada puesto muestra los procesos y actividades en los que participa (ejecuta, aprueba, revisa o recibe aviso).
+            Los puestos se dan de alta en Empleados → Puestos; las actividades se ligan al puesto desde la ficha de cada actividad.</p>
+        </field>
     </record>
 
 </odoo>

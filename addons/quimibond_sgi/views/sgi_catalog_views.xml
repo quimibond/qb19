@@ -232,10 +232,14 @@
                 <sheet>
                     <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger"
                             invisible="active"/>
+                    <!-- V-B10 (57.81.0): el nombre como título. -->
+                    <div class="oe_title">
+                        <label for="name" string="Familia de puestos"/>
+                        <h1><field name="name" placeholder="Operador de tejido circular"/></h1>
+                    </div>
                     <group>
                         <group>
                             <field name="code" placeholder="OP-TEJ"/>
-                            <field name="name" placeholder="Operador de tejido circular"/>
                         </group>
                         <group>
                             <field name="employee_count"/>

@@ -14,7 +14,7 @@ Se instala automáticamente cuando conviven quimibond_sgi y mrp_plm.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.3.0.1',
+    'version': '19.0.3.1.0',
     'license': 'OPL-1',
     'depends': [
         'quimibond_sgi',

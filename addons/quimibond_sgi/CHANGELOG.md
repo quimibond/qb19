@@ -13,7 +13,7 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
-## 19.0.57.72.0 — 2026-10-01
+## 19.0.57.84.0 — 2026-10-01
 
 **Cambiado (bloque 3 de formularios 3/3, D-02; decisión del 2026-09-30
 «Clave D-02: con script, al final del bloque 3»):**
@@ -41,15 +41,15 @@ chatter.
   reglamentos, MIID y diagramas (su tipo no tiene patrón), obsoletos y P-I01
   con su familia.
 
-**Migración (post):** `migrations/19.0.57.72.0/post-migrate.py`. Idempotente
+**Migración (post):** `migrations/19.0.57.84.0/post-migrate.py`. Idempotente
 (la segunda corrida no cambia nada); en el log, cada «vieja → nueva» y cada
 documento sin cambio con su motivo. Esperado en producción (MCP, 2026-10-01,
-después de 57.70.0): **323** claves nuevas: C1 33, C2 21, C3 3, C4 67, C5 64,
+después de 57.82.0): **323** claves nuevas: C1 33, C2 21, C3 3, C4 67, C5 64,
 C6 6, E1 1, E2 44, S1 11, S2 7, S3 9, S4 41, S5 16 (instructivos 42, formatos
 183, F-IT 63, DAT 35); IT-C4-01 (3644) ya la tenía. «Clave al ligar» al día
 en los 25 mapeos ligados a un formato o F-IT.
 
-**Corregido (57.70.0, antes de llegar a producción):** el informe de otras
+**Corregido (57.82.0, antes de llegar a producción):** el informe de otras
 referencias al duplicado (`_sgi_b3_other_references`) cuenta cada campo
 dentro de un savepoint: un error de SQL en un modelo ajeno ya no deja la
 transacción de la migración abortada.
@@ -65,7 +65,7 @@ clave, búsqueda por clave anterior con `_sgi_find_by_code`, la búsqueda de
 Documentos y el buscador `sgi.dropbox.key`, mapeos con y sin documento,
 ligas de actividades, idempotencia y post-migrate).
 
-## 19.0.57.71.0 — 2026-10-01
+## 19.0.57.83.0 — 2026-10-01
 
 **Cambiado (bloque 3 de formularios 2/3, propuesta de formatos §2, decisión
 del 2026-09-30 «Responsable SGI de cada formato: el dueño del proceso»):**
@@ -78,8 +78,8 @@ Si el dueño no tiene usuario, el formato se queda con MAST y sale en el log.
 P-I01 y su familia quedan fuera. MAST conserva la aprobación y la
 publicación.
 
-**Migración (post):** `migrations/19.0.57.71.0/post-migrate.py`, después de
-las bajas de 57.70.0. Idempotente; en el log, por proceso, los ids y el
+**Migración (post):** `migrations/19.0.57.83.0/post-migrate.py`, después de
+las bajas de 57.82.0. Idempotente; en el log, por proceso, los ids y el
 cambio «Blanca Ballesteros → dueño». Esperado en producción (MCP,
 2026-10-01): **238** cambian (C1 32 y C2 31 → Jessica Francisco; C3 7 →
 Paris Villordo; C5 60 → Oscar González; C6 10 → Cynthia Santana; E1 5 y S1
@@ -101,7 +101,7 @@ hasta que MAST decida su proceso.
 usuario, sin usuario, usuario inactivo, dueña MAST, lo reasignado se
 respeta, instructivo, obsoleto y P-I01 fuera, idempotencia y post-migrate).
 
-## 19.0.57.70.0 — 2026-10-01
+## 19.0.57.82.0 — 2026-10-01
 
 **Cambiado (bloque 3 de formularios 1/3, propuesta de formatos aprobada por
 Jose el 2026-10-01, §3 y §1):** duplicados y datos malos de los formatos
@@ -145,7 +145,7 @@ anterior y en el chatter del documento.
   **F-P-A28-11** «Encuesta de satisfacción del cliente» (E2, menú SGI →
   Dirección → Satisfacción del cliente, ligado a E2.12).
 
-**Migración (post):** `migrations/19.0.57.70.0/post-migrate.py`. Idempotente;
+**Migración (post):** `migrations/19.0.57.82.0/post-migrate.py`. Idempotente;
 nada se borra ni se archiva. Esperado en producción (MCP, 2026-10-01): 7
 bajas, 5 actividades con formatos cambiados (C1.11, C2.43, C4.14, C5.16,
 C6.12) más E2.31, E2.37, C2.40 y E2.12, 1 documento deja de ser controlado,
@@ -168,6 +168,103 @@ el que imprime un mapeo se respeta, clave o empresa distinta se salta,
 registro lleno, clave equivocada libre y búsqueda por clave anterior, alta de
 formulario de Odoo sin archivo con su mapeo, idempotencia, tablas reales y
 post-migrate).
+## 19.0.57.81.0 — 2026-10-01
+
+**Cambiado (pulido de vistas, bloque 5: textos y pulido; revisión del
+2026-09-30):**
+- **Migas iguales al menú (V-M12):** las acciones se llaman como su menú
+  («Programa», «Hallazgos», «Ajustes»); el menú y la acción «Auditorías
+  realizadas» pasan a «Auditorías» (también muestra las de borrador y las
+  planificadas); incidentes dicen «Incidentes y accidentes» en lista,
+  búsqueda, pivote y actividades, y la ficha «Incidente o accidente»;
+  «Revisión por la dirección» con minúscula. Árbol de menús al día. «Eficiencias
+  de mi área» y «Hojas mensuales» comparten acción y siguen como estaban.
+- **Sin emojis (V-B02):** el aviso de formato controlado usa el ícono
+  `fa-file-text-o` en lugar de 📋 (12 avisos).
+- **Sin sufijo «SGI» (V-B03):** dentro de la app, «Áreas», «Documentos»,
+  «Documento controlado», «Cambio documental», «Gestión del cambio (MOC)»,
+  «Formato en documento de Odoo», «Datos de la NC», «Ligas», «Recalcular
+  métricas». En fichas de otras apps la pestaña se llama «SGI» (contacto,
+  equipo, transferencia, tarea; «EPP» en el empleado y «Documentos
+  aplicables» en el puesto, que ya tienen otras pestañas del SGI). El ECO
+  de PLM va en `quimibond_sgi_plm` 3.1.0.
+- **Glosario (V-B04)** en el README y barrido de etiquetas, ayudas,
+  marcadores y confirmaciones: «no conformidad» (NC, sin «NCs»),
+  «certificado de calidad (CoA)», «indicador» (no «KPI»), «casi accidente»,
+  «Jefe MAST». Los reportes impresos no cambian.
+- **Etiqueta «Estado» (V-B05)** en la hoja de eficiencias de personal.
+- **Ayudas (V-B07):** «Puestos y procesos» explica qué muestra y de dónde
+  salen los puestos; sin claves internas («D-08») en la ayuda de Ajustes. La
+  del Pareto del revisado va en `quimibond_sgi_revisado`.
+- **«Descartar» (V-B08)** en el botón para salir de los asistentes (NC,
+  CoA, requisitos legales, propuestas de cambio, firmas…).
+- **Botones inteligentes (V-B09):** «% Difusión» del documento solo con
+  `statinfo`; en el proceso, primero los de alerta (sin evidencia,
+  indicadores en rojo, riesgos altos, NC abiertas, acciones vencidas,
+  faltantes) y después los catálogos.
+- **Fichas con título (V-B10):** área, familia de puestos, norma, punto de
+  la norma, estudio o examen (trabajador y estudio) y plantilla de checklist,
+  que además tiene chatter.
+- **Mi equipo (V-B14):** el total de los pendientes es «Total de la página»
+  (son calculados: no hay subtotales al agrupar); «pendientes atrasados» en
+  masculino en todas partes.
+- **Búsqueda de acciones (V-B17):** las agrupaciones van en `<group>` con
+  etiqueta corta («Responsable», «Estado», «Fecha compromiso»).
+
+`quimibond_ventas_presupuesto` (misma 19.0.1.2.0): migas «Presupuestos»,
+«Pronósticos» y «Releases de clientes». `quimibond_sgi_revisado` (misma
+4.3.0): menú «Pareto de defectos de revisado» (sin paréntesis).
+
+**Pruebas:** `test_vistas_pulido_45.TestTextosYPulido`.
+
+## 19.0.57.80.0 — 2026-10-01
+
+**Cambiado (pulido de vistas, bloque 4: listas, análisis y vistas
+faltantes; revisión del 2026-09-30):**
+- **Pastillas y barras (V-M05):** el estado va como pastilla de color en las
+  listas de auditorías, incidentes, riesgos, AMEF, PPAP, planes de control,
+  políticas, simulacros, mediciones, acuses y desglose de mediciones (y en
+  las listas de solo lectura de la pestaña SGI de órdenes y tareas). El
+  avance de la acción (selección 0/50/100 %) es pastilla en la lista global
+  y botones en su ficha; la calificación de la evaluación de proveedores es
+  barra de avance. Las listas **editables** dentro de las fichas (acciones,
+  mediciones del indicador, elementos del PPAP) se quedan como estaban: una
+  pastilla no se edita.
+- **Paretos ordenados (V-M13):** el Pareto de alertas de calidad sale de
+  mayor a menor (gráfica `order="desc"`, pivote por conteo). El del revisado
+  va en `quimibond_sgi_revisado` 4.3.0.
+- **Programa y auditorías (V-M14):** la lista del programa dice auditorías
+  programadas, hechas y el avance (campos calculados sin guardar
+  `line_count`, `line_done_count`, `progress_pct`); la de auditorías suma
+  procesos auditados, cliente o proveedor (opcional), fin real y auditor con
+  avatar.
+- **Historial en mediciones y evaluaciones de proveedor (V-M16):**
+  `sgi.indicator.measure` y `sgi.supplier.eval` heredan `mail.thread` y
+  tienen chatter. Se sigue el valor, el estado y la nota de la medición, y la
+  calificación, la clasificación y las notas de la evaluación. Sin columnas
+  nuevas (mail.thread no guarda nada en la tabla del modelo).
+- **Mediciones de 12 en 12 (V-B11)** en la ficha del indicador, la más
+  reciente arriba.
+- **Vistas que faltaban (V-B12):** calendario de auditorías (fecha
+  planificada), simulacros (fecha programada) y próximas calibraciones, con
+  color por estado o resultado; kanban por estado de acciones e incidentes
+  (sin arrastrar: el estado sale de los botones); gráfica mensual de
+  incidentes por tipo; panel lateral por tipo de documento y proceso en
+  Documentos.
+- **`multi_edit` (V-B13)** en las listas de acciones, riesgos, documentos y
+  requisitos legales.
+- **Lecciones aprendidas (V-B15)** con la búsqueda de NC (folio, proceso,
+  mayores, fecha). La búsqueda y el menú de hallazgos ya existían (57.53.0 y
+  57.67.0).
+- **Vista de actividades (V-B18)** en calibraciones, requisitos legales,
+  estudios y exámenes, recorridos CSH, objetivos y fichas de máquina.
+
+`quimibond_ventas_presupuesto` 19.0.1.2.0 (V-M10): sumas en cantidad e
+importe de las líneas y encabezado con solo el flujo (detalle en su README).
+
+**Pruebas:** `test_vistas_pulido_45.TestListasYAnalisis`;
+`quimibond_ventas_presupuesto/tests/test_sales_budget_views.py`;
+`quimibond_sgi_revisado/tests/test_pareto_revisado.py`.
 
 ## 19.0.57.68.0 — 2026-09-30
 

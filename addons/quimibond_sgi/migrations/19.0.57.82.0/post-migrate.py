@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""57.70.0 (bloque 3 de formularios 1/3, propuesta de formatos aprobada por
+"""57.82.0 (bloque 3 de formularios 1/3, propuesta de formatos aprobada por
 Jose el 2026-10-01, §3 y §1): duplicados y datos malos, en el orden de la
 propuesta (``documents.document._sgi_formatos_bloque3``, tablas en
 ``models/sgi_formatos_bloque3.py``).
@@ -49,6 +49,6 @@ def migrate(cr, version):
         return
     env = api.Environment(cr, SUPERUSER_ID, {})
     result = env['documents.document']._sgi_formatos_bloque3()
-    _logger.info("SGI 57.70.0 (bloque 3): bajas %s; ligas %s; ya no controlados %s; claves "
+    _logger.info("SGI 57.82.0 (bloque 3): bajas %s; ligas %s; ya no controlados %s; claves "
                  "corregidas %s; altas %s.", sorted(result['merges']), result['links'],
                  sorted(result['uncontrol']), result['recode'], result['forms'])

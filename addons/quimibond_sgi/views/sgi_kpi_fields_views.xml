@@ -10,7 +10,7 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Exportación y liberación (SGI)" name="sgi_kpi">
+                <page string="SGI" name="sgi_kpi">
                     <group>
                         <group string="Exportación (C2-05)">
                             <field name="sgi_export_crossing_datetime"/>
