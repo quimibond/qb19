@@ -354,6 +354,7 @@
                        decoration-warning="confiabilidad == 'parcial'"
                        decoration-danger="confiabilidad == 'mala'"/>
                 <field name="fab_ocioso_month" optional="show"/>
+                <field name="ocioso_absorbido_month" optional="show"/>
                 <field name="factor_fab_kg"/>
                 <field name="factor_fab_m"/>
                 <field name="energia_por_kg"/>
@@ -428,6 +429,7 @@
                             <field name="confiabilidad_detalle" readonly="1"
                                    invisible="confiabilidad == 'ok'"/>
                             <field name="fab_ocioso_month"/>
+                            <field name="ocioso_absorbido_month"/>
                             <field name="entretela_m_denom_month"/>
                         </group>
                     </group>

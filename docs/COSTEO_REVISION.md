@@ -1116,3 +1116,67 @@ cuando una de ellas es la que tiene el semáforo.
 
 **Estado:** 146 tests sobre instalación desde cero (el job `odoo-tests` del
 CI los corre).
+
+---
+
+## Septiembre con el corte: tres cosas que el módulo leía mal (1-oct, v1.67)
+
+Primer mes completo con TEJIDO absorbiendo por workcenter. Lo contable salió
+limpio: 219 órdenes, 725,710 minutos, abono a 504.01.0099 de $1,197,421.76
+que cuadra al centavo con minutos ÷ 60 × 99; cero asientos en el diario CAPA;
+la puente 115.03.01 cerró el mes en +$1,670. El módulo, en cambio, pintó la
+brecha de septiembre en +11.6% por tres lecturas que el corte dejó ciegas.
+
+### 1. Energía en $0/kg
+
+La energía se divide entre kilos producidos, y el único centro con
+denominador en kilos era tejido. Al absorberse, `kg_real` quedó en 0 y
+`energia_por_kg` también: $918K/mes de gas, agua y luz (septiembre real,
+$1.40M) no se cargaron a ningún producto. El kilo tejido sigue existiendo
+aunque su gasto ya no esté en el pool, así que la energía se divide ahora
+entre los kilos de **toda** la planta, con los centros absorbidos dentro. Y la
+luz de tejido (504.01.0002, etiquetada al centro) sale del pool: ya viaja en
+los $99/h.
+
+### 2. El arrendamiento desapareció del mayor
+
+La cuenta 701.11.0001 pasó de «otros ingresos» a «otros gastos»
+(`expense_other`) el 2-sep a las 20:06 UTC. La conciliación solo sumaba
+ingresos, costo directo, gasto y depreciación: $1.03M/mes salieron del lado
+del mayor en julio, agosto y septiembre, mientras el pool lo seguía
+repartiendo (`arrend_maquinaria` no filtra por tipo). Julio pasó de −0.9% a
+−6.9% sin que nadie tocara julio. Ahora «otros gastos» cuenta igual que «otros
+ingresos»: con bucket de costeo es costeo en otras cuentas; sin bucket,
+resultado integral.
+
+### 3. La subabsorción de TEJIDO se leía como brecha
+
+Odoo abona solo las horas que corrieron: 12,095 h contra 16,840 normales
+(197,529 kg ÷ 11.73 kg/h). Las 4,745 h que faltaron, a $99, son $470K que se
+quedaron en nómina y 504 sin capitalizar. Es correcto bajo IAS 2 —es la
+ociosidad del centro— pero `fab_ocioso_month` solo medía a los centros en
+capa, y la conciliación lo veía como gasto sin explicar. Campo nuevo
+`ocioso_absorbido_month` = horas normales × tarifa promedio de sus workcenters
+− abono real, piso en 0; la conciliación lo suma a `ociosidad_ias2` y el check
+«Absorción por workcenter» lo imprime.
+
+### Lo que da
+
+| Lectura de septiembre | Brecha neta | % venta |
+|---|---:|---:|
+| Como la mostraba el panel (v1.66) | +$1.82M | +11.6% |
+| Con el arrendamiento de vuelta en el mayor | ≈ +$2.85M | ≈ +18% |
+| Energía cargada y subabsorción como ociosidad | ≈ +$1.5M | ≈ +9% |
+
+El $1.5M que queda no es del módulo: es la conversión de la revaluación del
+24-ago saliendo por 501.01.01 sin abono que la compense, lo que el asiento B
+al 31-ago debe reconocer de una vez. Mientras el cuadre siga en borrador, esa
+cifra se repite cada mes.
+
+Lo que NO cambia: no hay CAPA de septiembre ni asiento de capa para
+tintorería, acabado e inspección. Su conversión queda como gasto del mes y el
+módulo la reparte solo para costear; cargarla al inventario a mano reabriría
+la brecha físico–libros.
+
+**Estado:** 149 tests sobre instalación desde cero (el job `odoo-tests` del
+CI los corre).
