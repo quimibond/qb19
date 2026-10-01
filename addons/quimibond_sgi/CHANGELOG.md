@@ -13,6 +13,48 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.87.0 — 2026-10-01
+
+**Diagnóstico de `TestRoleAudit.test_07`** (`test_role_audit`, «La lista del
+puesto ya no trae el rol, pero lo guardado no se recalculó»; falla desde
+57.13.0 en base nueva y en staging y la lectura del código no encontró la
+causa). Solo cambia la prueba: ningún código de producción, y la aserción es
+la misma (el texto original sigue al principio del mensaje). Al archivar la
+actividad y hacer el flush, la prueba envuelve con `unittest.mock.patch.object`,
+sin cambiar lo que hacen, `hr.employee._sgi_mp_touch_jobs`,
+`hr.employee._compute_sgi_mp_roles_stored` y `sgi.activity.role._sgi_mp_jobs`.
+Si la aserción falla, el mensaje del FAIL trae, después de
+`--- diagnóstico test_07 (57.87.0)`:
+
+- **Fotos** `[antes de archivar]`, `[archivada, antes del flush]`,
+  `[después del flush]`, `[tras invalidate_recordset]`: `caché emp.roles`
+  (lo que el ORM tiene en memoria para el empleado; `sin caché` si no hay) y
+  `base emp.roles` (SQL directo a `hr_employee_sgi_mp_role_rel`, sin flush);
+  `caché act.active` y `caché role.activity_active`; `base (act.active,
+  role.activity_active)` (SQL); `pendiente`: si el empleado sigue marcado
+  para recalcular `sgi_mp_role_ids` y el rol para `activity_active`
+  (`env.transaction.tocompute`), y qué campos de `hr.employee` y de
+  `sgi.activity.role` quedan por calcular.
+- **`touch`**: cada llamada a `_sgi_mp_touch_jobs` con los puestos que
+  recibió, si el empleado quedó marcado para recalcular antes y después, y
+  desde dónde se llamó (archivo, línea y función).
+- **`_sgi_mp_jobs`**: roles y puestos que devolvió.
+- **`compute`**: cuántas veces corrió el cálculo guardado y cuántas con el
+  empleado; en cada una, los ids, `su`, el contexto, la pila (doce cuadros:
+  si vino del flush o de una lectura) y, cuando incluye al empleado, la foto
+  de caché y base **antes** y **después** del cálculo.
+- Al final: el valor del ORM tras `invalidate_recordset` y tras
+  `invalidate_all`, la base, la lista del puesto en ese momento y el puesto
+  guardado del empleado contra el del rol.
+
+Cómo leerlo: si `compute` no corrió con el empleado, el recálculo nunca se
+disparó o se descartó (ver `pendiente` y `touch`); si corrió y en `después`
+la caché ya no trae el rol pero la base sí, la escritura del Many2many se
+comparó contra una caché que no coincidía con la base (Odoo solo borra las
+filas que ve en caché); si la caché y la base traen el rol después del
+cálculo, el cálculo vio la actividad todavía activa (ver `caché act.active` y
+`caché role.activity_active` en `antes`).
+
 ## 19.0.57.86.0 — 2026-10-01
 
 Pruebas que fallaron en el build de staging (base = copia de producción con

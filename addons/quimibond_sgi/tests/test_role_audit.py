@@ -2,12 +2,148 @@
 """56.7.0: auditoría funcional por rol (28-sep-2026). Cada prueba entra como
 un usuario real del rol (with_user) y revisa lo que ese rol debe poder y no
 debe poder hacer."""
+import functools
+import sys
+from contextlib import ExitStack
 from datetime import date
+from unittest.mock import patch
 
 from odoo.exceptions import AccessError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
+
+
+class _RoleArchiveDiag:
+    """57.87.0: diagnóstico de test_07 (falla en base nueva y en staging sin
+    causa visible en el código). Envuelve, sin cambiar lo que hacen,
+    ``hr.employee._sgi_mp_touch_jobs``, ``hr.employee._compute_sgi_mp_roles_stored``
+    y ``sgi.activity.role._sgi_mp_jobs``, y anota qué pasó con el empleado y
+    el rol de la prueba. Solo lee la caché por dentro (``_get_cache``) y la
+    base con SQL directo: no dispara cálculos ni flush que cambien el orden
+    de lo que se quiere observar."""
+
+    def __init__(self, env, emp, role, activity):
+        self.env, self.emp_id, self.role_id, self.act_id = env, emp.id, role.id, activity.id
+        self.f_roles = env['hr.employee']._fields['sgi_mp_role_ids']
+        self.f_act_active = env['sgi.activity.role']._fields['activity_active']
+        self.f_active = env['sgi.process.activity']._fields['active']
+        self.events = []
+        self.snaps = []
+
+    # -- lectura sin efectos -------------------------------------------
+    def _cache(self, field, rec_id, env=None):
+        try:
+            value = field._get_cache(env or self.env).get(rec_id, 'sin caché')
+        except Exception as exc:  # noqa: BLE001 (solo diagnóstico)
+            value = 'error %r' % exc
+        return list(value) if isinstance(value, tuple) else value
+
+    def _db_roles(self):
+        self.env.cr.execute('SELECT role_id FROM hr_employee_sgi_mp_role_rel '
+                            'WHERE employee_id = %s ORDER BY role_id', (self.emp_id,))
+        return [r[0] for r in self.env.cr.fetchall()]
+
+    def _db_activity(self):
+        self.env.cr.execute('SELECT active FROM sgi_process_activity WHERE id = %s', (self.act_id,))
+        act = self.env.cr.fetchone()
+        self.env.cr.execute('SELECT activity_active FROM sgi_activity_role WHERE id = %s', (self.role_id,))
+        role = self.env.cr.fetchone()
+        return (act and act[0], role and role[0])
+
+    def _pending(self):
+        tocompute = self.env.transaction.tocompute
+        return {
+            'emp.sgi_mp_role_ids': self.emp_id in tocompute.get(self.f_roles, ()),
+            'role.activity_active': self.role_id in tocompute.get(self.f_act_active, ()),
+            'hr.employee': sorted(f.name for f, ids in tocompute.items()
+                                  if f.model_name == 'hr.employee' and ids),
+            'sgi.activity.role': sorted(f.name for f, ids in tocompute.items()
+                                        if f.model_name == 'sgi.activity.role' and ids),
+        }
+
+    def _state(self, env=None):
+        env = env or self.env
+        return {
+            'caché emp.roles': self._cache(self.f_roles, self.emp_id, env),
+            'base emp.roles': self._db_roles(),
+            'caché act.active': self._cache(self.f_active, self.act_id, env),
+            'caché role.activity_active': self._cache(self.f_act_active, self.role_id, env),
+            'base (act.active, role.activity_active)': self._db_activity(),
+            'pendiente': self._pending(),
+        }
+
+    def snap(self, label):
+        self.snaps.append((label, self._state()))
+
+    @staticmethod
+    def _caller(depth=2, limit=4):
+        frames = []
+        frame = sys._getframe(depth)
+        while frame and len(frames) < limit:
+            code = frame.f_code
+            frames.append('%s:%s %s' % (code.co_filename.rsplit('/', 1)[-1], frame.f_lineno, code.co_name))
+            frame = frame.f_back
+        return ' < '.join(frames)
+
+    # -- envolturas ----------------------------------------------------
+    def patches(self):
+        Emp = type(self.env['hr.employee'])
+        Role = type(self.env['sgi.activity.role'])
+        orig_touch = Emp._sgi_mp_touch_jobs
+        orig_compute = Emp._compute_sgi_mp_roles_stored
+        orig_jobs = Role._sgi_mp_jobs
+        diag = self
+
+        @functools.wraps(orig_touch)
+        def touch(model, jobs):
+            before = diag._pending()['emp.sgi_mp_role_ids']
+            res = orig_touch(model, jobs)
+            diag.events.append(('touch', {
+                'jobs': list(jobs.ids) if jobs else [], 'emp pendiente antes': before,
+                'emp pendiente después': diag._pending()['emp.sgi_mp_role_ids'],
+                'desde': diag._caller()}))
+            return res
+
+        @functools.wraps(orig_compute)
+        def compute(records):
+            mine = diag.emp_id in records.ids
+            before = diag._state(records.env) if mine else None
+            res = orig_compute(records)
+            entry = {'ids': list(records.ids)[:10], 'n': len(records), 'incluye emp': mine,
+                     'su': records.env.su, 'ctx': dict(records.env.context),
+                     'desde': diag._caller(limit=12)}
+            if mine:
+                entry['antes'] = before
+                entry['después'] = diag._state(records.env)
+            diag.events.append(('compute', entry))
+            return res
+
+        @functools.wraps(orig_jobs)
+        def role_jobs(roles):
+            res = orig_jobs(roles)
+            diag.events.append(('_sgi_mp_jobs', {'roles': list(roles.ids)[:10], 'puestos': list(res.ids)}))
+            return res
+
+        stack = ExitStack()
+        stack.enter_context(patch.object(Emp, '_sgi_mp_touch_jobs', new=touch))
+        stack.enter_context(patch.object(Emp, '_compute_sgi_mp_roles_stored', new=compute))
+        stack.enter_context(patch.object(Role, '_sgi_mp_jobs', new=role_jobs))
+        return stack
+
+    def report(self, extra):
+        lines = ['', '--- diagnóstico test_07 (57.87.0): emp=%s rol=%s actividad=%s ---' % (
+            self.emp_id, self.role_id, self.act_id)]
+        for label, state in self.snaps:
+            lines.append('[%s] %s' % (label, state))
+        computes = [e for k, e in self.events if k == 'compute']
+        lines.append('compute llamado %d veces, %d con el empleado' % (
+            len(computes), sum(1 for e in computes if e['incluye emp'])))
+        for kind, entry in self.events:
+            lines.append('%s: %s' % (kind, entry))
+        for key, value in extra.items():
+            lines.append('%s: %s' % (key, value))
+        return '\n'.join(lines)
 
 
 @tagged('post_install', '-at_install')
@@ -129,21 +265,42 @@ class TestRoleAudit(TransactionCase):
         # Lo guardado se recalcula al bajar a la base (flush); en la misma
         # transacción la caché conserva la lista anterior, así que se baja y
         # se vuelve a leer (en la interfaz cada petición lee de la base).
-        activity.active = False
-        self.env.flush_all()
-        # 57.13.1: la corrida real (build 38916808) falló abajo sin decir en
-        # qué paso. Primero lo que se calcula (el rol ya no cuenta para el
-        # puesto) y luego lo guardado: si falla solo lo guardado, el
-        # recálculo no se disparó (_sgi_mp_touch_jobs), no la lista.
-        self.assertFalse(role.activity_active)
-        self.assertNotIn(role, self.job.with_context(
-            sgi_mp_employee_id=self.emp.id)._sgi_mp_role_lists()['detail'])
-        self.assertIn(self.emp, Employee.sudo().with_context(active_test=False).search(
-            [('sgi_mp_job_id', 'in', role._sgi_mp_jobs().ids)]),
-            "El empleado se encuentra por el puesto del rol (a quién se recalcula).")
+        # 57.87.0: el archivo y el flush corren con las envolturas de
+        # _RoleArchiveDiag; si la aserción de lo guardado falla, su mensaje
+        # trae qué se llamó, con qué y qué había en caché y en la base.
+        diag = _RoleArchiveDiag(self.env, self.emp, role, activity)
+        with diag.patches():
+            diag.snap('antes de archivar')
+            activity.active = False
+            diag.snap('archivada, antes del flush')
+            self.env.flush_all()
+            diag.snap('después del flush')
+            # 57.13.1: la corrida real (build 38916808) falló abajo sin decir en
+            # qué paso. Primero lo que se calcula (el rol ya no cuenta para el
+            # puesto) y luego lo guardado: si falla solo lo guardado, el
+            # recálculo no se disparó (_sgi_mp_touch_jobs), no la lista.
+            self.assertFalse(role.activity_active)
+            self.assertNotIn(role, self.job.with_context(
+                sgi_mp_employee_id=self.emp.id)._sgi_mp_role_lists()['detail'])
+            self.assertIn(self.emp, Employee.sudo().with_context(active_test=False).search(
+                [('sgi_mp_job_id', 'in', role._sgi_mp_jobs().ids)]),
+                "El empleado se encuentra por el puesto del rol (a quién se recalcula).")
+            self.emp.invalidate_recordset(['sgi_mp_role_ids'])
+            diag.snap('tras invalidate_recordset')
+            orm_value = self.emp.sgi_mp_role_ids.ids
+            self.env.invalidate_all()
+            why = diag.report({
+                'ORM tras invalidate_recordset': orm_value,
+                'ORM tras invalidate_all': self.emp.sgi_mp_role_ids.ids,
+                'base al final': diag._db_roles(),
+                'lista del puesto ahora': self.job.with_context(
+                    sgi_mp_employee_id=self.emp.id)._sgi_mp_role_lists()['detail'].ids,
+                'puesto del empleado (guardado)': self.emp.sgi_mp_job_id.id,
+                'puesto del rol': role.job_id.id,
+            })
         self.emp.invalidate_recordset(['sgi_mp_role_ids'])
         self.assertNotIn(role, self.emp.sgi_mp_role_ids,
-                         "La lista del puesto ya no trae el rol, pero lo guardado no se recalculó.")
+                         "La lista del puesto ya no trae el rol, pero lo guardado no se recalculó." + why)
         activity.active = True
         self.env.flush_all()
         self.emp.invalidate_recordset(['sgi_mp_role_ids'])
