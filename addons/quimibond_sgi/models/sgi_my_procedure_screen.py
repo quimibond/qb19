@@ -86,7 +86,12 @@ class HrJobMyProcedureLists(models.Model):
         usan la pantalla de Inicio, la ficha del empleado y la del puesto."""
         self.ensure_one()
         Role = self.env['sgi.activity.role'].sudo()
-        roles = Role.search(self._sgi_roles_domain()).filtered(lambda r: r.activity_id.active)
+        # 57.88.0: también en Python lo archivado (actividad o proceso): la
+        # búsqueda ve la base y, dentro de un write a medio bajar, la caché
+        # ya puede traer el archivo.
+        roles = Role.search(self._sgi_roles_domain()).filtered(
+            lambda r: r.activity_id.active and (
+                not r.activity_id.process_id or r.activity_id.process_id.active))
         detail = roles.filtered(lambda r: r.role in _DETAIL_ROLES)
         short = roles.filtered(lambda r: r.role in _SHORT_ROLES) - detail.filtered(
             lambda r: r.activity_id in detail.activity_id)
@@ -159,18 +164,19 @@ class SgiMyProcedureMixin(models.AbstractModel):
         Role = self.env['sgi.activity.role'].sudo()
         for rec in self:
             emp = rec._sgi_mp_employee_rec().exists() if rec._name != 'hr.job' else False
+            # 57.88.0: recordsets, no ``.ids`` (ver _compute_sgi_mp_roles_stored).
             if emp:
-                rec.sgi_mp_role_ids = emp.sgi_mp_role_ids.ids
-                rec.sgi_mp_received_role_ids = emp.sgi_mp_received_role_ids.ids
-                rec.sgi_mp_short_role_ids = emp.sgi_mp_short_role_ids.ids
-                rec.sgi_mp_process_ids = emp.sgi_mp_process_ids.ids
+                rec.sgi_mp_role_ids = emp.sgi_mp_role_ids
+                rec.sgi_mp_received_role_ids = emp.sgi_mp_received_role_ids
+                rec.sgi_mp_short_role_ids = emp.sgi_mp_short_role_ids
+                rec.sgi_mp_process_ids = emp.sgi_mp_process_ids
                 continue
             job = rec._sgi_mp_job()
             lists = job._sgi_mp_role_lists() if job else {'detail': Role, 'received': Role, 'short': Role}
-            rec.sgi_mp_role_ids = lists['detail'].ids
-            rec.sgi_mp_received_role_ids = lists['received'].ids
-            rec.sgi_mp_short_role_ids = lists['short'].ids
-            rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
+            rec.sgi_mp_role_ids = lists['detail']
+            rec.sgi_mp_received_role_ids = lists['received']
+            rec.sgi_mp_short_role_ids = lists['short']
+            rec.sgi_mp_process_ids = lists['detail'].activity_id.process_id
 
     # Sin @api.depends: no se almacena y hr.job no tiene job_id; se
     # recalcula en cada lectura, como la pantalla de Inicio.
@@ -255,10 +261,16 @@ class HrEmployeeMyProcedureTab(models.Model):
                 cache[key] = job.with_context(sgi_mp_employee_id=emp.id)._sgi_mp_role_lists() if job else {
                     'detail': Role, 'received': Role, 'short': Role}
             lists = cache[key]
-            emp.sgi_mp_role_ids = lists['detail'].ids
-            emp.sgi_mp_received_role_ids = lists['received'].ids
-            emp.sgi_mp_short_role_ids = lists['short'].ids
-            emp.sgi_mp_process_ids = lists['detail'].activity_id.process_id.ids
+            # 57.88.0: se asignan RECORDSETS, nunca ``.ids``. En Odoo 19 una
+            # lista vacía asignada a un many2many guardado es una lista de
+            # comandos vacía (``Many2many.write_batch``): no cambia nada. Con
+            # ``.ids`` la lista que quedaba vacía (se archivó la última
+            # actividad del puesto) dejaba guardados los roles viejos; un
+            # recordset vacío es ``Command.set([])`` y sí los quita.
+            emp.sgi_mp_role_ids = lists['detail']
+            emp.sgi_mp_received_role_ids = lists['received']
+            emp.sgi_mp_short_role_ids = lists['short']
+            emp.sgi_mp_process_ids = lists['detail'].activity_id.process_id
 
     @api.model
     def _sgi_mp_touch_jobs(self, jobs):
