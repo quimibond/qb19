@@ -13,6 +13,74 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.70.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 1/3, propuesta de formatos aprobada por
+Jose el 2026-10-01, §3 y §1):** duplicados y datos malos de los formatos
+controlados. Tablas y métodos en `models/sgi_formatos_bloque3.py`
+(`documents.document._sgi_formatos_bloque3` y sus pasos
+`_sgi_b3_merge_duplicates`, `_sgi_b3_link_formats`, `_sgi_b3_uncontrol`,
+`_sgi_b3_recode`, `_sgi_b3_register_odoo_forms`). Cada documento se localiza
+por id **y** se verifica su clave (o clave anterior) y su empresa; si no
+coincide, se salta con aviso. Lo que cambia queda en el log con su valor
+anterior y en el chatter del documento.
+
+- **Dar de baja no es archivar.** En Documentos, archivar manda a la
+  papelera y Odoo **borra** lo archivado a los 30 días
+  (`documents.deletion_delay`). Los duplicados quedan activos, **obsoletos**,
+  con «Motivo de obsolescencia» y «Baja tramitada» (como los procedimientos
+  que sustituye un proceso, 45.0.0). Antes de darlos de baja, sus ligas en
+  actividades pasan al formato que se conserva. Ninguno está en
+  `sgi.format.map`; uno que lo estuviera se salta.
+- Bajas: F-IT-P-P04-07-01 (4026, duplicado de F-IT-P-C05-07-01),
+  F-P-A23-08 (3752 → F-P-A16-07), F-P-P04-02 (4023 → F-P-C05-02; C1.11 pasa
+  a F-P-C05-02), F-P-A13-01 (3725 → F-P-A01-49), F-P-C17-05 (3943 → vale
+  F-IT-P-A05-01-01), F-IT-P-P01-01-03 (3989 → F-P-P02-01; C4.14) y
+  F-P-P01-01 (4001, sin actividad).
+- Ligas nuevas: C2.43 ← F-P-A28-04 (3875), C6.12 ← F-IT-P-A05-01-01 (3698),
+  E2.37 ← F-IT-P-G03-01-01 (4063, evaluación de auditores, §1 #8).
+- **F-P-V01-04 (5152)** era un reporte de visita **lleno** con la misma
+  revisión 0 que el obsoleto 3359: deja de ser documento controlado (no se
+  borra). 3359 sigue archivado.
+- **F-P-E01-01:** la «Evaluación luminaria» (4060) pasa a **F-P-S01-02**
+  (estudio de higiene de SST, NOM-025; familia P-S01, la primera libre) en la
+  clave y en la clave anterior, para que la búsqueda por clave anterior no la
+  confunda con la matriz; F-P-E01-01 queda en el nombre del archivo, el
+  chatter y el seguimiento. Se liga a E2.31 (estudios de higiene y
+  evaluaciones NOM). F-P-E01-01 queda libre para la matriz de aspectos
+  ambientales: el PDF de la matriz (mapeo 42) imprime «F-P-E01-01» sin
+  revisión hasta que exista el documento.
+- **Altas como «Formulario de Odoo»** (sin archivo; lo que se llena es la
+  pantalla): **F-P-A28-13** «Pronóstico de ventas» (C2, menú Pronósticos,
+  ligado a C2.40 y como documento alternativo del mapeo de
+  `sgi.sales.budget`, que ya imprimía esa clave sin documento) y
+  **F-P-A28-11** «Encuesta de satisfacción del cliente» (E2, menú SGI →
+  Dirección → Satisfacción del cliente, ligado a E2.12).
+
+**Migración (post):** `migrations/19.0.57.70.0/post-migrate.py`. Idempotente;
+nada se borra ni se archiva. Esperado en producción (MCP, 2026-10-01): 7
+bajas, 5 actividades con formatos cambiados (C1.11, C2.43, C4.14, C5.16,
+C6.12) más E2.31, E2.37, C2.40 y E2.12, 1 documento deja de ser controlado,
+1 clave corregida y 2 altas. Marca «cambió» el procedimiento de C1, C2, C4,
+C5, C6 y E2.
+
+**Queda para MAST** (detalle en `docs/sgi/transicion/formatos-bloque-3.md`):
+restaurar de la papelera, si se conservan, los 3 controlados archivados
+(3359, 5119, 4995: Odoo los borra hacia el 29-oct); subir la matriz de
+aspectos ambientales **en blanco** (no hay ninguna en Documentos: 4850 es una
+carpeta y 4868 es la matriz llena de MAST) y ligarla a E2.23 y al mapeo 42;
+ligar F-P-A16-07 a su actividad de C2 (no hay una evidente); confirmar el
+contenido de 4001; configurar la encuesta de satisfacción en Ajustes; decidir
+el proceso de la familia P-A13 (no se movió a S4: son reportes
+administrativos); corregir las citas de 13 de los 17 formatos citados que no
+existen y dar de alta F-P-A14-03, F-P-A06-04 y, si aplica, F-P-C05-10.
+
+**Pruebas:** `test_formatos_bloque3` (fusión con ligas, baja sin archivar,
+el que imprime un mapeo se respeta, clave o empresa distinta se salta,
+registro lleno, clave equivocada libre y búsqueda por clave anterior, alta de
+formulario de Odoo sin archivo con su mapeo, idempotencia, tablas reales y
+post-migrate).
+
 ## 19.0.57.68.0 — 2026-09-30
 
 Tercera corrida de las pruebas del SGI en **staging** (copia de producción):
