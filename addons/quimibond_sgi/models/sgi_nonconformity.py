@@ -450,7 +450,7 @@ class QualityAlert(models.Model):
                 raise UserError(
                     "La NC %s solo la cierra el Jefe MAST o el dueño del proceso (%s). "
                     "Pídale que revise la eficacia y la cierre."
-                    % (alert.sgi_folio, alert.sgi_process_id.owner_id.sudo().name or "sin dueño"))
+                    % (alert.sgi_folio, alert.sudo().sgi_process_id.owner_id.name or "sin dueño"))
             if (alert.sgi_origin_type == 'reclamacion' and not new_stage.sgi_is_cancel_stage
                     and alert.stage_id == open_stage and not alert.sgi_containment_done
                     and not force):
@@ -470,7 +470,7 @@ class QualityAlert(models.Model):
         self.ensure_one()
         if sgi_bypass_allowed(self.env):
             return True
-        owner_user = self.sgi_process_id.owner_id.sudo().user_id
+        owner_user = self.sudo().sgi_process_id.owner_id.user_id
         return bool(owner_user) and owner_user == self.env.user
 
     def action_sgi_cancel(self):

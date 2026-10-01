@@ -122,7 +122,7 @@ class TestCandadosEvidencia(TransactionCase):
     def test_05_nc_con_folio_no_se_borra(self):
         alert = self.env['quality.alert'].create({'title': 'K02 NC', 'team_id': self.team_int.id})
         self.assertTrue(alert.sgi_folio)
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, 'no se borra'):
             alert.with_user(self.sgi_user).unlink()
 
     def test_06_accion_detiene_el_borrado_de_su_nc(self):
@@ -135,7 +135,7 @@ class TestCandadosEvidencia(TransactionCase):
     # ---- FUNC-C13 -----------------------------------------------------------
     def test_07_usuario_sgi_no_cierra_una_nc(self):
         alert = self._closable_nc()
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, 'dueño del proceso'):
             alert.with_user(self.sgi_user).write({'stage_id': self.stage_closed.id})
 
     def test_08_dueno_del_proceso_y_mast_si_cierran(self):
