@@ -166,3 +166,30 @@ class TestIndicadores5790(TransactionCase):
         self.assertIn(same_day.id, detail['ids'])
         self.assertIn(late.id, detail['ids'])
         self.assertIn('sin fecha prometida', ind._note_otd_compras(self.period, self.period_end))
+
+    # ---- S6-04: solicitud de cambio por despliegue ---------------------------
+    def test_07_despliegue_crea_su_solicitud(self):
+        Param = self.env['ir.config_parameter'].sudo()
+        category = self.env['approval.category'].create({
+            'name': 'Cambio en Odoo prueba 5790', 'approval_minimum': 1})
+        Param.set_param('quimibond_sgi.change_approval_category_id', category.id)
+        Param.set_param('quimibond_sgi.change_request_owner_id', self.env.user.id)
+        Param.set_param('quimibond_sgi.deploy_versions', '')
+        Cron = self.env['sgi.cron']
+        self.assertFalse(Cron._sgi_register_deploys(force=True),
+                         "La primera corrida solo guarda la base.")
+        self.assertIn('quimibond_sgi', Param.get_param('quimibond_sgi.deploy_versions'))
+        self.assertFalse(Cron._sgi_register_deploys(force=True), "Sin cambios, nada.")
+        Param.set_param('quimibond_sgi.deploy_versions', '{"quimibond_sgi": "19.0.0.0.0"}')
+        Param.set_param('database.is_neutralized', 'True')
+        self.assertFalse(Cron._sgi_register_deploys(), "Una copia neutralizada no crea nada.")
+        created = Cron._sgi_register_deploys(force=True)
+        installed = self.env['ir.module.module'].search(
+            [('name', '=', 'quimibond_sgi')]).latest_version
+        request = created.filtered(lambda r: r.name == 'Despliegue quimibond_sgi %s' % installed)
+        self.assertEqual(len(request), 1)
+        self.assertEqual(request.category_id, category)
+        self.assertEqual(request.request_status, 'new', "Nadie la envía ni la aprueba sola.")
+        self.assertIn(installed, request.reference)
+        self.assertIn('19.0.0.0.0', str(request.reason))
+        self.assertFalse(Cron._sgi_register_deploys(force=True), "Ya registrada: no se repite.")

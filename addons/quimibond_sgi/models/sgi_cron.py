@@ -491,6 +491,8 @@ class SgiCron(models.AbstractModel):
         # este cron porque corre TODOS los días; el de indicadores solo mide
         # el tercer día hábil.
         self._sgi_step("cerrar actividades ya resueltas", self._sgi_close_resolved_activities)
+        # 57.90.0: una solicitud de cambio S6 por cada versión desplegada.
+        self._sgi_step("solicitudes de cambio de los despliegues", self._sgi_register_deploys)
         # Marca acciones vencidas (recomputo del store)
         self._sgi_step(
             "recomputar estado de acciones",

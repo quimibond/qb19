@@ -60,6 +60,25 @@ de cada 10 OC sí la traen. El cálculo cambia en tres cosas:
 Ya no entran las recepciones sin OC (devoluciones de cliente) ni las de
 otras compañías.
 
+**Agregado: solicitud de cambio por despliegue (S6-04).** Las versiones
+57.14 a 57.89 se instalaron sin solicitud «Cambio en Odoo (S6)». Ahora el
+cron diario de NC compara la versión instalada de cada módulo del repositorio
+con la última registrada (`quimibond_sgi.deploy_versions`). Por cada módulo
+que cambió crea una solicitud **en borrador**, que incluye:
+- el módulo y el cambio de versión (anterior → nueva);
+- la entrada de su CHANGELOG;
+- el enlace al commit desplegado, leído de `.git`; GitHub muestra el PR desde
+  ese commit.
+
+La solicitud cuenta en S6-04 y solo suma al numerador cuando se aprueba.
+Nadie la envía ni la aprueba sola: el dueño adjunta la evidencia de la
+prueba, agrega al dueño del proceso y la envía. Solo corre en producción (una
+base neutralizada no crea nada). Parámetros:
+- `quimibond_sgi.change_approval_category_id`: por omisión, la categoría
+  «Cambio en Odoo (S6)»;
+- `quimibond_sgi.change_request_owner_id`: por omisión, el primer aprobador
+  de la categoría.
+
 **Migración (`migrations/19.0.57.90.0/post-migrate.py`):**
 
 1. Marca como foto los configurables S2-03, S3-03, S6-03, E2-01 y E2-03.
@@ -73,6 +92,9 @@ otras compañías.
    S2-03, S3-03 y S6-03. E2-01 y E2-03 ya estaban casi todas en «sin dato».
 3. Recalcula con el filtro nuevo las mediciones 2026 no validadas de los
    modos de ventas y de CO-01, y deja en el log el antes → después.
+4. Guarda las versiones de base de los despliegues. quimibond_sgi todavía
+   figura con su versión anterior, así que el primer cron de NC crea la
+   solicitud de este mismo despliegue.
 
 ## 19.0.57.89.0 — 2026-10-01
 

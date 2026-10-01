@@ -18,6 +18,13 @@ foto que no se recalculan hacia atrás.
    las recepciones de OC sin fecha prometida. Cada medición va en su
    savepoint.
 
+4. S6-04: guarda las versiones de base de los módulos del repositorio
+   (``quimibond_sgi.deploy_versions``) para el registro de despliegues. Aquí
+   quimibond_sgi todavía figura con su versión anterior, porque Odoo escribe
+   la nueva después de este script. Así, el primer cron de NC crea la
+   solicitud «Cambio en Odoo (S6)» de este mismo despliegue. Solo en
+   producción (base no neutralizada).
+
 Registra antes → después en el log. Idempotente.
 """
 import logging
@@ -76,3 +83,7 @@ def migrate(cr, version):
                 _logger.warning("SGI 57.90.0: %s %s no se recalculó: %s",
                                 indicator.code, measure.period_date, error)
     _logger.info("SGI 57.90.0: %s mediciones de ventas y CO-01 recalculadas", recalculated)
+
+    # Solo guarda la base (no crea solicitudes) si aún no hay; en una base
+    # neutralizada no hace nada.
+    env['sgi.cron']._sgi_register_deploys()
