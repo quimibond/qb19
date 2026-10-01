@@ -13,6 +13,47 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.88.0 — 2026-10-01
+
+**Corregido: «Mi procedimiento» guardado no se vaciaba** (`TestRoleAudit.test_07`,
+«La lista del puesto ya no trae el rol, pero lo guardado no se recalculó»,
+fallaba desde 57.13.0).
+
+- **Causa** (diagnóstico de la 57.87.0 en staging): al archivar la actividad,
+  el único cálculo de `hr.employee.sgi_mp_role_ids` corre dentro del write
+  (`flush_all` de un `unlink` en `_sgi_refresh_spec_gaps`), con la caché ya
+  archivada (`act.active` y `role.activity_active` en `False`); la búsqueda
+  baja `activity_active` a la base antes de consultar y el filtro en Python
+  descarta la actividad, así que la lista calculada sí sale vacía. Pero
+  `_compute_sgi_mp_roles_stored` la asignaba como `.ids`, y en Odoo 19 una
+  lista vacía asignada a un many2many es una **lista de comandos vacía**
+  (`Many2many.write_batch`): no cambia nada. Lo guardado seguía en
+  `[3565]` antes y después del cálculo, y nada lo volvía a calcular. No era la
+  base atrasada ni el orden del flush: cualquier lista que quedara vacía
+  (última actividad o proceso archivado, último escalamiento o «participa»,
+  cambio a un puesto sin roles) conservaba lo de antes.
+- **Arreglo**: el cálculo guardado (y el del puesto y el empleado público)
+  asigna recordsets, que siempre son `Command.set(...)`, también vacío.
+  `hr.job._sgi_mp_role_lists` filtra además en Python el proceso archivado
+  (ya filtraba la actividad), para no depender de lo que la base tenga a
+  medio write.
+- **Pruebas**: `test_07` archiva con `write` como la interfaz (pasa por
+  `_sgi_refresh_spec_gaps`) y revisa también `sgi_mp_process_ids`; se quita
+  el diagnóstico de la 57.87.0. Nueva `test_07b`: escalamientos y
+  «participa» que se quedan sin nada, y proceso archivado, vacían sus listas.
+
+**Migración** (`migrations/19.0.57.88.0/post-migrate.py`): recalcula las
+cuatro listas guardadas de todos los empleados (activos y archivados) y
+registra, lista por lista, cuántos cambiaron y su conteo antes→después.
+Idempotente.
+
+**Datos de producción** (lectura por MCP, 2026-10-01): 0 empleados con un rol
+de actividad archivada o de proceso archivado (de los 25 archivados) en lo
+guardado; los 129 empleados con roles tienen puestos (83) con lista no vacía,
+así que «Mis actividades» no tenía roles viejos. Los cambios posibles se
+limitan a escalamientos, «participa» o procesos que se quedaron sin
+reemplazo; el log de la migración da el número.
+
 ## 19.0.57.87.0 — 2026-10-01
 
 **Diagnóstico de `TestRoleAudit.test_07`** (`test_role_audit`, «La lista del
