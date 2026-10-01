@@ -1,0 +1,1285 @@
+modelo,campo,tipo,string,en_vistas_del_modelo,prioridad,archivo_linea
+approval.category,sgi_is_doc_change,Boolean,Cambio documental SGI,sí,alta,models/sgi_doc_change.py:13
+approval.request,sgi_affected_process_ids,Many2many,Procesos afectados,sí,alta,models/sgi_doc_change.py:48
+approval.request,sgi_applied,Boolean,Cambio aplicado al documento,sí,alta,models/sgi_doc_change.py:49
+approval.request,sgi_change_kind,Selection,Tipo de cambio,sí,alta,models/sgi_doc_change.py:31
+approval.request,sgi_changes,Text,Descripción de cambios,sí,media,models/sgi_doc_change.py:47
+approval.request,sgi_current_revision,Integer,Revisión vigente,sí,alta,models/sgi_doc_change.py:40
+approval.request,sgi_document_id,Many2one,Documento afectado,sí,alta,models/sgi_doc_change.py:30
+approval.request,sgi_is_doc_change,Boolean,,sí,alta,models/sgi_doc_change.py:24
+approval.request,sgi_is_moc,Boolean,,sí,alta,models/sgi_doc_change.py:25
+approval.request,sgi_mp_apply_scheduled,Boolean,Cambio aplicado,sí,alta,models/sgi_mp_change.py:75
+approval.request,sgi_mp_change_type,Selection,Tipo de propuesta,sí,alta,models/sgi_mp_change.py:70
+approval.request,sgi_mp_diff_html,Html,Qué cambia,sí,media,models/sgi_mp_change.py:73
+approval.request,sgi_mp_proposal_id,Many2one,Propuesta,sí,alta,models/sgi_mp_change.py:71
+approval.request,sgi_new_document_id,Many2one,Revisión publicada,sí,alta,models/sgi_doc_change.py:52
+approval.request,sgi_new_revision,Integer,Nueva revisión,sí,alta,models/sgi_doc_change.py:42
+approval.request,sgi_pilot,Boolean,Prueba piloto,sí,alta,models/sgi_doc_change.py:43
+approval.request,sgi_pilot_end,Date,Fin de piloto,sí,alta,models/sgi_doc_change.py:45
+approval.request,sgi_pilot_start,Date,Inicio de piloto,sí,alta,models/sgi_doc_change.py:44
+approval.request,sgi_purchase_order_ids,One2many,Órdenes de compra (SGI),no,baja,models/sgi_links.py:122
+approval.request,sgi_reason,Text,Motivo del cambio,sí,media,models/sgi_doc_change.py:46
+approval.request,sgi_sign_archived,Boolean,,no,baja,models/sgi_doc_change_sign.py:64
+approval.request,sgi_sign_notified_state,Char,,no,baja,models/sgi_doc_change_sign.py:65
+approval.request,sgi_sign_progress,Char,Firmas,sí,media,models/sgi_doc_change_sign.py:59
+approval.request,sgi_sign_request_id,Many2one,Firma (Sign),sí,alta,models/sgi_doc_change_sign.py:55
+approval.request,sgi_sign_required,Boolean,,sí,alta,models/sgi_doc_change_sign.py:54
+approval.request,sgi_sign_state,Selection,Estado de la firma,sí,alta,models/sgi_doc_change_sign.py:57
+approval.request,sgi_what_changes,Selection,¿Qué se modifica?,sí,alta,models/sgi_doc_change.py:36
+documents.document,sgi_ack_count,Integer,# Acuses,no,baja,models/sgi_document.py:235
+documents.document,sgi_ack_ids,One2many,Acuses de lectura,sí,media,models/sgi_document.py:233
+documents.document,sgi_ack_read_pct,Float,% Difusión,sí,alta,models/sgi_document.py:236
+documents.document,sgi_area_id,Many2one,Área SGI,sí,alta,models/sgi_document.py:76
+documents.document,sgi_child_document_ids,One2many,Documentos hijos,no,baja,models/sgi_document.py:246
+documents.document,sgi_code,Char,Clave SGI,sí,media,models/sgi_document.py:32
+documents.document,sgi_content_hash,Char,Huella del contenido,no,baja,models/sgi_my_procedure.py:65
+documents.document,sgi_doc_type,Selection,,sí,alta,models/sgi_my_procedure.py:60
+documents.document,sgi_doc_type_id,Many2one,Tipo de documento,sí,alta,models/sgi_document.py:45
+documents.document,sgi_ext_received_date,Date,Fecha de recepción,sí,alta,models/sgi_external_doc.py:23
+documents.document,sgi_ext_state,Selection,Implantación,sí,alta,models/sgi_external_doc.py:30
+documents.document,sgi_is_controlled,Boolean,Documento controlado SGI,sí,alta,models/sgi_document.py:31
+documents.document,sgi_issue_date,Date,Fecha de emisión,sí,alta,models/sgi_document.py:95
+documents.document,sgi_job_ids,Many2many,Puestos a los que aplica,sí,alta,models/sgi_document.py:105
+documents.document,sgi_migration_state,Selection,Estado de migración,sí,alta,models/sgi_document.py:158
+documents.document,sgi_next_review_date,Date,Próxima revisión,sí,alta,models/sgi_document.py:107
+documents.document,sgi_obsolete_date,Date,Obsoleto desde,sí,alta,models/sgi_document.py:109
+documents.document,sgi_obsolete_reason,Char,Motivo de obsolescencia,sí,media,models/sgi_document.py:110
+documents.document,sgi_owner_id,Many2one,Responsable SGI,sí,alta,models/sgi_document.py:104
+documents.document,sgi_pilot_end_date,Date,Fin de prueba piloto,sí,alta,models/sgi_document.py:113
+documents.document,sgi_previous_code,Char,Clave anterior,sí,media,models/sgi_document.py:36
+documents.document,sgi_procedure_dirty_by,Many2one,Divergencia registrada por,sí,alta,models/sgi_document.py:144
+documents.document,sgi_procedure_dirty_since,Datetime,Divergencia desde,sí,alta,models/sgi_document.py:142
+documents.document,sgi_process_id,Many2one,Proceso SGI,sí,alta,models/sgi_document.py:77
+documents.document,sgi_publish_sign_state,Selection,Estado de la firma,no,baja,models/sgi_my_procedure_sign.py:27
+documents.document,sgi_replaced_by_process_id,Many2one,Lo sustituye el proceso,sí,alta,models/sgi_document.py:111
+documents.document,sgi_revision,Integer,Revisión,sí,alta,models/sgi_document.py:88
+documents.document,sgi_revision_label,Char,Rev.,sí,media,models/sgi_document.py:89
+documents.document,sgi_sign_template_auto,Boolean,,no,baja,models/sgi_sign_elearning.py:31
+documents.document,sgi_sign_template_rev,Integer,,no,baja,models/sgi_sign_elearning.py:32
+helpdesk.ticket,sgi_alert_id,Many2one,No Conformidad,sí,alta,models/sgi_complaint.py:19
+helpdesk.ticket,sgi_disposition,Selection,Disposición,sí,alta,models/sgi_complaint.py:12
+helpdesk.ticket,sgi_lot_id,Many2one,Lote,sí,alta,models/sgi_complaint.py:10
+helpdesk.ticket,sgi_product_id,Many2one,Producto,sí,alta,models/sgi_complaint.py:9
+helpdesk.ticket,sgi_qty_affected,Float,Metros afectados,sí,alta,models/sgi_complaint.py:11
+helpdesk.ticket,sgi_sale_order_id,Many2one,Pedido de venta,sí,alta,models/sgi_complaint.py:8
+hr.employee,sgi_document_ack_ids,One2many,Acuses de lectura,no,baja,models/sgi_my_procedure.py:647
+hr.employee,sgi_epp_delivery_count,Integer,,sí,baja,models/sgi_epp.py:109
+hr.employee,sgi_epp_delivery_ids,One2many,Responsivas de EPP,sí,media,models/sgi_epp.py:108
+hr.employee,sgi_epp_pending_count,Integer,Responsivas sin firmar,no,baja,models/sgi_epp.py:110
+hr.employee,sgi_epp_required,Text,EPP requerido por el puesto,sí,media,models/sgi_epp.py:107
+hr.employee,sgi_health_record_ids,One2many,Estudios y exámenes,sí,media,models/sgi_hse_records.py:100
+hr.employee,sgi_mp_job_id,Many2one,Puesto (Mi procedimiento),no,baja,models/sgi_my_procedure_screen.py:222
+hr.employee,sgi_mp_process_ids,Many2many,Procesos donde participa,sí,alta,models/sgi_my_procedure_screen.py:234
+hr.employee,sgi_mp_received_role_ids,Many2many,Escalamientos que recibe,sí,alta,models/sgi_my_procedure_screen.py:228
+hr.employee,sgi_mp_role_ids,Many2many,Mis actividades,sí,alta,models/sgi_my_procedure_screen.py:225
+hr.employee,sgi_mp_short_role_ids,Many2many,Participa o se entera,sí,alta,models/sgi_my_procedure_screen.py:231
+hr.employee,sgi_my_procedure_ack_state,Selection,Mi procedimiento,sí,alta,models/sgi_my_procedure.py:649
+hr.employee,sgi_pending_ack_count,Integer,# Acuses pendientes,sí,baja,models/sgi_integration.py:245
+hr.employee,sgi_procedure_count,Integer,# Mis procedimientos,sí,baja,models/sgi_integration.py:244
+hr.employee,sgi_skill_gap_count,Integer,Brechas de competencia,sí,baja,models/sgi_competence.py:8
+hr.employee.public,sgi_mp_ack_state,Selection,Mi procedimiento,sí,alta,models/sgi_my_procedure_screen.py:945
+hr.employee.public,sgi_mp_ok,Integer,Al día,no,baja,models/sgi_my_procedure_screen.py:938
+hr.employee.public,sgi_mp_pending_late,Integer,Pendientes atrasados,sí,alta,models/sgi_my_pending.py:293
+hr.employee.public,sgi_mp_pending_total,Integer,Pendientes,sí,alta,models/sgi_my_pending.py:290
+hr.employee.public,sgi_mp_total,Integer,Actividades,sí,alta,models/sgi_my_procedure_screen.py:940
+hr.employee.public,sgi_mp_unmeasured,Integer,Sin medición automática,no,baja,models/sgi_my_procedure_screen.py:939
+hr.job,sgi_all_role_ids,Many2many,Actividades SGI (propias y de su familia),sí,alta,models/sgi_catalog.py:380
+hr.job,sgi_approve_count,Integer,Aprueba,sí,baja,models/sgi_catalog.py:372
+hr.job,sgi_document_ids,Many2many,Documentos aplicables,sí,alta,models/sgi_integration.py:192
+hr.job,sgi_execute_count,Integer,Ejecuta,sí,baja,models/sgi_catalog.py:370
+hr.job,sgi_family_ids,Many2many,Familias SGI,no,baja,models/sgi_catalog.py:312
+hr.job,sgi_inform_count,Integer,Se entera,sí,baja,models/sgi_catalog.py:376
+hr.job,sgi_my_procedure_doc_id,Many2one,Mi procedimiento (vigente),sí,alta,models/sgi_my_procedure.py:100
+hr.job,sgi_participate_count,Integer,Participa,sí,baja,models/sgi_catalog.py:374
+hr.job,sgi_role_count,Integer,Actividades SGI,sí,baja,models/sgi_catalog.py:378
+hr.job,sgi_role_ids,One2many,Roles en actividades SGI,no,baja,models/sgi_catalog.py:310
+ir.actions.act_window.view,view_mode,Selection,,no,baja,models/sgi_diagram_view.py:51
+ir.ui.view,type,Selection,,no,baja,models/sgi_diagram_view.py:24
+maintenance.equipment,sgi_calibration_count,Integer,N° de calibraciones,sí,baja,models/sgi_calibration.py:75
+maintenance.equipment,sgi_calibration_ids,One2many,Calibraciones,no,baja,models/sgi_calibration.py:73
+maintenance.equipment,sgi_calibration_interval_months,Integer,Intervalo de calibración (meses),sí,alta,models/sgi_calibration.py:58
+maintenance.equipment,sgi_calibration_state,Selection,Estado de calibración,sí,alta,models/sgi_calibration.py:66
+maintenance.equipment,sgi_is_measuring,Boolean,Equipo de medición,sí,alta,models/sgi_calibration.py:54
+maintenance.equipment,sgi_is_ppe,Boolean,Equipo de protección personal (EPP),sí,alta,models/sgi_calibration.py:79
+maintenance.equipment,sgi_last_calibration_date,Date,Última calibración,sí,alta,models/sgi_calibration.py:60
+maintenance.equipment,sgi_magnitude,Char,Magnitud,sí,media,models/sgi_calibration.py:55
+maintenance.equipment,sgi_msa_count,Integer,# MSA,sí,baja,models/sgi_msa.py:19
+maintenance.equipment,sgi_msa_ids,One2many,Estudios MSA,no,baja,models/sgi_msa.py:17
+maintenance.equipment,sgi_ppe_expiry_date,Date,Vencimiento del EPP,sí,alta,models/sgi_calibration.py:80
+maintenance.equipment,sgi_range,Char,Rango,sí,media,models/sgi_calibration.py:56
+maintenance.equipment,sgi_resolution,Char,Resolución,sí,media,models/sgi_calibration.py:57
+maintenance.request,sgi_alert_id,Many2one,NC generada,no,baja,models/sgi_integration.py:149
+maintenance.request,sgi_checklist_date,Date,Día del checklist,sí,alta,models/sgi_checklist.py:131
+maintenance.request,sgi_checklist_done_at,Datetime,Terminado el,sí,alta,models/sgi_checklist.py:135
+maintenance.request,sgi_checklist_employee_id,Many2one,Lo llenó,sí,alta,models/sgi_checklist.py:133
+maintenance.request,sgi_checklist_line_ids,One2many,Hoja de checklist,sí,media,models/sgi_checklist.py:132
+maintenance.request,sgi_checklist_state,Selection,Checklist,sí,alta,models/sgi_checklist.py:136
+maintenance.request,sgi_checklist_template_id,Many2one,Checklist SGI,sí,alta,models/sgi_checklist.py:129
+mrp.production,sgi_nc_count,Integer,# NC,sí,baja,models/sgi_integration.py:90
+product.product,sgi_ppap_count,Integer,PPAP,no,baja,models/sgi_ppap.py:224
+product.product,sgi_sign_count,Integer,,no,baja,models/sgi_sign_record.py:97
+product.template,sgi_ppap_count,Integer,PPAP,sí,baja,models/sgi_ppap.py:197
+project.project,sgi_dev_approved_by_id,Many2one,Aprobó (Dirección de Operaciones),sí,alta,models/sgi_dev_request.py:89
+project.project,sgi_dev_currency_id,Many2one,Moneda del precio,sí,alta,models/sgi_dev_request.py:78
+project.project,sgi_dev_customer_property,Selection,Propiedad del cliente recibida,sí,alta,models/sgi_dev_request.py:82
+project.project,sgi_dev_date,Date,Fecha de solicitud,sí,alta,models/sgi_dev_request.py:69
+project.project,sgi_dev_format_code,Char,Formato,sí,media,models/sgi_dev_request.py:68
+project.project,sgi_dev_line_ids,One2many,Características del producto,sí,media,models/sgi_dev_request.py:87
+project.project,sgi_dev_norms,Char,Norma(s) a cumplir,sí,media,models/sgi_dev_request.py:80
+project.project,sgi_dev_other,Text,Otras características,sí,media,models/sgi_dev_request.py:86
+project.project,sgi_dev_packaging,Text,Datos en la etiqueta y empaque,sí,media,models/sgi_dev_request.py:81
+project.project,sgi_dev_prepared_by_id,Many2one,Elaboró (Diseño y Desarrollo),sí,alta,models/sgi_dev_request.py:88
+project.project,sgi_dev_requester,Char,Nombre del solicitante,sí,media,models/sgi_dev_request.py:70
+project.project,sgi_dev_sample_kg,Float,Cantidad de la muestra (kg),sí,alta,models/sgi_dev_request.py:74
+project.project,sgi_dev_sample_m,Float,Cantidad de la muestra (m),sí,alta,models/sgi_dev_request.py:73
+project.project,sgi_dev_spec,Text,Especificación del cliente,sí,media,models/sgi_dev_request.py:72
+project.project,sgi_dev_target_price,Monetary,Precio objetivo,sí,media,models/sgi_dev_request.py:77
+project.project,sgi_dev_type,Selection,Tipo de desarrollo,sí,alta,models/sgi_dev_request.py:67
+project.project,sgi_dev_use,Text,Descripción y uso del producto,sí,media,models/sgi_dev_request.py:71
+project.project,sgi_dev_volume,Float,Volumen estimado,sí,alta,models/sgi_dev_request.py:75
+project.project,sgi_dev_volume_uom,Selection,Unidad del volumen,sí,alta,models/sgi_dev_request.py:76
+project.project,sgi_is_improvement,Boolean,Proyecto de mejora SGI,no,baja,models/sgi_improvement.py:9
+project.task,sgi_area_id,Many2one,Área SGI,sí,alta,models/sgi_improvement.py:28
+project.task,sgi_bom_ids,One2many,Listas de materiales,sí,media,models/sgi_links.py:67
+project.task,sgi_control_plan_ids,One2many,Planes de control,sí,media,models/sgi_links.py:69
+project.task,sgi_dyd_link_count,Integer,Ligas del desarrollo,sí,baja,models/sgi_links.py:71
+project.task,sgi_fmea_ids,One2many,AMEF,sí,media,models/sgi_links.py:66
+project.task,sgi_improvement_type,Selection,Tipo de mejora,sí,alta,models/sgi_improvement.py:22
+project.task,sgi_is_improvement,Boolean,,sí,alta,models/sgi_improvement.py:21
+project.task,sgi_ppap_ids,One2many,PPAP,sí,media,models/sgi_links.py:70
+project.task,sgi_process_id,Many2one,Proceso SGI,sí,alta,models/sgi_improvement.py:29
+project.task,sgi_production_ids,One2many,Órdenes de muestra,sí,media,models/sgi_links.py:68
+project.task.type,sgi_is_done_stage,Boolean,Etapa de cierre (Mejora SGI),no,baja,models/sgi_improvement.py:15
+purchase.order,sgi_nc_count,Integer,# NC proveedor,sí,baja,models/sgi_integration.py:112
+quality.alert,sgi_action_line_ids,One2many,Correcciones y acciones,sí,media,models/sgi_nonconformity.py:129
+quality.alert,sgi_approved_by,Many2one,Aprobó,sí,alta,models/sgi_nonconformity.py:124
+quality.alert,sgi_approved_date,Date,Fecha de aprobación,sí,alta,models/sgi_nonconformity.py:125
+quality.alert,sgi_cancel_reason,Text,Motivo de cancelación,sí,media,models/sgi_nonconformity.py:154
+quality.alert,sgi_cancel_requested_by,Many2one,Cancelación solicitada por,sí,alta,models/sgi_nonconformity.py:155
+quality.alert,sgi_classification,Selection,Clasificación,sí,alta,models/sgi_nonconformity.py:82
+quality.alert,sgi_complaint_ticket_id,Many2one,Reclamación ligada,sí,alta,models/sgi_nonconformity.py:126
+quality.alert,sgi_containment_done,Boolean,,sí,alta,models/sgi_nonconformity.py:147
+quality.alert,sgi_containment_state,Selection,Contención,sí,alta,models/sgi_nonconformity.py:141
+quality.alert,sgi_customer_ack_date,Date,Acuse de recibo al cliente,sí,alta,models/sgi_customer_reply.py:52
+quality.alert,sgi_customer_ack_due,Date,Acusar recibo a más tardar,sí,alta,models/sgi_customer_reply.py:50
+quality.alert,sgi_customer_ack_on_time,Boolean,Acuse a tiempo,sí,alta,models/sgi_customer_reply.py:59
+quality.alert,sgi_customer_notice_note,Char,Cómo se avisó (referencia),sí,media,models/sgi_customer_reply.py:73
+quality.alert,sgi_customer_response_date,Date,Respuesta formal al cliente,sí,alta,models/sgi_customer_reply.py:58
+quality.alert,sgi_customer_response_due,Date,Responder a más tardar,sí,alta,models/sgi_customer_reply.py:56
+quality.alert,sgi_customer_response_on_time,Boolean,Respuesta a tiempo,sí,alta,models/sgi_customer_reply.py:61
+quality.alert,sgi_deviation,Text,Desviación detectada,sí,media,models/sgi_nonconformity.py:95
+quality.alert,sgi_document_id,Many2one,Documento ligado,sí,alta,models/sgi_nonconformity.py:163
+quality.alert,sgi_due_containment,Date,Contención vence,sí,alta,models/sgi_nonconformity.py:138
+quality.alert,sgi_due_plan,Date,Plan de acción vence,sí,alta,models/sgi_nonconformity.py:140
+quality.alert,sgi_due_root_cause,Date,Causa raíz vence,sí,alta,models/sgi_nonconformity.py:139
+quality.alert,sgi_effectiveness_by,Many2one,Eficacia verificada por,sí,alta,models/sgi_nonconformity.py:105
+quality.alert,sgi_effectiveness_date,Date,Fecha de eficacia,sí,alta,models/sgi_nonconformity.py:104
+quality.alert,sgi_effectiveness_note,Text,Verificación de eficacia,sí,media,models/sgi_nonconformity.py:103
+quality.alert,sgi_external_ref,Char,N° NCR externo,sí,media,models/sgi_nonconformity.py:127
+quality.alert,sgi_fmea_id,Many2one,AMEF ligado,sí,alta,models/sgi_nonconformity.py:162
+quality.alert,sgi_folio,Char,Folio SGI,sí,media,models/sgi_nonconformity.py:62
+quality.alert,sgi_followup_action,Selection,Acción a seguir,sí,alta,models/sgi_nonconformity.py:117
+quality.alert,sgi_followup_comments,Text,Comentarios de seguimiento,sí,media,models/sgi_nonconformity.py:115
+quality.alert,sgi_incident_id,Many2one,Incidente SST de origen,sí,alta,models/sgi_incident.py:9
+quality.alert,sgi_indicator_measure_id,Many2one,Medición de indicador,no,baja,models/sgi_indicator.py:1454
+quality.alert,sgi_is_recurrent,Boolean,Reincidente,sí,alta,models/sgi_nonconformity.py:174
+quality.alert,sgi_ishikawa_notes,Text,Notas Ishikawa (5-6M),sí,media,models/sgi_nonconformity.py:102
+quality.alert,sgi_lead_auditor_id,Many2one,Auditor líder,sí,alta,models/sgi_nonconformity.py:91
+quality.alert,sgi_norm_clause_id,Many2one,Requisito (cláusula),sí,alta,models/sgi_nonconformity.py:87
+quality.alert,sgi_origin_type,Selection,Origen,sí,alta,models/sgi_nonconformity.py:65
+quality.alert,sgi_plan_state,Selection,Plan de acción,sí,alta,models/sgi_nonconformity.py:145
+quality.alert,sgi_process_id,Many2one,Proceso detectado,sí,alta,models/sgi_nonconformity.py:92
+quality.alert,sgi_requester_id,Many2one,Solicitante,sí,alta,models/sgi_nonconformity.py:88
+quality.alert,sgi_requester_job,Char,Cargo del solicitante,sí,media,models/sgi_nonconformity.py:89
+quality.alert,sgi_required_capa,Boolean,¿Requirió acción correctiva?,sí,alta,models/sgi_nonconformity.py:116
+quality.alert,sgi_responsible_ids,Many2many,Responsables a contestar,sí,alta,models/sgi_nonconformity.py:93
+quality.alert,sgi_risk_ids,Many2many,Riesgos ligados,sí,alta,models/sgi_nonconformity.py:159
+quality.alert,sgi_root_cause,Text,Causa raíz,sí,media,models/sgi_nonconformity.py:101
+quality.alert,sgi_root_cause_state,Selection,Causa raíz (plazo),sí,alta,models/sgi_nonconformity.py:143
+quality.alert,sgi_stage_is_cancel,Boolean,,sí,alta,models/sgi_nonconformity.py:64
+quality.alert,sgi_stage_is_closing,Boolean,,sí,alta,models/sgi_nonconformity.py:63
+quality.alert,sgi_supplier_action,Text,Acción según el proveedor,sí,media,models/sgi_supplier_nc.py:33
+quality.alert,sgi_supplier_cause,Text,Causa según el proveedor,sí,media,models/sgi_supplier_nc.py:32
+quality.alert,sgi_supplier_due_date,Date,Respuesta antes del,sí,alta,models/sgi_supplier_nc.py:30
+quality.alert,sgi_supplier_id,Many2one,Proveedor,sí,alta,models/sgi_supplier_nc.py:21
+quality.alert,sgi_supplier_overdue,Boolean,,sí,alta,models/sgi_supplier_nc.py:34
+quality.alert,sgi_supplier_response_date,Datetime,Contestada el,sí,alta,models/sgi_supplier_nc.py:31
+quality.alert,sgi_supplier_sent_date,Date,Enviada el,sí,alta,models/sgi_supplier_nc.py:29
+quality.alert,sgi_supplier_state,Selection,Respuesta del proveedor,sí,alta,models/sgi_supplier_nc.py:24
+quality.alert,sgi_verified_by,Many2one,Verificó,sí,alta,models/sgi_nonconformity.py:122
+quality.alert,sgi_verified_date,Date,Fecha de verificación,sí,alta,models/sgi_nonconformity.py:123
+quality.alert,sgi_why_1,Char,¿Por qué? 1,sí,media,models/sgi_nonconformity.py:96
+quality.alert,sgi_why_2,Char,¿Por qué? 2,sí,media,models/sgi_nonconformity.py:97
+quality.alert,sgi_why_3,Char,¿Por qué? 3,sí,media,models/sgi_nonconformity.py:98
+quality.alert,sgi_why_4,Char,¿Por qué? 4,sí,media,models/sgi_nonconformity.py:99
+quality.alert,sgi_why_5,Char,¿Por qué? 5,sí,media,models/sgi_nonconformity.py:100
+quality.alert.stage,sgi_is_cancel_stage,Boolean,Etapa de cancelación SGI,no,baja,models/sgi_nonconformity.py:42
+quality.alert.stage,sgi_is_closing_stage,Boolean,Etapa de cierre SGI,no,baja,models/sgi_nonconformity.py:41
+quality.point,sgi_control_plan_id,Many2one,Plan de control,sí,alta,models/sgi_control_plan.py:11
+quality.point,sgi_reaction_plan,Text,Plan de reacción,sí,media,models/sgi_control_plan.py:48
+quality.point,sgi_replaced_document_count,Integer,# Formatos sustituidos,sí,baja,models/sgi_control_plan.py:18
+quality.point,sgi_replaced_document_ids,One2many,Formatos que sustituye,no,baja,models/sgi_control_plan.py:15
+res.config.settings,sgi_doc_ack_pending_days,Integer,Días para reclamar un acuse pendiente,sí,alta,models/sgi_settings.py:51
+res.config.settings,sgi_doc_pilot_notice_days,Integer,Aviso de piloto por vencer (días),sí,alta,models/sgi_settings.py:48
+res.config.settings,sgi_doc_review_notice_days,Integer,Primer aviso de revisión documental (días),sí,alta,models/sgi_settings.py:42
+res.config.settings,sgi_doc_review_notice_days_final,Integer,Segundo aviso de revisión documental (días),sí,alta,models/sgi_settings.py:45
+res.config.settings,sgi_fmea_npr_action,Integer,NPR que exige acción en el AMEF,sí,alta,models/sgi_settings.py:69
+res.config.settings,sgi_nc_days_containment,Integer,Plazo de contención de una NC (días hábiles),sí,alta,models/sgi_settings.py:24
+res.config.settings,sgi_nc_days_plan,Integer,Plazo del plan de acción de una NC (días hábiles),sí,alta,models/sgi_settings.py:30
+res.config.settings,sgi_nc_days_root_cause,Integer,Plazo de causa raíz de una NC (días hábiles),sí,alta,models/sgi_settings.py:27
+res.config.settings,sgi_nc_days_supplier_response,Integer,Días hábiles para que el proveedor conteste una NC (portal),sí,alta,models/sgi_settings.py:36
+res.config.settings,sgi_nc_effectiveness_days,Integer,Días para verificar la eficacia tras la última correctiva,sí,alta,models/sgi_settings.py:39
+res.config.settings,sgi_nc_escalation_mast_days,Integer,Días vencido un plazo de NC antes de escalar a MAST,sí,alta,models/sgi_settings.py:33
+res.config.settings,sgi_risk_ryo_inmediata,Integer,RyO: puntaje para atención Inmediata,sí,alta,models/sgi_settings.py:72
+res.config.settings,sgi_risk_ryo_intermedia,Integer,RyO: puntaje para atención Intermedia,sí,alta,models/sgi_settings.py:78
+res.config.settings,sgi_risk_ryo_media,Integer,RyO: puntaje para atención Media,sí,alta,models/sgi_settings.py:75
+res.config.settings,sgi_supplier_nc_penalty,Float,Puntos que descuenta cada NC al proveedor,sí,alta,models/sgi_settings.py:88
+res.config.settings,sgi_supplier_weight_quality,Float,Peso de calidad,sí,alta,models/sgi_settings.py:85
+res.partner,sgi_complaint_count,Integer,# Reclamaciones,sí,baja,models/sgi_integration.py:303
+res.partner,sgi_eval_count,Integer,# Evaluaciones,sí,baja,models/sgi_supplier_eval.py:43
+res.partner,sgi_eval_ids,One2many,Evaluaciones SGI,sí,media,models/sgi_supplier_eval.py:42
+res.partner,sgi_last_eval_date,Date,Última evaluación,sí,alta,models/sgi_supplier_eval.py:41
+res.partner,sgi_nc_count,Integer,# NC,sí,baja,models/sgi_integration.py:304
+res.partner,sgi_ppap_count,Integer,PPAP,sí,baja,models/sgi_ppap.py:173
+res.partner,sgi_supplier_approved_by,Many2one,Aprobado por,sí,alta,models/sgi_supplier_eval.py:32
+res.partner,sgi_supplier_approved_date,Date,Fecha de aprobación,sí,alta,models/sgi_supplier_eval.py:34
+res.partner,sgi_supplier_score,Float,Calificación SGI,sí,alta,models/sgi_supplier_eval.py:40
+res.partner,sgi_supplier_status,Selection,Aprobación SGI (8.4.1),sí,alta,models/sgi_supplier_eval.py:27
+sale.order,commitment_date,Datetime,,no,baja,models/sgi_sale_commitment.py:17
+sale.order,sgi_coa_attachment_count,Integer,# COA,sí,baja,models/sgi_coa.py:217
+sgi.action.line,action_type,Selection,Tipo,sí,alta,models/sgi_nonconformity.py:667
+sgi.action.line,activity_id,Many2one,Actividad,no,baja,models/sgi_nonconformity.py:688
+sgi.action.line,alert_id,Many2one,No Conformidad,sí,alta,models/sgi_nonconformity.py:658
+sgi.action.line,date_commit,Date,Compromiso,sí,alta,models/sgi_nonconformity.py:675
+sgi.action.line,date_done,Date,Terminada el,sí,alta,models/sgi_nonconformity.py:676
+sgi.action.line,drill_id,Many2one,Simulacro,sí,alta,models/sgi_nonconformity.py:663
+sgi.action.line,fmea_line_id,Many2one,Modo de falla (AMEF),sí,alta,models/sgi_nonconformity.py:660
+sgi.action.line,incident_id,Many2one,Incidente SST,sí,alta,models/sgi_nonconformity.py:662
+sgi.action.line,name,Char,Descripción,sí,baja,models/sgi_nonconformity.py:673
+sgi.action.line,origin_display,Char,Origen,sí,media,models/sgi_nonconformity.py:690
+sgi.action.line,progress,Selection,Avance,sí,alta,models/sgi_nonconformity.py:677
+sgi.action.line,responsible_id,Many2one,Responsable,sí,alta,models/sgi_nonconformity.py:674
+sgi.action.line,review_id,Many2one,Revisión por la Dirección,no,baja,models/sgi_management_review.py:430
+sgi.action.line,risk_id,Many2one,Riesgo / Oportunidad,sí,alta,models/sgi_nonconformity.py:659
+sgi.action.line,state,Selection,Estado,sí,alta,models/sgi_nonconformity.py:682
+sgi.activity.change,activity_id,Many2one,Actividad,sí,alta,models/sgi_mp_change.py:171
+sgi.activity.change,allowed_process_ids,Many2many,Procesos del puesto,sí,alta,models/sgi_mp_change.py:193
+sgi.activity.change,attachment,Binary,Adjunto,sí,media,models/sgi_mp_change.py:199
+sgi.activity.change,attachment_name,Char,Nombre del adjunto,sí,media,models/sgi_mp_change.py:200
+sgi.activity.change,change_type,Selection,Qué propones,sí,alta,models/sgi_mp_change.py:170
+sgi.activity.change,check_against,Char,Contra qué se compara,sí,media,models/sgi_mp_change.py:223
+sgi.activity.change,description,Text,Descripción,sí,media,models/sgi_mp_change.py:204
+sgi.activity.change,diff_html,Html,Qué cambia,sí,media,models/sgi_mp_change.py:227
+sgi.activity.change,diff_snapshot,Html,Cambio enviado,no,baja,models/sgi_mp_change.py:230
+sgi.activity.change,display_title,Char,,no,baja,models/sgi_mp_change.py:201
+sgi.activity.change,done_criteria,Text,Criterio de terminado,sí,media,models/sgi_mp_change.py:224
+sgi.activity.change,due_business_day,Integer,Vence el día hábil (mensual),sí,alta,models/sgi_mp_change.py:216
+sgi.activity.change,due_day,Integer,Vence el día,sí,alta,models/sgi_mp_change.py:218
+sgi.activity.change,due_month,Selection,Vence en el mes,sí,alta,models/sgi_mp_change.py:217
+sgi.activity.change,due_weekday,Selection,Vence el (semanal),sí,alta,models/sgi_mp_change.py:215
+sgi.activity.change,exec_channel,Selection,Dónde se hace,sí,alta,models/sgi_mp_change.py:219
+sgi.activity.change,external_system,Char,Sistema externo,sí,media,models/sgi_mp_change.py:221
+sgi.activity.change,format_document_ids,Many2many,Formatos referenciados,sí,alta,models/sgi_mp_change.py:208
+sgi.activity.change,how_steps,Text,Cómo (pasos),sí,media,models/sgi_mp_change.py:205
+sgi.activity.change,instruction_id,Many2one,Instructivo,sí,alta,models/sgi_mp_change.py:206
+sgi.activity.change,job_id,Many2one,Puesto de quien propone,sí,alta,models/sgi_mp_change.py:196
+sgi.activity.change,measure_cadence,Selection,Cadencia esperada,sí,alta,models/sgi_mp_change.py:214
+sgi.activity.change,name,Char,Resumen,sí,baja,models/sgi_mp_change.py:203
+sgi.activity.change,odoo_menu_id,Many2one,Menú de Odoo,sí,alta,models/sgi_mp_change.py:220
+sgi.activity.change,on_fail,Text,Si no se puede cumplir,sí,media,models/sgi_mp_change.py:225
+sgi.activity.change,place_note,Char,Lugar,sí,media,models/sgi_mp_change.py:222
+sgi.activity.change,process_id,Many2one,Proceso,sí,alta,models/sgi_mp_change.py:192
+sgi.activity.change,reason,Text,Por qué,sí,media,models/sgi_mp_change.py:198
+sgi.activity.change,related_procedure_id,Many2one,Procedimiento relacionado,sí,alta,models/sgi_mp_change.py:211
+sgi.activity.change,request_id,Many2one,Solicitud,no,baja,models/sgi_mp_change.py:197
+sgi.activity.change,role_line_ids,One2many,Quién la hace,sí,media,models/sgi_mp_change.py:226
+sgi.activity.change,state,Selection,Estado,sí,alta,models/sgi_mp_change.py:165
+sgi.activity.change.role,after_days,Integer,Escala a los (días hábiles),no,baja,models/sgi_mp_change.py:538
+sgi.activity.change.role,change_id,Many2one,,no,baja,models/sgi_mp_change.py:516
+sgi.activity.change.role,condition,Char,Condición,no,baja,models/sgi_mp_change.py:539
+sgi.activity.change.role,family_id,Many2one,Familia de puestos,no,baja,models/sgi_mp_change.py:536
+sgi.activity.change.role,job_id,Many2one,Puesto,no,baja,models/sgi_mp_change.py:535
+sgi.activity.change.role,relative_role,Selection,Rol relativo,no,baja,models/sgi_mp_change.py:537
+sgi.activity.change.role,role,Selection,Rol,no,baja,models/sgi_mp_change.py:532
+sgi.activity.change.role,sequence,Integer,,no,baja,models/sgi_mp_change.py:517
+sgi.activity.change.role,target_type,Selection,Asignado a,no,baja,models/sgi_mp_change.py:533
+sgi.activity.exec.stat,activity_id,Many2one,Actividad,sí,alta,models/sgi_exec_stat.py:26
+sgi.activity.exec.stat,company_id,Many2one,Empresa,sí,baja,models/sgi_exec_stat.py:50
+sgi.activity.exec.stat,count,Integer,Ejecuciones,sí,alta,models/sgi_exec_stat.py:49
+sgi.activity.exec.stat,department_id,Many2one,Departamento,sí,alta,models/sgi_business_line.py:244
+sgi.activity.exec.stat,family_id,Many2one,Familia,sí,alta,models/sgi_exec_stat.py:43
+sgi.activity.exec.stat,process_id,Many2one,Proceso,sí,alta,models/sgi_exec_stat.py:29
+sgi.activity.exec.stat,sale_team_ids,Many2many,Aplica a (equipo de ventas),sí,alta,models/sgi_business_line.py:246
+sgi.activity.exec.stat,team_filter_id,Many2one,Equipo (con las generales),sí,alta,models/sgi_business_line.py:249
+sgi.activity.exec.stat,user_id,Many2one,Usuario,sí,alta,models/sgi_exec_stat.py:35
+sgi.activity.input,activity_id,Many2one,Actividad,no,baja,models/sgi_deliverable.py:329
+sgi.activity.input,company_id,Many2one,Empresa,no,baja,models/sgi_deliverable.py:340
+sgi.activity.input,deliverable_id,Many2one,Entregable,no,baja,models/sgi_deliverable.py:331
+sgi.activity.input,process_id,Many2one,Proceso,no,baja,models/sgi_deliverable.py:339
+sgi.activity.input,sequence,Integer,,no,baja,models/sgi_deliverable.py:333
+sgi.activity.link,atorado_since,Datetime,Atorado desde,no,baja,models/sgi_process_procedure.py:1453
+sgi.activity.link,company_id,Many2one,Empresa,no,baja,models/sgi_process_procedure.py:1434
+sgi.activity.link,from_activity_id,Many2one,Actividad origen,sí,alta,models/sgi_process_procedure.py:1418
+sgi.activity.link,from_process_id,Many2one,Proceso origen,sí,alta,models/sgi_process_procedure.py:1428
+sgi.activity.link,input_id,Many2one,Renglón «recibe»,no,baja,models/sgi_deliverable.py:514
+sgi.activity.link,is_cross_process,Boolean,Cruza procesos,sí,alta,models/sgi_process_procedure.py:1437
+sgi.activity.link,max_days,Integer,Plazo (días hábiles),sí,alta,models/sgi_deliverable.py:517
+sgi.activity.link,nc_alert_id,Many2one,NC generada,sí,alta,models/sgi_process_procedure.py:1454
+sgi.activity.link,to_activity_id,Many2one,Actividad destino,sí,alta,models/sgi_process_procedure.py:1421
+sgi.activity.link,to_process_id,Many2one,Proceso destino,sí,alta,models/sgi_process_procedure.py:1431
+sgi.activity.role,activity_active,Boolean,Actividad activa,no,baja,models/sgi_my_procedure.py:75
+sgi.activity.role,activity_id,Many2one,Actividad,sí,alta,models/sgi_catalog.py:119
+sgi.activity.role,activity_menu_id,Many2one,Menú de Odoo,sí,alta,models/sgi_my_procedure.py:77
+sgi.activity.role,activity_when,Char,Cuándo,sí,media,models/sgi_my_procedure.py:79
+sgi.activity.role,approval_domain,Char,Condición en Odoo,no,baja,models/sgi_approval_native.py:107
+sgi.activity.role,approval_entry_count,Integer,Aprobaciones dadas,sí,baja,models/sgi_approval_native.py:114
+sgi.activity.role,approval_last_date,Datetime,Última aprobación,sí,alta,models/sgi_approval_native.py:115
+sgi.activity.role,approval_model_name,Char,Modelo técnico,no,baja,models/sgi_approval_native.py:96
+sgi.activity.role,approval_rule_id,Many2one,Regla nativa,sí,alta,models/sgi_approval_native.py:108
+sgi.activity.role,approval_sign_template_id,Many2one,Plantilla de Sign,sí,alta,models/sgi_approval_native.py:84
+sgi.activity.role,approval_state,Selection,Aprobación en Odoo,sí,alta,models/sgi_approval_native.py:112
+sgi.activity.role,approval_user_ids,Many2many,Personas que aprueban,sí,alta,models/sgi_approval_native.py:110
+sgi.activity.role,cadence,Selection,Cadencia,sí,alta,models/sgi_my_procedure.py:73
+sgi.activity.role,company_id,Many2one,Empresa,sí,baja,models/sgi_catalog.py:151
+sgi.activity.role,condition_operator,Selection,Operador,sí,alta,models/sgi_approval_native.py:105
+sgi.activity.role,family_id,Many2one,Familia de puestos,sí,alta,models/sgi_catalog.py:130
+sgi.activity.role,job_id,Many2one,Puesto,sí,alta,models/sgi_catalog.py:128
+sgi.activity.role,mp_can_go,Boolean,Se puede ir a hacer,sí,alta,models/sgi_my_procedure_screen.py:305
+sgi.activity.role,mp_check_against,Char,Contra qué se revisa,sí,media,models/sgi_my_procedure_screen.py:294
+sgi.activity.role,mp_done,Text,Terminada cuando,sí,media,models/sgi_my_procedure_screen.py:295
+sgi.activity.role,mp_escalates,Char,"Si se atora, escala a",sí,media,models/sgi_my_procedure_screen.py:300
+sgi.activity.role,mp_external,Char,Se hace en,sí,media,models/sgi_my_procedure_screen.py:302
+sgi.activity.role,mp_how,Text,Cómo,sí,media,models/sgi_my_procedure_screen.py:292
+sgi.activity.role,mp_inputs,Char,Recibe,sí,media,models/sgi_my_procedure_screen.py:297
+sgi.activity.role,mp_instruction_id,Many2one,Instructivo,sí,alta,models/sgi_my_procedure_screen.py:303
+sgi.activity.role,mp_name,Char,Nombre de la actividad,sí,media,models/sgi_my_procedure_screen.py:291
+sgi.activity.role,mp_norms,Char,Cumple con,sí,media,models/sgi_my_procedure_screen.py:301
+sgi.activity.role,mp_number,Char,Numeral,sí,media,models/sgi_my_procedure_screen.py:290
+sgi.activity.role,mp_on_fail,Text,Si no se puede,sí,media,models/sgi_my_procedure_screen.py:296
+sgi.activity.role,mp_outputs,Char,Entrega,sí,media,models/sgi_my_procedure_screen.py:298
+sgi.activity.role,mp_related,Char,Conforme a,sí,media,models/sgi_my_procedure_screen.py:299
+sgi.activity.role,mp_status,Selection,Estado,sí,alta,models/sgi_my_procedure_screen.py:288
+sgi.activity.role,mp_status_detail,Char,Detalle del estado,sí,media,models/sgi_my_procedure_screen.py:289
+sgi.activity.role,mp_where,Char,Dónde,sí,media,models/sgi_my_procedure_screen.py:293
+sgi.activity.role,process_id,Many2one,Proceso,sí,alta,models/sgi_catalog.py:148
+sgi.activity.role,role,Selection,Rol,sí,alta,models/sgi_catalog.py:122
+sgi.activity.role,sequence,Integer,Secuencia,sí,baja,models/sgi_catalog.py:147
+sgi.activity.role,target_type,Selection,Asignado a,sí,alta,models/sgi_catalog.py:126
+sgi.activity.spec.gap,activity_id,Many2one,Actividad,sí,alta,models/sgi_activity_spec.py:122
+sgi.activity.spec.gap,code,Selection,Faltante,sí,alta,models/sgi_activity_spec.py:127
+sgi.activity.spec.gap,company_id,Many2one,Empresa,sí,baja,models/sgi_activity_spec.py:133
+sgi.activity.spec.gap,message,Char,Detalle,sí,media,models/sgi_activity_spec.py:132
+sgi.activity.spec.gap,process_id,Many2one,Proceso,sí,alta,models/sgi_activity_spec.py:125
+sgi.activity.spec.gap,severity,Selection,Severidad,sí,alta,models/sgi_activity_spec.py:128
+sgi.activity.week.stat,activity_id,Many2one,Actividad,sí,alta,models/sgi_activity_spec.py:851
+sgi.activity.week.stat,applicable_count,Integer,Aplicables,sí,baja,models/sgi_activity_spec.py:859
+sgi.activity.week.stat,company_id,Many2one,Empresa,no,baja,models/sgi_activity_spec.py:875
+sgi.activity.week.stat,complete_count,Integer,Completas,sí,baja,models/sgi_activity_spec.py:861
+sgi.activity.week.stat,completeness_rate,Float,% completas,sí,alta,models/sgi_activity_spec.py:869
+sgi.activity.week.stat,done_count,Integer,Hechas,sí,baja,models/sgi_activity_spec.py:860
+sgi.activity.week.stat,exec_channel,Selection,Canal,sí,alta,models/sgi_activity_spec.py:856
+sgi.activity.week.stat,on_time_count,Integer,A tiempo,sí,baja,models/sgi_activity_spec.py:865
+sgi.activity.week.stat,on_time_rate,Float,% a tiempo,sí,alta,models/sgi_activity_spec.py:872
+sgi.activity.week.stat,period_start,Date,Semana,sí,alta,models/sgi_activity_spec.py:858
+sgi.activity.week.stat,process_id,Many2one,Proceso,sí,alta,models/sgi_activity_spec.py:854
+sgi.acuse.attach.wizard,file,Binary,Acuse firmado,sí,media,models/sgi_links.py:235
+sgi.acuse.attach.wizard,file_name,Char,Nombre del archivo,sí,media,models/sgi_links.py:236
+sgi.acuse.attach.wizard,note,Char,Nota,sí,media,models/sgi_links.py:237
+sgi.acuse.attach.wizard,picking_id,Many2one,,sí,alta,models/sgi_links.py:234
+sgi.alert.source,alert_count,Integer,# NC generadas,sí,baja,models/sgi_alert_source.py:50
+sgi.alert.source,last_suppressed_on,Datetime,Última omisión,sí,alta,models/sgi_alert_source.py:55
+sgi.alert.source,name,Char,Fuente,sí,baja,models/sgi_alert_source.py:30
+sgi.alert.source,origin_module,Char,Módulo,sí,media,models/sgi_alert_source.py:48
+sgi.alert.source,sequence,Integer,,sí,baja,models/sgi_alert_source.py:31
+sgi.area,active,Boolean,,sí,baja,models/sgi_area.py:13
+sgi.area,code,Char,Clave,sí,media,models/sgi_area.py:10
+sgi.area,department_id,Many2one,Departamento,sí,alta,models/sgi_area.py:12
+sgi.area,name,Char,Nombre,sí,baja,models/sgi_area.py:11
+sgi.audit,audit_type,Selection,Tipo,sí,alta,models/sgi_audit.py:180
+sgi.audit,auditee_ids,Many2many,Auditados,sí,alta,models/sgi_audit.py:197
+sgi.audit,auditor_ids,Many2many,Equipo auditor,sí,alta,models/sgi_audit.py:195
+sgi.audit,checklist_answered_count,Integer,,sí,baja,models/sgi_audit.py:229
+sgi.audit,checklist_count,Integer,,sí,baja,models/sgi_audit.py:228
+sgi.audit,checklist_line_ids,One2many,Checklist,sí,media,models/sgi_audit.py:226
+sgi.audit,checklist_nonconforming_count,Integer,,no,baja,models/sgi_audit.py:230
+sgi.audit,conclusion,Text,Conclusión,sí,media,models/sgi_audit.py:205
+sgi.audit,date_end,Date,Fin real,sí,alta,models/sgi_audit.py:201
+sgi.audit,date_planned,Date,Fecha planificada,sí,alta,models/sgi_audit.py:199
+sgi.audit,date_start,Date,Inicio real,sí,alta,models/sgi_audit.py:200
+sgi.audit,finding_count,Integer,# Hallazgos,sí,baja,models/sgi_audit.py:224
+sgi.audit,finding_ids,One2many,Hallazgos,sí,media,models/sgi_audit.py:223
+sgi.audit,lead_auditor_id,Many2one,Auditor líder,sí,alta,models/sgi_audit.py:194
+sgi.audit,name,Char,Nombre,sí,baja,models/sgi_audit.py:178
+sgi.audit,norm_ids,Many2many,Normas,sí,alta,models/sgi_audit.py:192
+sgi.audit,partner_id,Many2one,Cliente / proveedor,sí,alta,models/sgi_audit.py:189
+sgi.audit,process_ids,Many2many,Procesos auditados,sí,alta,models/sgi_audit.py:193
+sgi.audit,program_line_id,Many2one,Línea de programa,sí,alta,models/sgi_audit.py:179
+sgi.audit,report_document_id,Many2one,Informe archivado,sí,alta,models/sgi_audit.py:232
+sgi.audit,state,Selection,Estado,sí,alta,models/sgi_audit.py:216
+sgi.audit,survey_id,Many2one,Checklist (encuesta),sí,alta,models/sgi_audit.py:202
+sgi.audit,survey_input_ids,Many2many,Respuestas del checklist,sí,alta,models/sgi_audit.py:203
+sgi.audit.checklist.line,activity_id,Many2one,Actividad,no,baja,models/sgi_audit.py:623
+sgi.audit.checklist.line,activity_id,Many2one,,no,baja,models/sgi_norm_compliance.py:167
+sgi.audit.checklist.line,answer,Selection,Respuesta,no,baja,models/sgi_audit.py:630
+sgi.audit.checklist.line,audit_id,Many2one,Auditoría,no,baja,models/sgi_audit.py:620
+sgi.audit.checklist.line,audit_state,Selection,,no,baja,models/sgi_audit.py:638
+sgi.audit.checklist.line,can_open_records,Boolean,,no,baja,models/sgi_audit.py:629
+sgi.audit.checklist.line,deliverables,Char,Entregable,no,baja,models/sgi_audit.py:628
+sgi.audit.checklist.line,executor,Char,Quién la ejecuta,no,baja,models/sgi_audit.py:627
+sgi.audit.checklist.line,finding_id,Many2one,Hallazgo,no,baja,models/sgi_audit.py:637
+sgi.audit.checklist.line,process_id,Many2one,Proceso,no,baja,models/sgi_audit.py:625
+sgi.audit.checklist.line,question,Char,Pregunta,no,baja,models/sgi_audit.py:626
+sgi.audit.checklist.line,sequence,Integer,,no,baja,models/sgi_audit.py:622
+sgi.audit.finding,alert_id,Many2one,No Conformidad,sí,alta,models/sgi_audit.py:556
+sgi.audit.finding,audit_id,Many2one,Auditoría,sí,alta,models/sgi_audit.py:533
+sgi.audit.finding,checklist_line_id,Many2one,Pregunta del checklist,no,baja,models/sgi_audit.py:543
+sgi.audit.finding,description,Text,Descripción,sí,media,models/sgi_audit.py:549
+sgi.audit.finding,disposition,Selection,Disposición,sí,alta,models/sgi_audit.py:551
+sgi.audit.finding,evidence,Text,Evidencia,no,baja,models/sgi_audit.py:550
+sgi.audit.finding,finding_type,Selection,Tipo,sí,alta,models/sgi_audit.py:535
+sgi.audit.finding,norm_clause_id,Many2one,Cláusula,sí,alta,models/sgi_audit.py:542
+sgi.audit.finding,process_id,Many2one,Proceso,sí,alta,models/sgi_audit.py:548
+sgi.audit.finding,reason_no_action,Text,Justificación sin acción,no,baja,models/sgi_audit.py:557
+sgi.audit.finding,survey_line_id,Many2one,Respuesta del checklist,no,baja,models/sgi_audit.py:545
+sgi.audit.program,line_ids,One2many,Líneas,sí,media,models/sgi_audit.py:46
+sgi.audit.program,name,Char,Nombre,sí,baja,models/sgi_audit.py:38
+sgi.audit.program,state,Selection,Estado,sí,alta,models/sgi_audit.py:41
+sgi.audit.program,year,Integer,Año,sí,alta,models/sgi_audit.py:39
+sgi.audit.program.line,audit_id,Many2one,Auditoría,no,baja,models/sgi_audit.py:143
+sgi.audit.program.line,audit_type,Selection,Tipo,no,baja,models/sgi_audit.py:129
+sgi.audit.program.line,lead_auditor_id,Many2one,Auditor líder,no,baja,models/sgi_audit.py:137
+sgi.audit.program.line,norm_ids,Many2many,Normas,no,baja,models/sgi_audit.py:136
+sgi.audit.program.line,partner_id,Many2one,Cliente / proveedor,no,baja,models/sgi_audit.py:135
+sgi.audit.program.line,planned_month,Selection,Mes planificado,no,baja,models/sgi_audit.py:128
+sgi.audit.program.line,process_id,Many2one,Proceso,no,baja,models/sgi_audit.py:127
+sgi.audit.program.line,program_id,Many2one,Programa,no,baja,models/sgi_audit.py:125
+sgi.audit.program.line,state,Selection,Estado,no,baja,models/sgi_audit.py:138
+sgi.base.mixin,folio,Char,Folio,no,baja,models/sgi_base.py:34
+sgi.calculated.connection.mixin,active,Boolean,,no,baja,models/sgi_deliverable.py:438
+sgi.calculated.connection.mixin,origin,Selection,Origen,no,baja,models/sgi_deliverable.py:442
+sgi.calibration,calibration_type,Selection,Tipo,sí,alta,models/sgi_calibration.py:131
+sgi.calibration,certificate_file,Binary,Certificado (PDF),sí,media,models/sgi_calibration.py:139
+sgi.calibration,certificate_filename,Char,Nombre del certificado,sí,media,models/sgi_calibration.py:140
+sgi.calibration,certificate_ref,Char,N° de certificado,sí,media,models/sgi_calibration.py:136
+sgi.calibration,date,Date,Fecha,sí,alta,models/sgi_calibration.py:129
+sgi.calibration,equipment_id,Many2one,Equipo,sí,alta,models/sgi_calibration.py:127
+sgi.calibration,next_date,Date,Próxima calibración,sí,alta,models/sgi_calibration.py:146
+sgi.calibration,notes,Text,Notas,sí,media,models/sgi_calibration.py:145
+sgi.calibration,provider_id,Many2one,Laboratorio / Proveedor,sí,alta,models/sgi_calibration.py:135
+sgi.calibration,result,Selection,Resultado,sí,alta,models/sgi_calibration.py:141
+sgi.calibration,sgi_alert_id,Many2one,NC generada,sí,alta,models/sgi_calibration.py:148
+sgi.catalog.load.wizard,change_count,Integer,,sí,baja,models/sgi_load_wizard.py:39
+sgi.catalog.load.wizard,dry_run_ok,Boolean,,sí,alta,models/sgi_load_wizard.py:34
+sgi.catalog.load.wizard,error_count,Integer,,sí,baja,models/sgi_load_wizard.py:38
+sgi.catalog.load.wizard,line_ids,One2many,Resultado,sí,media,models/sgi_load_wizard.py:36
+sgi.catalog.load.wizard,payload_file,Binary,Archivo JSON,sí,media,models/sgi_load_wizard.py:27
+sgi.catalog.load.wizard,payload_filename,Char,Nombre del archivo,sí,media,models/sgi_load_wizard.py:28
+sgi.catalog.load.wizard,payload_text,Text,JSON,sí,media,models/sgi_load_wizard.py:26
+sgi.catalog.load.wizard,state,Selection,,sí,alta,models/sgi_load_wizard.py:29
+sgi.catalog.load.wizard,summary,Text,Resumen,sí,media,models/sgi_load_wizard.py:35
+sgi.catalog.load.wizard.line,action,Selection,Resultado,no,baja,models/sgi_load_wizard.py:111
+sgi.catalog.load.wizard.line,key,Char,Clave,no,baja,models/sgi_load_wizard.py:110
+sgi.catalog.load.wizard.line,kind,Char,Qué,no,baja,models/sgi_load_wizard.py:109
+sgi.catalog.load.wizard.line,message,Char,Detalle,no,baja,models/sgi_load_wizard.py:112
+sgi.catalog.load.wizard.line,wizard_id,Many2one,,no,baja,models/sgi_load_wizard.py:108
+sgi.checklist.finish,allowed_employee_ids,Many2many,,sí,alta,models/sgi_checklist.py:188
+sgi.checklist.finish,employee_id,Many2one,¿Quién lo llenó?,sí,alta,models/sgi_checklist.py:189
+sgi.checklist.finish,pin,Char,PIN del empleado,sí,media,models/sgi_checklist.py:191
+sgi.checklist.finish,request_id,Many2one,,sí,alta,models/sgi_checklist.py:187
+sgi.checklist.line,answer,Selection,Resultado,no,baja,models/sgi_checklist.py:120
+sgi.checklist.line,corrective_request_id,Many2one,Correctivo,no,baja,models/sgi_checklist.py:122
+sgi.checklist.line,hint,Char,Criterio,no,baja,models/sgi_checklist.py:119
+sgi.checklist.line,name,Char,Qué se revisa,no,baja,models/sgi_checklist.py:118
+sgi.checklist.line,note,Char,Observación,no,baja,models/sgi_checklist.py:121
+sgi.checklist.line,request_id,Many2one,,no,baja,models/sgi_checklist.py:116
+sgi.checklist.line,sequence,Integer,,no,baja,models/sgi_checklist.py:117
+sgi.checklist.template,active,Boolean,,sí,baja,models/sgi_checklist.py:44
+sgi.checklist.template,company_id,Many2one,,no,baja,models/sgi_checklist.py:46
+sgi.checklist.template,equipment_ids,Many2many,Equipos o unidades,sí,alta,models/sgi_checklist.py:36
+sgi.checklist.template,frequency,Selection,Frecuencia,sí,alta,models/sgi_checklist.py:32
+sgi.checklist.template,item_ids,One2many,Puntos a revisar,sí,media,models/sgi_checklist.py:43
+sgi.checklist.template,last_run,Date,Última generación,sí,alta,models/sgi_checklist.py:45
+sgi.checklist.template,maintenance_team_id,Many2one,Equipo de mantenimiento,sí,alta,models/sgi_checklist.py:37
+sgi.checklist.template,name,Char,Checklist,sí,baja,models/sgi_checklist.py:30
+sgi.checklist.template.item,name,Char,Qué se revisa,no,baja,models/sgi_checklist.py:107
+sgi.checklist.template.item,sequence,Integer,,no,baja,models/sgi_checklist.py:106
+sgi.checklist.template.item,template_id,Many2one,,no,baja,models/sgi_checklist.py:105
+sgi.coa.attach.wizard,picking_id,Many2one,Entrega,sí,alta,models/sgi_coa.py:246
+sgi.coa.attach.wizard,recipient_ids,Many2many,Destinatarios,sí,alta,models/sgi_coa.py:250
+sgi.coa.attach.wizard,send,Boolean,Enviar al cliente,sí,alta,models/sgi_coa.py:253
+sgi.coa.exception.wizard,picking_ids,Many2many,Salidas,sí,alta,models/sgi_coa.py:293
+sgi.coa.exception.wizard,reason,Text,Motivo,sí,media,models/sgi_coa.py:294
+sgi.coa.inbox,company_id,Many2one,,no,baja,models/sgi_coa.py:331
+sgi.coa.inbox,email_from,Char,Remitente,sí,media,models/sgi_coa.py:318
+sgi.coa.inbox,name,Char,Asunto,sí,baja,models/sgi_coa.py:317
+sgi.coa.inbox,picking_ids,Many2many,Salidas ligadas,sí,alta,models/sgi_coa.py:323
+sgi.coa.inbox,result,Text,Resultado,sí,media,models/sgi_coa.py:330
+sgi.coa.inbox,state,Selection,Estado,sí,alta,models/sgi_coa.py:319
+sgi.competence.gap,current_level_id,Many2one,Nivel actual,sí,alta,models/sgi_competence.py:44
+sgi.competence.gap,current_progress,Integer,% actual,no,baja,models/sgi_competence.py:46
+sgi.competence.gap,department_id,Many2one,Departamento,sí,alta,models/sgi_competence.py:39
+sgi.competence.gap,employee_id,Many2one,Empleado,sí,alta,models/sgi_competence.py:38
+sgi.competence.gap,gap,Integer,Brecha (%),sí,alta,models/sgi_competence.py:47
+sgi.competence.gap,job_id,Many2one,Puesto,sí,alta,models/sgi_competence.py:40
+sgi.competence.gap,required_level_id,Many2one,Nivel requerido,sí,alta,models/sgi_competence.py:43
+sgi.competence.gap,required_progress,Integer,% requerido,no,baja,models/sgi_competence.py:45
+sgi.competence.gap,skill_id,Many2one,Competencia,sí,alta,models/sgi_competence.py:41
+sgi.competence.gap,skill_type_id,Many2one,Tipo,sí,alta,models/sgi_competence.py:42
+sgi.control.plan,document_id,Many2one,Especificación del cliente,sí,alta,models/sgi_control_plan.py:88
+sgi.control.plan,fmea_count,Integer,# AMEF,sí,baja,models/sgi_control_plan.py:87
+sgi.control.plan,fmea_ids,One2many,AMEF ligados,no,baja,models/sgi_control_plan.py:86
+sgi.control.plan,name,Char,Nombre,sí,baja,models/sgi_control_plan.py:68
+sgi.control.plan,notes,Text,Notas,sí,media,models/sgi_control_plan.py:89
+sgi.control.plan,partner_id,Many2one,Cliente,sí,alta,models/sgi_control_plan.py:69
+sgi.control.plan,phase,Selection,Fase,sí,alta,models/sgi_control_plan.py:72
+sgi.control.plan,point_count,Integer,N° de puntos,sí,baja,models/sgi_control_plan.py:85
+sgi.control.plan,point_ids,One2many,Puntos de control,sí,media,models/sgi_control_plan.py:83
+sgi.control.plan,product_tmpl_ids,Many2many,Productos,sí,alta,models/sgi_control_plan.py:71
+sgi.control.plan,revision,Char,Revisión,sí,media,models/sgi_control_plan.py:77
+sgi.control.plan,state,Selection,Estado,sí,alta,models/sgi_control_plan.py:78
+sgi.csh.finding,alert_id,Many2one,No conformidad,no,baja,models/sgi_hse_records.py:194
+sgi.csh.finding,description,Text,Condición o acto inseguro,no,baja,models/sgi_hse_records.py:182
+sgi.csh.finding,disposition,Selection,Qué se hizo,no,baja,models/sgi_hse_records.py:188
+sgi.csh.finding,inspection_id,Many2one,,no,baja,models/sgi_hse_records.py:180
+sgi.csh.finding,justification,Char,Motivo (sin acción),no,baja,models/sgi_hse_records.py:193
+sgi.csh.finding,location,Char,Lugar,no,baja,models/sgi_hse_records.py:183
+sgi.csh.finding,responsible_id,Many2one,Responsable,no,baja,models/sgi_hse_records.py:187
+sgi.csh.finding,sequence,Integer,,no,baja,models/sgi_hse_records.py:181
+sgi.csh.finding,severity,Selection,Riesgo,no,baja,models/sgi_hse_records.py:184
+sgi.csh.inspection,area,Char,Áreas recorridas,sí,media,models/sgi_hse_records.py:125
+sgi.csh.inspection,attachment_ids,Many2many,Acta firmada (PDF) y fotos,sí,alta,models/sgi_hse_records.py:129
+sgi.csh.inspection,company_id,Many2one,,no,baja,models/sgi_hse_records.py:137
+sgi.csh.inspection,date,Date,Fecha del recorrido,sí,alta,models/sgi_hse_records.py:123
+sgi.csh.inspection,department_ids,Many2many,Departamentos,sí,alta,models/sgi_hse_records.py:126
+sgi.csh.inspection,finding_count,Integer,Número de hallazgos,sí,baja,models/sgi_hse_records.py:131
+sgi.csh.inspection,finding_ids,One2many,Hallazgos,sí,media,models/sgi_hse_records.py:130
+sgi.csh.inspection,name,Char,Folio,sí,baja,models/sgi_hse_records.py:122
+sgi.csh.inspection,nc_count,Integer,NC,sí,baja,models/sgi_hse_records.py:132
+sgi.csh.inspection,notes,Text,Acta / observaciones generales,sí,media,models/sgi_hse_records.py:128
+sgi.csh.inspection,participant_ids,Many2many,Integrantes de la Comisión,sí,alta,models/sgi_hse_records.py:127
+sgi.csh.inspection,state,Selection,Estado,sí,alta,models/sgi_hse_records.py:133
+sgi.deliverable,acceptance_criteria,Text,Criterio de aceptación,sí,media,models/sgi_deliverable.py:114
+sgi.deliverable,active,Boolean,,sí,baja,models/sgi_deliverable.py:115
+sgi.deliverable,company_id,Many2one,Empresa,sí,baja,models/sgi_deliverable.py:116
+sgi.deliverable,consumer_activity_ids,Many2many,Actividades que lo reciben,no,baja,models/sgi_deliverable.py:124
+sgi.deliverable,consumer_process_ids,Many2many,Procesos que lo reciben,sí,alta,models/sgi_deliverable.py:132
+sgi.deliverable,input_line_ids,One2many,Lo reciben,sí,media,models/sgi_deliverable.py:123
+sgi.deliverable,link_ids,One2many,Ligas,no,baja,models/sgi_deliverable.py:128
+sgi.deliverable,measured_activity_ids,One2many,Se miden con él,sí,media,models/sgi_deliverable.py:126
+sgi.deliverable,odoo_model_name,Char,Modelo técnico,sí,media,models/sgi_deliverable.py:100
+sgi.deliverable,producer_activity_ids,Many2many,Lo entregan,sí,alta,models/sgi_deliverable.py:120
+sgi.deliverable,producer_process_ids,Many2many,Procesos que lo entregan,sí,alta,models/sgi_deliverable.py:130
+sgi.dev.characteristic,direction,Selection,Dirección,no,baja,models/sgi_dev_request.py:135
+sgi.dev.characteristic,method,Char,Método / norma,no,baja,models/sgi_dev_request.py:139
+sgi.dev.characteristic,name,Char,Característica,no,baja,models/sgi_dev_request.py:134
+sgi.dev.characteristic,note,Char,Observaciones,no,baja,models/sgi_dev_request.py:140
+sgi.dev.characteristic,project_id,Many2one,,no,baja,models/sgi_dev_request.py:132
+sgi.dev.characteristic,sequence,Integer,,no,baja,models/sgi_dev_request.py:133
+sgi.dev.characteristic,tolerance,Char,Tolerancia,no,baja,models/sgi_dev_request.py:138
+sgi.dev.characteristic,unit,Char,Unidad,no,baja,models/sgi_dev_request.py:136
+sgi.dev.characteristic,value,Char,Valor pedido,no,baja,models/sgi_dev_request.py:137
+sgi.diagnostic,bad_count,Integer,Fallas,no,baja,models/sgi_diagnostic.py:43
+sgi.diagnostic,date,Date,Fecha,no,baja,models/sgi_diagnostic.py:41
+sgi.diagnostic,line_ids,One2many,Hallazgos,no,baja,models/sgi_diagnostic.py:42
+sgi.diagnostic,ok_count,Integer,En orden,no,baja,models/sgi_diagnostic.py:45
+sgi.diagnostic,summary,Text,Resumen,no,baja,models/sgi_diagnostic.py:46
+sgi.diagnostic,warn_count,Integer,Avisos,no,baja,models/sgi_diagnostic.py:44
+sgi.diagnostic.line,diagnostic_id,Many2one,Diagnóstico,sí,alta,models/sgi_diagnostic.py:28
+sgi.diagnostic.line,fix,Char,Dónde se arregla,sí,media,models/sgi_diagnostic.py:34
+sgi.diagnostic.line,level,Selection,Nivel,sí,alta,models/sgi_diagnostic.py:32
+sgi.diagnostic.line,section,Char,Sección,sí,media,models/sgi_diagnostic.py:31
+sgi.diagnostic.line,sequence,Integer,,sí,baja,models/sgi_diagnostic.py:30
+sgi.diagnostic.line,text,Text,Hallazgo,sí,media,models/sgi_diagnostic.py:33
+sgi.direction.board,date,Date,Fecha,sí,alta,models/sgi_direction_board.py:58
+sgi.direction.board,delayed_process_ids,Many2many,Procesos con más atrasos,sí,alta,models/sgi_direction_board.py:65
+sgi.direction.board,indicator_count,Integer,,sí,baja,models/sgi_direction_board.py:67
+sgi.direction.board,indicator_ids,Many2many,Indicadores de dirección,sí,alta,models/sgi_direction_board.py:60
+sgi.direction.board,indicator_note,Char,Nota de indicadores,sí,media,models/sgi_direction_board.py:68
+sgi.direction.board,objective_ids,Many2many,Objetivos integrales,sí,alta,models/sgi_direction_board.py:59
+sgi.direction.board,overdue_agreement_ids,Many2many,Acuerdos de la RxD vencidos,sí,alta,models/sgi_direction_board.py:63
+sgi.direction.board,red_count,Integer,,sí,baja,models/sgi_direction_board.py:69
+sgi.direction.board,red_no_plan_measure_ids,Many2many,Rojos sin causa ni plan,sí,alta,models/sgi_direction_board.py:61
+sgi.document.ack,ack_date,Datetime,Fecha de acuse,sí,alta,models/sgi_document.py:768
+sgi.document.ack,document_id,Many2one,Documento,sí,alta,models/sgi_document.py:760
+sgi.document.ack,employee_id,Many2one,Empleado,sí,alta,models/sgi_document.py:762
+sgi.document.ack,sgi_code,Char,Clave,sí,media,models/sgi_document.py:761
+sgi.document.ack,sign_request_id,Many2one,Solicitud de firma,no,baja,models/sgi_sign_elearning.py:120
+sgi.document.ack,sign_state,Selection,Firma electrónica,no,baja,models/sgi_sign_elearning.py:125
+sgi.document.ack,state,Selection,Estado,sí,alta,models/sgi_document.py:764
+sgi.document.ack,user_id,Many2one,Usuario,no,baja,models/sgi_document.py:763
+sgi.document.type,active,Boolean,,sí,baja,models/sgi_catalog.py:579
+sgi.document.type,name,Char,Nombre,sí,baja,models/sgi_catalog.py:577
+sgi.document.type,sequence,Integer,,sí,baja,models/sgi_catalog.py:578
+sgi.emergency.drill,action_line_ids,One2many,Acciones,sí,media,models/sgi_emergency.py:134
+sgi.emergency.drill,date_done,Date,Fecha realizada,sí,alta,models/sgi_emergency.py:125
+sgi.emergency.drill,date_planned,Date,Fecha programada,sí,alta,models/sgi_emergency.py:123
+sgi.emergency.drill,duration_minutes,Integer,Duración (min),sí,alta,models/sgi_emergency.py:127
+sgi.emergency.drill,findings,Text,Hallazgos / observaciones,sí,media,models/sgi_emergency.py:133
+sgi.emergency.drill,participants_count,Integer,Participantes,sí,baja,models/sgi_emergency.py:126
+sgi.emergency.drill,plan_id,Many2one,Plan de emergencia,sí,alta,models/sgi_emergency.py:120
+sgi.emergency.drill,plan_type,Selection,,sí,alta,models/sgi_emergency.py:122
+sgi.emergency.drill,result,Selection,Resultado,sí,alta,models/sgi_emergency.py:128
+sgi.emergency.drill,state,Selection,Estado,sí,alta,models/sgi_emergency.py:136
+sgi.emergency.plan,document_id,Many2one,Plan documentado,sí,alta,models/sgi_emergency.py:35
+sgi.emergency.plan,drill_count,Integer,# Simulacros,sí,baja,models/sgi_emergency.py:51
+sgi.emergency.plan,drill_frequency_months,Integer,Frecuencia de simulacro (meses),sí,alta,models/sgi_emergency.py:39
+sgi.emergency.plan,drill_ids,One2many,Simulacros,no,baja,models/sgi_emergency.py:46
+sgi.emergency.plan,last_drill_date,Date,Último simulacro,sí,alta,models/sgi_emergency.py:52
+sgi.emergency.plan,location,Char,Ubicación / zona,sí,media,models/sgi_emergency.py:32
+sgi.emergency.plan,name,Char,Escenario de emergencia,sí,baja,models/sgi_emergency.py:22
+sgi.emergency.plan,next_drill_date,Date,Próximo simulacro,sí,alta,models/sgi_emergency.py:54
+sgi.emergency.plan,plan_type,Selection,Tipo,sí,alta,models/sgi_emergency.py:23
+sgi.emergency.plan,responsible_id,Many2one,Responsable (brigada),sí,alta,models/sgi_emergency.py:33
+sgi.emergency.plan,risk_ids,Many2many,Riesgos ligados (IPER/ambiental),sí,alta,models/sgi_emergency.py:37
+sgi.emergency.plan,state,Selection,Estado,sí,alta,models/sgi_emergency.py:41
+sgi.epp.delivery,can_sign,Boolean,,sí,alta,models/sgi_epp.py:41
+sgi.epp.delivery,date,Date,Fecha de entrega,sí,alta,models/sgi_epp.py:29
+sgi.epp.delivery,delivered_by_id,Many2one,Entregó,sí,alta,models/sgi_epp.py:33
+sgi.epp.delivery,employee_id,Many2one,Empleado,sí,alta,models/sgi_epp.py:22
+sgi.epp.delivery,items,Text,,sí,media,models/sgi_epp_sign.py:38
+sgi.epp.delivery,job_id,Many2one,Puesto al entregar,sí,alta,models/sgi_epp.py:27
+sgi.epp.delivery,line_ids,One2many,Renglones de EPP,sí,media,models/sgi_epp_sign.py:37
+sgi.epp.delivery,name,Char,Folio,sí,baja,models/sgi_epp.py:21
+sgi.epp.delivery,note,Text,Observaciones,sí,media,models/sgi_epp.py:35
+sgi.epp.delivery,sign_request_id,Many2one,Solicitud de firma (Sign),sí,alta,models/sgi_epp_sign.py:39
+sgi.epp.delivery,sign_state,Selection,Firma electrónica,sí,alta,models/sgi_epp_sign.py:41
+sgi.epp.delivery,signed_date,Datetime,Firmada el,sí,alta,models/sgi_epp.py:40
+sgi.epp.delivery,state,Selection,Estado,sí,alta,models/sgi_epp.py:36
+sgi.epp.delivery,user_id,Many2one,Usuario,no,baja,models/sgi_epp.py:26
+sgi.epp.delivery.line,delivery_id,Many2one,,no,baja,models/sgi_epp_sign.py:25
+sgi.epp.delivery.line,name,Char,Artículo,no,baja,models/sgi_epp_sign.py:29
+sgi.epp.delivery.line,note,Char,Observaciones,no,baja,models/sgi_epp_sign.py:31
+sgi.epp.delivery.line,quantity,Float,Cantidad,no,baja,models/sgi_epp_sign.py:27
+sgi.epp.delivery.line,sequence,Integer,,no,baja,models/sgi_epp_sign.py:26
+sgi.epp.delivery.line,size,Char,Talla,no,baja,models/sgi_epp_sign.py:30
+sgi.epp.delivery.line,uom,Selection,Unidad,no,baja,models/sgi_epp_sign.py:28
+sgi.fmea,date,Date,Fecha,sí,alta,models/sgi_fmea.py:35
+sgi.fmea,fmea_type,Selection,Tipo,sí,alta,models/sgi_fmea.py:21
+sgi.fmea,line_ids,One2many,Modos de falla,sí,media,models/sgi_fmea.py:42
+sgi.fmea,max_npr,Integer,NPR máximo,sí,alta,models/sgi_fmea.py:43
+sgi.fmea,name,Char,Nombre,sí,baja,models/sgi_fmea.py:20
+sgi.fmea,process_id,Many2one,Proceso,sí,alta,models/sgi_fmea.py:26
+sgi.fmea,product_tmpl_id,Many2one,Producto,sí,alta,models/sgi_fmea.py:25
+sgi.fmea,revision,Char,Revisión,sí,media,models/sgi_fmea.py:34
+sgi.fmea,sgi_nc_count,Integer,# NCs ligadas,sí,baja,models/sgi_fmea.py:46
+sgi.fmea,sgi_nc_ids,One2many,NCs ligadas,no,baja,models/sgi_fmea.py:45
+sgi.fmea,state,Selection,Estado,sí,alta,models/sgi_fmea.py:37
+sgi.fmea,team_ids,Many2many,Equipo AMEF,sí,alta,models/sgi_fmea.py:36
+sgi.fmea.line,action_line_ids,One2many,Acciones,no,baja,models/sgi_fmea.py:163
+sgi.fmea.line,cause,Char,Causa,no,baja,models/sgi_fmea.py:157
+sgi.fmea.line,current_controls,Char,Controles actuales,no,baja,models/sgi_fmea.py:159
+sgi.fmea.line,detection,Selection,Detección (D),no,baja,models/sgi_fmea.py:160
+sgi.fmea.line,detection_post,Selection,Detección post,no,baja,models/sgi_fmea.py:168
+sgi.fmea.line,effect,Char,Efecto,no,baja,models/sgi_fmea.py:155
+sgi.fmea.line,failure_mode,Char,Modo de falla,no,baja,models/sgi_fmea.py:154
+sgi.fmea.line,fmea_id,Many2one,AMEF,no,baja,models/sgi_fmea.py:151
+sgi.fmea.line,npr,Integer,NPR,no,baja,models/sgi_fmea.py:161
+sgi.fmea.line,npr_post,Integer,NPR post,no,baja,models/sgi_fmea.py:169
+sgi.fmea.line,occurrence,Selection,Ocurrencia (O),no,baja,models/sgi_fmea.py:158
+sgi.fmea.line,occurrence_post,Selection,Ocurrencia post,no,baja,models/sgi_fmea.py:167
+sgi.fmea.line,requires_action,Boolean,Requiere acción,no,baja,models/sgi_fmea.py:162
+sgi.fmea.line,sequence,Integer,Secuencia,no,baja,models/sgi_fmea.py:152
+sgi.fmea.line,severity,Selection,Severidad (S),no,baja,models/sgi_fmea.py:156
+sgi.fmea.line,severity_post,Selection,Severidad post,no,baja,models/sgi_fmea.py:166
+sgi.fmea.line,step,Char,Paso / Función,no,baja,models/sgi_fmea.py:153
+sgi.format.map,active,Boolean,,sí,baja,models/sgi_format_map.py:34
+sgi.format.map,model_name,Char,Modelo técnico,no,baja,models/sgi_format_map.py:27
+sgi.format.map,note,Char,Nota,sí,media,models/sgi_format_map.py:35
+sgi.format.mixin,sgi_format_banner,Char,Formato SGI,no,baja,models/sgi_format_map.py:654
+sgi.health.record,attachment_ids,Many2many,Resultados (PDF),sí,alta,models/sgi_hse_records.py:48
+sgi.health.record,company_id,Many2one,,no,baja,models/sgi_hse_records.py:54
+sgi.health.record,date,Date,Fecha,sí,alta,models/sgi_hse_records.py:41
+sgi.health.record,department_id,Many2one,Departamento,sí,alta,models/sgi_hse_records.py:36
+sgi.health.record,employee_id,Many2one,Trabajador,sí,alta,models/sgi_hse_records.py:35
+sgi.health.record,job_id,Many2one,Puesto,sí,alta,models/sgi_hse_records.py:37
+sgi.health.record,kind,Selection,Tipo,sí,alta,models/sgi_hse_records.py:38
+sgi.health.record,notes,Text,Observaciones y restricciones,sí,media,models/sgi_hse_records.py:47
+sgi.health.record,provider_id,Many2one,Laboratorio / médico,sí,alta,models/sgi_hse_records.py:46
+sgi.health.record,result,Selection,Resultado,sí,alta,models/sgi_hse_records.py:45
+sgi.health.record,state,Selection,Vigencia,sí,alta,models/sgi_hse_records.py:49
+sgi.health.record,validity_months,Integer,Vigencia (meses),sí,alta,models/sgi_hse_records.py:42
+sgi.incident,action_line_ids,One2many,Acciones,sí,media,models/sgi_incident.py:58
+sgi.incident,basic_causes,Text,Causas básicas (factores personales/de trabajo),sí,media,models/sgi_incident.py:53
+sgi.incident,date,Datetime,Fecha y hora,sí,alta,models/sgi_incident.py:27
+sgi.incident,days_lost,Integer,Días perdidos,sí,alta,models/sgi_incident.py:49
+sgi.incident,description,Text,Descripción del evento,sí,media,models/sgi_incident.py:48
+sgi.incident,employee_ids,Many2many,Personas afectadas,sí,alta,models/sgi_incident.py:42
+sgi.incident,immediate_causes,Text,Causas inmediatas (actos/condiciones),sí,media,models/sgi_incident.py:52
+sgi.incident,incident_type,Selection,Tipo,sí,alta,models/sgi_incident.py:29
+sgi.incident,lack_of_control,Text,Falta de control (sistema de gestión),sí,media,models/sgi_incident.py:54
+sgi.incident,location,Char,Lugar,sí,media,models/sgi_incident.py:45
+sgi.incident,name,Char,Título,sí,baja,models/sgi_incident.py:26
+sgi.incident,process_id,Many2one,Proceso,sí,alta,models/sgi_incident.py:46
+sgi.incident,reporter_id,Many2one,Reportado por,sí,alta,models/sgi_incident.py:43
+sgi.incident,risk_id,Many2one,Riesgo / IPER relacionado,sí,alta,models/sgi_incident.py:56
+sgi.incident,severity,Selection,Severidad,sí,alta,models/sgi_incident.py:36
+sgi.incident,sgi_alert_id,Many2one,No Conformidad generada,sí,alta,models/sgi_incident.py:59
+sgi.incident,sgi_area_id,Many2one,Área SGI,sí,alta,models/sgi_incident.py:47
+sgi.incident,state,Selection,Estado,sí,alta,models/sgi_incident.py:62
+sgi.indicator,active,Boolean,,sí,baja,models/sgi_indicator.py:184
+sgi.indicator,calc_checked,Datetime,Revisado el,sí,alta,models/sgi_indicator_detail.py:66
+sgi.indicator,calc_message,Char,Motivo,sí,media,models/sgi_indicator_detail.py:65
+sgi.indicator,calc_mode,Selection,,sí,alta,models/sgi_direction_board.py:20
+sgi.indicator,calc_mode,Selection,Modo de cálculo,sí,alta,models/sgi_indicator.py:92
+sgi.indicator,calc_status,Selection,Último cálculo,sí,alta,models/sgi_indicator_detail.py:57
+sgi.indicator,can_edit_formula,Boolean,,sí,alta,models/sgi_indicator_formula.py:346
+sgi.indicator,code,Char,Clave,sí,media,models/sgi_indicator.py:69
+sgi.indicator,direction,Selection,Sentido,sí,alta,models/sgi_indicator.py:82
+sgi.indicator,direction,Selection,,sí,alta,models/sgi_indicator_trajectory.py:79
+sgi.indicator,formula_text,Text,Fórmula configurada,sí,media,models/sgi_indicator_formula.py:343
+sgi.indicator,frequency,Selection,Frecuencia,sí,alta,models/sgi_indicator.py:88
+sgi.indicator,has_formula,Boolean,,sí,alta,models/sgi_indicator_formula.py:342
+sgi.indicator,has_trajectory,Boolean,,sí,alta,models/sgi_indicator_trajectory.py:89
+sgi.indicator,last_measure_id,Many2one,Última medición,no,baja,models/sgi_indicator.py:188
+sgi.indicator,last_semaphore,Selection,Último semáforo,sí,alta,models/sgi_indicator.py:191
+sgi.indicator,last_value,Float,Último valor,sí,alta,models/sgi_indicator.py:190
+sgi.indicator,measure_ids,One2many,Mediciones,sí,media,models/sgi_indicator.py:186
+sgi.indicator,name,Char,Nombre,sí,baja,models/sgi_indicator.py:70
+sgi.indicator,objective_id,Many2one,Objetivo integral,sí,alta,models/sgi_indicator.py:80
+sgi.indicator,process_id,Many2one,Proceso,sí,alta,models/sgi_indicator.py:71
+sgi.indicator,range_max,Float,Máximo,sí,alta,models/sgi_indicator_trajectory.py:82
+sgi.indicator,range_min,Float,Mínimo,sí,alta,models/sgi_indicator_trajectory.py:81
+sgi.indicator,responsible_id,Many2one,Responsable,sí,alta,models/sgi_indicator.py:79
+sgi.indicator,sgi_area_id,Many2one,Área SGI,sí,alta,models/sgi_indicator.py:78
+sgi.indicator,source_info,Char,Fuente del dato,sí,media,models/sgi_indicator.py:106
+sgi.indicator,source_type,Selection,Origen del dato,sí,alta,models/sgi_indicator.py:102
+sgi.indicator,spec_missing,Char,Le falta,sí,media,models/sgi_activity_spec.py:705
+sgi.indicator,split_support,Char,Desglose posible,sí,media,models/sgi_business_line.py:274
+sgi.indicator,step_ids,One2many,Escalones,sí,media,models/sgi_indicator_trajectory.py:88
+sgi.indicator,target_acceptable,Float,Aceptable,sí,alta,models/sgi_indicator.py:87
+sgi.indicator,target_objective,Float,Objetivo,sí,alta,models/sgi_indicator.py:86
+sgi.indicator,term_ids,One2many,Términos de la fórmula,sí,media,models/sgi_indicator_formula.py:341
+sgi.indicator.measure,action_line_ids,One2many,Acciones,sí,media,models/sgi_indicator_plan.py:113
+sgi.indicator.measure,alert_id,Many2one,No Conformidad,sí,alta,models/sgi_indicator.py:1067
+sgi.indicator.measure,denominator,Float,Denominador,sí,alta,models/sgi_indicator_detail.py:287
+sgi.indicator.measure,detail_count,Integer,Registros,sí,baja,models/sgi_indicator_detail.py:295
+sgi.indicator.measure,detail_ids,Text,Ids de los registros,sí,media,models/sgi_indicator_detail.py:294
+sgi.indicator.measure,detail_model,Char,Modelo de los registros,no,baja,models/sgi_indicator_detail.py:293
+sgi.indicator.measure,direction,Selection,,sí,alta,models/sgi_indicator.py:1052
+sgi.indicator.measure,indicator_id,Many2one,Indicador,sí,alta,models/sgi_indicator.py:1043
+sgi.indicator.measure,indicator_status,Selection,Estado del indicador,sí,alta,models/sgi_indicator_detail.py:297
+sgi.indicator.measure,note,Text,Nota,sí,media,models/sgi_indicator.py:1061
+sgi.indicator.measure,numerator,Float,Numerador,sí,alta,models/sgi_indicator_detail.py:286
+sgi.indicator.measure,parallel_denominator,Float,Denominador (fórmula),sí,alta,models/sgi_indicator_formula.py:504
+sgi.indicator.measure,parallel_numerator,Float,Numerador (fórmula),sí,alta,models/sgi_indicator_formula.py:503
+sgi.indicator.measure,plan_done,Boolean,Plan capturado,sí,alta,models/sgi_indicator_plan.py:117
+sgi.indicator.measure,plan_required,Boolean,Requiere plan,sí,alta,models/sgi_indicator_plan.py:114
+sgi.indicator.measure,range_max,Float,,sí,alta,models/sgi_indicator_trajectory.py:226
+sgi.indicator.measure,range_min,Float,,sí,alta,models/sgi_indicator_trajectory.py:225
+sgi.indicator.measure,semaphore,Selection,Semáforo,sí,alta,models/sgi_indicator.py:1056
+sgi.indicator.measure,source_info,Char,Fuente del dato,sí,media,models/sgi_indicator.py:1047
+sgi.indicator.measure,source_type,Selection,Origen del dato,sí,alta,models/sgi_indicator.py:1045
+sgi.indicator.measure,split_ids,One2many,Desglose,sí,media,models/sgi_business_line.py:413
+sgi.indicator.measure,state,Selection,Estado,sí,alta,models/sgi_indicator.py:1062
+sgi.indicator.measure,state,Selection,,sí,alta,models/sgi_indicator_detail.py:284
+sgi.indicator.measure,target_acceptable,Float,Aceptable,sí,alta,models/sgi_indicator.py:1054
+sgi.indicator.measure,target_acceptable,Float,Aceptable,sí,alta,models/sgi_indicator_trajectory.py:224
+sgi.indicator.measure,target_objective,Float,Objetivo,sí,alta,models/sgi_indicator.py:1053
+sgi.indicator.measure,target_objective,Float,Objetivo,sí,alta,models/sgi_indicator_trajectory.py:223
+sgi.indicator.measure,uom,Char,Unidad,sí,media,models/sgi_indicator.py:1055
+sgi.indicator.measure,value,Float,Valor,sí,alta,models/sgi_indicator.py:1051
+sgi.indicator.measure,value_is_pct,Boolean,,no,baja,models/sgi_indicator_detail.py:296
+sgi.indicator.measure,window_label,Char,Ventana,sí,media,models/sgi_indicator_plan.py:111
+sgi.indicator.measure.split,denominator,Float,Denominador,sí,alta,models/sgi_business_line.py:435
+sgi.indicator.measure.split,detail_ids,Text,Registros del detalle,sí,media,models/sgi_business_line.py:448
+sgi.indicator.measure.split,detail_model,Char,Modelo del detalle,no,baja,models/sgi_business_line.py:447
+sgi.indicator.measure.split,indicator_id,Many2one,Indicador,sí,alta,models/sgi_business_line.py:427
+sgi.indicator.measure.split,label,Char,Renglón,sí,media,models/sgi_business_line.py:432
+sgi.indicator.measure.split,market,Selection,Mercado,sí,alta,models/sgi_business_line.py:431
+sgi.indicator.measure.split,measure_id,Many2one,Medición,no,baja,models/sgi_business_line.py:425
+sgi.indicator.measure.split,numerator,Float,Numerador,sí,alta,models/sgi_business_line.py:434
+sgi.indicator.measure.split,period_date,Date,Periodo,sí,alta,models/sgi_business_line.py:429
+sgi.indicator.measure.split,sample_size,Integer,Casos,sí,alta,models/sgi_business_line.py:436
+sgi.indicator.measure.split,semaphore,Selection,Semáforo,sí,alta,models/sgi_business_line.py:442
+sgi.indicator.measure.split,state,Selection,Estado,sí,alta,models/sgi_business_line.py:437
+sgi.indicator.measure.split,team_id,Many2one,Equipo de ventas,sí,alta,models/sgi_business_line.py:430
+sgi.indicator.measure.split,uom,Char,Unidad,sí,media,models/sgi_business_line.py:441
+sgi.indicator.measure.split,value,Float,Valor,sí,alta,models/sgi_business_line.py:433
+sgi.indicator.step,acceptable,Float,Aceptable,no,baja,models/sgi_indicator_trajectory.py:40
+sgi.indicator.step,date_from,Date,Trimestre desde,no,baja,models/sgi_indicator_trajectory.py:37
+sgi.indicator.step,indicator_id,Many2one,,no,baja,models/sgi_indicator_trajectory.py:36
+sgi.indicator.step,manual,Boolean,Corregido a mano,no,baja,models/sgi_indicator_trajectory.py:41
+sgi.indicator.step,name,Char,Trimestre,no,baja,models/sgi_indicator_trajectory.py:38
+sgi.indicator.step,objective,Float,Objetivo,no,baja,models/sgi_indicator_trajectory.py:39
+sgi.indicator.term,aggregation,Selection,Agregación,sí,alta,models/sgi_indicator_formula.py:94
+sgi.indicator.term,delta_op,Selection,Condición,sí,alta,models/sgi_indicator_formula.py:100
+sgi.indicator.term,delta_unit,Selection,Unidad,sí,alta,models/sgi_indicator_formula.py:99
+sgi.indicator.term,indicator_id,Many2one,,no,baja,models/sgi_indicator_formula.py:82
+sgi.indicator.term,model_id,Many2one,Modelo,sí,alta,models/sgi_indicator_formula.py:85
+sgi.indicator.term,model_name,Char,Modelo técnico,no,baja,models/sgi_indicator_formula.py:86
+sgi.indicator.term,role,Selection,Parte de la fórmula,sí,alta,models/sgi_indicator_formula.py:83
+sgi.indicator.term,window,Selection,Ventana,sí,alta,models/sgi_indicator_formula.py:106
+sgi.instruction.publish,activity_id,Many2one,,sí,alta,models/sgi_instruction_knowledge.py:63
+sgi.instruction.publish,article_id,Many2one,,sí,alta,models/sgi_instruction_knowledge.py:64
+sgi.interested.party,active,Boolean,,no,baja,models/sgi_context.py:61
+sgi.interested.party,category,Selection,Categoría,sí,alta,models/sgi_context.py:28
+sgi.interested.party,last_review_date,Date,Última revisión,sí,alta,models/sgi_context.py:57
+sgi.interested.party,legal_ids,Many2many,Requisitos legales ligados,sí,alta,models/sgi_context.py:53
+sgi.interested.party,name,Char,Parte interesada,sí,baja,models/sgi_context.py:23
+sgi.interested.party,next_review_date,Date,Próxima revisión,sí,alta,models/sgi_context.py:58
+sgi.interested.party,party_type,Selection,Tipo,sí,alta,models/sgi_context.py:24
+sgi.interested.party,process_ids,Many2many,Procesos relacionados,sí,alta,models/sgi_context.py:49
+sgi.interested.party,review_frequency_months,Integer,Frecuencia de revisión (meses),sí,alta,models/sgi_context.py:55
+sgi.inventory.value,company_id,Many2one,Compañía,sí,baja,models/sgi_kpi_fields.py:237
+sgi.inventory.value,currency_id,Many2one,,sí,baja,models/sgi_kpi_fields.py:241
+sgi.inventory.value,quant_count,Integer,# Existencias,sí,baja,models/sgi_kpi_fields.py:242
+sgi.inventory.value,taken_at,Datetime,Tomada el,sí,alta,models/sgi_kpi_fields.py:243
+sgi.inventory.value,value,Monetary,Valor del inventario,sí,media,models/sgi_kpi_fields.py:240
+sgi.job.family,active,Boolean,,sí,baja,models/sgi_catalog.py:73
+sgi.job.family,code,Char,Código,sí,media,models/sgi_catalog.py:65
+sgi.job.family,company_id,Many2one,Empresa,sí,baja,models/sgi_catalog.py:70
+sgi.job.family,employee_count,Integer,Empleados activos,sí,baja,models/sgi_catalog.py:74
+sgi.job.family,job_ids,Many2many,Puestos,sí,alta,models/sgi_catalog.py:67
+sgi.job.family,name,Char,Familia,sí,baja,models/sgi_catalog.py:66
+sgi.legal.evaluate,evidence,Text,Evidencia revisada,sí,media,models/sgi_legal.py:263
+sgi.legal.evaluate,next_date,Date,Próxima evaluación,sí,alta,models/sgi_legal.py:266
+sgi.legal.evaluate,requirement_id,Many2one,,sí,alta,models/sgi_legal.py:256
+sgi.legal.evaluate,result,Selection,Resultado,sí,alta,models/sgi_legal.py:257
+sgi.legal.evaluation,alert_id,Many2one,NC,no,baja,models/sgi_legal.py:249
+sgi.legal.evaluation,date,Date,Fecha,sí,alta,models/sgi_legal.py:239
+sgi.legal.evaluation,evidence,Text,Evidencia revisada,sí,media,models/sgi_legal.py:246
+sgi.legal.evaluation,next_date,Date,Próxima evaluación,sí,alta,models/sgi_legal.py:247
+sgi.legal.evaluation,requirement_id,Many2one,Requisito,sí,alta,models/sgi_legal.py:237
+sgi.legal.evaluation,result,Selection,Resultado,sí,alta,models/sgi_legal.py:240
+sgi.legal.evaluation,user_id,Many2one,Evaluó,sí,alta,models/sgi_legal.py:248
+sgi.legal.requirement,active,Boolean,,no,baja,models/sgi_legal.py:101
+sgi.legal.requirement,alert_id,Many2one,NC de incumplimiento,sí,alta,models/sgi_legal.py:99
+sgi.legal.requirement,compliance_state,Selection,Cumplimiento,sí,alta,models/sgi_legal.py:88
+sgi.legal.requirement,document_ids,Many2many,Documentos de evidencia,sí,alta,models/sgi_legal.py:64
+sgi.legal.requirement,eval_frequency_months,Integer,Frecuencia de evaluación (meses),sí,alta,models/sgi_legal.py:80
+sgi.legal.requirement,evaluation_count,Integer,,sí,baja,models/sgi_legal.py:73
+sgi.legal.requirement,evaluation_ids,One2many,Evaluaciones,sí,media,models/sgi_legal.py:71
+sgi.legal.requirement,kind,Selection,Tipo,sí,alta,models/sgi_legal.py:32
+sgi.legal.requirement,last_eval_date,Date,Última evaluación,sí,alta,models/sgi_legal.py:82
+sgi.legal.requirement,process_ids,Many2many,Procesos donde aplica,sí,alta,models/sgi_legal.py:59
+sgi.legal.requirement,responsible_id,Many2one,Responsable de la evaluación,sí,alta,models/sgi_legal.py:68
+sgi.legal.requirement,system,Selection,Sistema,sí,alta,models/sgi_legal.py:39
+sgi.lock.date.log,company_id,Many2one,Compañía,sí,baja,models/sgi_kpi_fields.py:187
+sgi.lock.date.log,date_after,Date,Después,sí,alta,models/sgi_kpi_fields.py:190
+sgi.lock.date.log,date_before,Date,Antes,sí,alta,models/sgi_kpi_fields.py:189
+sgi.lock.date.log,lock_field,Selection,Fecha de bloqueo,sí,alta,models/sgi_kpi_fields.py:188
+sgi.lock.date.log,moved_at,Datetime,Movida el,sí,alta,models/sgi_kpi_fields.py:191
+sgi.lock.date.log,user_id,Many2one,Quién,sí,alta,models/sgi_kpi_fields.py:192
+sgi.machine.sheet,active,Boolean,,sí,baja,models/sgi_machine_sheet.py:40
+sgi.machine.sheet,approved_by_id,Many2one,Jefe técnico de tejido y acabado,sí,alta,models/sgi_machine_sheet.py:52
+sgi.machine.sheet,area,Selection,Área,sí,alta,models/sgi_machine_sheet.py:36
+sgi.machine.sheet,company_id,Many2one,,no,baja,models/sgi_machine_sheet.py:54
+sgi.machine.sheet,date,Date,Fecha,sí,alta,models/sgi_machine_sheet.py:35
+sgi.machine.sheet,engineering_by_id,Many2one,Jefe de ingeniería de procesos,sí,alta,models/sgi_machine_sheet.py:53
+sgi.machine.sheet,fabric_note,Text,Observaciones de tela acondicionada,sí,media,models/sgi_machine_sheet.py:49
+sgi.machine.sheet,lab_user_id,Many2one,Laboratorista de tejido,sí,alta,models/sgi_machine_sheet.py:50
+sgi.machine.sheet,machine_note,Text,Observaciones de máquina,sí,media,models/sgi_machine_sheet.py:48
+sgi.machine.sheet,mechanic_user_id,Many2one,Mecánico de tejido,sí,alta,models/sgi_machine_sheet.py:51
+sgi.machine.sheet,name,Char,Folio,sí,baja,models/sgi_machine_sheet.py:32
+sgi.machine.sheet,param_line_ids,One2many,Parámetros,sí,media,models/sgi_machine_sheet.py:47
+sgi.machine.sheet,product_id,Many2one,Artículo,sí,alta,models/sgi_machine_sheet.py:33
+sgi.machine.sheet,pulley_1,Char,Polea 1,sí,media,models/sgi_machine_sheet.py:42
+sgi.machine.sheet,pulley_2,Char,Polea 2,sí,media,models/sgi_machine_sheet.py:43
+sgi.machine.sheet,pulley_3,Char,Polea 3,sí,media,models/sgi_machine_sheet.py:44
+sgi.machine.sheet,pulley_4,Char,Polea 4,sí,media,models/sgi_machine_sheet.py:45
+sgi.machine.sheet,revision,Integer,Revisión,sí,alta,models/sgi_machine_sheet.py:37
+sgi.machine.sheet,state,Selection,,sí,alta,models/sgi_machine_sheet.py:38
+sgi.machine.sheet,workcenter_id,Many2one,Máquina / centro de trabajo,sí,alta,models/sgi_machine_sheet.py:34
+sgi.machine.sheet,yarn_line_ids,One2many,Materia prima (hilos),sí,media,models/sgi_machine_sheet.py:41
+sgi.machine.sheet,yarn_note,Text,Observaciones de materia prima,sí,media,models/sgi_machine_sheet.py:46
+sgi.machine.sheet.param,name,Char,Condición,no,baja,models/sgi_machine_sheet.py:136
+sgi.machine.sheet.param,section,Selection,Sección,no,baja,models/sgi_machine_sheet.py:135
+sgi.machine.sheet.param,sequence,Integer,,no,baja,models/sgi_machine_sheet.py:134
+sgi.machine.sheet.param,sheet_id,Many2one,,no,baja,models/sgi_machine_sheet.py:133
+sgi.machine.sheet.param,spec,Char,Especificación,no,baja,models/sgi_machine_sheet.py:137
+sgi.machine.sheet.param,tolerance,Char,Tolerancia (±),no,baja,models/sgi_machine_sheet.py:138
+sgi.machine.sheet.param,unit,Char,Unidad,no,baja,models/sgi_machine_sheet.py:139
+sgi.machine.sheet.yarn,consumption,Char,cm/vuelta – longitud (m),no,baja,models/sgi_machine_sheet.py:124
+sgi.machine.sheet.yarn,feed,Char,Disposición del hilo,no,baja,models/sgi_machine_sheet.py:120
+sgi.machine.sheet.yarn,fiber,Selection,Fibra,no,baja,models/sgi_machine_sheet.py:118
+sgi.machine.sheet.yarn,pct,Float,% de hilo,no,baja,models/sgi_machine_sheet.py:125
+sgi.machine.sheet.yarn,sequence,Integer,,no,baja,models/sgi_machine_sheet.py:117
+sgi.machine.sheet.yarn,sheet_id,Many2one,,no,baja,models/sgi_machine_sheet.py:116
+sgi.machine.sheet.yarn,title,Char,Título de hilo,no,baja,models/sgi_machine_sheet.py:122
+sgi.machine.sheet.yarn,twist,Char,Torsión,no,baja,models/sgi_machine_sheet.py:123
+sgi.machine.sheet.yarn,yarn_type,Char,Tipo de hilo,no,baja,models/sgi_machine_sheet.py:121
+sgi.management.review,agreement_ids,One2many,Acuerdos,sí,media,models/sgi_management_review.py:78
+sgi.management.review,attendee_ids,Many2many,Asistentes,sí,alta,models/sgi_management_review.py:27
+sgi.management.review,audit_ids,Many2many,Auditorías del periodo,sí,alta,models/sgi_management_review.py:43
+sgi.management.review,audit_summary,Text,4. Auditorías,sí,media,models/sgi_management_review.py:39
+sgi.management.review,complaints_summary,Text,3. Reclamaciones de clientes,sí,media,models/sgi_management_review.py:38
+sgi.management.review,date,Date,Fecha,sí,alta,models/sgi_management_review.py:24
+sgi.management.review,doc_changes_summary,Text,10. Cambios documentales,sí,media,models/sgi_management_review.py:55
+sgi.management.review,env_summary,Text,8. Desempeño ambiental (scrap),sí,media,models/sgi_management_review.py:53
+sgi.management.review,kpi_red_measure_ids,Many2many,5. Indicadores en rojo,sí,alta,models/sgi_management_review.py:46
+sgi.management.review,name,Char,Nombre,sí,baja,models/sgi_management_review.py:23
+sgi.management.review,nc_summary,Text,2. No conformidades,sí,media,models/sgi_management_review.py:37
+sgi.management.review,period_from,Date,Periodo desde,sí,alta,models/sgi_management_review.py:25
+sgi.management.review,period_to,Date,Periodo hasta,sí,alta,models/sgi_management_review.py:26
+sgi.management.review,prev_agreements_summary,Text,1. Acuerdos previos,sí,media,models/sgi_management_review.py:36
+sgi.management.review,resources_note,Text,9. Recursos (calibraciones/capacitación),sí,media,models/sgi_management_review.py:54
+sgi.management.review,risk_high_ids,Many2many,7. Riesgos de atención inmediata/alta,sí,alta,models/sgi_management_review.py:50
+sgi.management.review,state,Selection,Estado,sí,alta,models/sgi_management_review.py:29
+sgi.management.review,supplier_summary,Text,6. Proveedores,sí,media,models/sgi_management_review.py:49
+sgi.management.review.agreement,action_line_id,Many2one,Acción,no,baja,models/sgi_management_review.py:406
+sgi.management.review.agreement,action_state,Selection,Estado de la acción,no,baja,models/sgi_management_review.py:407
+sgi.management.review.agreement,deadline,Date,Fecha límite,no,baja,models/sgi_management_review.py:404
+sgi.management.review.agreement,is_done,Boolean,,no,baja,models/sgi_management_review.py:408
+sgi.management.review.agreement,name,Char,Acuerdo,no,baja,models/sgi_management_review.py:402
+sgi.management.review.agreement,responsible_id,Many2one,Responsable,no,baja,models/sgi_management_review.py:403
+sgi.management.review.agreement,review_id,Many2one,Revisión,no,baja,models/sgi_management_review.py:400
+sgi.management.review.agreement,status_label,Char,,no,baja,models/sgi_management_review.py:409
+sgi.management.review.agreement,task_id,Many2one,Tarea (anterior a 52.0.0),no,baja,models/sgi_management_review.py:405
+sgi.msa.study,characteristic,Char,Característica medida,sí,media,models/sgi_msa.py:58
+sgi.msa.study,date,Date,Fecha,sí,alta,models/sgi_msa.py:56
+sgi.msa.study,equipment_id,Many2one,Equipo de medición,sí,alta,models/sgi_msa.py:47
+sgi.msa.study,notes,Text,Notas / referencia del reporte,sí,media,models/sgi_msa.py:73
+sgi.msa.study,point_id,Many2one,Punto de control,sí,alta,models/sgi_msa.py:59
+sgi.msa.study,study_type,Selection,Tipo de estudio,sí,alta,models/sgi_msa.py:50
+sgi.my.pending,date_due,Date,Vence,sí,alta,models/sgi_my_pending.py:57
+sgi.my.pending,employee_id,Many2one,Persona,sí,alta,models/sgi_my_pending.py:53
+sgi.my.pending,kind,Selection,Tipo,sí,alta,models/sgi_my_pending.py:54
+sgi.my.pending,name,Char,Qué,sí,baja,models/sgi_my_pending.py:55
+sgi.my.pending,process_id,Many2one,Proceso,sí,alta,models/sgi_my_pending.py:56
+sgi.my.pending,res_id,Integer,,no,baja,models/sgi_my_pending.py:61
+sgi.my.pending,res_model,Char,,no,baja,models/sgi_my_pending.py:60
+sgi.my.pending,state,Selection,Estado,sí,alta,models/sgi_my_pending.py:58
+sgi.my.pending,state_rank,Integer,,sí,alta,models/sgi_my_pending.py:59
+sgi.my.pending,user_id,Many2one,Usuario,no,baja,models/sgi_my_pending.py:52
+sgi.my.procedure,ack_ids,Many2many,Mis acuses de lectura,sí,alta,models/sgi_my_procedure_screen.py:430
+sgi.my.procedure,ack_label,Char,,sí,media,models/sgi_my_procedure_screen.py:380
+sgi.my.procedure,ack_state,Selection,,sí,alta,models/sgi_my_procedure_screen.py:374
+sgi.my.procedure,activity_count,Integer,Actividades,no,baja,models/sgi_my_procedure_screen.py:397
+sgi.my.procedure,allowed_employee_ids,Many2many,Empleados visibles,no,baja,models/sgi_my_procedure_screen.py:369
+sgi.my.procedure,allowed_job_ids,Many2many,Puestos visibles,no,baja,models/sgi_my_procedure_screen.py:371
+sgi.my.procedure,boss_id,Many2one,Mi jefe,sí,alta,models/sgi_my_procedure_screen.py:384
+sgi.my.procedure,can_pick,Boolean,,no,baja,models/sgi_my_procedure_screen.py:367
+sgi.my.procedure,can_publish,Boolean,,no,baja,models/sgi_my_procedure_screen.py:368
+sgi.my.procedure,department_id,Many2one,Área,sí,alta,models/sgi_my_procedure_screen.py:385
+sgi.my.procedure,doc_id,Many2one,,no,baja,models/sgi_my_procedure_screen.py:381
+sgi.my.procedure,doc_review_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:651
+sgi.my.procedure,document_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:646
+sgi.my.procedure,document_ids,Many2many,Documentos que aplican al puesto,sí,alta,models/sgi_my_procedure_screen.py:432
+sgi.my.procedure,employee_avatar,Binary,Foto,sí,media,models/sgi_my_procedure_screen.py:364
+sgi.my.procedure,employee_id,Many2one,Ver como: empleado,sí,alta,models/sgi_my_procedure_screen.py:363
+sgi.my.procedure,epp_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:652
+sgi.my.procedure,epp_delivery_ids,Many2many,Responsivas de EPP,sí,alta,models/sgi_my_procedure_screen.py:437
+sgi.my.procedure,epp_label,Char,EPP,sí,media,models/sgi_my_procedure_screen.py:440
+sgi.my.procedure,epp_pending_sign,Boolean,Responsiva de EPP por firmar,no,baja,models/sgi_my_procedure_screen.py:439
+sgi.my.procedure,epp_required,Text,EPP requerido por el puesto,sí,media,models/sgi_my_procedure_screen.py:436
+sgi.my.procedure,family_id,Many2one,Familia de puestos,sí,alta,models/sgi_my_procedure_screen.py:386
+sgi.my.procedure,has_obligations,Boolean,,no,baja,models/sgi_my_procedure_screen.py:423
+sgi.my.procedure,has_user,Boolean,,no,baja,models/sgi_my_procedure_screen.py:408
+sgi.my.procedure,indicator_count,Integer,,sí,baja,models/sgi_my_procedure_screen.py:649
+sgi.my.procedure,indicator_ids,Many2many,Mis indicadores,sí,alta,models/sgi_my_procedure_screen.py:418
+sgi.my.procedure,is_me,Boolean,,no,baja,models/sgi_my_procedure_screen.py:373
+sgi.my.procedure,job_employee_ids,Many2many,Personas en el puesto,sí,alta,models/sgi_my_procedure_screen.py:388
+sgi.my.procedure,job_id,Many2one,Ver como: puesto,sí,alta,models/sgi_my_procedure_screen.py:365
+sgi.my.procedure,late_count,Integer,Atrasadas,no,baja,models/sgi_my_procedure_screen.py:392
+sgi.my.procedure,legal_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:650
+sgi.my.procedure,measure_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:648
+sgi.my.procedure,nc_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:647
+sgi.my.procedure,official_indicator_ids,Many2many,Indicadores oficiales a mi cargo,no,baja,models/sgi_my_procedure_screen.py:421
+sgi.my.procedure,ok_count,Integer,Al día,no,baja,models/sgi_my_procedure_screen.py:393
+sgi.my.procedure,pending_ack_count,Integer,Firmas pendientes,sí,baja,models/sgi_my_procedure_screen.py:395
+sgi.my.procedure,pending_action_ids,Many2many,Acciones abiertas o vencidas,no,baja,models/sgi_my_procedure_screen.py:409
+sgi.my.procedure,pending_count,Integer,Acciones abiertas,no,baja,models/sgi_my_procedure_screen.py:396
+sgi.my.procedure,pending_doc_review_ids,Many2many,Documentos por revisar (60 días),no,baja,models/sgi_my_procedure_screen.py:426
+sgi.my.procedure,pending_late,Integer,Pendientes atrasados,sí,alta,models/sgi_my_pending.py:266
+sgi.my.procedure,pending_legal_ids,Many2many,Requisitos legales por evaluar,no,baja,models/sgi_my_procedure_screen.py:424
+sgi.my.procedure,pending_measure_ids,Many2many,Mediciones por capturar o validar,no,baja,models/sgi_my_procedure_screen.py:413
+sgi.my.procedure,pending_nc_ids,Many2many,NC a contestar,no,baja,models/sgi_my_procedure_screen.py:411
+sgi.my.procedure,pending_total,Integer,Mis pendientes,sí,alta,models/sgi_my_pending.py:265
+sgi.my.procedure,process_ids,Many2many,Procesos donde participa,sí,alta,models/sgi_my_procedure_screen.py:387
+sgi.my.procedure,received_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:644
+sgi.my.procedure,received_role_ids,Many2many,Escalamientos que recibe,sí,alta,models/sgi_my_procedure_screen.py:402
+sgi.my.procedure,role_ids,Many2many,Mis actividades,sí,alta,models/sgi_my_procedure_screen.py:400
+sgi.my.procedure,short_count,Integer,,no,baja,models/sgi_my_procedure_screen.py:645
+sgi.my.procedure,short_role_ids,Many2many,Participa o se entera,sí,alta,models/sgi_my_procedure_screen.py:404
+sgi.my.procedure,unmeasured_count,Integer,Sin medición automática,no,baja,models/sgi_my_procedure_screen.py:394
+sgi.my.procedure.check,job_without_roles_employee_ids,Many2many,Empleados en un puesto sin roles,sí,alta,models/sgi_my_procedure_screen.py:898
+sgi.my.procedure.check,no_job_employee_ids,Many2many,Empleados sin puesto,sí,alta,models/sgi_my_procedure_screen.py:895
+sgi.my.procedure.check,roles_without_people_job_ids,Many2many,Puestos con roles pero sin personas,sí,alta,models/sgi_my_procedure_screen.py:901
+sgi.my.procedure.mixin,sgi_mp_ack_ids,Many2many,Acuses de lectura (Mi procedimiento),no,baja,models/sgi_my_procedure_screen.py:132
+sgi.my.procedure.mixin,sgi_mp_can_sign,Boolean,Puede firmar,no,baja,models/sgi_my_procedure_screen.py:139
+sgi.my.procedure.mixin,sgi_mp_document_ids,Many2many,Documentos que aplican al puesto,no,baja,models/sgi_my_procedure_screen.py:134
+sgi.my.procedure.mixin,sgi_mp_epp_ids,Many2many,Responsivas de EPP (Mi procedimiento),no,baja,models/sgi_my_procedure_screen.py:136
+sgi.my.procedure.mixin,sgi_mp_epp_text,Text,EPP requerido (Mi procedimiento),no,baja,models/sgi_my_procedure_screen.py:138
+sgi.my.procedure.mixin,sgi_mp_process_ids,Many2many,Procesos donde participa,no,baja,models/sgi_my_procedure_screen.py:140
+sgi.my.procedure.mixin,sgi_mp_received_role_ids,Many2many,Escalamientos que recibe,no,baja,models/sgi_my_procedure_screen.py:128
+sgi.my.procedure.mixin,sgi_mp_role_ids,Many2many,Mis actividades,no,baja,models/sgi_my_procedure_screen.py:126
+sgi.my.procedure.mixin,sgi_mp_short_role_ids,Many2many,Participa o se entera,no,baja,models/sgi_my_procedure_screen.py:130
+sgi.nc.cancel,alert_id,Many2one,No Conformidad,sí,alta,models/sgi_nonconformity.py:934
+sgi.nc.cancel,is_manager,Boolean,,sí,alta,models/sgi_nonconformity.py:936
+sgi.nc.cancel,reason,Text,Motivo de la cancelación,sí,media,models/sgi_nonconformity.py:935
+sgi.nc.force.close,alert_id,Many2one,No Conformidad,sí,alta,models/sgi_nonconformity.py:905
+sgi.nc.force.close,reason,Text,Motivo del cierre forzado,sí,media,models/sgi_nonconformity.py:906
+sgi.norm,active,Boolean,,sí,baja,models/sgi_norm.py:13
+sgi.norm,clause_ids,One2many,Cláusulas,sí,media,models/sgi_norm.py:12
+sgi.norm,code,Char,Clave,sí,media,models/sgi_norm.py:10
+sgi.norm,name,Char,Nombre,sí,baja,models/sgi_norm.py:11
+sgi.norm.clause,activity_count,Integer,Actividades,sí,baja,models/sgi_norm_compliance.py:50
+sgi.norm.clause,activity_ids,Many2many,Actividades que lo cumplen,sí,alta,models/sgi_norm_compliance.py:45
+sgi.norm.clause,alert_count,Integer,NC,sí,baja,models/sgi_norm_compliance.py:51
+sgi.norm.clause,code,Char,Numeral,sí,media,models/sgi_norm.py:27
+sgi.norm.clause,covered,Boolean,Con actividad,sí,alta,models/sgi_norm_compliance.py:52
+sgi.norm.clause,name,Char,Requisito,sí,baja,models/sgi_norm.py:28
+sgi.norm.clause,norm_id,Many2one,Norma,sí,alta,models/sgi_norm.py:26
+sgi.norm.clause,process_ids,Many2many,Procesos que lo cumplen,sí,alta,models/sgi_norm_compliance.py:48
+sgi.norm.clause,short_label,Char,Punto,no,baja,models/sgi_norm_compliance.py:44
+sgi.objective,action_line_ids,One2many,Plan de acción (6.2.2),sí,media,models/sgi_objective.py:36
+sgi.objective,active,Boolean,,sí,baja,models/sgi_objective.py:46
+sgi.objective,description,Text,Descripción,sí,media,models/sgi_objective.py:26
+sgi.objective,indicator_count,Integer,# Indicadores,sí,baja,models/sgi_objective.py:33
+sgi.objective,indicator_ids,One2many,Indicadores,no,baja,models/sgi_objective.py:32
+sgi.objective,name,Char,Objetivo,sí,baja,models/sgi_objective.py:25
+sgi.objective,target_year,Integer,Año meta,sí,alta,models/sgi_objective.py:31
+sgi.policy,issue_date,Date,Fecha de emisión,sí,alta,models/sgi_policy.py:27
+sgi.policy,name,Char,Nombre,sí,baja,models/sgi_policy.py:25
+sgi.policy,objective_count,Integer,# Objetivos,sí,baja,models/sgi_policy.py:40
+sgi.policy,objective_ids,One2many,Objetivos integrales,sí,media,models/sgi_policy.py:38
+sgi.policy,policy_text,Html,Texto de la política,sí,media,models/sgi_policy.py:26
+sgi.policy,state,Selection,Estado,sí,alta,models/sgi_policy.py:29
+sgi.ppap,date_decision,Date,Fecha de decisión,sí,alta,models/sgi_ppap.py:67
+sgi.ppap,date_submitted,Date,Fecha de envío,sí,alta,models/sgi_ppap.py:66
+sgi.ppap,element_ids,One2many,Elementos,sí,media,models/sgi_ppap.py:68
+sgi.ppap,level,Selection,Nivel,sí,alta,models/sgi_ppap.py:45
+sgi.ppap,notes,Text,Notas,sí,media,models/sgi_ppap.py:69
+sgi.ppap,partner_id,Many2one,Cliente,sí,alta,models/sgi_ppap.py:41
+sgi.ppap,product_tmpl_id,Many2one,Producto,sí,alta,models/sgi_ppap.py:43
+sgi.ppap,reason,Selection,Motivo,sí,alta,models/sgi_ppap.py:52
+sgi.ppap,state,Selection,Estado,sí,alta,models/sgi_ppap.py:59
+sgi.ppap.element,control_plan_id,Many2one,Plan de control,no,baja,models/sgi_ppap.py:258
+sgi.ppap.element,document_id,Many2one,Documento,no,baja,models/sgi_ppap.py:259
+sgi.ppap.element,fmea_id,Many2one,AMEF,no,baja,models/sgi_ppap.py:257
+sgi.ppap.element,name,Char,Elemento,no,baja,models/sgi_ppap.py:243
+sgi.ppap.element,notes,Text,Notas,no,baja,models/sgi_ppap.py:260
+sgi.ppap.element,ppap_id,Many2one,PPAP,no,baja,models/sgi_ppap.py:240
+sgi.ppap.element,sequence,Integer,N°,no,baja,models/sgi_ppap.py:242
+sgi.ppap.element,state,Selection,Estado,no,baja,models/sgi_ppap.py:244
+sgi.ppap.element,template_id,Many2one,Elemento (catálogo),no,baja,models/sgi_ppap.py:241
+sgi.ppap.element.template,active,Boolean,,no,baja,models/sgi_ppap.py:25
+sgi.ppap.element.template,is_psw,Boolean,Es PSW (elemento 18),sí,alta,models/sgi_ppap.py:24
+sgi.ppap.element.template,name,Char,Elemento,sí,baja,models/sgi_ppap.py:23
+sgi.ppap.element.template,sequence,Integer,N°,sí,baja,models/sgi_ppap.py:22
+sgi.process,active,Boolean,,sí,baja,models/sgi_process.py:37
+sgi.process,activity_count,Integer,# Actividades,sí,baja,models/sgi_process_procedure.py:60
+sgi.process,activity_green_count,Integer,En verde,sí,baja,models/sgi_process_procedure.py:81
+sgi.process,activity_no_method_count,Integer,Sin método,no,baja,models/sgi_process_procedure.py:88
+sgi.process,activity_red_count,Integer,En rojo,sí,baja,models/sgi_process_procedure.py:83
+sgi.process,chain_link_ids,Many2many,Ligas entre actividades,no,baja,models/sgi_process_procedure.py:100
+sgi.process,child_count,Integer,Núm. de subprocesos,sí,baja,models/sgi_hierarchy.py:55
+sgi.process,child_ids,One2many,Subprocesos,sí,media,models/sgi_process.py:33
+sgi.process,code,Char,Clave,sí,media,models/sgi_process.py:20
+sgi.process,company_id,Many2one,Empresa,sí,baja,models/sgi_process.py:22
+sgi.process,department_id,Many2one,Departamento,sí,alta,models/sgi_process.py:35
+sgi.process,doc_approver_id,Many2one,Aprueba,sí,alta,models/sgi_process_procedure.py:109
+sgi.process,doc_vobo_id,Many2one,Vo.Bo.,sí,alta,models/sgi_process_procedure.py:111
+sgi.process,document_count,Integer,# Documentos,sí,baja,models/sgi_process.py:99
+sgi.process,health,Selection,Salud del proceso,sí,alta,models/sgi_process.py:94
+sgi.process,in_flow_ids,One2many,Flujos de entrada,no,baja,models/sgi_process.py:72
+sgi.process,inbound_reference_count,Integer,Me referencian,no,baja,models/sgi_process_procedure.py:136
+sgi.process,inbound_reference_ids,Many2many,Actividades que me referencian,no,baja,models/sgi_process_procedure.py:133
+sgi.process,indicator_count,Integer,# Indicadores,sí,baja,models/sgi_process.py:100
+sgi.process,indicator_ids,One2many,Indicadores,no,baja,models/sgi_process.py:82
+sgi.process,inputs,Text,Entradas,sí,media,models/sgi_process.py:50
+sgi.process,job_ids,Many2many,Puestos,sí,alta,models/sgi_process.py:36
+sgi.process,job_responsibility_ids,One2many,Responsabilidades de las áreas,sí,media,models/sgi_process_procedure.py:50
+sgi.process,linked_document_ids,One2many,Documentos del proceso,no,baja,models/sgi_process.py:76
+sgi.process,measurable_activity_count,Integer,Actividades medibles,no,baja,models/sgi_process_procedure.py:64
+sgi.process,measure_method_summary,Char,Actividades por método,sí,media,models/sgi_process_procedure.py:79
+sgi.process,measure_red_count,Integer,Sin evidencia en su periodo,no,baja,models/sgi_process_procedure.py:66
+sgi.process,measure_status,Selection,Estado de medición,sí,alta,models/sgi_process_procedure.py:95
+sgi.process,name,Char,Nombre,sí,baja,models/sgi_process.py:21
+sgi.process,nc_count,Integer,NC abiertas,sí,baja,models/sgi_process.py:89
+sgi.process,nc_open_ids,Many2many,No conformidades abiertas,no,baja,models/sgi_structure.py:21
+sgi.process,open_high_risk_count,Integer,Riesgos altos abiertos,sí,baja,models/sgi_process.py:92
+sgi.process,out_flow_ids,One2many,Flujos de salida,no,baja,models/sgi_process.py:73
+sgi.process,outputs,Text,Salidas,sí,media,models/sgi_process.py:51
+sgi.process,overdue_action_count,Integer,Acciones vencidas,sí,baja,models/sgi_process.py:90
+sgi.process,owner_id,Many2one,Dueño del proceso,sí,alta,models/sgi_process.py:34
+sgi.process,parent_id,Many2one,Macroproceso,sí,alta,models/sgi_process.py:31
+sgi.process,parent_path,Char,,no,baja,models/sgi_process.py:32
+sgi.process,procedure_activity_ids,One2many,Actividades del procedimiento,no,baja,models/sgi_process_procedure.py:57
+sgi.process,procedure_ids,One2many,Procedimientos e instructivos,no,baja,models/sgi_process.py:78
+sgi.process,process_type,Selection,Tipo,sí,alta,models/sgi_process.py:25
+sgi.process,red_kpi_count,Integer,KPIs en rojo,sí,baja,models/sgi_process.py:91
+sgi.process,risk_count,Integer,# Riesgos,sí,baja,models/sgi_process.py:101
+sgi.process,risk_ids,One2many,Riesgos y oportunidades,no,baja,models/sgi_process.py:83
+sgi.process,spec_error_count,Integer,Faltantes que bloquean,sí,baja,models/sgi_activity_spec.py:606
+sgi.process,spec_warning_count,Integer,Advertencias,sí,baja,models/sgi_activity_spec.py:608
+sgi.process,stage_ids,One2many,Etapas,sí,media,models/sgi_deliverable.py:388
+sgi.process.activity,approver_role_ids,Many2many,Aprueba,sí,alta,models/sgi_process_procedure.py:626
+sgi.process.activity,automation_level_current,Selection,Automatización actual,sí,alta,models/sgi_process_procedure.py:552
+sgi.process.activity,automation_level_target,Selection,Automatización meta,sí,alta,models/sgi_process_procedure.py:555
+sgi.process.activity,automation_method,Selection,Método de automatización,sí,alta,models/sgi_process_procedure.py:557
+sgi.process.activity,company_id,Many2one,Empresa,sí,baja,models/sgi_process_procedure.py:488
+sgi.process.activity,exec_stat_ids,One2many,Ejecuciones por semana,no,baja,models/sgi_process_procedure.py:930
+sgi.process.activity,executor_role_ids,Many2many,Ejecuta,sí,alta,models/sgi_process_procedure.py:624
+sgi.process.activity,flow_child_count,Integer,Siguientes,sí,baja,models/sgi_hierarchy.py:27
+sgi.process.activity,flow_child_ids,One2many,Pasos siguientes (diagrama),no,baja,models/sgi_hierarchy.py:25
+sgi.process.activity,flow_executor,Char,Quién ejecuta,sí,media,models/sgi_hierarchy.py:28
+sgi.process.activity,in_link_ids,One2many,Recibe de,sí,media,models/sgi_process_procedure.py:591
+sgi.process.activity,informed_role_ids,Many2many,Se entera,sí,alta,models/sgi_process_procedure.py:628
+sgi.process.activity,input_deliverable_ids,Many2many,Entregables que recibe,no,baja,models/sgi_deliverable.py:567
+sgi.process.activity,instruction_article_stale,Boolean,Artículo cambió desde la última revisión,sí,alta,models/sgi_instruction_knowledge.py:22
+sgi.process.activity,market_filter_id,Many2one,Mercado (con las generales),sí,alta,models/sgi_business_line.py:85
+sgi.process.activity,measure_count_30d,Integer,Ejecuciones (30 días),sí,alta,models/sgi_process_procedure.py:879
+sgi.process.activity,measure_last_date,Datetime,Última ejecución,sí,alta,models/sgi_process_procedure.py:878
+sgi.process.activity,measure_state,Selection,Cumplimiento,sí,alta,models/sgi_process_procedure.py:880
+sgi.process.activity,measure_warning,Text,Avisos de medición,sí,media,models/sgi_process_procedure.py:958
+sgi.process.activity,next_activity_ids,Many2many,Siguientes pasos,sí,alta,models/sgi_process_procedure.py:593
+sgi.process.activity,out_link_ids,One2many,Entrega a,sí,media,models/sgi_process_procedure.py:589
+sgi.process.activity,output_deliverable_ids,Many2many,Entrega,sí,alta,models/sgi_deliverable.py:570
+sgi.process.activity,prev_activity_ids,Many2many,Pasos anteriores,no,baja,models/sgi_process_procedure.py:596
+sgi.process.activity,process_id,Many2one,Proceso,sí,alta,models/sgi_process_procedure.py:485
+sgi.process.activity,recent_exec_stat_ids,Many2many,Últimas 4 semanas,sí,alta,models/sgi_process_procedure.py:932
+sgi.process.activity,responsible_job_ids,Many2many,Puestos que ejecutan,no,baja,models/sgi_process_procedure.py:534
+sgi.process.activity,role_ids,One2many,Roles,sí,media,models/sgi_process_procedure.py:532
+sgi.process.activity,sample_cadence,Selection,Cadencia de muestreo,sí,alta,models/sgi_process_procedure.py:911
+sgi.process.activity,sequence,Integer,Secuencia,sí,baja,models/sgi_process_procedure.py:495
+sgi.process.activity,sgi_mp_change_ids,One2many,Propuestas de cambio,no,baja,models/sgi_mp_change.py:119
+sgi.process.activity,spec_gap_ids,One2many,Faltantes,sí,media,models/sgi_activity_spec.py:196
+sgi.process.activity,spec_gap_summary,Text,Qué le falta,sí,media,models/sgi_activity_spec.py:201
+sgi.process.activity,stage_id,Many2one,Etapa,sí,alta,models/sgi_process_procedure.py:512
+sgi.process.activity,team_filter_id,Many2one,Equipo (con las generales),sí,alta,models/sgi_business_line.py:82
+sgi.process.activity,value_class,Selection,Clase de valor,sí,alta,models/sgi_process_procedure.py:544
+sgi.process.activity,workcenter_id,Many2one,Centro de trabajo,sí,alta,models/sgi_activity_spec.py:186
+sgi.process.flow,acceptance_criteria,Text,Criterio de aceptación,sí,media,models/sgi_process.py:418
+sgi.process.flow,company_id,Many2one,Empresa,no,baja,models/sgi_process.py:421
+sgi.process.flow,document_id,Many2one,Formato de entrega,sí,alta,models/sgi_process.py:417
+sgi.process.flow,from_process_id,Many2one,Proceso origen,sí,alta,models/sgi_process.py:415
+sgi.process.flow,name,Char,Entregable,sí,baja,models/sgi_process.py:414
+sgi.process.flow,odoo_model_id,Many2one,Modelo Odoo que lo materializa,sí,alta,models/sgi_process.py:419
+sgi.process.flow,odoo_model_name,Char,Modelo técnico,no,baja,models/sgi_process.py:420
+sgi.process.flow,to_process_id,Many2one,Proceso destino,sí,alta,models/sgi_process.py:416
+sgi.process.responsibility,company_id,Many2one,Empresa,no,baja,models/sgi_process_procedure.py:444
+sgi.process.responsibility,process_id,Many2one,Proceso,no,baja,models/sgi_process_procedure.py:440
+sgi.process.responsibility,responsibilities,Text,Responsabilidades,no,baja,models/sgi_process_procedure.py:454
+sgi.process.responsibility,sequence,Integer,Secuencia,no,baja,models/sgi_process_procedure.py:443
+sgi.process.stage,activity_count,Integer,Núm. de actividades,no,baja,models/sgi_deliverable.py:40
+sgi.process.stage,activity_ids,One2many,Actividades,no,baja,models/sgi_deliverable.py:39
+sgi.process.stage,company_id,Many2one,Empresa,no,baja,models/sgi_deliverable.py:41
+sgi.process.stage,name,Char,Etapa,no,baja,models/sgi_deliverable.py:38
+sgi.process.stage,process_id,Many2one,Proceso,no,baja,models/sgi_deliverable.py:34
+sgi.process.stage,sequence,Integer,,no,baja,models/sgi_deliverable.py:36
+sgi.risk,action_line_ids,One2many,Acciones,sí,media,models/sgi_risk.py:90
+sgi.risk,active,Boolean,,sí,baja,models/sgi_risk.py:104
+sgi.risk,attention_level,Selection,Nivel de atención,sí,alta,models/sgi_risk.py:110
+sgi.risk,category_id,Many2one,Categoría,sí,alta,models/sgi_risk.py:61
+sgi.risk,condition,Selection,Condición (IPER),sí,alta,models/sgi_risk.py:78
+sgi.risk,consequence,Text,Consecuencia,sí,media,models/sgi_risk.py:49
+sgi.risk,eval_impact,Selection,Impacto / Severidad,sí,alta,models/sgi_risk.py:108
+sgi.risk,eval_probability,Selection,Probabilidad,sí,alta,models/sgi_risk.py:107
+sgi.risk,existing_controls,Text,Controles existentes,sí,media,models/sgi_risk.py:75
+sgi.risk,foda_type,Selection,Tipo FODA,sí,alta,models/sgi_risk.py:83
+sgi.risk,has_finished_actions,Boolean,Acciones terminadas,sí,alta,models/sgi_risk.py:123
+sgi.risk,instrument,Selection,Instrumento,sí,alta,models/sgi_risk.py:50
+sgi.risk,job_id,Many2one,Puesto,sí,alta,models/sgi_risk.py:74
+sgi.risk,kind,Selection,Tipo,sí,alta,models/sgi_risk.py:57
+sgi.risk,last_eval_date,Date,Última evaluación,sí,alta,models/sgi_risk.py:128
+sgi.risk,name,Char,Aspecto / Peligro / Situación,sí,baja,models/sgi_risk.py:48
+sgi.risk,next_review_date,Date,Próxima revisión,sí,alta,models/sgi_risk.py:97
+sgi.risk,operational_control_id,Many2one,Control operacional (ambiental),sí,alta,models/sgi_risk.py:76
+sgi.risk,process_id,Many2one,Proceso,sí,alta,models/sgi_risk.py:66
+sgi.risk,residual_impact,Selection,Impacto residual,sí,alta,models/sgi_risk.py:115
+sgi.risk,residual_level,Selection,Nivel residual,sí,alta,models/sgi_risk.py:117
+sgi.risk,residual_probability,Selection,Probabilidad residual,sí,alta,models/sgi_risk.py:114
+sgi.risk,residual_score,Integer,Riesgo residual,sí,alta,models/sgi_risk.py:116
+sgi.risk,score,Integer,Nivel de riesgo,sí,alta,models/sgi_risk.py:109
+sgi.risk,semaphore,Selection,Semáforo,sí,alta,models/sgi_risk.py:129
+sgi.risk,sgi_area_id,Many2one,Área SGI,sí,alta,models/sgi_risk.py:73
+sgi.risk,sgi_nc_count,Integer,# NCs ligadas,sí,baja,models/sgi_risk.py:95
+sgi.risk,sgi_nc_ids,Many2many,NCs ligadas,no,baja,models/sgi_risk.py:92
+sgi.risk,source,Selection,Origen,sí,alta,models/sgi_risk.py:62
+sgi.risk,state,Selection,Estado,sí,alta,models/sgi_risk.py:98
+sgi.risk.category,active,Boolean,,no,baja,models/sgi_risk.py:32
+sgi.risk.category,name,Char,Categoría,sí,baja,models/sgi_risk.py:31
+sgi.sales.budget,amount_budget_total,Monetary,Presupuesto (total),sí,media,models/sgi_sales_budget.py:94
+sgi.sales.budget,amount_ordered_total,Monetary,Pedido (total),sí,media,models/sgi_sales_budget.py:98
+sgi.sales.budget,amount_real_total,Monetary,Facturado (total),sí,media,models/sgi_sales_budget.py:96
+sgi.sales.budget,company_id,Many2one,Compañía,sí,baja,models/sgi_sales_budget.py:72
+sgi.sales.budget,currency_id,Many2one,Moneda,sí,baja,models/sgi_sales_budget.py:74
+sgi.sales.budget,fulfillment_pct,Float,% Cumplimiento (importe),sí,alta,models/sgi_sales_budget.py:100
+sgi.sales.budget,line_count,Integer,# Líneas,sí,baja,models/sgi_sales_budget.py:90
+sgi.sales.budget,line_ids,One2many,Líneas del presupuesto,sí,media,models/sgi_sales_budget.py:88
+sgi.sales.budget,name,Char,Nombre,sí,baja,models/sgi_sales_budget.py:71
+sgi.sales.budget,qty_budget_text,Char,Cantidad presupuestada (por unidad),sí,media,models/sgi_sales_budget.py:108
+sgi.sales.budget,qty_real_text,Char,Cantidad facturada (por unidad),sí,media,models/sgi_sales_budget.py:110
+sgi.sales.budget,revision,Integer,Revisión,sí,alta,models/sgi_sales_budget.py:57
+sgi.sales.budget,sgi_mps_available,Boolean,,sí,alta,models/sgi_sales_budget.py:959
+sgi.sales.budget,state,Selection,Estado,sí,alta,models/sgi_sales_budget.py:82
+sgi.sales.budget,year,Integer,Año,sí,alta,models/sgi_sales_budget.py:51
+sgi.sales.budget.import,available_sheets,Char,Hojas del archivo,sí,media,models/sgi_sales_budget_import.py:46
+sgi.sales.budget.import,budget_id,Many2one,Presupuesto,sí,alta,models/sgi_sales_budget_import.py:41
+sgi.sales.budget.import,conflict_mode,Selection,Si el producto ya tiene líneas,sí,alta,models/sgi_sales_budget_import.py:50
+sgi.sales.budget.import,file,Binary,Archivo .xlsx,sí,media,models/sgi_sales_budget_import.py:44
+sgi.sales.budget.import,filename,Char,Nombre del archivo,sí,media,models/sgi_sales_budget_import.py:45
+sgi.sales.budget.import,result,Text,Resultado,sí,media,models/sgi_sales_budget_import.py:54
+sgi.sales.budget.line,amount_ordered,Monetary,Importe pedido,sí,media,models/sgi_sales_budget_line.py:110
+sgi.sales.budget.line,avg_price_budget,Monetary,Precio prom. presupuestado,sí,media,models/sgi_sales_budget_line.py:119
+sgi.sales.budget.line,avg_price_real,Monetary,Precio prom. real,sí,media,models/sgi_sales_budget_line.py:121
+sgi.sales.budget.line,budget_id,Many2one,Presupuesto,sí,alta,models/sgi_sales_budget_line.py:24
+sgi.sales.budget.line,company_id,Many2one,,no,baja,models/sgi_sales_budget_line.py:28
+sgi.sales.budget.line,coverage_state,Selection,Estado de cobertura,sí,alta,models/sgi_sales_budget_line.py:132
+sgi.sales.budget.line,currency_id,Many2one,Moneda,sí,baja,models/sgi_sales_budget_line.py:29
+sgi.sales.budget.line,kind,Selection,Tipo,sí,alta,models/sgi_sales_budget_line.py:31
+sgi.sales.budget.line,list_currency_id,Many2one,Moneda de la lista,sí,alta,models/sgi_sales_budget_line.py:68
+sgi.sales.budget.line,price_gap,Monetary,Desviación de precio (divisa),no,baja,models/sgi_sales_budget_line.py:163
+sgi.sales.budget.line,price_gap_alert,Selection,Alerta de precio,sí,alta,models/sgi_sales_budget_line.py:168
+sgi.sales.budget.line,price_gap_pct,Float,Desviación de precio (%),sí,alta,models/sgi_sales_budget_line.py:166
+sgi.sales.budget.line,product_id,Many2one,Producto,sí,alta,models/sgi_sales_budget_line.py:32
+sgi.sales.budget.line,qty_budget,Float,Cantidad presupuestada,sí,alta,models/sgi_sales_budget_line.py:52
+sgi.sales.budget.line,team_id,Many2one,Mercado,sí,alta,models/sgi_sales_budget_line.py:26
+sgi.sales.budget.line,unconverted_count,Integer,Facturas sin convertir,sí,baja,models/sgi_sales_budget_line.py:103
+sgi.sign.record.mixin,sgi_sign_count,Integer,,no,baja,models/sgi_sign_record.py:21
+sgi.sign.record.mixin,sgi_sign_request_ids,Many2many,Solicitudes de firma,no,baja,models/sgi_sign_record.py:19
+sgi.sign.record.mixin,sgi_signed,Boolean,Firmado,no,baja,models/sgi_sign_record.py:22
+sgi.sign.request.wizard,partner_id,Many2one,Firmante,sí,alta,models/sgi_sign_record.py:115
+sgi.sign.request.wizard,res_id,Integer,,sí,alta,models/sgi_sign_record.py:113
+sgi.sign.request.wizard,res_model,Char,,sí,media,models/sgi_sign_record.py:112
+sgi.sign.request.wizard,subject,Char,Asunto,sí,media,models/sgi_sign_record.py:116
+sgi.sign.request.wizard,template_id,Many2one,Plantilla de firma,sí,alta,models/sgi_sign_record.py:114
+sgi.staff.efficiency,amount_total,Monetary,Importe total,sí,media,models/sgi_staff_efficiency.py:47
+sgi.staff.efficiency,company_id,Many2one,,sí,baja,models/sgi_staff_efficiency.py:50
+sgi.staff.efficiency,currency_id,Many2one,,sí,baja,models/sgi_staff_efficiency.py:49
+sgi.staff.efficiency,department_id,Many2one,Área,sí,alta,models/sgi_staff_efficiency.py:39
+sgi.staff.efficiency,employee_count,Integer,Número de empleados,sí,baja,models/sgi_staff_efficiency.py:46
+sgi.staff.efficiency,line_ids,One2many,Empleados,sí,media,models/sgi_staff_efficiency.py:45
+sgi.staff.efficiency,name,Char,,sí,baja,models/sgi_staff_efficiency.py:36
+sgi.staff.efficiency,note,Text,Observaciones,sí,media,models/sgi_staff_efficiency.py:51
+sgi.staff.efficiency,period_date,Date,Mes,sí,alta,models/sgi_staff_efficiency.py:37
+sgi.staff.efficiency,prepared_by_id,Many2one,Elaboró (jefe de área),sí,alta,models/sgi_staff_efficiency.py:40
+sgi.staff.efficiency,received_by_id,Many2one,Recibió (coordinador de RH),sí,alta,models/sgi_staff_efficiency.py:41
+sgi.staff.efficiency,received_date,Datetime,Recibida por RH el,sí,alta,models/sgi_staff_efficiency.py:42
+sgi.staff.efficiency,state,Selection,,sí,alta,models/sgi_staff_efficiency.py:43
+sgi.staff.efficiency.line,amount,Monetary,A pagar,sí,media,models/sgi_staff_efficiency.py:191
+sgi.staff.efficiency.line,attendance_pct,Float,Asistencia (máx. 5.5 %),sí,alta,models/sgi_staff_efficiency.py:186
+sgi.staff.efficiency.line,currency_id,Many2one,,sí,baja,models/sgi_staff_efficiency.py:196
+sgi.staff.efficiency.line,department_id,Many2one,Área,sí,alta,models/sgi_staff_efficiency.py:181
+sgi.staff.efficiency.line,efficiency_pct,Float,Eficiencia (máx. 2 %),sí,alta,models/sgi_staff_efficiency.py:188
+sgi.staff.efficiency.line,efficiency_ratio,Float,Esperado / real,no,baja,models/sgi_staff_efficiency.py:195
+sgi.staff.efficiency.line,employee_id,Many2one,Empleado,sí,alta,models/sgi_staff_efficiency.py:179
+sgi.staff.efficiency.line,expected_minutes,Float,Tiempo esperado (min),no,baja,models/sgi_staff_efficiency.py:194
+sgi.staff.efficiency.line,housekeeping_pct,Float,Orden y limpieza (máx. 2 %),sí,alta,models/sgi_staff_efficiency.py:187
+sgi.staff.efficiency.line,job_id,Many2one,Puesto,sí,alta,models/sgi_staff_efficiency.py:180
+sgi.staff.efficiency.line,note,Char,Observaciones,no,baja,models/sgi_staff_efficiency.py:197
+sgi.staff.efficiency.line,quality_pct,Float,Calidad (máx. 2 %),sí,alta,models/sgi_staff_efficiency.py:189
+sgi.staff.efficiency.line,real_minutes,Float,Tiempo real (min),no,baja,models/sgi_staff_efficiency.py:193
+sgi.staff.efficiency.line,sheet_id,Many2one,Hoja mensual,sí,alta,models/sgi_staff_efficiency.py:178
+sgi.staff.efficiency.line,total_pct,Float,Total (%),sí,alta,models/sgi_staff_efficiency.py:190
+sgi.staff.efficiency.line,wage_daily,Monetary,Salario diario,no,baja,models/sgi_staff_efficiency.py:182
+sgi.staff.efficiency.line,wage_monthly,Monetary,Salario mensual (×30),no,baja,models/sgi_staff_efficiency.py:184
+sgi.supplier.eval,date_from,Date,Desde,sí,alta,models/sgi_supplier_eval.py:111
+sgi.supplier.eval,date_to,Date,Hasta,sí,alta,models/sgi_supplier_eval.py:112
+sgi.supplier.eval,nc_count,Integer,# NC,sí,baja,models/sgi_supplier_eval.py:118
+sgi.supplier.eval,notes,Text,Notas,sí,media,models/sgi_supplier_eval.py:122
+sgi.supplier.eval,otd_pct,Float,OTD %,sí,alta,models/sgi_supplier_eval.py:113
+sgi.supplier.eval,partner_id,Many2one,Proveedor,sí,alta,models/sgi_supplier_eval.py:109
+sgi.supplier.eval,score,Float,Calificación,sí,alta,models/sgi_supplier_eval.py:119
+sgi.supplier.eval,supplier_class,Selection,Clasificación,sí,alta,models/sgi_supplier_eval.py:120
+slide.channel,sgi_skill_level_id,Many2one,Nivel que otorga,sí,alta,models/sgi_sign_elearning.py:157
+slide.channel,sgi_skill_type_id,Many2one,Tipo de competencia,sí,alta,models/sgi_sign_elearning.py:155
+stock.picking,sgi_acuse_attachment_ids,One2many,Acuses firmados,no,baja,models/sgi_links.py:193
+stock.picking,sgi_acuse_count,Integer,Acuses,sí,baja,models/sgi_links.py:195
+stock.picking,sgi_coa_date,Datetime,COA adjuntado,sí,alta,models/sgi_coa.py:109
+stock.picking,sgi_coa_sent_date,Datetime,COA enviado al cliente,sí,alta,models/sgi_coa.py:112
+stock.picking,sgi_coa_status,Selection,Estado del COA,sí,alta,models/sgi_coa.py:114
+stock.picking,sgi_coa_uid,Many2one,COA adjuntado por,sí,alta,models/sgi_coa.py:110
+stock.picking,sgi_nc_count,Integer,# NC,sí,baja,models/sgi_integration.py:9
+stock.picking,sgi_return_alert_id,Many2one,NC de devolución,no,baja,models/sgi_integration.py:30

@@ -1,0 +1,104 @@
+modelo,metodo,archivo:linea,menciones_tests,veredicto,por_que,hallazgo
+sgi.indicator,_calc_actividad_a_tiempo,models/sgi_activity_spec.py:753,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo actividad_a_tiempo en uso en produccion",
+sgi.indicator,_calc_entregable_completo,models/sgi_activity_spec.py:786,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo entregable_completo en uso en produccion",
+sgi.base.mixin,_sgi_done_activities,models/sgi_base.py:64,0,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+quality.check,_sgi_check_equipment_calibrated,models/sgi_calibration.py:27,0,Se queda,@api.constrains (lo llama el ORM),
+sgi.document.type,sgi_next_code,models/sgi_catalog.py:685,1,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+sgi.config,sgi_drop_empty_studio_models,models/sgi_catalog.py:722,0,Se elimina con su migracion,solo lo llama una migracion ya aplicada en produccion (y pruebas),B-007
+ir.ui.menu,_sgi_menu_dangling_actions,models/sgi_cleanup.py:133,1,Se elimina con su migracion,solo lo llama una migracion ya aplicada en produccion (y pruebas),B-004
+sgi.competence.gap,_table_query,models/sgi_competence.py:50,0,Se queda,hook del ORM (vista SQL),
+sgi.process.activity,_sgi_sentence,models/sgi_deliverable.py:692,3,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+sgi.diagram,_data_process_map,models/sgi_diagram.py:180,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_process_flow,models/sgi_diagram.py:211,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_sipoc,models/sgi_diagram.py:325,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_doc_tree,models/sgi_diagram.py:375,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_who_does_what,models/sgi_diagram.py:461,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_interaction_matrix,models/sgi_diagram_iso.py:82,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_context_map,models/sgi_diagram_iso.py:114,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_roles_map,models/sgi_diagram_iso.py:157,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_risk_matrix,models/sgi_diagram_iso.py:196,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_legal_matrix,models/sgi_diagram_iso.py:244,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_calibration_map,models/sgi_diagram_iso.py:301,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_competence_matrix,models/sgi_diagram_iso.py:352,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_doc_pyramid,models/sgi_diagram_iso.py:384,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_emergency_map,models/sgi_diagram_iso.py:417,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_audit_program,models/sgi_diagram_iso.py:455,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_management_review,models/sgi_diagram_iso.py:479,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_nc_flow,models/sgi_diagram_iso.py:537,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+sgi.diagram,_data_pdca,models/sgi_diagram_iso.py:594,0,Se queda,despacho dinamico getattr _data_<kind> (sgi_diagram.py:78); kind usado en views/sgi_diagram_views.xml,
+ir.ui.view,_validate_tag_sgi_diagram,models/sgi_diagram_view.py:29,0,Se queda,hook del ORM (valida la etiqueta sgi_diagram),
+sgi.indicator,_calc_acuerdos_rxd,models/sgi_direction_board.py:42,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo acuerdos_rxd,B-010
+res.groups,_sgi_enforce_mast_members,models/sgi_groups_cleanup.py:30,3,Se elimina con su migracion,solo lo llama una migracion ya aplicada en produccion (y pruebas),B-005
+res.groups,_sgi_retire_legacy_groups,models/sgi_groups_cleanup.py:56,2,Se elimina con su migracion,solo lo llama una migracion ya aplicada en produccion (y pruebas),B-005
+sgi.process,sgi_map_data,models/sgi_hierarchy.py:97,1,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+sgi.indicator,_calc_otif_ventas,models/sgi_indicator.py:285,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo otif_ventas en uso en produccion",
+sgi.indicator,_calc_otd_compras,models/sgi_indicator.py:301,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo otd_compras en uso en produccion",
+sgi.indicator,_calc_produccion_vs_programado,models/sgi_indicator.py:325,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo produccion_vs_programado en uso en produccion",
+sgi.indicator,_calc_desperdicio,models/sgi_indicator.py:342,2,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo desperdicio,B-010
+sgi.indicator,_calc_desperdicio_scrap,models/sgi_indicator.py:357,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo desperdicio_scrap,B-010
+sgi.indicator,_calc_calidad_pq,models/sgi_indicator.py:370,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo calidad_pq en uso en produccion",
+sgi.indicator,_calc_cumplimiento_programa,models/sgi_indicator.py:386,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo cumplimiento_programa en uso en produccion",
+sgi.indicator,_calc_cierre_nc,models/sgi_indicator.py:400,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo cierre_nc en uso en produccion",
+sgi.indicator,_calc_reclamos_cliente,models/sgi_indicator.py:415,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo reclamos_cliente en uso en produccion",
+sgi.indicator,_calc_disponibilidad_mantto,models/sgi_indicator.py:426,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo disponibilidad_mantto,B-010
+sgi.indicator,_calc_preventivo_cumplido,models/sgi_indicator.py:430,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo preventivo_cumplido,B-010
+sgi.indicator,_calc_rotacion_rh,models/sgi_indicator.py:441,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo rotacion_rh en uso en produccion",
+sgi.indicator,_calc_plantilla_rh,models/sgi_indicator.py:451,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo plantilla_rh,B-010
+sgi.indicator,_calc_presupuesto_ventas,models/sgi_indicator.py:467,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo presupuesto_ventas en uso en produccion",
+sgi.indicator,_note_presupuesto_ventas,models/sgi_indicator.py:481,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo presupuesto_ventas en uso en produccion",
+sgi.indicator,_calc_crecimiento_ventas,models/sgi_indicator.py:516,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo crecimiento_ventas en uso en produccion",
+sgi.indicator,_calc_ots_atendidas,models/sgi_indicator.py:526,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo ots_atendidas en uso en produccion",
+sgi.indicator,_calc_requisiciones,models/sgi_indicator.py:557,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo requisiciones en uso en produccion",
+sgi.indicator,_calc_embarques_sin_error,models/sgi_indicator.py:588,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo embarques_sin_error en uso en produccion",
+sgi.indicator,_calc_produccion_vs_capacidad,models/sgi_indicator.py:598,3,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo produccion_vs_capacidad en uso en produccion",
+sgi.indicator,_note_consumo_energia,models/sgi_indicator.py:627,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo consumo_energia en uso en produccion",
+sgi.indicator,_note_produccion_vs_capacidad,models/sgi_indicator.py:633,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo produccion_vs_capacidad en uso en produccion",
+sgi.indicator,_calc_compras_sin_devolucion,models/sgi_indicator.py:640,1,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo compras_sin_devolucion,B-010
+sgi.indicator,_calc_capacitacion,models/sgi_indicator.py:656,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo capacitacion en uso en produccion",
+sgi.indicator,_calc_satisfaccion_cliente,models/sgi_indicator.py:695,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo satisfaccion_cliente en uso en produccion",
+sgi.indicator,_note_satisfaccion_cliente,models/sgi_indicator.py:720,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo satisfaccion_cliente en uso en produccion",
+sgi.indicator,_calc_inventario_ciclico,models/sgi_indicator.py:735,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo inventario_ciclico,B-010
+sgi.indicator,_calc_margen_ventas,models/sgi_indicator.py:770,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo margen_ventas,B-010
+sgi.indicator,_calc_compras_vs_ventas,models/sgi_indicator.py:796,1,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo compras_vs_ventas,B-010
+sgi.indicator,_calc_clientes_nuevos,models/sgi_indicator.py:804,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo clientes_nuevos en uso en produccion",
+sgi.indicator,_calc_concentracion_top3,models/sgi_indicator.py:832,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo concentracion_top3 en uso en produccion",
+sgi.indicator,_calc_facturacion_usd,models/sgi_indicator.py:846,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo facturacion_usd en uso en produccion",
+sgi.indicator,_calc_notas_credito,models/sgi_indicator.py:860,3,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo notas_credito en uso en produccion",
+sgi.indicator,_calc_dso_cartera,models/sgi_indicator.py:874,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo dso_cartera en uso en produccion",
+sgi.indicator,_calc_cartera_vencida,models/sgi_indicator.py:911,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo cartera_vencida en uso en produccion",
+sgi.indicator,_calc_cartera_vencida_60,models/sgi_indicator.py:914,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo cartera_vencida_60 en uso en produccion",
+sgi.indicator,_calc_retencion_clientes,models/sgi_indicator.py:925,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo retencion_clientes en uso en produccion",
+sgi.indicator,_calc_clientes_reactivados,models/sgi_indicator.py:937,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo clientes_reactivados en uso en produccion",
+sgi.indicator,_calc_ventas_fuera_top10,models/sgi_indicator.py:971,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo ventas_fuera_top10 en uso en produccion",
+sgi.indicator,_calc_concentracion_productos,models/sgi_indicator.py:980,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo concentracion_productos en uso en produccion",
+sgi.indicator,_calc_pedidos_cancelados,models/sgi_indicator.py:1002,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo pedidos_cancelados en uso en produccion",
+sgi.indicator,_calc_entregas_completas,models/sgi_indicator.py:1014,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo entregas_completas en uso en produccion",
+sgi.indicator,_calc_dpo_pagos,models/sgi_indicator.py:1024,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo dpo_pagos en uso en produccion",
+sgi.indicator,_sgi_aggregate,models/sgi_indicator_detail.py:163,2,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+sgi.indicator,_detail_otif_ventas,models/sgi_indicator_detail.py:188,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo otif_ventas en uso en produccion",
+sgi.indicator,_detail_otd_compras,models/sgi_indicator_detail.py:195,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo otd_compras en uso en produccion",
+sgi.indicator,_detail_entregas_completas,models/sgi_indicator_detail.py:208,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo entregas_completas en uso en produccion",
+sgi.indicator,_detail_embarques_sin_error,models/sgi_indicator_detail.py:213,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo embarques_sin_error en uso en produccion",
+sgi.indicator,_detail_pedidos_cancelados,models/sgi_indicator_detail.py:218,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo pedidos_cancelados en uso en produccion",
+sgi.indicator,_detail_cierre_nc,models/sgi_indicator_detail.py:227,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo cierre_nc en uso en produccion",
+sgi.indicator,_detail_calidad_pq,models/sgi_indicator_detail.py:238,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo calidad_pq en uso en produccion",
+sgi.indicator,_detail_preventivo_cumplido,models/sgi_indicator_detail.py:247,0,Se elimina,despacho dinamico por calc_mode; ningun indicador de produccion usa el modo preventivo_cumplido,B-010
+sgi.indicator,_detail_dso_cartera,models/sgi_indicator_detail.py:254,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo dso_cartera en uso en produccion",
+sgi.indicator,_detail_cartera_vencida,models/sgi_indicator_detail.py:274,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo cartera_vencida en uso en produccion",
+sgi.indicator,_detail_cartera_vencida_60,models/sgi_indicator_detail.py:277,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo cartera_vencida_60 en uso en produccion",
+sgi.indicator,_calc_configurable,models/sgi_indicator_formula.py:413,2,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo configurable en uso en produccion",
+sgi.indicator,_note_configurable,models/sgi_indicator_formula.py:416,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo configurable en uso en produccion",
+sgi.indicator,_calc_desperdicio_kg,models/sgi_indicator_i3.py:93,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo desperdicio_kg en uso en produccion",
+sgi.indicator,_calc_margen_ebitda,models/sgi_indicator_i3.py:130,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo margen_ebitda en uso en produccion",
+sgi.indicator,_calc_compras_mp_vs_ventas,models/sgi_indicator_i3.py:156,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo compras_mp_vs_ventas en uso en produccion",
+sgi.indicator,_calc_reproceso,models/sgi_indicator_p21.py:65,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo reproceso en uso en produccion",
+sgi.indicator,_note_reproceso,models/sgi_indicator_p21.py:68,1,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo reproceso en uso en produccion",
+sgi.indicator,_calc_inventario_diferencia,models/sgi_indicator_p21.py:98,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo inventario_diferencia en uso en produccion",
+sgi.indicator,_note_inventario_diferencia,models/sgi_indicator_p21.py:101,0,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo inventario_diferencia en uso en produccion",
+sgi.indicator,_calc_consumo_energia,models/sgi_indicator_p21.py:130,3,Se queda,"despacho dinamico getattr por calc_mode (sgi_indicator.py:255/732, sgi_indicator_detail.py:100); modo consumo_energia en uso en produccion",
+sgi.lock.date.log,sgi_business_day_of,models/sgi_kpi_fields.py:208,0,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+sgi.acuse.attach.wizard,_sgi_file_size,models/sgi_links.py:254,0,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+hr.job,_sgi_mp_role_label,models/sgi_my_procedure.py:152,0,Se elimina,"sin llamador en codigo, XML, JS ni otros addons (a lo mas pruebas)",B-012
+sgi.action.line,_sgi_check_done,models/sgi_nonconformity.py:736,0,Se queda,@api.constrains,
+sgi.action.line,_sgi_check_root_cause_before_capa,models/sgi_nonconformity.py:760,0,Se queda,@api.constrains,
+sgi.sales.budget.line,grid_update_cell,models/sgi_sales_budget_line.py:939,3,Se queda,hook de web_grid,

@@ -1,0 +1,293 @@
+addon,model,class,kind,propio_o_heredado,inherit,description,order,rec_name,file,line
+quimibond_sgi,sgi.activity.spec.gap,SgiActivitySpecGap,Model,propio,,Faltante de especificación de una actividad SGI,"severity, code, activity_id",,addons/quimibond_sgi/models/sgi_activity_spec.py,117
+quimibond_sgi,sgi.process.activity,SgiActivitySpec,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,137
+quimibond_sgi,sgi.activity.role,SgiActivityRoleSpec,Model,heredado,sgi.activity.role,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,445
+quimibond_sgi,sgi.activity.input,SgiActivityInputSpec,Model,heredado,sgi.activity.input,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,466
+quimibond_sgi,sgi.deliverable,SgiDeliverableSpec,Model,heredado,sgi.deliverable,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,565
+quimibond_sgi,sgi.process,SgiProcessSpec,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,596
+quimibond_sgi,sgi.indicator,SgiIndicatorSpec,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,697
+quimibond_sgi,ir.config_parameter,IrConfigParameterSpec,Model,heredado,ir.config_parameter,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,822
+quimibond_sgi,sgi.activity.week.stat,SgiActivityWeekStat,Model,propio,,Cumplimiento semanal de una actividad SGI,"period_start desc, activity_id",,addons/quimibond_sgi/models/sgi_activity_spec.py,842
+quimibond_sgi,sgi.process.activity,SgiActivityWeekCounts,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_activity_spec.py,914
+quimibond_sgi,sgi.alert.source,SgiAlertSource,Model,propio,mail.thread,Fuente de NC automática,"sequence, code",,addons/quimibond_sgi/models/sgi_alert_source.py,20
+quimibond_sgi,studio.approval.rule,StudioApprovalRuleSgi,Model,heredado,studio.approval.rule,,,,addons/quimibond_sgi/models/sgi_approval_native.py,58
+quimibond_sgi,approval.category,ApprovalCategorySgiRole,Model,heredado,approval.category,,,,addons/quimibond_sgi/models/sgi_approval_native.py,66
+quimibond_sgi,sgi.activity.role,SgiActivityRoleApproval,Model,heredado,sgi.activity.role,,,,addons/quimibond_sgi/models/sgi_approval_native.py,74
+quimibond_sgi,sgi.process.activity,SgiProcessActivityApproval,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_approval_native.py,401
+quimibond_sgi,hr.job,HrJobArchivedFilter,Model,heredado,hr.job,,,,addons/quimibond_sgi/models/sgi_archived_filters.py,28
+quimibond_sgi,sgi.process,SgiProcessArchiveTouch,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_archived_filters.py,35
+quimibond_sgi,sgi.my.pending,SgiMyPendingArchivedFilter,TransientModel,heredado,sgi.my.pending,,,,addons/quimibond_sgi/models/sgi_archived_filters.py,48
+quimibond_sgi,sgi.area,SgiArea,Model,propio,,Área documental SGI,code,,addons/quimibond_sgi/models/sgi_area.py,5
+quimibond_sgi,sgi.audit.program,SgiAuditProgram,Model,propio,"mail.thread,mail.activity.mixin",Programa anual de auditorías (P-G03),year desc,,addons/quimibond_sgi/models/sgi_audit.py,32
+quimibond_sgi,sgi.audit.program.line,SgiAuditProgramLine,Model,propio,,Línea del programa de auditorías,"planned_month, id",,addons/quimibond_sgi/models/sgi_audit.py,120
+quimibond_sgi,sgi.audit,SgiAudit,Model,propio,sgi.base.mixin,Auditoría interna (P-G03),"date_planned desc, folio desc",,addons/quimibond_sgi/models/sgi_audit.py,165
+quimibond_sgi,sgi.audit.finding,SgiAuditFinding,Model,propio,,Hallazgo de auditoría,"audit_id, id",,addons/quimibond_sgi/models/sgi_audit.py,528
+quimibond_sgi,sgi.audit.checklist.line,SgiAuditChecklistLine,Model,propio,,Pregunta del checklist de auditoría (por actividad),"audit_id, sequence, id",,addons/quimibond_sgi/models/sgi_audit.py,610
+quimibond_sgi,sgi.base.mixin,SgiBaseMixin,AbstractModel,propio,"mail.thread,mail.activity.mixin",Cimiento de registros del SGI,,,addons/quimibond_sgi/models/sgi_base.py,23
+quimibond_sgi,budget.analytic,BudgetAnalytic,Model,heredado,budget.analytic,,,,addons/quimibond_sgi/models/sgi_budget_analytic.py,10
+quimibond_sgi,sgi.process.activity,SgiProcessActivityLine,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_business_line.py,66
+quimibond_sgi,sgi.process,SgiProcessLine,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_business_line.py,122
+quimibond_sgi,hr.job,HrJobLine,Model,heredado,hr.job,,,,addons/quimibond_sgi/models/sgi_business_line.py,142
+quimibond_sgi,hr.employee,HrEmployeeLine,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_business_line.py,187
+quimibond_sgi,crm.team.member,CrmTeamMemberSgi,Model,heredado,crm.team.member,,,,addons/quimibond_sgi/models/sgi_business_line.py,201
+quimibond_sgi,crm.team,CrmTeamSgi,Model,heredado,crm.team,,,,addons/quimibond_sgi/models/sgi_business_line.py,228
+quimibond_sgi,sgi.activity.exec.stat,SgiExecStatLine,Model,heredado,sgi.activity.exec.stat,,,,addons/quimibond_sgi/models/sgi_business_line.py,241
+quimibond_sgi,sgi.indicator,SgiIndicatorLine,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_business_line.py,258
+quimibond_sgi,sgi.indicator.term,SgiIndicatorTermLine,Model,heredado,sgi.indicator.term,,,,addons/quimibond_sgi/models/sgi_business_line.py,359
+quimibond_sgi,sgi.indicator.measure,SgiIndicatorMeasureLine,Model,heredado,sgi.indicator.measure,,,,addons/quimibond_sgi/models/sgi_business_line.py,410
+quimibond_sgi,sgi.indicator.measure.split,SgiIndicatorMeasureSplit,Model,propio,,Desglose de medición de indicador (equipo o mercado),"measure_id, market, team_id, id",,addons/quimibond_sgi/models/sgi_business_line.py,417
+quimibond_sgi,quality.check,QualityCheck,Model,heredado,quality.check,,,,addons/quimibond_sgi/models/sgi_calibration.py,8
+quimibond_sgi,maintenance.equipment,MaintenanceEquipment,Model,heredado,maintenance.equipment,,,,addons/quimibond_sgi/models/sgi_calibration.py,50
+quimibond_sgi,sgi.calibration,SgiCalibration,Model,propio,"mail.thread,mail.activity.mixin",Calibración de equipo de medición (P-C03),"date desc, id desc",,addons/quimibond_sgi/models/sgi_calibration.py,121
+quimibond_sgi,sgi.job.family,SgiJobFamily,Model,propio,,Familia de puestos SGI,code,,addons/quimibond_sgi/models/sgi_catalog.py,57
+quimibond_sgi,sgi.activity.role,SgiActivityRole,Model,propio,,Rol de un puesto en una actividad SGI,"activity_id, sequence, id",,addons/quimibond_sgi/models/sgi_catalog.py,114
+quimibond_sgi,hr.job,HrJob,Model,heredado,hr.job,,,,addons/quimibond_sgi/models/sgi_catalog.py,307
+quimibond_sgi,sgi.document.type,SgiDocumentType,Model,propio,,Tipo de documento SGI,"sequence, code",,addons/quimibond_sgi/models/sgi_catalog.py,566
+quimibond_sgi,sgi.config,SgiConfigStudioCleanup,AbstractModel,heredado,sgi.config,,,,addons/quimibond_sgi/models/sgi_catalog.py,712
+quimibond_sgi,sgi.checklist.template,SgiChecklistTemplate,Model,propio,,Plantilla de checklist de mantenimiento (planta o unidades),"code, name",,addons/quimibond_sgi/models/sgi_checklist.py,25
+quimibond_sgi,sgi.checklist.template.item,SgiChecklistTemplateItem,Model,propio,,Punto a revisar de una plantilla de checklist,"template_id, sequence, id",,addons/quimibond_sgi/models/sgi_checklist.py,100
+quimibond_sgi,sgi.checklist.line,SgiChecklistLine,Model,propio,,Punto revisado en una hoja de mantenimiento,"request_id, sequence, id",,addons/quimibond_sgi/models/sgi_checklist.py,111
+quimibond_sgi,maintenance.request,MaintenanceRequestChecklist,Model,heredado,maintenance.request,,,,addons/quimibond_sgi/models/sgi_checklist.py,126
+quimibond_sgi,sgi.checklist.finish,SgiChecklistFinish,TransientModel,propio,,Terminar checklist: quién lo llenó,,,addons/quimibond_sgi/models/sgi_checklist.py,183
+quimibond_sgi,ir.ui.menu,SgiMenuCleanup,Model,heredado,ir.ui.menu,,,,addons/quimibond_sgi/models/sgi_cleanup.py,107
+quimibond_sgi,sgi.process,SgiProcessCleanup,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_cleanup.py,145
+quimibond_sgi,res.partner,ResPartner,Model,heredado,res.partner,,,,addons/quimibond_sgi/models/sgi_coa.py,52
+quimibond_sgi,stock.picking,StockPicking,Model,heredado,stock.picking,,,,addons/quimibond_sgi/models/sgi_coa.py,92
+quimibond_sgi,sale.order,SaleOrder,Model,heredado,sale.order,,,,addons/quimibond_sgi/models/sgi_coa.py,211
+quimibond_sgi,sgi.coa.attach.wizard,SgiCoaAttachWizard,TransientModel,propio,,Adjuntar COA a la entrega,,,addons/quimibond_sgi/models/sgi_coa.py,242
+quimibond_sgi,sgi.coa.exception.wizard,SgiCoaExceptionWizard,TransientModel,propio,,Validar salida sin COA (Jefe de Calidad),,,addons/quimibond_sgi/models/sgi_coa.py,289
+quimibond_sgi,sgi.coa.inbox,SgiCoaInbox,Model,propio,mail.thread,COA recibido por correo,id desc,,addons/quimibond_sgi/models/sgi_coa.py,309
+quimibond_sgi,hr.employee,HrEmployeeCompetence,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_competence.py,5
+quimibond_sgi,sgi.competence.gap,SgiCompetenceGap,Model,propio,,Brecha de competencia (DNC),"department_id, employee_id",,addons/quimibond_sgi/models/sgi_competence.py,30
+quimibond_sgi,hr.department,HrDepartmentCompetenceMatrix,Model,heredado,hr.department,,,,addons/quimibond_sgi/models/sgi_competence.py,80
+quimibond_sgi,helpdesk.ticket,HelpdeskTicket,Model,heredado,helpdesk.ticket,,,,addons/quimibond_sgi/models/sgi_complaint.py,5
+quimibond_sgi,sgi.interested.party,SgiInterestedParty,Model,propio,"mail.thread,mail.activity.mixin",Parte interesada (ISO 4.2),"party_type, category, name",,addons/quimibond_sgi/models/sgi_context.py,15
+quimibond_sgi,quality.point,QualityPoint,Model,heredado,quality.point,,,,addons/quimibond_sgi/models/sgi_control_plan.py,8
+quimibond_sgi,sgi.control.plan,SgiControlPlan,Model,propio,sgi.base.mixin,Plan de control (P-C11),folio desc,,addons/quimibond_sgi/models/sgi_control_plan.py,56
+quimibond_sgi,stock.lot,StockLot,Model,heredado,stock.lot,,,,addons/quimibond_sgi/models/sgi_control_plan.py,171
+quimibond_sgi,sgi.cron,SgiCron,AbstractModel,propio,,Tareas programadas SGI,,,addons/quimibond_sgi/models/sgi_cron.py,12
+quimibond_sgi,crm.team,CrmTeamComplaintDays,Model,heredado,crm.team,,,,addons/quimibond_sgi/models/sgi_customer_reply.py,26
+quimibond_sgi,quality.alert,QualityAlertCustomerReply,Model,heredado,quality.alert,,,,addons/quimibond_sgi/models/sgi_customer_reply.py,35
+quimibond_sgi,sgi.cron,SgiCronCustomerReply,AbstractModel,heredado,sgi.cron,,,,addons/quimibond_sgi/models/sgi_customer_reply.py,173
+quimibond_sgi,sgi.process.stage,SgiProcessStage,Model,propio,,Etapa de un proceso SGI,"process_id, sequence, code, id",,addons/quimibond_sgi/models/sgi_deliverable.py,29
+quimibond_sgi,sgi.deliverable,SgiDeliverable,Model,propio,,Entregable SGI (lo que pasa de una actividad a otra),name,,addons/quimibond_sgi/models/sgi_deliverable.py,82
+quimibond_sgi,sgi.activity.input,SgiActivityInput,Model,propio,,Entregable que recibe una actividad SGI,"activity_id, sequence, id",,addons/quimibond_sgi/models/sgi_deliverable.py,321
+quimibond_sgi,sgi.process,SgiProcessDeliverables,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_deliverable.py,383
+quimibond_sgi,sgi.calculated.connection.mixin,_SgiCalculatedConnection,AbstractModel,propio,,Conexión calculada de un entregable,,,addons/quimibond_sgi/models/sgi_deliverable.py,426
+quimibond_sgi,sgi.process.flow,SgiProcessFlowDeliverable,Model,heredado,"sgi.process.flow,sgi.calculated.connection.mixin",,,,addons/quimibond_sgi/models/sgi_deliverable.py,486
+quimibond_sgi,sgi.activity.link,SgiActivityLinkDeliverable,Model,heredado,"sgi.activity.link,sgi.calculated.connection.mixin",,,,addons/quimibond_sgi/models/sgi_deliverable.py,510
+quimibond_sgi,sgi.process.activity,SgiActivityDeliverables,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_deliverable.py,561
+quimibond_sgi,project.project,ProjectProjectDevRequest,Model,heredado,project.project,,,,addons/quimibond_sgi/models/sgi_dev_request.py,61
+quimibond_sgi,sgi.dev.characteristic,SgiDevCharacteristic,Model,propio,,Característica pedida en la solicitud de desarrollo,"sequence, id",,addons/quimibond_sgi/models/sgi_dev_request.py,127
+quimibond_sgi,sgi.diagnostic.line,SgiDiagnosticLine,TransientModel,propio,,Hallazgo del diagnóstico del SGI,"sequence, id",,addons/quimibond_sgi/models/sgi_diagnostic.py,23
+quimibond_sgi,sgi.diagnostic,SgiDiagnostic,TransientModel,propio,,Diagnóstico de configuración y adopción del SGI,,,addons/quimibond_sgi/models/sgi_diagnostic.py,37
+quimibond_sgi,sgi.diagram,SgiDiagram,AbstractModel,propio,,Diagramas del SGI (datos para el componente sgi_diagram),,,addons/quimibond_sgi/models/sgi_diagram.py,72
+quimibond_sgi,sgi.diagram,SgiDiagramIso,AbstractModel,heredado,sgi.diagram,,,,addons/quimibond_sgi/models/sgi_diagram_iso.py,47
+quimibond_sgi,ir.ui.view,IrUiView,Model,heredado,ir.ui.view,,,,addons/quimibond_sgi/models/sgi_diagram_view.py,21
+quimibond_sgi,ir.actions.act_window.view,IrActionsActWindowView,Model,heredado,ir.actions.act_window.view,,,,addons/quimibond_sgi/models/sgi_diagram_view.py,48
+quimibond_sgi,sgi.indicator,SgiIndicatorLevel,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_direction_board.py,17
+quimibond_sgi,sgi.direction.board,SgiDirectionBoard,TransientModel,propio,,Tablero de dirección (I-9),,,addons/quimibond_sgi/models/sgi_direction_board.py,54
+quimibond_sgi,approval.category,ApprovalCategory,Model,heredado,approval.category,,,,addons/quimibond_sgi/models/sgi_doc_change.py,10
+quimibond_sgi,approval.request,ApprovalRequest,Model,heredado,approval.request,,,,addons/quimibond_sgi/models/sgi_doc_change.py,21
+quimibond_sgi,approval.category,ApprovalCategorySign,Model,heredado,approval.category,,,,addons/quimibond_sgi/models/sgi_doc_change_sign.py,41
+quimibond_sgi,approval.request,ApprovalRequestSign,Model,heredado,approval.request,,,,addons/quimibond_sgi/models/sgi_doc_change_sign.py,51
+quimibond_sgi,sign.request.item,SignRequestItemSgi,Model,heredado,sign.request.item,,,,addons/quimibond_sgi/models/sgi_doc_change_sign.py,319
+quimibond_sgi,sign.request,SignRequestSgi,Model,heredado,sign.request,,,,addons/quimibond_sgi/models/sgi_doc_change_sign.py,329
+quimibond_sgi,documents.document,DocumentsDocument,Model,heredado,documents.document,,,,addons/quimibond_sgi/models/sgi_document.py,28
+quimibond_sgi,sgi.document.ack,SgiDocumentAck,Model,propio,,Acuse de lectura de documento SGI,"document_id, employee_id",document_id,addons/quimibond_sgi/models/sgi_document.py,754
+quimibond_sgi,sgi.emergency.plan,SgiEmergencyPlan,Model,propio,sgi.base.mixin,Plan de emergencia (ISO 14001/45001 8.2),folio desc,,addons/quimibond_sgi/models/sgi_emergency.py,15
+quimibond_sgi,sgi.emergency.drill,SgiEmergencyDrill,Model,propio,sgi.base.mixin,Simulacro de emergencia,"date_planned desc, folio desc",,addons/quimibond_sgi/models/sgi_emergency.py,111
+quimibond_sgi,sgi.epp.delivery,SgiEppDelivery,Model,propio,mail.thread,Responsiva de entrega de EPP (S03-02),"date desc, id desc",,addons/quimibond_sgi/models/sgi_epp.py,15
+quimibond_sgi,hr.employee,HrEmployeeEpp,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_epp.py,104
+quimibond_sgi,sgi.epp.delivery.line,SgiEppDeliveryLine,Model,propio,,Renglón de la responsiva de EPP,"sequence, id",,addons/quimibond_sgi/models/sgi_epp_sign.py,20
+quimibond_sgi,sgi.epp.delivery,SgiEppDeliverySign,Model,heredado,sgi.epp.delivery,,,,addons/quimibond_sgi/models/sgi_epp_sign.py,34
+quimibond_sgi,res.config.settings,ResConfigSettingsEpp,TransientModel,heredado,res.config.settings,,,,addons/quimibond_sgi/models/sgi_epp_sign.py,130
+quimibond_sgi,sgi.activity.exec.stat,SgiActivityExecStat,Model,propio,,Ejecuciones de una actividad SGI por semana y usuario,"period_start desc, activity_id, count desc",,addons/quimibond_sgi/models/sgi_exec_stat.py,21
+quimibond_sgi,documents.document,DocumentsDocumentExternal,Model,heredado,documents.document,,,,addons/quimibond_sgi/models/sgi_external_doc.py,16
+quimibond_sgi,sgi.cron,SgiCronExternalDoc,AbstractModel,heredado,sgi.cron,,,,addons/quimibond_sgi/models/sgi_external_doc.py,63
+quimibond_sgi,sgi.fmea,SgiFmea,Model,propio,sgi.base.mixin,AMEF - Análisis de Modo y Efecto de Falla (P-C10),folio desc,,addons/quimibond_sgi/models/sgi_fmea.py,8
+quimibond_sgi,sgi.fmea.line,SgiFmeaLine,Model,propio,,Línea de AMEF,"fmea_id, sequence, id",,addons/quimibond_sgi/models/sgi_fmea.py,146
+quimibond_sgi,sgi.format.map,SgiFormatMap,Model,propio,,Formato SGI en documentos de Odoo,sgi_code,,addons/quimibond_sgi/models/sgi_format_map.py,13
+quimibond_sgi,sgi.config,SgiConfig,AbstractModel,propio,,Configuración SGI,,,addons/quimibond_sgi/models/sgi_format_map.py,67
+quimibond_sgi,sgi.format.mixin,SgiFormatMixin,AbstractModel,propio,,Mixin: clave de formato SGI,,,addons/quimibond_sgi/models/sgi_format_map.py,649
+quimibond_sgi,sale.order,SaleOrder,Model,heredado,"sale.order,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,684
+quimibond_sgi,purchase.order,PurchaseOrder,Model,heredado,"purchase.order,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,695
+quimibond_sgi,stock.picking,StockPicking,Model,heredado,"stock.picking,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,700
+quimibond_sgi,mrp.production,MrpProduction,Model,heredado,"mrp.production,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,709
+quimibond_sgi,maintenance.request,MaintenanceRequest,Model,heredado,"maintenance.request,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,714
+quimibond_sgi,quality.alert,QualityAlert,Model,heredado,"quality.alert,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,719
+quimibond_sgi,stock.lot,StockLot,Model,heredado,"stock.lot,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,724
+quimibond_sgi,sgi.management.review,SgiManagementReview,Model,heredado,"sgi.management.review,sgi.format.mixin",,,,addons/quimibond_sgi/models/sgi_format_map.py,729
+quimibond_sgi,res.groups,ResGroupsSgiCleanup,Model,heredado,res.groups,,,,addons/quimibond_sgi/models/sgi_groups_cleanup.py,26
+quimibond_sgi,sgi.process.activity,SgiProcessActivityHierarchy,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_hierarchy.py,16
+quimibond_sgi,sgi.process,SgiProcessHierarchy,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_hierarchy.py,52
+quimibond_sgi,sgi.health.record,SgiHealthRecord,Model,propio,"mail.thread,mail.activity.mixin",Estudio de higiene o examen médico por trabajador,"next_date, employee_id",,addons/quimibond_sgi/models/sgi_hse_records.py,29
+quimibond_sgi,hr.employee,HrEmployeeHealth,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_hse_records.py,97
+quimibond_sgi,sgi.cron,SgiCronHealth,AbstractModel,heredado,sgi.cron,,,,addons/quimibond_sgi/models/sgi_hse_records.py,105
+quimibond_sgi,sgi.csh.inspection,SgiCshInspection,Model,propio,"mail.thread,mail.activity.mixin",Recorrido de la Comisión de Seguridad e Higiene,"date desc, id desc",,addons/quimibond_sgi/models/sgi_hse_records.py,116
+quimibond_sgi,sgi.csh.finding,SgiCshFinding,Model,propio,,Hallazgo del recorrido de la Comisión de Seguridad e Higiene,"inspection_id, sequence, id",,addons/quimibond_sgi/models/sgi_hse_records.py,175
+quimibond_sgi,project.project,ProjectProject,Model,heredado,project.project,,,,addons/quimibond_sgi/models/sgi_improvement.py,6
+quimibond_sgi,project.task.type,ProjectTaskType,Model,heredado,project.task.type,,,,addons/quimibond_sgi/models/sgi_improvement.py,12
+quimibond_sgi,project.task,ProjectTask,Model,heredado,project.task,,,,addons/quimibond_sgi/models/sgi_improvement.py,18
+quimibond_sgi,quality.alert,QualityAlert,Model,heredado,quality.alert,,,,addons/quimibond_sgi/models/sgi_incident.py,6
+quimibond_sgi,sgi.incident,SgiIncident,Model,propio,sgi.base.mixin,"Incidente / Accidente SST (P-S02, SCAT)",folio desc,,addons/quimibond_sgi/models/sgi_incident.py,13
+quimibond_sgi,sgi.indicator,SgiIndicator,Model,propio,"mail.thread,mail.activity.mixin",Indicador SGI (F-P-A10-03),code,,addons/quimibond_sgi/models/sgi_indicator.py,63
+quimibond_sgi,sgi.indicator.measure,SgiIndicatorMeasure,Model,propio,,Medición de indicador SGI,"period_date desc, indicator_id",,addons/quimibond_sgi/models/sgi_indicator.py,1038
+quimibond_sgi,quality.alert,QualityAlert,Model,heredado,quality.alert,,,,addons/quimibond_sgi/models/sgi_indicator.py,1451
+quimibond_sgi,sgi.indicator,SgiIndicatorDetail,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_indicator_detail.py,35
+quimibond_sgi,sgi.indicator.measure,SgiIndicatorMeasureDetail,Model,heredado,sgi.indicator.measure,,,,addons/quimibond_sgi/models/sgi_indicator_detail.py,281
+quimibond_sgi,sgi.indicator.term,SgiIndicatorTerm,Model,propio,,Término de la fórmula de un indicador SGI,"indicator_id, role",,addons/quimibond_sgi/models/sgi_indicator_formula.py,77
+quimibond_sgi,sgi.indicator,SgiIndicatorFormula,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_indicator_formula.py,338
+quimibond_sgi,sgi.indicator.measure,SgiIndicatorMeasureFormula,Model,heredado,sgi.indicator.measure,,,,addons/quimibond_sgi/models/sgi_indicator_formula.py,495
+quimibond_sgi,sgi.indicator,SgiIndicatorI3,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_indicator_i3.py,39
+quimibond_sgi,sgi.indicator,SgiIndicatorP21,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_indicator_p21.py,33
+quimibond_sgi,sgi.indicator,SgiIndicatorWindow,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_indicator_plan.py,47
+quimibond_sgi,sgi.action.line,SgiActionLinePlan,Model,heredado,sgi.action.line,,,,addons/quimibond_sgi/models/sgi_indicator_plan.py,70
+quimibond_sgi,sgi.indicator.measure,SgiIndicatorMeasurePlan,Model,heredado,sgi.indicator.measure,,,,addons/quimibond_sgi/models/sgi_indicator_plan.py,108
+quimibond_sgi,sgi.cron,SgiCronCalendar,AbstractModel,heredado,sgi.cron,,,,addons/quimibond_sgi/models/sgi_indicator_plan.py,218
+quimibond_sgi,sgi.management.review,SgiManagementReviewValidate,Model,heredado,sgi.management.review,,,,addons/quimibond_sgi/models/sgi_indicator_plan.py,265
+quimibond_sgi,sgi.indicator.step,SgiIndicatorStep,Model,propio,,Escalón trimestral de la meta de un indicador SGI,"indicator_id, date_from",,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,31
+quimibond_sgi,sgi.indicator,SgiIndicatorTrajectory,Model,heredado,sgi.indicator,,,,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,76
+quimibond_sgi,sgi.indicator.measure,SgiIndicatorMeasureTrajectory,Model,heredado,sgi.indicator.measure,,,,addons/quimibond_sgi/models/sgi_indicator_trajectory.py,218
+quimibond_sgi,sgi.process.activity,SgiProcessActivityKnowledge,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,15
+quimibond_sgi,documents.document,DocumentsDocumentArticle,Model,heredado,documents.document,,,,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,51
+quimibond_sgi,sgi.instruction.publish,SgiInstructionPublish,TransientModel,propio,,Publicar artículo de Knowledge como instructivo (IT),,,addons/quimibond_sgi/models/sgi_instruction_knowledge.py,59
+quimibond_sgi,stock.picking,StockPicking,Model,heredado,stock.picking,,,,addons/quimibond_sgi/models/sgi_integration.py,6
+quimibond_sgi,mrp.production,MrpProduction,Model,heredado,mrp.production,,,,addons/quimibond_sgi/models/sgi_integration.py,87
+quimibond_sgi,purchase.order,PurchaseOrder,Model,heredado,purchase.order,,,,addons/quimibond_sgi/models/sgi_integration.py,109
+quimibond_sgi,maintenance.request,MaintenanceRequest,Model,heredado,maintenance.request,,,,addons/quimibond_sgi/models/sgi_integration.py,146
+quimibond_sgi,hr.job,HrJob,Model,heredado,hr.job,,,,addons/quimibond_sgi/models/sgi_integration.py,189
+quimibond_sgi,product.template,ProductTemplateSgiSpec,Model,heredado,product.template,,,,addons/quimibond_sgi/models/sgi_integration.py,203
+quimibond_sgi,product.product,ProductProductSgiSpec,Model,heredado,product.product,,,,addons/quimibond_sgi/models/sgi_integration.py,230
+quimibond_sgi,hr.employee,HrEmployee,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_integration.py,241
+quimibond_sgi,res.partner,ResPartner,Model,heredado,res.partner,,,,addons/quimibond_sgi/models/sgi_integration.py,300
+quimibond_sgi,ir.ui.menu,IrUiMenu,Model,heredado,ir.ui.menu,,,,addons/quimibond_sgi/models/sgi_integration.py,347
+quimibond_sgi,product.template,ProductTemplateFirstSale,Model,heredado,product.template,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,58
+quimibond_sgi,sale.order,SaleOrderFirstSale,Model,heredado,sale.order,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,66
+quimibond_sgi,stock.picking,StockPickingKpi,Model,heredado,stock.picking,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,81
+quimibond_sgi,quality.alert,QualityAlertClaimedMeters,Model,heredado,quality.alert,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,113
+quimibond_sgi,account.move.line,AccountMoveLinePoDiff,Model,heredado,account.move.line,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,122
+quimibond_sgi,account.move,AccountMovePaymentDate,Model,heredado,account.move,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,141
+quimibond_sgi,sgi.management.review.agreement,SgiManagementReviewAgreementDone,Model,heredado,sgi.management.review.agreement,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,164
+quimibond_sgi,sgi.lock.date.log,SgiLockDateLog,Model,propio,,Bitácora de fechas de bloqueo contable,"moved_at desc, id desc",,addons/quimibond_sgi/models/sgi_kpi_fields.py,182
+quimibond_sgi,res.company,ResCompanyLockLog,Model,heredado,res.company,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,213
+quimibond_sgi,sgi.inventory.value,SgiInventoryValue,Model,propio,,Valor del inventario al cierre de mes (cálculo de AL-01),"date desc, company_id",,addons/quimibond_sgi/models/sgi_kpi_fields.py,232
+quimibond_sgi,hr.version,HrVersionDeparture,Model,heredado,hr.version,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,272
+quimibond_sgi,hr.employee,HrEmployeeTrial,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,294
+quimibond_sgi,res.users,ResUsersDeactivated,Model,heredado,res.users,,,,addons/quimibond_sgi/models/sgi_kpi_fields.py,303
+quimibond_sgi,sgi.legal.requirement,SgiLegalRequirement,Model,propio,"mail.thread,mail.activity.mixin",Requisito legal / otro requisito (14001·45001 6.1.3),"compliance_state desc, next_eval_date, id",,addons/quimibond_sgi/models/sgi_legal.py,21
+quimibond_sgi,sgi.legal.evaluation,SgiLegalEvaluation,Model,propio,,Evaluación del cumplimiento de un requisito legal,"date desc, id desc",,addons/quimibond_sgi/models/sgi_legal.py,230
+quimibond_sgi,sgi.legal.evaluate,SgiLegalEvaluate,TransientModel,propio,,Registrar evaluación de cumplimiento legal,,,addons/quimibond_sgi/models/sgi_legal.py,252
+quimibond_sgi,sgi.dyd.task.mixin,SgiDydTaskMixin,AbstractModel,propio,,Liga a la tarea del desarrollo,,,addons/quimibond_sgi/models/sgi_links.py,22
+quimibond_sgi,sgi.fmea,SgiFmeaLink,Model,heredado,"sgi.fmea,sgi.dyd.task.mixin",,,,addons/quimibond_sgi/models/sgi_links.py,34
+quimibond_sgi,mrp.bom,MrpBomLink,Model,heredado,"mrp.bom,sgi.dyd.task.mixin",,,,addons/quimibond_sgi/models/sgi_links.py,39
+quimibond_sgi,sgi.control.plan,SgiControlPlanLink,Model,heredado,"sgi.control.plan,sgi.dyd.task.mixin",,,,addons/quimibond_sgi/models/sgi_links.py,44
+quimibond_sgi,sgi.ppap,SgiPpapLink,Model,heredado,"sgi.ppap,sgi.dyd.task.mixin",,,,addons/quimibond_sgi/models/sgi_links.py,49
+quimibond_sgi,mrp.production,MrpProductionLink,Model,heredado,"mrp.production,sgi.dyd.task.mixin",,,,addons/quimibond_sgi/models/sgi_links.py,54
+quimibond_sgi,project.task,ProjectTaskLinks,Model,heredado,project.task,,,,addons/quimibond_sgi/models/sgi_links.py,63
+quimibond_sgi,product.template,ProductTemplateLink,Model,heredado,product.template,,,,addons/quimibond_sgi/models/sgi_links.py,81
+quimibond_sgi,quality.alert,QualityAlertLink,Model,heredado,quality.alert,,,,addons/quimibond_sgi/models/sgi_links.py,100
+quimibond_sgi,purchase.order,PurchaseOrderLink,Model,heredado,purchase.order,,,,addons/quimibond_sgi/models/sgi_links.py,109
+quimibond_sgi,approval.request,ApprovalRequestLink,Model,heredado,approval.request,,,,addons/quimibond_sgi/models/sgi_links.py,119
+quimibond_sgi,account.move,AccountMoveLink,Model,heredado,account.move,,,,addons/quimibond_sgi/models/sgi_links.py,142
+quimibond_sgi,ir.attachment,IrAttachmentLink,Model,heredado,ir.attachment,,,,addons/quimibond_sgi/models/sgi_links.py,166
+quimibond_sgi,stock.picking,StockPickingLink,Model,heredado,stock.picking,,,,addons/quimibond_sgi/models/sgi_links.py,185
+quimibond_sgi,sgi.acuse.attach.wizard,SgiAcuseAttachWizard,TransientModel,propio,,Adjuntar acuse firmado a la entrega,,,addons/quimibond_sgi/models/sgi_links.py,230
+quimibond_sgi,sgi.process,SgiProcessLoad,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_load.py,211
+quimibond_sgi,sgi.catalog.load.wizard,SgiCatalogLoadWizard,TransientModel,propio,,Cargar catálogo SGI,,,addons/quimibond_sgi/models/sgi_load_wizard.py,22
+quimibond_sgi,sgi.catalog.load.wizard.line,SgiCatalogLoadWizardLine,TransientModel,propio,,Resultado de la carga del catálogo SGI,id,,addons/quimibond_sgi/models/sgi_load_wizard.py,103
+quimibond_sgi,sgi.machine.sheet,SgiMachineSheet,Model,propio,"mail.thread,mail.activity.mixin",Ficha técnica de proceso por máquina (F-IT-P-P01-08-05),"product_id, workcenter_id, revision desc, id desc",,addons/quimibond_sgi/models/sgi_machine_sheet.py,26
+quimibond_sgi,sgi.machine.sheet.yarn,SgiMachineSheetYarn,Model,propio,,Hilo de la ficha de proceso por máquina,"sequence, id",,addons/quimibond_sgi/models/sgi_machine_sheet.py,111
+quimibond_sgi,sgi.machine.sheet.param,SgiMachineSheetParam,Model,propio,,Parámetro de la ficha de proceso por máquina,"section, sequence, id",,addons/quimibond_sgi/models/sgi_machine_sheet.py,128
+quimibond_sgi,sgi.management.review,SgiManagementReview,Model,propio,sgi.base.mixin,Revisión por la Dirección (IT-P-A10-01),"date desc, folio desc",,addons/quimibond_sgi/models/sgi_management_review.py,10
+quimibond_sgi,sgi.management.review.agreement,SgiManagementReviewAgreement,Model,propio,,Acuerdo de Revisión por la Dirección,"deadline, id",,addons/quimibond_sgi/models/sgi_management_review.py,395
+quimibond_sgi,sgi.action.line,SgiActionLineReview,Model,heredado,sgi.action.line,,,,addons/quimibond_sgi/models/sgi_management_review.py,426
+quimibond_sgi,approval.category,ApprovalCategoryMpChange,Model,heredado,approval.category,,,,addons/quimibond_sgi/models/sgi_mp_change.py,48
+quimibond_sgi,approval.request,ApprovalRequestMpChange,Model,heredado,approval.request,,,,addons/quimibond_sgi/models/sgi_mp_change.py,64
+quimibond_sgi,sgi.process.activity,SgiProcessActivityMpChange,Model,heredado,"sgi.process.activity,mail.thread,mail.activity.mixin",,,,addons/quimibond_sgi/models/sgi_mp_change.py,113
+quimibond_sgi,sgi.activity.role,SgiActivityRoleMpChange,Model,heredado,sgi.activity.role,,,,addons/quimibond_sgi/models/sgi_mp_change.py,127
+quimibond_sgi,sgi.my.procedure,SgiMyProcedureMpChange,TransientModel,heredado,sgi.my.procedure,,,,addons/quimibond_sgi/models/sgi_mp_change.py,135
+quimibond_sgi,sgi.activity.change,SgiActivityChange,Model,propio,,Propuesta de cambio a una actividad (Mi procedimiento),id desc,display_title,addons/quimibond_sgi/models/sgi_mp_change.py,156
+quimibond_sgi,sgi.activity.change.role,SgiActivityChangeRole,Model,propio,,Quién hace la actividad (propuesta),"change_id, sequence, id",,addons/quimibond_sgi/models/sgi_mp_change.py,511
+quimibond_sgi,maintenance.equipment,MaintenanceEquipmentMsa,Model,heredado,maintenance.equipment,,,,addons/quimibond_sgi/models/sgi_msa.py,14
+quimibond_sgi,sgi.msa.study,SgiMsaStudy,Model,propio,sgi.base.mixin,Estudio MSA (IATF 7.1.5.1.1),"date desc, folio desc",,addons/quimibond_sgi/models/sgi_msa.py,40
+quimibond_sgi,sgi.my.pending,SgiMyPending,TransientModel,propio,,Mis pendientes (SGI),"state_rank, date_due, id",,addons/quimibond_sgi/models/sgi_my_pending.py,46
+quimibond_sgi,sgi.my.procedure,SgiMyProcedurePending,TransientModel,heredado,sgi.my.procedure,,,,addons/quimibond_sgi/models/sgi_my_pending.py,262
+quimibond_sgi,hr.employee.public,HrEmployeePublicPending,Model,heredado,hr.employee.public,,,,addons/quimibond_sgi/models/sgi_my_pending.py,286
+quimibond_sgi,documents.document,DocumentsDocumentMyProcedure,Model,heredado,documents.document,,,,addons/quimibond_sgi/models/sgi_my_procedure.py,57
+quimibond_sgi,sgi.activity.role,SgiActivityRoleCadence,Model,heredado,sgi.activity.role,,,,addons/quimibond_sgi/models/sgi_my_procedure.py,69
+quimibond_sgi,hr.job,HrJobMyProcedure,Model,heredado,hr.job,,,,addons/quimibond_sgi/models/sgi_my_procedure.py,97
+quimibond_sgi,hr.employee,HrEmployeeMyProcedure,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_my_procedure.py,644
+quimibond_sgi,sgi.cron,SgiCronMyProcedure,AbstractModel,heredado,sgi.cron,,,,addons/quimibond_sgi/models/sgi_my_procedure.py,683
+quimibond_sgi,hr.employee,HrEmployeeTeamScope,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,52
+quimibond_sgi,hr.job,HrJobMyProcedureLists,Model,heredado,hr.job,,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,79
+quimibond_sgi,sgi.my.procedure.mixin,SgiMyProcedureMixin,AbstractModel,propio,,Mi procedimiento en la ficha,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,118
+quimibond_sgi,hr.employee,HrEmployeeMyProcedureTab,Model,heredado,"hr.employee,sgi.my.procedure.mixin",,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,213
+quimibond_sgi,hr.employee.public,HrEmployeePublicMyProcedureTab,Model,heredado,"hr.employee.public,sgi.my.procedure.mixin",,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,271
+quimibond_sgi,hr.job,HrJobMyProcedureTab,Model,heredado,"hr.job,sgi.my.procedure.mixin",,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,276
+quimibond_sgi,sgi.activity.role,SgiActivityRoleMyProcedureScreen,Model,heredado,sgi.activity.role,,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,284
+quimibond_sgi,sgi.my.procedure,SgiMyProcedure,TransientModel,propio,,Mi procedimiento (pantalla),,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,356
+quimibond_sgi,hr.employee,HrEmployeeMyProcedureOpen,Model,heredado,hr.employee,,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,867
+quimibond_sgi,hr.job,HrJobMyProcedureOpen,Model,heredado,hr.job,,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,875
+quimibond_sgi,sgi.my.procedure.check,SgiMyProcedureCheck,TransientModel,propio,,Mi procedimiento: revisión previa a publicar,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,883
+quimibond_sgi,hr.employee.public,HrEmployeePublicMyTeam,Model,heredado,hr.employee.public,,,,addons/quimibond_sgi/models/sgi_my_procedure_screen.py,928
+quimibond_sgi,documents.document,DocumentsDocumentMpSign,Model,heredado,documents.document,,,,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,21
+quimibond_sgi,sign.request,SignRequestMpSgi,Model,heredado,sign.request,,,,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,122
+quimibond_sgi,res.config.settings,ResConfigSettingsMpSign,TransientModel,heredado,res.config.settings,,,,addons/quimibond_sgi/models/sgi_my_procedure_sign.py,136
+quimibond_sgi,mail.activity,MailActivity,Model,heredado,mail.activity,,,,addons/quimibond_sgi/models/sgi_nonconformity.py,15
+quimibond_sgi,quality.alert.stage,QualityAlertStage,Model,heredado,quality.alert.stage,,,,addons/quimibond_sgi/models/sgi_nonconformity.py,38
+quimibond_sgi,quality.alert.team,QualityAlertTeam,Model,heredado,quality.alert.team,,,,addons/quimibond_sgi/models/sgi_nonconformity.py,45
+quimibond_sgi,quality.alert,QualityAlert,Model,heredado,quality.alert,,,,addons/quimibond_sgi/models/sgi_nonconformity.py,59
+quimibond_sgi,sgi.action.line,SgiActionLine,Model,propio,,Acción / corrección de No Conformidad,"date_commit, id",,addons/quimibond_sgi/models/sgi_nonconformity.py,653
+quimibond_sgi,sgi.nc.force.close,SgiNcForceClose,TransientModel,propio,,Cierre forzado de No Conformidad,,,addons/quimibond_sgi/models/sgi_nonconformity.py,901
+quimibond_sgi,sgi.nc.cancel,SgiNcCancel,TransientModel,propio,,Cancelación de No Conformidad,,,addons/quimibond_sgi/models/sgi_nonconformity.py,926
+quimibond_sgi,sgi.norm,SgiNorm,Model,propio,,Norma ISO,code,,addons/quimibond_sgi/models/sgi_norm.py,5
+quimibond_sgi,sgi.norm.clause,SgiNormClause,Model,propio,,Cláusula de norma ISO,"norm_id, code",,addons/quimibond_sgi/models/sgi_norm.py,21
+quimibond_sgi,sgi.process.activity,SgiProcessActivityNorm,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_norm_compliance.py,21
+quimibond_sgi,sgi.norm.clause,SgiNormClauseEvidence,Model,heredado,sgi.norm.clause,,,,addons/quimibond_sgi/models/sgi_norm_compliance.py,41
+quimibond_sgi,sgi.norm,SgiNormMatrix,Model,heredado,sgi.norm,,,,addons/quimibond_sgi/models/sgi_norm_compliance.py,119
+quimibond_sgi,sgi.audit.checklist.line,SgiAuditChecklistNorm,Model,heredado,sgi.audit.checklist.line,,,,addons/quimibond_sgi/models/sgi_norm_compliance.py,164
+quimibond_sgi,sgi.audit,SgiAuditChecklistByClause,Model,heredado,sgi.audit,,,,addons/quimibond_sgi/models/sgi_norm_compliance.py,207
+quimibond_sgi,sgi.objective,SgiObjective,Model,propio,"mail.thread,mail.activity.mixin",Objetivo Integral SGI,"target_year, name",,addons/quimibond_sgi/models/sgi_objective.py,17
+quimibond_sgi,sgi.policy,SgiPolicy,Model,propio,sgi.base.mixin,Política integral del SGI,"issue_date desc, folio desc",,addons/quimibond_sgi/models/sgi_policy.py,18
+quimibond_sgi,sgi.ppap.element.template,SgiPpapElementTemplate,Model,propio,,Elemento PPAP (catálogo AIAG),"sequence, id",,addons/quimibond_sgi/models/sgi_ppap.py,17
+quimibond_sgi,sgi.ppap,SgiPpap,Model,propio,sgi.base.mixin,PPAP - Proceso de Aprobación de Partes de Producción (P-C15),folio desc,,addons/quimibond_sgi/models/sgi_ppap.py,28
+quimibond_sgi,res.partner,ResPartnerPpap,Model,heredado,res.partner,,,,addons/quimibond_sgi/models/sgi_ppap.py,170
+quimibond_sgi,product.template,ProductTemplatePpap,Model,heredado,product.template,,,,addons/quimibond_sgi/models/sgi_ppap.py,194
+quimibond_sgi,product.product,ProductProductPpap,Model,heredado,product.product,,,,addons/quimibond_sgi/models/sgi_ppap.py,218
+quimibond_sgi,sgi.ppap.element,SgiPpapElement,Model,propio,,Elemento de un PPAP,"ppap_id, sequence, id",,addons/quimibond_sgi/models/sgi_ppap.py,235
+quimibond_sgi,sgi.process,SgiProcess,Model,propio,"mail.thread,mail.activity.mixin",Proceso SGI,"process_type, code",,addons/quimibond_sgi/models/sgi_process.py,8
+quimibond_sgi,sgi.process.flow,SgiProcessFlow,Model,propio,,Flujo entre procesos SGI,"from_process_id, name",,addons/quimibond_sgi/models/sgi_process.py,409
+quimibond_sgi,sgi.process,SgiProcessProcedure,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_process_procedure.py,36
+quimibond_sgi,sgi.process.responsibility,SgiProcessResponsibility,Model,propio,,Responsabilidad de área en el procedimiento,"process_id, sequence, id",,addons/quimibond_sgi/models/sgi_process_procedure.py,434
+quimibond_sgi,sgi.process.activity,SgiProcessActivity,Model,propio,,Actividad del procedimiento,"process_id, sequence, step, id",,addons/quimibond_sgi/models/sgi_process_procedure.py,479
+quimibond_sgi,sgi.activity.link,SgiActivityLink,Model,propio,,Encadenamiento entre actividades,"from_activity_id, id",,addons/quimibond_sgi/models/sgi_process_procedure.py,1409
+quimibond_sgi,stock.picking,StockPicking,Model,heredado,stock.picking,,,,addons/quimibond_sgi/models/sgi_release.py,42
+quimibond_sgi,sgi.risk.category,SgiRiskCategory,Model,propio,,Categoría de riesgo/oportunidad,name,,addons/quimibond_sgi/models/sgi_risk.py,26
+quimibond_sgi,sgi.risk,SgiRisk,Model,propio,sgi.base.mixin,Riesgo / Oportunidad SGI,folio desc,,addons/quimibond_sgi/models/sgi_risk.py,35
+quimibond_sgi,sale.order,SaleOrderCommitment,Model,heredado,sale.order,,,,addons/quimibond_sgi/models/sgi_sale_commitment.py,14
+quimibond_sgi,sgi.sales.budget,SgiSalesBudget,Model,propio,"sgi.base.mixin,sgi.format.mixin",Presupuesto de ventas (F-P-A28-17/18),"year desc, team_id, revision desc",,addons/quimibond_sgi/models/sgi_sales_budget.py,40
+quimibond_sgi,sgi.sales.budget.import,SgiSalesBudgetImport,TransientModel,propio,,Importar presupuesto desde Excel (F-P-A28-18),,,addons/quimibond_sgi/models/sgi_sales_budget_import.py,37
+quimibond_sgi,sgi.sales.budget.line,SgiSalesBudgetLine,Model,propio,,Línea de presupuesto de ventas (producto × mes),"budget_id, date, product_id",,addons/quimibond_sgi/models/sgi_sales_budget_line.py,19
+quimibond_sgi,res.config.settings,ResConfigSettings,TransientModel,heredado,res.config.settings,,,,addons/quimibond_sgi/models/sgi_settings.py,5
+quimibond_sgi,sgi.sign.builder,SgiSignBuilder,AbstractModel,propio,,Plantillas de Sign armadas por el SGI,,,addons/quimibond_sgi/models/sgi_sign_builder.py,25
+quimibond_sgi,documents.document,DocumentsDocumentSign,Model,heredado,documents.document,,,,addons/quimibond_sgi/models/sgi_sign_elearning.py,21
+quimibond_sgi,sgi.document.ack,SgiDocumentAckSign,Model,heredado,sgi.document.ack,,,,addons/quimibond_sgi/models/sgi_sign_elearning.py,117
+quimibond_sgi,slide.channel,SlideChannelSgi,Model,heredado,slide.channel,,,,addons/quimibond_sgi/models/sgi_sign_elearning.py,148
+quimibond_sgi,sgi.sign.record.mixin,SgiSignRecordMixin,AbstractModel,propio,,Firmas de Sign ligadas al registro,,,addons/quimibond_sgi/models/sgi_sign_record.py,15
+quimibond_sgi,purchase.order,PurchaseOrderSign,Model,heredado,"purchase.order,sgi.sign.record.mixin",,,,addons/quimibond_sgi/models/sgi_sign_record.py,71
+quimibond_sgi,stock.picking,StockPickingSign,Model,heredado,"stock.picking,sgi.sign.record.mixin",,,,addons/quimibond_sgi/models/sgi_sign_record.py,76
+quimibond_sgi,stock.lot,StockLotSign,Model,heredado,"stock.lot,sgi.sign.record.mixin",,,,addons/quimibond_sgi/models/sgi_sign_record.py,81
+quimibond_sgi,product.template,ProductTemplateSign,Model,heredado,"product.template,sgi.sign.record.mixin",,,,addons/quimibond_sgi/models/sgi_sign_record.py,86
+quimibond_sgi,product.product,ProductProductSign,Model,heredado,product.product,,,,addons/quimibond_sgi/models/sgi_sign_record.py,91
+quimibond_sgi,sgi.sign.request.wizard,SgiSignRequestWizard,TransientModel,propio,,Crear solicitud de firma ligada a un registro,,,addons/quimibond_sgi/models/sgi_sign_record.py,108
+quimibond_sgi,sgi.deliverable,SgiDeliverableSignSurvey,Model,heredado,sgi.deliverable,,,,addons/quimibond_sgi/models/sgi_sign_record.py,141
+quimibond_sgi,sgi.staff.efficiency,SgiStaffEfficiency,Model,propio,"mail.thread,mail.activity.mixin",Eficiencias de personal (F-P-A01-32/34),"period_date desc, id desc",,addons/quimibond_sgi/models/sgi_staff_efficiency.py,30
+quimibond_sgi,sgi.staff.efficiency.line,SgiStaffEfficiencyLine,Model,propio,,Calificación mensual de un empleado,employee_id,,addons/quimibond_sgi/models/sgi_staff_efficiency.py,173
+quimibond_sgi,sgi.process,SgiProcessStructure,Model,heredado,sgi.process,,,,addons/quimibond_sgi/models/sgi_structure.py,18
+quimibond_sgi,sgi.process.activity,SgiProcessActivityStructure,Model,heredado,sgi.process.activity,,,,addons/quimibond_sgi/models/sgi_structure.py,119
+quimibond_sgi,res.partner,ResPartner,Model,heredado,res.partner,,,,addons/quimibond_sgi/models/sgi_supplier_eval.py,17
+quimibond_sgi,sgi.supplier.eval,SgiSupplierEval,Model,propio,,Evaluación de proveedor SGI (8.4),"date_to desc, partner_id",,addons/quimibond_sgi/models/sgi_supplier_eval.py,84
+quimibond_sgi,quality.alert,QualityAlertSupplierPortal,Model,heredado,"quality.alert,portal.mixin",,,,addons/quimibond_sgi/models/sgi_supplier_nc.py,17
+quimibond_sgi_pesaje,mrp.weigh.roll.wizard,MrpWeighRollWizard,TransientModel,heredado,mrp.weigh.roll.wizard,,,,addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py,11
+quimibond_sgi_plm,mrp.eco,MrpEco,Model,heredado,mrp.eco,,,,addons/quimibond_sgi_plm/models/mrp_eco.py,5

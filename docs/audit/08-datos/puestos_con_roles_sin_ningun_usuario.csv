@@ -1,0 +1,13 @@
+hr.job id,puesto,empleados,empleados con usuario,roles SGI directos
+211,JEFE DE MANUFACTURA,1,0,"ejecuta 4, aprueba 2, escala 11, informa 12, participa 3; ademas dueno de C4 (escala por dueno_proceso 2)"
+191,ASISTENTE DE MAST Y SGI,1,0,"ejecuta 14, participa 5"
+243,ALMACENISTA K,7,0,ejecuta 10
+285,AUDITOR DE CALIDAD,1,0,"ejecuta 3, informa 2"
+203,CHOFER,2,0,ejecuta 2
+210,ELECTROMECANICO,3,0,ejecuta 2 (y familia TEC-MTO)
+220,LABORATORISTA TEJIDO,1,0,ejecuta 1 (y familia LAB)
+63,MECANICO DE TEJIDO,4,0,"ejecuta 1, informa 1, participa 2"
+241,OPERADOR COCINA A,1,0,"ejecuta 1, participa 1"
+223,AUXILIAR RH,1,0,participa 1
+248,OPERADOR CORTE Y PERFORADO J,1,0,participa 1
+187,SUPERVISOR TAC,1,0,"escala 1, informa 1 (familia SUPERVISORES tiene 3 con usuario)"

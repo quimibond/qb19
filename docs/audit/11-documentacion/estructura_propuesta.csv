@@ -1,0 +1,30 @@
+ruta,audiencia,formato,fuente,generado,como_se_genera,mantiene,extension_objetivo
+docs/sgi/README.md,todos,Markdown,a mano,no,—,programador del SGI,1 página
+docs/sgi/glosario.md,todos,Markdown,a mano + nombres de campos,parcial,términos a mano; nombre técnico ↔ nombre en pantalla sale de campos (string),Jefe MAST y SGI (textos) + programador,2 páginas
+docs/sgi/usuarios/usuario-sgi.md,Usuario SGI (316),Markdown + capturas PNG (se publica en Knowledge y como documento controlado),a mano,no,capturas en staging por el guion de capturas,Jefe MAST y SGI,1–3 páginas
+docs/sgi/usuarios/jefe-de-area.md,jefe de área / dueño de proceso / Captura de eficiencias (327),Markdown + capturas,a mano,no,idem,Jefe MAST y SGI,1–3 páginas
+docs/sgi/usuarios/direccion.md,Dirección de Operaciones (319),Markdown + capturas,a mano,no,idem,Jefe MAST y SGI,1–3 páginas
+docs/sgi/usuarios/auditor.md,Auditor SGI (317),Markdown + capturas,a mano,no,idem,Jefe MAST y SGI,1–3 páginas
+docs/sgi/usuarios/capturista-de-planta.md,capturista sin grupo SGI (base.group_user) y supervisor que ejecuta por planta,Markdown + capturas (versión impresa de 1 hoja),a mano,no,idem,Jefe MAST y SGI,1–2 páginas
+docs/sgi/usuarios/salud-ocupacional.md,grupo nuevo Salud ocupacional,Markdown + capturas,a mano,no,idem,Jefe MAST y SGI + RH,1 página (si Jose lo aprueba)
+docs/sgi/administracion/manual-jefe-mast.md,Jefe MAST y SGI (318) y Administrador SGI (325),Markdown + capturas,a mano + tablas generadas,parcial,tablas de parámetros y crons se incluyen desde tecnica/ (generadas),Jefe MAST y SGI + programador,15–25 páginas
+docs/sgi/transicion/del-dropbox-a-odoo.md,todos + auditor externo,Markdown,a mano + datos de producción,parcial,texto a mano; tabla de equivalencias exportada de Odoo (sgi_previous_code → documento/menú destino) y del xlsx rutina por rutina,Jefe MAST y SGI,4–6 páginas + anexo
+docs/sgi/transicion/equivalencias.csv,Jefe MAST / auditor,CSV,producción,sí,export por MCP/shell de documents.document (clave anterior; título; tipo; estado de migración; destino) + xlsx de rutinas,programador (script) / MAST (datos),—
+docs/sgi/tecnica/arquitectura.md,desarrollador,Markdown + Mermaid,a mano + diagramas generados,parcial,diagrama de módulos (depends) y de modelos generado; principios y decisiones a mano,programador del SGI,6–8 páginas
+docs/sgi/tecnica/modelo-de-datos.md,desarrollador,Markdown + Mermaid,código,sí,tools/sgi_docs.py: AST de models/*.py → diagrama por dominio (M2O/O2M/M2M entre sgi.* y los estándar que extiende),programador (regenera),—
+docs/sgi/tecnica/diccionario/<modelo>.md,desarrollador / consultor,Markdown (una tabla por modelo),código,sí,tools/sgi_docs.py: _name; _description; docstring; campo; tipo; string; help; required; relación; ondelete; compute/store; groups; archivo:línea,programador (regenera),—
+docs/sgi/tecnica/vistas-y-acciones.md,desarrollador,Markdown,código,sí,tools/sgi_docs.py: vistas por modelo; acciones con título y help; árbol de menús con grupos (del XML),programador (regenera),—
+docs/sgi/tecnica/seguridad.md,desarrollador / auditor de sistemas,Markdown,código,sí,tools/sgi_docs.py: grupos e implied_ids resueltos; matriz modelo × grupo (CRUD efectivo) desde ir.model.access.csv; reglas ir.rule; campos con groups; sudo() documentados,programador (regenera),—
+docs/sgi/tecnica/crons.md,desarrollador / Jefe MAST,Markdown,código (+ estado de producción),sí,tools/sgi_docs.py: <record model=ir.cron> (nombre; método; intervalo; hora; qué hace desde el docstring del método); columna de producción opcional por MCP,programador (regenera),—
+docs/sgi/tecnica/parametros.md,Jefe MAST / desarrollador,Markdown,código,sí,tools/sgi_docs.py: sgi.config._SGI_DEFAULT_PARAMS (clave; default; comentario de la línea),programador (regenera),—
+docs/sgi/tecnica/extender.md,desarrollador,Markdown,a mano,no,—,programador del SGI,5 páginas
+docs/sgi/tecnica/medicion.md,desarrollador / Jefe MAST,Markdown,a mano + tabla generada de calc_mode,parcial,lista de modos desde _SOURCE_INFO,programador del SGI,4 páginas
+docs/sgi/tecnica/mi-procedimiento.md,desarrollador / Jefe MAST,Markdown,a mano,no,—,programador del SGI,3 páginas
+docs/sgi/tecnica/carga-del-mapa.md,desarrollador / Administrador SGI,Markdown,a mano + esquema del JSON,parcial,esquema de load_payload tomado del README 596-723 y validado con test_catalog_fase1,programador del SGI,4 páginas
+docs/sgi/tecnica/upgrade-y-migraciones.md,quien despliega,Markdown,a mano,no,—,programador del SGI,3 páginas
+docs/sgi/tecnica/integraciones.md,desarrollador,Markdown,a mano + lista generada,parcial,grep de 'sgi.*' en otros addons (quimibond_intelligence/senales; qb_obligation),programador del SGI,2 páginas
+docs/sgi/tecnica/pruebas.md,desarrollador,Markdown,a mano + lista generada,parcial,lista de tests/test_*.py con su docstring,programador del SGI,1 página
+addons/quimibond_sgi/README.md,desarrollador,Markdown,a mano,no,—,programador del SGI,≤150 líneas
+addons/quimibond_sgi/CHANGELOG.md,desarrollador / Jose,Markdown,git log + README actual + migraciones,sí (inicial) luego a mano,script de reconstrucción (ver §7); después una entrada por bump en el mismo PR,programador del SGI,—
+addons/quimibond_sgi_*/README.md,desarrollador,Markdown,a mano,no,—,programador del SGI,½ página cada uno
+docs/historico/sgi/README.md,todos,Markdown,a mano,no,índice de lo archivado y por qué,programador del SGI,1 página

@@ -1,0 +1,1089 @@
+model,name,read,create,write,unlink
+_unknown,Desconocido,True,True,True,True
+account.account,Cuenta,True,True,True,False
+account.account.tag,Etiqueta de cuenta,True,True,True,True
+account.aged.partner.balance.report.handler,Gestor personalizado de los balances antiguos del contacto,True,True,True,True
+account.aged.payable.report.handler,Gestor personalizado de cuentas vencidas,True,True,True,True
+account.aged.receivable.report.handler,Gestor personalizado de cuentas por cobrar vencidas,True,True,True,True
+account.analytic.account,Cuenta analítica,True,True,True,True
+account.analytic.applicability,Aplicabilidades del plan analítico,True,True,True,True
+account.analytic.distribution.model,Modelo de distribución analítica,True,True,True,True
+account.analytic.line,Línea analítica,True,True,True,True
+account.analytic.line.calendar.employee,Filtros de personal en Empleados para la vista de calendario,True,True,True,True
+account.analytic.plan,Planes analíticos,True,True,True,True
+account.asset,Reconocimiento de activos e ingresos,True,True,True,True
+account.asset.group,Grupo de activos,True,True,True,True
+account.asset.report.handler,Gestor personalizado de reporte de activos,True,True,True,True
+account.audit.account.status,Estado de las cuentas de la auditoría,True,True,True,True
+account.balance.sheet.report.handler,Gestor personalizado de la hoja de resultados,True,True,True,True
+account.bank.reconciliation.report.handler,Gestor personalizado de reportes de conciliación bancaria,True,True,True,True
+account.bank.statement,Estado de cuenta bancario,True,True,True,True
+account.bank.statement.line,Línea de un estado de cuenta bancario,True,True,True,True
+account.batch.payment,Pago por lotes,True,True,True,True
+account.cash.flow.report.handler,Gestor personalizado de los reportes de flujo de caja,True,True,True,True
+account.cash.rounding,Redondeo de efectivo de la cuenta,True,True,True,True
+account.chart.template,Plantilla del plan de cuentas,True,True,True,True
+account.code.mapping,Mapeo de los códigos de cuenta por empresa,True,True,True,True
+account.customer.statement.report.handler,Gestor personalizado del estado de cuenta del cliente,True,True,True,True
+account.deferred.expense.report.handler,Gestor personalizado de gastos diferidos,True,True,True,True
+account.deferred.report.handler,Gestor personalizado del reporte de gastos diferidos,True,True,True,True
+account.deferred.revenue.report.handler,Gestor personalizado de ingresos diferidos,True,True,True,True
+account.document.import.mixin,Mixin para importación de documentos comerciales,True,True,True,True
+account.ec.sales.report.handler,Gestor personalizado de los reportes de ventas de la Comisión Europea,True,True,True,True
+account.edi.common,"Funciones comunes para documentos EDI: generar datos, limitaciones, etc.",True,True,True,True
+account.edi.document,Documento electrónico para un account.move,True,True,True,True
+account.edi.format,Formato EDI,True,True,True,True
+account.edi.xml.cii,Factur-x/XRechnung CII 2.2.0,True,True,True,True
+account.edi.xml.ubl_20,UBL 2.0,True,True,True,True
+account.edi.xml.ubl_21,UBL 2.1,True,True,True,True
+account.edi.xml.ubl_a_nz,Facturación A-NZ BIS 3.0,True,True,True,True
+account.edi.xml.ubl_bis3,Facturación UBL BIS 3.0.12,True,True,True,True
+account.edi.xml.ubl_de,BIS3 DE (XRechnung),True,True,True,True
+account.edi.xml.ubl_efff,E-FFF (BE),True,True,True,True
+account.edi.xml.ubl_nl,SI-UBL 2.0 (NLCIUS),True,True,True,True
+account.edi.xml.ubl_sg,Facturación SG BIS 3.0,True,True,True,True
+account.fiscal.position,Posición fiscal,True,True,True,True
+account.fiscal.position.account,Mapeo de cuentas de posición fiscal,True,True,True,True
+account.fiscal.year,Año fiscal,True,True,True,True
+account.followup.report,Reporte de seguimiento,True,True,True,True
+account.followup.report.handler,Gestor personalizado de reportes de seguimiento,True,True,True,True
+account.full.reconcile,Conciliación completa,True,True,True,True
+account.general.ledger.report.handler,Gestor personalizado,True,True,True,True
+account.generic.tax.report.handler,Gestor personalizado de los reportes generales de impuestos,True,True,True,True
+account.generic.tax.report.handler.account.tax,Gestor personalizado de los reportes generales de impuestos (Cuenta -> Impuesto),True,True,True,True
+account.generic.tax.report.handler.tax.account,Gestor personalizado de los reportes generales de impuestos (Impuesto -> Cuenta),True,True,True,True
+account.group,Grupo de cuentas,True,True,True,True
+account.incoterms,Incoterms,True,True,True,True
+account.invoice.report,Estadísticas de facturas,True,True,True,True
+account.journal,Diario,True,True,True,True
+account.journal.group,Grupo de diario contable,True,True,True,True
+account.journal.report.handler,Gestor personalizado de reportes financieros,True,True,True,True
+account.loan,Préstamo,True,True,True,True
+account.loan.line,Línea del préstamo,True,True,True,True
+account.lock_exception,Excepción de bloqueo de la cuenta,True,True,True,True
+account.move,Asiento contable,True,True,True,False
+account.move.line,Apunte contable,True,True,True,True
+account.move.send,Enviar movimiento de cuenta,True,True,True,True
+account.multicurrency.revaluation.report.handler,Gestor personalizado de reportes de revalorización multimoneda,True,True,True,True
+account.online.account,representación de una cuenta bancaria en línea,True,True,True,True
+account.online.link,Conexión bancaria,True,False,False,False
+account.partial.reconcile,Conciliación parcial,True,True,True,True
+account.partner.ledger.report.handler,Gestor personalizado del libro mayor de la empresa,True,True,True,True
+account.payment,Pagos,True,True,True,True
+account.payment.method,Métodos de pago,True,True,True,True
+account.payment.method.line,Métodos de pago,True,True,True,True
+account.payment.term,Términos de pago,True,True,True,True
+account.payment.term.line,Línea de términos de pago,True,True,True,True
+account.reconcile.model,Preajuste para crear asientos durante la conciliación de facturas y pagos,True,True,True,True
+account.reconcile.model.line,Reglas para el modelo de conciliación,True,True,True,True
+account.report,Reporte contable,True,True,True,True
+account.report.annotation,Anotación del reporte de cuenta,True,True,True,True
+account.report.budget,Presupuesto del reporte de cuenta,True,True,True,True
+account.report.budget.item,Apunte contable del reporte de presupuesto,True,True,True,True
+account.report.column,Columna de reporte contable,True,True,True,True
+account.report.custom.handler,Gestor personalizado de reportes de cuentas,True,True,True,True
+account.report.expression,Expresión del reporte contable,True,True,True,True
+account.report.external.value,Valor externo de reporte contable,True,True,True,True
+account.report.horizontal.group,Grupos horizontales para los reportes,True,True,True,True
+account.report.horizontal.group.rule,Regla de grupo horizontal para reportes,True,True,True,True
+account.report.line,Línea del reporte contable,True,True,True,True
+account.return,Declaración contable,True,True,True,True
+account.return.check,Revisión de la declaración contable,True,True,True,True
+account.return.check.template,Plantilla de revisión de devolución de cuenta,True,True,True,True
+account.return.type,Tipo de declaración contable,True,True,True,True
+account.root,Primeros 2 dígitos de códigos de cuenta,True,True,True,True
+account.tax,Mixin de códigos de impuestos ETA,True,True,True,True
+account.tax.group,Grupo de impuestos,True,True,True,True
+account.tax.repartition.line,Línea de partición de impuestos,True,True,True,True
+account.tax.report.handler,Gestor de reportes contables para reportes fiscales,True,True,True,True
+account.tax.unit,Unidad tributaria,True,True,True,True
+account.transfer.model,Modelo de transferencia de cuenta,True,True,True,True
+account.transfer.model.line,Línea del modelo de transferencia de cuenta,True,True,True,True
+account.trial.balance.report.handler,Gestor personalizado de saldos de prueba,True,True,True,True
+account_followup.followup.line,Criterios de seguimiento,True,True,True,True
+ai.agent,Agente de IA,True,True,True,True
+ai.agent.source,Origen del agente de IA,True,True,True,True
+ai.composer,Configuraciones del modelo de IA (instrucciones del sistema) para redactar textos.,True,True,True,True
+ai.embedding,Incrustación de segmentos adjuntos,True,True,True,True
+ai.prompt.button,Instrucción que puede adjuntarse a las reglas de la interfaz de usuario de la IA para acceso rápido.,True,True,True,True
+ai.topic,Crea un tema que aproveche las instrucciones y herramientas para orientar a la IA de Odoo y que pueda ayudar al usuario con sus tareas.,True,True,True,True
+analytic.mixin,Mixin analítico,True,True,True,True
+analytic.plan.fields.mixin,Campos de planes analíticos,True,True,True,True
+appointment.answer,Respuestas a las preguntas de las citas,True,True,True,True
+appointment.answer.input,Entradas de respuestas de la cita,True,True,True,True
+appointment.booking.line,Línea para agendar la cita,True,True,True,True
+appointment.invite,Invitación a la cita,True,True,True,True
+appointment.question,Preguntas de la cita,True,True,True,True
+appointment.resource,Recurso de la cita,True,True,True,True
+appointment.slot,Cita: espacio de tiempo,True,True,True,True
+appointment.type,Tipo de cita,True,True,True,True
+approval.approver,Aprobador,True,True,True,True
+approval.category,Categoría de aprobación,True,True,True,True
+approval.category.approver,Aprobador de la categoría de aprobaciones,True,True,True,True
+approval.product.line,Línea de producto,True,True,True,True
+approval.request,Solicitud de aprobación,True,True,True,True
+audit.report,Reporte anual,True,True,True,True
+auth.oauth.provider,Proveedor OAuth2,True,True,True,True
+auth_totp.device,Dispositivo de autenticación,True,True,True,True
+avatar.mixin,Mixin del avatar,True,True,True,True
+barcode.nomenclature,Nomenclatura del código de barras,True,True,True,True
+barcode.rule,Regla del código de barras,True,True,True,True
+barcodes.barcode_events_mixin,Mixin de eventos de código de barras,True,True,True,True
+base,Base,True,True,True,True
+blog.blog,Blog,True,True,True,True
+blog.post,Publicación de blog,True,True,True,True
+blog.tag,Etiqueta del blog,True,True,True,True
+blog.tag.category,Categoría de etiqueta del blog,True,True,True,True
+board.board,Tablero,True,True,True,True
+budget.analytic,Presupuesto,True,True,True,True
+budget.line,Línea del presupuesto,True,True,True,True
+budget.report,Reporte de presupuesto,True,True,True,True
+bus.bus,Bus de comunicación,True,True,True,True
+bus.listener.mixin,Puede enviar mensajes mediante bus.bus,True,True,True,True
+calendar.alarm,Alerta de evento,True,True,True,True
+calendar.alarm_manager,Gestor de alertas de eventos,True,True,True,True
+calendar.attendee,Información en el calendario de los asistentes,True,True,True,True
+calendar.booking,Agendar reuniones,True,True,True,True
+calendar.booking.line,Reservación de recursos o usuarios para reuniones,True,True,True,True
+calendar.event,Evento del calendario,True,True,True,True
+calendar.event.type,Tipo de reunión,True,True,True,True
+calendar.filters,Filtros de calendario,True,True,True,True
+calendar.recurrence,Regla de recurrencia de evento,True,True,True,True
+certificate.certificate,Certificado,True,True,True,True
+certificate.key,Claves criptográficas,True,True,True,True
+chatbot.message,Mensaje del bot de chat,True,True,True,True
+chatbot.script,Guion del bot de chat,True,True,True,True
+chatbot.script.answer,Respuesta de guion del bot de chat,True,True,True,True
+chatbot.script.step,Paso del guion del bot de chat,True,True,True,True
+crm.activity.report,Análisis de actividades de CRM,True,True,True,True
+crm.iap.lead.helpers,Métodos de soporte para los módulos crm_iap_lead,True,True,True,True
+crm.iap.lead.industry,CRM IAP Industria líder,True,True,True,True
+crm.iap.lead.mining.request,Solicitud de minado de leads de CRM,True,True,True,True
+crm.iap.lead.role,Función de las personas,True,True,True,True
+crm.iap.lead.seniority,Antigüedad de las personas,True,True,True,True
+crm.lead,Lead,True,True,True,True
+crm.lead.scoring.frequency,Frecuencia de puntuación de leads,True,True,True,True
+crm.lead.scoring.frequency.field,Campos que se pueden utilizar para predecir la puntuación de los leads,True,True,True,True
+crm.lost.reason,Motivo de pérdida de la oportunidad,True,True,True,True
+crm.partner.report.assign,Análisis de la asociación en CRM,True,True,True,True
+crm.recurring.plan,Planes de ingresos recurrentes de CRM,True,True,True,True
+crm.reveal.rule,Reglas de generación de leads de CRM,True,True,True,True
+crm.reveal.view,Vista de revelación de CRM,True,True,True,True
+crm.stage,Etapas del CRM,True,True,True,True
+crm.tag,Etiqueta CRM,True,True,True,True
+crm.team,Equipo de ventas,True,True,True,True
+crm.team.member,Miembro del equipo de ventas,True,True,True,True
+data_cleaning.model,Modelo de limpieza,True,True,True,True
+data_cleaning.record,Registro de limpieza,True,True,True,True
+data_cleaning.rule,Regla de limpieza,True,True,True,True
+data_merge.group,Grupo de deduplicación,True,True,True,True
+data_merge.model,Modelo de deduplicación,True,True,True,True
+data_merge.record,Registro de deduplicación,True,True,True,True
+data_merge.rule,Regla de deduplicación,True,True,True,True
+data_recycle.model,Modelo de reciclado,True,True,True,True
+data_recycle.record,Registro de reciclado,True,True,True,True
+decimal.precision,Precisión decimal,True,True,True,True
+delivery.carrier,Métodos de envío,True,True,True,True
+delivery.price.rule,Reglas de precios de envío,True,True,True,True
+delivery.zip.prefix,Prefijo del código postal de envío,True,True,True,True
+digest.digest,Resumen,True,True,True,True
+digest.tip,Consejos del resumen,True,True,True,True
+discuss.call.history,Mantener el historial de la llamada,True,True,True,True
+discuss.channel,Canal de conversaciones,True,True,True,True
+discuss.channel.member,Miembro del canal,True,True,True,True
+discuss.channel.rtc.session,Sesión de comunicación en tiempo real por correo,True,True,True,True
+discuss.gif.favorite,Marcar un GIF de Tenor API como favorito,True,True,True,True
+discuss.voice.metadata,Metadatos para los archivos adjuntos de voz,True,True,True,True
+documents.access,Documento / Contacto,True,True,True,True
+documents.access.tracking,Seguimiento de acceso a documentos,True,True,True,True
+documents.account.folder.setting,Ajustes de diario y carpetas,True,True,True,True
+documents.document,Documento,True,True,True,True
+documents.mixin,Mixin de creación de documentos,True,True,True,True
+documents.redirect,Redirección de documento,True,True,True,True
+documents.tag,Etiqueta,True,True,True,True
+documents.unlink.mixin,Mixin de desvinculación de documentos,True,True,True,True
+edit.billable.time.target,Asistente para editar el tiempo facturado objetivo desde Registro de horas para los usuarios que no tienen acceso de empleado,True,True,True,True
+equity.cap.table,Tabla de capitalización,True,True,True,True
+equity.security.class,Clase de valores,True,True,True,True
+equity.transaction,Transacción de patrimonio,True,True,True,True
+equity.ubo,Beneficiario final,True,True,True,True
+equity.valuation,Valoración,True,True,True,True
+esg.activity.type,Tipo de actividad de ESG,True,True,True,True
+esg.assignation.line,Línea de asignación,True,True,True,True
+esg.carbon.emission.report,Reporte de las emisiones de carbono ESG,True,True,True,True
+esg.carbon.report.handler,Gestor personalizado del reporte de emisiones de carbono,True,True,True,True
+esg.database,Base de datos,True,True,True,True
+esg.emission.factor,Factor de emisión,True,True,True,True
+esg.emission.factor.line,Línea de factor de emisión,True,True,True,True
+esg.emission.source,Fuente de la emisión,True,True,True,True
+esg.employee.commuting.report,Reporte de criterios ESG del desplazamiento diario del empleado,True,True,True,True
+esg.employee.report,Reporte de criterios ESG del empleado,True,True,True,True
+esg.gas,Gas,True,True,True,True
+esg.other.emission,Otra emisión,True,True,True,True
+expense.sample.receipt,Pruebe los recibos de muestra,True,True,True,True
+extract.mixin,Clase base para extraer datos de documentos,True,True,True,True
+extract.mixin.with.words,Clase base para extraer datos de documentos con las palabras OCR guardadas,True,True,True,True
+fetchmail.server,Servidor de correos entrantes,True,True,True,True
+fleet.service.type,Tipo de servicio de la flotilla,True,True,True,True
+fleet.vehicle,Vehículo,True,True,True,True
+fleet.vehicle.assignation.log,Historial de conductores en un vehículo,True,True,True,True
+fleet.vehicle.cost.report,Reporte de análisis de la flotilla,True,True,True,True
+fleet.vehicle.log.contract,Contrato del vehículo,True,True,True,True
+fleet.vehicle.log.services,Servicios para vehículos,True,True,True,True
+fleet.vehicle.model,Modelo de un vehículo,True,True,True,True
+fleet.vehicle.model.brand,Marca del vehículo,True,True,True,True
+fleet.vehicle.model.category,Categoría del modelo,True,True,True,True
+fleet.vehicle.odometer,Registro del odómetro para un vehículo,True,True,True,True
+fleet.vehicle.odometer.report,Reporte de análisis del odómetro de la flotilla,True,True,True,True
+fleet.vehicle.state,Estado del vehículo,True,True,True,True
+fleet.vehicle.tag,Etiqueta de vehículo,True,True,True,True
+format.address.mixin,Formato de dirección,True,True,True,True
+format.vat.label.mixin,Etiqueta de IVA específica del país,True,True,True,True
+forum.forum,Foro,True,True,True,True
+forum.post,Publicación en el foro,True,True,True,True
+forum.post.reason,Motivo del bloqueo de la publicación,True,True,True,True
+forum.post.vote,Publicar voto,True,True,True,True
+forum.tag,Etiqueta de foro,True,True,True,True
+gamification.badge,Insignia de ludificación,True,True,True,True
+gamification.badge.user,Insignia de usuario de ludificación,True,True,True,True
+gamification.challenge,Desafío de ludificación,True,True,True,True
+gamification.challenge.line,Meta genérica de ludificación para el desafío,True,True,True,True
+gamification.goal,Meta de ludificación,True,True,True,True
+gamification.goal.definition,Definición de meta de ludificación,True,True,True,True
+gamification.karma.rank,Rango según el karma,True,True,True,True
+gamification.karma.tracking,Seguimiento de cambios de karma,True,True,True,True
+google.calendar.sync,Sincronice un registro con el calendario de Google,True,True,True,True
+google.gmail.mixin,Mixin de Gmail de Google,True,True,True,True
+google.service,Servicio de Google,True,True,True,True
+helpdesk.sla,Políticas SLA del soporte al cliente,True,True,True,True
+helpdesk.sla.report.analysis,Análisis del estado del SLA,True,True,True,True
+helpdesk.sla.status,Estado SLA del ticket,True,True,True,True
+helpdesk.stage,Etapa de soporte al cliente,True,True,True,True
+helpdesk.tag,Etiquetas de soporte al cliente,True,True,True,True
+helpdesk.tag.assignment,Asignación de etiquetas del servicio de soporte al cliente,True,True,True,True
+helpdesk.team,Equipo de soporte al cliente,True,True,True,True
+helpdesk.ticket,Ticket de soporte al cliente,True,True,True,True
+helpdesk.ticket.report.analysis,Análisis de tickets,True,True,True,True
+hr.applicant,Postulante,True,True,True,True
+hr.applicant.category,Categoría del postulante,True,True,True,True
+hr.applicant.refuse.reason,Motivo del rechazo del candidato,True,True,True,True
+hr.applicant.skill,Nivel de habilidad del postulante,True,True,True,True
+hr.appraisal,Evaluación del empleado,True,True,True,True
+hr.appraisal.goal,Objetivo de la evaluación,True,True,True,True
+hr.appraisal.goal.skill,Habilidades para los puestos objetivo,True,True,True,True
+hr.appraisal.goal.tag,Etiquetas del objetivo de la evaluación,True,True,True,True
+hr.appraisal.note,Nota de la evaluación,True,True,True,True
+hr.appraisal.skill,Habilidades de la evaluación,True,True,True,True
+hr.appraisal.skill.report,Reporte de las habilidades evaluadas,True,True,True,True
+hr.appraisal.template,Plantilla para la evaluación del empleado,True,True,True,True
+hr.attendance,Asistencia,True,True,True,True
+hr.attendance.overtime.line,Línea de horas extra de asistencia,True,True,True,True
+hr.attendance.overtime.rule,Regla de horas extra,True,True,True,True
+hr.attendance.overtime.ruleset,Conjunto de reglas de las horas extra,True,True,True,True
+hr.contract.recruitment.report,Reporte de análisis de contratos y reclutación,True,True,True,True
+hr.contract.salary.benefit,Prestación del paquete salarial,True,True,True,True
+hr.contract.salary.benefit.type,Tipo de prestación del contrato,True,True,True,True
+hr.contract.salary.benefit.value,Valor de la ventaja del contrato,True,True,True,True
+hr.contract.salary.offer,Oferta de paquete salarial,True,True,True,True
+hr.contract.salary.offer.refusal.reason,Motivos por el cual se rechazó un sueldo,True,True,True,True
+hr.contract.salary.personal.info,Información personal del paquete salarial,True,True,True,True
+hr.contract.salary.personal.info.type,Tipo de información personal del paquete salarial,True,True,True,True
+hr.contract.salary.personal.info.value,Valor de información personal del paquete salarial,True,True,True,True
+hr.contract.salary.resume,Currículum del paquete salarial,True,True,True,True
+hr.contract.salary.resume.category,Categoría del currículum del paquete salarial,True,True,True,True
+hr.contract.signatory,Signatarios del contrato,True,True,True,True
+hr.contract.type,Tipo de contrato,True,True,True,True
+hr.department,Departamento,True,True,True,True
+hr.departure.reason,Motivo de salida,True,True,True,True
+hr.employee,Empleado,True,True,True,True
+hr.employee.category,Categoría de empleado,True,True,True,True
+hr.employee.certification.report,Reporte de certificación del empleado,True,True,True,True
+hr.employee.public,Empleado público,True,True,True,True
+hr.employee.skill,Nivel de habilidad del empleado,True,True,True,True
+hr.employee.skill.history.report,Reporte de habilidades del empleado,True,True,True,True
+hr.employee.skill.report,Reporte de habilidades del empleado,True,True,True,True
+hr.expense,Gasto,True,True,True,True
+hr.individual.skill.mixin,Nivel de habilidad,True,True,True,True
+hr.job,Puesto de trabajo,True,True,True,True
+hr.job.platform,Plataformas de empleo,True,True,True,True
+hr.job.post,Publicación del trabajo,True,True,True,True
+hr.job.skill,Habilidades para los puestos de trabajo,True,True,True,True
+hr.leave,Vacaciones,True,True,True,True
+hr.leave.accrual.level,Nivel del plan de acumulación,True,True,True,True
+hr.leave.accrual.plan,Plan de acumulación,True,True,True,True
+hr.leave.allocation,Asignación de tiempo personal,True,True,True,True
+hr.leave.attendance.report,Reporte de análisis de asistencia y ausencias,True,True,True,True
+hr.leave.employee.type.report,Resumen / reporte de tiempo personal,True,True,True,True
+hr.leave.mandatory.day,Día obligatorio,True,True,True,True
+hr.leave.report,Resumen / reporte de tiempo personal,True,True,True,True
+hr.leave.report.calendar,Calendario de tiempo personal,True,True,True,True
+hr.leave.type,Tipo de permiso,True,True,True,True
+hr.manager.department.report,Reporte de departamento del gerente de RR. HH.,True,True,True,True
+hr.mixin,hr.mixin,True,True,True,True
+hr.payroll.dashboard.warning,Advertencia del tablero de nómina,True,True,True,True
+hr.payroll.declaration.mixin,Mixin de declaración de nómina,True,True,True,True
+hr.payroll.employee.declaration,Declaración de nómina del empleado,True,True,True,True
+hr.payroll.headcount,Plantilla laboral de nómina,True,True,True,True
+hr.payroll.headcount.line,Línea de la plantilla laboral,True,True,True,True
+hr.payroll.headcount.working.rate,Tasa de trabajo,True,True,True,True
+hr.payroll.note,Nota de nómina,True,True,True,True
+hr.payroll.structure,Estructura salarial,True,True,True,True
+hr.payroll.structure.type,Tipo de estructura salarial,True,True,True,True
+hr.payslip,Recibo de nómina,True,True,True,True
+hr.payslip.input,Entrada de recibo de nómina,True,True,True,True
+hr.payslip.input.type,Tipo de entrada del recibo de nómina,True,True,True,True
+hr.payslip.line,Línea de recibo de nómina,True,True,True,True
+hr.payslip.run,Periodo de nómina,True,True,True,True
+hr.payslip.worked_days,Días trabajados en el recibo de nómina,True,True,True,True
+hr.recruitment.degree,Título del postulante,True,True,True,True
+hr.recruitment.platform,Plataforma de reclutamiento,True,True,True,True
+hr.recruitment.report,Reporte de análisis de reclutamiento,True,True,True,True
+hr.recruitment.source,Origen de los candidatos,True,True,True,True
+hr.recruitment.stage,Etapas de reclutamiento,True,True,True,True
+hr.recruitment.stage.report,Análisis de la etapa de reclutamiento,True,True,True,True
+hr.referral.alert,Alerta en la aplicación Referencias,True,True,True,True
+hr.referral.friend,Amigos para referencias,True,True,True,True
+hr.referral.level,Nivel de los referidos,True,True,True,True
+hr.referral.onboarding,Integración de bienvenida en la aplicación Referencias,True,True,True,True
+hr.referral.points,Línea de puntos por referidos,True,True,True,True
+hr.referral.report,Reporte de referidos de empleados,True,True,True,True
+hr.referral.reward,Recompensa por referidos,True,True,True,True
+hr.referral.reward.report,Reporte de recompensas por referencias de los empleados,True,True,True,True
+hr.resume.line,Línea de currículum de un empleado,True,True,True,True
+hr.resume.line.type,Tipo de línea en el currículum,True,True,True,True
+hr.rule.parameter,Parámetro de regla salarial,True,True,True,True
+hr.rule.parameter.value,Valor de parámetro de la regla salarial,True,True,True,True
+hr.salary.attachment,Ajuste salarial,True,True,True,True
+hr.salary.rule,Regla salarial,True,True,True,True
+hr.salary.rule.category,Categoría de regla salarial,True,True,True,True
+hr.salary.rule.section,Sección de entrada salarial,True,True,True,True
+hr.skill,Habilidad,True,True,True,True
+hr.skill.level,Nivel de habilidad,True,True,True,True
+hr.skill.type,Tipo de habilidad,True,True,True,True
+hr.talent.pool,Base de talentos,True,True,True,True
+hr.timesheet.attendance.report,Reporte de asistencia de la hoja de horas,True,True,True,True
+hr.timesheet.stop.timer.confirmation.wizard,Confirmar la creación de la hoja de hora cuando se detenga el cronómetro,True,True,True,True
+hr.timesheet.tip,Consejo para la tabla de clasificación de las hojas de horas,True,True,True,True
+hr.user.work.entry.employee,Empleados de entradas de trabajo,True,True,True,True
+hr.version,Contrato del empleado,True,True,True,True
+hr.work.entry,Entrada de trabajo de RR. HH.,True,True,True,True
+hr.work.entry.export.employee.mixin,Exportar las entradas al trabajo por empleado,True,True,True,True
+hr.work.entry.export.mixin,MIxin de exportación de las entradas al trabajo,True,True,True,True
+hr.work.entry.report,Reporte de análisis de entradas de trabajo,True,True,True,True
+hr.work.entry.type,Tipo de entrada de trabajo de RR. HH.,True,True,True,True
+hr.work.location,Ubicación de trabajo,True,True,True,True
+html.field.history.mixin,Historial del campo html,True,True,True,True
+html_editor.converter.test,Prueba del convertidor de editor HTML,True,True,True,True
+html_editor.converter.test.sub,Subprueba del convertidor de editor HTML,True,True,True,True
+iap.account,Cuenta de compras dentro de la aplicación,True,True,True,True
+iap.autocomplete.api,API de autocompletado del contacto de compras dentro de la aplicación,True,True,True,True
+iap.enrich.api,API de enriquecimiento de leads para compras dentro de la aplicación,True,True,True,True
+iap.service,Servicio de compras dentro de la aplicación,True,True,True,True
+im_livechat.channel,Canal de chat en vivo,True,True,True,True
+im_livechat.channel.member.history,Conservar el historial de los miembros del canal,True,True,True,True
+im_livechat.channel.rule,Reglas del canal de chat en vivo,True,True,True,True
+im_livechat.conversation.tag,Etiquetas de la conversación de Chat en vivo,True,True,True,True
+im_livechat.expertise,Experiencia en chat en vivo,True,True,True,True
+im_livechat.report.channel,Reporte del canal de soporte del Chat en vivo,True,True,True,True
+image.mixin,Mixin de imagen,True,True,True,True
+iot.box,Caja IoT,True,True,True,True
+iot.channel,El canal de websocket IoT,True,True,True,True
+iot.device,Dispositivo IoT,True,True,True,True
+iot.keyboard.layout,Distribución del teclado,True,True,True,True
+iot.trigger,Activador de IoT,True,True,True,True
+ir.config_parameter,Parámetro del sistema,True,True,True,True
+ir.cron,Acciones planificadas,True,True,True,True
+ir.default,Valores predeterminados,True,True,True,True
+ir.filters,Filtros,True,True,True,True
+ir.model,Modelos,True,True,True,True
+ir.model.access,Acceso al modelo,True,False,False,False
+ir.model.data,Datos del modelo,True,False,False,False
+ir.model.fields,Campos,True,True,True,True
+ir.model.fields.selection,Selección de campos,True,True,True,True
+ir.module.module,Módulo,True,True,True,True
+ir.rule,Regla,True,False,False,False
+ir.ui.menu,Menú,True,True,True,True
+ir.ui.view,Vista,True,False,False,False
+ir_actions_account_report_download,Modelo técnico para la descarga de reportes de contabilidad,True,True,True,True
+knowledge.article,Artículo de información,True,True,True,True
+knowledge.article.favorite,Artículo favorito,True,True,True,True
+knowledge.article.member,Miembro del artículo,True,True,True,True
+knowledge.article.stage,Etapa de información,True,True,True,True
+knowledge.article.template.category,Categoría de plantilla del artículo,True,True,True,True
+knowledge.article.thread,Hilo de conversación del artículo,True,True,True,True
+knowledge.cover,Portada de información,True,True,True,True
+kpi.provider,Proveedor de KPI,True,True,True,True
+l10n.mx.concept,Concepto,True,True,True,True
+l10n.mx.hr.fonacot,fonacot,True,True,True,True
+l10n.mx.hr.infonavit,infonavit,True,True,True,True
+l10n_mx.report.handler,Manejador personalizado de informes de cuentas mexicanas,True,True,True,True
+l10n_mx_edi.addenda,Addenda para el EDI mexicano,True,True,True,True
+l10n_mx_edi.customs.document.type,Tipo de documento aduanero,True,True,True,True
+l10n_mx_edi.customs.regime,Régimen aduanero,True,True,True,True
+l10n_mx_edi.document,Documentos mexicanos que se deben procesar fuera de Odoo,True,True,True,True
+l10n_mx_edi.figure,Figura de transporte MX EDI,True,True,True,True
+l10n_mx_edi.global_invoice.create,Crear una factura global,True,True,True,True
+l10n_mx_edi.hazardous.material,Material peligroso,True,True,True,True
+l10n_mx_edi.part,Parte del Intermediario MX EDI,True,True,True,True
+l10n_mx_edi.payment.method,"Método de Pago para México, datos del SAT",True,True,True,True
+l10n_mx_edi.res.locality,Localidad,True,True,True,True
+l10n_mx_edi.tariff.fraction,Fracción arancelaria EDI mexicana,True,True,True,True
+l10n_mx_edi.trailer,Remolque para vehículos MX EDI,True,True,True,True
+link.tracker,Rastreador de enlaces,True,True,True,True
+link.tracker.click,Clic en el rastreador de enlace,True,True,True,True
+link.tracker.code,Código del rastreador de enlaces,True,True,True,True
+mail.activity,Actividad,True,True,True,True
+mail.activity.mixin,Mixin de la actividad,True,True,True,True
+mail.activity.plan,Plan de actividad,True,True,True,True
+mail.activity.plan.template,Plantilla del plan de actividad,True,True,True,True
+mail.activity.type,Tipo de actividad,True,True,True,True
+mail.alias,Alias de correo,True,True,True,True
+mail.alias.domain,Dominio de correo electrónico,True,True,True,True
+mail.alias.mixin,Mixin de los alias de correo,True,True,True,True
+mail.alias.mixin.optional,Mixin de los alias de correo (claro),True,True,True,True
+mail.blacklist,Lista de exclusión de correo,True,True,True,True
+mail.bot,Bot de correo electrónico,True,True,True,True
+mail.canned.response,Respuesta predefinida,True,True,True,True
+mail.composer.mixin,Mixin del redactor de correo,True,True,True,True
+mail.followers,Seguidores del documento,True,True,True,True
+mail.gateway.allowed,Puerta de enlace de correo permitida,True,True,True,True
+mail.group,Grupo de correo,True,True,True,True
+mail.group.member,Miembro de la lista de correo,True,True,True,True
+mail.group.message,Mensaje de la lista de correo,True,True,True,True
+mail.group.moderation,Lista de correos aprobados y excluídos,True,True,True,True
+mail.guest,Invitado,True,True,True,True
+mail.ice.server,Servidor ICE,True,True,True,True
+mail.link.preview,Almacenar los datos de la vista previa del enlace,True,True,True,True
+mail.mail,Correos salientes,True,True,True,True
+mail.message,Mensaje,True,True,True,True
+mail.message.link.preview,Enlace entre la previsualización de enlaces y mensajes,True,True,True,True
+mail.message.reaction,Reacción de mensaje,True,True,True,True
+mail.message.schedule,Mensajes programados,True,True,True,True
+mail.message.subtype,Subtipos de mensaje,True,True,True,True
+mail.message.translation,Traducción de mensajes,True,True,True,True
+mail.notification,Notificaciones de mensajes,True,True,True,True
+mail.presence,Conexión del usuario/invitado,True,True,True,True
+mail.push,Notificaciones push,True,True,True,True
+mail.push.device,Dispositivo de notificación push,True,True,True,True
+mail.render.mixin,Mixin de renderización de correo,True,True,True,True
+mail.scheduled.message,Mensaje programado,True,True,True,True
+mail.template,Plantillas de correo electrónico,True,True,True,True
+mail.thread,Hilo de correos,True,True,True,True
+mail.thread.blacklist,Mixin de exclusión de correos,True,True,True,True
+mail.thread.cc,Gestión del CC del correo electrónico,True,True,True,True
+mail.thread.main.attachment,Correo principal para gestión de archivos adjuntos,True,True,True,True
+mail.thread.phone,Mixin de lista de exclusión de teléfonos,True,True,True,True
+mail.tracking.duration.mixin,Mixin para calcular el tiempo que ha pasado un registro en cada valor que puede tomar un campo many2one,True,True,True,True
+mail.tracking.value,Valor de seguimiento de correo,True,True,True,True
+mailing.contact,Contacto de correo,True,True,True,True
+mailing.filter,Filtros favoritos de correos,True,True,True,True
+mailing.list,Lista de correo,True,True,True,True
+mailing.mailing,Correo masivo,True,True,True,True
+mailing.subscription,Suscripción a la lista de correo,True,True,True,True
+mailing.subscription.optout,Motivo de suscripción al correo,True,True,True,True
+mailing.trace,Estadísticas de correo,True,True,True,True
+mailing.trace.report,Estadísticas de envíos masivos,True,True,True,True
+maintenance.equipment,Equipo de mantenimiento,True,True,True,True
+maintenance.equipment.category,Categoría del equipo de mantenimiento,True,True,True,True
+maintenance.mixin,Elemento de mantenimiento trabajado,True,True,True,True
+maintenance.request,Solicitud de mantenimiento,True,True,True,True
+maintenance.stage,Etapa de mantenimiento,True,True,True,True
+maintenance.team,Equipos de mantenimiento,True,True,True,True
+marketing.activity,Actividad de marketing,True,True,True,True
+marketing.campaign,Campaña de marketing,True,True,True,True
+marketing.participant,Participante en campaña de marketing,True,True,True,True
+marketing.trace,Seguimiento de marketing,True,True,True,True
+mrp.bom,Lista de materiales,True,True,True,True
+mrp.bom.byproduct,Subproducto,True,True,True,True
+mrp.bom.line,Línea de lista de materiales,True,True,True,True
+mrp.eco,Orden de cambio de ingeniería (ECO),True,True,True,True
+mrp.eco.approval,Aprobación de orden de cambio de ingeniería,True,True,True,True
+mrp.eco.approval.template,Plantilla de aprobación de orden de cambio de ingeniería,True,True,True,True
+mrp.eco.bom.change,Cambios de la LdM de la orden de cambio de ingeniería,True,True,True,True
+mrp.eco.routing.change,Cambios en el enrutamiento de la orden de cambio de ingeniería,True,True,True,True
+mrp.eco.stage,Etapa de orden de cambio de ingeniería,True,True,True,True
+mrp.eco.tag,Etiquetas de orden de cambio de ingeniería,True,True,True,True
+mrp.eco.type,Tipo de orden de cambio de ingeniería,True,True,True,True
+mrp.product.forecast,Pronóstico del producto hasta la fecha,True,True,True,True
+mrp.production,Orden de fabricación,True,True,True,True
+mrp.production.group,Grupo de producción,True,True,True,True
+mrp.production.schedule,Programe la producción del producto en un almacén,True,True,True,True
+mrp.report,Reporte de fabricación,True,True,True,True
+mrp.revision.log,Log de Revisión de Calidad de Telas,True,True,True,True
+mrp.revision.report,Reporte de Revisión de Rollos,True,True,True,True
+mrp.rollo.estandar,Tamaño de Rollo Estandar por Articulo,True,True,True,True
+mrp.routing.workcenter,Uso del centro de trabajo,True,True,True,True
+mrp.tara,Tabla de Taras por Producto y Centro de Trabajo,True,True,True,True
+mrp.unbuild,Orden de desmontaje,True,True,True,True
+mrp.weighing.log,Log de Pesaje de Rollos,True,True,True,True
+mrp.workcenter,Centro de trabajo,True,True,True,True
+mrp.workcenter.capacity,Capacidad del centro de trabajo,True,True,True,True
+mrp.workcenter.productivity,Registro de productividad del centro de trabajo,True,True,True,True
+mrp.workcenter.productivity.loss,Pérdidas de productividad en el centro de trabajo,True,True,True,True
+mrp.workcenter.productivity.loss.type,Pérdidas de productividad en la orden de trabajo de planeación de recursos de fabricación,True,True,True,True
+mrp.workcenter.tag,Agregar etiqueta para el centro de trabajo,True,True,True,True
+mrp.workorder,Orden de trabajo,True,True,True,True
+onboarding.onboarding,Integración,True,True,True,True
+onboarding.onboarding.step,Paso de integración,True,True,True,True
+onboarding.progress,Rastreador de progreso de integración,True,True,True,True
+onboarding.progress.step,Rastreador de los pasos del progreso de integración,True,True,True,True
+payment.method,Método de pago,True,True,True,True
+payment.provider,Proveedor de pago,True,True,True,True
+payment.token,Token de pago,True,True,True,True
+payment.transaction,Transacción de pago,True,True,True,True
+phone.blacklist,Lista de exclusión de números telefónicos,True,True,True,True
+planning.analysis.report,Reporte de análisis de planeación,True,True,True,True
+planning.attendance.analysis.report,Análisis de Planeación / Asistencias,True,True,True,True
+planning.calendar.resource,calendario de planeación del recurso,True,True,True,True
+planning.planning,Horario,True,True,True,True
+planning.recurrency,Recurrencia de planeación,True,True,True,True
+planning.role,Función de planeación,True,True,True,True
+planning.slot,Planear turnos,True,True,True,True
+planning.slot.template,Plantilla del turno,True,True,True,True
+portal.mixin,Mixin del portal,True,True,True,True
+pos.bill,Monedas/billetes,True,True,True,True
+pos.bus.mixin,Mixin del bus,True,True,True,True
+pos.category,Categoría de Punto de venta,True,True,True,True
+pos.config,Configuración del punto de venta,True,True,True,True
+pos.load.mixin,Mixin para cargar datos del PdV,True,True,True,True
+pos.note,Nota del PdV,True,True,True,True
+pos.order,Órdenes del punto de venta,True,True,True,True
+pos.order.line,Líneas de orden del Punto de venta,True,True,True,True
+pos.pack.operation.lot,Especifique el número de lote/de serie en la línea de la orden de PdV,True,True,True,True
+pos.payment,Pagos en punto de venta,True,True,True,True
+pos.payment.method,Métodos de pago del punto de venta,True,True,True,True
+pos.prep.display,Pantalla de preparación del PdV,True,True,True,True
+pos.prep.line,Línea de preparación del PdV,True,True,True,True
+pos.prep.order,Orden de preparación del PdV,True,True,True,True
+pos.prep.stage,Etapa de preparación del PdV,True,True,True,True
+pos.prep.state,Estado de preparación del PdV,True,True,True,True
+pos.preset,Cargue un conjunto de opciones de configuración de inmediato,True,True,True,True
+pos.printer,Impresora del punto de venta,True,True,True,True
+pos.session,Sesión de punto de venta,True,True,True,True
+preparation.time.report,Reporte de tiempo de preparación del PdV,True,True,True,True
+privacy.log,Registro de privacidad,True,True,True,True
+product.attribute,Atributo de producto,True,True,True,True
+product.attribute.custom.value,Valor personalizado del atributo del producto,True,True,True,True
+product.attribute.value,Valor del atributo,True,True,True,True
+product.catalog.mixin,Mixin de catálogo de producto,True,True,True,True
+product.category,Categoría del producto,True,True,True,True
+product.combo,Combo de productos,True,True,True,True
+product.combo.item,Artículo del compro de productos,True,True,True,True
+product.document,Documento del producto,True,True,True,True
+product.feed,Feed del producto,True,True,True,True
+product.image,Imagen del producto,True,True,True,True
+product.pricelist,Lista de precios,True,True,True,True
+product.pricelist.item,Regla de la lista de precios,True,True,True,True
+product.product,Variante del producto,True,True,True,True
+product.public.category,Categoría del producto de sitio web,True,True,True,True
+product.removal,Estrategia de remoción,True,True,True,True
+product.ribbon,Cinta del producto,True,True,True,True
+product.supplierinfo,Lista de precios del proveedor,True,True,True,True
+product.tag,Etiqueta del producto,True,True,True,True
+product.template,Producto,True,True,True,True
+product.template.attribute.exclusion,Exclusión de atributos del modelo del producto,True,True,True,True
+product.template.attribute.line,Línea del atributo de la plantilla del producto,True,True,True,True
+product.template.attribute.value,Valor del atributo de la plantilla del producto,True,True,True,True
+product.unspsc.code,Códigos de producto y de unidad de medida del Código de Productos y Servicios Estándar de las Naciones Unidas (UNSPSC),True,True,True,True
+product.uom,Relación entre los productos y sus unidades de medida,True,True,True,True
+product.value,Valor del producto,True,True,True,True
+project.collaborator,Colaboradores en proyectos compartidos,True,True,True,True
+project.milestone,Objetivo del proyecto,True,True,True,True
+project.project,Proyectos,True,True,True,True
+project.project.stage,Etapa del proyecto,True,True,True,True
+project.role,Rol del proyecto,True,True,True,True
+project.sale.line.employee.map,"Línea de venta de proyecto, mapeo de empleados",True,True,True,True
+project.tags,Etiquetas del proyecto,True,True,True,True
+project.task,Tarea,True,True,True,True
+project.task.burndown.chart.report,Gráfico de trabajo pendiente,True,True,True,True
+project.task.recurrence,Recurrencia de la tarea,True,True,True,True
+project.task.stage.personal,Etapa de la tarea personal,True,True,True,True
+project.task.type,Etapa de la tarea,True,True,True,True
+project.timesheet.forecast.report.analysis,Análisis de Planeación / Hojas de horas,True,True,True,True
+project.update,Actualización del proyecto,True,True,True,True
+publisher_warranty.contract,Contrato de garantía del editor para la caja IoT,True,True,True,True
+purchase.bill.line.match,Vista de conciliación entre líneas de compra y líneas de factura del proveedor,True,True,True,True
+purchase.bill.union,Unión de compras y facturas,True,True,True,True
+purchase.edi.xml.ubl_bis3,Órdenes de compra UBL BIS 3.5,True,True,True,True
+purchase.order,Orden de compra,True,True,True,True
+purchase.order.group,Modelo técnico para agrupar órdenes de compra para una licitación,True,True,True,True
+purchase.order.line,Línea de la orden de compra,True,True,True,True
+purchase.report,Reporte de compras,True,True,True,True
+purchase.requisition,Solicitud de compra,True,True,True,True
+purchase.requisition.line,Línea de la solicitud de compra,True,True,True,True
+qb.balance,Balance de línea por proceso (unidad común),True,True,True,True
+qb.build.limpio,Build limpio: corrección de avisos del build,True,True,True,True
+qb.capacidad,Capacidad por máquina / centro de trabajo,True,True,True,True
+qb.cliente.rentabilidad,Rentabilidad por cliente (12 meses),True,True,True,True
+qb.costeo.centro,Centro de costo / proceso productivo,True,True,True,True
+qb.costeo.cuenta.class,Clasificación de cuentas contables para costeo,True,True,True,True
+qb.costeo.cuenta.map,Cuenta → bucket de costeo (resuelto),True,True,True,True
+qb.costeo.factor.config,Parámetros globales de costeo,True,True,True,True
+qb.costeo.familia,Familia de máquinas intercambiables dentro de un centro,True,True,True,True
+qb.costeo.snapshot,Snapshot mensual de capacidad y ociosidad,True,True,True,True
+qb.costeo.snapshot.line,Snapshot por centro,True,True,True,True
+qb.costo.conciliacion,Conciliación mensual: modelo de costeo vs. mayor,True,True,True,True
+qb.costo.factores,Factores de costeo por período (trazabilidad),True,True,True,True
+qb.costo.producto,Costo real por producto y período,True,True,True,True
+qb.cotizacion,Cotización de capacidad y costo,True,True,True,True
+qb.cotizacion.tramo,Tramo de la escalera de volumen de una cotización,True,True,True,True
+qb.familia.carga,Carga vs capacidad por familia de máquinas,True,True,True,True
+qb.familia.producto,Producto que una familia de máquinas puede fabricar,True,True,True,True
+qb.memoria.client,Cliente de la memoria (Supabase),True,True,True,True
+qb.memoria.mailbox,Buzón de la memoria (quién está detrás),True,True,True,True
+qb.nomina.rule.sentinel,Centinela de reglas salariales,True,True,True,True
+qb.obligation,Obligación,True,True,True,True
+qb.ociosidad,Capacidad ociosa y costo hundido por centro,True,True,True,True
+qb.peso.auditoria,Auditoría de pesos por producto,True,True,True,True
+qb.producto.cliente,Producto × Cliente (12 meses),True,True,True,True
+qb.producto.ficha,Ficha técnica de producto,True,True,True,True
+qb.producto.ficha.spec,Renglón de la ficha técnica de producto,True,True,True,True
+qb.producto.mensual,Programa mensual por producto (12 meses),True,True,True,True
+qb.producto.peso,Peso por unidad y conversión kg↔m por producto,True,True,True,True
+qb.producto.rentabilidad,Rentabilidad por producto (12 meses),True,True,True,True
+qb.producto.ruteo,Ruteo producto/familia → centros de proceso,True,True,True,True
+qb.rh.centro,"RH por centro: dotación, horas y costo MOD/hora",True,True,True,True
+qb.sql.view,Vista SQL read-only: flush antes de consultar,True,True,True,True
+qb.turno.config,Turnos / capacidad manual por centro (fallback de resource.calendar),True,True,True,True
+qb.workorder.excepcion,Workorders con rendimiento fuera de rango,True,True,True,True
+quality.alert,Alerta de calidad,True,True,True,True
+quality.alert.stage,Fase de alertas de calidad,True,True,True,True
+quality.alert.team,Equipo de alertas de calidad,True,True,True,True
+quality.check,Control de calidad,True,True,True,True
+quality.check.spreadsheet,Hoja de cálculo de control de calidad,True,True,True,True
+quality.point,Punto de control de calidad,True,True,True,True
+quality.point.test_type,Tipo de prueba de control de calidad,True,True,True,True
+quality.reason,Causa raíz por la que no pasó el control de calidad,True,True,True,True
+quality.spreadsheet.template,Plantilla de hoja de cálculo para control de calidad,True,True,True,True
+quality.tag,Etiqueta de calidad,True,True,True,True
+quimibond.sync.log,Quimibond Sync Log,True,True,True,True
+quotation.document,Encabezados y pies de página de la cotización,True,True,True,True
+rating.mixin,Mixin de la calificación,True,True,True,True
+rating.parent.mixin,Mixin de la calificación principal,True,True,True,True
+rating.rating,Calificación,True,True,True,True
+report.account.report_hash_integrity,Obtén el resultado de integridad hash en PDF.,True,True,True,True
+report.account.report_invoice,Reporte de cuenta sin líneas de pago,True,True,True,True
+report.account.report_invoice_with_payments,Reporte de cuenta con líneas de pagos,True,True,True,True
+report.account_batch_payment.print_batch_payment,Reporte del depósito por lotes,True,True,True,True
+report.hr_holidays.report_holidayssummary,Reporte de resumen de días festivos,True,True,True,True
+report.hr_payroll.contribution_register,Modelo de impresión hr.payslip.line agrupado por registro,True,True,True,True
+report.hr_skills.report_employee_cv,Currículo del empleado,True,True,True,True
+report.industry_fsm.worksheet_custom,Reporte personalizado de tareas de la hoja de trabajo,True,True,True,True
+report.layout,Diseño del reporte,True,True,True,True
+report.maintenance_worksheet.maintenance_worksheet,Reporte personalizado de la hoja de trabajo de la solicitud de mantenimiento,True,True,True,True
+report.mrp.report_bom_structure,Reporte de resumen de la lista de materiales,True,True,True,True
+report.mrp.report_mo_overview,Reporte del resumen de la orden de fabricación,True,True,True,True
+report.paperformat,Configuración del formato de papel,True,True,True,True
+report.point_of_sale.report_invoice,Reporte de facturas de Punto de venta,True,True,True,True
+report.point_of_sale.report_saledetails,Detalles del Punto de venta,True,True,True,True
+report.pos.order,Reporte de órdenes del punto de venta,True,True,True,True
+report.pos_hr.single_employee_sales_report,Detalles de las ventas de la sesión para un solo empleado,True,True,True,True
+report.product.report_pricelist,Reporte de la lista de precios,True,True,True,True
+report.product.report_producttemplatelabel2x7,Reporte de la etiqueta del producto 2x7,True,True,True,True
+report.product.report_producttemplatelabel4x12,Reporte de la etiqueta del producto 4x12,True,True,True,True
+report.product.report_producttemplatelabel4x12noprice,Reporte de la etiqueta del producto 4x12 Sin precio,True,True,True,True
+report.product.report_producttemplatelabel4x7,Reporte de la etiqueta del producto 4x7,True,True,True,True
+report.product.report_producttemplatelabel_dymo,Reporte de etiquetas del producto,True,True,True,True
+report.project.task.user,Análisis de las tareas,True,True,True,True
+report.project.task.user.fsm,Análisis de las tareas del servicio externo,True,True,True,True
+report.quality_control.quality_worksheet,Reporte de la hoja de trabajo de calidad,True,True,True,True
+report.quality_control.quality_worksheet_internal,Reporte interno de la hoja de trabajo de calidad,True,True,True,True
+report.reporte_orden_fabricacion.mo_report_summary,Reporte Integral de Producción y Calidad,True,True,True,True
+report.sign.green_savings_report,Modelo de reporte del ahorro ecológico,True,True,True,True
+report.stock.label_lot_template_view,Reportes de etiqueta del lote,True,True,True,True
+report.stock.label_product_product_view,Reporte de etiquetas del producto,True,True,True,True
+report.stock.quantity,Reporte de cantidad de existencias,True,True,True,True
+report.stock.report_reception,Reporte de recepción de existencias,True,True,True,True
+report.stock.report_stock_rule,Reporte de regla de inventario,True,True,True,True
+res.bank,Banco,True,True,True,True
+res.city,Ciudad,True,True,True,True
+res.company,Empresas,True,True,True,True
+res.country,País,True,True,True,True
+res.country.group,Grupo del país,True,True,True,True
+res.country.state,Estado,True,True,True,True
+res.currency,Moneda,True,True,True,True
+res.currency.rate,Tasa de cambio,True,True,True,True
+res.device,Dispositivos,True,True,True,True
+res.device.log,Registro del dispositivo,True,True,True,True
+res.groups,Grupos de acceso,True,True,True,True
+res.groups.privilege,Privilegios,True,True,True,True
+res.lang,Idiomas,True,True,True,True
+res.partner,Contacto,True,True,True,True
+res.partner.activation,Activación de socio,True,True,True,True
+res.partner.bank,Cuentas bancarias,True,True,True,True
+res.partner.category,Etiquetas del contacto,True,True,True,True
+res.partner.grade,Grado del contacto,True,True,True,True
+res.partner.iap,Contacto de compras dentro de la aplicación,True,True,True,True
+res.partner.industry,Industria,True,True,True,True
+res.partner.tag,Etiquetas del contacto: estas etiquetas se pueden usar en el sitio web para encontrar clientes por sector o...,True,True,True,True
+res.role,Representa un rol en el sistema utilizado para categorizar a los usuarios. Cada rol tiene un nombre único y puede estar asociado a varios usuarios. Puede mencionar a los roles en los mensajes para notificar a todos los usuarios asociados.,True,True,True,True
+res.users,Usuario,True,True,True,True
+res.users.apikeys,Claves API de los usuarios,True,True,True,True
+res.users.apikeys.show,Mostrar clave API,True,True,True,True
+res.users.deletion,Solicitud de eliminación de usuario,True,True,True,True
+res.users.log,Registro de usuarios,True,True,True,True
+res.users.settings,Ajustes de usuario,True,True,True,True
+res.users.settings.embedded.action,Ajustes del usuario para acciones incrustadas,True,True,True,True
+res.users.settings.volumes,Ajustes de volumen del usuario,True,True,True,True
+resource.calendar,Tiempo de trabajo de recursos,True,True,True,True
+resource.calendar.attendance,Detalle del trabajo,True,True,True,True
+resource.calendar.leaves,Detalle de la pausa del recurso,True,True,True,True
+resource.mixin,Mixin de recursos,True,True,True,True
+resource.resource,Recursos,True,True,True,True
+room.booking,Reservación de sala,True,True,True,True
+room.office,Oficina de la sala,True,True,True,True
+room.room,Sala,True,True,True,True
+sale.commission.achievement,Logro de comisión manual,True,True,True,True
+sale.commission.achievement.report,Reporte de logro de ventas,True,True,True,True
+sale.commission.plan,Plan de comisión,True,True,True,True
+sale.commission.plan.achievement,Logro del plan de comisión,True,True,True,True
+sale.commission.plan.target,Objetivo del plan de comisión,True,True,True,True
+sale.commission.plan.target.commission,Comisión objetivo del plan de comisión,True,True,True,True
+sale.commission.plan.target.forecast,Pronóstico objetivo del plan de comisión,True,True,True,True
+sale.commission.plan.user,Plan de comisión del usuario,True,True,True,True
+sale.commission.report,Reporte de comisión de ventas,True,True,True,True
+sale.edi.xml.ubl_bis3,Órdenes de venta BIS 3.5,True,True,True,True
+sale.order,Orden de venta,True,True,True,True
+sale.order.close.reason,¿Por qué canceló la suscripción?,True,True,True,True
+sale.order.line,Línea de la orden de venta,True,True,True,True
+sale.order.log,Registro de las órdenes de venta,True,True,True,True
+sale.order.log.report,Reporte del análisis de registro de ventas,True,True,True,True
+sale.order.spreadsheet,Hoja de cálculo de la cotización,True,True,True,True
+sale.order.template,Plantilla de cotización,True,True,True,True
+sale.order.template.line,Línea de plantilla de cotización,True,True,True,True
+sale.pdf.form.field,Campos de formulario dentro de los documentos de cotización.,True,True,True,True
+sale.report,Reporte del análisis de ventas,True,True,True,True
+sale.subscription.plan,Plan de suscripción,True,True,True,True
+sale.subscription.report,Análisis de suscripción,True,True,True,True
+sat.cfdi,CFDI en el SAT (Syntage),True,True,True,True
+sat.cfdi.pago,Complemento de pago (SAT),True,True,True,True
+sat.compare.line,Comparación SAT vs Odoo,True,True,True,True
+sat.pago.compare,Pagos SAT vs Odoo,True,True,True,True
+sat.reconcile.wizard,Conciliar CFDI del SAT con factura de Odoo,True,True,True,True
+sat.reconcile.wizard.line,Candidata de conciliación SAT ↔ Odoo,True,True,True,True
+sat.sync.log,Bitácora de sincronización con Syntage,True,True,True,True
+sat.syntage.client,Cliente de la API de Syntage,True,True,True,True
+sat.syntage.file,Archivo en Syntage (XML/PDF de un CFDI),True,True,True,True
+sat.webhook.event,Evento de webhook de Syntage,True,True,True,True
+scale.wizard.mixin,Mixin de Wizard de Báscula IoT,True,True,True,True
+sequence.mixin,Secuencia automática,True,True,True,True
+sgi.action.line,Acción / corrección de No Conformidad,True,True,True,True
+sgi.activity.change,Propuesta de cambio a una actividad (Mi procedimiento),True,True,True,True
+sgi.activity.change.role,Quién hace la actividad (propuesta),True,True,True,True
+sgi.activity.exec.stat,Ejecuciones de una actividad SGI por semana y usuario,True,True,True,True
+sgi.activity.input,Entregable que recibe una actividad SGI,True,True,True,True
+sgi.activity.link,Encadenamiento entre actividades,True,True,True,True
+sgi.activity.role,Rol de un puesto en una actividad SGI,True,True,True,True
+sgi.activity.spec.gap,Faltante de especificación de una actividad SGI,True,True,True,True
+sgi.activity.week.stat,Cumplimiento semanal de una actividad SGI,True,True,True,True
+sgi.alert.source,Fuente de NC automática,True,True,True,True
+sgi.area,Área documental SGI,True,True,True,True
+sgi.audit,Auditoría interna (P-G03),True,True,True,True
+sgi.audit.checklist.line,Pregunta del checklist de auditoría (por actividad),True,True,True,True
+sgi.audit.finding,Hallazgo de auditoría,True,True,True,True
+sgi.audit.program,Programa anual de auditorías (P-G03),True,True,True,True
+sgi.audit.program.line,Línea del programa de auditorías,True,True,True,True
+sgi.calculated.connection.mixin,Conexión calculada de un entregable,True,True,True,True
+sgi.calibration,Calibración de equipo de medición (P-C03),True,True,True,True
+sgi.checklist.line,Punto revisado en una hoja de mantenimiento,True,True,True,True
+sgi.checklist.template,Plantilla de checklist de mantenimiento (planta o unidades),True,True,True,True
+sgi.checklist.template.item,Punto a revisar de una plantilla de checklist,True,True,True,True
+sgi.coa.inbox,COA recibido por correo,True,True,True,True
+sgi.competence.gap,Brecha de competencia (DNC),True,True,True,True
+sgi.config,Configuración SGI,True,True,True,True
+sgi.control.plan,Plan de control (P-C11),True,True,True,True
+sgi.cron,Tareas programadas SGI,True,True,True,True
+sgi.csh.finding,Hallazgo del recorrido de la Comisión de Seguridad e Higiene,True,True,True,True
+sgi.csh.inspection,Recorrido de la Comisión de Seguridad e Higiene,True,True,True,True
+sgi.deliverable,Entregable SGI (lo que pasa de una actividad a otra),True,True,True,True
+sgi.dev.characteristic,Característica pedida en la solicitud de desarrollo,True,True,True,True
+sgi.diagram,Diagramas del SGI (datos para el componente sgi_diagram),True,True,True,True
+sgi.document.ack,Acuse de lectura de documento SGI,True,True,True,True
+sgi.document.type,Tipo de documento SGI,True,True,True,True
+sgi.dyd.task.mixin,Liga a la tarea del desarrollo,True,True,True,True
+sgi.emergency.drill,Simulacro de emergencia,True,True,True,True
+sgi.emergency.plan,Plan de emergencia (ISO 14001/45001 8.2),True,True,True,True
+sgi.epp.delivery,Responsiva de entrega de EPP (S03-02),True,True,True,True
+sgi.epp.delivery.line,Renglón de la responsiva de EPP,True,True,True,True
+sgi.fmea,AMEF - Análisis de Modo y Efecto de Falla (P-C10),True,True,True,True
+sgi.fmea.line,Línea de AMEF,True,True,True,True
+sgi.format.map,Formato SGI en documentos de Odoo,True,True,True,True
+sgi.format.mixin,Mixin: clave de formato SGI,True,True,True,True
+sgi.health.record,Estudio de higiene o examen médico por trabajador,True,True,True,True
+sgi.incident,"Incidente / Accidente SST (P-S02, SCAT)",True,True,True,True
+sgi.indicator,Indicador SGI (F-P-A10-03),True,True,True,True
+sgi.indicator.measure,Medición de indicador SGI,True,True,True,True
+sgi.indicator.measure.split,Desglose de medición de indicador (equipo o mercado),True,True,True,True
+sgi.indicator.step,Escalón trimestral de la meta de un indicador SGI,True,True,True,True
+sgi.indicator.term,Término de la fórmula de un indicador SGI,True,True,True,True
+sgi.interested.party,Parte interesada (ISO 4.2),True,True,True,True
+sgi.inventory.value,Valor del inventario al cierre de mes (cálculo de AL-01),True,True,True,True
+sgi.job.family,Familia de puestos SGI,True,True,True,True
+sgi.legal.evaluation,Evaluación del cumplimiento de un requisito legal,True,True,True,True
+sgi.legal.requirement,Requisito legal / otro requisito (14001·45001 6.1.3),True,True,True,True
+sgi.lock.date.log,Bitácora de fechas de bloqueo contable,True,True,True,True
+sgi.machine.sheet,Ficha técnica de proceso por máquina (F-IT-P-P01-08-05),True,True,True,True
+sgi.machine.sheet.param,Parámetro de la ficha de proceso por máquina,True,True,True,True
+sgi.machine.sheet.yarn,Hilo de la ficha de proceso por máquina,True,True,True,True
+sgi.management.review,Revisión por la Dirección (IT-P-A10-01),True,True,True,True
+sgi.management.review.agreement,Acuerdo de Revisión por la Dirección,True,True,True,True
+sgi.msa.study,Estudio MSA (IATF 7.1.5.1.1),True,True,True,True
+sgi.my.procedure.mixin,Mi procedimiento en la ficha,True,True,True,True
+sgi.norm,Norma ISO,True,True,True,True
+sgi.norm.clause,Cláusula de norma ISO,True,True,True,True
+sgi.objective,Objetivo Integral SGI,True,True,True,True
+sgi.policy,Política integral del SGI,True,True,True,True
+sgi.ppap,PPAP - Proceso de Aprobación de Partes de Producción (P-C15),True,True,True,True
+sgi.ppap.element,Elemento de un PPAP,True,True,True,True
+sgi.ppap.element.template,Elemento PPAP (catálogo AIAG),True,True,True,True
+sgi.process,Proceso SGI,True,True,True,True
+sgi.process.activity,Actividad del procedimiento,True,True,True,True
+sgi.process.flow,Flujo entre procesos SGI,True,True,True,True
+sgi.process.responsibility,Responsabilidad de área en el procedimiento,True,True,True,True
+sgi.process.stage,Etapa de un proceso SGI,True,True,True,True
+sgi.risk,Riesgo / Oportunidad SGI,True,True,True,True
+sgi.risk.category,Categoría de riesgo/oportunidad,True,True,True,True
+sgi.sales.budget,Presupuesto de ventas (F-P-A28-17/18),True,True,True,True
+sgi.sales.budget.line,Línea de presupuesto de ventas (producto × mes),True,True,True,True
+sgi.sign.builder,Plantillas de Sign armadas por el SGI,True,True,True,True
+sgi.sign.record.mixin,Firmas de Sign ligadas al registro,True,True,True,True
+sgi.staff.efficiency,Eficiencias de personal (F-P-A01-32/34),True,True,True,True
+sgi.staff.efficiency.line,Calificación mensual de un empleado,True,True,True,True
+sgi.supplier.eval,Evaluación de proveedor SGI (8.4),True,True,True,True
+sign.completed.document,Documento terminado,True,True,True,True
+sign.document,Firma de documento,True,True,True,True
+sign.item,Campos a firmar en el documento,True,True,True,True
+sign.item.option,Opción de un campo de selección,True,True,True,True
+sign.item.radio.set,Botón de opción configurado para mantener los elementos de opción juntos,True,True,True,True
+sign.item.role,Función del elemento signatario,True,True,True,True
+sign.item.type,Tipo del elemento de la firma,True,True,True,True
+sign.log,Historial de acceso a las solicitudes de firma,True,True,True,True
+sign.request,Solicitud de firma,True,True,True,True
+sign.request.item,Elemento de solicitud de firma,True,True,True,True
+sign.request.item.value,Valor del elemento de la firma,True,True,True,True
+sign.template,Plantilla de firma,True,True,True,True
+sign.template.tag,Etiqueta de la plantilla de firmas,True,True,True,True
+slide.answer,La respuesta de la pregunta de la diapositiva,True,True,True,True
+slide.channel,Curso,True,True,True,True
+slide.channel.partner,Canal/contactos (miembros),True,True,True,True
+slide.channel.tag,Etiqueta del canal/curso,True,True,True,True
+slide.channel.tag.group,Grupos del canal/curso,True,True,True,True
+slide.embed,Número de vistas de diapositivas insertadas,True,True,True,True
+slide.question,Pregunta de la prueba de contenido,True,True,True,True
+slide.slide,Diapositivas,True,True,True,True
+slide.slide.partner,Diapositiva/contacto decorado m2m,True,True,True,True
+slide.slide.resource,Recurso adicional para esta diapositiva en particular,True,True,True,True
+slide.tag,Etiqueta de diapositiva,True,True,True,True
+sms.sms,SMS salientes,True,True,True,True
+sms.template,Plantillas de SMS,True,True,True,True
+sms.tracker,Vincula SMS a los modelos de seguimiento de correo y mensajes de texto,True,True,True,True
+snailmail.letter,Carta de correo postal,True,True,True,True
+social.account,Cuenta de red social,True,True,True,True
+social.live.post,Publicación en redes sociales en vivo,True,True,True,True
+social.media,Redes sociales,True,True,True,True
+social.post,Publicación en redes sociales,True,True,True,True
+social.post.template,Plantilla de publicación en redes sociales,True,True,True,True
+social.stream,Flujo social,True,True,True,True
+social.stream.post,Publicación en el flujo social,True,True,True,True
+social.stream.post.image,Imagen adjunta a la publicación del flujo social,True,True,True,True
+social.stream.type,Publicación en el flujo social,True,True,True,True
+social.twitter.account,Cuenta de X,True,True,True,True
+spreadsheet.cell.thread,Hilo de conversación de la hoja de cálculo,True,True,True,True
+spreadsheet.contributor,Colaborador de hojas de cálculo,True,True,True,True
+spreadsheet.dashboard,Tablero de Hojas de cálculo,True,True,True,True
+spreadsheet.dashboard.group,Grupo de tableros,True,True,True,True
+spreadsheet.dashboard.share,Copia de una hoja de cálculo compartida,True,True,True,True
+spreadsheet.mixin,Mixin de la hoja de cálculo,True,True,True,True
+spreadsheet.revision,Revisión colaborativa de hojas de cálculo,True,True,True,True
+spreadsheet.template,Plantilla de hoja de cálculo,True,True,True,True
+stock.avco.report,Justificador de AVCO de inventario,True,True,True,True
+stock.forecasted_product_product,Reporte de reabastecimiento de existencias,True,True,True,True
+stock.forecasted_product_template,Reporte de reabastecimiento de inventario,True,True,True,True
+stock.landed.cost,Coste en destino,True,True,True,True
+stock.landed.cost.lines,Línea de costo en destino de existencias,True,True,True,True
+stock.location,Ubicaciones de inventario,True,True,True,True
+stock.lot,Número de serie/lote,True,True,True,True
+stock.move,Movimiento de stock,True,True,True,True
+stock.move.line,Movimientos de producto (línea de movimiento de stock),True,True,True,True
+stock.package,Paquete,True,True,True,True
+stock.package.history,Historial del paquete en stock,True,True,True,True
+stock.package.type,Tipo de paquete de existencias,True,True,True,True
+stock.picking,Transferir,True,True,True,True
+stock.picking.batch,Traslado por lote,True,True,True,True
+stock.picking.type,Tipo de recolección,True,True,True,True
+stock.putaway.rule,Regla de almacenamiento,True,True,True,True
+stock.quant,Quants,True,True,True,True
+stock.reference,Referencia entre documentos de inventario,True,True,True,True
+stock.replenish.mixin,Mixin de reabastecimiento de producto,True,True,True,True
+stock.report,Reporte de existencias,True,True,True,True
+stock.route,Rutas de inventario,True,True,True,True
+stock.rule,Regla de inventario,True,True,True,True
+stock.scrap,Desechar,True,True,True,True
+stock.scrap.reason.tag,Etiqueta del motivo de descarte,True,True,True,True
+stock.storage.category,Categoría de almacenamiento,True,True,True,True
+stock.storage.category.capacity,Capacidad de la categoría de almacenamiento,True,True,True,True
+stock.valuation.adjustment.lines,Líneas de ajuste de valoración,True,True,True,True
+stock.warehouse,Almacén,True,True,True,True
+stock.warehouse.orderpoint,Regla de inventario mínimo,True,True,True,True
+stock.warn.insufficient.qty,Advertir de cantidad insuficiente,True,True,True,True
+stock_account.stock.valuation.report,Valoración de existencias,True,True,True,True
+studio.approval.entry,Entrada de aprobación de Studio,True,True,True,True
+studio.approval.request,Solicitud de aprobación de Studio,True,True,True,True
+studio.approval.rule,Regla de aprobación de Studio,True,True,True,True
+studio.approval.rule.approver,Aprobadores de la regla de aprobación enriquecidos,True,True,True,True
+studio.export.model,Modelos de exportación de Studio,True,True,True,True
+studio.mixin,Mixin de Studio,True,True,True,True
+survey.question,Pregunta de la encuesta,True,True,True,True
+survey.question.answer,Etiqueta de la encuesta,True,True,True,True
+survey.survey,Encuesta,True,True,True,True
+survey.user_input,Encuesta de opinión de los usuarios,True,True,True,True
+survey.user_input.line,Línea de entrada del usuario de la encuesta,True,True,True,True
+template.reset.mixin,Mixin de restablecimiento de plantilla,True,True,True,True
+theme.utils,Herramientas del tema,True,True,True,True
+theme.website.menu,Menú del tema del sitio web,True,True,True,True
+theme.website.page,Página del tema del sitio web,True,True,True,True
+timer.mixin,Mixin del temporizador,True,True,True,True
+timer.parent.mixin,Mixin del temporizador principal,True,True,True,True
+timer.timer,Módulo del temporizador,True,True,True,True
+timesheet.grid.mixin,Mixin de tabla de hojas de horas,True,True,True,True
+timesheets.analysis.report,Reporte de análisis de hoja de horas,True,True,True,True
+uom.uom,Unidad de medida del producto,True,True,True,True
+utm.campaign,Campaña UTM,True,True,True,True
+utm.medium,Medio UTM,True,True,True,True
+utm.mixin,Mixin UTM,True,True,True,True
+utm.source,Fuente UTM,True,True,True,True
+utm.source.mixin,Mixin de la fuente UTM,True,True,True,True
+utm.stage,Etapa de la campaña,True,True,True,True
+utm.tag,Etiquetas UTM,True,True,True,True
+vendor.delay.report,Reporte de demora del proveedor,True,True,True,True
+voip.call,Llamada telefónica,True,True,True,True
+voip.country.code.mixin,Mixin del teléfono del país,True,True,True,True
+voip.provider,Proveedor de VoIP,True,True,True,True
+voip.queue.mixin,Soporte para la cola de VoIP,True,True,True,True
+web_tour.tour,Recorridos,True,True,True,True
+web_tour.tour.step,Paso del recorrido,True,True,True,True
+website,Sitio web,True,True,True,True
+website.assets,Utilidades de activos,True,True,True,True
+website.checkout.step,Paso de pago del sitio web,True,True,True,True
+website.configurator.feature,Función del configurador de sitio web,True,True,True,True
+website.controller.page,Página modelo,True,True,True,True
+website.cover_properties.mixin,Mixin de propiedades de portada de sitio web,True,True,True,True
+website.html.text.processor,Modelo abstracto del procesador de texto HTML,True,True,True,True
+website.menu,Menú del sitio web,True,True,True,True
+website.multi.mixin,Mixin de sitio web múltiple,True,True,True,True
+website.page,Página,True,True,True,True
+website.page_options.mixin,Opciones específicas para la página o registro del sitio web,True,True,True,True
+website.page_visibility_options.mixin,Opciones de visibilidad específicas para la página o registro del sitio web,True,True,True,True
+website.published.mixin,Mixin publicado del sitio web,True,True,True,True
+website.published.multi.mixin,Mixin publicado de sitio web múltiple,True,True,True,True
+website.rewrite,Reescritura del sitio web,True,True,True,True
+website.route,Toda la ruta del sitio web,True,True,True,True
+website.sale.extra.field,Información adicional de comercio electrónico que se muestra en la página del producto,True,True,True,True
+website.searchable.mixin,Mixin buscable sitio web,True,True,True,True
+website.seo.metadata,Metadatos para SEO,True,True,True,True
+website.snippet.filter,Filtro de snippets del sitio web,True,True,True,True
+website.technical.page,Página técnica del sitio web,True,True,True,True
+website.track,Páginas visitadas,True,True,True,True
+website.visitor,Visitante del sitio web,True,True,True,True
+website.visitor.push.subscription,Suscripción push para un visitante del sitio web,True,True,True,True
+website_generator.request,Solicitud de generador del sitio web,True,True,True,True
+whatsapp.account,Cuenta de WhatsApp Business,True,True,True,True
+whatsapp.message,Mensajes de WhatsApp,True,True,True,True
+whatsapp.template,Plantilla de WhatsApp,True,True,True,True
+whatsapp.template.button,Botón de la plantilla de WhatsApp,True,True,True,True
+whatsapp.template.variable,Variable de la plantilla de WhatsApp,True,True,True,True
+worksheet.template,Plantilla de hoja de trabajo,True,True,True,True
+x_,Solicitud de pago,True,True,True,True
+x_account_report_line,account.report.line,True,True,True,True
+x_account_report_line_line_40aaa,account_report_line_line,True,True,True,True
+x_actividades_obligato,Actividades obligatorias,True,True,True,True
+x_actividades_obligato_stage,Actividades obligatorias Stages,True,True,True,True
+x_analisis_de_costos,Análisis de costos,True,True,True,True
+x_analisis_de_costos_line_d0ebb,analisis_de_costos_line,True,True,True,True
+x_analisis_de_eficienc,Analisis de eficiencia,True,True,True,True
+x_analisis_de_eficienc_line_436d0,analisis_de_eficienc_line,True,True,True,True
+x_analisis_financiero,Análisis financiero,True,True,True,True
+x_analisis_financiero_line_7f4c3,analisis_financiero_line,True,True,True,True
+x_approval_request_line_8f507,approval_request_line,True,True,True,True
+x_areas,Areas,True,True,True,True
+x_asistencias_asist,Asistencias Asist,True,True,True,True
+x_calendario_de_activi,Calendario de actividades,True,True,True,True
+x_calendario_de_obliga,Calendario de obligaciones,True,True,True,True
+x_calendario_de_obliga_stage,Calendario de obligaciones Stages,True,True,True,True
+x_capacitaciones,Capacitaciones,True,True,True,True
+x_categorias_capacitac,Categorías Capacitación,True,True,True,True
+x_comisiones,Comisiones,True,True,True,True
+x_comisiones_stage,Comisiones Stages,True,True,True,True
+x_configuracion_capaci,Configuración Capacitación,True,True,True,True
+x_conocimiento,Conocimiento,True,True,True,True
+x_costos,Costos,True,True,True,True
+x_costos_line_e7ba9,costos_line,True,True,True,True
+x_emp_activity,SGI Aterrizaje operable en el empleado,True,True,True,True
+x_entregas,Entregas,True,True,True,True
+x_entregas_diarias,Entregas Diarias,True,True,True,True
+x_entregas_diarias_stage,Entregas Diarias Stages,True,True,True,True
+x_entregas_line_96256,Entregas  Lines,True,True,True,True
+x_entregas_stage,Entregas Stages,True,True,True,True
+x_formatos_internos,Formatos internos,True,True,True,True
+x_helpdesk_ticket_line_10661,helpdesk_ticket_line,True,True,True,True
+x_helpdesk_ticket_line_4e4e2,helpdesk_ticket_line,True,True,True,True
+x_hr_employee_line_16401,hr_employee_line,True,True,True,True
+x_lineas_de_desglose_w,Líneas de Desglose WO,True,True,True,True
+x_maintenance_request_line_11bc0,maintenance_request_line,True,True,True,True
+x_maintenance_request_line_5a944,maintenance_request_line,True,True,True,True
+x_maintenance_request_line_671ae,maintenance_request_line,True,True,True,True
+x_maintenance_request_line_ab20b,maintenance_request_line,True,True,True,True
+x_maintenance_request_line_e1af6,maintenance_request_line,True,True,True,True
+x_maintenance_request_worksheet_template_13,Orden de trabajo,True,True,True,True
+x_modulo_capacitacion,Modulo Capacitación,True,True,True,True
+x_mrp_production_line_2d9c2,mrp_production_line,True,True,True,True
+x_mrp_production_line_4d8f5,mrp_production_line,True,True,True,True
+x_mrp_production_line_8e17c,mrp_production_line,True,True,True,True
+x_mrp_production_line_d4908,mrp_production_line,True,True,True,True
+x_mrp_production_line_e5244,mrp_production_line,True,True,True,True
+x_muestras,Muestras,True,True,True,True
+x_muestras_stage,Muestras Stages,True,True,True,True
+x_no_conformidades,No conformidades,True,True,True,True
+x_no_conformidades_line_0ff2d,no_conformidades_line,True,True,True,True
+x_no_conformidades_stage,No conformidades Stages,True,True,True,True
+x_no_conformidades_tag,No conformidades Tags,True,True,True,True
+x_pctg,PCTG,True,True,True,True
+x_pctg_line_382d7,Pctg  Lines,True,True,True,True
+x_pctg_line_694c4,Pctg  Lines,True,True,True,True
+x_pctg_line_a838f,Pctg  Lines,True,True,True,True
+x_piezas_de_mantenimie,Piezas de Mantenimiento,True,True,True,True
+x_piezas_de_mantenimie_line_45f2d,piezas_de_mantenimie_line,True,True,True,True
+x_plan_pagos,plan_pagos,True,True,True,True
+x_por_entregar,Por entregar,True,True,True,True
+x_por_entregar_line_1c5dc,Por Entregar  Lines,True,True,True,True
+x_por_entregar_line_49426,Por Entregar  Lines,True,True,True,True
+x_por_entregar_line_7c552,Por Entregar  Lines,True,True,True,True
+x_por_entregar_line_8ed35,Por Entregar  Lines,True,True,True,True
+x_por_entregar_line_c2373,Por Entregar  Lines,True,True,True,True
+x_por_entregar_line_d068f,Por Entregar  Lines,True,True,True,True
+x_por_entregar_line_e21fc,Por Entregar  Lines,True,True,True,True
+x_produccion_vs_venta,Producción vs Venta,True,True,True,True
+x_produccion_vs_venta_line_9018c,produccion_vs_venta_line,True,True,True,True
+x_product_margin_extension,product_margin_extension,True,True,True,True
+x_project_task_worksheet_template_11,Default Worksheet,True,True,True,True
+x_project_task_worksheet_template_12,Formato de visita,True,True,True,True
+x_project_task_worksheet_template_9_line_3e340,Project Task Worksheet Template 9  Lines,True,True,True,True
+x_reporte_asist,Reporte AsisT,True,True,True,True
+x_reporte_compras,Reporte Compras,True,True,True,True
+x_reporte_compras_line_b7ee8,Reporte Compras  Lines,True,True,True,True
+x_reporte_de_entregas,Reporte De Entregas,True,True,True,True
+x_res_partner_private,Private Addresses,True,True,True,True
+x_responsables_capacit,Responsables Capacitación,True,True,True,True
+x_seguimiento_y_contro,Seguimiento y Control ,True,True,True,True
+x_seguimiento_y_contro_stage,Seguimiento y Control  Stages,True,True,True,True
+x_sf,SF,True,True,True,True
+x_sf_line_e196f,sf_line,True,True,True,True
+x_sf_line_e196f_line_86755,sf_line_e196f_line,True,True,True,True
+x_stock_landed_cost_line_74d68,stock_landed_cost_line,True,True,True,True
+x_stock_landed_cost_line_d8f15,stock_landed_cost_line,True,True,True,True
+x_taref,Taref,True,True,True,True
+x_taref_line_527b9,taref_line,True,True,True,True
+x_usuarios_capacitacio,Usuarios Capacitación,True,True,True,True
+x_ventas,VENTAS,True,True,True,True
+x_ventas_vs_produccion,Ventas vs producción,True,True,True,True
+x_ventas_vs_produccion_line_2d293,ventas_vs_produccion_line,True,True,True,True

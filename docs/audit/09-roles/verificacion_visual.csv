@@ -1,0 +1,39 @@
+paso,rol,usuario_de_prueba,menu_o_lugar,que_hacer,que_se_espera,hallazgo
+1,Usuario SGI,150 Dario Manriquez (o copia),SGI → Inicio → Mis pendientes,Abrir la lista,12 renglones «Medir LO-01 … (07/2026|08/2026|09/2026)» todos Atrasada; ninguno de actividades ni de acuses,I-001 I-006 I-007
+2,Usuario SGI,150,Campana de actividades de Odoo,Abrir,1 actividad «Capturar indicador LO-02 (08/2026)» sobre indicador archivado; al abrirla ¿carga el indicador archivado o da error?,I-008
+3,Usuario SGI,150,SGI → Inicio → Mi procedimiento,Abrir; contar Actividades; ver botón «Mis pendientes» y «Firmas pendientes»,16 actividades (3 Atrasada 2 Al día 11 Sin medición); botón Mis pendientes = 12; Firmas pendientes = 1; botón «Firmar leído y entendido» visible,I-001
+4,Usuario SGI,150,Mi procedimiento → Actividades → S5.21 → «Ir a hacerlo»,Clic,Abre el menú de la actividad; anotar si abre o si da «no tienes acceso» (E-010),E-010
+5,Usuario SGI,150,SGI (menú raíz),Contar entradas con acción,22 entradas (Inicio 4 · Procesos 5 · Mejora 7 · Seguridad y ambiente 6); no ve Dirección ni Administración SGI,I-015 F-011
+6,Usuario SGI,150,Menú de apps → Documentos,Buscar «F-P-A16-10» y «P-A16»,Encuentra el PDF por nombre; anotar si ve estado (vigente/obsoleto) y destino en Odoo; hoy no hay «Del Dropbox a Odoo»,I-016 E-001
+7,Usuario SGI,150,Compras → una orden → botón «Firmar»,Elegir una plantilla de MAST y confirmar (solo en staging),Con la entrega 1: error de acceso (no tiene Firma electrónica) o plantilla no visible,I-014
+8,Usuario SGI,150,SGI → Seguridad y ambiente,Abrir los 6 menús,Las 6 pantallas vacías; anotar si la ayuda explica qué hacer,I-019
+9,Usuario SGI,150,SGI → Mejora → No conformidades / Reclamaciones / Mejora continua,Abrir,No da error; Reclamaciones vacía (D-006),D-006
+10,Usuario SGI,150,SGI → Inicio → Mi equipo,Abrir,2 personas sin usuario y sin semáforo,I-021
+11,Jefe MAST,128 Blanca Areli,SGI → Inicio → Mis pendientes,Abrir,11 renglones (10 mediciones TR-* + «Aprobar quimibond_sgi 56.21.0…»),I-006
+12,Jefe MAST,128,Campana,Abrir,6 actividades; NO están las 143 de calibración ni las de «Procedimiento vivo cambió» (están con 7 y 67),I-003
+13,Jefe MAST,128,SGI → Administración SGI → Diagnóstico → Diagnóstico del SGI,Correr,Las rutas sugeridas dicen «SGI → Medición → …» o «SGI → Riesgos y auditorías → …»: menús que no existen,I-009
+14,Jefe MAST,128,SGI → Administración SGI → Documentos → Migración de formatos,Buscar «F-P-A16-10»,Si el formato ya es obsoleto no aparece (E-004); búsqueda por clave anterior limitada a 12 meses (C-005),I-016
+15,Jefe MAST,128,SGI (menú raíz),Contar entradas con acción,59 (todas salvo Cargar catálogo y Ajustes),—
+16,Dirección,35 Jorge Manuel Ortiz,SGI → Inicio → Mi procedimiento → pestaña Escalamientos,Abrir,97 renglones sin estado; no distingue cuáles están atrasados hoy,I-012
+17,Dirección,35,SGI → Inicio → Mis pendientes,Abrir,12 renglones: 8 «Medir…» (7 esperan su validación) + 4 «Aprobar F-P-A02-01006xx»,I-006 I-007
+18,Dirección,35,SGI → Inicio → Mi equipo,Abrir y usar el filtro «Atrasadas»,Todos los empleados con puesto (~165); medir tiempo de respuesta del filtro (G-015),G-015
+19,Dirección (tras F-013),usuario de prueba con 319 sin 318,SGI → Seguridad y ambiente → Estudios de higiene y exámenes médicos,Intentar abrir,No lo ve (es escala de E2.31/E2.32 pero no lee exámenes),I-012
+20,Auditor SGI,usuario de prueba solo con 317,SGI (menú raíz),Contar entradas con acción y abrir cada una,36 entradas; anotar cada error de acceso en No conformidades Reclamaciones Mejora continua Quejas Satisfacción Tablero (acciones de servidor),I-011 F-012
+21,Auditor SGI,usuario de prueba solo con 317,SGI → Mejora → Auditorías → Programa,Crear y editar un renglón,Puede (RWC); confirmar que no ve Acciones correctivas ni Revisión por la dirección (E-009),I-011
+22,Administrador SGI,152 Mariano Dominguez,SGI → Administración SGI → Configuración → Cargar catálogo,Abrir en modo prueba sin cargar,Abre el asistente; nadie más lo ve,—
+23,Administrador SGI,152,SGI → Inicio → Eficiencias de mi área,Abrir y crear hoja de «Administracion / Ventas»,La regla le deja capturar toda Administración (F-020),F-020
+24,Captura de eficiencias,135 Manuel Juarez,SGI → Inicio → Eficiencias de mi área,Crear hoja de su departamento (96) y cargar empleados,Crea; no ve salario; la ayuda cita «F-P-A01-32 y F-P-A01-34» (D-003),I-020
+25,Captura de eficiencias,135,Misma pantalla,Crear hoja de «Tintorería»,Error de acceso genérico (la regla no lo deja); anotar el texto del error,I-020
+26,Captura de eficiencias,135,Mi procedimiento → C4.25 no es suya; abrir la actividad C4.25 desde Procesos → Actividades → «Dónde»,Clic en el menú de la actividad,Lleva a Empleados → Eficiencias de personal → Hojas mensuales (grupo 68): el supervisor no lo ve,I-010
+27,Supervisor de planta,24 Gerardo Franco,SGI → Inicio → Mis pendientes,Abrir,«Sin pendientes. Estás al día.»,I-001
+28,Supervisor de planta,24,SGI → Inicio → Mi procedimiento,Abrir,7 actividades con 2 Atrasada (C4.19 y S4.07) y 1 firma pendiente,I-001
+29,Supervisor de planta,24,SGI → Inicio,Buscar «Eficiencias de mi área»,No aparece (no está en 327) aunque participa en C4.25,I-010
+30,Capturista de planta,cuenta de tableta (no existe; usar 135 en staging),Mantenimiento → Checklists de hoy,Abrir,Vacía: las 3 plantillas no tienen equipos (H-013),I-005
+31,Capturista de planta,misma,Una hoja de checklist → «Terminar checklist»,Elegir un empleado sin PIN y dejar el PIN vacío,Acepta y firma «(sin PIN registrado)»: 163 de 165 empleados sin PIN,I-005
+32,Empleado sin SGI,132 Erivani contador,Menú de apps,Buscar SGI,No aparece; sí ve Calidad (grupo 66) y Documentos,I-018
+33,Empleado sin SGI,132,Contactos → abrir un cliente,Abrir,Error de acceso por botones del SGI (D-001),D-001
+34,Empleado sin SGI,132,Documentos → carpeta RH o DIR.OPERACIONES,Abrir un procedimiento,Lo lee (access_internal = view en los 583 vigentes),I-018
+35,Salud ocupacional,usuario de prueba con group_sgi_health (rama entrega 1),SGI → Seguridad y ambiente → Estudios de higiene y exámenes médicos,Crear un examen,Crea; un usuario con solo hr.group_hr_user ya no ve el menú,I-013
+36,Salud ocupacional,88 Miguel Medina SIN el grupo nuevo,Campana,Tras el cron de competencias con un examen por vencer,Recibe «Por vencer: <examen> de <empleado>» y al abrirlo da error de acceso,I-013
+37,Salud ocupacional,—,Ajustes → Técnico → Menús → id 2600 (tras desplegar la entrega 1),Ver grupos,Debe tener solo Salud ocupacional y Jefe MAST; si conserva «Encargado» (68) aplicar la corrección,I-013
+38,Usuario SGI sin empleado,92 Supervisor,SGI → Inicio → Mi procedimiento,Abrir,Aviso «Tu usuario no está ligado a un empleado»,I-017

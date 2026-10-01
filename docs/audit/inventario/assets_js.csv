@@ -1,0 +1,7 @@
+addon,file,categoria,clave
+quimibond_sgi,static/src/diagram/diagram.js,owl_template,quimibond_sgi.Diagram
+quimibond_sgi,static/src/diagram/diagram_view.js,views,sgi_diagram
+quimibond_sgi,static/src/diagram/diagram_view.js,actions,sgi_diagram
+quimibond_sgi,static/src/diagram/diagram_view.js,owl_template,quimibond_sgi.DiagramView
+quimibond_sgi,static/src/diagram/diagram_view.js,owl_template,quimibond_sgi.DiagramAction
+quimibond_sgi,static/src/my_procedure/new_activity_list.js,views,sgi_my_activities_list

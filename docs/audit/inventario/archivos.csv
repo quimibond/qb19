@@ -1,0 +1,390 @@
+addon,file,ext,lineas,estado
+quimibond_sgi,.gitignore,,3,NO está en el manifest ni se importa
+quimibond_sgi,README.md,.md,2578,NO está en el manifest ni se importa
+quimibond_sgi,__init__.py,.py,41,arranque
+quimibond_sgi,__manifest__.py,.py,211,arranque
+quimibond_sgi,controllers/__init__.py,.py,2,arranque
+quimibond_sgi,controllers/portal_nc.py,.py,47,importado
+quimibond_sgi,views/sgi_action_line_views.xml,.xml,133,manifest (data)
+quimibond_sgi,views/sgi_activity_spec_views.xml,.xml,134,manifest (data)
+quimibond_sgi,views/sgi_alert_source_views.xml,.xml,81,manifest (data)
+quimibond_sgi,views/sgi_approval_native_views.xml,.xml,98,manifest (data)
+quimibond_sgi,views/sgi_area_views.xml,.xml,41,manifest (data)
+quimibond_sgi,views/sgi_audit_views.xml,.xml,293,manifest (data)
+quimibond_sgi,views/sgi_budget_analytic_views.xml,.xml,19,manifest (data)
+quimibond_sgi,views/sgi_business_line_views.xml,.xml,97,manifest (data)
+quimibond_sgi,views/sgi_calibration_views.xml,.xml,161,manifest (data)
+quimibond_sgi,views/sgi_catalog_views.xml,.xml,513,manifest (data)
+quimibond_sgi,views/sgi_coa_views.xml,.xml,236,manifest (data)
+quimibond_sgi,views/sgi_competence_views.xml,.xml,108,manifest (data)
+quimibond_sgi,views/sgi_complaint_views.xml,.xml,97,manifest (data)
+quimibond_sgi,views/sgi_context_views.xml,.xml,96,manifest (data)
+quimibond_sgi,views/sgi_control_plan_views.xml,.xml,172,manifest (data)
+quimibond_sgi,views/sgi_dashboard_views.xml,.xml,39,manifest (data)
+quimibond_sgi,views/sgi_dev_request_views.xml,.xml,73,manifest (data)
+quimibond_sgi,views/sgi_diagnostic_views.xml,.xml,83,manifest (data)
+quimibond_sgi,views/sgi_diagram_views.xml,.xml,206,manifest (data)
+quimibond_sgi,views/sgi_direction_board_views.xml,.xml,119,manifest (data)
+quimibond_sgi,views/sgi_doc_change_views.xml,.xml,190,manifest (data)
+quimibond_sgi,views/sgi_document_views.xml,.xml,496,manifest (data)
+quimibond_sgi,views/sgi_emergency_views.xml,.xml,226,manifest (data)
+quimibond_sgi,views/sgi_epp_views.xml,.xml,152,manifest (data)
+quimibond_sgi,views/sgi_external_doc_views.xml,.xml,70,manifest (data)
+quimibond_sgi,views/sgi_fmea_views.xml,.xml,184,manifest (data)
+quimibond_sgi,views/sgi_format_map_views.xml,.xml,178,manifest (data)
+quimibond_sgi,views/sgi_hierarchy_views.xml,.xml,90,manifest (data)
+quimibond_sgi,views/sgi_hse_views.xml,.xml,407,manifest (data)
+quimibond_sgi,views/sgi_improvement_views.xml,.xml,45,manifest (data)
+quimibond_sgi,views/sgi_incident_views.xml,.xml,162,manifest (data)
+quimibond_sgi,views/sgi_indicator_formula_views.xml,.xml,76,manifest (data)
+quimibond_sgi,views/sgi_indicator_plan_views.xml,.xml,82,manifest (data)
+quimibond_sgi,views/sgi_indicator_trajectory_views.xml,.xml,73,manifest (data)
+quimibond_sgi,views/sgi_indicator_views.xml,.xml,444,manifest (data)
+quimibond_sgi,views/sgi_integration_views.xml,.xml,123,manifest (data)
+quimibond_sgi,views/sgi_kpi_fields_views.xml,.xml,123,manifest (data)
+quimibond_sgi,views/sgi_legal_views.xml,.xml,190,manifest (data)
+quimibond_sgi,views/sgi_links_views.xml,.xml,227,manifest (data)
+quimibond_sgi,views/sgi_machine_sheet_views.xml,.xml,156,manifest (data)
+quimibond_sgi,views/sgi_management_review_views.xml,.xml,143,manifest (data)
+quimibond_sgi,views/sgi_map_hooks_views.xml,.xml,33,manifest (data)
+quimibond_sgi,views/sgi_menus.xml,.xml,296,manifest (data)
+quimibond_sgi,views/sgi_mp_change_views.xml,.xml,122,manifest (data)
+quimibond_sgi,views/sgi_msa_views.xml,.xml,105,manifest (data)
+quimibond_sgi,views/sgi_my_pending_views.xml,.xml,46,manifest (data)
+quimibond_sgi,views/sgi_my_procedure_tab_views.xml,.xml,194,manifest (data)
+quimibond_sgi,views/sgi_my_procedure_views.xml,.xml,657,manifest (data)
+quimibond_sgi,views/sgi_nonconformity_views.xml,.xml,391,manifest (data)
+quimibond_sgi,views/sgi_norm_views.xml,.xml,149,manifest (data)
+quimibond_sgi,views/sgi_objective_views.xml,.xml,86,manifest (data)
+quimibond_sgi,views/sgi_policy_views.xml,.xml,101,manifest (data)
+quimibond_sgi,views/sgi_portal_templates.xml,.xml,40,manifest (data)
+quimibond_sgi,views/sgi_ppap_views.xml,.xml,176,manifest (data)
+quimibond_sgi,views/sgi_pr6_views.xml,.xml,219,manifest (data)
+quimibond_sgi,views/sgi_process_procedure_views.xml,.xml,620,manifest (data)
+quimibond_sgi,views/sgi_process_views.xml,.xml,448,manifest (data)
+quimibond_sgi,views/sgi_res_partner_views.xml,.xml,79,manifest (data)
+quimibond_sgi,views/sgi_risk_views.xml,.xml,282,manifest (data)
+quimibond_sgi,views/sgi_sales_budget_views.xml,.xml,742,manifest (data)
+quimibond_sgi,views/sgi_settings_views.xml,.xml,209,manifest (data)
+quimibond_sgi,views/sgi_sign_elearning_views.xml,.xml,32,manifest (data)
+quimibond_sgi,views/sgi_staff_efficiency_views.xml,.xml,159,manifest (data)
+quimibond_sgi,views/sgi_structure_views.xml,.xml,30,manifest (data)
+quimibond_sgi,views/sgi_supplier_eval_views.xml,.xml,112,manifest (data)
+quimibond_sgi,static/description/icon.png,.png,77,ícono/descr. de la app
+quimibond_sgi,static/src/diagram/diagram.js,.js,398,asset web.assets_backend
+quimibond_sgi,static/src/diagram/diagram.scss,.scss,295,asset web.assets_backend
+quimibond_sgi,static/src/diagram/diagram.xml,.xml,199,asset web.assets_backend
+quimibond_sgi,static/src/diagram/diagram_view.js,.js,78,asset web.assets_backend
+quimibond_sgi,static/src/my_procedure/new_activity_list.js,.js,31,asset web.assets_backend
+quimibond_sgi,report/report_8d.xml,.xml,139,manifest (data)
+quimibond_sgi,report/report_audit.xml,.xml,159,manifest (data)
+quimibond_sgi,report/report_calibration_label.xml,.xml,82,manifest (data)
+quimibond_sgi,report/report_coa.xml,.xml,92,manifest (data)
+quimibond_sgi,report/report_compliance_matrix.xml,.xml,81,manifest (data)
+quimibond_sgi,report/report_dev_request.xml,.xml,71,manifest (data)
+quimibond_sgi,report/report_direction.xml,.xml,103,manifest (data)
+quimibond_sgi,report/report_doc_change.xml,.xml,116,manifest (data)
+quimibond_sgi,report/report_epp_delivery.xml,.xml,66,manifest (data)
+quimibond_sgi,report/report_fmea.xml,.xml,77,manifest (data)
+quimibond_sgi,report/report_incident.xml,.xml,86,manifest (data)
+quimibond_sgi,report/report_knowledge_instruction.xml,.xml,24,manifest (data)
+quimibond_sgi,report/report_machine_sheet.xml,.xml,71,manifest (data)
+quimibond_sgi,report/report_master_list.xml,.xml,105,manifest (data)
+quimibond_sgi,report/report_master_list_all.xml,.xml,87,manifest (data)
+quimibond_sgi,report/report_mgmt_review.xml,.xml,94,manifest (data)
+quimibond_sgi,report/report_my_procedure.xml,.xml,370,manifest (data)
+quimibond_sgi,report/report_nc.xml,.xml,93,manifest (data)
+quimibond_sgi,report/report_news.xml,.xml,41,manifest (data)
+quimibond_sgi,report/report_procedure.xml,.xml,315,manifest (data)
+quimibond_sgi,report/report_retention.xml,.xml,52,manifest (data)
+quimibond_sgi,report/report_sales_budget.xml,.xml,166,manifest (data)
+quimibond_sgi,report/report_sign_sheet.xml,.xml,101,manifest (data)
+quimibond_sgi,report/report_staff_efficiency.xml,.xml,60,manifest (data)
+quimibond_sgi,report/sgi_format_footer.xml,.xml,65,manifest (data)
+quimibond_sgi,migrations/19.0.30.0.0/post-migrate.py,.py,24,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.14.1.0/pre-migration.py,.py,24,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.38.0.0/post-migrate.py,.py,26,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.12.0/post-migrate.py,.py,51,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.35.0.0/post-migrate.py,.py,21,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.34.0.0/post-migrate.py,.py,37,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.54.2.0/pre-migrate.py,.py,27,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.54.0.0/pre-migrate.py,.py,33,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.52.0.0/post-migrate.py,.py,29,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.23.2.0/pre-migrate.py,.py,25,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.14.0/post-migrate.py,.py,26,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.17.0/post-migrate.py,.py,41,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.2.0/post-migrate.py,.py,12,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.46.0.1/post-migrate.py,.py,24,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.1.1/post-migrate.py,.py,13,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.30.1.0/post-migrate.py,.py,53,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.15.0/pre-migrate.py,.py,63,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.29.0.0/post-migrate.py,.py,176,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.29.0.0/pre-migrate.py,.py,65,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.8.0/post-migrate.py,.py,18,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.11.0/post-migrate.py,.py,14,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.32.0.0/post-migrate.py,.py,69,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.41.0.0/post-migrate.py,.py,28,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.16.0/post-migrate.py,.py,78,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.22.0/post-migrate.py,.py,42,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.19.0/post-migrate.py,.py,13,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.29.2.0/post-migrate.py,.py,68,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.29.2.0/pre-migrate.py,.py,17,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.47.1.0/post-migrate.py,.py,38,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.51.0.0/post-migrate.py,.py,24,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.32.0.2/post-migrate.py,.py,24,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.13.7.0/post-migration.py,.py,11,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.7.0/post-migrate.py,.py,28,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.9.0/post-migrate.py,.py,33,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.53.5.0/post-migrate.py,.py,65,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.20.0/post-migrate.py,.py,17,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.49.0.0/post-migrate.py,.py,67,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.56.24.0/post-migrate.py,.py,61,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.54.1.0/pre-migrate.py,.py,30,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.55.0.0/pre-migrate.py,.py,8,migración (Odoo la corre por versión)
+quimibond_sgi,migrations/19.0.45.0.2/post-migrate.py,.py,129,migración (Odoo la corre por versión)
+quimibond_sgi,models/__init__.py,.py,87,arranque
+quimibond_sgi,models/sgi_activity_spec.py,.py,1016,importado
+quimibond_sgi,models/sgi_alert_source.py,.py,104,importado
+quimibond_sgi,models/sgi_approval_native.py,.py,409,importado
+quimibond_sgi,models/sgi_archived_filters.py,.py,118,importado
+quimibond_sgi,models/sgi_area.py,.py,23,importado
+quimibond_sgi,models/sgi_audit.py,.py,717,importado
+quimibond_sgi,models/sgi_base.py,.py,158,importado
+quimibond_sgi,models/sgi_budget_analytic.py,.py,17,importado
+quimibond_sgi,models/sgi_business_line.py,.py,480,importado
+quimibond_sgi,models/sgi_calendar.py,.py,87,importado
+quimibond_sgi,models/sgi_calibration.py,.py,226,importado
+quimibond_sgi,models/sgi_catalog.py,.py,757,importado
+quimibond_sgi,models/sgi_checklist.py,.py,218,importado
+quimibond_sgi,models/sgi_cleanup.py,.py,350,importado
+quimibond_sgi,models/sgi_coa.py,.py,417,importado
+quimibond_sgi,models/sgi_competence.py,.py,110,importado
+quimibond_sgi,models/sgi_complaint.py,.py,56,importado
+quimibond_sgi,models/sgi_context.py,.py,82,importado
+quimibond_sgi,models/sgi_control_plan.py,.py,227,importado
+quimibond_sgi,models/sgi_cron.py,.py,1374,importado
+quimibond_sgi,models/sgi_customer_reply.py,.py,188,importado
+quimibond_sgi,models/sgi_deliverable.py,.py,703,importado
+quimibond_sgi,models/sgi_dev_request.py,.py,140,importado
+quimibond_sgi,models/sgi_diagnostic.py,.py,416,importado
+quimibond_sgi,models/sgi_diagram.py,.py,500,importado
+quimibond_sgi,models/sgi_diagram_iso.py,.py,679,importado
+quimibond_sgi,models/sgi_diagram_view.py,.py,52,importado
+quimibond_sgi,models/sgi_direction_board.py,.py,127,importado
+quimibond_sgi,models/sgi_doc_change.py,.py,263,importado
+quimibond_sgi,models/sgi_doc_change_sign.py,.py,336,importado
+quimibond_sgi,models/sgi_document.py,.py,818,importado
+quimibond_sgi,models/sgi_emergency.py,.py,199,importado
+quimibond_sgi,models/sgi_epp.py,.py,136,importado
+quimibond_sgi,models/sgi_epp_sign.py,.py,137,importado
+quimibond_sgi,models/sgi_exec_stat.py,.py,59,importado
+quimibond_sgi,models/sgi_external_doc.py,.py,93,importado
+quimibond_sgi,models/sgi_fmea.py,.py,213,importado
+quimibond_sgi,models/sgi_format_map.py,.py,731,importado
+quimibond_sgi,models/sgi_groups_cleanup.py,.py,83,importado
+quimibond_sgi,models/sgi_hierarchy.py,.py,100,importado
+quimibond_sgi,models/sgi_hse_records.py,.py,220,importado
+quimibond_sgi,models/sgi_improvement.py,.py,55,importado
+quimibond_sgi,models/sgi_incident.py,.py,207,importado
+quimibond_sgi,models/sgi_indicator.py,.py,1455,importado
+quimibond_sgi,models/sgi_indicator_detail.py,.py,411,importado
+quimibond_sgi,models/sgi_indicator_formula.py,.py,504,importado
+quimibond_sgi,models/sgi_indicator_i3.py,.py,157,importado
+quimibond_sgi,models/sgi_indicator_p21.py,.py,131,importado
+quimibond_sgi,models/sgi_indicator_plan.py,.py,290,importado
+quimibond_sgi,models/sgi_indicator_trajectory.py,.py,266,importado
+quimibond_sgi,models/sgi_instruction_knowledge.py,.py,120,importado
+quimibond_sgi,models/sgi_integration.py,.py,396,importado
+quimibond_sgi,models/sgi_kpi_fields.py,.py,313,importado
+quimibond_sgi,models/sgi_legal.py,.py,284,importado
+quimibond_sgi,models/sgi_links.py,.py,255,importado
+quimibond_sgi,models/sgi_load.py,.py,1269,importado
+quimibond_sgi,models/sgi_load_wizard.py,.py,112,importado
+quimibond_sgi,models/sgi_machine_sheet.py,.py,139,importado
+quimibond_sgi,models/sgi_management_review.py,.py,455,importado
+quimibond_sgi,models/sgi_mp_change.py,.py,539,importado
+quimibond_sgi,models/sgi_msa.py,.py,121,importado
+quimibond_sgi,models/sgi_my_pending.py,.py,350,importado
+quimibond_sgi,models/sgi_my_procedure.py,.py,716,importado
+quimibond_sgi,models/sgi_my_procedure_screen.py,.py,1080,importado
+quimibond_sgi,models/sgi_my_procedure_sign.py,.py,143,importado
+quimibond_sgi,models/sgi_nonconformity.py,.py,983,importado
+quimibond_sgi,models/sgi_norm.py,.py,33,importado
+quimibond_sgi,models/sgi_norm_compliance.py,.py,229,importado
+quimibond_sgi,models/sgi_objective.py,.py,87,importado
+quimibond_sgi,models/sgi_policy.py,.py,140,importado
+quimibond_sgi,models/sgi_ppap.py,.py,274,importado
+quimibond_sgi,models/sgi_process.py,.py,454,importado
+quimibond_sgi,models/sgi_process_procedure.py,.py,1599,importado
+quimibond_sgi,models/sgi_release.py,.py,129,importado
+quimibond_sgi,models/sgi_risk.py,.py,332,importado
+quimibond_sgi,models/sgi_sale_commitment.py,.py,44,importado
+quimibond_sgi,models/sgi_sales_budget.py,.py,1262,importado
+quimibond_sgi,models/sgi_sales_budget_import.py,.py,426,importado
+quimibond_sgi,models/sgi_sales_budget_line.py,.py,959,importado
+quimibond_sgi,models/sgi_settings.py,.py,232,importado
+quimibond_sgi,models/sgi_sign_builder.py,.py,99,importado
+quimibond_sgi,models/sgi_sign_elearning.py,.py,208,importado
+quimibond_sgi,models/sgi_sign_record.py,.py,169,importado
+quimibond_sgi,models/sgi_staff_efficiency.py,.py,239,importado
+quimibond_sgi,models/sgi_structure.py,.py,142,importado
+quimibond_sgi,models/sgi_supplier_eval.py,.py,234,importado
+quimibond_sgi,models/sgi_supplier_nc.py,.py,130,importado
+quimibond_sgi,tests/__init__.py,.py,88,arranque
+quimibond_sgi,tests/common_accounts.py,.py,19,helper de tests
+quimibond_sgi,tests/common_calendar.py,.py,15,helper de tests
+quimibond_sgi,tests/common_documents.py,.py,20,helper de tests
+quimibond_sgi,tests/common_users.py,.py,23,helper de tests
+quimibond_sgi,tests/test_acks.py,.py,77,test registrado
+quimibond_sgi,tests/test_alert_source.py,.py,100,test registrado
+quimibond_sgi,tests/test_approval_native.py,.py,118,test registrado
+quimibond_sgi,tests/test_archived_filters.py,.py,66,test registrado
+quimibond_sgi,tests/test_audit.py,.py,75,test registrado
+quimibond_sgi,tests/test_audit_hardening.py,.py,238,test registrado
+quimibond_sgi,tests/test_audit_pr3.py,.py,168,test registrado
+quimibond_sgi,tests/test_business_line.py,.py,250,test registrado
+quimibond_sgi,tests/test_calibration.py,.py,136,test registrado
+quimibond_sgi,tests/test_capture_reply.py,.py,134,test registrado
+quimibond_sgi,tests/test_catalog_fase1.py,.py,585,test registrado
+quimibond_sgi,tests/test_cleanup_45.py,.py,135,test registrado
+quimibond_sgi,tests/test_cleanup_b10.py,.py,66,test registrado
+quimibond_sgi,tests/test_coa.py,.py,191,test registrado
+quimibond_sgi,tests/test_competence.py,.py,47,test registrado
+quimibond_sgi,tests/test_diagnostic_otd.py,.py,121,test registrado
+quimibond_sgi,tests/test_diagram_iso.py,.py,114,test registrado
+quimibond_sgi,tests/test_diagram_view.py,.py,87,test registrado
+quimibond_sgi,tests/test_doc_change.py,.py,119,test registrado
+quimibond_sgi,tests/test_doc_change_sign.py,.py,152,test registrado
+quimibond_sgi,tests/test_due_long.py,.py,67,test registrado
+quimibond_sgi,tests/test_epp.py,.py,82,test registrado
+quimibond_sgi,tests/test_escalate_nc.py,.py,45,test registrado
+quimibond_sgi,tests/test_excel_migration.py,.py,108,test registrado
+quimibond_sgi,tests/test_expansion_kpis.py,.py,286,test registrado
+quimibond_sgi,tests/test_external_doc.py,.py,54,test registrado
+quimibond_sgi,tests/test_fase10.py,.py,245,test registrado
+quimibond_sgi,tests/test_fase7.py,.py,191,test registrado
+quimibond_sgi,tests/test_fase8.py,.py,187,test registrado
+quimibond_sgi,tests/test_fase9.py,.py,77,test registrado
+quimibond_sgi,tests/test_flows_48.py,.py,152,test registrado
+quimibond_sgi,tests/test_fmea.py,.py,94,test registrado
+quimibond_sgi,tests/test_hierarchy.py,.py,149,test registrado
+quimibond_sgi,tests/test_hse_records.py,.py,78,test registrado
+quimibond_sgi,tests/test_incident.py,.py,125,test registrado
+quimibond_sgi,tests/test_indicator_detail.py,.py,175,test registrado
+quimibond_sgi,tests/test_indicator_formula.py,.py,240,test registrado
+quimibond_sgi,tests/test_indicator_i3.py,.py,133,test registrado
+quimibond_sgi,tests/test_indicator_p21.py,.py,130,test registrado
+quimibond_sgi,tests/test_indicator_plan.py,.py,171,test registrado
+quimibond_sgi,tests/test_indicator_trajectory.py,.py,130,test registrado
+quimibond_sgi,tests/test_indicators.py,.py,106,test registrado
+quimibond_sgi,tests/test_kpi20.py,.py,448,test registrado
+quimibond_sgi,tests/test_kpi_fase4.py,.py,83,test registrado
+quimibond_sgi,tests/test_kpi_fields.py,.py,80,test registrado
+quimibond_sgi,tests/test_links.py,.py,120,test registrado
+quimibond_sgi,tests/test_mgmt_review.py,.py,72,test registrado
+quimibond_sgi,tests/test_mp_change.py,.py,193,test registrado
+quimibond_sgi,tests/test_my_pending.py,.py,77,test registrado
+quimibond_sgi,tests/test_my_procedure.py,.py,497,test registrado
+quimibond_sgi,tests/test_my_procedure_sign.py,.py,84,test registrado
+quimibond_sgi,tests/test_my_procedure_ui.py,.py,69,test registrado
+quimibond_sgi,tests/test_mywork.py,.py,68,test registrado
+quimibond_sgi,tests/test_nc_deadlines.py,.py,169,test registrado
+quimibond_sgi,tests/test_nc_flow.py,.py,98,test registrado
+quimibond_sgi,tests/test_nc_origins.py,.py,35,test registrado
+quimibond_sgi,tests/test_norm_compliance.py,.py,110,test registrado
+quimibond_sgi,tests/test_ola0.py,.py,245,test registrado
+quimibond_sgi,tests/test_ola1.py,.py,361,test registrado
+quimibond_sgi,tests/test_ola2.py,.py,253,test registrado
+quimibond_sgi,tests/test_ola_a_procedure.py,.py,90,test registrado
+quimibond_sgi,tests/test_ola_a_security.py,.py,119,test registrado
+quimibond_sgi,tests/test_ola_b.py,.py,136,test registrado
+quimibond_sgi,tests/test_ola_certificable.py,.py,190,test registrado
+quimibond_sgi,tests/test_pegamento.py,.py,50,test registrado
+quimibond_sgi,tests/test_perm_auditor.py,.py,77,test registrado
+quimibond_sgi,tests/test_perm_groups.py,.py,47,test registrado
+quimibond_sgi,tests/test_ppap.py,.py,85,test registrado
+quimibond_sgi,tests/test_pr4_docs_legal.py,.py,140,test registrado
+quimibond_sgi,tests/test_pr5_direction.py,.py,183,test registrado
+quimibond_sgi,tests/test_pr6_external.py,.py,237,test registrado
+quimibond_sgi,tests/test_pr7_replaces.py,.py,71,test registrado
+quimibond_sgi,tests/test_procedure.py,.py,356,test registrado
+quimibond_sgi,tests/test_process_map.py,.py,34,test registrado
+quimibond_sgi,tests/test_process_map_46.py,.py,66,test registrado
+quimibond_sgi,tests/test_release.py,.py,115,test registrado
+quimibond_sgi,tests/test_retro_vinculacion.py,.py,29,test registrado
+quimibond_sgi,tests/test_risk.py,.py,118,test registrado
+quimibond_sgi,tests/test_role_audit.py,.py,202,test registrado
+quimibond_sgi,tests/test_sales_budget.py,.py,2466,test registrado
+quimibond_sgi,tests/test_sgi_format_map.py,.py,120,test registrado
+quimibond_sgi,tests/test_sign_builder.py,.py,100,test registrado
+quimibond_sgi,tests/test_sign_elearning.py,.py,82,test registrado
+quimibond_sgi,tests/test_spec.py,.py,370,test registrado
+quimibond_sgi,tests/test_structure.py,.py,386,test registrado
+quimibond_sgi,tests/test_structure_sgi.py,.py,84,test registrado
+quimibond_sgi,tests/test_view_file.py,.py,110,test registrado
+quimibond_sgi,data/sgi_alert_source_data.xml,.xml,96,manifest (data)
+quimibond_sgi,data/sgi_approval_cron.xml,.xml,15,manifest (data)
+quimibond_sgi,data/sgi_areas.xml,.xml,47,manifest (data)
+quimibond_sgi,data/sgi_audit_data.xml,.xml,173,manifest (data)
+quimibond_sgi,data/sgi_checklist_cron.xml,.xml,13,manifest (data)
+quimibond_sgi,data/sgi_coa_data.xml,.xml,24,manifest (data)
+quimibond_sgi,data/sgi_control_plans_fase4.xml,.xml,29,manifest (data)
+quimibond_sgi,data/sgi_cron.xml,.xml,46,manifest (data)
+quimibond_sgi,data/sgi_cron_fase2.xml,.xml,54,manifest (data)
+quimibond_sgi,data/sgi_cron_fase3.xml,.xml,50,manifest (data)
+quimibond_sgi,data/sgi_cumplimiento_data.xml,.xml,37,manifest (data)
+quimibond_sgi,data/sgi_dnc_survey.xml,.xml,60,manifest (data)
+quimibond_sgi,data/sgi_doc_change_sign_data.xml,.xml,17,manifest (data)
+quimibond_sgi,data/sgi_document_types.xml,.xml,130,manifest (data)
+quimibond_sgi,data/sgi_dyd_data.xml,.xml,50,manifest (data)
+quimibond_sgi,data/sgi_epp_data.xml,.xml,11,manifest (data)
+quimibond_sgi,data/sgi_expansion_data.xml,.xml,209,manifest (data)
+quimibond_sgi,data/sgi_fase7_data.xml,.xml,74,manifest (data)
+quimibond_sgi,data/sgi_fase8_data.xml,.xml,25,manifest (data)
+quimibond_sgi,data/sgi_format_map_data.xml,.xml,70,manifest (data)
+quimibond_sgi,data/sgi_helpdesk_interno.xml,.xml,97,manifest (data)
+quimibond_sgi,data/sgi_indicator_formula_data.xml,.xml,126,manifest (data)
+quimibond_sgi,data/sgi_indicators_data.xml,.xml,312,manifest (data)
+quimibond_sgi,data/sgi_mail_templates.xml,.xml,75,manifest (data)
+quimibond_sgi,data/sgi_measure_cron.xml,.xml,15,manifest (data)
+quimibond_sgi,data/sgi_mgmt_review_data.xml,.xml,19,manifest (data)
+quimibond_sgi,data/sgi_moc_data.xml,.xml,17,manifest (data)
+quimibond_sgi,data/sgi_my_procedure_data.xml,.xml,61,manifest (data)
+quimibond_sgi,data/sgi_norms.xml,.xml,99,manifest (data)
+quimibond_sgi,data/sgi_objectives.xml,.xml,49,manifest (data)
+quimibond_sgi,data/sgi_parameters.xml,.xml,23,manifest (data)
+quimibond_sgi,data/sgi_ppap_elements.xml,.xml,77,manifest (data)
+quimibond_sgi,data/sgi_pr6_data.xml,.xml,26,manifest (data)
+quimibond_sgi,data/sgi_process_data.xml,.xml,194,manifest (data)
+quimibond_sgi,data/sgi_process_flows_extra.xml,.xml,120,manifest (data)
+quimibond_sgi,data/sgi_risk_data.xml,.xml,37,manifest (data)
+quimibond_sgi,data/sgi_sequences.xml,.xml,27,manifest (data)
+quimibond_sgi,data/sgi_sequences_fase2.xml,.xml,29,manifest (data)
+quimibond_sgi,data/sgi_sequences_fase3.xml,.xml,38,manifest (data)
+quimibond_sgi,data/sgi_sequences_fase6.xml,.xml,19,manifest (data)
+quimibond_sgi,data/sgi_sign_elearning_data.xml,.xml,25,manifest (data)
+quimibond_sgi,data/sgi_stages.xml,.xml,98,manifest (data)
+quimibond_sgi,tools/carga_documental.py,.py,320,script suelto (shell de Odoo.sh; fuera del manifest)
+quimibond_sgi,tools/post_carga_documental.py,.py,329,script suelto (shell de Odoo.sh; fuera del manifest)
+quimibond_sgi,tools/reporte_telas_rollout.py,.py,93,script suelto (shell de Odoo.sh; fuera del manifest)
+quimibond_sgi,demo/sgi_demo_fase3.xml,.xml,251,manifest (demo)
+quimibond_sgi,security/ir.model.access.csv,.csv,281,manifest (data)
+quimibond_sgi,security/sgi_security.xml,.xml,308,manifest (data)
+quimibond_sgi_pesaje,__init__.py,.py,2,arranque
+quimibond_sgi_pesaje,__manifest__.py,.py,30,arranque
+quimibond_sgi_pesaje,static/description/icon.png,.png,77,ícono/descr. de la app
+quimibond_sgi_pesaje,models/__init__.py,.py,2,arranque
+quimibond_sgi_pesaje,models/mrp_weigh_wizard.py,.py,82,importado
+quimibond_sgi_pesaje,tests/__init__.py,.py,2,arranque
+quimibond_sgi_pesaje,tests/test_pesaje_alert.py,.py,59,test registrado
+quimibond_sgi_pesaje,data/pesaje_data.xml,.xml,24,manifest (data)
+quimibond_sgi_plm,__init__.py,.py,2,arranque
+quimibond_sgi_plm,__manifest__.py,.py,28,arranque
+quimibond_sgi_plm,views/mrp_eco_views.xml,.xml,40,manifest (data)
+quimibond_sgi_plm,static/description/icon.png,.png,77,ícono/descr. de la app
+quimibond_sgi_plm,models/__init__.py,.py,2,arranque
+quimibond_sgi_plm,models/mrp_eco.py,.py,87,importado
+quimibond_sgi_revisado,__init__.py,.py,1,arranque
+quimibond_sgi_revisado,__manifest__.py,.py,27,arranque
+quimibond_sgi_revisado,views/mrp_revision_log_views.xml,.xml,55,manifest (data)
+quimibond_sgi_revisado,static/description/icon.png,.png,77,ícono/descr. de la app

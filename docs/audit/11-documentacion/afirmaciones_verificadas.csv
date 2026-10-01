@@ -1,0 +1,54 @@
+n,documento,afirmacion,como_se_verifico,resultado,evidencia
+1,SGI_MANUAL_TECNICO.md:3,Módulo quimibond_sgi v19.0.4.1.0,__manifest__.py,Desactualizada,manifest 'version': '19.0.56.24.1' (__manifest__.py:23)
+2,SGI_MANUAL_TECNICO.md:41-43,"Depende de 16 módulos (base, mail, hr, hr_skills, stock, purchase, documents, approvals, approvals_purchase, quality_control, quality_mrp, helpdesk, project, sale_management, maintenance, survey)",__manifest__.py:26-56,Desactualizada,"31 dependencias; faltan en el manual mrp, hr_timesheet, sale_stock, account_budget, stock_account, web_grid, web_hierarchy, sign, portal, knowledge, website_slides, spreadsheet_dashboard, web_studio"
+3,SGI_MANUAL_TECNICO.md:36-38,Los tres satélites son auto_install,grep auto_install en los 3 manifests,Cierta,"'auto_install': True en quimibond_sgi_pesaje:28, _plm:26, _revisado:25"
+4,SGI_MANUAL_TECNICO.md:62,~64 tests,ls tests/test_*.py,Desactualizada,"87 archivos test_*.py, los 87 importados en tests/__init__.py"
+5,SGI_MANUAL_TECNICO.md:120-127,"4 grupos (Usuario, Auditor, Jefe MAST, Dirección)",security/sgi_security.xml,Desactualizada,6 grupos: faltan group_sgi_admin (:62) y group_sgi_efficiency_capture (:256)
+6,SGI_MANUAL_TECNICO.md:125,Auditor implica Usuario,security/sgi_security.xml:43,Falsa,"implied_ids eval=[(3, ref('group_sgi_user')), (4, ref('base.group_user'))]: el auditor QUITA Usuario SGI"
+7,SGI_MANUAL_TECNICO.md:127,group_sgi_director implica manager,security/sgi_security.xml:73,Cierta (contra decisión),"implied_ids (4, ref('group_sgi_manager')); la decisión de Jose (tanda 1, preg. 3) es quitarlo (F-013)"
+8,SGI_MANUAL_TECNICO.md:133-146,10 crons,grep model=ir.cron en data/,Desactualizada,26 ir.cron en 11 archivos (inventario/crons.csv)
+9,SGI_MANUAL_TECNICO.md:162,"quality.alert.sgi_auto_create(code, vals, count_suppression=True)",grep def sgi_auto_create,Cierta,models/sgi_nonconformity.py:454
+10,SGI_MANUAL_TECNICO.md:203-206,7 fuentes de NC declaradas,grep model=sgi.alert.source,Desactualizada,"10 fuentes: faltan devolucion_cliente, eslabon_atorado, requisito_legal_incumplido"
+11,SGI_MANUAL_TECNICO.md:363-364,6 advertencias vivas del checker por claves con doble declaración,python3 tools/check_addons.py,Falsa (ya resuelto),"salida: 0 error(es), 0 advertencia(s); ningún <record model=ir.config_parameter> en addons/quimibond_sgi*/data"
+12,SGI_MANUAL_TECNICO.md:379-381,main = staging; SGI = rama de integración,RUNBOOK_DESPLIEGUE.md:6 y CLAUDE.md,Contradice,"RUNBOOK: main = desarrollo, quimibond = producción, qbtesting = pruebas; no existe rama SGI en el procedimiento"
+13,SGI_MANUAL_TECNICO.md:385-388,Jamás subir la versión de módulos de piso,tools/no_bump.txt y CLAUDE.md,Contradice,CLAUDE.md: 'sube la versión por default'; no_bump.txt solo lista quimibond_intelligence
+14,SGI_MANUAL_TECNICO.md:488,"Mapa de procesos y flujos: estructural, noupdate=0, el código manda",data/sgi_process_data.xml:6,Falsa,"<odoo noupdate=""1"">; además decisión 6: el SGI se instala vacío"
+15,SGI_MANUAL_TECNICO.md:498 vs :457,Externas escalan a 3 días 'fijo en código' / parámetro nc_escalation_days_external,models/sgi_format_map.py _SGI_DEFAULT_PARAMS,Contradicción interna,'quimibond_sgi.nc_escalation_days_external': '3' es parámetro (sgi_format_map.py:82)
+16,SGI_MANUAL_TECNICO.md:90,sgi.competence.gap es vista SQL _auto=False,grep _auto,Cierta,models/sgi_competence.py:35
+17,SGI_EVALUACION_ESTRUCTURA.md:326-328,_sgi_manager_user_id() toma el primer usuario del grupo,models/sgi_cron.py:58-62,Desactualizada,ahora lee primero el parámetro quimibond_sgi.mast_user_id
+18,SGI_EVALUACION_ESTRUCTURA.md:324 / SGI_DEUDA_TECNICA.md:127,Sin ir.rule en todo el addon,grep ir.rule,Falsa (ya resuelto),32 ir.rule (14 por empresa + reglas 'solo lo mío')
+19,SGI_EVALUACION_ESTRUCTURA.md:317-319,Solo sgi.sales.budget tiene company_id,03-modelo.md C-012,Desactualizada,24 de 74 modelos propios tienen company_id
+20,SGI_DEUDA_TECNICA.md:65-66,README documenta hasta Fase 4.6,README.md,Desactualizada,README llega a 56.24.0 (:2472); falta 56.24.1
+21,SGI_DIAGRAMA_FLUJOS.html:88,addon v19.0.18.0.0,__manifest__.py,Desactualizada,19.0.56.24.1
+22,SGI_DIAGRAMA_FLUJOS.html:147,"Grupos en cadena lineal, cada uno implica al anterior",security/sgi_security.xml,Falsa,Auditor quita Usuario (:43); Captura de eficiencias implica Usuario; Administrador y Dirección implican Jefe MAST
+23,SGI_DIAGRAMA_FLUJOS.html:785,Los 17 crons,inventario/crons.csv,Desactualizada,26 crons
+24,SGI_MANUAL_USUARIO.md:41,Menú SGI → Mi trabajo → Mis procedimientos,inventario/menus.csv,Falsa,"no existe 'Mi trabajo'; hoy Inicio → Mi procedimiento (menu_sgi_my_procedure, padre menu_sgi_panel)"
+25,"SGI_MANUAL_USUARIO.md:64,88",SGI → Mejora continua → No Conformidades → Tablero,inventario/menus.csv,Falsa,"hoy Mejora → No conformidades (menu_sgi_nc, acción de servidor)"
+26,SGI_MANUAL_USUARIO.md:141,SGI → Medición → Indicadores,inventario/menus.csv,Falsa,hoy Administración SGI → Indicadores → Indicadores; el usuario usa Inicio → Mis indicadores
+27,"SGI_MANUAL_USUARIO.md:209,217,261",SGI → Auditorías y riesgos,inventario/menus.csv,Falsa,Auditorías bajo Mejora; Riesgos y oportunidades bajo Dirección (menu_sgi_risks)
+28,SGI_MANUAL_USUARIO.md:241,Planes de control en SGI → Automotriz,inventario/menus.csv,Desactualizada,menu_sgi_automotive se llama 'Calidad preventiva' y cuelga de Calidad (05-menus/arbol_final.md:116); sale al satélite automotriz
+29,SGI_MANUAL_USUARIO.md:209-210,Checklist de auditoría en Encuestas,SGI_PENDIENTES_PROGRAMACION.md AU-1,Contradice,"AU-1 'No usar Encuestas para esto', hecho en 50.0.0"
+30,SGI_MANUAL_USUARIO.md:268,Migración de formatos en SGI → Documental,inventario/menus.csv + decisión 7,Desactualizada,hoy Administración SGI → Documentos → Migración de formatos (solo 318); decidido moverlo a Procesos → Del Dropbox a Odoo
+31,SGI_MANUAL_USUARIO.md:36-37,"Cada documento trae su clave (P-A02, F-P-G05-01…)",decisión 1 y decisiones tanda 2 punto 11,Contradice decisión,el personal ve título y revisión; la clave vieja solo en Del Dropbox a Odoo
+32,SGI_MANUAL_USUARIO.md:47,Botón 'Marcar leído y entendido',grep en views,Cierta,views/sgi_my_procedure_tab_views.xml:59 (y 'Firmar leído y entendido' en :17)
+33,SGI_MANUAL_USUARIO.md:67,Folio NCI-2026-0001 automático,data/sgi_sequences.xml:6,Cierta,prefix NCI-%(range_year)s-
+34,SGI_MANUAL_USUARIO.md:153 vs :181,Presupuesto: 'solo cantidades' y a la vez 'Capturar importes',lectura,Contradicción interna,dos versiones del mismo flujo en §7.1
+35,SGI_MANUAL_USUARIO.md:36,Documentos → carpeta SGI → secciones 00-23,MCP documents.document type=folder,Parcial,carpeta 1119 'SGI' con 00…24 + 'POR CLASIFICAR' + '0. ANEXOS (OBSOLETO - duplicado)'; existen además carpetas raíz 'SGI' 1805 y 'SGI 2026' 3078 sin documentos
+36,SGI_MANUAL_USUARIO.md:19,Auditor SGI: + crear auditorías y hallazgos (sobre Usuario),security + decisiones,Desactualizada,"Auditor no implica Usuario; decisión: ve todo menos salud y salarios, solo escribe hallazgos"
+37,README.md:17-18,Instala mapa: 5 macroprocesos + 16 procesos nivel 2 + flujos COP,data/sgi_process_data.xml + decisión 6,Contradice decisión,"21 procesos con XML ID, todos archivados en producción; decisión: el SGI se instala vacío y el mapa va a quimibond_sgi_mapa"
+38,README.md:10-12,"Grupos: Usuario, Auditor, Jefe MAST, Dirección",security/sgi_security.xml,Desactualizada,6 grupos
+39,README.md:881,Suite completa: 64 tests,tests/,Desactualizada,87 archivos
+40,README.md:835-840,odoo-update quimibond_sgi && odoosh-restart http; NO cambiar versión de otros módulos,RUNBOOK + CLAUDE.md,Contradice,RUNBOOK agrega odoosh-restart cron; CLAUDE.md: subir versión por default
+41,README.md:510-511,Clave anterior: la búsqueda la encuentra 12 meses,models/sgi_document.py:523-526,Cierta en código / contra decisión,relativedelta(months=12); decisión 7 y C-004: búsqueda permanente en Del Dropbox a Odoo
+42,README.md:496-500,Tipos de documento con patrón PR-{process},data/sgi_document_types.xml:20,Cierta,prefix_pattern PR-{process}
+43,README.md:513-514,Administrador SGI implica Jefe MAST,security/sgi_security.xml:66,Cierta,"(4, ref('group_sgi_manager'))"
+44,README.md:809-811,Catálogo con company_id y regla por empresa,security/sgi_security.xml:78-143,Cierta,14 reglas 'por empresa'
+45,RUNBOOK_DESPLIEGUE.md:167-168,6 claves de config con doble declaración en quimibond_sgi,tools/check_addons.py,Falsa (ya resuelto),0 advertencias
+46,AUDITORIA_FUNCIONAL_SGI_2026-09-28.md:5,Producción tiene 19.0.56.1.0,00-inventario.md hecho 1,Desactualizada,producción 19.0.56.24.1
+47,AUDITORIA_FUNCIONAL_SGI_2026-09-28.md:42,"Jefe MAST lo tienen 7 personas, 3 directos",06-seguridad.md tabla de roles,Desactualizada,"318: 1 directo (128) y 5 efectivos (128, 35, 9, 7, 152)"
+48,AUDITORIA_FUNCIONAL_SGI_2026-09-28.md:219 (C12),Retirar sgi.employer.obligation,grep _name,Cierta (ya hecho),el modelo ya no existe; solo queda la mención en models/sgi_kpi_fields.py:32
+49,SGI_PENDIENTES_PROGRAMACION.md:1-5,Lo que falta programar: 29 puntos,columna Estado,Desactualizada,los 29 dicen Hecho (o Ya existía / Hecho en producción)
+50,audit_invariants.md:384,env['quimibond.sync.audit'].run_all(...),CLAUDE.md,Falsa (obsoleto),CLAUDE.md: modelo quimibond.sync.audit eliminado; tablas odoo_* borradas de Supabase el 2026-09-18
+51,__manifest__.py:5-19,"description: PPAP, AMEF, CoA, presupuesto… 'migración de formatos rastreable', 'cero Studio'",__manifest__.py:54 + decisiones,Desactualizada,"depende de web_studio; PPAP/AMEF/MSA y presupuesto salen; no menciona actividades, Mis pendientes ni Mi procedimiento"
+52,SGI_BLUEPRINT.md:17,Principio 5: se respetan las claves P-Xnn / IT / F / DAT en el sistema,decisión 1,Contradice decisión,nomenclatura nueva; clave vieja solo como dato
+53,SGI_BLUEPRINT.md:16,Cero Studio,__manifest__.py:54,Contradice código,depends 'web_studio' desde 56.5.0 (A-010)

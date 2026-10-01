@@ -1,0 +1,9 @@
+addon,xml_id,model,name,noupdate,file,line
+quimibond_sgi,,ir.ui.menu,_sgi_attach_quality_menus,no,addons/quimibond_sgi/views/sgi_menus.xml,
+quimibond_sgi,,sgi.config,seed_parameters,no,addons/quimibond_sgi/data/sgi_parameters.xml,
+quimibond_sgi,,sgi.config,activate_auto_indicators,no,addons/quimibond_sgi/data/sgi_parameters.xml,
+quimibond_sgi,,sgi.config,fix_kpi_seeds,no,addons/quimibond_sgi/data/sgi_parameters.xml,
+quimibond_sgi,,sgi.config,recompute_pending_measures,no,addons/quimibond_sgi/data/sgi_parameters.xml,
+quimibond_sgi,,sgi.config,harden_noupdate,no,addons/quimibond_sgi/data/sgi_parameters.xml,
+quimibond_sgi,,sgi.config,seed_process_purposes,no,addons/quimibond_sgi/data/sgi_parameters.xml,
+quimibond_sgi,,sgi.config,migrate_document_families,no,addons/quimibond_sgi/data/sgi_parameters.xml,

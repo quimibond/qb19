@@ -1,0 +1,27 @@
+addon,xml_id,name,model,code,interval,active,nextcall,user,noupdate,file,line
+quimibond_sgi,sgi_cron_sync_approvals,SGI: Sincronizar aprobaciones nativas,ref:model_sgi_activity_role,model.cron_sgi_sync_approvals(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_approval_cron.xml,6
+quimibond_sgi,sgi_cron_checklists,SGI: Hojas de checklist de planta y unidades,ref:model_sgi_checklist_template,model.cron_generate(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_checklist_cron.xml,4
+quimibond_sgi,sgi_cron_nonconformities,SGI: Seguimiento de No Conformidades,ref:model_sgi_cron,model.cron_nonconformities(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron.xml,7
+quimibond_sgi,sgi_cron_overdue_actions,SGI: Escalamiento de acciones vencidas,ref:model_sgi_cron,model.cron_overdue_actions(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron.xml,17
+quimibond_sgi,sgi_cron_documents,SGI: Vencimientos documentales,ref:model_sgi_cron,model.cron_documents(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron.xml,27
+quimibond_sgi,sgi_cron_news,SGI: Boletín NEWS mensual,ref:model_sgi_cron,model.cron_news(),1 months,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron.xml,37
+quimibond_sgi,sgi_cron_indicators,SGI: Mediciones de indicadores y NC automáticas,ref:model_sgi_cron,model.cron_indicators(scheduled=True),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase2.xml,3
+quimibond_sgi,sgi_cron_indicators_weekly,SGI: Mediciones semanales de indicadores,ref:model_sgi_cron,model.cron_indicators_weekly(scheduled=True),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase2.xml,14
+quimibond_sgi,sgi_cron_audit_program,SGI: Avisos de programa de auditorías,ref:model_sgi_cron,model.cron_audit_program(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase2.xml,25
+quimibond_sgi,sgi_cron_risk_review,SGI: Revisión de riesgos vencidos,ref:model_sgi_cron,model.cron_risk_review(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase2.xml,35
+quimibond_sgi,sgi_cron_supplier_eval,SGI: Evaluación trimestral de proveedores,ref:model_sgi_cron,model.cron_supplier_eval(),3 months,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase2.xml,45
+quimibond_sgi,sgi_cron_calibrations,SGI: Vencimientos de calibración y EPP,ref:model_sgi_cron,model.cron_calibrations(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase3.xml,6
+quimibond_sgi,sgi_cron_competences,SGI: Competencias y certificaciones por vencer,ref:model_sgi_cron,model.cron_competences(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase3.xml,16
+quimibond_sgi,sgi_cron_budget_revaluation,"SGI: Revaluación del S2 del presupuesto (junio, P-A28 Nota 1)",ref:model_sgi_cron,model.cron_budget_revaluation(),1 months,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase3.xml,29
+quimibond_sgi,sgi_cron_forecast_coverage,"SGI: Cobertura del pronóstico (semanal, P-A28 4.2.2.7)",ref:model_sgi_cron,model.cron_forecast_coverage(),1 weeks,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cron_fase3.xml,41
+quimibond_sgi,sgi_cron_legal_requirements,SGI: Cumplimiento legal (evaluaciones y permisos),ref:model_sgi_cron,model.cron_legal_requirements(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cumplimiento_data.xml,5
+quimibond_sgi,sgi_cron_worker_participation,SGI: Consulta y participación de trabajadores (45001 5.4),ref:model_sgi_cron,model.cron_worker_participation(),6 months,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cumplimiento_data.xml,17
+quimibond_sgi,sgi_cron_context_review,SGI: Revisión del contexto (partes interesadas),ref:model_sgi_cron,model.cron_context_review(),1 weeks,eval:True,,,sí,addons/quimibond_sgi/data/sgi_cumplimiento_data.xml,28
+quimibond_sgi,sgi_cron_emergency_drills,SGI: Simulacros de emergencia (8.2),ref:model_sgi_cron,model.cron_emergency_drills(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_fase7_data.xml,32
+quimibond_sgi,sgi_cron_satisfaction,SGI: Encuesta de satisfacción del cliente (9.1.2),ref:model_sgi_cron,model.cron_satisfaction_survey(),3 months,eval:True,,,sí,addons/quimibond_sgi/data/sgi_fase7_data.xml,41
+quimibond_sgi,sgi_cron_dnc,SGI: DNC y plan de capacitación (P-A01),ref:model_sgi_cron,model.cron_dnc(),3 months,eval:True,,,sí,addons/quimibond_sgi/data/sgi_fase7_data.xml,50
+quimibond_sgi,sgi_cron_operational_signals,"SGI: Señales operativas (fallas repetitivas, SLA vencido)",ref:model_sgi_cron,model.cron_operational_signals(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_fase8_data.xml,16
+quimibond_sgi,sgi_cron_measure_activities,SGI: Medición de actividades de procedimiento,ref:model_sgi_process_activity,model.cron_measure_activities(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_measure_cron.xml,6
+quimibond_sgi,sgi_cron_my_procedure_stale,SGI: Mi procedimiento por publicar (aviso semanal a MAST),ref:quimibond_sgi.model_sgi_cron,model.cron_my_procedure_stale(),1 weeks,eval:True,,,no,addons/quimibond_sgi/data/sgi_my_procedure_data.xml,52
+quimibond_sgi,sgi_cron_sign_elearning,SGI: Sincronizar Firma electrónica y eLearning,ref:model_sgi_cron,model.cron_sign_elearning_sync(),1 days,eval:True,,,sí,addons/quimibond_sgi/data/sgi_sign_elearning_data.xml,5
+quimibond_sgi,sgi_cron_weekly_digest,SGI: Resumen semanal por correo,ref:model_sgi_cron,model.cron_weekly_digest(),1 weeks,eval:True,,,sí,addons/quimibond_sgi/data/sgi_sign_elearning_data.xml,16

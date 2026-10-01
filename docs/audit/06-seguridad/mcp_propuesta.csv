@@ -1,0 +1,40 @@
+model,name,hoy_read,hoy_create,hoy_write,hoy_unlink,propuesta,read,create,write,unlink,allow_method_calls
+auth.oauth.provider,Proveedor OAuth2,True,True,True,True,desactivar (active = False),False,False,False,False,False
+auth_totp.device,Dispositivo de autenticación,True,True,True,True,desactivar (active = False),False,False,False,False,False
+fetchmail.server,Servidor de correos entrantes,True,True,True,True,desactivar (active = False),False,False,False,False,False
+iap.account,Cuenta de compras dentro de la aplicación,True,True,True,True,desactivar (active = False),False,False,False,False,False
+iap.autocomplete.api,API de autocompletado del contacto de compras dentro de la aplicación,True,True,True,True,solo lectura,True,False,False,False,False
+iap.enrich.api,API de enriquecimiento de leads para compras dentro de la aplicación,True,True,True,True,solo lectura,True,False,False,False,False
+iap.service,Servicio de compras dentro de la aplicación,True,True,True,True,solo lectura,True,False,False,False,False
+ir.config_parameter,Parámetro del sistema,True,True,True,True,desactivar (active = False) — decisión de Jose 2026-09-29,False,False,False,False,False
+ir.cron,Acciones planificadas,True,True,True,True,solo lectura,True,False,False,False,False
+ir.default,Valores predeterminados,True,True,True,True,solo lectura,True,False,False,False,False
+ir.filters,Filtros,True,True,True,True,solo lectura,True,False,False,False,False
+ir.model,Modelos,True,True,True,True,solo lectura,True,False,False,False,False
+ir.model.fields,Campos,True,True,True,True,solo lectura,True,False,False,False,False
+ir.model.fields.selection,Selección de campos,True,True,True,True,solo lectura,True,False,False,False,False
+ir.module.module,Módulo,True,True,True,True,solo lectura,True,False,False,False,False
+ir.ui.menu,Menú,True,True,True,True,solo lectura,True,False,False,False,False
+mail.template,Plantillas de correo electrónico,True,True,True,True,solo lectura,True,False,False,False,False
+res.company,Empresas,True,True,True,True,solo lectura,True,False,False,False,False
+res.groups,Grupos de acceso,True,True,True,True,solo lectura,True,False,False,False,False
+res.groups.privilege,Privilegios,True,True,True,True,solo lectura,True,False,False,False,False
+res.users,Usuario,True,True,True,True,solo lectura,True,False,False,False,False
+res.users.apikeys,Claves API de los usuarios,True,True,True,True,desactivar (active = False),False,False,False,False,False
+res.users.apikeys.show,Mostrar clave API,True,True,True,True,desactivar (active = False),False,False,False,False,False
+res.users.deletion,Solicitud de eliminación de usuario,True,True,True,True,desactivar (active = False),False,False,False,False,False
+res.users.log,Registro de usuarios,True,True,True,True,desactivar (active = False),False,False,False,False,False
+res.users.settings,Ajustes de usuario,True,True,True,True,solo lectura,True,False,False,False,False
+res.users.settings.embedded.action,Ajustes del usuario para acciones incrustadas,True,True,True,True,solo lectura,True,False,False,False,False
+res.users.settings.volumes,Ajustes de volumen del usuario,True,True,True,True,solo lectura,True,False,False,False,False
+spreadsheet.dashboard,Tablero de Hojas de cálculo,True,True,True,True,solo lectura,True,False,False,False,False
+spreadsheet.dashboard.group,Grupo de tableros,True,True,True,True,solo lectura,True,False,False,False,False
+spreadsheet.dashboard.share,Copia de una hoja de cálculo compartida,True,True,True,True,solo lectura,True,False,False,False,False
+spreadsheet.mixin,Mixin de la hoja de cálculo,True,True,True,True,solo lectura,True,False,False,False,False
+spreadsheet.template,Plantilla de hoja de cálculo,True,True,True,True,solo lectura,True,False,False,False,False
+studio.approval.rule,Regla de aprobación de Studio,True,True,True,True,solo lectura,True,False,False,False,False
+studio.approval.rule.approver,Aprobadores de la regla de aprobación enriquecidos,True,True,True,True,solo lectura,True,False,False,False,False
+studio.export.model,Modelos de exportación de Studio,True,True,True,True,solo lectura,True,False,False,False,False
+studio.mixin,Mixin de Studio,True,True,True,True,solo lectura,True,False,False,False,False
+web_tour.tour,Recorridos,True,True,True,True,solo lectura,True,False,False,False,False
+web_tour.tour.step,Paso del recorrido,True,True,True,True,solo lectura,True,False,False,False,False
