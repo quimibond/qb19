@@ -13,6 +13,36 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.89.0 — 2026-10-01
+
+**Corregido: fichas que no abrían por una regla de aprobación con un campo
+que el documento no tiene** (producción, desde el 2026-09-30: `ValueError:
+Invalid field sgi.audit.program.company_id in condition ('company_id', '=', 1)`
+en `studio.approval.rule._get_approval_spec`).
+
+- **Causa:** el 2026-09-29 se escribió a mano `('company_id', '=', 1)` (D-03,
+  «solo la empresa del SGI») en `approval_domain` de seis roles «Aprueba» sin
+  revisar el documento. Ningún código del SGI arma esa hoja: `approval_domain`
+  es un cálculo guardado (`_sgi_condition_domain`, solo con el campo de la
+  condición), pero el ORM deja escribirlo. Tres documentos no tienen
+  `company_id` (`sgi.audit.program`, `sgi.ppap`, `sgi.control.plan`); la
+  sincronización de `quimibond_sgi_studio` copió la condición a sus reglas
+  (65, 66, 67) y Studio la evalúa con `filtered_domain` al abrir cada ficha.
+- **Cambiado:** `sgi_sanitize_domain(env, modelo, dominio)` (en
+  `models/sgi_approval_native.py`) quita las hojas cuyo campo no existe en el
+  modelo, rutas con punto incluidas, sin tocar las demás ni los operadores
+  (un `&`/`|` que pierde una rama queda en la otra; un `!` que la pierde
+  desaparece; un dominio no literal, con `uid`, no se toca). El rol la aplica
+  al crear y al escribir `approval_domain`, el documento o el campo de la
+  condición; `_sgi_clean_approval_domain()` es lo que el satélite de Studio
+  manda a la regla.
+- **Migración** (`migrations/19.0.57.89.0/post-migrate.py`): limpia
+  `approval_domain` de todos los roles y registra antes → después.
+  Producción: 1225, 1230 y 1653 pasan de `[('company_id', '=', 1)]` a vacío;
+  1604 (`budget.analytic`), 1150 y 690 (`account.move`) no cambian. Las
+  reglas las limpia `quimibond_sgi_studio` 19.0.1.0.3.
+- **Pruebas:** `test_approval_native.test_07`.
+
 ## 19.0.57.88.0 — 2026-10-01
 
 **Corregido: «Mi procedimiento» guardado no se vaciaba** (`TestRoleAudit.test_07`,

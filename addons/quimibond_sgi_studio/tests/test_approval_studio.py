@@ -102,3 +102,37 @@ class TestApprovalStudio(TransactionCase):
         rows = self.env['sgi.my.pending']._sgi_pending_values(approver)[approver.id]
         self.assertTrue([r for r in rows if r['kind'] == 'aprobacion' and r['res_model'] == 'purchase.order'
                          and r['res_id'] == order.id])
+
+    def test_07_nunca_una_condicion_invalida_en_la_regla(self):
+        """1.0.3: la regla de Studio nunca guarda un campo que su documento no
+        tiene (producción 2026-09-30, reglas 65 a 67), y la migración limpia
+        solo las hojas inválidas."""
+        program_model = self.env['ir.model']._get('sgi.audit.program')
+        self.role.write({'approval_model_id': program_model.id, 'approval_method': 'action_approve'})
+        # Aunque el rol trajera la condición (se escribe sin pasar por write()),
+        # la sincronización no la lleva a la regla.
+        self.env.cr.execute("UPDATE sgi_activity_role SET approval_domain = %s WHERE id = %s",
+                            ("[('company_id', '=', 1)]", self.role.id))
+        self.role.invalidate_recordset(['approval_domain'])
+        self.role.action_sgi_sync_approval()
+        rule = self.role.approval_rule_id
+        self.assertTrue(rule.active)
+        self.assertFalse(rule.domain)
+        # Escrita directo en la regla (Studio, MCP), tampoco se queda.
+        rule.write({'domain': "[('company_id', '=', 1)]"})
+        self.assertFalse(rule.domain)
+        # La migración: una regla vieja con una hoja inválida y otra válida
+        # pierde solo la inválida; una regla válida no cambia.
+        Rule = self.env['studio.approval.rule']
+        bad = Rule.create({'model_id': self.env['ir.model']._get('purchase.order').id, 'method': 'button_cancel',
+                           'name': 'Prueba limpia'})
+        self.env.cr.execute("UPDATE studio_approval_rule SET domain = %s WHERE id = %s",
+                            ("[('no_existe', '=', 1), ('amount_total', '>', 10.0)]", bad.id))
+        good = Rule.create({'model_id': self.env['ir.model']._get('purchase.order').id, 'method': 'button_draft',
+                            'name': 'Prueba válida', 'domain': "[('company_id', '=', 1)]"})
+        (bad | good).invalidate_recordset(['domain'])
+        changes = (bad | good)._sgi_sanitize_domains()
+        self.assertEqual([c[0] for c in changes], [bad])
+        self.assertEqual(bad.domain, "[('amount_total', '>', 10.0)]")
+        self.assertEqual(good.domain, "[('company_id', '=', 1)]")
+        self.assertFalse((bad | good)._sgi_sanitize_domains(), "Idempotente.")

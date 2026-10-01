@@ -7,8 +7,14 @@ bloqueado hasta que una de ellas aprueba y Odoo guarda quién aprobó y cuándo
 Vivía en ``quimibond_sgi/models/sgi_approval_native.py`` hasta 57.8.0; el
 núcleo deja ganchos (``_sgi_button_*``) que aquí se completan.
 """
+import logging
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+from odoo.addons.quimibond_sgi.models.sgi_approval_native import sgi_sanitize_domain
+
+_logger = logging.getLogger(__name__)
 
 
 class StudioApprovalRuleSgi(models.Model):
@@ -17,6 +23,52 @@ class StudioApprovalRuleSgi(models.Model):
     sgi_role_id = fields.Many2one(
         'sgi.activity.role', string="Rol SGI que aprueba", index='btree_not_null', ondelete='set null',
         help="Renglón «Aprueba» de la actividad del procedimiento que mantiene esta regla.")
+
+    # 1.0.3: ninguna regla de aprobación guarda una condición sobre un campo
+    # que su documento no tiene. Studio la evalúa con filtered_domain al abrir
+    # cada ficha del modelo, y un campo inexistente revienta la ficha
+    # («Invalid field sgi.audit.program.company_id», 2026-09-30).
+    @api.model
+    def _sgi_clean_domain(self, model_id, domain):
+        model = self.env['ir.model'].browse(model_id).model if model_id else False
+        clean, removed = sgi_sanitize_domain(self.env, model, domain)
+        if removed:
+            _logger.warning("SGI: regla de aprobación de %s: se quitan de la condición %s campos que el "
+                            "documento no tiene: %s", model, domain, removed)
+        return clean
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('domain') and vals.get('model_id'):
+                vals['domain'] = self._sgi_clean_domain(vals['model_id'], vals['domain'])
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if not vals.get('domain'):
+            return super().write(vals)
+        if vals.get('model_id'):
+            return super().write(dict(vals, domain=self._sgi_clean_domain(vals['model_id'], vals['domain'])))
+        for model in self.model_id:
+            rules = self.filtered(lambda r, m=model: r.model_id == m)
+            super(StudioApprovalRuleSgi, rules).write(
+                dict(vals, domain=self._sgi_clean_domain(model.id, vals['domain'])))
+        rest = self.filtered(lambda r: not r.model_id)
+        if rest:
+            super(StudioApprovalRuleSgi, rest).write(vals)
+        return True
+
+    def _sgi_sanitize_domains(self):
+        """Quita de la condición guardada las hojas de campos que el documento
+        no tiene; las demás hojas no se tocan. Devuelve [(regla, antes,
+        después)]. Lo usa la migración 19.0.1.0.3."""
+        changes = []
+        for rule in self.filtered('domain'):
+            clean, removed = sgi_sanitize_domain(self.env, rule.model_id.model, rule.domain)
+            if removed:
+                changes.append((rule, rule.domain, clean))
+                rule.write({'domain': clean})
+        return changes
 
 
 class SgiActivityRoleStudio(models.Model):
@@ -89,7 +141,8 @@ class SgiActivityRoleStudio(models.Model):
             'name': "%s — aprueba %s" % (label, self._sgi_target_label()),
             'model_id': self.approval_model_id.id,
             'method': self.approval_method,
-            'domain': self.approval_domain or False,
+            # 1.0.3: la condición limpia (sin campos que el documento no tiene).
+            'domain': self._sgi_clean_approval_domain(),
             'approver_ids': [(6, 0, self._sgi_approver_users().ids)],
             'message': label,
             'sgi_role_id': self.id,
@@ -100,7 +153,7 @@ class SgiActivityRoleStudio(models.Model):
         self.ensure_one()
         rule = self.approval_rule_id.sudo()
         return bool(rule) and rule.model_id == self.approval_model_id and rule.method == self.approval_method \
-            and (rule.domain or False) == (self.approval_domain or False) \
+            and (rule.domain or False) == self._sgi_clean_approval_domain() \
             and set(rule.approver_ids.ids) == set(self._sgi_approver_users().ids)
 
     def _sgi_sync_button(self):
