@@ -29,7 +29,7 @@
                     <field name="state" widget="statusbar" statusbar_visible="borrador,solicitado,autorizado,cerrado"/>
                 </header>
                 <div class="alert alert-info mb-0" role="alert" invisible="not sgi_format_banner">
-                    📋 Formato controlado del SGI:
+                    <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
                 <div class="alert alert-danger mb-0" role="alert" invisible="not expired">

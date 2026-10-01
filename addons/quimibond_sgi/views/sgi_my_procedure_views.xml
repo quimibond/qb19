@@ -200,7 +200,7 @@
                                 <span class="o_stat_value">
                                     <field name="pending_total"/>
                                     <span class="text-danger" invisible="pending_late == 0">
-                                        · <field name="pending_late"/> atrasadas</span>
+                                        · <field name="pending_late"/> atrasados</span>
                                 </span>
                                 <span class="o_stat_text">Pendientes</span>
                             </div>
@@ -485,10 +485,12 @@
                        decoration-danger="sgi_mp_pending_state == 'atrasada'"
                        decoration-warning="sgi_mp_pending_state == 'por_vencer'"
                        decoration-success="sgi_mp_pending_state == 'al_dia'"/>
-                <field name="sgi_mp_pending_total" sum="Pendientes"/>
-                <field name="sgi_mp_pending_late" sum="Atrasados" optional="hide"/>
+                <!-- V-B14 (57.81.0): campos calculados sin guardar: el total es el de
+                     la página y no hay subtotales al agrupar. -->
+                <field name="sgi_mp_pending_total" sum="Total de la página"/>
+                <field name="sgi_mp_pending_late" sum="Total de la página" optional="hide"/>
                 <field name="sgi_mp_total" optional="hide"/>
-                <field name="sgi_mp_acks_pending" sum="Firmas pendientes" optional="hide"/>
+                <field name="sgi_mp_acks_pending" sum="Total de la página" optional="hide"/>
                 <field name="sgi_mp_ack_state" widget="badge"
                        decoration-success="sgi_mp_ack_state == 'leido'"
                        decoration-warning="sgi_mp_ack_state == 'pendiente'"/>
@@ -528,7 +530,7 @@
                         <div class="d-flex flex-wrap gap-1 small">
                             <span t-if="record.sgi_mp_pending_state.raw_value == 'atrasada'" class="badge text-bg-danger"
                                   title="Pendientes atrasados">
-                                <i class="fa fa-exclamation-circle me-1"/><field name="sgi_mp_pending_total"/> · <field name="sgi_mp_pending_late"/> atrasadas
+                                <i class="fa fa-exclamation-circle me-1"/><field name="sgi_mp_pending_total"/> · <field name="sgi_mp_pending_late"/> atrasados
                             </span>
                             <span t-elif="record.sgi_mp_pending_state.raw_value == 'por_vencer'" class="badge text-bg-warning"
                                   title="Pendientes por vencer">
@@ -561,7 +563,7 @@
                 <field name="job_id"/>
                 <field name="department_id"/>
                 <field name="parent_id" string="Jefe"/>
-                <filter name="with_late" string="Con atrasadas" domain="[('sgi_mp_pending_late', '>', 0)]"/>
+                <filter name="with_late" string="Con pendientes atrasados" domain="[('sgi_mp_pending_late', '>', 0)]"/>
                 <filter name="with_soon" string="Con pendientes por vencer" domain="[('sgi_mp_pending_state', '=', 'por_vencer')]"/>
                 <filter name="all_ok" string="Al día" domain="[('sgi_mp_pending_state', '=', 'al_dia')]"/>
                 <filter name="with_acks" string="Con firmas pendientes" domain="[('sgi_mp_acks_pending', '>', 0)]"/>

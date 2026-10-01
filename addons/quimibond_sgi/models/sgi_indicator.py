@@ -977,6 +977,10 @@ class SgiIndicatorMeasure(models.Model):
     y plan. Se calcula sola o se captura; el dueño la valida."""
     _name = 'sgi.indicator.measure'
     _description = "Medición de indicador SGI"
+    # V-M16 (57.80.0): quién capturó, corrigió o validó queda en el chatter
+    # (evidencia de 9.1). Solo mail.thread: las actividades siguen en el
+    # indicador.
+    _inherit = ['mail.thread']
     _order = 'period_date desc, indicator_id'
 
     indicator_id = fields.Many2one('sgi.indicator', string="Indicador",
@@ -989,7 +993,7 @@ class SgiIndicatorMeasure(models.Model):
                               string="Fuente del dato")
     period_date = fields.Date(string="Periodo", required=True,
                               help="Día 1 del mes medido.")
-    value = fields.Float(string="Valor", help="Valor medido en el periodo.")
+    value = fields.Float(string="Valor", tracking=True, help="Valor medido en el periodo.")
     direction = fields.Selection(related='indicator_id.direction', help="Sentido del indicador.")
     target_objective = fields.Float(related='indicator_id.target_objective', string="Objetivo")
     target_acceptable = fields.Float(related='indicator_id.target_acceptable', string="Aceptable")
@@ -1000,12 +1004,12 @@ class SgiIndicatorMeasure(models.Model):
         ('rojo', "Rojo"),
     ], string="Semáforo", compute='_compute_semaphore', store=True,
         help="Verde, amarillo o rojo según el valor y las metas. Se calcula solo.")
-    note = fields.Text(string="Nota")
+    note = fields.Text(string="Nota", tracking=True)
     state = fields.Selection([
         ('pendiente', "Pendiente"),
         ('capturado', "Capturado"),
         ('validado', "Validado"),
-    ], string="Estado", default='pendiente', required=True,
+    ], string="Estado", default='pendiente', required=True, tracking=True,
         help="Pendiente, capturado, validado o sin dato. El dueño del indicador valida lo capturado.")
     alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
                                help="No conformidad levantada por esta medición en rojo.")

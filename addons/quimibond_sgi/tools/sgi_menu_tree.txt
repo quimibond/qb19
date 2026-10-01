@@ -43,7 +43,7 @@ SGI/Mejora/Lecciones aprendidas | menu_sgi_lessons | -
 SGI/Mejora/Quejas y sugerencias del personal | menu_sgi_internal_complaints | -
 SGI/Mejora/Auditorías | menu_sgi_audits | -
 SGI/Mejora/Auditorías/Programa | menu_sgi_audit_programs | -
-SGI/Mejora/Auditorías/Auditorías realizadas | menu_sgi_audit_list | -
+SGI/Mejora/Auditorías/Auditorías | menu_sgi_audit_list | -
 SGI/Mejora/Auditorías/Hallazgos | menu_sgi_audit_findings | -
 SGI/Seguridad y ambiente | menu_sgi_safety | -
 SGI/Seguridad y ambiente/Incidentes y accidentes | menu_sgi_incidents | -

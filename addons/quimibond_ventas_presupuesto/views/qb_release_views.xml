@@ -211,7 +211,7 @@
     </record>
 
     <record id="qb_release_action" model="ir.actions.act_window">
-        <field name="name">Releases</field>
+        <field name="name">Releases de clientes</field>
         <field name="res_model">qb.release</field>
         <field name="view_mode">list,form</field>
         <field name="context">{'search_default_vigentes': 1}</field>

@@ -88,7 +88,7 @@
                 </group>
                 <footer>
                     <button name="action_submit" type="object" string="Enviar propuesta" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

@@ -4,7 +4,7 @@
         <field name="name">sgi.area.list</field>
         <field name="model">sgi.area</field>
         <field name="arch" type="xml">
-            <list string="Áreas SGI">
+            <list string="Áreas">
                 <field name="code"/>
                 <field name="name"/>
                 <field name="department_id"/>
@@ -30,11 +30,15 @@
         <field name="name">sgi.area.form</field>
         <field name="model">sgi.area</field>
         <field name="arch" type="xml">
-            <form string="Área SGI">
+            <form string="Área">
                 <sheet>
+                    <!-- V-B10 (57.81.0): el nombre como título. -->
+                    <div class="oe_title">
+                        <label for="name" string="Área"/>
+                        <h1><field name="name" placeholder="Nombre del área"/></h1>
+                    </div>
                     <group>
                         <field name="code"/>
-                        <field name="name"/>
                         <field name="department_id"/>
                         <field name="active"/>
                     </group>

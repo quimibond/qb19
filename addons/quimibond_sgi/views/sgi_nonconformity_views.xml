@@ -64,7 +64,7 @@
                     sistémica: al cerrarla se exige una acción correctiva.
                 </div>
                 <group>
-                    <group string="Datos SGI" invisible="not sgi_folio and id">
+                    <group string="Datos de la NC" invisible="not sgi_folio and id">
                         <field name="sgi_folio"/>
                         <field name="sgi_origin_type"/>
                         <field name="sgi_maintenance_request_id" invisible="not sgi_maintenance_request_id"/>
@@ -170,7 +170,7 @@
                     </group>
                     <field name="sgi_customer_reply_required" invisible="1"/>
                 </page>
-                <page string="Ligas SGI" name="sgi_links" invisible="not sgi_folio">
+                <page string="Ligas" name="sgi_links" invisible="not sgi_folio">
                     <group>
                         <group string="Trazabilidad">
                             <field name="sgi_fmea_id"/>
@@ -253,7 +253,7 @@
         <field name="name">sgi.nc.search</field>
         <field name="model">quality.alert</field>
         <field name="arch" type="xml">
-            <search string="No Conformidades">
+            <search string="No conformidades">
                 <field name="sgi_folio"/>
                 <field name="sgi_deviation"/>
                 <field name="sgi_process_id"/>
@@ -407,7 +407,7 @@ action = {
         'search_default_sgi_open': 1,
     },
     'search_view_id': search_view and [search_view.id, 'search'] or False,
-    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Levante la primera No Conformidad&lt;/p&gt;
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Levante la primera no conformidad&lt;/p&gt;
 &lt;p&gt;El folio (NCI-/NCE-) se asigna solo al guardar. El sistema no permite cerrar sin
 causa raíz, acciones terminadas y eficacia verificada — es el candado, no un error.&lt;/p&gt;""",
 }
@@ -422,14 +422,14 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
         <field name="name">sgi.nc.cancel.form</field>
         <field name="model">sgi.nc.cancel</field>
         <field name="arch" type="xml">
-            <form string="Cancelar No Conformidad">
+            <form string="Cancelar no conformidad">
                 <field name="alert_id" invisible="1"/>
                 <field name="is_manager" invisible="1"/>
                 <p class="text-muted" invisible="is_manager">
-                    Tu solicitud queda en el historial de la NC y el Jefe de MAST la aprueba o la rechaza.
+                    Su solicitud queda en el historial de la NC y el Jefe MAST la aprueba o la rechaza.
                 </p>
                 <p class="text-muted" invisible="not is_manager">
-                    Como Jefe de MAST, al confirmar la NC pasa a Cancelada con este motivo en el historial.
+                    Como Jefe MAST, al confirmar la NC pasa a Cancelada con este motivo en el historial.
                 </p>
                 <group>
                     <field name="reason" placeholder="Por qué esta NC no procede (falsa alarma, duplicada, fuera de alcance...)"/>
@@ -439,7 +439,7 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
                             string="Solicitar cancelación" invisible="is_manager"/>
                     <button name="action_confirm" type="object" class="btn-primary"
                             string="Cancelar la NC" invisible="not is_manager"/>
-                    <button string="Volver" class="btn-secondary" special="cancel"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
@@ -450,14 +450,14 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
         <field name="name">sgi.nc.force.close.form</field>
         <field name="model">sgi.nc.force.close</field>
         <field name="arch" type="xml">
-            <form string="Cierre forzado de No Conformidad">
+            <form string="Cierre forzado de no conformidad">
                 <field name="alert_id" invisible="1"/>
                 <group>
                     <field name="reason" placeholder="Explique el motivo del cierre forzado..."/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Cerrar NC" class="btn-primary"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
@@ -469,7 +469,7 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
         <field name="name">quality.alert.activity</field>
         <field name="model">quality.alert</field>
         <field name="arch" type="xml">
-            <activity string="No Conformidades">
+            <activity string="No conformidades">
                 <templates>
                     <div t-name="activity-box">
                         <div><field name="display_name" display="full"/></div>
@@ -504,6 +504,8 @@ causa raíz, acciones terminadas y eficacia verificada — es el candado, no un 
         <field name="res_model">quality.alert</field>
         <field name="view_mode">list,form</field>
         <field name="view_id" ref="sgi_nc_lessons_view_list"/>
+        <!-- V-B15 (57.80.0): la búsqueda de NC (folio, proceso, mayores…), no la de Calidad. -->
+        <field name="search_view_id" ref="sgi_nc_view_search"/>
         <field name="domain">[('sgi_folio', '!=', False), ('sgi_lesson_captured', '=', True)]</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay lecciones aprendidas</p>

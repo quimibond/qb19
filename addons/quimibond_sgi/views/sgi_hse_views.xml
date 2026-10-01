@@ -33,13 +33,17 @@
         <field name="arch" type="xml">
             <form string="Estudio o examen">
                 <sheet>
+                    <!-- V-B10 (57.81.0): trabajador y estudio como título. -->
+                    <div class="oe_title">
+                        <label for="employee_id" string="Trabajador"/>
+                        <h1><field name="employee_id"/></h1>
+                        <h3><field name="name" placeholder="Estudio o examen"/></h3>
+                    </div>
                     <group>
                         <group>
-                            <field name="employee_id"/>
                             <field name="department_id"/>
                             <field name="job_id"/>
                             <field name="kind"/>
-                            <field name="name"/>
                         </group>
                         <group>
                             <field name="date"/>
@@ -87,10 +91,25 @@
         </field>
     </record>
 
+    <!-- V-B18 (57.80.0): vista de actividades, como incidentes y auditorías. -->
+    <record id="sgi_health_record_view_activity" model="ir.ui.view">
+        <field name="name">sgi.health.record.activity</field>
+        <field name="model">sgi.health.record</field>
+        <field name="arch" type="xml">
+            <activity string="Estudios de higiene y exámenes médicos">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
     <record id="sgi_health_record_action" model="ir.actions.act_window">
         <field name="name">Estudios de higiene y exámenes médicos</field>
         <field name="res_model">sgi.health.record</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,form,activity</field>
         <field name="search_view_id" ref="sgi_health_record_view_search"/>
         <field name="context">{'search_default_por_vencer': 1}</field>
         <field name="help" type="html">
@@ -220,10 +239,25 @@
         </field>
     </record>
 
+    <!-- V-B18 (57.80.0): vista de actividades, como incidentes y auditorías. -->
+    <record id="sgi_csh_inspection_view_activity" model="ir.ui.view">
+        <field name="name">sgi.csh.inspection.activity</field>
+        <field name="model">sgi.csh.inspection</field>
+        <field name="arch" type="xml">
+            <activity string="Recorridos CSH">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
     <record id="sgi_csh_inspection_action" model="ir.actions.act_window">
         <field name="name">Recorridos CSH</field>
         <field name="res_model">sgi.csh.inspection</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,form,activity</field>
         <field name="context">{'search_default_state_borrador': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Registre el primer recorrido</p>
@@ -275,10 +309,14 @@
                             class="btn-secondary"/>
                 </header>
                 <sheet>
+                    <!-- V-B10 (57.81.0): el nombre como título. -->
+                    <div class="oe_title">
+                        <label for="name" string="Checklist"/>
+                        <h1><field name="name"/></h1>
+                    </div>
                     <group>
                         <group>
                             <field name="code"/>
-                            <field name="name"/>
                             <field name="frequency"/>
                             <field name="active" invisible="1"/>
                         </group>
@@ -304,6 +342,8 @@
                         </field>
                     </group>
                 </sheet>
+                <!-- V-B10 (57.81.0): el modelo ya llevaba mail.thread. -->
+                <chatter/>
             </form>
         </field>
     </record>
@@ -519,7 +559,7 @@
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Terminar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>

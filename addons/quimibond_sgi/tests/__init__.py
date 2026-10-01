@@ -129,3 +129,4 @@ from . import test_laboratorio
 from . import test_etiquetas_lote
 from . import test_menus_entregables
 from . import test_entregables_modelo
+from . import test_vistas_pulido_45

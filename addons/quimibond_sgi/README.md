@@ -34,6 +34,22 @@ sin duplicarlas. Versión y cambios: `CHANGELOG.md` (una entrada por versión).
   `IT-…`, `DA-…`; D-02). La clave del Dropbox solo aparece en «Del Dropbox a
   Odoo» (decisión 1).
 
+## Glosario de pantallas
+
+Así se escriben los términos del SGI en etiquetas, ayudas y avisos
+(revisión de vistas V-B04, 57.81.0). Todo el texto va en «usted».
+
+| Se escribe | No | Nota |
+|---|---|---|
+| no conformidad (NC); en plural, «no conformidades» o «NC» | No Conformidad, NCs | Mayúscula solo al inicio de un título o una oración |
+| certificado de calidad (CoA) | COA, certificado de análisis | |
+| indicador | KPI | También «indicadores en rojo», «indicadores automáticos» |
+| casi accidente | casi-accidente | |
+| Jefe MAST | Jefe de MAST | «MAST» solo, para el área |
+| Revisión por la dirección | Revisión por la Dirección | «Dirección» con mayúscula es el grupo que aprueba |
+| Sin sufijo «SGI» dentro de la app SGI | «Áreas SGI», «(SGI)» | En fichas de otras apps (contacto, empleado, equipo…), la pestaña se llama «SGI» |
+| Descartar | Volver, Cancelar | Botón para salir de un asistente sin hacer nada |
+
 ## Menú
 
 Cinco entradas bajo **SGI**: Inicio (Mis pendientes, Mi procedimiento,

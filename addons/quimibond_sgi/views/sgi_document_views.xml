@@ -5,7 +5,7 @@
         <field name="name">sgi.documents.document.form</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <form string="Documento controlado SGI">
+            <form string="Documento controlado">
                 <header>
                     <button name="action_sgi_view_file" type="object" string="Ver archivo"
                             class="btn-primary" icon="fa-file-pdf-o"
@@ -21,10 +21,9 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <!-- V-B09 (57.81.0): solo statinfo, sin anidar o_stat_info. -->
                         <button name="action_open_acks" type="object" class="oe_stat_button" icon="fa-check-square-o">
-                            <div class="o_stat_info">
-                                <field name="sgi_ack_read_pct" widget="statinfo" string="% Difusión"/>
-                            </div>
+                            <field name="sgi_ack_read_pct" widget="statinfo" string="% Difusión"/>
                         </button>
                         <button name="action_sgi_open_in_documents" type="object"
                                 class="oe_stat_button" icon="fa-folder-open-o"
@@ -247,7 +246,8 @@
         <field name="name">sgi.documents.document.list</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <list string="Documentos SGI"
+            <!-- V-B13 (57.80.0): multi_edit para mover responsable o próxima revisión de varios. -->
+            <list string="Documentos" multi_edit="1"
                   decoration-muted="sgi_state == 'obsoleto'"
                   decoration-warning="sgi_state == 'piloto'"
                   decoration-info="sgi_state == 'borrador'">
@@ -283,7 +283,7 @@
         <field name="name">sgi.documents.document.search</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <search string="Documentos SGI">
+            <search string="Documentos">
                 <field name="sgi_code"
                        filter_domain="['|', ('sgi_code', 'ilike', self), ('sgi_previous_code', 'ilike', self)]"/>
                 <field name="sgi_title"/>
@@ -305,6 +305,11 @@
                     <filter name="group_type" string="Tipo" context="{'group_by': 'sgi_doc_type_id'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'sgi_state'}"/>
                 </group>
+                <!-- V-B12 (57.80.0): panel lateral por tipo y proceso. -->
+                <searchpanel>
+                    <field name="sgi_doc_type_id" icon="fa-files-o" enable_counters="1"/>
+                    <field name="sgi_process_id" icon="fa-sitemap" select="multi" enable_counters="1"/>
+                </searchpanel>
             </search>
         </field>
     </record>
@@ -334,7 +339,10 @@
                 <field name="sgi_code"/>
                 <field name="document_id"/>
                 <field name="employee_id"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-success="state == 'leido'"/>
                 <field name="ack_date"/>
                 <button name="action_view_file" type="object"
                         icon="fa-file-pdf-o" title="Leer el documento"/>
