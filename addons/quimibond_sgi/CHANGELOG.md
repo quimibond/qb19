@@ -13,6 +13,43 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.85.0 — 2026-10-01
+
+**Corregido (reclamaciones, D-006 / decisión 9):** la 57.19.0 debía marcar
+como reclamación los equipos 2 («Reclamaciones entretelas») y 14 («ATENCION A
+CLIENTES») y en producción solo marcó el 30 (el del XML ID); Jose marcó 2 y 14
+a mano el 2026-10-01. **Causa:** `helpdesk.team.name` es traducible y la
+migración corre sin `lang`, así que `search([('name', 'in', …)])` comparó solo
+la llave `en_US` del JSONB; los equipos 2 y 14 (creados en 2022 y 2023)
+tienen ese nombre solo en `es_MX` y en `en_US` guardan otro texto. **Arreglo:**
+`helpdesk.team._sgi_complaint_teams_by_name` compara el nombre en cada idioma
+instalado, sin distinguir mayúsculas ni espacios de los extremos;
+`_sgi_mark_complaint_teams` lo usa y sigue solo AGREGANDO la marca.
+
+**Migración (post):** vuelve a correr la marca con la búsqueda corregida.
+Solo agrega donde falta: nunca desmarca ni mueve tickets. En producción no
+cambia nada (30, 2 y 14 ya están marcados); sirve para bases copiadas de
+producción antes del arreglo a mano. «Reclamación Industrial» (11) sigue sin
+marcar.
+
+**Pruebas:** `test_reclamaciones` caso 4 (equipo con nombre en español solo en
+`es_MX`: la búsqueda vieja no lo ve, la nueva sí; mayúsculas distintas; un
+señuelo con otro nombre no se marca; una segunda corrida no escribe nada).
+
+**En `quimibond_ventas_presupuesto` 19.0.1.3.0** (mismo PR; ese módulo no
+tiene CHANGELOG, el detalle va en su README):
+- «Precio mínimo plausible propio» en el producto y en la categoría
+  (subcategorías heredan) para que las tiras perforadas a menos de $5/m
+  (AP4032BL10.0/2 I a $1.28; KF4032T11BL1.2/0 y KF4032T11GO1.2/0 TE a $0.55)
+  cuenten como precio real sin bajar el umbral general.
+- «Actualizar real» recalcula el precio de lista también en «Revisado», sin
+  regresarlo a borrador, con constancia en el chatter si algo cambia.
+
+**Pendiente de decisión (sin código):**
+- Equipo de ventas por cliente en el contacto (`res.partner`): lo decide Jose
+  con Ventas.
+- P-C13 #3, aviso por antigüedad en cuarentena: propuesta para Areli.
+
 ## 19.0.57.84.0 — 2026-10-01
 
 **Cambiado (bloque 3 de formularios 3/3, D-02; decisiones de Jose del

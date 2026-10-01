@@ -21,6 +21,24 @@ propios, sin borrar datos»).
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
 
+## Ajustes del CEO (19.0.1.3.0, 2026-10-01)
+
+- **Precio mínimo plausible propio** (producto, pestaña Ventas; categoría,
+  vale para sus subcategorías): excepción al umbral general de Ajustes ($5)
+  para productos que de verdad cuestan menos (tiras perforadas Perfoquim a
+  $0.55–$1.28/m). Manda el del producto, luego el de la categoría más
+  cercana y al final el general, que no cambia. Con 0.01 se acepta cualquier
+  precio mayor que cero; el origen del precio de la línea dice «mínimo propio
+  del producto / categoría '…'». Visible para el Admin de ventas y el Jefe
+  MAST.
+- **«Actualizar real» en «Revisado»** recalcula también el precio de lista sin
+  regresar el documento a borrador: el precio sale de la lista, no de la
+  captura, y el gate «sin precio» de la aprobación pide justo corregir la lista
+  y refrescar. Si algún precio cambia queda constancia en el chatter (líneas,
+  importe antes y después, sin precio antes y después). Los crons y «Conciliar
+  facturado» siguen refrescando el precio solo en borrador; lo aprobado sigue
+  congelado.
+
 ## Pantallas (19.0.1.2.0, revisión de vistas V-M10)
 
 - La lista de líneas y la matriz de la ficha suman al pie la cantidad
@@ -109,6 +127,7 @@ borrador con la misma condición.
 `tests/test_sales_budget.py` (las 117 que vivían en el SGI) y
 `tests/test_sales_budget_sgi.py` (multiempresa, Dirección y el cron de
 cobertura corrido dos veces, que vivían en otras pruebas del SGI).
+`tests/test_ajustes_130.py` (mínimo propio y precio en revisado),
 `tests/test_customer_part.py` y `tests/test_release.py` (catálogo de partes,
 releases y la suma del MPS): corren en el build de Odoo.sh con
 `--test-tags /quimibond_ventas_presupuesto`. Los lectores, el emparejamiento y

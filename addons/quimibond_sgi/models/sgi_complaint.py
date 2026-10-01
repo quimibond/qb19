@@ -21,15 +21,39 @@ class HelpdeskTeam(models.Model):
     _SGI_COMPLAINT_TEAM_NAMES = ('Reclamaciones entretelas', 'ATENCION A CLIENTES')
 
     @api.model
+    def _sgi_complaint_teams_by_name(self):
+        """Equipos de la empresa del SGI (archivados incluidos) cuyo nombre es
+        uno de ``_SGI_COMPLAINT_TEAM_NAMES`` en CUALQUIER idioma instalado, sin
+        distinguir mayúsculas ni espacios de los extremos.
+
+        57.85.0: ``helpdesk.team.name`` es traducible. Un ``search`` sin
+        ``lang`` en el contexto (el de las migraciones) compara solo el valor
+        ``en_US`` del JSONB; los equipos 2 y 14 de producción se crearon antes
+        de Odoo 16 o se renombraron con el usuario en español, así que su
+        nombre en español vive en la llave ``es_MX`` y la de ``en_US`` guarda
+        otro texto. Por eso la 57.19.0 solo marcó el equipo 30 (el del XML ID).
+        Ahora se compara el nombre en cada idioma instalado."""
+        wanted = {n.strip().casefold() for n in self._SGI_COMPLAINT_TEAM_NAMES}
+        company = self.env['sgi.config']._sgi_company()
+        teams = self.with_context(active_test=False).search(
+            [('company_id', '=', company.id)])
+        langs = {code for code, _name in self.env['res.lang'].get_installed()}
+        langs.add('en_US')
+        found = self.browse()
+        for lang in sorted(langs):
+            for team in teams.with_context(lang=lang):
+                if (team.name or '').strip().casefold() in wanted:
+                    found |= team
+        return found.with_context(lang=self.env.lang)
+
+    @api.model
     def _sgi_mark_complaint_teams(self):
         """Marca como reclamación el equipo del SGI y los equipos de la
-        decisión 9 de la empresa del SGI (por nombre exacto, archivados
-        incluidos). Idempotente: solo escribe los que no estaban marcados.
-        Devuelve los equipos marcados en esta llamada."""
-        teams = self.with_context(active_test=False).search([
-            ('name', 'in', list(self._SGI_COMPLAINT_TEAM_NAMES)),
-            ('company_id', '=', self.env['sgi.config']._sgi_company().id),
-        ])
+        decisión 9 de la empresa del SGI (por nombre en cualquier idioma
+        instalado, archivados incluidos; ver ``_sgi_complaint_teams_by_name``).
+        Idempotente: solo AGREGA la marca a los que no la tenían; nunca la
+        quita. Devuelve los equipos marcados en esta llamada."""
+        teams = self._sgi_complaint_teams_by_name()
         own = self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
                            raise_if_not_found=False)
         if own:
