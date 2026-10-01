@@ -771,18 +771,32 @@ class QbCosteoPanel(models.TransientModel):
                    f'{ultimo.absorcion_ya_fuera_month:,.0f}')))
         elif absorbidos:
             subabs = ultimo.ocioso_absorbido_month if ultimo else 0.0
+            vendida = ultimo.absorcion_vendida_month if ultimo else 0.0
+            en_inv = ultimo.absorcion_en_inventario if ultimo else 0.0
+            sin_lote = ultimo.absorcion_sin_lote_month if ultimo else 0.0
             checks.append((
                 OK, 'Absorción por workcenter',
                 '%s fuera del pool desde %s; Odoo capitalizó $%s/mes, de los '
                 'que $%s ya estaban excluidos por centro y renta → se restan '
                 '$%s/mes. Subabsorción contra horas normales: $%s/mes, que '
-                'la conciliación lee como ociosidad, no como brecha.'
+                'la conciliación lee como ociosidad, no como brecha. De lo '
+                'capitalizado, $%s llegó a ventas en el período siguiendo '
+                'los lotes y $%s sigue en inventario al cierre: la capa de '
+                'valoración resta solo lo vendido.'
                 % (', '.join(absorbidos.mapped('code')),
                    min(absorbidos.mapped('fecha_absorcion')),
                    f'{ultimo.absorcion_bruta_month:,.0f}' if ultimo else '0',
                    f'{ultimo.absorcion_ya_fuera_month:,.0f}' if ultimo else '0',
                    f'{ultimo.absorcion_pool_month:,.0f}' if ultimo else '0',
-                   f'{subabs:,.0f}')))
+                   f'{subabs:,.0f}', f'{vendida:,.0f}', f'{en_inv:,.0f}')))
+            if sin_lote:
+                checks.append((
+                    WARN, 'Absorción sin lote',
+                    '$%s de conversión capitalizada en el período salió de '
+                    'órdenes cuya producción no lleva lote: no se puede seguir '
+                    'hasta la venta y la capa propuesta la trata como vendida. '
+                    'Activa el seguimiento por lote en esos productos.'
+                    % f'{sin_lote:,.0f}'))
         elif ultimo and ultimo.absorcion_bruta_month:
             checks.append((
                 BAD, 'Absorción por workcenter',
