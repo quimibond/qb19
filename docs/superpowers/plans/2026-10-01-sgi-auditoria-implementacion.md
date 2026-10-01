@@ -101,11 +101,7 @@ La operan las personas indicadas desde la interfaz de Odoo. Quien desarrolla sol
 **Files:**
 - Create: `docs/audit/decisiones.md`
 
-- [ ] **Step 1: Crear la rama desde `main` al día**
-
-```bash
-git fetch origin main && git checkout -B claude/sgi-57-90-candados origin/main
-```
+- [ ] **Step 1: Rama.** Se trabaja en la rama asignada a la sesión (`claude/confident-mendel-8yg7xu`, ya basada en `main`); si se trabaja fuera de esa sesión: `git fetch origin main && git checkout -B claude/sgi-57-90-candados origin/main`.
 
 - [ ] **Step 2: Crear el índice de decisiones** que `CLAUDE.md:53`, `addons/quimibond_sgi/README.md:149` y `qb_mcp_politica/README.md:6` citan y no existe
 
@@ -386,46 +382,41 @@ Antes de cambiarlo, comprobar que ningún código del SGI borra documentos con a
 
 - [ ] **Step 3b: Que la limpieza nocturna de la papelera no se atore**
 
-Con `restrict`, si el Jefe MAST archiva un controlado con acuses, a los 30 días la autolimpieza de Documents intenta borrarlo junto con los demás de la papelera; la llave foránea aborta el lote completo y desde entonces la papelera no se vacía nunca. Hay que sacar esos documentos del lote.
-
-1. Ubicar el método de la autolimpieza en Odoo 19 (en Odoo 18 es un `@api.autovacuum` llamado `_gc_clear_bin` en `documents.document`). En el shell de Odoo.sh: `grep -n "autovacuum\|def _gc_\|deletion_delay" /home/odoo/src/enterprise/documents/models/*.py`.
-2. Sobrescribirlo en `sgi_document.py` (ajustar el nombre si cambió). Mientras corre, los controlados con acuses se reactivan como obsoletos para salir de la papelera, con nota en el chatter:
+Con `restrict`, si el Jefe MAST archiva un controlado con acuses, a los 30 días la autolimpieza de Documents intenta borrarlo junto con los demás de la papelera; la llave foránea abortaría el lote completo y la papelera dejaría de vaciarse. Para no depender del nombre del método de Documents en Odoo 19 (no verificable fuera de Odoo.sh), un `@api.autovacuum` propio rescata a diario esos documentos: los saca de la papelera mucho antes de los 30 días.
 
 ```python
     @api.autovacuum
-    def _gc_clear_bin(self):
-        """57.90.0 (K-01): la papelera no borra un controlado con acuses
-        (evidencia de difusión, ISO 7.5). Se rescata como obsoleto y se avisa
-        en su historial; el resto de la papelera se vacía como siempre."""
-        rescued = self.with_context(active_test=False).search([
-            ('active', '=', False), ('sgi_is_controlled', '=', True),
-            ('sgi_ack_ids', '!=', False)])
-        if rescued:
-            rescued.with_context(sgi_bypass_lock=True).write(
-                {'active': True, 'sgi_state': 'obsoleto'})
-            for doc in rescued:
-                doc.message_post(body="Rescatado de la papelera: tiene acuses de lectura "
-                                      "y es evidencia. Quedó obsoleto.")
-            _logger.info("SGI: %d documentos controlados rescatados de la papelera: %s",
-                         len(rescued), rescued.ids)
-        return super()._gc_clear_bin()
+    def _gc_sgi_rescue_trashed_controlled(self):
+        """57.90.0 (K-01): un controlado con acuses de lectura es evidencia
+        (ISO 7.5): si alguien lo manda a la papelera, se rescata como obsoleto
+        antes de que la autolimpieza de Documents lo borre (30 días) y su
+        llave foránea atore el vaciado de la papelera."""
+        acked = self.env['sgi.document.ack'].sudo().with_context(active_test=False).search(
+            [('document_id.active', '=', False)]).document_id
+        rescued = acked.filtered('sgi_is_controlled')
+        if not rescued:
+            return
+        rescued.sudo().write({'active': True, 'sgi_state': 'obsoleto'})
+        for doc in rescued:
+            doc.sudo().message_post(body="Rescatado de la papelera: tiene acuses de lectura "
+                                         "y es evidencia del SGI. Quedó obsoleto.")
+        _logger.info("SGI: %d documentos controlados rescatados de la papelera: %s",
+                     len(rescued), rescued.ids)
 ```
 
-Confirmar el nombre del One2many de acuses en `documents.document` (`grep -n "sgi.document.ack'" models/sgi_document.py`; si no existe un One2many, buscar con `self.env['sgi.document.ack'].search([...]).document_id`). Confirmar que `_logger` existe en el archivo.
+Confirmar que `_logger` existe en el archivo y que el dominio `document_id.active` alcanza documentos archivados (`active_test=False` en el contexto del search del acuse).
 
-3. Prueba en `test_candados_evidencia.py`:
+Prueba en `test_candados_evidencia.py`:
 
 ```python
     def test_11_la_papelera_rescata_lo_que_tiene_acuses(self):
         doc = self._doc(code='F-ZK1-06')
         self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.employee.id})
         doc.with_user(self.mast).write({'active': False})
-        self.env['documents.document']._gc_clear_bin()
-        self.assertTrue(doc.exists() and doc.active)
+        self.env['documents.document']._gc_sgi_rescue_trashed_controlled()
+        self.assertTrue(doc.active)
         self.assertEqual(doc.sgi_state, 'obsoleto')
 ```
-
-Si Documents solo borra lo que lleva más de `documents.deletion_delay` días en la papelera, la prueba no necesita esperar: el rescate corre antes del borrado sin mirar la fecha.
 
 - [ ] **Step 4: Checadores locales** (sección 0, punto 4). Esperado: 0 errores.
 
@@ -623,9 +614,10 @@ git commit -m "quimibond_sgi: respuesta del proveedor y motivos escapados en el 
   de texto libre en la URL.
 - **Cambiado:** `sgi_drop_empty_studio_models` ya no lo corre el Administrador
   SGI; solo el shell o un administrador del sistema.
-- **Papelera:** la autolimpieza de Documents rescata como obsoleto un
-  controlado con acuses en lugar de intentar borrarlo (sin esto, la llave
-  foránea atoraba la limpieza de toda la papelera).
+- **Papelera:** un vaciado automático diario (`_gc_sgi_rescue_trashed_controlled`)
+  rescata como obsoleto el controlado con acuses que esté en la papelera, antes
+  de que la autolimpieza de Documents (30 días) intente borrarlo y la llave
+  foránea atore el vaciado.
 
 **Migración:** ninguna. El ORM rehace las dos llaves foráneas al actualizar.
 
