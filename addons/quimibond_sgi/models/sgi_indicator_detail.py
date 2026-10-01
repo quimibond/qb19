@@ -23,8 +23,16 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .sgi_calendar import sgi_local_date
+
 MIN_SAMPLE_PARAM = 'quimibond_sgi.indicator_min_sample'
 DEFAULT_MIN_SAMPLE = 5
+
+# 57.90.0: modos de código que miden el estado de HOY (saldo pendiente,
+# existencias, vigencias): un periodo pasado no se puede reconstruir.
+SNAPSHOT_MODES = ('cartera_vencida', 'cartera_vencida_60',
+                  'inventario_diferencia', 'capacitacion')
+SNAPSHOT_NOTE = "Sin dato: indicador de foto, no reconstruible para un periodo pasado."
 
 
 def _min_sample(env):
@@ -46,6 +54,61 @@ class SgiIndicatorDetail(models.Model):
         string="Medir desde", tracking=True,
         help="Fecha desde la que hay dato confiable (el proceso entra a piloto "
              "o existe el campo que lo alimenta). Antes de ella no se crea medición.")
+
+    # 57.90.0: indicador «de foto». Mide cómo están las cosas al calcular
+    # (cartera pendiente hoy, existencias de hoy, documentos vigentes hoy), no
+    # cómo estaban al cierre del periodo. Solo se mide el último periodo
+    # cerrado; pedir uno anterior da «sin dato» en vez del estado de hoy con
+    # la etiqueta de otro mes. Los modos de código lo traen marcado; en una
+    # fórmula configurable lo marca quien la arma.
+    snapshot = fields.Boolean(
+        string="Indicador de foto", compute='_compute_snapshot', store=True,
+        readonly=False, tracking=True,
+        help="Mide el estado al momento de calcular (saldo pendiente, "
+             "existencias, vigencias), no el del cierre del periodo. Solo se "
+             "mide el último periodo cerrado; un periodo anterior queda «sin "
+             "dato: indicador de foto, no reconstruible».")
+
+    @api.depends('calc_mode')
+    def _compute_snapshot(self):
+        for indicator in self:
+            if indicator.calc_mode in SNAPSHOT_MODES:
+                indicator.snapshot = True
+            elif indicator.calc_mode != 'configurable':
+                indicator.snapshot = False
+            # configurable: se conserva lo que marcó quien arma la fórmula.
+
+    def _sgi_snapshot_blocked(self, date_from):
+        """True si el indicador es de foto y el periodo es anterior al último
+        cerrado (no se puede reconstruir)."""
+        self.ensure_one()
+        return (self.snapshot and self.calc_mode != 'manual'
+                and date_from < self._sgi_default_period())
+
+    def _sgi_snapshot_clear_history(self, since):
+        """Pasa a «sin dato» las mediciones de periodos anteriores al último
+        cerrado de los indicadores de foto que se (re)calcularon desde
+        ``since``: traen el estado del día del cálculo con la etiqueta de otro
+        mes. Nunca toca una validada. El valor anterior queda en la nota.
+        Devuelve las mediciones cambiadas."""
+        changed = self.env['sgi.indicator.measure']
+        for indicator in self.filtered('snapshot'):
+            measures = self.env['sgi.indicator.measure'].search([
+                ('indicator_id', '=', indicator.id),
+                ('period_date', '<', indicator._sgi_default_period()),
+                ('state', 'not in', ('validado', 'sin_dato')),
+                ('write_date', '>=', since),
+            ])
+            for measure in measures:
+                measure.write({
+                    'state': 'sin_dato', 'value': 0.0, 'numerator': False,
+                    'denominator': False, 'sample_size': 0, 'detail_model': False,
+                    'detail_ids': False,
+                    'note': "%s Valor anterior %s, calculado con el estado del día "
+                            "del recálculo." % (SNAPSHOT_NOTE, measure.value),
+                })
+            changed |= measures
+        return changed
 
     critical = fields.Boolean(
         string="Crítico", default=False, tracking=True,
@@ -164,12 +227,17 @@ class SgiIndicatorDetail(models.Model):
             domain += [(date_field, '>=', date_from), (date_field, '<=', date_to)]
         if model in ('account.move', 'account.move.line', 'sale.order'):
             domain += [('company_id', '=', self._sgi_kpi_company().id)]
+        domain += self._sgi_evidence_extra_domain(model)
         return {'model': model, 'ids': self.env[model].sudo().search(domain).ids}
 
     def _sgi_measure_vals(self, date_from, date_to):
         """Valores de la medición del periodo: valor, detalle, estado y nota.
         Es lo que escriben el cron y «Recalcular»."""
         self.ensure_one()
+        if self._sgi_snapshot_blocked(date_from):
+            return {'note': SNAPSHOT_NOTE, 'state': 'sin_dato', 'value': 0.0,
+                    'numerator': None, 'denominator': None, 'sample_size': 0,
+                    'detail_model': False, 'detail_ids': False}
         note = self._sgi_compute_note(date_from, date_to)
         vals = {'note': note or False}
         if self.calc_mode == 'manual':
@@ -220,18 +288,42 @@ class SgiIndicatorDetail(models.Model):
                       and p.date_done <= (p.date_deadline or p.scheduled_date))
         return self._ratio(on_time, len(pickings), pickings)
 
-    def _detail_otd_compras(self, date_from, date_to):
+    def _sgi_otd_receipts(self, date_from, date_to):
+        """(a tiempo, medibles, sin promesa) de CO-01. 57.90.0: solo
+        recepciones de una orden de compra de la compañía del KPI con fecha
+        prometida capturada. Hasta jun-2026 la OC nacía con la fecha
+        prometida igual a la del pedido, al segundo (nadie la capturaba), y
+        toda recepción salía tarde (2–11 %). Esas quedan fuera y se cuentan
+        aparte. A tiempo = recibida a más tardar el día prometido (fecha
+        local, no la hora)."""
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
         pickings = self.env['stock.picking'].search([
             ('picking_type_id.code', '=', 'incoming'), ('state', '=', 'done'),
+            ('company_id', '=', self._sgi_kpi_company().id),
+            ('purchase_id', '!=', False),
             ('date_done', '>=', dt_from), ('date_done', '<', dt_to)])
-        on_time = 0
-        for pick in pickings:
-            po = pick.purchase_id if 'purchase_id' in pick._fields else False
-            deadline = (po and po.date_planned) or pick.date_deadline or pick.scheduled_date
-            if deadline and pick.date_done and pick.date_done <= deadline:
-                on_time += 1
-        return self._ratio(on_time, len(pickings), pickings)
+        measurable = pickings.filtered(
+            lambda p: p.purchase_id.date_planned
+            and p.purchase_id.date_planned != p.purchase_id.date_order)
+        on_time = measurable.filtered(
+            lambda p: sgi_local_date(self.env, p.date_done)
+            <= sgi_local_date(self.env, p.purchase_id.date_planned))
+        return on_time, measurable, pickings - measurable
+
+    def _detail_otd_compras(self, date_from, date_to):
+        if 'purchase_id' not in self.env['stock.picking']._fields:
+            return {'value': None}
+        on_time, measurable, _without = self._sgi_otd_receipts(date_from, date_to)
+        return self._ratio(len(on_time), len(measurable), measurable)
+
+    def _note_otd_compras(self, date_from, date_to):
+        if 'purchase_id' not in self.env['stock.picking']._fields:
+            return ''
+        _on_time, _measurable, without = self._sgi_otd_receipts(date_from, date_to)
+        if not without:
+            return ''
+        return ("%s recepciones sin fecha prometida en la OC (igual a la del "
+                "pedido) no cuentan." % len(without))
 
     def _detail_entregas_completas(self, date_from, date_to):
         pickings = self._sgi_outgoing_done(date_from, date_to)
