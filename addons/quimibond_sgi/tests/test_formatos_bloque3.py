@@ -285,3 +285,96 @@ class TestBloque3Responsable(_Bloque3Common):
         _run_migration(self.env, '19.0.57.71.0')
         self.assertEqual(self.f_ok.sgi_owner_id, self.owner_user)
         self.assertEqual(self.f_nouser.sgi_owner_id, self.mast)
+
+
+@tagged('post_install', '-at_install')
+class TestBloque3ClaveD02(_Bloque3Common):
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.p1 = cls._process('XB9')
+        cls.p2 = cls._process('XBA')
+        doc = cls._doc
+        # Orden de alta revuelto: la numeración sale por proceso y clave anterior.
+        cls.f2 = doc('F-P-A88-02', 'formato', cls.p1)
+        cls.fit = doc('F-IT-P-A88-01-01', 'formato_it', cls.p1)
+        cls.f1 = doc('F-P-A88-01', 'formato', cls.p1)
+        cls.it1 = doc('IT-P-A88-01', 'instructivo', cls.p1)
+        cls.dat = doc('DAT P-A88-01', 'dat', cls.p1)
+        cls.f_p2 = doc('F-P-A89-01', 'formato', cls.p2)
+        cls.form = doc('F-P-A88-05', 'formulario_odoo', cls.p1)
+        cls.anexo = doc('ANEXO 88', 'anexo', cls.p1)
+        cls.proc = doc('P-A88', 'procedimiento', cls.p2)
+        cls.obsolete = doc('F-P-A88-06', 'formato', cls.p1, sgi_state='obsoleto')
+        cls.pi01 = doc('F-P-I01-88', 'formato', cls.p1)
+        # Dos revisiones de una clave: la nueva va a las dos.
+        cls.f3_old = doc('F-P-A88-03', 'formato', cls.p1, sgi_state='obsoleto', sgi_revision=0)
+        cls.f3 = doc('F-P-A88-03', 'formato', cls.p1, sgi_revision=1)
+        cls.mine = (cls.f2 | cls.fit | cls.f1 | cls.it1 | cls.dat | cls.f_p2 | cls.form
+                    | cls.anexo | cls.proc | cls.obsolete | cls.pi01 | cls.f3_old | cls.f3)
+        Map = cls.env['sgi.format.map']
+        cls.map_linked = Map.create({'document_id': cls.f1.id, 'sgi_code': 'F-P-A88-01'})
+        cls.map_unlinked = Map.create({'sgi_code': 'F-P-A88-02'})
+
+    def _apply(self):
+        return self.Doc._sgi_apply_d02(company=self.company, ids=self.mine.ids)
+
+    def test_01_numeracion_determinista(self):
+        result = self._apply()
+        # F-IT-… va antes que F-P-… por la clave anterior; F y F-IT comparten consecutivo.
+        self.assertEqual(self.fit.sgi_code, 'F-XB9-01')
+        self.assertEqual(self.f1.sgi_code, 'F-XB9-02')
+        self.assertEqual(self.f2.sgi_code, 'F-XB9-03')
+        self.assertEqual(self.f3.sgi_code, 'F-XB9-04')
+        self.assertEqual(self.f3_old.sgi_code, 'F-XB9-04', "Todas las revisiones de la clave.")
+        self.assertEqual(self.it1.sgi_code, 'IT-XB9-01')
+        self.assertEqual(self.dat.sgi_code, 'DA-XB9-01')
+        self.assertEqual(self.f_p2.sgi_code, 'F-XBA-01')
+        self.assertEqual(len(result['done']), 7)
+        # Conservan su clave.
+        self.assertEqual(self.form.sgi_code, 'F-P-A88-05', "Formulario de Odoo (L-004).")
+        self.assertEqual(self.anexo.sgi_code, 'ANEXO 88', "Tipo sin patrón.")
+        self.assertEqual(self.proc.sgi_code, 'P-A88', "Procedimientos: pregunta abierta.")
+        self.assertEqual(self.obsolete.sgi_code, 'F-P-A88-06')
+        self.assertEqual(self.pi01.sgi_code, 'F-P-I01-88', "P-I01 queda fuera siempre.")
+        # La clave anterior (Dropbox) no cambia y el archivo no se renombra.
+        self.assertEqual(self.f1.sgi_previous_code, 'F-P-A88-01')
+        self.assertEqual(self.fit.sgi_previous_code, 'F-IT-P-A88-01-01')
+        self.assertEqual(self.f1.name, 'F-P-A88-01 prueba.xlsx')
+        self.assertEqual(self.f1.sgi_title, 'prueba')
+        # Idempotente.
+        again = self._apply()
+        self.assertEqual(again['done'], [])
+
+    def test_02_busqueda_por_clave_anterior_sigue_funcionando(self):
+        self._apply()
+        self.env.flush_all()
+        self.assertEqual(self.Doc._sgi_find_by_code('F-P-A88-01'), self.f1)
+        self.assertEqual(self.Doc._sgi_find_by_code('F-IT-P-A88-01-01'), self.fit)
+        self.assertEqual(self.Doc._sgi_find_by_code('F-XB9-02'), self.f1)
+        found = self.Doc.search([('sgi_previous_code', 'ilike', 'F-P-A88-02')])
+        self.assertEqual(found, self.f2)
+        keys = self.env['sgi.dropbox.key'].search([('key', '=', 'F-P-A88-01')])
+        self.assertEqual(keys.mapped('document_id'), self.f1,
+                         "El buscador «Del Dropbox a Odoo» encuentra la clave vieja.")
+
+    def test_03_mapeos_imprimen_la_clave_nueva(self):
+        self._apply()
+        self.env.invalidate_all()
+        self.assertEqual(self.map_linked.sgi_live_label(), 'F-XB9-02 · Rev. 00')
+        self.assertEqual(self.map_linked.sgi_code, 'F-XB9-02', "«Clave al ligar» al día.")
+        self.assertEqual(self.map_unlinked.sgi_code, 'F-P-A88-02', "Sin documento: no se toca.")
+        self.assertEqual(self.map_unlinked.sgi_live_label(), 'F-XB9-03 · Rev. 00',
+                         "Sin documento lo encuentra por la clave anterior.")
+
+    def test_04_ligas_de_actividades_intactas(self):
+        act = self._activity(self.p1, 1, self.f1 | self.fit)
+        self._apply()
+        self.assertEqual(act.format_document_ids, self.f1 | self.fit)
+        self.assertEqual(sorted(act.format_document_ids.mapped('sgi_code')), ['F-XB9-01', 'F-XB9-02'])
+
+    def test_05_post_migrate_corre(self):
+        _run_migration(self.env, '19.0.57.72.0')
+        self.assertTrue(self.f1.sgi_code.startswith('F-XB9-'))
+        self.assertEqual(self.f1.sgi_previous_code, 'F-P-A88-01')

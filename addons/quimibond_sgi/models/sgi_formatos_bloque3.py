@@ -114,6 +114,14 @@ SGI_B3_ODOO_FORMS = (
 # Tipos que cuentan como «formato» para el responsable (propuesta §2: 378).
 SGI_FORMAT_DOC_TYPES = ('formato', 'formato_it', 'dat', 'anexo', 'formulario_odoo')
 
+# --- Paso 3 (57.72.0) ------------------------------------------------------
+# Tipos que reciben clave nueva D-02. Fuera, por decisión ya escrita en el
+# código: formularios de Odoo (L-004: conservan su clave), externos y «Mi
+# procedimiento». Fuera, por pregunta abierta: los procedimientos
+# (PR-{proceso} no lleva consecutivo y hay hasta 13 por proceso). Los tipos
+# sin patrón (anexo, protocolo, reglamento, MIID, diagrama) conservan la suya.
+SGI_D02_DOC_TYPES = ('instructivo', 'formato', 'formato_it', 'dat')
+
 
 class DocumentsDocumentBloque3(models.Model):
     _inherit = 'documents.document'
@@ -171,8 +179,9 @@ class DocumentsDocumentBloque3(models.Model):
                         or (model_name, field.name) in skip:
                     continue
                 try:
-                    count = Model.sudo().with_context(active_test=False).search_count(
-                        [(field.name, 'in', doc.ids)])
+                    with self.env.cr.savepoint():
+                        count = Model.sudo().with_context(active_test=False).search_count(
+                            [(field.name, 'in', doc.ids)])
                 except Exception:  # noqa: BLE001 - solo informa
                     continue
                 if count:
@@ -475,3 +484,76 @@ class DocumentsDocumentBloque3(models.Model):
                                 employee.name or "(sin dueño)", len(pdocs), custodian.name,
                                 ", ".join(pdocs.mapped('sgi_code')))
         return result
+
+    # --- paso 3: clave nueva D-02 -------------------------------------------
+    @api.model
+    def _sgi_d02_sort_key(self, doc):
+        prefix = (doc.sgi_doc_type_id.prefix_pattern or '').split('{')[0]
+        return (doc.sgi_process_id.code or '', prefix, doc.sgi_code or '', doc.id)
+
+    @api.model
+    def _sgi_apply_d02(self, company=None, ids=None, types=SGI_D02_DOC_TYPES):
+        """Clave nueva D-02 a todos los documentos controlados, activos y no
+        obsoletos de ``types`` (con su proceso de la empresa del SGI, fuera
+        P-I01 y su familia), con ``_sgi_assign_new_code`` (todas las
+        revisiones de la clave, chatter en cada una). Numeración determinista:
+        por proceso, por prefijo de la clave nueva y por clave anterior; el
+        consecutivo sigue al más alto que ya exista. No renombra archivos ni
+        toca la clave anterior (la del Dropbox), así que la búsqueda por clave
+        anterior sigue igual. Los mapeos de formato ligados al documento
+        imprimen solos la clave nueva; su «Clave al ligar» se actualiza si era
+        la clave vieja. ``ids`` limita el alcance (pruebas). Devuelve
+        ``{'done': [(id, vieja, nueva)], 'skipped': [(id, clave, motivo)]}``."""
+        company = self._sgi_b3_company(company)
+        Doc = self.sudo()
+        domain = [('sgi_is_controlled', '=', True), ('active', '=', True),
+                  ('sgi_state', '!=', 'obsoleto'),
+                  ('sgi_doc_type_id.code', 'in', list(types)),
+                  ('sgi_process_id.company_id', '=', company.id)] \
+            + self._sgi_dropbox_excluded_domain()
+        if ids is not None:
+            domain.append(('id', 'in', list(ids)))
+        docs = Doc.search(domain)
+        done, skipped, seen = [], [], set()
+        renamed = {}
+        for doc in docs.sorted(key=self._sgi_d02_sort_key):
+            # Otra revisión de una clave ya renombrada (la renombró su familia).
+            if doc.id in renamed or doc.sgi_code in seen:
+                continue
+            seen.add(doc.sgi_code)
+            blocker = doc._sgi_new_code_blockers()
+            if blocker:
+                skipped.append((doc.id, doc.sgi_code, blocker))
+                continue
+            old = doc.sgi_code
+            family = doc | doc._sgi_same_code_docs()
+            try:
+                with self.env.cr.savepoint():
+                    new = doc._sgi_assign_new_code()
+            except Exception as exc:  # noqa: BLE001 - se reporta y sigue
+                skipped.append((doc.id, old, str(exc.args[0] if exc.args else exc)))
+                _logger.warning("SGI D-02: %s (%d) sin clave nueva: %s", old, doc.id, exc)
+                continue
+            done.append((doc.id, old, new))
+            for member in family:
+                renamed[member.id] = (old, new)
+            _logger.info("SGI D-02: %s → %s (%d; %s, %s; clave anterior %s).", old, new, doc.id,
+                         doc.sgi_doc_type_id.name, doc.sgi_process_id.code, doc.sgi_previous_code)
+        if renamed:
+            Map = self.env['sgi.format.map'].sudo().with_context(active_test=False)
+            for fmap in Map.search(['|', ('document_id', 'in', list(renamed)),
+                                    ('document_alt_id', 'in', list(renamed))]):
+                vals = {}
+                for doc_field, code_field in (('document_id', 'sgi_code'),
+                                              ('document_alt_id', 'sgi_code_alt')):
+                    pair = renamed.get(fmap[doc_field].id)
+                    if pair and fmap[code_field] == pair[0]:
+                        vals[code_field] = pair[1]
+                if vals:
+                    _logger.info("SGI D-02: mapeo de formato %d «Clave al ligar»: %s → %s.", fmap.id,
+                                 {k: fmap[k] for k in vals}, vals)
+                    fmap.write(vals)
+        _logger.info("SGI D-02: %d clave(s) nuevas, %d sin cambio.", len(done), len(skipped))
+        for doc_id, code, reason in skipped:
+            _logger.info("SGI D-02: sin cambio %s (%d): %s", code, doc_id, reason)
+        return {'done': done, 'skipped': skipped}

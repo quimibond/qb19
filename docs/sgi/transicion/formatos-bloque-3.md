@@ -166,6 +166,62 @@ correr `documents.document._sgi_owner_from_process()` desde un shell.
 | 53 | F-P-P04-08 | CONTROL DE PROCESO MAQUINA DE TEJIDO |
 | 54 | F-P-P04-10 | COMPARATIVO DE PRODUCTOS QUÍMICOS |
 
+## 3. Clave nueva D-02 (57.72.0)
+
+### Qué hizo el sistema
+
+Cada formato (F), formato de instructivo (F-IT), instructivo (IT) y DAT
+controlado, activo y no obsoleto recibe su clave nueva según su proceso:
+
+| Tipo | Clave nueva | Ejemplo |
+|---|---|---|
+| Formato y formato de instructivo (comparten consecutivo) | `F-{proceso}-{nn}` | F-IT-P-C05-07-01 → F-C5-nn |
+| Instructivo | `IT-{proceso}-{nn}` | un IT-P-… de C4 → IT-C4-nn |
+| DAT | `DA-{proceso}-{nn}` | DAT P-P01-01 (C4) → DA-C4-nn |
+
+- **Numeración determinista:** por proceso, por prefijo y por la clave del
+  Dropbox, en orden alfabético (por eso los F-IT-… van antes que los F-P-…
+  del mismo proceso). El consecutivo sigue al más alto que ya exista (C4 ya
+  tenía IT-C4-01).
+- **La clave del Dropbox queda como clave anterior** y se sigue buscando sin
+  límite de tiempo: «Del Dropbox a Odoo → Buscador por clave anterior», la
+  búsqueda «Clave SGI» de Documentos y las rutinas. Los archivos no se
+  renombran.
+- Todas las revisiones de una clave reciben la misma clave nueva; cada
+  documento deja en su chatter «Clave nueva … (antes …)».
+- Los PDF de Odoo con pie de formato controlado imprimen la clave nueva solos
+  (el mapeo apunta al documento); su «Clave al ligar» se actualizó.
+- Las ligas con actividades no cambian (son al documento, no a la clave).
+
+Esperado en producción: **323** claves nuevas (C1 33, C2 21, C3 3, C4 67, C5
+64, C6 6, E1 1, E2 44, S1 11, S2 7, S3 9, S4 41, S5 16).
+
+### Qué conserva su clave del Dropbox
+
+| Qué | Por qué |
+|---|---|
+| Formularios de Odoo (66 con las altas de 57.70.0) | Decisión L-004 (56.32.0): conservan su clave vieja |
+| Procedimientos (P-xxx) | **Pregunta abierta** (abajo) |
+| Anexos, protocolos, reglamentos, MIID y diagramas | Su tipo no tiene patrón de clave nueva |
+| Obsoletos | Se dan de baja con su clave |
+| P-I01 y su familia | Fuera siempre (L-001) |
+
+### Preguntas abiertas para Jose
+
+1. **Procedimientos.** D-02 dice `PR-{proceso}`, sin consecutivo: una sola
+   clave por proceso. Hoy hay 28 procedimientos del Dropbox vigentes que
+   ningún proceso sustituye todavía (E2 13, C5 9, C4 2, S4 2, C1 1, C2 1).
+   ¿`PR-{proceso}` es el procedimiento de Odoo del proceso (y los del Dropbox
+   conservan su clave hasta su baja), o los del Dropbox llevan consecutivo
+   (`PR-{proceso}-{nn}`)? Mientras se decide, conservan su clave.
+2. **Formularios de Odoo.** ¿Se quedan con la clave del Dropbox (L-004) o
+   pasan también a `F-{proceso}-{nn}`? Hoy conviven, en el mismo proceso,
+   formatos con clave nueva y formularios con clave vieja (por ejemplo en C2:
+   F-C2-nn junto a F-P-A28-06 y F-P-A28-13).
+3. **Anexos, protocolos y reglamentos** (15, 5 y 4): ¿llevan clave nueva? Su
+   tipo no tiene patrón; MAST lo puede poner en Configuración → Tipos de
+   documento y asignar con la acción «Asignar clave nueva».
+
 ## Anexo. Los 17 formatos citados que no existen (propuesta §1)
 
 En código solo se hizo lo seguro: las altas de F-P-A28-13 y F-P-A28-11 (sección 1)
