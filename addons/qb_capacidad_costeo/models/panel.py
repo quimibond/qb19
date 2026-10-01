@@ -770,16 +770,19 @@ class QbCosteoPanel(models.TransientModel):
                    ', '.join(absorbidos.mapped('code')),
                    f'{ultimo.absorcion_ya_fuera_month:,.0f}')))
         elif absorbidos:
+            subabs = ultimo.ocioso_absorbido_month if ultimo else 0.0
             checks.append((
                 OK, 'Absorción por workcenter',
                 '%s fuera del pool desde %s; Odoo capitalizó $%s/mes, de los '
                 'que $%s ya estaban excluidos por centro y renta → se restan '
-                '$%s/mes'
+                '$%s/mes. Subabsorción contra horas normales: $%s/mes, que '
+                'la conciliación lee como ociosidad, no como brecha.'
                 % (', '.join(absorbidos.mapped('code')),
                    min(absorbidos.mapped('fecha_absorcion')),
                    f'{ultimo.absorcion_bruta_month:,.0f}' if ultimo else '0',
                    f'{ultimo.absorcion_ya_fuera_month:,.0f}' if ultimo else '0',
-                   f'{ultimo.absorcion_pool_month:,.0f}' if ultimo else '0')))
+                   f'{ultimo.absorcion_pool_month:,.0f}' if ultimo else '0',
+                   f'{subabs:,.0f}')))
         elif ultimo and ultimo.absorcion_bruta_month:
             checks.append((
                 BAD, 'Absorción por workcenter',

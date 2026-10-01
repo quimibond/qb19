@@ -2598,6 +2598,226 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(f.absorcion_pool_month, 0.0)
         centro.unlink()
 
+    def test_la_conciliacion_cuenta_los_otros_gastos(self):
+        """El arrendamiento financiero (701.11) pasó de «otros ingresos» a
+        «otros gastos» el 2-sep-2026 y la conciliación dejó de verlo: la
+        vista solo sumaba ingresos, costo directo, gasto y depreciación, así
+        que $1.03M/mes salieron del lado del mayor en julio, agosto y
+        septiembre mientras el pool del módulo lo seguía repartiendo. Un
+        «otros gastos» con bucket de costeo cuenta como costeo en otras
+        cuentas; sin bucket, como resultado integral. Nunca como «sin
+        clasificar» ni como nada."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Account = self.env['account.account']
+        if 'expense_other' not in dict(
+                Account._fields['account_type'].selection):
+            self.skipTest('esta versión de Odoo no tiene «otros gastos»')
+        Clase = self.env['qb.costeo.cuenta.class']
+        Conc = self.env['qb.costo.conciliacion']
+        period = date(2027, 6, 1)
+        arr = Account.create({
+            'code': 'QBOG.0001', 'name': 'ARRENDAMIENTO OTROS GASTOS TEST',
+            'account_type': 'expense_other'})
+        Clase.create({'account_id': arr.id, 'bucket': 'arrend_maquinaria'})
+        fin = Account.create({
+            'code': 'QBOG.0002', 'name': 'COMISIONES OTROS GASTOS TEST',
+            'account_type': 'expense_other'})
+        contra = Account.create({
+            'code': 'QBOG.0009', 'name': 'CONTRA OTROS GASTOS TEST',
+            'account_type': 'liability_current'})
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': arr.id, 'debit': 70000.0}),
+                (0, 0, {'account_id': fin.id, 'debit': 5000.0}),
+                (0, 0, {'account_id': contra.id, 'credit': 75000.0}),
+            ]}).action_post()
+        self.env.flush_all()
+        self.env.invalidate_all()
+        row = Conc.search([('period', '=', period)], limit=1)
+        self.assertTrue(row, 'un «otros gastos» posteado ya es una fila')
+        r = row.read(['gl_otros_costeo', 'gl_resultado_integral',
+                      'gl_sin_clasificar', 'gl_gasto_total',
+                      'gl_costo_ventas', 'gl_gastos_operacion',
+                      'resultado_gl', 'brecha'])[0]
+        self.assertAlmostEqual(r['gl_otros_costeo'], 70000.0, places=2,
+                               msg='con bucket de costeo es costeo en otras '
+                                   'cuentas, viva donde viva')
+        self.assertAlmostEqual(r['gl_resultado_integral'], 5000.0, places=2,
+                               msg='sin bucket es resultado integral')
+        self.assertEqual(r['gl_sin_clasificar'], 0.0)
+        self.assertAlmostEqual(
+            r['gl_gasto_total'],
+            r['gl_costo_ventas'] + r['gl_gastos_operacion'] + 70000.0,
+            places=2, msg='el gasto total del mayor lo trae')
+        self.assertAlmostEqual(r['resultado_gl'], -75000.0, places=2)
+        # Y la brecha lo ve del lado del mayor: sin modelo en el período,
+        # modelo − (ventas − gasto) = +70,000, no 0.
+        self.assertAlmostEqual(r['brecha'], 70000.0, places=2)
+
+    def test_la_energia_sobrevive_al_corte_del_centro_de_kilos(self):
+        """Septiembre de 2026 salió con energía $0/kg. El único centro con
+        denominador en kilos era tejido; al absorberse, `kg_real` quedó en 0
+        y el pool de energía ($918K/mes de gas, agua y luz) no se cargó a
+        ningún producto. El kilo tejido sigue existiendo aunque su gasto ya
+        no esté en el pool: la energía se divide entre los kilos de TODA la
+        planta. Y la luz del centro absorbido sale del pool, porque ya viaja
+        en su tarifa por hora."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Centro = self.env['qb.costeo.centro']
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        period = date(2027, 7, 1)
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        tej = Centro.create({
+            'code': 'TEST_EKG', 'name': 'Tejido energía test',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'es_denominador_kg': True, 'std_output_per_hour': 10.0,
+            'mo_name_pattern': 'QBEN/%'})
+        # Los centros reales de la DB pueden aportar kilos también; se
+        # apagan para que el único denominador sea el de prueba.
+        otros = Centro.search([('es_denominador_kg', '=', True),
+                               ('id', '!=', tej.id)])
+        otros.write({'active': False})
+
+        def cuenta(code, name, **kw):
+            acc = Account.create({'name': name, 'code': code,
+                                  'account_type': 'expense_direct_cost'})
+            Clase.create(dict(account_id=acc.id, bucket='energia',
+                              es_variable=True, **kw))
+            return acc
+
+        luz = cuenta('QBEN.0001', 'LUZ DE TEJIDO TEST', centro_id=tej.id)
+        gas = cuenta('QBEN.0002', 'GAS DE CALDERAS TEST')
+        contra = Account.create({'name': 'CONTRA ENERGIA TEST',
+                                 'code': 'QBEN.0009', 'account_type': 'expense'})
+        self.env['account.move'].create({
+            'move_type': 'entry', 'journal_id': journal.id, 'date': period,
+            'line_ids': [
+                (0, 0, {'account_id': luz.id, 'debit': 30000.0}),
+                (0, 0, {'account_id': gas.id, 'debit': 50000.0}),
+                (0, 0, {'account_id': contra.id, 'credit': 80000.0}),
+            ]}).action_post()
+        # 1,000 kg tejidos en el período, por el patrón de orden del centro
+        mo = self.env['mrp.production'].create({
+            'name': 'QBEN/0001', 'product_id': self.hilo.id,
+            'product_qty': 1000.0, 'product_uom_id': uom_kg.id})
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done', date_finished = %s "
+            "WHERE id = %s", (datetime(2027, 7, 15, 12), mo.id))
+        self.env.invalidate_all()
+
+        # En capa: luz + gas al pool, kilos del centro en el denominador.
+        # Los valores se copian a números: `_compute_factores` reescribe el
+        # MISMO registro del período, y leerlo después del segundo cálculo
+        # devolvería el valor nuevo.
+        en_capa = self.Costo._compute_factores(period)
+        pool_capa = en_capa.energia_pool_month
+        por_kg_capa = en_capa.energia_por_kg
+        self.assertGreater(por_kg_capa, 0.0)
+        self.assertAlmostEqual(en_capa.kg_produccion_month, 1000.0, places=2)
+
+        # Absorbido: la luz sale (va en la tarifa), el gas se queda, y los
+        # kilos del centro siguen dividiendo — el $/kg baja en la proporción
+        # de la luz, no se va a cero.
+        tej.write({'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period})
+        abs_ = self.Costo._compute_factores(period)
+        self.assertEqual(abs_.kg_produccion_month, 0.0,
+                         'el denominador de FABRICACIÓN sí pierde al centro')
+        self.assertGreater(abs_.energia_por_kg, 0.0,
+                           'la energía no puede quedarse en $0/kg')
+        self.assertAlmostEqual(
+            abs_.energia_pool_month, pool_capa * 50 / 80, places=2,
+            msg='la luz del centro absorbido sale del pool')
+        self.assertAlmostEqual(
+            abs_.energia_por_kg, por_kg_capa * 50 / 80, places=4,
+            msg='mismos kilos abajo, solo el gas arriba')
+        otros.write({'active': True})
+        tej.unlink()
+
+    def test_la_subabsorcion_del_centro_absorbido_es_ociosidad_no_brecha(self):
+        """Odoo abona a costos fabriles aplicados solo las horas que de
+        verdad corrieron. Lo que el centro costó por encima se quedó en
+        resultados y es su ociosidad, no brecha: en sep-2026 TEJIDO absorbió
+        12,095 h de 16,840 normales y la conciliación leía $470K como «sin
+        explicar». Horas normales × tarifa − abono real, y la conciliación
+        lo suma a la ociosidad del par."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Centro = self.env['qb.costeo.centro']
+        Clase = self.env['qb.costeo.cuenta.class']
+        Account = self.env['account.account']
+        WC = self.env['mrp.workcenter']
+        Conc = self.env['qb.costo.conciliacion']
+        period = date(2027, 8, 1)
+        wc1 = WC.create({'name': 'CIRCULAR SUB A TEST', 'costs_hour': 50.0})
+        wc2 = WC.create({'name': 'CIRCULAR SUB B TEST', 'costs_hour': 70.0})
+        centro = Centro.create({
+            'code': 'TEST_SUB', 'name': 'Centro subabsorción test',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'std_output_per_hour': 10.0, 'capacidad_normal': 1200.0,
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period,
+            'workcenter_ids': [(6, 0, [wc1.id, wc2.id])]})
+        # 1,200 u ÷ 10 u/h = 120 h normales × $60/h promedio = $7,200
+        c_abs = Account.create({
+            'name': 'COSTOS FABRILES APLICADOS SUB TEST',
+            'code': 'QBSB.0001', 'account_type': 'expense_direct_cost'})
+        Clase.create({'account_id': c_abs.id, 'bucket': 'absorcion_odoo'})
+        contra = Account.create({'name': 'CONTRA SUB TEST',
+                                 'code': 'QBSB.0009', 'account_type': 'expense'})
+
+        def abono(monto):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': journal.id,
+                'date': period,
+                'line_ids': [
+                    (0, 0, {'account_id': c_abs.id, 'credit': monto}),
+                    (0, 0, {'account_id': contra.id, 'debit': monto}),
+                ]}).action_post()
+
+        abono(2000.0)
+        f = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(f.absorcion_bruta_month, 2000.0, places=2)
+        self.assertAlmostEqual(f.ocioso_absorbido_month, 5200.0, places=2,
+                               msg='horas normales × tarifa − abono real')
+
+        # La conciliación lo lee como ociosidad del par, no como brecha
+        self.env.flush_all()
+        self.env.invalidate_all()
+        row = Conc.search([('period', '=', period)], limit=1)
+        self.assertTrue(row)
+        r = row.read(['ociosidad_ias2', 'resultado_modelo', 'resultado_par',
+                      'brecha', 'brecha_neta'])[0]
+        self.assertAlmostEqual(
+            r['ociosidad_ias2'], f.fab_ocioso_month + 5200.0, places=2)
+        self.assertAlmostEqual(
+            r['resultado_par'], r['resultado_modelo'] - r['ociosidad_ias2'],
+            places=2)
+        self.assertAlmostEqual(
+            r['brecha_neta'], r['brecha'] - r['ociosidad_ias2'], places=2)
+
+        # Si el abono supera lo normal (sobreabsorción), no hay ociosidad
+        # negativa: eso es tarifa alta, y lo avisa otro check.
+        abono(9000.0)
+        f = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(f.absorcion_bruta_month, 11000.0, places=2)
+        self.assertEqual(f.ocioso_absorbido_month, 0.0)
+
+        # Sin tarifa en ningún workcenter no hay contra qué medir
+        (wc1 | wc2).write({'costs_hour': 0.0})
+        self.assertEqual(
+            self.Costo._compute_factores(period).ocioso_absorbido_month, 0.0)
+        centro.unlink()
+
     def test_los_totales_cumplen_ventas_menos_costo_igual_margen(self):
         """En TODA fila: ventas_total − costo_X_total = margen_X_total.
 

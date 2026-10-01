@@ -358,6 +358,13 @@ resultado de **operación**: con el arrendamiento de maquinaria (701.11, que el
 modelo sí cobra) y sin el resultado integral de financiamiento (que no). El
 mes en curso no entra al año del panel hasta que termina o se cierra.
 
+Desde que un centro capitaliza por workcenter (v1.67): el arrendamiento de
+maquinaria cuenta aunque viva en «otros gastos»; la energía del centro
+absorbido sale del pool (ya va en su tarifa) y la del resto se divide entre
+los kilos de toda la planta, con los absorbidos dentro; y la **subabsorción**
+del centro absorbido —horas normales × tarifa menos el abono real a
+504.01.0099— se suma a la ociosidad, no a la brecha.
+
 Tres caminos por los que el modelo se desvía, y los tres se ven ahí:
 
 1. **Gasto que nunca llega a un producto** — cuentas `no_costeo` o sin
