@@ -91,16 +91,55 @@ crédito INFONAVIT. Cynthia Santana (11) 11,908.71 vs 11,908.78; Villordo
 
 El parámetro `quimibond_nomina.isr_mensual_incluye_borrador = 1` está puesto
 para que las pilotos (en borrador) acumulen; **quitarlo antes de la primera
-nómina real**. La corrida 120 (semana 40, última de septiembre) no se
-recalculó: si se recalcula, el ajuste mensual tomará las semanas 37 a 39 en
-borrador, incluida la corrida 116 (semana 37, superada), así que primero
-cancelar la 116.
+nómina real**.
+
+## Semana 40 (2026-10-01): la última semana de septiembre con el ajuste mensual
+
+La corrida 120 (semana 40, 21 al 27 de septiembre) se había calculado el 25 de
+septiembre periodo por periodo, antes del ISR mensual. NOI sí cerró el mes en
+esa semana: contra sus 90 XML, sólo 1 de 85 recibos quedaba dentro de 2 pesos.
+El 1 de octubre se recalcularon la corrida 116 (semana 37, la única de esa
+semana: cancelarla dejaba el mes incompleto) y después la 120, con
+`quimibond_nomina` 19.0.1.7.1 y las reglas vigentes.
+
+| Corrida Odoo | Recibos Odoo | XML de NOI | Comparados | Gravado | IMSS | Neto a 10 centavos |
+|---|---|---|---|---|---|---|
+| 120 Semana 40 | 88 | 90 | 85 | 85/85 | 85/85 | 82/85 |
+
+Sumas de los 85 comparados: neto Odoo 265,714.64 vs NOI 265,669.90. Los
+subsidios negativos (ocho de −123.34 y uno de −246.68, personas que en el mes
+rebasaron el límite) y las devoluciones de ISR (García Ortega 565: ISR −84.61
+más subsidio 410.76 = 495.37; NOI lo paga como "otros pagos" 495.39) salen
+iguales.
+
+Los 3 fuera de 10 centavos no son de la semana 40, son de la semana 37, y el
+ajuste mensual los arrastra: **el ISR del mes completo coincide al centavo**.
+
+| Recibo | Empleado | Neto S40 | Causa |
+|---|---|---|---|
+| 4667 | Marco Antonio Vega Rojas (433) | +20.44 | Semana 37 con prima vacacional 506.27: NOI retuvo 276.41 y Odoo 296.86 (NOI grava la prima vacacional con otro procedimiento). Mes: Odoo 901.08 vs NOI 901.09 |
+| 4668 | Germana Trinidad Paulino Ortiz (432) | +20.43 | Idéntico (misma prima vacacional en la semana 37) |
+| 4681 | Alberto Ariel Domínguez Pérez (512) | +4.61 | Semana 37 de 5.833 días: NOI ISR 0 sin subsidio en efectivo; Odoo ISR 127.93 − subsidio 123.34 = 4.59. Mes: 0.00 en los dos |
+
+Lo que no se comparó: Carmona Medina (4638) sigue sin XML en la memoria;
+Fuentes Fernández (4692) y Delgado Molina (4693) están en cero en Odoo pero
+NOI les pagó vacaciones (479.97 y 283.62, 0.001 días) que Odoo no tiene
+capturadas; y 3 XML de NOI sin recibo en Odoo: Jorge Matías Salinas, María del
+Refugio Corona Menchaca y Rubén García Peña, altas del 25 de septiembre (5 y 6
+días en NOI) que en Odoo existen como empleados sin RFC, sin fecha de contrato y
+sin recibo en las semanas 40 y 41.
+
+La corrida 123 (semana 41, 28 sep al 4 oct, creada el 1 de octubre por la
+tarea diaria, 86 recibos) es de octubre para la regla (`date_to` 4-oct), así
+que se calcula periodo por periodo. NOI la timbra el 2 de octubre; comparar
+cuando lleguen los XML.
 
 ## Conclusión
 
-El cálculo de Odoo reproduce a NOI en los 199 recibos comparados: ISR,
-IMSS, subsidio, fondo de ahorro, cuotas sindicales, FONACOT e INFONAVIT
-salen iguales, con una sola diferencia real de 1.65 pesos en un crédito
-INFONAVIT. Lo que sigue para timbrar es lo que no depende del cálculo:
+El cálculo de Odoo reproduce a NOI en los 199 recibos semanales y
+quincenales de la primera pasada y, con el ISR mensual, en las quincenas 18 y
+19 y en la semana 40 que cierra septiembre: ISR, IMSS, subsidio, fondo de
+ahorro, cuotas sindicales, FONACOT e INFONAVIT salen iguales, con una sola
+diferencia real de 1.65 pesos en un crédito INFONAVIT. Lo que sigue para timbrar es lo que no depende del cálculo:
 timbrado de prueba en staging, la quincena de CDMX, y aguinaldo, finiquitos
 y vacaciones.
