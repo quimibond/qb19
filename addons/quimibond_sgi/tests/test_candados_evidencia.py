@@ -46,11 +46,17 @@ class TestCandadosEvidencia(TransactionCase):
         cls.employee = env['hr.employee'].create({'name': 'K01 Lector'})
 
     def _doc(self, state='vigente', code='F-ZK1-01'):
-        return self.env['documents.document'].create({
+        doc = self.env['documents.document'].create({
             'name': 'K01 %s' % code, 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'formato', 'sgi_code': code, 'sgi_state': state,
             # «formato» exige proceso con clave nueva (_check_sgi_code).
             'sgi_process_id': self.process.id})
+        # Un vigente nace de solo lectura (_sgi_share_controlled): se da
+        # edición para que el usuario llegue al candado y no al permiso por
+        # documento de Documents (mismo patrón que test_dropbox_section).
+        if 'access_internal' in doc._fields:
+            doc.sudo().write({'access_internal': 'edit'})
+        return doc
 
     def _closable_nc(self):
         # La segunda NC del mismo proceso sale reincidente y pide una acción
@@ -83,9 +89,9 @@ class TestCandadosEvidencia(TransactionCase):
     # ---- K-01 ---------------------------------------------------------------
     def test_01_documento_controlado_no_va_a_la_papelera(self):
         doc = self._doc()
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, 'papelera'):
             doc.with_user(self.docs_editor).write({'active': False})
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, 'papelera'):
             doc.with_user(self.docs_editor).action_archive()
         self.assertTrue(doc.active)
 
@@ -99,7 +105,7 @@ class TestCandadosEvidencia(TransactionCase):
 
     def test_03_documento_controlado_no_se_borra(self):
         doc = self._doc(code='F-ZK1-04')
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, 'papelera'):
             doc.with_user(self.docs_editor).unlink()
 
     def test_04_el_acuse_detiene_el_borrado_fisico(self):
