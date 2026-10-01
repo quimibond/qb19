@@ -387,7 +387,7 @@
         <field name="name">sgi.sales.budget.list</field>
         <field name="model">sgi.sales.budget</field>
         <field name="arch" type="xml">
-            <list string="Presupuestos de ventas"
+            <list string="Presupuestos"
                   decoration-muted="state == 'obsoleto'"
                   decoration-success="state == 'aprobado'">
                 <field name="folio"/>
@@ -410,7 +410,7 @@
         <field name="name">sgi.sales.budget.search</field>
         <field name="model">sgi.sales.budget</field>
         <field name="arch" type="xml">
-            <search string="Presupuestos de ventas">
+            <search string="Presupuestos">
                 <field name="team_id"/>
                 <field name="partner_id"/>
                 <field name="year"/>
@@ -501,7 +501,7 @@
         <field name="name">sgi.sales.forecast.list</field>
         <field name="model">sgi.sales.budget</field>
         <field name="arch" type="xml">
-            <list string="Pronósticos de ventas"
+            <list string="Pronósticos"
                   decoration-muted="state == 'obsoleto'"
                   decoration-success="state == 'aprobado'">
                 <field name="folio"/>
@@ -610,7 +610,7 @@
          nombran en view_ids (B-015: antes se definían dos veces). -->
 
     <record id="sgi_sales_budget_action" model="ir.actions.act_window">
-        <field name="name">Presupuestos de ventas</field>
+        <field name="name">Presupuestos</field>
         <field name="res_model">sgi.sales.budget</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="view_ids" eval="[(5, 0, 0),
@@ -630,7 +630,7 @@
     </record>
 
     <record id="sgi_sales_forecast_action" model="ir.actions.act_window">
-        <field name="name">Pronósticos de ventas</field>
+        <field name="name">Pronósticos</field>
         <field name="res_model">sgi.sales.budget</field>
         <field name="view_mode">kanban,list,form</field>
         <field name="search_view_id" ref="sgi_sales_budget_view_search"/>

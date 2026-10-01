@@ -13,4 +13,6 @@ Satélite de `quimibond_sgi` (`auto_install` con `mrp_plm`).
   si cambia el catálogo de elementos, revisar aquí (A-021).
 - **Pendiente:** cuando PPAP salga a un satélite automotriz, este puente
   cambia de dependencia.
+- **Pestaña «SGI»** del ECO (3.1.0, revisión de vistas V-B03; antes «SGI -
+  Control de cambios»).
 - **Depende de:** `quimibond_sgi`, `mrp_plm`. Sin pruebas propias.

@@ -15,7 +15,7 @@ ser dueño de un proceso auditado.
 | Menú | Para qué |
 |---|---|
 | **SGI → Mejora → Auditorías → Programa** | El programa anual de auditorías |
-| **SGI → Mejora → Auditorías → Auditorías realizadas** | Cada auditoría con su checklist, hallazgos e informe |
+| **SGI → Mejora → Auditorías → Auditorías** | Cada auditoría con su checklist, hallazgos e informe |
 | **SGI → Mejora → No conformidades / Acciones correctivas** | Las NC y sus acciones, para seguir los hallazgos |
 | **SGI → Administración SGI → Documentos → Documentos / Lista maestra** | Documentos controlados con revisión, estado y difusión |
 | **SGI → Administración SGI → Firmas de lectura → Acuses de lectura** | Quién firmó cada documento |

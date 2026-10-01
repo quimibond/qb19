@@ -4,7 +4,10 @@
 Bloque 4: listas, análisis y vistas faltantes (pastillas y barras, Paretos
 ordenados, programa y auditorías, chatter en mediciones y evaluaciones de
 proveedor, calendario, kanban, gráfica y panel lateral, multi_edit,
-búsqueda de lecciones y vistas de actividades)."""
+búsqueda de lecciones y vistas de actividades).
+
+Bloque 5: textos y pulido (títulos iguales al menú, sin emojis ni sufijo
+«SGI», glosario, «Descartar», fichas de catálogo con título)."""
 from datetime import date
 
 from lxml import etree
@@ -151,3 +154,106 @@ class TestListasYAnalisis(TransactionCase):
             action = self.env.ref('quimibond_sgi.' + xmlid)
             self.assertIn('activity', action.view_mode.split(','), xmlid)
             _arch(self.env, action.res_model, 'activity', 'quimibond_sgi.' + view_ref)
+
+
+@tagged('post_install', '-at_install')
+class TestTextosYPulido(TransactionCase):
+    """57.81.0 (V-M12, V-B02, V-B03, V-B04, V-B05, V-B07, V-B08, V-B09, V-B10,
+    V-B14, V-B17)."""
+
+    # La misma acción abre «Eficiencias de mi área» (Inicio) y «Hojas
+    # mensuales» (Empleados): no puede llamarse como los dos menús.
+    SHARED_ACTIONS = ('menu_sgi_my_staff_efficiency',)
+
+    def _sgi_views(self):
+        return self.env['ir.ui.view'].search([
+            ('id', 'in', self.env['ir.model.data'].search([
+                ('module', '=', 'quimibond_sgi'), ('model', '=', 'ir.ui.view')]).mapped('res_id'))])
+
+    def test_01_acciones_con_el_nombre_del_menu(self):
+        """V-M12: la acción (migas) se llama como el menú por el que se entra."""
+        root = self.env.ref('quimibond_sgi.menu_sgi_root')
+        menus = self.env['ir.ui.menu'].with_context(**{'ir.ui.menu.full_list': True}).search(
+            [('id', 'child_of', root.id)])
+        checked = 0
+        for menu in menus:
+            if not menu.action or menu.action._name != 'ir.actions.act_window':
+                continue
+            xmlid = menu.get_external_id().get(menu.id, '')
+            if xmlid.split('.')[-1] in self.SHARED_ACTIONS:
+                continue
+            self.assertEqual(menu.action.name, menu.name, xmlid)
+            checked += 1
+        self.assertGreater(checked, 30)
+        self.assertEqual(self.env.ref('quimibond_sgi.menu_sgi_audit_list').name, 'Auditorías')
+        for model, view_type in (('sgi.incident', 'list'), ('sgi.incident', 'search')):
+            self.assertEqual(_arch(self.env, model, view_type).get('string'), 'Incidentes y accidentes')
+
+    def test_02_sin_emojis_ni_sufijo_sgi(self):
+        """V-B02 y V-B03: íconos fa en lugar de emojis; sin «(SGI)» en las etiquetas."""
+        for view in self._sgi_views():
+            arch = view.arch_db or ''
+            for emoji in ('\U0001F4CB', '\U0001F389'):
+                self.assertNotIn(emoji, arch, view.xml_id)
+            tree = etree.fromstring(arch.encode())
+            for node in tree.xpath('//page[@string] | //group[@string] | //button[@string]'):
+                self.assertNotIn('(SGI)', node.get('string'), view.xml_id)
+        partner = etree.fromstring(
+            self.env.ref('quimibond_sgi.sgi_res_partner_supplier_view_form').arch_db.encode())
+        self.assertTrue(partner.xpath("//page[@name='sgi_supplier'][@string='SGI']"))
+
+    def test_03_glosario(self):
+        """V-B04: no conformidad, CoA, indicador, casi accidente, Jefe MAST."""
+        bad = ('No Conformidad', 'NCs', 'KPI', 'casi-accidente', 'Jefe de MAST', 'COA ')
+        for view in self._sgi_views():
+            tree = etree.fromstring((view.arch_db or '').encode())
+            for node in tree.xpath('//*[@string] | //*[@help] | //*[@placeholder] | //*[@confirm]'):
+                for attr in ('string', 'help', 'placeholder', 'confirm'):
+                    for word in bad:
+                        self.assertNotIn(word, node.get(attr) or '', "%s: %s" % (view.xml_id, attr))
+
+    def test_04_estado_con_etiqueta(self):
+        """V-B05: el estado de la hoja de eficiencias dice «Estado»."""
+        self.assertEqual(self.env['sgi.staff.efficiency']._fields['state'].string, 'Estado')
+
+    def test_05_ayudas_y_descartar(self):
+        """V-B07 y V-B08: ayuda en «Puestos y procesos»; «Descartar» en los asistentes de NC."""
+        self.assertIn('Empleados', self.env.ref('quimibond_sgi.sgi_hr_job_action_roles').help)
+        for model, ref in (('sgi.nc.cancel', 'sgi_nc_cancel_view_form'),
+                           ('sgi.nc.force.close', 'sgi_nc_force_close_view_form')):
+            arch = _arch(self.env, model, 'form', 'quimibond_sgi.' + ref)
+            labels = [b.get('string') for b in arch.xpath("//footer/button[@special='cancel']")]
+            self.assertEqual(labels, ['Descartar'], ref)
+
+    def test_06_botones_inteligentes(self):
+        """V-B09: difusión solo con statinfo; en el proceso, primero las alertas."""
+        doc = _arch(self.env, 'documents.document', 'form', 'quimibond_sgi.sgi_document_view_form')
+        self.assertFalse(doc.xpath("//button[@name='action_open_acks']//div[contains(@class, 'o_stat_info')]"))
+        process = _arch(self.env, 'sgi.process', 'form', 'quimibond_sgi.sgi_process_view_form')
+        names = [b.get('name') for b in process.xpath("//div[@name='button_box']/button")]
+        self.assertLess(names.index('action_open_overdue_actions'), names.index('action_view_activities'))
+        self.assertLess(names.index('action_open_red_kpis'), names.index('action_open_indicators'))
+
+    def test_07_fichas_de_catalogo_con_titulo(self):
+        """V-B10: el nombre como título; chatter en la plantilla de checklist."""
+        for model, ref, field in (('sgi.area', 'sgi_area_view_form', 'name'),
+                                  ('sgi.job.family', 'sgi_job_family_view_form', 'name'),
+                                  ('sgi.norm', 'sgi_norm_view_form', 'name'),
+                                  ('sgi.norm.clause', 'sgi_norm_clause_view_form', 'name'),
+                                  ('sgi.health.record', 'sgi_health_record_view_form', 'employee_id'),
+                                  ('sgi.checklist.template', 'sgi_checklist_template_view_form', 'name')):
+            arch = _arch(self.env, model, 'form', 'quimibond_sgi.' + ref)
+            self.assertTrue(arch.xpath("//div[contains(@class, 'oe_title')]/h1/field[@name='%s']" % field), ref)
+        template = _arch(self.env, 'sgi.checklist.template', 'form',
+                         'quimibond_sgi.sgi_checklist_template_view_form')
+        self.assertTrue(template.xpath('//chatter'))
+
+    def test_08_mi_equipo_y_agrupaciones(self):
+        """V-B14 y V-B17: el total de Mi equipo es de la página; agrupaciones en <group>."""
+        team = _arch(self.env, 'hr.employee.public', 'list', 'quimibond_sgi.sgi_my_team_view_list')
+        for node in team.xpath('//field[@sum]'):
+            self.assertEqual(node.get('sum'), 'Total de la página')
+        search = _arch(self.env, 'sgi.action.line', 'search', 'quimibond_sgi.sgi_action_line_view_search')
+        grouped = {f.get('name') for f in search.xpath('//group/filter')}
+        self.assertEqual(grouped, {'group_responsible', 'group_state', 'group_commit'})
+        self.assertFalse(search.xpath("//filter[starts-with(@string, 'Agrupar por')]"))

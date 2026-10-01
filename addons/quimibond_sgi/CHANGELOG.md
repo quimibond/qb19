@@ -13,6 +13,55 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.81.0 — 2026-10-01
+
+**Cambiado (pulido de vistas, bloque 5: textos y pulido; revisión del
+2026-09-30):**
+- **Migas iguales al menú (V-M12):** las acciones se llaman como su menú
+  («Programa», «Hallazgos», «Ajustes»); el menú y la acción «Auditorías
+  realizadas» pasan a «Auditorías» (también muestra las de borrador y las
+  planificadas); incidentes dicen «Incidentes y accidentes» en lista,
+  búsqueda, pivote y actividades, y la ficha «Incidente o accidente»;
+  «Revisión por la dirección» con minúscula. Árbol de menús al día. «Eficiencias
+  de mi área» y «Hojas mensuales» comparten acción y siguen como estaban.
+- **Sin emojis (V-B02):** el aviso de formato controlado usa el ícono
+  `fa-file-text-o` en lugar de 📋 (12 avisos).
+- **Sin sufijo «SGI» (V-B03):** dentro de la app, «Áreas», «Documentos»,
+  «Documento controlado», «Cambio documental», «Gestión del cambio (MOC)»,
+  «Formato en documento de Odoo», «Datos de la NC», «Ligas», «Recalcular
+  métricas». En fichas de otras apps la pestaña se llama «SGI» (contacto,
+  equipo, transferencia, tarea; «EPP» en el empleado y «Documentos
+  aplicables» en el puesto, que ya tienen otras pestañas del SGI). El ECO
+  de PLM va en `quimibond_sgi_plm` 3.1.0.
+- **Glosario (V-B04)** en el README y barrido de etiquetas, ayudas,
+  marcadores y confirmaciones: «no conformidad» (NC, sin «NCs»),
+  «certificado de calidad (CoA)», «indicador» (no «KPI»), «casi accidente»,
+  «Jefe MAST». Los reportes impresos no cambian.
+- **Etiqueta «Estado» (V-B05)** en la hoja de eficiencias de personal.
+- **Ayudas (V-B07):** «Puestos y procesos» explica qué muestra y de dónde
+  salen los puestos; sin claves internas («D-08») en la ayuda de Ajustes. La
+  del Pareto del revisado va en `quimibond_sgi_revisado`.
+- **«Descartar» (V-B08)** en el botón para salir de los asistentes (NC,
+  CoA, requisitos legales, propuestas de cambio, firmas…).
+- **Botones inteligentes (V-B09):** «% Difusión» del documento solo con
+  `statinfo`; en el proceso, primero los de alerta (sin evidencia,
+  indicadores en rojo, riesgos altos, NC abiertas, acciones vencidas,
+  faltantes) y después los catálogos.
+- **Fichas con título (V-B10):** área, familia de puestos, norma, punto de
+  la norma, estudio o examen (trabajador y estudio) y plantilla de checklist,
+  que además tiene chatter.
+- **Mi equipo (V-B14):** el total de los pendientes es «Total de la página»
+  (son calculados: no hay subtotales al agrupar); «pendientes atrasados» en
+  masculino en todas partes.
+- **Búsqueda de acciones (V-B17):** las agrupaciones van en `<group>` con
+  etiqueta corta («Responsable», «Estado», «Fecha compromiso»).
+
+`quimibond_ventas_presupuesto` (misma 19.0.1.2.0): migas «Presupuestos»,
+«Pronósticos» y «Releases de clientes». `quimibond_sgi_revisado` (misma
+4.3.0): menú «Pareto de defectos de revisado» (sin paréntesis).
+
+**Pruebas:** `test_vistas_pulido_45.TestTextosYPulido`.
+
 ## 19.0.57.80.0 — 2026-10-01
 
 **Cambiado (pulido de vistas, bloque 4: listas, análisis y vistas

@@ -71,9 +71,9 @@
                          invisible="responsible_id and process_id">
                         <b>Configuración incompleta:</b> sin
                         <b>responsable</b> las capturas y validaciones caen en el
-                        Jefe MAST, y sin <b>proceso</b> los rojos de este KPI NO
+                        Jefe MAST, y sin <b>proceso</b> los rojos de este indicador NO
                         cuentan en la salud del Panel. Es la causa de que un
-                        proceso se vea «verde» con KPIs en rojo.
+                        proceso se vea «verde» con indicadores en rojo.
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
                             invisible="active"/>

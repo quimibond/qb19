@@ -4,7 +4,7 @@
         <field name="name">sgi.incident.form</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <form string="Incidente SST">
+            <form string="Incidente o accidente">
                 <header>
                     <!-- D-009: investigar, cerrar y reabrir es de MAST y Salud
                          ocupacional (el write() lo exige también por RPC). -->
@@ -93,7 +93,7 @@
         <field name="name">sgi.incident.list</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <list string="Incidentes SST"
+            <list string="Incidentes y accidentes"
                   decoration-danger="severity in ('grave', 'fatal')"
                   decoration-warning="severity == 'moderado'">
                 <field name="folio"/>
@@ -116,7 +116,7 @@
         <field name="name">sgi.incident.search</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <search string="Incidentes SST">
+            <search string="Incidentes y accidentes">
                 <field name="folio"/>
                 <field name="name"/>
                 <field name="process_id"/>
@@ -146,7 +146,7 @@
         <field name="name">sgi.incident.pivot</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <pivot string="Incidentes SST">
+            <pivot string="Incidentes y accidentes">
                 <field name="incident_type" type="row"/>
                 <field name="severity" type="col"/>
             </pivot>
@@ -203,8 +203,8 @@
         <field name="context">{'search_default_abiertos': 1}</field>
         <field name="search_view_id" ref="sgi_incident_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Reporte un incidente SST — el casi-accidente también cuenta</p>
-            <p>Cualquier empleado puede reportar (lesión, casi-accidente, daño, ambiental, enfermedad). Reportar mucho es señal de cultura, no de mal desempeño. Un incidente <b>grave o fatal</b> genera la NC mayor y avisa a Dirección automáticamente; la investigación SCAT exige sus 3 capas de causas antes de cerrar.</p>
+            <p class="o_view_nocontent_smiling_face">Reporte un incidente SST — el casi accidente también cuenta</p>
+            <p>Cualquier empleado puede reportar (lesión, casi accidente, daño, ambiental, enfermedad). Reportar mucho es señal de cultura, no de mal desempeño. Un incidente <b>grave o fatal</b> genera la NC mayor y avisa a Dirección automáticamente; la investigación SCAT exige sus 3 capas de causas antes de cerrar.</p>
         </field>
     </record>
 
@@ -214,7 +214,7 @@
         <field name="name">sgi.incident.activity</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <activity string="Incidentes SST">
+            <activity string="Incidentes y accidentes">
                 <templates>
                     <div t-name="activity-box">
                         <div><field name="display_name" display="full"/></div>

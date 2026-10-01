@@ -41,7 +41,7 @@
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Registrar" class="btn-primary"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
@@ -74,10 +74,10 @@
                             class="btn-success" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
                             class="btn-warning" groups="quimibond_sgi.group_sgi_manager"
-                            confirm="Un cumplimiento parcial levanta una No Conformidad. ¿Registrar la evaluación?"/>
+                            confirm="Un cumplimiento parcial levanta una no conformidad. ¿Registrar la evaluación?"/>
                     <button name="action_mark_no_cumple" type="object" string="No cumple"
                             class="btn-danger" groups="quimibond_sgi.group_sgi_manager"
-                            confirm="Un incumplimiento levanta una No Conformidad mayor. ¿Registrar la evaluación?"/>
+                            confirm="Un incumplimiento levanta una no conformidad mayor. ¿Registrar la evaluación?"/>
                     <button name="action_mark_no_aplica" type="object" string="No aplica" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="compliance_state" widget="statusbar"/>
                 </header>

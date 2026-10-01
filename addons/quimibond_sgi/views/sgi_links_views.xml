@@ -46,7 +46,7 @@
         <field name="inherit_id" ref="project.view_task_form2"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Desarrollo (SGI)" name="sgi_dyd" invisible="not sgi_dyd_link_count">
+                <page string="SGI" name="sgi_dyd" invisible="not sgi_dyd_link_count">
                     <field name="sgi_dyd_link_count" invisible="1"/>
                     <group>
                         <group string="AMEF">
@@ -123,7 +123,7 @@
                 </group>
                 <footer>
                     <button name="action_attach" type="object" string="Adjuntar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel"/>
+                    <button string="Descartar" special="cancel"/>
                 </footer>
             </form>
         </field>

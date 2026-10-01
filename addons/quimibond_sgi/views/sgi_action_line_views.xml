@@ -58,29 +58,31 @@
                 <separator/>
                 <filter name="filter_commit" string="Compromiso" date="date_commit"/>
                 <separator/>
-                <filter name="from_nc" string="De No Conformidades"
+                <filter name="from_nc" string="De no conformidades"
                         domain="[('alert_id', '!=', False)]"/>
-                <filter name="from_risk" string="De Riesgos"
+                <filter name="from_risk" string="De riesgos"
                         domain="[('risk_id', '!=', False)]"/>
                 <filter name="from_fmea" string="De AMEF"
                         domain="[('fmea_line_id', '!=', False)]"/>
-                <filter name="from_incident" string="De Incidentes SST"
+                <filter name="from_incident" string="De incidentes y accidentes"
                         domain="[('incident_id', '!=', False)]"/>
-                <filter name="from_drill" string="De Simulacros"
+                <filter name="from_drill" string="De simulacros"
                         domain="[('drill_id', '!=', False)]"/>
-                <filter name="from_objective" string="De Objetivos"
+                <filter name="from_objective" string="De objetivos"
                         domain="[('objective_id', '!=', False)]"/>
-                <filter name="from_review" string="De la Revisión por la dirección"
+                <filter name="from_review" string="De la revisión por la dirección"
                         domain="[('review_id', '!=', False)]"/>
-                <filter name="from_measure" string="De Indicadores en rojo"
+                <filter name="from_measure" string="De indicadores en rojo"
                         domain="[('measure_id', '!=', False)]"/>
-                <separator/>
-                <filter name="group_responsible" string="Agrupar por responsable"
-                        context="{'group_by': 'responsible_id'}"/>
-                <filter name="group_state" string="Agrupar por estado"
-                        context="{'group_by': 'state'}"/>
-                <filter name="group_commit" string="Agrupar por fecha compromiso"
-                        context="{'group_by': 'date_commit'}"/>
+                <!-- V-B17 (57.81.0): agrupaciones en <group>, con etiqueta corta. -->
+                <group>
+                    <filter name="group_responsible" string="Responsable"
+                            context="{'group_by': 'responsible_id'}"/>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_commit" string="Fecha compromiso"
+                            context="{'group_by': 'date_commit'}"/>
+                </group>
             </search>
         </field>
     </record>

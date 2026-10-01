@@ -383,7 +383,7 @@ class SgiDiagnostic(models.TransientModel):
         if suppliers_pending:
             lines.append(self._sgi_line(
                 'warn', "%d proveedor(es) sin aprobación 8.4.1 (el bloqueo de OC no aplica a nadie): arranque por los que reciben compras hoy." % suppliers_pending,
-                "ficha del proveedor → pestaña SGI Proveedor"))
+                "ficha del proveedor → pestaña SGI"))
         # Encuesta de satisfacción divergente: hay respuestas reales en OTRA
         # encuesta de satisfacción distinta de la que alimenta CA-02.
         survey = env['sgi.indicator']._sgi_satisfaction_survey()

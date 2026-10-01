@@ -89,7 +89,7 @@
     </record>
 
     <record id="sgi_audit_program_action" model="ir.actions.act_window">
-        <field name="name">Programa de auditorías</field>
+        <field name="name">Programa</field>
         <field name="res_model">sgi.audit.program</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="help" type="html">
@@ -301,7 +301,7 @@
     </record>
 
     <record id="sgi_audit_action" model="ir.actions.act_window">
-        <field name="name">Auditorías realizadas</field>
+        <field name="name">Auditorías</field>
         <field name="res_model">sgi.audit</field>
         <field name="view_mode">list,calendar,form,activity</field>
         <field name="context">{'search_default_open': 1}</field>

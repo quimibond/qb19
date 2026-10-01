@@ -17,10 +17,10 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Calibraciones** — `sgi.calibration`
     - **Verificaciones de laboratorio** — `sgi.calibration`
     - **Estudios MSA** — `sgi.msa.study`
-  - **COA recibidos** — `sgi.coa.inbox`; grupos: quality.group_quality_user, quimibond_sgi.group_sgi_manager
+  - **CoA recibidos** — `sgi.coa.inbox`; grupos: quality.group_quality_user, quimibond_sgi.group_sgi_manager
 - **Paretos de calidad** — grupos: quality.group_quality_user, quimibond_sgi.group_sgi_manager; bajo `quality_control.menu_quality_root`
   - **Pareto de alertas de calidad** — `quality.alert`
-  - **Pareto de defectos (revisado)** — `mrp.revision.log`
+  - **Pareto de defectos de revisado** — `mrp.revision.log`
 - **Evaluación de proveedores** — `sgi.supplier.eval`; grupos: purchase.group_purchase_user, quimibond_sgi.group_sgi_user; bajo `purchase.menu_purchase_root`
 - **Competencias SGI** — grupos: hr.group_hr_user, quimibond_sgi.group_sgi_user; bajo `hr.menu_hr_root`
   - **Brechas de competencia (DNC)** — `sgi.competence.gap`
@@ -60,7 +60,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Quejas y sugerencias del personal** — `helpdesk.ticket`
     - **Auditorías**
       - **Programa** — `sgi.audit.program`
-      - **Auditorías realizadas** — `sgi.audit`
+      - **Auditorías** — `sgi.audit`
       - **Hallazgos** — `sgi.audit.finding`
   - **Seguridad y ambiente**
     - **Incidentes y accidentes** — `sgi.incident`
@@ -134,19 +134,19 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_activity_week_stat_action` | act_window | Cumplimiento semanal | `sgi.activity.week.stat` | pivot,list | sí | `addons/quimibond_sgi/views/sgi_activity_spec_views.xml` |
 | `quimibond_sgi.sgi_alert_source_action` | act_window | Fuentes de NC automáticas | `sgi.alert.source` | list,form | sí | `addons/quimibond_sgi/views/sgi_alert_source_views.xml` |
 | `quimibond_sgi.sgi_area_action` | act_window | Áreas | `sgi.area` | list,form | sí | `addons/quimibond_sgi/views/sgi_area_views.xml` |
-| `quimibond_sgi.sgi_audit_action` | act_window | Auditorías realizadas | `sgi.audit` | list,calendar,form,activity | sí | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
-| `quimibond_sgi.sgi_audit_finding_list_action` | act_window | Hallazgos de auditoría | `sgi.audit.finding` | list,form | sí | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
-| `quimibond_sgi.sgi_audit_program_action` | act_window | Programa de auditorías | `sgi.audit.program` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
+| `quimibond_sgi.sgi_audit_action` | act_window | Auditorías | `sgi.audit` | list,calendar,form,activity | sí | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
+| `quimibond_sgi.sgi_audit_finding_list_action` | act_window | Hallazgos | `sgi.audit.finding` | list,form | sí | `addons/quimibond_sgi/views/sgi_audit_finding_legal_eval_views.xml` |
+| `quimibond_sgi.sgi_audit_program_action` | act_window | Programa | `sgi.audit.program` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_audit_views.xml` |
 | `quimibond_sgi.sgi_calibration_action` | act_window | Calibraciones | `sgi.calibration` | list,calendar,form,activity | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `quimibond_sgi.sgi_calibration_action_lab` | act_window | Verificaciones de laboratorio | `sgi.calibration` | list,form | sí | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `quimibond_sgi.sgi_catalog_load_wizard_action` | act_window | Cargar catálogo | `sgi.catalog.load.wizard` | form |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_checklist_request_action` | act_window | Hojas de checklist | `maintenance.request` | list,form,pivot | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_checklist_template_action` | act_window | Checklists de planta y unidades | `sgi.checklist.template` | list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_checklist_today_action` | act_window | Checklists de hoy | `maintenance.request` | kanban,list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
-| `quimibond_sgi.sgi_coa_inbox_action` | act_window | COA recibidos | `sgi.coa.inbox` | list,form | sí | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
+| `quimibond_sgi.sgi_coa_inbox_action` | act_window | CoA recibidos | `sgi.coa.inbox` | list,form | sí | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
 | `quimibond_sgi.sgi_competence_gap_action` | act_window | Brechas de competencia (DNC) | `sgi.competence.gap` | pivot,sgi_diagram,list | sí | `addons/quimibond_sgi/views/sgi_competence_views.xml` |
 | `quimibond_sgi.sgi_complaint_action` | server | Reclamaciones de clientes | `helpdesk.ticket` |  |  | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
-| `quimibond_sgi.sgi_config_settings_action` | act_window | Ajustes del SGI | `res.config.settings` | form |  | `addons/quimibond_sgi/views/sgi_settings_views.xml` |
+| `quimibond_sgi.sgi_config_settings_action` | act_window | Ajustes | `res.config.settings` | form |  | `addons/quimibond_sgi/views/sgi_settings_views.xml` |
 | `quimibond_sgi.sgi_control_plan_action` | act_window | Planes de control | `sgi.control.plan` | list,form | sí | `addons/quimibond_sgi/views/sgi_control_plan_views.xml` |
 | `quimibond_sgi.sgi_csh_inspection_action` | act_window | Recorridos CSH | `sgi.csh.inspection` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_current_document_action` | act_window | Documentos vigentes | `documents.document` | list | sí | `addons/quimibond_sgi/views/sgi_current_documents_views.xml` |
@@ -220,7 +220,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_staff_efficiency_action` | act_window | Eficiencias de personal | `sgi.staff.efficiency` | list,form | sí | `addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml` |
 | `quimibond_sgi.sgi_staff_efficiency_line_action` | act_window | Análisis por empleado | `sgi.staff.efficiency.line` | pivot,list | sí | `addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml` |
 | `quimibond_sgi.sgi_supplier_eval_action` | act_window | Evaluación de proveedores | `sgi.supplier.eval` | list,form | sí | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
-| `quimibond_sgi.sgi_supplier_eval_recompute_action` | server | Recalcular métricas (SGI) | `sgi.supplier.eval` |  |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
+| `quimibond_sgi.sgi_supplier_eval_recompute_action` | server | Recalcular métricas | `sgi.supplier.eval` |  |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `quimibond_sgi.sgi_work_permit_action` | act_window | Permisos de trabajo de alto riesgo | `sgi.work.permit` | list,form | sí | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |

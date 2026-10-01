@@ -57,7 +57,7 @@
         </field>
     </record>
 
-    <menuitem id="menu_sgi_dashboard_defectos" name="Pareto de defectos (revisado)"
+    <menuitem id="menu_sgi_dashboard_defectos" name="Pareto de defectos de revisado"
               parent="quimibond_sgi.menu_sgi_dashboards"
               action="mrp_revision_log_action_pareto" sequence="20"/>
 </odoo>

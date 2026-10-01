@@ -9,7 +9,7 @@
                 <!-- 57.62.0: formato controlado (verificación de laboratorio). -->
                 <div class="alert alert-info mb-0" role="alert"
                      invisible="not sgi_format_banner">
-                    📋 Formato controlado del SGI:
+                    <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
                 <sheet>
@@ -169,7 +169,7 @@
             <xpath expr="//sheet" position="before">
                 <div class="alert alert-info mb-0" role="alert"
                      invisible="not sgi_format_banner">
-                    📋 Formato controlado del SGI:
+                    <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
             </xpath>
@@ -181,7 +181,7 @@
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="Metrología / EPP (SGI)" name="sgi_metrology">
+                <page string="SGI" name="sgi_metrology">
                     <group>
                         <group string="Equipo de medición">
                             <field name="sgi_is_measuring"/>
@@ -372,7 +372,7 @@
             (0, 0, {'view_mode': 'form'})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Marque los equipos del laboratorio</p>
-            <p>En la ficha del equipo, pestaña «Metrología / EPP (SGI)», marque «Equipo de laboratorio». Para prestarlo, capture a quién; al devolverlo, deje el campo vacío: el seguimiento guarda el historial.</p>
+            <p>En la ficha del equipo, pestaña «SGI», marque «Equipo de laboratorio». Para prestarlo, capture a quién; al devolverlo, deje el campo vacío: el seguimiento guarda el historial.</p>
         </field>
     </record>
 </odoo>

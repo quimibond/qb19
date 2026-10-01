@@ -73,7 +73,7 @@
                                 class="oe_stat_button" icon="fa-exclamation-triangle"
                                 invisible="sgi_nc_count == 0">
                             <field name="sgi_nc_count" widget="statinfo"
-                                   string="NCs ligadas"/>
+                                   string="NC ligadas"/>
                         </button>
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"

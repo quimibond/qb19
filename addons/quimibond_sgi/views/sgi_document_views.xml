@@ -5,7 +5,7 @@
         <field name="name">sgi.documents.document.form</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <form string="Documento controlado SGI">
+            <form string="Documento controlado">
                 <header>
                     <button name="action_sgi_view_file" type="object" string="Ver archivo"
                             class="btn-primary" icon="fa-file-pdf-o"
@@ -21,10 +21,9 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <!-- V-B09 (57.81.0): solo statinfo, sin anidar o_stat_info. -->
                         <button name="action_open_acks" type="object" class="oe_stat_button" icon="fa-check-square-o">
-                            <div class="o_stat_info">
-                                <field name="sgi_ack_read_pct" widget="statinfo" string="% Difusión"/>
-                            </div>
+                            <field name="sgi_ack_read_pct" widget="statinfo" string="% Difusión"/>
                         </button>
                         <button name="action_sgi_open_in_documents" type="object"
                                 class="oe_stat_button" icon="fa-folder-open-o"
@@ -248,7 +247,7 @@
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
             <!-- V-B13 (57.80.0): multi_edit para mover responsable o próxima revisión de varios. -->
-            <list string="Documentos SGI" multi_edit="1"
+            <list string="Documentos" multi_edit="1"
                   decoration-muted="sgi_state == 'obsoleto'"
                   decoration-warning="sgi_state == 'piloto'"
                   decoration-info="sgi_state == 'borrador'">
@@ -284,7 +283,7 @@
         <field name="name">sgi.documents.document.search</field>
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
-            <search string="Documentos SGI">
+            <search string="Documentos">
                 <field name="sgi_code"
                        filter_domain="['|', ('sgi_code', 'ilike', self), ('sgi_previous_code', 'ilike', self)]"/>
                 <field name="sgi_title"/>

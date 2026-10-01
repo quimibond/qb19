@@ -16,7 +16,7 @@ propios, sin borrar datos»).
   reglas por empresa, 10 accesos, la secuencia `PPV-AAAA-`, el pie de
   formato `format_map_sales_budget`, los 9 parámetros `quimibond_sgi.budget_*`,
   `price_*`, `forecast_*` y `sales_budget_alert_pct` (mismas claves) y sus
-  ajustes en Ajustes → SGI → KPIs automáticos.
+  ajustes en Ajustes → SGI → Indicadores automáticos.
 - Avisos en el motor de crons del SGI (`sgi.cron`): cierre de mes (gancho
   `_sgi_monthly_close_steps`), cobertura semanal del pronóstico y revaluación
   del S2 (crons `sgi_cron_forecast_coverage` y `sgi_cron_budget_revaluation`).
@@ -31,6 +31,8 @@ propios, sin borrar datos»).
   enviar demanda al MPS). «Análisis» es botón inteligente; «Actualizar real»,
   «Conciliar facturado» e «Importar desde Excel» están en el engrane
   (Acción) de la ficha, y el PDF en el menú Imprimir.
+- Las migas dicen lo mismo que el menú: «Presupuestos», «Pronósticos» y
+  «Releases de clientes» (V-M12).
 
 ## Releases de clientes (19.0.1.1.0, E1a)
 

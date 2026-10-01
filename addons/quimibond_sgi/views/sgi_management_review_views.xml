@@ -4,7 +4,7 @@
         <field name="name">sgi.management.review.form</field>
         <field name="model">sgi.management.review</field>
         <field name="arch" type="xml">
-            <form string="Revisión por la Dirección">
+            <form string="Revisión por la dirección">
                 <header>
                     <!-- V-M06 (57.42.0): el siguiente paso de cada estado es el único
                          primario y va primero. -->
@@ -28,7 +28,7 @@
                      sgi_format_map_views.xml; A-008, 57.26.0). -->
                 <div class="alert alert-info mb-0" role="alert"
                      invisible="not sgi_format_banner">
-                    📋 Formato controlado del SGI:
+                    <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
                     <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
                 </div>
                 <sheet>
@@ -43,7 +43,7 @@
                     <div class="text-muted mb-2">
                         Flujo: define el periodo → <b>Cargar entradas</b> llena
                         las entradas 9.3.2 con los datos reales del periodo
-                        (NC, reclamaciones, auditorías, KPIs en rojo, riesgos
+                        (NC, reclamaciones, auditorías, indicadores en rojo, riesgos
                         altos…) → captura los <b>Acuerdos</b> (cada uno se
                         vuelve tarea rastreable con responsable y fecha) →
                         <b>Marcar realizada</b> y <b>Cerrar</b>.
@@ -176,7 +176,7 @@
         <field name="res_model">sgi.management.review</field>
         <field name="view_mode">list,sgi_diagram,form</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Cree la Revisión por la Dirección</p>
+            <p class="o_view_nocontent_smiling_face">Cree la revisión por la dirección</p>
             <p>El botón Cargar entradas llena las 10 entradas de la norma con los datos reales del periodo. Los acuerdos se vuelven tareas rastreables.</p>
         </field>
     </record>

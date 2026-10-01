@@ -33,13 +33,17 @@
         <field name="arch" type="xml">
             <form string="Estudio o examen">
                 <sheet>
+                    <!-- V-B10 (57.81.0): trabajador y estudio como título. -->
+                    <div class="oe_title">
+                        <label for="employee_id" string="Trabajador"/>
+                        <h1><field name="employee_id"/></h1>
+                        <h3><field name="name" placeholder="Estudio o examen"/></h3>
+                    </div>
                     <group>
                         <group>
-                            <field name="employee_id"/>
                             <field name="department_id"/>
                             <field name="job_id"/>
                             <field name="kind"/>
-                            <field name="name"/>
                         </group>
                         <group>
                             <field name="date"/>
@@ -305,10 +309,14 @@
                             class="btn-secondary"/>
                 </header>
                 <sheet>
+                    <!-- V-B10 (57.81.0): el nombre como título. -->
+                    <div class="oe_title">
+                        <label for="name" string="Checklist"/>
+                        <h1><field name="name"/></h1>
+                    </div>
                     <group>
                         <group>
                             <field name="code"/>
-                            <field name="name"/>
                             <field name="frequency"/>
                             <field name="active" invisible="1"/>
                         </group>
@@ -334,6 +342,8 @@
                         </field>
                     </group>
                 </sheet>
+                <!-- V-B10 (57.81.0): el modelo ya llevaba mail.thread. -->
+                <chatter/>
             </form>
         </field>
     </record>
@@ -549,7 +559,7 @@
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Terminar" class="btn-primary"/>
-                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
         </field>
