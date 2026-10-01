@@ -630,7 +630,8 @@
         <field name="view_mode">kanban,list,form</field>
         <field name="domain">[('sgi_is_controlled', '=', True),
             ('sgi_doc_type', 'in', ('formato', 'formato_it', 'formulario_odoo', 'instructivo',
-                                    'dat', 'anexo', 'protocolo', 'reglamento', 'miid', 'diagrama'))]</field>
+                                    'dat', 'anexo', 'protocolo', 'reglamento', 'miid', 'diagrama',
+                                    'control_operacional'))]</field>
         <field name="context">{'search_default_no_obsoletos': 1}</field>
         <field name="search_view_id" ref="sgi_migration_view_search"/>
         <field name="view_ids" eval="[(5, 0, 0),

@@ -13,6 +13,190 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.84.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 3/3, D-02; decisiones de Jose del
+2026-09-30, «Clave D-02: con script, al final del bloque 3», y del
+2026-10-01 sobre las tres preguntas abiertas):**
+`documents.document._sgi_apply_d02` aplica la clave nueva con
+`_sgi_assign_new_code` (56.32.0). Numeración determinista (proceso, prefijo,
+clave del Dropbox); el consecutivo sigue al más alto existente. Todas las
+revisiones de una clave van juntas y cada documento deja «Clave nueva …
+(antes …)» en su chatter.
+
+| Qué | Clave nueva |
+|---|---|
+| Formatos y formatos de instructivo (consecutivo compartido) | `F-{proceso}-{nn}` |
+| Instructivos | `IT-{proceso}-{nn}` |
+| DAT | `DA-{proceso}-{nn}` |
+| Protocolos | `PROT-{proceso}-{nn}` (patrón nuevo del tipo) |
+| Procedimientos del Dropbox «No aplica (se queda)» que ningún proceso sustituye | pasan a tipo **Control operacional**, `CO-{proceso}-{nn}` (patrón del tipo: antes `CO-{seq:02d}`) |
+
+**Conservan su clave (decisiones de Jose, 2026-10-01):**
+
+- **Procedimientos del Dropbox «En curso»:** hasta que su proceso entre en
+  vigor y queden obsoletos (se dan de baja con su clave).
+- **Formularios de Odoo** (L-004): no pasan a `F-{proceso}-{nn}`. Son
+  pantallas; lo que imprimen ya lleva la clave del formato ligado por el
+  mapeo.
+- **Anexos:** siguen a su documento padre. **Reglamentos** (por ejemplo, el
+  Reglamento Interior): están registrados ante la autoridad con ese nombre y
+  clave.
+- MIID, diagramas, obsoletos y P-I01 con su familia.
+
+- **No renombra archivos ni toca la clave anterior** (la del Dropbox, de
+  56.32.0): el buscador «Del Dropbox a Odoo», la búsqueda «Clave SGI» y
+  `_sgi_find_by_code` siguen encontrando cada documento por su clave vieja,
+  **sin límite de tiempo** (C-005; el inventario decía «12 meses», pero eso
+  cambió en 56.32.0). También los controles operacionales y los protocolos.
+- Los mapeos de formato imprimen solos la clave nueva (apuntan al documento,
+  C-006); su «Clave al ligar» se actualiza cuando era la vieja. Los mapeos
+  sin documento siguen encontrando el suyo por la clave anterior (el de
+  bloqueo y etiquetado, «P-A20», imprime CO-E2-04). Las ligas con
+  actividades no cambian.
+- Los controles operacionales ya no son procedimientos: salen de
+  «Procedimientos anteriores» y del conteo de procedimientos de «Avance de la
+  transición», y entran en **«Formatos y documentos anteriores»** y en los
+  documentos del avance (`sgi_migration_action`, `action_open_documents` y
+  `sgi.dropbox.progress` incluyen el tipo «Control operacional»). Sus rutinas
+  y su clave anterior no cambian.
+- `data/sgi_document_types.xml` (noupdate, solo bases nuevas) trae los
+  patrones `CO-{process}-{seq:02d}` y `PROT-{process}-{seq:02d}`; en
+  producción los pone la migración si el tipo sigue con el de fábrica.
+
+**Migración (post):** `migrations/19.0.57.84.0/post-migrate.py`. Idempotente
+(la segunda corrida no cambia nada); en el log, cada «vieja → nueva», los
+patrones de tipo con su valor anterior y cada documento sin cambio con su
+motivo. Esperado en producción (MCP, 2026-10-01, después de 57.82.0):
+
+- **5 controles operacionales**, todos de E2: P-A17 → CO-E2-01, P-A18 →
+  CO-E2-02, P-A19 → CO-E2-03, P-A20 → CO-E2-04, P-S03 → CO-E2-05. Siguen
+  como procedimiento los **21 «En curso»**, 5556 (borrador con clave
+  inválida, C-008) y P-I01.
+- **328 claves nuevas:** C1 33, C2 21, C3 3, C4 67, C5 64, C6 6, E1 1, E2 49,
+  S1 11, S2 7, S3 9, S4 41, S5 16 (instructivos 42, formatos 183, F-IT 63,
+  DAT 35, protocolos 5: PROT-01…05 → PROT-E2-01…05). IT-C4-01 (3644) ya la
+  tenía. Conservan su clave 66 formularios de Odoo, 15 anexos y 4
+  reglamentos.
+- «Clave al ligar» al día en los 25 mapeos ligados a un formato o F-IT.
+
+**Corregido (57.82.0, antes de llegar a producción):** el informe de otras
+referencias al duplicado (`_sgi_b3_other_references`) cuenta cada campo
+dentro de un savepoint: un error de SQL en un modelo ajeno ya no deja la
+transacción de la migración abortada.
+
+**Pruebas:** `test_formatos_bloque3` `TestBloque3ClaveD02` (numeración
+determinista con F y F-IT juntos, todas las revisiones, procedimiento «En
+curso» sin tocar, «No aplica (se queda)» → `CO-{proceso}-{nn}` con su tipo,
+protocolo → `PROT-{proceso}-{nn}`, anexo con padre, reglamento y formulario
+de Odoo sin tocar, búsqueda por clave anterior con `_sgi_find_by_code`, la
+búsqueda de Documentos y el buscador `sgi.dropbox.key` también para CO y
+PROT, «Formatos y documentos anteriores» con los CO, mapeos con y sin
+documento, ligas de actividades, idempotencia y post-migrate).
+
+## 19.0.57.83.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 2/3, propuesta de formatos §2, decisión
+del 2026-09-30 «Responsable SGI de cada formato: el dueño del proceso»):**
+`documents.document._sgi_owner_from_process` pone como responsable SGI de
+cada formato vigente o en piloto (formato, F-IT, DAT, anexo y formulario de
+Odoo) al usuario del dueño de su proceso (`sgi_process_id.owner_id.user_id`)
+si está activo y es interno. Solo toca los que hoy tiene el Jefe MAST (el
+custodio de 56.28.0, `_sgi_manager_user_id`): lo ya reasignado se respeta.
+Si el dueño no tiene usuario, el formato se queda con MAST y sale en el log.
+P-I01 y su familia quedan fuera. MAST conserva la aprobación y la
+publicación.
+
+**Migración (post):** `migrations/19.0.57.83.0/post-migrate.py`, después de
+las bajas de 57.82.0. Idempotente; en el log, por proceso, los ids y el
+cambio «Blanca Ballesteros → dueño». Esperado en producción (MCP,
+2026-10-01): **238** cambian (C1 32 y C2 31 → Jessica Francisco; C3 7 →
+Paris Villordo; C5 60 → Oscar González; C6 10 → Cynthia Santana; E1 5 y S1
+14 → Jorge Manuel Ortiz; S2 7 y S3 9 → Irma Luna; S4 45 → Miguel Medina; S5
+18 → Manuel Juárez); se quedan con MAST E2 70 (la dueña es MAST) y C4 64
+(Francisco González no tiene usuario: 54 en el log y 10 de P-I01).
+
+**Para Jose:** la lista de los 64 formatos de C4 que se quedan con MAST está
+en `docs/sgi/transicion/formatos-bloque-3.md` §2. Pasan a su dueño en cuanto
+Francisco González tenga usuario (ver D-08, «manufactura@»).
+
+**No se hizo:** la familia P-A13 (7 formatos en S2, que la propuesta daba
+por mal asignada a S4) no se movió: sus formatos son reportes
+administrativos (anticipos, compras, facturación, inventario, importaciones)
+y una lista de asistencia; no es un error evidente. Quedan con Irma Luna
+hasta que MAST decida su proceso.
+
+**Pruebas:** `test_formatos_bloque3` `TestBloque3Responsable` (dueño con
+usuario, sin usuario, usuario inactivo, dueña MAST, lo reasignado se
+respeta, instructivo, obsoleto y P-I01 fuera, idempotencia y post-migrate).
+
+## 19.0.57.82.0 — 2026-10-01
+
+**Cambiado (bloque 3 de formularios 1/3, propuesta de formatos aprobada por
+Jose el 2026-10-01, §3 y §1):** duplicados y datos malos de los formatos
+controlados. Tablas y métodos en `models/sgi_formatos_bloque3.py`
+(`documents.document._sgi_formatos_bloque3` y sus pasos
+`_sgi_b3_merge_duplicates`, `_sgi_b3_link_formats`, `_sgi_b3_uncontrol`,
+`_sgi_b3_recode`, `_sgi_b3_register_odoo_forms`). Cada documento se localiza
+por id **y** se verifica su clave (o clave anterior) y su empresa; si no
+coincide, se salta con aviso. Lo que cambia queda en el log con su valor
+anterior y en el chatter del documento.
+
+- **Dar de baja no es archivar.** En Documentos, archivar manda a la
+  papelera y Odoo **borra** lo archivado a los 30 días
+  (`documents.deletion_delay`). Los duplicados quedan activos, **obsoletos**,
+  con «Motivo de obsolescencia» y «Baja tramitada» (como los procedimientos
+  que sustituye un proceso, 45.0.0). Antes de darlos de baja, sus ligas en
+  actividades pasan al formato que se conserva. Ninguno está en
+  `sgi.format.map`; uno que lo estuviera se salta.
+- Bajas: F-IT-P-P04-07-01 (4026, duplicado de F-IT-P-C05-07-01),
+  F-P-A23-08 (3752 → F-P-A16-07), F-P-P04-02 (4023 → F-P-C05-02; C1.11 pasa
+  a F-P-C05-02), F-P-A13-01 (3725 → F-P-A01-49), F-P-C17-05 (3943 → vale
+  F-IT-P-A05-01-01), F-IT-P-P01-01-03 (3989 → F-P-P02-01; C4.14) y
+  F-P-P01-01 (4001, sin actividad).
+- Ligas nuevas: C2.43 ← F-P-A28-04 (3875), C6.12 ← F-IT-P-A05-01-01 (3698),
+  E2.37 ← F-IT-P-G03-01-01 (4063, evaluación de auditores, §1 #8).
+- **F-P-V01-04 (5152)** era un reporte de visita **lleno** con la misma
+  revisión 0 que el obsoleto 3359: deja de ser documento controlado (no se
+  borra). 3359 sigue archivado.
+- **F-P-E01-01:** la «Evaluación luminaria» (4060) pasa a **F-P-S01-02**
+  (estudio de higiene de SST, NOM-025; familia P-S01, la primera libre) en la
+  clave y en la clave anterior, para que la búsqueda por clave anterior no la
+  confunda con la matriz; F-P-E01-01 queda en el nombre del archivo, el
+  chatter y el seguimiento. Se liga a E2.31 (estudios de higiene y
+  evaluaciones NOM). F-P-E01-01 queda libre para la matriz de aspectos
+  ambientales: el PDF de la matriz (mapeo 42) imprime «F-P-E01-01» sin
+  revisión hasta que exista el documento.
+- **Altas como «Formulario de Odoo»** (sin archivo; lo que se llena es la
+  pantalla): **F-P-A28-13** «Pronóstico de ventas» (C2, menú Pronósticos,
+  ligado a C2.40 y como documento alternativo del mapeo de
+  `sgi.sales.budget`, que ya imprimía esa clave sin documento) y
+  **F-P-A28-11** «Encuesta de satisfacción del cliente» (E2, menú SGI →
+  Dirección → Satisfacción del cliente, ligado a E2.12).
+
+**Migración (post):** `migrations/19.0.57.82.0/post-migrate.py`. Idempotente;
+nada se borra ni se archiva. Esperado en producción (MCP, 2026-10-01): 7
+bajas, 5 actividades con formatos cambiados (C1.11, C2.43, C4.14, C5.16,
+C6.12) más E2.31, E2.37, C2.40 y E2.12, 1 documento deja de ser controlado,
+1 clave corregida y 2 altas. Marca «cambió» el procedimiento de C1, C2, C4,
+C5, C6 y E2.
+
+**Queda para MAST** (detalle en `docs/sgi/transicion/formatos-bloque-3.md`):
+restaurar de la papelera, si se conservan, los 3 controlados archivados
+(3359, 5119, 4995: Odoo los borra hacia el 29-oct); subir la matriz de
+aspectos ambientales **en blanco** (no hay ninguna en Documentos: 4850 es una
+carpeta y 4868 es la matriz llena de MAST) y ligarla a E2.23 y al mapeo 42;
+ligar F-P-A16-07 a su actividad de C2 (no hay una evidente); confirmar el
+contenido de 4001; configurar la encuesta de satisfacción en Ajustes; decidir
+el proceso de la familia P-A13 (no se movió a S4: son reportes
+administrativos); corregir las citas de 13 de los 17 formatos citados que no
+existen y dar de alta F-P-A14-03, F-P-A06-04 y, si aplica, F-P-C05-10.
+
+**Pruebas:** `test_formatos_bloque3` (fusión con ligas, baja sin archivar,
+el que imprime un mapeo se respeta, clave o empresa distinta se salta,
+registro lleno, clave equivocada libre y búsqueda por clave anterior, alta de
+formulario de Odoo sin archivo con su mapeo, idempotencia, tablas reales y
+post-migrate).
 ## 19.0.57.81.0 — 2026-10-01
 
 **Cambiado (pulido de vistas, bloque 5: textos y pulido; revisión del
