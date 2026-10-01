@@ -444,6 +444,13 @@ class QualityAlert(models.Model):
                 raise UserError(
                     "La NC %s no se cancela arrastrándola: usa el botón «Cancelar NC», "
                     "captura el motivo y el Jefe de MAST la aprueba." % (alert.sgi_folio))
+            # 57.90.0 (FUNC-C13): cerrar es de quien responde por el proceso.
+            if new_stage.sgi_is_closing_stage and not force \
+                    and not alert._sgi_user_can_close():
+                raise UserError(
+                    "La NC %s solo la cierra el Jefe MAST o el dueño del proceso (%s). "
+                    "Pídale que revise la eficacia y la cierre."
+                    % (alert.sgi_folio, alert.sgi_process_id.owner_id.sudo().name or "sin dueño"))
             if (alert.sgi_origin_type == 'reclamacion' and not new_stage.sgi_is_cancel_stage
                     and alert.stage_id == open_stage and not alert.sgi_containment_done
                     and not force):
@@ -456,6 +463,15 @@ class QualityAlert(models.Model):
                 raise UserError(
                     "La etapa «%s» no es del flujo del SGI; las NC con folio solo viven en "
                     "Abierta, Seguimiento, Cerrada y Cancelada." % new_stage.name)
+
+    def _sgi_user_can_close(self):
+        """57.90.0 (FUNC-C13): cierra una NC el Jefe MAST (o código de sistema)
+        o el usuario del dueño de su proceso."""
+        self.ensure_one()
+        if sgi_bypass_allowed(self.env):
+            return True
+        owner_user = self.sgi_process_id.owner_id.sudo().user_id
+        return bool(owner_user) and owner_user == self.env.user
 
     def action_sgi_cancel(self):
         self.ensure_one()
