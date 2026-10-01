@@ -2,6 +2,7 @@
 import logging
 
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
@@ -1085,9 +1086,9 @@ class SgiNcForceClose(models.TransientModel):
         ], limit=1)
         if not closing_stage:
             raise UserError("No hay una etapa de cierre configurada para este equipo.")
-        alert.message_post(
-            body="<b>Cierre forzado</b> por %s.<br/>Motivo: %s" % (
-                self.env.user.name, self.reason))
+        # 57.90.0 (K-07): nombre y motivo escapados.
+        alert.message_post(body=Markup(
+            "<b>Cierre forzado</b> por %s.<br/>Motivo: %s") % (self.env.user.name, self.reason))
         alert.with_context(sgi_force_close=True).write({'stage_id': closing_stage.id})
         return {'type': 'ir.actions.act_window_close'}
 
@@ -1123,9 +1124,8 @@ class SgiNcCancel(models.TransientModel):
             # Solicitud: motivo al historial y actividad al Jefe MAST.
             alert.write({'sgi_cancel_reason': reason,
                          'sgi_cancel_requested_by': self.env.user.id})
-            alert.message_post(
-                body="<b>Solicitud de cancelación</b> de %s.<br/>Motivo: %s" % (
-                    self.env.user.name, reason))
+            alert.message_post(body=Markup(
+                "<b>Solicitud de cancelación</b> de %s.<br/>Motivo: %s") % (self.env.user.name, reason))
             Cron = self.env['sgi.cron']
             Cron._sgi_schedule(
                 alert, "Aprobar cancelación de la NC %s" % (alert.sgi_folio or alert.name),
@@ -1140,10 +1140,11 @@ class SgiNcCancel(models.TransientModel):
         if not cancel_stage:
             raise UserError("No hay una etapa de cancelación configurada para este equipo.")
         requested_by = alert.sgi_cancel_requested_by
-        alert.message_post(
-            body="<b>NC cancelada</b> por %s (Jefe MAST).<br/>Motivo: %s%s" % (
-                self.env.user.name, reason,
-                ("<br/>Solicitada por %s." % requested_by.name) if requested_by else ''))
+        requested_note = (Markup("<br/>Solicitada por %s.") % requested_by.name
+                          if requested_by else Markup())
+        alert.message_post(body=Markup(
+            "<b>NC cancelada</b> por %s (Jefe MAST).<br/>Motivo: %s%s") % (
+                self.env.user.name, reason, requested_note))
         alert.with_context(sgi_cancel_approved=True).write({
             'stage_id': cancel_stage.id, 'sgi_cancel_reason': reason})
         # Cierra la actividad de aprobación, si la había.
