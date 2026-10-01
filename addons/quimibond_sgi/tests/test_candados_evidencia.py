@@ -9,10 +9,11 @@ no se pierde ni se altera por error.
 - Los procesos pesados no se disparan por RPC.
 - La respuesta del proveedor se guarda escapada en el chatter."""
 from datetime import date
+from unittest.mock import patch
 
 from psycopg2 import IntegrityError
 
-from odoo.exceptions import AccessError, UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tests import TransactionCase, new_test_user, tagged
 from odoo.tools import mute_logger
 
@@ -168,10 +169,80 @@ class TestCandadosEvidencia(TransactionCase):
         self.assertIn('<b>Respuesta del proveedor</b>', body, "El formato propio sí se conserva.")
 
     # ---- K-01 (papelera) -----------------------------------------------------
+    def _ack(self, doc):
+        return self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.employee.id})
+
+    def _rescue(self):
+        self.env['documents.document']._gc_sgi_rescue_trashed_with_acks()
+        self.env.invalidate_all()
+
+    def _rescue_messages(self, doc):
+        return doc.message_ids.filtered(lambda m: 'Rescatado de la papelera' in (m.body or ''))
+
     def test_11_la_papelera_rescata_lo_que_tiene_acuses(self):
         doc = self._doc(code='F-ZK1-06')
-        self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.employee.id})
+        self._ack(doc)
         doc.with_user(self.mast).write({'active': False})
-        self.env['documents.document']._gc_sgi_rescue_trashed_controlled()
+        self._rescue()
         self.assertTrue(doc.active)
         self.assertEqual(doc.sgi_state, 'obsoleto')
+        self.assertEqual(doc.sgi_obsolete_reason, "Rescatado de la papelera: tiene acuses de lectura.")
+        self.assertEqual(len(self._rescue_messages(doc)), 1)
+
+    def test_12_rescate_conserva_la_fecha_de_un_obsoleto(self):
+        doc = self._doc(state='obsoleto', code='F-ZK1-07')
+        doc.sudo().write({'sgi_obsolete_date': date(2025, 1, 15), 'sgi_obsolete_reason': 'Motivo original'})
+        self._ack(doc)
+        doc.with_user(self.mast).write({'active': False})
+        self._rescue()
+        self.assertTrue(doc.active)
+        self.assertEqual(doc.sgi_state, 'obsoleto')
+        self.assertEqual(doc.sgi_obsolete_date, date(2025, 1, 15))
+        self.assertEqual(doc.sgi_obsolete_reason, 'Motivo original')
+
+    def test_13_sin_acuses_no_se_toca(self):
+        doc = self._doc(code='F-ZK1-08')
+        doc.with_user(self.mast).write({'active': False})
+        self._rescue()
+        self.assertFalse(doc.active)
+        self.assertEqual(doc.sgi_state, 'vigente')
+        self.assertFalse(self._rescue_messages(doc))
+
+    def test_14_rescate_idempotente(self):
+        doc = self._doc(code='F-ZK1-09')
+        self._ack(doc)
+        doc.with_user(self.mast).write({'active': False})
+        self._rescue()
+        self._rescue()
+        self.assertTrue(doc.active)
+        self.assertEqual(len(self._rescue_messages(doc)), 1)
+
+    def test_15_uno_que_falla_no_detiene_a_los_demas(self):
+        bad = self._doc(code='F-ZK1-10')
+        good = self._doc(code='F-ZK1-11')
+        self._ack(bad)
+        self._ack(good)
+        (bad | good).with_user(self.mast).write({'active': False})
+        Doc = type(self.env['documents.document'])
+        original = Doc.action_unarchive
+
+        def fake_unarchive(records):
+            if bad.id in records.ids:
+                raise ValidationError("Ya existe otra revisión activa (simulado).")
+            return original(records)
+
+        with patch.object(Doc, 'action_unarchive', fake_unarchive), \
+                mute_logger('odoo.addons.quimibond_sgi.models.sgi_document'):
+            self._rescue()
+        self.assertFalse(bad.active)
+        self.assertEqual(bad.sgi_state, 'vigente')
+        self.assertTrue(good.active)
+        self.assertEqual(good.sgi_state, 'obsoleto')
+
+    def test_16_lote_mixto_no_se_archiva(self):
+        draft = self._doc(state='borrador', code='F-ZK1-12')
+        current = self._doc(code='F-ZK1-13')
+        with self.assertRaisesRegex(UserError, 'papelera'):
+            (draft | current).with_user(self.docs_editor).write({'active': False})
+        self.assertTrue(draft.active)
+        self.assertTrue(current.active)

@@ -1083,34 +1083,63 @@ class DocumentsDocument(models.Model):
             return
         locked = self.filtered(lambda d: d.sgi_is_controlled
                                and d.sgi_state in self._SGI_TRASH_LOCKED_STATES)
-        if locked:
-            raise UserError(
-                "Un documento controlado no se manda a la papelera ni se borra: "
-                "Odoo lo elimina a los 30 días junto con sus acuses de lectura. "
-                "Márquelo obsoleto o pida al Jefe MAST que lo retire. (%s)"
-                % ", ".join(locked.mapped('display_name')))
+        if not locked:
+            return
+        obsolete = locked.filtered(lambda d: d.sgi_state == 'obsoleto')
+        current = locked - obsolete
+        parts = ["Un documento controlado no se manda a la papelera ni se borra: "
+                 "Odoo lo elimina después de unos días junto con sus acuses de lectura."]
+        if current:
+            parts.append("Márquelo obsoleto o pida al Jefe MAST que lo retire (%s)."
+                         % ", ".join(current.mapped('display_name')))
+        if obsolete:
+            parts.append("Ya está obsoleto y se conserva como evidencia; solo el Jefe MAST "
+                         "lo retira (%s)." % ", ".join(obsolete.mapped('display_name')))
+        raise UserError(" ".join(parts))
 
     def unlink(self):
         self._sgi_check_can_trash()
         return super().unlink()
 
     @api.autovacuum
-    def _gc_sgi_rescue_trashed_controlled(self):
-        """57.90.0 (K-01): un controlado con acuses de lectura es evidencia
-        (ISO 7.5): si alguien lo manda a la papelera, se rescata como obsoleto
-        antes de que la autolimpieza de Documents lo borre (30 días) y su
-        llave foránea atore el vaciado de la papelera."""
-        acked = self.env['sgi.document.ack'].sudo().with_context(active_test=False).search(
-            [('document_id.active', '=', False)]).document_id
-        rescued = acked.filtered('sgi_is_controlled')
-        if not rescued:
-            return
-        rescued.sudo().write({'active': True, 'sgi_state': 'obsoleto'})
-        for doc in rescued:
-            doc.sudo().message_post(body="Rescatado de la papelera: tiene acuses de lectura "
-                                         "y es evidencia del SGI. Quedó obsoleto.")
-        _logger.info("SGI: %d documentos controlados rescatados de la papelera: %s",
-                     len(rescued), rescued.ids)
+    def _gc_sgi_rescue_trashed_with_acks(self):
+        """57.90.0 (K-01): un documento con acuses de lectura es evidencia
+        (ISO 7.5) y su llave foránea («restrict») impide borrarlo: si alguien
+        lo manda a la papelera, se rescata antes de que la autolimpieza de
+        Documents lo intente borrar y atore el vaciado de la papelera.
+
+        Uno por uno, cada uno en su savepoint: si uno no se puede reactivar
+        (p. ej. ya hay otro activo con su clave y revisión) se registra y se
+        sigue con los demás. Un vigente o piloto rescatado queda obsoleto; un
+        obsoleto conserva su fecha; un borrador o un no controlado conserva su
+        estado.
+
+        Si ``documents.deletion_delay`` es de 0 o 1 días, la autolimpieza de
+        Documents puede correr una vez antes que este rescate y fallar en ese
+        documento."""
+        trashed = self.sudo().with_context(active_test=False).search(
+            [('active', '=', False), ('sgi_ack_ids', '!=', False)])
+        rescued = self.browse()
+        for doc in trashed:
+            try:
+                with self.env.cr.savepoint():
+                    doc.action_unarchive()
+                    if doc.sgi_state in ('vigente', 'piloto'):
+                        doc.write({
+                            'sgi_state': 'obsoleto',
+                            'sgi_obsolete_reason': "Rescatado de la papelera: tiene acuses "
+                                                   "de lectura.",
+                        })
+                    doc.message_post(body="Rescatado de la papelera: tiene acuses de lectura "
+                                          "y es evidencia del SGI.")
+            except Exception as exc:  # uno que falle no detiene a los demás
+                _logger.warning("SGI: no se pudo rescatar el documento %s de la papelera: %s",
+                                doc.id, exc)
+                continue
+            rescued |= doc
+        if rescued:
+            _logger.info("SGI: %d documentos con acuses rescatados de la papelera: %s",
+                         len(rescued), rescued.ids)
 
     def _sgi_value_differs(self, name, value):
         self.ensure_one()
