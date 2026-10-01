@@ -2714,9 +2714,14 @@ class TestQbCosteo(TransactionCase):
             "WHERE id = %s", (datetime(2027, 7, 15, 12), mo.id))
         self.env.invalidate_all()
 
-        # En capa: luz + gas al pool, kilos del centro en el denominador
+        # En capa: luz + gas al pool, kilos del centro en el denominador.
+        # Los valores se copian a números: `_compute_factores` reescribe el
+        # MISMO registro del período, y leerlo después del segundo cálculo
+        # devolvería el valor nuevo.
         en_capa = self.Costo._compute_factores(period)
-        self.assertGreater(en_capa.energia_por_kg, 0.0)
+        pool_capa = en_capa.energia_pool_month
+        por_kg_capa = en_capa.energia_por_kg
+        self.assertGreater(por_kg_capa, 0.0)
         self.assertAlmostEqual(en_capa.kg_produccion_month, 1000.0, places=2)
 
         # Absorbido: la luz sale (va en la tarifa), el gas se queda, y los
@@ -2729,10 +2734,10 @@ class TestQbCosteo(TransactionCase):
         self.assertGreater(abs_.energia_por_kg, 0.0,
                            'la energía no puede quedarse en $0/kg')
         self.assertAlmostEqual(
-            abs_.energia_pool_month, en_capa.energia_pool_month * 50 / 80,
-            places=2, msg='la luz del centro absorbido sale del pool')
+            abs_.energia_pool_month, pool_capa * 50 / 80, places=2,
+            msg='la luz del centro absorbido sale del pool')
         self.assertAlmostEqual(
-            abs_.energia_por_kg, en_capa.energia_por_kg * 50 / 80, places=4,
+            abs_.energia_por_kg, por_kg_capa * 50 / 80, places=4,
             msg='mismos kilos abajo, solo el gas arriba')
         otros.write({'active': True})
         tej.unlink()
