@@ -4,7 +4,7 @@
 
 **Goal:** Llevar a código, datos y despliegue los hallazgos de la auditoría del SGI del 1-oct-2026 (reporte: https://claude.ai/artifact/9Q1KZp3yg9SaZ4wj7cHWn5), en entregas que se despliegan solas.
 
-**Architecture:** Diez versiones de `quimibond_sgi` (57.90.0 a 57.99.0), cada una con su sección de CHANGELOG, sus pruebas registradas y, si hace falta, su migración, más una pista de datos que operan MAST y Dirección en producción sin código. Este documento trae el paso a paso con código de las dos primeras entregas (57.90.0 candados de evidencia, 57.91.0 bandeja). Las demás quedan como fichas con alcance, archivos, pruebas y puerta de decisión. Su plan detallado se escribe al iniciarlas, porque dependen de decisiones de Dirección que siguen abiertas.
+**Architecture:** Diez versiones de `quimibond_sgi` (57.91.0 a 57.100.0; la numeración se corrió uno porque `main` usó 57.90.0 para los indicadores de ventas, PR #507), cada una con su sección de CHANGELOG, sus pruebas registradas y, si hace falta, su migración, más una pista de datos que operan MAST y Dirección en producción sin código. Este documento trae el paso a paso con código de las dos primeras entregas (57.91.0 candados de evidencia, 57.92.0 bandeja). Las demás quedan como fichas con alcance, archivos, pruebas y puerta de decisión. Su plan detallado se escribe al iniciarlas, porque dependen de decisiones de Dirección que siguen abiertas.
 
 **Tech Stack:** Odoo 19 Enterprise (Odoo.sh), Python 3, XML de vistas, `odoo.tests.TransactionCase`. Checadores del repo: `tools/check_addons.py`, `tools/check_odoo_views.py`, `tools/sgi_docs.py`.
 
@@ -37,16 +37,16 @@ Leer antes de empezar: `CLAUDE.md` (raíz), `addons/quimibond_sgi/README.md` (gl
 
 | Versión | Entrega | Hallazgos | Depende de | Puerta de decisión |
 |---|---|---|---|---|
-| 57.90.0 | Candados de evidencia | K-01, K-02, K-06, K-07, FUNC-C13 | — | Ninguna |
-| 57.91.0 | Bandeja: Mis pendientes útil | U-02, U-03, U-05, U-06 | — | Ninguna (D-05 se decide en la pista de datos) |
-| 57.92.0 | NC y auditoría con evidencia | N-02, N-03, N-12, K-03 | 57.90.0 | Ninguna |
-| 57.93.0 | SGI en planta (kiosco con PIN) | U-01, U-08, I-03, I-05 | 57.91.0 | Q7: tabletas y captura de PIN por RH |
-| 57.94.0 | SST y ambiente | N-06, N-07 | 57.92.0 | Q9 (MOC), Q10 (matriz ambiental), Q11 (contratistas) |
-| 57.95.0 | Cláusulas y revisión por la dirección | N-05, N-09 | — | Q13 (requisitos de cliente) |
-| 57.96.0 | Interfaz | I-01, I-02, I-04, I-06, U-07 | 57.91.0 | Q20 (arranque de Dirección) |
-| 57.97.0 | Salud del SGI (tablero de adopción) | Sección 8 del reporte, D-01 | 57.92.0, 57.93.0 | Metas del tablero |
-| 57.98.0 | Rendimiento y robustez | K-08, K-05, D-06 | 57.91.0 | Ninguna |
-| 57.99.0 | Integridad, competencias, PPAP, IA | K-04, N-13, N-14, D7 | 57.95.0 | Q12 (PPAP), Q16 (IA) |
+| 57.91.0 | Candados de evidencia | K-01, K-02, K-06, K-07, FUNC-C13 | — | Ninguna |
+| 57.92.0 | Bandeja: Mis pendientes útil | U-02, U-03, U-05, U-06 | — | Ninguna (D-05 se decide en la pista de datos) |
+| 57.93.0 | NC y auditoría con evidencia | N-02, N-03, N-12, K-03 | 57.91.0 | Ninguna |
+| 57.94.0 | SGI en planta (kiosco con PIN) | U-01, U-08, I-03, I-05 | 57.92.0 | Q7: tabletas y captura de PIN por RH |
+| 57.95.0 | SST y ambiente | N-06, N-07 | 57.93.0 | Q9 (MOC), Q10 (matriz ambiental), Q11 (contratistas) |
+| 57.96.0 | Cláusulas y revisión por la dirección | N-05, N-09 | — | Q13 (requisitos de cliente) |
+| 57.97.0 | Interfaz | I-01, I-02, I-04, I-06, U-07 | 57.92.0 | Q20 (arranque de Dirección) |
+| 57.98.0 | Salud del SGI (tablero de adopción) | Sección 8 del reporte, D-01 | 57.93.0, 57.94.0 | Metas del tablero |
+| 57.99.0 | Rendimiento y robustez | K-08, K-05, D-06 | 57.92.0 | Ninguna |
+| 57.100.0 | Integridad, competencias, PPAP, IA | K-04, N-13, N-14, D7 | 57.96.0 | Q12 (PPAP), Q16 (IA) |
 
 Los IDs (K-01, U-02, N-02…) y las preguntas (Q1…Q20) son los del reporte de auditoría.
 
@@ -62,7 +62,7 @@ La operan las personas indicadas desde la interfaz de Odoo. Quien desarrolla sol
   Verificar: `sgi.audit.program.line` `[('planned_month','=','10'), ('lead_auditor_id','=',False)]` → 0 (el campo de mes puede llamarse distinto; confirmar con `get_fields`).
 - [ ] **Grupos** (Jose): confirmar o quitar al uid 130 de Jefe MAST; asignar miembros a Salud ocupacional y a la CSH; sacar a los uid 177 y 179 (inactivos) de Usuario SGI.
   Verificar: `res.groups` 318 `user_ids`; 328 y 330 con miembros; `res.users [('active','=',False),('group_ids','in',[316])]` → 0.
-- [ ] **Mediciones históricas** (decisión de Jose, Q4): elegir entre (a) MAST valida en lote las capturadas de enero a julio con la nota «histórico, validado en lote el AAAA-MM-DD por decisión de Dirección», o (b) dejarlas y que 57.91.0 las saque de la bandeja por antigüedad. Registrar la decisión en `docs/audit/decisiones.md` (ver la tarea 1.0).
+- [ ] **Mediciones históricas** (decisión de Jose, Q4): elegir entre (a) MAST valida en lote las capturadas de enero a julio con la nota «histórico, validado en lote el AAAA-MM-DD por decisión de Dirección», o (b) dejarlas y que 57.92.0 las saque de la bandeja por antigüedad. Registrar la decisión en `docs/audit/decisiones.md` (ver la tarea 1.0).
 - [ ] **Puntos de control archivados** (Jose y MAST, Q5): decidir si se restauran los 34 `quality.point` (ids 175–213) o si los 73 formatos regresan a «en curso».
   Verificar: `documents.document [('sgi_is_controlled','=',True),('sgi_migration_state','=','migrado'),('sgi_migration_point_id.active','=',False)]` → 0.
 - [ ] **NC canceladas** (MAST): capturar el motivo en las 14 NC canceladas sin motivo y dejar una nota en el chatter de la secuencia NCI sobre el hueco 0147–0205 (Q14).
@@ -78,7 +78,7 @@ La operan las personas indicadas desde la interfaz de Odoo. Quien desarrolla sol
 
 ---
 
-## Entrega 57.90.0 — Candados de evidencia
+## Entrega 57.91.0 — Candados de evidencia
 
 **Objetivo:** que ni un documento controlado ni una NC con folio se pierdan por error, que solo MAST o el dueño del proceso cierren una NC, que ningún proceso pesado se dispare por RPC y que el texto del proveedor no entre como HTML.
 
@@ -142,7 +142,7 @@ git commit -m "docs: índice de decisiones D-xx del SGI (la referencia de CLAUDE
 
 ```python
 # -*- coding: utf-8 -*-
-"""57.90.0 (auditoría 2026-10, K-01, K-02, K-06, K-07, FUNC-C13): la evidencia
+"""57.91.0 (auditoría 2026-10, K-01, K-02, K-06, K-07, FUNC-C13): la evidencia
 no se pierde ni se altera por error.
 
 - Un documento controlado no va a la papelera ni se borra (Odoo lo borra a
@@ -334,7 +334,7 @@ Esperado en el log del build (`--test-tags /quimibond_sgi`): FAIL en test_01, 04
 
 ```python
     def write(self, vals):
-        # 57.90.0 (K-01): archivar manda el documento a la papelera y la
+        # 57.91.0 (K-01): archivar manda el documento a la papelera y la
         # autolimpieza lo BORRA a los documents.deletion_delay días, con sus
         # acuses. Ya pasó con 3359, 5119 y 4995 (57.82.0).
         if 'active' in vals and not vals['active']:
@@ -348,7 +348,7 @@ Esperado en el log del build (`--test-tags /quimibond_sgi`): FAIL en test_01, 04
     _SGI_TRASH_LOCKED_STATES = ('vigente', 'piloto', 'obsoleto')
 
     def _sgi_check_can_trash(self):
-        """57.90.0 (K-01): un controlado vigente, en piloto u obsoleto no va a
+        """57.91.0 (K-01): un controlado vigente, en piloto u obsoleto no va a
         la papelera ni se borra; se marca obsoleto. El Jefe MAST y el sistema
         sí pueden (limpiezas decididas)."""
         if sgi_bypass_allowed(self.env):
@@ -387,7 +387,7 @@ Con `restrict`, si el Jefe MAST archiva un controlado con acuses, a los 30 días
 ```python
     @api.autovacuum
     def _gc_sgi_rescue_trashed_controlled(self):
-        """57.90.0 (K-01): un controlado con acuses de lectura es evidencia
+        """57.91.0 (K-01): un controlado con acuses de lectura es evidencia
         (ISO 7.5): si alguien lo manda a la papelera, se rescata como obsoleto
         antes de que la autolimpieza de Documents lo borre (30 días) y su
         llave foránea atore el vaciado de la papelera."""
@@ -436,7 +436,7 @@ git commit -m "quimibond_sgi: un documento controlado no va a la papelera ni se 
 
 ```python
     def unlink(self):
-        """57.90.0 (K-02): una NC con folio es evidencia (ISO 10.2) y su folio
+        """57.91.0 (K-02): una NC con folio es evidencia (ISO 10.2) y su folio
         no puede dejar hueco. Se cancela con «Cancelar NC»."""
         if not sgi_bypass_allowed(self.env):
             with_folio = self.filtered('sgi_folio')
@@ -471,7 +471,7 @@ git commit -m "quimibond_sgi: una NC con folio no se borra y sus acciones no se 
 - [x] **Step 1: Agregar el chequeo dentro del ciclo `for alert in self:`**, después del de cancelación
 
 ```python
-            # 57.90.0 (FUNC-C13): cerrar es de quien responde por el proceso.
+            # 57.91.0 (FUNC-C13): cerrar es de quien responde por el proceso.
             if new_stage.sgi_is_closing_stage and not force \
                     and not alert._sgi_user_can_close():
                 raise UserError(
@@ -517,7 +517,7 @@ from .sgi_guard import sgi_require_system
 y como primera línea del cuerpo de `cron_sgi_sync_approvals`, `cron_generate`, `cron_measure_activities` (en `sgi_process_procedure.py`; la extensión de `sgi_activity_spec.py:1161` llama `super()` antes de hacer nada, así que queda cubierta) y `cron_missing_trajectories`:
 
 ```python
-        sgi_require_system(self.env)  # 57.90.0 (K-06)
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
 ```
 
 En `sgi_drop_empty_studio_models` (`sgi_catalog.py`), reemplazar la guarda de `group_sgi_admin` por `sgi_require_system(self.env)`.
@@ -590,12 +590,12 @@ git commit -m "quimibond_sgi: respuesta del proveedor y motivos escapados en el 
 **Files:**
 - Modify: `addons/quimibond_sgi/__manifest__.py`, `addons/quimibond_sgi/CHANGELOG.md`, `docs/sgi/tecnica/*` (generado)
 
-- [x] **Step 1: Subir la versión** a `'19.0.57.90.0'`.
+- [x] **Step 1: Subir la versión** a `'19.0.57.91.0'`.
 
 - [x] **Step 2: Entrada del CHANGELOG** arriba de la de 57.89.0
 
 ```markdown
-## 19.0.57.90.0 — 2026-10-XX
+## 19.0.57.91.0 — 2026-10-XX
 
 **Seguridad: candados de evidencia** (auditoría 2026-10: K-01, K-02, K-06, K-07, FUNC-C13).
 
@@ -610,7 +610,7 @@ git commit -m "quimibond_sgi: respuesta del proveedor y motivos escapados en el 
   `cron_missing_trajectories` y `sgi_drop_empty_studio_models` solo los corre el sistema.
 - **K-07:** respuesta del proveedor por el portal y motivos de cierre forzado y
   cancelación escapados en el chatter (`Markup`), con tope de 5,000 caracteres.
-  Queda para 57.92.0: prueba `HttpCase` del portal y código de error en lugar
+  Queda para 57.93.0: prueba `HttpCase` del portal y código de error en lugar
   de texto libre en la URL.
 - **Cambiado:** `sgi_drop_empty_studio_models` ya no lo corre el Administrador
   SGI; solo el shell o un administrador del sistema.
@@ -636,7 +636,7 @@ python3 tools/sgi_docs.py && python3 tools/sgi_docs.py --check
 
 ```bash
 git add -A addons/quimibond_sgi docs/sgi
-git commit -m "quimibond_sgi 19.0.57.90.0: candados de evidencia"
+git commit -m "quimibond_sgi 19.0.57.91.0: candados de evidencia"
 git push
 ```
 
@@ -644,11 +644,11 @@ Esperado en el build de la rama: `test_candados_evidencia` 11/11 OK y ningún fa
 
 - [ ] **Step 6: Verificación después del despliegue a producción** (solo lectura)
 
-`ir.module.module [('name','=','quimibond_sgi')]` → `latest_version = 19.0.57.90.0`. Con `get_fields('sgi.document.ack')` el campo `document_id` debe reportar `ondelete: restrict` (si el MCP no lo expone, revisar el `update.log` del deploy en busca de errores al crear la llave foránea: Odoo registra y se salta las restricciones que no puede crear).
+`ir.module.module [('name','=','quimibond_sgi')]` → `latest_version = 19.0.57.91.0`. Con `get_fields('sgi.document.ack')` el campo `document_id` debe reportar `ondelete: restrict` (si el MCP no lo expone, revisar el `update.log` del deploy en busca de errores al crear la llave foránea: Odoo registra y se salta las restricciones que no puede crear).
 
 ---
 
-## Entrega 57.91.0 — Bandeja: Mis pendientes que dice qué hacer
+## Entrega 57.92.0 — Bandeja: Mis pendientes que dice qué hacer
 
 **Objetivo:** que Mis pendientes abra con lo atrasado y por vencer a la vista, deje validar mediciones en lote, lleve directo a donde se hace cada cosa, incluya los avisos de los crons y hable en «usted».
 
@@ -662,7 +662,7 @@ Esperado en el build de la rama: `test_candados_evidencia` 11/11 OK y ningún fa
 
 ### Task 2.0: Rama
 
-- [ ] **Step 1:** después de que 57.90.0 entre a `main`:
+- [ ] **Step 1:** después de que 57.91.0 entre a `main`:
 
 ```bash
 git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
@@ -678,7 +678,7 @@ git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
 - [ ] **Step 1: Prueba** (agregar al final de `TestBandeja`)
 
 ```python
-    # ---- 57.91.0 (U-02): validar en lote ------------------------------------
+    # ---- 57.92.0 (U-02): validar en lote ------------------------------------
     def test_20_validar_seleccionadas(self):
         indicator = self._indicator('Z8A-L', calc_mode='otif_ventas', frequency='weekly')
         mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2)]
@@ -700,7 +700,7 @@ git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
 
 ```python
     def action_validate_selected(self):
-        """57.91.0 (U-02): «Validar seleccionadas». Ignora los renglones que no
+        """57.92.0 (U-02): «Validar seleccionadas». Ignora los renglones que no
         son mediciones; valida con los permisos de quien abre la lista (solo el
         dueño del indicador o el Jefe MAST, ``_sgi_check_validate_access``)."""
         rows = self.filtered(lambda r: r.kind == 'validacion'
@@ -829,7 +829,7 @@ Nuevo método:
 
 ```python
     def action_sign_ack(self):
-        """57.91.0 (U-05): «Leído y entendido» desde el renglón. El candado de
+        """57.92.0 (U-05): «Leído y entendido» desde el renglón. El candado de
         identidad de ``sgi.document.ack`` decide si quien abre la lista puede."""
         self.ensure_one()
         if self.kind != 'acuse' or self.res_model != 'sgi.document.ack':
@@ -912,7 +912,7 @@ Respeta D-04: las actividades nativas siguen existiendo; Mis pendientes solo las
 y una constante junto a `HORIZON_DAYS`:
 
 ```python
-# 57.91.0 (U-03): actividades nativas (avisos de los crons) que se muestran.
+# 57.92.0 (U-03): actividades nativas (avisos de los crons) que se muestran.
 NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
                  'helpdesk.ticket', 'project.task')
 ```
@@ -920,7 +920,7 @@ NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
 - [ ] **Step 3: Fuente.** Al final de `_sgi_pending_records`, antes de `return records`:
 
 ```python
-        # 57.91.0 (U-03): avisos de los crons y actividades de las apps del SGI,
+        # 57.92.0 (U-03): avisos de los crons y actividades de las apps del SGI,
         # vencidos o de los próximos 7 días, sin los que ya tienen renglón propio.
         Activity = env['mail.activity'].sudo()
         notices = Activity.search(
@@ -977,7 +977,7 @@ Método nuevo:
 
 ```python
     def action_done_notice(self):
-        """57.91.0 (U-03): marca hecho el aviso, solo si es de quien abre la lista."""
+        """57.92.0 (U-03): marca hecho el aviso, solo si es de quien abre la lista."""
         self.ensure_one()
         act = self.env['mail.activity'].browse(self.res_id).exists() \
             if self.kind == 'aviso' and self.res_model == 'mail.activity' else False
@@ -1019,7 +1019,7 @@ git commit -am "quimibond_sgi: los avisos de los crons salen en Mis pendientes c
 
 ```python
 # -*- coding: utf-8 -*-
-"""57.91.0 (U-06): textos para el usuario en «usted» y con el glosario del
+"""57.92.0 (U-06): textos para el usuario en «usted» y con el glosario del
 README (Jefe MAST, NC, CoA). Lee las fuentes del módulo: no necesita datos."""
 import os
 import re
@@ -1118,64 +1118,64 @@ git commit -m "quimibond_sgi: textos en «usted» y con el glosario, con prueba 
 
 ### Task 2.6: Versión, CHANGELOG, árbol de menús y build
 
-- [ ] **Step 1:** `__manifest__.py` → `'19.0.57.91.0'`.
-- [ ] **Step 2:** CHANGELOG `## 19.0.57.91.0` con: Agregado («Validar seleccionadas», avisos, «Ir», «Leer», «Leído y entendido»), Cambiado (abre desplegada con «Atrasadas o por vencer»; textos en «usted»), Migración (si hubo plantillas `noupdate`), Pruebas (`test_bandeja` 20–23, `test_usted`).
+- [ ] **Step 1:** `__manifest__.py` → `'19.0.57.92.0'`.
+- [ ] **Step 2:** CHANGELOG `## 19.0.57.92.0` con: Agregado («Validar seleccionadas», avisos, «Ir», «Leer», «Leído y entendido»), Cambiado (abre desplegada con «Atrasadas o por vencer»; textos en «usted»), Migración (si hubo plantillas `noupdate`), Pruebas (`test_bandeja` 20–23, `test_usted`).
 - [ ] **Step 3:** `python3 tools/sgi_docs.py && python3 tools/sgi_docs.py --check` y los demás checadores.
 - [ ] **Step 4:** Commit y push; build con `--test-tags /quimibond_sgi`. Esperado: `test_bandeja` y `test_usted` en verde, sin fallos nuevos.
-- [ ] **Step 5: Verificación en producción** (solo lectura, tras desplegar): `ir.module.module` en 57.91.0. Pedir a dos dueños de proceso que abran Mis pendientes y confirmen que ven los avisos y pueden validar en lote; registrar el resultado en el PR.
+- [ ] **Step 5: Verificación en producción** (solo lectura, tras desplegar): `ir.module.module` en 57.92.0. Pedir a dos dueños de proceso que abran Mis pendientes y confirmen que ven los avisos y pueden validar en lote; registrar el resultado en el PR.
 
 ---
 
-## Fichas de las entregas 57.92.0 a 57.99.0
+## Fichas de las entregas 57.93.0 a 57.100.0
 
 Cada ficha se convierte en un plan detallado (mismo formato que arriba) al iniciar la entrega. Todas siguen la sección 0.
 
-### 57.92.0 — NC y auditoría con evidencia
+### 57.93.0 — NC y auditoría con evidencia
 
 - **Alcance:** N-02 (campo `sgi_effective` Eficaz / No eficaz; «No eficaz» regresa a Seguimiento y pide acción nueva; fecha de eficacia ≥ `sgi_effectiveness_due` salvo cierre forzado; evidencia obligatoria en `action_mark_done` de acciones correctivas), N-03 (`nc_menor`/`nc_mayor` exigen `alert_id`; programa sugerido incluye procesos en borrador; aviso de cobertura de 3 años), N-12 (`_sgi_is_customer_return` por `location_id.usage == 'customer'`), K-03 (con la NC, el incidente o la revisión cerrados, acciones y hallazgos solo los edita MAST).
 - **Archivos:** `models/sgi_nonconformity.py` (l.117-121, 398-429, 578-619, 828, 1001), `models/sgi_audit.py` (l.113-139, 454-475, hallazgo `write`), `models/sgi_integration.py` (l.41-49), vistas de NC y acción.
 - **Migración:** post-migrate que solo crea el campo (0 NC cerradas hoy: nada que rellenar). Para la evidencia, las acciones ya terminadas quedan exentas (filtro por fecha de creación de la versión).
-- **Pendiente de 57.90.0 (FUNC-C13):** una NC se puede crear directamente en «Cerrada» (`create` no pasa por `_sgi_check_stage_move`): aplicar el mismo candado al crear. La actividad «Verificar eficacia» va a `sgi_effectiveness_by`, que puede no ser el dueño del proceso: asignarla al dueño (o a quien puede cerrar) para que no reciba el mensaje de FUNC-C13 al cerrar.
+- **Pendiente de 57.91.0 (FUNC-C13):** una NC se puede crear directamente en «Cerrada» (`create` no pasa por `_sgi_check_stage_move`): aplicar el mismo candado al crear. La actividad «Verificar eficacia» va a `sgi_effectiveness_by`, que puede no ser el dueño del proceso: asignarla al dueño (o a quien puede cerrar) para que no reciba el mensaje de FUNC-C13 al cerrar.
 - **Pruebas:** cierre antes de la fecha → `UserError`; «No eficaz» reabre; acción correctiva sin evidencia no se termina; `nc_menor` sin NC no cierra la auditoría; devolución con entrega en tres pasos crea NC (reproducir primero con una ruta de 3 pasos en la prueba para confirmar la hipótesis de la auditoría); editar acción de NC cerrada como Usuario SGI → `UserError`.
 
-### 57.93.0 — SGI en planta
+### 57.94.0 — SGI en planta
 
 - **Puerta:** Q7 (cuántas tabletas, qué cuentas, RH captura PIN y en qué plazo). Sin PIN capturados la entrega no sirve.
 - **Alcance:** U-01: acción cliente «SGI en planta» para cuentas de tableta (mosaico de empleados del departamento con foto; teclado numérico; menú de la persona: documentos por leer, reportar casi accidente, mi EPP, checklist de mi equipo). Cada registro guarda `employee_id` y «firmado con PIN en la tableta X». Reusar la validación de PIN del checklist (`sgi_checklist.py:254-310`) en un helper común. Encender `quimibond_sgi.checklist_pin_required` por parámetro cuando RH termine. I-03 («Marcar el resto como Bien»), I-05 (kanban móvil en 6 acciones de piso). U-08: `docs/sgi/usuarios/rh.md` y vista para RH «Empleados sin puesto, sin PIN o sin correo».
 - **Archivos:** nuevo `models/sgi_floor_kiosk.py`, `static/src/floor_kiosk/*` (OWL), vistas, `sgi_menus.xml` + `tools/sgi_menu_tree.txt`, `sgi_document.py` (acuse con PIN: el candado de identidad acepta empleado + PIN válido), `sgi_incident.py`, `sgi_epp.py`.
 - **Pruebas:** PIN válido firma a nombre del empleado; PIN inválido no; el registro no queda a nombre de la cuenta compartida; tour de la pantalla.
 
-### 57.94.0 — SST y ambiente
+### 57.95.0 — SST y ambiente
 
 - **Puertas:** Q9 (gestión del cambio), Q10 (matriz ambiental oficial), Q11 (contratistas).
 - **Alcance:** N-06 (`control_hierarchy` en `sgi.risk` y `sgi.action.line`; IPER alto con solo EPP no cierra; `investigation_team_ids` en incidente con al menos un trabajador o integrante de la CSH; eficacia del incidente; `expired` guardado en el permiso + paso de cron cada hora; cierre bloqueado con LOTO aplicado; competencia requerida por tipo de permiso; «evaluación SST vigente hasta» en el contacto del contratista), N-07 (`sgi.env.aspect` única fuente con `life_cycle_stage`; «ambiental» fuera del selector de `sgi.risk` para nuevos; botones rápidos de lo legal abren el asistente con evidencia), incidente desde `hr.leave` con tipo «Incapacidad por riesgo de trabajo».
 - **Migración:** post-migrate que pasa los 5 riesgos ambientales a aspectos con `risk_id` (log antes y después). El cron nuevo es un registro nuevo en un XML nuevo (no edita uno `noupdate`).
 - **Pruebas:** una por candado y el traspaso de riesgos.
 
-### 57.95.0 — Cláusulas y revisión por la dirección
+### 57.96.0 — Cláusulas y revisión por la dirección
 
 - **Puerta:** Q13 (requisitos de cliente en CLI o en legal).
 - **Alcance:** N-05 (cláusulas 6.1.2, 6.1.3, 6.1.4, 7.1.5, 8.1.2, 8.1.3, 8.1.4, 9.1.2 como datos nuevos con xmlid; no tocar las CLI sin xmlid, A-029; clasificación y cláusula obligatorias al pasar la NC a Seguimiento), N-09 (cargadores de incidentes, contexto, aspectos y mejoras; filtro `company_id` en el scrap, `sgi_management_review.py:344`; tipo `acuerdo` en `sgi.action.line`; conclusiones 9.3.3 obligatorias; acuerdos abiertos pasan a la siguiente revisión).
 - **Pruebas:** carga de entradas, cierre con acuerdos abiertos, NC sin cláusula no pasa a Seguimiento.
 
-### 57.96.0 — Interfaz
+### 57.97.0 — Interfaz
 
 - **Puerta:** Q20 (arranque de Dirección en el Tablero).
 - **Alcance:** I-01 (`sgi_format_footer` a `div.footer` con página x de y y fecha de emisión), I-02 (Documentos vigentes con clave, tipo, proceso y filtro por omisión), I-04 (filtro «Míos» único y `search_default` en 10 acciones), I-06 (tabla de colores y prueba sobre `decoration-*`), U-07 (menús por rol, «Reportar», «Checklists de hoy» bajo Inicio).
 - **Pruebas:** `test_menu_tree` actualizado, prueba de colores, render de un reporte con el pie.
 
-### 57.97.0 — Salud del SGI
+### 57.98.0 — Salud del SGI
 
 - **Puerta:** metas del tablero aprobadas por Dirección.
 - **Alcance:** los 10 indicadores de la sección 8 del reporte como `sgi.indicator` de nivel Dirección en E2 con `calc_mode` propio (procesos vigentes, personas activas en 30 días, planta identificable, acuses al día, mediciones validadas a tiempo, rojos con respuesta, NC eficaces, avisos vencidos y su concentración, programa de auditoría cumplido, formatos migrados utilizables) y un correo semanal a Dirección.
 - **Pruebas:** cálculo de cada `calc_mode` con datos de prueba.
 
-### 57.98.0 — Rendimiento y robustez
+### 57.99.0 — Rendimiento y robustez
 
 - **Alcance:** K-08 (un aviso por documento o por jefe en lugar de uno por acuse, `sgi_cron.py:679-687`; resumen guardado por empleado para Mi equipo; columna `sgi_cron_kind` indexada en `mail.activity` con backfill en post-migrate; recálculo nocturno de respaldo de las cuatro listas de Mi procedimiento con el número de cambios en el log), K-05 (dependencias de `sgi_picking_ids` y `sgi_payment_date`; separar propuesto de ajustado), D-06 (post-migrate: compañía 1 en los documentos controlados sin compañía, con log; regla de compañía en `sgi.legacy.routine`).
 - **Pruebas:** el recálculo nocturno reporta 0 cambios en régimen; búsqueda de Mi equipo sin recorrer a toda la empresa.
 
-### 57.99.0 — Integridad, competencias, PPAP e IA
+### 57.100.0 — Integridad, competencias, PPAP e IA
 
 - **Puertas:** Q12 (clientes que exigen PPAP, CoA y contingencia), Q16 (autorización de IA).
 - **Alcance:** K-04 (semáforo y metas congelados al validar), N-13 (`hr_skills_survey`/`hr_skills_slides`: examen o curso aprobado crea la competencia con vigencia; encuesta de eficacia a 90 días), N-14 (`sgi_requires_ppap` calculado en el ECO, aviso al embarcar sin CoA; pruebas para `quimibond_sgi_plm`, que no tiene), IA (sugerencia de cláusula y clasificación, borrador de 5 porqués que el responsable edita; nunca escribe `sgi_root_cause` ni cierra).
@@ -1186,4 +1186,4 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
 ## Seguimiento
 
 - Cada entrega se cierra con: build verde, PR a `main`, PR a `quimibond`, `odoo-update quimibond_sgi`, verificación de solo lectura y una línea en este plan con la fecha.
-- El tablero de 57.97.0 se revisa cada semana con Dirección; antes de esa versión, las cifras de la sección 2 del reporte se re-miden a mano cada dos semanas con las consultas del reporte.
+- El tablero de 57.98.0 se revisa cada semana con Dirección; antes de esa versión, las cifras de la sección 2 del reporte se re-miden a mano cada dos semanas con las consultas del reporte.

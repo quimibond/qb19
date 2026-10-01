@@ -445,7 +445,7 @@ class QualityAlert(models.Model):
                 raise UserError(
                     "La NC %s no se cancela arrastrándola: usa el botón «Cancelar NC», "
                     "captura el motivo y el Jefe de MAST la aprueba." % (alert.sgi_folio))
-            # 57.90.0 (FUNC-C13): cerrar es de quien responde por el proceso.
+            # 57.91.0 (FUNC-C13): cerrar es de quien responde por el proceso.
             if new_stage.sgi_is_closing_stage and not force \
                     and not alert._sgi_user_can_close():
                 raise UserError(
@@ -466,7 +466,7 @@ class QualityAlert(models.Model):
                     "Abierta, Seguimiento, Cerrada y Cancelada." % new_stage.name)
 
     def _sgi_user_can_close(self):
-        """57.90.0 (FUNC-C13): cierra una NC el Jefe MAST (o código de sistema)
+        """57.91.0 (FUNC-C13): cierra una NC el Jefe MAST (o código de sistema)
         o el usuario del dueño de su proceso."""
         self.ensure_one()
         if sgi_bypass_allowed(self.env):
@@ -683,7 +683,7 @@ class QualityAlert(models.Model):
         return res
 
     def unlink(self):
-        """57.90.0 (K-02): una NC con folio es evidencia (ISO 10.2) y su folio
+        """57.91.0 (K-02): una NC con folio es evidencia (ISO 10.2) y su folio
         no puede dejar hueco. Se cancela con «Cancelar NC»."""
         if not sgi_bypass_allowed(self.env):
             with_folio = self.filtered('sgi_folio')
@@ -1086,7 +1086,7 @@ class SgiNcForceClose(models.TransientModel):
         ], limit=1)
         if not closing_stage:
             raise UserError("No hay una etapa de cierre configurada para este equipo.")
-        # 57.90.0 (K-07): nombre y motivo escapados.
+        # 57.91.0 (K-07): nombre y motivo escapados.
         alert.message_post(body=Markup(
             "<b>Cierre forzado</b> por %s.<br/>Motivo: %s") % (self.env.user.name, self.reason))
         alert.with_context(sgi_force_close=True).write({'stage_id': closing_stage.id})

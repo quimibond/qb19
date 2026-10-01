@@ -473,7 +473,7 @@ class SgiActivityRoleApproval(models.Model):
     def cron_sgi_sync_approvals(self):
         """Cada noche: aprobadores al día (cambian las personas de los
         puestos) y reglas archivadas si la actividad o el rol ya no existen."""
-        sgi_require_system(self.env)  # 57.90.0 (K-06)
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         roles = self.sudo().search(self._sgi_native_approval_domain())
         for role in roles:
             try:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""57.90.0 (auditoría 2026-10, K-01, K-02, K-06, K-07, FUNC-C13): la evidencia
+"""57.91.0 (auditoría 2026-10, K-01, K-02, K-06, K-07, FUNC-C13): la evidencia
 no se pierde ni se altera por error.
 
 - Un documento controlado no va a la papelera ni se borra (Odoo lo borra a

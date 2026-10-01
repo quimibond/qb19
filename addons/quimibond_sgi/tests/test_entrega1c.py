@@ -64,7 +64,7 @@ class TestEntrega1c(TransactionCase):
         with self.assertRaises(AccessError):
             self.env['sgi.config'].with_user(self.user).seed_parameters()
         self.assertTrue(self.env['sgi.config'].seed_parameters(), "El sistema sí lo corre.")
-        # 57.90.0 (K-06): los procesos pesados de cron, también solo del sistema.
+        # 57.91.0 (K-06): los procesos pesados de cron, también solo del sistema.
         for model, method in (('sgi.activity.role', 'cron_sgi_sync_approvals'),
                               ('sgi.checklist.template', 'cron_generate'),
                               ('sgi.process.activity', 'cron_measure_activities'),

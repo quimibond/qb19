@@ -153,7 +153,7 @@ class SgiIndicatorTrajectory(models.Model):
     @api.model
     def cron_missing_trajectories(self):
         """Paso del cron de indicadores: escalones para los que ya tienen fechas."""
-        sgi_require_system(self.env)  # 57.90.0 (K-06)
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         pending = self.search([('baseline_date', '!=', False), ('target_date', '!=', False),
                                ('direction', '!=', 'range'), ('step_ids', '=', False)])
         pending._sgi_auto_trajectory()

@@ -1347,7 +1347,7 @@ class SgiProcessActivity(models.Model):
         """Cron diario: resuelve menús pendientes, mide las actividades con entregable medible y
         evalúa los eslabones de la cadena (la extensión de ``sgi_activity_spec`` suma las cifras
         semanales y las de Mi procedimiento)."""
-        sgi_require_system(self.env)  # 57.90.0 (K-06)
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         # Primero intenta resolver menús pendientes desde su texto; después
         # mide, y con la medición fresca evalúa el flujo de la cadena. Cada
         # paso es independiente: un tropiezo en uno no debe dejar sin medir

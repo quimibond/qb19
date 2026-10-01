@@ -130,7 +130,7 @@ class SgiChecklistTemplate(models.Model):
     @api.model
     def cron_generate(self):
         """Cron diario: las plantillas que tocan hoy."""
-        sgi_require_system(self.env)  # 57.90.0 (K-06)
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         day = sgi_today(self.env)
         templates = self.search([]).filtered(lambda t: t._sgi_due_today(day))
         self._sgi_warn_without_equipment(templates)

@@ -114,7 +114,7 @@ class QualityAlertSupplierPortal(models.Model):
             'sgi_supplier_state': 'contestada',
             'sgi_supplier_response_date': fields.Datetime.now(),
         })
-        # 57.90.0 (K-07): el texto del proveedor llega del portal; se escapa y se recorta.
+        # 57.91.0 (K-07): el texto del proveedor llega del portal; se escapa y se recorta.
         self.sudo().message_post(body=Markup(
             "<b>Respuesta del proveedor</b> por el portal.<br/><b>Causa:</b> %s<br/><b>Acción:</b> %s"
         ) % (cause[:5000], action[:5000]))

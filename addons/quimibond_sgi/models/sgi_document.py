@@ -1076,7 +1076,7 @@ class DocumentsDocument(models.Model):
     _SGI_TRASH_LOCKED_STATES = ('vigente', 'piloto', 'obsoleto')
 
     def _sgi_check_can_trash(self):
-        """57.90.0 (K-01): un controlado vigente, en piloto u obsoleto no va a
+        """57.91.0 (K-01): un controlado vigente, en piloto u obsoleto no va a
         la papelera ni se borra; se marca obsoleto. El Jefe MAST y el sistema
         sí pueden (limpiezas decididas)."""
         if sgi_bypass_allowed(self.env):
@@ -1100,7 +1100,7 @@ class DocumentsDocument(models.Model):
     def unlink(self):
         self._sgi_check_can_trash()
         if self.env.su:
-            # 57.90.0 (K-01): la autolimpieza de la papelera de Documents
+            # 57.91.0 (K-01): la autolimpieza de la papelera de Documents
             # borra en lote como superusuario. Un documento con acuses
             # (evidencia, «restrict») que el rescate no pudo reactivar haría
             # fallar la llave foránea y deshacer el vaciado completo cada
@@ -1115,7 +1115,7 @@ class DocumentsDocument(models.Model):
 
     @api.autovacuum
     def _gc_sgi_rescue_trashed_with_acks(self):
-        """57.90.0 (K-01): un documento con acuses de lectura es evidencia
+        """57.91.0 (K-01): un documento con acuses de lectura es evidencia
         (ISO 7.5) y su llave foránea («restrict») impide borrarlo: si alguien
         lo manda a la papelera, se rescata antes de que la autolimpieza de
         Documents lo intente borrar y atore el vaciado de la papelera.
@@ -1202,7 +1202,7 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
-        # 57.90.0 (K-01): archivar manda el documento a la papelera y la
+        # 57.91.0 (K-01): archivar manda el documento a la papelera y la
         # autolimpieza lo BORRA a los documents.deletion_delay días, con sus
         # acuses. Ya pasó con 3359, 5119 y 4995 (57.82.0).
         if 'active' in vals and not vals['active']:
@@ -1351,7 +1351,7 @@ class SgiDocumentAck(models.Model):
     _order = 'document_id, employee_id'
     _rec_name = 'document_id'
 
-    # 57.90.0 (K-01): «restrict»: el acuse es evidencia de difusión (ISO 7.5);
+    # 57.91.0 (K-01): «restrict»: el acuse es evidencia de difusión (ISO 7.5);
     # borrar el documento ya no se lleva sus acuses en cascada.
     document_id = fields.Many2one('documents.document', string="Documento", required=True,
                                   ondelete='restrict', help="Documento que se debe leer.")
