@@ -46,6 +46,20 @@ marca quien la arma.
 de la respuesta. Con 72 indicadores la respuesta pasaba de 60 mil caracteres.
 Lo que sí devuelve es `detail_count`, y la medición guardada conserva los ids.
 
+**Corregido: CO-01 (entregas a tiempo de proveedores) daba 2–11 % de enero
+a junio.** Hasta junio de 2026 la OC nacía con la fecha prometida igual a la
+del pedido, al segundo, porque nadie la capturaba (por MCP: casi todas las
+OC de enero). Por eso cualquier recepción salía tarde. Desde agosto, unas 7
+de cada 10 OC sí la traen. El cálculo cambia en tres cosas:
+- solo cuenta recepciones de una OC de la compañía del KPI que tenga fecha
+  prometida;
+- las OC sin fecha prometida no cuentan, y la nota dice cuántas son;
+- a tiempo quiere decir recibida a más tardar el día prometido, en fecha
+  local y no a la hora exacta.
+
+Ya no entran las recepciones sin OC (devoluciones de cliente) ni las de
+otras compañías.
+
 **Migración (`migrations/19.0.57.90.0/post-migrate.py`):**
 
 1. Marca como foto los configurables S2-03, S3-03, S6-03, E2-01 y E2-03.
@@ -58,7 +72,7 @@ Lo que sí devuelve es `detail_count`, y la medición guardada conserva los ids.
    En producción se esperan las de enero a agosto de EX-08, EX-09, AL-01,
    S2-03, S3-03 y S6-03. E2-01 y E2-03 ya estaban casi todas en «sin dato».
 3. Recalcula con el filtro nuevo las mediciones 2026 no validadas de los
-   modos de ventas, y deja en el log el antes → después.
+   modos de ventas y de CO-01, y deja en el log el antes → después.
 
 ## 19.0.57.89.0 — 2026-10-01
 

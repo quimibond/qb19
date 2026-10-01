@@ -4,7 +4,7 @@
 
 Periodo 2042 para no chocar con la facturación de otras suites.
 """
-from datetime import date
+from datetime import date, datetime
 
 from dateutil.relativedelta import relativedelta
 
@@ -132,3 +132,37 @@ class TestIndicadores5790(TransactionCase):
         self.assertNotIn('detail_ids', short)
         self.assertEqual(short['detail_count'], full['detail_count'])
         self.assertGreaterEqual(short['detail_count'], 1)
+
+    # ---- CO-01 ---------------------------------------------------------------
+    def _receipt(self, promised, done):
+        """OC del 2042-03-02 10:00 UTC con la fecha prometida dada, recibida en
+        ``done`` (UTC)."""
+        product = self.env['product.product'].create({'name': 'Insumo 5790', 'type': 'consu'})
+        supplier = self.env['res.partner'].create({'name': 'Proveedor 5790'})
+        ordered = datetime(2042, 3, 2, 10, 0, 0)
+        po = self.env['purchase.order'].create({
+            'partner_id': supplier.id, 'date_order': ordered,
+            'order_line': [(0, 0, {'product_id': product.id, 'product_qty': 1.0,
+                                   'price_unit': 10.0, 'date_planned': promised or ordered})]})
+        po.button_confirm()
+        picking = po.picking_ids
+        picking.move_ids.quantity = 1.0
+        picking.move_ids.picked = True
+        picking._action_done()
+        picking.date_done = done
+        return po, picking
+
+    def test_06_otd_compras_sin_promesa_no_cuenta(self):
+        # Recibida el mismo día prometido pero más tarde (hora local): a tiempo.
+        _po, same_day = self._receipt(datetime(2042, 3, 10, 15, 0), datetime(2042, 3, 10, 23, 0))
+        _po, late = self._receipt(datetime(2042, 3, 10, 15, 0), datetime(2042, 3, 13, 18, 0))
+        no_promise_po, no_promise = self._receipt(None, datetime(2042, 3, 12, 18, 0))
+        self.assertEqual(no_promise_po.date_planned, no_promise_po.date_order)
+        ind = self._indicator('otd_compras', 'Z5790-CO01')
+        detail = ind._detail_otd_compras(self.period, self.period_end)
+        self.assertEqual((detail['numerator'], detail['denominator']), (1, 2))
+        self.assertEqual(detail['value'], 50.0)
+        self.assertNotIn(no_promise.id, detail['ids'])
+        self.assertIn(same_day.id, detail['ids'])
+        self.assertIn(late.id, detail['ids'])
+        self.assertIn('sin fecha prometida', ind._note_otd_compras(self.period, self.period_end))

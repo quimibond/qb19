@@ -14,7 +14,9 @@ foto que no se recalculan hacia atrás.
 3. Las mediciones 2026 no validadas de los modos de ventas se recalculan con
    el filtro nuevo (líneas en cuentas 401/402): sin la venta de la rama
    ICOMATEX a Leasing Lepezo ($11.3 M en mar-2026, cuenta 704.23.0003) ni la
-   de junio ($2.0 M). Cada indicador va en su savepoint.
+   de junio ($2.0 M). También CO-01 (``otd_compras``), que ahora deja fuera
+   las recepciones de OC sin fecha prometida. Cada medición va en su
+   savepoint.
 
 Registra antes → después en el log. Idempotente.
 """
@@ -27,11 +29,11 @@ _logger = logging.getLogger(__name__)
 
 SNAPSHOT_CODES = ('S2-03', 'S3-03', 'S6-03', 'E2-01', 'E2-03')
 SNAPSHOT_SINCE = '2026-10-01 00:00:00'
-SALES_RECALC_MODES = (
+RECALC_MODES = (
     'crecimiento_ventas', 'clientes_nuevos', 'concentracion_top3',
     'facturacion_usd', 'ventas_fuera_top10', 'notas_credito',
     'clientes_reactivados', 'retencion_clientes', 'concentracion_productos',
-    'presupuesto_ventas', 'dso_cartera')
+    'presupuesto_ventas', 'dso_cartera', 'otd_compras')
 
 
 def migrate(cr, version):
@@ -54,7 +56,7 @@ def migrate(cr, version):
 
     Measure = env['sgi.indicator.measure']
     recalculated = 0
-    for indicator in Indicator.search([('calc_mode', 'in', SALES_RECALC_MODES)]):
+    for indicator in Indicator.search([('calc_mode', 'in', RECALC_MODES)]):
         measures = Measure.search([
             ('indicator_id', '=', indicator.id),
             ('period_date', '>=', date(2026, 1, 1)),
@@ -73,4 +75,4 @@ def migrate(cr, version):
             except Exception as error:  # noqa: BLE001 - una medición no detiene a las demás
                 _logger.warning("SGI 57.90.0: %s %s no se recalculó: %s",
                                 indicator.code, measure.period_date, error)
-    _logger.info("SGI 57.90.0: %s mediciones de ventas recalculadas", recalculated)
+    _logger.info("SGI 57.90.0: %s mediciones de ventas y CO-01 recalculadas", recalculated)

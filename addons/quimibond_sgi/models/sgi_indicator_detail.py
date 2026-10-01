@@ -23,6 +23,8 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .sgi_calendar import sgi_local_date
+
 MIN_SAMPLE_PARAM = 'quimibond_sgi.indicator_min_sample'
 DEFAULT_MIN_SAMPLE = 5
 
@@ -286,18 +288,42 @@ class SgiIndicatorDetail(models.Model):
                       and p.date_done <= (p.date_deadline or p.scheduled_date))
         return self._ratio(on_time, len(pickings), pickings)
 
-    def _detail_otd_compras(self, date_from, date_to):
+    def _sgi_otd_receipts(self, date_from, date_to):
+        """(a tiempo, medibles, sin promesa) de CO-01. 57.90.0: solo
+        recepciones de una orden de compra de la compañía del KPI con fecha
+        prometida capturada. Hasta jun-2026 la OC nacía con la fecha
+        prometida igual a la del pedido, al segundo (nadie la capturaba), y
+        toda recepción salía tarde (2–11 %). Esas quedan fuera y se cuentan
+        aparte. A tiempo = recibida a más tardar el día prometido (fecha
+        local, no la hora)."""
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
         pickings = self.env['stock.picking'].search([
             ('picking_type_id.code', '=', 'incoming'), ('state', '=', 'done'),
+            ('company_id', '=', self._sgi_kpi_company().id),
+            ('purchase_id', '!=', False),
             ('date_done', '>=', dt_from), ('date_done', '<', dt_to)])
-        on_time = 0
-        for pick in pickings:
-            po = pick.purchase_id if 'purchase_id' in pick._fields else False
-            deadline = (po and po.date_planned) or pick.date_deadline or pick.scheduled_date
-            if deadline and pick.date_done and pick.date_done <= deadline:
-                on_time += 1
-        return self._ratio(on_time, len(pickings), pickings)
+        measurable = pickings.filtered(
+            lambda p: p.purchase_id.date_planned
+            and p.purchase_id.date_planned != p.purchase_id.date_order)
+        on_time = measurable.filtered(
+            lambda p: sgi_local_date(self.env, p.date_done)
+            <= sgi_local_date(self.env, p.purchase_id.date_planned))
+        return on_time, measurable, pickings - measurable
+
+    def _detail_otd_compras(self, date_from, date_to):
+        if 'purchase_id' not in self.env['stock.picking']._fields:
+            return {'value': None}
+        on_time, measurable, _without = self._sgi_otd_receipts(date_from, date_to)
+        return self._ratio(len(on_time), len(measurable), measurable)
+
+    def _note_otd_compras(self, date_from, date_to):
+        if 'purchase_id' not in self.env['stock.picking']._fields:
+            return ''
+        _on_time, _measurable, without = self._sgi_otd_receipts(date_from, date_to)
+        if not without:
+            return ''
+        return ("%s recepciones sin fecha prometida en la OC (igual a la del "
+                "pedido) no cuentan." % len(without))
 
     def _detail_entregas_completas(self, date_from, date_to):
         pickings = self._sgi_outgoing_done(date_from, date_to)

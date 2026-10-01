@@ -381,21 +381,8 @@ class SgiIndicator(models.Model):
         return round(on_time / len(pickings) * 100.0, 2)
 
     def _calc_otd_compras(self, date_from, date_to):
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        pickings = self.env['stock.picking'].search([
-            ('picking_type_id.code', '=', 'incoming'),
-            ('state', '=', 'done'),
-            ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
-        ])
-        if not pickings:
-            return None
-        on_time = 0
-        for pick in pickings:
-            po = pick.purchase_id if 'purchase_id' in pick._fields else False
-            deadline = (po and po.date_planned) or pick.date_deadline or pick.scheduled_date
-            if deadline and pick.date_done and pick.date_done <= deadline:
-                on_time += 1
-        return round(on_time / len(pickings) * 100.0, 2)
+        """Ver _detail_otd_compras (sgi_indicator_detail.py)."""
+        return self._detail_otd_compras(date_from, date_to)['value']
 
     def _sgi_production_done(self, date_from, date_to):
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
