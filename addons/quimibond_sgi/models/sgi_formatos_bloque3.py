@@ -115,12 +115,23 @@ SGI_B3_ODOO_FORMS = (
 SGI_FORMAT_DOC_TYPES = ('formato', 'formato_it', 'dat', 'anexo', 'formulario_odoo')
 
 # --- Paso 3 (57.84.0) ------------------------------------------------------
-# Tipos que reciben clave nueva D-02. Fuera, por decisión ya escrita en el
-# código: formularios de Odoo (L-004: conservan su clave), externos y «Mi
-# procedimiento». Fuera, por pregunta abierta: los procedimientos
-# (PR-{proceso} no lleva consecutivo y hay hasta 13 por proceso). Los tipos
-# sin patrón (anexo, protocolo, reglamento, MIID, diagrama) conservan la suya.
-SGI_D02_DOC_TYPES = ('instructivo', 'formato', 'formato_it', 'dat')
+# Decisiones de Jose del 2026-10-01 sobre D-02:
+# - Formularios de Odoo: conservan su clave (L-004). Son pantallas; lo que
+#   imprimen ya lleva la clave del formato ligado por el mapeo.
+# - Procedimientos del Dropbox «En curso»: conservan su clave hasta que su
+#   proceso entra en vigor y pasan a obsoletos.
+# - Procedimientos «No aplica (se queda)» (que ningún proceso sustituye):
+#   pasan a «Control operacional» con CO-{proceso}-{nn}.
+# - Protocolos: PROT-{proceso}-{nn}.
+# - Anexos (siguen a su documento padre) y reglamentos (registrados ante la
+#   autoridad con ese nombre): conservan su clave. Igual MIID y diagramas.
+SGI_D02_DOC_TYPES = ('instructivo', 'formato', 'formato_it', 'dat', 'protocolo')
+# Patrón de clave que D-02 fija en los tipos (solo si siguen con el de
+# fábrica o vacío: lo que MAST haya puesto se respeta).
+SGI_D02_TYPE_PATTERNS = {
+    'control_operacional': (('CO-{seq:02d}', False), 'CO-{process}-{seq:02d}'),
+    'protocolo': ((False,), 'PROT-{process}-{seq:02d}'),
+}
 
 
 class DocumentsDocumentBloque3(models.Model):
@@ -487,6 +498,76 @@ class DocumentsDocumentBloque3(models.Model):
 
     # --- paso 3: clave nueva D-02 -------------------------------------------
     @api.model
+    def _sgi_d02_type_patterns(self, company=None):
+        """Pone el patrón D-02 en «Control operacional» (CO-{proceso}-{nn}) y
+        «Protocolo» (PROT-{proceso}-{nn}) si siguen con el de fábrica.
+        Devuelve {código: (antes, después)}."""
+        company = self._sgi_b3_company(company)
+        Type = self.env['sgi.document.type'].sudo().with_context(active_test=False)
+        done = {}
+        for code, (defaults, pattern) in SGI_D02_TYPE_PATTERNS.items():
+            for dtype in Type.search([('code', '=', code), ('company_id', 'in', (company.id, False))]):
+                if dtype.prefix_pattern == pattern:
+                    continue
+                if dtype.prefix_pattern not in defaults:
+                    _logger.info("SGI D-02: el tipo %s tiene el patrón %s (lo puso MAST); se "
+                                 "respeta.", code, dtype.prefix_pattern)
+                    continue
+                done[code] = (dtype.prefix_pattern, pattern)
+                dtype.write({'prefix_pattern': pattern})
+                _logger.info("SGI D-02: tipo %s, patrón %s → %s.", code,
+                             done[code][0] or "vacío", pattern)
+        return done
+
+    @api.model
+    def _sgi_d02_control_operacional(self, company=None, ids=None):
+        """Los procedimientos del Dropbox controlados, activos y no obsoletos
+        en «No aplica (se queda)» que ningún proceso sustituye pasan a tipo
+        «Control operacional» con CO-{proceso}-{nn} (todas las revisiones de
+        su clave, tipo y clave juntos). Orden: proceso y clave del Dropbox.
+        La clave anterior no cambia. Los «En curso» no se tocan. Fuera P-I01.
+        Devuelve ``{'done': [(id, vieja, nueva)], 'skipped': [...]}``."""
+        company = self._sgi_b3_company(company)
+        Doc = self.sudo()
+        done, skipped = [], []
+        co_type = self.env['sgi.document.type'].sudo().search(
+            [('code', '=', 'control_operacional'), ('company_id', 'in', (company.id, False))],
+            order='company_id', limit=1)
+        if not co_type or '{process}' not in (co_type.prefix_pattern or ''):
+            _logger.warning("SGI D-02: falta el tipo «Control operacional» con patrón por proceso; "
+                            "los procedimientos «No aplica» conservan su clave.")
+            return {'done': done, 'skipped': skipped}
+        domain = [('sgi_is_controlled', '=', True), ('active', '=', True),
+                  ('sgi_state', '!=', 'obsoleto'), ('sgi_doc_type_id.code', '=', 'procedimiento'),
+                  ('sgi_migration_state', '=', 'na'), ('sgi_replaced_by_process_id', '=', False),
+                  ('sgi_process_id.company_id', '=', company.id)] \
+            + self._sgi_dropbox_excluded_domain()
+        if ids is not None:
+            domain.append(('id', 'in', list(ids)))
+        for doc in Doc.search(domain).sorted(key=self._sgi_d02_sort_key):
+            old = doc.sgi_code
+            family = doc | doc._sgi_same_code_docs()
+            try:
+                with self.env.cr.savepoint():
+                    new = co_type.sgi_next_code(doc.sgi_process_id)
+                    family.with_context(sgi_revision_correction=True).write(
+                        {'sgi_doc_type_id': co_type.id, 'sgi_code': new})
+                    for member in family:
+                        member.message_post(
+                            body="Clave nueva %s (antes %s): procedimiento del Dropbox «No aplica "
+                                 "(se queda)» reclasificado como control operacional (D-02, "
+                                 "decisión de Jose del 2026-10-01)." % (new, old))
+            except Exception as exc:  # noqa: BLE001 - se reporta y sigue
+                skipped.append((doc.id, old, str(exc.args[0] if exc.args else exc)))
+                _logger.warning("SGI D-02: %s (%d) sigue como procedimiento: %s", old, doc.id, exc)
+                continue
+            done.append((doc.id, old, new))
+            _logger.info("SGI D-02: %s → %s (%d; procedimiento → control operacional, %s; clave "
+                         "anterior %s).", old, new, doc.id, doc.sgi_process_id.code,
+                         doc.sgi_previous_code)
+        return {'done': done, 'skipped': skipped}
+
+    @api.model
     def _sgi_d02_sort_key(self, doc):
         prefix = (doc.sgi_doc_type_id.prefix_pattern or '').split('{')[0]
         return (doc.sgi_process_id.code or '', prefix, doc.sgi_code or '', doc.id)
@@ -502,10 +583,15 @@ class DocumentsDocumentBloque3(models.Model):
         toca la clave anterior (la del Dropbox), así que la búsqueda por clave
         anterior sigue igual. Los mapeos de formato ligados al documento
         imprimen solos la clave nueva; su «Clave al ligar» se actualiza si era
-        la clave vieja. ``ids`` limita el alcance (pruebas). Devuelve
-        ``{'done': [(id, vieja, nueva)], 'skipped': [(id, clave, motivo)]}``."""
+        la clave vieja. Antes fija los patrones de «Control operacional» y
+        «Protocolo» y reclasifica los procedimientos «No aplica (se queda)»
+        (``_sgi_d02_control_operacional``). ``ids`` limita el alcance
+        (pruebas). Devuelve ``{'done': [(id, vieja, nueva)], 'co': [...],
+        'skipped': [(id, clave, motivo)], 'patterns': {...}}``."""
         company = self._sgi_b3_company(company)
         Doc = self.sudo()
+        patterns = self._sgi_d02_type_patterns(company)
+        co = self._sgi_d02_control_operacional(company, ids=ids)
         domain = [('sgi_is_controlled', '=', True), ('active', '=', True),
                   ('sgi_state', '!=', 'obsoleto'),
                   ('sgi_doc_type_id.code', 'in', list(types)),
@@ -514,8 +600,11 @@ class DocumentsDocumentBloque3(models.Model):
         if ids is not None:
             domain.append(('id', 'in', list(ids)))
         docs = Doc.search(domain)
-        done, skipped, seen = [], [], set()
+        done, skipped, seen = [], list(co['skipped']), set()
         renamed = {}
+        for doc_id, old, new in co['done']:
+            for member in Doc.browse(doc_id) | Doc.browse(doc_id)._sgi_same_code_docs():
+                renamed[member.id] = (old, new)
         for doc in docs.sorted(key=self._sgi_d02_sort_key):
             # Otra revisión de una clave ya renombrada (la renombró su familia).
             if doc.id in renamed or doc.sgi_code in seen:
@@ -553,7 +642,8 @@ class DocumentsDocumentBloque3(models.Model):
                     _logger.info("SGI D-02: mapeo de formato %d «Clave al ligar»: %s → %s.", fmap.id,
                                  {k: fmap[k] for k in vals}, vals)
                     fmap.write(vals)
-        _logger.info("SGI D-02: %d clave(s) nuevas, %d sin cambio.", len(done), len(skipped))
+        _logger.info("SGI D-02: %d clave(s) nuevas, %d control(es) operacional(es), %d sin cambio.",
+                     len(done), len(co['done']), len(skipped))
         for doc_id, code, reason in skipped:
             _logger.info("SGI D-02: sin cambio %s (%d): %s", code, doc_id, reason)
-        return {'done': done, 'skipped': skipped}
+        return {'done': done, 'co': co['done'], 'skipped': skipped, 'patterns': patterns}

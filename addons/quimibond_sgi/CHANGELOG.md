@@ -15,55 +15,84 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 ## 19.0.57.84.0 — 2026-10-01
 
-**Cambiado (bloque 3 de formularios 3/3, D-02; decisión del 2026-09-30
-«Clave D-02: con script, al final del bloque 3»):**
-`documents.document._sgi_apply_d02` aplica la clave nueva a todos los
-formatos, formatos de instructivo, instructivos y DAT controlados, activos y
-no obsoletos de la empresa del SGI, con `_sgi_assign_new_code` (56.32.0):
-`F-{proceso}-{nn}` (F y F-IT comparten consecutivo), `IT-{proceso}-{nn}` y
-`DA-{proceso}-{nn}`. Numeración determinista (proceso, prefijo, clave del
-Dropbox); el consecutivo sigue al más alto existente. Todas las revisiones de
-una clave van juntas y cada documento deja «Clave nueva … (antes …)» en su
-chatter.
+**Cambiado (bloque 3 de formularios 3/3, D-02; decisiones de Jose del
+2026-09-30, «Clave D-02: con script, al final del bloque 3», y del
+2026-10-01 sobre las tres preguntas abiertas):**
+`documents.document._sgi_apply_d02` aplica la clave nueva con
+`_sgi_assign_new_code` (56.32.0). Numeración determinista (proceso, prefijo,
+clave del Dropbox); el consecutivo sigue al más alto existente. Todas las
+revisiones de una clave van juntas y cada documento deja «Clave nueva …
+(antes …)» en su chatter.
+
+| Qué | Clave nueva |
+|---|---|
+| Formatos y formatos de instructivo (consecutivo compartido) | `F-{proceso}-{nn}` |
+| Instructivos | `IT-{proceso}-{nn}` |
+| DAT | `DA-{proceso}-{nn}` |
+| Protocolos | `PROT-{proceso}-{nn}` (patrón nuevo del tipo) |
+| Procedimientos del Dropbox «No aplica (se queda)» que ningún proceso sustituye | pasan a tipo **Control operacional**, `CO-{proceso}-{nn}` (patrón del tipo: antes `CO-{seq:02d}`) |
+
+**Conservan su clave (decisiones de Jose, 2026-10-01):**
+
+- **Procedimientos del Dropbox «En curso»:** hasta que su proceso entre en
+  vigor y queden obsoletos (se dan de baja con su clave).
+- **Formularios de Odoo** (L-004): no pasan a `F-{proceso}-{nn}`. Son
+  pantallas; lo que imprimen ya lleva la clave del formato ligado por el
+  mapeo.
+- **Anexos:** siguen a su documento padre. **Reglamentos** (por ejemplo, el
+  Reglamento Interior): están registrados ante la autoridad con ese nombre y
+  clave.
+- MIID, diagramas, obsoletos y P-I01 con su familia.
 
 - **No renombra archivos ni toca la clave anterior** (la del Dropbox, de
   56.32.0): el buscador «Del Dropbox a Odoo», la búsqueda «Clave SGI» y
   `_sgi_find_by_code` siguen encontrando cada documento por su clave vieja,
   **sin límite de tiempo** (C-005; el inventario decía «12 meses», pero eso
-  cambió en 56.32.0).
+  cambió en 56.32.0). También los controles operacionales y los protocolos.
 - Los mapeos de formato imprimen solos la clave nueva (apuntan al documento,
   C-006); su «Clave al ligar» se actualiza cuando era la vieja. Los mapeos
-  sin documento siguen encontrando el suyo por la clave anterior. Las ligas
-  con actividades no cambian.
-- **Conservan su clave:** formularios de Odoo (L-004), procedimientos
-  (pregunta abierta: `PR-{proceso}` no lleva consecutivo y hay hasta 13
-  procedimientos del Dropbox vigentes por proceso), anexos, protocolos,
-  reglamentos, MIID y diagramas (su tipo no tiene patrón), obsoletos y P-I01
-  con su familia.
+  sin documento siguen encontrando el suyo por la clave anterior (el de
+  bloqueo y etiquetado, «P-A20», imprime CO-E2-04). Las ligas con
+  actividades no cambian.
+- Los controles operacionales ya no son procedimientos: salen de
+  «Procedimientos anteriores» y del conteo de procedimientos de «Avance de la
+  transición», y entran en **«Formatos y documentos anteriores»** y en los
+  documentos del avance (`sgi_migration_action`, `action_open_documents` y
+  `sgi.dropbox.progress` incluyen el tipo «Control operacional»). Sus rutinas
+  y su clave anterior no cambian.
+- `data/sgi_document_types.xml` (noupdate, solo bases nuevas) trae los
+  patrones `CO-{process}-{seq:02d}` y `PROT-{process}-{seq:02d}`; en
+  producción los pone la migración si el tipo sigue con el de fábrica.
 
 **Migración (post):** `migrations/19.0.57.84.0/post-migrate.py`. Idempotente
-(la segunda corrida no cambia nada); en el log, cada «vieja → nueva» y cada
-documento sin cambio con su motivo. Esperado en producción (MCP, 2026-10-01,
-después de 57.82.0): **323** claves nuevas: C1 33, C2 21, C3 3, C4 67, C5 64,
-C6 6, E1 1, E2 44, S1 11, S2 7, S3 9, S4 41, S5 16 (instructivos 42, formatos
-183, F-IT 63, DAT 35); IT-C4-01 (3644) ya la tenía. «Clave al ligar» al día
-en los 25 mapeos ligados a un formato o F-IT.
+(la segunda corrida no cambia nada); en el log, cada «vieja → nueva», los
+patrones de tipo con su valor anterior y cada documento sin cambio con su
+motivo. Esperado en producción (MCP, 2026-10-01, después de 57.82.0):
+
+- **5 controles operacionales**, todos de E2: P-A17 → CO-E2-01, P-A18 →
+  CO-E2-02, P-A19 → CO-E2-03, P-A20 → CO-E2-04, P-S03 → CO-E2-05. Siguen
+  como procedimiento los **21 «En curso»**, 5556 (borrador con clave
+  inválida, C-008) y P-I01.
+- **328 claves nuevas:** C1 33, C2 21, C3 3, C4 67, C5 64, C6 6, E1 1, E2 49,
+  S1 11, S2 7, S3 9, S4 41, S5 16 (instructivos 42, formatos 183, F-IT 63,
+  DAT 35, protocolos 5: PROT-01…05 → PROT-E2-01…05). IT-C4-01 (3644) ya la
+  tenía. Conservan su clave 66 formularios de Odoo, 15 anexos y 4
+  reglamentos.
+- «Clave al ligar» al día en los 25 mapeos ligados a un formato o F-IT.
 
 **Corregido (57.82.0, antes de llegar a producción):** el informe de otras
 referencias al duplicado (`_sgi_b3_other_references`) cuenta cada campo
 dentro de un savepoint: un error de SQL en un modelo ajeno ya no deja la
 transacción de la migración abortada.
 
-**Preguntas abiertas para Jose** (en `docs/sgi/transicion/formatos-bloque-3.md`
-§3): clave de los 28 procedimientos del Dropbox que ningún proceso sustituye
-todavía; si los formularios de Odoo también pasan a `F-{proceso}-{nn}`; si
-anexos, protocolos y reglamentos llevan clave nueva.
-
 **Pruebas:** `test_formatos_bloque3` `TestBloque3ClaveD02` (numeración
-determinista con F y F-IT juntos, todas las revisiones, lo que conserva su
-clave, búsqueda por clave anterior con `_sgi_find_by_code`, la búsqueda de
-Documentos y el buscador `sgi.dropbox.key`, mapeos con y sin documento,
-ligas de actividades, idempotencia y post-migrate).
+determinista con F y F-IT juntos, todas las revisiones, procedimiento «En
+curso» sin tocar, «No aplica (se queda)» → `CO-{proceso}-{nn}` con su tipo,
+protocolo → `PROT-{proceso}-{nn}`, anexo con padre, reglamento y formulario
+de Odoo sin tocar, búsqueda por clave anterior con `_sgi_find_by_code`, la
+búsqueda de Documentos y el buscador `sgi.dropbox.key` también para CO y
+PROT, «Formatos y documentos anteriores» con los CO, mapeos con y sin
+documento, ligas de actividades, idempotencia y post-migrate).
 
 ## 19.0.57.83.0 — 2026-10-01
 

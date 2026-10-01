@@ -271,8 +271,10 @@ class SgiDropboxProgress(models.Model):
     @property
     def _table_query(self):
         excluded = _sql_codes(self.env['documents.document']._sgi_dropbox_excluded_codes())
+        # 57.84.0: los procedimientos «No aplica (se queda)» pasaron a control
+        # operacional (D-02); siguen contando como documento del Dropbox.
         dropbox_types = ("'formato', 'formato_it', 'formulario_odoo', 'instructivo', 'dat', 'anexo', "
-                         "'protocolo', 'reglamento', 'miid', 'diagrama'")
+                         "'protocolo', 'reglamento', 'miid', 'diagrama', 'control_operacional'")
         return """
             WITH proc AS (
                 SELECT d.id, d.sgi_process_id, d.sgi_replaced_by_process_id, d.sgi_migration_state
@@ -381,7 +383,7 @@ class SgiDropboxProgress(models.Model):
         action['domain'] = [('sgi_is_controlled', '=', True), ('sgi_process_id', '=', self.process_id.id),
                             ('sgi_doc_type', 'in', ('formato', 'formato_it', 'formulario_odoo', 'instructivo',
                                                     'dat', 'anexo', 'protocolo', 'reglamento', 'miid',
-                                                    'diagrama'))]
+                                                    'diagrama', 'control_operacional'))]
         action['name'] = "Formatos y documentos anteriores — %s" % self.process_code
         return action
 

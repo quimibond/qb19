@@ -7,6 +7,7 @@ Cada prueba trabaja con documentos, procesos y actividades propios (los
 reales se ocultan con ``sgi_hide_real_documents``) y les pasa sus propias
 tablas a los métodos, así que corren igual en una base nueva y en una copia
 de producción."""
+import ast
 import importlib.util
 import os
 
@@ -306,13 +307,24 @@ class TestBloque3ClaveD02(_Bloque3Common):
         cls.form = doc('F-P-A88-05', 'formulario_odoo', cls.p1)
         cls.anexo = doc('ANEXO 88', 'anexo', cls.p1)
         cls.proc = doc('P-A88', 'procedimiento', cls.p2)
+        # Decisiones de Jose del 2026-10-01: «En curso» se queda; «No aplica
+        # (se queda)» pasa a control operacional; protocolos a PROT-…;
+        # anexos y reglamentos conservan su clave.
+        cls.proc_curso = doc('P-A90', 'procedimiento', cls.p2, sgi_migration_state='en_curso')
+        cls.proc_na2 = doc('P-A92', 'procedimiento', cls.p2, sgi_migration_state='na')
+        cls.proc_na1 = doc('P-A91', 'procedimiento', cls.p2, sgi_migration_state='na')
+        cls.prot = doc('PROT-88', 'protocolo', cls.p1)
+        cls.reglamento = doc('R-P-A88-01', 'reglamento', cls.p1)
+        cls.anexo_hijo = doc('ANEXO 89', 'anexo', cls.p1, sgi_parent_document_id=cls.proc_curso.id)
         cls.obsolete = doc('F-P-A88-06', 'formato', cls.p1, sgi_state='obsoleto')
         cls.pi01 = doc('F-P-I01-88', 'formato', cls.p1)
         # Dos revisiones de una clave: la nueva va a las dos.
         cls.f3_old = doc('F-P-A88-03', 'formato', cls.p1, sgi_state='obsoleto', sgi_revision=0)
         cls.f3 = doc('F-P-A88-03', 'formato', cls.p1, sgi_revision=1)
         cls.mine = (cls.f2 | cls.fit | cls.f1 | cls.it1 | cls.dat | cls.f_p2 | cls.form
-                    | cls.anexo | cls.proc | cls.obsolete | cls.pi01 | cls.f3_old | cls.f3)
+                    | cls.anexo | cls.proc | cls.obsolete | cls.pi01 | cls.f3_old | cls.f3
+                    | cls.proc_curso | cls.proc_na1 | cls.proc_na2 | cls.prot | cls.reglamento
+                    | cls.anexo_hijo)
         Map = cls.env['sgi.format.map']
         cls.map_linked = Map.create({'document_id': cls.f1.id, 'sgi_code': 'F-P-A88-01'})
         cls.map_unlinked = Map.create({'sgi_code': 'F-P-A88-02'})
@@ -331,11 +343,30 @@ class TestBloque3ClaveD02(_Bloque3Common):
         self.assertEqual(self.it1.sgi_code, 'IT-XB9-01')
         self.assertEqual(self.dat.sgi_code, 'DA-XB9-01')
         self.assertEqual(self.f_p2.sgi_code, 'F-XBA-01')
-        self.assertEqual(len(result['done']), 7)
+        self.assertEqual(self.prot.sgi_code, 'PROT-XB9-01', "Protocolo: PROT-{proceso}-{nn}.")
+        self.assertEqual(len(result['done']), 8)
+        # Procedimientos «No aplica (se queda)» → control operacional, por clave anterior.
+        co_type = self.env['sgi.document.type'].search([('code', '=', 'control_operacional')], limit=1)
+        self.assertEqual(co_type.prefix_pattern, 'CO-{process}-{seq:02d}')
+        self.assertEqual(self.proc_na1.sgi_code, 'CO-XBA-01')
+        self.assertEqual(self.proc_na2.sgi_code, 'CO-XBA-02')
+        for doc in (self.proc_na1, self.proc_na2):
+            self.assertEqual(doc.sgi_doc_type_id, co_type)
+            self.assertEqual(doc.sgi_doc_type, 'control_operacional')
+            self.assertEqual(doc.sgi_state, 'vigente')
+        self.assertEqual(self.proc_na1.sgi_previous_code, 'P-A91')
+        self.assertEqual([row[1:] for row in result['co']],
+                         [('P-A91', 'CO-XBA-01'), ('P-A92', 'CO-XBA-02')])
         # Conservan su clave.
+        self.assertEqual(self.proc_curso.sgi_code, 'P-A90', "«En curso»: hasta que entre su proceso.")
+        self.assertEqual(self.proc_curso.sgi_doc_type, 'procedimiento')
         self.assertEqual(self.form.sgi_code, 'F-P-A88-05', "Formulario de Odoo (L-004).")
-        self.assertEqual(self.anexo.sgi_code, 'ANEXO 88', "Tipo sin patrón.")
-        self.assertEqual(self.proc.sgi_code, 'P-A88', "Procedimientos: pregunta abierta.")
+        self.assertEqual(self.anexo.sgi_code, 'ANEXO 88', "Anexo: conserva su clave.")
+        self.assertEqual(self.anexo_hijo.sgi_code, 'ANEXO 89')
+        self.assertEqual(self.anexo_hijo.sgi_parent_document_id, self.proc_curso,
+                         "El anexo sigue a su documento padre.")
+        self.assertEqual(self.reglamento.sgi_code, 'R-P-A88-01', "Reglamento: registrado así.")
+        self.assertEqual(self.proc.sgi_code, 'P-A88', "Procedimiento pendiente: no se toca.")
         self.assertEqual(self.obsolete.sgi_code, 'F-P-A88-06')
         self.assertEqual(self.pi01.sgi_code, 'F-P-I01-88', "P-I01 queda fuera siempre.")
         # La clave anterior (Dropbox) no cambia y el archivo no se renombra.
@@ -346,6 +377,7 @@ class TestBloque3ClaveD02(_Bloque3Common):
         # Idempotente.
         again = self._apply()
         self.assertEqual(again['done'], [])
+        self.assertEqual(again['co'], [])
 
     def test_02_busqueda_por_clave_anterior_sigue_funcionando(self):
         self._apply()
@@ -358,6 +390,20 @@ class TestBloque3ClaveD02(_Bloque3Common):
         keys = self.env['sgi.dropbox.key'].search([('key', '=', 'F-P-A88-01')])
         self.assertEqual(keys.mapped('document_id'), self.f1,
                          "El buscador «Del Dropbox a Odoo» encuentra la clave vieja.")
+        # Control operacional y protocolo: también por su clave del Dropbox.
+        self.assertEqual(self.Doc._sgi_find_by_code('P-A91'), self.proc_na1)
+        self.assertEqual(self.Doc._sgi_find_by_code('CO-XBA-01'), self.proc_na1)
+        self.assertEqual(self.Doc._sgi_find_by_code('PROT-88'), self.prot)
+        co_key = self.env['sgi.dropbox.key'].search([('key', '=', 'P-A91')])
+        self.assertEqual(co_key.document_id, self.proc_na1)
+        self.assertEqual(co_key.kind, 'control_operacional')
+        prot_key = self.env['sgi.dropbox.key'].search([('key', '=', 'PROT-88')])
+        self.assertEqual(prot_key.document_id, self.prot)
+        # Siguen en «Formatos y documentos anteriores» (ya no son procedimientos).
+        domain = ast.literal_eval(self.env.ref('quimibond_sgi.sgi_migration_action').domain)
+        listed = self.Doc.search(domain + [('id', 'in', self.mine.ids)])
+        self.assertIn(self.proc_na1, listed)
+        self.assertIn(self.prot, listed)
 
     def test_03_mapeos_imprimen_la_clave_nueva(self):
         self._apply()

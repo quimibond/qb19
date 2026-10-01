@@ -170,14 +170,16 @@ correr `documents.document._sgi_owner_from_process()` desde un shell.
 
 ### Qué hizo el sistema
 
-Cada formato (F), formato de instructivo (F-IT), instructivo (IT) y DAT
-controlado, activo y no obsoleto recibe su clave nueva según su proceso:
+Cada documento controlado, activo y no obsoleto recibe su clave nueva según
+su proceso:
 
 | Tipo | Clave nueva | Ejemplo |
 |---|---|---|
 | Formato y formato de instructivo (comparten consecutivo) | `F-{proceso}-{nn}` | F-IT-P-C05-07-01 → F-C5-nn |
 | Instructivo | `IT-{proceso}-{nn}` | un IT-P-… de C4 → IT-C4-nn |
 | DAT | `DA-{proceso}-{nn}` | DAT P-P01-01 (C4) → DA-C4-nn |
+| Protocolo | `PROT-{proceso}-{nn}` | PROT-01 … PROT-05 → PROT-E2-01 … PROT-E2-05 |
+| Procedimiento del Dropbox «No aplica (se queda)» | pasa a **Control operacional**, `CO-{proceso}-{nn}` | P-A17, P-A18, P-A19, P-A20, P-S03 → CO-E2-01 … CO-E2-05 |
 
 - **Numeración determinista:** por proceso, por prefijo y por la clave del
   Dropbox, en orden alfabético (por eso los F-IT-… van antes que los F-P-…
@@ -190,37 +192,30 @@ controlado, activo y no obsoleto recibe su clave nueva según su proceso:
 - Todas las revisiones de una clave reciben la misma clave nueva; cada
   documento deja en su chatter «Clave nueva … (antes …)».
 - Los PDF de Odoo con pie de formato controlado imprimen la clave nueva solos
-  (el mapeo apunta al documento); su «Clave al ligar» se actualizó.
+  (el mapeo apunta al documento); su «Clave al ligar» se actualizó. El pie
+  del bloqueo y etiquetado (P-A20) imprime CO-E2-04.
 - Las ligas con actividades no cambian (son al documento, no a la clave).
+- Los controles operacionales ya no salen en «Procedimientos anteriores»: se
+  ven en «Formatos y documentos anteriores» y en el buscador por clave
+  anterior.
 
-Esperado en producción: **323** claves nuevas (C1 33, C2 21, C3 3, C4 67, C5
-64, C6 6, E1 1, E2 44, S1 11, S2 7, S3 9, S4 41, S5 16).
+Esperado en producción: **328** claves nuevas (C1 33, C2 21, C3 3, C4 67, C5
+64, C6 6, E1 1, E2 49, S1 11, S2 7, S3 9, S4 41, S5 16) y **5** controles
+operacionales.
 
-### Qué conserva su clave del Dropbox
+### Decisiones de Jose (2026-10-01)
 
-| Qué | Por qué |
+| Qué | Decisión |
 |---|---|
-| Formularios de Odoo (66 con las altas de 57.82.0) | Decisión L-004 (56.32.0): conservan su clave vieja |
-| Procedimientos (P-xxx) | **Pregunta abierta** (abajo) |
-| Anexos, protocolos, reglamentos, MIID y diagramas | Su tipo no tiene patrón de clave nueva |
-| Obsoletos | Se dan de baja con su clave |
-| P-I01 y su familia | Fuera siempre (L-001) |
+| Procedimientos del Dropbox «En curso» (21) | **Conservan su clave** hasta que su proceso entre en vigor y queden obsoletos |
+| Procedimientos «No aplica (se queda)» (5: P-A17, P-A18, P-A19, P-A20, P-S03) | Pasan a **Control operacional**, `CO-{proceso}-{nn}` |
+| Formularios de Odoo (66 con las altas de 57.82.0) | **Conservan su clave** (L-004): son pantallas; lo que imprimen ya lleva la clave del formato ligado por el mapeo |
+| Protocolos (5) | `PROT-{proceso}-{nn}` |
+| Anexos (15) | **Conservan su clave**: siguen a su documento padre |
+| Reglamentos (4, entre ellos el Reglamento Interior) | **Conservan su nombre y clave**: están registrados así ante la autoridad |
 
-### Preguntas abiertas para Jose
-
-1. **Procedimientos.** D-02 dice `PR-{proceso}`, sin consecutivo: una sola
-   clave por proceso. Hoy hay 28 procedimientos del Dropbox vigentes que
-   ningún proceso sustituye todavía (E2 13, C5 9, C4 2, S4 2, C1 1, C2 1).
-   ¿`PR-{proceso}` es el procedimiento de Odoo del proceso (y los del Dropbox
-   conservan su clave hasta su baja), o los del Dropbox llevan consecutivo
-   (`PR-{proceso}-{nn}`)? Mientras se decide, conservan su clave.
-2. **Formularios de Odoo.** ¿Se quedan con la clave del Dropbox (L-004) o
-   pasan también a `F-{proceso}-{nn}`? Hoy conviven, en el mismo proceso,
-   formatos con clave nueva y formularios con clave vieja (por ejemplo en C2:
-   F-C2-nn junto a F-P-A28-06 y F-P-A28-13).
-3. **Anexos, protocolos y reglamentos** (15, 5 y 4): ¿llevan clave nueva? Su
-   tipo no tiene patrón; MAST lo puede poner en Configuración → Tipos de
-   documento y asignar con la acción «Asignar clave nueva».
+También conservan su clave el MIID, los diagramas, los obsoletos, P-I01 con
+su familia y 5556 (procedimiento en borrador con la clave inválida, C-008).
 
 ## Anexo. Los 17 formatos citados que no existen (propuesta §1)
 
