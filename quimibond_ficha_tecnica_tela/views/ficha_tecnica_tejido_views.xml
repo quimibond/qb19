@@ -10,7 +10,9 @@
                 <field name="revision"/>
                 <field name="product_proceso_id"/>
                 <field name="ficha_acabado_count" string="Fichas de acabado"/>
-                <field name="maquina_tejido"/>
+                <field name="rendimiento_tela_tejida" optional="show"/>
+                <field name="maquina_tejido" context="{'ficha_maquina_code': True}"/>
+                <field name="maquina_nombre"/>
                 <field name="ancho_rollo"/>
                 <field name="peso_promedio_rollo"/>
                 <field name="active" column_invisible="1"/>
@@ -45,10 +47,13 @@
                         </group>
                         <group>
                             <field name="product_proceso_id"/>
+                            <field name="rendimiento_tela_tejida"/>
                         </group>
                         <group>
-                            <field name="jefe_manufactura"/>
-                            <field name="auxiliar_procesos"/>
+                            <field name="jefe_manufactura"
+                                   options="{'no_create': True, 'no_open': True}"/>
+                            <field name="auxiliar_procesos"
+                                   options="{'no_create': True, 'no_open': True}"/>
                         </group>
                     </group>
 
@@ -56,7 +61,15 @@
                         <page string="Máquina e Hilos">
                             <group>
                                 <group string="Datos de máquina">
-                                    <field name="maquina_tejido"/>
+                                    <label for="maquina_tejido"/>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <field name="maquina_tejido"
+                                               context="{'ficha_maquina_code': True}"
+                                               options="{'no_create': True, 'no_open': True}"
+                                               class="w-25"/>
+                                        <field name="maquina_nombre" nolabel="1"
+                                               placeholder="Nombre del centro de trabajo"/>
+                                    </div>
                                     <field name="marca_maquina"/>
                                     <field name="galga"/>
                                     <field name="diametro"/>
@@ -257,6 +270,8 @@
             <search string="Buscar Ficha Técnica de Tejido">
                 <field name="articulo"/>
                 <field name="product_proceso_id"/>
+                <field name="maquina_tejido"/>
+                <field name="jefe_manufactura"/>
                 <filter string="Archivadas" name="inactive" domain="[('active','=',False)]"/>
                 <group>
                     <filter string="Artículo" name="group_articulo" context="{'group_by':'articulo'}"/>

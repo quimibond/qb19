@@ -67,8 +67,8 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
-        'data/sgi_indicator_formula_data.xml',
         'data/sgi_expansion_data.xml',
+        'data/sgi_indicator_formula_data.xml',
         'data/sgi_risk_data.xml',
         'data/sgi_audit_data.xml',
         'data/sgi_helpdesk_interno.xml',
@@ -182,6 +182,7 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_master_list_all.xml',
         # menus
         'views/sgi_menus.xml',
+        'views/sgi_menus_late.xml',
         'views/sgi_activity_spec_views.xml',
     ],
     'demo': [

@@ -113,8 +113,6 @@
         </field>
     </record>
 
-    <menuitem id="menu_sgi_epp_deliveries" name="Responsivas de EPP"
-              parent="quimibond_sgi.menu_sgi_admin_signatures" action="sgi_epp_delivery_action" sequence="20"/>
 
     <!-- Ficha del empleado: EPP del puesto (solo lectura), entregar y responsivas. -->
     <record id="sgi_hr_employee_view_form_epp" model="ir.ui.view">

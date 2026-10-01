@@ -5,4 +5,14 @@ Odoo no siempre la retira al actualizar. Idempotente."""
 
 
 def migrate(cr, version):
-    cr.execute("ALTER TABLE sgi_indicator_term DROP CONSTRAINT IF EXISTS sgi_indicator_term_role_uniq")
+    cr.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM information_schema.tables
+                WHERE table_name = 'sgi_indicator_term'
+            ) THEN
+                ALTER TABLE sgi_indicator_term DROP CONSTRAINT IF EXISTS sgi_indicator_term_role_uniq;
+            END IF;
+        END $$;
+    """)
