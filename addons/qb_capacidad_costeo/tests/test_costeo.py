@@ -5360,3 +5360,199 @@ class TestQbCosteo(TransactionCase):
         pasada = Panel._barra(150.0, Panel.MAL)
         self.assertIn('width:100.0%', pasada)
         self.assertIn('▸50', pasada, 'el exceso se dice, no se esconde')
+
+    def _traza_mo_terminada(self, nombre, producto, qty, uom, lot, loc_prod,
+                            loc, fin, workcenter=None, minutos=0.0):
+        """Orden terminada con UNA línea de salida con lote, en 'done' por
+        SQL: el flujo completo de la OP arrastra reservas que la traza no
+        necesita. Con `workcenter`, una orden de trabajo de `minutos` en esa
+        máquina (la duración se escribe por SQL: el inverse del campo
+        abre registros de tiempo que aquí sobran)."""
+        mo = self.env['mrp.production'].create({
+            'name': nombre, 'product_id': producto.id,
+            'product_qty': qty, 'product_uom_id': uom.id})
+        if workcenter is not None:
+            wo = self.env['mrp.workorder'].create({
+                'name': 'traza', 'production_id': mo.id,
+                'workcenter_id': workcenter.id})
+            self.env.flush_all()
+            self.env.cr.execute(
+                "UPDATE mrp_workorder SET duration = %s, state = 'done' "
+                "WHERE id = %s", (minutos, wo.id))
+        # Sin `quantity` en el move: su inverse abriría una línea sin lote
+        # además de la que se crea abajo con lote.
+        # Sin `name`: stock.move ya no lo tiene en Odoo 19.
+        move = self.env['stock.move'].create({
+            'product_id': producto.id,
+            'product_uom': uom.id, 'product_uom_qty': qty,
+            'location_id': loc_prod.id, 'location_dest_id': loc.id,
+            'production_id': mo.id})
+        line = self.env['stock.move.line'].create({
+            'move_id': move.id, 'product_id': producto.id,
+            'product_uom_id': uom.id, 'quantity': qty, 'lot_id': lot.id,
+            'location_id': loc_prod.id, 'location_dest_id': loc.id})
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE mrp_production SET state = 'done', date_finished = %s "
+            "WHERE id = %s", (fin, mo.id))
+        self.env.cr.execute(
+            "UPDATE stock_move SET state = 'done', date = %s WHERE id = %s",
+            (fin, move.id))
+        self.env.cr.execute(
+            "UPDATE stock_move_line SET state = 'done', date = %s "
+            "WHERE id = %s", (fin, line.id))
+        self.env.invalidate_all()
+        return mo
+
+    def _traza_linea_done(self, producto, qty, uom, lot, src, dst, fecha,
+                          raw_mo=None):
+        """Un movimiento hecho con lote (consumo de una OP o entrega)."""
+        vals = {'product_id': producto.id,
+                'product_uom': uom.id, 'product_uom_qty': qty,
+                'location_id': src.id, 'location_dest_id': dst.id}
+        if raw_mo is not None:
+            vals['raw_material_production_id'] = raw_mo.id
+        move = self.env['stock.move'].create(vals)
+        line = self.env['stock.move.line'].create({
+            'move_id': move.id, 'product_id': producto.id,
+            'product_uom_id': uom.id, 'quantity': qty, 'lot_id': lot.id,
+            'location_id': src.id, 'location_dest_id': dst.id})
+        self.env.flush_all()
+        self.env.cr.execute(
+            "UPDATE stock_move SET state = 'done', date = %s WHERE id = %s",
+            (fecha, move.id))
+        self.env.cr.execute(
+            "UPDATE stock_move_line SET state = 'done', date = %s "
+            "WHERE id = %s", (fecha, line.id))
+        self.env.invalidate_all()
+        return move
+
+    def test_la_absorcion_vendida_sigue_los_lotes_hasta_la_entrega(self):
+        """Lo que Odoo capitaliza por workcenter viaja dentro de los lotes.
+        Solo la parte que llegó a una entrega a cliente está en el costo
+        de ventas del mes; el resto es inventario. En sep-2026 el abono fue
+        $1,197,422 y lo vendido $344,667 (28.8%): restar el abono completo
+        en la capa expensaba $852,755 de mercancía que seguía en el
+        almacén. Aquí: 120 min × $60/h = $120 en 100 kg de crudo; 50 kg se
+        tiñen y acaban en 200 m; se entregan 80 m → $24 vendidos, $96 en
+        inventario (50 kg crudos = $60 y 120 m terminados = $36)."""
+        Centro = self.env['qb.costeo.centro']
+        WC = self.env['mrp.workcenter']
+        Lot = self.env['stock.lot']
+        Loc = self.env['stock.location']
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        uom_m = self.env.ref('uom.product_uom_meter')
+        period = date(2027, 9, 1)
+        fin_tej = datetime(2027, 9, 5, 12)
+        fin_aca = datetime(2027, 9, 12, 12)
+        entrega = datetime(2027, 9, 20, 12)
+        wc = WC.create({'name': 'CIRCULAR TRAZA TEST', 'costs_hour': 60.0})
+        centro = Centro.create({
+            'code': 'TEST_TRZ', 'name': 'Centro traza test',
+            'nature': 'fabril_directo', 'driver_principal': 'peso',
+            'modo_costeo': 'absorcion_odoo', 'fecha_absorcion': period,
+            'workcenter_ids': [(6, 0, [wc.id])]})
+        crudo = self.env['product.product'].create({
+            'name': 'CRUDO TRAZA TEST', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': uom_kg.id})
+        tela = self.env['product.product'].create({
+            'name': 'TELA TRAZA TEST', 'is_storable': True,
+            'tracking': 'lot', 'uom_id': uom_m.id, 'sale_ok': True})
+        loc = self.env.ref('stock.stock_location_stock',
+                           raise_if_not_found=False) \
+            or Loc.search([('usage', '=', 'internal')], limit=1)
+        loc_prod = Loc.search([('usage', '=', 'production')], limit=1) \
+            or Loc.create({'name': 'TRZ PROD', 'usage': 'production'})
+        cliente = Loc.search([('usage', '=', 'customer')], limit=1) \
+            or Loc.create({'name': 'TRZ CLIENTE', 'usage': 'customer'})
+        lot_h = Lot.create({'name': 'H-TRZ-1', 'product_id': crudo.id})
+        lot_j = Lot.create({'name': 'J-TRZ-1', 'product_id': tela.id})
+
+        # Tejido: 100 kg con 120 min en la máquina absorbida ($120)
+        self._traza_mo_terminada('TRZ/H1', crudo, 100.0, uom_kg, lot_h,
+                                 loc_prod, loc, fin_tej, workcenter=wc,
+                                 minutos=120.0)
+        # Acabado: consume 50 kg del lote H y saca 200 m en el lote J
+        mo_aca = self._traza_mo_terminada('TRZ/J1', tela, 200.0, uom_m,
+                                          lot_j, loc_prod, loc, fin_aca)
+        self._traza_linea_done(crudo, 50.0, uom_kg, lot_h, loc, loc_prod,
+                               fin_aca, raw_mo=mo_aca)
+        # Entrega: 80 de los 200 m al cliente dentro del período
+        self._traza_linea_done(tela, 80.0, uom_m, lot_j, loc, cliente,
+                               entrega)
+
+        Traza = self.env['qb.costo.absorcion.traza']
+        r = Traza.trazar(centro, period, period,
+                         period + relativedelta(months=1))
+        self.assertEqual(r['ordenes'], 1)
+        self.assertAlmostEqual(r['bruta'], 120.0, places=4)
+        self.assertAlmostEqual(r['vendida'], 24.0, places=4,
+                               msg='$60 en el lote J × 80/200 entregados')
+        self.assertAlmostEqual(r['en_inventario'], 96.0, places=4,
+                               msg='50 kg crudos ($60) + 120 m ($36)')
+        self.assertEqual(r['sin_lote'], 0.0)
+        self.assertAlmostEqual(
+            r['vendida'] + r['en_inventario'] + r['sin_lote'], r['bruta'],
+            places=4, msg='nada se pierde en el camino')
+
+        # El período lo guarda y la capa propuesta lo resta
+        f = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(f.absorcion_vendida_month, 24.0, places=4)
+        self.assertAlmostEqual(f.absorcion_en_inventario, 96.0, places=4)
+        self.assertAlmostEqual(
+            f.capa_propuesta_month,
+            f.costo_primo_gl_month - f.mp_vendida_month - 24.0, places=4)
+
+        # Al mes siguiente el lote J sigue cargando lo que se entregue:
+        # otros 100 m → $30, y en inventario quedan $66
+        entrega2 = datetime(2027, 10, 8, 12)
+        self._traza_linea_done(tela, 100.0, uom_m, lot_j, loc, cliente,
+                               entrega2)
+        oct_ = period + relativedelta(months=1)
+        r2 = Traza.trazar(centro, period, oct_,
+                          oct_ + relativedelta(months=1))
+        self.assertAlmostEqual(r2['vendida'], 30.0, places=4)
+        self.assertAlmostEqual(r2['vendida_acum'], 54.0, places=4)
+        self.assertAlmostEqual(r2['en_inventario'], 66.0, places=4)
+        centro.unlink()
+
+    def test_la_capa_propuesta_deja_fuera_el_diario_de_capa(self):
+        """La base de la capa es el costo primo del mayor ANTES de la capa:
+        si el diario CAPA entrara, cada capa registrada bajaría la siguiente
+        propuesta. Cuenta y diario son parámetros."""
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'general')], limit=1)
+        if not journal:
+            self.skipTest('sin plan contable en la DB de test')
+        Account = self.env['account.account']
+        Config = self.env['qb.costeo.factor.config']
+        period = date(2027, 11, 1)
+        cuenta = Account.create({
+            'name': 'COSTO PRIMO TEST', 'code': 'QBCP.0001',
+            'account_type': 'expense_direct_cost'})
+        contra = Account.create({'name': 'CONTRA CAPA TEST',
+                                 'code': 'QBCP.0009', 'account_type': 'expense'})
+        puente = Account.create({'name': 'PUENTE CAPA TEST',
+                                 'code': 'QBCP.0005',
+                                 'account_type': 'asset_current'})
+        capa = self.env['account.journal'].create({
+            'name': 'CAPA TEST', 'code': 'QBCAP', 'type': 'general'})
+        Config.set_param('capa_cuenta_costo_primo', value_text='QBCP.0001')
+        Config.set_param('capa_diario_code', value_text='QBCAP')
+
+        def asiento(diario, debe, haber, monto):
+            self.env['account.move'].create({
+                'move_type': 'entry', 'journal_id': diario.id,
+                'date': period,
+                'line_ids': [
+                    (0, 0, {'account_id': debe.id, 'debit': monto}),
+                    (0, 0, {'account_id': haber.id, 'credit': monto}),
+                ]}).action_post()
+
+        asiento(journal, cuenta, contra, 1000.0)     # costo de ventas
+        asiento(capa, puente, cuenta, 300.0)         # capa registrada: fuera
+        f = self.Costo._compute_factores(period)
+        self.assertAlmostEqual(f.costo_primo_gl_month, 1000.0, places=2,
+                               msg='el diario de capa no entra a la base')
+        self.assertAlmostEqual(f.mp_vendida_month, 0.0, places=2)
+        self.assertAlmostEqual(f.capa_propuesta_month, 1000.0, places=2)

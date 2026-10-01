@@ -316,6 +316,45 @@ ligados nombra además a los que no están en ningún centro.
 **Corte vigente:** TEJIDO desde 2026-09-01 (38 workcenters CIRCULAR, tarifa
 $99/h contra 504.01.0099, escrita el 1-sep a las 14:05 UTC).
 
+### La capa de valoración con absorción: solo se resta lo vendido (v1.68)
+
+Con el centro absorbido, el abono a costos fabriles aplicados NO está "en
+resultados" solo: su cargo fue al inventario y de ahí Odoo lo carga a
+501.01.01 conforme la mercancía se vende. La capa de valoración del mes
+(Dr puente 115.03.01 / Cr 501.01.01) es:
+
+    capa = costo primo del mayor SIN el diario CAPA − MP vendida del modelo
+           − conversión absorbida que YA llegó a ventas en el mes
+
+Restar el abono completo deja septiembre igual que el régimen viejo: expensa
+en el mes la conversión de tejido que sigue en el almacén y la absorción no
+cambia nada en resultados. Restar sólo la parte vendida es lo que deja los
+$852,755 de sep-2026 en inventario, que es donde está la tela.
+
+Esa parte vendida la mide `qb.costo.absorcion.traza` siguiendo los **lotes**,
+no los nombres: la salida terminada de cada orden absorbida reparte su
+conversión (duración × tarifa) entre sus lotes a prorrata; cada consumo del
+lote por otra orden le pasa la fracción consumida; la salida de ésa la vuelve
+a repartir; y cada lote carga a ventas la fracción entregada a cliente en el
+período. Se consideran TODAS las órdenes absorbidas desde el corte, porque
+un lote tejido en septiembre se vende en octubre. El período guarda:
+
+| Campo | Qué es |
+|---|---|
+| `absorcion_vendida_month` | conversión absorbida que llegó a entregas EN el mes |
+| `absorcion_en_inventario` | lo absorbido desde el corte que sigue en lotes u órdenes abiertas al cierre |
+| `absorcion_sin_lote_month` | órdenes absorbidas cuya salida no lleva lote: no se puede seguir (el panel avisa) |
+| `costo_primo_gl_month` | 501.01.01 del mes sin el diario CAPA (parámetros `capa_cuenta_costo_primo`, `capa_diario_code`) |
+| `mp_vendida_month` | Σ `mp_total` de los costos por producto del período |
+| `capa_propuesta_month` | la fórmula de arriba |
+
+Sep-2026, medido a mano antes de programarlo: abono $1,197,422; consumido
+por tintorería/acabado en el mes $798,267; en lotes de tintorería $40,212;
+en producto terminado sin entregar $413,388; **entregado a cliente
+$344,667 (28.8%)**. Capa registrada: $2,189,225.84 (asiento 847086). El
+detalle, con la revisión de enero a septiembre y el barrido de promedios,
+está en `docs/COSTEO_REVISION.md`.
+
 ## Períodos cerrables
 
 `qb.costo.factores` tiene estado. **Cerrado** congela el período: ni el cron

@@ -8,6 +8,7 @@ from . import balance_linea
 from . import familia
 from . import ociosidad
 from . import costeo
+from . import absorcion_vendida
 from . import cotizacion
 from . import snapshot
 from . import panel

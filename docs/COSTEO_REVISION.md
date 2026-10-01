@@ -1180,3 +1180,213 @@ la brecha físico–libros.
 
 **Estado:** 149 tests sobre instalación desde cero (el job `odoo-tests` del
 CI los corre).
+
+---
+
+## La capa de valoración con absorción: traza de lotes (1-oct, v1.68)
+
+Pregunta de Jose al ver septiembre: «¿no deberías restar a la capa los
+costos fabriles que ya están en resultados en negativo?». La respuesta es
+no, y medirlo cambió el asiento de septiembre y la lectura de todo 2026.
+
+### El mecanismo
+
+El abono a 504.01.0099 ($1,197,421.76 en septiembre, 219 órdenes, 725,710
+min × $99/h, al centavo) tiene su cargo en 115.03.01 y de ahí pasa al
+costo promedio del tejido; conforme ese tejido se tiñe, se acaba y se
+entrega, Odoo lo vuelve a sacar del inventario y lo carga a 501.01.01. En
+resultados la absorción pesa −abono + lo que ya regresó por ventas. Lo que
+no regresó está en el almacén porque la mercancía está en el almacén.
+
+La capa (Dr 115.03.01 / Cr 501.01.01) es entonces:
+
+    501.01.01 sin diario CAPA − MP vendida del modelo − conversión absorbida ya en ventas
+
+Restar el abono completo deja el mes igual que el régimen viejo (MP + todo
+el gasto) y expensa la conversión de tela que sigue en inventario.
+
+### La traza de septiembre
+
+Se siguió la conversión por **lotes**, no por nombres (los lotes de
+tintorería se llaman `20382I2`, los de acabado `20382 J2`; el código de la
+orden de tejido no viaja). Tejido → 153 OF de tintorería/acabado (todas
+terminadas en el mes, un lote cada una) → 149 OF de acabado → entregas.
+
+| Conversión de tejido de septiembre | $ |
+|---|---:|
+| Abonada a 504.01.0099 | 1,197,422 |
+| En inventario de tejido (lotes H) | 399,154 |
+| En inventario de tintorería (lotes I) | 40,212 |
+| En producto terminado sin entregar (lotes J) | 413,388 |
+| **En costo de ventas de septiembre (s)** | **344,667 (28.8%)** |
+
+Sesgo conocido: el tejido de septiembre se identificó por fecha de creación
+del lote; las OF cerradas el 1–3 de septiembre tienen lotes nacidos en
+agosto (9,856 kg, ≈$103K de conversión) que quedaron fuera. Si se entregó
+en la misma proporción, s sube ≈$30K.
+
+**Asiento registrado** (1-oct, id 847086, diario CAPA, 30-sep):
+Dr 115.03.01 / Cr 501.01.01 **$2,189,225.84** = 8,401,512.84 − 5,867,620
+− 344,667. Con el recálculo del mismo día la MP del modelo bajó a
+5,841,276 (−26,343 de diferencia). Esto corrige lo dicho en la sección
+anterior: sí hay CAPA de septiembre; lo que no hay es capa para los
+centros que siguen en régimen de capa, que el módulo reparte sólo para
+costear.
+
+### Enero a septiembre con la misma fórmula
+
+| Mes | 501.01.01 sin capa | MP modelo | s | Capa método | Capa registrada | Registrada − método |
+|---|---:|---:|---:|---:|---:|---:|
+| Ene | 6,143,820 | 3,655,609 | 0 | 2,488,212 | 3,595,823 | +1,107,611 |
+| Feb | 8,193,589 | 5,202,774 | 0 | 2,990,815 | 2,882,949 | −107,866 |
+| Mar | 8,507,337 | 5,415,479 | 0 | 3,091,858 | 3,638,982 | +547,124 |
+| Abr | 6,057,210 | 4,494,996 | 0 | 1,562,214 | 2,261,623 | +699,409 |
+| May | 5,009,971 | 4,027,893 | 0 | 982,078 | 1,081,162 | +99,084 |
+| Jun | 7,177,760 | 5,245,361 | 0 | 1,932,399 | 1,607,882 | −324,516 |
+| Jul | 8,938,561 | 6,053,570 | 0 | 2,884,991 | 3,052,679 | +167,688 |
+| Ago | 7,734,378 | 4,999,208 | 0 | 2,735,169 | 3,239,525 | +504,355 |
+| Sep | 8,401,513 | 5,841,276 | 344,667 | 2,215,569 | 2,189,226 | −26,343 |
+| **Total** | **66,164,139** | **44,936,166** | **344,667** | **20,883,306** | **23,549,852** | **+2,666,546** |
+
+Antes de corregir: (1) enero–agosto están bloqueados al 31-ago (sin
+bloqueo duro); (2) la capa de junio se cargó a 115.04.01, no al puente;
+(3) la MP del modelo de enero a julio es la del recálculo del 31-ago y los
+períodos están en borrador —cerrarlos antes de usar la tabla—; (4) las
+capas de enero a agosto NO las calculó el contador: salieron de la
+plataforma anterior (Supabase, «CAPA del mes a aplicar» = 501.01.01 −
+MP recursiva de BOM − ajustes ya posteados), con la MP de ese momento y
+en enero por día. La diferencia contra la tabla es deriva del modelo
+(base de precios y BOMs de entonces contra el módulo de hoy), no un error
+de registro, y además el primer trimestre traía BOMs con MOD y gastos
+como productos token (RSI56, archivados el 1-abr), que contaminaban el
+promedio desde adentro.
+
+### ¿Es capa o es materia prima? Los 20 productos
+
+Para no asumir que `501 − MP modelo` es capa, se descompuso el costo de
+los 20 productos que más pesan en la venta de septiembre: cadena hilo →
+tejido → tintorería → acabado con los asientos de valuación y los
+movimientos de las OF.
+
+| Producto | MP real producción sep (Odoo) | MP modelo | Costo cargado a ventas |
+|---|---:|---:|---:|
+| WJ053Q22JNT160 | 3.93 | 4.42 | 4.88 |
+| WJ042Q22JNT160 | 3.15 | 3.59 | 4.63 |
+| WJ060Q21JNT165 | 4.96 | 5.15 | 9.25 |
+| A55BL172 | 2.99 | 3.32 | 6.07 |
+| WN075Q66JBL205 | 6.60 | 7.29 | 8.91 |
+| X140NT165 | 15.60 | 16.22 | 18.51 |
+| WM4032BL152 | 5.84 | 4.58 | 7.83 |
+| WC090Q11JNT168 | 17.81 (crudo a 106.6/kg) | 5.82 | 17.16 |
+
+1. La MP del modelo no está subestimada: producir en septiembre costó en
+   materiales lo mismo o menos (consumo real 0.093 kg/m contra 0.100 de
+   BOM; hilo a 40–48 $/kg, igual que la última compra). Excepción:
+   WM4032BL152, por el reproceso de su gemelo importado.
+2. El exceso en 501.01.01 es el **costo promedio arrastrando historia**:
+   A55BL172 se produce a 3.0–3.4 $/m desde mayo y se vende a 6.07; el
+   jersey 60 se produce a 4.3–6.4 desde abril y se vende a 8.47; el crudo
+   del crep está a 106.6 $/kg con el hilo a 40 (caso documentado arriba).
+3. De dónde viene: febrero y marzo el acabado produjo 70% más caro que
+   ahora (el 53 g a 7.25 $/m contra 4.3–4.9) sin que tejido ni tintorería
+   costaran más; y al cierre de 2025 hubo ajustes manuales grandes
+   (+$7.09M a 115.04.01 por operaciones varias en diciembre; −$5.82M por
+   «ajustes a cantidad» contra inventarios; −$6.89M acreditados a
+   501.01.01 por el diario de valuación en octubre).
+4. Captura: enero–marzo las OF de tejido registran el doble de kilos de
+   hilo que de tejido producido; el valor sí cuadra.
+
+Conclusión: la fórmula no es «la verdad» del costo, es una **política**
+—costo de ventas a MP de reposición más la conversión real del mes, y la
+diferencia contra el promedio de Odoo se estaciona en el puente—, y es la
+defendible mientras el promedio no sea confiable. Exige cuadrar el puente
+contra el inventario físico (ahí viven los ajustes de diciembre).
+
+### Barrido: promedio en venta contra costo de producción jul–sep
+
+Toda la venta de septiembre (98 productos, 100% del costo). El promedio
+cargó a ventas **$1,321,689 por encima** del costo de producción de
+julio–septiembre en los productos que van hacia arriba; neto $812,732
+porque otros van al revés.
+
+| Producto | Costo 501 | $/u venta | $/u prod. jul–sep | Desvío | Exceso $ |
+|---|---:|---:|---:|---:|---:|
+| A55BL172 | 318,879 | 6.07 | 3.24 | +87% | 148,617 |
+| WC090Q11JNT168 | 346,581 | 17.16 | 9.89 | +74% | 146,857 |
+| WN055Q66JNT162 | 238,543 | 10.44 | 4.35 | +140% | 139,055 |
+| WJ060Q21JNT165 | 392,739 | 9.25 | 6.15 | +50% | 131,490 |
+| IWD038Q46JNT159 | 454,365 | 110.71 | 85.58 | +29% | 103,140 |
+| WJ042Q22JNT160 | 407,820 | 4.63 | 3.86 | +20% | 68,556 |
+| WN075Q66JBL205 | 301,765 | 8.91 | 7.18 | +24% | 58,595 |
+| IWD038Q46JNT163 | 184,688 | 122.86 | 87.96 | +40% | 52,468 |
+| WD038Q46JNT175 | 114,039 | 7.64 | 4.23 | +80% | 50,846 |
+| IWJ038Q22JNT160 | 304,209 | 99.31 | 85.95 | +16% | 40,906 |
+| WJ060Q21JNT160 | 98,169 | 9.58 | 5.90 | +62% | 37,704 |
+| AS4032BL152 | 67,109 | 9.71 | 5.08 | +91% | 32,006 |
+| AP4032BL152 | 44,990 | 10.69 | 3.57 | +200% | 29,988 |
+| WP4032NG152 | 40,005 | 12.54 | 5.20 | +141% | 23,414 |
+| ZN4032NG152 | 71,181 | 8.21 | 6.11 | +34% | 18,197 |
+| WNY4032BL151 | 26,925 | 22.48 | 10.29 | +118% | 14,596 |
+| WM4032RO152 | 19,488 | 10.19 | 4.23 | +141% | 11,400 |
+| … al revés: KP2032T11GO152 I | 94,651 | 9.39 | 31.82 | −70% | −226,093 |
+| IWJ045Q22JNT160 | 300,593 | 52.62 | 66.60 | −21% | −79,816 |
+| X140NT165 | 1,118,120 | 18.51 | 19.76 | −6% | −75,655 |
+
+Los de arriba son promedios que no siguen al costo de producir: revaluar
+a costo de producción reciente, con contrapartida en el puente, es lo que
+baja la capa de los meses siguientes. El KP2032T11GO152 I al revés es la
+OP de conversión del importado valuando a 31.82 $/m algo que se vende a
+9.39: un problema de la receta de importación, no del promedio.
+
+### De dónde vienen los promedios rotos: cargas manuales de costo
+
+`product.value` guarda cada cambio de costo. En 2026 hubo cargas masivas
+desde la cuenta de Jose: **12–14 de enero** (1,800 productos), **3 de
+julio** (596) y **24 de agosto** (329, 21:46 UTC). La del 24 de agosto
+puso el costo absorbido completo del modelo (MP + conversión de todos los
+centros) como costo de Odoo: WJ053Q22JNT160 de 4.16 a 10.23, A55BL172 de
+3.46 a 8.15, jersey 60 de 7.16 a 13.79, IWD038Q46JNT159 de 49.9 a 122.8.
+Desde entonces cada venta sale a ese costo y cada producción entra a
+materia prima (más la tarifa de tejido desde septiembre), así que el
+promedio baja despacio y el costo de ventas lleva la conversión dos veces:
+en el promedio y en los gastos del mes. Eso es lo que la capa ha estado
+compensando. Las cargas de enero explican el primer trimestre caro.
+
+Con Odoo 19 cambiar el costo **no genera asiento**: queda en
+`product.value` y mueve la valuación por quants, no el mayor. Por eso las
+cuentas de inventario por producto quedaron negativas (A55BL172 −$349K,
+WJ053 −$551K, WN075 −$590K, IWD038 kg −$629K, WP4032NG152 −$500K): salió
+más valor del que entró. Lo cuadra sólo el inventario físico.
+
+El 1-oct se regresaron 27 productos al costo de producción de julio a
+septiembre ($782,660 menos de valuación, sin asiento). Es deshacer, para
+esos 27, la carga del 24 de agosto. Regla desde aquí: **no cargar costos a
+mano**; si la conversión debe estar en el inventario, va por el asiento del
+cuadre, no sobreescribiendo el promedio.
+
+### Lo que cambió en el módulo (v1.68)
+
+- `qb.costo.absorcion.traza`: la traza por lotes (órdenes absorbidas desde
+  el corte → consumos → salidas → entregas), con tope de ocho etapas y
+  propagación por deltas.
+- `qb.costo.factores`: `absorcion_vendida_month`, `absorcion_en_inventario`,
+  `absorcion_sin_lote_month`, `costo_primo_gl_month`, `mp_vendida_month`,
+  `capa_propuesta_month`. Parámetros `capa_cuenta_costo_primo` (default
+  501.01.01) y `capa_diario_code` (default CAPA).
+- Panel: el check «Absorción por workcenter» dice cuánto llegó a ventas y
+  cuánto queda en inventario; aviso aparte si hay conversión sin lote.
+- Dos tests: la traza (tejido → acabado → entrega en dos meses) y la base
+  de la capa sin el diario CAPA.
+
+### Lo que sigue
+
+1. No reexpresar enero–agosto: cada capa fue la mejor estimación de su
+   mes y el puente se cuadra contra el físico de todas formas. Si se
+   quiere el año sobre un solo modelo, va dentro del asiento del cuadre,
+   no como corrección aparte.
+2. Cerrar los períodos del módulo de enero a agosto para congelar la MP.
+3. Revaluar los promedios rotos del barrido con el contador.
+4. Octubre: la traza arranca con $852,755 en inventario; con el módulo
+   desplegado el período lo calcula solo.
+
+**Estado:** 151 tests sobre instalación desde cero.
