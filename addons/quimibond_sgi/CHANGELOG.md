@@ -20,23 +20,38 @@ Retirado, Seguridad, Migración, Datos de producción.
 - **K-01:** un documento controlado (vigente, en piloto u obsoleto) no se manda
   a la papelera (archivar) ni se borra, salvo el Jefe MAST o el sistema; el
   mensaje depende del estado. `sgi.document.ack.document_id` pasa a
-  `ondelete='restrict'`.
+  `ondelete='restrict'`. Aquí y en K-02 y FUNC-C13, «el sistema» es solo el
+  superusuario (`env.su`, acciones planificadas): un administrador de Ajustes
+  que no es Jefe MAST sigue bloqueado.
 - **Papelera:** un vaciado automático diario (`_gc_sgi_rescue_trashed_with_acks`)
   reactiva (`action_unarchive`) uno por uno, con savepoint, todo documento en la
   papelera que tenga acuses de lectura. Los vigentes y en piloto pasan a obsoleto
   con motivo; los que ya eran obsoletos conservan su fecha; los borradores y los
   no controlados conservan su estado. Un borrador o un documento no controlado
   con acuses regresa de la papelera cada noche: para retirarlo, el Jefe MAST
-  debe borrar antes sus acuses. Si `documents.deletion_delay` es de 0 a 1 día,
-  la limpieza propia de Documents podría correr una vez antes del rescate.
+  debe borrar antes sus acuses. El orden de las limpiezas es fijo (alfabético,
+  `_gc_clear_bin` de Documents antes que el rescate): con un retraso
+  (`documents.deletion_delay`) de 0 a 1 día la limpieza de Documents corre
+  antes que el rescate. Un rescate que falla se registra como error en el log.
+- **La papelera no se atora:** `unlink` como superusuario deja fuera del lote
+  los documentos archivados con acuses (los que el rescate no pudo reactivar)
+  y lo registra como error («SGI: la papelera no borra … Revíselos a mano.»);
+  los demás se borran. Sin esto, la llave foránea deshacía cada noche el
+  vaciado completo de la papelera.
 - **K-02:** una NC con folio no se borra (se usa «Cancelar NC»);
   `sgi.action.line.alert_id` pasa a `ondelete='restrict'`. Efecto colateral:
   una alerta sin folio que tenga acciones tampoco se puede borrar ya.
-- **FUNC-C13:** solo el Jefe MAST, el sistema o el usuario dueño del proceso
-  cierran una NC con folio; el asistente de cierre forzado sigue funcionando.
+- **FUNC-C13:** solo el Jefe MAST, el sistema (superusuario) o el usuario
+  dueño del proceso cierran una NC con folio; el asistente de cierre forzado
+  sigue funcionando. Queda para 57.92.0: una NC todavía se puede crear
+  directamente en «Cerrada» (`create` no pasa por `_sgi_check_stage_move`), y
+  la actividad «Verificar eficacia» va a `sgi_effectiveness_by`, que puede no
+  ser el dueño del proceso (recibirá el mensaje de FUNC-C13 al cerrar).
 - **K-06:** `cron_sgi_sync_approvals`, `cron_generate`, `cron_measure_activities`,
   `cron_missing_trajectories` y `sgi_drop_empty_studio_models` solo los corre el
-  sistema (`sgi_require_system`).
+  sistema (`sgi_require_system`). Aquí «el sistema» es el superusuario **o** un
+  administrador de Ajustes (`base.group_system`), a diferencia de K-01, K-02 y
+  FUNC-C13.
 - **Cambiado:** el Administrador SGI pierde `sgi_drop_empty_studio_models`.
 - **K-07:** la respuesta del proveedor (portal) y los motivos de cierre forzado
   y cancelación se escapan con `Markup` en el chatter; el texto del proveedor
@@ -46,14 +61,18 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 **Migración:** ninguna. El ORM rehace las dos llaves foráneas al actualizar.
 
-**Pruebas:** `test_candados_evidencia` (nueva, 16 casos: `test_01` a `test_16`);
-`test_entrega1c.test_04` ampliada.
+**Datos de producción:** 0 documentos en la papelera con acuses (lectura del
+2026-10-01), el primer rescate no reactiva nada.
+
+**Pruebas:** `test_candados_evidencia` (nueva, 17 casos: `test_01` a `test_17`);
+`test_entrega1c.test_04` ampliada; `test_studio_cleanup.test_05_only_sgi_admin`
+pasa a `test_05_only_system`.
 
 **Verificación pendiente en Odoo.sh:** (1) si Documents de Odoo 19 manda a la
 papelera por algún camino distinto de `write(active=False)` (grep en
 `enterprise/documents/models`); (2) cómo se comporta `action_unarchive` con un
 documento dentro de una carpeta en la papelera; (3) vigilar el log por «SGI: no
-se pudo rescatar el documento».
+se pudo rescatar el documento» y «SGI: la papelera no borra».
 
 ## 19.0.57.89.0 — 2026-10-01
 

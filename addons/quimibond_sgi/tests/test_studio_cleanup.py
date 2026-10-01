@@ -59,7 +59,7 @@ class TestStudioCleanup(TransactionCase):
             with self.assertRaises(UserError):
                 self._run(('x_sgi_d11_empty',), dry_run=False)
 
-    def test_05_only_sgi_admin(self):
+    def test_05_only_system(self):
         user = new_test_user(self.env, login='d11_manager', email='d11@example.com',
                              groups='base.group_user,quimibond_sgi.group_sgi_manager')
         with self.assertRaises(UserError):

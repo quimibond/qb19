@@ -19,6 +19,8 @@ from odoo.tools import mute_logger
 
 from .common_documents import sgi_hide_real_documents
 
+SGI_DOC_LOGGER = 'odoo.addons.quimibond_sgi.models.sgi_document'
+
 
 @tagged('post_install', '-at_install')
 class TestCandadosEvidencia(TransactionCase):
@@ -109,14 +111,18 @@ class TestCandadosEvidencia(TransactionCase):
         with self.assertRaisesRegex(UserError, 'papelera'):
             doc.with_user(self.docs_editor).unlink()
 
-    def test_04_el_acuse_detiene_el_borrado_fisico(self):
+    def test_04_la_papelera_no_borra_lo_que_tiene_acuses(self):
         doc = self._doc(code='F-ZK1-05')
-        self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.employee.id})
-        # La autolimpieza de la papelera corre como superusuario: lo que la
-        # detiene es la llave foránea, no el candado de Python. Se archiva
-        # primero para seguir el camino real (papelera → borrado).
+        self._ack(doc)
+        # La autolimpieza de la papelera corre como superusuario: el candado de
+        # Python no la frena, pero unlink deja fuera los documentos con acuses
+        # (si no, la llave foránea «restrict» desharía el vaciado completo).
         doc.sudo().write({'active': False})
-        self._assert_restricted(doc.sudo())
+        with mute_logger(SGI_DOC_LOGGER):
+            doc.sudo().unlink()
+            self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertTrue(doc.exists())
 
     # ---- K-02 ---------------------------------------------------------------
     def test_05_nc_con_folio_no_se_borra(self):
@@ -173,7 +179,10 @@ class TestCandadosEvidencia(TransactionCase):
         return self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.employee.id})
 
     def _rescue(self):
-        self.env['documents.document']._gc_sgi_rescue_trashed_with_acks()
+        # En la copia de producción del build puede haber documentos reales en
+        # la papelera: sus avisos no deben pintar el log.
+        with mute_logger(SGI_DOC_LOGGER):
+            self.env['documents.document']._gc_sgi_rescue_trashed_with_acks()
         self.env.invalidate_all()
 
     def _rescue_messages(self, doc):
@@ -232,7 +241,7 @@ class TestCandadosEvidencia(TransactionCase):
             return original(records)
 
         with patch.object(Doc, 'action_unarchive', fake_unarchive), \
-                mute_logger('odoo.addons.quimibond_sgi.models.sgi_document'):
+                mute_logger(SGI_DOC_LOGGER):
             self._rescue()
         self.assertFalse(bad.active)
         self.assertEqual(bad.sgi_state, 'vigente')
@@ -246,3 +255,15 @@ class TestCandadosEvidencia(TransactionCase):
             (draft | current).with_user(self.docs_editor).write({'active': False})
         self.assertTrue(draft.active)
         self.assertTrue(current.active)
+
+    def test_17_la_papelera_borra_solo_lo_que_no_tiene_acuses(self):
+        acked = self._doc(code='F-ZK1-14')
+        plain = self._doc(code='F-ZK1-15')
+        self._ack(acked)
+        (acked | plain).sudo().write({'active': False})
+        with mute_logger(SGI_DOC_LOGGER):
+            (acked | plain).sudo().unlink()
+            self.env.flush_all()
+        self.env.invalidate_all()
+        self.assertTrue(acked.exists())
+        self.assertFalse(plain.exists())

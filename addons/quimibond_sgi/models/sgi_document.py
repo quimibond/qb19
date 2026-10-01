@@ -1099,6 +1099,18 @@ class DocumentsDocument(models.Model):
 
     def unlink(self):
         self._sgi_check_can_trash()
+        if self.env.su:
+            # 57.90.0 (K-01): la autolimpieza de la papelera de Documents
+            # borra en lote como superusuario. Un documento con acuses
+            # (evidencia, «restrict») que el rescate no pudo reactivar haría
+            # fallar la llave foránea y deshacer el vaciado completo cada
+            # noche: se deja fuera del lote y se avisa en el log.
+            kept = self.filtered(lambda d: not d.active and d.sgi_ack_ids)
+            if kept:
+                _logger.error("SGI: la papelera no borra %d documento(s) con acuses de lectura "
+                              "(evidencia): %s. Revíselos a mano.", len(kept), kept.ids)
+                super(DocumentsDocument, self - kept).unlink()
+                return True
         return super().unlink()
 
     @api.autovacuum
@@ -1114,9 +1126,10 @@ class DocumentsDocument(models.Model):
         obsoleto conserva su fecha; un borrador o un no controlado conserva su
         estado.
 
-        Si ``documents.deletion_delay`` es de 0 o 1 días, la autolimpieza de
-        Documents puede correr una vez antes que este rescate y fallar en ese
-        documento."""
+        El orden de los autovacuum es fijo (alfabético: ``_gc_clear_bin`` de
+        Documents antes que este). Con un retraso (``documents.deletion_delay``)
+        de 0 a 1 día la limpieza de Documents corre antes que el rescate; no se
+        atora porque ``unlink`` deja fuera los documentos con acuses."""
         trashed = self.sudo().with_context(active_test=False).search(
             [('active', '=', False), ('sgi_ack_ids', '!=', False)])
         rescued = self.browse()
@@ -1133,7 +1146,7 @@ class DocumentsDocument(models.Model):
                     doc.message_post(body="Rescatado de la papelera: tiene acuses de lectura "
                                           "y es evidencia del SGI.")
             except Exception as exc:  # uno que falle no detiene a los demás
-                _logger.warning("SGI: no se pudo rescatar el documento %s de la papelera: %s",
+                _logger.error("SGI: no se pudo rescatar el documento %s de la papelera: %s",
                                 doc.id, exc)
                 continue
             rescued |= doc
