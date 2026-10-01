@@ -23,6 +23,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_catalog import SGI_RECORD_RELATIVES
+from .sgi_guard import sgi_require_system
 
 _logger = logging.getLogger(__name__)
 
@@ -472,6 +473,7 @@ class SgiActivityRoleApproval(models.Model):
     def cron_sgi_sync_approvals(self):
         """Cada noche: aprobadores al día (cambian las personas de los
         puestos) y reglas archivadas si la actividad o el rol ya no existen."""
+        sgi_require_system(self.env)  # 57.90.0 (K-06)
         roles = self.sudo().search(self._sgi_native_approval_domain())
         for role in roles:
             try:

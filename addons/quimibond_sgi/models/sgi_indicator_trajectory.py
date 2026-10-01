@@ -23,6 +23,8 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_guard import sgi_require_system
+
 
 def _quarter_start(day):
     return date(day.year, 3 * ((day.month - 1) // 3) + 1, 1)
@@ -151,6 +153,7 @@ class SgiIndicatorTrajectory(models.Model):
     @api.model
     def cron_missing_trajectories(self):
         """Paso del cron de indicadores: escalones para los que ya tienen fechas."""
+        sgi_require_system(self.env)  # 57.90.0 (K-06)
         pending = self.search([('baseline_date', '!=', False), ('target_date', '!=', False),
                                ('direction', '!=', 'range'), ('step_ids', '=', False)])
         pending._sgi_auto_trajectory()

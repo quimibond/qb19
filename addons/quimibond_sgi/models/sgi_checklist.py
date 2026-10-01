@@ -29,6 +29,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_calendar import sgi_is_business_day, sgi_local_datetime_utc, sgi_today
+from .sgi_guard import sgi_require_system
 
 _logger = logging.getLogger(__name__)
 
@@ -129,6 +130,7 @@ class SgiChecklistTemplate(models.Model):
     @api.model
     def cron_generate(self):
         """Cron diario: las plantillas que tocan hoy."""
+        sgi_require_system(self.env)  # 57.90.0 (K-06)
         day = sgi_today(self.env)
         templates = self.search([]).filtered(lambda t: t._sgi_due_today(day))
         self._sgi_warn_without_equipment(templates)

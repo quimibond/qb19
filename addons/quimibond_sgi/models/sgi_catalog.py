@@ -897,8 +897,7 @@ class SgiConfigStudioCleanup(models.AbstractModel):
         'inbound_fields', 'backups', 'dropped', 'kept', 'missing',
         'aborted'}``; en ``backups``, los acompañantes que se respaldan (en la
         prueba) o los ids de los adjuntos (al borrar)."""
-        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_admin')):
-            raise UserError("Solo un Administrador SGI puede borrar modelos de Studio.")
+        sgi_require_system(self.env)  # 57.90.0 (K-06)
         IrModel = self.env['ir.model'].sudo()
         IrFields = self.env['ir.model.fields'].sudo()
         report = {'dry_run': bool(dry_run), 'counts': {}, 'companions': {},
