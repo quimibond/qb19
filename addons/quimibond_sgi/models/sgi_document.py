@@ -1073,6 +1073,45 @@ class DocumentsDocument(models.Model):
             "Solo el Jefe MAST cambia los datos de «Del Dropbox a Odoo» (%s)."
             % ", ".join(self._fields[name].string for name in changed))
 
+    _SGI_TRASH_LOCKED_STATES = ('vigente', 'piloto', 'obsoleto')
+
+    def _sgi_check_can_trash(self):
+        """57.90.0 (K-01): un controlado vigente, en piloto u obsoleto no va a
+        la papelera ni se borra; se marca obsoleto. El Jefe MAST y el sistema
+        sí pueden (limpiezas decididas)."""
+        if sgi_bypass_allowed(self.env):
+            return
+        locked = self.filtered(lambda d: d.sgi_is_controlled
+                               and d.sgi_state in self._SGI_TRASH_LOCKED_STATES)
+        if locked:
+            raise UserError(
+                "Un documento controlado no se manda a la papelera ni se borra: "
+                "Odoo lo elimina a los 30 días junto con sus acuses de lectura. "
+                "Márquelo obsoleto o pida al Jefe MAST que lo retire. (%s)"
+                % ", ".join(locked.mapped('display_name')))
+
+    def unlink(self):
+        self._sgi_check_can_trash()
+        return super().unlink()
+
+    @api.autovacuum
+    def _gc_sgi_rescue_trashed_controlled(self):
+        """57.90.0 (K-01): un controlado con acuses de lectura es evidencia
+        (ISO 7.5): si alguien lo manda a la papelera, se rescata como obsoleto
+        antes de que la autolimpieza de Documents lo borre (30 días) y su
+        llave foránea atore el vaciado de la papelera."""
+        acked = self.env['sgi.document.ack'].sudo().with_context(active_test=False).search(
+            [('document_id.active', '=', False)]).document_id
+        rescued = acked.filtered('sgi_is_controlled')
+        if not rescued:
+            return
+        rescued.sudo().write({'active': True, 'sgi_state': 'obsoleto'})
+        for doc in rescued:
+            doc.sudo().message_post(body="Rescatado de la papelera: tiene acuses de lectura "
+                                         "y es evidencia del SGI. Quedó obsoleto.")
+        _logger.info("SGI: %d documentos controlados rescatados de la papelera: %s",
+                     len(rescued), rescued.ids)
+
     def _sgi_value_differs(self, name, value):
         self.ensure_one()
         field = self._fields[name]
@@ -1121,6 +1160,11 @@ class DocumentsDocument(models.Model):
         return docs
 
     def write(self, vals):
+        # 57.90.0 (K-01): archivar manda el documento a la papelera y la
+        # autolimpieza lo BORRA a los documents.deletion_delay días, con sus
+        # acuses. Ya pasó con 3359, 5119 y 4995 (57.82.0).
+        if 'active' in vals and not vals['active']:
+            self._sgi_check_can_trash()
         self._sgi_check_transition_write(vals)
         if vals.get('sgi_state') == 'obsoleto' and 'sgi_obsolete_date' not in vals:
             vals = dict(vals, sgi_obsolete_date=fields.Date.context_today(self))
@@ -1265,8 +1309,10 @@ class SgiDocumentAck(models.Model):
     _order = 'document_id, employee_id'
     _rec_name = 'document_id'
 
-    document_id = fields.Many2one('documents.document', string="Documento", required=True, ondelete='cascade',
-                                  help="Documento que se debe leer.")
+    # 57.90.0 (K-01): «restrict»: el acuse es evidencia de difusión (ISO 7.5);
+    # borrar el documento ya no se lleva sus acuses en cascada.
+    document_id = fields.Many2one('documents.document', string="Documento", required=True,
+                                  ondelete='restrict', help="Documento que se debe leer.")
     sgi_code = fields.Char(related='document_id.sgi_code', string="Clave", store=True)
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True, ondelete='cascade',
                                   help="Persona que debe leer el documento.")
