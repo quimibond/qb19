@@ -74,3 +74,35 @@ class TestApprovalNative(TransactionCase):
     def test_06_firma_sin_plantilla(self):
         self.role.approval_kind = 'firma'
         self.assertEqual(self.role.approval_state, 'sin_configurar')
+
+    def test_07_condicion_sin_campos_que_el_documento_no_tiene(self):
+        """57.89.0: un campo que el documento no tiene nunca queda en la
+        condición de aprobación (producción 2026-09-30: `company_id` en
+        sgi.audit.program reventaba las fichas por la regla de Studio)."""
+        from odoo.addons.quimibond_sgi.models.sgi_approval_native import sgi_sanitize_domain
+        env = self.env
+        # El ayudante: solo quita las hojas inválidas, con rutas con punto.
+        self.assertEqual(sgi_sanitize_domain(env, 'sgi.audit.program', "[('company_id', '=', 1)]"),
+                         (False, [('company_id', '=', 1)]))
+        self.assertEqual(sgi_sanitize_domain(env, 'purchase.order', "[('company_id', '=', 1)]"),
+                         ("[('company_id', '=', 1)]", []), "purchase.order sí tiene company_id: no se toca.")
+        clean, removed = sgi_sanitize_domain(
+            env, 'account.move', "[('company_id', '=', 1), ('line_ids.no_existe', '=', True), "
+                                 "('line_ids.is_downpayment', '=', True)]")
+        self.assertEqual(clean, "[('company_id', '=', 1), ('line_ids.is_downpayment', '=', True)]")
+        self.assertEqual(removed, [('line_ids.no_existe', '=', True)])
+        self.assertEqual(sgi_sanitize_domain(env, 'purchase.order', "['|', ('no_existe', '=', 1), ('id', '=', 3)]")[0],
+                         "[('id', '=', 3)]", "Un «|» que pierde una rama queda en la otra.")
+        self.assertEqual(sgi_sanitize_domain(env, 'purchase.order', "[('user_id', '=', uid)]"),
+                         ("[('user_id', '=', uid)]", []), "Un dominio no literal no se toca.")
+        # El rol: escrito a mano sobre un documento sin company_id, no se queda.
+        self.role.write({'approval_model_id': env['ir.model']._get('sgi.audit.program').id,
+                         'approval_method': 'action_approve', 'approval_domain': "[('company_id', '=', 1)]"})
+        self.assertFalse(self.role.approval_domain)
+        # Sobre un documento con company_id, sí.
+        self.role.write({'approval_model_id': env['ir.model']._get('purchase.order').id,
+                         'approval_method': 'button_confirm', 'approval_domain': "[('company_id', '=', 1)]"})
+        self.assertEqual(self.role.approval_domain, "[('company_id', '=', 1)]")
+        # Cambiar el documento a uno sin el campo limpia lo guardado.
+        self.role.approval_model_id = env['ir.model']._get('sgi.audit.program')
+        self.assertFalse(self.role.approval_domain)

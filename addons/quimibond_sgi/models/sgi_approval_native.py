@@ -16,6 +16,7 @@ condición y las solicitudes y firmas; los ganchos ``_sgi_button_*`` son los
 que el satélite completa. Sin el satélite, un rol «Botón de Odoo» queda
 «Por sincronizar» y «Sincronizar» avisa que falta el módulo.
 """
+import ast
 import logging
 
 from odoo import api, fields, models
@@ -65,6 +66,89 @@ APPROVAL_KINDS = [
 ]
 
 
+
+# ----------------------------------------------------------------------
+# 57.89.0: un dominio de aprobación nunca lleva un campo que el documento no
+# tiene. Producción, 2026-09-30: `[('company_id', '=', 1)]` escrito a mano en
+# `approval_domain` de roles cuyo documento no tiene `company_id`
+# (sgi.audit.program, sgi.ppap, sgi.control.plan) llegó a las reglas de
+# Studio, y `studio.approval.rule._get_approval_spec` reventaba
+# («Invalid field … in condition») al abrir cualquier ficha de esos modelos.
+# ----------------------------------------------------------------------
+_DOMAIN_ARITY = {'!': 1, '&': 2, '|': 2}
+
+
+def _sgi_field_path_exists(model, path):
+    """¿Existe la ruta ``a.b.c`` en ``model``? (``model`` es un recordset)."""
+    names = path.split('.')
+    for i, name in enumerate(names):
+        field = model._fields.get(name)
+        if field is None:
+            return False
+        if i < len(names) - 1:
+            if not field.relational or field.comodel_name not in model.env:
+                return False
+            model = model.env[field.comodel_name]
+    return True
+
+
+def sgi_sanitize_domain(env, model_name, domain):
+    """Quita de ``domain`` las hojas cuyo campo no existe en ``model_name``.
+
+    ``domain`` es el texto guardado (``"[('a', '=', 1)]"``) o una lista.
+    Devuelve ``(limpio, quitadas)``: si nada sobra, ``limpio`` es ``domain``
+    tal cual (mismo texto, mismo formato); si sobra algo, el texto del
+    dominio sin esas hojas, o ``False`` si no queda ninguna (sin condición).
+    Las demás hojas y los operadores que las unen no se tocan; un ``&`` o
+    ``|`` que pierde una rama queda en la otra, un ``!`` que la pierde
+    desaparece. Un dominio que no es literal (``uid``, ``context_today()``…)
+    o de un modelo que no existe se devuelve sin cambio.
+    """
+    if not domain or not model_name or model_name not in env:
+        return domain, []
+    try:
+        items = ast.literal_eval(domain) if isinstance(domain, str) else domain
+    except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
+        return domain, []
+    if not isinstance(items, (list, tuple)):
+        return domain, []
+    model = env[model_name]
+    removed = []
+    items = list(items)
+    pos = 0
+
+    def parse():
+        nonlocal pos
+        if pos >= len(items):
+            raise ValueError("dominio incompleto")
+        token = items[pos]
+        pos += 1
+        if isinstance(token, str):
+            if token not in _DOMAIN_ARITY:
+                raise ValueError("operador desconocido %r" % (token,))
+            children = [parse() for _i in range(_DOMAIN_ARITY[token])]
+            kept = [c for c in children if c is not None]
+            if len(kept) == len(children):
+                return [token] + [t for c in children for t in c]
+            return kept[0] if (kept and token != '!') else None
+        if isinstance(token, (list, tuple)) and len(token) == 3:
+            left = token[0]
+            if isinstance(left, str) and not _sgi_field_path_exists(model, left):
+                removed.append(token)
+                return None
+            return [token]
+        raise ValueError("hoja inválida %r" % (token,))
+
+    try:
+        expressions = []
+        while pos < len(items):
+            expressions.append(parse())
+    except ValueError:
+        return domain, []
+    if not removed:
+        return domain, []
+    clean = [t for e in expressions if e is not None for t in e]
+    return (repr(clean) if clean else False), removed
 
 
 class ApprovalCategorySgiRole(models.Model):
@@ -157,6 +241,32 @@ class SgiActivityRoleApproval(models.Model):
         else:
             value = raw
         return [(field.name, self.condition_operator or '=', value)]
+
+    def _sgi_clean_approval_domain(self):
+        """57.89.0: el dominio de aprobación sin hojas de campos que el
+        documento no tiene (ver ``sgi_sanitize_domain``)."""
+        self.ensure_one()
+        return sgi_sanitize_domain(self.env, self.approval_model_id.model, self.approval_domain or False)[0] or False
+
+    def _sgi_sanitize_approval_domains(self):
+        """Limpia ``approval_domain`` guardado; devuelve [(rol, antes, después)]."""
+        changes = []
+        for role in self.filtered('approval_domain'):
+            clean = role._sgi_clean_approval_domain()
+            if clean != role.approval_domain:
+                changes.append((role, role.approval_domain, clean))
+                _logger.warning("SGI: rol %s (%s): condición de aprobación %s -> %s (campos que %s no tiene)",
+                                role.id, role.activity_id.display_name, role.approval_domain, clean,
+                                role.approval_model_id.model)
+                # Sin pasar por write(): el valor ya está limpio.
+                super(SgiActivityRoleApproval, role).write({'approval_domain': clean})
+        return changes
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        roles = super().create(vals_list)
+        roles._sgi_sanitize_approval_domains()
+        return roles
 
     # 57.13.0: antes se llamaba _check_condition, el mismo nombre que la
     # restricción de sgi_catalog («la condición solo va en quien aprueba, se
@@ -347,6 +457,8 @@ class SgiActivityRoleApproval(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
+        if {'approval_domain', 'approval_model_id', 'condition_field_id'} & set(vals):
+            self._sgi_sanitize_approval_domains()
         if {'role', 'job_id', 'family_id', 'relative_role', 'target_type', 'approval_kind'} & set(vals):
             self.filtered(lambda r: r._sgi_has_native_approval())._sgi_sync_approval_rule()
         return res
