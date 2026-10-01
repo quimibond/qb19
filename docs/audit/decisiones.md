@@ -387,3 +387,8 @@ Dentro de cada entrega se respetan los órdenes ya fijados: el CHANGELOG antes d
 - **17 formatos citados que no existen:** para cada uno, propuesta «lo sustituye Odoo (dónde)» o «hay que crearlo». Varios ya existen en Odoo (encuesta de satisfacción, revisión por la dirección, conciliación bancaria).
 - **Un formato por modelo:** pasa al bloque 2, junto con la clave por tipo de operación.
 - **D-009 (vistas):** aprobar/rechazar PPAP, cerrar/reabrir riesgos y marcar obsoletos AMEF, planes de control y planes de emergencia: solo Jefe MAST y dueño del proceso (propuesta aplicada al no haber objeción).
+
+## 2026-10-01
+
+- **Producción en 57.68.0** (PR #492, 30-sep). Jose actualizó `quimibond_sgi` desde Apps; Knowledge, Studio, Revisado y PLM quedaron en su versión nueva. Verificado por MCP: 7 mapeos de formato por tipo de operación, plan 5 con responsables (Mariano Domínguez, Blanca Ballesteros) y la línea «Recoger equipo de cómputo».
+- **Propuesta de formatos aprobada completa** («arranca con los formatos»). Arranca el bloque 3 en `claude/sgi-formatos-bloque-3` (57.70.0 en adelante): fusiones y duplicados (§3), F-P-E01-01, responsable = dueño del proceso (C4 se queda con MAST mientras Francisco González no tenga usuario), clave D-02 al final con la del Dropbox como clave anterior, y de los 17 formatos citados que no existen solo lo que se puede hacer en código; la corrección de citas en rutinas es de MAST.
