@@ -5381,8 +5381,9 @@ class TestQbCosteo(TransactionCase):
                 "WHERE id = %s", (minutos, wo.id))
         # Sin `quantity` en el move: su inverse abriría una línea sin lote
         # además de la que se crea abajo con lote.
+        # Sin `name`: stock.move ya no lo tiene en Odoo 19.
         move = self.env['stock.move'].create({
-            'name': nombre, 'product_id': producto.id,
+            'product_id': producto.id,
             'product_uom': uom.id, 'product_uom_qty': qty,
             'location_id': loc_prod.id, 'location_dest_id': loc.id,
             'production_id': mo.id})
@@ -5406,7 +5407,7 @@ class TestQbCosteo(TransactionCase):
     def _traza_linea_done(self, producto, qty, uom, lot, src, dst, fecha,
                           raw_mo=None):
         """Un movimiento hecho con lote (consumo de una OP o entrega)."""
-        vals = {'name': 'traza', 'product_id': producto.id,
+        vals = {'product_id': producto.id,
                 'product_uom': uom.id, 'product_uom_qty': qty,
                 'location_id': src.id, 'location_dest_id': dst.id}
         if raw_mo is not None:
