@@ -58,8 +58,9 @@ _LINE_RE = re.compile(
     % (_DATE, _NUM, _NUM, _NUM))
 _PRIOR_RE = re.compile(r'^\s*Prior\s+(%s)\s+(%s)' % (_NUM, _NUM))
 # Descripción: el texto a la izquierda de «Receipt Date:» / «Receipt Qty:»
-# en las dos líneas que siguen a «Item Number».
-_DESC_RE = re.compile(r'^\s+(.+?)\s{2,}Receipt (?:Date|Qty):')
+# en las dos líneas que siguen a «Item Number». El release real (24-sep-26)
+# los separa con UN espacio, no con columnas alineadas.
+_DESC_RE = re.compile(r"^\s+(.+?)\s+Receipt (?:Date|Qty):")
 
 
 def _num(text):
