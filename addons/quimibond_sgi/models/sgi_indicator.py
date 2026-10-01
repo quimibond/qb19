@@ -790,17 +790,15 @@ class SgiIndicator(models.Model):
         el mes ES un dato (rojo legítimo); sin facturación alguna, no hay
         medición. Una venta de activo fijo no hace cliente nuevo."""
         Line = self.env['account.move.line']
-        in_period = self._sgi_sales_by_partner(date_from, date_to)
+        in_period = self._sgi_invoiced_partner_ids(date_from, date_to)
         if not in_period:
             return None
         count = 0
-        for partner in in_period:
-            if not partner:
-                continue
+        for partner_id in in_period:
             earlier = Line.search_count(
                 self._sgi_sales_lines_domain(
                     None, date_from - relativedelta(days=1), ('out_invoice',))
-                + [('partner_id', '=', partner.id)], limit=1)
+                + [('partner_id', '=', partner_id)], limit=1)
             if not earlier:
                 count += 1
         return float(count)
