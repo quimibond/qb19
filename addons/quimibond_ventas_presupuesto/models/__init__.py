@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from . import product_min_price
 from . import sgi_sales_budget
 from . import sgi_sales_budget_line
 from . import sgi_sales_budget_import

@@ -21,7 +21,7 @@
                     <field name="sgi_budget_pricelist_id"/>
                 </setting>
                 <setting string="Precio de lista mínimo plausible"
-                         help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla.">
+                         help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla. Excepciones: «Precio mínimo plausible propio» en el producto (pestaña Ventas) o en la categoría (vale para sus subcategorías).">
                     <field name="sgi_price_min_plausible"/>
                 </setting>
                 <setting string="Tolerancia de desviación de precio (%)"

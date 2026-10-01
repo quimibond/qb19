@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.3.0: excepción al «precio de lista mínimo plausible» del presupuesto
+         de ventas, en el producto (pestaña Ventas) y en la categoría. Herencia
+         de vistas de OTRAS apps (product); este módulo no hereda las suyas. -->
+    <record id="product_template_form_view_sgi_budget_min_price" model="ir.ui.view">
+        <field name="name">product.template.form.sgi.budget.min.price</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='sales']" position="inside">
+                <group name="sgi_budget_min_price" string="Presupuesto de ventas"
+                       groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager">
+                    <field name="sgi_budget_min_price"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="product_category_form_view_sgi_budget_min_price" model="ir.ui.view">
+        <field name="name">product.category.form.sgi.budget.min.price</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='first']" position="after">
+                <group name="sgi_budget_min_price"
+                       groups="sales_team.group_sale_manager,quimibond_sgi.group_sgi_manager">
+                    <group string="Presupuesto de ventas">
+                        <field name="sgi_budget_min_price"/>
+                    </group>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

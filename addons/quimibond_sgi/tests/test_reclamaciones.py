@@ -60,3 +60,39 @@ class TestReclamaciones(TransactionCase):
         domain = self.env['helpdesk.team']._sgi_complaint_domain()
         self.assertIn(ticket, self.env['helpdesk.ticket'].search(domain))
         self.assertNotIn(noise, self.env['helpdesk.ticket'].search(domain))
+
+    def test_04_mark_finds_name_only_in_spanish(self):
+        """57.85.0: el caso de producción. Los equipos 2 y 14 tienen su nombre
+        en español en la llave ``es_MX`` del JSONB y otro texto en ``en_US``
+        (creados antes de Odoo 16 o renombrados con el usuario en español). La
+        migración corre sin ``lang`` y la 57.19.0 los buscaba por ``name in``,
+        que compara solo ``en_US``: no los encontró. Ahora se compara el nombre
+        en cada idioma instalado, sin distinguir mayúsculas."""
+        self.env['res.lang']._activate_lang('es_MX')
+        Team = self.env['helpdesk.team']
+        company = self.env['sgi.config']._sgi_company()
+        team = Team.with_context(lang='en_US').create({
+            'name': 'Complaints interlinings', 'company_id': company.id})
+        team.with_context(lang='es_MX').name = 'Reclamaciones entretelas'
+        team_case = Team.with_context(lang='en_US').create({
+            'name': 'Customer care', 'company_id': company.id})
+        team_case.with_context(lang='es_MX').name = 'Atencion a Clientes '
+        decoy = Team.with_context(lang='en_US').create({
+            'name': 'Reclamación Industrial', 'company_id': company.id})
+        self.assertEqual(team.with_context(lang='en_US').name, 'Complaints interlinings')
+        # Reproduce el fallo de la 57.19.0: la búsqueda sin idioma no lo ve.
+        old = Team.with_context(active_test=False, lang=None).search([
+            ('name', 'in', list(Team._SGI_COMPLAINT_TEAM_NAMES)),
+            ('company_id', '=', company.id)])
+        self.assertNotIn(team, old)
+        marked = Team.with_context(lang=None)._sgi_mark_complaint_teams()
+        self.assertIn(team, marked)
+        self.assertIn(team_case, marked)
+        self.assertNotIn(decoy, marked)
+        self.assertTrue(team.sgi_is_complaint)
+        self.assertTrue(team_case.sgi_is_complaint)
+        self.assertFalse(decoy.sgi_is_complaint)
+        # Solo agrega: un equipo ya marcado no se reescribe y nada se desmarca.
+        self.team_other.sgi_is_complaint = True
+        self.assertFalse(Team._sgi_mark_complaint_teams())
+        self.assertTrue(self.team_other.sgi_is_complaint)
