@@ -22,7 +22,22 @@ HEADER_MAP = {
     'producto proceso': 'product_proceso_ref',
     'producto en proceso': 'product_proceso_ref',
     'referencia producto proceso': 'product_proceso_ref',
-    'maquina': 'maquina_tejido',
+    'rendimiento': 'rendimiento_tela_tejida',
+    'rendimiento m kg': 'rendimiento_tela_tejida',
+    'rendimiento tejido': 'rendimiento_tela_tejida',
+    'rendimiento tela tejida': 'rendimiento_tela_tejida',
+    'rendimiento de la tela tejida': 'rendimiento_tela_tejida',
+    'rendimiento de la tela tejida m kg': 'rendimiento_tela_tejida',
+    'jefe manufactura': 'jefe_manufactura_ref',
+    'jefe de manufactura': 'jefe_manufactura_ref',
+    'auxiliar procesos': 'auxiliar_procesos_ref',
+    'auxiliar de procesos': 'auxiliar_procesos_ref',
+    # Máquina: se busca el centro de trabajo (mrp.workcenter) por código
+    # (No. de máquina) y, si no hay coincidencia, por nombre.
+    'maquina': 'maquina_tejido_ref',
+    'no maquina': 'maquina_tejido_ref',
+    'numero maquina': 'maquina_tejido_ref',
+    'codigo maquina': 'maquina_tejido_ref',
     'marca maquina': 'marca_maquina',
     'galga': 'galga',
     'diametro': 'diametro',
@@ -110,7 +125,7 @@ HEADER_MAP = {
 }
 
 FLOAT_FIELDS = {
-    'galga', 'velocidad',
+    'galga', 'velocidad', 'rendimiento_tela_tejida',
     'longitud_malla_polea1', 'longitud_malla_polea2', 'longitud_malla_tol',
     'consumo_cm_vta_polea1', 'consumo_cm_vta_polea2', 'consumo_cm_vta_tol',
     'polea_alimentacion_polea1', 'polea_alimentacion_polea2', 'polea_alimentacion_tol',
@@ -122,6 +137,22 @@ FLOAT_FIELDS = {
     'hilo1_pct', 'hilo2_pct',
 }
 INT_FIELDS = {'no_agujas', 'no_alimentadores', 'vueltas_por_rollo', 'columnas', 'mallas'}
+
+# Columnas que se resuelven contra otro modelo (no se escriben tal cual)
+REF_FIELDS = {'product_proceso_ref', 'maquina_tejido_ref',
+              'jefe_manufactura_ref', 'auxiliar_procesos_ref'}
+# campo destino -> (nombre exacto del puesto en hr.job)
+EMPLOYEE_JOBS = {
+    'jefe_manufactura': 'JEFE DE MANUFACTURA',
+    'auxiliar_procesos': 'AUXILIAR DE PROCESOS',
+}
+
+
+def _cell_to_code(value):
+    """Convierte el valor de una celda a texto; 12.0 -> '12'."""
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    return str(value).strip()
 
 
 class FichaTecnicaTejidoImportWizard(models.TransientModel):
@@ -162,6 +193,8 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
         Ficha = self.env['ficha.tecnica.tejido']
         Product = self.env['product.product']
         Partner = self.env['res.partner']
+        Workcenter = self.env['mrp.workcenter']
+        Employee = self.env['hr.employee']
 
         created, updated, errors = 0, 0, []
 
@@ -178,9 +211,11 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
                 continue
 
             try:
-                values = {'articulo': articulo, 'revision': (raw.get('revision') or '0')}
+                values = {'articulo': articulo,
+                          'revision': _cell_to_code(raw.get('revision') or '0')}
                 for field_name, cell_value in raw.items():
-                    if field_name in ('articulo', 'revision', 'product_proceso_ref') \
+                    if field_name in ('articulo', 'revision') \
+                            or field_name in REF_FIELDS \
                             or field_name.startswith('hilo'):
                         continue
                     if field_name in FLOAT_FIELDS:
@@ -201,6 +236,41 @@ class FichaTecnicaTejidoImportWizard(models.TransientModel):
                         errors.append(
                             'Fila %s (%s): producto "%s" no encontrado, se '
                             'importó sin vincular producto.' % (row_num, articulo, product_ref))
+
+                # Máquina: centro de trabajo por código, luego por nombre
+                maquina_ref = raw.get('maquina_tejido_ref')
+                if maquina_ref not in (None, ''):
+                    code = _cell_to_code(maquina_ref)
+                    workcenter = Workcenter.search([('code', '=', code)], limit=1) \
+                        or Workcenter.search([('name', '=ilike', code)], limit=1)
+                    if workcenter:
+                        values['maquina_tejido'] = workcenter.id
+                    else:
+                        values['maquina_tejido'] = False
+                        errors.append(
+                            'Fila %s (%s): centro de trabajo "%s" no encontrado (se '
+                            'busca por código y por nombre), se importó sin máquina.'
+                            % (row_num, articulo, code))
+
+                # Jefe de manufactura / Auxiliar de procesos: empleado por
+                # nombre, restringido al puesto (job_id) correspondiente
+                for emp_field, job_name in EMPLOYEE_JOBS.items():
+                    emp_ref = raw.get('%s_ref' % emp_field)
+                    if emp_ref in (None, '') or not str(emp_ref).strip():
+                        continue
+                    emp_name = str(emp_ref).strip()
+                    employee = Employee.search([
+                        ('name', '=ilike', emp_name),
+                        ('job_id.name', '=ilike', job_name),
+                    ], limit=1)
+                    if employee:
+                        values[emp_field] = employee.id
+                    else:
+                        values[emp_field] = False
+                        errors.append(
+                            'Fila %s (%s): empleado "%s" no encontrado con el puesto '
+                            '"%s", se importó sin ese dato.'
+                            % (row_num, articulo, emp_name, job_name))
 
                 hilo_lines = []
                 for n in (1, 2):

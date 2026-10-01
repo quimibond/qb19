@@ -24,7 +24,11 @@ Módulo Odoo 19 con **2 modelos separados**:
    modelo viejo al nuevo par tejido/acabado — hay que recapturarlos o
    escribir un script de migración a la medida si ya tienes muchos
    registros cargados.
-3. Requiere `mrp` y `openpyxl` en el servidor.
+3. Requiere `mrp`, `hr` y `openpyxl` en el servidor.
+4. Versión 19.0.2.1.0: `jefe_manufactura` y `auxiliar_procesos` pasan de
+   Char a Many2one `hr.employee`, y `maquina_tejido` de Char a Many2one
+   `mrp.workcenter`. Los textos ya capturados en esas 3 columnas no se
+   convierten (Odoo respalda la columna vieja); hay que reseleccionarlos.
 
 ## Uso
 
@@ -50,7 +54,13 @@ columnas extra sin que falle la importación.
 ### Columnas reconocidas — Importar Tejido
 
 `Artículo` (requerida), `Revisión`, `Producto Proceso` (referencia interna
-o nombre del producto "Tela en Proceso", opcional), `Máquina`, `Marca
+o nombre del producto "Tela en Proceso", opcional), `Rendimiento` (m/kg de
+la tela tejida; también acepta "Rendimiento Tela Tejida" / "Rendimiento
+m/kg"), `Jefe de Manufactura` y `Auxiliar de Procesos` (nombre exacto del
+empleado en `hr.employee` con puesto "JEFE DE MANUFACTURA" /
+"AUXILIAR DE PROCESOS"), `Máquina` (código —No. de máquina— del centro de
+trabajo `mrp.workcenter`; si no coincide por código se busca por nombre;
+también acepta "No Máquina", "Número Máquina", "Código Máquina"), `Marca
 Máquina`, `Galga`, `Diámetro`, `No Agujas`, `No Alimentadores`,
 `Velocidad`, `Vueltas por rollo`, `Notas`.
 

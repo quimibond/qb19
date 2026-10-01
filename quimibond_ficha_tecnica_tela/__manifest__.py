@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.0.0',
+    'version': '19.0.2.1.0',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -28,7 +28,7 @@ Incluye:
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
-    'depends': ['mrp', 'product', 'account'],
+    'depends': ['mrp', 'product', 'account', 'hr'],
     'data': [
         'security/ir.model.access.csv',
         'views/ficha_tecnica_tejido_views.xml',
