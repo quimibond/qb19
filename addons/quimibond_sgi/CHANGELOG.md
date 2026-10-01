@@ -72,7 +72,9 @@ pasa a `test_05_only_system`.
 papelera por algún camino distinto de `write(active=False)` (grep en
 `enterprise/documents/models`); (2) cómo se comporta `action_unarchive` con un
 documento dentro de una carpeta en la papelera; (3) vigilar el log por «SGI: no
-se pudo rescatar el documento» y «SGI: la papelera no borra».
+se pudo rescatar el documento» y «SGI: la papelera no borra»; (4) si se manda a la papelera una carpeta con un documento con acuses que
+el rescate no pudo reactivar, confirmar que borrar la carpeta no arrastra al hijo
+por otro camino (si lo hace, `unlink` debe dejar fuera también su carpeta).
 
 ## 19.0.57.90.0 — 2026-10-01
 
