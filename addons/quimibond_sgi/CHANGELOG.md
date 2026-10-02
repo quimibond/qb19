@@ -24,8 +24,8 @@ Retirado, Seguridad, Migración, Datos de producción.
   el historial, la limpia, regresa la NC a Seguimiento, sube
   `sgi_ineffective_count` y pide una acción correctiva nueva
   (`sgi.action.line.effectiveness_round`); sin ella terminada la NC no cierra.
-  `sgi_ineffective_count` y `sgi_effectiveness_due` solo los cambia el
-  sistema. `sgi_ineffective_count` deja listo el indicador «% de NC eficaces a
+  `sgi_ineffective_count` y `sgi_effectiveness_due` solo los cambian el
+  sistema o el Jefe MAST. `sgi_ineffective_count` deja listo el indicador «% de NC eficaces a
   la primera» (57.98.0).
 - **Evidencia en acciones correctivas (N-02, H-B1.4):** `evidence_note` y
   `evidence_attachment_ids` en `sgi.action.line` (columna «Evidencia» en todas
@@ -86,7 +86,7 @@ Retirado, Seguridad, Migración, Datos de producción.
 ### Corregido
 
 - Mensajes del chatter que salían con `&lt;b&gt;`: devolución de cliente, falla
-  de mantenimiento, alerta escalada a NC, documento del alta, evaluación de
+  de mantenimiento, eficacia programada, alerta escalada a NC, documento del alta, evaluación de
   cumplimiento legal y NC por incumplimiento, proveedor aprobado o bloqueado
   (`Markup`).
 
@@ -116,6 +116,10 @@ avisos en el recuadro de cobertura (`many2many_tags` dentro de un `div`) ni en
 fallarían): cerrar una NC como dueño del proceso en el build de la rama;
 (5) pruebas de devolución (almacén en tres pasos) y del portal (CSRF con
 sesión anónima, redirección a `/my`), ver plan §1.8.
+
+**Deuda conocida (revisión final, menor):** `date_close` queda libre en una NC
+cerrada para cualquiera con escritura (necesario para el cierre de Calidad);
+una correctiva pendiente mudada de NC conserva su `effectiveness_round`.
 
 ## 19.0.57.92.0 — 2026-10-02
 

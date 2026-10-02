@@ -1196,8 +1196,8 @@ class DocumentsDocument(models.Model):
                 request.sudo().write({'sgi_document_id': doc.id})
                 doc.sudo().write({'sgi_doc_change_id': request.id})
                 doc.message_post(
-                    body="Documento creado desde la solicitud de alta aprobada "
-                         "<b>%s</b>." % (request.name or ''))
+                    body=Markup("Documento creado desde la solicitud de alta aprobada "
+                                "<b>%s</b>.") % (request.name or ''))
                 request.message_post(
                     body=Markup("Documento del alta creado: <b>%s</b>.")
                          % (doc.sgi_code or doc.name))

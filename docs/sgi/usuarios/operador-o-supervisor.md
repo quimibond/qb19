@@ -146,6 +146,10 @@ en [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
   fecha programada. En una NC mayor, además, los 5
   porqués y confirmar que la lección se aplicó al AMEF, al plan de control o
   al documento.
+- **«La NC ya está cerrada y no me deja cambiarla.»** Ya cerrada, solo el Jefe
+  MAST la modifica. Si usted es el dueño del proceso, reábrala cambiando solo
+  la etapa y después capture el cambio (por ejemplo, una verificación **No
+  eficaz**).
 - **«Me llegó una actividad que no entiendo.»** Ábrala: siempre apunta al
   registro (NC, documento, medición) y trae la explicación.
 - **«¿Sigo llenando el Excel?»** No, si el formato ya está migrado a Odoo.
