@@ -214,8 +214,19 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
   evidencia: una nota o un archivo) y verificación de eficacia con resultado
   **Eficaz**, registrada en la fecha programada o después; en NC mayor,
   además los 5 porqués y la lección aplicada. Si la verificación sale **No
-  eficaz**, la NC regresa a Seguimiento y pide una acción correctiva nueva.
-  Una NC de reclamación no sale de Abierta sin contención.
+  eficaz**, la NC pide una acción correctiva nueva y, si estaba cerrada,
+  regresa a Seguimiento. Una NC de reclamación no sale de Abierta sin
+  contención.
+- **Clasificación y cláusula (57.97.0):** una NC con folio no pasa de Abierta
+  a Seguimiento, ni directo a Cerrada, ni nace en Seguimiento sin
+  clasificación (mayor, menor u observación) y requisito (cláusula). Usted
+  también la captura; el cierre forzado no la pide.
+- **Cláusulas de tercer nivel (57.97.0):** ISO 9001 7.1.5 y 9.1.2; ISO 14001
+  6.1.2, 6.1.3, 6.1.4 y 9.1.2; ISO 45001 6.1.2, 6.1.3, 6.1.4, 8.1.2, 8.1.3,
+  8.1.4 y 9.1.2. Las 13 salen en rojo en la Matriz de cumplimiento hasta que
+  se liguen a actividades (campo «Cumple con» de cada actividad). Si
+  capturó a mano una cláusula con el mismo numeral antes de 57.97.0, la
+  actualización le liga el xmlid y no la duplica.
 - Solo cierran la NC el dueño del proceso o usted. Ya cerrada, solo usted la
   modifica (también sus acciones terminadas); el dueño del proceso puede
   reabrirla cambiando solo la etapa. Una NC no se crea directamente cerrada
@@ -377,6 +388,8 @@ completa: [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo
 - No **borrar** registros del SGI: se archivan.
 - No editar lo que trae el módulo (normas, áreas, tipos) sin pedirlo a
   desarrollo: un update puede sobrescribirlo o chocar.
+- No capture cláusulas de tercer nivel a mano en ISO 9001, 14001 o 45001: ya
+  vienen con el módulo (57.97.0).
 
 ## 16. A quién pedir qué
 

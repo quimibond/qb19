@@ -54,6 +54,8 @@ Cuando una actividad de su gente se atrasa, le escala a usted.
 
 Como dueño de proceso también recibe los plazos vencidos de las NC de su
 proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.
+Antes de mover una NC de su proceso a Seguimiento, capture su clasificación
+y la cláusula que se incumplió.
 
 ### 2.3 Validar las mediciones de sus indicadores
 
