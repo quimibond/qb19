@@ -881,6 +881,23 @@ class SgiCron(models.AbstractModel):
         return True
 
     # ------------------------------------------------------------------
+    # 57.95.0 (K-08) — Respaldo nocturno
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_nightly_backup(self):
+        """Cron diario (02:15 de México): recalcula las cuatro listas guardadas
+        de Mi procedimiento y anota en el log cuántas personas cambiaron (si no
+        es 0, falta un disparo), y refresca el resumen de Mis pendientes que
+        leen los filtros de Mi equipo. Cada paso en su savepoint."""
+        sgi_require_system(self.env)
+        Employee = self.env['hr.employee']
+        self._sgi_step("respaldo de las listas de Mi procedimiento",
+                       Employee._sgi_mp_nightly_recompute)
+        self._sgi_step("resumen de Mis pendientes por persona",
+                       Employee._sgi_refresh_pending_summary)
+        return True
+
+    # ------------------------------------------------------------------
     # 3. Cron mensual — NEWS (F-P-G01-16)
     # ------------------------------------------------------------------
     @api.model

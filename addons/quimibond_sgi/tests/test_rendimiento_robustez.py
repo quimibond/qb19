@@ -364,12 +364,9 @@ class TestRespaldoNocturno(_RendimientoCase):
         with self.assertRaises(AccessError):
             self.Cron.with_user(self.boss_user).cron_nightly_backup()
         self.assertTrue(self.Cron.cron_nightly_backup())
-        # Por su código y no por xmlid: el registro llega con la Task 5.5 y el
-        # checker de referencias marcaría un env.ref a un xmlid que aún no
-        # está declarado.
-        cron = self.env['ir.cron'].search([('model_id.model', '=', 'sgi.cron'),
-                                           ('code', 'ilike', 'cron_nightly_backup')])
-        self.assertEqual(len(cron), 1, "Una acción planificada del respaldo nocturno, activa.")
+        cron = self.env.ref('quimibond_sgi.sgi_cron_nightly_backup')
+        self.assertTrue(cron.active)
+        self.assertEqual(cron.interval_type, 'days')
 
 
 @tagged('post_install', '-at_install')

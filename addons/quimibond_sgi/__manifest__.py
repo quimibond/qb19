@@ -96,6 +96,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_checklist_cron.xml',
         # 57.94.0 (U-08): aviso semanal a RH.
         'data/sgi_floor_cron.xml',
+        # 57.95.0 (K-08): respaldo nocturno de Mi procedimiento y Mi equipo.
+        'data/sgi_nightly_cron.xml',
         'data/sgi_coa_data.xml',
         'data/sgi_my_procedure_data.xml',
         'data/sgi_mp_change_category_data.xml',
