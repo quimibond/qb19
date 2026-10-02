@@ -345,6 +345,11 @@ class SgiCron(models.AbstractModel):
             alone = group.employee_id == owner
             boss_user = owner.user_id if not alone and owner.user_id.active else False
             dept = owner.department_id
+            # Decisión 57.95.0: el aviso de equipo vive en el departamento
+            # del jefe. Un jefe con usuario activo pero SIN departamento no
+            # lo recibe: va al Jefe MAST (sobre el documento del acuse más
+            # viejo), igual que el de un jefe sin usuario o sin permiso de
+            # leer su departamento.
             if boss_user and dept and self._sgi_user_can_read(dept, boss_user.id):
                 user_id, anchor, reason = boss_user.id, dept, 'jefe'
             else:

@@ -48,7 +48,14 @@ class _RendimientoCase(TransactionCase):
         cls.env.flush_all()
         cls.env.cr.execute("UPDATE sgi_document_ack SET create_date = now() "
                            "WHERE state = 'pendiente'")
+        # Ni revisiones bienales ni pilotos reales: cron_documents no debe
+        # tener fallas por documentos de la copia (apagarían el barrido).
+        cls.env.cr.execute("UPDATE documents_document SET sgi_next_review_date = NULL, "
+                           "sgi_pilot_end_date = NULL WHERE sgi_next_review_date IS NOT NULL "
+                           "OR sgi_pilot_end_date IS NOT NULL")
         cls.env.invalidate_all()
+        # El umbral de producción podría ser otro: las pruebas cuentan con 7.
+        cls.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.doc_ack_pending_days', '7')
         cls.today = sgi_today(cls.env)
         cls.mast = sgi_set_mast(cls.env, login='rr_mast')
         cls.company = cls.env['sgi.config']._sgi_company()
@@ -210,6 +217,8 @@ class TestAvisosDeAcuse(_RendimientoCase):
     def test_05_el_jefe_lo_ve_en_mis_pendientes_e_ir_abre_los_acuses(self):
         acks = self._ack(self.op1, self.doc_a) | self._ack(self.op2, self.doc_b)
         recent = self._ack(self.op1, self.doc_b, days_ago=0)
+        # Quien tiene usuario recibe su propio aviso: no sale en el del equipo.
+        self._ack(self.own, self.doc_a)
         self.Cron.cron_documents()
         notice = self._notice('acuses_equipo', self.boss).filtered('active')
         rows = self.Pending.with_user(self.boss_user)._sgi_build(self.boss)
@@ -222,6 +231,36 @@ class TestAvisosDeAcuse(_RendimientoCase):
         self.assertNotIn(recent, shown, "«Ir» lista solo los acuses que pasaron el mismo umbral.")
         self.assertNotIn("Con usuario RR", shown.employee_id.mapped('name'))
 
+    def test_05b_usuario_sin_grupo_sgi_no_detiene_el_barrido(self):
+        """Quien solo es usuario interno (sin Usuario SGI) no lee acuses. Si
+        tampoco lee el documento de su acuse, sus acuses van al aviso de su
+        jefe; si lo lee, recibe el suyo. En ningún caso falla la corrida: el
+        aviso viejo de uno por acuse se barre (solo pasa sin fallas)."""
+        basic_user = new_test_user(self.env, login='rr_basico', groups='base.group_user')
+        basic = self.env['hr.employee'].create({'name': 'Básico RR', 'user_id': basic_user.id,
+                                                'parent_id': self.boss.id})
+        ack = self._ack(basic, self.doc_a)
+        legacy = self.doc_b.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today,
+            summary='Acuse pendiente: Básico RR', user_id=self.mast.id)
+        legacy.sudo().sgi_cron_key = 'acuse_pendiente:%d' % ack.id
+        reads_acks = self.env['ir.model.access'].with_user(basic_user).check(
+            'sgi.document.ack', 'read', raise_exception=False)
+        self.assertFalse(reads_acks, "Sin Usuario SGI no lee acuses: el aviso no va sobre el acuse.")
+        can_read_doc = self.Cron._sgi_user_can_read(self.doc_a, basic_user.id)
+        self.Cron.cron_documents()
+        self.assertFalse(legacy.active, "Sin fallas: el barrido corrió.")
+        mine = self._notice('acuses_propios', basic).filtered('active')
+        team = self._notice('acuses_equipo', self.boss).filtered('active')
+        if can_read_doc:
+            self.assertEqual(mine.user_id, basic_user)
+            self._assert_anchor(mine, self.doc_a)
+            self.assertFalse(team)
+        else:
+            self.assertFalse(mine, "No lee el documento: no se le agenda nada encima.")
+            self.assertEqual(team.user_id, self.boss_user, "Sus acuses van al aviso de su jefe.")
+            self.assertIn("Básico RR", team.note)
+
     def test_06_clase_del_aviso_indexada_y_barrido(self):
         field = self.env['mail.activity']._fields['sgi_cron_kind']
         self.assertTrue(field.store and field.index)
@@ -233,6 +272,10 @@ class TestAvisosDeAcuse(_RendimientoCase):
         ep.sudo().sgi_cron_key = 'episodio_rr:5'
         other.sudo().sgi_cron_key = 'episodio_rr_otro:5'
         plain.sudo().sgi_cron_key = 'episodio_rr'
+        # «_» ya no es comodín (antes, =like 'episodio_rr:%' también tomaba
+        # 'episodioXrr:7').
+        wild = make('mail.mail_activity_data_todo', summary='Comodín RR', user_id=self.mast.id)
+        wild.sudo().sgi_cron_key = 'episodioXrr:7'
         self.assertEqual(ep.sgi_cron_kind, 'episodio_rr')
         self.assertEqual(other.sgi_cron_kind, 'episodio_rr_otro')
         self.assertEqual(plain.sgi_cron_kind, 'episodio_rr')
@@ -241,6 +284,7 @@ class TestAvisosDeAcuse(_RendimientoCase):
         self.assertFalse(ep.active)
         self.assertFalse(plain.active)
         self.assertTrue(other.active, "Otra clase con el mismo prefijo no se barre.")
+        self.assertTrue(wild.active, "El «_» de la clase no es comodín.")
         self.assertTrue(manual.active)
 
 
