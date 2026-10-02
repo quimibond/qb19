@@ -58,6 +58,12 @@ class SgiAuditProgram(models.Model):
                                      help="Renglones cuya auditoría ya se cerró.")
     progress_pct = fields.Float(string="Avance", compute='_compute_progress',
                                 help="Auditorías cerradas entre auditorías programadas, en %.")
+    # 57.93.0 (N-03): ISO 9.2.2, todos los procesos dentro del ciclo de 3 años.
+    coverage_gap_ids = fields.Many2many(
+        'sgi.process', string="Sin auditar en 3 años", compute='_compute_coverage_gap',
+        help="Subprocesos sin renglón en este programa ni en los de los dos años anteriores.")
+    coverage_gap_count = fields.Integer(string="Procesos sin auditar en 3 años",
+                                        compute='_compute_coverage_gap')
 
     _year_uniq = models.Constraint(
         'unique(year)',
@@ -78,6 +84,17 @@ class SgiAuditProgram(models.Model):
             program.line_done_count = done
             program.progress_pct = round(100.0 * done / total, 1) if total else 0.0
 
+    @api.depends('year', 'line_ids.process_id')
+    def _compute_coverage_gap(self):
+        processes = self.env['sgi.process'].search([('parent_id', '!=', False)])
+        for program in self:
+            previous = self.search([('year', '>=', (program.year or 0) - 2),
+                                    ('year', '<', program.year or 0)])
+            covered = previous.line_ids.process_id | program.line_ids.process_id
+            gap = processes - covered
+            program.coverage_gap_ids = gap
+            program.coverage_gap_count = len(gap)
+
     def action_approve(self):
         """4.4: solo MAST aprueba, y cada auditoría interna del programa
         lleva su auditor líder (en 2026 las 14 líneas estaban sin auditor)."""
@@ -97,6 +114,12 @@ class SgiAuditProgram(models.Model):
                             for line in missing)))
         for program in self:
             program.state = 'aprobado'
+            if program.coverage_gap_ids:
+                program.message_post(body=Markup(
+                    "<b>Cobertura de 3 años:</b> se aprobó con %d subproceso(s) sin auditar en este "
+                    "programa ni en los dos anteriores: %s.") % (
+                        program.coverage_gap_count,
+                        ", ".join(program.coverage_gap_ids.mapped('display_name'))))
             manager_id = self.env['sgi.cron']._sgi_manager_user_id()
             if manager_id:
                 program.activity_schedule(
@@ -113,10 +136,11 @@ class SgiAuditProgram(models.Model):
         self.write({'state': 'borrador'})
 
     def action_suggest_lines(self):
-        """AU-5 (53.0.0): programa sugerido. Una línea por proceso vigente o en
-        piloto (subprocesos), repartidos por trimestre; los procesos con NC
-        abiertas o indicadores en rojo, dos veces al año. Solo agrega los que
-        aún no están en el programa."""
+        """AU-5 (53.0.0): programa sugerido. Una línea por subproceso,
+        repartidos por trimestre; los procesos con NC abiertas o indicadores
+        en rojo, dos veces al año. Solo agrega los que aún no están.
+        57.93.0 (N-03): también los procesos en borrador (casi todos lo están
+        mientras el Dropbox siga vigente; ISO 9.2.2 pide cubrirlos)."""
         Line = self.env['sgi.audit.program.line']
         quarter_months = ('2', '5', '8', '11')
         created = 0
@@ -125,8 +149,7 @@ class SgiAuditProgram(models.Model):
                 raise UserError("El programa sugerido solo se arma en borrador.")
             existing = program.line_ids.mapped('process_id')
             processes = self.env['sgi.process'].search(
-                [('parent_id', '!=', False), ('state', 'in', ('vigente', 'piloto'))],
-                order='code, name')
+                [('parent_id', '!=', False)], order='code, name')
             for index, process in enumerate(p for p in processes if p not in existing):
                 twice = bool(process.nc_count or process.red_kpi_count)
                 month = quarter_months[index % 4]
@@ -135,8 +158,9 @@ class SgiAuditProgram(models.Model):
                     Line.create({'program_id': program.id, 'process_id': process.id,
                                  'planned_month': planned, 'audit_type': 'interna'})
                     created += 1
-            program.message_post(body="Programa sugerido: %d línea(s) agregadas (procesos con NC "
-                                      "abiertas o indicadores en rojo, dos veces al año)." % created)
+            program.message_post(body="Programa sugerido: %d línea(s) agregadas (todos los "
+                                      "subprocesos; los que tienen NC abiertas o indicadores en "
+                                      "rojo, dos veces al año)." % created)
         return True
 
 
@@ -458,11 +482,14 @@ class SgiAudit(models.Model):
         problems = []
         for finding in self.finding_ids:
             label = finding.description or finding.finding_type
-            # Un hallazgo MAYOR obliga NC ligada, sin importar la disposición.
-            if finding.finding_type == 'nc_mayor' and not finding.alert_id:
+            # 57.93.0 (N-03): toda no conformidad de auditoría, menor o mayor,
+            # se trata como NC (ISO 10.2): «sin acción» y «mejora» quedan para
+            # observaciones, oportunidades y conformidades.
+            if finding.finding_type in ('nc_menor', 'nc_mayor') and not finding.alert_id:
                 problems.append(
-                    "• El hallazgo mayor '%s' debe tener una NC ligada "
-                    "(usa «Crear NC desde hallazgo»)." % label)
+                    "• El hallazgo «%s» es una no conformidad %s: debe tener su NC ligada "
+                    "(use «Generar NC»)." % (
+                        label, "mayor" if finding.finding_type == 'nc_mayor' else "menor"))
                 continue
             if not finding.disposition:
                 problems.append("• El hallazgo '%s' no tiene disposición." % label)

@@ -16,7 +16,7 @@
                     <button name="action_suggest_lines" type="object" string="Programa sugerido"
                             icon="fa-magic" invisible="state != 'borrador'"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
-                            help="Una línea por proceso vigente o en piloto, repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
+                            help="Una línea por subproceso (en borrador, piloto o vigente), repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
                     <button name="action_draft" confirm="El programa de auditorías regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
@@ -25,6 +25,13 @@
                 <sheet>
                     <div class="oe_title">
                         <h1>Programa de auditorías <field name="year" class="oe_inline"/></h1>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not coverage_gap_count">
+                        <b>Cobertura de 3 años:</b>
+                        <field name="coverage_gap_count" class="oe_inline"/> subproceso(s) sin
+                        auditoría en este programa ni en los dos anteriores (ISO 9.2.2). Agréguelos
+                        o deje el motivo en el historial:
+                        <field name="coverage_gap_ids" widget="many2many_tags" readonly="1" nolabel="1"/>
                     </div>
                     <field name="line_ids">
                         <list editable="bottom">
