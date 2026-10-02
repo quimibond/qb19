@@ -89,11 +89,6 @@ class _Case(TransactionCase):
                                      groups=USER + ',quimibond_sgi.group_sgi_director')
 
     @classmethod
-    def _ref(cls, name):
-        """xmlid del módulo (los de esta entrega se nombran sin literal)."""
-        return cls.env.ref('quimibond_sgi.%s' % name)
-
-    @classmethod
     def _doc(cls, code, revision=4, issued=date(2026, 9, 15), dtype='formato', **vals):
         base = {
             'name': '%s prueba interfaz.xlsx' % code, 'type': 'binary',
@@ -330,11 +325,11 @@ class TestMenusPorRol(_Case):
     """U-07 y Q20."""
 
     def test_11_reportar_abre_la_ficha_nueva(self):
-        root = self._ref('menu_sgi_root')
-        folder = self._ref('menu_sgi_report')
+        root = self.env.ref('quimibond_sgi.menu_sgi_root')
+        folder = self.env.ref('quimibond_sgi.menu_sgi_report')
         self.assertEqual(folder.parent_id, root)
-        self.assertLess(self._ref('menu_sgi_panel').sequence, folder.sequence)
-        self.assertLess(folder.sequence, self._ref('menu_sgi_processes').sequence)
+        self.assertLess(self.env.ref('quimibond_sgi.menu_sgi_panel').sequence, folder.sequence)
+        self.assertLess(folder.sequence, self.env.ref('quimibond_sgi.menu_sgi_processes').sequence)
         Pending = self.env['sgi.my.pending'].with_user(self.plain)
         for kind, model in (('nc', 'quality.alert'), ('incident', 'sgi.incident'),
                             ('voice', 'helpdesk.ticket')):
@@ -344,37 +339,37 @@ class TestMenusPorRol(_Case):
             self.assertFalse(action.get('res_id'), "%s: abre la ficha nueva." % kind)
             self.env[model].with_user(self.plain).check_access('create')
         context = Pending.action_sgi_report('nc')['context']
-        self.assertEqual(context['default_team_id'], self._ref('sgi_quality_team_internal').id)
+        self.assertEqual(context['default_team_id'], self.env.ref('quimibond_sgi.sgi_quality_team_internal').id)
         self.assertEqual(Pending.action_sgi_report('incident')['context']['default_incident_type'],
                          'casi_accidente')
         self.assertEqual(Pending.action_sgi_report('voice')['context']['default_team_id'],
-                         self._ref('sgi_helpdesk_team_voice').id)
+                         self.env.ref('quimibond_sgi.sgi_helpdesk_team_voice').id)
         visible = self.env['ir.ui.menu'].with_user(self.plain)._visible_menu_ids()
         for xmlid in ('menu_sgi_report', 'menu_sgi_report_nc', 'menu_sgi_report_incident',
                       'menu_sgi_report_voice'):
-            self.assertIn(self._ref(xmlid).id, visible, xmlid)
+            self.assertIn(self.env.ref('quimibond_sgi.' + xmlid).id, visible, xmlid)
 
     def test_12_catalogos_por_rol(self):
         plain = self.env['ir.ui.menu'].with_user(self.plain)._visible_menu_ids()
         owner = self.env['ir.ui.menu'].with_user(self.owner)._visible_menu_ids()
         for xmlid in CATALOG_MENUS:
-            menu = self._ref(xmlid)
+            menu = self.env.ref('quimibond_sgi.' + xmlid)
             self.assertNotIn(menu.id, plain, xmlid)
             self.assertIn(menu.id, owner, xmlid)
         for xmlid in ('menu_sgi_process_map', 'menu_sgi_activities'):
-            self.assertIn(self._ref(xmlid).id, plain, xmlid)
+            self.assertIn(self.env.ref('quimibond_sgi.' + xmlid).id, plain, xmlid)
 
     def test_13_checklists_de_hoy_en_inicio_y_en_mantenimiento(self):
-        action = self._ref('sgi_checklist_today_action')
-        home = self._ref('menu_sgi_home_checklist_today')
-        self.assertEqual(home.parent_id, self._ref('menu_sgi_panel'))
+        action = self.env.ref('quimibond_sgi.sgi_checklist_today_action')
+        home = self.env.ref('quimibond_sgi.menu_sgi_home_checklist_today')
+        self.assertEqual(home.parent_id, self.env.ref('quimibond_sgi.menu_sgi_panel'))
         self.assertEqual(home.action, action)
-        self.assertEqual(self._ref('menu_sgi_checklist_today').action, action)
+        self.assertEqual(self.env.ref('quimibond_sgi.menu_sgi_checklist_today').action, action)
         self.assertIn(home.id, self.env['ir.ui.menu'].with_user(self.plain)._visible_menu_ids())
 
     def test_14_direccion_arranca_en_el_tablero(self):
-        root = self._ref('menu_sgi_root')
-        self.assertEqual(root.action, self._ref('sgi_home_action'))
+        root = self.env.ref('quimibond_sgi.menu_sgi_root')
+        self.assertEqual(root.action, self.env.ref('quimibond_sgi.sgi_home_action'))
         self.assertEqual(
             self.env['sgi.my.pending'].with_user(self.director).action_open_home()['res_model'],
             'sgi.direction.board')
