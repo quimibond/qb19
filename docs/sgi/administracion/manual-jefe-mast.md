@@ -127,6 +127,32 @@ desactualizado hasta la siguiente publicación.
 - **Carpeta:** los documentos controlados viven en la carpeta «SGI» de
   Documentos.
 
+### Empresa en documentos controlados (D-06 de datos)
+
+**Administración SGI → Configuración → Empresa en documentos controlados**
+(solo el Jefe MAST). Pone la empresa del SGI en los documentos controlados
+que no tienen empresa (492 el 2026-10-02). Es un cambio de datos: **úselo
+solo después del visto bueno por escrito de Jose** (pregunta Q1 de la
+entrega 57.95.0).
+
+1. Al abrirlo solo **cuenta**: cuántos documentos sin empresa hay (vigentes,
+   obsoletos, en borrador o piloto) y cuántas rutinas del procedimiento
+   anterior tomarán la empresa. No escribe nada.
+2. **Ver los documentos** los lista para revisarlos.
+3. **Asignar la empresa del SGI** escribe la empresa en lotes de 100, deja en
+   el historial de cada documento la nota «Empresa del SGI asignada…» y
+   registra en el log del servidor los documentos antes y cuántos quedaron
+   después. Si alguno no se puede corregir, el asistente lo cuenta en
+   «Documentos que no se pudieron corregir» y el motivo queda en el log.
+4. Las rutinas del procedimiento anterior toman la empresa solas. No se borra
+   nada.
+5. Vuelva a abrirlo: debe contar 0.
+
+Efecto a saber: quien trabaje con otra razón social seleccionada (sin PNTQ)
+deja de ver esos documentos hasta seleccionarla, igual que hoy con los de Mi
+procedimiento. Los documentos controlados nuevos ya nacen con la empresa del
+SGI (o con la de su familia, si la clave ya existe).
+
 ## 7. Publicar Mi procedimiento
 
 **Firmas de lectura → Publicar Mi procedimiento**. Revise antes las pestañas
@@ -136,6 +162,24 @@ acuse de cada persona; si Ajustes → SGI → «Mi procedimiento se firma en
 Sign» está encendido, la firma va por Sign. Cada semana le llega el aviso de
 los puestos sin publicar o desactualizados. Cuando alguien entra a un puesto
 ya publicado, revise en **Acuses de lectura** que tenga el suyo.
+
+**Avisos de acuses pendientes (desde 57.95.0).** Cuando un acuse pasa
+7 días hábiles sin firmar (parámetro `quimibond_sgi.doc_ack_pending_days`),
+el cron diario de documentos ya no agenda un aviso por acuse; los agrupa:
+
+- persona con usuario: **un** aviso «Documentos por leer y firmar: N», a ella,
+  sobre el documento de su acuse más viejo;
+- gente sin usuario: **un** aviso por jefe, «Acuses pendientes de su gente:
+  N (P personas)», al jefe, sobre su departamento; **Ir** en Mis pendientes
+  abre la lista de esos acuses;
+- a usted: los equipos de jefes sin usuario, los de jefes **con usuario pero
+  sin departamento** (decisión de 57.95.0: el aviso de equipo vive en el
+  departamento del jefe; sin él, va al Jefe MAST), las personas sin jefe y
+  el aviso de quien no puede abrir el documento.
+
+Los avisos viejos de uno por acuse se cierran solos en la primera corrida con
+la nota «se reemplazó por un aviso por persona o por jefe». Un aviso se
+cierra solo cuando ya no hay acuses pendientes en su grupo.
 
 ## 8. Indicadores y mediciones
 
@@ -182,10 +226,17 @@ checklist no se generan en festivos.
 
 ## 11. Crons
 
-Hay 26 acciones planificadas del SGI (tabla completa en
+Hay 27 acciones planificadas del SGI (tabla completa en
 [../tecnica/crons.md](../tecnica/crons.md)). Viven en `noupdate`: cambiarlas
 en la base requiere migración. Desde 57.94.0 incluye «SGI: Empleados sin
-puesto o sin correo (aviso a RH)», semanal (lunes). Si una falla, Odoo la apaga tras 5 fallos en
+puesto o sin correo (aviso a RH)», semanal (lunes). Desde 57.95.0 incluye
+«SGI: Respaldo nocturno (Mi procedimiento y Mi equipo)», diario a las 02:15
+de México: vuelve a calcular las listas de Mi procedimiento de cada persona y
+el resumen de pendientes que usan los filtros de Mi equipo. En el log del
+servidor deja «respaldo nocturno de Mi procedimiento: 0 cambios en N
+personas»; si aparece «falta un disparo de recálculo», avise a quien
+mantiene el módulo: alguna pantalla cambió roles o actividades sin
+recalcular Mi procedimiento (el respaldo ya lo corrigió). Si una falla, Odoo la apaga tras 5 fallos en
 más de 7 días: revise **Ajustes → Técnico → Acciones planificadas** (filtro
 «SGI»).
 
