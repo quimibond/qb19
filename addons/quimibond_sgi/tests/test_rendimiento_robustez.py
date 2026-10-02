@@ -413,6 +413,10 @@ class TestRespaldoNocturno(_RendimientoCase):
 class TestEntregasFacturadas(TransactionCase):
     """K-05."""
 
+    def _income(self):
+        return self.env['account.account'].search([
+            ('account_type', '=', 'income'), ('company_ids', 'in', self.env.company.ids)], limit=1)
+
     def _sale_flow(self):
         customer = self.env['res.partner'].create({'name': 'Cliente K05'})
         product = self.env['product.product'].create({'name': 'Tela K05', 'type': 'consu'})
@@ -432,7 +436,7 @@ class TestEntregasFacturadas(TransactionCase):
                 'location_dest_id': customers.id})]})
         picking.action_confirm()
         picking.move_ids.write({'quantity': 1.0, 'picked': True})
-        income = self.env['account.account'].search([('account_type', '=', 'income')], limit=1)
+        income = self._income()
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice', 'partner_id': customer.id,
             'invoice_line_ids': [(0, 0, {
@@ -466,6 +470,34 @@ class TestEntregasFacturadas(TransactionCase):
         invoice.action_sgi_picking_reset()
         self.assertFalse(invoice.sgi_picking_manual)
         self.assertEqual(invoice.sgi_picking_ids, picking)
+
+    def test_13b_ajuste_de_antes_sin_marca_se_conserva(self):
+        """Una factura con entregas puestas a mano antes de 57.95.0 (sin la
+        marca) y sin pedido ligado no las pierde al recalcular ni cuando el
+        formulario las reenvía iguales."""
+        picking, _invoice = self._sale_flow()
+        partner = self.env['res.partner'].create({'name': 'Cliente K05 suelto'})
+        invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice', 'partner_id': partner.id,
+            'invoice_line_ids': [(0, 0, {'name': 'Servicio K05', 'quantity': 1, 'price_unit': 5.0,
+                                         'account_id': self._income().id, 'tax_ids': [(6, 0, [])]})]})
+        self.assertFalse(invoice.sgi_picking_ids)
+        self.env.flush_all()
+        self.env.cr.execute("INSERT INTO sgi_move_picking_rel (move_id, picking_id) VALUES (%s, %s)",
+                            (invoice.id, picking.id))
+        invoice.invalidate_recordset(['sgi_picking_ids'])
+        self.assertEqual(invoice.sgi_picking_ids, picking)
+        invoice.write({'invoice_line_ids': [(0, 0, {
+            'name': 'Otro servicio K05', 'quantity': 1, 'price_unit': 3.0,
+            'account_id': self._income().id, 'tax_ids': [(6, 0, [])]})]})
+        invoice.write({'move_type': 'out_refund'})
+        self.env.flush_all()
+        invoice.invalidate_recordset(['sgi_picking_ids'])
+        self.assertEqual(invoice.sgi_picking_ids, picking, "Sin propuesta, lo guardado se conserva.")
+        invoice.write({'sgi_picking_ids': [(6, 0, picking.ids)]})
+        self.assertEqual(invoice.sgi_picking_ids, picking)
+        self.assertFalse(invoice.sgi_picking_manual,
+                         "Reenviar lo mismo que se conservaba no es un ajuste nuevo.")
 
     def test_14_dependencias_completas(self):
         Move = self.env['account.move']

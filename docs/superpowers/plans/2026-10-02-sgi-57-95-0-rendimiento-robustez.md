@@ -1759,13 +1759,19 @@ entregado. Diferencias con las tareas de arriba:
   usuario o persona sin jefe → Jefe MAST. Se revisa que quien recibe lea el
   registro, se reintenta al Jefe MAST, no se dejan seguidores nuevos y sin
   Jefe MAST se conserva el aviso. `hr.employee` no entró a `NOTICE_MODELS`
-  (Q5 ya no aplica). Pruebas 05b, 05c y 05d nuevas (20 en total).
+  (Q5 ya no aplica). Pruebas 05b, 05c y 05d nuevas.
 - **Mi equipo (Task 5.4):** los filtros leen el resumen guardado con un
   `search_read` del alcance (lo nunca calculado cuenta como cero) en lugar de
   un dominio sobre los campos; alcance por `sgi_mp_job_id`; campos solo
   sistema.
-- **K-05 (Task 5.6):** patrón seguro desde el inicio: `sgi_picking_manual_ids`
-  guardado y no calculado; el cálculo siempre asigna.
+- **K-05 (Task 5.6):** patrón seguro: `sgi_picking_manual_ids` guardado y no
+  calculado; el cálculo siempre asigna (ajuste → lo ajustado; sin propuesta →
+  lo guardado, `_origin`, para los ajustes de antes de 57.95.0; si no, lo
+  propuesto). Propuesta y comparación en sudo y por ids
+  (`compute_sudo=True`). Prueba 13b nueva (21 en total).
+- **D-06 (Task 5.7), revisión:** `write` filtra en sudo; `create` toma la
+  carpeta de los valores o de `default_folder_id`. El resumen de Mi equipo
+  pone en cero a quien salió del alcance con `total > 0`.
 - **D-06 (Task 5.7):** el asistente anota con WARNING (no ERROR) los lotes y
   documentos que fallan.
 - **Pruebas 11 y 17** buscaron el cron y la regla sin `env.ref` mientras los

@@ -62,8 +62,10 @@ iniciarse). Plan: `docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-rob
   búsqueda. Lo refrescan el respaldo nocturno y cada lista de pendientes que se
   abre (Mis pendientes, «Ver pendientes», «Pendientes del equipo»): abrir una
   lista escribe en `hr.employee` (en sudo, sin seguimiento) **solo** los
-  campos que cambiaron. Durante el día el filtro puede ir atrás de las
-  columnas, que siguen en vivo.
+  campos que cambiaron; esa escritura puede bloquear un momento las filas de
+  `hr_employee` de esas personas (si choca con otra transacción, Odoo
+  reintenta). Durante el día el filtro puede ir atrás de las columnas, que
+  siguen en vivo.
 - **Barrido de avisos (K-08):** por la clase indexada
   `mail.activity.sgi_cron_kind` (la clave antes del primer «:»; índice
   parcial `btree_not_null`) en lugar de `sgi_cron_key =like 'clase:%'`, que
@@ -75,20 +77,21 @@ iniciarse). Plan: `docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-rob
   (`sgi_picking_proposed_ids`, sin guardar). Escribir a mano entregas
   distintas de las propuestas enciende `sgi_picking_manual` y las guarda en
   `sgi_picking_manual_ids` (guardado, no calculado); el cálculo siempre
-  asigna: lo ajustado si hay ajuste, si no lo propuesto (o lo ajustado, si lo
-  propuesto viene vacío). El formulario que reenvía lo mismo que lo propuesto
-  no marca ajuste. Botón «Volver a las entregas propuestas» en la pestaña SGI
-  (con ajuste o cuando lo guardado difiere: `sgi_picking_outdated`).
-  **Riesgo conocido:** una factura ajustada a mano antes de 57.95.0 no trae la
-  marca; si su propuesta viene vacía y algo dispara el recálculo (cambia el
-  tipo o el estado de una entrega ligada), se vacía. Raro; se corrige con el
-  botón o escribiendo las entregas otra vez.
+  asigna: lo ajustado si hay ajuste; si no hay propuesta, lo que ya estaba
+  guardado (protege los ajustes a mano de antes de 57.95.0, que no traen la
+  marca); si no, lo propuesto. El formulario que reenvía lo mismo que lo
+  propuesto, o lo mismo que se conservaba sin propuesta, no marca ajuste.
+  Propuesta y comparación se leen en sudo y por ids: una regla de registro
+  sobre las entregas no hace parecer «a mano» una factura. Botón «Volver a las
+  entregas propuestas» en la pestaña SGI (con ajuste o cuando lo guardado
+  difiere: `sgi_picking_outdated`).
 - `sgi_payment_date` depende también de `invoice_date` y de la cuenta de las
   líneas.
 - **Documentos controlados (D-06 de datos):** un documento que nace o se
   vuelve controlado sin empresa toma la de su familia (misma clave, aunque sea
   ninguna, para no partir la familia antes de correr el asistente) o, con
-  clave nueva, la empresa del SGI; la carpeta con empresa manda.
+  clave nueva, la empresa del SGI; la carpeta con empresa manda (la de los
+  valores o la del contexto `default_folder_id`).
 
 ### Agregado
 
@@ -153,7 +156,7 @@ toca datos de negocio. Lo demás son columnas nuevas vacías y registros nuevos
 - **Q8** desplegar 57.91.0–57.95.0 antes del 7-oct; si no se alcanza, subir
   temporalmente `quimibond_sgi.doc_ack_pending_days` necesita su OK.
 
-**Pruebas:** `test_rendimiento_robustez` (20 casos: aviso por jefe sobre su
+**Pruebas:** `test_rendimiento_robustez` (21 casos: aviso por jefe sobre su
 departamento sin seguidores de más; al Jefe MAST sin usuario, sin
 departamento o sin jefe; propio sobre el documento sin repetirse en Mis
 pendientes, también tras firmar el más viejo; idempotencia, cierre al firmar y
@@ -163,7 +166,7 @@ conserva; clase indexada y barrido sin comodín; filtro de Mi equipo sin
 recalcular la empresa; resumen que solo escribe cambios y que se refresca al
 abrir la lista; respaldo con 0 cambios en régimen y corrección con WARNING;
 solo el sistema; entregas que siguen al estado; ajuste a mano y regreso;
-dependencias; asistente de empresa; empresa en controlados nuevos y en su
+ajuste de antes de 57.95.0 que se conserva; dependencias; asistente de empresa; empresa en controlados nuevos y en su
 familia; regla de rutinas). `test_my_pending.test_02` y `test_bandeja.test_13`
 refrescan el resumen antes de filtrar.
 
@@ -174,8 +177,10 @@ las actividades); (2) el índice parcial `mail_activity__sgi_cron_kind_index`;
 no exija más permisos de los revisados, y `message_unsubscribe` en ambos;
 (4) que `env.add_to_compute` + `flush_all` recalcule las listas guardadas;
 (5) que `hr.employee.write` de los campos del resumen no pase por
-`hr.version`; (6) el flujo de venta de las pruebas de K-05 y que el
-formulario de la factura no marque ajuste a mano al reenviar lo propuesto;
+`hr.version`; (6) el flujo de venta de las pruebas de K-05, que el
+formulario de la factura no marque ajuste a mano al reenviar lo propuesto o lo
+conservado, y que el cálculo lea lo guardado (`_origin`) cuando no hay
+propuesta;
 (7) que Documents no impida poner empresa a un documento en carpeta sin
 empresa; (8) en el log del día siguiente al despliegue, «respaldo nocturno de
 Mi procedimiento: 0 cambios» o la lista de quienes cambiaron.

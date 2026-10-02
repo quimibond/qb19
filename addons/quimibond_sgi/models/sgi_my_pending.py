@@ -935,7 +935,7 @@ class HrEmployeePendingSaved(models.Model):
         summary = {emp.id: summary.get(emp.id, (0, 0, False)) for emp in scope}
         if not employees:
             gone = self.sudo().search([('id', 'not in', scope.ids), '|',
-                                       ('sgi_pending_saved_total', '!=', 0),
+                                       ('sgi_pending_saved_total', '>', 0),
                                        ('sgi_pending_saved_state', '!=', False)])
             summary.update({emp.id: (0, 0, False) for emp in gone})
         return self._sgi_save_pending_summary(summary)

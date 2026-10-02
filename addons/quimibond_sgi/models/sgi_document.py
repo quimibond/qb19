@@ -1197,7 +1197,8 @@ class DocumentsDocument(models.Model):
             # carpeta ya dé una empresa o que su familia (misma clave) viva
             # sin empresa: ver ``_sgi_family_company``.
             if vals.get('sgi_is_controlled') and not vals.get('company_id'):
-                folder = self.sudo().browse(vals['folder_id']) if vals.get('folder_id') else None
+                folder_id = vals.get('folder_id') or self.env.context.get('default_folder_id')
+                folder = self.sudo().browse(folder_id) if folder_id else None
                 if not (folder and folder.company_id):
                     vals['company_id'] = self._sgi_family_company(vals.get('sgi_code'))
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
@@ -1280,7 +1281,7 @@ class DocumentsDocument(models.Model):
         if vals.get('sgi_is_controlled') and 'company_id' not in vals:
             # 57.95.0 (D-06 de datos): al volverse controlado sin empresa
             # (misma regla que create: la familia manda; si no hay, el SGI).
-            for doc in self.filtered(lambda d: not d.company_id and not d.folder_id.company_id):
+            for doc in self.sudo().filtered(lambda d: not d.company_id and not d.folder_id.company_id):
                 company_id = self._sgi_family_company(doc.sgi_code, exclude_ids=doc.ids)
                 if company_id:
                     super(DocumentsDocument, doc).write({'company_id': company_id})
