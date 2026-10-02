@@ -8,6 +8,11 @@ from odoo.exceptions import UserError, ValidationError
 from .sgi_risk import SGI_HIGH_ATTENTION
 from .sgi_menu_paths import sgi_menu_path
 
+# 57.97.0 (N-09, ISO 9001 9.3.3; 14001 y 45001 9.3): sin estas salidas la
+# revisión no se marca realizada.
+SGI_REVIEW_CONCLUSIONS = ('conclusion_suitability', 'conclusion_adequacy',
+                          'conclusion_effectiveness', 'output_needs')
+
 
 class SgiManagementReview(models.Model):
     """Revisión por la dirección: carga de entradas (auditorías, NC, indicadores, quejas, riesgos…),
@@ -113,6 +118,23 @@ class SgiManagementReview(models.Model):
         readonly=True,
         help="Acuerdos de revisiones ya realizadas o cerradas que siguen sin cumplirse. Se cargan con "
              "«Cargar entradas»; cada uno sigue siendo de su revisión.")
+    # 57.97.0 (N-09): conclusiones y salidas 9.3.3.
+    conclusion_suitability = fields.Text(
+        string="Conveniencia",
+        help="¿El SGI sigue siendo conveniente para la empresa y su contexto? Obligatoria para marcar la "
+             "revisión como Realizada; si no hay cambios, escríbalo.")
+    conclusion_adequacy = fields.Text(
+        string="Adecuación",
+        help="¿El SGI cubre lo que la empresa necesita (procesos, requisitos, partes interesadas)? "
+             "Obligatoria para marcar la revisión como Realizada.")
+    conclusion_effectiveness = fields.Text(
+        string="Eficacia",
+        help="¿El SGI logra los resultados previstos (objetivos, indicadores, NC, incidentes)? "
+             "Obligatoria para marcar la revisión como Realizada.")
+    output_needs = fields.Text(
+        string="Mejora, cambios y recursos",
+        help="Decisiones sobre oportunidades de mejora, cambios al SGI y recursos que se necesitan "
+             "(9.3.3 a, b y c). Obligatoria para marcar la revisión como Realizada.")
 
 
     # V-M07 (57.42.0): título legible de la ficha (el folio va debajo).
@@ -564,6 +586,18 @@ class SgiManagementReview(models.Model):
     # ------------------------------------------------------------------
     # Salidas
     # ------------------------------------------------------------------
+    def _sgi_check_conclusions(self):
+        """57.97.0 (N-09): las conclusiones 9.3.3 no vacías (ni solo espacios).
+        Solo al marcar realizada (el cambio de estado), no en write."""
+        for review in self:
+            missing = [review._fields[name].string for name in SGI_REVIEW_CONCLUSIONS
+                       if not (review[name] or '').strip()]
+            if missing:
+                raise UserError(
+                    "No se puede marcar como Realizada la revisión %s sin las conclusiones (ISO 9.3.3): "
+                    "%s. Captúrelas en la pestaña «Conclusiones (9.3.3)»; si no hay cambios, "
+                    "escríbalo («Sin cambios»)." % (review.folio or review.name, ", ".join(missing)))
+
     def action_mark_done(self):
         for review in self:
             if not review.agreement_ids:
@@ -578,6 +612,7 @@ class SgiManagementReview(models.Model):
                     "responsable y fecha límite (ISO 9.3.3: las salidas son "
                     "accionables). Complete: %s" % ", ".join(
                         incomplete.mapped('name')))
+            review._sgi_check_conclusions()
             # DIR-3 (52.0.0): cada acuerdo es una ACCIÓN del SGI (sgi.action.line)
             # con responsable y compromiso: actividad nativa al responsable,
             # escalamiento del cron de acciones vencidas y medición de E1-02.
