@@ -13,6 +13,21 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.90.2 — 2026-10-02
+
+**Corregido: avisos «manifest not found» en cada actualización y en el cron de
+NC.** Para saber qué módulos son del repositorio, el registro de despliegues
+(S6-04) buscaba la ruta de cada módulo instalado. Seis módulos de Odoo 16
+siguen marcados como instalados en producción pero ya no tienen código:
+`base_accounting_kit`, `base_account_budget`, `manufacturing_reports`,
+`whatsapp_redirect`, `is_chatgpt_integration` y `studio_customization`. Por
+cada uno, Odoo dejaba un aviso en el log.
+
+- **Cambiado:** los módulos del repositorio salen de las carpetas con
+  `__manifest__.py` en la raíz del git y en `addons/`. Ya no se busca la ruta
+  de cada módulo instalado.
+- **Sin migración.** La base de versiones de producción no cambia.
+
 ## 19.0.57.90.1 — 2026-10-02
 
 **Corregido: la base de versiones de los despliegues (S6-04) dejaba fuera a
