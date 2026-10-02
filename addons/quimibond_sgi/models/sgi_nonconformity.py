@@ -526,10 +526,12 @@ class QualityAlert(models.Model):
 
         La etapa: una NC en Abierta se queda ahí (todavía no la trabaja nadie
         y moverla chocaría con la contención obligatoria de las
-        reclamaciones); en Seguimiento no cambia; desde cualquier otra
-        (Cerrada) regresa a Seguimiento. Una NC cancelada no entra aquí."""
+        reclamaciones); en Seguimiento no cambia; desde una etapa de cierre
+        (Cerrada) regresa a Seguimiento. Una NC cancelada no entra aquí.
+        57.97.0: solo desde una etapa de cierre; una NC sin etapa o en una
+        etapa genérica de Calidad se queda donde está (moverla a Seguimiento
+        pediría clasificación y cláusula, N-05)."""
         followup = self.env.ref('quimibond_sgi.sgi_nc_int_stage_followup', raise_if_not_found=False)
-        open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open', raise_if_not_found=False)
         Cron = self.env['sgi.cron']
         for alert in self:
             if alert.stage_id.sgi_is_cancel_stage:
@@ -552,7 +554,7 @@ class QualityAlert(models.Model):
                 'sgi_effectiveness_note': False,
                 'sgi_effectiveness_date': False,
             }
-            if followup and alert.stage_id != followup and alert.stage_id != open_stage:
+            if followup and alert.stage_id.sgi_is_closing_stage:
                 vals['stage_id'] = followup.id
             alert.write(vals)
             Cron._sgi_schedule(
