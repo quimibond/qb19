@@ -325,6 +325,8 @@ class SgiCoaInbox(models.Model):
     _inherit = ['mail.thread']
     _order = 'id desc'
 
+    # «COA» se queda como dato guardado a propósito: el glosario (CoA) aplica a
+    # etiquetas, no a lo que ya está en la base.
     name = fields.Char(string="Asunto", required=True, default="COA")
     email_from = fields.Char(string="Remitente")
     state = fields.Selection([

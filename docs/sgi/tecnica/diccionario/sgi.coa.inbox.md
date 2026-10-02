@@ -14,13 +14,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:344` |
-| `email_from` | Char | Remitente |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:329` |
-| `name` | Char | Asunto |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:328` |
-| `picking_id` | Many2one | Asignar a la salida | Para los que no se ligaron solos: la salida a la que pertenecen. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:339` |
-| `picking_ids` | Many2many | Salidas ligadas | Salidas a las que se ligó este CoA. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:335` |
-| `result` | Text | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:343` |
-| `state` | Selection | Estado | Sin ligar hasta que el CoA se asocia a una salida. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:330` |
+| `company_id` | Many2one |  |  |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:346` |
+| `email_from` | Char | Remitente |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:331` |
+| `name` | Char | Asunto |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:330` |
+| `picking_id` | Many2one | Asignar a la salida | Para los que no se ligaron solos: la salida a la que pertenecen. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:341` |
+| `picking_ids` | Many2many | Salidas ligadas | Salidas a las que se ligó este CoA. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:337` |
+| `result` | Text | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:345` |
+| `state` | Selection | Estado | Sin ligar hasta que el CoA se asocia a una salida. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:332` |
 
 ## Métodos públicos (2)
 

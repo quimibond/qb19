@@ -662,7 +662,7 @@ Esperado en el build de la rama: `test_candados_evidencia` 11/11 OK y ningún fa
 
 ### Task 2.0: Rama
 
-- [ ] **Step 1:** después de que 57.91.0 entre a `main`:
+- [x] **Step 1:** después de que 57.91.0 entre a `main`:
 
 ```bash
 git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
@@ -675,7 +675,7 @@ git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
 - Modify: `views/sgi_my_pending_views.xml`
 - Test: `tests/test_bandeja.py`
 
-- [ ] **Step 1: Prueba** (agregar al final de `TestBandeja`)
+- [x] **Step 1: Prueba** (agregar al final de `TestBandeja`)
 
 ```python
     # ---- 57.92.0 (U-02): validar en lote ------------------------------------
@@ -696,7 +696,7 @@ git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
             self.assertTrue(other.exists(), "Los que no son mediciones se quedan.")
 ```
 
-- [ ] **Step 2: Método**
+- [x] **Step 2: Método**
 
 ```python
     def action_validate_selected(self):
@@ -713,7 +713,7 @@ git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 ```
 
-- [ ] **Step 3: Botón de cabecera** en `sgi_my_pending_view_list`, como primer hijo de `<list>`
+- [x] **Step 3: Botón de cabecera** en `sgi_my_pending_view_list`, como primer hijo de `<list>`
 
 ```xml
                 <header>
@@ -722,7 +722,7 @@ git fetch origin main && git checkout -B claude/sgi-57-91-bandeja origin/main
                 </header>
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add addons/quimibond_sgi/models/sgi_my_pending.py addons/quimibond_sgi/views/sgi_my_pending_views.xml addons/quimibond_sgi/tests/test_bandeja.py
@@ -735,7 +735,7 @@ git commit -m "quimibond_sgi: Mis pendientes valida mediciones en lote (U-02)"
 - Modify: `views/sgi_my_pending_views.xml`, `models/sgi_my_pending.py` (`_sgi_action`, ~l.567)
 - Test: `tests/test_bandeja.py`
 
-- [ ] **Step 1: Prueba**
+- [x] **Step 1: Prueba**
 
 ```python
     def test_21_abre_desplegada_con_lo_urgente(self):
@@ -745,14 +745,14 @@ git commit -m "quimibond_sgi: Mis pendientes valida mediciones en lote (U-02)"
         self.assertIn('expand="1"', arch)
 ```
 
-- [ ] **Step 2: Vista.** En `<list …>` agregar `expand="1"`. En la búsqueda, primer filtro:
+- [x] **Step 2: Vista.** En `<list …>` agregar `expand="1"`. En la búsqueda, primer filtro:
 
 ```xml
                 <filter name="actionable" string="Atrasadas o por vencer"
                         domain="[('state', 'in', ('atrasada', 'por_vencer'))]"/>
 ```
 
-- [ ] **Step 3: Acción.** En `_sgi_action`, después de armar `context`:
+- [x] **Step 3: Acción.** En `_sgi_action`, después de armar `context`:
 
 ```python
         if not group_by_person:
@@ -769,7 +769,7 @@ y el `help` en «usted»:
 
 El filtro por omisión aplica también a `action_show_pending` (botón de Mi procedimiento), que es lo deseado; Mi equipo agrupa por persona y no lo recibe.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -am "quimibond_sgi: Mis pendientes abre desplegada con lo atrasado y por vencer (U-02)"
@@ -782,7 +782,7 @@ git commit -am "quimibond_sgi: Mis pendientes abre desplegada con lo atrasado y 
 - Modify: `views/sgi_my_pending_views.xml`
 - Test: `tests/test_bandeja.py`
 
-- [ ] **Step 1: Pruebas**
+- [x] **Step 1: Pruebas**
 
 ```python
     def test_22_ir_a_hacerlo_y_leer(self):
@@ -809,7 +809,7 @@ git commit -am "quimibond_sgi: Mis pendientes abre desplegada con lo atrasado y 
 
 `menu_sgi_current_documents` (`views/sgi_menus.xml:46`) tiene acción; el estado leído de `sgi.document.ack` es `'leido'` (`models/sgi_document.py:1276`). Como `action_open` corre con el usuario que abre la lista, la prueba llama a `row.action_open()` como superusuario solo para el destino; la firma sí va con `with_user(self.user)`.
 
-- [ ] **Step 2: Código.** En `action_open`, antes del `return` final:
+- [x] **Step 2: Código.** En `action_open`, antes del `return` final:
 
 ```python
         if self.kind == 'actividad' and self.res_model == 'sgi.process.activity':
@@ -842,7 +842,7 @@ Nuevo método:
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 ```
 
-- [ ] **Step 3: Vista.** Sustituir el botón «Abrir» por:
+- [x] **Step 3: Vista.** Sustituir el botón «Abrir» por:
 
 ```xml
                 <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
@@ -854,7 +854,7 @@ Nuevo método:
                         confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git commit -am "quimibond_sgi: «Ir» lleva al menú de la actividad y «Leer» al documento con su acuse (U-05)"
@@ -869,7 +869,7 @@ Respeta D-04: las actividades nativas siguen existiendo; Mis pendientes solo las
 - Modify: `views/sgi_my_pending_views.xml`
 - Test: `tests/test_bandeja.py`
 
-- [ ] **Step 1: Prueba**
+- [x] **Step 1: Prueba**
 
 ```python
     def test_23_avisos_de_los_crons(self):
@@ -903,7 +903,7 @@ Respeta D-04: las actividades nativas siguen existiendo; Mis pendientes solo las
         self.assertFalse(notice.exists() and notice.active)
 ```
 
-- [ ] **Step 2: Tipo nuevo** al final de `PENDING_KINDS`:
+- [x] **Step 2: Tipo nuevo** al final de `PENDING_KINDS`:
 
 ```python
     ('aviso', "Aviso"),
@@ -917,7 +917,7 @@ NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
                  'helpdesk.ticket', 'project.task')
 ```
 
-- [ ] **Step 3: Fuente.** Al final de `_sgi_pending_records`, antes de `return records`:
+- [x] **Step 3: Fuente.** Al final de `_sgi_pending_records`, antes de `return records`:
 
 ```python
         # 57.92.0 (U-03): avisos de los crons y actividades de las apps del SGI,
@@ -945,7 +945,7 @@ NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
         records['aviso'] = notices.filtered(lambda a: a not in covered and not own_row(a))
 ```
 
-- [ ] **Step 4: Renglón y destinatario.** En `_sgi_row`, antes del bloque final de documentos:
+- [x] **Step 4: Renglón y destinatario.** En `_sgi_row`, antes del bloque final de documentos:
 
 ```python
         if kind == 'aviso':
@@ -963,7 +963,7 @@ En `_sgi_row_users`, antes del `return` final:
 
 `_sgi_pending_values` ya guarda `res_model=rec._name` (`mail.activity`) y `res_id=rec.id`; no cambia.
 
-- [ ] **Step 5: Abrir y «Hecho».** En `action_open`, al principio después de `ensure_one`:
+- [x] **Step 5: Abrir y «Hecho».** En `action_open`, al principio después de `ensure_one`:
 
 ```python
         if self.kind == 'aviso' and self.res_model == 'mail.activity':
@@ -990,7 +990,7 @@ Método nuevo:
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 ```
 
-- [ ] **Step 6: Vista.** Botón y filtro:
+- [x] **Step 6: Vista.** Botón y filtro:
 
 ```xml
                 <button name="action_done_notice" type="object" string="Hecho" icon="fa-check"
@@ -1001,9 +1001,9 @@ Método nuevo:
                 <filter name="kind_notice" string="Avisos" domain="[('kind', '=', 'aviso')]"/>
 ```
 
-- [ ] **Step 7: Manual.** En `docs/sgi/usuarios/operador-o-supervisor.md`, donde dice «una sola lista», agregar que los avisos de Odoo del SGI (vencidos o de la semana) salen como «Aviso» con el botón «Hecho».
+- [x] **Step 7: Manual.** En `docs/sgi/usuarios/operador-o-supervisor.md`, donde dice «una sola lista», agregar que los avisos de Odoo del SGI (vencidos o de la semana) salen como «Aviso» con el botón «Hecho».
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git commit -am "quimibond_sgi: los avisos de los crons salen en Mis pendientes con «Hecho» (U-03)"
@@ -1015,7 +1015,7 @@ git commit -am "quimibond_sgi: los avisos de los crons salen en Mis pendientes c
 - Create: `addons/quimibond_sgi/tests/test_usted.py`
 - Modify: los archivos que la prueba señale (punto de partida abajo)
 
-- [ ] **Step 1: Prueba que lee las fuentes del módulo**
+- [x] **Step 1: Prueba que lee las fuentes del módulo**
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1090,7 +1090,7 @@ EOF
 
 Esperado: alrededor de 35 a 50 líneas de tuteo y unas 70 de glosario (con la expresión amplia la revisión del plan contó 111 y 74; la acotada quita los verbos ambiguos). La prueba solo mira cadenas entre comillas: los textos dentro de nodos XML (cuerpos de reportes y `body_html` de plantillas) se revisan a mano con `grep -n "tienes\|puedes\|\btu\b" report/*.xml data/sgi_mail_templates.xml` (la auditoría las listó en `sgi_my_procedure_views.xml:191`, `sgi_my_pending.py:666`, `sgi_my_procedure_screen.py:757-799,1053`, `sgi_current_documents*.py/xml`, `data/sgi_mail_templates.xml:81,87,105`, `sgi_weekly_overdue.py:32`, `sgi_nonconformity.py:445,677,1094,1105`, `sgi_coa*.py/xml`, `sgi_mp_change*.py/xml`, `sgi_incident.py:105`, `sgi_checklist.py:302`, `sgi_document.py:452,672`, `sgi_doc_change_sign.py:251`, `sgi_supplier_nc.py:72`, `sgi_integration.py:283`, `data/sgi_mp_change_category_data.xml:12`, y las notas de los crons en `sgi_cron.py`). Si la expresión da falsos positivos (por ejemplo, «Revisa» como sustantivo en un nombre de etapa), afinarla en la prueba con una lista de excepciones explícita y comentada, no relajarla.
 
-- [ ] **Step 2: Reescribir cada cadena.** Ejemplos de reemplazo:
+- [x] **Step 2: Reescribir cada cadena.** Ejemplos de reemplazo:
 
 | Antes | Después |
 |---|---|
@@ -1109,7 +1109,7 @@ Las plantillas de correo (`data/sgi_mail_templates.xml`) son `noupdate` y MAST p
 
 `report/report_nc.xml:22` dice «no es una No Conformidad»; si el barrido lo cambia, actualizar la aserción de `tests/test_vistas_pulido.py:359`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A addons/quimibond_sgi
@@ -1118,9 +1118,9 @@ git commit -m "quimibond_sgi: textos en «usted» y con el glosario, con prueba 
 
 ### Task 2.6: Versión, CHANGELOG, árbol de menús y build
 
-- [ ] **Step 1:** `__manifest__.py` → `'19.0.57.92.0'`.
-- [ ] **Step 2:** CHANGELOG `## 19.0.57.92.0` con: Agregado («Validar seleccionadas», avisos, «Ir», «Leer», «Leído y entendido»), Cambiado (abre desplegada con «Atrasadas o por vencer»; textos en «usted»), Migración (si hubo plantillas `noupdate`), Pruebas (`test_bandeja` 20–23, `test_usted`).
-- [ ] **Step 3:** `python3 tools/sgi_docs.py && python3 tools/sgi_docs.py --check` y los demás checadores.
+- [x] **Step 1:** `__manifest__.py` → `'19.0.57.92.0'`.
+- [x] **Step 2:** CHANGELOG `## 19.0.57.92.0` con: Agregado («Validar seleccionadas», avisos, «Ir», «Leer», «Leído y entendido»), Cambiado (abre desplegada con «Atrasadas o por vencer»; textos en «usted»), Migración (si hubo plantillas `noupdate`), Pruebas (`test_bandeja` 20–23, `test_usted`).
+- [x] **Step 3:** `python3 tools/sgi_docs.py && python3 tools/sgi_docs.py --check` y los demás checadores.
 - [ ] **Step 4:** Commit y push; build con `--test-tags /quimibond_sgi`. Esperado: `test_bandeja` y `test_usted` en verde, sin fallos nuevos.
 - [ ] **Step 5: Verificación en producción** (solo lectura, tras desplegar): `ir.module.module` en 57.92.0. Pedir a dos dueños de proceso que abran Mis pendientes y confirmen que ven los avisos y pueden validar en lote; registrar el resultado en el PR.
 

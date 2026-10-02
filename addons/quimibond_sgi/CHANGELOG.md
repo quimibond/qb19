@@ -13,6 +13,78 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.92.0 — 2026-10-02
+
+**Bandeja: Mis pendientes que dice qué hacer** (auditoría 2026-10: U-02, U-03, U-05, U-06).
+
+### Agregado
+
+- **«Validar seleccionadas» (U-02):** botón de cabecera que valida en lote las
+  mediciones seleccionadas. Solo valida las que el usuario puede validar
+  (`sgi_can_validate`) y avisa con una notificación cuáles omitió.
+- **«Ir» y «Leer» (U-05):** «Ir» abre el menú o la acción de la actividad, o su
+  evidencia (como «Ir a hacerlo»), con respaldo a la ficha de la actividad si
+  falla (savepoint). «Leer» abre el documento por leer. «Leído y entendido»
+  firma el acuse desde el renglón (el candado de identidad no cambia: en Mi
+  equipo, un jefe ve el botón en el renglón de su subordinado pero no puede
+  firmar por él y recibe el mensaje de identidad).
+- **Tipo «Aviso» (U-03):** las actividades nativas sobre modelos `sgi.*` y los
+  avisos de los crons del SGI (con `sgi_cron_key`) sobre quality.alert,
+  documents.document, maintenance.request, helpdesk.ticket y project.task,
+  atrasados o por vencer en 7 días, salen en Mis pendientes (D-04: las
+  actividades siguen existiendo; la bandeja solo las muestra). Se excluyen si
+  el mismo destinatario ya tiene un renglón de otro tipo sobre el mismo
+  registro, las aprobaciones de Studio, los espejos de renglones de acción y los
+  avisos de acuse o de capturar indicador del dueño del renglón. «Hecho»
+  (`action_feedback`) solo para el asignado. Filtro de compañía por lote y por
+  modelo (D-03). Filtro «Avisos».
+- Ayuda de lista vacía en «usted».
+
+### Cambiado
+
+- La lista abre desplegada (`expand="1"`) con el filtro «Atrasadas o por vencer»
+  por defecto en Mis pendientes, Mi procedimiento y «Pendientes — persona»
+  («Pendientes del equipo» muestra todo). El filtro oculta los «Validar» que
+  vencen en más de 7 días: para validar por adelantado en lote, quítelo.
+- Los avisos también cuentan en los atrasados de Mi equipo y en el correo
+  semanal de atrasados.
+- **U-06:** textos para el usuario en «usted» y con el glosario en unos 50
+  archivos. Etiquetas cambiadas, por ejemplo «Qué propones» a «Qué propone» y
+  COA a CoA (etiquetas y `_description`). El nombre por defecto «COA» del buzón
+  de CoA (`sgi_coa.py`) se queda como dato, a propósito.
+
+### Datos de producción
+
+Los registros `noupdate` no se actualizan solos y no hay migración a propósito
+(MAST pudo haberlos personalizado). El XML solo cubre instalaciones nuevas;
+MAST edita a mano (Ajustes → Técnico → Plantillas de correo; Aprobaciones →
+Configuración → Categorías):
+
+1. `mail_template_sgi_incident_grave`, asunto «⚠ Incidente …» a «[Urgente] Incidente …».
+2. `mail_template_sgi_nc_mayor`, asunto «⚠ NC MAYOR …» a «[Urgente] NC MAYOR …»; cuerpo «No Conformidad MAYOR» a «no conformidad MAYOR».
+3. `mail_template_sgi_calibration_blocked`, asunto «⚠ Equipo BLOQUEADO …» a «[Urgente] Equipo BLOQUEADO …».
+4. `mail_template_sgi_weekly_overdue`, asunto «SGI: tienes … pendiente(s) atrasado(s)» a «SGI: tiene …»; cuerpo «Esto es lo que tienes» a «tiene»; «Si no quieres este correo, apágalo en tu perfil» a «Si no quiere este correo, apáguelo en su perfil».
+5. `mail_template_sgi_coa`, nombre y asunto COA a CoA; cuerpo «certificado de análisis (COA)» a «certificado de calidad (CoA)».
+6. Categoría de aprobaciones «Proponer cambio a mi procedimiento (SGI)», descripción: pon a ponga, escribe a escriba, propones a propone, Adjunta a Adjunte, tu jefe a su jefe.
+7. Mapa de formatos (`data/sgi_format_map_data.xml:49`), nota «Reporte de No Conformidad» a «Reporte de no conformidad».
+
+### Migración
+
+Ninguna (ver Datos de producción).
+
+### Pruebas
+
+- `test_bandeja` test_20 a test_25: validar en lote, mezcla de permisos, avisa
+  de las omitidas, abre desplegada, Ir/Leer, avisos.
+- Nueva `test_usted`: vigila el «usted» y el glosario en los textos del módulo.
+- Aserciones actualizadas en `test_vistas_pulido` y `test_coa`.
+
+### Verificación pendiente
+
+En el build de Odoo.sh correr `--test-tags /quimibond_sgi`; confirmar que
+`test_usted` (`BaseCase`) corre (si no, pasarla a `TransactionCase`) y que el
+botón de cabecera y `expand="1"` se pintan en la lista.
+
 ## 19.0.57.91.0 — 2026-10-01
 
 **Seguridad: candados de evidencia** (auditoría 2026-10: K-01, K-02, K-06, K-07, FUNC-C13).
