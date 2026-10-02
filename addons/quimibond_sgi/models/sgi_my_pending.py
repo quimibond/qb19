@@ -660,6 +660,10 @@ class SgiMyPending(models.TransientModel):
         self.search([('create_uid', '=', self.env.uid),
                      ('employee_id', 'in', employees.ids)]).unlink()
         values = self._sgi_pending_values_employees(employees)
+        # 57.95.0 (K-08): lo que se acaba de calcular refresca el resumen
+        # guardado que leen los filtros de Mi equipo (solo lo que cambió).
+        self.env['hr.employee']._sgi_save_pending_summary(
+            {emp.id: self._sgi_count(values.get(emp.id, [])) for emp in employees})
         vals_list = []
         for emp in employees:
             for row in values.get(emp.id, []):
@@ -861,6 +865,82 @@ class SgiMyPending(models.TransientModel):
         return reload
 
 
+class HrEmployeePendingSaved(models.Model):
+    """57.95.0 (K-08): resumen de Mis pendientes guardado por persona. Lo
+    leen los filtros de Mi equipo («Con pendientes atrasados», «por
+    vencer», «Al día»), que antes armaban Mis pendientes de toda la empresa
+    en cada búsqueda. Lo refrescan el respaldo nocturno (sgi.cron,
+    cron_nightly_backup) y cada lista de pendientes que se abre
+    (sgi.my.pending._sgi_build). Las columnas de Mi equipo siguen en vivo.
+    Técnicos: no salen en ninguna vista."""
+    _inherit = 'hr.employee'
+
+    sgi_pending_saved_total = fields.Integer(
+        string="Pendientes (resumen guardado)", readonly=True, copy=False, prefetch=False,
+        groups='base.group_system',
+        help="Total de Mis pendientes de la persona la última vez que se calculó.")
+    sgi_pending_saved_late = fields.Integer(
+        string="Pendientes atrasados (resumen guardado)", readonly=True, copy=False,
+        prefetch=False, groups='base.group_system')
+    sgi_pending_saved_state = fields.Selection(
+        PENDING_STATES, string="Semáforo (resumen guardado)", readonly=True, copy=False,
+        prefetch=False, groups='base.group_system')
+
+    _SGI_SAVED_FIELDS = ('sgi_pending_saved_total', 'sgi_pending_saved_late',
+                         'sgi_pending_saved_state')
+
+    @api.model
+    def _sgi_pending_scope_domain(self):
+        """Quienes salen en Mi equipo: la empresa del SGI, con usuario o
+        puesto (el alcance que usaban los filtros antes de 57.95.0)."""
+        # sgi_mp_job_id (guardado) y no job_id: en Odoo 19 job_id pasa por
+        # la versión y la búsqueda no encuentra a los empleados
+        # (_sgi_mp_ids_where).
+        company = self.env['sgi.config']._sgi_company()
+        return [('company_id', 'in', (company.id, False)),
+                '|', ('user_id', '!=', False), ('sgi_mp_job_id', '!=', False)]
+
+    @api.model
+    def _sgi_save_pending_summary(self, summary):
+        """{empleado.id: (total, atrasadas, peor estado)} → escribe solo los
+        campos que cambiaron, sin seguimiento ni correo. Devuelve los
+        empleados escritos (vacío si nada cambió: abrir una lista no escribe
+        en hr.employee cuando el resumen ya está al día)."""
+        if not summary:
+            return self.browse()
+        Employee = self.sudo().with_context(tracking_disable=True, mail_notrack=True)
+        changed = Employee.browse()
+        current = {row['id']: row for row in Employee.browse(list(summary)).exists().read(
+            list(self._SGI_SAVED_FIELDS))}
+        for emp_id, row in current.items():
+            total, late, worst = summary[emp_id]
+            new = {'sgi_pending_saved_total': total, 'sgi_pending_saved_late': late,
+                   'sgi_pending_saved_state': worst or ('al_dia' if total else False)}
+            vals = {k: v for k, v in new.items() if (row[k] or False) != (v or False)}
+            if vals:
+                emp = Employee.browse(emp_id)
+                emp.write(vals)
+                changed |= emp
+        return changed
+
+    @api.model
+    def _sgi_refresh_pending_summary(self, employees=None):
+        """Recalcula y guarda el resumen. Sin empleados: todo el alcance de Mi
+        equipo, y quien salió de él con un resumen viejo queda en cero."""
+        if employees:
+            scope = employees.sudo()
+        else:
+            scope = self.sudo().search(self._sgi_pending_scope_domain())
+        summary = self.env['sgi.my.pending']._sgi_summary_employees(scope)
+        summary = {emp.id: summary.get(emp.id, (0, 0, False)) for emp in scope}
+        if not employees:
+            gone = self.sudo().search([('id', 'not in', scope.ids), '|',
+                                       ('sgi_pending_saved_total', '!=', 0),
+                                       ('sgi_pending_saved_state', '!=', False)])
+            summary.update({emp.id: (0, 0, False) for emp in gone})
+        return self._sgi_save_pending_summary(summary)
+
+
 class SgiMyProcedurePending(models.TransientModel):
     _inherit = 'sgi.my.procedure'
 
@@ -912,15 +992,18 @@ class HrEmployeePublicPending(models.Model):
     sgi_mp_pending_total = fields.Integer(
         string="Pendientes", compute='_compute_sgi_mp_pending',
         search='_search_sgi_mp_pending_total',
-        help="Total de pendientes de la persona en Mis pendientes.")
+        help="Total de pendientes de la persona en Mis pendientes. En los filtros se usa el "
+             "resumen guardado (de la noche o de la última vez que se abrió su lista).")
     sgi_mp_pending_late = fields.Integer(
         string="Pendientes atrasados", compute='_compute_sgi_mp_pending',
         search='_search_sgi_mp_pending_late',
-        help="Pendientes atrasados de la persona en Mis pendientes.")
+        help="Pendientes atrasados de la persona en Mis pendientes. En los filtros se usa el "
+             "resumen guardado (de la noche o de la última vez que se abrió su lista).")
     sgi_mp_pending_state = fields.Selection(
         PENDING_STATES, string="Semáforo", compute='_compute_sgi_mp_pending',
         search='_search_sgi_mp_pending_state',
-        help="El peor estado de sus pendientes: atrasada, por vencer o al día.")
+        help="El peor estado de sus pendientes: atrasada, por vencer o al día. En los filtros "
+             "se usa el resumen guardado (de la noche o de la última vez que se abrió su lista).")
 
     @api.model
     def _sgi_pending_by_employee(self, employees):
@@ -937,23 +1020,31 @@ class HrEmployeePublicPending(models.Model):
             rec.sgi_mp_pending_late = late
             rec.sgi_mp_pending_state = worst or ('al_dia' if total else False)
 
-    def _sgi_pending_ids_where(self, predicate):
-        company = self.env['sgi.config']._sgi_company()
-        employees = self.env['hr.employee'].sudo().search(
-            [('company_id', 'in', (company.id, False)),
-             '|', ('user_id', '!=', False), ('job_id', '!=', False)])
-        values = self._sgi_pending_by_employee(employees)
-        return [emp_id for emp_id, vals in values.items() if predicate(vals)]
+    def _sgi_saved_ids_where(self, predicate):
+        """57.95.0 (K-08): los filtros leen el resumen guardado en hr.employee
+        (sudo; solo esos tres campos del alcance de Mi equipo, sin calcular
+        nada). Ya no arman Mis pendientes de toda la empresa en cada
+        búsqueda. Lo que nunca se calculó cuenta como cero."""
+        Employee = self.env['hr.employee']
+        rows = Employee.sudo().search_read(Employee._sgi_pending_scope_domain(),
+                                           list(Employee._SGI_SAVED_FIELDS))
+        return [row['id'] for row in rows
+                if predicate((row['sgi_pending_saved_total'] or 0, row['sgi_pending_saved_late'] or 0,
+                              row['sgi_pending_saved_state'] or False))]
 
     @api.model
     def _search_sgi_mp_pending_total(self, operator, value):
+        if operator not in self._NUMERIC_OPS:
+            raise UserError("Filtro no soportado sobre los pendientes.")
         op = self._NUMERIC_OPS[operator]
-        return [('id', 'in', self._sgi_pending_ids_where(lambda v: op(v[0], value)))]
+        return [('id', 'in', self._sgi_saved_ids_where(lambda v: op(v[0], value)))]
 
     @api.model
     def _search_sgi_mp_pending_late(self, operator, value):
+        if operator not in self._NUMERIC_OPS:
+            raise UserError("Filtro no soportado sobre los pendientes.")
         op = self._NUMERIC_OPS[operator]
-        return [('id', 'in', self._sgi_pending_ids_where(lambda v: op(v[1], value)))]
+        return [('id', 'in', self._sgi_saved_ids_where(lambda v: op(v[1], value)))]
 
     @api.model
     def _search_sgi_mp_pending_state(self, operator, value):
@@ -962,8 +1053,8 @@ class HrEmployeePublicPending(models.Model):
         from .sgi_my_procedure_screen import _sgi_as_list
         values = _sgi_as_list(value)
         if operator in ('=', 'in'):
-            return [('id', 'in', self._sgi_pending_ids_where(lambda v: v[2] in values))]
-        return [('id', 'in', self._sgi_pending_ids_where(lambda v: v[2] not in values))]
+            return [('id', 'in', self._sgi_saved_ids_where(lambda v: v[2] in values))]
+        return [('id', 'in', self._sgi_saved_ids_where(lambda v: v[2] not in values))]
 
     def action_sgi_open_pending(self):
         self.ensure_one()
