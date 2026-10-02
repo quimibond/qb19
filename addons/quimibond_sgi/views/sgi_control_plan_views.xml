@@ -92,10 +92,10 @@
                 <field name="revision"/>
                 <field name="point_count"/>
                 <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
                 <field name="state" widget="badge"
-                       decoration-info="state == 'borrador'"
                        decoration-success="state == 'vigente'"
-                       decoration-muted="state == 'obsoleto'"/>
+                       decoration-muted="state in ('borrador', 'obsoleto')"/>
             </list>
         </field>
     </record>

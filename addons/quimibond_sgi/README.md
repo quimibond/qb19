@@ -52,6 +52,26 @@ Así se escriben los términos del SGI en etiquetas, ayudas y avisos
 | Sin sufijo «SGI» dentro de la app SGI | «Áreas SGI», «(SGI)» | En fichas de otras apps (contacto, empleado, equipo…), la pestaña se llama «SGI» |
 | Descartar | Volver, Cancelar | Botón para salir de un asistente sin hacer nada |
 
+## Colores
+
+Un estado se pinta igual en todas las listas y pastillas del SGI
+(auditoría I-06, 57.98.0). `tests/test_interfaz.py` lo revisa en las vistas
+del módulo (las expresiones simples sobre campos de estado).
+
+| Color | `decoration-` | Estados |
+|---|---|---|
+| Gris | `muted` | borrador, cancelado, obsoleto |
+| Azul | `info` | abierto, en curso |
+| Amarillo | `warning` | pendiente, por vencer |
+| Rojo | `danger` | vencido, rechazado |
+| Verde | `success` | cerrado, vigente, validado |
+
+Excepciones (con su razón, en la prueba): la hoja de eficiencias «Cerrada,
+por recibir» es azul (espera a RH), la actividad sin método de medición es
+gris y, en «Rutina por rutina», el renglón pendiente sin decisión y su fecha
+límite siguen en rojo. Los estados intermedios propios de cada ficha
+(solicitado, capturado, adjunto…) van en azul.
+
 ## Menú
 
 Cinco entradas bajo **SGI**: Inicio (Mis pendientes, Mi procedimiento,

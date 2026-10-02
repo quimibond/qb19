@@ -19,8 +19,9 @@
                 <field name="sgi_owner_id" string="Responsable"/>
                 <field name="sgi_issue_date" optional="show"/>
                 <field name="sgi_next_review_date" optional="hide"/>
+                <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
                 <field name="sgi_state" widget="badge" decoration-success="sgi_state == 'vigente'"
-                       decoration-warning="sgi_state == 'borrador'" decoration-muted="sgi_state == 'obsoleto'"/>
+                       decoration-muted="sgi_state in ('borrador', 'obsoleto')"/>
             </list>
         </field>
     </record>

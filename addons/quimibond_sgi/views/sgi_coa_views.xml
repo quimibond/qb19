@@ -49,8 +49,8 @@
                 <field name="sgi_requires_coa" invisible="1"/>
                 <field name="sgi_coa_status" widget="badge"
                        invisible="not sgi_requires_coa"
-                       decoration-danger="sgi_coa_status == 'pendiente'"
-                       decoration-warning="sgi_coa_status == 'adjunto'"
+                       decoration-warning="sgi_coa_status == 'pendiente'"
+                       decoration-info="sgi_coa_status == 'adjunto'"
                        decoration-success="sgi_coa_status == 'enviado'"/>
             </xpath>
             <xpath expr="//notebook" position="inside">
@@ -95,8 +95,8 @@
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="sgi_coa_status" widget="badge"
                        invisible="sgi_coa_status == 'no_aplica'"
-                       decoration-danger="sgi_coa_status == 'pendiente'"
-                       decoration-warning="sgi_coa_status == 'adjunto'"
+                       decoration-warning="sgi_coa_status == 'pendiente'"
+                       decoration-info="sgi_coa_status == 'adjunto'"
                        decoration-success="sgi_coa_status == 'enviado'"/>
             </xpath>
         </field>
@@ -109,7 +109,7 @@
         <field name="arch" type="xml">
             <xpath expr="//list" position="inside">
                 <field name="sgi_coa_status" optional="hide" widget="badge"
-                       decoration-danger="sgi_coa_status == 'pendiente'"
+                       decoration-warning="sgi_coa_status == 'pendiente'"
                        decoration-success="sgi_coa_status == 'enviado'"/>
             </xpath>
         </field>

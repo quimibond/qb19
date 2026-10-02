@@ -95,14 +95,15 @@
         <field name="name">sgi.machine.sheet.list</field>
         <field name="model">sgi.machine.sheet</field>
         <field name="arch" type="xml">
-            <list string="Fichas de proceso por máquina" decoration-muted="state == 'obsoleta'" decoration-info="state == 'borrador'">
+            <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
+            <list string="Fichas de proceso por máquina" decoration-muted="state in ('obsoleta', 'borrador')">
                 <field name="name"/>
                 <field name="product_id"/>
                 <field name="workcenter_id"/>
                 <field name="area" optional="show"/>
                 <field name="date"/>
                 <field name="revision"/>
-                <field name="state" widget="badge" decoration-success="state == 'vigente'" decoration-info="state == 'borrador'"/>
+                <field name="state" widget="badge" decoration-success="state == 'vigente'" decoration-muted="state == 'borrador'"/>
             </list>
         </field>
     </record>

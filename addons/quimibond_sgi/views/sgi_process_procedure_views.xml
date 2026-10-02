@@ -63,8 +63,7 @@
                         <field name="measure_state" widget="badge" nolabel="1" class="d-inline"
                                decoration-success="measure_state == 'verde'"
                                decoration-danger="measure_state == 'rojo'"
-                               decoration-warning="measure_state == 'pendiente'"
-                               decoration-muted="measure_state == 'no_aplica'"/>
+                               decoration-muted="measure_state in ('pendiente', 'no_aplica')"/>
                     </div>
                     <group>
                         <group>

@@ -124,7 +124,8 @@
         <field name="arch" type="xml">
             <list string="Permisos de trabajo de alto riesgo"
                   decoration-info="state == 'solicitado'"
-                  decoration-muted="state in ('cerrado', 'cancelado')">
+                  decoration-success="state == 'cerrado'"
+                  decoration-muted="state == 'cancelado'">
                 <field name="folio"/>
                 <field name="name"/>
                 <field name="work_type"/>

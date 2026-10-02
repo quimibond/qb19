@@ -294,11 +294,14 @@
         <field name="name">sgi.indicator.measure.list</field>
         <field name="model">sgi.indicator.measure</field>
         <field name="arch" type="xml">
+            <!-- 57.98.0 (I-06): pendiente en amarillo y capturada en azul (tabla
+                 de colores del README); una medición pendiente aún no tiene
+                 semáforo, así que no se pisan. -->
             <list string="Mediciones"
                   decoration-success="semaphore == 'verde'"
-                  decoration-warning="semaphore == 'amarillo'"
+                  decoration-warning="semaphore == 'amarillo' or state == 'pendiente'"
                   decoration-danger="semaphore == 'rojo'"
-                  decoration-info="state == 'pendiente'"
+                  decoration-info="state == 'capturado'"
                   decoration-muted="state == 'sin_dato'">
                 <field name="period_date"/>
                 <field name="indicator_id"/>
@@ -325,8 +328,8 @@
                        invisible="not plan_required"/>
                 <!-- V-M05 (57.80.0): estado como pastilla. -->
                 <field name="state" widget="badge"
-                       decoration-info="state == 'pendiente'"
-                       decoration-warning="state == 'capturado'"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-info="state == 'capturado'"
                        decoration-success="state == 'validado'"
                        decoration-muted="state == 'sin_dato'"/>
                 <button name="action_view_evidence" type="object" icon="fa-search-plus"
