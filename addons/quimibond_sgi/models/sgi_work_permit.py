@@ -412,17 +412,24 @@ class SgiWorkPermitSkill(models.Model):
     note = fields.Char(string="Por qué se exige", help="NOM o procedimiento: NOM-009-STPS, DC-3…")
     active = fields.Boolean(default=True)
 
+    @api.depends('work_type', 'skill_id')
+    def _compute_display_name(self):
+        labels = dict(self._fields['work_type'].selection)
+        for rec in self:
+            rec.display_name = "%s: %s" % (labels.get(rec.work_type, rec.work_type or ''),
+                                           rec.skill_id.display_name or '')
+
 
 class ResPartnerSstContractor(models.Model):
     """57.96.0 (N-06, 45001 8.1.4): evaluación SST del contratista."""
     _inherit = 'res.partner'
 
     sgi_sst_eval_valid_until = fields.Date(
-        string="Evaluación SST vigente hasta", tracking=True,
+        string="Evaluación SST vigente hasta", tracking=True, copy=False,
         help="Hasta cuándo vale la evaluación de seguridad y salud del contratista. El permiso de "
              "trabajo la revisa. La registra el Jefe MAST.")
     sgi_sst_eval_note = fields.Text(
-        string="Qué se revisó (SST)",
+        string="Qué se revisó (SST)", copy=False,
         help="REPSE, SUA, constancias DC-3, inducción de seguridad, seguro…")
 
     sgi_user_can_eval_sst = fields.Boolean(

@@ -190,6 +190,12 @@ lectura); (6) que el Jefe MAST de prueba con `base.group_partner_manager`
 escriba el contacto. (Los nombres de campos de `hr.leave`, `hr.leave.type`,
 `hr_skills` y los grupos de `hr_holidays` ya se verificaron por MCP.)
 
+**Revisión final:** la evaluación SST del contratista no se copia al duplicar
+el contacto (`copy=False`; antes un usuario que no es Jefe MAST no podía
+duplicar ni fusionar contratistas evaluados); la competencia por tipo de
+permiso se muestra como «Tipo de trabajo: competencia». Duplicar un riesgo
+ambiental existente ya no se permite (se registra el aspecto en la matriz).
+
 ## 19.0.57.95.0 — 2026-10-02
 
 **Rendimiento y robustez** (auditoría 2026-10: K-08, K-05 y D-06 de datos; es
