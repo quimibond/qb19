@@ -110,6 +110,11 @@ class TestEntrega4Groups(TransactionCase):
         self.env['sgi.action.line'].create({
             'incident_id': inc.id, 'name': 'Señalizar', 'responsible_id': self.mast.id,
             'date_commit': date.today(), 'date_done': date.today()})
+        # 57.96.0 (N-06): equipo con un trabajador y eficacia antes de cerrar.
+        worker = self.env['hr.employee'].create({'name': 'E4 Trabajador'})
+        inc.with_user(self.mast).write({
+            'investigation_team_ids': [(6, 0, worker.ids)], 'sgi_effective': 'eficaz',
+            'sgi_effectiveness_date': date.today(), 'sgi_effectiveness_note': 'Sin repetición'})
         inc.with_user(self.mast).action_set_cerrado()
         # El reportante consulta cómo se cerró (causas y acciones), sin editar.
         data = inc.with_user(self.user).read(['basic_causes', 'action_line_ids', 'state'])[0]

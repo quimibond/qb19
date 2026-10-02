@@ -21,6 +21,11 @@ class TestWorkPermit(TransactionCase):
         cls.mast = sgi_test_user(cls.env, 'zs_ptar_mast', 'quimibond_sgi.group_sgi_manager')
         cls.other = sgi_test_user(cls.env, 'zs_ptar_otro', 'quimibond_sgi.group_sgi_user')
         cls.worker = cls.env['hr.employee'].create({'name': 'ZS Electricista'})
+        # 57.96.0 (N-06): la configuración real de competencias por tipo y el
+        # parámetro del contratista no deben cambiar estas pruebas.
+        cls.env['sgi.work.permit.skill'].search([]).write({'active': False})
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.permit_contractor_eval_required', '0')
 
     def _permit(self, **vals):
         start = datetime(2046, 5, 4, 8, 0)

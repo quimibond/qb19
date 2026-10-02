@@ -242,5 +242,10 @@ class TestAuditHardening(TransactionCase):
             'date_commit': date.today(), 'date_done': date.today()})
         with self.assertRaises(UserError):
             incident.with_user(self.sgi_user).write({'state': 'cerrado'})
+        # 57.96.0 (N-06): equipo con un trabajador y eficacia antes de cerrar.
+        worker = self.env['hr.employee'].create({'name': 'A6 Trabajador'})
+        incident.with_user(self.sgi_manager).write({
+            'investigation_team_ids': [(6, 0, worker.ids)], 'sgi_effective': 'eficaz',
+            'sgi_effectiveness_date': date.today(), 'sgi_effectiveness_note': 'Sin repetición'})
         incident.with_user(self.sgi_manager).write({'state': 'cerrado'})
         self.assertEqual(incident.state, 'cerrado')
