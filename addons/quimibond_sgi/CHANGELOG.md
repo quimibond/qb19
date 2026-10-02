@@ -13,6 +13,22 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.94.2 — 2026-10-02
+
+**Corregido: dos avisos de accesibilidad en el build de `main`** (pintaban el
+build de naranja):
+
+- `sgi_work_permit_view_kanban`: el enlace «Abrir» de la tarjeta (`<a>` con
+  clase `btn`) lleva `role="button"`.
+- `sgi_floor_tablet_view_form`: el recuadro informativo (`alert alert-info`)
+  lleva `role="status"` en lugar de `role="note"`, que Odoo 19 no acepta en
+  un aviso.
+
+`tools/check_odoo_views.py` ahora revisa las dos reglas en todas las vistas
+(`ir.ui.view`) del repo.
+
+**Migración:** ninguna.
+
 ## 19.0.57.94.1 — 2026-10-02
 
 **Corregido: el build de `main` no cargaba el SGI** («El campo
