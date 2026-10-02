@@ -42,6 +42,8 @@ CHANGE_CATEGORY_PARAM = 'quimibond_sgi.change_approval_category_id'
 CHANGE_OWNER_PARAM = 'quimibond_sgi.change_request_owner_id'
 CHANGE_CATEGORY_NAME = 'Cambio en Odoo (S6)'
 REPO_URL = 'https://github.com/quimibond/qb19'
+# Carpeta de quimibond_sgi (models/ → módulo), sin preguntarle a Odoo.
+SGI_MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _git_root(path):
@@ -119,22 +121,36 @@ class SgiCronDeployChange(models.AbstractModel):
 
     @api.model
     def _sgi_repo_modules(self):
-        """{módulo instalado del repositorio: (versión, ruta)}. Del
-        repositorio = su carpeta está dentro del mismo git que quimibond_sgi;
-        sin git, los de autor Quimibond."""
-        root = _git_root(get_module_path('quimibond_sgi') or '')
-        result = {}
-        # 57.90.1: también los que se están actualizando en esta corrida
-        # («to upgrade»); en 57.90.0 la base de versiones los dejó fuera.
+        """{módulo instalado del repositorio: (versión, ruta)}.
+
+        Los módulos del repositorio son las carpetas con ``__manifest__.py``
+        en la raíz del git de quimibond_sgi y en su ``addons/``. Sin git, los
+        de autor Quimibond.
+
+        57.90.2: ya no se busca la ruta de cada módulo instalado. Seis módulos
+        de Odoo 16 siguen como instalados sin código y llenaban el log de
+        avisos «manifest not found»."""
+        root = _git_root(SGI_MODULE_DIR)
+        if root:
+            paths = {}
+            for parent in (root, os.path.join(root, 'addons')):
+                if not os.path.isdir(parent):
+                    continue
+                for name in os.listdir(parent):
+                    path = os.path.join(parent, name)
+                    if os.path.isfile(os.path.join(path, '__manifest__.py')):
+                        paths.setdefault(name, path)
+            domain = [('name', 'in', list(paths))]
+        else:
+            paths = {}
+            domain = [('author', 'ilike', 'quimibond')]
+        # 57.90.1: también los que se están actualizando en esta corrida.
         modules = self.env['ir.module.module'].sudo().search(
-            [('state', 'in', ('installed', 'to upgrade'))])
+            domain + [('state', 'in', ('installed', 'to upgrade'))])
+        result = {}
         for module in modules:
-            path = get_module_path(module.name)
-            if not path:
-                continue
-            inside = (root and os.path.abspath(path).startswith(root + os.sep)) or (
-                not root and 'quimibond' in (module.author or '').lower())
-            if inside and module.latest_version:
+            path = paths.get(module.name) or get_module_path(module.name)
+            if path and module.latest_version:
                 result[module.name] = (module.latest_version, path)
         return result
 
@@ -181,7 +197,7 @@ class SgiCronDeployChange(models.AbstractModel):
             _logger.info("SGI despliegues: versiones de base guardadas (%s módulos).", len(current))
             return Request
         owner = self._sgi_change_owner(category)
-        commit = _git_head(_git_root(get_module_path('quimibond_sgi') or ''))
+        commit = _git_head(_git_root(SGI_MODULE_DIR))
         created = Request
         for name, (version, path) in sorted(current.items()):
             previous = known.get(name)

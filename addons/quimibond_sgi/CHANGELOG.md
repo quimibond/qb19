@@ -13,6 +13,110 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.93.0 — 2026-10-02
+
+**NC y auditoría con evidencia** (auditoría 2026-10: N-02, N-03, N-12, K-03; y lo pendiente de 57.91.0: FUNC-C13 al crear, K-07 portal).
+
+### Agregado
+
+- **Resultado de la eficacia (N-02):** `quality.alert.sgi_effective` (Eficaz / No
+  eficaz). La NC solo cierra con «Eficaz». «No eficaz» deja la verificación en
+  el historial, la limpia, regresa la NC a Seguimiento, sube
+  `sgi_ineffective_count` y pide una acción correctiva nueva
+  (`sgi.action.line.effectiveness_round`); sin ella terminada la NC no cierra.
+  `sgi_ineffective_count` y `sgi_effectiveness_due` solo los cambia el
+  sistema. `sgi_ineffective_count` deja listo el indicador «% de NC eficaces a
+  la primera» (57.98.0).
+- **Evidencia en acciones correctivas (N-02, H-B1.4):** `evidence_note` y
+  `evidence_attachment_ids` en `sgi.action.line` (columna «Evidencia» en todas
+  las listas editables de acciones). Una correctiva no se termina sin nota,
+  archivo o archivo en su chatter, por cualquier vía (botón, lista, chatter: ahí
+  los archivos adjuntos al marcar hecha la actividad quedan como evidencia).
+  Solo el sistema queda exento. Lo terminado antes no se toca. Los acuerdos de
+  la revisión por la dirección nacen como correctivas, así que también piden
+  evidencia (Q3).
+- **Cobertura de 3 años (N-03):** `sgi.audit.program.coverage_gap_ids` (no se
+  guarda): aviso en la ficha del programa en borrador y nota en el historial al
+  aprobarlo con los subprocesos de la compañía sin renglón en ese programa ni
+  en los dos anteriores registrados en Odoo. Las normas del alcance quedan
+  pendientes.
+
+### Cambiado
+
+- **Fecha de eficacia (N-02, H-B1.1):** no futura, en o después de la fecha
+  programada (`sgi_effectiveness_due`) y de la última acción terminada; si no
+  se puede esperar, cierre forzado del Jefe MAST con motivo.
+- **Verificación de eficacia a quien cierra (FUNC-C13):** la actividad y el
+  aviso del cron van al dueño del proceso (sin dueño, al Jefe MAST), no a
+  «Eficacia verificada por».
+- **Auditoría (N-03, H-B2.1):** un hallazgo de no conformidad menor o mayor
+  exige su NC ligada para cerrar la auditoría; «sin acción» y «mejora» quedan
+  para observaciones, oportunidades y conformidades. **Generar NC** la levanta
+  quien puede editar el hallazgo (el auditor solo lee NC: se crea con `sudo`
+  después de revisar su permiso sobre el hallazgo; `create_uid` sigue siendo
+  él).
+- **Programa sugerido (N-03, H-B2.2):** todos los subprocesos de la compañía,
+  también en borrador.
+- **Devolución de cliente (N-12):** se detecta por `location_id.usage ==
+  'customer'` en las líneas terminadas de una recepción. La hipótesis de la
+  entrega en tres pasos no se confirmó en producción (las 26 devoluciones
+  desde junio sí apuntan al OUT; las 7 posteriores al 21-ago levantaron NC y
+  4 de ellas, NCI-2026-0140/0142/0147/0148, se borraron antes de K-02). Una
+  recepción manual desde Clientes también levanta la NC. La NC se crea con
+  `sudo` (quien valida en almacén no traba la recepción por no poder crear
+  NC) y solo si la recepción es de la compañía del equipo de Calidad del SGI.
+- **Portal del proveedor (K-07):** la URL lleva un código de error (`estado`,
+  `faltan`, `otro`), no el texto; un código desconocido no muestra nada.
+
+### Seguridad
+
+- **K-03:** una NC cerrada solo la modifica el Jefe MAST; el dueño del
+  proceso la reabre cambiando solo la etapa (D-009) y el mensaje se lo dice.
+  `date_close` queda libre (Calidad lo escribe al cerrar). Con la NC, el
+  incidente o la revisión por la dirección cerrados, sus acciones terminadas
+  solo las modifica el Jefe MAST y nadie más agrega, borra ni muda acciones a
+  ellos; las pendientes se siguen terminando, también desde la lista de la
+  NC, y no reprograman la eficacia de una NC cerrada. Con la auditoría
+  cerrada, sus hallazgos solo los crea o modifica el Jefe MAST y **Generar NC**
+  se detiene antes de gastar folio.
+- **FUNC-C13 al crear:** una NC no se crea directamente en Cerrada ni en
+  Cancelada (salvo el Jefe MAST o el sistema), sin gastar folio. Duplicar una
+  NC la deja en la primera etapa de su equipo.
+
+### Corregido
+
+- Mensajes del chatter que salían con `&lt;b&gt;`: devolución de cliente, falla
+  de mantenimiento, alerta escalada a NC, documento del alta, evaluación de
+  cumplimiento legal y NC por incumplimiento, proveedor aprobado o bloqueado
+  (`Markup`).
+
+**Migración:** ninguna. El ORM crea las columnas; no hay datos que rellenar
+(0 NC cerradas, 4 acciones terminadas, 0 auditorías).
+
+**Decisiones por omisión (confirmar con Jose):** Q1 las 4 NC de devolución
+borradas no se rehacen por migración (Calidad las levanta a mano si siguen
+vigentes); Q2 evidencia solo en correctivas; Q3 los acuerdos de la revisión
+por la dirección piden evidencia; Q4 lo cerrado solo lo modifica el Jefe MAST
+y el dueño del proceso reabre.
+
+**Pruebas:** `test_nc_auditoria_evidencia` (29 casos) y `test_portal_nc_http`
+(4, `HttpCase`), nuevas. Ajustadas para cerrar con «Eficaz»: `test_nc_flow`,
+`test_nc_deadlines.test_04`, `test_candados_evidencia`, `test_pegamento`,
+`test_ola_b`, `test_ola1`, `test_capture_reply`; `test_pr6_external.test_03`
+por el programa sugerido.
+
+**Verificación pendiente en Odoo.sh:** (1) `grep -n date_close
+enterprise/quality/models/quality.py`: que Calidad escriba `date_close` (y no
+otro campo) en la segunda escritura al cerrar; si es otro, el dueño del
+proceso no podría cerrar; (2) que el popover «Marcar como hecha» de Odoo 19
+deje adjuntar archivo (evidencia desde el chatter); (3) `update.log` sin
+avisos en el recuadro de cobertura (`many2many_tags` dentro de un `div`) ni en
+`sgi_action_line_evidence_rel`; (4) automatizaciones de Studio sobre
+`quality.alert` que escriban como el usuario después de cerrar (con K-03
+fallarían): cerrar una NC como dueño del proceso en el build de la rama;
+(5) pruebas de devolución (almacén en tres pasos) y del portal (CSRF con
+sesión anónima, redirección a `/my`), ver plan §1.8.
+
 ## 19.0.57.92.0 — 2026-10-02
 
 **Bandeja: Mis pendientes que dice qué hacer** (auditoría 2026-10: U-02, U-03, U-05, U-06).
@@ -154,6 +258,21 @@ documento dentro de una carpeta en la papelera; (3) vigilar el log por «SGI: no
 se pudo rescatar el documento» y «SGI: la papelera no borra»; (4) si se manda a la papelera una carpeta con un documento con acuses que
 el rescate no pudo reactivar, confirmar que borrar la carpeta no arrastra al hijo
 por otro camino (si lo hace, `unlink` debe dejar fuera también su carpeta).
+
+## 19.0.57.90.2 — 2026-10-02
+
+**Corregido: avisos «manifest not found» en cada actualización y en el cron de
+NC.** Para saber qué módulos son del repositorio, el registro de despliegues
+(S6-04) buscaba la ruta de cada módulo instalado. Seis módulos de Odoo 16
+siguen marcados como instalados en producción pero ya no tienen código:
+`base_accounting_kit`, `base_account_budget`, `manufacturing_reports`,
+`whatsapp_redirect`, `is_chatgpt_integration` y `studio_customization`. Por
+cada uno, Odoo dejaba un aviso en el log.
+
+- **Cambiado:** los módulos del repositorio salen de las carpetas con
+  `__manifest__.py` en la raíz del git y en `addons/`. Ya no se busca la ruta
+  de cada módulo instalado.
+- **Sin migración.** La base de versiones de producción no cambia.
 
 ## 19.0.57.90.1 — 2026-10-02
 

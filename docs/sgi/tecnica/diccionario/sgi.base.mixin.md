@@ -12,8 +12,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_base.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `folio` | Char | Folio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_base.py:42` |
-| `sgi_is_locked` | Boolean | Cerrado (solo lectura) | El registro está cerrado y es evidencia: solo el Jefe MAST lo edita. |  |  | compute `_compute_sgi_is_locked`, sin guardar |  | `addons/quimibond_sgi/models/sgi_base.py:46` |
+| `folio` | Char | Folio |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_base.py:49` |
+| `sgi_is_locked` | Boolean | Cerrado (solo lectura) | El registro está cerrado y es evidencia: solo el Jefe MAST lo edita. |  |  | compute `_compute_sgi_is_locked`, sin guardar |  | `addons/quimibond_sgi/models/sgi_base.py:53` |
 
 ## Métodos públicos (3)
 

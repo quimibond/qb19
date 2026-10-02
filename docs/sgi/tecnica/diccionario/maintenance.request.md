@@ -10,7 +10,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_alert_id` | Many2one | NC generada |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_integration.py:149` |
+| `sgi_alert_id` | Many2one | NC generada |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_integration.py:166` |
 | `sgi_checklist_date` | Date | Día del checklist | Día al que corresponde la hoja de checklist. |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:202` |
 | `sgi_checklist_done_at` | Datetime | Terminado el | Fecha y hora en que se terminó la hoja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:208` |
 | `sgi_checklist_employee_id` | Many2one | Lo llenó | Empleado que llenó la hoja (se registra al terminarla, con su PIN si está encendido). |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:205` |
