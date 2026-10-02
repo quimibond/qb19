@@ -2,13 +2,13 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (117) y modelos de otras apps que extienden (48). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (119) y modelos de otras apps que extienden (48). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
 | Modelo | Descripción | Qué es (docstring) | Tipo | Campos | Archivo |
 |---|---|---|---|---:|---|
-| [`sgi.action.line`](diccionario/sgi.action.line.md) | Acción / corrección de no conformidad | Acción o corrección con responsable y fecha compromiso. Cuelga de una NC, riesgo, AMEF, incidente, simulacro, medición en rojo, objetivo o acuerdo de la revisión por la dirección; se cierra con «Marc… | Model | 20 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
+| [`sgi.action.line`](diccionario/sgi.action.line.md) | Acción / corrección de no conformidad | Acción o corrección con responsable y fecha compromiso. Cuelga de una NC, riesgo, AMEF, incidente, simulacro, medición en rojo, objetivo o acuerdo de la revisión por la dirección; se cierra con «Marc… | Model | 21 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`sgi.activity.change`](diccionario/sgi.activity.change.md) | Propuesta de cambio a una actividad (Mi procedimiento) | Propuesta de cambio a una actividad: los mismos campos de la actividad con los valores propuestos, más quién la hace. Nace con los valores de hoy; lo que la persona cambie es lo que se aprueba y se a… | Model | 32 | `addons/quimibond_sgi/models/sgi_mp_change.py` |
 | [`sgi.activity.change.role`](diccionario/sgi.activity.change.role.md) | Quién hace la actividad (propuesta) | Renglón «quién hace» de una propuesta de cambio (``sgi.activity.change``): puesto, familia o rol relativo con su papel. Al aprobarse la propuesta pasa a ``sgi.activity.role``. | Model | 9 | `addons/quimibond_sgi/models/sgi_mp_change.py` |
 | [`sgi.activity.exec.stat`](diccionario/sgi.activity.exec.stat.md) | Ejecuciones de una actividad SGI por semana y usuario | Ejecuciones de una actividad por semana y usuario (cuántos registros del entregable hizo cada quien). Lo llena la medición de actividades; sirve para ver quién la ejecuta de verdad. | Model | 13 | `addons/quimibond_sgi/models/sgi_exec_stat.py` |
@@ -57,7 +57,9 @@ Modelos que definen el núcleo y sus satélites (117) y modelos de otras apps qu
 | [`sgi.dyd.task.mixin`](diccionario/sgi.dyd.task.mixin.md) | Liga a la tarea del desarrollo | Liga a la tarea del proyecto de desarrollo (Diseño y Desarrollo). | AbstractModel | 1 | `addons/quimibond_sgi/models/sgi_links.py` |
 | [`sgi.emergency.drill`](diccionario/sgi.emergency.drill.md) | Simulacro de emergencia | Simulacro de un plan de emergencia: programado, realizado o cancelado, con resultado, hallazgos y acciones. | Model | 10 | `addons/quimibond_sgi/models/sgi_emergency.py` |
 | [`sgi.emergency.plan`](diccionario/sgi.emergency.plan.md) | Plan de emergencia (ISO 14001/45001 8.2) | Plan de emergencia (14001/45001 8.2) con su frecuencia de simulacros; el cron avisa cuando toca el siguiente. | Model | 12 | `addons/quimibond_sgi/models/sgi_emergency.py` |
-| [`sgi.env.aspect`](diccionario/sgi.env.aspect.md) | Aspecto e impacto ambiental (ISO 14001 6.1.2) | — | Model | 24 | `addons/quimibond_sgi/models/sgi_env_aspect.py` |
+| [`sgi.env.aspect`](diccionario/sgi.env.aspect.md) | Aspecto e impacto ambiental (ISO 14001 6.1.2) | — | Model | 25 | `addons/quimibond_sgi/models/sgi_env_aspect.py` |
+| [`sgi.env.aspect.transfer`](diccionario/sgi.env.aspect.transfer.md) | Traspaso de riesgos ambientales a la matriz de aspectos | Traspaso de riesgos ambientales a la matriz de aspectos (N-07). | TransientModel | 5 | `addons/quimibond_sgi/models/sgi_env_aspect_transfer.py` |
+| [`sgi.env.aspect.transfer.line`](diccionario/sgi.env.aspect.transfer.line.md) | Riesgo ambiental por traspasar a la matriz | Un riesgo ambiental por traspasar y lo que el Jefe MAST decide del aspecto. | TransientModel | 9 | `addons/quimibond_sgi/models/sgi_env_aspect_transfer.py` |
 | [`sgi.epp.delivery`](diccionario/sgi.epp.delivery.md) | Responsiva de entrega de EPP (S03-02) | Responsiva de entrega de EPP a un empleado (S03-02), con renglones y firma en Sign. | Model | 14 | `addons/quimibond_sgi/models/sgi_epp.py` |
 | [`sgi.epp.delivery.line`](diccionario/sgi.epp.delivery.line.md) | Renglón de la responsiva de EPP | Renglón de la responsiva de EPP: artículo, talla y cantidad. | Model | 7 | `addons/quimibond_sgi/models/sgi_epp_sign.py` |
 | [`sgi.floor.kiosk`](diccionario/sgi.floor.kiosk.md) | SGI en planta: servicios de la pantalla de la tableta | Servicios de la pantalla «SGI en planta». Cada método público valida la tableta, a la persona y su PIN, y escribe con sudo a nombre de la persona. | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_floor_kiosk.py` |
@@ -115,7 +117,7 @@ Modelos que definen el núcleo y sus satélites (117) y modelos de otras apps qu
 | [`sgi.process.flow`](diccionario/sgi.process.flow.md) | Flujo entre procesos SGI | Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué modelo. | Model | 8 | `addons/quimibond_sgi/models/sgi_process.py` |
 | [`sgi.process.responsibility`](diccionario/sgi.process.responsibility.md) | Responsabilidad de área en el procedimiento | Responsabilidad de un rol/puesto dentro del procedimiento (sección 3). | Model | 6 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.stage`](diccionario/sgi.process.stage.md) | Etapa de un proceso SGI | Etapa de un proceso; agrupa sus actividades. | Model | 7 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
-| [`sgi.risk`](diccionario/sgi.risk.md) | Riesgo / Oportunidad SGI | Riesgo u oportunidad con su instrumento (R&O, IPER, aspectos ambientales, patrimonial, FODA), evaluación, nivel residual y acciones. Se reevalúa periódicamente. | Model | 33 | `addons/quimibond_sgi/models/sgi_risk.py` |
+| [`sgi.risk`](diccionario/sgi.risk.md) | Riesgo / Oportunidad SGI | Riesgo u oportunidad con su instrumento (R&O, IPER, aspectos ambientales, patrimonial, FODA), evaluación, nivel residual y acciones. Se reevalúa periódicamente. | Model | 35 | `addons/quimibond_sgi/models/sgi_risk.py` |
 | [`sgi.risk.category`](diccionario/sgi.risk.category.md) | Categoría de riesgo/oportunidad | Categoría de riesgo u oportunidad. | Model | 2 | `addons/quimibond_sgi/models/sgi_risk.py` |
 | [`sgi.sign.builder`](diccionario/sgi.sign.builder.md) | Plantillas de Sign armadas por el SGI | Arma las plantillas de Sign que usa el SGI (acuses, responsivas, cambios documentales). | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_sign_builder.py` |
 | [`sgi.sign.record.mixin`](diccionario/sgi.sign.record.mixin.md) | Firmas de Sign ligadas al registro | Mixin para registros que se firman en Sign: solicitudes ligadas, si ya se firmó y los botones de firma. | AbstractModel | 4 | `addons/quimibond_sgi/models/sgi_sign_record.py` |
@@ -179,4 +181,4 @@ Modelos que definen el núcleo y sus satélites (117) y modelos de otras apps qu
 | [`stock.picking`](diccionario/stock.picking.md) | 17 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_release.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`studio.approval.rule`](diccionario/studio.approval.rule.md) | 1 | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`, `addons/quimibond_sgi_studio/models/studio_approval_rule_archive.py` |
 
-Modelos propios sin docstring de clase: 6 de 117.
+Modelos propios sin docstring de clase: 6 de 119.

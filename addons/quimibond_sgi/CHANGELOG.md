@@ -13,6 +13,22 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.96.0 — 2026-10-02
+
+**SST y ambiente** (auditoría 2026-10: N-06, N-07; ficha «57.95.0 — SST y
+ambiente» del plan general, renumerada). **En curso:** la entrada completa se
+escribe al cerrar la entrega.
+
+- **N-06:** jerarquía de controles en riesgos y acciones; un IPER alto con solo
+  EPP (o sin jerarquía) no se controla ni se cierra.
+- **N-07:** el aspecto ambiental vive solo en la matriz (`sgi.env.aspect`) con
+  etapa del ciclo de vida; «ambiental» ya no se elige a mano en un riesgo;
+  asistente manual del Jefe MAST (`sgi.env.aspect.transfer`) para traspasar los
+  riesgos ambientales existentes. **No cambia datos al instalar; se usa solo con
+  el OK escrito de Jose.**
+
+**Migración:** ninguna.
+
 ## 19.0.57.95.0 — 2026-10-02
 
 **Rendimiento y robustez** (auditoría 2026-10: K-08, K-05 y D-06 de datos; es
