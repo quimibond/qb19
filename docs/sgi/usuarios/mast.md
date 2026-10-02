@@ -73,6 +73,16 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
    contra la realidad.
 3. Si un automático no da valor, el campo «Último cálculo» dice por qué (sin
    fórmula, sin datos, error).
+4. **Salud del SGI (desde 57.99.0):** los indicadores SG-01 a SG-10 nacen en
+   prueba, del proceso E2 y con usted (o el dueño de E2) como responsable.
+   Revise la primera medición de cada uno con **Registros** contra la
+   realidad y páselo a oficial (regla I-2). Sus mediciones se quedan
+   «capturadas»: no se validan ni piden causa y plan, y no salen en su
+   bandeja. Para que alguien no cuente en SG-02 (por ejemplo, el CEO),
+   ponga su id de usuario en `quimibond_sgi.health_excluded_user_ids`; para
+   agregar destinatarios al correo de los lunes, en
+   `quimibond_sgi.health_mail_user_ids` (ids separados por coma, en
+   **Ajustes → Técnico → Parámetros del sistema**).
 
 ### 2.5 Revisar la salud del SGI
 

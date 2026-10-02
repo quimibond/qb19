@@ -26,7 +26,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_
 | `evidence_note` | Text | Evidencia | Qué demuestra que la acción se hizo: número de orden, documento, registro o foto. Una acción correctiva no se termina sin evidencia (esta nota o un archivo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1129` |
 | `fmea_line_id` | Many2one | Modo de falla (AMEF) | Modo de falla del AMEF al que pertenece la acción. |  | `sgi.fmea.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1085` |
 | `incident_id` | Many2one | Incidente SST | Incidente o accidente de seguridad al que pertenece la acción. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1088` |
-| `measure_id` | Many2one | Medición roja | Plan de acción de una medición en rojo (I-4). |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:75` |
+| `measure_id` | Many2one | Medición roja | Plan de acción de una medición en rojo (I-4). |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:87` |
 | `name` | Char | Descripción |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1111` |
 | `objective_id` | Many2one | Objetivo integral | Plan de acción del objetivo (ISO 6.2.2). |  | `sgi.objective` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1092` |
 | `origin_display` | Char | Origen |  |  |  | compute `_compute_origin_display`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1151` |

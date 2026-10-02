@@ -12,7 +12,7 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 
 | Menú | Para qué |
 |---|---|
-| **SGI → Dirección → Tablero** | Indicadores de dirección, rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
+| **SGI → Dirección → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
 | **SGI → Dirección → Revisión por la dirección** | La reunión de revisión: entradas, acuerdos y seguimiento |
 | **SGI → Dirección → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
 | **SGI → Dirección → Riesgos y oportunidades / Requisitos legales / Partes interesadas / Satisfacción del cliente** | Contexto, riesgos y cumplimiento |
@@ -29,6 +29,10 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 2. Revise primero **Rojos sin causa ni plan** y **Acuerdos de la RxD
    vencidos**: son lo que está detenido.
 3. **Hoja de cálculo** abre el tablero en hoja de cálculo para analizarlo.
+4. La página **Salud del SGI** (desde 57.99.0) dice si el SGI se está usando:
+   diez indicadores SG-01 a SG-10 con el valor de la semana pasada, su
+   semáforo y la semana anterior, y la tabla **Por dueño de proceso** (ver
+   2.5).
 
 ### 2.2 La revisión por la dirección
 
@@ -64,9 +68,32 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
   marcado y le llega el aviso al dueño del proceso; en la revisión por la
   dirección aparecen los de atención inmediata o alta.
 
+### 2.5 El correo de los lunes (salud del SGI)
+
+Cada lunes a las 08:00 le llega «SGI: salud del sistema, semana del…» con
+lo mismo que la página **Salud del SGI** del Tablero:
+
+- **Indicadores:** clave, valor de la semana pasada, meta, semáforo, semana
+  anterior y una nota (por ejemplo, cuántas NC llevan más de 60 días
+  abiertas o qué parte de los avisos vencidos tiene una sola persona, sin
+  nombre).
+- **Por dueño de proceso:** avisos del SGI vencidos, validaciones de
+  mediciones atrasadas y días desde su último movimiento en el SGI. «Más de
+  90» es que no ha tocado el SGI en tres meses; «—», que el dueño no tiene
+  usuario. Un dueño con dos procesos sale en los dos renglones con las
+  mismas cifras.
+- Solo conteos; sin datos de salud ni de nómina.
+
+Para agregar o quitar destinatarios, o para que alguien no cuente en
+«Personas que usan el SGI», pídalo al Jefe MAST (parámetros
+`quimibond_sgi.health_mail_user_ids` y `quimibond_sgi.health_excluded_user_ids`).
+Los diez nacen **en prueba**: el Jefe MAST revisa su primera medición contra
+la realidad y los pasa a oficial.
+
 ## 3. Lo que le llega solo
 
 - Correo crítico de NC mayor e incidentes graves o fatales.
+- Desde 57.99.0, el correo de los lunes con la salud del SGI (ver 2.5).
 - Acciones vencidas que escalan a Dirección (después del jefe directo del
   responsable).
 

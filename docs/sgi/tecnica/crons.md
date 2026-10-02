@@ -2,7 +2,7 @@
 
 # Acciones planificadas (crons) del SGI
 
-28 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
+29 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
 
 | Nombre | Modelo | Código | Cada | Activo | Qué hace (docstring del método) | Archivo |
 |---|---|---|---|---|---|---|
@@ -26,6 +26,7 @@
 | SGI: Respaldo nocturno (Mi procedimiento y Mi equipo) | `sgi.cron` | `model.cron_nightly_backup()` | 1 days | True | Cron diario (02:15 de México): recalcula las cuatro listas guardadas de Mi procedimiento y anota en el log cuántas personas cambiaron (si no es 0, falta un disparo), y refresca el resumen de Mis pend… | `addons/quimibond_sgi/data/sgi_nightly_cron.xml` |
 | SGI: Revisión de riesgos vencidos | `sgi.cron` | `model.cron_risk_review()` | 1 days | True | Cron diario: riesgos con revisión vencida al dueño del proceso (o a MAST) y riesgos altos sin acción. | `addons/quimibond_sgi/data/sgi_cron_indicators_audit.xml` |
 | SGI: Revisión del contexto (partes interesadas) | `sgi.cron` | `model.cron_context_review()` | 1 weeks | True | Cron semanal: partes interesadas (4.1/4.2) con revisión vencida. Idempotente por resumen. | `addons/quimibond_sgi/data/sgi_cumplimiento_data.xml` |
+| SGI: Salud del SGI (correo semanal a Dirección) | `sgi.cron` | `model.cron_health_weekly_mail()` | 1 weeks | True | 57.99.0, cada lunes: mide (si falta) la semana pasada de los indicadores de salud y manda a Dirección el correo con su valor, meta, semáforo, la semana anterior y la tabla por dueño de proceso (halla… | `addons/quimibond_sgi/data/sgi_health_mail.xml` |
 | SGI: Seguimiento de No Conformidades | `sgi.cron` | `model.cron_nonconformities()` | 1 days | True | Cron diario de NC: cierra actividades ya resueltas, recalcula acciones vencidas, avisa y escala los plazos por etapa, escala NC sin acción y pide la verificación de eficacia. | `addons/quimibond_sgi/data/sgi_cron.xml` |
 | SGI: Señales operativas (fallas repetitivas, SLA vencido) | `sgi.cron` | `model.cron_operational_signals()` | 1 days | True | Cron diario. (a) Falla repetitiva: ≥3 correctivas del mismo equipo en 90 días → actividad al Jefe MAST sugiriendo levantar NC y revisar el plan de mantenimiento. (b) Reclamación abierta con SLA venci… | `addons/quimibond_sgi/data/sgi_operational_signals_data.xml` |
 | SGI: Simulacros de emergencia (8.2) | `sgi.cron` | `model.cron_emergency_drills()` | 1 days | True | Cron diario: vigila los simulacros de los planes de emergencia vigentes (14001/45001 8.2). Idempotente por resumen. | `addons/quimibond_sgi/data/sgi_emergency_satisfaction_data.xml` |

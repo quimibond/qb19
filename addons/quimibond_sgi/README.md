@@ -72,6 +72,44 @@ gris y, en «Rutina por rutina», el renglón pendiente sin decisión y su fecha
 límite siguen en rojo. Los estados intermedios propios de cada ficha
 (solicitado, capturado, adjunto…) van en azul.
 
+## Salud del SGI
+
+Desde 57.99.0 (auditoría 2026-10, sección 8 y hallazgo D-01) Dirección ve
+cada semana si el SGI se está usando o solo lo operan el CEO, el Jefe MAST y
+los crons. Diez indicadores de nivel Dirección del proceso E2, semanales, en
+prueba y sin NC automática (`data/sgi_health_indicators.xml`, `noupdate`):
+
+| Clave | Qué mide |
+|---|---|
+| SG-01 | Procesos en «Vigente» ÷ procesos activos |
+| SG-02 | Personas (con usuario y empleado) que crearon, modificaron o comentaron algo del SGI en 30 días |
+| SG-03 | Empleados con puesto que tienen usuario |
+| SG-04 | Acuses leídos o pendientes dentro del plazo del aviso |
+| SG-05 | Mediciones validadas a tiempo (3 días hábiles desde la captura) |
+| SG-06 | Rojos de los últimos 3 meses con NC o con causa y acción |
+| SG-07 | NC cerradas en 90 días sin ninguna verificación «No eficaz»; la nota da las abiertas con más de 60 días |
+| SG-08 | Avisos del SGI vencidos; la nota da qué parte los tiene una sola persona |
+| SG-09 | Auditorías internas del programa del año hechas hasta el mes en curso |
+| SG-10 | Formatos «Migrado a Odoo» con destino activo y uso en 90 días |
+
+- **Dónde se ven:** SGI → Dirección → Tablero → página «Salud del SGI»: los
+  diez con la medición de la semana pasada y, por el hallazgo D-01, una
+  tabla por dueño de proceso (avisos vencidos, validaciones atrasadas y días
+  sin movimiento en el SGI). No ocupan los 12 lugares de «Indicadores de
+  dirección».
+- **Correo de los lunes** (acción planificada «SGI: Salud del SGI (correo
+  semanal a Dirección)», 08:00 de México): lo mismo, a los miembros de
+  Dirección de Operaciones (SGI) y a los usuarios de
+  `quimibond_sgi.health_mail_user_ids` (ids separados por coma). Solo
+  conteos; sin datos de salud ni de nómina.
+- **Quién no cuenta en SG-02:** OdooBot, el administrador técnico, las
+  cuentas sin empleado de la empresa del SGI y los usuarios de
+  `quimibond_sgi.health_excluded_user_ids` (ids separados por coma).
+- **Sus mediciones no se validan** (no salen en «Validar medición»), no
+  piden causa y plan, no escalan y un «sin dato» no agenda «Indicador no
+  calculó»: su respuesta es la revisión semanal. Tampoco cuentan en SG-05 ni
+  en SG-06.
+
 ## Menú
 
 Siete entradas bajo **SGI** (57.98.0): Inicio (Mis pendientes, Mi

@@ -204,6 +204,12 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
 - **NC en rojo** (`nc_on_red`): un rojo levanta NC; úselo en los críticos.
 - **Recalcular mediciones pendientes** (en la lista de indicadores) vuelve a
   medir lo pendiente después de corregir una fórmula.
+- **Salud del SGI (57.99.0):** SG-01 a SG-10, de nivel Dirección y del proceso
+  E2, semanales. Nacen en prueba y sin NC automática; páselos a oficial
+  después de revisar su primera medición contra la realidad. Sus mediciones
+  no se validan, no piden causa y plan, no escalan y un «sin dato» no avisa
+  «Indicador no calculó». Las metas viven en la ficha de cada uno (archivo
+  `noupdate`: un update no las pisa).
 
 ## 9. No conformidades y acciones
 
@@ -330,7 +336,7 @@ checklist no se generan en festivos.
 
 ## 11. Crons
 
-Hay 28 acciones planificadas del SGI (tabla completa en
+Hay 29 acciones planificadas del SGI (tabla completa en
 [../tecnica/crons.md](../tecnica/crons.md)). Viven en `noupdate`: cambiarlas
 en la base requiere migración. Desde 57.94.0 incluye «SGI: Empleados sin
 puesto o sin correo (aviso a RH)», semanal (lunes). Desde 57.95.0 incluye
@@ -343,7 +349,10 @@ mantiene el módulo: alguna pantalla cambió roles o actividades sin
 recalcular Mi procedimiento (el respaldo ya lo corrigió). Desde 57.96.0
 incluye «SGI: Permisos de trabajo vencidos (cada hora)»: marca vencidos los
 permisos autorizados que pasaron su hora de fin y avisa al jefe del área y a
-usted; los avisos se cierran solos al cerrar, cancelar o renovar el permiso. Si una falla, Odoo la apaga tras 5 fallos en
+usted; los avisos se cierran solos al cerrar, cancelar o renovar el permiso. Desde 57.99.0
+incluye «SGI: Salud del SGI (correo semanal a Dirección)», los lunes a las 08:00
+de México: mide la semana pasada de SG-01 a SG-10 si falta y manda el correo.
+Si una falla, Odoo la apaga tras 5 fallos en
 más de 7 días: revise **Ajustes → Técnico → Acciones planificadas** (filtro
 «SGI»).
 
@@ -360,7 +369,10 @@ Encargado» para que «Ir» abra la lista),
 `quimibond_sgi.legacy_decision_deadline` (fecha límite de las rutinas
 pendientes) y los plazos de Mis pendientes
 (`measure_capture_business_days`, `measure_validate_business_days`,
-`ack_business_days`).
+`ack_business_days`). Desde 57.99.0, `quimibond_sgi.health_excluded_user_ids`
+(quién no cuenta en SG-02 «Personas que usan el SGI») y
+`quimibond_sgi.health_mail_user_ids` (destinatarios del correo de los lunes
+además de Dirección); ids de usuario separados por coma, vacíos de fábrica.
 
 ## 13. «Del Dropbox a Odoo»
 
