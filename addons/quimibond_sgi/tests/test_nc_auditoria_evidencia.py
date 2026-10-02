@@ -377,6 +377,19 @@ class TestCerradoEsEvidencia(_NcEvidenciaCase):
         self.assertFalse(nc.sgi_effectiveness_due, "Una NC cerrada no se reprograma.")
         self.assertFalse(self._summaries(nc, 'Verificar eficacia'))
 
+    def test_14d_accion_no_se_muda_a_una_nc_cerrada(self):
+        closed = self._nc()
+        self._force_closed(closed)
+        other = self._nc(title='N02 NC abierta')
+        line = self._line(other, name='Acción que se muda')
+        with self.assertRaisesRegex(UserError, 'pertenece a un registro cerrado'):
+            with self.cr.savepoint():
+                line.with_user(self.sgi_user).write({'alert_id': closed.id})
+        with self.assertRaisesRegex(UserError, 'pertenece a un registro cerrado'):
+            with self.cr.savepoint():
+                closed.with_user(self.sgi_user).write({'sgi_action_line_ids': [(4, line.id)]})
+        self.assertEqual(line.alert_id, other)
+
 
 @tagged('post_install', '-at_install')
 class TestAuditoriaCierre(_NcEvidenciaCase):

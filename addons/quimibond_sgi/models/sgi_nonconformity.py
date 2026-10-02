@@ -1359,6 +1359,10 @@ class SgiActionLine(models.Model):
         finishing = self.filtered(lambda l: not l.date_done) if vals.get('date_done') \
             else self.browse()
         res = super().write(vals)
+        # 57.93.0 (K-03): mover una acción a otro origen se revisa contra el
+        # origen nuevo (el chequeo previo solo ve el viejo).
+        if {'alert_id', 'incident_id', 'review_id'} & set(vals):
+            self._sgi_check_closed_origin(any_line=True)
         finishing._sgi_check_evidence()
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:
