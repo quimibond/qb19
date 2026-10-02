@@ -41,6 +41,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'stock_account',  # stock.move.value / stock.quant.value (AL-01)
         'survey',  # evaluaciones, DNC y encuestas como entregable
         'hr_skills',  # competencias por puesto; trae hr
+        'hr_holidays',  # 57.96.0: incapacidad por riesgo de trabajo → incidente (instalado en producción)
         'web_hierarchy',  # organigrama de procesos y puestos
         'sign',  # firmas de documentos, registros y aprobaciones
         'portal',  # respuesta del proveedor a su NC (controllers/portal_nc.py)

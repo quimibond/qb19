@@ -106,3 +106,4 @@ from . import sgi_deploy_change
 from . import sgi_floor_kiosk
 from . import sgi_company_fix
 from . import sgi_env_aspect_transfer
+from . import sgi_incident_leave

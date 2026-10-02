@@ -353,6 +353,16 @@ class SgiIncident(models.Model):
                     "No se puede cerrar el incidente %s:\n%s" % (
                         incident.folio or incident.name, "\n".join(problems)))
 
+    def _sgi_refresh_leave_days(self):
+        """57.96.0: días perdidos = suma redondeada de las incapacidades por
+        riesgo de trabajo aprobadas ligadas. Solo escribe si cambió."""
+        Leave = self.env['hr.leave'].sudo()
+        for incident in self.sudo():
+            days = round(sum(Leave.search([('sgi_incident_id', '=', incident.id),
+                                           ('state', '=', 'validate')]).mapped('number_of_days')))
+            if incident.days_lost != days:
+                incident.write({'days_lost': days})
+
     def _sgi_team_problems(self):
         """57.96.0 (N-06): al menos un trabajador (sin personal a su cargo) o
         un integrante de la Comisión de Seguridad e Higiene. sudo: hr.employee
