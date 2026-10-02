@@ -40,6 +40,10 @@
                                    decoration-danger="severity in ('grave', 'fatal')"
                                    decoration-warning="severity == 'moderado'"/>
                             <field name="reporter_id" readonly="sgi_is_locked"/>
+                            <!-- 57.94.0 (U-01): quien reporta sin usuario (SGI en planta). -->
+                            <field name="reporter_employee_id" readonly="sgi_is_locked"
+                                   options="{'no_create': True}"/>
+                            <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                         </group>
                         <group>
                             <field name="location" readonly="sgi_is_locked"/>

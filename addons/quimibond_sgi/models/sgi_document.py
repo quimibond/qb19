@@ -1350,6 +1350,8 @@ class SgiDocumentAck(models.Model):
     los puestos aplicables; se cierra al leer o al firmar en Sign."""
     _name = 'sgi.document.ack'
     _description = "Acuse de lectura de documento SGI"
+    # 57.94.0 (U-01): firma con PIN desde SGI en planta (tableta y hora).
+    _inherit = ['sgi.pin.signature.mixin']
     _order = 'document_id, employee_id'
     _rec_name = 'document_id'
 
@@ -1411,8 +1413,31 @@ class SgiDocumentAck(models.Model):
 
     def action_mark_read(self):
         # La validación de identidad vive en write(); aquí solo se sella.
+        # 57.94.0 (U-01): primero el permiso de escribir acuses. La cuenta de
+        # una tableta de planta no lo tiene (firma por SGI en planta, con el
+        # PIN de la persona); sin esto el candado de identidad respondía antes
+        # con un aviso que no decía que la cuenta no tiene acceso.
+        self.check_access('write')
         for ack in self:
             ack.write({'state': 'leido', 'ack_date': fields.Datetime.now()})
+        return True
+
+    def _sgi_pin_employee(self):
+        return self.employee_id
+
+    def _sgi_sign_with_pin(self, tablet):
+        """57.94.0 (U-01): «leído y entendido» desde SGI en planta. Solo lo
+        llama sgi.floor.kiosk DESPUÉS de validar que el acuse es del empleado
+        y su PIN; escribe como sistema (el candado de write() deja pasar al
+        sistema) y deja la tableta y la hora."""
+        self.ensure_one()
+        if self.state != 'pendiente':
+            raise UserError("Este acuse ya estaba firmado.")
+        if not self.sudo().document_id.active:
+            raise UserError("El documento ya no está vigente: no hay acuse que firmar.")
+        now = fields.Datetime.now()
+        self.sudo().write({'state': 'leido', 'ack_date': now,
+                           'sgi_pin_tablet_id': tablet.id, 'sgi_pin_signed_at': now})
         return True
 
     def action_view_file(self):

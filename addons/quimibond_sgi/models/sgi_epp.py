@@ -16,7 +16,8 @@ class SgiEppDelivery(models.Model):
     """Responsiva de entrega de EPP a un empleado (S03-02), con renglones y firma en Sign."""
     _name = 'sgi.epp.delivery'
     _description = "Responsiva de entrega de EPP (S03-02)"
-    _inherit = ['mail.thread']
+    # 57.94.0 (U-01): firma con PIN desde SGI en planta (tableta y hora).
+    _inherit = ['mail.thread', 'sgi.pin.signature.mixin']
     _order = 'date desc, id desc'
 
     name = fields.Char(string="Folio", readonly=True, copy=False, default="Nuevo")
@@ -112,6 +113,24 @@ class SgiEppDelivery(models.Model):
                 continue
             rec.write({'state': 'firmada', 'signed_date': fields.Datetime.now()})
             rec.message_post(body="Responsiva firmada por %s: recibí el EPP y me comprometo a usarlo." % self.env.user.name)
+        return True
+
+    def _sgi_pin_employee(self):
+        return self.employee_id
+
+    def _sgi_sign_with_pin(self, tablet):
+        """57.94.0 (U-01): «Recibí el EPP» desde SGI en planta. Solo lo llama
+        sgi.floor.kiosk DESPUÉS de validar que la responsiva es del empleado y
+        su PIN. El mensaje lleva al empleado y la tableta, no la cuenta."""
+        self.ensure_one()
+        if self.state == 'firmada':
+            raise UserError("Esta responsiva ya estaba firmada.")
+        now = fields.Datetime.now()
+        self.sudo().write({'state': 'firmada', 'signed_date': now,
+                           'sgi_pin_tablet_id': tablet.id, 'sgi_pin_signed_at': now})
+        self.sudo().message_post(
+            body="Responsiva firmada con PIN por %s en la tableta %s: recibí el EPP y me comprometo "
+                 "a usarlo." % (self.sudo().employee_id.name, tablet.name))
         return True
 
 

@@ -31,6 +31,7 @@
                         <group>
                             <field name="delivered_by_id" readonly="state == 'firmada'"/>
                             <field name="signed_date" invisible="not signed_date"/>
+                            <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                             <field name="sign_request_id" invisible="not sign_request_id"/>
                             <field name="sign_state" invisible="not sign_request_id"/>
                             <field name="can_sign" invisible="1"/>

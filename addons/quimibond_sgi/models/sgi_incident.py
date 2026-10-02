@@ -18,7 +18,8 @@ class SgiIncident(models.Model):
     _description = "Incidente / Accidente SST (P-S02, SCAT)"
     # 57.67.0: ``hr.mixin`` para que quien reporta ponga a las personas
     # afectadas (Many2many a hr.employee) sin ser de RH (Odoo 19).
-    _inherit = ['sgi.base.mixin', 'hr.mixin']
+    # 57.94.0 (U-01): firma con PIN desde SGI en planta (tableta y hora).
+    _inherit = ['sgi.base.mixin', 'hr.mixin', 'sgi.pin.signature.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.incident'
     _sgi_locked_states = ('cerrado',)
@@ -51,6 +52,12 @@ class SgiIncident(models.Model):
     reporter_id = fields.Many2one('res.users', string="Reportado por",
                                   default=lambda self: self.env.user, tracking=True,
                                   help="Persona que reporta. Puede consultar cómo se cerró.")
+    # 57.94.0 (U-01): la persona que reporta, aunque no tenga usuario (SGI en
+    # planta). En el backend cada quien solo se pone a sí mismo.
+    reporter_employee_id = fields.Many2one(
+        'hr.employee', string="Reportado por (empleado)", index=True,
+        ondelete='restrict', default=lambda self: self.env.user.employee_id,
+        help="Empleado que reporta. Desde la tableta de planta queda el de quien tecleó su PIN.")
     location = fields.Char(string="Lugar")
     process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
                                  help="Proceso donde ocurrió.")
@@ -81,9 +88,37 @@ class SgiIncident(models.Model):
         help="Reportado, en investigación, acciones o cerrado. No se cierra sin el análisis SCAT ni con "
              "acciones abiertas.")
 
+    def _sgi_check_reporter_employee(self, vals_list):
+        """57.94.0 (U-01): nadie reporta «a nombre» de otro, salvo MAST, Salud
+        ocupacional o el sistema (la tableta escribe con sudo después de
+        validar el PIN). ``vals_list``: lo que se escribe; en el alta se
+        revisan los registros ya creados (los ``default_*`` del contexto no
+        pasan por los valores)."""
+        if self.env.su or self._sgi_can_investigate():
+            return
+        # sudo: hr.employee solo lo lee RH en Odoo 19; sin sudo, un Usuario
+        # SGI recibiría AccessError (subclase de UserError) en vez del aviso.
+        mine = self.env.user.sudo().employee_ids.ids
+        for vals in vals_list:
+            employee_id = vals.get('reporter_employee_id')
+            # Mismo candado para «Reportado por» (usuario): antes cualquiera
+            # podía poner a otro usuario como reportante por RPC.
+            reporter_id = vals.get('reporter_id')
+            if (employee_id and employee_id not in mine) \
+                    or (reporter_id and reporter_id != self.env.uid):
+                raise UserError(
+                    "Solo puede reportar a su nombre. Si otra persona vio el evento, que lo reporte "
+                    "ella (en SGI en planta, con su PIN) o anótela en la descripción.")
+
+    def _sgi_pin_employee(self):
+        return self.reporter_employee_id
+
     @api.model_create_multi
     def create(self, vals_list):
         incidents = super().create(vals_list)
+        incidents._sgi_check_reporter_employee([
+            {'reporter_employee_id': inc.sudo().reporter_employee_id.id,
+             'reporter_id': inc.sudo().reporter_id.id} for inc in incidents])
         for incident in incidents:
             incident._sgi_notify_if_serious()
             incident._sgi_create_alert()
@@ -95,6 +130,7 @@ class SgiIncident(models.Model):
         eleva a grave/fatal no puede quedarse sin su NC. Se apoya en la
         idempotencia de ambos métodos y sólo dispara para los registros cuya
         severidad ANTES del write no era grave/fatal (sin duplicar avisos)."""
+        self._sgi_check_reporter_employee([vals])
         # D-06 / D-009 (entrega 4): investigar, cerrar y reabrir es de Jefe
         # MAST y Salud ocupacional. El reportante solo edita mientras está
         # «Reportado» (regla de registro) y no cambia el estado.

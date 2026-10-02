@@ -344,6 +344,8 @@
                        decoration-warning="state == 'pendiente'"
                        decoration-success="state == 'leido'"/>
                 <field name="ack_date"/>
+                <!-- 57.94.0 (U-01): firmado con PIN en una tableta de planta. -->
+                <field name="sgi_pin_tablet_id" optional="hide"/>
                 <button name="action_view_file" type="object"
                         icon="fa-file-pdf-o" title="Leer el documento"/>
                 <button name="action_mark_read" type="object" string="Marcar leído y entendido"
@@ -372,6 +374,7 @@
                     <group>
                         <field name="employee_id"/>
                         <field name="ack_date"/>
+                        <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                     </group>
                 </sheet>
             </form>

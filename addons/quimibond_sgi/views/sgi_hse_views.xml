@@ -427,6 +427,7 @@
                          invisible="not sgi_checklist_employee_id">
                         Terminado por <field name="sgi_checklist_employee_id" readonly="1" class="oe_inline"/>
                         el <field name="sgi_checklist_done_at" readonly="1" class="oe_inline"/>.
+                        <div invisible="not sgi_pin_signature"><field name="sgi_pin_signature" readonly="1"/></div>
                     </div>
                     <field name="sgi_checklist_line_ids" nolabel="1"
                            readonly="sgi_checklist_employee_id">
