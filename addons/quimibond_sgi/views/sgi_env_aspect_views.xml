@@ -62,7 +62,7 @@
                         <group string="Control operacional">
                             <field name="control_description"/>
                             <field name="operational_control_id"/>
-                            <field name="risk_id"/>
+                            <field name="risk_id" options="{'no_create': True}"/>
                         </group>
                         <group string="Revisión periódica">
                             <field name="review_frequency_months"/>
