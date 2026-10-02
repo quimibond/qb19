@@ -160,9 +160,6 @@ class SgiLegalRequirement(models.Model):
                 self._fields['compliance_state'].selection)[state])
         return True
 
-    def action_mark_no_aplica(self):
-        return self._sgi_mark('no_aplica')
-
     def action_evaluate(self):
         """DIR-1: asistente con resultado, evidencia y próxima fecha."""
         self.ensure_one()
@@ -181,18 +178,26 @@ class SgiLegalRequirement(models.Model):
             'context': {'default_requirement_id': self.id},
         }
 
+    # 57.96.0 (N-07, 9.1.2): los botones rápidos ya no registran sin
+    # evidencia; abren el asistente con el resultado elegido. La NC por
+    # «Parcial» o «No cumple» la levanta el asistente al confirmar.
+    def _sgi_open_evaluate(self, result):
+        self.ensure_one()
+        action = self.action_evaluate()
+        action['context'] = dict(action['context'], default_result=result)
+        return action
+
     def action_mark_cumple(self):
-        return self._sgi_mark('cumple')
+        return self._sgi_open_evaluate('cumple')
 
     def action_mark_parcial(self):
-        self._sgi_mark('parcial')
-        self._sgi_create_alert()
-        return True
+        return self._sgi_open_evaluate('parcial')
 
     def action_mark_no_cumple(self):
-        self._sgi_mark('no_cumple')
-        self._sgi_create_alert()
-        return True
+        return self._sgi_open_evaluate('no_cumple')
+
+    def action_mark_no_aplica(self):
+        return self._sgi_open_evaluate('no_aplica')
 
     def _sgi_create_alert(self):
         """NC por incumplimiento legal, vía el punto único de entrada.

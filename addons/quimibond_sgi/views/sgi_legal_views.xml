@@ -36,7 +36,11 @@
                 <field name="requirement_id" invisible="1"/>
                 <group>
                     <field name="result"/>
-                    <field name="evidence" placeholder="Qué se revisó (bitácora, dictamen, constancia…) y qué se encontró"/>
+                    <!-- 57.96.0 (N-07): «No aplica» también pide su motivo. -->
+                    <label for="evidence" string="Motivo por el que no aplica" invisible="result != 'no_aplica'"/>
+                    <label for="evidence" string="Evidencia revisada" invisible="result == 'no_aplica'"/>
+                    <field name="evidence" nolabel="1"
+                           placeholder="Qué se revisó (bitácora, dictamen, constancia…) y qué se encontró, o por qué no aplica"/>
                     <field name="next_date"/>
                 </group>
                 <footer>
@@ -72,12 +76,12 @@
                             class="btn-primary" icon="fa-check-square-o"/>
                     <button name="action_mark_cumple" type="object" string="Cumple"
                             class="btn-success" groups="quimibond_sgi.group_sgi_manager"/>
+                    <!-- 57.96.0 (N-07): los cuatro abren el asistente con la evidencia
+                         (o el motivo); la confirmación es el asistente. -->
                     <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
-                            class="btn-warning" groups="quimibond_sgi.group_sgi_manager"
-                            confirm="Un cumplimiento parcial levanta una no conformidad. ¿Registrar la evaluación?"/>
+                            class="btn-warning" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_mark_no_cumple" type="object" string="No cumple"
-                            class="btn-danger" groups="quimibond_sgi.group_sgi_manager"
-                            confirm="Un incumplimiento levanta una no conformidad mayor. ¿Registrar la evaluación?"/>
+                            class="btn-danger" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_mark_no_aplica" type="object" string="No aplica" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="compliance_state" widget="statusbar"/>
                 </header>
