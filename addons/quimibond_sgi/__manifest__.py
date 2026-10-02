@@ -208,6 +208,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_env_aspect_views.xml',
         'views/sgi_work_permit_views.xml',
         'views/sgi_loto_views.xml',
+        # 57.96.0 (N-06): competencias que exige cada tipo de permiso.
+        'views/sgi_work_permit_skill_views.xml',
         'views/sgi_audit_finding_legal_eval_views.xml',
         # 57.95.0 (D-06 de datos): empresa en documentos controlados.
         'views/sgi_company_fix_views.xml',

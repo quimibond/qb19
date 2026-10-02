@@ -310,3 +310,6 @@ access_sgi_floor_tablet_tablet,sgi.floor.tablet.tablet,model_sgi_floor_tablet,gr
 access_sgi_company_fix_manager,sgi.company.fix.manager,model_sgi_company_fix,group_sgi_manager,1,1,1,0
 access_sgi_env_aspect_transfer_manager,sgi.env.aspect.transfer.manager,model_sgi_env_aspect_transfer,group_sgi_manager,1,1,1,1
 access_sgi_env_aspect_transfer_line_manager,sgi.env.aspect.transfer.line.manager,model_sgi_env_aspect_transfer_line,group_sgi_manager,1,1,1,1
+access_sgi_work_permit_skill_user,sgi.work.permit.skill.user,model_sgi_work_permit_skill,group_sgi_user,1,0,0,0
+access_sgi_work_permit_skill_auditor,sgi.work.permit.skill.auditor,model_sgi_work_permit_skill,group_sgi_auditor,1,0,0,0
+access_sgi_work_permit_skill_manager,sgi.work.permit.skill.manager,model_sgi_work_permit_skill,group_sgi_manager,1,1,1,1

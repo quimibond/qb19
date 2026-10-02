@@ -318,6 +318,9 @@
     <!-- 57.96.0 (N-07): asistente manual del Jefe MAST. -->
     <menuitem id="menu_sgi_config_env_aspect_transfer" name="Traspaso de riesgos ambientales"
               parent="menu_sgi_config" action="sgi_env_aspect_transfer_action" sequence="95"/>
+    <!-- 57.96.0 (N-06): competencias que exige cada tipo de permiso. -->
+    <menuitem id="menu_sgi_config_work_permit_skills" name="Competencias por tipo de permiso"
+              parent="menu_sgi_config" action="sgi_work_permit_skill_action" sequence="96"/>
 
     <!-- 5.6 (retirado en 19.0.45.0.0): «Datos técnicos» y los «Mis…» viejos.
          Ver models/sgi_cleanup.py (SGI_REMOVED_XMLIDS): la prueba falla si
