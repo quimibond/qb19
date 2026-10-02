@@ -630,6 +630,19 @@ class SgiMyPending(models.TransientModel):
         self.unlink()
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 
+    def action_validate_selected(self):
+        """57.92.0 (U-02): «Validar seleccionadas». Ignora los renglones que no
+        son mediciones; valida con los permisos de quien abre la lista (solo el
+        dueño del indicador o el Jefe MAST, ``_sgi_check_validate_access``)."""
+        rows = self.filtered(lambda r: r.kind == 'validacion'
+                             and r.res_model == 'sgi.indicator.measure')
+        if not rows:
+            raise UserError("Seleccione al menos una medición por validar.")
+        measures = self.env['sgi.indicator.measure'].browse(rows.mapped('res_id')).exists()
+        measures.action_validate()
+        rows.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+
 
 class SgiMyProcedurePending(models.TransientModel):
     _inherit = 'sgi.my.procedure'

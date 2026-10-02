@@ -350,3 +350,20 @@ class TestBandeja(TransactionCase):
         # Sin vencimiento periódico manda la ventana de siempre.
         activity.sudo().write({'due_business_day': 0})
         self.assertIsNone(activity._sgi_periodic_state(Rate, domain, 'name', july))
+
+    # ---- 57.92.0 (U-02): validar en lote ------------------------------------
+    def test_20_validar_seleccionadas(self):
+        indicator = self._indicator('Z8A-L', calc_mode='otif_ventas', frequency='weekly')
+        mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2)]
+        measures = self.env['sgi.indicator.measure'].create([
+            {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
+            for d in mondays])
+        rows = self.Pending.with_user(self.user)._sgi_build(self.emp)
+        mine = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
+        other = rows.filtered(lambda r: r.kind != 'validacion')[:1]
+        self.assertEqual(len(mine), 2)
+        (mine | other).with_user(self.user).action_validate_selected()
+        self.assertEqual(set(measures.mapped('state')), {'validado'})
+        self.assertFalse(mine.exists(), "Los renglones validados desaparecen.")
+        if other:
+            self.assertTrue(other.exists(), "Los que no son mediciones se quedan.")
