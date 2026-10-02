@@ -77,8 +77,11 @@ _SGI_DEADLINE_STATES = [
 # como edición, además de los del chatter (SGI_FREE_PREFIXES). ``date_close``
 # lo escribe Calidad (``quality``) en un segundo write justo después de mover
 # la NC a una etapa «hecha»: sin esta excepción, el dueño del proceso no
-# podría cerrar.
-_SGI_CLOSED_FREE_FIELDS = frozenset({'date_close'})
+# podría cerrar. ``sgi_action_line_ids``: la lista editable «Correcciones y
+# acciones» de la ficha escribe las acciones a través de la NC; cada acción
+# se protege sola (SgiActionLine._sgi_check_closed_origin: lo terminado no se
+# cambia y no se agregan ni borran acciones), y las pendientes se terminan.
+_SGI_CLOSED_FREE_FIELDS = frozenset({'date_close', 'sgi_action_line_ids'})
 
 
 class QualityAlert(models.Model):
@@ -643,6 +646,11 @@ class QualityAlert(models.Model):
                     "La NC %s está cerrada: solo la reabren el Jefe MAST o el dueño del proceso."
                     % ", ".join(cannot.sudo().mapped('sgi_folio')))
             return
+        if all(a._sgi_user_can_close() for a in closed):
+            raise UserError(
+                "La NC %s está cerrada y es evidencia: no se modifica cerrada. Usted es el dueño "
+                "del proceso: reábrala (cambie solo la etapa) y después capture el cambio."
+                % ", ".join(closed.sudo().mapped('sgi_folio')))
         raise UserError(
             "La NC %s está cerrada y es evidencia: solo el Jefe MAST la modifica. Si hay un "
             "error real, pida al dueño del proceso o al Jefe MAST que la reabra."

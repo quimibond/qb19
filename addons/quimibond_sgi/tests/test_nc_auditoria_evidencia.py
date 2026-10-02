@@ -344,6 +344,39 @@ class TestCerradoEsEvidencia(_NcEvidenciaCase):
         pending.with_user(self.sgi_user).action_mark_done()
         self.assertTrue(pending.date_done)
 
+    def _force_closed(self, nc):
+        self.env['sgi.nc.force.close'].with_user(self.mast).create({
+            'alert_id': nc.id, 'reason': 'Proveedor dado de baja'}).action_confirm()
+        self.assertTrue(nc.stage_id.sgi_is_closing_stage)
+
+    def test_14b_lista_de_acciones_desde_la_nc_cerrada(self):
+        nc = self._nc()
+        done = self._line(nc, action_type='correccion', name='Corrección terminada',
+                          date_done=self._today())
+        pending = self._line(nc, name='Correctiva pendiente')
+        self._force_closed(nc)
+        # La lista editable de la ficha escribe a través de la NC: la pendiente se termina.
+        nc.with_user(self.sgi_user).write({'sgi_action_line_ids': [(1, pending.id, {
+            'evidence_note': 'OT-77 firmada', 'date_done': self._today()})]})
+        self.assertEqual(pending.date_done, self._today())
+        # La terminada no se cambia por la misma vía.
+        with self.assertRaisesRegex(UserError, 'pertenece a un registro cerrado'):
+            nc.with_user(self.sgi_user).write({'sgi_action_line_ids': [(1, done.id, {
+                'name': 'Otra redacción'})]})
+        # El dueño del proceso lee que puede reabrirla.
+        with self.assertRaisesRegex(UserError, 'Usted es el dueño del proceso'):
+            nc.with_user(self.owner_user).write({'sgi_root_cause': 'Otra causa'})
+
+    def test_14c_correctiva_de_nc_cerrada_no_reprograma_eficacia(self):
+        nc = self._nc()
+        pending = self._line(nc, name='Correctiva tras el cierre forzado', evidence_note='OT-88')
+        self._force_closed(nc)
+        pending.with_user(self.sgi_user).action_mark_done()
+        self.assertTrue(pending.date_done)
+        nc.invalidate_recordset()
+        self.assertFalse(nc.sgi_effectiveness_due, "Una NC cerrada no se reprograma.")
+        self.assertFalse(self._summaries(nc, 'Verificar eficacia'))
+
 
 @tagged('post_install', '-at_install')
 class TestAuditoriaCierre(_NcEvidenciaCase):

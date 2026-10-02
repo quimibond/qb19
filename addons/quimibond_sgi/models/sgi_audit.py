@@ -602,6 +602,8 @@ class SgiAuditFinding(models.Model):
 
     def action_generate_nc(self):
         self.ensure_one()
+        # 57.93.0 (K-03): antes de crear la NC, para no gastar folio.
+        self._sgi_check_audit_open()
         if self.alert_id:
             raise UserError("Este hallazgo ya tiene una NC ligada.")
         audit = self.audit_id
