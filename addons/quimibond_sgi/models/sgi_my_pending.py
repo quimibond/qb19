@@ -569,6 +569,10 @@ class SgiMyPending(models.TransientModel):
             context['search_default_group_employee'] = 1
         else:
             context['search_default_group_state'] = 1
+        # 57.92.0 (U-02): abre con lo atrasado y por vencer; Mi equipo
+        # (agrupado por persona) sigue mostrando todo.
+        if not group_by_person:
+            context['search_default_actionable'] = 1
         return {
             'type': 'ir.actions.act_window', 'name': name, 'res_model': self._name,
             'view_mode': 'list', 'domain': [('id', 'in', rows.ids)],
@@ -578,8 +582,8 @@ class SgiMyPending(models.TransientModel):
             # I-001: sin pendientes de verdad; las actividades sin medición
             # automática no pueden salir aquí, y se dice.
             'help': "<p class='o_view_nocontent_smiling_face'>Sin pendientes</p>"
-                    "<p>No tienes nada atrasado ni por vencer. Las actividades sin medición "
-                    "automática no salen aquí: revísalas en Mi procedimiento.</p>",
+                    "<p>No tiene nada atrasado ni por vencer. Las actividades sin medición "
+                    "automática no salen aquí: revíselas en Mi procedimiento.</p>",
         }
 
     @api.model

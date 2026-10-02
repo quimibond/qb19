@@ -5,7 +5,7 @@
         <field name="name">sgi.my.pending.list</field>
         <field name="model">sgi.my.pending</field>
         <field name="arch" type="xml">
-            <list string="Mis pendientes" create="0" edit="0" delete="0"
+            <list string="Mis pendientes" create="0" edit="0" delete="0" expand="1"
                   default_order="state_rank, date_due, id"
                   decoration-danger="state == 'atrasada'" decoration-warning="state == 'por_vencer'">
                 <!-- 57.92.0 (U-02): validar en lote las mediciones seleccionadas. -->
@@ -39,6 +39,9 @@
                 <field name="name"/>
                 <field name="employee_id"/>
                 <field name="process_id"/>
+                <!-- 57.92.0 (U-02): filtro por omisión de Mis pendientes. -->
+                <filter name="actionable" string="Atrasadas o por vencer"
+                        domain="[('state', 'in', ('atrasada', 'por_vencer'))]"/>
                 <filter name="late" string="Atrasadas" domain="[('state', '=', 'atrasada')]"/>
                 <filter name="this_week" string="Vence esta semana"
                         domain="[('date_due', '&gt;=', context_today().strftime('%Y-%m-%d')), ('date_due', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>

@@ -367,3 +367,9 @@ class TestBandeja(TransactionCase):
         self.assertFalse(mine.exists(), "Los renglones validados desaparecen.")
         if other:
             self.assertTrue(other.exists(), "Los que no son mediciones se quedan.")
+
+    def test_21_abre_desplegada_con_lo_urgente(self):
+        action = self.Pending.with_user(self.user).action_open_mine()
+        self.assertEqual(action['context'].get('search_default_actionable'), 1)
+        arch = self.env.ref('quimibond_sgi.sgi_my_pending_view_list').arch
+        self.assertIn('expand="1"', arch)
