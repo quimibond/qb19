@@ -3,6 +3,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
+from .sgi_menu_paths import sgi_menu_path
 
 SCALE_1_5 = [('1', "1"), ('2', "2"), ('3', "3"), ('4', "4"), ('5', "5")]
 
@@ -31,10 +32,9 @@ SGI_HIGH_ATTENTION = ('inmediata', 'alto')
 # no un control de seguridad (un cliente RPC puede poner el contexto).
 SGI_ENV_ASPECT_CONTEXT = 'sgi_from_env_aspect'
 SGI_ENV_ASPECT_MSG = (
-    "Los aspectos ambientales se registran en SGI → Seguridad y ambiente → Aspectos ambientales "
-    "(una sola matriz, ISO 14001 6.1.2); tampoco se duplica un riesgo ambiental: registre el "
-    "aspecto nuevo en la matriz. Si el aspecto necesita acciones, use «Tratar como riesgo» desde "
-    "el aspecto.")
+    "Los aspectos ambientales se registran en %s (una sola matriz, ISO 14001 6.1.2); tampoco se "
+    "duplica un riesgo ambiental: registre el aspecto nuevo en la matriz. Si el aspecto necesita "
+    "acciones, use «Tratar como riesgo» desde el aspecto." % sgi_menu_path('aspectos_ambientales'))
 
 
 class SgiRiskCategory(models.Model):

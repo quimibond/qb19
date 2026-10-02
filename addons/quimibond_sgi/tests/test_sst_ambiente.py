@@ -78,7 +78,7 @@ class TestJerarquiaControles(_SstCase):
         self.assertEqual(risk.attention_level, 'alto')
         self._done_action(risk, 'epp')
         risk.with_user(self.mast).action_set_en_tratamiento()
-        assert_locked(self, risk.with_user(self.mast).action_set_controlado)
+        self._locked("EPP", risk.with_user(self.mast).action_set_controlado)
         self.assertEqual(risk.state, 'en_tratamiento')
         self._done_action(risk, 'ingenieria')
         risk.with_user(self.mast).action_set_controlado()
@@ -112,7 +112,7 @@ class TestJerarquiaControles(_SstCase):
         risk.with_user(self.mast).action_evaluate()
         self.assertEqual(risk.state, 'controlado', "Editar y evaluar no dispara el candado.")
         risk.with_user(self.mast).action_set_en_tratamiento()
-        assert_locked(self, risk.with_user(self.mast).action_set_controlado)
+        self._locked("jerarquía", risk.with_user(self.mast).action_set_controlado)
 
 
 @tagged('post_install', '-at_install')
