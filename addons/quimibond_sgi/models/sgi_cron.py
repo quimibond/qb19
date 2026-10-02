@@ -54,6 +54,19 @@ class MailActivitySgiCron(models.Model):
         help="La causa del aviso ya se resolvió; si vuelve, nace otro aviso.")
     sgi_cron_run = fields.Char(
         string="Última corrida que lo vio (SGI)", copy=False, readonly=True)
+    # 57.95.0 (K-08): la clase del aviso (la clave antes del primer «:»),
+    # guardada e indexada solo donde hay clave. El barrido de episodios
+    # busca por aquí en vez de ``sgi_cron_key =like 'clase:%'``, que recorría
+    # todas las actividades con sus archivadas. La columna la crea y la llena
+    # migrations/19.0.57.95.0/pre-migrate.py.
+    sgi_cron_kind = fields.Char(
+        string="Clase del aviso (SGI)", compute='_compute_sgi_cron_kind', store=True,
+        index='btree_not_null', copy=False, readonly=True)
+
+    @api.depends('sgi_cron_key')
+    def _compute_sgi_cron_kind(self):
+        for activity in self:
+            activity.sgi_cron_kind = (activity.sgi_cron_key or '').split(':', 1)[0] or False
 
 
 class SgiCron(models.AbstractModel):
@@ -199,13 +212,11 @@ class SgiCron(models.AbstractModel):
                 _logger.warning("SGI: %d registro(s) fallaron; no cierro avisos de %s en esta corrida.",
                                 failures, ", ".join(kinds))
             return 0
-        key_domain = []
-        for kind in kinds:
-            key_domain = (['|'] if key_domain else []) + key_domain + [
-                '|', ('sgi_cron_key', '=', kind), ('sgi_cron_key', '=like', kind + ':%')]
+        # 57.95.0 (K-08): por la clase indexada. Misma semántica que antes
+        # (clave igual a la clase o que empieza con «clase:»).
         stale = self.env['mail.activity'].sudo().with_context(active_test=False).search(
-            key_domain + [('sgi_episode_closed', '=', False),
-                          '|', ('sgi_cron_run', '=', False), ('sgi_cron_run', '!=', run)])
+            [('sgi_cron_kind', 'in', list(kinds)), ('sgi_episode_closed', '=', False),
+             '|', ('sgi_cron_run', '=', False), ('sgi_cron_run', '!=', run)])
         closed = self._sgi_close_activities(stale, reason)
         if closed:
             _logger.info("SGI: %d aviso(s) cerrados porque ya no aplican (%s).", closed, ", ".join(kinds))
