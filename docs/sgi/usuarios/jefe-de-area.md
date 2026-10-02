@@ -28,12 +28,14 @@ Lo mismo que cualquier Usuario SGI, más:
 3. **Ver su procedimiento** abre el Mi procedimiento de una persona como ella
    lo ve.
 4. **Acuses pendientes de su gente.** Si alguien de su equipo sin usuario de
-   Odoo lleva más de 7 días hábiles sin firmar un documento, le llega **un**
-   aviso «Acuses pendientes de su gente: N (P personas)», no uno por acuse ni
-   por documento. El aviso aparece sobre su departamento; en Mis pendientes,
+   Odoo (o con usuario pero sin permiso para abrir el documento) lleva más de
+   7 días hábiles sin firmar un documento, le llega **un** aviso «Acuses
+   pendientes de su gente: N (P personas)», no uno por acuse ni por
+   documento. El aviso aparece sobre su departamento; en Mis pendientes,
    **Ir** abre la lista de esos acuses (solo los que ya pasaron el plazo).
-   Quien de su gente sí tiene usuario recibe su propio aviso «Documentos por
-   leer y firmar». Si usted no tiene departamento en su ficha de empleado,
+   Quien de su gente tiene usuario y puede abrir el documento recibe su propio
+   aviso «Documentos por leer y firmar». Si usted no tiene departamento en su
+   ficha de empleado,
    este aviso no le llega a usted sino al Jefe MAST: pida a RH que le asigne
    su departamento.
 5. Los filtros de Mi equipo («Con pendientes atrasados», «Con pendientes por

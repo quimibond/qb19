@@ -51,6 +51,10 @@ iniciarse). Plan: `docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-rob
     recibe puede leer, se reutiliza (no salta de ancla cada vez que se firma
     el acuse más viejo); si cambia de modelo, el anterior se cierra con «el
     aviso pasó a otro registro»;
+  - quien tiene usuario pero no puede abrir el documento entra en el aviso de
+    su jefe (al Jefe MAST solo sin jefe, sin departamento o sin usuario del
+    jefe; un jefe archivado cuenta como sin jefe); «no puede abrir el
+    documento» solo sale cuando agendar el aviso propio falla de verdad;
   - vence el día en que el acuse más viejo del grupo cruzó el umbral; solo
     cuentan acuses de gente activa; singular y plural en el resumen;
   - los avisos de uno por acuse (`acuse_pendiente:<id>`) se cierran en la
@@ -79,7 +83,9 @@ iniciarse). Plan: `docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-rob
   `sgi_picking_manual_ids` (guardado, no calculado); el cálculo siempre
   asigna: lo ajustado si hay ajuste; si no hay propuesta, lo que ya estaba
   guardado (protege los ajustes a mano de antes de 57.95.0, que no traen la
-  marca); si no, lo propuesto. El formulario que reenvía lo mismo que lo
+  marca); si no, lo propuesto. Un ajuste de antes de 57.95.0 se conserva
+  **solo mientras no haya propuesta**: en cuanto se valida una entrega ligada
+  a la factura, la propuesta lo reemplaza. El formulario que reenvía lo mismo que lo
   propuesto, o lo mismo que se conservaba sin propuesta, no marca ajuste.
   Propuesta y comparación se leen en sudo y por ids: una regla de registro
   sobre las entregas no hace parecer «a mano» una factura. Botón «Volver a las
@@ -87,6 +93,9 @@ iniciarse). Plan: `docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-rob
   difiere: `sgi_picking_outdated`).
 - `sgi_payment_date` depende también de `invoice_date` y de la cuenta de las
   líneas.
+- **Pruebas que corren `cron_documents`** (`test_avisos_crons`,
+  `test_pr6_external`): neutralizan los acuses pendientes reales de la copia
+  de producción, como `test_rendimiento_robustez`.
 - **Documentos controlados (D-06 de datos):** un documento que nace o se
   vuelve controlado sin empresa toma la de su familia (misma clave, aunque sea
   ninguna, para no partir la familia antes de correr el asistente) o, con

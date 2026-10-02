@@ -151,7 +151,14 @@ entrega 57.95.0).
 Efecto a saber: quien trabaje con otra razón social seleccionada (sin PNTQ)
 deja de ver esos documentos hasta seleccionarla, igual que hoy con los de Mi
 procedimiento. Los documentos controlados nuevos ya nacen con la empresa del
-SGI (o con la de su familia, si la clave ya existe).
+SGI (o con la de su familia, si la clave ya existe). Dos casos raros:
+
+- quien crea un controlado con clave nueva sin tener PNTQ activa en el
+  selector de empresas recibe PNTQ en el documento y Odoo puede rechazarlo
+  por la regla de empresa: active PNTQ y vuelva a intentarlo;
+- marcar como controlado un documento existente cuya familia (misma clave)
+  ya vive en PNTQ puede chocar con «una sola combinación clave + revisión por
+  empresa»: revise la revisión antes de marcarlo.
 
 ## 7. Publicar Mi procedimiento
 
@@ -167,15 +174,19 @@ ya publicado, revise en **Acuses de lectura** que tenga el suyo.
 7 días hábiles sin firmar (parámetro `quimibond_sgi.doc_ack_pending_days`),
 el cron diario de documentos ya no agenda un aviso por acuse; los agrupa:
 
-- persona con usuario: **un** aviso «Documentos por leer y firmar: N», a ella,
-  sobre el documento de su acuse más viejo;
-- gente sin usuario: **un** aviso por jefe, «Acuses pendientes de su gente:
-  N (P personas)», al jefe, sobre su departamento; **Ir** en Mis pendientes
-  abre la lista de esos acuses;
+- persona con usuario que puede abrir el documento: **un** aviso «Documentos
+  por leer y firmar: N», a ella, sobre el documento de su acuse más viejo;
+- gente sin usuario, o con usuario pero sin permiso para abrir el documento:
+  **un** aviso por jefe, «Acuses pendientes de su gente: N (P personas)», al
+  jefe, sobre su departamento; **Ir** en Mis pendientes abre la lista de esos
+  acuses;
 - a usted: los equipos de jefes sin usuario, los de jefes **con usuario pero
   sin departamento** (decisión de 57.95.0: el aviso de equipo vive en el
-  departamento del jefe; sin él, va al Jefe MAST), las personas sin jefe y
-  el aviso de quien no puede abrir el documento.
+  departamento del jefe; sin él, va al Jefe MAST) y las personas sin jefe (un
+  jefe archivado cuenta como sin jefe);
+- la leyenda «Acuses pendientes de <persona> (no puede abrir el documento)»
+  solo aparece cuando Odoo no dejó agendar el aviso de la persona (falla al
+  agendarlo): entonces le llega a usted.
 
 Los avisos viejos de uno por acuse se cierran solos en la primera corrida con
 la nota «se reemplazó por un aviso por persona o por jefe». Un aviso se

@@ -50,13 +50,14 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
    llega el acuse de «leído y entendido».
 4. **Acuses de lectura** muestra quién falta de firmar.
 5. Los acuses pendientes ya no le llegan uno por uno. La gente con usuario
-   recibe su propio aviso («Documentos por leer y firmar») y la que no tiene,
-   uno por jefe sobre el departamento del jefe («Acuses pendientes de su
+   recibe su propio aviso («Documentos por leer y firmar»); la que no tiene
+   usuario, o que tiene usuario pero no puede abrir el documento, entra en el
+   aviso de su jefe sobre el departamento del jefe («Acuses pendientes de su
    gente»). A usted solo le llegan los equipos de jefes sin usuario o **sin
-   departamento** en su ficha, las personas sin jefe y, si una persona no
-   puede abrir el documento, su aviso con la leyenda «no puede abrir el
-   documento». Para que deje de recibir los de un jefe, pida a RH que le
-   asigne departamento o usuario.
+   departamento** en su ficha y las personas sin jefe. La leyenda «no puede
+   abrir el documento» solo aparece si Odoo no dejó agendar el aviso de la
+   persona (falla al agendarlo); entonces le llega a usted. Para que deje de
+   recibir los de un jefe, pida a RH que le asigne departamento o usuario.
 
 ### 2.4 Indicadores
 

@@ -325,12 +325,16 @@ class SgiCron(models.AbstractModel):
         Ack = self.env['sgi.document.ack'].sudo()
         own = defaultdict(lambda: Ack)
         team = defaultdict(lambda: Ack)
+        def boss_of(emp):
+            # Un jefe archivado cuenta como sin jefe.
+            return emp.parent_id if emp.parent_id.active else emp
+
         for ack in acks.sudo():
             emp = ack.employee_id
             if emp.user_id and emp.user_id.active:
                 own[emp] |= ack
             else:
-                team[emp.parent_id or emp] |= ack
+                team[boss_of(emp)] |= ack
         groups = {}
         for emp, group in own.items():
             anchor = group[:1].document_id
@@ -341,7 +345,7 @@ class SgiCron(models.AbstractModel):
             else:
                 # Su usuario no lee el documento: sus acuses van con los de
                 # su equipo, como si no tuviera usuario.
-                team[emp.parent_id or emp] |= group
+                team[boss_of(emp)] |= group
         for owner, group in team.items():
             group = group.sorted(lambda a: (a.create_date, a.id))
             alone = group.employee_id == owner
