@@ -138,3 +138,4 @@ from . import test_nc_auditoria_evidencia
 from . import test_portal_nc_http
 from . import test_sgi_en_planta
 from . import test_sgi_en_planta_tour
+from . import test_rendimiento_robustez
