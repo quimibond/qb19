@@ -127,6 +127,8 @@ class TestAvisosDeAcuse(_RendimientoCase):
         self.assertEqual(len(notice), 1, "Un aviso por jefe, no uno por acuse.")
         self._assert_anchor(notice, self.dept, "Va sobre el departamento del jefe, no sobre su ficha.")
         self.assertEqual(notice.user_id, self.boss_user, "Va al jefe, no al Jefe MAST.")
+        self.assertNotIn(self.boss_user.partner_id, self.dept.message_partner_ids,
+                         "El jefe no queda siguiendo el departamento por el aviso.")
         self.assertEqual(notice.sgi_cron_kind, 'acuses_equipo')
         self.assertIn("3", notice.summary)
         self.assertIn("2 personas", notice.summary)
@@ -260,6 +262,44 @@ class TestAvisosDeAcuse(_RendimientoCase):
             self.assertFalse(mine, "No lee el documento: no se le agenda nada encima.")
             self.assertEqual(team.user_id, self.boss_user, "Sus acuses van al aviso de su jefe.")
             self.assertIn("Básico RR", team.note)
+
+    def test_05c_si_falla_el_primer_destino_va_al_jefe_mast_sin_tumbar_la_corrida(self):
+        ack = self._ack(self.own, self.doc_a)
+        legacy = self.doc_b.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today,
+            summary='Acuse pendiente: Con usuario RR', user_id=self.mast.id)
+        legacy.sudo().sgi_cron_key = 'acuse_pendiente:%d' % ack.id
+        Cron = type(self.Cron)
+        original = Cron._sgi_schedule
+        calls = []
+
+        def flaky(cron, record, summary, note, user_id, **kwargs):
+            calls.append(user_id)
+            if user_id == self.own_user.id:
+                raise ValueError("Falla de prueba al agendar")
+            return original(cron, record, summary, note, user_id, **kwargs)
+
+        with patch.object(Cron, '_sgi_schedule', autospec=True, side_effect=flaky), \
+                self.assertLogs('odoo.addons.quimibond_sgi.models.sgi_cron', level='WARNING') as logs:
+            self.Cron.cron_documents()
+        self.assertIn(self.own_user.id, calls)
+        self.assertFalse([r for r in logs.records if r.levelname == 'ERROR'],
+                         "El primer destino que falla con respaldo es WARNING, no ERROR.")
+        self.assertTrue([r for r in logs.records if 'pruebo el siguiente destino' in r.getMessage()])
+        notice = self._notice('acuses_propios', self.own).filtered('active')
+        self.assertEqual(notice.user_id, self.mast, "Respaldo: al Jefe MAST.")
+        self.assertIn("Con usuario RR", notice.summary)
+        self.assertIn("no puede abrir el documento", notice.summary)
+        self.assertFalse(legacy.active, "Sin fallas: el barrido corrió y el aviso nuevo sigue abierto.")
+
+    def test_05d_sin_jefe_mast_se_conserva_el_aviso(self):
+        self._ack(self.op3, self.doc_a)
+        self.Cron.cron_documents()
+        notice = self._notice('acuses_equipo', self.boss_nouser).filtered('active')
+        self.assertEqual(notice.user_id, self.mast)
+        with patch.object(type(self.Cron), '_sgi_manager_user_id', return_value=False):
+            self.Cron.cron_documents()
+        self.assertTrue(notice.active, "Sin a quién mandarlo hoy, el aviso de ayer no se cierra.")
 
     def test_06_clase_del_aviso_indexada_y_barrido(self):
         field = self.env['mail.activity']._fields['sgi_cron_kind']

@@ -311,6 +311,8 @@ class SgiCron(models.AbstractModel):
             ('state', '=', 'pendiente'),
             ('create_date', '<', limit_date),
             ('document_id.active', '=', True),
+            # Solo gente activa: el acuse de quien ya se fue no se avisa.
+            ('employee_id.active', '=', True),
         ], order='create_date, id')
         return ack_days, acks
 
@@ -409,42 +411,106 @@ class SgiCron(models.AbstractModel):
         return sgi_add_business_days(self.env, first, ack_days)
 
     @api.model
+    def _sgi_ack_schedule(self, anchor, summary, note, user_id, deadline, key):
+        """Agenda o actualiza el aviso ``key`` sobre ``anchor`` sin dejar a
+        quien lo recibe como seguidor del registro (departamento o
+        documento) si no lo era: el aviso le llega por la actividad. Si ya
+        hay un aviso abierto con la clave sobre otro registro (cambió el
+        ancla de modelo: departamento ↔ documento), se cierra al quedar el
+        nuevo, con su motivo."""
+        partner = self.env['res.users'].sudo().browse(user_id).partner_id
+        anchor = anchor.sudo()
+        followed = partner in anchor.message_partner_ids
+        activity = self._sgi_schedule(anchor, summary, note, user_id, date_deadline=deadline,
+                                      key=key, anywhere=True)
+        if partner and not followed and partner in anchor.message_partner_ids:
+            anchor.message_unsubscribe(partner_ids=partner.ids)
+        if activity:
+            moved = self.env['mail.activity'].sudo().search([
+                ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False),
+                ('id', '!=', activity.id)])
+            self._sgi_close_activities(moved, "el aviso pasó a otro registro")
+        return activity
+
+    @api.model
+    def _sgi_ack_keep(self, key):
+        """Conserva el aviso abierto de ``key`` en esta corrida (el barrido no
+        lo cierra): cuando no hay a quién o dónde agendarlo hoy."""
+        run = self.env.context.get('sgi_cron_run')
+        self.env['mail.activity'].sudo().with_context(active_test=False).search([
+            ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False),
+        ]).write({'sgi_cron_run': run or False})
+
+    @api.model
+    def _sgi_ack_attempts(self, key, group, manager_id):
+        """Destinos en orden: (registro, usuario, resumen alterno o None).
+
+        Primero el del grupo; si ya hay un aviso abierto con esta clave sobre
+        un registro que quien recibe puede leer, ese mismo registro (se
+        reutiliza tal cual: el aviso no salta de ancla cada vez que se firma
+        el acuse más viejo o cambia el departamento). Después, el Jefe MAST
+        sobre el documento del acuse más viejo; un aviso propio que cae ahí
+        dice de quién es. Sin usuario (no hay Jefe MAST) no hay destino."""
+        user_id, anchor = group['user_id'], group['anchor']
+        current = self.env['mail.activity'].sudo().search([
+            ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False)], order='id', limit=1)
+        if current and current.res_model and current.res_id and current.user_id.id == user_id:
+            record = self.env[current.res_model].sudo().browse(current.res_id).exists()
+            if record and self._sgi_user_can_read(record, user_id):
+                anchor = record
+        attempts = [(anchor, user_id, None)]
+        fallback_summary = None
+        if group['kind'] == 'acuses_propios':
+            fallback_summary = "Acuses pendientes de %s (no puede abrir el documento): %d" % (
+                group['owner'].name, len(group['acks']))
+        fallback = (group['acks'][:1].document_id, manager_id, fallback_summary)
+        if fallback[:2] != (anchor, user_id):
+            attempts.append(fallback)
+        return [a for a in attempts if a[0] and a[1]]
+
+    @api.model
     def _sgi_ack_notices(self, groups, ack_days, manager_id):
         """Agenda un aviso por grupo, cada uno en su savepoint. Si Odoo no
         deja asignarlo (quien recibe no lee el registro), se reintenta al
-        Jefe MAST sobre el documento del acuse más viejo; si tampoco, el aviso que ya
-        existía se marca como visto en esta corrida (el barrido no lo cierra)
-        y se registra. Un grupo que falla no detiene el barrido de los demás.
+        Jefe MAST sobre el documento del acuse más viejo (WARNING con la
+        traza); si tampoco, o si no hay a quién mandarlo (sin Jefe MAST), el
+        aviso que ya existía se conserva en esta corrida (el barrido no lo
+        cierra). Un grupo que falla no detiene a los demás ni a cron_documents.
         Devuelve cuántos grupos no se pudieron ni agendar ni conservar."""
         failures = 0
         for key, group in groups.items():
-            summary = self._sgi_ack_summary(group)
-            note = self._sgi_ack_note(group['acks'], ack_days)
-            deadline = self._sgi_ack_deadline(group['acks'], ack_days)
-            attempts = [(group['anchor'], group['user_id'])]
-            fallback = (group['acks'][:1].document_id, manager_id)
-            if fallback != attempts[0]:
-                attempts.append(fallback)
+            try:
+                summary = self._sgi_ack_summary(group)
+                note = self._sgi_ack_note(group['acks'], ack_days)
+                deadline = self._sgi_ack_deadline(group['acks'], ack_days)
+                attempts = self._sgi_ack_attempts(key, group, manager_id)
+            except Exception:
+                failures += 1
+                _logger.exception("SGI: no se pudo armar el aviso %s; continúo.", key)
+                continue
             done = False
-            for anchor, user_id in attempts:
+            for index, (anchor, user_id, alt_summary) in enumerate(attempts):
+                last = index == len(attempts) - 1
                 try:
                     with self.env.cr.savepoint():
-                        self._sgi_schedule(anchor, summary, note, user_id, date_deadline=deadline,
-                                           key=key, anywhere=True)
+                        self._sgi_ack_schedule(anchor, alt_summary or summary, note, user_id,
+                                               deadline, key)
                     done = True
                     break
                 except Exception:
-                    _logger.exception("SGI: no se pudo agendar el aviso %s sobre %s (usuario %s); "
-                                      "pruebo el siguiente destino.", key, anchor, user_id)
+                    if last:
+                        _logger.exception("SGI: no se pudo agendar el aviso %s sobre %s (usuario %s).",
+                                          key, anchor, user_id)
+                    else:
+                        _logger.warning("SGI: no se pudo agendar el aviso %s sobre %s (usuario %s); "
+                                        "pruebo el siguiente destino.", key, anchor, user_id,
+                                        exc_info=True)
             if done:
                 continue
             try:
                 with self.env.cr.savepoint():
-                    run = self.env.context.get('sgi_cron_run')
-                    self.env['mail.activity'].sudo().with_context(active_test=False).search([
-                        ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False),
-                    ]).write({'sgi_cron_run': run or False})
-                _logger.warning("SGI: el aviso %s no se pudo agendar; se conserva el anterior.", key)
+                    self._sgi_ack_keep(key)
+                _logger.warning("SGI: el aviso %s no se pudo agendar hoy; se conserva el anterior.", key)
             except Exception:
                 failures += 1
                 _logger.exception("SGI: el aviso %s no se pudo agendar ni conservar.", key)
