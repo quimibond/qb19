@@ -205,6 +205,8 @@
         <field name="name">Incidentes y accidentes</field>
         <field name="res_model">sgi.incident</field>
         <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
         <field name="context">{'search_default_abiertos': 1}</field>
         <field name="search_view_id" ref="sgi_incident_view_search"/>
         <field name="help" type="html">

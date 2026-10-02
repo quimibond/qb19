@@ -663,8 +663,11 @@ class SgiMyPending(models.TransientModel):
             context['search_default_actionable'] = 1
         return {
             'type': 'ir.actions.act_window', 'name': name, 'res_model': self._name,
-            'view_mode': 'list', 'domain': [('id', 'in', rows.ids)],
-            'views': [(self.env.ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list')],
+            # 57.94.0 (I-05): kanban en el celular y la tableta.
+            'view_mode': 'list,kanban', 'mobile_view_mode': 'kanban',
+            'domain': [('id', 'in', rows.ids)],
+            'views': [(self.env.ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list'),
+                      (self.env.ref('quimibond_sgi.sgi_my_pending_view_kanban').id, 'kanban')],
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_pending_view_search').id, 'search'],
             'context': context,
             # I-001: sin pendientes de verdad; las actividades sin medición

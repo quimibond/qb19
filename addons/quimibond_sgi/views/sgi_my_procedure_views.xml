@@ -616,14 +616,46 @@
         </field>
     </record>
 
+    <!-- 57.94.0 (I-05): Mis indicadores en el celular. -->
+    <record id="sgi_indicator_view_kanban_mine" model="ir.ui.view">
+        <field name="name">sgi.indicator.kanban.mine</field>
+        <field name="model">sgi.indicator</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <kanban create="0">
+                <field name="sgi_next_pending_id"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="fs-5 fw-bold"><field name="code"/> · <field name="name"/></div>
+                        <div>Último valor: <field name="last_value"/> <field name="uom"/></div>
+                        <div>Siguiente medición: <field name="sgi_next_pending_date" widget="remaining_days"/></div>
+                        <footer class="d-flex flex-wrap gap-2 pt-2">
+                            <field name="last_semaphore" widget="badge"
+                                   decoration-success="last_semaphore == 'verde'"
+                                   decoration-warning="last_semaphore == 'amarillo'"
+                                   decoration-danger="last_semaphore == 'rojo'"/>
+                            <button name="action_sgi_capture" type="object" string="Capturar"
+                                    class="btn btn-primary btn-lg" invisible="not sgi_next_pending_id"/>
+                            <button name="action_sgi_measures" type="object" string="Mediciones"
+                                    class="btn btn-secondary btn-lg"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_indicator_action_mine" model="ir.actions.act_window">
         <field name="name">Mis indicadores</field>
         <field name="res_model">sgi.indicator</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
         <field name="domain">[('responsible_id', '=', uid)]</field>
         <field name="context">{'create': False}</field>
         <field name="view_ids" eval="[(5, 0, 0),
             (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_indicator_view_list_mine')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_indicator_view_kanban_mine')}),
             (0, 0, {'view_mode': 'form'})]"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">No tiene indicadores a su cargo</p>

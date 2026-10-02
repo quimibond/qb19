@@ -25,6 +25,34 @@
         </field>
     </record>
 
+    <!-- 57.94.0 (I-05). Prioridad 90: no le gana al kanban de la app Documentos. -->
+    <record id="sgi_current_document_view_kanban" model="ir.ui.view">
+        <field name="name">documents.document.kanban.sgi.current</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <kanban create="0">
+                <field name="sgi_my_ack_state"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fs-5 fw-bold"/>
+                        <div>Revisión <field name="sgi_revision_label"/></div>
+                        <footer class="d-flex flex-wrap gap-2 pt-2">
+                            <field name="sgi_my_ack_state" widget="badge"
+                                   decoration-warning="sgi_my_ack_state == 'pendiente'"
+                                   decoration-success="sgi_my_ack_state == 'leido'"/>
+                            <button name="action_sgi_view_file" type="object" string="Ver"
+                                    class="btn btn-primary btn-lg"/>
+                            <button name="action_sgi_mark_my_ack_read" type="object" string="Leído y entendido"
+                                    class="btn btn-success btn-lg" invisible="sgi_my_ack_state != 'pendiente'"
+                                    confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_current_document_view_search" model="ir.ui.view">
         <field name="name">documents.document.search.sgi.current</field>
         <field name="model">documents.document</field>
@@ -46,10 +74,14 @@
     <record id="sgi_current_document_action" model="ir.actions.act_window">
         <field name="name">Documentos vigentes</field>
         <field name="res_model">documents.document</field>
-        <field name="view_mode">list</field>
+        <field name="view_mode">list,kanban</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
         <field name="domain">[('sgi_is_controlled', '=', True), ('sgi_state', '=', 'vigente')]</field>
         <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
-        <field name="view_id" ref="sgi_current_document_view_list"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_current_document_view_list')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_current_document_view_kanban')})]"/>
         <field name="search_view_id" ref="sgi_current_document_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin documentos vigentes</p>

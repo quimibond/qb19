@@ -44,6 +44,44 @@
         </field>
     </record>
 
+    <!-- 57.94.0 (I-05): en el celular y la tableta, una tarjeta por pendiente
+         con el botón grande. Mismas condiciones que la lista. -->
+    <record id="sgi_my_pending_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.my.pending.kanban</field>
+        <field name="model">sgi.my.pending</field>
+        <field name="arch" type="xml">
+            <kanban create="0" default_order="state_rank, date_due, id">
+                <field name="state_rank"/>
+                <field name="is_mine"/>
+                <field name="kind"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fs-5 fw-bold"/>
+                        <div class="text-muted"><field name="kind"/> · <field name="process_id"/></div>
+                        <div>Vence: <field name="date_due"/></div>
+                        <footer class="d-flex flex-wrap gap-2 pt-2">
+                            <field name="state" widget="badge"
+                                   decoration-danger="state == 'atrasada'"
+                                   decoration-warning="state == 'por_vencer'"
+                                   decoration-success="state == 'al_dia'"/>
+                            <button name="action_open" type="object" string="Ir" class="btn btn-primary btn-lg"
+                                    invisible="kind == 'acuse'"/>
+                            <button name="action_open" type="object" string="Leer" class="btn btn-primary btn-lg"
+                                    invisible="kind != 'acuse'"/>
+                            <button name="action_sign_ack" type="object" string="Leído y entendido"
+                                    class="btn btn-success btn-lg" invisible="kind != 'acuse' or not is_mine"
+                                    confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
+                            <button name="action_validate_measure" type="object" string="Validar"
+                                    class="btn btn-success btn-lg" invisible="kind != 'validacion'"/>
+                            <button name="action_done_notice" type="object" string="Hecho"
+                                    class="btn btn-success btn-lg" invisible="kind != 'aviso' or not is_mine"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_my_pending_view_search" model="ir.ui.view">
         <field name="name">sgi.my.pending.search</field>
         <field name="model">sgi.my.pending</field>
