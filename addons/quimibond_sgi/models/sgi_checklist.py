@@ -21,6 +21,11 @@ calendario del SGI no generan hoja; la semanal se genera el primer día hábil
 de la semana en que corra el cron (si el lunes es festivo o el cron no corrió,
 el martes), una sola vez por semana. Una plantilla sin equipos avisa al Jefe
 MAST en vez de no generar nada en silencio.
+
+57.94.0 (U-01, I-03): la validación de PIN vive en ``sgi.pin`` (la comparte SGI
+en planta); la hoja firmada guarda la tableta y la hora, y sus respuestas ya no
+se cambian. «Lo llenó» y «Terminado el» solo los escribe el sistema. Botón
+«Marcar el resto como Bien» y respuesta de un toque por punto.
 """
 import logging
 from datetime import timedelta
@@ -192,9 +197,33 @@ class SgiChecklistLine(models.Model):
     corrective_request_id = fields.Many2one('maintenance.request', string="Correctivo", readonly=True,
                                             copy=False)
 
+    # 57.94.0 (U-01, I-03): una hoja firmada es evidencia; sus respuestas no se
+    # cambian (la vista ya lo decía, el servidor no). «Crear correctivos» sí
+    # escribe corrective_request_id después de firmar.
+    _SGI_SIGNED_LOCKED = frozenset({'answer', 'note', 'name', 'hint', 'sequence'})
+
+    def write(self, vals):
+        # sudo al leer la hoja: la regla nativa de Mantenimiento («Users are
+        # allowed to access their own maintenance requests») daría AccessError
+        # a un usuario interno que no sigue la solicitud, en vez del aviso.
+        if not self.env.su and self._SGI_SIGNED_LOCKED & set(vals) \
+                and any(line.request_id.sgi_checklist_employee_id for line in self.sudo()):
+            raise UserError("La hoja ya está firmada: sus respuestas son evidencia y no se cambian.")
+        return super().write(vals)
+
+    def action_sgi_answer(self):
+        """I-03: un toque por punto desde la tarjeta (Bien, Falla o No aplica).
+        La respuesta viene en el contexto del botón y se valida aquí."""
+        answer = self.env.context.get('sgi_answer')
+        if answer not in dict(_ANSWERS):
+            raise UserError("Respuesta no válida para el checklist.")
+        self.write({'answer': answer})
+        return True
+
 
 class MaintenanceRequestChecklist(models.Model):
-    _inherit = 'maintenance.request'
+    # 57.94.0 (U-01): la hoja firmada con PIN guarda la tableta y la hora.
+    _inherit = ['maintenance.request', 'sgi.pin.signature.mixin']
 
     sgi_checklist_template_id = fields.Many2one('sgi.checklist.template', string="Checklist SGI",
                                                 readonly=True, index=True,
@@ -235,6 +264,76 @@ class MaintenanceRequestChecklist(models.Model):
             'res_model': 'sgi.checklist.finish', 'view_mode': 'form', 'target': 'new',
             'context': {'default_request_id': self.id},
         }
+
+    def _sgi_pin_employee(self):
+        return self.sgi_checklist_employee_id
+
+    # 57.94.0 (U-01): quién llenó la hoja es la firma. El campo es readonly
+    # solo en la vista; base.group_user escribe maintenance.request (ACL de
+    # Mantenimiento), así que la cuenta de una tableta (o cualquiera) podía
+    # poner a otro empleado como «Lo llenó» con un write por RPC. Solo el
+    # sistema: el asistente «Terminar checklist» y SGI en planta escriben con
+    # sudo después de validar el PIN.
+    _SGI_SIGNER_FIELDS = frozenset({'sgi_checklist_employee_id', 'sgi_checklist_done_at'})
+
+    def _sgi_check_signer_fields(self, keys):
+        if self._SGI_SIGNER_FIELDS & set(keys) and not self.env.su:
+            raise UserError("Quién llenó la hoja lo registra el sistema al terminarla (con su PIN, "
+                            "en «Terminar checklist» o en SGI en planta).")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            self._sgi_check_signer_fields(vals)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._sgi_check_signer_fields(vals)
+        return super().write(vals)
+
+    def _sgi_checklist_precheck(self):
+        self.ensure_one()
+        # Solo hojas de checklist: sin esto el asistente servía para probar PIN
+        # sobre cualquier solicitud de mantenimiento (sin puntos = «completa»).
+        if not self.sgi_checklist_template_id:
+            raise UserError("Esta solicitud no es una hoja de checklist.")
+        if self.sgi_checklist_employee_id:
+            raise UserError("Esta hoja ya la firmó %s." % self.sgi_checklist_employee_id.name)
+        missing = self.sgi_checklist_line_ids.filtered(lambda l: not l.answer)
+        if missing:
+            raise UserError("Faltan %d punto(s) por marcar: %s." % (
+                len(missing), ", ".join(missing.mapped('name')[:5])))
+
+    def _sgi_checklist_sign(self, employee, signed_with_pin, tablet=False):
+        """57.94.0 (U-01): firma común del asistente «Terminar checklist» y de
+        SGI en planta. Quien llama ya validó al empleado y su PIN."""
+        self.ensure_one()
+        self._sgi_checklist_precheck()
+        now = fields.Datetime.now()
+        vals = {'sgi_checklist_employee_id': employee.id, 'sgi_checklist_done_at': now}
+        if signed_with_pin:
+            vals.update({'sgi_pin_signed_at': now, 'sgi_pin_tablet_id': tablet.id if tablet else False})
+        self.sudo().write(vals)
+        if not signed_with_pin:
+            how = " (sin PIN registrado)"
+        elif tablet:
+            how = " con su PIN en la tableta %s" % tablet.name
+        else:
+            how = " con su PIN"
+        self.sudo().message_post(body="Checklist llenado por %s%s." % (employee.name, how))
+        return True
+
+    def _sgi_checklist_fill_ok(self):
+        """I-03: los puntos sin respuesta pasan a «Bien»; lo contestado no se toca."""
+        for req in self:
+            if req.sgi_checklist_employee_id:
+                raise UserError("Esta hoja ya está firmada; sus respuestas no se cambian.")
+            req.sgi_checklist_line_ids.filtered(lambda l: not l.answer).write({'answer': 'ok'})
+        return True
+
+    def action_sgi_checklist_all_ok(self):
+        """I-03: botón «Marcar el resto como Bien» de la hoja."""
+        return self._sgi_checklist_fill_ok()
 
     def action_sgi_create_correctives(self):
         """Una solicitud correctiva por punto con falla (una sola vez)."""
@@ -287,26 +386,15 @@ class SgiChecklistFinish(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         req = self.request_id
-        if req.sgi_checklist_employee_id:
-            raise UserError("Esta hoja ya la firmó %s." % req.sgi_checklist_employee_id.name)
-        missing = req.sgi_checklist_line_ids.filtered(lambda l: not l.answer)
-        if missing:
-            raise UserError("Faltan %d punto(s) por marcar: %s." % (
-                len(missing), ", ".join(missing.mapped('name')[:5])))
+        req._sgi_checklist_precheck()
+        # 57.94.0 (U-01): el PIN se valida en sgi.pin, igual que en la tableta.
         allowed = req.sgi_checklist_template_id.employee_ids
-        if allowed and self.employee_id not in allowed:
-            raise UserError("%s no está en la lista de quién llena este checklist." % self.employee_id.name)
-        # sudo: el PIN es un campo de RH; el usuario de la tableta no lo lee.
-        real_pin = self.employee_id.sudo().pin
-        if not real_pin and self._sgi_pin_required():
-            raise UserError(
-                "%s no tiene PIN registrado y el PIN es obligatorio para firmar el "
-                "checklist. Pida a RH que lo capture en su ficha de empleado (el mismo "
-                "del quiosco de asistencia)." % self.employee_id.name)
-        if real_pin and (self.pin or '') != real_pin:
-            raise UserError("PIN incorrecto para %s." % self.employee_id.name)
-        req.sudo().write({'sgi_checklist_employee_id': self.employee_id.id,
-                          'sgi_checklist_done_at': fields.Datetime.now()})
-        req.message_post(body="Checklist llenado por %s%s." % (
-            self.employee_id.name, "" if real_pin else " (sin PIN registrado)"))
+        with_pin = self.env['sgi.pin']._sgi_check_pin(
+            self.employee_id, self.pin, required=self._sgi_pin_required(),
+            allowed=allowed if allowed else None, purpose="firmar este checklist")
+        # Si quien firma está en la cuenta de una tableta de planta, la hoja
+        # dice en cuál.
+        tablet = self.env['sgi.floor.tablet'].sudo().search(
+            [('user_id', '=', self.env.uid), ('active', '=', True)], limit=1)
+        req._sgi_checklist_sign(self.employee_id, with_pin, tablet=tablet if with_pin else False)
         return {'type': 'ir.actions.act_window_close'}
