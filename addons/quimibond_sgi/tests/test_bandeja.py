@@ -457,13 +457,12 @@ class TestBandeja(TransactionCase):
         self.assertFalse(row.exists(), "El renglón firmado sale de la lista.")
 
     def test_25_avisos_de_los_crons(self):
-        """U-03 (D-04): los avisos nativos de las apps del SGI, vencidos o de
-        los próximos 7 días, salen como «Aviso» y «Hecho» los cierra; lo que
-        ya tiene renglón propio no se duplica."""
+        """U-03 (D-04): los avisos de los crons del SGI, vencidos o de los
+        próximos 7 días, salen como «Aviso» y «Hecho» los cierra; lo que la
+        misma persona ya ve en otro renglón no se duplica."""
         team = self.env.ref('quimibond_sgi.sgi_quality_team_internal')
         alert = self.env['quality.alert'].create({'title': 'Aviso 8A', 'team_id': team.id})
-        # La NC de la prueba no tiene responsables: su aviso no lo cubre el
-        # renglón «nc» (que solo sale a los responsables).
+        # La NC de la prueba no tiene responsables: nadie tiene su renglón «nc».
         self.assertFalse(alert.sgi_responsible_ids)
         notice = alert.activity_schedule(
             'mail.mail_activity_data_todo', date_deadline=self.today - timedelta(days=1),
@@ -471,20 +470,36 @@ class TestBandeja(TransactionCase):
         far = alert.activity_schedule(
             'mail.mail_activity_data_todo', date_deadline=self.today + timedelta(days=30),
             summary='Aviso lejano 8A', user_id=self.user.id)
+        manual = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today,
+            summary='Actividad manual 8A', user_id=self.user.id)
+        # En las apps (NOTICE_MODELS) solo cuentan los avisos de los crons (con clave).
+        notice.sudo().sgi_cron_key = 'aviso_prueba:%d' % alert.id
+        far.sudo().sgi_cron_key = 'aviso_prueba_lejano:%d' % alert.id
         row = self._row('aviso', notice.id)
         self.assertTrue(row)
         self.assertEqual(row['state'], 'atrasada')
         self.assertIn('Revisar aviso 8A', row['name'])
         self.assertFalse(self._row('aviso', far.id), "Solo vencidos o de los próximos 7 días.")
-        # Lo que ya tiene renglón propio no se duplica (acuse pendiente).
+        self.assertFalse(self._row('aviso', manual.id), "Sin clave no es aviso de un cron.")
+        # Acuse pendiente: la persona ya tiene su renglón «acuse».
         doc = self.env['documents.document'].create({
             'name': 'Acuse aviso 8A', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-02', 'sgi_state': 'vigente',
             'sgi_process_id': self.process.id})
+        ack = self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.emp.id})
         dup = doc.activity_schedule('mail.mail_activity_data_todo', date_deadline=self.today,
                                     summary='Acuse 8A', user_id=self.user.id)
-        dup.sgi_cron_key = 'acuse_pendiente:1'
+        dup.sudo().sgi_cron_key = 'acuse_pendiente:%d' % ack.id
         self.assertFalse(self._row('aviso', dup.id))
+        # Requisito legal: la persona ya tiene su renglón «legal».
+        req = self.env['sgi.legal.requirement'].create({
+            'name': 'Requisito aviso 8A', 'system': 'ambiental', 'responsible_id': self.user.id,
+            'next_eval_date': self.today + timedelta(days=3)})
+        self.assertTrue(self._row('legal', req.id))
+        legal = req.activity_schedule('mail.mail_activity_data_todo', date_deadline=self.today,
+                                      summary='Evaluar requisito 8A', user_id=self.user.id)
+        self.assertFalse(self._row('aviso', legal.id))
         # «Ir» abre la NC; «Hecho» cierra el aviso.
         rows = self.Pending.with_user(self.user)._sgi_build(self.emp)
         line = rows.filtered(lambda r: r.kind == 'aviso' and r.res_id == notice.id)
@@ -495,3 +510,14 @@ class TestBandeja(TransactionCase):
         self.assertEqual(result['tag'], 'soft_reload')
         self.assertFalse(notice.exists() and notice.active, "El aviso queda hecho.")
         self.assertFalse(line.exists(), "El renglón hecho sale de la lista.")
+        # El aviso de otra persona no se marca hecho.
+        other = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today,
+            summary='Aviso de otro 8A', user_id=self.boss_user.id)
+        other.sudo().sgi_cron_key = 'aviso_prueba_otro:%d' % alert.id
+        foreign = self.Pending.with_user(self.user).create({
+            'kind': 'aviso', 'name': 'Aviso de otro', 'employee_id': self.emp.id,
+            'res_model': 'mail.activity', 'res_id': other.id})
+        with self.assertRaises(UserError):
+            foreign.with_user(self.user).action_done_notice()
+        self.assertTrue(other.exists() and other.active)

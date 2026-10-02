@@ -258,40 +258,73 @@ class SgiMyPending(models.TransientModel):
             records['firma'] = env['sign.request.item'].sudo().search(
                 [('partner_id', 'in', users.partner_id.ids), ('state', '=', 'sent'),
                  ('sign_request_id.state', '=', 'sent')], order='create_date')
-        # 57.92.0 (U-03, D-04): avisos de los crons y actividades de las apps
-        # del SGI, vencidos o de los próximos 7 días. Las actividades nativas
-        # siguen existiendo; aquí solo se muestran, sin las que ya tienen
-        # renglón propio.
+        # 57.92.0 (U-03, D-04): avisos de los crons del SGI y actividades de
+        # los modelos ``sgi.*``, vencidos o de los próximos 7 días. Las
+        # actividades nativas siguen existiendo; aquí solo se muestran. De las
+        # apps de NOTICE_MODELS solo los avisos de los crons (con clave).
         Activity = env['mail.activity'].sudo()
         notices = Activity.search(
             [('user_id', 'in', ids), ('date_deadline', '<=', today + timedelta(days=SOON_DAYS)),
-             '|', ('res_model', '=like', 'sgi.%'), ('res_model', 'in', NOTICE_MODELS)],
+             '|', ('res_model', '=like', 'sgi.%'),
+             '&', ('res_model', 'in', NOTICE_MODELS), ('sgi_cron_key', '!=', False)],
             order='date_deadline, id')
         if notices:
-            covered = Activity
-            # Aprobación nativa (Studio): su renglón es «aprobacion».
-            if records.get('aprobacion'):
-                covered |= records['aprobacion'].mapped('mail_activity_id')
-            # Espejo de una acción: su renglón es «accion».
-            covered |= env['sgi.action.line'].sudo().search(
-                [('activity_id', 'in', notices.ids)]).mapped('activity_id')
-            # Los avisos de plazo de una NC con responsables ya salen en su
-            # renglón «nc» (solo las NC donde la persona es responsable).
-            nc_ids = set(records['nc'].ids) if records.get('nc') else set()
-            covered |= notices.filtered(
-                lambda a: a.res_model == 'quality.alert' and a.res_id in nc_ids)
-            has_key = 'sgi_cron_key' in Activity._fields
-
-            def own_row(act):
-                # Acuse pendiente y revisión bienal: renglones «acuse» y
-                # «documento»; «Capturar indicador»: renglón «medicion».
-                key = (act.sgi_cron_key or '') if has_key else ''
-                return (key.startswith('acuse_pendiente:') or key == 'revision_bienal'
-                        or (act.res_model == 'sgi.indicator'
-                            and (act.summary or '').startswith('Capturar indicador ')))
-            notices = notices.filtered(lambda a: a not in covered and not own_row(a))
+            covered = self._sgi_notice_covered(records, notices)
+            notices = notices.filtered(lambda a: a.id not in covered)
         records['aviso'] = notices
         return records
+
+    @api.model
+    def _sgi_notice_covered(self, records, notices):
+        """57.92.0 (U-03): ids de los avisos que ya tienen renglón propio para
+        la misma persona (se compara por destinatario, no por clave)."""
+        env = self.env
+        covered = set()
+        # Aprobación nativa (Studio): su renglón es «aprobacion».
+        if records.get('aprobacion'):
+            covered |= set(records['aprobacion'].mapped('mail_activity_id').ids)
+        # Espejo de una acción: su renglón es «accion».
+        covered |= set(env['sgi.action.line'].sudo().search(
+            [('activity_id', 'in', notices.ids)]).mapped('activity_id').ids)
+        # Mismo registro y misma persona que un renglón de otro tipo (NC,
+        # requisito legal, documento por revisar…).
+        own = set()
+        for kind, recs in records.items():
+            if kind in ('aprobacion', 'solicitud', 'aviso'):
+                continue
+            for rec in recs:
+                for user in self._sgi_row_users(kind, rec):
+                    own.add((user.id, rec._name, rec.id))
+        # Acuse pendiente: el renglón «acuse» es del empleado del acuse.
+        ack_ids = {}
+        # Capturar indicador: el renglón «medicion» es del responsable.
+        indicator_acts = notices.browse()
+        for act in notices:
+            if (act.user_id.id, act.res_model, act.res_id) in own:
+                covered.add(act.id)
+                continue
+            key = act.sgi_cron_key or ''
+            if key.startswith('acuse_pendiente:'):
+                try:
+                    ack_ids[act.id] = int(key.split(':', 1)[1])
+                except ValueError:
+                    pass
+            elif key.startswith('capturar_indicador:') and act.res_model == 'sgi.indicator':
+                indicator_acts |= act
+        if ack_ids:
+            acks = env['sgi.document.ack'].sudo().browse(set(ack_ids.values())).exists()
+            ack_user = {ack.id: ack.employee_id.user_id.id for ack in acks}
+            for act in notices.browse(list(ack_ids)):
+                if ack_user.get(ack_ids[act.id]) == act.user_id.id:
+                    covered.add(act.id)
+        if indicator_acts:
+            indicators = env['sgi.indicator'].sudo().browse(
+                set(indicator_acts.mapped('res_id'))).exists()
+            responsible = {ind.id: ind.responsible_id.id for ind in indicators}
+            for act in indicator_acts:
+                if responsible.get(act.res_id) == act.user_id.id:
+                    covered.add(act.id)
+        return covered
 
     @api.model
     def _sgi_row(self, kind, rec):
@@ -716,10 +749,11 @@ class SgiMyPending(models.TransientModel):
             if self.kind == 'aviso' and self.res_model == 'mail.activity' else False
         if not act:
             raise UserError("El aviso ya no existe.")
-        # La dueña se lee con sudo; el cierre va con los permisos de quien abre.
+        # La dueña se lee con sudo: solo la persona del aviso lo cierra.
         if act.sudo().user_id != self.env.user:
             raise UserError("Solo la persona a quien está asignado el aviso puede marcarlo hecho.")
-        act.action_feedback(feedback="Hecho desde Mis pendientes.")
+        # Sudo con el mismo uid: la nota queda a nombre de quien lo marcó.
+        act.sudo().action_feedback(feedback="Hecho desde Mis pendientes.")
         self.unlink()
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 
