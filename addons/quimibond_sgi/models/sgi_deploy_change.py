@@ -83,9 +83,18 @@ def _git_head(root):
     return None
 
 
-def _changelog_entry(module_path, version):
-    """Texto de la sección «## <versión>» del CHANGELOG del módulo ('' si no
-    hay)."""
+def _version_key(version):
+    """Tupla comparable de una versión ('19.0.57.90.0' → (19, 0, 57, 90, 0))."""
+    try:
+        return tuple(int(part) for part in str(version).split('.'))
+    except ValueError:
+        return ()
+
+
+def _changelog_entry(module_path, version, previous=None):
+    """Texto de las secciones «## <versión>» del CHANGELOG del módulo entre
+    ``previous`` (excluida) y ``version`` (incluida), de la más nueva a la más
+    vieja. Sin ``previous``, solo la de ``version``. '' si no hay."""
     path = os.path.join(module_path or '', 'CHANGELOG.md')
     if not module_path or not os.path.isfile(path):
         return ''
@@ -94,9 +103,15 @@ def _changelog_entry(module_path, version):
             text = handle.read()
     except OSError:
         return ''
-    match = re.search(r'^## %s\b.*?$(.*?)(?=^## |\Z)' % re.escape(version), text,
-                      re.MULTILINE | re.DOTALL)
-    return match.group(1).strip() if match else ''
+    upper, lower = _version_key(version), _version_key(previous) if previous else None
+    sections = []
+    for match in re.finditer(r'^## (\S+)[^\n]*\n(.*?)(?=^## |\Z)', text, re.MULTILINE | re.DOTALL):
+        key = _version_key(match.group(1))
+        if not key:
+            continue
+        if (key == upper) if lower is None else (lower < key <= upper):
+            sections.append(match.group(0).strip())
+    return "\n\n".join(sections)
 
 
 class SgiCronDeployChange(models.AbstractModel):
@@ -109,7 +124,10 @@ class SgiCronDeployChange(models.AbstractModel):
         sin git, los de autor Quimibond."""
         root = _git_root(get_module_path('quimibond_sgi') or '')
         result = {}
-        modules = self.env['ir.module.module'].sudo().search([('state', '=', 'installed')])
+        # 57.90.1: también los que se están actualizando en esta corrida
+        # («to upgrade»); en 57.90.0 la base de versiones los dejó fuera.
+        modules = self.env['ir.module.module'].sudo().search(
+            [('state', 'in', ('installed', 'to upgrade'))])
         for module in modules:
             path = get_module_path(module.name)
             if not path:
@@ -178,7 +196,7 @@ class SgiCronDeployChange(models.AbstractModel):
 
     @api.model
     def _sgi_deploy_request_vals(self, category, owner, name, previous, version, path, commit):
-        entry = _changelog_entry(path, version)
+        entry = _changelog_entry(path, version, previous)
         today = fields.Date.context_today(self)
         reference = "%s %s" % (name, version)
         if commit:
