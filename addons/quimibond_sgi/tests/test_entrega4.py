@@ -207,7 +207,10 @@ class TestEntrega4Groups(TransactionCase):
         self.assertNotIn(draft, Doc.with_user(self.user).search(domain), "Solo vigentes.")
         list_arch = self.env['documents.document'].with_user(self.user).get_view(
             self.env.ref('quimibond_sgi.sgi_current_document_view_list').id, 'list')['arch']
-        self.assertNotIn('sgi_code', list_arch, "Sin la clave del Dropbox (decisión 11).")
+        # 57.98.0 (I-02): la clave nueva (D-02) sí se muestra; la del Dropbox
+        # («Clave anterior») sigue fuera (decisión 11, D-21).
+        self.assertIn('sgi_code', list_arch)
+        self.assertNotIn('sgi_previous_code', list_arch, "Sin la clave del Dropbox (decisión 11).")
         with self.assertRaises(UserError):
             current.with_user(self.other).action_sgi_mark_my_ack_read()
         current.with_user(self.user).action_sgi_mark_my_ack_read()

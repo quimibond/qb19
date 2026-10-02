@@ -13,6 +13,131 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.98.0 — 2026-10-02
+
+**Interfaz** (auditoría 2026-10: I-01, I-02, I-04, I-06 y U-07, puerta Q20;
+es la ficha «57.97.0» del plan general, renumerada porque 57.97.0 fue
+«Cláusulas y revisión por la dirección»). Plan:
+`docs/superpowers/plans/2026-10-02-sgi-57-98-0-interfaz.md`.
+**Ningún dato de negocio cambia en el despliegue.** Sin modelos ni campos
+nuevos, sin ACL y sin migración.
+
+### Agregado
+
+- **Pie del formato controlado en cada hoja** (I-01): layout propio
+  `quimibond_sgi.sgi_report_layout` (por artículo: encabezado con logo y
+  razón social, sin clave; el artículo; y un solo `div.footer`,
+  `quimibond_sgi.sgi_format_page_footer`) con clave, revisión, **fecha de
+  emisión** del documento vigente ligado y **«Página x de y»**. Lo usan 19
+  plantillas de 16 reportes propios: NC, incidente, revisión por la dirección,
+  plan e informe de auditoría, CoA, matrices de cumplimiento, riesgos,
+  competencias y legal, aspectos ambientales, AMEF, LOTO, lista maestra, lista
+  maestra completa, NEWS, retención, permiso de trabajo y ficha de proceso por
+  máquina (esta antes sin pie). Sin mapeo, el pie solo lleva la página; la NC
+  sin folio («no es una no conformidad del SGI») también. Sin fecha de
+  emisión en el documento, el pie no la pinta.
+  `sgi.format.map.sgi_footer_info`, `_sgi_footer_document` y, en el mixin,
+  `_sgi_format_document`.
+- **Diagnóstico del SGI → Documental:** «N reporte(s) del SGI imprimen sin
+  formato controlado: …», con la ruta a «Formatos en documentos de Odoo»
+  (`sgi.format.map._sgi_unmapped_reports` sobre la tabla
+  `SGI_FORMAT_REPORTS`; ruta `formatos_odoo` en `sgi_menu_paths.py`). En el
+  papel no se imprime ningún aviso. Un modelo con solo mapeos con criterio
+  cuenta como mapeado.
+- **SGI → Reportar** (U-07, solo Usuario SGI): «No conformidad», «Casi
+  accidente o incidente» y «Queja o sugerencia» abren la ficha nueva (NC del
+  equipo interno con origen «Proceso», incidente tipo casi accidente,
+  queja del equipo «Quejas y Sugerencias»;
+  `sgi.my.pending.action_sgi_report`). Sin el equipo del SGI avisa en lugar de
+  abrir Calidad o Soporte completos. Entra a `SGI_MENU_ENTRIES` (siete
+  entradas).
+- **SGI → Inicio → Checklists de hoy** (U-07); el de Mantenimiento se queda
+  para quien no es Usuario SGI.
+- **Colores** (I-06): tabla única en el README (sección «Colores») y prueba
+  sobre los `decoration-*` simples de estado de las vistas del módulo, con
+  tres excepciones documentadas.
+- Filtros nuevos «Sin cerrar» (`open`) en permisos de trabajo y revisión por
+  la dirección; en Documentos vigentes, Procedimientos, Instructivos, Formatos
+  y agrupar por tipo.
+
+### Cambiado
+
+- **La app SGI abre en el Tablero para Dirección** (Q20) y en Mis pendientes
+  para los demás: acción del menú raíz `sgi_home_action`
+  (`sgi.my.pending.action_open_home`). No se toca `res.users`.
+- **Documentos vigentes** (I-02): columnas Clave (D-02), Documento (título),
+  Tipo y Proceso, también en el kanban; búsqueda por clave que encuentra
+  también la anterior sin mostrarla (decisión 11); sin los Mi procedimiento;
+  abre con «Míos» agrupado por proceso.
+- **Un solo filtro «Míos»** (I-04, `name="mine"`) en acciones, auditorías,
+  indicadores, mediciones, LOTO, NC (antes `sgi_mine`), actividades (antes
+  `my_activities`), procesos, permisos y Documentos vigentes (antes `my_acks`);
+  «De mis procesos» pasa a `my_processes` en AMEF y riesgos. Filtro por
+  omisión en permisos («Sin cerrar»), actividades («Míos»), AMEF (vigentes),
+  PPAP (en proceso), objetivos (por política), aspectos (significativos),
+  revisión por la dirección («Sin cerrar»), programa de auditoría (este año),
+  Documentos vigentes y evaluación de proveedores (por clasificación);
+  objetivos, revisión y programa llevan ahora su búsqueda explícita.
+- **Menús por rol** (U-07): Entregables, Flujos entre procesos, Matriz de
+  responsabilidades, Puestos y procesos y Fichas de proceso por máquina solo
+  para Auditor, Jefe MAST, Dirección y Dueño de proceso.
+- **Colores:** borrador en gris (plan de control, política, ficha por máquina,
+  documentos, lista maestra completa, AMEF); pendiente en amarillo (rutinas
+  del Dropbox, CoA, mediciones); medición capturada y CoA adjunto en azul;
+  permiso cerrado en verde; la actividad sin método de medición, gris también
+  en su ficha. El renglón «pendiente y sin decisión» de las rutinas y su
+  fecha límite siguen en rojo.
+- `quimibond_sgi.sgi_format_footer` sigue siendo el pie **dentro de la hoja**
+  (reportes nativos de venta, compra, entrega y OP, etiquetas de lote y
+  `quimibond_ventas_presupuesto`), ahora con la fecha de emisión.
+- README: «Menú» con las siete entradas y lo que ve cada perfil. Manuales de
+  operador, Dirección, Jefe MAST y jefe de área al día.
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó las opciones por omisión de Q1 a Q13 (2026-10-02):
+
+- (Q1, puerta Q20) La app abre en el Tablero solo para «Dirección de
+  Operaciones (SGI)»; Jefe MAST, Auditor, dueños y demás abren en Mis
+  pendientes. Acción en el menú raíz, sin acción de inicio en los usuarios.
+- (Q2) Layout propio del SGI en los reportes propios (logo y razón social, sin
+  la dirección del layout de la empresa); los nativos conservan el de la
+  empresa con el pie dentro de la hoja.
+- (Q3) Solo la ficha de proceso por máquina gana pie; 8D, etiquetas,
+  solicitud de desarrollo, eficiencias y responsiva de EPP quedan igual.
+- (Q4) El aviso de reportes sin formato va en el Diagnóstico, no en el papel.
+- (Q5) Documentos vigentes abre con «Míos» agrupado por proceso.
+- (Q6) Los diez «Mis …» pasan a «Míos»; se quedan «Me toca autorizar», «Mis
+  acuses pendientes» y «Mi departamento».
+- (Q7) Filtro por omisión en las diez acciones; Eficiencias no.
+- (Q8) Tabla de colores con CoA pendiente en amarillo y dos excepciones
+  (eficiencias «Cerrada, por recibir» azul; actividad sin método gris).
+- (Q9) Los cinco catálogos de Procesos solo para dueño, Jefe MAST, Dirección
+  y Auditor.
+- (Q10) «Reportar» entre Inicio y Procesos con tres entradas.
+- (Q11) «Checklists de hoy» se agrega en Inicio y se conserva en
+  Mantenimiento.
+- (Q12) Sin la carpeta «Consultar» en esta entrega.
+- (Q13) La ficha sale como 57.98.0; «Salud del SGI» toma 57.99.0.
+
+**Pruebas:** `test_interfaz` (14 casos: pie por referencia y por registro,
+página y emisión, un pie por artículo, ninguna plantilla con los dos layouts,
+Diagnóstico; Documentos vigentes; un solo «Míos» y filtros por omisión que
+existen; colores; Reportar, catálogos por rol, checklists en Inicio y
+arranque de Dirección). Ajustadas: `test_entrega4.test_10` (la clave nueva se
+muestra; la del Dropbox no) y los textos de `test_cleanup_45` (siete
+entradas). `test_menu_tree` cambia por el árbol.
+
+**Verificación pendiente en el build de Odoo.sh** (no se puede sin Odoo):
+- PDF de una NC de 2+ hojas y de dos revisiones por la dirección juntas: el
+  pie con clave, emisión y «Página x de y» en cada hoja, el de cada registro
+  en sus hojas (`web.minimal_layout` toma el pie por índice de artículo).
+- Que el pie de una línea cabe en el margen inferior del formato de papel de
+  la empresa (si no, `paperformat_sgi_carta` en esos reportes).
+- Tocar la app como Dirección (Tablero) y como Usuario SGI (Mis pendientes):
+  el cliente web usa la acción del menú raíz.
+- Documentos vigentes abre agrupado por proceso con «Míos».
+
 ## 19.0.57.97.0 — 2026-10-02
 
 **Cláusulas y revisión por la dirección** (auditoría 2026-10: N-05 y N-09; es

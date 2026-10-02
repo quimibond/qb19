@@ -15,8 +15,13 @@ Lo mismo que cualquier Usuario SGI, más:
 |---|---|
 | **SGI → Inicio → Mi equipo** | Su equipo en organigrama, con el estado SGI de cada persona (pendientes, atrasos, firma de su procedimiento) |
 | **SGI → Inicio → Eficiencias de mi área** | La hoja mensual de eficiencias (solo con el grupo Captura de eficiencias) |
+| **SGI → Procesos → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
 | **SGI → Procesos → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
 | **SGI → Dirección → Riesgos y oportunidades** | Los riesgos de sus procesos |
+
+En las listas, el filtro **Míos** muestra lo suyo (acciones, NC, mediciones,
+actividades, procesos, permisos…) y, en AMEF y riesgos, **De mis procesos**
+muestra los de los procesos de los que usted es dueño.
 
 ## 2. Su día
 

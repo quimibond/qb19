@@ -143,10 +143,10 @@
                 <field name="product_tmpl_id"/>
                 <field name="max_npr"/>
                 <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
                 <field name="state" widget="badge"
-                       decoration-info="state == 'borrador'"
                        decoration-success="state == 'vigente'"
-                       decoration-muted="state == 'obsoleto'"/>
+                       decoration-muted="state in ('borrador', 'obsoleto')"/>
             </list>
         </field>
     </record>
@@ -165,7 +165,7 @@
                 <filter name="diseno" string="DFMEA" domain="[('fmea_type','=','diseno')]"/>
                 <!-- V-M03 (57.43.0): «Míos». -->
                 <separator/>
-                <filter name="mine" string="De mis procesos" domain="[('process_id.owner_id.user_id', '=', uid)]"/>
+                <filter name="my_processes" string="De mis procesos" domain="[('process_id.owner_id.user_id', '=', uid)]"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'fmea_type'}"/>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
@@ -180,6 +180,8 @@
         <field name="res_model">sgi.fmea</field>
         <field name="view_mode">list,form,activity</field>
         <field name="search_view_id" ref="sgi_fmea_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los vigentes. -->
+        <field name="context">{'search_default_vigente': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Cree el primer AMEF</p>
             <p>El NPR se calcula solo (S × O × D); un NPR ≥ 100 exige acción TERMINADA y re-evaluación con NPR post a la baja (o justificada) antes de que el AMEF pueda marcarse vigente.</p>

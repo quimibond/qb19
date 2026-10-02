@@ -135,6 +135,8 @@
         <field name="res_model">sgi.ppap</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_ppap_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los expedientes en proceso. -->
+        <field name="context">{'search_default_en_proceso': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Cree el primer PPAP</p>
             <p>Los 18 elementos AIAG se generan solos, marcados Presentar (S) o Retener (R) según el nivel 1–5 del expediente. No se puede marcar Enviado con elementos S pendientes ni Aprobado sin el PSW.</p>

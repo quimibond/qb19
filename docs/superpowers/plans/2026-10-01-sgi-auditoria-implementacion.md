@@ -43,8 +43,8 @@ Leer antes de empezar: `CLAUDE.md` (raíz), `addons/quimibond_sgi/README.md` (gl
 | 57.94.0 | SGI en planta (kiosco con PIN) | U-01, U-08, I-03, I-05 | 57.92.0 | Q7: tabletas y captura de PIN por RH |
 | 57.95.0 → **entregada como 57.96.0** (2026-10-02) | SST y ambiente | N-06, N-07 | 57.93.0 | Q9 (MOC), Q10 (matriz ambiental), Q11 (contratistas) |
 | 57.96.0 → **entregada como 57.97.0** (2026-10-02) | Cláusulas y revisión por la dirección | N-05, N-09 | — | Q13 (requisitos de cliente) |
-| 57.97.0 → 57.98.0 o siguiente libre | Interfaz | I-01, I-02, I-04, I-06, U-07 | 57.92.0 | Q20 (arranque de Dirección) |
-| 57.98.0 | Salud del SGI (tablero de adopción) | Sección 8 del reporte, D-01 | 57.93.0, 57.94.0 | Metas del tablero |
+| 57.97.0 → **entregada como 57.98.0** (2026-10-02) | Interfaz | I-01, I-02, I-04, I-06, U-07 | 57.92.0 | Q20 (arranque de Dirección) |
+| 57.98.0 → 57.99.0 o siguiente libre | Salud del SGI (tablero de adopción) | Sección 8 del reporte, D-01 | 57.93.0, 57.94.0 | Metas del tablero |
 | 57.99.0 → **entregada como 57.95.0** (2026-10-02) | Rendimiento y robustez | K-08, K-05, D-06 | 57.92.0 | Ninguna |
 | 57.100.0 | Integridad, competencias, PPAP, IA | K-04, N-13, N-14, D7 | 57.96.0 | Q12 (PPAP), Q16 (IA) |
 
@@ -60,7 +60,10 @@ ambiente» (ficha 57.95.0) salió como **19.0.57.96.0**
 (`docs/superpowers/plans/2026-10-02-sgi-57-96-0-sst-ambiente.md`); «Cláusulas y
 revisión por la dirección» (ficha 57.96.0) salió como **19.0.57.97.0**
 (`docs/superpowers/plans/2026-10-02-sgi-57-97-0-clausulas-revision.md`);
-«Interfaz» (ficha 57.97.0) toma 57.98.0 o el siguiente libre.
+«Interfaz» (ficha 57.97.0) salió como **19.0.57.98.0**
+(`docs/superpowers/plans/2026-10-02-sgi-57-98-0-interfaz.md`); «Salud del
+SGI» (ficha 57.98.0) toma 57.99.0 (libre: la ficha 57.99.0 salió como
+57.95.0) o el siguiente libre.
 
 ---
 
@@ -1170,13 +1173,13 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
 - **Alcance:** N-05 (cláusulas 6.1.2, 6.1.3, 6.1.4, 7.1.5, 8.1.2, 8.1.3, 8.1.4, 9.1.2 como datos nuevos con xmlid; no tocar las CLI sin xmlid, A-029; clasificación y cláusula obligatorias al pasar la NC a Seguimiento), N-09 (cargadores de incidentes, contexto, aspectos y mejoras; filtro `company_id` en el scrap, `sgi_management_review.py:344`; tipo `acuerdo` en `sgi.action.line`; conclusiones 9.3.3 obligatorias; acuerdos abiertos pasan a la siguiente revisión).
 - **Pruebas:** carga de entradas, cierre con acuerdos abiertos, NC sin cláusula no pasa a Seguimiento.
 
-### 57.97.0 — Interfaz (→ 57.98.0 o siguiente libre)
+### 57.97.0 — Interfaz (entregada como 57.98.0)
 
 - **Puerta:** Q20 (arranque de Dirección en el Tablero).
 - **Alcance:** I-01 (`sgi_format_footer` a `div.footer` con página x de y y fecha de emisión), I-02 (Documentos vigentes con clave, tipo, proceso y filtro por omisión), I-04 (filtro «Míos» único y `search_default` en 10 acciones), I-06 (tabla de colores y prueba sobre `decoration-*`), U-07 (menús por rol, «Reportar», «Checklists de hoy» bajo Inicio).
 - **Pruebas:** `test_menu_tree` actualizado, prueba de colores, render de un reporte con el pie.
 
-### 57.98.0 — Salud del SGI
+### 57.98.0 — Salud del SGI (→ 57.99.0 o siguiente libre)
 
 - **Puerta:** metas del tablero aprobadas por Dirección.
 - **Alcance:** los 10 indicadores de la sección 8 del reporte como `sgi.indicator` de nivel Dirección en E2 con `calc_mode` propio (procesos vigentes, personas activas en 30 días, planta identificable, acuses al día, mediciones validadas a tiempo, rojos con respuesta, NC eficaces, avisos vencidos y su concentración, programa de auditoría cumplido, formatos migrados utilizables) y un correo semanal a Dirección.
@@ -1198,4 +1201,4 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
 ## Seguimiento
 
 - Cada entrega se cierra con: build verde, PR a `main`, PR a `quimibond`, `odoo-update quimibond_sgi`, verificación de solo lectura y una línea en este plan con la fecha.
-- El tablero de 57.98.0 se revisa cada semana con Dirección; antes de esa versión, las cifras de la sección 2 del reporte se re-miden a mano cada dos semanas con las consultas del reporte.
+- El tablero de «Salud del SGI» (57.99.0) se revisa cada semana con Dirección; antes de esa versión, las cifras de la sección 2 del reporte se re-miden a mano cada dos semanas con las consultas del reporte.

@@ -247,10 +247,10 @@
         <field name="model">documents.document</field>
         <field name="arch" type="xml">
             <!-- V-B13 (57.80.0): multi_edit para mover responsable o próxima revisión de varios. -->
+            <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
             <list string="Documentos" multi_edit="1"
-                  decoration-muted="sgi_state == 'obsoleto'"
-                  decoration-warning="sgi_state == 'piloto'"
-                  decoration-info="sgi_state == 'borrador'">
+                  decoration-muted="sgi_state in ('obsoleto', 'borrador')"
+                  decoration-warning="sgi_state == 'piloto'">
                 <field name="sgi_title"/>
                 <field name="sgi_code"/>
                 <field name="name" optional="hide"/>
@@ -261,7 +261,7 @@
                 <field name="sgi_state" widget="badge"
                        decoration-success="sgi_state == 'vigente'"
                        decoration-warning="sgi_state == 'piloto'"
-                       decoration-info="sgi_state == 'borrador'"/>
+                       decoration-muted="sgi_state == 'borrador'"/>
                 <field name="sgi_next_review_date" widget="remaining_days" optional="show"
                        invisible="sgi_state == 'obsoleto'"/>
                 <field name="sgi_retention_years" optional="hide"/>

@@ -30,22 +30,27 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **Eficiencias de personal** — grupos: hr.group_hr_user; bajo `hr.menu_hr_root`
   - **Hojas mensuales** — `sgi.staff.efficiency`
   - **Análisis por empleado** — `sgi.staff.efficiency.line`
-- **SGI** — grupos: quimibond_sgi.group_sgi_user, quimibond_sgi.group_sgi_auditor
+- **SGI** — `sgi.my.pending`; grupos: quimibond_sgi.group_sgi_user, quimibond_sgi.group_sgi_auditor
   - **Inicio**
     - **Mis pendientes** — `sgi.my.pending`
     - **Mi procedimiento** — `sgi.my.procedure`
     - **Documentos vigentes** — `documents.document`
     - **Mis indicadores** — `sgi.indicator`
     - **Mi equipo** — `hr.employee.public`
+    - **Checklists de hoy** — `maintenance.request`
     - **Eficiencias de mi área** — `sgi.staff.efficiency`; grupos: quimibond_sgi.group_sgi_efficiency_capture
+  - **Reportar** — grupos: quimibond_sgi.group_sgi_user
+    - **No conformidad** — `sgi.my.pending`
+    - **Casi accidente o incidente** — `sgi.my.pending`
+    - **Queja o sugerencia** — `sgi.my.pending`
   - **Procesos**
     - **Mapa de procesos** — `sgi.process`
     - **Actividades** — `sgi.process.activity`
-    - **Entregables** — `sgi.deliverable`
-    - **Flujos entre procesos** — `sgi.process.flow`
-    - **Matriz de responsabilidades** — `sgi.activity.exec.stat`
-    - **Puestos y procesos** — `hr.job`
-    - **Fichas de proceso por máquina** — `sgi.machine.sheet`
+    - **Entregables** — `sgi.deliverable`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
+    - **Flujos entre procesos** — `sgi.process.flow`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
+    - **Matriz de responsabilidades** — `sgi.activity.exec.stat`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
+    - **Puestos y procesos** — `hr.job`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
+    - **Fichas de proceso por máquina** — `sgi.machine.sheet`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Del Dropbox a Odoo**
       - **Buscador por clave anterior** — `sgi.dropbox.key`
       - **Procedimientos anteriores** — `documents.document`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
@@ -126,7 +131,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (106)
+## Acciones (110)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -186,6 +191,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_fmea_action` | act_window | AMEF | `sgi.fmea` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_fmea_views.xml` |
 | `quimibond_sgi.sgi_format_map_action` | act_window | Formatos en documentos de Odoo | `sgi.format.map` | list,form | sí | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
 | `quimibond_sgi.sgi_health_record_action` | act_window | Estudios de higiene y exámenes médicos | `sgi.health.record` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
+| `quimibond_sgi.sgi_home_action` | server | SGI | `sgi.my.pending` |  |  | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
 | `quimibond_sgi.sgi_hr_employee_gaps_action` | act_window | Empleados sin puesto o sin correo | `hr.employee` | list,form | sí | `addons/quimibond_sgi/views/sgi_floor_views.xml` |
 | `quimibond_sgi.sgi_hr_job_action_roles` | act_window | Puestos y procesos | `hr.job` | sgi_diagram,list,form | sí | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `quimibond_sgi.sgi_improvement_action` | server | Mejora continua | `project.task` |  |  | `addons/quimibond_sgi/views/sgi_improvement_views.xml` |
@@ -223,6 +229,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_process_activity_action` | act_window | Actividades | `sgi.process.activity` | list,kanban,sgi_diagram,hierarchy,form | sí | `addons/quimibond_sgi/views/sgi_process_procedure_views.xml` |
 | `quimibond_sgi.sgi_process_flow_list_action` | act_window | Flujos entre procesos | `sgi.process.flow` | list,form | sí | `addons/quimibond_sgi/views/sgi_process_views.xml` |
 | `quimibond_sgi.sgi_quality_alert_action_pareto` | act_window | Pareto de alertas de calidad | `quality.alert` | pivot,graph,list | sí | `addons/quimibond_sgi/views/sgi_dashboard_views.xml` |
+| `quimibond_sgi.sgi_report_incident_action` | server | Casi accidente o incidente | `sgi.my.pending` |  |  | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
+| `quimibond_sgi.sgi_report_nc_action` | server | No conformidad | `sgi.my.pending` |  |  | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
+| `quimibond_sgi.sgi_report_voice_action` | server | Queja o sugerencia | `sgi.my.pending` |  |  | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
 | `quimibond_sgi.sgi_risk_action` | act_window | Riesgos y oportunidades | `sgi.risk` | list,kanban,sgi_diagram,pivot,form,activity | sí | `addons/quimibond_sgi/views/sgi_risk_views.xml` |
 | `quimibond_sgi.sgi_risk_category_action` | act_window | Categorías de riesgo | `sgi.risk.category` | list | sí | `addons/quimibond_sgi/views/sgi_risk_views.xml` |
 | `quimibond_sgi.sgi_satisfaction_action` | server | Satisfacción del cliente | `survey.user.input` |  |  | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |

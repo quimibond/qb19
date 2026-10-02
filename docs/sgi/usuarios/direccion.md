@@ -7,6 +7,9 @@ toca, pero **no** tiene los permisos de configuración del Jefe MAST y SGI.
 
 ## 1. Qué ve al entrar
 
+Al tocar la app **SGI** se abre directamente el **Tablero** (desde 57.98.0).
+Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
+
 | Menú | Para qué |
 |---|---|
 | **SGI → Dirección → Tablero** | Indicadores de dirección, rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
@@ -15,12 +18,14 @@ toca, pero **no** tiene los permisos de configuración del Jefe MAST y SGI.
 | **SGI → Dirección → Riesgos y oportunidades / Requisitos legales / Partes interesadas / Satisfacción del cliente** | Contexto, riesgos y cumplimiento |
 | **SGI → Administración SGI** | Consulta de documentos, indicadores, aprobaciones y diagnóstico |
 | **SGI → Inicio** | Sus propios pendientes y su procedimiento |
+| **SGI → Reportar** | Una no conformidad, un casi accidente o incidente, o una queja o sugerencia (abre la ficha nueva) |
 
 ## 2. Su día
 
 ### 2.1 Revisar el tablero
 
-1. **SGI → Dirección → Tablero**. Se calcula al abrirlo.
+1. Toque la app **SGI** (o **SGI → Dirección → Tablero**). Se calcula al
+   abrirlo.
 2. Revise primero **Rojos sin causa ni plan** y **Acuerdos de la RxD
    vencidos**: son lo que está detenido.
 3. **Hoja de cálculo** abre el tablero en hoja de cálculo para analizarlo.

@@ -94,9 +94,11 @@
                 <field name="name"/>
                 <field name="frequency" optional="show"/>
                 <field name="previous_owner" optional="show"/>
+                <!-- 57.98.0 (I-06): pendiente en amarillo; el renglón «pendiente y
+                     sin decisión» y su fecha límite siguen en rojo. -->
                 <field name="state" widget="badge"
                        decoration-success="state in ('cubierta', 'reemplazada')"
-                       decoration-danger="state == 'pendiente'"
+                       decoration-warning="state == 'pendiente'"
                        decoration-muted="state == 'eliminada'"/>
                 <field name="activity_numbers"/>
                 <field name="reason" optional="hide"/>
@@ -419,7 +421,7 @@
                               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner">
                             <field name="sgi_legacy_routine_ids" readonly="not sgi_can_edit_transition"
                                    context="{'default_procedure_id': id}">
-                                <list decoration-danger="state == 'pendiente'">
+                                <list decoration-warning="state == 'pendiente'">
                                     <field name="n"/>
                                     <field name="name"/>
                                     <field name="frequency" optional="show"/>

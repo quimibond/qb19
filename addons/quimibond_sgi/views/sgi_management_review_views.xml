@@ -199,6 +199,9 @@
                 <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
                 <filter name="state_realizada" string="Realizada" domain="[('state', '=', 'realizada')]"/>
                 <filter name="state_cerrada" string="Cerrada" domain="[('state', '=', 'cerrada')]"/>
+                <!-- 57.98.0 (I-04): la lista abre con las revisiones sin cerrar. -->
+                <separator/>
+                <filter name="open" string="Sin cerrar" domain="[('state', '!=', 'cerrada')]"/>
                 <separator/>
                 <filter name="filter_date" string="Fecha" date="date"/>
                 <group>
@@ -213,6 +216,9 @@
         <field name="name">Revisión por la dirección</field>
         <field name="res_model">sgi.management.review</field>
         <field name="view_mode">list,sgi_diagram,form</field>
+        <!-- 57.98.0 (I-04): abre con las revisiones sin cerrar. -->
+        <field name="search_view_id" ref="sgi_management_review_view_search"/>
+        <field name="context">{'search_default_open': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Cree la revisión por la dirección</p>
             <p>El botón Cargar entradas llena las 18 entradas de la norma con los datos reales del periodo y trae los acuerdos abiertos de revisiones anteriores. Los acuerdos se vuelven acciones con seguimiento.</p>

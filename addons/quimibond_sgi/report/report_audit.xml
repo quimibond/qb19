@@ -14,7 +14,10 @@
     <template id="report_audit_plan_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_audit_plan'"/>
                     <div class="page">
                         <h2 class="text-center">Plan de auditoría</h2>
                         <table class="table table-sm table-bordered mt-3">
@@ -37,11 +40,6 @@
                         </table>
                         <h4>Auditados</h4>
                         <p t-out="', '.join(doc.auditee_ids.mapped('name'))"/>
-                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
-                        <t t-call="quimibond_sgi.sgi_format_footer">
-                            <t t-set="sgi_rec" t-value="doc"/>
-                            <t t-set="sgi_fmt_ref" t-value="'format_ref_audit_plan'"/>
-                        </t>
                     </div>
                 </t>
             </t>
@@ -62,7 +60,10 @@
     <template id="report_audit_report_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_audit_report'"/>
                     <div class="page">
                         <h2 class="text-center">Informe de auditoría</h2>
                         <h4>1. Alcance</h4>
@@ -154,11 +155,6 @@
                                 <td style="width:34%; vertical-align:bottom;">Jefe MAST y SGI</td>
                             </tr>
                         </table>
-                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
-                        <t t-call="quimibond_sgi.sgi_format_footer">
-                            <t t-set="sgi_rec" t-value="doc"/>
-                            <t t-set="sgi_fmt_ref" t-value="'format_ref_audit_report'"/>
-                        </t>
                     </div>
                 </t>
             </t>

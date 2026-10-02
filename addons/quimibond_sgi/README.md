@@ -52,13 +52,38 @@ Así se escriben los términos del SGI en etiquetas, ayudas y avisos
 | Sin sufijo «SGI» dentro de la app SGI | «Áreas SGI», «(SGI)» | En fichas de otras apps (contacto, empleado, equipo…), la pestaña se llama «SGI» |
 | Descartar | Volver, Cancelar | Botón para salir de un asistente sin hacer nada |
 
+## Colores
+
+Un estado se pinta igual en todas las listas y pastillas del SGI
+(auditoría I-06, 57.98.0). `tests/test_interfaz.py` lo revisa en las vistas
+del módulo (las expresiones simples sobre campos de estado).
+
+| Color | `decoration-` | Estados |
+|---|---|---|
+| Gris | `muted` | borrador, cancelado, obsoleto |
+| Azul | `info` | abierto, en curso |
+| Amarillo | `warning` | pendiente, por vencer |
+| Rojo | `danger` | vencido, rechazado |
+| Verde | `success` | cerrado, vigente, validado |
+
+Excepciones (con su razón, en la prueba): la hoja de eficiencias «Cerrada,
+por recibir» es azul (espera a RH), la actividad sin método de medición es
+gris y, en «Rutina por rutina», el renglón pendiente sin decisión y su fecha
+límite siguen en rojo. Los estados intermedios propios de cada ficha
+(solicitado, capturado, adjunto…) van en azul.
+
 ## Menú
 
-Cinco entradas bajo **SGI**: Inicio (Mis pendientes, Mi procedimiento,
-Documentos vigentes, Mis indicadores, Mi equipo), Procesos (mapa, actividades,
-matriz de responsabilidades, «Del Dropbox a Odoo»), Mejora (NC, reclamaciones,
-acciones, mejora continua, auditorías), Seguridad y ambiente, Dirección y
-Administración SGI. El árbol completo con grupos está en
+Siete entradas bajo **SGI** (57.98.0): Inicio (Mis pendientes, Mi
+procedimiento, Documentos vigentes, Mis indicadores, Mi equipo, Checklists de
+hoy), Reportar (no conformidad, casi accidente o incidente, queja o
+sugerencia: cada una abre la ficha nueva), Procesos (mapa y actividades para
+todos; entregables, flujos, matriz de responsabilidades, puestos y procesos y
+fichas por máquina solo para dueño de proceso, Jefe MAST, Dirección y Auditor;
+«Del Dropbox a Odoo»), Mejora (NC, reclamaciones, acciones, mejora continua,
+auditorías), Seguridad y ambiente, Dirección y Administración SGI. Al tocar la
+app, Dirección abre en el Tablero y los demás en Mis pendientes (acción del
+menú raíz, `sgi_home_action`). El árbol completo con grupos está en
 `tools/sgi_menu_tree.txt`, y `tests/test_menu_tree.py` lo compara con la base.
 
 ## Grupos

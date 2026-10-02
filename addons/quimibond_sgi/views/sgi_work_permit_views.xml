@@ -124,7 +124,8 @@
         <field name="arch" type="xml">
             <list string="Permisos de trabajo de alto riesgo"
                   decoration-info="state == 'solicitado'"
-                  decoration-muted="state in ('cerrado', 'cancelado')">
+                  decoration-success="state == 'cerrado'"
+                  decoration-muted="state == 'cancelado'">
                 <field name="folio"/>
                 <field name="name"/>
                 <field name="work_type"/>
@@ -179,8 +180,12 @@
                 <filter name="authorized" string="Autorizados" domain="[('state', '=', 'autorizado')]"/>
                 <filter name="expired_open" string="Vencidos sin cerrar"
                         domain="[('expired', '=', True)]"/>
+                <!-- 57.98.0 (I-04): la lista abre con los permisos sin cerrar. -->
                 <separator/>
-                <filter name="mine" string="Mis solicitudes" domain="[('requester_id', '=', uid)]"/>
+                <filter name="open" string="Sin cerrar"
+                        domain="[('state', 'in', ('borrador', 'solicitado', 'autorizado'))]"/>
+                <separator/>
+                <filter name="mine" string="Míos" domain="[('requester_id', '=', uid)]"/>
                 <filter name="to_me" string="Me toca autorizar" domain="[('state', '=', 'solicitado'), ('area_manager_id', '=', uid), ('area_approved_by_id', '=', False)]"/>
                 <group>
                     <filter name="group_type" string="Tipo de trabajo" context="{'group_by': 'work_type'}"/>
@@ -199,6 +204,8 @@
         <field name="mobile_view_mode">kanban</field>
 
         <field name="search_view_id" ref="sgi_work_permit_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los permisos sin cerrar. -->
+        <field name="context">{'search_default_open': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Solicite el primer permiso de trabajo</p>
             <p>ISO 45001 8.1: antes de un trabajo en alturas, en espacio confinado, en caliente o

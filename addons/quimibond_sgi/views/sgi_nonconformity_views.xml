@@ -262,7 +262,7 @@
                 <field name="sgi_deviation"/>
                 <field name="sgi_process_id"/>
                 <field name="team_id"/>
-                <filter name="sgi_mine" string="Mis NC"
+                <filter name="mine" string="Míos"
                         domain="[('sgi_responsible_ids', 'in', uid)]"/>
                 <separator/>
                 <filter name="sgi_open" string="Abiertas"
