@@ -310,6 +310,10 @@ class SgiMyPending(models.TransientModel):
         ack_ids = {}
         # Capturar indicador: el renglón «medicion» es del responsable.
         indicator_acts = notices.browse()
+        # 57.95.0 (K-08): «Documentos por leer y firmar» de la persona: sus
+        # renglones son los «acuse» (la clave lleva su empleado; el ancla es
+        # el documento de su acuse más viejo, que puede ya estar firmado).
+        own_ack_acts = {}
         for act in notices:
             if (act.user_id.id, act.res_model, act.res_id) in own:
                 covered.add(act.id)
@@ -320,6 +324,11 @@ class SgiMyPending(models.TransientModel):
                     ack_ids[act.id] = int(key.split(':', 1)[1])
                 except ValueError:
                     pass
+            elif key.startswith('acuses_propios:'):
+                try:
+                    own_ack_acts[act.id] = int(key.split(':', 1)[1])
+                except ValueError:
+                    pass
             elif key.startswith('capturar_indicador:') and act.res_model == 'sgi.indicator':
                 indicator_acts |= act
         if ack_ids:
@@ -327,6 +336,12 @@ class SgiMyPending(models.TransientModel):
             ack_user = {ack.id: ack.employee_id.user_id.id for ack in acks}
             for act in notices.browse(list(ack_ids)):
                 if ack_user.get(ack_ids[act.id]) == act.user_id.id:
+                    covered.add(act.id)
+        if own_ack_acts:
+            emps = env['hr.employee'].sudo().browse(set(own_ack_acts.values())).exists()
+            emp_user = {emp.id: emp.user_id.id for emp in emps}
+            for act in notices.browse(list(own_ack_acts)):
+                if emp_user.get(own_ack_acts[act.id]) == act.user_id.id:
                     covered.add(act.id)
         if indicator_acts:
             indicators = env['sgi.indicator'].sudo().browse(
@@ -708,6 +723,24 @@ class SgiMyPending(models.TransientModel):
             if act and act.sgi_cron_key == 'rh_empleados_incompletos' and act.res_model == 'hr.department' \
                     and self.env.user.has_group('hr.group_hr_user'):
                 return self.env['hr.employee']._sgi_hr_gaps_action(act.res_id)
+            # 57.95.0 (K-08): el aviso de acuses de un equipo abre los acuses
+            # pendientes que cuenta (los de esa gente que pasaron la misma
+            # fecha límite del cron). Solo con Usuario SGI, que lee acuses;
+            # sin el grupo, el registro del aviso, como antes.
+            if act and act.sgi_cron_kind == 'acuses_equipo' \
+                    and self.env.user.has_group('quimibond_sgi.group_sgi_user'):
+                try:
+                    owner_id = int((act.sgi_cron_key or '').split(':', 1)[1])
+                except (IndexError, ValueError):
+                    owner_id = False
+                if owner_id:
+                    acks = self.env['sgi.cron']._sgi_ack_team_acks(owner_id)
+                    return {
+                        'type': 'ir.actions.act_window', 'name': "Acuses pendientes del equipo",
+                        'res_model': 'sgi.document.ack', 'view_mode': 'list,form',
+                        'views': [(self.env.ref('quimibond_sgi.sgi_document_ack_view_list').id, 'list'),
+                                  (self.env.ref('quimibond_sgi.sgi_document_ack_view_form').id, 'form')],
+                        'domain': [('id', 'in', acks.ids)], 'target': 'current'}
             if act and act.res_model and act.res_id:
                 return {'type': 'ir.actions.act_window', 'res_model': act.res_model,
                         'res_id': act.res_id, 'view_mode': 'form', 'target': 'current'}

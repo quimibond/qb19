@@ -6,10 +6,11 @@ robustez.
   gente sin usuario (antes, uno por acuse); el Jefe MAST solo recibe los de
   jefes sin usuario o sin departamento y los de personas sin jefe. Ningún
   aviso va sobre la ficha del empleado (``hr.employee``), que no lee quien no
-  es de RH: el de la persona va sobre su acuse pendiente más viejo
-  (``acuses_propios:<empleado>``) y el del jefe sobre su departamento
-  (``acuses_equipo:<jefe>``); sin departamento, o sin jefe, sobre el acuse
-  más viejo del grupo, al Jefe MAST.
+  es de RH: el de la persona va sobre el documento de su acuse pendiente más
+  viejo (``acuses_propios:<empleado>``; el acuse no lleva actividades) y el
+  del jefe sobre su departamento (``acuses_equipo:<jefe>``); sin
+  departamento, o sin jefe, sobre el documento del acuse más viejo del grupo,
+  al Jefe MAST.
 - Clase del aviso indexada (``sgi_cron_kind``) para el barrido de episodios.
 - Los filtros de Mi equipo leen un resumen guardado por empleado: no
   recalculan Mis pendientes de toda la empresa en cada búsqueda.
@@ -127,9 +128,10 @@ class TestAvisosDeAcuse(_RendimientoCase):
         self.assertNotIn("Con usuario RR", notice.note, "Quien tiene usuario recibe el suyo.")
         mine = self._notice('acuses_propios', self.own).filtered('active')
         self.assertEqual(len(mine), 1)
-        self.assertFalse(self.Activity.search([
+        on_docs = self.Activity.search([
             ('res_model', '=', 'documents.document'), ('res_id', 'in', (self.doc_a | self.doc_b).ids),
-            ('sgi_cron_kind', 'in', ACK_KINDS)]), "Ya no hay avisos de acuse sobre el documento.")
+            ('sgi_cron_kind', 'in', ACK_KINDS)])
+        self.assertEqual(on_docs, mine, "Ya no hay uno por acuse sobre el documento: solo el propio.")
         self.assertFalse(self.Activity.search([
             ('res_model', '=', 'hr.employee'), ('sgi_cron_kind', 'in', ACK_KINDS)]),
             "Ningún aviso de acuse sobre fichas de empleado (no las lee quien no es de RH).")
@@ -149,12 +151,14 @@ class TestAvisosDeAcuse(_RendimientoCase):
         nodept = self._notice('acuses_equipo', self.boss_nodept).filtered('active')
         self.assertEqual(nodept.user_id, self.mast,
                          "Jefe con usuario pero sin departamento: al Jefe MAST.")
-        self._assert_anchor(nodept, oldest, "Sin departamento: sobre el acuse más viejo del grupo.")
+        self._assert_anchor(nodept, oldest.document_id,
+                            "Sin departamento: sobre el documento del acuse más viejo del grupo.")
         self.assertIn("Jefe sin departamento RR", nodept.summary)
         self.assertIn("2", nodept.summary)
         alone = self._notice('acuses_equipo', self.orphan).filtered('active')
         self.assertEqual(alone.user_id, self.mast, "Sin jefe: al Jefe MAST.")
-        self._assert_anchor(alone, orphan_ack, "Sin jefe ni departamento: sobre su acuse.")
+        self._assert_anchor(alone, orphan_ack.document_id,
+                            "Sin jefe ni departamento: sobre el documento de su acuse.")
         self.assertIn("Operador sin jefe RR", alone.summary)
 
     def test_03_con_usuario_un_aviso_propio_que_mis_pendientes_no_repite(self):
@@ -163,7 +167,8 @@ class TestAvisosDeAcuse(_RendimientoCase):
         self.Cron.cron_documents()
         notice = self._notice('acuses_propios', self.own).filtered('active')
         self.assertEqual(len(notice), 1)
-        self._assert_anchor(notice, oldest, "Sobre su acuse pendiente más viejo, que sí puede leer.")
+        self._assert_anchor(notice, oldest.document_id,
+                            "Sobre el documento de su acuse pendiente más viejo, que sí puede leer.")
         self.assertEqual(notice.user_id, self.own_user)
         self.assertIn("2", notice.summary)
 
@@ -177,7 +182,7 @@ class TestAvisosDeAcuse(_RendimientoCase):
                          "Ya tiene sus renglones «acuse»: el aviso no se repite.")
         # Firma el más viejo: el mismo aviso sigue (clave por persona, no por
         # acuse), baja a 1 y Mis pendientes tampoco lo repite aunque su ancla
-        # ya no sea un acuse pendiente.
+        # ya no tenga acuse pendiente.
         oldest.action_mark_read()
         self.Cron.cron_documents()
         episode = self._notice('acuses_propios', self.own)
