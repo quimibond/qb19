@@ -1336,6 +1336,10 @@ class SgiActionLine(models.Model):
             if vals.get('alert_id'):
                 vals = dict(vals, effectiveness_round=Alert.browse(vals['alert_id']).sudo()
                             .sgi_ineffective_count)
+            elif vals.get('incident_id'):
+                # 57.96.0 (N-06): la ronda de eficacia también para incidentes.
+                vals = dict(vals, effectiveness_round=self.env['sgi.incident'].browse(
+                    vals['incident_id']).sudo().sgi_ineffective_count)
             prepared.append(vals)
         lines = super().create(prepared)
         # 57.93.0 (K-03): a un registro cerrado no se le agregan acciones.
@@ -1350,6 +1354,12 @@ class SgiActionLine(models.Model):
             line.alert_id.sudo().activity_ids.filtered(
                 lambda a: (a.summary or '').startswith("Registrar acción correctiva nueva")
             ).action_feedback(feedback="Se registró la acción correctiva «%s»." % line.name)
+        # 57.96.0 (N-06): la acción nueva atiende el aviso del «No eficaz» del incidente.
+        for line in lines.filtered(lambda l: l.incident_id and l.effectiveness_round
+                                   and l.effectiveness_round >= l.incident_id.sudo().sgi_ineffective_count):
+            line.incident_id.sudo().activity_ids.filtered(
+                lambda a: (a.summary or '').startswith("Registrar acción nueva del incidente")
+            ).action_feedback(feedback="Se registró la acción «%s»." % line.name)
         return lines
 
     def write(self, vals):
