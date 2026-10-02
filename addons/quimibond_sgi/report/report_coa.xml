@@ -12,7 +12,10 @@
     <template id="report_coa_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
                     <t t-set="checks" t-value="doc._sgi_coa_checks()"/>
                     <div class="page">
                         <h2 class="text-center">
@@ -84,11 +87,6 @@
                                 <br/><hr/>Autorizó / Approved by
                             </div>
                         </div>
-                        <!-- Pie «formato controlado» (C-006); antes era una herencia
-                             propia en sgi_format_footer.xml (A-008, 57.22.0). -->
-                        <t t-call="quimibond_sgi.sgi_format_footer">
-                            <t t-set="sgi_rec" t-value="doc"/>
-                        </t>
                     </div>
                 </t>
             </t>

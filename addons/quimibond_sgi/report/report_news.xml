@@ -10,7 +10,10 @@
 
     <template id="report_news_document">
         <t t-call="web.html_container">
-            <t t-call="web.external_layout">
+            <t t-call="quimibond_sgi.sgi_report_layout">
+                <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                <t t-set="sgi_rec" t-value="docs[:1]"/>
+                <t t-set="sgi_fmt_ref" t-value="'format_ref_news'"/>
                 <div class="page">
                     <h2 class="text-center">NEWS — Cambios documentales del SGI</h2>
                     <table class="table table-sm table-bordered mt-3">
@@ -34,11 +37,6 @@
                             </tr>
                         </tbody>
                     </table>
-                    <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
-                    <t t-call="quimibond_sgi.sgi_format_footer">
-                        <t t-set="sgi_rec" t-value="docs[:1]"/>
-                        <t t-set="sgi_fmt_ref" t-value="'format_ref_news'"/>
-                    </t>
                 </div>
             </t>
         </t>
