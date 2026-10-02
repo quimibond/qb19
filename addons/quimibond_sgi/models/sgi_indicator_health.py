@@ -27,7 +27,7 @@ from .sgi_calendar import sgi_local_date, sgi_local_datetime_utc, sgi_today
 from .sgi_guard import sgi_require_system
 from .sgi_health_const import (
     EXCLUDED_USERS_PARAM, FORMAT_USE_DAYS, HEALTH_MODES, HEALTH_PRIVATE_MODELS,
-    HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, IDLE_DAYS, MAIL_USERS_PARAM, NC_OPEN_DAYS,
+    HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, IDLE_DAYS, LATE_WINDOW_DAYS, MAIL_USERS_PARAM, NC_OPEN_DAYS,
     NC_WINDOW_DAYS, PEOPLE_DAYS, RED_WINDOW_MONTHS, VALIDATION_PREFILTER_DAYS,
     VALIDATION_WINDOW_DAYS, param_ids)
 
@@ -303,13 +303,22 @@ class SgiIndicatorHealth(models.Model):
         return out
 
     # ---- 8. avisos vencidos ---------------------------------------------------
-    def _detail_salud_avisos(self, date_from, date_to):
-        activities = self.env['mail.activity'].sudo().search([
-            ('date_deadline', '<=', date_to),
-            '|', ('sgi_cron_key', '!=', False), ('res_model', '=like', 'sgi.%')])
+    @api.model
+    def _sgi_health_overdue_activities(self, date_to, users=None):
+        """Avisos del SGI vencidos al cierre de ``date_to`` (vencimiento ese
+        día o antes), de la empresa del SGI (D-03). Una sola regla para SG-08
+        y para la tabla por dueño de proceso."""
+        domain = [('date_deadline', '<=', date_to),
+                  '|', ('sgi_cron_key', '!=', False), ('res_model', '=like', 'sgi.%')]
+        if users is not None:
+            domain = [('user_id', 'in', users.ids)] + domain
+        activities = self.env['mail.activity'].sudo().search(domain)
         # D-03: la actividad es de la empresa del registro sobre el que está.
-        activities = self.env['sgi.my.pending']._sgi_notices_in_company(
+        return self.env['sgi.my.pending']._sgi_notices_in_company(
             activities, self._sgi_health_company())
+
+    def _detail_salud_avisos(self, date_from, date_to):
+        activities = self._sgi_health_overdue_activities(date_to)
         counts = Counter(a.user_id.id for a in activities if a.user_id)
         top, total, pct = self._sgi_health_concentration(counts)
         note = ("Concentración: el %s %% (%d de %d) los tiene una sola persona "
@@ -378,8 +387,15 @@ class SgiIndicatorHealth(models.Model):
             if menu and menu.active:
                 action = menu.action
                 action = action.sudo().exists() if action else action
-                if action and action._name == 'ir.actions.act_window':
-                    status = self._sgi_health_model_used(action.sudo().res_model, start, company, cache)
+                if not action:
+                    # Menú sin acción: no lleva a ningún formulario.
+                    status = False
+                elif action._name == 'ir.actions.act_window':
+                    model = action.res_model
+                    # Un modelo que ya no existe no es utilizable; un
+                    # transitorio o una pantalla calculada no tiene qué contar.
+                    status = self._sgi_health_model_used(model, start, company, cache) \
+                        if model in self.env else False
                 else:
                     status = None
                 if status is None:
@@ -459,6 +475,15 @@ class SgiIndicatorMeasureHealth(models.Model):
         help="Día en que la medición pasó a «Validado». Con él se mide si se validó a "
              "tiempo (3 días hábiles desde la captura).")
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Una medición que nace validada también lleva su fecha."""
+        today = sgi_today(self.env)
+        for vals in vals_list:
+            if vals.get('state') == 'validado' and not vals.get('sgi_validated_date'):
+                vals['sgi_validated_date'] = today
+        return super().create(vals_list)
+
     def write(self, vals):
         """57.99.0: guarda el día en que la medición PASA a validada (SG-05).
         Re-validar una ya validada no lo mueve."""
@@ -521,19 +546,20 @@ class SgiProcessHealth(models.Model):
         late = Counter()
         last = {}
         if users:
-            for user, count in self.env['mail.activity'].sudo()._read_group(
-                    [('user_id', 'in', users.ids), ('date_deadline', '<', today),
-                     '|', ('sgi_cron_key', '!=', False), ('res_model', '=like', 'sgi.%')],
-                    ['user_id'], ['__count']):
-                overdue[user.id] = count
+            Indicator = self.env['sgi.indicator']
+            # Misma regla que SG-08: vencidos al cierre de ayer.
+            overdue.update(activity.user_id.id for activity in
+                           Indicator._sgi_health_overdue_activities(today - timedelta(days=1), users))
+            # Ventana: solo periodos de los últimos LATE_WINDOW_DAYS días; lo
+            # más viejo sin validar ya lo cuenta el Diagnóstico.
             measures = self.env['sgi.indicator.measure'].sudo().search([
                 ('state', '=', 'capturado'), ('indicator_id.active', '=', True),
+                ('period_date', '>=', today - timedelta(days=LATE_WINDOW_DAYS)),
                 ('indicator_id.responsible_id', 'in', users.ids),
                 ('indicator_id.calc_mode', 'not in', HEALTH_MODES)])
             for measure in measures:
                 if measure._sgi_validate_due() < today:
                     late[measure.indicator_id.responsible_id.id] += 1
-            Indicator = self.env['sgi.indicator']
             start, end = Indicator._sgi_health_bounds(today, IDLE_DAYS)
             last = Indicator._sgi_health_touches(start, end)
         for process in self:
@@ -611,7 +637,10 @@ class SgiCronHealth(models.AbstractModel):
                 'code': indicator.code or '',
                 'name': indicator.name or '',
                 'value': indicator.sgi_health_week_value or "Sin dato",
-                'target': indicator._sgi_health_fmt(indicator.target_objective),
+                # La meta se lee como tope (≤) si más bajo es mejor y como
+                # piso (≥) si más alto es mejor.
+                'target': "%s %s" % ("≤" if indicator.direction == 'lower_better' else "≥",
+                                     indicator._sgi_health_fmt(indicator.target_objective)),
                 'semaphore': semaphores.get(semaphore, "—"),
                 'red': semaphore == 'rojo',
                 'color': _SEM_COLOR.get(semaphore, _NO_COLOR),

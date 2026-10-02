@@ -5,6 +5,7 @@ from markupsafe import Markup
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_health_const import HEALTH_MODES
 from .sgi_risk import SGI_HIGH_ATTENTION
 from .sgi_menu_paths import sgi_menu_path
 
@@ -519,8 +520,10 @@ class SgiManagementReview(models.Model):
 
     def _sgi_load_red_measures(self):
         self.ensure_one()
+        # 57.99.0: los rojos de salud del SGI no entran a la revisión.
         return self.env['sgi.indicator.measure'].search([
             ('semaphore', '=', 'rojo'),
+            ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
             ('period_date', '>=', self.period_from),
             ('period_date', '<=', self.period_to),
         ])

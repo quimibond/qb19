@@ -41,6 +41,8 @@ NC_WINDOW_DAYS = 90
 NC_OPEN_DAYS = 60
 FORMAT_USE_DAYS = 90
 IDLE_DAYS = 90
+# Validaciones atrasadas por dueño: solo mediciones de periodos recientes.
+LATE_WINDOW_DAYS = 120
 EXCLUDED_USERS_PARAM = 'quimibond_sgi.health_excluded_user_ids'
 MAIL_USERS_PARAM = 'quimibond_sgi.health_mail_user_ids'
 

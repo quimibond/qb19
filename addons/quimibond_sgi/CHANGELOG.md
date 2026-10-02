@@ -50,19 +50,23 @@ plan general, renumerada porque 57.98.0 fue «Interfaz»). Plan:
   indicador) y, por el hallazgo D-01, la tabla **Por dueño de proceso**:
   avisos del SGI vencidos, validaciones atrasadas y días sin movimiento en
   el SGI del dueño (`sgi.process.sgi_health_*`, un solo cálculo por
-  Tablero; 91 = más de 90; vacío si el dueño no tiene usuario).
+  Tablero; 91 = más de 90; vacío si el dueño no tiene usuario). Los avisos
+  vencidos siguen la misma regla que SG-08 (vencidos al cierre de ayer, de
+  la empresa del SGI); las validaciones atrasadas solo miran mediciones de
+  los últimos 120 días.
 - **Correo semanal a Dirección** (acción planificada
   `sgi_cron_health_weekly` «SGI: Salud del SGI (correo semanal a
   Dirección)», lunes 14:00 UTC = 08:00 de México, activa; plantilla
   `mail_template_sgi_health_weekly`; `sgi.cron.cron_health_weekly_mail`):
   mide la semana pasada si falta y manda valor, meta, semáforo, semana
-  anterior y nota de cada indicador, y la tabla por dueño. Un correo por
+  anterior y nota de cada indicador (la meta con «≥» o, si más bajo es
+  mejor, «≤»), y la tabla por dueño. Un correo por
   persona en su savepoint. Destinatarios: Dirección de Operaciones (SGI) y
   `quimibond_sgi.health_mail_user_ids`, activos, internos, con correo y con
   la empresa del SGI. Solo conteos; sin datos de salud ni de nómina. 29
   acciones planificadas del SGI.
 - `sgi.indicator.measure.sgi_validated_date` («Validada el»): el día en que
-  la medición pasa a validada; re-validar no la mueve. Las validadas antes
+  la medición pasa a validada (o nace validada); re-validar no la mueve. Las validadas antes
   de 57.99.0 quedan sin fecha y SG-05 las cuenta a tiempo.
 - Parámetros `quimibond_sgi.health_excluded_user_ids` (quién no cuenta en
   SG-02, además de OdooBot, el administrador técnico y las cuentas sin
@@ -73,6 +77,8 @@ plan general, renumerada porque 57.98.0 fue «Interfaz»). Plan:
 
 - Los indicadores de salud no ocupan los 12 lugares de «Indicadores de
   dirección» del Tablero (tienen su página).
+- La revisión por la dirección no carga los rojos de los indicadores de
+  salud en «Indicadores en rojo» (`_sgi_load_red_measures`).
 - Sus mediciones no aparecen en «Validar medición» de Mis pendientes, no
   piden causa y plan, no escalan a Dirección y un «sin dato» no agenda
   «Indicador no calculó». Tampoco las valida la validación masiva de la
@@ -135,7 +141,9 @@ Jose aceptó las opciones por omisión de Q1 a Q24 (2026-10-02):
   cualquier estado del programa; realizada = auditoría en «Informe» o
   «Cerrada» (o renglón cerrado); solo auditorías internas.
 - (Q18) Formatos cuyo destino es una pantalla sin registros que contar
-  cuentan como utilizables; la nota dice cuántos son.
+  cuentan como utilizables; la nota dice cuántos son. Un menú activo sin
+  acción, o con una acción sobre un modelo que ya no existe, no es
+  utilizable (cuenta en «Sin registros»).
 - (Q19) E2-02 convive con SG-09; esta entrega no lo toca.
 - (Q20) Página propia «Salud del SGI» en el Tablero.
 - (Q21) Las mediciones de salud no se validan.

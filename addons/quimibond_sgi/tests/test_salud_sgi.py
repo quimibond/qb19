@@ -12,6 +12,7 @@ import os
 import re
 import time
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from dateutil.relativedelta import relativedelta
 
@@ -365,7 +366,19 @@ class TestSaludSgi(TransactionCase):
                 'name': name, 'parent_id': root.id,
                 'action': 'ir.actions.act_window,%d' % action.id})
         menu_used = _menu('Destino salud con uso', 'res.partner')
-        menu_idle = _menu('Destino salud sin uso', 'res.country')
+        # «Sin uso»: un catálogo sin altas en la ventana de 90 días (en la
+        # copia de producción, cualquiera de estos; se elige el primero vacío).
+        start, _end = self.ind['SG-10']._sgi_health_bounds(self.until_today[1], 90)
+        idle_model = next((name for name in ('res.country', 'res.country.state', 'res.currency',
+                                             'res.lang', 'res.country.group')
+                           if not self.env[name].with_context(active_test=False).search_count(
+                               [('create_date', '>=', start)], limit=1)), None)
+        if not idle_model:
+            self.skipTest("Ningún catálogo sin altas en 90 días en esta base.")
+        menu_idle = _menu('Destino salud sin uso', idle_model)
+        # Un menú activo sin acción no lleva a ningún formulario: no es utilizable.
+        menu_empty = self.env['ir.ui.menu'].create({'name': 'Destino salud sin acción',
+                                                    'parent_id': root.id})
         self.env['res.partner'].create({'name': 'Contacto salud SGI'})
 
         def _doc(code, cls, **extra):
@@ -382,13 +395,16 @@ class TestSaludSgi(TransactionCase):
         _doc('F-P-Z99-93', 'a', sgi_migration_target='Ventas > Pedidos')
         _doc('F-P-Z99-94', 'a', sgi_odoo_menu_id=menu_used.id)
         _doc('F-P-Z99-95', 'a', sgi_odoo_menu_id=menu_idle.id)
+        _doc('F-P-Z99-96', 'a', sgi_odoo_menu_id=menu_empty.id)
         num_after, den_after, out = self._detail('SG-10')
         self.assertEqual(num_after - num_before, 2)
-        self.assertEqual(den_after - den_before, 5)
+        self.assertEqual(den_after - den_before, 6)
         self.assertEqual(out['model'], 'documents.document')
-        for label in ("Worksheet archivado", "Solo texto", "Sin registros en 90 días"):
-            self.assertEqual(_note_count(out['note'], label) - _note_count(note_before, label), 1,
-                             label)
+        for label, delta in (("Worksheet archivado", 1), ("Solo texto", 1),
+                             ("Sin registros en 90 días", 2),
+                             ("Pantalla sin registros que contar (cuenta como utilizable)", 0)):
+            self.assertEqual(_note_count(out['note'], label) - _note_count(note_before, label),
+                             delta, label)
 
     # ---- 3. no ensucian lo que miden -----------------------------------------
     def test_12_salud_no_pide_validacion_plan_ni_aviso(self):
@@ -411,6 +427,16 @@ class TestSaludSgi(TransactionCase):
         automatic = self._indicator('TST-SA12B', calc_mode='otif_ventas')
         status, _reason = automatic._sgi_calc_diagnose({'state': 'sin_dato', 'note': 'x'})
         self.assertNotEqual(status, 'ok', "Un «sin dato» de otro indicador sí es un aviso.")
+        # La revisión por la dirección no carga los rojos de salud.
+        review = self.env['sgi.management.review'].create(
+            {'period_from': date(2020, 1, 1), 'period_to': date(2020, 1, 31)})
+        reds = review._sgi_load_red_measures()
+        self.assertIn(normal, reds)
+        self.assertNotIn(health, reds)
+        # Una medición que nace validada también lleva su fecha.
+        born = self.Measure.create({'indicator_id': other.id, 'period_date': date(2020, 2, 1),
+                                    'state': 'validado', 'value': 95})
+        self.assertEqual(born.sgi_validated_date, self.today)
 
     def test_13_tablero_salud_y_duenos(self):
         user = new_test_user(self.env, login='zsa_duenio', groups=USER)
@@ -477,10 +503,18 @@ class TestSaludSgi(TransactionCase):
         self.env['sgi.process'].create({'code': 'Z99M', 'name': 'Proceso correo salud',
                                         'owner_id': owner.id, 'company_id': self.company.id})
         self._employee('Empleado Sin Usuario Salud')
-        sent = self.env['sgi.cron'].cron_health_weekly_mail()
-        self.assertIn(director.id, sent)
-        self.assertIn(extra.id, sent)
-        self.assertNotIn(outsider.id, sent)
+        Cron = self.env['sgi.cron']
+        recipients = Cron._sgi_health_mail_users()
+        self.assertIn(director, recipients)
+        self.assertIn(extra, recipients)
+        self.assertNotIn(outsider, recipients)
+        # El envío se limita a los usuarios de la prueba: en la copia de
+        # producción Dirección tiene miembros reales (por grupos implícitos)
+        # que no deben recibir un correo de prueba.
+        mine_only = director | extra
+        with patch.object(type(Cron), '_sgi_health_mail_users', lambda self: mine_only):
+            sent = Cron.cron_health_weekly_mail()
+        self.assertEqual(set(sent), set(mine_only.ids))
         measures = self.Measure.search([('indicator_id', 'in', [i.id for i in self.ind.values()]),
                                         ('period_date', '=', self.prev_monday)])
         self.assertEqual(len(measures), 10, "Mide la semana pasada de los diez.")
@@ -497,7 +531,8 @@ class TestSaludSgi(TransactionCase):
             self.assertIn(text, body)
         self.assertNotIn('Empleado Sin Usuario Salud', body)
         # Idempotente: una segunda corrida no mide de nuevo.
-        self.env['sgi.cron'].cron_health_weekly_mail()
+        with patch.object(type(Cron), '_sgi_health_mail_users', lambda self: mine_only):
+            Cron.cron_health_weekly_mail()
         self.assertEqual(self.Measure.search_count([
             ('indicator_id', 'in', [i.id for i in self.ind.values()]),
             ('period_date', '=', self.prev_monday)]), 10)

@@ -40,7 +40,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `semaphore` | Selection | Semáforo | Verde, amarillo o rojo según el valor y las metas. Se calcula solo. |  |  | compute `_compute_semaphore`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:1039` |
 | `sgi_can_validate` | Boolean | Puede validar |  |  |  | compute `_compute_sgi_can_validate`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1055` |
 | `sgi_nc_suppressed` | Boolean | NC omitida (fuente apagada) | La medición ameritaba NC pero la fuente «Indicador en semáforo rojo» estaba desactivada. Se reintenta sola en cuanto se reactive. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1057` |
-| `sgi_validated_date` | Date | Validada el | Día en que la medición pasó a «Validado». Con él se mide si se validó a tiempo (3 días hábiles desde la captura). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:457` |
+| `sgi_validated_date` | Date | Validada el | Día en que la medición pasó a «Validado». Con él se mide si se validó a tiempo (3 días hábiles desde la captura). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:473` |
 | `small_sample` | Boolean | Muestra chica | Menos casos que el mínimo (quimibond_sgi.indicator_min_sample): se mide, pero no abre NC. |  |  | compute `_compute_small_sample`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:385` |
 | `source_info` | Char | Fuente del dato |  |  |  | related `indicator_id.source_info`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1030` |
 | `source_type` | Selection | Origen del dato | Si el dato es automático o se captura. |  |  | related `indicator_id.source_type`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1027` |
@@ -63,5 +63,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `action_validate` | Una medición sin dato no se valida: no hay nada que confirmar y validarla la convertiría en un cero rojo. |
 | `action_view_evidence` | Los modos de «indicadores 2» no caben en un dominio de fecha: su evidencia son los registros guardados en la medición (o los del periodo, calculados ahora, si la medición no los guardó). |
 | `action_view_records` | Abre los registros guardados en la medición (la lista que explica el valor), no una consulta nueva. |
-| `create` | — |
+| `create` | Una medición que nace validada también lleva su fecha. |
 | `write` | 57.99.0: guarda el día en que la medición PASA a validada (SG-05). Re-validar una ya validada no lo mueve. |
