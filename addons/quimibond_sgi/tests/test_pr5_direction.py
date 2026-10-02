@@ -75,6 +75,9 @@ class TestPr5Direction(TransactionCase):
         self.env['sgi.management.review.agreement'].create({
             'review_id': review.id, 'name': 'Comprar el medidor de energía',
             'responsible_id': self.owner_user.id, 'deadline': date.today() - timedelta(days=3)})
+        # 57.97.0 (N-09): las conclusiones 9.3.3 son obligatorias para marcarla realizada.
+        review.write({'conclusion_suitability': 'Conveniente', 'conclusion_adequacy': 'Adecuado',
+                      'conclusion_effectiveness': 'Eficaz', 'output_needs': 'Sin cambios'})
         review.action_mark_done()
         agreement = review.agreement_ids
         line = agreement.action_line_id
