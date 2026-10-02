@@ -133,3 +133,4 @@ from . import test_vistas_pulido_45
 from . import test_formatos_bloque3
 from . import test_indicadores_5790
 from . import test_candados_evidencia
+from . import test_usted
