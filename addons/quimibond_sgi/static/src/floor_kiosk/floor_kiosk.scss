@@ -1,0 +1,46 @@
+// 57.94.0 «SGI en planta»: tarjetas y teclas grandes para el dedo.
+.o_sgi_kiosk {
+    background: var(--o-view-background-color, #fff);
+
+    .o_sgi_kiosk_grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+        gap: 0.75rem;
+    }
+    .o_sgi_kiosk_tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.25rem;
+        min-height: 11rem;
+        padding: 0.75rem;
+    }
+    .o_sgi_kiosk_avatar {
+        width: 6rem;
+        height: 6rem;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+    .o_sgi_kiosk_keypad {
+        display: grid;
+        grid-template-columns: repeat(3, 6rem);
+        gap: 0.75rem;
+        .o_sgi_kiosk_key {
+            height: 5rem;
+            font-size: 1.75rem;
+        }
+    }
+    .o_sgi_kiosk_menu {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+        gap: 1rem;
+        .btn {
+            min-height: 7rem;
+            font-size: 1.5rem;
+        }
+    }
+    .o_sgi_kiosk_viewer {
+        min-height: 70vh;
+        width: 100%;
+    }
+}

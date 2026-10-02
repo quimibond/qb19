@@ -217,6 +217,11 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'web.assets_backend': [
             'quimibond_sgi/static/src/diagram/**/*',
             'quimibond_sgi/static/src/my_procedure/**/*',
+            # 57.94.0 (U-01): pantalla «SGI en planta».
+            'quimibond_sgi/static/src/floor_kiosk/**/*',
+        ],
+        'web.assets_tests': [
+            'quimibond_sgi/static/tests/tours/**/*',
         ],
     },
     'installable': True,

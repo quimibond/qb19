@@ -26,6 +26,14 @@
               web_icon="quimibond_sgi,static/description/icon.png"
               groups="quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor"/>
 
+    <!-- 57.94.0 (U-01): app «SGI en planta» de las tabletas de planta. Va fuera
+         del árbol «SGI» a propósito (la cuenta de la tableta no ve el menú SGI);
+         por eso no está en tools/sgi_menu_tree.txt. -->
+    <menuitem id="menu_sgi_floor_root" name="SGI en planta" sequence="91"
+              web_icon="quimibond_sgi,static/description/icon.png"
+              action="sgi_floor_kiosk_action"
+              groups="quimibond_sgi.group_sgi_floor_tablet,quimibond_sgi.group_sgi_manager"/>
+
     <!-- ============================================================
          1. Inicio (todos): la persona y su equipo.
          ============================================================ -->
