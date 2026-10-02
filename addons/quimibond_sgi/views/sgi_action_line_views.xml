@@ -34,7 +34,7 @@
                 <button name="action_mark_done" type="object"
                         string="Terminar" icon="fa-check"
                         invisible="date_done"
-                        confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
+                        confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. Si es una acción correctiva, capture antes la evidencia. ¿La acción está realmente terminada?"/>
             </list>
         </field>
     </record>
@@ -98,7 +98,7 @@
                     <button name="action_mark_done" type="object"
                             string="Terminar" class="btn-primary"
                             invisible="date_done"
-                            confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
+                            confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. Si es una acción correctiva, capture antes la evidencia. ¿La acción está realmente terminada?"/>
                     <button name="action_open_origin" type="object"
                             string="Abrir origen" icon="fa-external-link"/>
                     <field name="state" widget="statusbar"
@@ -122,6 +122,11 @@
                             <field name="progress" widget="selection_badge"/>
                             <field name="date_done"/>
                         </group>
+                    </group>
+                    <group string="Evidencia">
+                        <field name="evidence_note"
+                               placeholder="Qué demuestra que se hizo: orden, documento, registro…"/>
+                        <field name="evidence_attachment_ids" widget="many2many_binary"/>
                     </group>
                     <group invisible="1">
                         <field name="alert_id"/>

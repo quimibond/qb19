@@ -30,6 +30,18 @@ class MailActivity(models.Model):
         lines = self.env['sgi.action.line'].sudo().search([
             ('activity_id', 'in', self.ids), ('date_done', '=', False),
         ])
+        # 57.93.0 (N-02): la actividad espejo de una correctiva sin evidencia
+        # solo se marca hecha con archivos; esos archivos quedan como evidencia.
+        # El candado vale para el usuario real aunque aquí se escriba con sudo.
+        if lines and not self.env.user._is_superuser():
+            missing = lines.filtered(lambda l: l._sgi_needs_evidence() and not l._sgi_has_evidence())
+            if missing and not attachment_ids:
+                raise UserError(
+                    "La acción correctiva «%s» necesita evidencia: adjunte el archivo al marcar "
+                    "hecha la actividad, o capture la evidencia en la acción."
+                    % ", ".join(missing.mapped('name')))
+            if missing:
+                missing.write({'evidence_attachment_ids': [(4, att_id) for att_id in attachment_ids]})
         res = super()._action_done(feedback=feedback, attachment_ids=attachment_ids)
         if lines:
             lines.with_context(sgi_activity_done=True).write(
@@ -958,6 +970,15 @@ class SgiActionLine(models.Model):
         ('100', "100%"),
     ], string="Avance", default='0',
         help="Avance de la acción según el responsable.")
+    # 57.93.0 (N-02, H-B1.4): una correctiva se termina con evidencia.
+    evidence_note = fields.Text(
+        string="Evidencia",
+        help="Qué demuestra que la acción se hizo: número de orden, documento, registro o foto. Una "
+             "acción correctiva no se termina sin evidencia (esta nota o un archivo).")
+    evidence_attachment_ids = fields.Many2many(
+        'ir.attachment', 'sgi_action_line_evidence_rel', 'line_id', 'attachment_id',
+        string="Archivos de evidencia",
+        help="Fotos, registros o documentos que demuestran la acción.")
     state = fields.Selection([
         ('abierta', "Abierta"),
         ('vencida', "Vencida"),
@@ -1039,6 +1060,32 @@ class SgiActionLine(models.Model):
                 raise ValidationError(
                     "La acción «%s» está al %s%%: para terminarla, el avance debe ser 100%%."
                     % (line.name, line.progress or '0'))
+
+    def _sgi_needs_evidence(self):
+        """57.93.0 (N-02): las correctivas piden evidencia al terminarse."""
+        self.ensure_one()
+        return self.action_type == 'correctiva'
+
+    def _sgi_has_evidence(self):
+        """Nota, archivo de evidencia o archivo en el chatter de la acción."""
+        self.ensure_one()
+        return bool((self.evidence_note or '').strip() or self.evidence_attachment_ids
+                    or self.sudo().message_attachment_count)
+
+    def _sgi_check_evidence(self):
+        """57.93.0 (N-02, H-B1.4): una acción correctiva no se da por
+        terminada sin evidencia. Solo el sistema (superusuario: OdooBot,
+        crons, migraciones) queda exento; un sudo() que conserva al usuario
+        no (Mis pendientes, el espejo del chatter)."""
+        if self.env.user._is_superuser():
+            return
+        missing = self.filtered(
+            lambda l: l.date_done and l._sgi_needs_evidence() and not l._sgi_has_evidence())
+        if missing:
+            raise UserError(
+                "Una acción correctiva no se da por terminada sin evidencia. Abra la acción y "
+                "escriba en «Evidencia» qué lo demuestra (orden, documento, registro) o adjunte "
+                "el archivo: %s" % ", ".join(missing.mapped('name')))
 
     @staticmethod
     def _sgi_done_vals(vals):
@@ -1168,6 +1215,8 @@ class SgiActionLine(models.Model):
                             .sgi_ineffective_count)
             prepared.append(vals)
         lines = super().create(prepared)
+        # 57.93.0 (N-02): una correctiva que nace terminada también trae evidencia.
+        lines.filtered('date_done')._sgi_check_evidence()
         lines._sgi_sync_activity()
         # 57.93.0 (N-02): la correctiva nueva atiende el aviso del «No eficaz».
         for line in lines.filtered(lambda l: l.action_type == 'correctiva' and l.alert_id
@@ -1183,7 +1232,13 @@ class SgiActionLine(models.Model):
         # 57.93.0 (N-02): la ronda de eficacia solo la cambia el sistema.
         if 'effectiveness_round' in vals and not sgi_bypass_allowed(self.env):
             vals = {k: v for k, v in vals.items() if k != 'effectiveness_round'}
+        # 57.93.0 (N-02): el candado de evidencia corre al pasar a terminada,
+        # por cualquier vía (botón, lista editable de la NC, chatter). Lo ya
+        # terminado no se vuelve a revisar.
+        finishing = self.filtered(lambda l: not l.date_done) if vals.get('date_done') \
+            else self.browse()
         res = super().write(vals)
+        finishing._sgi_check_evidence()
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:
             done = self.filtered('date_done')
