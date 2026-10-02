@@ -124,7 +124,8 @@ calendario del SGI no hay hoja).
 
 | No puede… | Pídalo a… |
 |---|---|
-| Cerrar una NC sin causa raíz, acciones terminadas y verificación de eficacia | Complete lo que falta; es el candado de la norma, no un error |
+| Cerrar una NC sin causa raíz, acciones terminadas (las correctivas, con evidencia) y verificación de eficacia **Eficaz** | Complete lo que falta; es el candado de la norma, no un error. La cierran el dueño del proceso o el Jefe MAST |
+| Modificar una NC ya cerrada | El Jefe MAST; el dueño del proceso puede reabrirla |
 | Cancelar una NC | Pulse **Cancelar** con el motivo: la cancelación la aprueba el Jefe MAST y SGI |
 | Cambiar una actividad directamente | Use **Proponer cambio** |
 | Ver exámenes médicos o salarios | Son solo de Salud ocupacional y de RH |
@@ -140,7 +141,9 @@ en [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
 ## 6. Preguntas frecuentes
 
 - **«No me deja cerrar la NC.»** Falta la causa raíz, una acción sin fecha de
-  término o la verificación de eficacia. En una NC mayor, además, los 5
+  término, la acción correctiva no tiene evidencia (una nota o un archivo) o
+  la verificación de eficacia no dice **Eficaz** o se registró antes de la
+  fecha programada. En una NC mayor, además, los 5
   porqués y confirmar que la lección se aplicó al AMEF, al plan de control o
   al documento.
 - **«Me llegó una actividad que no entiendo.»** Ábrala: siempre apunta al

@@ -131,9 +131,16 @@ ya publicado, revise en **Acuses de lectura** que tenga el suyo.
 - Etapas: Abierta, Seguimiento, Cerrada, Cancelada. Plazos por etapa
   (contención, causa raíz, plan) en días hábiles desde que se abre (Ajustes →
   SGI → No Conformidades y AMEF).
-- Candados de cierre: causa raíz, acciones terminadas y verificación de
-  eficacia; en NC mayor, además los 5 porqués y la lección aplicada. Una NC
-  de reclamación no sale de Abierta sin contención.
+- Candados de cierre: causa raíz, acciones terminadas (las correctivas, con
+  evidencia: una nota o un archivo) y verificación de eficacia con resultado
+  **Eficaz**, registrada en la fecha programada o después; en NC mayor,
+  además los 5 porqués y la lección aplicada. Si la verificación sale **No
+  eficaz**, la NC regresa a Seguimiento y pide una acción correctiva nueva.
+  Una NC de reclamación no sale de Abierta sin contención.
+- Solo cierran la NC el dueño del proceso o usted. Ya cerrada, solo usted la
+  modifica (también sus acciones terminadas); el dueño del proceso puede
+  reabrirla cambiando solo la etapa. Una NC no se crea directamente cerrada
+  ni cancelada.
 - **Cancelar** siempre con motivo; si la pide otra persona, usted la aprueba.
 - **Cierre forzado (Jefe MAST):** con motivo, queda en el historial.
 - **Fuentes de NC automáticas** (Configuración): cada automatismo que levanta
