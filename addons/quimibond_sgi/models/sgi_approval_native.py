@@ -23,6 +23,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
 from .sgi_catalog import SGI_RECORD_RELATIVES
+from .sgi_guard import sgi_require_system
 
 _logger = logging.getLogger(__name__)
 
@@ -450,7 +451,7 @@ class SgiActivityRoleApproval(models.Model):
         if buttons and not self._sgi_button_supported():
             raise UserError(
                 "La aprobación por botón de Odoo la mantiene el módulo «Quimibond SGI - Aprobaciones "
-                "de Studio» (quimibond_sgi_studio), que no está instalado. Instálalo o cambia el renglón "
+                "de Studio» (quimibond_sgi_studio), que no está instalado. Instálelo o cambie el renglón "
                 "a «Solicitud en Aprobaciones» o «Firma en Sign».")
         self._sgi_sync_approval_rule()
         return True
@@ -472,6 +473,7 @@ class SgiActivityRoleApproval(models.Model):
     def cron_sgi_sync_approvals(self):
         """Cada noche: aprobadores al día (cambian las personas de los
         puestos) y reglas archivadas si la actividad o el rol ya no existen."""
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         roles = self.sudo().search(self._sgi_native_approval_domain())
         for role in roles:
             try:

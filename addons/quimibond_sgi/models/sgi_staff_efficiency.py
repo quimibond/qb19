@@ -152,12 +152,12 @@ class SgiStaffEfficiency(models.Model):
             if sheet.state != 'borrador':
                 continue
             if not sheet.line_ids:
-                raise UserError("La hoja %s no tiene empleados: carga los del área antes de cerrarla." % sheet.name)
+                raise UserError("La hoja %s no tiene empleados: cargue los del área antes de cerrarla." % sheet.name)
             sheet.write({'state': 'cerrado', 'prepared_by_id': sheet.prepared_by_id.id or self.env.user.id})
             # sudo: la hoja cerrada ya no la edita el jefe de área (regla).
             self.env['sgi.cron'].sudo()._sgi_schedule(
                 sheet.sudo(), "%s: %s" % (_RECEIVE_SUMMARY, sheet.name),
-                "%s cerró la hoja de %d empleado(s). Revísala contra el Contrato Colectivo y mándala a "
+                "%s cerró la hoja de %d empleado(s). Revísela contra el Contrato Colectivo y mándela a "
                 "Nóminas antes del día 11 (S4.35)." % (self.env.user.name, len(sheet.line_ids)),
                 rh_id)
         return True

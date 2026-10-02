@@ -23,8 +23,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_fmea.py`, `addons/quimibond_sgi/model
 | `process_id` | Many2one | Proceso | Proceso que analiza el AMEF. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:34` |
 | `product_tmpl_id` | Many2one | Producto | Producto que analiza el AMEF. |  | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:32` |
 | `revision` | Char | Revisión |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:43` |
-| `sgi_nc_count` | Integer | # NCs ligadas |  |  |  | compute `_compute_sgi_nc_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_fmea.py:57` |
-| `sgi_nc_ids` | One2many | NCs ligadas |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:56` |
+| `sgi_nc_count` | Integer | # NC ligadas |  |  |  | compute `_compute_sgi_nc_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_fmea.py:57` |
+| `sgi_nc_ids` | One2many | NC ligadas |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:56` |
 | `state` | Selection | Estado | Borrador, vigente u obsoleto. No pasa a vigente con un NPR alto sin acción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:46` |
 | `team_ids` | Many2many | Equipo AMEF | Personas que hicieron el AMEF. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_fmea.py:45` |
 

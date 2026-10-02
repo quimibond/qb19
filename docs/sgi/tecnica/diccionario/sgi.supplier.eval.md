@@ -14,15 +14,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_supplier_eval.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `date_from` | Date | Desde | Inicio del periodo evaluado. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:122` |
-| `date_to` | Date | Hasta | Fin del periodo evaluado. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:123` |
-| `nc_count` | Integer | # NC |  |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:130` |
-| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:136` |
-| `otd_has_data` | Boolean | Con datos de entrega | Hubo recepciones con fecha compromiso en el periodo. Sin ellas el OTD no se calcula (no cuenta como 0 %) y la calificación usa solo la calidad. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:126` |
-| `otd_pct` | Float | OTD % | Porcentaje de recepciones a tiempo en el periodo. Se calcula solo. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:124` |
-| `partner_id` | Many2one | Proveedor | Proveedor evaluado. | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:119` |
-| `score` | Float | Calificación | Entrega a tiempo y calidad, con los pesos de Ajustes. Se calcula sola. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:131` |
-| `supplier_class` | Selection | Clasificación | Acreditado, condicionado, baja o sin datos, según la calificación. Se calcula sola. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:133` |
+| `date_from` | Date | Desde | Inicio del periodo evaluado. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:124` |
+| `date_to` | Date | Hasta | Fin del periodo evaluado. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:125` |
+| `nc_count` | Integer | # NC |  |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:132` |
+| `notes` | Text | Notas |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:138` |
+| `otd_has_data` | Boolean | Con datos de entrega | Hubo recepciones con fecha compromiso en el periodo. Sin ellas el OTD no se calcula (no cuenta como 0 %) y la calificación usa solo la calidad. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:128` |
+| `otd_pct` | Float | OTD % | Porcentaje de recepciones a tiempo en el periodo. Se calcula solo. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:126` |
+| `partner_id` | Many2one | Proveedor | Proveedor evaluado. | sí | `res.partner` |  |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:121` |
+| `score` | Float | Calificación | Entrega a tiempo y calidad, con los pesos de Ajustes. Se calcula sola. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:133` |
+| `supplier_class` | Selection | Clasificación | Acreditado, condicionado, baja o sin datos, según la calificación. Se calcula sola. |  |  | compute `_compute_metrics`, guardado |  | `addons/quimibond_sgi/models/sgi_supplier_eval.py:135` |
 
 ## Métodos públicos (2)
 

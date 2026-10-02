@@ -128,7 +128,7 @@
                                readonly="not sgi_can_edit_transition"/>
                         <div class="text-muted" colspan="2">
                             El formato ya no se llena en papel ni en PDF: se captura
-                            directo en Odoo. Liga aquí su menú (o su worksheet) y el
+                            directo en Odoo. Ligue aquí su menú (o su worksheet) y el
                             botón <b>Abrir en Odoo</b> lleva a la vista real; la
                             clave, revisión y difusión se siguen controlando aquí.
                         </div>
@@ -137,7 +137,7 @@
                         <page string="Documentos relacionados" name="relacionados" invisible="not sgi_is_controlled">
                             <group string="Familia documental">
                                 <field name="sgi_parent_document_id"
-                                       help="Enlázalo al procedimiento padre (la nomenclatura solo lo sugiere)."/>
+                                       help="Enlácelo al procedimiento padre (la nomenclatura solo lo sugiere)."/>
                             </group>
                             <group string="Familia de la clave">
                                 <field name="sgi_family_document_ids" nolabel="1" readonly="1">
@@ -344,6 +344,8 @@
                        decoration-warning="state == 'pendiente'"
                        decoration-success="state == 'leido'"/>
                 <field name="ack_date"/>
+                <!-- 57.94.0 (U-01): firmado con PIN en una tableta de planta. -->
+                <field name="sgi_pin_tablet_id" optional="hide"/>
                 <button name="action_view_file" type="object"
                         icon="fa-file-pdf-o" title="Leer el documento"/>
                 <button name="action_mark_read" type="object" string="Marcar leído y entendido"
@@ -372,6 +374,7 @@
                     <group>
                         <field name="employee_id"/>
                         <field name="ack_date"/>
+                        <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                     </group>
                 </sheet>
             </form>

@@ -53,8 +53,8 @@ class SgiFmea(models.Model):
     max_npr = fields.Integer(string="NPR máximo", compute='_compute_max_npr', store=True,
                              help="El NPR más alto de sus modos de falla. Se calcula solo.")
     # Ligas inversas (H7): NCs del SGI que apuntan a este AMEF.
-    sgi_nc_ids = fields.One2many('quality.alert', 'sgi_fmea_id', string="NCs ligadas")
-    sgi_nc_count = fields.Integer(string="# NCs ligadas",
+    sgi_nc_ids = fields.One2many('quality.alert', 'sgi_fmea_id', string="NC ligadas")
+    sgi_nc_count = fields.Integer(string="# NC ligadas",
                                   compute='_compute_sgi_nc_count')
 
     @api.depends('line_ids.npr')
@@ -71,7 +71,7 @@ class SgiFmea(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "NCs ligadas",
+            'name': "NC ligadas",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.sgi_nc_ids.ids)],
@@ -221,6 +221,6 @@ class SgiFmeaLine(models.Model):
             if locked:
                 raise UserError(
                     "No se puede borrar una línea de un AMEF vigente u obsoleto "
-                    "(es evidencia). Pide al Jefe de MAST regresarlo a borrador.\n\n"
+                    "(es evidencia). Pida al Jefe MAST regresarlo a borrador.\n\n"
                     "AMEF: %s" % ", ".join(locked.mapped('fmea_id.display_name')))
         return super().unlink()

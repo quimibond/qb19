@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import sgi_base
+from . import sgi_pin
 from . import sgi_area
 from . import sgi_norm
 from . import sgi_alert_source
@@ -102,3 +103,4 @@ from . import sgi_loto
 from . import sgi_sst_links
 from . import sgi_formatos_bloque3
 from . import sgi_deploy_change
+from . import sgi_floor_kiosk

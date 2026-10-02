@@ -19,7 +19,7 @@
                          tiene qué imprimir. -->
                     <div class="page" t-if="not doc.sgi_folio">
                         <h2 class="text-center">Reporte de no conformidad</h2>
-                        <p class="mt-4">La alerta <b t-out="doc.name"/> no es una No Conformidad del
+                        <p class="mt-4">La alerta <b t-out="doc.name"/> no es una no conformidad del
                             SGI (no tiene folio), así que no tiene este reporte. Si procede, escálela
                             con «Escalar a NC del SGI».</p>
                     </div>

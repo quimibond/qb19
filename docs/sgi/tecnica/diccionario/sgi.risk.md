@@ -42,8 +42,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_risk.py`.
 | `score` | Integer | Nivel de riesgo | Probabilidad × impacto. Se calcula solo. |  |  | compute `_compute_score`, guardado |  | `addons/quimibond_sgi/models/sgi_risk.py:130` |
 | `semaphore` | Selection | Semáforo | Semáforo según el nivel de atención. Se calcula solo. |  |  | compute `_compute_semaphore`, guardado |  | `addons/quimibond_sgi/models/sgi_risk.py:159` |
 | `sgi_area_id` | Many2one | Área SGI | Área del SGI del riesgo. |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_risk.py:85` |
-| `sgi_nc_count` | Integer | # NCs ligadas |  |  |  | compute `_compute_sgi_nc_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_risk.py:111` |
-| `sgi_nc_ids` | Many2many | NCs ligadas |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_risk.py:108` |
+| `sgi_nc_count` | Integer | # NC ligadas |  |  |  | compute `_compute_sgi_nc_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_risk.py:111` |
+| `sgi_nc_ids` | Many2many | NC ligadas |  |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_risk.py:108` |
 | `sgi_process_active` | Boolean | Proceso vigente | El proceso al que pertenece está activo. Sin proceso o con el proceso archivado, queda pendiente de proceso nuevo. |  |  | related `process_id.active`, guardado |  | `addons/quimibond_sgi/models/sgi_risk.py:81` |
 | `source` | Selection | Origen | Si el riesgo viene de dentro o de fuera de la empresa. |  |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:72` |
 | `state` | Selection | Estado | Identificado, en tratamiento, controlado o cerrado. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:116` |

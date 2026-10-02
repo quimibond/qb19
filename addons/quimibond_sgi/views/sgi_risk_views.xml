@@ -127,7 +127,7 @@
                     </div>
                     <div class="alert alert-info mb-2" role="status"
                          invisible="next_review_date or instrument == 'foda'">
-                        <i class="fa fa-lightbulb-o" title="Sugerencia"/> Captura la <b>Próxima revisión</b>: sin ella nadie
+                        <i class="fa fa-lightbulb-o" title="Sugerencia"/> Capture la <b>Próxima revisión</b>: sin ella nadie
                         recibirá el recordatorio de revalorar este riesgo.
                     </div>
                     <group string="Evaluación" invisible="instrument == 'foda'">
@@ -164,6 +164,7 @@
                                       decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
+                                    <field name="evidence_note" optional="show"/>
                                     <field name="responsible_id" widget="many2one_avatar_user"/>
                                     <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>

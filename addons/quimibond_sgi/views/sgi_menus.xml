@@ -26,6 +26,14 @@
               web_icon="quimibond_sgi,static/description/icon.png"
               groups="quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor"/>
 
+    <!-- 57.94.0 (U-01): app «SGI en planta» de las tabletas de planta. Va fuera
+         del árbol «SGI» a propósito (la cuenta de la tableta no ve el menú SGI);
+         por eso no está en tools/sgi_menu_tree.txt. -->
+    <menuitem id="menu_sgi_floor_root" name="SGI en planta" sequence="91"
+              web_icon="quimibond_sgi,static/description/icon.png"
+              action="sgi_floor_kiosk_action"
+              groups="quimibond_sgi.group_sgi_floor_tablet,quimibond_sgi.group_sgi_manager"/>
+
     <!-- ============================================================
          1. Inicio (todos): la persona y su equipo.
          ============================================================ -->
@@ -293,6 +301,9 @@
               action="sgi_risk_category_action" sequence="40"/>
     <menuitem id="menu_sgi_checklist_templates" name="Checklists de planta y unidades"
               parent="menu_sgi_config" action="sgi_checklist_template_action" sequence="50"/>
+    <!-- 57.94.0 (U-01): qué cuentas compartidas son tabletas de planta. -->
+    <menuitem id="menu_sgi_floor_tablets" name="Tabletas de planta"
+              parent="menu_sgi_config" action="sgi_floor_tablet_action" sequence="55"/>
     <menuitem id="menu_sgi_config_format_map" name="Formatos en documentos de Odoo" parent="menu_sgi_config"
               action="sgi_format_map_action" sequence="60"/>
     <menuitem id="menu_sgi_config_alert_sources" name="Fuentes de NC automáticas" parent="menu_sgi_config"
@@ -336,6 +347,11 @@
               action="sgi_staff_efficiency_action" sequence="10"/>
     <menuitem id="menu_sgi_staff_efficiency_analysis" name="Análisis por empleado"
               parent="menu_hr_sgi_staff_efficiency" action="sgi_staff_efficiency_line_action" sequence="20"/>
+
+    <!-- 57.94.0 (U-08): RH ve a quién le falta puesto, PIN o correo. -->
+    <menuitem id="menu_hr_sgi_employee_gaps" name="Empleados sin puesto o sin correo"
+              parent="hr.menu_hr_employee_payroll" action="sgi_hr_employee_gaps_action" sequence="20"
+              groups="hr.group_hr_user"/>
 
     <!-- Mantenimiento: los checklists del día. Secuencia 2: con 1 empataba
          con «Mantenimiento» y el orden lo decidía el id (E-013). -->

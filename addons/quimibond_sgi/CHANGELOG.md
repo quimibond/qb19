@@ -13,6 +13,410 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.94.0 — 2026-10-02
+
+**SGI en planta: la planta firma en la tableta a su nombre** (auditoría 2026-10: U-01, U-08, I-03, I-05).
+
+**SGI en planta se entrega apagado** (decisión de Jose, 2026-10-02: por ahora
+no se identifica a la gente de planta con PIN). El código queda, pero no se
+dan de alta tabletas, la lista y el aviso de RH no piden PIN y
+`checklist_pin_required` sigue apagado. Sin tabletas dadas de alta nadie entra
+a la app, así que Q12 deja de bloquear el despliegue; se contesta cuando se
+decida encenderlo. Lo que sí se usa desde el despliegue: checklist táctil
+(I-03), tarjetas en el celular (I-05), lista y aviso de RH (U-08) y los
+candados de firma del checklist.
+
+### Agregado
+
+- **SGI en planta (U-01):** app nueva para las tabletas de planta (acción
+  cliente `sgi_floor_kiosk`, pantalla completa). La persona toca su foto,
+  teclea su PIN (el mismo de Asistencias) y, en su menú, firma sus
+  **documentos por leer**, **reporta un casi accidente**, firma su
+  **responsiva de EPP** y llena el **checklist de su equipo**. Cada llamada
+  (`sgi.floor.kiosk`) valida en el servidor la tableta, que la persona sea de
+  sus departamentos y de la empresa del SGI, y su PIN; lo firmado queda con el
+  empleado y «firmado con PIN en la tableta X» (`sgi.pin.signature.mixin`:
+  tableta y hora), nunca solo a nombre de la cuenta compartida. La pantalla
+  sale sola a los 90 s sin uso (10 min leyendo un documento; tocar o
+  desplazarse dentro del visor cuenta), manda las llamadas en fila, desactiva
+  los botones mientras hay una en curso y descarta la respuesta de quien ya
+  salió. Los PDF se leen con el visor pdf.js de Odoo.
+- **Tabletas de planta** (`sgi.floor.tablet`, SGI → Administración SGI →
+  Configuración → Tabletas de planta): cuenta compartida interna y sin
+  empleado (se vuelve a revisar en cada llamada), departamentos y checklists.
+  Grupo nuevo «Tableta de planta (SGI)» con ACL mínima (lee su tableta; nada
+  más). App raíz «SGI en planta» para las tabletas y el Jefe MAST.
+- **Validación de PIN común** (`sgi.pin`): la usan el asistente «Terminar
+  checklist» y la tableta. Persona activa, de la empresa del SGI y de la lista
+  de la plantilla; compara en tiempo constante; sin límite de intentos (D-08 /
+  F-018, ver Q12). El parámetro `quimibond_sgi.checklist_pin_required` no
+  cambia: lo enciende MAST cuando RH termine de capturar los PIN.
+- **Incidente: «Reportado por (empleado)»** (`reporter_employee_id`, sin
+  seguimiento en el chatter: firmado con PIN ya no cambia, y el mensaje de la
+  tableta dice quién reportó). Desde la
+  tableta, el casi accidente queda a nombre del empleado (y de su usuario si
+  tiene, que lo sigue) y avisa a Salud ocupacional o al Jefe MAST («Revisar
+  casi accidente…»).
+- **RH (U-08):** lista «Empleados sin puesto o sin correo»
+  (Empleados → Empleados, solo RH), columna «Le falta» (el PIN no se pide
+  mientras SGI en planta esté apagado) y
+  aviso semanal por departamento en Mis pendientes (cron nuevo, lunes 13:00
+  UTC; «Ir» abre la lista del departamento a quien es de RH). Recibe el aviso
+  `quimibond_sgi.hr_user_id`; vacío, el Coordinador de RH de
+  `quimibond_sgi.rh_user_id` y, sin él, el Jefe MAST. Los empleados sin
+  departamento salen en la lista pero no generan aviso. Manual
+  `docs/sgi/usuarios/rh.md`.
+- **Kanban móvil (I-05):** Mis pendientes, Incidentes, Mis indicadores,
+  Documentos vigentes, Responsivas de EPP y Permisos de trabajo abren en
+  tarjetas en el celular y la tableta (`mobile_view_mode`), con el botón
+  principal grande; en el escritorio la lista sigue primero.
+
+### Cambiado
+
+- **Checklist (I-03):** «Marcar el resto como Bien» en el encabezado de la
+  hoja (oculto con la hoja firmada o completa); los puntos son tarjetas con
+  tres botones grandes (un toque por punto) y la observación se escribe en la
+  ficha del punto. La hoja firmada guarda la tableta y la hora si se firmó con
+  PIN. El asistente «Terminar checklist» valida con `sgi.pin`.
+- Plantilla y día de la hoja con `copy=False`: duplicar una hoja (o la
+  recurrencia de un preventivo) da una solicitud de mantenimiento normal.
+
+### Seguridad
+
+- Una hoja de checklist firmada ya no cambia respuestas ni notas, ni se le
+  sacan, meten o agregan puntos (la vista lo decía; el servidor no).
+- «Lo llenó», «Terminado el», la plantilla y el día de una hoja solo los
+  escribe el sistema (antes un write por RPC de cualquier usuario interno los
+  ponía); el asistente «Terminar checklist» solo acepta hojas de checklist con
+  puntos.
+- La firma con PIN (tableta y hora) solo la escribe el sistema, y lo firmado
+  con PIN no cambia de persona (acuse, incidente, EPP, hoja), ni con el Jefe
+  MAST.
+- Estos candados se revisan también después del alta: un `default_*` en el
+  contexto ya no firma ni pone a otro como reportante.
+- En el backend nadie reporta un incidente a nombre de otro empleado ni de
+  otro usuario (salvo MAST y Salud ocupacional); en la ficha, «Reportado por
+  (empleado)» solo lo cambian ellos.
+- El casi accidente de la tableta no lo sigue la cuenta compartida, y «lo
+  creé yo» ya no le da a esa cuenta lectura ni edición de lo reportado en ella
+  (reglas `rule_sgi_incident_user_read_own` y `_user_edit_reported`).
+- La cuenta de una tableta no firma acuses por el backend
+  (`action_mark_read` revisa primero el permiso de escribir).
+- En la tableta solo se abren PDF e imágenes, por tipo guardado y por
+  contenido, y el tamaño se revisa antes de cargar el archivo (un HTML
+  subido como documento correría su JavaScript con la sesión de la tableta);
+  los enlaces, solo `http(s)`.
+- **Sin límite de intentos de PIN** (D-08): quien tenga la tableta en la mano
+  puede probar PIN por RPC. Cada intento fallido queda en el log del servidor
+  (sin el PIN). Ver Q12.
+
+### Migración
+
+Ninguna. Tablas y columnas nuevas vacías (`sgi_floor_tablet` y sus dos
+tablas de relación; `sgi_pin_tablet_id` y `sgi_pin_signed_at` en acuses,
+incidentes, responsivas y solicitudes de mantenimiento;
+`sgi_incident.reporter_employee_id`); 0 incidentes, 0 responsivas y 0 hojas
+de checklist en producción. El cron nuevo va en un XML nuevo `noupdate` (se
+crea en la primera carga).
+
+### Datos de producción
+
+Ninguno mientras SGI en planta esté apagado. Para encenderlo, a mano
+(no lo hace el código), después de contestar Q12:
+
+1. MAST da de alta las tabletas en Configuración → Tabletas de planta
+   (cuenta, departamentos, checklists). Sistemas pone «SGI en planta» como
+   acción de inicio de cada cuenta.
+2. Sistemas ajusta los grupos de `supervisor@` y `manufactura@` (hoy Usuario
+   SGI): dejarles «Tableta de planta (SGI)» y lo que usen fuera del SGI (Q8).
+3. RH captura los PIN en la ficha de cada empleado (hoy 2 de 165 tienen PIN);
+   la columna «PIN» vuelve a la lista de RH en esa entrega.
+4. Cuando RH termine, MAST enciende «PIN obligatorio para firmar checklists»
+   (Ajustes → SGI).
+
+**Decisiones por omisión, para cuando se encienda (Jose decidió apagarlo por
+ahora):** Q7 dos tabletas con las
+cuentas que ya entran (`supervisor@` → Tejido y áreas de producción,
+`manufactura@` → Mantenimiento, Almacén y Laboratorio) y RH captura los PIN
+por departamento en dos semanas; Q8 las cuentas compartidas pierden Usuario
+SGI; Q9 `quimibond_sgi.hr_user_id` vacío (aviso al Coordinador de RH de
+`rh_user_id` o al Jefe MAST); Q10 un aviso por departamento; Q11 el casi
+accidente entra «leve» y lo clasifica quien investiga; **Q12 (contestar ANTES
+de encenderlo): límite de intentos de PIN; hoy ninguno (D-08)** —
+la revisión recomienda bloqueo de 5 minutos tras 5 fallos por empleado; Q13
+la pantalla completa no muestra la barra de Odoo (MAST sale con `/odoo`).
+
+**Pruebas:** `test_sgi_en_planta` (16 casos: PIN común, mosaico sin PIN,
+solo tabletas registradas, PIN válido e inválido, acuse, casi accidente, EPP y
+checklist a nombre del empleado, plantilla de otras personas, firma no
+falsificable ni con `default_*`, la cuenta compartida no lee lo reportado en
+ella y nadie cambia al firmante, «Marcar el resto como Bien», hoja firmada sin
+mover puntos y duplicable, aviso de RH, kanban de piso) y
+`test_sgi_en_planta_tour` (`HttpCase`, recorrido de la pantalla).
+
+**Verificación pendiente en Odoo.sh:** (1) `ir.actions.client` con
+`target = fullscreen` (si no carga, quitar el campo); (2) el visor pdf.js en
+`/web/static/lib/pdfjs/web/viewer.html` abre el `blob:` en la tableta Android;
+(3) `t-on-load` del visor y los eventos dentro de él; (4) forma del error de
+`orm.call` (`error.data.message`) y que atraparlo evita el diálogo de Odoo;
+(5) botones de objeto en el kanban del one2many de la hoja (guardan la hoja y
+llaman al punto); (6) `<a type="open">` en la tarjeta de permisos de trabajo;
+(7) `mobile_view_mode` en las acciones XML; (8) `test_12`: `pin = False` con
+PIN vacío, el menú padre `hr.menu_hr_employee_payroll` y actividades en
+`hr.department`; (9) `mail_create_nosubscribe` deja fuera a la cuenta
+compartida (`test_10c`); (10) `index='btree_not_null'` en el mixin;
+(11) formato del tour de Odoo 19 y la URL `/odoo/action-…`.
+
+## 19.0.57.93.0 — 2026-10-02
+
+**NC y auditoría con evidencia** (auditoría 2026-10: N-02, N-03, N-12, K-03; y lo pendiente de 57.91.0: FUNC-C13 al crear, K-07 portal).
+
+### Agregado
+
+- **Resultado de la eficacia (N-02):** `quality.alert.sgi_effective` (Eficaz / No
+  eficaz). La NC solo cierra con «Eficaz». «No eficaz» deja la verificación en
+  el historial, la limpia, regresa la NC a Seguimiento, sube
+  `sgi_ineffective_count` y pide una acción correctiva nueva
+  (`sgi.action.line.effectiveness_round`); sin ella terminada la NC no cierra.
+  `sgi_ineffective_count` y `sgi_effectiveness_due` solo los cambian el
+  sistema o el Jefe MAST. `sgi_ineffective_count` deja listo el indicador «% de NC eficaces a
+  la primera» (57.98.0).
+- **Evidencia en acciones correctivas (N-02, H-B1.4):** `evidence_note` y
+  `evidence_attachment_ids` en `sgi.action.line` (columna «Evidencia» en todas
+  las listas editables de acciones). Una correctiva no se termina sin nota,
+  archivo o archivo en su chatter, por cualquier vía (botón, lista, chatter: ahí
+  los archivos adjuntos al marcar hecha la actividad quedan como evidencia).
+  Solo el sistema queda exento. Lo terminado antes no se toca. Los acuerdos de
+  la revisión por la dirección nacen como correctivas, así que también piden
+  evidencia (Q3).
+- **Cobertura de 3 años (N-03):** `sgi.audit.program.coverage_gap_ids` (no se
+  guarda): aviso en la ficha del programa en borrador y nota en el historial al
+  aprobarlo con los subprocesos de la compañía sin renglón en ese programa ni
+  en los dos anteriores registrados en Odoo. Las normas del alcance quedan
+  pendientes.
+
+### Cambiado
+
+- **Fecha de eficacia (N-02, H-B1.1):** no futura, en o después de la fecha
+  programada (`sgi_effectiveness_due`) y de la última acción terminada; si no
+  se puede esperar, cierre forzado del Jefe MAST con motivo.
+- **Verificación de eficacia a quien cierra (FUNC-C13):** la actividad y el
+  aviso del cron van al dueño del proceso (sin dueño, al Jefe MAST), no a
+  «Eficacia verificada por».
+- **Auditoría (N-03, H-B2.1):** un hallazgo de no conformidad menor o mayor
+  exige su NC ligada para cerrar la auditoría; «sin acción» y «mejora» quedan
+  para observaciones, oportunidades y conformidades. **Generar NC** la levanta
+  quien puede editar el hallazgo (el auditor solo lee NC: se crea con `sudo`
+  después de revisar su permiso sobre el hallazgo; `create_uid` sigue siendo
+  él).
+- **Programa sugerido (N-03, H-B2.2):** todos los subprocesos de la compañía,
+  también en borrador.
+- **Devolución de cliente (N-12):** se detecta por `location_id.usage ==
+  'customer'` en las líneas terminadas de una recepción. La hipótesis de la
+  entrega en tres pasos no se confirmó en producción (las 26 devoluciones
+  desde junio sí apuntan al OUT; las 7 posteriores al 21-ago levantaron NC y
+  4 de ellas, NCI-2026-0140/0142/0147/0148, se borraron antes de K-02). Una
+  recepción manual desde Clientes también levanta la NC. La NC se crea con
+  `sudo` (quien valida en almacén no traba la recepción por no poder crear
+  NC) y solo si la recepción es de la compañía del equipo de Calidad del SGI.
+- **Portal del proveedor (K-07):** la URL lleva un código de error (`estado`,
+  `faltan`, `otro`), no el texto; un código desconocido no muestra nada.
+
+### Seguridad
+
+- **K-03:** una NC cerrada solo la modifica el Jefe MAST; el dueño del
+  proceso la reabre cambiando solo la etapa (D-009) y el mensaje se lo dice.
+  `date_close` queda libre (Calidad lo escribe al cerrar). Con la NC, el
+  incidente o la revisión por la dirección cerrados, sus acciones terminadas
+  solo las modifica el Jefe MAST y nadie más agrega, borra ni muda acciones a
+  ellos; las pendientes se siguen terminando, también desde la lista de la
+  NC, y no reprograman la eficacia de una NC cerrada. Con la auditoría
+  cerrada, sus hallazgos solo los crea o modifica el Jefe MAST y **Generar NC**
+  se detiene antes de gastar folio.
+- **FUNC-C13 al crear:** una NC no se crea directamente en Cerrada ni en
+  Cancelada (salvo el Jefe MAST o el sistema), sin gastar folio. Duplicar una
+  NC la deja en la primera etapa de su equipo.
+
+### Corregido
+
+- Mensajes del chatter que salían con `&lt;b&gt;`: devolución de cliente, falla
+  de mantenimiento, eficacia programada, alerta escalada a NC, documento del alta, evaluación de
+  cumplimiento legal y NC por incumplimiento, proveedor aprobado o bloqueado
+  (`Markup`).
+
+**Migración:** ninguna. El ORM crea las columnas; no hay datos que rellenar
+(0 NC cerradas, 4 acciones terminadas, 0 auditorías).
+
+**Decisiones por omisión (confirmar con Jose):** Q1 las 4 NC de devolución
+borradas no se rehacen por migración (Calidad las levanta a mano si siguen
+vigentes); Q2 evidencia solo en correctivas; Q3 los acuerdos de la revisión
+por la dirección piden evidencia; Q4 lo cerrado solo lo modifica el Jefe MAST
+y el dueño del proceso reabre.
+
+**Pruebas:** `test_nc_auditoria_evidencia` (29 casos) y `test_portal_nc_http`
+(4, `HttpCase`), nuevas. Ajustadas para cerrar con «Eficaz»: `test_nc_flow`,
+`test_nc_deadlines.test_04`, `test_candados_evidencia`, `test_pegamento`,
+`test_ola_b`, `test_ola1`, `test_capture_reply`; `test_pr6_external.test_03`
+por el programa sugerido.
+
+**Verificación pendiente en Odoo.sh:** (1) `grep -n date_close
+enterprise/quality/models/quality.py`: que Calidad escriba `date_close` (y no
+otro campo) en la segunda escritura al cerrar; si es otro, el dueño del
+proceso no podría cerrar; (2) que el popover «Marcar como hecha» de Odoo 19
+deje adjuntar archivo (evidencia desde el chatter); (3) `update.log` sin
+avisos en el recuadro de cobertura (`many2many_tags` dentro de un `div`) ni en
+`sgi_action_line_evidence_rel`; (4) automatizaciones de Studio sobre
+`quality.alert` que escriban como el usuario después de cerrar (con K-03
+fallarían): cerrar una NC como dueño del proceso en el build de la rama;
+(5) pruebas de devolución (almacén en tres pasos) y del portal (CSRF con
+sesión anónima, redirección a `/my`), ver plan §1.8.
+
+**Deuda conocida (revisión final, menor):** `date_close` queda libre en una NC
+cerrada para cualquiera con escritura (necesario para el cierre de Calidad);
+una correctiva pendiente mudada de NC conserva su `effectiveness_round`.
+
+## 19.0.57.92.0 — 2026-10-02
+
+**Bandeja: Mis pendientes que dice qué hacer** (auditoría 2026-10: U-02, U-03, U-05, U-06).
+
+### Agregado
+
+- **«Validar seleccionadas» (U-02):** botón de cabecera que valida en lote las
+  mediciones seleccionadas. Solo valida las que el usuario puede validar
+  (`sgi_can_validate`) y avisa con una notificación cuáles omitió.
+- **«Ir» y «Leer» (U-05):** «Ir» abre el menú o la acción de la actividad, o su
+  evidencia (como «Ir a hacerlo»), con respaldo a la ficha de la actividad si
+  falla (savepoint). «Leer» abre el archivo del documento por leer
+  (`action_sgi_view_file`, con los permisos del usuario: PDF en el navegador,
+  URL o la vista real de un «Formulario de Odoo»). «Leído y entendido» firma el
+  acuse desde el renglón (el candado de identidad no cambia).
+- **Botones solo en lo propio (U-05):** «Hecho» y «Leído y entendido» solo
+  salen en los renglones de quien abre la lista (`is_mine`, calculado por
+  usuario); en Mi equipo, un jefe ya no los ve en los renglones de su gente.
+- **Tipo «Aviso» (U-03):** las actividades nativas sobre modelos `sgi.*` y los
+  avisos de los crons del SGI (con `sgi_cron_key`) sobre quality.alert,
+  documents.document, maintenance.request, helpdesk.ticket y project.task,
+  atrasados o por vencer en 7 días, salen en Mis pendientes (D-04: las
+  actividades siguen existiendo; la bandeja solo las muestra). Se excluyen si
+  el mismo destinatario ya tiene un renglón de otro tipo sobre el mismo
+  registro, las aprobaciones de Studio, los espejos de renglones de acción y los
+  avisos de acuse o de capturar indicador del dueño del renglón. «Hecho»
+  (`action_feedback`) solo para el asignado. Filtro de compañía por lote y por
+  modelo (D-03). Filtro «Avisos».
+- Ayuda de lista vacía en «usted».
+
+### Cambiado
+
+- La lista abre desplegada (`expand="1"`) con el filtro «Atrasadas o por vencer»
+  por defecto en Mis pendientes, Mi procedimiento y «Pendientes — persona»
+  («Pendientes del equipo» muestra todo). El filtro oculta los «Validar» que
+  vencen en más de 7 días: para validar por adelantado en lote, quítelo.
+- Los avisos también cuentan en los atrasados de Mi equipo y en el correo
+  semanal de atrasados.
+- **U-06:** textos para el usuario en «usted» y con el glosario en unos 50
+  archivos. Etiquetas cambiadas, por ejemplo «Qué propones» a «Qué propone» y
+  COA a CoA (etiquetas y `_description`). También «Pase el mouse o dé clic»
+  en los diagramas y «Corrija el dominio» en el aviso de evidencia; la prueba
+  `test_usted` ya los detecta. El nombre por defecto «COA» del buzón
+  de CoA (`sgi_coa.py`) se queda como dato, a propósito.
+
+### Datos de producción
+
+Los registros `noupdate` no se actualizan solos y no hay migración a propósito
+(MAST pudo haberlos personalizado). El XML solo cubre instalaciones nuevas;
+MAST edita a mano (Ajustes → Técnico → Plantillas de correo; Aprobaciones →
+Configuración → Categorías):
+
+1. `mail_template_sgi_incident_grave`, asunto «⚠ Incidente …» a «[Urgente] Incidente …».
+2. `mail_template_sgi_nc_mayor`, asunto «⚠ NC MAYOR …» a «[Urgente] NC MAYOR …»; cuerpo «No Conformidad MAYOR» a «no conformidad MAYOR».
+3. `mail_template_sgi_calibration_blocked`, asunto «⚠ Equipo BLOQUEADO …» a «[Urgente] Equipo BLOQUEADO …».
+4. `mail_template_sgi_weekly_overdue`, asunto «SGI: tienes … pendiente(s) atrasado(s)» a «SGI: tiene …»; cuerpo «Esto es lo que tienes» a «tiene»; «Si no quieres este correo, apágalo en tu perfil» a «Si no quiere este correo, apáguelo en su perfil».
+5. `mail_template_sgi_coa`, nombre y asunto COA a CoA; cuerpo «certificado de análisis (COA)» a «certificado de calidad (CoA)».
+6. Categoría de aprobaciones «Proponer cambio a mi procedimiento (SGI)», descripción: pon a ponga, escribe a escriba, propones a propone, Adjunta a Adjunte, tu jefe a su jefe.
+7. Mapa de formatos (`data/sgi_format_map_data.xml:49`), nota «Reporte de No Conformidad» a «Reporte de no conformidad».
+
+### Migración
+
+Ninguna (ver Datos de producción).
+
+### Pruebas
+
+- `test_bandeja` test_20 a test_25: validar en lote, mezcla de permisos, avisa
+  de las omitidas, abre desplegada, Ir/Leer (Leer abre el adjunto del
+  documento), avisos; test_24b: el jefe no tiene «Hecho» ni «Leído y
+  entendido» en los renglones de su gente (`is_mine`).
+- Nueva `test_usted`: vigila el «usted» y el glosario en los textos del módulo.
+- Aserciones actualizadas en `test_vistas_pulido` y `test_coa`.
+
+### Verificación pendiente
+
+En el build de Odoo.sh correr `--test-tags /quimibond_sgi`; confirmar que
+`test_usted` (`BaseCase`) corre (si no, pasarla a `TransactionCase`) y que el
+botón de cabecera y `expand="1"` se pintan en la lista.
+
+## 19.0.57.91.0 — 2026-10-01
+
+**Seguridad: candados de evidencia** (auditoría 2026-10: K-01, K-02, K-06, K-07, FUNC-C13).
+
+- **K-01:** un documento controlado (vigente, en piloto u obsoleto) no se manda
+  a la papelera (archivar) ni se borra, salvo el Jefe MAST o el sistema; el
+  mensaje depende del estado. `sgi.document.ack.document_id` pasa a
+  `ondelete='restrict'`. Aquí y en K-02 y FUNC-C13, «el sistema» es solo el
+  superusuario (`env.su`, acciones planificadas): un administrador de Ajustes
+  que no es Jefe MAST sigue bloqueado.
+- **Papelera:** un vaciado automático diario (`_gc_sgi_rescue_trashed_with_acks`)
+  reactiva (`action_unarchive`) uno por uno, con savepoint, todo documento en la
+  papelera que tenga acuses de lectura. Los vigentes y en piloto pasan a obsoleto
+  con motivo; los que ya eran obsoletos conservan su fecha; los borradores y los
+  no controlados conservan su estado. Un borrador o un documento no controlado
+  con acuses regresa de la papelera cada noche: para retirarlo, el Jefe MAST
+  debe borrar antes sus acuses. El orden de las limpiezas es fijo (alfabético,
+  `_gc_clear_bin` de Documents antes que el rescate): con un retraso
+  (`documents.deletion_delay`) de 0 a 1 día la limpieza de Documents corre
+  antes que el rescate. Un rescate que falla se registra como error en el log.
+- **La papelera no se atora:** `unlink` como superusuario deja fuera del lote
+  los documentos archivados con acuses (los que el rescate no pudo reactivar)
+  y lo registra como error («SGI: la papelera no borra … Revíselos a mano.»);
+  los demás se borran. Sin esto, la llave foránea deshacía cada noche el
+  vaciado completo de la papelera.
+- **K-02:** una NC con folio no se borra (se usa «Cancelar NC»);
+  `sgi.action.line.alert_id` pasa a `ondelete='restrict'`. Efecto colateral:
+  una alerta sin folio que tenga acciones tampoco se puede borrar ya.
+- **FUNC-C13:** solo el Jefe MAST, el sistema (superusuario) o el usuario
+  dueño del proceso cierran una NC con folio; el asistente de cierre forzado
+  sigue funcionando. Queda para 57.93.0: una NC todavía se puede crear
+  directamente en «Cerrada» (`create` no pasa por `_sgi_check_stage_move`), y
+  la actividad «Verificar eficacia» va a `sgi_effectiveness_by`, que puede no
+  ser el dueño del proceso (recibirá el mensaje de FUNC-C13 al cerrar).
+- **K-06:** `cron_sgi_sync_approvals`, `cron_generate`, `cron_measure_activities`,
+  `cron_missing_trajectories` y `sgi_drop_empty_studio_models` solo los corre el
+  sistema (`sgi_require_system`). Aquí «el sistema» es el superusuario **o** un
+  administrador de Ajustes (`base.group_system`), a diferencia de K-01, K-02 y
+  FUNC-C13.
+- **Cambiado:** el Administrador SGI pierde `sgi_drop_empty_studio_models`.
+- **K-07:** la respuesta del proveedor (portal) y los motivos de cierre forzado
+  y cancelación se escapan con `Markup` en el chatter; el texto del proveedor
+  se corta a 5,000 caracteres. Queda para 57.93.0: prueba `HttpCase` del portal
+  y código de error en lugar de texto libre en la URL.
+- **Documentación:** `docs/audit/decisiones.md` (índice de decisiones D-xx / D-0xx).
+
+**Migración:** ninguna. El ORM rehace las dos llaves foráneas al actualizar.
+
+**Datos de producción:** 0 documentos en la papelera con acuses (lectura del
+2026-10-01), el primer rescate no reactiva nada.
+
+**Pruebas:** `test_candados_evidencia` (nueva, 17 casos: `test_01` a `test_17`);
+`test_entrega1c.test_04` ampliada; `test_studio_cleanup.test_05_only_sgi_admin`
+pasa a `test_05_only_system`.
+
+**Verificación pendiente en Odoo.sh:** (1) si Documents de Odoo 19 manda a la
+papelera por algún camino distinto de `write(active=False)` (grep en
+`enterprise/documents/models`); (2) cómo se comporta `action_unarchive` con un
+documento dentro de una carpeta en la papelera; (3) vigilar el log por «SGI: no
+se pudo rescatar el documento» y «SGI: la papelera no borra»; (4) si se manda a la papelera una carpeta con un documento con acuses que
+el rescate no pudo reactivar, confirmar que borrar la carpeta no arrastra al hijo
+por otro camino (si lo hace, `unlink` debe dejar fuera también su carpeta).
+
 ## 19.0.57.90.2 — 2026-10-02
 
 **Corregido: avisos «manifest not found» en cada actualización y en el cron de

@@ -350,3 +350,196 @@ class TestBandeja(TransactionCase):
         # Sin vencimiento periódico manda la ventana de siempre.
         activity.sudo().write({'due_business_day': 0})
         self.assertIsNone(activity._sgi_periodic_state(Rate, domain, 'name', july))
+
+    # ---- 57.92.0 (U-02): validar en lote ------------------------------------
+    def test_20_validar_seleccionadas(self):
+        indicator = self._indicator('Z8A-L', calc_mode='otif_ventas', frequency='weekly')
+        mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2)]
+        measures = self.env['sgi.indicator.measure'].create([
+            {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
+            for d in mondays])
+        objective = self.env['sgi.objective'].create({'name': 'Objetivo lote 8A'})
+        line = self.env['sgi.action.line'].create({
+            'name': 'Acción lote 8A', 'responsible_id': self.user.id,
+            'date_commit': self.today - timedelta(days=2), 'objective_id': objective.id})
+        rows = self.Pending.with_user(self.user)._sgi_build(self.emp)
+        mine = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
+        other = rows.filtered(lambda r: r.kind == 'accion' and r.res_id == line.id)
+        self.assertEqual(len(mine), 2)
+        self.assertEqual(len(other), 1)
+        with self.assertRaises(UserError):
+            other.with_user(self.user).action_validate_selected()
+        (mine | other).with_user(self.user).action_validate_selected()
+        self.assertEqual(set(measures.mapped('state')), {'validado'})
+        self.assertFalse(mine.exists(), "Los renglones validados desaparecen.")
+        self.assertTrue(other.exists(), "Los que no son mediciones se quedan.")
+
+    def test_22_validar_mezcla(self):
+        """Quien no es dueño del indicador ni Jefe MAST no valida nada en lote:
+        aviso claro y las mediciones siguen capturadas."""
+        indicator = self._indicator('Z8A-M', calc_mode='otif_ventas', frequency='weekly')
+        mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2)]
+        measures = self.env['sgi.indicator.measure'].create([
+            {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
+            for d in mondays])
+        rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp)
+        theirs = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
+        self.assertEqual(len(theirs), 2)
+        with self.assertRaisesRegex(UserError, 'puede validar estas mediciones'):
+            theirs.with_user(self.boss_user).action_validate_selected()
+        self.assertEqual(set(measures.mapped('state')), {'capturado'})
+        self.assertTrue(theirs.exists(), "Lo que no se validó se queda en la lista.")
+
+    def test_23_validar_mezcla_avisa(self):
+        """Selección mezclada: valida lo propio, deja lo ajeno y avisa."""
+        indicator = self._indicator('Z8A-N', calc_mode='otif_ventas', frequency='weekly')
+        boss_indicator = self.env['sgi.indicator'].create({
+            'code': 'Z8A-J', 'name': 'KPI Z8A-J', 'calc_mode': 'otif_ventas',
+            'frequency': 'weekly', 'responsible_id': self.boss_user.id,
+            'process_id': self.process.id})
+        monday = self.today - timedelta(days=self.today.weekday() + 7)
+        Measure = self.env['sgi.indicator.measure']
+        theirs = Measure.create([
+            {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
+            for d in (monday, monday - timedelta(days=7))])
+        own = Measure.create({'indicator_id': boss_indicator.id, 'period_date': monday,
+                              'state': 'capturado', 'value': 90.0})
+        rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp | self.boss)
+        their_rows = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in theirs.ids)
+        own_row = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id == own.id)
+        self.assertEqual(len(their_rows), 2)
+        self.assertEqual(len(own_row), 1)
+        result = (their_rows | own_row).with_user(self.boss_user).action_validate_selected()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(result['params']['next']['tag'], 'soft_reload')
+        self.assertEqual(own.state, 'validado')
+        self.assertEqual(set(theirs.mapped('state')), {'capturado'})
+        self.assertEqual(their_rows.exists(), their_rows, "Lo ajeno se queda en la lista.")
+        self.assertFalse(own_row.exists(), "Lo validado sale de la lista.")
+
+    def test_21_abre_desplegada_con_lo_urgente(self):
+        action = self.Pending.with_user(self.user).action_open_mine()
+        self.assertEqual(action['context'].get('search_default_actionable'), 1)
+        arch = self.env.ref('quimibond_sgi.sgi_my_pending_view_list').arch
+        self.assertIn('expand="1"', arch)
+        team = self.env['hr.employee.public'].with_user(self.boss_user).browse(self.emp.id)
+        action = team.action_sgi_team_pending()
+        self.assertEqual(action['context'].get('search_default_group_employee'), 1)
+        self.assertNotIn('search_default_actionable', action['context'],
+                         "«Pendientes del equipo» muestra todo.")
+
+    def test_24_ir_a_hacerlo_y_leer(self):
+        """U-05: «Ir» lleva al menú donde se hace la actividad; «Leer» abre el
+        archivo del documento del acuse (como el usuario, no sudo) y «Leído y
+        entendido» lo firma desde el renglón."""
+        # Un menú con acción (Inicio → Documentos vigentes).
+        menu = self.env.ref('quimibond_sgi.menu_sgi_current_documents')
+        self.activity.sudo().write({'odoo_menu_id': menu.id})
+        row = self.Pending.with_user(self.user).create({
+            'kind': 'actividad', 'name': 'Hacer 8.1', 'employee_id': self.emp.id,
+            'res_model': 'sgi.process.activity', 'res_id': self.activity.id})
+        action = row.with_user(self.user).action_open()
+        self.assertNotEqual(action.get('res_model'), 'sgi.process.activity',
+                            "Lleva al menú donde se hace, no a la ficha del catálogo.")
+        self.assertEqual(action.get('id'), menu.action.id)
+        attachment = self.env['ir.attachment'].create({
+            'name': 'IT-Z8A-01.pdf', 'raw': _blank_pdf(), 'mimetype': 'application/pdf'})
+        doc = self.env['documents.document'].create({
+            'name': 'Leer 8A', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-01', 'sgi_state': 'vigente',
+            'sgi_process_id': self.process.id, 'attachment_id': attachment.id})
+        ack = self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.emp.id})
+        row = self.Pending.with_user(self.user).create({
+            'kind': 'acuse', 'name': 'Leer', 'employee_id': self.emp.id,
+            'res_model': 'sgi.document.ack', 'res_id': ack.id})
+        action = row.with_user(self.user).action_open()
+        # El archivo en el navegador (act_url inline al adjunto), no la ficha.
+        self.assertEqual(action['type'], 'ir.actions.act_url')
+        self.assertIn('/web/content/%d' % doc.attachment_id.id, action['url'])
+        self.assertNotIn('download=true', action['url'])
+        result = row.with_user(self.user).action_sign_ack()
+        self.assertEqual(result['tag'], 'soft_reload')
+        self.assertEqual(ack.state, 'leido')
+        self.assertFalse(row.exists(), "El renglón firmado sale de la lista.")
+
+    def test_24b_botones_solo_en_lo_propio(self):
+        """U-05: «Hecho» y «Leído y entendido» solo salen en los renglones de
+        quien abre la lista: un jefe que ve los de su equipo no los tiene."""
+        self._late()
+        Public = self.env['hr.employee.public'].with_user(self.boss_user)
+        theirs = self.Pending.with_user(self.boss_user).search(
+            Public.browse(self.emp.id).action_sgi_open_pending()['domain'])
+        self.assertTrue(theirs)
+        self.assertEqual(set(theirs.mapped('user_id').ids), {self.user.id})
+        self.assertFalse(any(theirs.mapped('is_mine')),
+                         "Los renglones del subordinado no son del jefe.")
+        mine = self.Pending.with_user(self.boss_user).create({
+            'kind': 'aviso', 'name': 'Aviso propio 8A', 'user_id': self.boss_user.id,
+            'employee_id': self.boss.id})
+        self.assertTrue(mine.is_mine)
+
+    def test_25_avisos_de_los_crons(self):
+        """U-03 (D-04): los avisos de los crons del SGI, vencidos o de los
+        próximos 7 días, salen como «Aviso» y «Hecho» los cierra; lo que la
+        misma persona ya ve en otro renglón no se duplica."""
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal')
+        alert = self.env['quality.alert'].create({'title': 'Aviso 8A', 'team_id': team.id})
+        # La NC de la prueba no tiene responsables: nadie tiene su renglón «nc».
+        self.assertFalse(alert.sgi_responsible_ids)
+        notice = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today - timedelta(days=1),
+            summary='Revisar aviso 8A', user_id=self.user.id)
+        far = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today + timedelta(days=30),
+            summary='Aviso lejano 8A', user_id=self.user.id)
+        manual = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today,
+            summary='Actividad manual 8A', user_id=self.user.id)
+        # En las apps (NOTICE_MODELS) solo cuentan los avisos de los crons (con clave).
+        notice.sudo().sgi_cron_key = 'aviso_prueba:%d' % alert.id
+        far.sudo().sgi_cron_key = 'aviso_prueba_lejano:%d' % alert.id
+        row = self._row('aviso', notice.id)
+        self.assertTrue(row)
+        self.assertEqual(row['state'], 'atrasada')
+        self.assertIn('Revisar aviso 8A', row['name'])
+        self.assertFalse(self._row('aviso', far.id), "Solo vencidos o de los próximos 7 días.")
+        self.assertFalse(self._row('aviso', manual.id), "Sin clave no es aviso de un cron.")
+        # Acuse pendiente: la persona ya tiene su renglón «acuse».
+        doc = self.env['documents.document'].create({
+            'name': 'Acuse aviso 8A', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-02', 'sgi_state': 'vigente',
+            'sgi_process_id': self.process.id})
+        ack = self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.emp.id})
+        dup = doc.activity_schedule('mail.mail_activity_data_todo', date_deadline=self.today,
+                                    summary='Acuse 8A', user_id=self.user.id)
+        dup.sudo().sgi_cron_key = 'acuse_pendiente:%d' % ack.id
+        self.assertFalse(self._row('aviso', dup.id))
+        # Requisito legal: la persona ya tiene su renglón «legal».
+        req = self.env['sgi.legal.requirement'].create({
+            'name': 'Requisito aviso 8A', 'system': 'ambiental', 'responsible_id': self.user.id,
+            'next_eval_date': self.today + timedelta(days=3)})
+        self.assertTrue(self._row('legal', req.id))
+        legal = req.activity_schedule('mail.mail_activity_data_todo', date_deadline=self.today,
+                                      summary='Evaluar requisito 8A', user_id=self.user.id)
+        self.assertFalse(self._row('aviso', legal.id))
+        # «Ir» abre la NC; «Hecho» cierra el aviso.
+        rows = self.Pending.with_user(self.user)._sgi_build(self.emp)
+        line = rows.filtered(lambda r: r.kind == 'aviso' and r.res_id == notice.id)
+        self.assertEqual(len(line), 1)
+        action = line.with_user(self.user).action_open()
+        self.assertEqual((action['res_model'], action['res_id']), ('quality.alert', alert.id))
+        result = line.with_user(self.user).action_done_notice()
+        self.assertEqual(result['tag'], 'soft_reload')
+        self.assertFalse(notice.exists() and notice.active, "El aviso queda hecho.")
+        self.assertFalse(line.exists(), "El renglón hecho sale de la lista.")
+        # El aviso de otra persona no se marca hecho.
+        other = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today,
+            summary='Aviso de otro 8A', user_id=self.boss_user.id)
+        other.sudo().sgi_cron_key = 'aviso_prueba_otro:%d' % alert.id
+        foreign = self.Pending.with_user(self.user).create({
+            'kind': 'aviso', 'name': 'Aviso de otro', 'employee_id': self.emp.id,
+            'res_model': 'mail.activity', 'res_id': other.id})
+        with self.assertRaises(UserError):
+            foreign.with_user(self.user).action_done_notice()
+        self.assertTrue(other.exists() and other.active)

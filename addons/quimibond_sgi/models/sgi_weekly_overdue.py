@@ -29,7 +29,7 @@ class ResUsersWeeklyOverdue(models.Model):
     sgi_weekly_overdue_mail = fields.Boolean(
         string="Correo semanal de mis pendientes atrasados (SGI)", default=True,
         help="Cada semana, un correo con lo atrasado de «Mis pendientes» del SGI. "
-             "Solo llega si hay algo atrasado. Apágalo si no lo quieres.")
+             "Solo llega si hay algo atrasado. Apáguelo si no lo quiere.")
 
     @property
     def SELF_READABLE_FIELDS(self):

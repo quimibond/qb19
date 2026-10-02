@@ -29,10 +29,15 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 1. **SGI → Mejora → No conformidades**: agrupe por etapa (Abierta,
    Seguimiento, Cerrada, Cancelada) y filtre las vencidas.
-2. Una NC no se cierra sin causa raíz, acciones terminadas y verificación de
-   eficacia (y en una NC mayor, los 5 porqués y la lección aplicada). Si hay
-   que cerrarla sin cumplirlo, use **Cierre forzado (Jefe MAST)** con motivo;
-   queda en el historial.
+2. Una NC no se cierra sin causa raíz, acciones terminadas (las correctivas,
+   con evidencia: una nota o un archivo) y verificación de eficacia con
+   resultado **Eficaz**, registrada en la fecha programada o después (y en una
+   NC mayor, los 5 porqués y la lección aplicada). Si la verificación sale
+   **No eficaz**, la NC regresa a Seguimiento y pide una acción correctiva
+   nueva. Solo la cierran el dueño del proceso o el Jefe MAST; ya cerrada,
+   solo el Jefe MAST la modifica (el dueño del proceso puede reabrirla
+   cambiando solo la etapa). Si hay que cerrarla sin cumplirlo, use **Cierre
+   forzado (Jefe MAST)** con motivo; queda en el historial.
 3. **SGI → Mejora → Acciones correctivas** muestra todas las acciones de
    todos los orígenes, con filtro «De …».
 

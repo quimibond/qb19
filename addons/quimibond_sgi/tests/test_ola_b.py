@@ -82,6 +82,7 @@ class TestOlaBLessonLock(TransactionCase):
             'sgi_why_1': '1', 'sgi_why_2': '2', 'sgi_why_3': '3',
             'sgi_why_4': '4', 'sgi_why_5': '5',
             'sgi_root_cause': 'raíz',
+            'sgi_effective': 'eficaz',
             'sgi_effectiveness_note': 'eficaz',
             'sgi_effectiveness_date': date.today()})
         self.env['sgi.action.line'].create({
@@ -105,6 +106,7 @@ class TestOlaBLessonLock(TransactionCase):
             'title': 'NC menor OLA B', 'team_id': self.team.id,
             'sgi_classification': 'menor',
             'sgi_root_cause': 'raíz',
+            'sgi_effective': 'eficaz',
             'sgi_effectiveness_note': 'eficaz',
             'sgi_effectiveness_date': date.today()})
         self.env['sgi.action.line'].create({

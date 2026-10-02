@@ -39,7 +39,7 @@
                         <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>.
                         Se calcula solo del <b>entregable</b>: sale de las actividades
                         que lo entregan y llega a las que lo reciben. Para cambiarlo,
-                        cambia el entregable o las actividades.
+                        cambie el entregable o las actividades.
                     </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>

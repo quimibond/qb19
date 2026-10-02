@@ -27,8 +27,11 @@ ser dueño de un proceso auditado.
 
 ### 2.1 El programa anual
 
-1. **Programa → Nuevo** con el año. **Programa sugerido** propone los
-   renglones (procesos y meses).
+1. **Programa → Nuevo** con el año. **Programa sugerido** propone una línea
+   por subproceso (también los que siguen en borrador), con proceso y mes. Si
+   algún subproceso no tiene renglón en este programa ni en los dos
+   anteriores, la ficha lo avisa (cobertura de 3 años) y la nota queda en el
+   historial al aprobarlo.
 2. El programa lo **aprueba** el Jefe MAST y SGI. Desde ahí, 15 días antes
    del mes de cada auditoría, le llega el aviso al auditor líder.
 3. Desde cada renglón, **Crear auditoría**.
@@ -42,6 +45,9 @@ ser dueño de un proceso auditado.
    menor o mayor, oportunidad de mejora), cláusula, proceso y evidencia, y
    una **disposición**: generar NC, mejora o sin acción (con motivo). **Generar
    NC** crea la no conformidad ligada. Sin disposición la auditoría no cierra.
+   Una no conformidad menor o mayor siempre lleva su NC (**Generar NC**);
+   «sin acción» y «mejora» son para observaciones y oportunidades. Con la
+   auditoría cerrada, los hallazgos solo los corrige el Jefe MAST.
 5. **Elaborar informe** y **Cerrar**: el informe queda archivado en
    Documentos.
 

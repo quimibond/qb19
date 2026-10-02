@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="quimibond_sgi.FloorKiosk">
+    <div class="o_sgi_kiosk d-flex flex-column h-100 overflow-auto p-3">
+        <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
+            <div class="fs-2 fw-bold">SGI en planta</div>
+            <div t-if="state.tablet" class="text-muted fs-5" t-esc="state.tablet.name"/>
+            <div t-if="state.person" class="ms-auto d-flex align-items-center gap-3">
+                <span class="fs-4 fw-bold" t-esc="state.person.name"/>
+                <button class="btn btn-secondary btn-lg o_sgi_kiosk_exit" t-on-click="() => this.exit()">Salir</button>
+            </div>
+        </div>
+        <div t-if="state.error" class="alert alert-danger fs-5 o_sgi_kiosk_error" role="alert" t-esc="state.error"/>
+        <div t-if="state.message" class="alert alert-success fs-5 o_sgi_kiosk_message" role="status" t-esc="state.message"/>
+
+        <!-- Mosaico -->
+        <t t-if="state.screen === 'mosaic'">
+            <div t-if="state.departments.length > 1" class="d-flex flex-wrap gap-2 mb-3">
+                <button t-attf-class="btn btn-lg #{state.department ? 'btn-outline-primary' : 'btn-primary'}"
+                        t-on-click="() => this.filterDepartment(false)">Todos</button>
+                <t t-foreach="state.departments" t-as="dept" t-key="dept.id">
+                    <button t-attf-class="btn btn-lg #{state.department === dept.id ? 'btn-primary' : 'btn-outline-primary'}"
+                            t-on-click="() => this.filterDepartment(dept.id)" t-esc="dept.name"/>
+                </t>
+            </div>
+            <p class="fs-4">Toque su foto para empezar.</p>
+            <div class="o_sgi_kiosk_grid">
+                <t t-foreach="state.employees" t-as="emp" t-key="emp.id">
+                    <button class="o_sgi_kiosk_tile btn btn-light border" t-on-click="() => this.selectEmployee(emp)">
+                        <img t-if="emp.avatar" t-att-src="emp.avatar" alt="" class="o_sgi_kiosk_avatar"/>
+                        <div class="fw-bold fs-5" t-esc="emp.name"/>
+                        <div class="text-muted" t-esc="emp.job"/>
+                        <span t-if="!emp.has_pin" class="badge text-bg-warning">Sin PIN</span>
+                    </button>
+                </t>
+            </div>
+            <p t-if="!state.employees.length and state.tablet" class="fs-5 text-muted">
+                No hay personas en los departamentos de esta tableta. Avise al Jefe MAST.
+            </p>
+        </t>
+
+        <!-- PIN -->
+        <t t-if="state.screen === 'pin'">
+            <div class="text-center">
+                <p class="fs-3">Teclee su PIN, <b t-esc="state.person.name"/>.</p>
+                <div class="fs-1 mb-3 o_sgi_kiosk_dots" t-esc="'•'.repeat(state.pin.length) || '·'"/>
+                <div class="o_sgi_kiosk_keypad mx-auto">
+                    <t t-foreach="keys" t-as="key" t-key="key">
+                        <button t-att-data-key="key" t-att-disabled="state.busy"
+                                t-attf-class="btn btn-lg o_sgi_kiosk_key #{key === 'ok' ? 'btn-primary' : 'btn-outline-secondary'}"
+                                t-on-click="() => this.pressKey(key)" t-esc="keyLabel(key)"/>
+                    </t>
+                </div>
+                <button class="btn btn-link fs-5 mt-3" t-on-click="() => this.exit()">No soy yo</button>
+            </div>
+        </t>
+
+        <!-- Menú de la persona -->
+        <t t-if="state.screen === 'menu'">
+            <div class="o_sgi_kiosk_menu">
+                <button class="btn btn-primary btn-lg o_sgi_kiosk_menu_docs" t-att-disabled="state.busy" t-on-click="() => this.openDocs()">
+                    Documentos por leer <span class="badge text-bg-light" t-esc="state.counts.docs"/>
+                </button>
+                <button class="btn btn-warning btn-lg o_sgi_kiosk_menu_nearmiss" t-att-disabled="state.busy" t-on-click="() => this.openNearMiss()">
+                    Reportar casi accidente
+                </button>
+                <button class="btn btn-primary btn-lg o_sgi_kiosk_menu_epp" t-att-disabled="state.busy" t-on-click="() => this.openEpp()">
+                    Mi EPP <span class="badge text-bg-light" t-esc="state.counts.epp"/>
+                </button>
+                <button class="btn btn-primary btn-lg o_sgi_kiosk_menu_checklists" t-att-disabled="state.busy" t-on-click="() => this.openChecklists()">
+                    Checklist de mi equipo <span class="badge text-bg-light" t-esc="state.counts.checklists"/>
+                </button>
+            </div>
+        </t>
+
+        <!-- Documentos por leer -->
+        <t t-if="state.screen === 'docs'">
+            <button class="btn btn-secondary btn-lg mb-3" t-on-click="() => this.toMenu()">Regresar</button>
+            <p t-if="!state.docs.length" class="fs-4">No tiene documentos por leer.</p>
+            <t t-foreach="state.docs" t-as="doc" t-key="doc.ack_id">
+                <div class="o_sgi_kiosk_doc_row card mb-2 p-3 d-flex flex-row flex-wrap align-items-center gap-3">
+                    <div class="flex-grow-1">
+                        <div class="fs-4 fw-bold" t-esc="doc.title"/>
+                        <div t-if="doc.revision" class="text-muted">Revisión <t t-esc="doc.revision"/></div>
+                    </div>
+                    <button t-if="doc.has_file" class="btn btn-outline-primary btn-lg" t-att-disabled="state.busy" t-on-click="() => this.readDoc(doc)">Leer</button>
+                    <button class="btn btn-success btn-lg o_sgi_kiosk_sign" t-att-disabled="state.busy" t-on-click="() => this.signDoc(doc)">Leído y entendido</button>
+                </div>
+            </t>
+        </t>
+        <t t-if="state.screen === 'doc'">
+            <div class="d-flex gap-2 mb-2">
+                <button class="btn btn-secondary btn-lg" t-on-click="() => this.openDocs()">Regresar</button>
+                <button class="btn btn-success btn-lg o_sgi_kiosk_sign" t-att-disabled="state.busy" t-on-click="() => this.signDoc(state.doc)">Leído y entendido</button>
+            </div>
+            <div class="fs-4 fw-bold mb-2" t-esc="state.doc.title"/>
+            <iframe t-if="state.docUrl" t-att-src="state.docUrl" t-on-load="onViewerLoad" class="o_sgi_kiosk_viewer flex-grow-1 border" title="Documento"/>
+            <p t-else="" class="fs-5">El documento se abrió en otra pestaña. Cuando termine de leerlo, regrese aquí.</p>
+        </t>
+
+        <!-- Casi accidente -->
+        <t t-if="state.screen === 'nearmiss'">
+            <button class="btn btn-secondary btn-lg mb-3" t-on-click="() => this.toMenu()">Regresar</button>
+            <label class="fs-4 fw-bold" for="o_sgi_kiosk_desc">¿Qué pasó o qué pudo pasar?</label>
+            <textarea id="o_sgi_kiosk_desc" class="form-control fs-4 mb-3" rows="4" t-model="state.nearMiss.description"/>
+            <label class="fs-4 fw-bold" for="o_sgi_kiosk_loc">¿Dónde?</label>
+            <input id="o_sgi_kiosk_loc" class="form-control fs-4 mb-3" t-model="state.nearMiss.location"/>
+            <button class="btn btn-warning btn-lg o_sgi_kiosk_send" t-att-disabled="state.busy" t-on-click="() => this.sendNearMiss()">Enviar reporte</button>
+        </t>
+
+        <!-- Mi EPP -->
+        <t t-if="state.screen === 'epp'">
+            <button class="btn btn-secondary btn-lg mb-3" t-on-click="() => this.toMenu()">Regresar</button>
+            <p t-if="!state.epp.length" class="fs-4">No tiene responsivas de EPP por firmar.</p>
+            <t t-foreach="state.epp" t-as="row" t-key="row.id">
+                <div class="card mb-2 p-3">
+                    <div class="fs-4 fw-bold"><t t-esc="row.name"/> · <t t-esc="row.date"/></div>
+                    <pre class="fs-5 mb-2" t-esc="row.items"/>
+                    <p class="text-muted">Quedo en el entendido de que el equipo de protección que recibo es responsabilidad mía: lo usaré y cuidaré.</p>
+                    <button class="btn btn-success btn-lg" t-att-disabled="state.busy" t-on-click="() => this.signEpp(row)">Recibí el EPP</button>
+                </div>
+            </t>
+        </t>
+
+        <!-- Checklist de mi equipo -->
+        <t t-if="state.screen === 'checklists'">
+            <button class="btn btn-secondary btn-lg mb-3" t-on-click="() => this.toMenu()">Regresar</button>
+            <p t-if="!state.checklists.length" class="fs-4">No hay checklists pendientes para usted en esta tableta.</p>
+            <div class="o_sgi_kiosk_grid">
+                <t t-foreach="state.checklists" t-as="sheet" t-key="sheet.id">
+                    <button class="o_sgi_kiosk_tile btn btn-light border" t-on-click="() => this.openSheet(sheet)">
+                        <div class="fs-4 fw-bold" t-esc="sheet.equipment"/>
+                        <div class="text-muted"><t t-esc="sheet.template"/> · <t t-esc="sheet.date"/></div>
+                    </button>
+                </t>
+            </div>
+        </t>
+        <t t-if="state.screen === 'sheet'">
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button class="btn btn-secondary btn-lg" t-on-click="() => this.openChecklists()">Regresar</button>
+                <button class="btn btn-outline-success btn-lg" t-att-disabled="state.busy" t-on-click="() => this.saveSheet({}, true, false)">Marcar el resto como Bien</button>
+                <button class="btn btn-primary btn-lg" t-att-disabled="state.busy" t-on-click="() => this.saveSheet({}, false, true)">Terminar checklist</button>
+            </div>
+            <div class="fs-3 fw-bold mb-2"><t t-esc="state.sheet.equipment"/> · <t t-esc="state.sheet.template"/></div>
+            <t t-foreach="state.sheet.lines" t-as="line" t-key="line.id">
+                <div t-attf-class="card mb-2 p-3 #{line.answer === 'falla' ? 'border-danger' : ''}">
+                    <div class="fs-4 fw-bold" t-esc="line.name"/>
+                    <div t-if="line.hint" class="text-muted" t-esc="line.hint"/>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <t t-foreach="answers" t-as="opt" t-key="opt[0]">
+                            <button t-attf-class="btn btn-lg #{line.answer === opt[0] ? opt[2] : 'btn-outline-secondary'}"
+                                    t-att-disabled="state.busy" t-on-click="() => this.answer(line, opt[0])" t-esc="opt[1]"/>
+                        </t>
+                    </div>
+                    <input class="form-control fs-5 mt-2" placeholder="Observación (opcional)" t-att-disabled="state.busy"
+                           t-att-value="line.note" t-on-change="(ev) => this.saveNote(line, ev)"/>
+                </div>
+            </t>
+        </t>
+    </div>
+</t>
+
+</templates>

@@ -297,7 +297,7 @@ class SgiIndicatorLine(models.Model):
         if self.calc_mode != 'configurable':
             return "Solo los indicadores con fórmula configurable se desglosan."
         if not self.term_ids:
-            return "Captura la fórmula (pestaña Fórmula) antes de desglosar."
+            return "Capture la fórmula (pestaña Fórmula) antes de desglosar."
         missing = self.term_ids.filtered(lambda t: not t._sgi_split_path(split))
         if missing:
             what = "equipo de ventas" if split == 'team' else "cliente con país"

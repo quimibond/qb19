@@ -304,3 +304,6 @@ access_sgi_loto_energy_manager,sgi.loto.energy.manager,model_sgi_loto_energy,gro
 access_sgi_loto_lock_user,sgi.loto.lock.user,model_sgi_loto_lock,group_sgi_user,1,1,1,1
 access_sgi_loto_lock_auditor,sgi.loto.lock.auditor,model_sgi_loto_lock,group_sgi_auditor,1,0,0,0
 access_sgi_loto_lock_manager,sgi.loto.lock.manager,model_sgi_loto_lock,group_sgi_manager,1,1,1,1
+access_sgi_floor_tablet_manager,sgi.floor.tablet.manager,model_sgi_floor_tablet,group_sgi_manager,1,1,1,1
+access_sgi_floor_tablet_auditor,sgi.floor.tablet.auditor,model_sgi_floor_tablet,group_sgi_auditor,1,0,0,0
+access_sgi_floor_tablet_tablet,sgi.floor.tablet.tablet,model_sgi_floor_tablet,group_sgi_floor_tablet,1,0,0,0

@@ -422,8 +422,8 @@ class SgiIndicatorMeasureDetail(models.Model):
         valor), no una consulta nueva."""
         self.ensure_one()
         if not self.detail_model or not self.detail_count:
-            raise UserError("Esta medición no guardó registros. Recalcúlala con el "
-                            "modo actual o usa «Ver evidencia».")
+            raise UserError("Esta medición no guardó registros. Recalcúlela con el "
+                            "modo actual o use «Ver evidencia».")
         if self.detail_model not in self.env:
             raise UserError("El modelo %s ya no existe." % self.detail_model)
         ids = [int(i) for i in self.detail_ids.split(',') if i]
@@ -443,7 +443,7 @@ class SgiIndicatorMeasureDetail(models.Model):
             indicator = measure.indicator_id
             if measure.state == 'validado':
                 raise UserError(
-                    "La medición de %s ya está validada (es evidencia): pide "
+                    "La medición de %s ya está validada (es evidencia): pida "
                     "al Jefe MAST regresarla a pendiente antes de recalcular."
                     % indicator.code)
             if indicator.calc_mode == 'manual':

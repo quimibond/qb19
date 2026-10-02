@@ -224,7 +224,7 @@ class SgiCalibration(models.Model):
                     cal.certificate_ref or cal.certificate_file):
                 raise ValidationError(
                     "Una calibración externa requiere el certificado del "
-                    "laboratorio: captura el N° de certificado o adjunta el "
+                    "laboratorio: capture el N° de certificado o adjunte el "
                     "PDF (equipo %s)." % cal.equipment_id.name)
 
     @api.depends('date', 'equipment_id.sgi_calibration_interval_months', 'calibration_type')

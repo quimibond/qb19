@@ -53,13 +53,13 @@ class ResPartner(models.Model):
     _inherit = 'res.partner'
 
     sgi_requires_coa = fields.Boolean(
-        string="Requiere COA en cada embarque", company_dependent=True,
+        string="Requiere CoA en cada embarque", company_dependent=True,
         help="Cada salida a este cliente (o a sus direcciones de entrega) "
              "debe llevar el certificado de análisis adjunto.")
     sgi_coa_recipient_ids = fields.Many2many(
         'res.partner', 'sgi_partner_coa_recipient_rel', 'partner_id', 'recipient_id',
-        string="Reciben el COA",
-        help="Contactos a quienes se manda el COA. Vacío: el contacto de la entrega.")
+        string="Reciben el CoA",
+        help="Contactos a quienes se manda el CoA. Vacío: el contacto de la entrega.")
 
     _SGI_COA_FIELDS = ('sgi_requires_coa', 'sgi_coa_recipient_ids')
 
@@ -69,7 +69,7 @@ class ResPartner(models.Model):
         if (set(vals) & set(self._SGI_COA_FIELDS) and not self.env.su
                 and not (self.env.user.has_group('quimibond_sgi.group_sgi_user')
                          or self.env.user.has_group('quality.group_quality_user'))):
-            raise UserError("Solo SGI o Calidad pueden cambiar el requisito de COA "
+            raise UserError("Solo SGI o Calidad pueden cambiar el requisito de CoA "
                             "de un cliente.")
         res = super().write(vals)
         if 'sgi_requires_coa' in vals:
@@ -93,7 +93,7 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     sgi_requires_coa = fields.Boolean(
-        string="Requiere COA", compute='_compute_sgi_requires_coa', store=True,
+        string="Requiere CoA", compute='_compute_sgi_requires_coa', store=True,
         help="Salida a un cliente que pide certificado de análisis en cada embarque.")
     # bypass_search_access: sin él, leer el campo como usuario normal hace que
     # ir.attachment._search cargue TODOS los adjuntos de la base y revise el
@@ -104,18 +104,18 @@ class StockPicking(models.Model):
     # revisando el acceso del adjunto.
     sgi_coa_attachment_ids = fields.Many2many(
         'ir.attachment', 'sgi_picking_coa_attachment_rel', 'picking_id', 'attachment_id',
-        string="COA", copy=False, bypass_search_access=True,
+        string="CoA", copy=False, bypass_search_access=True,
         help="Certificados de análisis del embarque (uno por producto).")
-    sgi_coa_date = fields.Datetime(string="COA adjuntado", copy=False, readonly=True,
-                                   help="Fecha y hora en que se adjuntó el COA.")
-    sgi_coa_uid = fields.Many2one('res.users', string="COA adjuntado por",
+    sgi_coa_date = fields.Datetime(string="CoA adjuntado", copy=False, readonly=True,
+                                   help="Fecha y hora en que se adjuntó el CoA.")
+    sgi_coa_uid = fields.Many2one('res.users', string="CoA adjuntado por",
                                   copy=False, readonly=True,
-                                  help="Quién adjuntó el COA.")
-    sgi_coa_sent_date = fields.Datetime(string="COA enviado al cliente", copy=False,
+                                  help="Quién adjuntó el CoA.")
+    sgi_coa_sent_date = fields.Datetime(string="CoA enviado al cliente", copy=False,
                                         readonly=True,
-                                        help="Fecha y hora en que se envió el COA al cliente.")
+                                        help="Fecha y hora en que se envió el CoA al cliente.")
     sgi_coa_status = fields.Selection(
-        COA_STATUS, string="Estado del COA", compute='_compute_sgi_coa_status',
+        COA_STATUS, string="Estado del CoA", compute='_compute_sgi_coa_status',
         store=True, index=True,
         help="No aplica, pendiente, adjunto o enviado. Se calcula solo.")
 
@@ -145,7 +145,7 @@ class StockPicking(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "Adjuntar COA",
+            'name': "Adjuntar CoA",
             'res_model': 'sgi.coa.attach.wizard',
             'view_mode': 'form',
             'target': 'new',
@@ -199,15 +199,15 @@ class StockPicking(models.Model):
                 if self._sgi_user_is_quality_head():
                     return {
                         'type': 'ir.actions.act_window',
-                        'name': "Validar sin COA",
+                        'name': "Validar sin CoA",
                         'res_model': 'sgi.coa.exception.wizard',
                         'view_mode': 'form',
                         'target': 'new',
                         'context': {'default_picking_ids': [(6, 0, self.ids)]},
                     }
                 raise UserError(
-                    "Estas salidas requieren COA y no lo tienen adjunto: %s.\n"
-                    "Adjunta el certificado (botón «Adjuntar COA») o pide al Jefe "
+                    "Estas salidas requieren CoA y no lo tienen adjunto: %s.\n"
+                    "Adjunte el certificado (botón «Adjuntar CoA») o pida al Jefe "
                     "de Calidad que valide la excepción." % ", ".join(missing.mapped('name')))
         return super().button_validate()
 
@@ -216,10 +216,10 @@ class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
     sgi_coa_status = fields.Selection(
-        COA_STATUS, string="COA", compute='_compute_sgi_coa_status', store=True,
-        help="El peor estado del COA de sus salidas que lo requieren.")
+        COA_STATUS, string="CoA", compute='_compute_sgi_coa_status', store=True,
+        help="El peor estado del CoA de sus salidas que lo requieren.")
     sgi_coa_attachment_count = fields.Integer(
-        string="# COA", compute='_compute_sgi_coa_attachment_count')
+        string="# CoA", compute='_compute_sgi_coa_attachment_count')
 
     @api.depends('picking_ids.sgi_coa_status')
     def _compute_sgi_coa_status(self):
@@ -235,7 +235,7 @@ class SaleOrder(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "COA de %s" % self.name,
+            'name': "CoA de %s" % self.name,
             'res_model': 'ir.attachment',
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.picking_ids.sgi_coa_attachment_ids.ids)],
@@ -247,19 +247,19 @@ class SgiCoaAttachWizard(models.TransientModel):
     """Asistente para adjuntar el certificado de análisis (COA) a una entrega y, si se pide,
     mandarlo al cliente."""
     _name = 'sgi.coa.attach.wizard'
-    _description = "Adjuntar COA a la entrega"
+    _description = "Adjuntar CoA a la entrega"
 
     picking_id = fields.Many2one('stock.picking', string="Entrega", required=True,
-                                 help="Entrega a la que se adjunta el COA.")
+                                 help="Entrega a la que se adjunta el CoA.")
     attachment_ids = fields.Many2many(
         'ir.attachment', 'sgi_coa_wizard_attachment_rel', 'wizard_id', 'attachment_id',
-        string="COA (PDF)", bypass_search_access=True, help="Uno por producto. Se acepta el nombre que ya usa el laboratorio.")
+        string="CoA (PDF)", bypass_search_access=True, help="Uno por producto. Se acepta el nombre que ya usa el laboratorio.")
     recipient_ids = fields.Many2many(
         'res.partner', 'sgi_coa_wizard_recipient_rel', 'wizard_id', 'partner_id',
         string="Destinatarios",
-        help="Contactos del cliente a los que se envía el COA.")
+        help="Contactos del cliente a los que se envía el CoA.")
     send = fields.Boolean(string="Enviar al cliente", default=True,
-                          help="Marque para enviar el COA al cliente por correo al adjuntarlo.")
+                          help="Marque para enviar el CoA al cliente por correo al adjuntarlo.")
 
     @api.model
     def default_get(self, fields_list):
@@ -272,9 +272,9 @@ class SgiCoaAttachWizard(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         if not self.attachment_ids:
-            raise UserError("Adjunta al menos un PDF del COA.")
+            raise UserError("Adjunte al menos un PDF del CoA.")
         if self.send and not self.recipient_ids:
-            raise UserError("Para enviarlo al cliente, indica al menos un destinatario.")
+            raise UserError("Para enviarlo al cliente, indique al menos un destinatario.")
         # Solo archivos subidos en este asistente: el registro los mueve a la
         # entrega con sudo y no debe poder «robar» adjuntos de otros registros.
         foreign = self.attachment_ids.sudo().filtered(
@@ -282,7 +282,7 @@ class SgiCoaAttachWizard(models.TransientModel):
             or (a.res_model == 'stock.picking' and a.res_id not in (0, self.picking_id.id))
             or (not self.env.su and a.create_uid != self.env.user))
         if foreign:
-            raise UserError("Adjunta los PDF del COA desde este asistente (%s no se puede usar)."
+            raise UserError("Adjunte los PDF del CoA desde este asistente (%s no se puede usar)."
                             % ', '.join(foreign.mapped('name')))
         picking = self.picking_id
         picking._sgi_coa_register(self.attachment_ids)
@@ -290,7 +290,7 @@ class SgiCoaAttachWizard(models.TransientModel):
             picking._sgi_coa_send(self.attachment_ids, self.recipient_ids)
         else:
             picking.message_post(
-                body="COA adjunto (no enviado al cliente).",
+                body="CoA adjunto (no enviado al cliente).",
                 attachment_ids=self.attachment_ids.ids)
         return {'type': 'ir.actions.act_window_close'}
 
@@ -299,19 +299,19 @@ class SgiCoaExceptionWizard(models.TransientModel):
     """Asistente para validar una salida sin COA con motivo; solo lo usa el puesto de excepción
     (Jefe de Calidad)."""
     _name = 'sgi.coa.exception.wizard'
-    _description = "Validar salida sin COA (Jefe de Calidad)"
+    _description = "Validar salida sin CoA (Jefe de Calidad)"
 
-    picking_ids = fields.Many2many('stock.picking', string="Salidas", help="Salidas que se validan sin COA.")
+    picking_ids = fields.Many2many('stock.picking', string="Salidas", help="Salidas que se validan sin CoA.")
     reason = fields.Text(string="Motivo", required=True)
 
     def action_confirm(self):
         self.ensure_one()
         if not (self.reason or '').strip():
-            raise UserError("Escribe el motivo de la excepción.")
+            raise UserError("Escriba el motivo de la excepción.")
         if not self.picking_ids._sgi_user_is_quality_head():
-            raise UserError("Solo el Jefe de Calidad puede validar una salida sin COA.")
+            raise UserError("Solo el Jefe de Calidad puede validar una salida sin CoA.")
         for picking in self.picking_ids:
-            picking.message_post(body="Validada sin COA por %s. Motivo: %s" % (
+            picking.message_post(body="Validada sin CoA por %s. Motivo: %s" % (
                 self.env.user.name, self.reason.strip()))
         return self.picking_ids.with_context(
             sgi_coa_exception_reason=self.reason.strip()).button_validate()
@@ -321,21 +321,23 @@ class SgiCoaInbox(models.Model):
     """Correos al buzón «COA»: cada PDF se liga a su salida por el nombre del
     archivo. Lo que no se liga queda aquí para que Calidad lo asigne."""
     _name = 'sgi.coa.inbox'
-    _description = "COA recibido por correo"
+    _description = "CoA recibido por correo"
     _inherit = ['mail.thread']
     _order = 'id desc'
 
+    # «COA» se queda como dato guardado a propósito: el glosario (CoA) aplica a
+    # etiquetas, no a lo que ya está en la base.
     name = fields.Char(string="Asunto", required=True, default="COA")
     email_from = fields.Char(string="Remitente")
     state = fields.Selection([
-        ('sin_ligar', "COA sin ligar"),
+        ('sin_ligar', "CoA sin ligar"),
         ('ligado', "Ligado"),
     ], string="Estado", default='sin_ligar', required=True, tracking=True, index=True,
-        help="Sin ligar hasta que el COA se asocia a una salida.")
+        help="Sin ligar hasta que el CoA se asocia a una salida.")
     picking_ids = fields.Many2many(
         'stock.picking', 'sgi_coa_inbox_picking_rel', 'inbox_id', 'picking_id',
         string="Salidas ligadas", readonly=True,
-        help="Salidas a las que se ligó este COA.")
+        help="Salidas a las que se ligó este CoA.")
     picking_id = fields.Many2one(
         'stock.picking', string="Asignar a la salida",
         domain=[('picking_type_code', '=', 'outgoing')],
@@ -400,7 +402,7 @@ class SgiCoaInbox(models.Model):
                 copy = att.sudo().copy({'res_model': 'stock.picking', 'res_id': picking.id})
                 user = author.user_ids[:1] if author else self.env['res.users']
                 picking._sgi_coa_register(copy, sent=True, when=when, user=user or None)
-                picking.message_post(body="COA recibido por correo: %s" % att.name,
+                picking.message_post(body="CoA recibido por correo: %s" % att.name,
                                      attachment_ids=copy.ids)
                 inbox.picking_ids = [(4, picking.id)]
             if not lines:
@@ -412,7 +414,7 @@ class SgiCoaInbox(models.Model):
         """Calidad asigna la salida: todos los PDF del correo van a ella."""
         for inbox in self:
             if not inbox.picking_id:
-                raise UserError("Elige la salida a la que pertenece el COA.")
+                raise UserError("Elija la salida a la que pertenece el CoA.")
             pdfs = self.env['ir.attachment'].search([
                 ('res_model', '=', self._name), ('res_id', '=', inbox.id)]).filtered(
                 lambda a: (a.name or '').lower().endswith('.pdf'))
@@ -424,7 +426,7 @@ class SgiCoaInbox(models.Model):
                                            'res_id': inbox.picking_id.id})
             inbox.picking_id._sgi_coa_register(copies, sent=True)
             inbox.picking_id.message_post(
-                body="COA ligado a mano desde el buzón por %s." % self.env.user.name,
+                body="CoA ligado a mano desde el buzón por %s." % self.env.user.name,
                 attachment_ids=copies.ids)
             inbox.write({'picking_ids': [(4, inbox.picking_id.id)], 'state': 'ligado'})
         return True

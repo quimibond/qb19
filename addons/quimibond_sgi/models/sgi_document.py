@@ -3,6 +3,8 @@ import logging
 import re
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
 from odoo.exceptions import AccessError, ValidationError, UserError
 
@@ -112,7 +114,7 @@ class DocumentsDocument(models.Model):
         inverse='_inverse_sgi_doc_type', store=True, readonly=False,
         help="Código del tipo de documento (compatibilidad). Un tipo nuevo "
              "creado en Configuración que no esté en esta lista deja este "
-             "campo vacío; usa «Tipo de documento».")
+             "campo vacío; use «Tipo de documento».")
     # El «documento» que ya no es un archivo: el formato migrado vive como
     # vista/transacción de Odoo y este registro solo lo controla (clave,
     # revisión, difusión) y lo abre con un clic.
@@ -185,7 +187,7 @@ class DocumentsDocument(models.Model):
         string="Retención (años)",
         help="Años que el registro/documento se conserva tras quedar obsoleto "
              "o cerrado. 0 = sin definir. Clientes automotrices suelen exigir "
-             "vida del programa + años: captúralo por documento o familia.")
+             "vida del programa + años: captúrelo por documento o familia.")
     sgi_disposition = fields.Selection([
         ('archivo', "Archivo muerto"),
         ('destruccion', "Destrucción controlada"),
@@ -382,7 +384,7 @@ class DocumentsDocument(models.Model):
         if not self.sgi_migration_point_id:
             raise UserError(
                 "Este formato no tiene ligado su worksheet destino. "
-                "Selecciónalo en la pestaña de migración (campo "
+                "Selecciónelo en la pestaña de migración (campo "
                 "«Worksheet destino»).")
         return {
             'type': 'ir.actions.act_window',
@@ -449,8 +451,8 @@ class DocumentsDocument(models.Model):
         if action:
             if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
                 raise UserError(
-                    "Este documento vive en Odoo en «%s», pero tu usuario no tiene acceso a ese "
-                    "menú. Pide el acceso a tu jefe o al Jefe MAST." % menu.sudo().complete_name)
+                    "Este documento vive en Odoo en «%s», pero su usuario no tiene acceso a ese "
+                    "menú. Pida el acceso a su jefe o al Jefe MAST." % menu.sudo().complete_name)
             if action._name == 'ir.actions.act_window':
                 return action.read()[0]
             return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
@@ -458,7 +460,7 @@ class DocumentsDocument(models.Model):
             return self.action_sgi_open_migration_point()
         raise UserError(
             "Este documento todavía no tiene destino en Odoo (ni menú ni worksheet ligados). "
-            "Si ya se hace en Odoo, avísale al Jefe MAST para que lo ligue.")
+            "Si ya se hace en Odoo, avise al Jefe MAST para que lo ligue.")
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     # 56.7.0 (1.8): guardados para filtrar y reportar la difusión.
@@ -485,7 +487,7 @@ class DocumentsDocument(models.Model):
         'documents.document', 'sgi_doc_reference_rel', 'doc_id', 'ref_id',
         string="Referencias cruzadas",
         help="Documentos de OTRAS familias que este documento menciona "
-             "(ej. P-A28 referencia P-A22, P-C01, P-D01). Captura de MAST.")
+             "(ej. P-A28 referencia P-A22, P-C01, P-D01). Lo captura MAST.")
 
     @api.depends('sgi_parent_document_id',
                  'sgi_parent_document_id.sgi_child_document_ids',
@@ -669,7 +671,7 @@ class DocumentsDocument(models.Model):
                     continue
                 raise ValidationError(
                     "La clave SGI '%s' no corresponde a ningún tipo de "
-                    "documento. Elige el tipo o corrige la clave." % code)
+                    "documento. Elija el tipo o corrija la clave." % code)
             if not dtype._sgi_code_ok(code, doc.sgi_process_id):
                 raise ValidationError(
                     "La clave SGI '%s' no cumple la nomenclatura del tipo «%s» "
@@ -1073,6 +1075,87 @@ class DocumentsDocument(models.Model):
             "Solo el Jefe MAST cambia los datos de «Del Dropbox a Odoo» (%s)."
             % ", ".join(self._fields[name].string for name in changed))
 
+    _SGI_TRASH_LOCKED_STATES = ('vigente', 'piloto', 'obsoleto')
+
+    def _sgi_check_can_trash(self):
+        """57.91.0 (K-01): un controlado vigente, en piloto u obsoleto no va a
+        la papelera ni se borra; se marca obsoleto. El Jefe MAST y el sistema
+        sí pueden (limpiezas decididas)."""
+        if sgi_bypass_allowed(self.env):
+            return
+        locked = self.filtered(lambda d: d.sgi_is_controlled
+                               and d.sgi_state in self._SGI_TRASH_LOCKED_STATES)
+        if not locked:
+            return
+        obsolete = locked.filtered(lambda d: d.sgi_state == 'obsoleto')
+        current = locked - obsolete
+        parts = ["Un documento controlado no se manda a la papelera ni se borra: "
+                 "Odoo lo elimina después de unos días junto con sus acuses de lectura."]
+        if current:
+            parts.append("Márquelo obsoleto o pida al Jefe MAST que lo retire (%s)."
+                         % ", ".join(current.mapped('display_name')))
+        if obsolete:
+            parts.append("Ya está obsoleto y se conserva como evidencia; solo el Jefe MAST "
+                         "lo retira (%s)." % ", ".join(obsolete.mapped('display_name')))
+        raise UserError(" ".join(parts))
+
+    def unlink(self):
+        self._sgi_check_can_trash()
+        if self.env.su:
+            # 57.91.0 (K-01): la autolimpieza de la papelera de Documents
+            # borra en lote como superusuario. Un documento con acuses
+            # (evidencia, «restrict») que el rescate no pudo reactivar haría
+            # fallar la llave foránea y deshacer el vaciado completo cada
+            # noche: se deja fuera del lote y se avisa en el log.
+            kept = self.filtered(lambda d: not d.active and d.sgi_ack_ids)
+            if kept:
+                _logger.error("SGI: la papelera no borra %d documento(s) con acuses de lectura "
+                              "(evidencia): %s. Revíselos a mano.", len(kept), kept.ids)
+                super(DocumentsDocument, self - kept).unlink()
+                return True
+        return super().unlink()
+
+    @api.autovacuum
+    def _gc_sgi_rescue_trashed_with_acks(self):
+        """57.91.0 (K-01): un documento con acuses de lectura es evidencia
+        (ISO 7.5) y su llave foránea («restrict») impide borrarlo: si alguien
+        lo manda a la papelera, se rescata antes de que la autolimpieza de
+        Documents lo intente borrar y atore el vaciado de la papelera.
+
+        Uno por uno, cada uno en su savepoint: si uno no se puede reactivar
+        (p. ej. ya hay otro activo con su clave y revisión) se registra y se
+        sigue con los demás. Un vigente o piloto rescatado queda obsoleto; un
+        obsoleto conserva su fecha; un borrador o un no controlado conserva su
+        estado.
+
+        El orden de los autovacuum es fijo (alfabético: ``_gc_clear_bin`` de
+        Documents antes que este). Con un retraso (``documents.deletion_delay``)
+        de 0 a 1 día la limpieza de Documents corre antes que el rescate; no se
+        atora porque ``unlink`` deja fuera los documentos con acuses."""
+        trashed = self.sudo().with_context(active_test=False).search(
+            [('active', '=', False), ('sgi_ack_ids', '!=', False)])
+        rescued = self.browse()
+        for doc in trashed:
+            try:
+                with self.env.cr.savepoint():
+                    doc.action_unarchive()
+                    if doc.sgi_state in ('vigente', 'piloto'):
+                        doc.write({
+                            'sgi_state': 'obsoleto',
+                            'sgi_obsolete_reason': "Rescatado de la papelera: tiene acuses "
+                                                   "de lectura.",
+                        })
+                    doc.message_post(body="Rescatado de la papelera: tiene acuses de lectura "
+                                          "y es evidencia del SGI.")
+            except Exception as exc:  # uno que falle no detiene a los demás
+                _logger.error("SGI: no se pudo rescatar el documento %s de la papelera: %s",
+                                doc.id, exc)
+                continue
+            rescued |= doc
+        if rescued:
+            _logger.info("SGI: %d documentos con acuses rescatados de la papelera: %s",
+                         len(rescued), rescued.ids)
+
     def _sgi_value_differs(self, name, value):
         self.ensure_one()
         field = self._fields[name]
@@ -1113,14 +1196,19 @@ class DocumentsDocument(models.Model):
                 request.sudo().write({'sgi_document_id': doc.id})
                 doc.sudo().write({'sgi_doc_change_id': request.id})
                 doc.message_post(
-                    body="Documento creado desde la solicitud de alta aprobada "
-                         "<b>%s</b>." % (request.name or ''))
+                    body=Markup("Documento creado desde la solicitud de alta aprobada "
+                                "<b>%s</b>.") % (request.name or ''))
                 request.message_post(
-                    body="Documento del alta creado: <b>%s</b>."
+                    body=Markup("Documento del alta creado: <b>%s</b>.")
                          % (doc.sgi_code or doc.name))
         return docs
 
     def write(self, vals):
+        # 57.91.0 (K-01): archivar manda el documento a la papelera y la
+        # autolimpieza lo BORRA a los documents.deletion_delay días, con sus
+        # acuses. Ya pasó con 3359, 5119 y 4995 (57.82.0).
+        if 'active' in vals and not vals['active']:
+            self._sgi_check_can_trash()
         self._sgi_check_transition_write(vals)
         if vals.get('sgi_state') == 'obsoleto' and 'sgi_obsolete_date' not in vals:
             vals = dict(vals, sgi_obsolete_date=fields.Date.context_today(self))
@@ -1241,7 +1329,7 @@ class DocumentsDocument(models.Model):
             }
         raise UserError(
             "Este documento no tiene archivo ni enlace para abrir. "
-            "Sube el PDF en «Archivo adjunto» o captura la URL.")
+            "Suba el PDF en «Archivo adjunto» o capture la URL.")
 
     def action_sgi_open_in_documents(self):
         """Abre el documento en la app nativa de Documentos (visor completo con
@@ -1262,11 +1350,15 @@ class SgiDocumentAck(models.Model):
     los puestos aplicables; se cierra al leer o al firmar en Sign."""
     _name = 'sgi.document.ack'
     _description = "Acuse de lectura de documento SGI"
+    # 57.94.0 (U-01): firma con PIN desde SGI en planta (tableta y hora).
+    _inherit = ['sgi.pin.signature.mixin']
     _order = 'document_id, employee_id'
     _rec_name = 'document_id'
 
-    document_id = fields.Many2one('documents.document', string="Documento", required=True, ondelete='cascade',
-                                  help="Documento que se debe leer.")
+    # 57.91.0 (K-01): «restrict»: el acuse es evidencia de difusión (ISO 7.5);
+    # borrar el documento ya no se lleva sus acuses en cascada.
+    document_id = fields.Many2one('documents.document', string="Documento", required=True,
+                                  ondelete='restrict', help="Documento que se debe leer.")
     sgi_code = fields.Char(related='document_id.sgi_code', string="Clave", store=True)
     employee_id = fields.Many2one('hr.employee', string="Empleado", required=True, ondelete='cascade',
                                   help="Persona que debe leer el documento.")
@@ -1298,7 +1390,7 @@ class SgiDocumentAck(models.Model):
         for ack in self:
             if not ack.user_id or ack.user_id != self.env.user:
                 raise UserError(
-                    "Solo el propio empleado (o el Jefe de MAST) puede firmar o "
+                    "Solo el propio empleado (o el Jefe MAST) puede firmar o "
                     "modificar el acuse de lectura de %s." % ack.employee_id.name)
 
     @api.model_create_multi
@@ -1321,8 +1413,33 @@ class SgiDocumentAck(models.Model):
 
     def action_mark_read(self):
         # La validación de identidad vive en write(); aquí solo se sella.
+        # 57.94.0 (U-01): primero el permiso de escribir acuses. La cuenta de
+        # una tableta de planta no lo tiene (firma por SGI en planta, con el
+        # PIN de la persona); sin esto el candado de identidad respondía antes
+        # con un aviso que no decía que la cuenta no tiene acceso.
+        self.check_access('write')
         for ack in self:
             ack.write({'state': 'leido', 'ack_date': fields.Datetime.now()})
+        return True
+
+    _sgi_pin_employee_field = 'employee_id'
+
+    def _sgi_pin_employee(self):
+        return self.employee_id
+
+    def _sgi_sign_with_pin(self, tablet):
+        """57.94.0 (U-01): «leído y entendido» desde SGI en planta. Solo lo
+        llama sgi.floor.kiosk DESPUÉS de validar que el acuse es del empleado
+        y su PIN; escribe como sistema (el candado de write() deja pasar al
+        sistema) y deja la tableta y la hora."""
+        self.ensure_one()
+        if self.state != 'pendiente':
+            raise UserError("Este acuse ya estaba firmado.")
+        if not self.sudo().document_id.active:
+            raise UserError("El documento ya no está vigente: no hay acuse que firmar.")
+        now = fields.Datetime.now()
+        self.sudo().write({'state': 'leido', 'ack_date': now,
+                           'sgi_pin_tablet_id': tablet.id, 'sgi_pin_signed_at': now})
         return True
 
     def action_view_file(self):

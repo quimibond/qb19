@@ -22,6 +22,7 @@ from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 from .sgi_calendar import sgi_today
+from .sgi_guard import sgi_require_system
 
 from .sgi_base import sgi_bypass_allowed
 
@@ -677,7 +678,7 @@ class SgiProcessActivity(models.Model):
                 raise ValidationError(
                     "La actividad %s debe tener exactamente un puesto que la "
                     "ejecuta (tiene %d). Si nadie la ejecuta porque es "
-                    "automática, márcala así en «Automatización actual»." % (
+                    "automática, márquela así en «Automatización actual»." % (
                         label, len(executors)))
             approvers = activity.role_ids.filtered(
                 lambda r: r.role == 'aprueba' and not (r.condition or '').strip())
@@ -1346,6 +1347,7 @@ class SgiProcessActivity(models.Model):
         """Cron diario: resuelve menús pendientes, mide las actividades con entregable medible y
         evalúa los eslabones de la cadena (la extensión de ``sgi_activity_spec`` suma las cifras
         semanales y las de Mi procedimiento)."""
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         # Primero intenta resolver menús pendientes desde su texto; después
         # mide, y con la medición fresca evalúa el flujo de la cadena. Cada
         # paso es independiente: un tropiezo en uno no debe dejar sin medir
@@ -1388,7 +1390,7 @@ class SgiProcessActivity(models.Model):
         except Exception as exc:
             raise UserError(
                 "El «Filtro de evidencia» de la actividad %s es inválido para "
-                "el modelo %s:\n%s\n\nCorrige el dominio en la pestaña de "
+                "el modelo %s:\n%s\n\nCorrija el dominio en la pestaña de "
                 "medición (solo campos reales y almacenados del modelo)." % (
                     self.display_name, self.measure_model_id.model, exc))
         return domain
@@ -1464,7 +1466,7 @@ class SgiProcessActivity(models.Model):
     def write(self, vals):
         if 'number' in vals or 'section' in vals:
             if len(self.process_id) > 1:
-                raise UserError("Cambia el numeral o la sección de una actividad a la vez.")
+                raise UserError("Cambie el numeral o la sección de una actividad a la vez.")
             vals = self._sgi_structure_vals(vals, self.process_id)
         # Los roles que llegan por el one2many se validan juntos al final
         # (restricción de la actividad), no uno por uno a medio camino.

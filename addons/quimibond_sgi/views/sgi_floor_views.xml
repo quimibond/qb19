@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.94.0 «SGI en planta» (U-01): tabletas de planta (Jefe MAST). -->
+    <record id="sgi_floor_tablet_view_list" model="ir.ui.view">
+        <field name="name">sgi.floor.tablet.list</field>
+        <field name="model">sgi.floor.tablet</field>
+        <field name="arch" type="xml">
+            <list string="Tabletas de planta">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="department_ids" widget="many2many_tags"/>
+                <field name="checklist_template_ids" widget="many2many_tags" optional="show"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_floor_tablet_view_form" model="ir.ui.view">
+        <field name="name">sgi.floor.tablet.form</field>
+        <field name="model">sgi.floor.tablet</field>
+        <field name="arch" type="xml">
+            <form string="Tableta de planta">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ej. Tableta Tejido"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="department_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="checklist_template_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Dónde está y quién la cuida"/>
+                    <div class="alert alert-info" role="note">
+                        La cuenta recibe el grupo «Tableta de planta (SGI)» al guardar. Pida a Sistemas que ponga
+                        «SGI en planta» como su acción de inicio y que le quite los grupos del SGI que no use.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_floor_tablet_view_search" model="ir.ui.view">
+        <field name="name">sgi.floor.tablet.search</field>
+        <field name="model">sgi.floor.tablet</field>
+        <field name="arch" type="xml">
+            <search string="Tabletas de planta">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="department_ids"/>
+                <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_user" string="Cuenta" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_floor_tablet_action" model="ir.actions.act_window">
+        <field name="name">Tabletas de planta</field>
+        <field name="res_model">sgi.floor.tablet</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_floor_tablet_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Dé de alta la primera tableta de planta</p>
+            <p>Cada tableta es una cuenta compartida (por ejemplo supervisor@) con sus departamentos. En la
+            tableta, la persona toca su foto y teclea su PIN para firmar sus documentos, reportar un casi
+            accidente, firmar su EPP y llenar el checklist de su equipo.</p>
+        </field>
+    </record>
+
+    <!-- 57.94.0 (U-01): la pantalla de la tableta (static/src/floor_kiosk).
+         Pantalla completa: sin la barra de Odoo. -->
+    <record id="sgi_floor_kiosk_action" model="ir.actions.client">
+        <field name="name">SGI en planta</field>
+        <field name="tag">sgi_floor_kiosk</field>
+        <field name="target">fullscreen</field>
+    </record>
+
+    <!-- 57.94.0 (U-08): RH completa lo que habilita a la planta. Vistas propias
+         con prioridad 90: no cambian las de Empleados. -->
+    <record id="sgi_hr_employee_gaps_view_list" model="ir.ui.view">
+        <field name="name">hr.employee.list.sgi.gaps</field>
+        <field name="model">hr.employee</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Empleados sin puesto o sin correo" create="0" delete="0">
+                <field name="name"/>
+                <field name="department_id"/>
+                <field name="job_id"/>
+                <field name="work_email"/>
+                <field name="user_id" optional="hide"/>
+                <field name="sgi_missing_data" class="text-danger"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_hr_employee_gaps_view_search" model="ir.ui.view">
+        <field name="name">hr.employee.search.sgi.gaps</field>
+        <field name="model">hr.employee</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Empleados sin puesto o sin correo">
+                <field name="name"/>
+                <field name="department_id"/>
+                <filter name="no_job" string="Sin puesto" domain="[('job_id', '=', False)]"/>
+                <filter name="no_email" string="Sin correo de trabajo" domain="[('work_email', '=', False)]"/>
+                <filter name="no_user" string="Sin usuario de Odoo" domain="[('user_id', '=', False)]"/>
+                <group>
+                    <filter name="group_department" string="Departamento" context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_hr_employee_gaps_action" model="ir.actions.act_window">
+        <field name="name">Empleados sin puesto o sin correo</field>
+        <field name="res_model">hr.employee</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">['|', ('job_id', '=', False), ('work_email', '=', False)]</field>
+        <field name="context">{'search_default_group_department': 1, 'create': False}</field>
+        <field name="search_view_id" ref="sgi_hr_employee_gaps_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_hr_employee_gaps_view_list')}),
+            (0, 0, {'view_mode': 'form'})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todos los empleados tienen puesto y correo</p>
+            <p>Sin puesto la persona no tiene Mi procedimiento; sin correo de trabajo no recibe firmas de
+            Firma electrónica. Abra la ficha y complete lo que falta.</p>
+        </field>
+    </record>
+</odoo>

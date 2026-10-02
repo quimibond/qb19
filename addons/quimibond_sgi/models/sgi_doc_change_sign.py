@@ -104,7 +104,7 @@ class ApprovalRequestSign(models.Model):
         if not owner:
             problems.append("• Falta quién pide el cambio.")
         if not process:
-            problems.append("• Liga el documento a su proceso o indica los procesos afectados: "
+            problems.append("• Ligue el documento a su proceso o indique los procesos afectados: "
                             "el dueño del proceso firma «Revisó».")
         elif not reviewer:
             problems.append("• El proceso %s no tiene dueño con usuario activo." % (
@@ -248,7 +248,7 @@ class ApprovalRequestSign(models.Model):
             if blocked:
                 raise UserError(
                     "El cambio documental %s se aprueba firmando en Sign (elaboró → revisó → "
-                    "aprobó), no con el botón Aprobar. Revisa tu correo o la app Firma."
+                    "aprobó), no con el botón Aprobar. Revise su correo o la app Firma."
                     % ", ".join(blocked.mapped('name')))
         return super().action_approve(approver=approver)
 
@@ -285,7 +285,7 @@ class ApprovalRequestSign(models.Model):
             elif sign.state in ('canceled', 'expired') and req.request_status == 'pending' \
                     and req.sgi_sign_notified_state != sign.state:
                 req.sgi_sign_notified_state = sign.state
-                req.message_post(body="La firma en Sign quedó %s. Usa «Reenviar a firma» o rechaza la solicitud." % (
+                req.message_post(body="La firma en Sign quedó %s. Use «Reenviar a firma» o rechace la solicitud." % (
                     dict(sign._fields['state'].selection).get(sign.state, sign.state)))
         return True
 

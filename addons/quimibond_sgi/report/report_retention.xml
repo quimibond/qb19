@@ -43,7 +43,7 @@
                         </tbody>
                     </table>
                     <p class="text-muted">Un registro «SIN DEFINIR» no tiene
-                    retención capturada: defínela en la ficha SGI del documento
+                    retención capturada: defínala en la ficha SGI del documento
                     (campo «Retención (años)»).</p>
                     <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
                     <t t-call="quimibond_sgi.sgi_format_footer">

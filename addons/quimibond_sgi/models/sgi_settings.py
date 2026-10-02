@@ -143,8 +143,8 @@ class ResConfigSettings(models.TransientModel):
     sgi_purchase_approval_category_id = fields.Many2one(
         'approval.category', string="Categoría de requisiciones de compra",
         help="KPI CO-02 (Requisiciones): categoría de aprobación que cuenta como "
-             "requisición de compra. Déjalo vacío para detectar automáticamente "
-             "la(s) categoría(s) de tipo compra; configúralo solo si hay varias.")
+             "requisición de compra. Déjelo vacío para detectar automáticamente "
+             "la(s) categoría(s) de tipo compra; configúrelo solo si hay varias.")
     sgi_supplier_critical_categ_ids = fields.Many2many(
         'product.category', string="Categorías de proveedores críticos",
         help="Materia prima y maquila: solo los proveedores que entregan productos de "

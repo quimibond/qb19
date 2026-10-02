@@ -14,6 +14,8 @@ fuente propia apagable por MAST.
 """
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 
@@ -154,7 +156,7 @@ class SgiLegalRequirement(models.Model):
                 'evidence': evidence or req.eval_note or False,
                 'next_date': req.next_eval_date, 'user_id': self.env.user.id,
             })
-            req.message_post(body="Evaluación de cumplimiento registrada: <b>%s</b>." % dict(
+            req.message_post(body=Markup("Evaluación de cumplimiento registrada: <b>%s</b>.") % dict(
                 self._fields['compliance_state'].selection)[state])
         return True
 
@@ -222,7 +224,7 @@ class SgiLegalRequirement(models.Model):
             if alert:
                 req.alert_id = alert.id
                 req.message_post(
-                    body="Se levantó la NC <b>%s</b> por el incumplimiento."
+                    body=Markup("Se levantó la NC <b>%s</b> por el incumplimiento.")
                          % (alert.sgi_folio or alert.title))
         return True
 
@@ -304,7 +306,7 @@ class SgiLegalEvaluate(models.TransientModel):
         self.ensure_one()
         req = self.requirement_id
         if not self.next_date and self.result != 'no_aplica':
-            raise UserError("Indica la fecha de la próxima evaluación.")
+            raise UserError("Indique la fecha de la próxima evaluación.")
         req._sgi_mark(self.result, evidence=self.evidence, next_date=self.next_date)
         if self.result in ('parcial', 'no_cumple'):
             req._sgi_create_alert()

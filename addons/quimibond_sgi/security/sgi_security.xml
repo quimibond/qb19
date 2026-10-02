@@ -513,7 +513,9 @@
         <field name="name">SGI: el usuario consulta los incidentes que reportó o donde tiene una acción</field>
         <field name="model_id" ref="model_sgi_incident"/>
         <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
-        <field name="domain_force">['|', '|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id), ('action_line_ids.responsible_id', '=', user.id)]</field>
+        <!-- 57.94.0 (U-01): «lo creé yo» no cuenta para lo reportado en SGI en
+             planta (lo crea la cuenta compartida de la tableta). -->
+        <field name="domain_force">['|', '|', ('reporter_id', '=', user.id), '&amp;', ('create_uid', '=', user.id), ('sgi_pin_tablet_id', '=', False), ('action_line_ids.responsible_id', '=', user.id)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
@@ -523,7 +525,7 @@
         <field name="name">SGI: el reportante edita su incidente mientras está reportado</field>
         <field name="model_id" ref="model_sgi_incident"/>
         <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
-        <field name="domain_force">[('state', '=', 'reportado'), '|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id)]</field>
+        <field name="domain_force">[('state', '=', 'reportado'), '|', ('reporter_id', '=', user.id), '&amp;', ('create_uid', '=', user.id), ('sgi_pin_tablet_id', '=', False)]</field>
         <field name="perm_read" eval="False"/>
     </record>
     <record id="rule_sgi_incident_auditor_read" model="ir.rule">
@@ -616,5 +618,39 @@
         <field name="name">SGI: avance de la transición por empresa</field>
         <field name="model_id" ref="model_sgi_dropbox_progress"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+
+    <!-- 57.94.0 «SGI en planta» (U-01): la cuenta compartida de una tableta.
+         Implica solo usuario interno: no ve el menú SGI ni tiene ACL de
+         acuses, incidentes, EPP o checklist. Todo lo que se firma en la
+         tableta pasa por sgi.floor.kiosk, que valida el PIN de la persona y
+         escribe a su nombre. La cuenta recibe el grupo al darla de alta como
+         tableta (sgi.floor.tablet). Privilegio propio: no es un nivel del SGI. -->
+    <record id="res_groups_privilege_sgi_floor" model="res.groups.privilege">
+        <field name="name">SGI en planta</field>
+        <field name="sequence">24</field>
+        <field name="category_id" ref="module_category_sgi"/>
+    </record>
+    <record id="group_sgi_floor_tablet" model="res.groups">
+        <field name="name">Tableta de planta (SGI)</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_sgi_floor"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="rule_sgi_floor_tablet_own" model="ir.rule">
+        <field name="name">SGI: la tableta lee solo su registro</field>
+        <field name="model_id" ref="model_sgi_floor_tablet"/>
+        <field name="groups" eval="[(4, ref('group_sgi_floor_tablet'))]"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+    <record id="rule_sgi_floor_tablet_manager" model="ir.rule">
+        <field name="name">SGI: MAST y Auditor ven todas las tabletas</field>
+        <field name="model_id" ref="model_sgi_floor_tablet"/>
+        <field name="groups" eval="[(4, ref('group_sgi_manager')), (4, ref('group_sgi_auditor'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
     </record>
 </odoo>

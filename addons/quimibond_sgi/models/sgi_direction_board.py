@@ -129,7 +129,7 @@ class SgiDirectionBoard(models.TransientModel):
                 "Aún no hay indicadores oficiales de nivel dirección: se muestran los "
                 "de nivel dirección en cualquier estado (incluye los que están en prueba).")
         return indicators, (
-            "No hay indicadores de nivel dirección. Marca el nivel «Dirección» en la "
+            "No hay indicadores de nivel dirección. Marque el nivel «Dirección» en la "
             "ficha de los indicadores que deba ver Dirección (máximo %d)." % _BOARD_LIMIT)
 
     @api.depends('date')

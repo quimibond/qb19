@@ -107,8 +107,8 @@ class SgiRisk(models.Model):
     # Ligas inversas (H7): NCs del SGI que apuntan a este riesgo.
     sgi_nc_ids = fields.Many2many(
         'quality.alert', 'sgi_alert_risk_rel', 'risk_id', 'alert_id',
-        string="NCs ligadas")
-    sgi_nc_count = fields.Integer(string="# NCs ligadas",
+        string="NC ligadas")
+    sgi_nc_count = fields.Integer(string="# NC ligadas",
                                   compute='_compute_sgi_nc_count')
     next_review_date = fields.Date(string="Próxima revisión",
                                    help="Fecha de la próxima reevaluación. Al vencer, llega un aviso al "
@@ -268,7 +268,7 @@ class SgiRisk(models.Model):
         today = fields.Date.context_today(self)
         for risk in self:
             if risk.instrument != 'foda' and not (risk.eval_probability and risk.eval_impact):
-                raise UserError("Captura probabilidad e impacto antes de registrar la evaluación.")
+                raise UserError("Capture la probabilidad y el impacto antes de registrar la evaluación.")
             risk.write({'last_eval_date': today,
                         'next_review_date': self._sgi_next_semester(today)})
             risk.message_post(body="Evaluación registrada: %s × %s = %d (%s). Siguiente: %s." % (
@@ -298,7 +298,7 @@ class SgiRisk(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "NCs ligadas",
+            'name': "NC ligadas",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.sgi_nc_ids.ids)],

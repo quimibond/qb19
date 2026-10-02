@@ -47,8 +47,12 @@ SGI_MENU_PATHS = {
     'publicar_mi_procedimiento': ('quimibond_sgi.menu_sgi_my_procedure_publish',
                                   ('SGI', 'Administración SGI', 'Firmas de lectura',
                                    'Publicar Mi procedimiento')),
+    'tabletas_planta': ('quimibond_sgi.menu_sgi_floor_tablets',
+                        ('SGI', 'Administración SGI', 'Configuración', 'Tabletas de planta')),
     # Fuera del SGI: la raíz es de otra app («Empleados»); la prueba solo
     # compara los menús del módulo.
+    'rh_faltantes': ('quimibond_sgi.menu_hr_sgi_employee_gaps',
+                     ('Empleados', 'Empleados', 'Empleados sin puesto o sin correo')),
     'brechas_competencia': ('quimibond_sgi.menu_sgi_competences',
                             ('Empleados', 'Competencias SGI', 'Brechas de competencia (DNC)')),
 }

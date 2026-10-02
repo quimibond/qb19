@@ -16,7 +16,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`.
 |---|---|---|---|---|---|---|---|---|
 | `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:638` |
 | `code` | Char | Código | Identificador estable (procedimiento, instructivo, formato…). El campo heredado «Tipo de documento» se calcula desde él. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:632` |
-| `code_required` | Boolean | Exige clave | Apágalo para tipos sin clave propia (documentos externos, formularios de Odoo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:648` |
+| `code_required` | Boolean | Exige clave | Apáguelo para tipos sin clave propia (documentos externos, formularios de Odoo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:648` |
 | `company_id` | Many2one | Empresa | Vacío = tipo compartido por todas las empresas. |  | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:656` |
 | `legacy_code_regex` | Char | Claves heredadas aceptadas (regex) | Expresión regular de la nomenclatura anterior que se sigue aceptando mientras se migra (ej. ^P-[AGCDEIMPSV]\d{2}$). |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:652` |
 | `name` | Char | Nombre |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:636` |

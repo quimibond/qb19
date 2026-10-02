@@ -2,7 +2,7 @@
 
 # `sgi.nc.cancel`
 
-**Cancelación de No Conformidad** (TransientModel).
+**Cancelación de no conformidad** (TransientModel).
 
 NC-4: cancelar solo con motivo y aprobación del Jefe MAST. Cualquier usuario del SGI pide la cancelación con su motivo (queda en el chatter y agenda la aprobación a MAST); el Jefe MAST la aprueba con el mismo asistente. Nunca se llega a Ca…
 
@@ -12,9 +12,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_id` | Many2one | No Conformidad | No conformidad que se cancela. | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1076` |
-| `is_manager` | Boolean |  | Indica si usted es Jefe MAST y SGI. |  |  | compute `_compute_is_manager`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1079` |
-| `reason` | Text | Motivo de la cancelación |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1078` |
+| `alert_id` | Many2one | No conformidad | No conformidad que se cancela. | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1445` |
+| `is_manager` | Boolean |  | Indica si usted es Jefe MAST y SGI. |  |  | compute `_compute_is_manager`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1448` |
+| `reason` | Text | Motivo de la cancelación |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1447` |
 
 ## Métodos públicos (1)
 

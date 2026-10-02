@@ -96,6 +96,7 @@ SGI/Administración SGI/Configuración/Normas | menu_sgi_config_norms | -
 SGI/Administración SGI/Configuración/Cláusulas | menu_sgi_config_clauses | -
 SGI/Administración SGI/Configuración/Categorías de riesgo | menu_sgi_config_risk_cat | -
 SGI/Administración SGI/Configuración/Checklists de planta y unidades | menu_sgi_checklist_templates | -
+SGI/Administración SGI/Configuración/Tabletas de planta | menu_sgi_floor_tablets | -
 SGI/Administración SGI/Configuración/Formatos en documentos de Odoo | menu_sgi_config_format_map | -
 SGI/Administración SGI/Configuración/Fuentes de NC automáticas | menu_sgi_config_alert_sources | -
 SGI/Administración SGI/Configuración/Elementos PPAP | menu_sgi_config_ppap_elements | -

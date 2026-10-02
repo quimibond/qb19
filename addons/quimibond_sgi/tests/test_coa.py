@@ -84,7 +84,9 @@ class TestCoa(TransactionCase):
         send.action_confirm()
         self.assertEqual(picking.sgi_coa_status, 'enviado')
         self.assertTrue(picking.sgi_coa_sent_date)
-        self.assertTrue(any('COA Cliente COA' in (m.subject or '')
+        # 57.92.0 (U-06): la plantilla nueva dice «CoA»; la de una base
+        # existente (noupdate) puede seguir con «COA».
+        self.assertTrue(any('coa cliente coa' in (m.subject or '').lower()
                             for m in picking.message_ids),
                         "El correo con la plantilla queda en el chatter.")
 

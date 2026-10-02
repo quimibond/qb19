@@ -2,11 +2,12 @@
 import logging
 
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
-from .sgi_base import sgi_bypass_allowed
+from .sgi_base import SGI_FREE_PREFIXES, sgi_bypass_allowed
 from .sgi_calendar import sgi_add_business_days, sgi_business_days
 from .sgi_menu_paths import sgi_menu_path
 
@@ -29,6 +30,18 @@ class MailActivity(models.Model):
         lines = self.env['sgi.action.line'].sudo().search([
             ('activity_id', 'in', self.ids), ('date_done', '=', False),
         ])
+        # 57.93.0 (N-02): la actividad espejo de una correctiva sin evidencia
+        # solo se marca hecha con archivos; esos archivos quedan como evidencia.
+        # El candado vale para el usuario real aunque aquí se escriba con sudo.
+        if lines and not self.env.user._is_superuser():
+            missing = lines.filtered(lambda l: l._sgi_needs_evidence() and not l._sgi_has_evidence())
+            if missing and not attachment_ids:
+                raise UserError(
+                    "Una acción correctiva no se da por terminada sin evidencia. Abra la acción "
+                    "«%s» y capture la evidencia (nota o archivo); después marque hecha la actividad."
+                    % "», «".join(missing.mapped('name')))
+            if missing:
+                missing.write({'evidence_attachment_ids': [(4, att_id) for att_id in attachment_ids]})
         res = super()._action_done(feedback=feedback, attachment_ids=attachment_ids)
         if lines:
             lines.with_context(sgi_activity_done=True).write(
@@ -50,11 +63,25 @@ class QualityAlertTeam(models.Model):
                                       help="Secuencia anual para el folio de las NC de este equipo.")
 
 
+# 57.93.0 (N-02): campos de la eficacia que solo escribe el sistema (con sudo)
+# o el Jefe MAST; de cualquier otro cliente se ignoran.
+_SGI_SYSTEM_FIELDS = ('sgi_ineffective_count', 'sgi_effectiveness_due')
+
 _SGI_DEADLINE_STATES = [
     ('pendiente', "Pendiente"),
     ('vencida', "Vencida"),
     ('hecha', "Hecha"),
 ]
+
+# 57.93.0 (K-03): campos de una NC cerrada que se escriben solos y no cuentan
+# como edición, además de los del chatter (SGI_FREE_PREFIXES). ``date_close``
+# lo escribe Calidad (``quality``) en un segundo write justo después de mover
+# la NC a una etapa «hecha»: sin esta excepción, el dueño del proceso no
+# podría cerrar. ``sgi_action_line_ids``: la lista editable «Correcciones y
+# acciones» de la ficha escribe las acciones a través de la NC; cada acción
+# se protege sola (SgiActionLine._sgi_check_closed_origin: lo terminado no se
+# cambia y no se agregan ni borran acciones), y las pendientes se terminan.
+_SGI_CLOSED_FREE_FIELDS = frozenset({'date_close', 'sgi_action_line_ids'})
 
 
 class QualityAlert(models.Model):
@@ -120,6 +147,18 @@ class QualityAlert(models.Model):
                                               "todas las acciones.")
     sgi_effectiveness_by = fields.Many2one('res.users', string="Eficacia verificada por",
                                            help="Persona que verificó que las acciones fueron eficaces.")
+    # 57.93.0 (N-02): la verificación de eficacia tiene resultado. Solo
+    # «Eficaz» deja cerrar; «No eficaz» regresa la NC a Seguimiento y pide
+    # una acción correctiva nueva (_sgi_on_ineffective).
+    sgi_effective = fields.Selection([
+        ('eficaz', "Eficaz"),
+        ('no_eficaz', "No eficaz"),
+    ], string="Resultado de la eficacia", tracking=True, copy=False,
+        help="Resultado de la verificación de eficacia. La NC solo cierra con «Eficaz». «No eficaz» la "
+             "regresa a Seguimiento y pide una acción correctiva nueva.")
+    sgi_ineffective_count = fields.Integer(
+        string="Verificaciones no eficaces", readonly=True, copy=False,
+        help="Veces que la verificación de eficacia salió «No eficaz». Cero al cerrar = eficaz a la primera.")
     # Último eslabón de la línea dorada (IATF 10.2.3): la lección de una NC mayor
     # se lleva al AMEF / plan de control / documento. Se atestigua explícitamente
     # (queda en el chatter por tracking) y es requisito para cerrar la NC mayor.
@@ -195,7 +234,8 @@ class QualityAlert(models.Model):
     sgi_effectiveness_due = fields.Date(
         string="Verificar eficacia el", readonly=True, copy=False,
         help="Se fija al terminar la última acción correctiva (90 días por "
-             "omisión) y agenda la verificación al Jefe MAST.")
+             "omisión) y agenda la verificación al dueño del proceso (o al Jefe "
+             "MAST si no hay).")
     # --- NC-4: cancelación con motivo aprobado por el Jefe MAST.
     sgi_cancel_reason = fields.Text(string="Motivo de cancelación", readonly=True, copy=False)
     sgi_cancel_requested_by = fields.Many2one(
@@ -227,8 +267,54 @@ class QualityAlert(models.Model):
         help="Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro "
              "quimibond_sgi.nc_recurrence_months, 12 de fábrica).")
 
+    def copy_data(self, default=None):
+        """57.93.0 (FUNC-C13): una NC duplicada nace abierta: la copia toma
+        la primera etapa de su equipo (la de ``create``), no la del original.
+        Copiar una NC cerrada o cancelada no crea otra cerrada o cancelada."""
+        default = dict(default or {})
+        vals_list = super().copy_data(default=default)
+        if 'stage_id' in default:
+            return vals_list
+        Stage = self.env['quality.alert.stage'].sudo()
+        for alert, vals in zip(self, vals_list):
+            first = Stage.search([('team_ids', 'in', alert.team_id.ids)],
+                                 order='sequence, id', limit=1) if alert.team_id else Stage
+            if first:
+                vals['stage_id'] = first.id
+            else:
+                vals.pop('stage_id', None)
+        return vals_list
+
     @api.model_create_multi
     def create(self, vals_list):
+        # 57.93.0 (FUNC-C13 al crear): una NC nace abierta. Crearla en
+        # Cerrada se brincaba los candados de cierre y quién cierra; en
+        # Cancelada, el motivo aprobado (NC-4). Se revisa ANTES de crear para
+        # no gastar folio (la secuencia no regresa números). La etapa puede
+        # venir en los valores o en ``default_stage_id`` del contexto (alta
+        # rápida en la columna «Cerrada» del kanban). El Jefe MAST y el
+        # sistema (superusuario) sí pueden (cargas históricas). Un sudo() no
+        # exime: los caminos con sudo conservan el contexto del cliente
+        # (``default_stage_id``).
+        user = self.env.user
+        if not (user._is_superuser() or user.has_group('quimibond_sgi.group_sgi_manager')):
+            ctx_stage = self.env.context.get('default_stage_id')
+            default_stage = ctx_stage if isinstance(ctx_stage, int) and not isinstance(ctx_stage, bool) \
+                else False
+            stage_ids = {vals.get('stage_id') or default_stage for vals in vals_list} - {False, None}
+            stage_ids = {sid for sid in stage_ids if isinstance(sid, int) and not isinstance(sid, bool)}
+            bad = self.env['quality.alert.stage'].sudo().browse(stage_ids).exists().filtered(
+                lambda s: s.sgi_is_closing_stage or s.sgi_is_cancel_stage)
+            if bad:
+                raise UserError(
+                    "Una NC nace abierta: no se crea directamente en «%s». Créela, registre sus "
+                    "acciones y ciérrela (o pida su cancelación) desde la ficha."
+                    % ", ".join(bad.mapped('name')))
+        # 57.93.0 (N-02): el contador de «No eficaz» y la fecha programada de
+        # la eficacia los pone el sistema; no se aceptan del cliente.
+        if not sgi_bypass_allowed(self.env):
+            vals_list = [{k: v for k, v in vals.items() if k not in _SGI_SYSTEM_FIELDS}
+                         for vals in vals_list]
         alerts = super().create(vals_list)
         Stage = self.env['quality.alert.stage'].sudo()
         for alert in alerts:
@@ -355,11 +441,11 @@ class QualityAlert(models.Model):
         folio = self.sgi_folio or self.name
         labels = {
             'containment': ("Contención", self.sgi_due_containment, self.sgi_containment_state,
-                            "registra al menos una acción de contención"),
+                            "registre al menos una acción de contención"),
             'root_cause': ("Causa raíz", self.sgi_due_root_cause, self.sgi_root_cause_state,
-                           "captura la causa raíz (5 porqués / Ishikawa)"),
+                           "capture la causa raíz (5 porqués / Ishikawa)"),
             'plan': ("Plan de acción", self.sgi_due_plan, self.sgi_plan_state,
-                     "registra las acciones correctivas con responsable y compromiso"),
+                     "registre las acciones correctivas con responsable y compromiso"),
         }
         scheduled = []
         for key, (label, due, state, what) in labels.items():
@@ -395,16 +481,79 @@ class QualityAlert(models.Model):
     # ------------------------------------------------------------------
     # NC-3: eficacia programada
     # ------------------------------------------------------------------
+    def _sgi_effectiveness_user_id(self):
+        """57.93.0 (FUNC-C13): la eficacia la verifica quien puede cerrar la
+        NC: el usuario activo del dueño del proceso; sin él, el Jefe MAST."""
+        self.ensure_one()
+        owner_user = self.sudo().sgi_process_id.owner_id.user_id
+        if owner_user and owner_user.active:
+            return owner_user.id
+        return self.env['sgi.cron']._sgi_manager_user_id()
+
+    def _sgi_needs_new_corrective(self):
+        """57.93.0 (N-02): tras un «No eficaz», ¿falta la acción correctiva
+        nueva terminada? Nueva = registrada en la ronda actual
+        (effectiveness_round >= sgi_ineffective_count)."""
+        self.ensure_one()
+        if not self.sgi_ineffective_count:
+            return False
+        return not self.sgi_action_line_ids.filtered(
+            lambda l: l.action_type == 'correctiva' and l.date_done
+            and l.effectiveness_round >= self.sgi_ineffective_count)
+
+    def _sgi_on_ineffective(self):
+        """57.93.0 (N-02): la verificación salió «No eficaz». Deja la
+        verificación en el historial (chatter y contador), la limpia para la
+        siguiente (el resultado también, para que otro «No eficaz» vuelva a
+        contar), regresa la NC a Seguimiento y pide la acción correctiva nueva.
+
+        La etapa: una NC en Abierta se queda ahí (todavía no la trabaja nadie
+        y moverla chocaría con la contención obligatoria de las
+        reclamaciones); en Seguimiento no cambia; desde cualquier otra
+        (Cerrada) regresa a Seguimiento. Una NC cancelada no entra aquí."""
+        followup = self.env.ref('quimibond_sgi.sgi_nc_int_stage_followup', raise_if_not_found=False)
+        open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open', raise_if_not_found=False)
+        Cron = self.env['sgi.cron']
+        for alert in self:
+            if alert.stage_id.sgi_is_cancel_stage:
+                continue
+            folio = alert.sgi_folio or alert.name
+            alert.message_post(body=Markup(
+                "<b>Verificación de eficacia: no eficaz</b> (%s).<br/>%s") % (
+                    alert.sgi_effectiveness_date or fields.Date.context_today(alert),
+                    alert.sgi_effectiveness_note or ''))
+            alert.activity_ids.sudo().filtered(
+                lambda a: (a.summary or '').startswith("Verificar eficacia")).action_feedback(
+                feedback="No eficaz: se pidió una acción correctiva nueva.")
+            # Campos del sistema: con sudo (el cliente no los escribe).
+            alert.sudo().write({
+                'sgi_ineffective_count': alert.sgi_ineffective_count + 1,
+                'sgi_effectiveness_due': False,
+            })
+            vals = {
+                'sgi_effective': False,
+                'sgi_effectiveness_note': False,
+                'sgi_effectiveness_date': False,
+            }
+            if followup and alert.stage_id != followup and alert.stage_id != open_stage:
+                vals['stage_id'] = followup.id
+            alert.write(vals)
+            Cron._sgi_schedule(
+                alert, "Registrar acción correctiva nueva de la NC %s (no eficaz)" % folio,
+                "La verificación de eficacia salió «No eficaz». Revise la causa raíz y registre "
+                "una acción correctiva nueva; la NC no cierra sin ella.",
+                alert._sgi_effectiveness_user_id())
+
     def _sgi_schedule_effectiveness(self):
         """Al terminar la última acción correctiva: fecha de verificación a N
-        días (parámetro) y actividad al Jefe MAST con esa fecha límite."""
+        días (parámetro) y actividad a quien puede cerrar la NC (57.93.0:
+        dueño del proceso o Jefe MAST, antes «verificada por»)."""
         Param = self.env['ir.config_parameter'].sudo()
         try:
             days = int(Param.get_param('quimibond_sgi.nc_effectiveness_days', 90) or 90)
         except (TypeError, ValueError):
             days = 90
         Cron = self.env['sgi.cron']
-        manager_id = Cron._sgi_manager_user_id()
         for alert in self:
             corrective = alert.sgi_action_line_ids.filtered(lambda l: l.action_type == 'correctiva')
             if not corrective or any(not l.date_done for l in corrective):
@@ -413,17 +562,19 @@ class QualityAlert(models.Model):
                 continue
             last = max(corrective.mapped('date_done'))
             due = last + relativedelta(days=days)
-            alert.sgi_effectiveness_due = due
-            user_id = alert.sgi_effectiveness_by.id or manager_id
+            alert.sudo().sgi_effectiveness_due = due
+            user_id = alert._sgi_effectiveness_user_id()
             summary = "Verificar eficacia de la NC %s (a %d días)" % (alert.sgi_folio or alert.name, days)
             if user_id and not Cron._sgi_activity_exists(alert, summary, user_id):
                 alert.activity_schedule(
                     'mail.mail_activity_data_todo', summary=summary,
-                    note="La última acción correctiva terminó el %s. Verifique la eficacia y "
-                         "regístrela (nota y fecha) en la pestaña Verificación y cierre; sin "
-                         "eficacia la NC no cierra." % last,
+                    note="La última acción correctiva terminó el %s. Verifique la eficacia el %s o "
+                         "después y registre el resultado («Eficaz» o «No eficaz»), la nota y la "
+                         "fecha en la pestaña Verificación y cierre; la NC solo cierra con "
+                         "«Eficaz»." % (last, due),
                     user_id=user_id, date_deadline=due)
-            alert.message_post(body="Verificación de eficacia programada para el <b>%s</b>." % due)
+            alert.message_post(body=Markup(
+                "Verificación de eficacia programada para el <b>%s</b>.") % due)
 
     # ------------------------------------------------------------------
     # NC-2 / NC-4: candados de etapa
@@ -442,8 +593,15 @@ class QualityAlert(models.Model):
                 continue
             if new_stage.sgi_is_cancel_stage and not cancel_ok and not force:
                 raise UserError(
-                    "La NC %s no se cancela arrastrándola: usa el botón «Cancelar NC», "
-                    "captura el motivo y el Jefe de MAST la aprueba." % (alert.sgi_folio))
+                    "La NC %s no se cancela arrastrándola: use el botón «Cancelar NC», "
+                    "capture el motivo y el Jefe MAST la aprueba." % (alert.sgi_folio))
+            # 57.91.0 (FUNC-C13): cerrar es de quien responde por el proceso.
+            if new_stage.sgi_is_closing_stage and not force \
+                    and not alert._sgi_user_can_close():
+                raise UserError(
+                    "La NC %s solo la cierra el Jefe MAST o el dueño del proceso (%s). "
+                    "Pídale que revise la eficacia y la cierre."
+                    % (alert.sgi_folio, alert.sudo().sgi_process_id.owner_id.name or "sin dueño"))
             if (alert.sgi_origin_type == 'reclamacion' and not new_stage.sgi_is_cancel_stage
                     and alert.stage_id == open_stage and not alert.sgi_containment_done
                     and not force):
@@ -457,11 +615,52 @@ class QualityAlert(models.Model):
                     "La etapa «%s» no es del flujo del SGI; las NC con folio solo viven en "
                     "Abierta, Seguimiento, Cerrada y Cancelada." % new_stage.name)
 
+    def _sgi_user_can_close(self):
+        """57.91.0 (FUNC-C13): cierra una NC el Jefe MAST (o código de sistema)
+        o el usuario del dueño de su proceso."""
+        self.ensure_one()
+        if sgi_bypass_allowed(self.env):
+            return True
+        owner_user = self.sudo().sgi_process_id.owner_id.user_id
+        return bool(owner_user) and owner_user == self.env.user
+
+    def _sgi_check_closed_edit(self, vals):
+        """57.93.0 (K-03): una NC cerrada es evidencia. Quien no es Jefe MAST
+        (ni código de sistema) solo escribe en el chatter y las actividades
+        y, si es el dueño del proceso, la reabre cambiando solo la etapa
+        (D-009, el mismo criterio de quién cierra)."""
+        if sgi_bypass_allowed(self.env):
+            return
+        touched = {k for k in vals
+                   if not k.startswith(SGI_FREE_PREFIXES) and k not in _SGI_CLOSED_FREE_FIELDS}
+        if not touched:
+            return
+        closed = self.sudo().filtered(
+            lambda a: a.sgi_folio and a.stage_id.sgi_is_closing_stage).with_env(self.env)
+        if not closed:
+            return
+        if touched == {'stage_id'}:
+            cannot = closed.filtered(lambda a: not a._sgi_user_can_close())
+            if cannot:
+                raise UserError(
+                    "La NC %s está cerrada: solo la reabren el Jefe MAST o el dueño del proceso."
+                    % ", ".join(cannot.sudo().mapped('sgi_folio')))
+            return
+        if all(a._sgi_user_can_close() for a in closed):
+            raise UserError(
+                "La NC %s está cerrada y es evidencia: no se modifica cerrada. Usted es el dueño "
+                "del proceso: reábrala (cambie solo la etapa) y después capture el cambio."
+                % ", ".join(closed.sudo().mapped('sgi_folio')))
+        raise UserError(
+            "La NC %s está cerrada y es evidencia: solo el Jefe MAST la modifica. Si hay un "
+            "error real, pida al dueño del proceso o al Jefe MAST que la reabra."
+            % ", ".join(closed.sudo().mapped('sgi_folio')))
+
     def action_sgi_cancel(self):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "Cancelar No Conformidad",
+            'name': "Cancelar no conformidad",
             'res_model': 'sgi.nc.cancel',
             'view_mode': 'form',
             'target': 'new',
@@ -569,7 +768,7 @@ class QualityAlert(models.Model):
                 # Hay una persona esperando respuesta del botón: avisarle en vez
                 # de no hacer nada y dejarla adivinando.
                 raise UserError(
-                    "La generación de No Conformidades desde «%s» está "
+                    "La generación de no conformidades desde «%s» está "
                     "desactivada.\n\nSi debe volver a generarse, actívela en "
                     "%s." % (source.name, sgi_menu_path('fuentes_nc')))
             return self.browse()
@@ -589,6 +788,28 @@ class QualityAlert(models.Model):
                 problems.append("• Hay %d acción(es) sin fecha de terminación." % len(pending))
             if not alert.sgi_effectiveness_note or not alert.sgi_effectiveness_date:
                 problems.append("• Falta la verificación de eficacia (nota y fecha).")
+            # 57.93.0 (N-02): resultado y fecha de la eficacia.
+            if alert.sgi_effective != 'eficaz':
+                problems.append("• Falta el resultado de la verificación de eficacia: «Eficaz» "
+                                "(pestaña Verificación y cierre).")
+            eff_date = alert.sgi_effectiveness_date
+            if eff_date:
+                if eff_date > fields.Date.context_today(alert):
+                    problems.append("• La fecha de eficacia (%s) no puede ser futura." % eff_date)
+                due = alert.sgi_effectiveness_due
+                if due and eff_date < due:
+                    problems.append(
+                        "• La eficacia se programó para el %s y se registró el %s: verifíquela en "
+                        "esa fecha o después, o pida al Jefe MAST un cierre forzado con motivo."
+                        % (due, eff_date))
+                done_dates = [d for d in alert.sgi_action_line_ids.mapped('date_done') if d]
+                if done_dates and eff_date < max(done_dates):
+                    problems.append(
+                        "• La eficacia (%s) se registró antes de que terminara la última acción (%s)."
+                        % (eff_date, max(done_dates)))
+            if alert._sgi_needs_new_corrective():
+                problems.append("• La verificación anterior salió «No eficaz»: registre y termine "
+                                "una ACCIÓN CORRECTIVA nueva.")
             # NC mayor (refinamiento H1): exige el análisis de causa completo.
             if alert.sgi_classification == 'mayor':
                 if not all((alert.sgi_why_1, alert.sgi_why_2, alert.sgi_why_3,
@@ -619,13 +840,30 @@ class QualityAlert(models.Model):
                         alert.sgi_folio or alert.name, "\n".join(problems)))
 
     def write(self, vals):
+        # 57.93.0 (N-02): el contador y la fecha programada son del sistema.
+        if not sgi_bypass_allowed(self.env) and any(f in vals for f in _SGI_SYSTEM_FIELDS):
+            vals = {k: v for k, v in vals.items() if k not in _SGI_SYSTEM_FIELDS}
+            if not vals:
+                return True
+        # 57.93.0 (K-03): lo cerrado solo lo modifica el Jefe MAST; el dueño
+        # del proceso la reabre. Se revisa con la etapa de ANTES del write:
+        # cerrar (entrar a la etapa) no se detiene aquí.
+        self._sgi_check_closed_edit(vals)
         # Reclasificar a MAYOR una NC con folio también dispara el correo
         # crítico (solo la transición: no re-avisa a las que ya eran mayores).
         newly_mayor = self.browse()
         if vals.get('sgi_classification') == 'mayor':
             newly_mayor = self.filtered(
                 lambda a: a.sgi_folio and a.sgi_classification != 'mayor')
+        # 57.93.0 (N-02): solo la transición a «No eficaz» dispara el flujo.
+        newly_ineffective = self.browse()
+        if vals.get('sgi_effective') == 'no_eficaz':
+            newly_ineffective = self.filtered(
+                lambda a: a.sgi_folio and a.sgi_effective != 'no_eficaz'
+                and not a.stage_id.sgi_is_cancel_stage)
         newly_closed = self.env['quality.alert']
+        to_check = self.env['quality.alert']
+        new_stage = self.env['quality.alert.stage']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
             self._sgi_check_stage_move(new_stage)
@@ -634,10 +872,12 @@ class QualityAlert(models.Model):
             # para brincarse los candados de cierre.
             force = (self.env.context.get('sgi_force_close')
                      and sgi_bypass_allowed(self.env))
+            # 57.93.0 (N-02): los candados de cierre se revisan DESPUÉS de
+            # escribir, con lo que la persona capturó: el formulario manda los
+            # campos sin guardar y la etapa en un solo write. Quién mueve y a
+            # qué etapa sí se revisa antes (_sgi_check_stage_move).
             if new_stage.sgi_is_closing_stage and not force:
-                for alert in self:
-                    if alert.stage_id != new_stage:
-                        alert._sgi_check_can_close()
+                to_check = self.filtered(lambda a: a.stage_id != new_stage)
             if new_stage.sgi_is_closing_stage:
                 newly_closed = self.filtered(
                     lambda a: a.stage_id != new_stage and a.sgi_folio)
@@ -651,6 +891,12 @@ class QualityAlert(models.Model):
             if target.sgi_is_cancel_stage or any(self.stage_id.mapped('sgi_is_cancel_stage')):
                 recurrence_scope = self.sgi_process_id
         res = super().write(vals)
+        # Un UserError aquí deshace el write completo (misma transacción).
+        to_check._sgi_check_can_close()
+        if newly_ineffective:
+            newly_ineffective._sgi_on_ineffective()
+        # Solo cuenta como cerrada la NC que de verdad quedó en la etapa de cierre.
+        newly_closed = newly_closed.filtered(lambda a: a.stage_id == new_stage)
         if 'sgi_process_id' in vals or recurrence_scope:
             self._sgi_recompute_later_recurrence(recurrence_scope | self.sgi_process_id)
         Cron = self.env['sgi.cron']
@@ -665,6 +911,17 @@ class QualityAlert(models.Model):
             alert._sgi_read_across()
         return res
 
+    def unlink(self):
+        """57.91.0 (K-02): una NC con folio es evidencia (ISO 10.2) y su folio
+        no puede dejar hueco. Se cancela con «Cancelar NC»."""
+        if not sgi_bypass_allowed(self.env):
+            with_folio = self.filtered('sgi_folio')
+            if with_folio:
+                raise UserError(
+                    "Una NC con folio no se borra: use «Cancelar NC» y capture el motivo. (%s)"
+                    % ", ".join(with_folio.mapped('sgi_folio')))
+        return super().unlink()
+
     def _sgi_request_admin_record(self):
         """S4.32 (56.20.0): «Acción administrativa» pide el acta al
         Coordinador de RH (parámetro quimibond_sgi.rh_user_id; si no, Jefe
@@ -674,8 +931,8 @@ class QualityAlert(models.Model):
         for alert in self.filtered(lambda a: a.sgi_followup_action == 'administrativa'):
             Cron._sgi_schedule(
                 alert, "Levantar acta administrativa (S4.32)",
-                "La NC %s pide acción administrativa. Levanta el acta con los responsables "
-                "y adjúntala a la NC." % (alert.sgi_folio or alert.name), rh_id)
+                "La NC %s pide acción administrativa. Levante el acta con los responsables "
+                "y adjúntela a la NC." % (alert.sgi_folio or alert.name), rh_id)
 
     def _sgi_notify_mayor_closed(self):
         """PROT-05/D7: al cerrar una NC mayor, recordar actualizar AMEF y plan de
@@ -691,7 +948,7 @@ class QualityAlert(models.Model):
             return
         summary = "NC mayor cerrada: actualizar AMEF y plan de control (%s)" % (
             self.sgi_folio or self.name)
-        note = ("Se cerró una No Conformidad mayor. Revise si el AMEF y el plan "
+        note = ("Se cerró una no conformidad mayor. Revise si el AMEF y el plan "
                 "de control del proceso/producto deben actualizarse con la "
                 "lección aprendida.")
         if self.sgi_fmea_id:
@@ -726,7 +983,7 @@ class QualityAlert(models.Model):
                             raise_if_not_found=False)
         if not team or not team.sgi_sequence_id:
             raise UserError(
-                "No está configurado el equipo de No Conformidades Internas del SGI.")
+                "No está configurado el equipo «NC Internas» del SGI.")
         # Etapa "Abierta" del equipo NC Internas: las etapas de quality.alert son por
         # equipo, así que al cambiar de equipo hay que moverla a una etapa propia.
         open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open',
@@ -745,7 +1002,7 @@ class QualityAlert(models.Model):
                 vals['stage_id'] = open_stage.id
             alert.write(vals)
             alert.message_post(
-                body="Alerta escalada a No Conformidad del SGI: <b>%s</b>." % alert.sgi_folio)
+                body=Markup("Alerta escalada a no conformidad del SGI: <b>%s</b>.") % alert.sgi_folio)
         return True
 
 
@@ -758,10 +1015,10 @@ class SgiActionLine(models.Model):
     # auditoría. Sin mail.activity.mixin: la actividad accionable vive en el
     # registro origen (``activity_id``).
     _inherit = ['mail.thread']
-    _description = "Acción / corrección de No Conformidad"
+    _description = "Acción / corrección de no conformidad"
     _order = 'date_commit, id'
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='cascade',
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", ondelete='restrict',
                                help="No conformidad a la que pertenece la acción.")
     risk_id = fields.Many2one('sgi.risk', string="Riesgo / Oportunidad", ondelete='cascade',
                               help="Riesgo u oportunidad al que pertenece la acción.")
@@ -800,6 +1057,15 @@ class SgiActionLine(models.Model):
         ('100', "100%"),
     ], string="Avance", default='0',
         help="Avance de la acción según el responsable.")
+    # 57.93.0 (N-02, H-B1.4): una correctiva se termina con evidencia.
+    evidence_note = fields.Text(
+        string="Evidencia",
+        help="Qué demuestra que la acción se hizo: número de orden, documento, registro o foto. Una "
+             "acción correctiva no se termina sin evidencia (esta nota o un archivo).")
+    evidence_attachment_ids = fields.Many2many(
+        'ir.attachment', 'sgi_action_line_evidence_rel', 'line_id', 'attachment_id',
+        string="Archivos de evidencia",
+        help="Fotos, registros o documentos que demuestran la acción.")
     state = fields.Selection([
         ('abierta', "Abierta"),
         ('vencida', "Vencida"),
@@ -809,6 +1075,11 @@ class SgiActionLine(models.Model):
     # Actividad nativa que hace accionable la acción en el registro origen.
     activity_id = fields.Many2one('mail.activity', string="Actividad",
                                   readonly=True, copy=False, index=True)
+    # 57.93.0 (N-02): ronda de verificación de eficacia de su NC al crearse.
+    effectiveness_round = fields.Integer(
+        string="Ronda de eficacia", readonly=True, copy=False, default=0,
+        help="Veces que la eficacia de la NC había salido «No eficaz» cuando se registró la acción. "
+             "Tras un «No eficaz» la NC pide una correctiva de la ronda nueva.")
     origin_display = fields.Char(string="Origen", compute='_compute_origin_display')
 
     @api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id',
@@ -870,12 +1141,38 @@ class SgiActionLine(models.Model):
         for line in self.filtered('date_done'):
             if line.date_done > today:
                 raise ValidationError(
-                    "La acción «%s» no puede terminar en el futuro (%s). Captura la fecha "
+                    "La acción «%s» no puede terminar en el futuro (%s). Capture la fecha "
                     "en que realmente se terminó." % (line.name, line.date_done))
             if line.progress != '100':
                 raise ValidationError(
                     "La acción «%s» está al %s%%: para terminarla, el avance debe ser 100%%."
                     % (line.name, line.progress or '0'))
+
+    def _sgi_needs_evidence(self):
+        """57.93.0 (N-02): las correctivas piden evidencia al terminarse."""
+        self.ensure_one()
+        return self.action_type == 'correctiva'
+
+    def _sgi_has_evidence(self):
+        """Nota, archivo de evidencia o archivo en el chatter de la acción."""
+        self.ensure_one()
+        return bool((self.evidence_note or '').strip() or self.evidence_attachment_ids
+                    or self.sudo().message_attachment_count)
+
+    def _sgi_check_evidence(self):
+        """57.93.0 (N-02, H-B1.4): una acción correctiva no se da por
+        terminada sin evidencia. Solo el sistema (superusuario: OdooBot,
+        crons, migraciones) queda exento; un sudo() que conserva al usuario
+        no (Mis pendientes, el espejo del chatter)."""
+        if self.env.user._is_superuser():
+            return
+        missing = self.filtered(
+            lambda l: l.date_done and l._sgi_needs_evidence() and not l._sgi_has_evidence())
+        if missing:
+            raise UserError(
+                "Una acción correctiva no se da por terminada sin evidencia. Abra la acción "
+                "«%s» y capture la evidencia (nota o archivo: orden, documento, registro, foto); "
+                "después termínela." % "», «".join(missing.mapped('name')))
 
     @staticmethod
     def _sgi_done_vals(vals):
@@ -900,7 +1197,7 @@ class SgiActionLine(models.Model):
                     and not alert.sgi_root_cause):
                 raise ValidationError(
                     "No se puede registrar una acción %s en la NC %s sin la causa "
-                    "raíz. Primero investiga y captura la causa raíz; la corrección "
+                    "raíz. Primero investigue y capture la causa raíz; la corrección "
                     "(contención inmediata) sí puede registrarse antes." % (
                         dict(self._fields['action_type'].selection)[line.action_type],
                         alert.sgi_folio or alert.name))
@@ -940,6 +1237,36 @@ class SgiActionLine(models.Model):
         if self.fmea_line_id:
             return self.fmea_line_id.fmea_id
         return self.env['sgi.action.line'].browse()
+
+    def _sgi_origin_closed(self):
+        """57.93.0 (K-03): ¿ya cerró el registro dueño de la acción? NC en
+        etapa de cierre o incidente cerrado; la revisión por la dirección se
+        agrega en sgi_management_review.py."""
+        self.ensure_one()
+        line = self.sudo()
+        if line.alert_id:
+            return bool(line.alert_id.stage_id.sgi_is_closing_stage)
+        if line.incident_id:
+            return line.incident_id.state == 'cerrado'
+        return False
+
+    def _sgi_check_closed_origin(self, vals=None, any_line=False):
+        """57.93.0 (K-03): con el origen cerrado, quien no es Jefe MAST (ni
+        código de sistema) no cambia una acción terminada; con ``any_line``
+        tampoco agrega ni borra ninguna. Las pendientes sí se trabajan y se
+        terminan (cierre forzado de una NC, acuerdos de una revisión cerrada).
+        Chatter y actividad espejo (``activity_id``) se mueven solos."""
+        if sgi_bypass_allowed(self.env):
+            return
+        if vals is not None and not any(not k.startswith(SGI_FREE_PREFIXES) for k in vals):
+            return
+        locked = self.sudo().filtered(
+            lambda l: (any_line or l.date_done) and l._sgi_origin_closed())
+        if locked:
+            raise UserError(
+                "La acción «%s» pertenece a un registro cerrado y es evidencia: solo el Jefe MAST "
+                "la modifica. Si hay un error real, pida que reabran el registro."
+                % "», «".join(locked.mapped('name')))
 
     def _sgi_activity_note(self):
         self.ensure_one()
@@ -994,13 +1321,49 @@ class SgiActionLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        lines = super().create([self._sgi_done_vals(vals) for vals in vals_list])
+        Alert = self.env['quality.alert']
+        prepared = []
+        for vals in vals_list:
+            vals = self._sgi_done_vals(vals)
+            # La ronda la pone el sistema (no se acepta del cliente): así un
+            # «No eficaz» no se atiende con una acción de una ronda inventada.
+            if vals.get('alert_id'):
+                vals = dict(vals, effectiveness_round=Alert.browse(vals['alert_id']).sudo()
+                            .sgi_ineffective_count)
+            prepared.append(vals)
+        lines = super().create(prepared)
+        # 57.93.0 (K-03): a un registro cerrado no se le agregan acciones.
+        lines._sgi_check_closed_origin(any_line=True)
+        # 57.93.0 (N-02): una correctiva que nace terminada también trae evidencia.
+        lines.filtered('date_done')._sgi_check_evidence()
         lines._sgi_sync_activity()
+        # 57.93.0 (N-02): la correctiva nueva atiende el aviso del «No eficaz».
+        for line in lines.filtered(lambda l: l.action_type == 'correctiva' and l.alert_id
+                                   and l.effectiveness_round
+                                   and l.effectiveness_round >= l.alert_id.sudo().sgi_ineffective_count):
+            line.alert_id.sudo().activity_ids.filtered(
+                lambda a: (a.summary or '').startswith("Registrar acción correctiva nueva")
+            ).action_feedback(feedback="Se registró la acción correctiva «%s»." % line.name)
         return lines
 
     def write(self, vals):
+        # 57.93.0 (K-03): la acción terminada de un registro cerrado es evidencia.
+        self._sgi_check_closed_origin(vals)
         vals = self._sgi_done_vals(vals)
+        # 57.93.0 (N-02): la ronda de eficacia solo la cambia el sistema.
+        if 'effectiveness_round' in vals and not sgi_bypass_allowed(self.env):
+            vals = {k: v for k, v in vals.items() if k != 'effectiveness_round'}
+        # 57.93.0 (N-02): el candado de evidencia corre al pasar a terminada,
+        # por cualquier vía (botón, lista editable de la NC, chatter). Lo ya
+        # terminado no se vuelve a revisar.
+        finishing = self.filtered(lambda l: not l.date_done) if vals.get('date_done') \
+            else self.browse()
         res = super().write(vals)
+        # 57.93.0 (K-03): mover una acción a otro origen se revisa contra el
+        # origen nuevo (el chequeo previo solo ve el viejo).
+        if {'alert_id', 'incident_id', 'review_id'} & set(vals):
+            self._sgi_check_closed_origin(any_line=True)
+        finishing._sgi_check_evidence()
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:
             done = self.filtered('date_done')
@@ -1024,11 +1387,17 @@ class SgiActionLine(models.Model):
                 lambda r: r.state in ('controlado', 'cerrado')
             )._sgi_check_can_close()
         # NC-3: terminar la última correctiva programa la eficacia a 90 días.
+        # 57.93.0 (K-03): no en una NC ya cerrada (cierre forzado con acciones
+        # pendientes): la NC cerrada no se modifica ni se reprograma.
         if vals.get('date_done'):
-            self.mapped('alert_id').filtered('sgi_folio')._sgi_schedule_effectiveness()
+            self.mapped('alert_id').filtered(
+                lambda a: a.sgi_folio and not a.stage_id.sgi_is_closing_stage
+            )._sgi_schedule_effectiveness()
         return res
 
     def unlink(self):
+        # 57.93.0 (K-03): antes que el ACL, para que hable el candado.
+        self._sgi_check_closed_origin(any_line=True)
         risks = self.mapped('risk_id').filtered(
             lambda r: r.state in ('controlado', 'cerrado'))
         res = super().unlink()
@@ -1041,16 +1410,16 @@ class SgiActionLine(models.Model):
 class SgiNcForceClose(models.TransientModel):
     """Asistente de cierre forzado de una NC con motivo; solo Jefe MAST."""
     _name = 'sgi.nc.force.close'
-    _description = "Cierre forzado de No Conformidad"
+    _description = "Cierre forzado de no conformidad"
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", required=True,
                                help="No conformidad que se va a cerrar sin cumplir los candados.")
     reason = fields.Text(string="Motivo del cierre forzado", required=True)
 
     def action_confirm(self):
         self.ensure_one()
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-            raise UserError("Solo el Jefe de MAST y SGI puede realizar un cierre forzado.")
+            raise UserError("Solo el Jefe MAST y SGI puede realizar un cierre forzado.")
         alert = self.alert_id
         closing_stage = self.env['quality.alert.stage'].search([
             ('sgi_is_closing_stage', '=', True),
@@ -1058,9 +1427,9 @@ class SgiNcForceClose(models.TransientModel):
         ], limit=1)
         if not closing_stage:
             raise UserError("No hay una etapa de cierre configurada para este equipo.")
-        alert.message_post(
-            body="<b>Cierre forzado</b> por %s.<br/>Motivo: %s" % (
-                self.env.user.name, self.reason))
+        # 57.91.0 (K-07): nombre y motivo escapados.
+        alert.message_post(body=Markup(
+            "<b>Cierre forzado</b> por %s.<br/>Motivo: %s") % (self.env.user.name, self.reason))
         alert.with_context(sgi_force_close=True).write({'stage_id': closing_stage.id})
         return {'type': 'ir.actions.act_window_close'}
 
@@ -1071,9 +1440,9 @@ class SgiNcCancel(models.TransientModel):
     agenda la aprobación a MAST); el Jefe MAST la aprueba con el mismo
     asistente. Nunca se llega a Cancelada arrastrando la tarjeta."""
     _name = 'sgi.nc.cancel'
-    _description = "Cancelación de No Conformidad"
+    _description = "Cancelación de no conformidad"
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", required=True,
                                help="No conformidad que se cancela.")
     reason = fields.Text(string="Motivo de la cancelación", required=True)
     is_manager = fields.Boolean(compute='_compute_is_manager', help="Indica si usted es Jefe MAST y SGI.")
@@ -1091,19 +1460,18 @@ class SgiNcCancel(models.TransientModel):
             raise UserError("La NC %s ya está cancelada." % (alert.sgi_folio or alert.name))
         reason = (self.reason or '').strip()
         if not reason:
-            raise UserError("Captura el motivo de la cancelación.")
+            raise UserError("Capture el motivo de la cancelación.")
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
             # Solicitud: motivo al historial y actividad al Jefe MAST.
             alert.write({'sgi_cancel_reason': reason,
                          'sgi_cancel_requested_by': self.env.user.id})
-            alert.message_post(
-                body="<b>Solicitud de cancelación</b> de %s.<br/>Motivo: %s" % (
-                    self.env.user.name, reason))
+            alert.message_post(body=Markup(
+                "<b>Solicitud de cancelación</b> de %s.<br/>Motivo: %s") % (self.env.user.name, reason))
             Cron = self.env['sgi.cron']
             Cron._sgi_schedule(
                 alert, "Aprobar cancelación de la NC %s" % (alert.sgi_folio or alert.name),
-                "%s pide cancelar la NC. Motivo: %s. Apruébala con «Cancelar NC» o "
-                "contesta en el chatter." % (self.env.user.name, reason),
+                "%s pide cancelar la NC. Motivo: %s. Apruébela con «Cancelar NC» o "
+                "conteste en el chatter." % (self.env.user.name, reason),
                 Cron._sgi_manager_user_id())
             return {'type': 'ir.actions.act_window_close'}
         cancel_stage = self.env['quality.alert.stage'].search([
@@ -1113,10 +1481,11 @@ class SgiNcCancel(models.TransientModel):
         if not cancel_stage:
             raise UserError("No hay una etapa de cancelación configurada para este equipo.")
         requested_by = alert.sgi_cancel_requested_by
-        alert.message_post(
-            body="<b>NC cancelada</b> por %s (Jefe MAST).<br/>Motivo: %s%s" % (
-                self.env.user.name, reason,
-                ("<br/>Solicitada por %s." % requested_by.name) if requested_by else ''))
+        requested_note = (Markup("<br/>Solicitada por %s.") % requested_by.name
+                          if requested_by else Markup())
+        alert.message_post(body=Markup(
+            "<b>NC cancelada</b> por %s (Jefe MAST).<br/>Motivo: %s%s") % (
+                self.env.user.name, reason, requested_note))
         alert.with_context(sgi_cancel_approved=True).write({
             'stage_id': cancel_stage.id, 'sgi_cancel_reason': reason})
         # Cierra la actividad de aprobación, si la había.

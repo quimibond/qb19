@@ -31,8 +31,15 @@ incidente, consultar planes de emergencia).
 2. Arriba aparecen primero los **atrasados**, luego lo que **vence esta
    semana**. Cada renglón dice qué es (acción, NC, medición, acuse, firma,
    aprobación, actividad atrasada…), de qué proceso y cuándo vence.
-3. Pulse **Abrir** para ir al registro y resolverlo. Al resolverlo, el
-   renglón desaparece solo.
+3. Pulse **Ir** para ir al registro y resolverlo. Al resolverlo, el
+   renglón desaparece solo. En un acuse de lectura, **Leer** abre el
+   documento y **Leído y entendido** lo firma desde el renglón.
+4. Los avisos automáticos del SGI (en no conformidades, documentos,
+   mantenimiento, mesa de ayuda o proyectos) y las actividades sobre
+   registros del SGI, vencidos o que vencen esta semana, también salen en la
+   misma lista, como **Aviso**, salvo los que ya tienen su propio renglón.
+   Cuando lo atienda, pulse **Hecho** en el renglón: el aviso se cierra en
+   Odoo y sale de la lista. El filtro **Avisos** los muestra solos.
 
 ### 2.2 Hacer una actividad de su procedimiento
 
@@ -94,12 +101,13 @@ Si una actividad ya no se hace así, o falta una:
 
 1. En **Mantenimiento → Checklists de hoy** están las hojas del día de su
    equipo o unidad.
-2. Abra la hoja, marque cada punto y, si algo falla, anótelo.
-3. Al final pulse **Terminar**, elija su nombre y, si está activado, capture
-   su **PIN** de empleado.
-4. Si marcó fallas, **Crear correctivos de las fallas** abre una solicitud
-   correctiva por cada una para mantenimiento. Avise a su supervisor si la
-   falla detiene la máquina.
+2. Toque **Bien**, **Falla** o **No aplica** en cada punto (un toque). Si casi
+   todo está bien, marque las fallas y pulse **Marcar el resto como Bien**.
+3. Escriba la observación en las fallas.
+4. Pulse **Terminar checklist** y elija su nombre (el PIN solo se pide si el
+   Jefe MAST lo activó).
+5. Una hoja firmada ya no se cambia. De las fallas, Mantenimiento crea los
+   correctivos.
 
 Las hojas del día están listas desde las 05:30 (los días festivos del
 calendario del SGI no hay hoja).
@@ -117,7 +125,8 @@ calendario del SGI no hay hoja).
 
 | No puede… | Pídalo a… |
 |---|---|
-| Cerrar una NC sin causa raíz, acciones terminadas y verificación de eficacia | Complete lo que falta; es el candado de la norma, no un error |
+| Cerrar una NC sin causa raíz, acciones terminadas (las correctivas, con evidencia) y verificación de eficacia **Eficaz** | Complete lo que falta; es el candado de la norma, no un error. La cierran el dueño del proceso o el Jefe MAST |
+| Modificar una NC ya cerrada | El Jefe MAST; el dueño del proceso puede reabrirla |
 | Cancelar una NC | Pulse **Cancelar** con el motivo: la cancelación la aprueba el Jefe MAST y SGI |
 | Cambiar una actividad directamente | Use **Proponer cambio** |
 | Ver exámenes médicos o salarios | Son solo de Salud ocupacional y de RH |
@@ -133,9 +142,15 @@ en [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
 ## 6. Preguntas frecuentes
 
 - **«No me deja cerrar la NC.»** Falta la causa raíz, una acción sin fecha de
-  término o la verificación de eficacia. En una NC mayor, además, los 5
+  término, la acción correctiva no tiene evidencia (una nota o un archivo) o
+  la verificación de eficacia no dice **Eficaz** o se registró antes de la
+  fecha programada. En una NC mayor, además, los 5
   porqués y confirmar que la lección se aplicó al AMEF, al plan de control o
   al documento.
+- **«La NC ya está cerrada y no me deja cambiarla.»** Ya cerrada, solo el Jefe
+  MAST la modifica. Si usted es el dueño del proceso, reábrala cambiando solo
+  la etapa y después capture el cambio (por ejemplo, una verificación **No
+  eficaz**).
 - **«Me llegó una actividad que no entiendo.»** Ábrala: siempre apunta al
   registro (NC, documento, medición) y trae la explicación.
 - **«¿Sigo llenando el Excel?»** No, si el formato ya está migrado a Odoo.

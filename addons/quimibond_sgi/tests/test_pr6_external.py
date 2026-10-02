@@ -108,18 +108,21 @@ class TestPr6External(TransactionCase):
         macro = Process.create({'code': 'XP6M', 'name': 'Macro PR6'})
         p1 = Process.create({'code': 'XP6A', 'name': 'Sub A', 'parent_id': macro.id, 'state': 'vigente'})
         p2 = Process.create({'code': 'XP6B', 'name': 'Sub B', 'parent_id': macro.id, 'state': 'piloto'})
-        Process.create({'code': 'XP6C', 'name': 'Sub C borrador', 'parent_id': macro.id})
+        p3 = Process.create({'code': 'XP6C', 'name': 'Sub C borrador', 'parent_id': macro.id})
         self.env['quality.alert'].create({
             'title': 'NC abierta en A', 'team_id': self.team_int.id, 'sgi_process_id': p1.id})
         program = self.env['sgi.audit.program'].create({'year': 2099})
         program.action_suggest_lines()
         lines = program.line_ids
-        self.assertEqual(set(lines.mapped('process_id')), {p1, p2}, "Solo vigentes o en piloto.")
+        # 57.93.0 (N-03): también los borradores; el macroproceso no.
+        self.assertTrue({p1, p2, p3} <= set(lines.mapped('process_id')))
+        self.assertNotIn(macro, lines.mapped('process_id'))
         self.assertEqual(len(lines.filtered(lambda l: l.process_id == p1)), 2,
                          "Con NC abierta se audita dos veces al año.")
         self.assertEqual(len(lines.filtered(lambda l: l.process_id == p2)), 1)
+        count = len(program.line_ids)
         program.action_suggest_lines()
-        self.assertEqual(len(program.line_ids), 3, "Idempotente.")
+        self.assertEqual(len(program.line_ids), count, "Idempotente.")
         # 4.4 (56.9.0): sin auditor líder no se aprueba.
         with self.assertRaises(UserError):
             program.action_approve()

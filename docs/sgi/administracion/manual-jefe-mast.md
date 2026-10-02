@@ -41,12 +41,36 @@ El módulo se instala **vacío**: trae estructura, no el mapa de procesos.
 - Cada empleado necesita **puesto** en su ficha: de ahí salen su
   procedimiento, sus acuses y sus pendientes.
 - En planta, **el supervisor ejecuta**; el capturista de checklists puede no
-  tener grupo SGI: basta su nombre en «Quién lo llena» de la plantilla y,
+  tener usuario: firma en la tableta de su área (SGI en planta) con su PIN, o
+  en una computadora con su nombre en «Quién lo llena» de la plantilla y,
   si se enciende, su PIN.
 - Salud ocupacional: solo el Coordinador de RH. El Auditor no ve salud ni
   salarios.
 - El Jefe MAST y SGI audita todo menos el proceso E2; E2 lo audita otro auditor interno
   designado o uno externo (decisión D-05).
+
+### Tabletas de planta (SGI en planta)
+
+**Apagado por ahora** (decisión de Dirección, 2-oct-2026): no se dan de alta
+tabletas ni se capturan PIN, y «PIN obligatorio para firmar checklists» sigue
+apagado. Sin tabletas dadas de alta, nadie entra a «SGI en planta». Si se
+decide encenderlo, antes hay que contestar el límite de intentos del PIN
+(pregunta Q12) y después seguir estos pasos:
+
+1. Sistemas crea la cuenta compartida (por ejemplo supervisor@), **sin
+   empleado ligado**, y le pone «SGI en planta» como acción de inicio.
+2. Usted la da de alta en **SGI → Administración SGI → Configuración →
+   Tabletas de planta**: nombre («Tableta Tejido»), cuenta, departamentos y
+   los checklists que se llenan ahí. Al guardar, la cuenta recibe el grupo
+   «Tableta de planta (SGI)».
+3. Pida a Sistemas que le quite a la cuenta los grupos del SGI que no use
+   (Usuario SGI): lo firmado en la tableta queda a nombre de quien teclea su
+   PIN, y la cuenta sola no firma nada.
+4. RH captura los PIN en la ficha de cada empleado. Cuando terminen,
+   encienda «PIN obligatorio para firmar checklists» (Ajustes → SGI).
+5. Los casi accidentes que llegan de la tableta le llegan como aviso
+   «Revisar casi accidente…» (o a Salud ocupacional, si tiene miembros):
+   clasifíquelos e investíguelos.
 
 ## 4. Procesos y actividades
 
@@ -131,9 +155,16 @@ ya publicado, revise en **Acuses de lectura** que tenga el suyo.
 - Etapas: Abierta, Seguimiento, Cerrada, Cancelada. Plazos por etapa
   (contención, causa raíz, plan) en días hábiles desde que se abre (Ajustes →
   SGI → No Conformidades y AMEF).
-- Candados de cierre: causa raíz, acciones terminadas y verificación de
-  eficacia; en NC mayor, además los 5 porqués y la lección aplicada. Una NC
-  de reclamación no sale de Abierta sin contención.
+- Candados de cierre: causa raíz, acciones terminadas (las correctivas, con
+  evidencia: una nota o un archivo) y verificación de eficacia con resultado
+  **Eficaz**, registrada en la fecha programada o después; en NC mayor,
+  además los 5 porqués y la lección aplicada. Si la verificación sale **No
+  eficaz**, la NC regresa a Seguimiento y pide una acción correctiva nueva.
+  Una NC de reclamación no sale de Abierta sin contención.
+- Solo cierran la NC el dueño del proceso o usted. Ya cerrada, solo usted la
+  modifica (también sus acciones terminadas); el dueño del proceso puede
+  reabrirla cambiando solo la etapa. Una NC no se crea directamente cerrada
+  ni cancelada.
 - **Cancelar** siempre con motivo; si la pide otra persona, usted la aprueba.
 - **Cierre forzado (Jefe MAST):** con motivo, queda en el historial.
 - **Fuentes de NC automáticas** (Configuración): cada automatismo que levanta
@@ -151,9 +182,10 @@ checklist no se generan en festivos.
 
 ## 11. Crons
 
-Hay 25 acciones planificadas del SGI (tabla completa en
+Hay 26 acciones planificadas del SGI (tabla completa en
 [../tecnica/crons.md](../tecnica/crons.md)). Viven en `noupdate`: cambiarlas
-en la base requiere migración. Si una falla, Odoo la apaga tras 5 fallos en
+en la base requiere migración. Desde 57.94.0 incluye «SGI: Empleados sin
+puesto o sin correo (aviso a RH)», semanal (lunes). Si una falla, Odoo la apaga tras 5 fallos en
 más de 7 días: revise **Ajustes → Técnico → Acciones planificadas** (filtro
 «SGI»).
 
@@ -163,7 +195,10 @@ Los editables están en **Ajustes → SGI**; la lista completa, con sus
 valores de fábrica, en [../tecnica/parametros.md](../tecnica/parametros.md).
 Otros que conviene conocer: `quimibond_sgi.mast_user_id` (a quién llegan los
 avisos de MAST), `quimibond_sgi.rh_user_id`,
-`quimibond_sgi.checklist_pin_required`,
+`quimibond_sgi.checklist_pin_required`, `quimibond_sgi.hr_user_id` (usuario de RH
+que recibe el aviso semanal de empleados sin puesto o sin correo; vacío:
+el de `quimibond_sgi.rh_user_id` y, sin él, el Jefe MAST; debe tener «Empleados /
+Encargado» para que «Ir» abra la lista),
 `quimibond_sgi.legacy_decision_deadline` (fecha límite de las rutinas
 pendientes) y los plazos de Mis pendientes
 (`measure_capture_business_days`, `measure_validate_business_days`,

@@ -5,10 +5,16 @@
         <field name="name">sgi.my.pending.list</field>
         <field name="model">sgi.my.pending</field>
         <field name="arch" type="xml">
-            <list string="Mis pendientes" create="0" edit="0" delete="0"
+            <list string="Mis pendientes" create="0" edit="0" delete="0" expand="1"
                   default_order="state_rank, date_due, id"
                   decoration-danger="state == 'atrasada'" decoration-warning="state == 'por_vencer'">
+                <!-- 57.92.0 (U-02): validar en lote las mediciones seleccionadas. -->
+                <header>
+                    <button name="action_validate_selected" type="object"
+                            string="Validar seleccionadas" class="btn-primary"/>
+                </header>
                 <field name="state_rank" column_invisible="1"/>
+                <field name="is_mine" column_invisible="1"/>
                 <field name="employee_id" string="Persona" optional="hide"/>
                 <field name="kind" string="Tipo"/>
                 <field name="name" string="Qué"/>
@@ -18,11 +24,61 @@
                        decoration-danger="state == 'atrasada'"
                        decoration-warning="state == 'por_vencer'"
                        decoration-success="state == 'al_dia'"/>
-                <button name="action_open" type="object" string="Abrir" icon="fa-external-link"/>
+                <!-- 57.92.0 (U-05): «Ir» lleva a donde se hace; «Leer» abre el
+                     archivo del documento y «Leído y entendido» lo firma ahí mismo.
+                     «Leído y entendido» y «Hecho» solo en los renglones propios. -->
+                <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
+                        invisible="kind == 'acuse'"/>
+                <button name="action_open" type="object" string="Leer" icon="fa-book"
+                        invisible="kind != 'acuse'"/>
+                <button name="action_sign_ack" type="object" string="Leído y entendido"
+                        icon="fa-check" class="btn-link" invisible="kind != 'acuse' or not is_mine"
+                        confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
                 <!-- 56.36.0 (I-006): el dueño valida desde el renglón. -->
                 <button name="action_validate_measure" type="object" string="Validar" icon="fa-check"
                         class="btn-link" invisible="kind != 'validacion'"/>
+                <!-- 57.92.0 (U-03): el aviso del cron se marca hecho desde el renglón. -->
+                <button name="action_done_notice" type="object" string="Hecho" icon="fa-check"
+                        class="btn-link" invisible="kind != 'aviso' or not is_mine"/>
             </list>
+        </field>
+    </record>
+
+    <!-- 57.94.0 (I-05): en el celular y la tableta, una tarjeta por pendiente
+         con el botón grande. Mismas condiciones que la lista. -->
+    <record id="sgi_my_pending_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.my.pending.kanban</field>
+        <field name="model">sgi.my.pending</field>
+        <field name="arch" type="xml">
+            <kanban create="0" default_order="state_rank, date_due, id">
+                <field name="state_rank"/>
+                <field name="is_mine"/>
+                <field name="kind"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fs-5 fw-bold"/>
+                        <div class="text-muted"><field name="kind"/> · <field name="process_id"/></div>
+                        <div>Vence: <field name="date_due"/></div>
+                        <footer class="d-flex flex-wrap gap-2 pt-2">
+                            <field name="state" widget="badge"
+                                   decoration-danger="state == 'atrasada'"
+                                   decoration-warning="state == 'por_vencer'"
+                                   decoration-success="state == 'al_dia'"/>
+                            <button name="action_open" type="object" string="Ir" class="btn btn-primary btn-lg"
+                                    invisible="kind == 'acuse'"/>
+                            <button name="action_open" type="object" string="Leer" class="btn btn-primary btn-lg"
+                                    invisible="kind != 'acuse'"/>
+                            <button name="action_sign_ack" type="object" string="Leído y entendido"
+                                    class="btn btn-success btn-lg" invisible="kind != 'acuse' or not is_mine"
+                                    confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
+                            <button name="action_validate_measure" type="object" string="Validar"
+                                    class="btn btn-success btn-lg" invisible="kind != 'validacion'"/>
+                            <button name="action_done_notice" type="object" string="Hecho"
+                                    class="btn btn-success btn-lg" invisible="kind != 'aviso' or not is_mine"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
         </field>
     </record>
 
@@ -34,6 +90,9 @@
                 <field name="name"/>
                 <field name="employee_id"/>
                 <field name="process_id"/>
+                <!-- 57.92.0 (U-02): filtro por omisión de Mis pendientes. -->
+                <filter name="actionable" string="Atrasadas o por vencer"
+                        domain="[('state', 'in', ('atrasada', 'por_vencer'))]"/>
                 <filter name="late" string="Atrasadas" domain="[('state', '=', 'atrasada')]"/>
                 <filter name="this_week" string="Vence esta semana"
                         domain="[('date_due', '&gt;=', context_today().strftime('%Y-%m-%d')), ('date_due', '&lt;=', (context_today() + datetime.timedelta(days=7)).strftime('%Y-%m-%d'))]"/>
@@ -42,6 +101,7 @@
                 <filter name="kind_activity" string="Actividades y escalamientos" domain="[('kind', '=', 'actividad')]"/>
                 <filter name="kind_validate" string="Mediciones por validar" domain="[('kind', '=', 'validacion')]"/>
                 <filter name="kind_sign" string="Firmas y acuses" domain="[('kind', 'in', ('firma', 'acuse'))]"/>
+                <filter name="kind_notice" string="Avisos" domain="[('kind', '=', 'aviso')]"/>
                 <group>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>

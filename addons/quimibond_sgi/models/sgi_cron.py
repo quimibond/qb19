@@ -536,8 +536,12 @@ class SgiCron(models.AbstractModel):
             # antes agendaba otro «Verificar eficacia: X» que vencía hoy.
             all_done = alert.sgi_action_line_ids and all(l.date_done for l in alert.sgi_action_line_ids)
             due = alert.sgi_effectiveness_due
-            if all_done and not alert.sgi_effectiveness_date and (not due or due <= today):
-                user_id = alert.sgi_effectiveness_by.id or alert.user_id.id or self._sgi_manager_user_id()
+            # 57.93.0 (N-02): tras un «No eficaz» no se pide verificar hasta
+            # que termine la correctiva nueva (ya hay aviso para registrarla).
+            if all_done and not alert.sgi_effectiveness_date and (not due or due <= today) \
+                    and not alert._sgi_needs_new_corrective():
+                # 57.93.0 (FUNC-C13): a quien puede cerrar la NC.
+                user_id = alert._sgi_effectiveness_user_id()
                 folio = alert.sgi_folio or alert.name
                 summary = ("Verificar eficacia de la NC %s (a %d días)" % (folio, effectiveness_days)
                            if due else "Verificar eficacia: %s" % folio)
@@ -1111,7 +1115,7 @@ class SgiCron(models.AbstractModel):
                 risk,
                 "Revisar riesgo %s" % (risk.folio or risk.name),
                 "Reevaluación periódica (enero / julio): la revisión del riesgo/oportunidad "
-                "venció el %s. Actualiza probabilidad e impacto y pulsa «Registrar "
+                "venció el %s. Actualice la probabilidad y el impacto y pulse «Registrar "
                 "evaluación»." % risk.next_review_date,
                 user_id, date_deadline=risk.next_review_date, key='revisar_riesgo')
 
@@ -1124,7 +1128,7 @@ class SgiCron(models.AbstractModel):
             self._sgi_schedule(
                 risk, "Riesgo alto sin acción: %s" % (risk.folio or risk.name),
                 "El riesgo está en atención alta o inmediata y no tiene ninguna acción de "
-                "tratamiento abierta. Registra una acción con responsable y compromiso.",
+                "tratamiento abierta. Registre una acción con responsable y compromiso.",
                 owner.id if owner else manager_id, date_deadline=today,
                 key='riesgo_alto_sin_accion')
 

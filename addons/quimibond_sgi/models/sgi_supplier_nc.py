@@ -8,6 +8,8 @@ respuesta en días hábiles (parámetro), aviso el día que vence y escalamiento
 al comprador y a MAST, como los plazos de NC-1. La NC ya cuenta en la
 evaluación del proveedor (S1.08) por su `partner_id`.
 """
+from markupsafe import Markup
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -69,7 +71,7 @@ class QualityAlertSupplierPortal(models.Model):
             raise UserError("Solo una NC del SGI (con folio) se envía al proveedor.")
         supplier = self.sgi_supplier_id or self.partner_id
         if not supplier:
-            raise UserError("Captura el proveedor en la NC antes de enviarla.")
+            raise UserError("Capture el proveedor en la NC antes de enviarla.")
         if not supplier.email:
             raise UserError("El proveedor %s no tiene correo." % supplier.display_name)
         try:
@@ -112,9 +114,10 @@ class QualityAlertSupplierPortal(models.Model):
             'sgi_supplier_state': 'contestada',
             'sgi_supplier_response_date': fields.Datetime.now(),
         })
-        self.sudo().message_post(
-            body="<b>Respuesta del proveedor</b> por el portal.<br/><b>Causa:</b> %s<br/><b>Acción:</b> %s" % (
-                cause, action))
+        # 57.91.0 (K-07): el texto del proveedor llega del portal; se escapa y se recorta.
+        self.sudo().message_post(body=Markup(
+            "<b>Respuesta del proveedor</b> por el portal.<br/><b>Causa:</b> %s<br/><b>Acción:</b> %s"
+        ) % (cause[:5000], action[:5000]))
         # Cierra el aviso de respuesta pendiente y avisa a quien la sigue.
         self.sudo().activity_ids.filtered(
             lambda a: (a.summary or '').startswith("Respuesta del proveedor")).action_feedback(
@@ -122,7 +125,7 @@ class QualityAlertSupplierPortal(models.Model):
         Cron = self.env['sgi.cron'].sudo()
         Cron._sgi_schedule(
             self.sudo(), "El proveedor contestó la NC %s: revisar causa y acción" % (self.sgi_folio,),
-            "Revisa la respuesta del proveedor y registra las acciones en la NC.",
+            "Revise la respuesta del proveedor y registre las acciones en la NC.",
             self.user_id.id or Cron._sgi_manager_user_id())
         return True
 
@@ -137,7 +140,7 @@ class QualityAlertSupplierPortal(models.Model):
         if today >= self.sgi_supplier_due_date:
             Cron._sgi_schedule(
                 self, "Respuesta del proveedor vence el %s: NC %s" % (self.sgi_supplier_due_date, folio),
-                "El proveedor %s no ha contestado la NC por el portal. Reenvía el enlace o llámale." % (
+                "El proveedor %s no ha contestado la NC por el portal. Reenvíe el enlace o llámele." % (
                     self.sgi_supplier_id.display_name), who)
         if today > self.sgi_supplier_due_date:
             Cron._sgi_schedule(

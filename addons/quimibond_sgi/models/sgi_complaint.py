@@ -91,7 +91,7 @@ class HelpdeskTicket(models.Model):
     ], string="Disposición",
         help="Qué se hizo con el producto reclamado: devolución, reposición, nota de crédito o concesión al "
              "cliente.")
-    sgi_alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+    sgi_alert_id = fields.Many2one('quality.alert', string="No conformidad", readonly=True,
                                    help="No conformidad que se generó desde esta reclamación con el botón "
                                         "«Generar NC».")
 
@@ -103,7 +103,7 @@ class HelpdeskTicket(models.Model):
         if self.sgi_alert_id:
             return {
                 'type': 'ir.actions.act_window',
-                'name': "No Conformidad",
+                'name': "No conformidad",
                 'res_model': 'quality.alert',
                 'res_id': self.sgi_alert_id.id,
                 'view_mode': 'form',
@@ -112,7 +112,7 @@ class HelpdeskTicket(models.Model):
             raise UserError(
                 "«Generar NC» solo aplica a los tickets de un equipo de "
                 "reclamaciones del SGI. Mueva el ticket a ese equipo o levante "
-                "la No Conformidad desde Calidad.")
+                "la no conformidad desde Calidad.")
         team = self.env.ref('quimibond_sgi.sgi_quality_team_internal', raise_if_not_found=False)
         vals = {
             'title': "Reclamación: %s" % (self.name or ''),
@@ -131,7 +131,7 @@ class HelpdeskTicket(models.Model):
         self.sgi_alert_id = alert.id
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidad",
+            'name': "No conformidad",
             'res_model': 'quality.alert',
             'res_id': alert.id,
             'view_mode': 'form',

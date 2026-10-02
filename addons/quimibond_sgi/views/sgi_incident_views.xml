@@ -40,6 +40,11 @@
                                    decoration-danger="severity in ('grave', 'fatal')"
                                    decoration-warning="severity == 'moderado'"/>
                             <field name="reporter_id" readonly="sgi_is_locked"/>
+                            <!-- 57.94.0 (U-01): quien reporta sin usuario (SGI en planta). -->
+                            <field name="sgi_user_can_investigate" invisible="1"/>
+                            <field name="reporter_employee_id" readonly="sgi_is_locked or not sgi_user_can_investigate"
+                                   options="{'no_create': True}"/>
+                            <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                         </group>
                         <group>
                             <field name="location" readonly="sgi_is_locked"/>
@@ -73,6 +78,7 @@
                                       decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
+                                    <field name="evidence_note" optional="show"/>
                                     <field name="responsible_id" widget="many2one_avatar_user"/>
                                     <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>
@@ -200,6 +206,8 @@
         <field name="name">Incidentes y accidentes</field>
         <field name="res_model">sgi.incident</field>
         <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
         <field name="context">{'search_default_abiertos': 1}</field>
         <field name="search_view_id" ref="sgi_incident_view_search"/>
         <field name="help" type="html">

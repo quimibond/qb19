@@ -120,14 +120,14 @@ class SgiPolicy(models.Model):
         self.ensure_one()
         if not self.document_id:
             raise UserError(
-                "Liga primero el documento controlado donde se publica la "
-                "política (campo «Documento publicado (MIID)») y vuelve a "
+                "Ligue primero el documento controlado donde se publica la "
+                "política (campo «Documento publicado (MIID)») y vuelva a "
                 "generar los acuses.")
         if not self.document_id.sgi_job_ids:
             raise UserError(
-                "El documento %s no tiene puestos asignados: asígnalos en su "
+                "El documento %s no tiene puestos asignados: asígnelos en su "
                 "pestaña «Puestos que aplican» (define quién debe firmar el "
-                "acuse) y vuelve a generar." % (
+                "acuse) y vuelva a generar." % (
                     self.document_id.sgi_code or self.document_id.name))
         self.document_id.action_generate_acks()
         return self.document_id.action_open_acks()

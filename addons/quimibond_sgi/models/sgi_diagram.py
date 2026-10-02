@@ -205,7 +205,7 @@ class SgiDiagram(models.AbstractModel):
         keys = [k for k in order if k in by_type] + sorted(k for k in by_type if k not in order)
         return {
             'title': "Mapa de procesos",
-            'subtitle': "Pasa el mouse o da clic en un proceso para ver con quién se conecta · doble clic abre la ficha",
+            'subtitle': "Pase el mouse o dé clic en un proceso para ver con quién se conecta · doble clic abre la ficha",
             'layout': 'bands',
             'lanes': [{'key': k, 'label': labels.get(k, k), 'items': by_type[k]} for k in keys],
             'edges': [{'from': _key(f.from_process_id), 'to': _key(f.to_process_id), 'label': f.name or ''}

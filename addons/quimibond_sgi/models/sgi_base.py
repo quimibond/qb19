@@ -11,6 +11,13 @@ from odoo import models, fields, api
 from odoo.exceptions import AccessError, UserError
 
 
+# Campos que se mueven solos en un registro cerrado (chatter, seguidores,
+# actividades y calificaciones): escribirlos no cuenta como edición. Lo usan
+# el candado del cimiento y, desde 57.93.0 (K-03), la NC, sus acciones y las
+# acciones de incidentes y revisiones.
+SGI_FREE_PREFIXES = ('message_', 'activity_', 'website_message', 'rating_')
+
+
 def sgi_bypass_allowed(env):
     """Un contexto de bypass de candado (sgi_bypass_lock, sgi_force_close,
     sgi_bypass_dirty) solo cuenta si viene de código de sistema (superusuario)
@@ -147,11 +154,7 @@ class SgiBaseMixin(models.AbstractModel):
         evalúa el estado ANTERIOR del registro, las transiciones que ENTRAN al
         estado cerrado no se bloquean.
         """
-        return {k for k in vals
-                if not k.startswith('message_')
-                and not k.startswith('activity_')
-                and not k.startswith('website_message')
-                and not k.startswith('rating_')}
+        return {k for k in vals if not k.startswith(SGI_FREE_PREFIXES)}
 
     def _sgi_is_decision_reopen(self, vals):
         """Reabrir por decisión (D-009): solo cambia el estado, sale de un
@@ -179,7 +182,7 @@ class SgiBaseMixin(models.AbstractModel):
             if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
                 raise UserError(
                     "Este registro del SGI está cerrado y es evidencia: no puede "
-                    "modificarse ni reabrirse. Pida al Jefe de MAST reabrirlo "
+                    "modificarse ni reabrirse. Pida al Jefe MAST reabrirlo "
                     "(cambiar su estado) si hay un error real.\n\n"
                     "Registros bloqueados: %s"
                     % ", ".join(locked.sudo().mapped('display_name')))
@@ -198,7 +201,7 @@ class SgiBaseMixin(models.AbstractModel):
             if locked:
                 raise UserError(
                     "Este registro del SGI está cerrado y es evidencia: no puede "
-                    "borrarse. Pida al Jefe de MAST reabrirlo si hay un error "
+                    "borrarse. Pida al Jefe MAST reabrirlo si hay un error "
                     "real.\n\nRegistros bloqueados: %s"
                     % ", ".join(locked.sudo().mapped('display_name')))
         return super().unlink()

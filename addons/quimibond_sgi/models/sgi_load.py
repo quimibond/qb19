@@ -66,7 +66,7 @@ _PROCESS_TYPES = {
 _PROCESS_TEXT_FIELDS = (
     'name', 'purpose', 'scope', 'env_aspects')
 _LEGACY_KEYS = {
-    'links_to': "«links_to» ya no existe: declara «outputs» en quien entrega e "
+    'links_to': "«links_to» ya no existe: declare «outputs» en quien entrega e "
                 "«inputs» en quien recibe; la liga sale sola.",
     'links': "«links» ya no existe: las ligas salen de «inputs»/«outputs».",
     'flows': "«flows» ya no existe: los flujos entre procesos salen de «inputs»/«outputs».",
@@ -535,7 +535,7 @@ class _SgiLoader:
             self.report.warn(
                 'process', proc['code'],
                 "Dueño no asignado: el puesto «%s» tiene %d empleado(s) activo(s) "
-                "con usuario; se necesita exactamente uno (o manda "
+                "con usuario; se necesita exactamente uno (o mande "
                 "owner_employee_id)." % (' '.join(job.name.split()), len(emps)))
             return None
         return emps
@@ -583,7 +583,7 @@ class _SgiLoader:
         if 'state' in proc:
             if proc['state'] not in ('borrador', 'piloto'):
                 raise ValidationError("«state» va en borrador o piloto; para vigente "
-                                      "usa «publish»: true.")
+                                      "use «publish»: true.")
             vals['state'] = proc['state']
         if proc.get('publish'):
             self.publish.append(code)
@@ -603,7 +603,7 @@ class _SgiLoader:
                 other = doc.sgi_replaced_by_process_id
                 if other and other != process:
                     raise ValidationError(
-                        "El procedimiento %s ya lo sustituye el proceso %s; quítalo "
+                        "El procedimiento %s ya lo sustituye el proceso %s; quítelo "
                         "primero de su ficha." % (doc_code, other.code))
                 replaced |= doc
         if process:
@@ -670,7 +670,7 @@ class _SgiLoader:
         deliverable = self.env['sgi.deliverable'].with_context(active_test=False).search(
             [('code', '=', code), ('company_id', '=', self.company.id)], limit=1)
         if not code or not deliverable:
-            raise ValidationError("%s: el entregable «%s» no existe (decláralo en "
+            raise ValidationError("%s: el entregable «%s» no existe (declárelo en "
                                   "«deliverables»)." % (what, code))
         return deliverable
 
@@ -1025,7 +1025,7 @@ class _SgiLoader:
         given = [k for k in ('job', 'job_id', 'family', 'relative') if role.get(k) not in (None, '', False)]
         if len(given) != 1:
             raise ValidationError(
-                "Rol %s: indica exactamente uno de «job», «family» o «relative»."
+                "Rol %s: indique exactamente uno de «job», «family» o «relative»."
                 % role.get('role'))
         kind = given[0]
         if kind in ('job', 'job_id'):
@@ -1047,7 +1047,7 @@ class _SgiLoader:
             # 57.13.0 (J-010): quien pide no se aprueba a sí mismo; en cada
             # registro sube a su jefe (sgi_relative_roles). Se carga, pero avisa.
             self.report.warn('role', key, "«Aprueba = Solicitante»: quien pide no se aprueba "
-                                          "a sí mismo; se resuelve a su jefe. Usa «Jefe del "
+                                          "a sí mismo; se resuelve a su jefe. Use «Jefe del "
                                           "área que pide» o «Dueño del proceso».")
         return {'target_type': 'relative', 'relative_role': relative}, ('relative', relative)
 
@@ -1375,8 +1375,8 @@ class _SgiLoader:
                 continue
             if not successor or not successor.active:
                 self.report.warn('process', old.code, "archivado sin sucesor con %d indicador(es), "
-                                 "%d riesgo(s) y %d documento(s) vigentes colgados: asigna «Sustituido "
-                                 "por» o reubícalos." % (len(indicators), len(risks), len(docs)))
+                                 "%d riesgo(s) y %d documento(s) vigentes colgados: asigne «Sustituido "
+                                 "por» o reubíquelos." % (len(indicators), len(risks), len(docs)))
                 continue
 
             def run(old=old, successor=successor, indicators=indicators, risks=risks):
@@ -1584,7 +1584,7 @@ class _SgiLoader:
                                 item['objective'], "ambiguo" if objective else "no existe"))
                     vals['objective_id'] = objective.id
                 if item.get('responsible_employee_id') and item.get('responsible'):
-                    raise ValidationError("Indica «responsible» o «responsible_employee_id», "
+                    raise ValidationError("Indique «responsible» o «responsible_employee_id», "
                                           "no los dos.")
                 if 'responsible_employee_id' in item:
                     emp_id = item['responsible_employee_id']

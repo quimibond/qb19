@@ -277,7 +277,7 @@ class SgiManagementReview(models.Model):
             ])
             result.append("%s: %d abiertas, %d en seguimiento, %d cerradas en el periodo." % (
                 label, abiertas, seguimiento, cerradas))
-        return "\n".join(result) or "Sin No Conformidades."
+        return "\n".join(result) or "Sin no conformidades."
 
     def _sgi_load_complaints(self):
         self.ensure_one()
@@ -386,7 +386,7 @@ class SgiManagementReview(models.Model):
                 raise UserError(
                     "Todo acuerdo de la Revisión por la Dirección debe tener "
                     "responsable y fecha límite (ISO 9.3.3: las salidas son "
-                    "accionables). Completa: %s" % ", ".join(
+                    "accionables). Complete: %s" % ", ".join(
                         incomplete.mapped('name')))
             # DIR-3 (52.0.0): cada acuerdo es una ACCIÓN del SGI (sgi.action.line)
             # con responsable y compromiso: actividad nativa al responsable,
@@ -472,6 +472,13 @@ class SgiActionLineReview(models.Model):
         if self.review_id:
             return self.review_id
         return super()._sgi_origin()
+
+    def _sgi_origin_closed(self):
+        """57.93.0 (K-03): un acuerdo terminado de una revisión cerrada es evidencia."""
+        self.ensure_one()
+        if self.review_id:
+            return self.sudo().review_id.state == 'cerrada'
+        return super()._sgi_origin_closed()
 
     @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id',
                     'drill_id', 'objective_id', 'review_id', 'name')
