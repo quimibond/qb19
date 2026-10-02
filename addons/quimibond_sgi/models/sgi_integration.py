@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from markupsafe import Markup
+
 from odoo import models, fields
 from odoo.exceptions import UserError
 
@@ -38,21 +40,30 @@ class StockPicking(models.Model):
              "Sustituye F-IT-P-A07-01-07/08.")
 
     def _sgi_is_customer_return(self):
-        """Recepción validada cuyos movimientos devuelven una ENTREGA a
-        cliente (no una devolución a proveedor, que es un picking saliente)."""
+        """Recepción validada que trae material DESDE la ubicación de clientes.
+
+        57.93.0 (N-12): se decide por el origen físico del movimiento
+        (``location_id.usage == 'customer'``), no por el tipo del picking
+        devuelto: cubre la devolución capturada a mano (sin «Devolver») y
+        cualquier ruta de entrega. Las órdenes de PdV son salientes y no
+        cuentan; la devolución a proveedor tampoco (sale, no entra)."""
         self.ensure_one()
         if self.picking_type_id.code != 'incoming':
             return False
-        return any(
-            move.origin_returned_move_id.picking_id.picking_type_id.code == 'outgoing'
-            for move in self.move_ids if move.origin_returned_move_id)
+        return bool(self._sgi_customer_return_moves())
+
+    def _sgi_customer_return_moves(self):
+        """Movimientos hechos de este picking que vienen de clientes."""
+        self.ensure_one()
+        return self.move_ids.filtered(
+            lambda m: m.state == 'done' and m.location_id.usage == 'customer')
 
     def _sgi_create_return_alert(self):
         for picking in self:
             if picking.sgi_return_alert_id or not picking._sgi_is_customer_return():
                 continue
             partner = picking.partner_id.commercial_partner_id
-            returned = picking.move_ids.filtered('origin_returned_move_id')
+            returned = picking._sgi_customer_return_moves()
             product = returned[:1].product_id
             team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
                                 raise_if_not_found=False)
@@ -74,9 +85,9 @@ class StockPicking(models.Model):
                 'devolucion_cliente', vals)
             if alert:
                 picking.sgi_return_alert_id = alert.id
-                picking.message_post(
-                    body="Devolución de cliente: se levantó la NC <b>%s</b>."
-                         % (alert.sgi_folio or alert.title))
+                picking.message_post(body=Markup(
+                    "Devolución de cliente: se levantó la NC <b>%s</b>.")
+                    % (alert.sgi_folio or alert.title))
 
     def _action_done(self):
         res = super()._action_done()
@@ -171,7 +182,7 @@ class MaintenanceRequest(models.Model):
         if not alert:  # fuente apagada en Configuración → Fuentes de NC
             return False
         self.sgi_alert_id = alert.id
-        self.message_post(body="Se levantó la NC <b>%s</b> por esta falla." % (
+        self.message_post(body=Markup("Se levantó la NC <b>%s</b> por esta falla.") % (
             alert.sgi_folio or alert.name))
         return self._sgi_open_alert()
 
