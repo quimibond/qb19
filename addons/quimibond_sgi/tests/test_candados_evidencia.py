@@ -64,14 +64,16 @@ class TestCandadosEvidencia(TransactionCase):
     def _closable_nc(self):
         # La segunda NC del mismo proceso sale reincidente y pide una acción
         # CORRECTIVA terminada (_sgi_check_can_close): se registra correctiva.
+        # H8 (_sgi_check_root_cause_before_capa): sin causa raíz no se registra
+        # una correctiva, así que la causa va primero.
         alert = self.env['quality.alert'].create({
             'title': 'K01 NC', 'team_id': self.team_int.id,
-            'sgi_process_id': self.process.id})
+            'sgi_process_id': self.process.id, 'sgi_root_cause': 'Causa K01'})
         self.env['sgi.action.line'].create({
             'alert_id': alert.id, 'name': 'Corregir K01', 'responsible_id': self.env.user.id,
             'action_type': 'correctiva',
             'date_commit': date.today(), 'date_done': date.today(), 'progress': '100'})
-        alert.write({'sgi_root_cause': 'Causa K01', 'sgi_effectiveness_note': 'Eficaz',
+        alert.write({'sgi_effectiveness_note': 'Eficaz',
                      'sgi_effectiveness_date': date.today()})
         return alert
 
