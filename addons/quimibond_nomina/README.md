@@ -250,8 +250,8 @@ vigila el centinela):
 
 | Decisión | Cómo quedó |
 |---|---|
-| Última nómina del mes | Quincenal: `date_to` es el último día del mes. Semanal: `date_to + 7 días` cae en otro mes (una semana pertenece al mes de su `date_to`; la 41, 28-sep a 4-oct, es de octubre). Mensual: siempre. Otra periodicidad: no se ajusta |
-| Acumulado | Recibos del mismo empleado, misma estructura, misma compañía, sin nota de crédito, `date_to` en el mismo mes y anterior, en estado **validado o pagado**. Gravable = líneas `GROSS`; retenido = líneas `ISR` + `ISR_ADJUSTMENT`; subsidio aplicado = líneas `SUBSIDY` |
+| Última nómina del mes | Una nómina es del mes de su **fecha de pago**, como en NOI (desde 1.8.0; antes era el mes de `date_to`). Semanal: la fecha de pago es el viernes del periodo (parámetro `quimibond_nomina.dia_pago_semanal`, 0 = lunes … 6 = domingo) y es la última cuando `fecha_pago + 7 días` cae en otro mes. Quincenal: `date_to` es el último día del mes. Mensual: siempre. Otra periodicidad: no se ajusta. Octubre 2026 paga 5 semanas (viernes 2 a 30): la 41 (28-sep a 4-oct) es la primera y la 45 (26-oct a 1-nov) la última |
+| Acumulado | Recibos del mismo empleado, misma estructura, misma compañía, sin nota de crédito, con fecha de pago en el mismo mes y anterior, en estado **validado o pagado**. Gravable = líneas `GROSS`; retenido = líneas `ISR` + `ISR_ADJUSTMENT`; subsidio aplicado = líneas `SUBSIDY` |
 | Un periodo previo en borrador | **No se ajusta**: el periodo se calcula como hoy y queda en el log. Ajustar contra un acumulado incompleto es peor. Lo mismo si el contrato empezó antes del mes y no hay ningún recibo previo |
 | Corridas piloto (viven en borrador) | Parámetro `quimibond_nomina.isr_mensual_incluye_borrador = 1`: cuenta los borradores y, con dos recibos del mismo periodo, toma el más reciente (aviso en el log). Quitarlo antes de la nómina real |
 | Tarifa mensual y subsidio | Parámetros de la localización, nada a mano: `l10n_mx_isr_tables['monthly']`, `l10n_mx_subsidy_salary_limit`, `l10n_mx_uma['monthly']` × `l10n_mx_uma_percentage_for_subsidy` (2026: 3,566.22 × 15.02 % = 535.65, límite 11,492.66). El subsidio del mes nunca excede el ISR del mes |
@@ -319,6 +319,57 @@ if mes is not None:
 result = bool(subsidy_accumulated)
 ```
 
+### 9. Fecha de pago, FONACOT y tope del subsidio (1.8.0, semana 41)
+
+El paralelo de la semana 41 (28-sep a 4-oct, pagada el 2-oct) contra los 89
+XML de NOI dejó tres cosas claras:
+
+**NOI asigna cada nómina al mes de su fecha de pago.** Octubre 2026 paga cinco
+semanas (viernes 2, 9, 16, 23 y 30) y la del 26-oct al 1-nov es de octubre;
+septiembre pagó cuatro. El módulo usaba el mes de `date_to`, que en
+septiembre coincide y en octubre no (habría cerrado el mes en la semana 44).
+Desde 1.8.0 `hr.payslip._qb_nomina_fecha_pago()` da la fecha de pago (semanal:
+el día de pago dentro del periodo, viernes por default; quincenal y mensual:
+`date_to`) y el ajuste mensual, el acumulado y `_qb_nomina_periodos_del_mes()`
+(cuántas nóminas paga el mes: 4 o 5 semanales, 2 quincenales) van por ella.
+
+**FONACOT se reparte entre las nóminas que paga el mes.** La ficha del crédito
+guarda la retención mensual; la regla la dividía siempre entre 4 (o 2) y NOI
+la divide entre las nóminas del mes: en octubre 2026, entre 5 (Sarmiento de la
+Cruz: 2,682.65 / 5 = 536.53 en NOI, 670.67 en Odoo). Fórmula de `FONACOT`
+(id 527) desde 1.8.0:
+
+```python
+creditos = payslip.version_id.l10n_mx_fonacot.filtered(lambda f: f.status == 'in_progress')
+# Nóminas que paga el mes de la fecha de pago (quimibond_nomina): 4 o 5 semanales, 2 quincenales.
+periodos = payslip._qb_nomina_periodos_del_mes() or (4 if payslip.version_id.schedule_pay == 'weekly' else 2)
+importe = 0
+for c in creditos:
+    importe += c.monthly_import + c.extra_fixed_monthly_contribution
+result = -(importe / periodos) if importe else 0
+```
+
+**El subsidio no se entrega en efectivo.** En una semana parcial el ISR del
+periodo puede ser menor que el subsidio semanal (123.34); Odoo pagaba la
+diferencia en el neto (Cabrera Arriaga, 2.9 días: +70.14) y NOI lo topa al
+ISR. La condición de `SUBSIDY` (id 42) topa el subsidio del periodo al ISR
+del periodo; en la última nómina del mes el tope ya lo pone
+`_qb_isr_mensual` (al ISR del mes):
+
+```python
+subsidy_accumulated = result_rules['SUBSIDY_CURRENT_MONTH']['total'] + result_rules['SUBSIDY_NEXT_MONTH']['total']
+# El subsidio es un crédito contra el ISR del periodo: nunca se entrega en efectivo (quimibond_nomina 1.8.0).
+subsidy_accumulated = min(subsidy_accumulated, max(-result_rules['ISR']['total'], 0.0))
+# Última nómina del mes: subsidio mensual menos el ya aplicado (quimibond_nomina 19.0.1.7.0).
+mes = payslip._qb_isr_mensual(categories['GROSS'])
+if mes is not None:
+    subsidy_accumulated = mes['subsidio'] if result_rules['ISR']['quantity'] else 0.0
+result = bool(subsidy_accumulated)
+```
+
+Las tres reglas (`ISR`, `SUBSIDY`, `FONACOT`) se editan en la base y las
+vigila el centinela.
+
 ## Qué escribe el módulo en la base (inventario completo)
 
 Para revisar el riesgo antes de instalarlo en producción. Todo lo demás es
@@ -333,11 +384,13 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Vista QWeb `cfdiv40_nomina_quimibond` y vista `cfdiv40_nomina_horas_extra` (herencias de la plantilla del CFDI) | al instalar; la segunda reescribe su propio `arch`/`active` en cada actualización | registros propios del módulo; la plantilla de Odoo no se modifica |
 | Vistas del empleado, plantilla de contrato y del centinela; menú del centinela (se cuelga de Nómina → Configuración en cada actualización) | al instalar | registros propios del módulo |
 | Parámetro `quimibond_nomina.isr_mensual_incluye_borrador` | nunca lo escribe; sólo lo lee | lo pone a mano quien corre las pilotos |
+| Parámetro `quimibond_nomina.dia_pago_semanal` (0 = lunes … 6 = domingo; sin él, viernes) | nunca lo escribe; sólo lo lee | sólo si el día de pago semanal deja de ser viernes |
 | Fila de `hr.payslip.line`, `hr.payslip`, `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner` | nunca | — |
 
-Las reglas `H_SENC`, `ISR` y `SUBSIDY` de «Paga regular» **se editaron en la
-base** (2026-09-29), no las escribe el módulo: las fórmulas vigentes están en
-las secciones 7 y 8 y el centinela avisa si cambian.
+Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29) y `FONACOT` (2026-10-02)
+de «Paga regular» **se editaron en la base**, no las escribe el módulo: las
+fórmulas vigentes están en las secciones 7, 8 y 9 y el centinela avisa si
+cambian.
 
 Desinstalar el módulo borra lo propio (modelo, vistas, cron, tipo de entrada,
 campo) y no deja nada cambiado en registros de Odoo.

@@ -21,16 +21,26 @@ Aquí viven los tres cálculos que las reglas ``ISR`` y ``SUBSIDY`` de la
 estructura llaman por ``payslip._qb_isr_mensual(gross)``:
 
 1. **Cuál es la última nómina del mes** (``_qb_isr_es_ultima_del_mes``):
-   quincenal, la que termina el último día del mes; semanal, la semana cuyo
-   ``date_to`` cae en el mes y después de la cual no hay otra semana que
-   termine en ese mes (``date_to + 7 días`` ya es de otro mes); mensual,
-   siempre. Cualquier otra periodicidad no se ajusta. Una semana que cruza de
-   mes pertenece al mes de su ``date_to`` (septiembre 2026: semanas 37 a 40;
-   la 41, del 28-sep al 4-oct, es de octubre).
+   NOI asigna cada nómina al mes de su **fecha de pago**, no al del último
+   día del periodo. Semanal, la fecha de pago es el día de pago de la semana
+   dentro del periodo (viernes; parámetro
+   ``quimibond_nomina.dia_pago_semanal``, 0 = lunes … 6 = domingo); quincenal
+   y mensual, ``date_to``. Es la última del mes la nómina después de la cual
+   la siguiente ya se paga en otro mes (``fecha_pago + 7 días`` para la
+   semanal; ``date_to + 1`` para la quincenal); mensual, siempre. Cualquier
+   otra periodicidad no se ajusta. Octubre 2026 paga cinco semanas (viernes
+   2, 9, 16, 23 y 30): la 41 (28-sep a 4-oct) es la primera de octubre y la
+   45 (26-oct a 1-nov, pagada el 30) la última; septiembre pagó cuatro (37 a
+   40). Con el criterio anterior (mes de ``date_to``) la 44 cerraba octubre y
+   la 45 era de noviembre, y el ajuste no coincidía con NOI.
+
+   El mismo criterio da ``_qb_nomina_periodos_del_mes()``: cuántas nóminas
+   paga el mes (4 o 5 semanales, 2 quincenales), que la regla ``FONACOT`` usa
+   para repartir la retención mensual como lo hace NOI.
 
 2. **De dónde sale el acumulado** (``_qb_isr_recibos_previos_del_mes``): los
    recibos del mismo empleado, misma estructura, misma compañía, sin nota de
-   crédito, con ``date_to`` en el mismo mes y anterior al del recibo, en
+   crédito, pagados en el mismo mes y antes que el recibo, en
    estado validado o pagado. Si alguno sigue en borrador, **no se ajusta** y
    el periodo se calcula como hoy: ajustar contra un acumulado incompleto es
    peor que no ajustar. Lo mismo si el contrato empezó antes del mes y no hay
@@ -65,12 +75,16 @@ el mes: el ajuste automático ya lo hace."""
 import logging
 from datetime import timedelta
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import models
 from odoo.tools import float_round
 
 _logger = logging.getLogger(__name__)
 
 PARAM_INCLUYE_BORRADOR = 'quimibond_nomina.isr_mensual_incluye_borrador'
+PARAM_DIA_PAGO = 'quimibond_nomina.dia_pago_semanal'   # 0 = lunes … 6 = domingo
+DIA_PAGO_DEFAULT = 4                                    # viernes
 ESTADOS_CERRADOS = ('validated', 'paid')
 CODIGO_GRAVABLE = 'GROSS'
 CODIGOS_RETENIDO = ('ISR', 'ISR_ADJUSTMENT')
@@ -79,6 +93,52 @@ CODIGO_SUBSIDIO = 'SUBSIDY'
 
 class HrPayslip(models.Model):
     _inherit = 'hr.payslip'
+
+    # ------------------------------------------------------------------
+    # 0. Fecha de pago y nóminas del mes
+    # ------------------------------------------------------------------
+    def _qb_nomina_dia_pago(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_DIA_PAGO)
+        try:
+            dia = int(valor)
+        except (TypeError, ValueError):
+            return DIA_PAGO_DEFAULT
+        return dia if 0 <= dia <= 6 else DIA_PAGO_DEFAULT
+
+    def _qb_nomina_fecha_pago(self):
+        """Fecha de pago nominal del recibo, la que NOI escribe en el CFDI:
+        semanal, el día de pago de la semana dentro del periodo (viernes por
+        default); quincenal y mensual, ``date_to``."""
+        self.ensure_one()
+        if self.version_id.schedule_pay == 'weekly' and self.date_from:
+            dia = self._qb_nomina_dia_pago()
+            return self.date_from + timedelta(days=(dia - self.date_from.weekday()) % 7)
+        return self.date_to
+
+    def _qb_nomina_periodos_del_mes(self):
+        """Cuántas nóminas de esta periodicidad paga el mes de la fecha de
+        pago del recibo: semanal, los días de pago que caen en el mes (4 o 5);
+        quincenal, 2; mensual, 1; otra periodicidad, 0."""
+        self.ensure_one()
+        periodicidad = self.version_id.schedule_pay
+        if periodicidad == 'weekly':
+            fecha = self._qb_nomina_fecha_pago()
+            if not fecha:
+                return 0
+            dia = self._qb_nomina_dia_pago()
+            primero = fecha.replace(day=1)
+            ultimo = primero + relativedelta(months=1, days=-1)
+            d = primero + timedelta(days=(dia - primero.weekday()) % 7)
+            n = 0
+            while d <= ultimo:
+                n += 1
+                d += timedelta(days=7)
+            return n
+        if periodicidad == 'bi-weekly':
+            return 2
+        if periodicidad == 'monthly':
+            return 1
+        return 0
 
     # ------------------------------------------------------------------
     # 1. ¿Es la última nómina del mes?
@@ -94,7 +154,8 @@ class HrPayslip(models.Model):
         if periodicidad == 'bi-weekly':
             return (fin + timedelta(days=1)).month != fin.month
         if periodicidad == 'weekly':
-            return (fin + timedelta(days=7)).month != fin.month
+            pago = self._qb_nomina_fecha_pago()
+            return (pago + timedelta(days=7)).month != pago.month
         if periodicidad == 'monthly':
             return True
         return False
@@ -113,8 +174,12 @@ class HrPayslip(models.Model):
         corría antes del mes y no hay ningún recibo previo."""
         self.ensure_one()
         fin = self.date_to
-        inicio_mes = fin.replace(day=1)
+        pago = self._qb_nomina_fecha_pago()
+        inicio_mes = pago.replace(day=1)
         Payslip = self.env['hr.payslip'].sudo()
+        # Un recibo pagado en el mes termina en el mes o después (la semana
+        # pagada el día 1 termina el día 3), así que ``date_to >= inicio_mes``
+        # no deja fuera a ninguno; el mes de pago se filtra abajo.
         recibos = Payslip.search([
             ('employee_id', '=', self.employee_id.id),
             ('struct_id', '=', self.struct_id.id),
@@ -125,6 +190,8 @@ class HrPayslip(models.Model):
             ('date_to', '>=', inicio_mes),
             ('date_to', '<', fin),
         ], order='date_to, id')
+        recibos = recibos.filtered(
+            lambda r: (lambda p: p and p < pago and (p.year, p.month) == (pago.year, pago.month))(r._qb_nomina_fecha_pago()))
         incluye_borrador = self._qb_isr_incluye_borradores()
         abiertos = recibos.filtered(lambda r: r.state not in ESTADOS_CERRADOS)
         if abiertos and not incluye_borrador:
