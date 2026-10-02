@@ -6,9 +6,9 @@
 
 Tareas programadas del SGI. Cada método ``cron_*`` es una acción planificada (ver ``docs/sgi/tecnica/crons.md``); agendan actividades con ``_sgi_schedule`` (idempotente por clave) y cada paso corre en su savepoint.
 
-Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
 
-## Métodos públicos (24)
+## Métodos públicos (25)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -19,6 +19,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/model
 | `cron_dnc` | Cron trimestral: cierra el ciclo de la DNC (P-A01). Cuenta las brechas de competencia abiertas y agenda al coordinador de RH la distribución de la encuesta DNC (F-P-A01-17) y el plan de capacitación.… |
 | `cron_documents` | Cron diario de documentos: avisos de revisión bienal, pilotos por vencer y acuses pendientes (57.95.0: un aviso por persona o por jefe, no por acuse). |
 | `cron_emergency_drills` | Cron diario: vigila los simulacros de los planes de emergencia vigentes (14001/45001 8.2). Idempotente por resumen. |
+| `cron_health_weekly_mail` | 57.99.0, cada lunes: mide (si falta) la semana pasada de los indicadores de salud y manda a Dirección el correo con su valor, meta, semáforo, la semana anterior y la tabla por dueño de proceso (halla… |
 | `cron_hr_employee_gaps` | 57.94.0 (U-08), cada lunes: un aviso por departamento con empleados sin puesto o sin correo, a RH. Sale en Mis pendientes como «Aviso». Si la persona lo marcó «Hecho» y siguen faltando datos, el lune… |
 | `cron_indicators` | Diario desde I-6: escala los planes vencidos todos los días y mide solo el tercer día hábil (o cuando el mes anterior siga sin medir). Sin ``scheduled`` (a mano) mide siempre, como antes. |
 | `cron_indicators_weekly` | Cron semanal: mide los indicadores de frecuencia semanal de la semana previa. |

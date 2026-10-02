@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.98.0',
+    'version': '19.0.57.99.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -65,6 +65,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
+        'data/sgi_health_indicators.xml',  # 57.99.0: salud del SGI (SG-01 a SG-10)
         'data/sgi_expansion_data.xml',
         # 56.35.0 (A-004/D-01): sgi_indicator_formula_data.xml salió del núcleo
         # (IDs de producción); los términos viajan en quimibond_sgi_mapa.
@@ -91,6 +92,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_approval_cron.xml',
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
+        'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
         'data/sgi_sign_elearning_data.xml',

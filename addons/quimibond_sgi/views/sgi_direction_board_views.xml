@@ -55,6 +55,52 @@
                                 </field>
                             </group>
                         </page>
+                        <!-- 57.99.0: salud del SGI (auditoría 2026-10, sección 8 y
+                             hallazgo D-01). -->
+                        <page string="Salud del SGI" name="salud">
+                            <div class="alert alert-info" role="status" invisible="not health_note">
+                                <field name="health_note" nolabel="1" readonly="1"/>
+                            </div>
+                            <field name="health_indicator_ids" nolabel="1" readonly="1">
+                                <list create="0" delete="0"
+                                      decoration-danger="sgi_health_week_semaphore == 'rojo'"
+                                      decoration-warning="sgi_health_week_semaphore == 'amarillo'"
+                                      decoration-success="sgi_health_week_semaphore == 'verde'">
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="target_objective"/>
+                                    <field name="target_acceptable" optional="show"/>
+                                    <field name="uom" optional="show"/>
+                                    <field name="sgi_health_week_value"/>
+                                    <field name="sgi_health_week_semaphore" widget="badge"
+                                           decoration-danger="sgi_health_week_semaphore == 'rojo'"
+                                           decoration-warning="sgi_health_week_semaphore == 'amarillo'"
+                                           decoration-success="sgi_health_week_semaphore == 'verde'"/>
+                                    <field name="sgi_health_week_previous"/>
+                                    <field name="last_six" optional="show"/>
+                                </list>
+                            </field>
+                            <group string="Por dueño de proceso">
+                                <field name="health_process_ids" nolabel="1" readonly="1" colspan="2">
+                                    <list create="0" delete="0">
+                                        <field name="code"/>
+                                        <field name="name"/>
+                                        <field name="owner_id"/>
+                                        <field name="sgi_health_owner_user_id" column_invisible="1"/>
+                                        <field name="sgi_health_overdue_count"
+                                               decoration-danger="sgi_health_overdue_count &gt; 0"/>
+                                        <field name="sgi_health_late_validation_count"
+                                               decoration-danger="sgi_health_late_validation_count &gt; 0"/>
+                                        <field name="sgi_health_idle_days"
+                                               invisible="not sgi_health_owner_user_id"
+                                               decoration-warning="sgi_health_idle_days &gt; 14"/>
+                                    </list>
+                                </field>
+                            </group>
+                            <p class="text-muted">Solo conteos; sin datos de salud ni de nómina. Las
+                                mediciones de salud no se validan ni piden causa y plan: su respuesta es
+                                esta revisión semanal. «Días sin movimiento» en 91 significa más de 90.</p>
+                        </page>
                         <page string="Rojos sin plan" name="rojos">
                             <field name="red_no_plan_measure_ids" nolabel="1" readonly="1">
                                 <list create="0" delete="0">

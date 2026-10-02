@@ -13,6 +13,165 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.99.0 — 2026-10-02
+
+**Salud del SGI** (auditoría 2026-10: sección 8 del reporte y hallazgo D-01
+de la auditoría 2026-10 —no la decisión D-01—; es la ficha «57.98.0» del
+plan general, renumerada porque 57.98.0 fue «Interfaz»). Plan:
+`docs/superpowers/plans/2026-10-02-sgi-57-99-0-salud.md`.
+**Ningún dato de negocio cambia en el despliegue.**
+
+### Agregado
+
+- **Diez indicadores de salud del SGI** (`data/sgi_health_indicators.xml`,
+  `noupdate`, xmlid `sgi_ind_salud_*`, claves SG-01 a SG-10): nivel
+  Dirección, semanales, en prueba y sin NC automática, del proceso E2, con
+  fórmula y fuente, cada uno con su modo (`models/sgi_indicator_health.py`;
+  constantes en `models/sgi_health_const.py`):
+
+  | Clave | Modo | Qué mide | Objetivo | Aceptable |
+  |---|---|---|---|---|
+  | SG-01 | `salud_procesos` | Procesos en «Vigente» ÷ procesos activos | 100 % | 20 % |
+  | SG-02 | `salud_personas` | Personas con usuario y empleado que crearon, modificaron o comentaron algo del SGI en 30 días | 25 | 15 |
+  | SG-03 | `salud_planta` | Empleados con puesto que tienen usuario | 90 % | 50 % |
+  | SG-04 | `salud_acuses` | Acuses leídos o pendientes dentro del plazo del aviso | 90 % | 70 % |
+  | SG-05 | `salud_validacion` | Mediciones validadas a tiempo (plazo en los últimos 30 días) | 90 % | 70 % |
+  | SG-06 | `salud_rojos` | Rojos de los últimos 3 meses con NC o con causa y acción | 100 % | 80 % |
+  | SG-07 | `salud_nc` | NC cerradas en 90 días eficaces a la primera; la nota da las abiertas con más de 60 días | 80 % | 60 % |
+  | SG-08 | `salud_avisos` | Avisos del SGI vencidos; la nota da su concentración en una persona (sin nombre) | ≤ 10 | ≤ 25 |
+  | SG-09 | `salud_auditoria` | Auditorías internas del programa del año hechas hasta el mes en curso | 100 % | 80 % |
+  | SG-10 | `salud_formatos` | Formatos «Migrado a Odoo» con destino activo y uso en 90 días | 100 % | 70 % |
+
+  Todos leen con `sudo()` y filtran por la empresa del SGI (D-03); SG-05 y
+  SG-07 se reconstruyen por fechas, los demás son de foto. Ventanas visibles
+  en la ficha.
+- **Tablero → «Salud del SGI»:** los diez con la medición de la semana
+  pasada (valor, semáforo y semana anterior; `sgi_health_week_*` en el
+  indicador) y, por el hallazgo D-01, la tabla **Por dueño de proceso**:
+  avisos del SGI vencidos, validaciones atrasadas y días sin movimiento en
+  el SGI del dueño (`sgi.process.sgi_health_*`, un solo cálculo por
+  Tablero; 91 = más de 90; vacío si el dueño no tiene usuario). Los avisos
+  vencidos siguen la misma regla que SG-08 (vencidos al cierre de ayer, de
+  la empresa del SGI); las validaciones atrasadas solo miran mediciones de
+  los últimos 120 días.
+- **Correo semanal a Dirección** (acción planificada
+  `sgi_cron_health_weekly` «SGI: Salud del SGI (correo semanal a
+  Dirección)», lunes 14:00 UTC = 08:00 de México, activa; plantilla
+  `mail_template_sgi_health_weekly`; `sgi.cron.cron_health_weekly_mail`):
+  mide la semana pasada si falta y manda valor, meta, semáforo, semana
+  anterior y nota de cada indicador (la meta con «≥» o, si más bajo es
+  mejor, «≤»), y la tabla por dueño. Un correo por
+  persona en su savepoint. Destinatarios: Dirección de Operaciones (SGI) y
+  `quimibond_sgi.health_mail_user_ids`, activos, internos, con correo y con
+  la empresa del SGI. Solo conteos; sin datos de salud ni de nómina. 29
+  acciones planificadas del SGI.
+- `sgi.indicator.measure.sgi_validated_date` («Validada el»): el día en que
+  la medición pasa a validada (o nace validada); re-validar no la mueve. Las validadas antes
+  de 57.99.0 quedan sin fecha y SG-05 las cuenta a tiempo.
+- Parámetros `quimibond_sgi.health_excluded_user_ids` (quién no cuenta en
+  SG-02, además de OdooBot, el administrador técnico y las cuentas sin
+  empleado de la empresa del SGI) y `quimibond_sgi.health_mail_user_ids`
+  (destinatarios extra). Ids separados por coma, vacíos de fábrica.
+
+### Cambiado
+
+- Los indicadores de salud no ocupan los 12 lugares de «Indicadores de
+  dirección» del Tablero (tienen su página).
+- La revisión por la dirección no carga los rojos de los indicadores de
+  salud en «Indicadores en rojo» (`_sgi_load_red_measures`).
+- Sus mediciones no aparecen en «Validar medición» de Mis pendientes, no
+  piden causa y plan, no escalan a Dirección y un «sin dato» no agenda
+  «Indicador no calculó». Tampoco las valida la validación masiva de la
+  Revisión por la Dirección, no cuentan como KPI en rojo del proceso ni en
+  «capturadas sin validar» del Diagnóstico, y no entran a SG-05 ni a SG-06.
+- «Ver evidencia» de un indicador de salud abre los registros guardados en
+  la medición; sin registros, avisa (no remite a «Ver evidencia»).
+- README: sección «Salud del SGI». Manuales de Dirección (la página y «El
+  correo de los lunes») y del Jefe MAST (pasarlos a oficial, parámetros, 29
+  acciones planificadas).
+
+### Migración
+
+`pre-migrate.py`: si ya existe un indicador con una clave SG-xx, solo le liga
+su xmlid (metadato; en producción, el 2026-10-02, ninguno). Sin él, el XML
+`noupdate` chocaría con la clave única y tumbaría el update.
+`post-migrate.py`: liga los diez indicadores nuevos al proceso E2 de la
+empresa del SGI y les pone responsable (el usuario del dueño de E2 o el Jefe
+MAST) si no lo tienen; deja nota en su chatter. Lo demás son 10 indicadores,
+1 plantilla, 1 acción planificada y la columna vacía `sgi_validated_date`.
+Nada se borra.
+
+### Datos de producción
+
+Cifras del 2026-10-02 (MCP, solo lectura, compañía 1), para contrastar la
+primera corrida: SG-01 0 % (0 de 14 procesos en vigor); SG-02 ≈ 9 personas
+sin el CEO; SG-03 20.1 % (33 de 164 empleados con puesto); SG-04 100 % hoy
+(2 leídos y 140 en plazo; cae a 1.4 % entre el 7 y el 13 de octubre si nadie
+firma); SG-05 ≈ 0 %; SG-06 0 % (0 de 116 rojos de julio a septiembre);
+SG-07 sin dato (0 NC cerradas en 90 días; 0 abiertas a más de 60 días);
+SG-08 44 avisos, 75 % de una persona; SG-09 0 % (0 de 5 de octubre;
+programa 2026 en borrador); SG-10 ≤ 44.6 % (108 de 242 con destino activo).
+
+**Pista de datos (la captura Jose en producción el día del despliegue; no
+es código):** `quimibond_sgi.health_excluded_user_ids` = el usuario del CEO
+(Q13) y `quimibond_sgi.health_mail_user_ids` = el CEO y el Jefe MAST (Q22),
+en Ajustes → Técnico → Parámetros del sistema.
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó las opciones por omisión de Q1 a Q24 (2026-10-02):
+
+- (Q1–Q10, puertas) Metas de SG-01 a SG-10: las de la tabla de arriba
+  (objetivo = verde; aceptable = límite del amarillo).
+- (Q7, ajuste técnico de la revisión del plan) SG-07 mide «NC eficaces a la
+  primera» (cerradas sin ninguna verificación «No eficaz»): desde 57.93.0
+  toda NC cierra «Eficaz» y el criterio original sería circular.
+- (Q11) Diez indicadores: «NC abiertas a más de 60 días» y «concentración
+  de avisos» van en la nota de SG-07 y SG-08 y en el correo, sin semáforo.
+- (Q12) Nacen en prueba y sin NC automática; el Jefe MAST los pasa a oficial
+  tras revisar la primera medición (regla I-2).
+- (Q13) Fuera de SG-02: OdooBot, el administrador técnico y las cuentas sin
+  empleado de la empresa del SGI por código; el CEO por el parámetro.
+- (Q14) Planta identificable solo con usuario (sin PIN: SGI en planta sigue
+  apagado, 57.94.0).
+- (Q15) Acuses al día = leídos más pendientes dentro del plazo del aviso.
+- (Q16) Rojos de todos los indicadores activos (en prueba u oficiales),
+  salvo los de salud.
+- (Q17) Programa de auditoría acumulado del año con el mes en curso, en
+  cualquier estado del programa; realizada = auditoría en «Informe» o
+  «Cerrada» (o renglón cerrado); solo auditorías internas.
+- (Q18) Formatos cuyo destino es una pantalla sin registros que contar
+  cuentan como utilizables; la nota dice cuántos son. Un menú activo sin
+  acción, o con una acción sobre un modelo que ya no existe, no es
+  utilizable (cuenta en «Sin registros»).
+- (Q19) E2-02 convive con SG-09; esta entrega no lo toca.
+- (Q20) Página propia «Salud del SGI» en el Tablero.
+- (Q21) Las mediciones de salud no se validan.
+- (Q22) Correo los lunes a las 08:00 de México, activo desde el despliegue,
+  a Dirección de Operaciones (SGI) más el parámetro.
+- (Q23) Tabla por dueño con el nombre del dueño del proceso, sin metas
+  individuales.
+- (Q24) Sale como 57.99.0, claves SG-01 a SG-10.
+
+**Pruebas:** `test_salud_sgi` (16 casos; cada cálculo por diferencias,
+porque la base del build es copia de producción).
+
+**Verificación pendiente en el build de Odoo.sh** (no se puede sin Odoo):
+- `_read_group` sobre `create_uid`/`write_uid` con `:max` en los modelos de
+  SG-02 y sobre `author_id` de `mail.message` (prueba 03).
+- `ir.ui.menu.action` como referencia a `ir.actions.act_window` con
+  `res_model` (prueba 11).
+- En el `update.log`: «SGI 57.99.0: 0 indicador(es) de salud existentes
+  ligados a su xmlid» y «SGI 57.99.0: 10 indicador(es) de salud ligados al
+  proceso E2»; sin `ERROR`.
+- El correo sale como `mail.mail` con `email_to` de Dirección y la
+  plantilla renderiza con los renglones del contexto (prueba 15).
+- El cálculo del Tablero (tabla por dueño, 90 días de movimientos) tarda
+  menos de 2 s en la copia de producción.
+- A mano: abrir el Tablero como Dirección → «Salud del SGI»; correr «SGI:
+  Salud del SGI» desde Acciones planificadas y revisar el `mail.mail`;
+  comparar SG-01 a SG-10 con las cifras de arriba.
+
 ## 19.0.57.98.0 — 2026-10-02
 
 **Interfaz** (auditoría 2026-10: I-01, I-02, I-04, I-06 y U-07, puerta Q20;

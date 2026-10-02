@@ -142,3 +142,4 @@ from . import test_rendimiento_robustez
 from . import test_sst_ambiente
 from . import test_clausulas_revision
 from . import test_interfaz
+from . import test_salud_sgi

@@ -48,6 +48,7 @@ from odoo.exceptions import AccessError, UserError
 
 # sgi_calendar no define modelos: importarlo aquí no cambia el registro.
 from .sgi_calendar import sgi_add_business_days, sgi_nth_business_day
+from .sgi_health_const import HEALTH_MODES
 
 PENDING_KINDS = [
     ('accion', "Acción"),
@@ -244,8 +245,10 @@ class SgiMyPending(models.TransientModel):
             if 'sgi_responsible_ids' in Alert._fields else Alert,
             # G-001: «Capturar» solo lo que alguien tiene que capturar.
             'medicion': measures.filtered(lambda m: m.state == 'pendiente' and m._sgi_needs_capture()),
-            # I-006: lo ya calculado lo valida el dueño.
-            'validacion': measures.filtered(lambda m: m.state == 'capturado'),
+            # I-006: lo ya calculado lo valida el dueño. 57.99.0: los de salud
+            # del SGI no se validan (su respuesta es la revisión semanal).
+            'validacion': measures.filtered(
+                lambda m: m.state == 'capturado' and m.indicator_id.calc_mode not in HEALTH_MODES),
             'legal': env['sgi.legal.requirement'].sudo().search(
                 [('responsible_id', 'in', ids),
                  '|', ('next_eval_date', '<=', soon), ('expiry_date', '<=', soon)],

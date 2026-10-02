@@ -29,6 +29,7 @@ from odoo.exceptions import UserError, ValidationError
 from .sgi_calendar import sgi_nth_business_day, sgi_previous_business_day, sgi_today
 
 from .sgi_guard import sgi_require_system
+from .sgi_health_const import HEALTH_MODES
 
 _WINDOW_BY_MODE = {
     'desperdicio_kg': "3 meses móviles",
@@ -41,6 +42,17 @@ _WINDOW_BY_MODE = {
     'cartera_vencida': "Al cierre",
     'cartera_vencida_60': "Al cierre",
     'inventario_diferencia': "Mes (existencias al día del cálculo)",
+    # 57.99.0: salud del SGI.
+    'salud_procesos': "Al cierre",
+    'salud_personas': "30 días al cierre",
+    'salud_planta': "Al cierre",
+    'salud_acuses': "Al cierre",
+    'salud_validacion': "30 días al cierre",
+    'salud_rojos': "3 meses",
+    'salud_nc': "90 días al cierre",
+    'salud_avisos': "Al cierre",
+    'salud_auditoria': "Año a la fecha",
+    'salud_formatos': "90 días al cierre",
 }
 _PLAN_SUMMARY = "Causa y acción: %s (%s)"
 _ESCALATION_SUMMARY = "Sin causa ni acción (escalado a Dirección): %s (%s)"
@@ -303,8 +315,9 @@ class SgiManagementReviewValidate(models.Model):
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
             raise UserError("Solo el Jefe MAST y SGI valida las mediciones desde la revisión.")
         Measure = self.env['sgi.indicator.measure']
+        # 57.99.0: las de salud del SGI no se validan.
         captured = Measure.search([
-            ('state', '=', 'capturado'),
+            ('state', '=', 'capturado'), ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to)])
         captured.action_validate()
         reds = Measure.search([
