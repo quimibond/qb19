@@ -385,10 +385,37 @@ class TestBandeja(TransactionCase):
         rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp)
         theirs = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
         self.assertEqual(len(theirs), 2)
-        with self.assertRaises(UserError):
+        with self.assertRaisesRegex(UserError, 'puede validar estas mediciones'):
             theirs.with_user(self.boss_user).action_validate_selected()
         self.assertEqual(set(measures.mapped('state')), {'capturado'})
         self.assertTrue(theirs.exists(), "Lo que no se validó se queda en la lista.")
+
+    def test_23_validar_mezcla_avisa(self):
+        """Selección mezclada: valida lo propio, deja lo ajeno y avisa."""
+        indicator = self._indicator('Z8A-N', calc_mode='otif_ventas', frequency='weekly')
+        boss_indicator = self.env['sgi.indicator'].create({
+            'code': 'Z8A-J', 'name': 'KPI Z8A-J', 'calc_mode': 'otif_ventas',
+            'frequency': 'weekly', 'responsible_id': self.boss_user.id,
+            'process_id': self.process.id})
+        monday = self.today - timedelta(days=self.today.weekday() + 7)
+        Measure = self.env['sgi.indicator.measure']
+        theirs = Measure.create([
+            {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
+            for d in (monday, monday - timedelta(days=7))])
+        own = Measure.create({'indicator_id': boss_indicator.id, 'period_date': monday,
+                              'state': 'capturado', 'value': 90.0})
+        rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp | self.boss)
+        their_rows = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in theirs.ids)
+        own_row = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id == own.id)
+        self.assertEqual(len(their_rows), 2)
+        self.assertEqual(len(own_row), 1)
+        result = (their_rows | own_row).with_user(self.boss_user).action_validate_selected()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertEqual(result['params']['next']['tag'], 'soft_reload')
+        self.assertEqual(own.state, 'validado')
+        self.assertEqual(set(theirs.mapped('state')), {'capturado'})
+        self.assertEqual(their_rows.exists(), their_rows, "Lo ajeno se queda en la lista.")
+        self.assertFalse(own_row.exists(), "Lo validado sale de la lista.")
 
     def test_21_abre_desplegada_con_lo_urgente(self):
         action = self.Pending.with_user(self.user).action_open_mine()
