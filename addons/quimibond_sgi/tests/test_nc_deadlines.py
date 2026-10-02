@@ -114,13 +114,14 @@ class TestNcDeadlines(TransactionCase):
         other.with_user(self.manager).write({'stage_id': self.stage_follow.id})
 
     def test_04_eficacia_programada_y_cierre(self):
+        today = fields.Date.context_today(self.env.user)
         nc = self._nc(sgi_root_cause='causa')
         line = self.env['sgi.action.line'].create({
             'alert_id': nc.id, 'action_type': 'correctiva', 'name': 'Capacitar',
-            'responsible_id': self.user.id, 'date_commit': date.today()})
+            'responsible_id': self.user.id, 'date_commit': today})
         self.assertFalse(nc.sgi_effectiveness_due)
         line.action_mark_done()
-        self.assertEqual(nc.sgi_effectiveness_due, date.today() + timedelta(days=90))
+        self.assertEqual(nc.sgi_effectiveness_due, today + timedelta(days=90))
         # 57.93.0 (FUNC-C13): la verificación va al dueño del proceso, que puede cerrar.
         acts = self.env['mail.activity'].search([
             ('res_model', '=', 'quality.alert'), ('res_id', '=', nc.id),
@@ -130,11 +131,11 @@ class TestNcDeadlines(TransactionCase):
         with self.assertRaises(UserError):
             nc.write({'stage_id': self.stage_closed.id})
         nc.write({'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'Sin reincidencia',
-                  'sgi_effectiveness_date': date.today()})
+                  'sgi_effectiveness_date': today})
         # 57.93.0 (N-02): antes de la fecha programada no cierra.
         with self.assertRaises(UserError):
             nc.write({'stage_id': self.stage_closed.id})
-        nc.write({'sgi_effectiveness_due': date.today()})  # llegó la fecha
+        nc.write({'sgi_effectiveness_due': today})  # llegó la fecha
         nc.write({'stage_id': self.stage_closed.id})
         self.assertEqual(nc.stage_id, self.stage_closed)
 

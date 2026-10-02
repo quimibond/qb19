@@ -12,9 +12,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_id` | Many2one | No conformidad | No conformidad que se cancela. | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1222` |
-| `is_manager` | Boolean |  | Indica si usted es Jefe MAST y SGI. |  |  | compute `_compute_is_manager`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1225` |
-| `reason` | Text | Motivo de la cancelación |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1224` |
+| `alert_id` | Many2one | No conformidad | No conformidad que se cancela. | sí | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1259` |
+| `is_manager` | Boolean |  | Indica si usted es Jefe MAST y SGI. |  |  | compute `_compute_is_manager`, sin guardar |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1262` |
+| `reason` | Text | Motivo de la cancelación |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:1261` |
 
 ## Métodos públicos (1)
 

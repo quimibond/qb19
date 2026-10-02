@@ -51,6 +51,10 @@ class QualityAlertTeam(models.Model):
                                       help="Secuencia anual para el folio de las NC de este equipo.")
 
 
+# 57.93.0 (N-02): campos de la eficacia que solo escribe el sistema (con sudo)
+# o el Jefe MAST; de cualquier otro cliente se ignoran.
+_SGI_SYSTEM_FIELDS = ('sgi_ineffective_count', 'sgi_effectiveness_due')
+
 _SGI_DEADLINE_STATES = [
     ('pendiente', "Pendiente"),
     ('vencida', "Vencida"),
@@ -208,7 +212,8 @@ class QualityAlert(models.Model):
     sgi_effectiveness_due = fields.Date(
         string="Verificar eficacia el", readonly=True, copy=False,
         help="Se fija al terminar la última acción correctiva (90 días por "
-             "omisión) y agenda la verificación al Jefe MAST.")
+             "omisión) y agenda la verificación al dueño del proceso (o al Jefe "
+             "MAST si no hay).")
     # --- NC-4: cancelación con motivo aprobado por el Jefe MAST.
     sgi_cancel_reason = fields.Text(string="Motivo de cancelación", readonly=True, copy=False)
     sgi_cancel_requested_by = fields.Many2one(
@@ -242,6 +247,11 @@ class QualityAlert(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # 57.93.0 (N-02): el contador de «No eficaz» y la fecha programada de
+        # la eficacia los pone el sistema; no se aceptan del cliente.
+        if not sgi_bypass_allowed(self.env):
+            vals_list = [{k: v for k, v in vals.items() if k not in _SGI_SYSTEM_FIELDS}
+                         for vals in vals_list]
         alerts = super().create(vals_list)
         Stage = self.env['quality.alert.stage'].sudo()
         for alert in alerts:
@@ -430,11 +440,20 @@ class QualityAlert(models.Model):
 
     def _sgi_on_ineffective(self):
         """57.93.0 (N-02): la verificación salió «No eficaz». Deja la
-        verificación en el historial, la limpia para la siguiente, regresa la
-        NC a Seguimiento y pide la acción correctiva nueva."""
+        verificación en el historial (chatter y contador), la limpia para la
+        siguiente (el resultado también, para que otro «No eficaz» vuelva a
+        contar), regresa la NC a Seguimiento y pide la acción correctiva nueva.
+
+        La etapa: una NC en Abierta se queda ahí (todavía no la trabaja nadie
+        y moverla chocaría con la contención obligatoria de las
+        reclamaciones); en Seguimiento no cambia; desde cualquier otra
+        (Cerrada) regresa a Seguimiento. Una NC cancelada no entra aquí."""
         followup = self.env.ref('quimibond_sgi.sgi_nc_int_stage_followup', raise_if_not_found=False)
+        open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open', raise_if_not_found=False)
         Cron = self.env['sgi.cron']
         for alert in self:
+            if alert.stage_id.sgi_is_cancel_stage:
+                continue
             folio = alert.sgi_folio or alert.name
             alert.message_post(body=Markup(
                 "<b>Verificación de eficacia: no eficaz</b> (%s).<br/>%s") % (
@@ -443,13 +462,17 @@ class QualityAlert(models.Model):
             alert.activity_ids.sudo().filtered(
                 lambda a: (a.summary or '').startswith("Verificar eficacia")).action_feedback(
                 feedback="No eficaz: se pidió una acción correctiva nueva.")
-            vals = {
+            # Campos del sistema: con sudo (el cliente no los escribe).
+            alert.sudo().write({
                 'sgi_ineffective_count': alert.sgi_ineffective_count + 1,
+                'sgi_effectiveness_due': False,
+            })
+            vals = {
+                'sgi_effective': False,
                 'sgi_effectiveness_note': False,
                 'sgi_effectiveness_date': False,
-                'sgi_effectiveness_due': False,
             }
-            if followup and alert.stage_id != followup and not alert.stage_id.sgi_is_cancel_stage:
+            if followup and alert.stage_id != followup and alert.stage_id != open_stage:
                 vals['stage_id'] = followup.id
             alert.write(vals)
             Cron._sgi_schedule(
@@ -476,7 +499,7 @@ class QualityAlert(models.Model):
                 continue
             last = max(corrective.mapped('date_done'))
             due = last + relativedelta(days=days)
-            alert.sgi_effectiveness_due = due
+            alert.sudo().sgi_effectiveness_due = due
             user_id = alert._sgi_effectiveness_user_id()
             summary = "Verificar eficacia de la NC %s (a %d días)" % (alert.sgi_folio or alert.name, days)
             if user_id and not Cron._sgi_activity_exists(alert, summary, user_id):
@@ -722,6 +745,11 @@ class QualityAlert(models.Model):
                         alert.sgi_folio or alert.name, "\n".join(problems)))
 
     def write(self, vals):
+        # 57.93.0 (N-02): el contador y la fecha programada son del sistema.
+        if not sgi_bypass_allowed(self.env) and any(f in vals for f in _SGI_SYSTEM_FIELDS):
+            vals = {k: v for k, v in vals.items() if k not in _SGI_SYSTEM_FIELDS}
+            if not vals:
+                return True
         # Reclasificar a MAYOR una NC con folio también dispara el correo
         # crítico (solo la transición: no re-avisa a las que ya eran mayores).
         newly_mayor = self.browse()
@@ -732,8 +760,11 @@ class QualityAlert(models.Model):
         newly_ineffective = self.browse()
         if vals.get('sgi_effective') == 'no_eficaz':
             newly_ineffective = self.filtered(
-                lambda a: a.sgi_folio and a.sgi_effective != 'no_eficaz')
+                lambda a: a.sgi_folio and a.sgi_effective != 'no_eficaz'
+                and not a.stage_id.sgi_is_cancel_stage)
         newly_closed = self.env['quality.alert']
+        to_check = self.env['quality.alert']
+        new_stage = self.env['quality.alert.stage']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
             self._sgi_check_stage_move(new_stage)
@@ -742,10 +773,12 @@ class QualityAlert(models.Model):
             # para brincarse los candados de cierre.
             force = (self.env.context.get('sgi_force_close')
                      and sgi_bypass_allowed(self.env))
+            # 57.93.0 (N-02): los candados de cierre se revisan DESPUÉS de
+            # escribir, con lo que la persona capturó: el formulario manda los
+            # campos sin guardar y la etapa en un solo write. Quién mueve y a
+            # qué etapa sí se revisa antes (_sgi_check_stage_move).
             if new_stage.sgi_is_closing_stage and not force:
-                for alert in self:
-                    if alert.stage_id != new_stage:
-                        alert._sgi_check_can_close()
+                to_check = self.filtered(lambda a: a.stage_id != new_stage)
             if new_stage.sgi_is_closing_stage:
                 newly_closed = self.filtered(
                     lambda a: a.stage_id != new_stage and a.sgi_folio)
@@ -759,8 +792,12 @@ class QualityAlert(models.Model):
             if target.sgi_is_cancel_stage or any(self.stage_id.mapped('sgi_is_cancel_stage')):
                 recurrence_scope = self.sgi_process_id
         res = super().write(vals)
+        # Un UserError aquí deshace el write completo (misma transacción).
+        to_check._sgi_check_can_close()
         if newly_ineffective:
             newly_ineffective._sgi_on_ineffective()
+        # Solo cuenta como cerrada la NC que de verdad quedó en la etapa de cierre.
+        newly_closed = newly_closed.filtered(lambda a: a.stage_id == new_stage)
         if 'sgi_process_id' in vals or recurrence_scope:
             self._sgi_recompute_later_recurrence(recurrence_scope | self.sgi_process_id)
         Cron = self.env['sgi.cron']

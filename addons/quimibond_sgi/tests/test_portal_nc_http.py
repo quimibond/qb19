@@ -32,19 +32,30 @@ class TestPortalNcHttp(HttpCase):
             'title': 'K07 otra NC', 'team_id': team.id, 'partner_id': supplier.id})
         cls.other.action_sgi_send_to_supplier()
 
+    def setUp(self):
+        super().setUp()
+        # Sesión anónima explícita en el opener: el token CSRF del formulario
+        # queda ligado a ella y el POST viaja con la misma cookie.
+        self.authenticate(None, None)
+
     def _get(self, alert, token, extra=''):
         return self.url_open('/my/nc/%d?access_token=%s%s' % (alert.id, token, extra),
                              allow_redirects=False)
 
-    def _csrf(self):
-        # El token CSRF sale del formulario real (misma sesión del opener).
-        page = self._get(self.other, self.other.access_token)
+    def _csrf(self, alert):
+        # El token CSRF sale del formulario real, leído en cada envío (misma
+        # sesión del opener). Se lee de la página de la misma NC con su token
+        # válido; ya contestada, la página no trae formulario y se usa la otra
+        # NC (el token CSRF es de la sesión, no de la página).
+        alert.invalidate_recordset()
+        source = alert if alert.sgi_supplier_state == 'enviada' else self.other
+        page = self._get(source, source.access_token)
         self.assertEqual(page.status_code, 200)
         return CSRF.search(page.text).group(1)
 
     def _post(self, alert, token, cause='Lote mezclado', action='Segregar y reponer'):
         return self.url_open('/my/nc/%d/answer' % alert.id, data={
-            'csrf_token': self._csrf(), 'access_token': token,
+            'csrf_token': self._csrf(alert), 'access_token': token,
             'cause': cause, 'action': action}, allow_redirects=False)
 
     def _location(self, response):

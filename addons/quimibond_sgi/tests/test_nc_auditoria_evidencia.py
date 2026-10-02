@@ -15,6 +15,7 @@ FUNC-C13 en 57.91.0): la NC y la auditoría cierran con evidencia.
 - Toda recepción desde la ubicación de clientes levanta la NC de devolución."""
 from datetime import date, timedelta
 
+from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
 
@@ -41,6 +42,10 @@ class _NcEvidenciaCase(TransactionCase):
         cls.stage_closed = env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
         cls.stage_cancel = env.ref('quimibond_sgi.sgi_nc_int_stage_cancel')
 
+    def _today(self):
+        # La misma fecha que usa el código (zona horaria del usuario).
+        return fields.Date.context_today(self.env.user)
+
     def _nc(self, **vals):
         return self.env['quality.alert'].create(dict({
             'title': 'N02 NC', 'team_id': self.team.id, 'stage_id': self.stage_follow.id,
@@ -49,11 +54,11 @@ class _NcEvidenciaCase(TransactionCase):
     def _line(self, alert, **vals):
         return self.env['sgi.action.line'].create(dict({
             'alert_id': alert.id, 'name': 'Acción N02', 'action_type': 'correctiva',
-            'responsible_id': self.sgi_user.id, 'date_commit': date.today()}, **vals))
+            'responsible_id': self.sgi_user.id, 'date_commit': self._today()}, **vals))
 
     def _eficaz(self, alert):
         alert.write({'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'Sin reincidencia',
-                     'sgi_effectiveness_date': date.today()})
+                     'sgi_effectiveness_date': self._today()})
 
     def _summaries(self, alert, prefix):
         return alert.activity_ids.filtered(lambda a: (a.summary or '').startswith(prefix))
@@ -65,7 +70,7 @@ class TestNcEficacia(_NcEvidenciaCase):
     def test_01_eficacia_antes_de_la_fecha_no_cierra(self):
         nc = self._nc()
         self._line(nc).action_mark_done()   # superusuario: sin candado de evidencia
-        self.assertEqual(nc.sgi_effectiveness_due, date.today() + timedelta(days=90))
+        self.assertEqual(nc.sgi_effectiveness_due, self._today() + timedelta(days=90))
         self._eficaz(nc)
         with self.assertRaisesRegex(UserError, 'se programó'):
             nc.write({'stage_id': self.stage_closed.id})
@@ -77,15 +82,15 @@ class TestNcEficacia(_NcEvidenciaCase):
     def test_02_eficaz_cierra_cuando_llega_la_fecha(self):
         nc = self._nc()
         self._line(nc).action_mark_done()
-        nc.write({'sgi_effectiveness_due': date.today()})  # llegó la fecha programada
+        nc.write({'sgi_effectiveness_due': self._today()})  # llegó la fecha programada
         self._eficaz(nc)
         nc.with_user(self.owner_user).write({'stage_id': self.stage_closed.id})
         self.assertEqual(nc.stage_id, self.stage_closed)
 
     def test_03_sin_resultado_no_cierra(self):
         nc = self._nc(sgi_effectiveness_note='Sin reincidencia',
-                      sgi_effectiveness_date=date.today())
-        self._line(nc, date_done=date.today())
+                      sgi_effectiveness_date=self._today())
+        self._line(nc, date_done=self._today())
         with self.assertRaisesRegex(UserError, 'Eficaz'):
             nc.write({'stage_id': self.stage_closed.id})
         nc.write({'sgi_effective': 'eficaz'})
@@ -93,14 +98,16 @@ class TestNcEficacia(_NcEvidenciaCase):
         self.assertEqual(nc.stage_id, self.stage_closed)
 
     def test_04_no_eficaz_regresa_y_pide_correctiva_nueva(self):
-        nc = self._nc(stage_id=self.stage_open.id)
+        nc = self._nc()
         self._line(nc).action_mark_done()
-        nc.write({'sgi_effectiveness_due': date.today()})
+        nc.write({'sgi_effectiveness_due': self._today()})
         nc.write({'sgi_effective': 'no_eficaz', 'sgi_effectiveness_note': 'Volvió a pasar en el turno 3',
-                  'sgi_effectiveness_date': date.today()})
+                  'sgi_effectiveness_date': self._today()})
         self.assertEqual(nc.stage_id, self.stage_follow)
         self.assertEqual(nc.sgi_ineffective_count, 1)
-        self.assertEqual(nc.sgi_effective, 'no_eficaz')
+        # El resultado se limpia para la verificación siguiente; el «No
+        # eficaz» queda en el chatter y en el contador.
+        self.assertFalse(nc.sgi_effective)
         self.assertFalse(nc.sgi_effectiveness_note or nc.sgi_effectiveness_date or nc.sgi_effectiveness_due)
         self.assertIn('Volvió a pasar en el turno 3', "".join(nc.message_ids.mapped('body')))
         self.assertFalse(self._summaries(nc, 'Verificar eficacia'))
@@ -115,16 +122,91 @@ class TestNcEficacia(_NcEvidenciaCase):
         self.assertEqual(second.effectiveness_round, 1)
         self.assertFalse(self._summaries(nc, 'Registrar acción correctiva nueva'))
         second.action_mark_done()
-        self.assertEqual(nc.sgi_effectiveness_due, date.today() + timedelta(days=90))
-        nc.write({'sgi_effectiveness_due': date.today()})
+        self.assertEqual(nc.sgi_effectiveness_due, self._today() + timedelta(days=90))
+        nc.write({'sgi_effectiveness_due': self._today()})
         self._eficaz(nc)
         nc.write({'stage_id': self.stage_closed.id})
         self.assertEqual(nc.stage_id, self.stage_closed)
 
+    def test_04b_no_eficaz_dos_veces(self):
+        nc = self._nc()
+        self._line(nc).action_mark_done()
+        nc.write({'sgi_effectiveness_due': self._today()})
+        nc.write({'sgi_effective': 'no_eficaz', 'sgi_effectiveness_note': 'Ronda 1 no eficaz',
+                  'sgi_effectiveness_date': self._today()})
+        second = self._line(nc, name='Correctiva ronda 2')
+        self.assertEqual(second.effectiveness_round, 1)
+        second.action_mark_done()
+        nc.write({'sgi_effectiveness_due': self._today()})
+        nc.write({'sgi_effective': 'no_eficaz', 'sgi_effectiveness_note': 'Ronda 2 no eficaz',
+                  'sgi_effectiveness_date': self._today()})
+        self.assertEqual(nc.sgi_ineffective_count, 2)
+        self.assertFalse(nc.sgi_effective)
+        self.assertEqual(nc.stage_id, self.stage_follow)
+        bodies = "".join(nc.message_ids.mapped('body'))
+        self.assertIn('Ronda 1 no eficaz', bodies)
+        self.assertIn('Ronda 2 no eficaz', bodies)
+        todo = self._summaries(nc, 'Registrar acción correctiva nueva')
+        self.assertEqual(len(todo), 1, "Un aviso nuevo para la segunda ronda.")
+        self.assertEqual(todo.user_id, self.owner_user)
+        # La correctiva de la ronda 1 no basta para la ronda 2.
+        self._eficaz(nc)
+        with self.assertRaisesRegex(UserError, 'No eficaz'):
+            nc.write({'stage_id': self.stage_closed.id})
+
+    def test_04c_en_abierta_no_cambia_de_etapa(self):
+        """Una NC en Abierta se queda ahí: moverla chocaría con la contención
+        obligatoria de las reclamaciones (NC-2)."""
+        nc = self._nc(stage_id=self.stage_open.id)
+        self._line(nc).action_mark_done()
+        nc.write({'sgi_effective': 'no_eficaz', 'sgi_effectiveness_note': 'Reincidió',
+                  'sgi_effectiveness_date': self._today()})
+        self.assertEqual(nc.stage_id, self.stage_open)
+        self.assertEqual(nc.sgi_ineffective_count, 1)
+
+    def test_04d_cierre_en_un_solo_write(self):
+        """El formulario manda lo capturado y la etapa en un solo write: los
+        candados se revisan con lo capturado."""
+        nc = self._nc()
+        self._line(nc, date_done=self._today())
+        nc.with_user(self.owner_user).write({
+            'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'Sin reincidencia',
+            'sgi_effectiveness_date': self._today(), 'stage_id': self.stage_closed.id})
+        self.assertEqual(nc.stage_id, self.stage_closed)
+
+    def test_04e_cierre_sin_resultado_en_el_mismo_write(self):
+        nc = self._nc(sgi_effective='eficaz', sgi_effectiveness_note='Sin reincidencia',
+                      sgi_effectiveness_date=self._today())
+        self._line(nc, date_done=self._today())
+        with self.assertRaisesRegex(UserError, 'Eficaz'):
+            nc.with_user(self.owner_user).write(
+                {'sgi_effective': False, 'stage_id': self.stage_closed.id})
+        with self.assertRaisesRegex(UserError, 'Eficaz'):
+            nc.with_user(self.owner_user).write(
+                {'sgi_effective': 'no_eficaz', 'stage_id': self.stage_closed.id})
+        nc.invalidate_recordset()
+        self.assertEqual(nc.stage_id, self.stage_follow)
+        self.assertEqual(nc.sgi_effective, 'eficaz')
+        self.assertEqual(nc.sgi_ineffective_count, 0)
+
+    def test_04f_contador_y_fecha_programada_son_del_sistema(self):
+        nc = self._nc()
+        self._line(nc).action_mark_done()
+        due = nc.sgi_effectiveness_due
+        nc.write({'sgi_effectiveness_due': self._today()})
+        nc.write({'sgi_effective': 'no_eficaz', 'sgi_effectiveness_note': 'Reincidió',
+                  'sgi_effectiveness_date': self._today()})
+        self.assertEqual(nc.sgi_ineffective_count, 1)
+        nc.with_user(self.owner_user).write({'sgi_ineffective_count': 0})
+        nc.with_user(self.owner_user).write({'sgi_effectiveness_due': due})
+        nc.invalidate_recordset()
+        self.assertEqual(nc.sgi_ineffective_count, 1, "El contador no se escribe desde el cliente.")
+        self.assertFalse(nc.sgi_effectiveness_due, "La fecha programada no se escribe desde el cliente.")
+
     def test_05_mast_reabre_una_nc_cerrada_no_eficaz(self):
         nc = self._nc(sgi_effective='eficaz', sgi_effectiveness_note='Sin reincidencia',
-                      sgi_effectiveness_date=date.today())
-        self._line(nc, date_done=date.today())
+                      sgi_effectiveness_date=self._today())
+        self._line(nc, date_done=self._today())
         nc.write({'stage_id': self.stage_closed.id})
         nc.with_user(self.mast).write({'sgi_effective': 'no_eficaz',
                                        'sgi_effectiveness_note': 'Reincidió en planta'})
@@ -195,8 +277,8 @@ class TestCerradoEsEvidencia(_NcEvidenciaCase):
 
     def _closed_nc(self):
         nc = self._nc(sgi_effective='eficaz', sgi_effectiveness_note='Sin reincidencia',
-                      sgi_effectiveness_date=date.today())
-        line = self._line(nc, date_done=date.today(), evidence_note='OT-1')
+                      sgi_effectiveness_date=self._today())
+        line = self._line(nc, date_done=self._today(), evidence_note='OT-1')
         nc.write({'stage_id': self.stage_closed.id})
         return nc, line
 
@@ -217,7 +299,7 @@ class TestCerradoEsEvidencia(_NcEvidenciaCase):
         assert_locked(self, line.with_user(self.sgi_user).unlink)
         assert_locked(self, self.env['sgi.action.line'].with_user(self.sgi_user).create, {
             'alert_id': nc.id, 'name': 'Tarde', 'action_type': 'correccion',
-            'responsible_id': self.sgi_user.id, 'date_commit': date.today()})
+            'responsible_id': self.sgi_user.id, 'date_commit': self._today()})
         line.with_user(self.mast).write({'name': 'Redacción corregida por el Jefe MAST'})
 
     def test_13_accion_pendiente_de_nc_forzada_se_termina(self):
@@ -234,19 +316,19 @@ class TestCerradoEsEvidencia(_NcEvidenciaCase):
             'immediate_causes': 'a', 'basic_causes': 'b', 'lack_of_control': 'c'})
         inc_line = self.env['sgi.action.line'].create({
             'incident_id': incident.id, 'name': 'Guarda en la cortadora', 'action_type': 'correccion',
-            'responsible_id': self.sgi_user.id, 'date_commit': date.today(),
-            'date_done': date.today()})
+            'responsible_id': self.sgi_user.id, 'date_commit': self._today(),
+            'date_done': self._today()})
         incident.write({'state': 'cerrado'})
         assert_locked(self, inc_line.with_user(self.sgi_user).write, {'date_done': False})
         review = self.env['sgi.management.review'].create({
             'period_from': date(2049, 1, 1), 'period_to': date(2049, 6, 30), 'state': 'realizada'})
         done = self.env['sgi.action.line'].create({
             'review_id': review.id, 'name': 'Acuerdo cumplido', 'action_type': 'correccion',
-            'responsible_id': self.sgi_user.id, 'date_commit': date.today(),
-            'date_done': date.today()})
+            'responsible_id': self.sgi_user.id, 'date_commit': self._today(),
+            'date_done': self._today()})
         pending = self.env['sgi.action.line'].create({
             'review_id': review.id, 'name': 'Acuerdo en curso', 'action_type': 'correccion',
-            'responsible_id': self.sgi_user.id, 'date_commit': date.today()})
+            'responsible_id': self.sgi_user.id, 'date_commit': self._today()})
         review.write({'state': 'cerrada'})
         assert_locked(self, done.with_user(self.sgi_user).write, {'date_done': False})
         # Los acuerdos pendientes se siguen trabajando con la revisión cerrada.
