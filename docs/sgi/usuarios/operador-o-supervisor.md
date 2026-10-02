@@ -84,7 +84,9 @@ el botón **Leído y entendido** deja su acuse.
 - **Incidente o casi accidente de seguridad:** **SGI → Seguridad y ambiente →
   Incidentes y accidentes → Nuevo**. Cualquiera puede reportar; reportar un
   casi accidente también cuenta. Mientras esté «Reportado» puede corregirlo, y
-  después puede consultar cómo se cerró.
+  después puede consultar cómo se cerró. Si a usted lo invitan a investigar un
+  incidente, queda en el equipo de investigación (ISO 45001 pide que
+  participen trabajadores).
 
 ### 2.6 Proponer un cambio a su actividad
 
