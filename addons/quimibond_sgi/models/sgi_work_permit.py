@@ -105,7 +105,14 @@ class SgiWorkPermit(models.Model):
     date_start = fields.Datetime(string="Vigente desde", required=True,
                                  default=fields.Datetime.now, tracking=True)
     date_end = fields.Datetime(string="Vigente hasta", required=True, tracking=True)
-    expired = fields.Boolean(string="Vencido", compute='_compute_expired')
+    # 57.96.0 (N-06): guardado e indexado para buscar y avisar. Al guardar se
+    # compara con la hora de ese momento; el paso del tiempo lo pone la acción
+    # planificada «SGI: Permisos de trabajo vencidos (cada hora)».
+    expired = fields.Boolean(string="Vencido", compute='_compute_expired', store=True, index=True,
+                             help="Autorizado y pasada su hora de fin. Se revisa cada hora.")
+    loto_ids = fields.One2many('sgi.loto', 'work_permit_id', string="Bloqueos (LOTO)",
+                               help="Bloqueos de energía ligados al permiso. El permiso no se "
+                                    "cierra mientras uno siga aplicado.")
 
     # --- Autorizaciones (quién y cuándo, sellado) -------------------------
     area_manager_id = fields.Many2one(
@@ -141,12 +148,15 @@ class SgiWorkPermit(models.Model):
                 raise ValidationError("El permiso %s debe vencer después de su inicio." % (
                     permit.folio or permit.name))
 
+    def _sgi_expired_on(self, now):
+        self.ensure_one()
+        return bool(self.state == 'autorizado' and self.date_end and self.date_end < now)
+
     @api.depends('date_end', 'state')
     def _compute_expired(self):
         now = fields.Datetime.now()
         for permit in self:
-            permit.expired = bool(permit.state == 'autorizado' and permit.date_end
-                                  and permit.date_end < now)
+            permit.expired = permit._sgi_expired_on(now)
 
     @api.depends('folio', 'name')
     def _compute_display_name(self):
@@ -159,6 +169,23 @@ class SgiWorkPermit(models.Model):
         permits = super().create(vals_list)
         permits.filtered(lambda p: not p.check_ids)._sgi_load_checks()
         return permits
+
+    def write(self, vals):
+        # 57.96.0 (N-06): con energía bloqueada el permiso no se cierra (por
+        # el botón o por escritura directa; tampoco el Jefe MAST).
+        if vals.get('state') == 'cerrado':
+            self.filtered(lambda p: p.state != 'cerrado')._sgi_check_loto_released()
+        return super().write(vals)
+
+    def _sgi_check_loto_released(self):
+        Loto = self.env['sgi.loto'].sudo()
+        for permit in self:
+            applied = Loto.search([('work_permit_id', '=', permit.id), ('state', '=', 'bloqueado')])
+            if applied:
+                raise UserError(
+                    "No se puede cerrar el permiso %s: el bloqueo %s sigue aplicado. Cada "
+                    "trabajador retira su candado y se retira el bloqueo antes de cerrar el permiso."
+                    % (permit.folio or permit.name, ", ".join(applied.mapped('display_name'))))
 
     def _sgi_load_checks(self):
         """Carga las verificaciones y el EPP sugeridos para el tipo de trabajo,

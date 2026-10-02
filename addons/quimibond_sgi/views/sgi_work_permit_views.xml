@@ -86,6 +86,17 @@
                                 </list>
                             </field>
                         </page>
+                        <!-- 57.96.0 (N-06): el permiso no se cierra con un bloqueo aplicado. -->
+                        <page string="Bloqueos (LOTO)" name="loto">
+                            <field name="loto_ids" readonly="1">
+                                <list>
+                                    <field name="folio"/>
+                                    <field name="name"/>
+                                    <field name="equipment_id"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Cierre" name="closing">
                             <group>
                                 <field name="close_note" readonly="state != 'autorizado'"/>
@@ -114,6 +125,7 @@
                 <field name="requester_id" optional="show"/>
                 <field name="date_start"/>
                 <field name="date_end"/>
+                <field name="expired" optional="show" widget="boolean"/>
                 <field name="area_approved_by_id" optional="hide"/>
                 <field name="sst_approved_by_id" optional="hide"/>
                 <field name="state" widget="badge"
@@ -159,7 +171,7 @@
                 <filter name="to_authorize" string="Por autorizar" domain="[('state', '=', 'solicitado')]"/>
                 <filter name="authorized" string="Autorizados" domain="[('state', '=', 'autorizado')]"/>
                 <filter name="expired_open" string="Vencidos sin cerrar"
-                        domain="[('state', '=', 'autorizado'), ('date_end', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                        domain="[('expired', '=', True)]"/>
                 <separator/>
                 <filter name="mine" string="Mis solicitudes" domain="[('requester_id', '=', uid)]"/>
                 <filter name="to_me" string="Me toca autorizar" domain="[('state', '=', 'solicitado'), ('area_manager_id', '=', uid), ('area_approved_by_id', '=', False)]"/>

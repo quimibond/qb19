@@ -6,6 +6,8 @@ from collections import defaultdict
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
+import pytz
+
 from markupsafe import Markup, escape
 
 from odoo import models, fields, api
@@ -13,7 +15,8 @@ from odoo.exceptions import AccessError
 from odoo.tools import html2plaintext
 
 from .sgi_calendar import (
-    sgi_add_business_days, sgi_business_days, sgi_local_date, sgi_local_datetime_utc, sgi_today)
+    sgi_add_business_days, sgi_business_days, sgi_local_date, sgi_local_datetime_utc, sgi_today,
+    sgi_tz)
 
 from .sgi_guard import sgi_require_system
 from .sgi_menu_paths import sgi_menu_path
@@ -965,6 +968,48 @@ class SgiCron(models.AbstractModel):
                        Employee._sgi_mp_nightly_recompute)
         self._sgi_step("resumen de Mis pendientes por persona",
                        Employee._sgi_refresh_pending_summary)
+        return True
+
+    # ------------------------------------------------------------------
+    # 57.96.0 (N-06) — Permisos de trabajo vencidos, cada hora
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_work_permits(self):
+        """Cron cada hora: marca vencidos los permisos de trabajo autorizados
+        que pasaron su hora de fin y avisa sobre el permiso al jefe del área (o
+        a quien lo solicitó) y al Jefe MAST. Los avisos se cierran solos cuando
+        el permiso se cierra, se cancela o se renueva."""
+        sgi_require_system(self.env)
+        self = self._sgi_new_run()
+        now = fields.Datetime.now()
+        authorized = self.env['sgi.work.permit'].search([('state', '=', 'autorizado')])
+        self._sgi_write_changed(authorized, 'expired', lambda permit: permit._sgi_expired_on(now))
+        manager_id = self._sgi_manager_user_id()
+        tz = sgi_tz(self.env)
+
+        def _notify(permit):
+            ended = pytz.utc.localize(permit.date_end).astimezone(tz)
+            summary = "Permiso de trabajo vencido: %s" % (permit.folio or permit.name)
+            note = ("El permiso %s (%s) venció el %s y sigue autorizado. Suspenda el trabajo, "
+                    "ciérrelo con las condiciones del área o solicite uno nuevo."
+                    % (permit.folio or '', permit.name, ended.strftime('%d/%m/%Y %H:%M')))
+            boss = permit.area_manager_id if permit.area_manager_id.active else permit.requester_id
+            # Odoo no asigna una actividad a quien no puede leer el permiso
+            # (_check_access_assignation): sin «Usuario SGI», el aviso va solo
+            # al Jefe MAST; si no, el renglón fallaría cada hora (ERROR en el log).
+            if boss and not (boss.active and boss.has_group('quimibond_sgi.group_sgi_user')):
+                boss = self.env['res.users']
+            deadline = ended.date()
+            if boss:
+                self._sgi_schedule(permit, summary, note, boss.id, date_deadline=deadline,
+                                   key='permiso_vencido')
+            if manager_id and manager_id != boss.id:
+                self._sgi_schedule(permit, summary, note, manager_id, date_deadline=deadline,
+                                   key='permiso_vencido_mast')
+
+        failures = self._sgi_for_each(authorized.filtered('expired'), _notify, "permisos vencidos")
+        self._sgi_sweep(['permiso_vencido', 'permiso_vencido_mast'],
+                        "el permiso ya se cerró, se canceló o se renovó", failures)
         return True
 
     # ------------------------------------------------------------------
