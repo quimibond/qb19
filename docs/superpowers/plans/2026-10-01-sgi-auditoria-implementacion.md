@@ -41,8 +41,8 @@ Leer antes de empezar: `CLAUDE.md` (raíz), `addons/quimibond_sgi/README.md` (gl
 | 57.92.0 | Bandeja: Mis pendientes útil | U-02, U-03, U-05, U-06 | — | Ninguna (D-05 se decide en la pista de datos) |
 | 57.93.0 | NC y auditoría con evidencia | N-02, N-03, N-12, K-03 | 57.91.0 | Ninguna |
 | 57.94.0 | SGI en planta (kiosco con PIN) | U-01, U-08, I-03, I-05 | 57.92.0 | Q7: tabletas y captura de PIN por RH |
-| 57.95.0 → 57.96.0 o siguiente libre | SST y ambiente | N-06, N-07 | 57.93.0 | Q9 (MOC), Q10 (matriz ambiental), Q11 (contratistas) |
-| 57.96.0 | Cláusulas y revisión por la dirección | N-05, N-09 | — | Q13 (requisitos de cliente) |
+| 57.95.0 → **entregada como 57.96.0** (2026-10-02) | SST y ambiente | N-06, N-07 | 57.93.0 | Q9 (MOC), Q10 (matriz ambiental), Q11 (contratistas) |
+| 57.96.0 → 57.97.0 o siguiente libre | Cláusulas y revisión por la dirección | N-05, N-09 | — | Q13 (requisitos de cliente) |
 | 57.97.0 | Interfaz | I-01, I-02, I-04, I-06, U-07 | 57.92.0 | Q20 (arranque de Dirección) |
 | 57.98.0 | Salud del SGI (tablero de adopción) | Sección 8 del reporte, D-01 | 57.93.0, 57.94.0 | Metas del tablero |
 | 57.99.0 → **entregada como 57.95.0** (2026-10-02) | Rendimiento y robustez | K-08, K-05, D-06 | 57.92.0 | Ninguna |
@@ -55,7 +55,10 @@ como **19.0.57.95.0** porque no tiene puerta de decisión
 (`docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-robustez.md`). Las
 fichas con puerta (SST y ambiente, Cláusulas, Interfaz, Salud del SGI y las
 siguientes) toman el siguiente número libre (57.96.0 en adelante) cuando se
-inicien; sus títulos de abajo conservan el número original del mapa.
+inicien; sus títulos de abajo conservan el número original del mapa. «SST y
+ambiente» (ficha 57.95.0) salió como **19.0.57.96.0**
+(`docs/superpowers/plans/2026-10-02-sgi-57-96-0-sst-ambiente.md`); «Cláusulas y
+revisión por la dirección» (ficha 57.96.0) toma 57.97.0 o el siguiente libre.
 
 ---
 
@@ -1152,14 +1155,14 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
 - **Archivos:** nuevo `models/sgi_floor_kiosk.py`, `static/src/floor_kiosk/*` (OWL), vistas, `sgi_menus.xml` + `tools/sgi_menu_tree.txt`, `sgi_document.py` (acuse con PIN: el candado de identidad acepta empleado + PIN válido), `sgi_incident.py`, `sgi_epp.py`.
 - **Pruebas:** PIN válido firma a nombre del empleado; PIN inválido no; el registro no queda a nombre de la cuenta compartida; tour de la pantalla.
 
-### 57.95.0 — SST y ambiente
+### 57.95.0 — SST y ambiente (entregada como 57.96.0)
 
 - **Puertas:** Q9 (gestión del cambio), Q10 (matriz ambiental oficial), Q11 (contratistas).
 - **Alcance:** N-06 (`control_hierarchy` en `sgi.risk` y `sgi.action.line`; IPER alto con solo EPP no cierra; `investigation_team_ids` en incidente con al menos un trabajador o integrante de la CSH; eficacia del incidente; `expired` guardado en el permiso + paso de cron cada hora; cierre bloqueado con LOTO aplicado; competencia requerida por tipo de permiso; «evaluación SST vigente hasta» en el contacto del contratista), N-07 (`sgi.env.aspect` única fuente con `life_cycle_stage`; «ambiental» fuera del selector de `sgi.risk` para nuevos; botones rápidos de lo legal abren el asistente con evidencia), incidente desde `hr.leave` con tipo «Incapacidad por riesgo de trabajo».
 - **Migración:** post-migrate que pasa los 5 riesgos ambientales a aspectos con `risk_id` (log antes y después). El cron nuevo es un registro nuevo en un XML nuevo (no edita uno `noupdate`).
 - **Pruebas:** una por candado y el traspaso de riesgos.
 
-### 57.96.0 — Cláusulas y revisión por la dirección
+### 57.96.0 — Cláusulas y revisión por la dirección (→ 57.97.0 o siguiente libre)
 
 - **Puerta:** Q13 (requisitos de cliente en CLI o en legal).
 - **Alcance:** N-05 (cláusulas 6.1.2, 6.1.3, 6.1.4, 7.1.5, 8.1.2, 8.1.3, 8.1.4, 9.1.2 como datos nuevos con xmlid; no tocar las CLI sin xmlid, A-029; clasificación y cláusula obligatorias al pasar la NC a Seguimiento), N-09 (cargadores de incidentes, contexto, aspectos y mejoras; filtro `company_id` en el scrap, `sgi_management_review.py:344`; tipo `acuerdo` en `sgi.action.line`; conclusiones 9.3.3 obligatorias; acuerdos abiertos pasan a la siguiente revisión).

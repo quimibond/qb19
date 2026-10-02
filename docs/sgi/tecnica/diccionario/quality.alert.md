@@ -47,7 +47,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond
 | `sgi_folio` | Char | Folio SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:91` |
 | `sgi_followup_action` | Selection | Acción a seguir | Consecuencia para los responsables. «Acción administrativa» pide al Coordinador de RH levantar el acta. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:176` |
 | `sgi_followup_comments` | Text | Comentarios de seguimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:172` |
-| `sgi_incident_id` | Many2one | Incidente SST de origen | Incidente o accidente de seguridad del que nació esta NC. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:9` |
+| `sgi_incident_id` | Many2one | Incidente SST de origen | Incidente o accidente de seguridad del que nació esta NC. |  | `sgi.incident` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:11` |
 | `sgi_indicator_measure_id` | Many2one | Medición de indicador |  |  | `sgi.indicator.measure` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1412` |
 | `sgi_ineffective_count` | Integer | Verificaciones no eficaces | Veces que la verificación de eficacia salió «No eficaz». Cero al cerrar = eficaz a la primera. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:160` |
 | `sgi_is_recurrent` | Boolean | Reincidente | Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro quimibond_sgi.nc_recurrence_months, 12 de fábrica). |  |  | compute `_compute_sgi_recurrence`, guardado |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:266` |

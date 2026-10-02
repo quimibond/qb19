@@ -2,7 +2,7 @@
 
 # Acciones planificadas (crons) del SGI
 
-27 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
+28 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
 
 | Nombre | Modelo | Código | Cada | Activo | Qué hace (docstring del método) | Archivo |
 |---|---|---|---|---|---|---|
@@ -22,6 +22,7 @@
 | SGI: Medición de actividades de procedimiento | `sgi.process.activity` | `model.cron_measure_activities()` | 1 days | True | Cron diario: resuelve menús pendientes, mide las actividades con entregable medible y evalúa los eslabones de la cadena (la extensión de ``sgi_activity_spec`` suma las cifras semanales y las de Mi pr… | `addons/quimibond_sgi/data/sgi_measure_cron.xml` |
 | SGI: Mi procedimiento por publicar (aviso semanal a MAST) | `sgi.cron` | `model.cron_my_procedure_stale()` | 1 weeks | True | Semanal: avisa al Jefe MAST qué puestos con personas tienen «Mi procedimiento» sin publicar o desactualizado. Una sola actividad, sobre la revisión vigente del primer puesto desactualizado (documents… | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
 | SGI: Mis pendientes atrasados (correo semanal por persona) | `sgi.cron` | `model.cron_weekly_overdue_mail()` | 1 weeks | False | Cron semanal (D-14): a cada persona con algo atrasado en Mis pendientes, un correo con esa lista. Cada envío va en su savepoint: un correo que falla no detiene a los demás. Devuelve la lista de usuar… | `addons/quimibond_sgi/data/sgi_sign_elearning_data.xml` |
+| SGI: Permisos de trabajo vencidos (cada hora) | `sgi.cron` | `model.cron_work_permits()` | 1 hours | True | Cron cada hora: marca vencidos los permisos de trabajo autorizados que pasaron su hora de fin y avisa sobre el permiso al jefe del área (o a quien lo solicitó) y al Jefe MAST. Los avisos se cierran s… | `addons/quimibond_sgi/data/sgi_sst_cron.xml` |
 | SGI: Respaldo nocturno (Mi procedimiento y Mi equipo) | `sgi.cron` | `model.cron_nightly_backup()` | 1 days | True | Cron diario (02:15 de México): recalcula las cuatro listas guardadas de Mi procedimiento y anota en el log cuántas personas cambiaron (si no es 0, falta un disparo), y refresca el resumen de Mis pend… | `addons/quimibond_sgi/data/sgi_nightly_cron.xml` |
 | SGI: Revisión de riesgos vencidos | `sgi.cron` | `model.cron_risk_review()` | 1 days | True | Cron diario: riesgos con revisión vencida al dueño del proceso (o a MAST) y riesgos altos sin acción. | `addons/quimibond_sgi/data/sgi_cron_indicators_audit.xml` |
 | SGI: Revisión del contexto (partes interesadas) | `sgi.cron` | `model.cron_context_review()` | 1 weeks | True | Cron semanal: partes interesadas (4.1/4.2) con revisión vencida. Idempotente por resumen. | `addons/quimibond_sgi/data/sgi_cumplimiento_data.xml` |

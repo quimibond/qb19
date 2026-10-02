@@ -8,7 +8,7 @@ Tareas programadas del SGI. Cada método ``cron_*`` es una acción planificada (
 
 Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
 
-## Métodos públicos (23)
+## Métodos públicos (24)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -34,4 +34,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/model
 | `cron_sign_elearning_sync` | Cron diario: sella acuses cuya firma electrónica ya se completó y otorga competencias de cursos eLearning terminados. |
 | `cron_supplier_eval` | Cron trimestral: evalúa a los proveedores críticos con las recepciones del trimestre anterior (entrega a tiempo y NC) y avisa a Compras los condicionados y de baja. |
 | `cron_weekly_overdue_mail` | Cron semanal (D-14): a cada persona con algo atrasado en Mis pendientes, un correo con esa lista. Cada envío va en su savepoint: un correo que falla no detiene a los demás. Devuelve la lista de usuar… |
+| `cron_work_permits` | Cron cada hora: marca vencidos los permisos de trabajo autorizados que pasaron su hora de fin y avisa sobre el permiso al jefe del área (o a quien lo solicitó) y al Jefe MAST. Los avisos se cierran s… |
 | `cron_worker_participation` | Cron semestral: recuerda distribuir la encuesta de consulta y participación de los trabajadores (45001 §5.4). Las respuestas y las quejas del canal interno alimentan la entrada 12 de la RxD. Idempote… |
