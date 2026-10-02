@@ -107,3 +107,7 @@ from . import sgi_floor_kiosk
 from . import sgi_company_fix
 from . import sgi_env_aspect_transfer
 from . import sgi_incident_leave
+# 57.99.0: constantes sin modelos y, al final (hereda indicador, medición,
+# proceso, Tablero y sgi.cron), la salud del SGI.
+from . import sgi_health_const
+from . import sgi_indicator_health

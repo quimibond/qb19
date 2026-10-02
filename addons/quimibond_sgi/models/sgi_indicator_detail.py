@@ -24,14 +24,16 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_calendar import sgi_local_date
+from .sgi_health_const import HEALTH_SNAPSHOT_MODES
 
 MIN_SAMPLE_PARAM = 'quimibond_sgi.indicator_min_sample'
 DEFAULT_MIN_SAMPLE = 5
 
 # 57.90.0: modos de código que miden el estado de HOY (saldo pendiente,
 # existencias, vigencias): un periodo pasado no se puede reconstruir.
+# 57.99.0: también los de salud del SGI que miden el estado al calcular.
 SNAPSHOT_MODES = ('cartera_vencida', 'cartera_vencida_60',
-                  'inventario_diferencia', 'capacitacion')
+                  'inventario_diferencia', 'capacitacion') + HEALTH_SNAPSHOT_MODES
 SNAPSHOT_NOTE = "Sin dato: indicador de foto, no reconstruible para un periodo pasado."
 
 

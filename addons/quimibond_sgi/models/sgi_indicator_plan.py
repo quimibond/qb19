@@ -41,6 +41,17 @@ _WINDOW_BY_MODE = {
     'cartera_vencida': "Al cierre",
     'cartera_vencida_60': "Al cierre",
     'inventario_diferencia': "Mes (existencias al día del cálculo)",
+    # 57.99.0: salud del SGI.
+    'salud_procesos': "Al cierre",
+    'salud_personas': "30 días al cierre",
+    'salud_planta': "Al cierre",
+    'salud_acuses': "Al cierre",
+    'salud_validacion': "30 días al cierre",
+    'salud_rojos': "3 meses",
+    'salud_nc': "90 días al cierre",
+    'salud_avisos': "Al cierre",
+    'salud_auditoria': "Año a la fecha",
+    'salud_formatos': "90 días al cierre",
 }
 _PLAN_SUMMARY = "Causa y acción: %s (%s)"
 _ESCALATION_SUMMARY = "Sin causa ni acción (escalado a Dirección): %s (%s)"
