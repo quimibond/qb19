@@ -226,8 +226,11 @@ class SgiIndicatorHealth(models.Model):
 
     # ---- 3. planta identificable --------------------------------------------
     def _detail_salud_planta(self, date_from, date_to):
+        # Sin dominio sobre job_id: en Odoo 19 pasa por la versión y la
+        # búsqueda no encuentra a los empleados (_sgi_mp_ids_where); se
+        # filtra en Python.
         employees = self.env['hr.employee'].sudo().search([
-            ('company_id', '=', self._sgi_health_company().id), ('job_id', '!=', False)])
+            ('company_id', '=', self._sgi_health_company().id)]).filtered('job_id')
         ok = employees.filtered(lambda e: e.user_id and e.user_id.active and not e.user_id.share)
         return self._ratio(len(ok), len(employees), employees, model='hr.employee.public')
 
@@ -374,6 +377,7 @@ class SgiIndicatorHealth(models.Model):
             uses = []
             if menu and menu.active:
                 action = menu.action
+                action = action.sudo().exists() if action else action
                 if action and action._name == 'ir.actions.act_window':
                     status = self._sgi_health_model_used(action.sudo().res_model, start, company, cache)
                 else:

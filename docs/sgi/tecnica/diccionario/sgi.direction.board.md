@@ -14,9 +14,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibon
 |---|---|---|---|---|---|---|---|---|
 | `date` | Date | Fecha | Fecha del tablero. |  |  |  |  | `addons/quimibond_sgi/models/sgi_direction_board.py:95` |
 | `delayed_process_ids` | Many2many | Procesos con más atrasos | Procesos con más actividades atrasadas. |  | `sgi.process` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:107` |
-| `health_indicator_ids` | Many2many | Salud del SGI | Los diez indicadores de salud del SGI (auditoría 2026-10, sección 8). |  | `sgi.indicator` | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:555` |
-| `health_note` | Char | Aviso de salud del SGI |  |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:562` |
-| `health_process_ids` | Many2many | Por dueño de proceso | Avisos vencidos, validaciones atrasadas y días sin movimiento del dueño de cada proceso. |  | `sgi.process` | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:558` |
+| `health_indicator_ids` | Many2many | Salud del SGI | Los diez indicadores de salud del SGI (auditoría 2026-10, sección 8). |  | `sgi.indicator` | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:559` |
+| `health_note` | Char | Aviso de salud del SGI |  |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:566` |
+| `health_process_ids` | Many2many | Por dueño de proceso | Avisos vencidos, validaciones atrasadas y días sin movimiento del dueño de cada proceso. |  | `sgi.process` | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:562` |
 | `indicator_count` | Integer |  |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:110` |
 | `indicator_ids` | Many2many | Indicadores de dirección | Indicadores que sigue la Dirección. |  | `sgi.indicator` | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:99` |
 | `indicator_note` | Char | Nota de indicadores |  |  |  | compute `_compute_board`, sin guardar |  | `addons/quimibond_sgi/models/sgi_direction_board.py:111` |
