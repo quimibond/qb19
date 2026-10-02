@@ -148,6 +148,24 @@ se pudo rescatar el documento» y «SGI: la papelera no borra»; (4) si se manda
 el rescate no pudo reactivar, confirmar que borrar la carpeta no arrastra al hijo
 por otro camino (si lo hace, `unlink` debe dejar fuera también su carpeta).
 
+## 19.0.57.90.1 — 2026-10-02
+
+**Corregido: la base de versiones de los despliegues (S6-04) dejaba fuera a
+los módulos que se estaban actualizando.** En producción, la migración 57.90.0
+guardó solo los 8 módulos del repositorio en estado «instalado». Los que se
+actualizaban en esa misma corrida estaban «por actualizar» y quedaron fuera,
+entre ellos quimibond_sgi. El cron de NC del día siguiente habría creado una
+solicitud «nuevo» por cada uno, aunque su versión no hubiera cambiado.
+
+- **Corregido:** `_sgi_repo_modules` cuenta también los módulos «por
+  actualizar».
+- **Cambiado:** la solicitud de un despliegue trae todas las secciones del
+  CHANGELOG entre la versión anterior y la nueva, no solo la última.
+- **Migración (`migrations/19.0.57.90.1/post-migrate.py`):** agrega a la base
+  los módulos que faltan, con su versión instalada. Para quimibond_sgi usa
+  19.0.57.89.0, así que el cron crea una sola solicitud que cubre 57.90.0 y
+  57.90.1. Solo en producción.
+
 ## 19.0.57.90.0 — 2026-10-01
 
 **Corregido: los indicadores de ventas contaban la venta de activo fijo.**
