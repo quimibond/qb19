@@ -1002,7 +1002,7 @@ class QualityAlert(models.Model):
                 vals['stage_id'] = open_stage.id
             alert.write(vals)
             alert.message_post(
-                body="Alerta escalada a no conformidad del SGI: <b>%s</b>." % alert.sgi_folio)
+                body=Markup("Alerta escalada a no conformidad del SGI: <b>%s</b>.") % alert.sgi_folio)
         return True
 
 

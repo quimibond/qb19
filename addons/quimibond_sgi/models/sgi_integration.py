@@ -67,6 +67,10 @@ class StockPicking(models.Model):
             product = returned[:1].product_id
             team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
                                 raise_if_not_found=False)
+            # 57.93.0 (N-12): la NC es del SGI de la compañía del equipo; una
+            # recepción de otra compañía no la levanta.
+            if team and team.company_id and picking.company_id != team.company_id:
+                continue
             vals = {
                 'title': "Devolución de cliente: %s" % (partner.display_name or ''),
                 'sgi_origin_type': 'reclamacion',
@@ -81,7 +85,9 @@ class StockPicking(models.Model):
             }
             if team:
                 vals['team_id'] = team.id
-            alert = self.env['quality.alert'].sgi_auto_create(
+            # Con sudo: quien valida en almacén no siempre crea NC, y la
+            # recepción no debe trabarse por eso (create_uid sigue siendo él).
+            alert = self.env['quality.alert'].sudo().sgi_auto_create(
                 'devolucion_cliente', vals)
             if alert:
                 picking.sgi_return_alert_id = alert.id

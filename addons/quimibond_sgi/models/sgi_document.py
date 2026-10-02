@@ -3,6 +3,8 @@ import logging
 import re
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
 from odoo.exceptions import AccessError, ValidationError, UserError
 
@@ -1197,7 +1199,7 @@ class DocumentsDocument(models.Model):
                     body="Documento creado desde la solicitud de alta aprobada "
                          "<b>%s</b>." % (request.name or ''))
                 request.message_post(
-                    body="Documento del alta creado: <b>%s</b>."
+                    body=Markup("Documento del alta creado: <b>%s</b>.")
                          % (doc.sgi_code or doc.name))
         return docs
 
