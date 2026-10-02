@@ -193,3 +193,20 @@ class TestIndicadores5790(TransactionCase):
         self.assertIn(installed, request.reference)
         self.assertIn('19.0.0.0.0', str(request.reason))
         self.assertFalse(Cron._sgi_register_deploys(force=True), "Ya registrada: no se repite.")
+
+    def test_08_base_incluye_modulos_por_actualizar(self):
+        # 57.90.1: durante la actualización el módulo está «por actualizar»;
+        # la base de versiones también debe contarlo.
+        module = self.env['ir.module.module'].search([('name', '=', 'quimibond_sgi')])
+        module.state = 'to upgrade'
+        self.assertIn('quimibond_sgi', self.env['sgi.cron']._sgi_repo_modules())
+
+    def test_09_changelog_cubre_el_salto(self):
+        from ..models.sgi_deploy_change import _changelog_entry
+        from odoo.modules.module import get_module_path
+        path = get_module_path('quimibond_sgi')
+        both = _changelog_entry(path, '19.0.57.90.1', '19.0.57.89.0')
+        self.assertIn('## 19.0.57.90.1', both)
+        self.assertIn('## 19.0.57.90.0', both)
+        self.assertNotIn('## 19.0.57.89.0', both)
+        self.assertNotIn('## 19.0.57.90.0', _changelog_entry(path, '19.0.57.90.1'))
