@@ -150,7 +150,7 @@ Modelos que definen el núcleo y sus satélites (116) y modelos de otras apps qu
 | [`ir.ui.view`](diccionario/ir.ui.view.md) | 1 | `addons/quimibond_sgi/models/sgi_diagram_view.py` |
 | [`mail.activity`](diccionario/mail.activity.md) | 3 | `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`maintenance.equipment`](diccionario/maintenance.equipment.md) | 18 | `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_msa.py` |
-| [`maintenance.request`](diccionario/maintenance.request.md) | 1 | `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py` |
+| [`maintenance.request`](diccionario/maintenance.request.md) | 7 | `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py` |
 | [`mrp.bom`](diccionario/mrp.bom.md) | 0 | `addons/quimibond_sgi/models/sgi_links.py` |
 | [`mrp.eco`](diccionario/mrp.eco.md) | 6 | `addons/quimibond_sgi_plm/models/mrp_eco.py` |
 | [`mrp.production`](diccionario/mrp.production.md) | 2 | `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py` |

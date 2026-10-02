@@ -13,6 +13,22 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.94.1 — 2026-10-02
+
+**Corregido: el build de `main` no cargaba el SGI** («El campo
+"sgi_checklist_template_id" no existe en el modelo "maintenance.request"» al
+cargar `views/sgi_map_hooks_views.xml`). En 57.94.0 la extensión de
+`maintenance.request` de `models/sgi_checklist.py` pasó a heredar también
+`sgi.pin.signature.mixin` (`_inherit` con dos clases) y no tenía `_name`: con
+varias clases en `_inherit` y sin `_name`, la clase no extiende ningún modelo,
+así que los campos del checklist (plantilla, día, renglones, «Lo llenó»…) no
+llegaban a `maintenance.request`. Se agrega `_name = 'maintenance.request'`.
+
+`tools/check_odoo_views.py` ahora lo detecta: una clase con varias clases en
+`_inherit` y sin `_name` es error (corre en CI).
+
+**Migración:** ninguna.
+
 ## 19.0.57.94.0 — 2026-10-02
 
 **SGI en planta: la planta firma en la tableta a su nombre** (auditoría 2026-10: U-01, U-08, I-03, I-05).
