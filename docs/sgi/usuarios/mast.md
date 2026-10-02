@@ -82,6 +82,30 @@ procedimientos, Faltantes de especificación (lo que impide publicar un
 proceso) y Cumplimiento semanal. Detalle de cómo leerlos en el manual de
 administración.
 
+Desde 57.98.0 la sección **Documental** del Diagnóstico lista los reportes del
+SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
+**Administración SGI → Configuración → Formatos en documentos de Odoo**.
+
+### 2.5.1 Lo impreso y los colores (desde 57.98.0)
+
+- **Pie de página:** los reportes propios del SGI (NC, incidente, revisión por
+  la dirección, auditoría, CoA, matrices, AMEF, LOTO, lista maestra, NEWS,
+  retención, permiso de trabajo y ficha por máquina) llevan en **cada hoja**
+  la clave, la revisión, la **fecha de emisión** del documento vigente ligado y
+  «Página x de y». Si el documento no tiene fecha de emisión, el pie sale sin
+  ella: llénela en el documento (hoy faltan en 14). Los reportes de otras apps
+  (venta, compra, entrega, orden de producción) y las etiquetas conservan el
+  pie al final de la hoja, ahora con la emisión.
+- **Colores:** un estado se pinta igual en todo el SGI: gris = borrador,
+  cancelado u obsoleto; azul = abierto o en curso; amarillo = pendiente o por
+  vencer; rojo = vencido o rechazado; verde = cerrado, vigente o validado
+  (tabla completa en el README del módulo, sección «Colores»).
+- **Filtros:** en todas las listas, **Míos** muestra lo suyo; en AMEF y
+  riesgos, **De mis procesos**. Varias listas abren ya filtradas (permisos y
+  revisiones sin cerrar, AMEF vigentes, PPAP en proceso, programa de este año,
+  aspectos significativos, objetivos por política, proveedores por
+  clasificación): quite el filtro para ver todo.
+
 ### 2.6 Seguridad y ambiente (desde 57.96.0)
 
 - **IPER de riesgo alto:** al controlarlo o cerrarlo, declare la jerarquía del

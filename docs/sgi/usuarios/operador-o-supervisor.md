@@ -12,13 +12,24 @@ En el menú **SGI → Inicio** tiene todo lo suyo:
 |---|---|
 | **Mis pendientes** | Todo lo que le toca y está por vencer o atrasado, en una sola lista |
 | **Mi procedimiento** | Las actividades de su puesto, sus documentos, indicadores, EPP y su firma de «leído y entendido» |
-| **Documentos vigentes** | Los procedimientos, instructivos y formatos vigentes, con su revisión |
+| **Documentos vigentes** | Los procedimientos, instructivos y formatos vigentes, con su clave, tipo, proceso y revisión. Abre con **Míos** (los que le toca leer), agrupados por proceso |
 | **Mis indicadores** | Los indicadores a su cargo, si tiene alguno |
 | **Mi equipo** | Su equipo de trabajo (si tiene personas a su cargo) |
+| **Checklists de hoy** | Las hojas de checklist del día (también en Mantenimiento) |
 
-Además puede usar **SGI → Mejora** (no conformidades, reclamaciones, mejoras,
-quejas y sugerencias) y **SGI → Seguridad y ambiente** (reportar un
-incidente, consultar planes de emergencia).
+Para avisar de algo, **SGI → Reportar** abre la ficha nueva: **No
+conformidad**, **Casi accidente o incidente** o **Queja o sugerencia** (vea
+2.5). Además puede consultar **SGI → Mejora** (no conformidades,
+reclamaciones, mejoras, quejas y sugerencias) y **SGI → Seguridad y
+ambiente** (incidentes, planes de emergencia). En **SGI → Procesos** ve el
+mapa de procesos y las actividades; los demás catálogos (entregables, flujos,
+matriz, puestos y fichas por máquina) son para los dueños de proceso, el
+Jefe MAST, Dirección y Auditoría.
+
+En todas las listas del SGI, el filtro **Míos** muestra lo suyo, y los
+colores dicen lo mismo en todas partes: gris = borrador o cancelado, azul =
+abierto o en curso, amarillo = pendiente o por vencer, rojo = vencido o
+rechazado, verde = cerrado, vigente o validado.
 
 > Si no ve el menú SGI, no está en el grupo Usuario SGI: pídalo a su jefe;
 > los usuarios los autoriza la Dirección y los crea Sistemas.
@@ -63,7 +74,10 @@ pendiente de firma.
 
 Lo mismo con cada documento nuevo que aplique a su puesto: en
 **Documentos vigentes**, el filtro **Mis acuses pendientes** los muestra y
-el botón **Leído y entendido** deja su acuse.
+el botón **Leído y entendido** deja su acuse. Para ver todos los vigentes,
+quite el filtro **Míos**; puede buscar por clave (también la anterior, la del
+Dropbox), por tipo o por proceso, y filtrar Procedimientos, Instructivos o
+Formatos. Mi procedimiento no sale aquí: tiene su propia entrada en Inicio.
 
 ### 2.4 Capturar una medición (si tiene un indicador a su cargo)
 
@@ -76,13 +90,15 @@ el botón **Leído y entendido** deja su acuse.
 
 ### 2.5 Levantar una no conformidad o una queja
 
-- **No conformidad:** **SGI → Mejora → No conformidades → Nuevo**. Describa
-  la desviación, el proceso donde la detectó y quién debe contestarla. El
-  sistema le pone folio y plazos.
-- **Queja o sugerencia del personal:** **SGI → Mejora → Quejas y sugerencias
-  del personal**, o por correo al buzón `quejas-sugerencias@`.
-- **Incidente o casi accidente de seguridad:** **SGI → Seguridad y ambiente →
-  Incidentes y accidentes → Nuevo**. Cualquiera puede reportar; reportar un
+- **No conformidad:** **SGI → Reportar → No conformidad** (o **SGI → Mejora →
+  No conformidades → Nuevo**). Describa la desviación, el proceso donde la
+  detectó y quién debe contestarla. El sistema le pone folio y plazos.
+- **Queja o sugerencia del personal:** **SGI → Reportar → Queja o
+  sugerencia** (la lista está en **SGI → Mejora → Quejas y sugerencias del
+  personal**), o por correo al buzón `quejas-sugerencias@`.
+- **Incidente o casi accidente de seguridad:** **SGI → Reportar → Casi
+  accidente o incidente** (la lista está en **SGI → Seguridad y ambiente →
+  Incidentes y accidentes**). Cualquiera puede reportar; reportar un
   casi accidente también cuenta. Mientras esté «Reportado» puede corregirlo, y
   después puede consultar cómo se cerró. Si a usted lo invitan a investigar un
   incidente, queda en el equipo de investigación (ISO 45001 pide que
@@ -101,8 +117,8 @@ Si una actividad ya no se hace así, o falta una:
 
 ### 2.7 Checklist de planta (capturista)
 
-1. En **Mantenimiento → Checklists de hoy** están las hojas del día de su
-   equipo o unidad.
+1. En **SGI → Inicio → Checklists de hoy** (también en **Mantenimiento →
+   Checklists de hoy**) están las hojas del día de su equipo o unidad.
 2. Toque **Bien**, **Falla** o **No aplica** en cada punto (un toque). Si casi
    todo está bien, marque las fallas y pulse **Marcar el resto como Bien**.
 3. Escriba la observación en las fallas.

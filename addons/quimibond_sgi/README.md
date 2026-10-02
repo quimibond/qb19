@@ -74,11 +74,16 @@ límite siguen en rojo. Los estados intermedios propios de cada ficha
 
 ## Menú
 
-Cinco entradas bajo **SGI**: Inicio (Mis pendientes, Mi procedimiento,
-Documentos vigentes, Mis indicadores, Mi equipo), Procesos (mapa, actividades,
-matriz de responsabilidades, «Del Dropbox a Odoo»), Mejora (NC, reclamaciones,
-acciones, mejora continua, auditorías), Seguridad y ambiente, Dirección y
-Administración SGI. El árbol completo con grupos está en
+Siete entradas bajo **SGI** (57.98.0): Inicio (Mis pendientes, Mi
+procedimiento, Documentos vigentes, Mis indicadores, Mi equipo, Checklists de
+hoy), Reportar (no conformidad, casi accidente o incidente, queja o
+sugerencia: cada una abre la ficha nueva), Procesos (mapa y actividades para
+todos; entregables, flujos, matriz de responsabilidades, puestos y procesos y
+fichas por máquina solo para dueño de proceso, Jefe MAST, Dirección y Auditor;
+«Del Dropbox a Odoo»), Mejora (NC, reclamaciones, acciones, mejora continua,
+auditorías), Seguridad y ambiente, Dirección y Administración SGI. Al tocar la
+app, Dirección abre en el Tablero y los demás en Mis pendientes (acción del
+menú raíz, `sgi_home_action`). El árbol completo con grupos está en
 `tools/sgi_menu_tree.txt`, y `tests/test_menu_tree.py` lo compara con la base.
 
 ## Grupos
