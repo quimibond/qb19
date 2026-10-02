@@ -424,7 +424,17 @@ class ResPartnerSstContractor(models.Model):
         string="Qué se revisó (SST)",
         help="REPSE, SUA, constancias DC-3, inducción de seguridad, seguro…")
 
+    sgi_user_can_eval_sst = fields.Boolean(
+        compute='_compute_sgi_user_can_eval_sst',
+        help="Usted es Jefe MAST: puede registrar la evaluación SST del contratista.")
+
     _SGI_SST_EVAL_FIELDS = ('sgi_sst_eval_valid_until', 'sgi_sst_eval_note')
+
+    @api.depends_context('uid')
+    def _compute_sgi_user_can_eval_sst(self):
+        can = self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        for partner in self:
+            partner.sgi_user_can_eval_sst = can
 
     def _sgi_check_sst_eval(self, vals_list):
         if any(f in vals for vals in vals_list for f in self._SGI_SST_EVAL_FIELDS) and not (
