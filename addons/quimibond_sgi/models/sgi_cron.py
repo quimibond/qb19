@@ -1111,7 +1111,7 @@ class SgiCron(models.AbstractModel):
                 risk,
                 "Revisar riesgo %s" % (risk.folio or risk.name),
                 "Reevaluación periódica (enero / julio): la revisión del riesgo/oportunidad "
-                "venció el %s. Actualiza probabilidad e impacto y pulsa «Registrar "
+                "venció el %s. Actualice la probabilidad y el impacto y pulse «Registrar "
                 "evaluación»." % risk.next_review_date,
                 user_id, date_deadline=risk.next_review_date, key='revisar_riesgo')
 

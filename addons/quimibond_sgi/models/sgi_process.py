@@ -273,8 +273,8 @@ class SgiProcess(models.Model):
             state = dict(other._fields['state'].selection).get(other.state, other.state)
             lines.append("%s [%s]: %s" % (other.display_name, state, items))
             note = ("El proceso %s entró en vigor y obsoletó procedimientos que estas "
-                    "actividades de %s todavía citan: %s. Liga el procedimiento vigente "
-                    "(o quítalo) en cada actividad." % (
+                    "actividades de %s todavía citan: %s. Ligue el procedimiento vigente "
+                    "(o quítelo) en cada actividad." % (
                         self.display_name, other.display_name, items))
             other.sudo().message_post(body=note)
             user_id = other.owner_id.user_id.id or manager_id
@@ -488,7 +488,7 @@ class SgiProcess(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades — %s" % self.name,
+            'name': "No conformidades — %s" % self.name,
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('sgi_process_id', '=', self.id)],

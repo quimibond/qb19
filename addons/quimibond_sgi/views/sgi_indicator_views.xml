@@ -87,7 +87,7 @@
                         <field name="calc_status" class="d-inline" readonly="1"/> —
                         <field name="calc_message" class="d-inline" readonly="1"/>
                         (<field name="calc_checked" class="d-inline" readonly="1"/>).
-                        Corrígelo y pulsa «Recalcular ahora».
+                        Corríjalo y pulse «Recalcular ahora».
                     </div>
                     <group>
                         <group string="Clasificación">

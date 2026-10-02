@@ -17,7 +17,7 @@ class StockPicking(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades",
+            'name': "No conformidades",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('picking_id', '=', self.id)],
@@ -98,7 +98,7 @@ class MrpProduction(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades",
+            'name': "No conformidades",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('production_id', '=', self.id)],
@@ -123,7 +123,7 @@ class PurchaseOrder(models.Model):
         partner = self.partner_id.commercial_partner_id
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades del proveedor",
+            'name': "No conformidades del proveedor",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('partner_id', '=', partner.id)],
@@ -224,7 +224,7 @@ class ProductTemplateSgiSpec(models.Model):
         if not self.sgi_spec_document_id:
             raise UserError(
                 "El producto no tiene ligada su especificación (C04-06). "
-                "Selecciónala en la pestaña SGI.")
+                "Selecciónela en la pestaña SGI.")
         return self.sgi_spec_document_id.action_sgi_view_file()
 
 
@@ -337,7 +337,7 @@ class ResPartner(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades",
+            'name': "No conformidades",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('partner_id', '=', self.id)],

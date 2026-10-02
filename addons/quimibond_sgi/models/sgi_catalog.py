@@ -481,8 +481,8 @@ class HrJob(models.Model):
         if len(matches) > 1:
             return Job.browse(), (
                 "El puesto «%s» es ambiguo: hay %d con ese nombre (ids %s). "
-                "Fusiona los duplicados (hr.job.sgi_merge_duplicate_jobs) o "
-                "usa el id." % (ref, len(matches), matches.ids))
+                "Fusione los duplicados (hr.job.sgi_merge_duplicate_jobs) o "
+                "use el id." % (ref, len(matches), matches.ids))
         return matches, None
 
     # ------------------------------------------------------------------
@@ -647,7 +647,7 @@ class SgiDocumentType(models.Model):
              "proceso (salvo que conserve una clave heredada).")
     code_required = fields.Boolean(
         string="Exige clave", default=True,
-        help="Apágalo para tipos sin clave propia (documentos externos, "
+        help="Apáguelo para tipos sin clave propia (documentos externos, "
              "formularios de Odoo).")
     legacy_code_regex = fields.Char(
         string="Claves heredadas aceptadas (regex)",

@@ -356,11 +356,11 @@ class QualityAlert(models.Model):
         folio = self.sgi_folio or self.name
         labels = {
             'containment': ("Contención", self.sgi_due_containment, self.sgi_containment_state,
-                            "registra al menos una acción de contención"),
+                            "registre al menos una acción de contención"),
             'root_cause': ("Causa raíz", self.sgi_due_root_cause, self.sgi_root_cause_state,
-                           "captura la causa raíz (5 porqués / Ishikawa)"),
+                           "capture la causa raíz (5 porqués / Ishikawa)"),
             'plan': ("Plan de acción", self.sgi_due_plan, self.sgi_plan_state,
-                     "registra las acciones correctivas con responsable y compromiso"),
+                     "registre las acciones correctivas con responsable y compromiso"),
         }
         scheduled = []
         for key, (label, due, state, what) in labels.items():
@@ -586,7 +586,7 @@ class QualityAlert(models.Model):
                 # Hay una persona esperando respuesta del botón: avisarle en vez
                 # de no hacer nada y dejarla adivinando.
                 raise UserError(
-                    "La generación de No Conformidades desde «%s» está "
+                    "La generación de no conformidades desde «%s» está "
                     "desactivada.\n\nSi debe volver a generarse, actívela en "
                     "%s." % (source.name, sgi_menu_path('fuentes_nc')))
             return self.browse()
@@ -754,7 +754,7 @@ class QualityAlert(models.Model):
                             raise_if_not_found=False)
         if not team or not team.sgi_sequence_id:
             raise UserError(
-                "No está configurado el equipo de No Conformidades Internas del SGI.")
+                "No está configurado el equipo «NC Internas» del SGI.")
         # Etapa "Abierta" del equipo NC Internas: las etapas de quality.alert son por
         # equipo, así que al cambiar de equipo hay que moverla a una etapa propia.
         open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open',
@@ -928,7 +928,7 @@ class SgiActionLine(models.Model):
                     and not alert.sgi_root_cause):
                 raise ValidationError(
                     "No se puede registrar una acción %s en la NC %s sin la causa "
-                    "raíz. Primero investiga y captura la causa raíz; la corrección "
+                    "raíz. Primero investigue y capture la causa raíz; la corrección "
                     "(contención inmediata) sí puede registrarse antes." % (
                         dict(self._fields['action_type'].selection)[line.action_type],
                         alert.sgi_folio or alert.name))
@@ -1129,8 +1129,8 @@ class SgiNcCancel(models.TransientModel):
             Cron = self.env['sgi.cron']
             Cron._sgi_schedule(
                 alert, "Aprobar cancelación de la NC %s" % (alert.sgi_folio or alert.name),
-                "%s pide cancelar la NC. Motivo: %s. Apruébala con «Cancelar NC» o "
-                "contesta en el chatter." % (self.env.user.name, reason),
+                "%s pide cancelar la NC. Motivo: %s. Apruébela con «Cancelar NC» o "
+                "conteste en el chatter." % (self.env.user.name, reason),
                 Cron._sgi_manager_user_id())
             return {'type': 'ir.actions.act_window_close'}
         cancel_stage = self.env['quality.alert.stage'].search([

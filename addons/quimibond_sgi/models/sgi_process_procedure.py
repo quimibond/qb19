@@ -678,7 +678,7 @@ class SgiProcessActivity(models.Model):
                 raise ValidationError(
                     "La actividad %s debe tener exactamente un puesto que la "
                     "ejecuta (tiene %d). Si nadie la ejecuta porque es "
-                    "automática, márcala así en «Automatización actual»." % (
+                    "automática, márquela así en «Automatización actual»." % (
                         label, len(executors)))
             approvers = activity.role_ids.filtered(
                 lambda r: r.role == 'aprueba' and not (r.condition or '').strip())
@@ -1466,7 +1466,7 @@ class SgiProcessActivity(models.Model):
     def write(self, vals):
         if 'number' in vals or 'section' in vals:
             if len(self.process_id) > 1:
-                raise UserError("Cambia el numeral o la sección de una actividad a la vez.")
+                raise UserError("Cambie el numeral o la sección de una actividad a la vez.")
             vals = self._sgi_structure_vals(vals, self.process_id)
         # Los roles que llegan por el one2many se validan juntos al final
         # (restricción de la actividad), no uno por uno a medio camino.

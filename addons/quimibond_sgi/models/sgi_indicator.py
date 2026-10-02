@@ -1219,7 +1219,7 @@ class SgiIndicatorMeasure(models.Model):
             # Evidencia = las líneas del presupuesto aprobado del periodo.
             if 'sgi.sales.budget.line' not in self.env:
                 raise UserError("La evidencia de este indicador son las líneas del presupuesto "
-                                "de ventas: instala «Quimibond - Presupuesto y pronóstico de ventas».")
+                                "de ventas: instale «Quimibond - Presupuesto y pronóstico de ventas».")
             return {
                 'type': 'ir.actions.act_window',
                 'name': "Presupuesto del periodo — evidencia de %s" % self.period_date,

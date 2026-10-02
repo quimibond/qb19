@@ -399,8 +399,8 @@
             <form string="Cargar catálogo">
                 <field name="state" invisible="1"/>
                 <div class="alert alert-info" role="status" invisible="state != 'draft'">
-                    Pega el JSON del catálogo (familias, procesos, actividades con
-                    roles y medición, ligas, flujos, indicadores) o sube el archivo.
+                    Pegue el JSON del catálogo (familias, procesos, actividades con
+                    roles y medición, ligas, flujos, indicadores) o suba el archivo.
                     <b>Probar</b> no escribe nada: muestra qué se crearía, qué se
                     actualizaría y los errores. <b>Cargar</b> escribe; se puede
                     repetir sin duplicar.

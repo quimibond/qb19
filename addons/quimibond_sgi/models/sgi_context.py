@@ -45,7 +45,7 @@ class SgiInterestedParty(models.Model):
     becomes_requirement = fields.Boolean(
         string="Se adopta como requisito del SGI", tracking=True,
         help="La organización DECIDE cuáles necesidades se vuelven requisito "
-             "(4.2): márcalo y documenta cómo se atiende.")
+             "(4.2): márquelo y documente cómo se atiende.")
     requirement_note = fields.Text(
         string="Cómo se atiende",
         help="Con qué proceso, documento, requisito legal o control se "

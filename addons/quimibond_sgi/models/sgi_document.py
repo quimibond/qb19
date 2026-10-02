@@ -185,7 +185,7 @@ class DocumentsDocument(models.Model):
         string="Retención (años)",
         help="Años que el registro/documento se conserva tras quedar obsoleto "
              "o cerrado. 0 = sin definir. Clientes automotrices suelen exigir "
-             "vida del programa + años: captúralo por documento o familia.")
+             "vida del programa + años: captúrelo por documento o familia.")
     sgi_disposition = fields.Selection([
         ('archivo', "Archivo muerto"),
         ('destruccion', "Destrucción controlada"),
@@ -382,7 +382,7 @@ class DocumentsDocument(models.Model):
         if not self.sgi_migration_point_id:
             raise UserError(
                 "Este formato no tiene ligado su worksheet destino. "
-                "Selecciónalo en la pestaña de migración (campo "
+                "Selecciónelo en la pestaña de migración (campo "
                 "«Worksheet destino»).")
         return {
             'type': 'ir.actions.act_window',

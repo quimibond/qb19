@@ -172,13 +172,13 @@ class QualityAlertCustomerReply(models.Model):
             folio = alert.sgi_folio or alert.name
             if not alert.sgi_customer_ack_date and alert.sgi_customer_ack_due and alert.sgi_customer_ack_due <= today:
                 Cron._sgi_schedule(alert, "Acusar recibo al cliente: %s" % folio,
-                                   "Venció el %s. Acusa recibo al cliente y anota la fecha en la NC (C5.19)." % (
+                                   "Venció el %s. Acuse recibo al cliente y anote la fecha en la NC (C5.19)." % (
                                        alert.sgi_customer_ack_due), user_id)
             if (not alert.sgi_customer_response_date and alert.sgi_customer_response_due
                     and alert.sgi_customer_response_due <= today):
                 Cron._sgi_schedule(alert, "Responder al cliente: %s" % folio,
-                                   "La respuesta formal vence el %s. Envíala con la contención y la causa, "
-                                   "y anota la fecha en la NC (C5.19)." % alert.sgi_customer_response_due, user_id)
+                                   "La respuesta formal vence el %s. Envíela con la contención y la causa, "
+                                   "y anote la fecha en la NC (C5.19)." % alert.sgi_customer_response_due, user_id)
 
 
 class SgiCronCustomerReply(models.AbstractModel):

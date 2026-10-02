@@ -104,7 +104,7 @@ class ApprovalRequestSign(models.Model):
         if not owner:
             problems.append("• Falta quién pide el cambio.")
         if not process:
-            problems.append("• Liga el documento a su proceso o indica los procesos afectados: "
+            problems.append("• Ligue el documento a su proceso o indique los procesos afectados: "
                             "el dueño del proceso firma «Revisó».")
         elif not reviewer:
             problems.append("• El proceso %s no tiene dueño con usuario activo." % (

@@ -286,7 +286,7 @@
                         <page string="Cadena" name="cadena">
                             <div class="text-muted mb-2">
                                 Las ligas se calculan solas de «Recibe» y «Entrega» y no se
-                                editan a mano. Si una no aplica, apágala y escribe el motivo.
+                                editan a mano. Si una no aplica, apáguela y escriba el motivo.
                             </div>
                             <separator string="Recibe de"/>
                             <field name="in_link_ids" context="{'active_test': False}">

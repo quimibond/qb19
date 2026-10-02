@@ -419,7 +419,7 @@ class SgiAudit(models.Model):
             pdf, _ = self.env['ir.actions.report'].sudo()._render_qweb_pdf(report.report_name, self.ids)
         except Exception:  # noqa: BLE001 - el cierre no debe caerse por wkhtmltopdf
             _logger.exception("SGI: no se pudo generar el informe PDF de la auditoría %s.", self.folio)
-            self.message_post(body="No se pudo generar el informe en PDF; imprímelo desde el menú Imprimir.")
+            self.message_post(body="No se pudo generar el informe en PDF; imprímalo desde el menú Imprimir.")
             return self.env['documents.document']
         name = "Informe de auditoría %s (F-P-G03-07).pdf" % (self.folio or self.id)
         doc = self.env['documents.document'].sudo().create({

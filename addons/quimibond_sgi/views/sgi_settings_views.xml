@@ -32,7 +32,7 @@
                     </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"
-                                 help="Indicador Requisiciones (CO-02): categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
+                                 help="Indicador Requisiciones (CO-02): categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúrelo solo si hay varias.">
                             <field name="sgi_purchase_approval_category_id"/>
                         </setting>
                         <setting string="Categorías de proveedores críticos"

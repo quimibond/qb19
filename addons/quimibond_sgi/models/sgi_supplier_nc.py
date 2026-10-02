@@ -140,7 +140,7 @@ class QualityAlertSupplierPortal(models.Model):
         if today >= self.sgi_supplier_due_date:
             Cron._sgi_schedule(
                 self, "Respuesta del proveedor vence el %s: NC %s" % (self.sgi_supplier_due_date, folio),
-                "El proveedor %s no ha contestado la NC por el portal. Reenvía el enlace o llámale." % (
+                "El proveedor %s no ha contestado la NC por el portal. Reenvíe el enlace o llámele." % (
                     self.sgi_supplier_id.display_name), who)
         if today > self.sgi_supplier_due_date:
             Cron._sgi_schedule(

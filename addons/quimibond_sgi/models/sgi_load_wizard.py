@@ -56,7 +56,7 @@ class SgiCatalogLoadWizard(models.TransientModel):
         else:
             raw = self.payload_text or ''
         if not raw.strip():
-            raise UserError("Pega el JSON o sube el archivo.")
+            raise UserError("Pegue el JSON o suba el archivo.")
         try:
             return json.loads(raw)
         except ValueError as exc:

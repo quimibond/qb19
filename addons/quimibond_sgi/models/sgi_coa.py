@@ -346,7 +346,7 @@ class SgiCoaInbox(models.Model):
     @api.model
     def message_new(self, msg_dict, custom_values=None):
         values = dict(custom_values or {})
-        values.setdefault('name', msg_dict.get('subject') or "CoA")
+        values.setdefault('name', msg_dict.get('subject') or "COA")
         values.setdefault('email_from', msg_dict.get('email_from'))
         return super().message_new(msg_dict, custom_values=values)
 

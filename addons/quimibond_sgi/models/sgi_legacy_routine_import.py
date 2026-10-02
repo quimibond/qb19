@@ -208,7 +208,7 @@ class SgiLegacyRoutineImport(models.TransientModel):
                 raise UserError("Primero corre «Probar» con este mismo archivo: la carga real solo va "
                                 "después del modo de prueba.")
             if not self.dry_run_ok:
-                raise UserError("La prueba tuvo errores: corrígelos en el libro y vuelve a probar.")
+                raise UserError("La prueba tuvo errores: corríjalos en el libro y vuelva a probar.")
             if not self.confirm:
                 raise UserError("Marque «Entiendo que se escribe en la base» para cargar.")
         payload, structure_errors = book_to_payload(read_book(raw, self.filename))

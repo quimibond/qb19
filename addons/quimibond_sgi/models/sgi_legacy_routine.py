@@ -228,8 +228,8 @@ class SgiLegacyRoutine(models.Model):
             process = routine.procedure_id.sudo().sgi_replaced_by_process_id
             if process:
                 raise ValidationError(
-                    "%s ya lo sustituye el proceso %s: no puede tener rutinas pendientes. Decide la "
-                    "rutina (actividad, la hace Odoo o eliminada) o quita la sustitución." % (
+                    "%s ya lo sustituye el proceso %s: no puede tener rutinas pendientes. Decida la "
+                    "rutina (actividad, la hace Odoo o eliminada) o quite la sustitución." % (
                         routine.procedure_code, process.display_name))
 
     # ------------------------------------------------------------------
@@ -457,7 +457,7 @@ class _RoutineLoader:
             '&', ('sgi_migration_class', 'in', ('a', 'b', 'c')), ('sgi_migration_state', '=', 'na'),
         ] + self.Doc._sgi_dropbox_excluded_domain(), order='sgi_previous_code, id')
         for doc in docs:
-            self.error('clase_estado', "Documento %s (id %d): clase %s con estado «%s». Corrígelo en "
+            self.error('clase_estado', "Documento %s (id %d): clase %s con estado «%s». Corríjalo en "
                        "«Formatos y documentos anteriores» antes de cargar." % (
                            doc.sgi_previous_code or doc.sgi_code or '', doc.id,
                            (doc.sgi_migration_class or '').upper(),
@@ -472,7 +472,7 @@ class _RoutineLoader:
         clave = sgi_cell(row.get('clave')).upper()
         if clave in self.excluded:
             # Nunca se repite el contenido de estas filas (ni el número).
-            self.error('excluida', "Fila de un procedimiento que va aparte; quítala del archivo.",
+            self.error('excluida', "Fila de un procedimiento que va aparte; quítela del archivo.",
                        fila=fila, clave=clave)
             return None
         n_txt = sgi_cell(row.get('n'))
@@ -748,7 +748,7 @@ class DocumentsDocumentLegacyRoutines(models.Model):
                 ('procedure_id', '=', doc.id), ('state', '=', 'pendiente')])
             if pending:
                 raise ValidationError(
-                    "%s tiene %d rutina(s) pendiente(s): decídelas antes de ligar el proceso que lo "
+                    "%s tiene %d rutina(s) pendiente(s): decídalas antes de ligar el proceso que lo "
                     "sustituye." % (doc.sgi_previous_code or doc.sgi_code or doc.name, pending))
 
     def action_sgi_open_routines(self):

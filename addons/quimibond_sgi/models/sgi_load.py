@@ -66,7 +66,7 @@ _PROCESS_TYPES = {
 _PROCESS_TEXT_FIELDS = (
     'name', 'purpose', 'scope', 'env_aspects')
 _LEGACY_KEYS = {
-    'links_to': "«links_to» ya no existe: declara «outputs» en quien entrega e "
+    'links_to': "«links_to» ya no existe: declare «outputs» en quien entrega e "
                 "«inputs» en quien recibe; la liga sale sola.",
     'links': "«links» ya no existe: las ligas salen de «inputs»/«outputs».",
     'flows': "«flows» ya no existe: los flujos entre procesos salen de «inputs»/«outputs».",
@@ -535,7 +535,7 @@ class _SgiLoader:
             self.report.warn(
                 'process', proc['code'],
                 "Dueño no asignado: el puesto «%s» tiene %d empleado(s) activo(s) "
-                "con usuario; se necesita exactamente uno (o manda "
+                "con usuario; se necesita exactamente uno (o mande "
                 "owner_employee_id)." % (' '.join(job.name.split()), len(emps)))
             return None
         return emps
@@ -583,7 +583,7 @@ class _SgiLoader:
         if 'state' in proc:
             if proc['state'] not in ('borrador', 'piloto'):
                 raise ValidationError("«state» va en borrador o piloto; para vigente "
-                                      "usa «publish»: true.")
+                                      "use «publish»: true.")
             vals['state'] = proc['state']
         if proc.get('publish'):
             self.publish.append(code)
@@ -603,7 +603,7 @@ class _SgiLoader:
                 other = doc.sgi_replaced_by_process_id
                 if other and other != process:
                     raise ValidationError(
-                        "El procedimiento %s ya lo sustituye el proceso %s; quítalo "
+                        "El procedimiento %s ya lo sustituye el proceso %s; quítelo "
                         "primero de su ficha." % (doc_code, other.code))
                 replaced |= doc
         if process:
@@ -670,7 +670,7 @@ class _SgiLoader:
         deliverable = self.env['sgi.deliverable'].with_context(active_test=False).search(
             [('code', '=', code), ('company_id', '=', self.company.id)], limit=1)
         if not code or not deliverable:
-            raise ValidationError("%s: el entregable «%s» no existe (decláralo en "
+            raise ValidationError("%s: el entregable «%s» no existe (declárelo en "
                                   "«deliverables»)." % (what, code))
         return deliverable
 

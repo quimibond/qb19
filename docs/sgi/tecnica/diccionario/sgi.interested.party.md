@@ -15,7 +15,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_context.py`.
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_context.py:70` |
-| `becomes_requirement` | Boolean | Se adopta como requisito del SGI | La organización DECIDE cuáles necesidades se vuelven requisito (4.2): márcalo y documenta cómo se atiende. |  |  |  |  | `addons/quimibond_sgi/models/sgi_context.py:45` |
+| `becomes_requirement` | Boolean | Se adopta como requisito del SGI | La organización DECIDE cuáles necesidades se vuelven requisito (4.2): márquelo y documente cómo se atiende. |  |  |  |  | `addons/quimibond_sgi/models/sgi_context.py:45` |
 | `category` | Selection | Categoría | Grupo al que pertenece la parte interesada. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_context.py:31` |
 | `last_review_date` | Date | Última revisión | Fecha de la última revisión de sus necesidades. |  |  |  |  | `addons/quimibond_sgi/models/sgi_context.py:64` |
 | `legal_ids` | Many2many | Requisitos legales ligados | Requisitos legales que nacen de esta parte interesada. |  | `sgi.legal.requirement` |  |  | `addons/quimibond_sgi/models/sgi_context.py:58` |

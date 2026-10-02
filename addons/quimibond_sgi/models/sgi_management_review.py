@@ -277,7 +277,7 @@ class SgiManagementReview(models.Model):
             ])
             result.append("%s: %d abiertas, %d en seguimiento, %d cerradas en el periodo." % (
                 label, abiertas, seguimiento, cerradas))
-        return "\n".join(result) or "Sin No Conformidades."
+        return "\n".join(result) or "Sin no conformidades."
 
     def _sgi_load_complaints(self):
         self.ensure_one()

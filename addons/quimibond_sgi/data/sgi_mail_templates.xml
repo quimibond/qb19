@@ -78,7 +78,7 @@
     <record id="mail_template_sgi_weekly_overdue" model="mail.template">
         <field name="name">SGI: Mis pendientes atrasados (semanal)</field>
         <field name="model_id" ref="base.model_res_users"/>
-        <field name="subject">SGI: tiene {{ ctx.get('sgi_total') }} pendientes atrasados</field>
+        <field name="subject">SGI: tiene {{ ctx.get('sgi_total') }} pendiente(s) atrasado(s)</field>
         <field name="email_to">{{ object.email_formatted }}</field>
         <field name="lang">{{ object.lang }}</field>
         <field name="body_html" type="html">

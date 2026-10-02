@@ -486,8 +486,8 @@ class _SgiCalculatedConnection(models.AbstractModel):
         if blocked and self.filtered('deliverable_id'):
             raise UserError(
                 "Las conexiones calculadas no se editan a mano: sale de lo que "
-                "entrega y recibe cada actividad. Cambia el entregable o las "
-                "actividades; si una no aplica, desactívala con su motivo.")
+                "entrega y recibe cada actividad. Cambie el entregable o las "
+                "actividades; si una no aplica, desactívela con su motivo.")
 
     def _sgi_retire_manual(self, deliverable):
         """Archiva la conexión capturada a mano que este entregable reemplaza."""
@@ -554,8 +554,8 @@ class SgiActivityLinkDeliverable(models.Model):
 
     def unlink(self):
         if not self.env.context.get('sgi_connection_sync') and self.filtered('deliverable_id'):
-            raise UserError("Una liga calculada no se borra: desactívala con su motivo "
-                            "o quita el entregable de las actividades.")
+            raise UserError("Una liga calculada no se borra: desactívela con su motivo "
+                            "o quite el entregable de las actividades.")
         return super().unlink()
 
     def _sgi_chain_verdict(self, now):
