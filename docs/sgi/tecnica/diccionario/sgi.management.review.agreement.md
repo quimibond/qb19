@@ -14,14 +14,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_management_review.py`, `addons/quimib
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `action_line_id` | Many2one | Acción |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:436` |
-| `action_state` | Selection | Estado de la acción |  |  |  | related `action_line_id.state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_management_review.py:437` |
-| `deadline` | Date | Fecha límite |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:434` |
+| `action_line_id` | Many2one | Acción |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:676` |
+| `action_state` | Selection | Estado de la acción |  |  |  | related `action_line_id.state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_management_review.py:677` |
+| `deadline` | Date | Fecha límite |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:674` |
 | `done_date` | Date | Cumplido el | Fecha de cumplimiento del acuerdo: la de su acción al terminarse, o capturada a mano si el acuerdo no tiene acción (E1-02: cerrado antes de su límite). |  |  | compute `_compute_done_date`, guardado |  | `addons/quimibond_sgi/models/sgi_kpi_review.py:22` |
-| `is_done` | Boolean | Cumplido |  |  |  | compute `_compute_status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_management_review.py:438` |
-| `name` | Char | Acuerdo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:432` |
-| `responsible_id` | Many2one | Responsable |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:433` |
-| `review_id` | Many2one | Revisión |  | sí | `sgi.management.review` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:430` |
-| `status_label` | Char | Situación |  |  |  | compute `_compute_status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_management_review.py:439` |
-| `task_id` | Many2one | Tarea (anterior a 52.0.0) |  |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:435` |
+| `is_done` | Boolean | Cumplido |  |  |  | compute `_compute_status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_management_review.py:678` |
+| `name` | Char | Acuerdo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:672` |
+| `responsible_id` | Many2one | Responsable |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:673` |
+| `review_id` | Many2one | Revisión |  | sí | `sgi.management.review` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:670` |
+| `status_label` | Char | Situación |  |  |  | compute `_compute_status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_management_review.py:679` |
+| `task_id` | Many2one | Tarea (anterior a 52.0.0) |  |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:675` |
 

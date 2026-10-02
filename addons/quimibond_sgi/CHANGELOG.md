@@ -13,6 +13,120 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.97.0 — 2026-10-02
+
+**Cláusulas y revisión por la dirección** (auditoría 2026-10: N-05 y N-09; es
+la ficha «57.96.0» del plan general, renumerada porque 57.96.0 fue «SST y
+ambiente»). Plan:
+`docs/superpowers/plans/2026-10-02-sgi-57-97-0-clausulas-revision.md`.
+**Ningún dato de negocio cambia en el despliegue.**
+
+### Agregado
+
+- **Cláusulas de tercer nivel** (`data/sgi_norms_tercer_nivel.xml`,
+  `noupdate`, con xmlid `c_<norma>_<n>_<n>_<n>`): ISO 9001 7.1.5 y 9.1.2;
+  ISO 14001 6.1.2, 6.1.3, 6.1.4 y 9.1.2; ISO 45001 6.1.2, 6.1.3, 6.1.4,
+  8.1.2, 8.1.3, 8.1.4 y 9.1.2. Las de requisitos de clientes (CLI-xx, sin
+  xmlid) no se tocan (A-029).
+- **Revisión por la dirección:** entradas «15. Incidentes y desempeño de SST»
+  (solo conteos, sin nombres), «16. Cambios en el contexto y las partes
+  interesadas», «17. Aspectos ambientales significativos» (de la empresa del
+  SGI, más los riesgos ambientales que aún no pasan a la matriz, también los
+  archivados) y «18. Oportunidades de mejora» (proyecto «Mejora Continua
+  SGI», oportunidades de la matriz de riesgos y de las auditorías del
+  periodo); los permisos de trabajo vencidos de la entrada 15 se cuentan solo
+  de la empresa del SGI (D-03). Pestaña «Conclusiones (9.3.3)» (conveniencia,
+  adecuación, eficacia y mejora, cambios y recursos) y «Acuerdos abiertos de
+  revisiones anteriores» (`carried_agreement_ids`). En la ficha, el acta y el
+  diagrama 9.3. Los cargadores leen con `sudo` y Dirección los corre sin
+  permisos de SST, Inventario ni Proyecto.
+- Tipo de acción **«Acuerdo de la revisión por la dirección»** (`acuerdo`)
+  en `sgi.action.line`; solo para acciones con revisión (constraint).
+
+### Cambiado
+
+- **NC:** con folio, no sale de «Abierta» hacia «Seguimiento» ni directo a
+  «Cerrada» sin clasificación y requisito (cláusula), ni nace en
+  «Seguimiento» sin ellos (alta rápida en esa columna del kanban; se revisa
+  antes de crear y no gasta folio). El cambio de etapa se revisa después de
+  escribir (cuenta lo que el formulario manda junto con la etapa), solo en
+  esa transición: no alcanza a lo que ya está en Seguimiento o cerrado, ni al
+  reabrir, al «No eficaz» o al cancelar. Exentos el sistema y el cierre
+  forzado del Jefe MAST; el Jefe MAST sí la captura. Cualquier cláusula vale,
+  también CLI-xx.
+- **«No eficaz» en una NC** (desviación del plan, revisión 2026-10-02): solo
+  regresa a «Seguimiento» una NC que estaba en una etapa de cierre. Antes la
+  movía desde cualquier etapa distinta de Abierta; una NC sin etapa o en una
+  etapa genérica de Calidad (base nueva) habría chocado con el candado de
+  clasificación. Ahora se queda donde está y pide la correctiva nueva igual.
+  Ayuda de «Resultado de la eficacia» al día.
+- **«Marcar realizada»** pide las cuatro conclusiones 9.3.3 (no vacías ni
+  solo espacios; «Sin cambios» vale). Solo en ese botón, no en `write`.
+- **Acuerdos de la revisión:** nacen como «Acuerdo» (antes «Acción
+  correctiva»): ya no inflan las correctivas ni piden su evidencia. E1-02 no
+  cambia.
+- **Cerrar la revisión** con acuerdos abiertos se permite y deja la lista en
+  el historial; la siguiente revisión los carga con «Cargar entradas» (de
+  cualquier revisión anterior realizada o cerrada; cada acuerdo sigue siendo
+  de su revisión).
+- **«8. Desempeño ambiental»:** scrap solo de la empresa del SGI (D-03),
+  leído con `sudo`; el texto dice de qué empresa es (antes, sin empresa y
+  como el usuario).
+
+### Migración
+
+`migrations/19.0.57.97.0/pre-migrate.py`: si alguien capturó a mano una
+cláusula con el mismo numeral en la misma norma, solo le liga el xmlid
+(`ir_model_data`, `noupdate`) para que el XML no la duplique; con varias,
+liga la de id menor y avisa (WARNING). Idempotente; no crea, cambia ni borra
+cláusulas. En producción, el 2026-10-02, no había ninguna. Lo demás son
+columnas nuevas vacías, la tabla `sgi_review_carried_agreement_rel` y 13
+registros nuevos.
+
+### Datos de producción
+
+- La Matriz de cumplimiento muestra 13 cláusulas más, en rojo hasta que se
+  liguen a actividades (pista de datos); «Generar checklist» de una auditoría
+  con esas normas pregunta por ellas.
+- Las 2 NC abiertas pedirán clasificación y cláusula al pasar a Seguimiento.
+- Las 2 revisiones en borrador (RD-2026-01, RD-2026-12) tendrán las entradas
+  15-18 al pulsar «Cargar entradas» y pedirán conclusiones al marcarse
+  realizadas.
+- 0 acciones de revisión en producción: nada que reclasificar a «acuerdo».
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó las opciones por omisión de Q1 a Q8 el 2026-10-02
+(`docs/audit/decisiones.md`): (Q1) requisitos de cliente sin cambio (CLI en
+su norma, sin xmlid; los 2 legales de tipo «cliente» siguen en lo legal);
+(Q2) las 13 cláusulas de la tabla, sin cuarto nivel; (Q3) clasificación y
+cláusula al salir de Abierta hacia Seguimiento o Cerrada y al nacer en
+Seguimiento, con el cierre forzado y el sistema exentos; (Q4) el acuerdo no
+pide evidencia; (Q5) las cuatro conclusiones obligatorias; (Q6) cerrar con
+acuerdos abiertos no se bloquea; (Q7) scrap de la empresa del SGI; (Q8) esta
+ficha sale como 57.97.0 e «Interfaz» toma el siguiente número libre.
+
+**Pruebas:** `test_clausulas_revision` (12 casos: cláusulas nuevas con xmlid
+y únicas por norma, las CLI sin tocar, el pre-migrate que solo liga e
+idempotente, la matriz con el tercer nivel; NC que no pasa a Seguimiento ni
+directo a Cerrada sin clasificación y cláusula, ni nace en Seguimiento,
+cierre forzado, reabrir y sistema exentos; entradas 15-18 (también como
+Dirección), scrap de la empresa del SGI, acuerdo como tipo propio y sin
+evidencia, conclusiones obligatorias, acuerdos abiertos que pasan y el
+acta). Ajustadas: `test_mgmt_review.test_04` y `test_pr5_direction.test_02`
+(conclusiones), `test_candados_evidencia._closable_nc` y
+`test_nc_deadlines.test_03` (clasificación y cláusula).
+
+**Verificación pendiente en Odoo.sh:** (1) que el XML `noupdate` nuevo crea
+las 13 cláusulas en el `-u` de una base que no las tiene (prueba 01; en el
+`update.log`, «SGI 57.97.0: 0 cláusula(s) existente(s) ligadas…»); (2) que
+`registry.clear_cache()` limpia la caché de xmlid en la prueba 03; (3) que
+los cuatro cargadores nuevos y el scrap corren como Dirección sin
+`AccessError` (prueba 08); (4) el acta con las entradas 15-18, las
+conclusiones y los acuerdos que pasan (prueba 12); (5) que ninguna prueba
+existente que mueve una NC desde Abierta con un usuario real se quedó sin
+clasificación y cláusula.
+
 ## 19.0.57.96.0 — 2026-10-02
 
 **SST y ambiente** (auditoría 2026-10: N-06, N-07 e incidente desde la
