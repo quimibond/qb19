@@ -510,9 +510,8 @@ class TestEmpresaDelSgi(_RendimientoCase):
         self.assertFalse(rev.company_id)
 
     def test_17_regla_de_empresa_en_rutinas(self):
-        rule = self.env['ir.rule'].search([('model_id.model', '=', 'sgi.legacy.routine'),
-                                           ('domain_force', 'ilike', 'company_ids')])
-        self.assertEqual(len(rule), 1, "Regla de empresa en las rutinas.")
+        rule = self.env.ref('quimibond_sgi.rule_sgi_legacy_routine_company')
+        self.assertIn('company_ids', rule.domain_force)
         other = self.env['res.company'].create({'name': 'Otra empresa RR'})
         procedure = self.env['documents.document'].create({
             'name': 'Procedimiento otra RR', 'type': 'binary', 'sgi_is_controlled': True,

@@ -312,6 +312,9 @@
          mientras, al final para no empatar secuencia (E-013). -->
     <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
               action="sgi_ppap_element_template_action" sequence="80"/>
+    <!-- 57.95.0 (D-06 de datos): asistente manual del Jefe MAST. -->
+    <menuitem id="menu_sgi_config_company_fix" name="Empresa en documentos controlados"
+              parent="menu_sgi_config" action="sgi_company_fix_action" sequence="90"/>
 
     <!-- 5.6 (retirado en 19.0.45.0.0): «Datos técnicos» y los «Mis…» viejos.
          Ver models/sgi_cleanup.py (SGI_REMOVED_XMLIDS): la prueba falla si

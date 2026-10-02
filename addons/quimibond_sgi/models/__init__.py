@@ -104,3 +104,4 @@ from . import sgi_sst_links
 from . import sgi_formatos_bloque3
 from . import sgi_deploy_change
 from . import sgi_floor_kiosk
+from . import sgi_company_fix

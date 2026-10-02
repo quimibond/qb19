@@ -728,6 +728,23 @@ class DocumentsDocument(models.Model):
                     "queda)»." % (doc.sgi_code or doc.name,
                                   doc.sgi_replaced_by_process_id.display_name))
 
+    @api.model
+    def _sgi_family_company(self, code, exclude_ids=()):
+        """57.95.0 (D-06 de datos): empresa de un controlado que no trae
+        empresa. Si la clave ya existe (otra revisión, una copia), la de su
+        familia, aunque sea ninguna: ``_sgi_same_code_docs`` y con él
+        ``_check_sgi_revision_unique`` y ``_sgi_check_revision_increases``
+        comparan solo dentro de la misma empresa, y una revisión nueva con
+        PNTQ dejaría de ver a sus anteriores sin empresa mientras el Jefe MAST
+        no corra el asistente. Clave nueva: la empresa del SGI."""
+        if code:
+            family = self.sudo().with_context(active_test=False).search(
+                [('sgi_code', '=', code), ('sgi_is_controlled', '=', True),
+                 ('id', 'not in', list(exclude_ids))], order='id', limit=1)
+            if family:
+                return family.company_id.id or False
+        return self.env['sgi.config']._sgi_company().id
+
     def _sgi_same_code_docs(self):
         """Otros documentos (activos o archivados) con la misma clave y
         empresa."""
@@ -1175,6 +1192,14 @@ class DocumentsDocument(models.Model):
         for vals in vals_list:
             if vals.get('sgi_is_controlled') and not vals.get('sgi_state'):
                 vals['sgi_state'] = 'borrador'
+            # 57.95.0 (D-06 de datos): un controlado nace con la empresa del
+            # SGI (492 de 589 no la tenían el 2026-10-02), salvo que su
+            # carpeta ya dé una empresa o que su familia (misma clave) viva
+            # sin empresa: ver ``_sgi_family_company``.
+            if vals.get('sgi_is_controlled') and not vals.get('company_id'):
+                folder = self.sudo().browse(vals['folder_id']) if vals.get('folder_id') else None
+                if not (folder and folder.company_id):
+                    vals['company_id'] = self._sgi_family_company(vals.get('sgi_code'))
             if vals.get('sgi_state') == 'vigente' and vals.get('sgi_code'):
                 self._obsolete_code(vals['sgi_code'])
         docs = super().create(vals_list)
@@ -1252,6 +1277,13 @@ class DocumentsDocument(models.Model):
                     'sgi_previous_code_date': today,
                 })
         res = super().write(vals)
+        if vals.get('sgi_is_controlled') and 'company_id' not in vals:
+            # 57.95.0 (D-06 de datos): al volverse controlado sin empresa
+            # (misma regla que create: la familia manda; si no hay, el SGI).
+            for doc in self.filtered(lambda d: not d.company_id and not d.folder_id.company_id):
+                company_id = self._sgi_family_company(doc.sgi_code, exclude_ids=doc.ids)
+                if company_id:
+                    super(DocumentsDocument, doc).write({'company_id': company_id})
         if vals.get('sgi_is_controlled') and 'sgi_state' not in vals:
             # Al volverse controlado sin estado, arranca en borrador.
             fresh = self.filtered(lambda d: not d.sgi_state)
