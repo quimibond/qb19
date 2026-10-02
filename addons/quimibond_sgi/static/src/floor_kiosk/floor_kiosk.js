@@ -148,11 +148,13 @@ export class SgiFloorKiosk extends Component {
 
     async toMenu() {
         this.revokeDoc();
+        const person = this.state.person;
         const res = await this.call("kiosk_check_pin", this.personArgs);
         if (res) {
             this.state.counts = res.counts;
             this.state.screen = "menu";
-        } else {
+        } else if (this.state.person === person) {
+            // Solo si sigue la misma persona: una respuesta tardía no saca a la siguiente.
             this.exit();
         }
     }

@@ -17,7 +17,8 @@ Cada lunes le llega a **Mis pendientes** un aviso por departamento con
 faltantes («Empleados sin puesto, sin PIN o sin correo en Tejido: 12»). **Ir**
 abre la lista de ese departamento. Si lo marca **Hecho** y siguen faltando
 datos, el lunes siguiente llega otro; cuando el departamento queda completo,
-el aviso se cierra solo.
+el aviso se cierra solo. Un empleado sin departamento no genera aviso:
+revise la lista completa de vez en cuando y asígnele su departamento.
 
 ## 2. Capturar el PIN
 

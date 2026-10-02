@@ -43,7 +43,8 @@ Retirado, Seguridad, Migración, Datos de producción.
   F-018, ver Q12). El parámetro `quimibond_sgi.checklist_pin_required` no
   cambia: lo enciende MAST cuando RH termine de capturar los PIN.
 - **Incidente: «Reportado por (empleado)»** (`reporter_employee_id`, sin
-  seguimiento en el chatter: el empleado lo lee solo RH en Odoo 19). Desde la
+  seguimiento en el chatter: firmado con PIN ya no cambia, y el mensaje de la
+  tableta dice quién reportó). Desde la
   tableta, el casi accidente queda a nombre del empleado (y de su usuario si
   tiene, que lo sigue) y avisa a Salud ocupacional o al Jefe MAST («Revisar
   casi accidente…»).
@@ -51,8 +52,9 @@ Retirado, Seguridad, Migración, Datos de producción.
   (Empleados → Empleados, solo RH), columna «Le falta» (sin mostrar el PIN) y
   aviso semanal por departamento en Mis pendientes (cron nuevo, lunes 13:00
   UTC; «Ir» abre la lista del departamento a quien es de RH). Recibe el aviso
-  `quimibond_sgi.hr_user_id`; vacío, el Usuario de RH de
-  `quimibond_sgi.rh_user_id` y, sin él, el Jefe MAST. Manual
+  `quimibond_sgi.hr_user_id`; vacío, el Coordinador de RH de
+  `quimibond_sgi.rh_user_id` y, sin él, el Jefe MAST. Los empleados sin
+  departamento salen en la lista pero no generan aviso. Manual
   `docs/sgi/usuarios/rh.md`.
 - **Kanban móvil (I-05):** Mis pendientes, Incidentes, Mis indicadores,
   Documentos vigentes, Responsivas de EPP y Permisos de trabajo abren en
@@ -125,7 +127,7 @@ A mano, después de desplegar (no lo hace el código):
 cuentas que ya entran (`supervisor@` → Tejido y áreas de producción,
 `manufactura@` → Mantenimiento, Almacén y Laboratorio) y RH captura los PIN
 por departamento en dos semanas; Q8 las cuentas compartidas pierden Usuario
-SGI; Q9 `quimibond_sgi.hr_user_id` vacío (aviso al Usuario de RH de
+SGI; Q9 `quimibond_sgi.hr_user_id` vacío (aviso al Coordinador de RH de
 `rh_user_id` o al Jefe MAST); Q10 un aviso por departamento; Q11 el casi
 accidente entra «leve» y lo clasifica quien investiga; **Q12 (contestar ANTES
 de desplegar a producción): límite de intentos de PIN; hoy ninguno (D-08)** —
