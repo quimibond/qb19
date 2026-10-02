@@ -13,6 +13,89 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.90.0 — 2026-10-01
+
+**Corregido: los indicadores de ventas contaban la venta de activo fijo.**
+La medición por MCP de enero a septiembre de 2026 dio VE-01 +45 % en marzo y
+a Leasing Lepezo como cliente principal: la venta de la rama ICOMATEX
+($11.3 M en mar-2026, cuenta 704.23.0003, y otra de $2.0 M en junio) entraba
+como venta porque los modos de código sumaban la factura completa.
+
+- **Cambiado:** `_sgi_net_invoiced` y los modos `crecimiento_ventas`,
+  `clientes_nuevos`, `concentracion_top3`, `facturacion_usd`,
+  `ventas_fuera_top10`, `notas_credito`, `clientes_reactivados`,
+  `retencion_clientes`, `concentracion_productos`, `presupuesto_ventas`
+  y `dso_cartera` miden **líneas de producto en cuentas de ventas** (401
+  ventas, 402 devoluciones y descuentos), sin 704 (activo fijo) ni 206
+  (anticipos). Parámetro `quimibond_sgi.sales_account_prefixes` (default
+  `401,402`). La evidencia por factura solo lista facturas con alguna línea
+  de venta. Los configurables VE-02, EX-17 y EX-18 ya se habían corregido por
+  dato (`('account_id.code', '=like', '40%')`).
+
+**Agregado: indicadores «de foto».** Campo `snapshot` («Indicador de foto»)
+en el indicador. Un indicador de foto mide el estado al calcular (saldo
+pendiente, existencias, vigencias), así que solo se mide el último periodo
+cerrado. Si se pide uno anterior, el cron, «Recalcular ahora» o
+`sgi_recalculate` devuelven «Sin dato: indicador de foto, no reconstruible
+para un periodo pasado». Antes devolvían el estado de hoy con la etiqueta de
+otro mes. Vienen marcados los modos `cartera_vencida`, `cartera_vencida_60`,
+`inventario_diferencia` y `capacitacion`. En una fórmula configurable, lo
+marca quien la arma.
+
+**Agregado:** `sgi_recalculate(..., with_details=False)` omite `detail_ids`
+de la respuesta. Con 72 indicadores la respuesta pasaba de 60 mil caracteres.
+Lo que sí devuelve es `detail_count`, y la medición guardada conserva los ids.
+
+**Corregido: CO-01 (entregas a tiempo de proveedores) daba 2–11 % de enero
+a junio.** Hasta junio de 2026 la OC nacía con la fecha prometida igual a la
+del pedido, al segundo, porque nadie la capturaba (por MCP: casi todas las
+OC de enero). Por eso cualquier recepción salía tarde. Desde agosto, unas 7
+de cada 10 OC sí la traen. El cálculo cambia en tres cosas:
+- solo cuenta recepciones de una OC de la compañía del KPI que tenga fecha
+  prometida;
+- las OC sin fecha prometida no cuentan, y la nota dice cuántas son;
+- a tiempo quiere decir recibida a más tardar el día prometido, en fecha
+  local y no a la hora exacta.
+
+Ya no entran las recepciones sin OC (devoluciones de cliente) ni las de
+otras compañías.
+
+**Agregado: solicitud de cambio por despliegue (S6-04).** Las versiones
+57.14 a 57.89 se instalaron sin solicitud «Cambio en Odoo (S6)». Ahora el
+cron diario de NC compara la versión instalada de cada módulo del repositorio
+con la última registrada (`quimibond_sgi.deploy_versions`). Por cada módulo
+que cambió crea una solicitud **en borrador**, que incluye:
+- el módulo y el cambio de versión (anterior → nueva);
+- la entrada de su CHANGELOG;
+- el enlace al commit desplegado, leído de `.git`; GitHub muestra el PR desde
+  ese commit.
+
+La solicitud cuenta en S6-04 y solo suma al numerador cuando se aprueba.
+Nadie la envía ni la aprueba sola: el dueño adjunta la evidencia de la
+prueba, agrega al dueño del proceso y la envía. Solo corre en producción (una
+base neutralizada no crea nada). Parámetros:
+- `quimibond_sgi.change_approval_category_id`: por omisión, la categoría
+  «Cambio en Odoo (S6)»;
+- `quimibond_sgi.change_request_owner_id`: por omisión, el primer aprobador
+  de la categoría.
+
+**Migración (`migrations/19.0.57.90.0/post-migrate.py`):**
+
+1. Marca como foto los configurables S2-03, S3-03, S6-03, E2-01 y E2-03.
+2. Pasa a «sin dato» las mediciones de los indicadores de foto que cumplen
+   las tres condiciones siguientes. El valor anterior queda en la nota.
+   - el periodo es anterior al último cerrado;
+   - se recalcularon desde el 2026-10-01;
+   - no están validadas.
+
+   En producción se esperan las de enero a agosto de EX-08, EX-09, AL-01,
+   S2-03, S3-03 y S6-03. E2-01 y E2-03 ya estaban casi todas en «sin dato».
+3. Recalcula con el filtro nuevo las mediciones 2026 no validadas de los
+   modos de ventas y de CO-01, y deja en el log el antes → después.
+4. Guarda las versiones de base de los despliegues. quimibond_sgi todavía
+   figura con su versión anterior, así que el primer cron de NC crea la
+   solicitud de este mismo despliegue.
+
 ## 19.0.57.89.0 — 2026-10-01
 
 **Corregido: fichas que no abrían por una regla de aprobación con un campo

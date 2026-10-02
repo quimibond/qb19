@@ -492,7 +492,7 @@ class SgiIndicatorFormula(models.Model):
         return ''
 
     # ---- recálculo bajo demanda (55.0.0) --------------------------------------
-    def sgi_recalculate(self, period_date=None, save=False):
+    def sgi_recalculate(self, period_date=None, save=False, with_details=True):
         """Calcula el indicador en un periodo con su modo actual, sin esperar al
         cron. Por MCP: ``call_model_method('sgi.indicator', 'sgi_recalculate',
         [ids], {'period_date': '2026-08-01', 'save': True})``.
@@ -501,6 +501,9 @@ class SgiIndicatorFormula(models.Model):
             el último periodo cerrado.
         :param save: True escribe la medición (la crea si no existe; nunca toca
             una validada, que es evidencia).
+        :param with_details: False omite ``detail_ids`` de la respuesta (con
+            decenas de indicadores pasaba de 60 mil caracteres por MCP); la
+            medición guardada sí los lleva. ``detail_count`` dice cuántos son.
         :return: por indicador, {code, period_date, value, state, numerator,
             denominator, sample_size, note, detail_model, detail_ids, measure_id}.
         """
@@ -519,8 +522,11 @@ class SgiIndicatorFormula(models.Model):
                 'numerator': vals.get('numerator'), 'denominator': vals.get('denominator'),
                 'sample_size': vals.get('sample_size'), 'note': vals.get('note') or '',
                 'detail_model': vals.get('detail_model') or '', 'detail_ids': vals.get('detail_ids') or '',
+                'detail_count': len([i for i in (vals.get('detail_ids') or '').split(',') if i]),
                 'measure_id': False,
             }
+            if not with_details:
+                del result['detail_ids']
             if save:
                 measure = Measure.search([('indicator_id', '=', indicator.id),
                                           ('period_date', '=', period)], limit=1)
@@ -555,7 +561,8 @@ class SgiIndicatorFormula(models.Model):
     def _sgi_measure_vals(self, date_from, date_to):
         """Además del modo del indicador, la fórmula en paralelo si existe."""
         vals = super()._sgi_measure_vals(date_from, date_to)
-        if self.calc_mode not in ('manual', 'configurable') and self.has_formula:
+        if self.calc_mode not in ('manual', 'configurable') and self.has_formula \
+                and not self._sgi_snapshot_blocked(date_from):
             detail = self._detail_configurable(date_from, date_to)
             vals.update({
                 'parallel_value': detail.get('value'),

@@ -4,6 +4,13 @@ from dateutil.relativedelta import relativedelta
 from odoo import models, fields, api
 from odoo.exceptions import AccessError, UserError
 
+# 57.90.0: cuentas (prefijos) que cuentan como venta del giro en los KPI.
+SALES_ACCOUNTS_PARAM = 'quimibond_sgi.sales_account_prefixes'
+DEFAULT_SALES_ACCOUNTS = '401,402'
+SALES_MODES = ('crecimiento_ventas', 'clientes_nuevos', 'facturacion_usd',
+               'notas_credito', 'clientes_reactivados', 'presupuesto_ventas',
+               'concentracion_top3', 'ventas_fuera_top10', 'retencion_clientes')
+
 
 CALC_MODES = [
     ('manual', "Captura manual"),
@@ -374,21 +381,8 @@ class SgiIndicator(models.Model):
         return round(on_time / len(pickings) * 100.0, 2)
 
     def _calc_otd_compras(self, date_from, date_to):
-        dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
-        pickings = self.env['stock.picking'].search([
-            ('picking_type_id.code', '=', 'incoming'),
-            ('state', '=', 'done'),
-            ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
-        ])
-        if not pickings:
-            return None
-        on_time = 0
-        for pick in pickings:
-            po = pick.purchase_id if 'purchase_id' in pick._fields else False
-            deadline = (po and po.date_planned) or pick.date_deadline or pick.scheduled_date
-            if deadline and pick.date_done and pick.date_done <= deadline:
-                on_time += 1
-        return round(on_time / len(pickings) * 100.0, 2)
+        """Ver _detail_otd_compras (sgi_indicator_detail.py)."""
+        return self._detail_otd_compras(date_from, date_to)['value']
 
     def _sgi_production_done(self, date_from, date_to):
         dt_from, dt_to = self._sgi_dt_bounds(date_from, date_to)
@@ -474,19 +468,71 @@ class SgiIndicator(models.Model):
                     "presupuesto configurado en Ajustes.")
         return ''
 
-    def _sgi_net_invoiced(self, date_from, date_to, taxed=False):
-        """Facturación neta timbrada del periodo: ventas timbradas (out_invoice)
-        menos notas de crédito (out_refund), sin impuestos (``taxed=True``: con
-        impuestos, para compararla con la cartera, que sí los lleva).
-        amount_*_signed ya trae las notas de crédito en negativo, así que la
-        suma es neta."""
-        moves = self.env['account.move'].search([
-            ('move_type', 'in', ('out_invoice', 'out_refund')),
-            ('state', '=', 'posted'),
+    # 57.90.0: las ventas se miden por LÍNEA de producto en las cuentas de
+    # ventas (401 ventas, 402 devoluciones y descuentos), no por factura
+    # completa. Una factura de cliente también registra ventas de activo fijo
+    # (704: la rama ICOMATEX a Leasing Lepezo, $11.3 M en mar-2026, daba
+    # VE-01 +45 %) y anticipos (206), que no son venta del giro.
+    def _sgi_sales_account_prefixes(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param(
+            SALES_ACCOUNTS_PARAM, '') or DEFAULT_SALES_ACCOUNTS
+        return [p.strip() for p in raw.split(',') if p.strip()] or \
+            DEFAULT_SALES_ACCOUNTS.split(',')
+
+    def _sgi_sales_account_domain(self, prefix=''):
+        """Hoja OR de cuentas de ventas; ``prefix`` = 'invoice_line_ids.'
+        para filtrar facturas que tienen al menos una línea de venta."""
+        codes = self._sgi_sales_account_prefixes()
+        return ['|'] * (len(codes) - 1) + [
+            (prefix + 'account_id.code', '=like', code + '%') for code in codes]
+
+    def _sgi_sales_lines_domain(self, date_from, date_to,
+                                move_types=('out_invoice', 'out_refund')):
+        """Líneas de venta del giro: producto, cuenta 401/402, factura de
+        cliente timbrada de la compañía del KPI, fecha de factura en el rango
+        (``date_from`` None = sin cota inferior)."""
+        domain = [
+            ('move_id.move_type', 'in', move_types),
+            ('parent_state', '=', 'posted'),
             ('company_id', '=', self._sgi_kpi_company().id),
-            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
-        ])
-        return sum(moves.mapped('amount_total_signed' if taxed else 'amount_untaxed_signed'))
+            ('display_type', '=', 'product'),
+            ('move_id.invoice_date', '<=', date_to),
+        ]
+        if date_from:
+            domain.append(('move_id.invoice_date', '>=', date_from))
+        return domain + self._sgi_sales_account_domain()
+
+    def _sgi_sales_by_partner(self, date_from, date_to, extra=None):
+        """{cliente: venta neta} del rango (moneda de la compañía, sin
+        impuestos). En la venta el ingreso va al crédito: importe = −balance."""
+        groups = self.env['account.move.line']._read_group(
+            self._sgi_sales_lines_domain(date_from, date_to) + list(extra or []),
+            ['partner_id'], ['balance:sum'])
+        return {partner: -balance for partner, balance in groups}
+
+    def _sgi_net_invoiced(self, date_from, date_to, taxed=False):
+        """Venta neta timbrada del periodo: líneas de venta (401/402) de
+        facturas y notas de crédito de cliente, sin impuestos y en moneda de
+        la compañía; la nota de crédito resta sola por su balance.
+        ``taxed=True`` agrega el IVA de cada línea (price_total/price_subtotal)
+        para compararla con la cartera, que sí lo lleva."""
+        domain = self._sgi_sales_lines_domain(date_from, date_to)
+        Line = self.env['account.move.line']
+        if not taxed:
+            groups = Line._read_group(domain, [], ['balance:sum'])
+            return -(groups[0][0] or 0.0) if groups else 0.0
+        total = 0.0
+        for line in Line.search(domain):
+            factor = (line.price_total / line.price_subtotal) if line.price_subtotal else 1.0
+            total -= line.balance * factor
+        return total
+
+    def _sgi_evidence_extra_domain(self, model):
+        """Filtro adicional de la evidencia por factura: en los modos de venta
+        solo entran las facturas con alguna línea de venta del giro."""
+        if model == 'account.move' and self.calc_mode in SALES_MODES:
+            return self._sgi_sales_account_domain('invoice_line_ids.')
+        return []
 
     def _sgi_receivable_balance(self, date_to):
         """Saldo de las cuentas de clientes (asset_receivable) al cierre del
@@ -739,49 +785,45 @@ class SgiIndicator(models.Model):
         return -sum(moves.mapped('amount_untaxed_signed'))
 
     def _calc_clientes_nuevos(self, date_from, date_to):
-        """Empresas cuya PRIMERA factura timbrada cae en el periodo. Cero
-        clientes nuevos con facturación en el mes ES un dato (rojo legítimo);
-        sin facturación alguna, no hay medición."""
-        Move = self.env['account.move']
-        base_domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
-                       ('company_id', '=', self._sgi_kpi_company().id)]
-        groups = Move._read_group(
-            base_domain + [('invoice_date', '>=', date_from),
-                           ('invoice_date', '<=', date_to)],
-            ['commercial_partner_id'], [])
-        if not groups:
+        """Empresas cuya PRIMERA venta del giro (línea 401/402 de factura
+        timbrada) cae en el periodo. Cero clientes nuevos con facturación en
+        el mes ES un dato (rojo legítimo); sin facturación alguna, no hay
+        medición. Una venta de activo fijo no hace cliente nuevo."""
+        Line = self.env['account.move.line']
+        in_period = self._sgi_invoiced_partner_ids(date_from, date_to)
+        if not in_period:
             return None
         count = 0
-        for (partner,) in groups:
-            earlier = Move.search_count(
-                base_domain + [('commercial_partner_id', '=', partner.id),
-                               ('invoice_date', '<', date_from)], limit=1)
+        for partner_id in in_period:
+            earlier = Line.search_count(
+                self._sgi_sales_lines_domain(
+                    None, date_from - relativedelta(days=1), ('out_invoice',))
+                + [('partner_id', '=', partner_id)], limit=1)
             if not earlier:
                 count += 1
         return float(count)
 
     def _sgi_customer_moves_domain(self, date_from, date_to):
+        """Facturas y notas de crédito de cliente del rango que tienen al
+        menos una línea de venta del giro (evidencia por factura)."""
         return [('move_type', 'in', ('out_invoice', 'out_refund')),
                 ('state', '=', 'posted'),
                 ('company_id', '=', self._sgi_kpi_company().id),
-                ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to)]
+                ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
+                ] + self._sgi_sales_account_domain('invoice_line_ids.')
 
     def _calc_concentracion_top3(self, date_from, date_to):
-        """% de la facturación neta de los ÚLTIMOS 12 MESES (al cierre del
+        """% de la venta neta de los ÚLTIMOS 12 MESES (al cierre del
         periodo) en los 3 clientes principales. Rodante a propósito: un mes
         atípico no debe pintar el semáforo del riesgo de concentración."""
-        start = date_to - relativedelta(years=1) + relativedelta(days=1)
-        groups = self.env['account.move']._read_group(
-            self._sgi_customer_moves_domain(start, date_to),
-            ['commercial_partner_id'], ['amount_untaxed_signed:sum'])
-        amounts = sorted((amount for _partner, amount in groups), reverse=True)
+        amounts = self._sgi_customer_amounts_12m(date_to)
         total = sum(amounts)
         if total <= 0:
             return None
         return round(sum(amounts[:3]) / total * 100.0, 2)
 
     def _calc_facturacion_usd(self, date_from, date_to):
-        """% de la facturación neta del periodo emitida en USD (importes en
+        """% de la venta neta del periodo facturada en USD (importes en
         moneda de la compañía): la exposición cambiaria/arancelaria del plan."""
         total = self._sgi_net_invoiced(date_from, date_to)
         if not total:
@@ -789,21 +831,20 @@ class SgiIndicator(models.Model):
         usd = self.env.ref('base.USD', raise_if_not_found=False)
         if not usd:
             return None
-        moves = self.env['account.move'].search(
-            self._sgi_customer_moves_domain(date_from, date_to)
-            + [('currency_id', '=', usd.id)])
-        return round(sum(moves.mapped('amount_untaxed_signed')) / total * 100.0, 2)
+        usd_sales = sum(self._sgi_sales_by_partner(
+            date_from, date_to, [('move_id.currency_id', '=', usd.id)]).values())
+        return round(usd_sales / total * 100.0, 2)
 
     def _calc_notas_credito(self, date_from, date_to):
-        """Notas de crédito del periodo como % de la facturación bruta."""
-        moves = self.env['account.move'].search(
-            self._sgi_customer_moves_domain(date_from, date_to))
-        gross = credit = 0.0
-        for move in moves:
-            if move.move_type == 'out_invoice':
-                gross += move.amount_untaxed_signed
-            else:
-                credit -= move.amount_untaxed_signed  # signed viene negativo
+        """Notas de crédito del periodo como % de la venta bruta (líneas de
+        venta del giro en ambos lados)."""
+        Line = self.env['account.move.line']
+        gross = Line._read_group(self._sgi_sales_lines_domain(
+            date_from, date_to, ('out_invoice',)), [], ['balance:sum'])
+        credit = Line._read_group(self._sgi_sales_lines_domain(
+            date_from, date_to, ('out_refund',)), [], ['balance:sum'])
+        gross = -(gross[0][0] or 0.0) if gross else 0.0
+        credit = (credit[0][0] or 0.0) if credit else 0.0  # débito en la nota
         if not gross:
             return None
         return round(credit / gross * 100.0, 2)
@@ -852,12 +893,10 @@ class SgiIndicator(models.Model):
         return self._sgi_overdue_pct(date_to, 60)
 
     def _sgi_invoiced_partner_ids(self, date_from, date_to):
-        groups = self.env['account.move']._read_group([
-            ('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
-            ('company_id', '=', self._sgi_kpi_company().id),
-            ('invoice_date', '>=', date_from), ('invoice_date', '<=', date_to),
-        ], ['commercial_partner_id'], [])
-        return {partner.id for (partner,) in groups}
+        groups = self.env['account.move.line']._read_group(
+            self._sgi_sales_lines_domain(date_from, date_to, ('out_invoice',)),
+            ['partner_id'], [])
+        return {partner.id for (partner,) in groups if partner}
 
     def _calc_retencion_clientes(self, date_from, date_to):
         """% de los clientes de la ventana previa de 12 meses que repiten en
@@ -872,38 +911,32 @@ class SgiIndicator(models.Model):
         return round(len(prev & curr) / len(prev) * 100.0, 2)
 
     def _calc_clientes_reactivados(self, date_from, date_to):
-        """Clientes que facturan en el periodo después de 6 a 18 meses sin
-        facturar. Cero reactivados con facturación en el mes ES un dato."""
-        Move = self.env['account.move']
-        base_domain = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted'),
-                       ('company_id', '=', self._sgi_kpi_company().id)]
-        groups = Move._read_group(
-            base_domain + [('invoice_date', '>=', date_from),
-                           ('invoice_date', '<=', date_to)],
-            ['commercial_partner_id'], [])
-        if not groups:
+        """Clientes que compran en el periodo después de 6 a 18 meses sin
+        comprar (líneas de venta del giro). Cero reactivados con facturación
+        en el mes ES un dato."""
+        Line = self.env['account.move.line']
+        partners = self._sgi_invoiced_partner_ids(date_from, date_to)
+        if not partners:
             return None
         count = 0
-        for (partner,) in groups:
-            last = Move.search(
-                base_domain + [('commercial_partner_id', '=', partner.id),
-                               ('invoice_date', '<', date_from)],
-                order='invoice_date desc', limit=1)
+        for partner_id in partners:
+            last = Line.search(
+                self._sgi_sales_lines_domain(
+                    None, date_from - relativedelta(days=1), ('out_invoice',))
+                + [('partner_id', '=', partner_id)],
+                order='date desc', limit=1)
             if not last:
                 continue
-            gap = (date_from - last.invoice_date).days
+            gap = (date_from - last.move_id.invoice_date).days
             if 180 <= gap <= 540:
                 count += 1
         return float(count)
 
     def _sgi_customer_amounts_12m(self, date_to):
-        """Facturación neta por cliente de los últimos 12 meses, ordenada de
-        mayor a menor (moneda de la compañía)."""
+        """Venta neta por cliente de los últimos 12 meses, ordenada de mayor
+        a menor (moneda de la compañía, solo líneas de venta del giro)."""
         start = date_to - relativedelta(years=1) + relativedelta(days=1)
-        groups = self.env['account.move']._read_group(
-            self._sgi_customer_moves_domain(start, date_to),
-            ['commercial_partner_id'], ['amount_untaxed_signed:sum'])
-        return sorted((amount for _partner, amount in groups), reverse=True)
+        return sorted(self._sgi_sales_by_partner(start, date_to).values(), reverse=True)
 
     def _calc_ventas_fuera_top10(self, date_from, date_to):
         """% de la facturación neta de los últimos 12 meses fuera de los 10
@@ -919,15 +952,9 @@ class SgiIndicator(models.Model):
         principales (líneas de factura; balance = importe en moneda de la
         compañía, con las notas de crédito restando)."""
         start = date_to - relativedelta(years=1) + relativedelta(days=1)
-        groups = self.env['account.move.line']._read_group([
-            ('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
-            ('move_id.state', '=', 'posted'),
-            ('company_id', '=', self._sgi_kpi_company().id),
-            ('display_type', '=', 'product'),
-            ('product_id', '!=', False),
-            ('move_id.invoice_date', '>=', start),
-            ('move_id.invoice_date', '<=', date_to),
-        ], ['product_id'], ['balance:sum'])
+        groups = self.env['account.move.line']._read_group(
+            self._sgi_sales_lines_domain(start, date_to) + [('product_id', '!=', False)],
+            ['product_id'], ['balance:sum'])
         # En facturas de cliente el ingreso queda en crédito (balance
         # negativo): el ingreso por producto es -balance.
         amounts = sorted((-balance for _product, balance in groups), reverse=True)
@@ -1134,13 +1161,8 @@ class SgiIndicatorMeasure(models.Model):
                 'name': "Facturación 12 meses por producto — evidencia de %s" % self.period_date,
                 'res_model': 'account.move.line',
                 'view_mode': 'list,pivot',
-                'domain': [('move_id.move_type', 'in', ('out_invoice', 'out_refund')),
-                           ('move_id.state', '=', 'posted'),
-                           ('company_id', '=', indicator._sgi_kpi_company().id),
-                           ('display_type', '=', 'product'),
-                           ('product_id', '!=', False),
-                           ('move_id.invoice_date', '>=', start),
-                           ('move_id.invoice_date', '<=', date_to)],
+                'domain': indicator._sgi_sales_lines_domain(start, date_to)
+                + [('product_id', '!=', False)],
             }
         if mode in ('cartera_vencida', 'cartera_vencida_60'):
             # Evidencia = las facturas vencidas que componen el numerador.
@@ -1269,6 +1291,7 @@ class SgiIndicatorMeasure(models.Model):
         # cálculo — sin él, la lista mezclaba las compañías del grupo.
         if model in ('account.move', 'account.move.line', 'sale.order'):
             domain += [('company_id', '=', indicator._sgi_kpi_company().id)]
+        domain += indicator._sgi_evidence_extra_domain(model)
         return {
             'type': 'ir.actions.act_window',
             'name': "%s — evidencia de %s" % (indicator.name, self.period_date),

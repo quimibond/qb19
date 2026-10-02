@@ -9,7 +9,7 @@ from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 
-from .common_accounts import sgi_test_payable
+from .common_accounts import sgi_test_payable, sgi_test_sales_accounts
 
 
 @tagged('post_install', '-at_install')
@@ -49,6 +49,7 @@ class TestKpi20Step1(TransactionCase):
     def _post_invoice(self, partner, amount, inv_date, refund=False):
         income = self.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
+        sgi_test_sales_accounts(self.env, income)
         move = self.env['account.move'].create({
             'move_type': 'out_refund' if refund else 'out_invoice',
             'partner_id': partner.id,

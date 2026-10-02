@@ -474,6 +474,9 @@ class TestSalesBudgetStep3(TransactionCase):
             'name': 'Producto VE02', 'type': 'consu', 'uom_id': cls.uom_m.id})
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
+        # quimibond_sgi 57.90.0: VE-02 cuenta solo líneas en cuentas de ventas.
+        cls.env['ir.config_parameter'].sudo().set_param(
+            'quimibond_sgi.sales_account_prefixes', cls.income.code)
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente VE02'})
 
     def _team(self, name):

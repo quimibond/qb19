@@ -17,3 +17,13 @@ def sgi_test_payable(env, partner):
     })
     partner.property_account_payable_id = account
     return account
+
+
+def sgi_test_sales_accounts(env, *accounts):
+    """57.90.0: los KPI de ventas solo cuentan líneas en las cuentas de
+    ventas (``quimibond_sgi.sales_account_prefixes``, 401/402 en producción).
+    La prueba declara como cuenta de ventas la de ingresos que usa, para no
+    depender del plan de cuentas de la base."""
+    env['ir.config_parameter'].sudo().set_param(
+        'quimibond_sgi.sales_account_prefixes',
+        ','.join(account.code for account in accounts))
