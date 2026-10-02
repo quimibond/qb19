@@ -58,6 +58,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_sequences_audit_risk.xml',
         'data/sgi_areas.xml',
         'data/sgi_norms.xml',
+        'data/sgi_norms_tercer_nivel.xml',  # 57.97.0 (N-05): 13 cláusulas con xmlid
         # 57.4.0 (A-002, decisión 6): el SGI se instala sin procesos. El mapa
         # viejo (sgi_process_data.xml, sgi_process_flows_extra.xml) está en
         # docs/historico/quimibond_sgi_data/; sus 58 XML IDs pasan a __export__.
