@@ -38,7 +38,7 @@
                         </group>
                     </group>
                     <field name="note" placeholder="Dónde está y quién la cuida"/>
-                    <div class="alert alert-info" role="note">
+                    <div class="alert alert-info" role="status">
                         La cuenta recibe el grupo «Tableta de planta (SGI)» al guardar. Pida a Sistemas que ponga
                         «SGI en planta» como su acción de inicio y que le quite los grupos del SGI que no use.
                     </div>
