@@ -513,7 +513,9 @@
         <field name="name">SGI: el usuario consulta los incidentes que reportó o donde tiene una acción</field>
         <field name="model_id" ref="model_sgi_incident"/>
         <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
-        <field name="domain_force">['|', '|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id), ('action_line_ids.responsible_id', '=', user.id)]</field>
+        <!-- 57.94.0 (U-01): «lo creé yo» no cuenta para lo reportado en SGI en
+             planta (lo crea la cuenta compartida de la tableta). -->
+        <field name="domain_force">['|', '|', ('reporter_id', '=', user.id), '&amp;', ('create_uid', '=', user.id), ('sgi_pin_tablet_id', '=', False), ('action_line_ids.responsible_id', '=', user.id)]</field>
         <field name="perm_read" eval="True"/>
         <field name="perm_write" eval="False"/>
         <field name="perm_create" eval="False"/>
@@ -523,7 +525,7 @@
         <field name="name">SGI: el reportante edita su incidente mientras está reportado</field>
         <field name="model_id" ref="model_sgi_incident"/>
         <field name="groups" eval="[(4, ref('group_sgi_user'))]"/>
-        <field name="domain_force">[('state', '=', 'reportado'), '|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id)]</field>
+        <field name="domain_force">[('state', '=', 'reportado'), '|', ('reporter_id', '=', user.id), '&amp;', ('create_uid', '=', user.id), ('sgi_pin_tablet_id', '=', False)]</field>
         <field name="perm_read" eval="False"/>
     </record>
     <record id="rule_sgi_incident_auditor_read" model="ir.rule">

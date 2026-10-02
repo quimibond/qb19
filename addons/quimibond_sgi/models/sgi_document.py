@@ -1422,6 +1422,8 @@ class SgiDocumentAck(models.Model):
             ack.write({'state': 'leido', 'ack_date': fields.Datetime.now()})
         return True
 
+    _sgi_pin_employee_field = 'employee_id'
+
     def _sgi_pin_employee(self):
         return self.employee_id
 

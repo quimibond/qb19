@@ -110,8 +110,20 @@ class SgiIncident(models.Model):
                     "Solo puede reportar a su nombre. Si otra persona vio el evento, que lo reporte "
                     "ella (en SGI en planta, con su PIN) o anótela en la descripción.")
 
+    _sgi_pin_employee_field = 'reporter_employee_id'
+
     def _sgi_pin_employee(self):
         return self.reporter_employee_id
+
+    sgi_user_can_investigate = fields.Boolean(
+        compute='_compute_sgi_user_can_investigate',
+        help="Usted es Jefe MAST o de Salud ocupacional: puede cambiar quién reportó.")
+
+    @api.depends_context('uid')
+    def _compute_sgi_user_can_investigate(self):
+        can = self._sgi_can_investigate()
+        for incident in self:
+            incident.sgi_user_can_investigate = can
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -168,9 +180,12 @@ class SgiIncident(models.Model):
         if self.env.su or self._sgi_can_investigate():
             return self.browse()
         uid = self.env.uid
+        # 57.94.0 (U-01): «lo creé yo» no cuenta para lo reportado en SGI en
+        # planta (lo crea la cuenta compartida de la tableta).
         return self.filtered(
             lambda i: i.state != 'reportado'
-            or (i._origin.id and uid not in (i._origin.reporter_id.id, i._origin.create_uid.id)))
+            or (i._origin.id and uid != i._origin.reporter_id.id
+                and (uid != i._origin.create_uid.id or i._origin.sgi_pin_tablet_id)))
 
     @api.model
     def _sgi_can_investigate(self):

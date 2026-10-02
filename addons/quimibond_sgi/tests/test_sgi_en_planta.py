@@ -280,6 +280,9 @@ class TestKiosco(_PlantaCase):
         """Los candados se revisan después del alta: un ``default_*`` en el
         contexto no pasa por los valores del create."""
         Incident = self.env['sgi.incident'].with_user(self.worker_user)
+        Request = self.env['maintenance.request'].with_user(self.worker_user)
+        # Que los rechazos de abajo sean del candado y no de permisos.
+        Request.check_access('create')
         with self.assertRaisesRegex(UserError, 'sistema'):
             Incident.with_context(default_sgi_pin_tablet_id=self.tablet.id).create({'name': 'ZK firma falsa'})
         with self.assertRaisesRegex(UserError, 'a su nombre'):
@@ -291,12 +294,33 @@ class TestKiosco(_PlantaCase):
             self.env['sgi.document.ack'].with_user(self.mast).with_context(
                 default_sgi_pin_tablet_id=self.tablet.id).create(
                 {'document_id': self._doc('F-P-A92-03').id, 'employee_id': self.worker.id})
-        Request = self.env['maintenance.request'].with_user(self.worker_user)
         with self.assertRaisesRegex(UserError, 'sistema'):
             Request.with_context(default_sgi_checklist_employee_id=self.worker.id).create(
                 {'name': 'ZK hoja firmada por contexto'})
         with self.assertRaisesRegex(UserError, 'sistema'):
             Request.create({'name': 'ZK hoja fabricada', 'sgi_checklist_date': sgi_today(self.env)})
+
+    def test_10c_la_cuenta_compartida_no_lee_ni_cambia_lo_firmado(self):
+        # Hoy las cuentas de tableta de producción también son Usuario SGI.
+        self.env.ref('quimibond_sgi.group_sgi_user').write({'user_ids': [(4, self.tablet_user.id)]})
+        self.Kiosk.kiosk_report_near_miss(self.worker.id, '1357', {'description': LONG_TEXT})
+        incident = self.env['sgi.incident'].search([('reporter_employee_id', '=', self.worker.id)])
+        self.assertEqual(incident.create_uid, self.tablet_user)
+        self.assertNotIn(self.tablet_user.partner_id, incident.message_partner_ids,
+                         "La cuenta compartida no sigue el reporte.")
+        self.assertFalse(self.env['sgi.incident'].with_user(self.tablet_user).search(
+            [('id', '=', incident.id)]), "La cuenta compartida no lee lo que se reportó en ella.")
+        with self.assertRaises(AccessError):
+            incident.with_user(self.tablet_user).read(['description'])
+        # Lo firmado con PIN no cambia de persona, ni con el Jefe MAST.
+        ack = self.env['sgi.document.ack'].create({'document_id': self._doc('F-P-A92-04').id,
+                                                   'employee_id': self.worker.id})
+        self.Kiosk.kiosk_ack_document(self.worker.id, '1357', ack.id)
+        with self.assertRaisesRegex(UserError, 'no se cambia de persona'):
+            ack.with_user(self.mast).write({'employee_id': self.worker2.id})
+        with self.assertRaisesRegex(UserError, 'no se cambia de persona'):
+            incident.with_user(self.mast).write({'reporter_employee_id': self.worker2.id})
+        self.assertEqual(ack.employee_id, self.worker)
 
 
 @tagged('post_install', '-at_install')
@@ -337,6 +361,13 @@ class TestChecklistBackend(_PlantaCase):
         with self.assertRaisesRegex(UserError, 'firmada'):
             Line.with_context(default_request_id=sheet.id).create({'name': 'ZK punto por contexto'})
         self.assertEqual(len(sheet.sgi_checklist_line_ids), 3)
+        # Duplicar una hoja da una solicitud normal (no otra hoja ni su firma).
+        # La regla nativa de Mantenimiento: el usuario ve sus propias solicitudes.
+        other.write({'user_id': self.worker_user.id, 'owner_user_id': self.worker_user.id})
+        other.message_subscribe(partner_ids=self.worker_user.partner_id.ids)
+        copy = other.with_user(self.worker_user).copy()
+        self.assertFalse(copy.sudo().sgi_checklist_template_id)
+        self.assertFalse(copy.sudo().sgi_checklist_date)
         # Sin puntos no hay hoja que firmar.
         empty = self.env['maintenance.request'].create({'name': 'ZK solicitud sin puntos'})
         with self.assertRaisesRegex(UserError, 'no es una hoja'):

@@ -238,10 +238,12 @@ class MaintenanceRequestChecklist(models.Model):
     # 57.94.0 (U-01): la hoja firmada con PIN guarda la tableta y la hora.
     _inherit = ['maintenance.request', 'sgi.pin.signature.mixin']
 
+    # 57.94.0: copy=False: duplicar una hoja (o la recurrencia de un
+    # preventivo) da una solicitud normal, no otra hoja de checklist.
     sgi_checklist_template_id = fields.Many2one('sgi.checklist.template', string="Checklist SGI",
-                                                readonly=True, index=True,
+                                                readonly=True, index=True, copy=False,
                                                 help="Plantilla de la que salió esta hoja de checklist.")
-    sgi_checklist_date = fields.Date(string="Día del checklist", readonly=True, index=True,
+    sgi_checklist_date = fields.Date(string="Día del checklist", readonly=True, index=True, copy=False,
                                      help="Día al que corresponde la hoja de checklist.")
     sgi_checklist_line_ids = fields.One2many('sgi.checklist.line', 'request_id', string="Hoja de checklist")
     sgi_checklist_employee_id = fields.Many2one(
@@ -277,6 +279,8 @@ class MaintenanceRequestChecklist(models.Model):
             'res_model': 'sgi.checklist.finish', 'view_mode': 'form', 'target': 'new',
             'context': {'default_request_id': self.id},
         }
+
+    _sgi_pin_employee_field = 'sgi_checklist_employee_id'
 
     def _sgi_pin_employee(self):
         return self.sgi_checklist_employee_id

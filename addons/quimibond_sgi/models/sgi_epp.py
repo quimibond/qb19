@@ -115,6 +115,8 @@ class SgiEppDelivery(models.Model):
             rec.message_post(body="Responsiva firmada por %s: recibí el EPP y me comprometo a usarlo." % self.env.user.name)
         return True
 
+    _sgi_pin_employee_field = 'employee_id'
+
     def _sgi_pin_employee(self):
         return self.employee_id
 

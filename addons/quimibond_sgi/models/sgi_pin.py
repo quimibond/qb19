@@ -74,6 +74,10 @@ class SgiPinSignatureMixin(models.AbstractModel):
         string="Firma con PIN", compute='_compute_sgi_pin_signature',
         help="Quién firmó con su PIN, en qué tableta y cuándo.")
 
+    # Campo del empleado que firma en cada modelo (``_sgi_pin_employee``):
+    # en un registro firmado con PIN no cambia (ni el Jefe MAST).
+    _sgi_pin_employee_field = None
+
     def _sgi_pin_employee(self):
         """Empleado que firmó (cada modelo lo sobrescribe)."""
         return self.env['hr.employee']
@@ -111,4 +115,8 @@ class SgiPinSignatureMixin(models.AbstractModel):
 
     def write(self, vals):
         self._sgi_check_pin_fields(vals)
+        signer = self._sgi_pin_employee_field
+        if signer and signer in vals and not self.env.su \
+                and any(rec.sgi_pin_signed_at for rec in self.sudo()):
+            raise UserError("Lo firmado con PIN queda a nombre de quien lo firmó: no se cambia de persona.")
         return super().write(vals)

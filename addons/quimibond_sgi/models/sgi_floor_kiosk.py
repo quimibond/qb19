@@ -32,6 +32,7 @@ KIOSK_FILE_LIMIT = 15 * 1024 * 1024
 # Solo PDF e imágenes se abren en la tableta (ver kiosk_document_file).
 KIOSK_MIMETYPES = ('application/pdf', 'image/png', 'image/jpeg')
 CHECKLIST_DAYS_BACK = 6
+NEAR_MISS_MAX = 4000
 # Clave del aviso semanal de RH (la misma, literal, en sgi_my_pending.action_open).
 HR_GAPS_KEY = 'rh_empleados_incompletos'
 
@@ -132,6 +133,12 @@ class SgiFloorKiosk(models.AbstractModel):
             raise AccessError(
                 "Esta cuenta no está dada de alta como tableta de planta. Pida al Jefe MAST que la "
                 "registre en %s." % sgi_menu_path('tabletas_planta'))
+        # La misma regla que al dar de alta la tableta, por si la cuenta
+        # cambió después (se le ligó un empleado o pasó a portal).
+        if user.share or user.sudo().employee_ids:
+            raise AccessError(
+                "La cuenta de esta tableta está ligada a un empleado o es de portal: una tableta usa "
+                "una cuenta compartida, sin empleado. Avise al Jefe MAST.")
         return tablet
 
     @api.model
@@ -233,14 +240,23 @@ class SgiFloorKiosk(models.AbstractModel):
             # dice el servidor y lo pone en un <iframe> del mismo origen; un
             # HTML o SVG subido como documento correría su JavaScript con la
             # sesión de la tableta.
-            mimetype = doc.attachment_id.mimetype or ''
+            attachment = doc.attachment_id
+            mimetype = attachment.mimetype or ''
+            not_viewable = UserError("Este documento no se puede abrir en la tableta (solo PDF o imagen). "
+                                     "Pida a su jefe que se lo muestre en una computadora.")
             if mimetype not in KIOSK_MIMETYPES:
-                raise UserError("Este documento no se puede abrir en la tableta (solo PDF o imagen). "
-                                "Pida a su jefe que se lo muestre en una computadora.")
-            raw = doc.attachment_id.raw or b''
+                raise not_viewable
+            # El tamaño antes de cargar el archivo en memoria.
+            if (attachment.file_size or 0) > KIOSK_FILE_LIMIT:
+                raise UserError("El archivo es demasiado grande para la tableta. Pida a su jefe que se "
+                                "lo muestre en una computadora.")
+            raw = attachment.raw or b''
             if len(raw) > KIOSK_FILE_LIMIT:
                 raise UserError("El archivo es demasiado grande para la tableta. Pida a su jefe que se "
                                 "lo muestre en una computadora.")
+            # El tipo guardado lo pone quien sube el archivo; el contenido manda.
+            if guess_mimetype(raw, default='') not in KIOSK_MIMETYPES:
+                raise not_viewable
             return {'name': doc.attachment_id.name or doc.name, 'mimetype': mimetype,
                     'data': base64.b64encode(raw).decode()}
         # Un enlace solo si es web: «javascript:» o «data:» en un documento
@@ -264,13 +280,16 @@ class SgiFloorKiosk(models.AbstractModel):
         tablet, employee = self._kiosk_person(employee_id, pin)
         values = values if isinstance(values, dict) else {}
         description = values.get('description')
-        description = description.strip() if isinstance(description, str) else ''
+        description = description.strip()[:NEAR_MISS_MAX] if isinstance(description, str) else ''
         if len(description) < 10:
             raise UserError("Describa qué pasó (al menos una frase) para que Seguridad lo pueda investigar.")
         location = values.get('location')
         location = location.strip()[:200] if isinstance(location, str) else ''
         now = fields.Datetime.now()
-        incident = self.env['sgi.incident'].sudo().create({
+        # Sin seguir el incidente con la cuenta de la tableta (el chatter y los
+        # avisos irían a la cuenta compartida): lo sigue la persona, si tiene
+        # usuario.
+        incident = self.env['sgi.incident'].sudo().with_context(mail_create_nosubscribe=True).create({
             'name': "Casi accidente: %s" % textwrap.shorten(description, 60, placeholder="…"),
             'incident_type': 'casi_accidente', 'severity': 'leve', 'date': now,
             'description': description, 'location': location or tablet.name,
@@ -280,8 +299,10 @@ class SgiFloorKiosk(models.AbstractModel):
             'reporter_employee_id': employee.id,
             'sgi_pin_tablet_id': tablet.id, 'sgi_pin_signed_at': now,
         })
-        incident.message_post(body="Reportado en SGI en planta por %s con su PIN, en la tableta %s." % (
-            employee.name, tablet.name))
+        if employee.user_id.partner_id:
+            incident.message_subscribe(partner_ids=employee.user_id.partner_id.ids)
+        incident.with_context(mail_post_autofollow=False).message_post(
+            body="Reportado en SGI en planta por %s con su PIN, en la tableta %s." % (employee.name, tablet.name))
         self._kiosk_notify_incident(incident)
         return {'folio': incident.folio or '',
                 'message': "Gracias: su reporte %s quedó registrado. Seguridad lo va a revisar." % (
@@ -355,7 +376,10 @@ class SgiFloorKiosk(models.AbstractModel):
     @api.model
     def kiosk_checklist_save(self, employee_id, pin, request_id, answers=None, rest_ok=False, finish=False):
         """Guarda respuestas y notas, «Marcar el resto como Bien» y, con
-        ``finish``, firma la hoja a nombre de la persona. ``sheet`` sale de una
+        ``finish``, firma la hoja a nombre de la persona. Todo va en una
+        transacción: si la firma falla («Faltan…»), lo de la misma llamada no
+        queda; por eso la pantalla guarda cada respuesta en su propia llamada
+        y «Terminar checklist» manda solo ``finish``. ``sheet`` sale de una
         búsqueda con sudo: escribe el sistema; la hoja nunca está firmada aquí
         (el dominio la excluye)."""
         tablet, employee = self._kiosk_person(employee_id, pin)
