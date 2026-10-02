@@ -236,6 +236,9 @@ class SgiChecklistLine(models.Model):
 
 class MaintenanceRequestChecklist(models.Model):
     # 57.94.0 (U-01): la hoja firmada con PIN guarda la tableta y la hora.
+    # 57.94.1: con varias clases en _inherit, _name es obligatorio; sin él la
+    # clase no extendía maintenance.request y el build de main no cargaba.
+    _name = 'maintenance.request'
     _inherit = ['maintenance.request', 'sgi.pin.signature.mixin']
 
     # 57.94.0: copy=False: duplicar una hoja (o la recurrencia de un

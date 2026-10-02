@@ -12,10 +12,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_checklist.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `allowed_employee_ids` | Many2many |  | Personas que pueden firmar esta hoja: las de «Quién lo llena» en la plantilla. |  | `hr.employee` | compute `_compute_allowed_employee_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_checklist.py:392` |
-| `employee_id` | Many2one | ¿Quién lo llenó? | Elija a la persona que llenó la hoja. | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:395` |
-| `pin` | Char | PIN del empleado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:398` |
-| `request_id` | Many2one |  | Hoja de checklist que se termina. | sí | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:390` |
+| `allowed_employee_ids` | Many2many |  | Personas que pueden firmar esta hoja: las de «Quién lo llena» en la plantilla. |  | `hr.employee` | compute `_compute_allowed_employee_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_checklist.py:395` |
+| `employee_id` | Many2one | ¿Quién lo llenó? | Elija a la persona que llenó la hoja. | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:398` |
+| `pin` | Char | PIN del empleado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:401` |
+| `request_id` | Many2one |  | Hoja de checklist que se termina. | sí | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:393` |
 
 ## Métodos públicos (1)
 
