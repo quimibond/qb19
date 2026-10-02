@@ -10,6 +10,8 @@ E1-02 se mide con el modo `acuerdos_rxd`: acuerdos cumplidos a tiempo.
 """
 from odoo import api, fields, models
 
+from .sgi_health_const import HEALTH_MODES
+
 _SEM = {'verde': 'V', 'amarillo': 'A', 'rojo': 'R'}
 _BOARD_LIMIT = 12
 
@@ -116,14 +118,17 @@ class SgiDirectionBoard(models.TransientModel):
         2. Si no hay oficiales, los de nivel dirección en cualquier estado (en
            prueba incluidos), con una nota que lo dice: antes se caía a TODOS
            los oficiales y, sin oficiales, Dirección veía el tablero vacío.
-        3. Si tampoco hay de nivel dirección, nada, con una nota clara."""
+        3. Si tampoco hay de nivel dirección, nada, con una nota clara.
+        4. 57.99.0: los de salud del SGI tienen su página y no ocupan los 12
+           lugares."""
+        own = [('calc_mode', 'not in', HEALTH_MODES)]
         indicators = Indicator.search(
-            [('status', '=', 'oficial'), ('level', '=', 'direccion')],
+            [('status', '=', 'oficial'), ('level', '=', 'direccion')] + own,
             order='code', limit=_BOARD_LIMIT)
         if indicators:
             return indicators, False
         indicators = Indicator.search(
-            [('level', '=', 'direccion')], order='code', limit=_BOARD_LIMIT)
+            [('level', '=', 'direccion')] + own, order='code', limit=_BOARD_LIMIT)
         if indicators:
             return indicators, (
                 "Aún no hay indicadores oficiales de nivel dirección: se muestran los "

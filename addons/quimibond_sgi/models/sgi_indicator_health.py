@@ -23,13 +23,16 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_calendar import sgi_local_datetime_utc, sgi_today
+from .sgi_calendar import sgi_local_date, sgi_local_datetime_utc, sgi_today
 from .sgi_health_const import (
     EXCLUDED_USERS_PARAM, FORMAT_USE_DAYS, HEALTH_MODES, HEALTH_PRIVATE_MODELS,
-    HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, NC_OPEN_DAYS, NC_WINDOW_DAYS, PEOPLE_DAYS,
+    HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, IDLE_DAYS, NC_OPEN_DAYS, NC_WINDOW_DAYS, PEOPLE_DAYS,
     RED_WINDOW_MONTHS, VALIDATION_PREFILTER_DAYS, VALIDATION_WINDOW_DAYS, param_ids)
 
 _logger = logging.getLogger(__name__)
+
+_SEMAPHORE = [('verde', "Verde"), ('amarillo', "Amarillo"), ('rojo', "Rojo")]
+_DATA_STATES = ('capturado', 'validado')
 
 _SELECTION = [
     ('salud_procesos', "Salud del SGI: procesos en vigor"),
@@ -51,6 +54,50 @@ class SgiIndicatorHealth(models.Model):
     calc_mode = fields.Selection(
         selection_add=_SELECTION,
         ondelete={mode: 'set default' for mode, _label in _SELECTION})
+    # Correo y Tablero leen la medición de la SEMANA PASADA (no la última con
+    # dato): un «sin dato» de esta semana se ve como tal.
+    sgi_health_week_measure_id = fields.Many2one(
+        'sgi.indicator.measure', string="Medición de la semana pasada",
+        compute='_compute_sgi_health_week')
+    sgi_health_week_value = fields.Char(
+        string="Semana pasada", compute='_compute_sgi_health_week',
+        help="Valor de la medición de la semana pasada (lunes a domingo). «Sin dato» si no "
+             "hubo casos o todavía no se mide.")
+    sgi_health_week_semaphore = fields.Selection(
+        _SEMAPHORE, string="Semáforo de la semana", compute='_compute_sgi_health_week',
+        help="Semáforo de la medición de la semana pasada.")
+    sgi_health_week_previous = fields.Char(
+        string="Semana anterior", compute='_compute_sgi_health_week',
+        help="Valor de la semana antepasada, para comparar.")
+
+    @api.model
+    def _sgi_health_week(self):
+        """Lunes de la semana pasada (el periodo que mide el cron)."""
+        today = sgi_today(self.env)
+        return today - timedelta(days=today.weekday() + 7)
+
+    def _compute_sgi_health_week(self):
+        week = self._sgi_health_week()
+        before = week - timedelta(days=7)
+        ids = [i for i in self.ids if isinstance(i, int)]
+        measures = self.env['sgi.indicator.measure'].sudo().search(
+            [('indicator_id', 'in', ids), ('period_date', 'in', (week, before))]) if ids else []
+        by_key = {(m.indicator_id.id, m.period_date): m for m in measures}
+        for indicator in self:
+            current = by_key.get((indicator.id, week))
+            previous = by_key.get((indicator.id, before))
+            with_data = current and current.state in _DATA_STATES
+            indicator.sgi_health_week_measure_id = current.id if current else False
+            indicator.sgi_health_week_value = indicator._sgi_health_fmt(current) \
+                if with_data else "Sin dato"
+            indicator.sgi_health_week_semaphore = current.semaphore if with_data else False
+            indicator.sgi_health_week_previous = indicator._sgi_health_fmt(previous) \
+                if previous and previous.state in _DATA_STATES else "—"
+
+    def _sgi_health_fmt(self, measure):
+        """«75 %», «12 personas»: el valor sin ceros de más, con su unidad."""
+        text = ('%.1f' % (measure.value or 0.0)).rstrip('0').rstrip('.') or '0'
+        return ("%s %s" % (text, self.uom or '')).strip()
 
     # ---- comunes ---------------------------------------------------------
     def _sgi_health_company(self):
@@ -437,3 +484,89 @@ class SgiIndicatorMeasureHealth(models.Model):
         raise UserError(
             "Esta medición de salud del SGI no guardó registros: no hubo casos en el "
             "periodo. Si cree que falta alguno, recalcule la medición.")
+
+
+class SgiProcessHealth(models.Model):
+    """Hallazgo D-01 (auditoría 2026-10): por dueño de proceso, avisos
+    vencidos, validaciones atrasadas y días sin movimiento en el SGI. Un
+    solo cálculo para los cuatro campos y todos los procesos leídos."""
+    _inherit = 'sgi.process'
+
+    sgi_health_owner_user_id = fields.Many2one(
+        'res.users', string="Usuario del dueño", compute='_compute_sgi_health',
+        help="Usuario activo del dueño del proceso. Vacío si el dueño no tiene usuario.")
+    sgi_health_overdue_count = fields.Integer(
+        string="Avisos vencidos", compute='_compute_sgi_health',
+        help="Avisos del SGI vencidos que tiene el dueño del proceso.")
+    sgi_health_late_validation_count = fields.Integer(
+        string="Validaciones atrasadas", compute='_compute_sgi_health',
+        help="Mediciones que el dueño debía validar y cuyo plazo ya pasó.")
+    sgi_health_idle_days = fields.Integer(
+        string="Días sin movimiento", compute='_compute_sgi_health',
+        help="Días desde la última vez que el dueño creó, modificó o comentó algo del SGI. "
+             "91 significa más de 90. Vacío si el dueño no tiene usuario.")
+
+    def _compute_sgi_health(self):
+        today = sgi_today(self.env)
+        users = self.sudo().mapped('owner_id.user_id').filtered(lambda u: u.active and not u.share)
+        overdue = Counter()
+        late = Counter()
+        last = {}
+        if users:
+            for user, count in self.env['mail.activity'].sudo()._read_group(
+                    [('user_id', 'in', users.ids), ('date_deadline', '<', today),
+                     '|', ('sgi_cron_key', '!=', False), ('res_model', '=like', 'sgi.%')],
+                    ['user_id'], ['__count']):
+                overdue[user.id] = count
+            measures = self.env['sgi.indicator.measure'].sudo().search([
+                ('state', '=', 'capturado'), ('indicator_id.active', '=', True),
+                ('indicator_id.responsible_id', 'in', users.ids),
+                ('indicator_id.calc_mode', 'not in', HEALTH_MODES)])
+            for measure in measures:
+                if measure._sgi_validate_due() < today:
+                    late[measure.indicator_id.responsible_id.id] += 1
+            Indicator = self.env['sgi.indicator']
+            start, end = Indicator._sgi_health_bounds(today, IDLE_DAYS)
+            last = Indicator._sgi_health_touches(start, end)
+        for process in self:
+            user = process.sudo().owner_id.user_id
+            user = user if user in users else self.env['res.users']
+            process.sgi_health_owner_user_id = user
+            process.sgi_health_overdue_count = overdue.get(user.id, 0)
+            process.sgi_health_late_validation_count = late.get(user.id, 0)
+            if not user:
+                process.sgi_health_idle_days = 0
+            elif user.id in last:
+                moment = sgi_local_date(self.env, last[user.id])
+                process.sgi_health_idle_days = max((today - moment).days, 0)
+            else:
+                process.sgi_health_idle_days = IDLE_DAYS + 1
+
+
+class SgiDirectionBoardHealth(models.TransientModel):
+    """Página «Salud del SGI» del Tablero: los diez indicadores (sección 8)
+    y la tabla por dueño de proceso (hallazgo D-01)."""
+    _inherit = 'sgi.direction.board'
+
+    health_indicator_ids = fields.Many2many(
+        'sgi.indicator', string="Salud del SGI", compute='_compute_health',
+        help="Los diez indicadores de salud del SGI (auditoría 2026-10, sección 8).")
+    health_process_ids = fields.Many2many(
+        'sgi.process', string="Por dueño de proceso", compute='_compute_health',
+        help="Avisos vencidos, validaciones atrasadas y días sin movimiento del dueño de cada "
+             "proceso.")
+    health_note = fields.Char(string="Aviso de salud del SGI", compute='_compute_health')
+
+    @api.depends('date')
+    def _compute_health(self):
+        company = self.env['sgi.config']._sgi_company()
+        indicators = self.env['sgi.indicator'].sudo().search(
+            [('calc_mode', 'in', HEALTH_MODES)], order='code')
+        processes = self.env['sgi.process'].sudo().search(
+            [('company_id', '=', company.id), ('owner_id', '!=', False)], order='code')
+        for board in self:
+            board.health_indicator_ids = indicators.ids
+            board.health_process_ids = processes.ids
+            board.health_note = False if indicators else (
+                "No hay indicadores de salud del SGI activos. Revise Administración SGI → "
+                "Indicadores (claves SG-01 a SG-10).")
