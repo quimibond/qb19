@@ -569,8 +569,9 @@ class SgiMyPending(models.TransientModel):
             context['search_default_group_employee'] = 1
         else:
             context['search_default_group_state'] = 1
-        # 57.92.0 (U-02): abre con lo atrasado y por vencer; Mi equipo
-        # (agrupado por persona) sigue mostrando todo.
+        # 57.92.0 (U-02): abre con lo atrasado y por vencer (Mis pendientes,
+        # Mi procedimiento y «Pendientes — persona» de Mi equipo); solo
+        # «Pendientes del equipo» (agrupado por persona) muestra todo.
         if not group_by_person:
             context['search_default_actionable'] = 1
         return {
@@ -636,16 +637,35 @@ class SgiMyPending(models.TransientModel):
 
     def action_validate_selected(self):
         """57.92.0 (U-02): «Validar seleccionadas». Ignora los renglones que no
-        son mediciones; valida con los permisos de quien abre la lista (solo el
-        dueño del indicador o el Jefe MAST, ``_sgi_check_validate_access``)."""
+        son mediciones. Valida, con los permisos de quien abre la lista, solo
+        las mediciones que puede validar (``sgi_can_validate``: dueño del
+        indicador o Jefe MAST); las demás se dejan y se avisa cuántas. Quita
+        los renglones de lo validado y de las mediciones que ya no existen."""
         rows = self.filtered(lambda r: r.kind == 'validacion'
                              and r.res_model == 'sgi.indicator.measure')
         if not rows:
             raise UserError("Seleccione al menos una medición por validar.")
-        measures = self.env['sgi.indicator.measure'].browse(rows.mapped('res_id')).exists()
-        measures.action_validate()
-        rows.unlink()
-        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+        Measure = self.env['sgi.indicator.measure']
+        existing = Measure.browse(rows.mapped('res_id')).exists()
+        allowed = existing.filtered('sgi_can_validate')
+        skipped = existing - allowed
+        if existing and not allowed:
+            raise UserError("Solo el responsable del indicador o el Jefe MAST puede validar "
+                            "estas mediciones.")
+        allowed.action_validate()
+        rows.filtered(lambda r: r.res_id not in skipped.ids).unlink()
+        reload = {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+        if skipped:
+            return {
+                'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {
+                    'type': 'warning',
+                    'message': "Se validaron %d mediciones; %d no son de sus indicadores "
+                               "y se dejaron." % (len(allowed), len(skipped)),
+                    'next': reload,
+                },
+            }
+        return reload
 
 
 class SgiMyProcedurePending(models.TransientModel):

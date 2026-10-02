@@ -358,18 +358,45 @@ class TestBandeja(TransactionCase):
         measures = self.env['sgi.indicator.measure'].create([
             {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
             for d in mondays])
+        objective = self.env['sgi.objective'].create({'name': 'Objetivo lote 8A'})
+        line = self.env['sgi.action.line'].create({
+            'name': 'Acción lote 8A', 'responsible_id': self.user.id,
+            'date_commit': self.today - timedelta(days=2), 'objective_id': objective.id})
         rows = self.Pending.with_user(self.user)._sgi_build(self.emp)
         mine = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
-        other = rows.filtered(lambda r: r.kind != 'validacion')[:1]
+        other = rows.filtered(lambda r: r.kind == 'accion' and r.res_id == line.id)
         self.assertEqual(len(mine), 2)
+        self.assertEqual(len(other), 1)
+        with self.assertRaises(UserError):
+            other.with_user(self.user).action_validate_selected()
         (mine | other).with_user(self.user).action_validate_selected()
         self.assertEqual(set(measures.mapped('state')), {'validado'})
         self.assertFalse(mine.exists(), "Los renglones validados desaparecen.")
-        if other:
-            self.assertTrue(other.exists(), "Los que no son mediciones se quedan.")
+        self.assertTrue(other.exists(), "Los que no son mediciones se quedan.")
+
+    def test_22_validar_mezcla(self):
+        """Quien no es dueño del indicador ni Jefe MAST no valida nada en lote:
+        aviso claro y las mediciones siguen capturadas."""
+        indicator = self._indicator('Z8A-M', calc_mode='otif_ventas', frequency='weekly')
+        mondays = [self.today - timedelta(days=self.today.weekday() + 7 * n) for n in (1, 2)]
+        measures = self.env['sgi.indicator.measure'].create([
+            {'indicator_id': indicator.id, 'period_date': d, 'state': 'capturado', 'value': 90.0}
+            for d in mondays])
+        rows = self.Pending.with_user(self.boss_user)._sgi_build(self.emp)
+        theirs = rows.filtered(lambda r: r.kind == 'validacion' and r.res_id in measures.ids)
+        self.assertEqual(len(theirs), 2)
+        with self.assertRaises(UserError):
+            theirs.with_user(self.boss_user).action_validate_selected()
+        self.assertEqual(set(measures.mapped('state')), {'capturado'})
+        self.assertTrue(theirs.exists(), "Lo que no se validó se queda en la lista.")
 
     def test_21_abre_desplegada_con_lo_urgente(self):
         action = self.Pending.with_user(self.user).action_open_mine()
         self.assertEqual(action['context'].get('search_default_actionable'), 1)
         arch = self.env.ref('quimibond_sgi.sgi_my_pending_view_list').arch
         self.assertIn('expand="1"', arch)
+        team = self.env['hr.employee.public'].with_user(self.boss_user).browse(self.emp.id)
+        action = team.action_sgi_team_pending()
+        self.assertEqual(action['context'].get('search_default_group_employee'), 1)
+        self.assertNotIn('search_default_actionable', action['context'],
+                         "«Pendientes del equipo» muestra todo.")
