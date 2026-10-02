@@ -75,7 +75,7 @@ class SgiRisk(models.Model):
         ('foda', "FODA"),
     ], string="Instrumento", default='ryo', required=True, tracking=True,
         help="Con qué instrumento se evalúa: riesgos y oportunidades, IPER, aspecto ambiental, patrimonial o "
-             "FODA.")
+             "FODA. «Aspecto ambiental» solo lo pone la matriz de aspectos (Tratar como riesgo).")
     kind = fields.Selection([
         ('riesgo', "Riesgo"),
         ('oportunidad', "Oportunidad"),

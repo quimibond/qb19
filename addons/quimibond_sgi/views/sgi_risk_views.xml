@@ -82,6 +82,12 @@
                         <h1><field name="name" readonly="sgi_is_locked" placeholder="Aspecto / peligro / situación"/></h1>
                         <h3><field name="folio" readonly="1"/></h3>
                     </div>
+                    <!-- 57.96.0 (N-07): el aspecto ambiental vive en la matriz. -->
+                    <div class="alert alert-info mb-2" role="status" invisible="instrument != 'ambiental'">
+                        La evaluación de este aspecto vive en SGI → Seguridad y ambiente → Aspectos
+                        ambientales. Este riesgo guarda sus acciones de tratamiento. Los aspectos nuevos
+                        se registran en la matriz, no aquí.
+                    </div>
                     <group>
                         <group string="Clasificación">
                             <field name="instrument" readonly="sgi_is_locked"/>
@@ -100,6 +106,8 @@
                             <field name="job_id" readonly="sgi_is_locked"/>
                             <field name="next_review_date" readonly="sgi_is_locked"/>
                             <field name="operational_control_id" readonly="sgi_is_locked"
+                                   invisible="instrument != 'ambiental'"/>
+                            <field name="sgi_env_aspect_ids" widget="many2many_tags" readonly="1"
                                    invisible="instrument != 'ambiental'"/>
                         </group>
                     </group>
