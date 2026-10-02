@@ -151,14 +151,14 @@ class QualityAlert(models.Model):
     sgi_effectiveness_by = fields.Many2one('res.users', string="Eficacia verificada por",
                                            help="Persona que verificó que las acciones fueron eficaces.")
     # 57.93.0 (N-02): la verificación de eficacia tiene resultado. Solo
-    # «Eficaz» deja cerrar; «No eficaz» regresa la NC a Seguimiento y pide
-    # una acción correctiva nueva (_sgi_on_ineffective).
+    # «Eficaz» deja cerrar; «No eficaz» pide una acción correctiva nueva y,
+    # si la NC estaba cerrada, la regresa a Seguimiento (_sgi_on_ineffective).
     sgi_effective = fields.Selection([
         ('eficaz', "Eficaz"),
         ('no_eficaz', "No eficaz"),
     ], string="Resultado de la eficacia", tracking=True, copy=False,
-        help="Resultado de la verificación de eficacia. La NC solo cierra con «Eficaz». «No eficaz» la "
-             "regresa a Seguimiento y pide una acción correctiva nueva.")
+        help="Resultado de la verificación de eficacia. La NC solo cierra con «Eficaz». «No eficaz» pide "
+             "una acción correctiva nueva y, si la NC estaba cerrada, la regresa a Seguimiento.")
     sgi_ineffective_count = fields.Integer(
         string="Verificaciones no eficaces", readonly=True, copy=False,
         help="Veces que la verificación de eficacia salió «No eficaz». Cero al cerrar = eficaz a la primera.")
@@ -522,7 +522,8 @@ class QualityAlert(models.Model):
         """57.93.0 (N-02): la verificación salió «No eficaz». Deja la
         verificación en el historial (chatter y contador), la limpia para la
         siguiente (el resultado también, para que otro «No eficaz» vuelva a
-        contar), regresa la NC a Seguimiento y pide la acción correctiva nueva.
+        contar), regresa a Seguimiento la NC cerrada y pide la acción correctiva
+        nueva.
 
         La etapa: una NC en Abierta se queda ahí (todavía no la trabaja nadie
         y moverla chocaría con la contención obligatoria de las
