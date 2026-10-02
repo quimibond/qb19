@@ -23,7 +23,15 @@
                        decoration-danger="state == 'atrasada'"
                        decoration-warning="state == 'por_vencer'"
                        decoration-success="state == 'al_dia'"/>
-                <button name="action_open" type="object" string="Abrir" icon="fa-external-link"/>
+                <!-- 57.92.0 (U-05): «Ir» lleva a donde se hace; «Leer» abre el
+                     documento del acuse y «Leído y entendido» lo firma ahí mismo. -->
+                <button name="action_open" type="object" string="Ir" icon="fa-arrow-right"
+                        invisible="kind == 'acuse'"/>
+                <button name="action_open" type="object" string="Leer" icon="fa-book"
+                        invisible="kind != 'acuse'"/>
+                <button name="action_sign_ack" type="object" string="Leído y entendido"
+                        icon="fa-check" class="btn-link" invisible="kind != 'acuse'"
+                        confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
                 <!-- 56.36.0 (I-006): el dueño valida desde el renglón. -->
                 <button name="action_validate_measure" type="object" string="Validar" icon="fa-check"
                         class="btn-link" invisible="kind != 'validacion'"/>

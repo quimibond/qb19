@@ -616,10 +616,42 @@ class SgiMyPending(models.TransientModel):
                 # La firma se hace en la página de Firma electrónica.
                 return {'type': 'ir.actions.act_url', 'target': 'self',
                         'url': '/sign/document/%d/%s' % (item.sign_request_id.id, item.access_token)}
+        # 57.92.0 (U-05): «Ir» lleva a la pantalla de Odoo donde se hace la
+        # actividad (su menú o acción), no a la ficha del catálogo.
+        if self.kind == 'actividad' and self.res_model == 'sgi.process.activity':
+            activity = self.env['sgi.process.activity'].sudo().browse(self.res_id).exists()
+            if activity and (activity.odoo_menu_id or activity.odoo_ref
+                             or ('odoo_action_id' in activity._fields and activity.odoo_action_id)):
+                try:
+                    return activity.action_open_odoo()
+                except UserError:
+                    # Texto de «Dónde se ejecuta» que no resuelve a un menú y
+                    # sin medición ligada: se abre la ficha, como antes.
+                    pass
+        # 57.92.0 (U-05): «Leer» abre el documento del acuse, no el acuse.
+        if self.kind == 'acuse' and self.res_model == 'sgi.document.ack':
+            ack = self.env['sgi.document.ack'].sudo().browse(self.res_id).exists()
+            if ack:
+                return {'type': 'ir.actions.act_window', 'res_model': 'documents.document',
+                        'res_id': ack.document_id.id, 'view_mode': 'form', 'target': 'current'}
         return {
             'type': 'ir.actions.act_window', 'res_model': self.res_model, 'res_id': self.res_id,
             'view_mode': 'form', 'target': 'current',
         }
+
+    def action_sign_ack(self):
+        """57.92.0 (U-05): «Leído y entendido» desde el renglón. El candado de
+        identidad de ``sgi.document.ack`` decide si quien abre la lista puede
+        firmar: el propio empleado o el Jefe MAST."""
+        self.ensure_one()
+        if self.kind != 'acuse' or self.res_model != 'sgi.document.ack':
+            raise UserError("Este renglón no es un acuse de lectura.")
+        ack = self.env['sgi.document.ack'].browse(self.res_id).exists()
+        if not ack:
+            raise UserError("El acuse ya no existe.")
+        ack.action_mark_read()
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 
     def action_validate_measure(self):
         """«Validar» desde el renglón (I-006). Valida quien abre la lista, con

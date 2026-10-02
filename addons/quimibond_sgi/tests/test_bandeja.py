@@ -427,3 +427,31 @@ class TestBandeja(TransactionCase):
         self.assertEqual(action['context'].get('search_default_group_employee'), 1)
         self.assertNotIn('search_default_actionable', action['context'],
                          "«Pendientes del equipo» muestra todo.")
+
+    def test_24_ir_a_hacerlo_y_leer(self):
+        """U-05: «Ir» lleva al menú donde se hace la actividad; «Leer» abre el
+        documento del acuse y «Leído y entendido» lo firma desde el renglón."""
+        # Un menú con acción (Inicio → Documentos vigentes).
+        menu = self.env.ref('quimibond_sgi.menu_sgi_current_documents')
+        self.activity.sudo().write({'odoo_menu_id': menu.id})
+        row = self.Pending.with_user(self.user).create({
+            'kind': 'actividad', 'name': 'Hacer 8.1', 'employee_id': self.emp.id,
+            'res_model': 'sgi.process.activity', 'res_id': self.activity.id})
+        action = row.with_user(self.user).action_open()
+        self.assertNotEqual(action.get('res_model'), 'sgi.process.activity',
+                            "Lleva al menú donde se hace, no a la ficha del catálogo.")
+        self.assertEqual(action.get('id'), menu.action.id)
+        doc = self.env['documents.document'].create({
+            'name': 'Leer 8A', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-01', 'sgi_state': 'vigente',
+            'sgi_process_id': self.process.id})
+        ack = self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.emp.id})
+        row = self.Pending.with_user(self.user).create({
+            'kind': 'acuse', 'name': 'Leer', 'employee_id': self.emp.id,
+            'res_model': 'sgi.document.ack', 'res_id': ack.id})
+        action = row.with_user(self.user).action_open()
+        self.assertEqual((action['res_model'], action['res_id']), ('documents.document', doc.id))
+        result = row.with_user(self.user).action_sign_ack()
+        self.assertEqual(result['tag'], 'soft_reload')
+        self.assertEqual(ack.state, 'leido')
+        self.assertFalse(row.exists(), "El renglón firmado sale de la lista.")
