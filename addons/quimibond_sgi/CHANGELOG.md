@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.95.0 — 2026-10-02
+
+**Rendimiento y robustez** (auditoría 2026-10: K-08, K-05 y D-06 de datos; es
+la ficha «57.99.0» del plan general, renumerada porque sale antes de las fichas
+con puerta de decisión). **En curso:** la entrada completa se escribe al cerrar
+la entrega (manuales y verificación pendientes).
+
+- **K-08:** un aviso de acuses por persona (en el documento de su acuse más
+  antiguo) o por jefe (en su departamento), en lugar de uno por acuse; clase
+  del aviso indexada (`mail.activity.sgi_cron_kind`); resumen guardado para los
+  filtros de Mi equipo; respaldo nocturno de Mi procedimiento (cron nuevo).
+- **K-05:** entregas facturadas que siguen al estado de la entrega y respetan
+  el ajuste a mano; fecha de pago con más dependencias.
+- **D-06 (datos):** documentos controlados nuevos con la empresa de su familia;
+  regla de compañía en rutinas heredadas; asistente manual del Jefe MAST
+  (`sgi.company.fix`) para los documentos sin empresa. **No cambia datos al
+  instalar.**
+
+**Migración:** `migrations/19.0.57.95.0/pre-migrate.py` solo crea y llena la
+columna técnica `mail_activity.sgi_cron_kind` (unas 80 filas en producción).
+
 ## 19.0.57.94.2 — 2026-10-02
 
 **Corregido: dos avisos de accesibilidad en el build de `main`** (pintaban el

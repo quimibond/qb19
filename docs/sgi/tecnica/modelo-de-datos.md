@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (116) y modelos de otras apps que extienden (48). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (117) y modelos de otras apps que extienden (48). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -37,6 +37,7 @@ Modelos que definen el núcleo y sus satélites (116) y modelos de otras apps qu
 | [`sgi.coa.attach.wizard`](diccionario/sgi.coa.attach.wizard.md) | Adjuntar CoA a la entrega | Asistente para adjuntar el certificado de análisis (COA) a una entrega y, si se pide, mandarlo al cliente. | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_coa.py` |
 | [`sgi.coa.exception.wizard`](diccionario/sgi.coa.exception.wizard.md) | Validar salida sin CoA (Jefe de Calidad) | Asistente para validar una salida sin COA con motivo; solo lo usa el puesto de excepción (Jefe de Calidad). | TransientModel | 2 | `addons/quimibond_sgi/models/sgi_coa.py` |
 | [`sgi.coa.inbox`](diccionario/sgi.coa.inbox.md) | CoA recibido por correo | Correos al buzón «COA»: cada PDF se liga a su salida por el nombre del archivo. Lo que no se liga queda aquí para que Calidad lo asigne. | Model | 7 | `addons/quimibond_sgi/models/sgi_coa.py` |
+| [`sgi.company.fix`](diccionario/sgi.company.fix.md) | Empresa del SGI en documentos controlados | Empresa del SGI en los documentos controlados que no tienen empresa (D-06 de datos). | TransientModel | 8 | `addons/quimibond_sgi/models/sgi_company_fix.py` |
 | [`sgi.competence.gap`](diccionario/sgi.competence.gap.md) | Brecha de competencia (DNC) | Vista SQL: brechas entre las competencias esperadas del puesto (hr.job.skill) y las que tiene el empleado (hr.employee.skill). | Model | 10 | `addons/quimibond_sgi/models/sgi_competence.py` |
 | [`sgi.config`](diccionario/sgi.config.md) | Configuración SGI | Utilidades de configuración del SGI (siembra idempotente). | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_format_map.py` |
 | [`sgi.control.plan`](diccionario/sgi.control.plan.md) | Plan de control (P-C11) | Plan de control (P-C11): puntos de control de calidad por producto y fase, con su AMEF. Estados borrador, vigente y obsoleto. | Model | 12 | `addons/quimibond_sgi/models/sgi_control_plan.py` |
@@ -129,7 +130,7 @@ Modelos que definen el núcleo y sus satélites (116) y modelos de otras apps qu
 
 | Modelo | Campos que agrega | Archivos |
 |---|---:|---|
-| [`account.move`](diccionario/account.move.md) | 2 | `addons/quimibond_sgi/models/sgi_kpi_account.py`, `addons/quimibond_sgi/models/sgi_links.py` |
+| [`account.move`](diccionario/account.move.md) | 6 | `addons/quimibond_sgi/models/sgi_kpi_account.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`account.move.line`](diccionario/account.move.line.md) | 1 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
 | [`approval.category`](diccionario/approval.category.md) | 5 | `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
 | [`approval.request`](diccionario/approval.request.md) | 28 | `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
@@ -139,7 +140,7 @@ Modelos que definen el núcleo y sus satélites (116) y modelos de otras apps qu
 | [`helpdesk.team`](diccionario/helpdesk.team.md) | 1 | `addons/quimibond_sgi/models/sgi_complaint.py` |
 | [`helpdesk.ticket`](diccionario/helpdesk.ticket.md) | 7 | `addons/quimibond_sgi/models/sgi_complaint.py` |
 | [`hr.department`](diccionario/hr.department.md) | 0 | `addons/quimibond_sgi/models/sgi_competence.py` |
-| [`hr.employee`](diccionario/hr.employee.md) | 18 | `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_competence.py`, `addons/quimibond_sgi/models/sgi_epp.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
+| [`hr.employee`](diccionario/hr.employee.md) | 21 | `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_competence.py`, `addons/quimibond_sgi/models/sgi_epp.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`hr.employee.public`](diccionario/hr.employee.public.md) | 9 | `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`hr.job`](diccionario/hr.job.md) | 22 | `addons/quimibond_sgi/models/sgi_archived_filters.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`hr.version`](diccionario/hr.version.md) | 2 | `addons/quimibond_sgi/models/sgi_kpi_hr.py` |
@@ -148,7 +149,7 @@ Modelos que definen el núcleo y sus satélites (116) y modelos de otras apps qu
 | [`ir.config_parameter`](diccionario/ir.config_parameter.md) | 0 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`ir.ui.menu`](diccionario/ir.ui.menu.md) | 0 | `addons/quimibond_sgi/models/sgi_cleanup.py` |
 | [`ir.ui.view`](diccionario/ir.ui.view.md) | 1 | `addons/quimibond_sgi/models/sgi_diagram_view.py` |
-| [`mail.activity`](diccionario/mail.activity.md) | 3 | `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py` |
+| [`mail.activity`](diccionario/mail.activity.md) | 4 | `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`maintenance.equipment`](diccionario/maintenance.equipment.md) | 18 | `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_msa.py` |
 | [`maintenance.request`](diccionario/maintenance.request.md) | 7 | `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py` |
 | [`mrp.bom`](diccionario/mrp.bom.md) | 0 | `addons/quimibond_sgi/models/sgi_links.py` |
@@ -178,4 +179,4 @@ Modelos que definen el núcleo y sus satélites (116) y modelos de otras apps qu
 | [`stock.picking`](diccionario/stock.picking.md) | 17 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_release.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`studio.approval.rule`](diccionario/studio.approval.rule.md) | 1 | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`, `addons/quimibond_sgi_studio/models/studio_approval_rule_archive.py` |
 
-Modelos propios sin docstring de clase: 6 de 116.
+Modelos propios sin docstring de clase: 6 de 117.

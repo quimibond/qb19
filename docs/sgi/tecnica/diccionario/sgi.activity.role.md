@@ -39,23 +39,23 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `condition_value` | Char | Valor | Número, texto o True/False. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:193` |
 | `family_id` | Many2one | Familia de puestos | Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia). |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:153` |
 | `job_id` | Many2one | Puesto | Puesto al que se asigna el rol (cuando «Asignado a» es puesto). |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:150` |
-| `mp_can_go` | Boolean | Se puede ir a hacer | Indica si la actividad tiene un menú de Odoo al que se puede ir con «Ir a hacerlo». |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:328` |
-| `mp_check_against` | Char | Contra qué se revisa |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:316` |
-| `mp_done` | Text | Terminada cuando |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:317` |
-| `mp_escalates` | Char | Si se atora, escala a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:322` |
-| `mp_external` | Char | Se hace en |  |  |  | related `activity_id.external_system`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:324` |
-| `mp_how` | Text | Cómo |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:314` |
-| `mp_inputs` | Char | Recibe |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:319` |
-| `mp_instruction_id` | Many2one | Instructivo | Instructivo de la actividad. |  |  | related `activity_id.instruction_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:325` |
-| `mp_name` | Char | Nombre de la actividad |  |  |  | related `activity_id.name`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:313` |
-| `mp_norms` | Char | Cumple con |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:323` |
-| `mp_number` | Char | Numeral |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:312` |
-| `mp_on_fail` | Text | Si no se puede |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:318` |
-| `mp_outputs` | Char | Entrega |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:320` |
-| `mp_related` | Char | Conforme a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:321` |
-| `mp_status` | Selection | Estado | Al día, atrasada o sin medición automática. Se calcula al mostrarlo. |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:309` |
-| `mp_status_detail` | Char | Detalle del estado |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:311` |
-| `mp_where` | Char | Dónde |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:315` |
+| `mp_can_go` | Boolean | Se puede ir a hacer | Indica si la actividad tiene un menú de Odoo al que se puede ir con «Ir a hacerlo». |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:366` |
+| `mp_check_against` | Char | Contra qué se revisa |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:354` |
+| `mp_done` | Text | Terminada cuando |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:355` |
+| `mp_escalates` | Char | Si se atora, escala a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:360` |
+| `mp_external` | Char | Se hace en |  |  |  | related `activity_id.external_system`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:362` |
+| `mp_how` | Text | Cómo |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:352` |
+| `mp_inputs` | Char | Recibe |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:357` |
+| `mp_instruction_id` | Many2one | Instructivo | Instructivo de la actividad. |  |  | related `activity_id.instruction_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:363` |
+| `mp_name` | Char | Nombre de la actividad |  |  |  | related `activity_id.name`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:351` |
+| `mp_norms` | Char | Cumple con |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:361` |
+| `mp_number` | Char | Numeral |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:350` |
+| `mp_on_fail` | Text | Si no se puede |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:356` |
+| `mp_outputs` | Char | Entrega |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:358` |
+| `mp_related` | Char | Conforme a |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:359` |
+| `mp_status` | Selection | Estado | Al día, atrasada o sin medición automática. Se calcula al mostrarlo. |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:347` |
+| `mp_status_detail` | Char | Detalle del estado |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:349` |
+| `mp_where` | Char | Dónde |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:353` |
 | `process_id` | Many2one | Proceso | Proceso de la actividad. |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:175` |
 | `relative_role` | Selection | Rol relativo | Rol que no es de un puesto fijo. «Dueño del proceso»: el dueño del proceso del registro (o, si no tiene, el de la actividad). Solicitante, jefe del que pide, quien detecta y área responsable se resuelven con cada registro (quien lo pide o crea, su jefe, el responsable del departamento). Quien aprue… |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:157` |
 | `role` | Selection | Rol | Ejecuta (la hace), aprueba, participa, se entera o escala (recibe el atraso). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:141` |

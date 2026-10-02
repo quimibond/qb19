@@ -119,11 +119,12 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Formatos en documentos de Odoo** — `sgi.format.map`
       - **Fuentes de NC automáticas** — `sgi.alert.source`
       - **Elementos PPAP** — `sgi.ppap.element.template`
+      - **Empresa en documentos controlados** — `sgi.company.fix`
 - **Bitácora de bloqueo contable** — `sgi.lock.date.log`; bajo `account.menu_finance_reports`
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (103)
+## Acciones (104)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -147,6 +148,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_checklist_template_action` | act_window | Checklists de planta y unidades | `sgi.checklist.template` | list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_checklist_today_action` | act_window | Checklists de hoy | `maintenance.request` | kanban,list,form | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
 | `quimibond_sgi.sgi_coa_inbox_action` | act_window | CoA recibidos | `sgi.coa.inbox` | list,form | sí | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
+| `quimibond_sgi.sgi_company_fix_action` | act_window | Empresa en documentos controlados | `sgi.company.fix` | form |  | `addons/quimibond_sgi/views/sgi_company_fix_views.xml` |
 | `quimibond_sgi.sgi_competence_gap_action` | act_window | Brechas de competencia (DNC) | `sgi.competence.gap` | pivot,sgi_diagram,list | sí | `addons/quimibond_sgi/views/sgi_competence_views.xml` |
 | `quimibond_sgi.sgi_complaint_action` | server | Reclamaciones de clientes | `helpdesk.ticket` |  |  | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
 | `quimibond_sgi.sgi_config_settings_action` | act_window | Ajustes | `res.config.settings` | form |  | `addons/quimibond_sgi/views/sgi_settings_views.xml` |
@@ -231,7 +233,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (358; 63 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (359; 63 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -394,6 +396,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.coa.inbox` | `quimibond_sgi.sgi_coa_inbox_view_form` | form |  | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
 | `sgi.coa.inbox` | `quimibond_sgi.sgi_coa_inbox_view_list` | list |  | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
 | `sgi.coa.inbox` | `quimibond_sgi.sgi_coa_inbox_view_search` | search |  | `addons/quimibond_sgi/views/sgi_coa_views.xml` |
+| `sgi.company.fix` | `quimibond_sgi.sgi_company_fix_view_form` | form |  | `addons/quimibond_sgi/views/sgi_company_fix_views.xml` |
 | `sgi.competence.gap` | `quimibond_sgi.sgi_competence_gap_view_list` | list |  | `addons/quimibond_sgi/views/sgi_competence_views.xml` |
 | `sgi.competence.gap` | `quimibond_sgi.sgi_competence_gap_view_pivot` | pivot |  | `addons/quimibond_sgi/views/sgi_competence_views.xml` |
 | `sgi.competence.gap` | `quimibond_sgi.sgi_competence_gap_view_search` | search |  | `addons/quimibond_sgi/views/sgi_competence_views.xml` |

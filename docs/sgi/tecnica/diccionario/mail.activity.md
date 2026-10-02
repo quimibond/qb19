@@ -8,11 +8,12 @@ Modelo de otra app que el SGI extiende.
 
 Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
-## Campos (3)
+## Campos (4)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_cron_key` | Char | Clave del aviso (SGI) | Clave estable del aviso automático del SGI sobre este registro. |  |  |  |  | `addons/quimibond_sgi/models/sgi_cron.py:49` |
-| `sgi_cron_run` | Char | Última corrida que lo vio (SGI) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_cron.py:55` |
-| `sgi_episode_closed` | Boolean | Episodio cerrado (SGI) | La causa del aviso ya se resolvió; si vuelve, nace otro aviso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_cron.py:52` |
+| `sgi_cron_key` | Char | Clave del aviso (SGI) | Clave estable del aviso automático del SGI sobre este registro. |  |  |  |  | `addons/quimibond_sgi/models/sgi_cron.py:50` |
+| `sgi_cron_kind` | Char | Clase del aviso (SGI) |  |  |  | compute `_compute_sgi_cron_kind`, guardado |  | `addons/quimibond_sgi/models/sgi_cron.py:63` |
+| `sgi_cron_run` | Char | Última corrida que lo vio (SGI) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_cron.py:56` |
+| `sgi_episode_closed` | Boolean | Episodio cerrado (SGI) | La causa del aviso ya se resolvió; si vuelve, nace otro aviso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_cron.py:53` |
 

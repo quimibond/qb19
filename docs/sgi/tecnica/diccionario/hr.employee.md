@@ -4,11 +4,11 @@
 
 Modelo de otra app que el SGI extiende.
 
-56.7.0 (1.1 / 1.8): el procedimiento del empleado vive en campos GUARDADOS: se buscan, se agrupan y se leen por API (read/search_read) sin abrir la pantalla, y Mi equipo, «Ver como» y la ficha leen lo mismo. Se recalculan cuando cambia el …
+57.95.0 (K-08): resumen de Mis pendientes guardado por persona. Lo leen los filtros de Mi equipo («Con pendientes atrasados», «por vencer», «Al día»), que antes armaban Mis pendientes de toda la empresa en cada búsqueda. Lo refrescan el re…
 
-Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_competence.py`, `addons/quimibond_sgi/models/sgi_epp.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_competence.py`, `addons/quimibond_sgi/models/sgi_epp.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`.
 
-## Campos (18)
+## Campos (21)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -19,13 +19,16 @@ Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_
 | `sgi_epp_required` | Text | EPP requerido por el puesto |  |  |  | related `job_id.sgi_epp_required`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:142` |
 | `sgi_health_record_ids` | One2many | Estudios y exámenes |  |  | `sgi.health.record` |  | quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager | `addons/quimibond_sgi/models/sgi_hse_records.py:119` |
 | `sgi_missing_data` | Char | Le falta | Puesto (sin él no hay Mi procedimiento) o correo de trabajo (sin él no recibe firmas de Firma electrónica). |  |  | compute `_compute_sgi_missing_data`, sin guardar | hr.group_hr_user | `addons/quimibond_sgi/models/sgi_floor_kiosk.py:424` |
-| `sgi_mp_job_id` | Many2one | Puesto (Mi procedimiento) |  |  | `hr.job` | related `current_version_id.job_id`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:228` |
-| `sgi_mp_process_ids` | Many2many | Procesos donde participa | Procesos en los que participa la persona por su puesto o su familia. Se calcula solo. |  | `sgi.process` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:246` |
-| `sgi_mp_received_role_ids` | Many2many | Escalamientos que recibe | Actividades cuyo atraso le escala a esta persona. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:238` |
-| `sgi_mp_role_ids` | Many2many | Mis actividades | Actividades que la persona ejecuta o aprueba por su puesto o su familia. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:234` |
-| `sgi_mp_short_role_ids` | Many2many | Participa o se entera | Actividades en las que la persona participa o solo se entera. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:242` |
+| `sgi_mp_job_id` | Many2one | Puesto (Mi procedimiento) |  |  | `hr.job` | related `current_version_id.job_id`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:231` |
+| `sgi_mp_process_ids` | Many2many | Procesos donde participa | Procesos en los que participa la persona por su puesto o su familia. Se calcula solo. |  | `sgi.process` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:249` |
+| `sgi_mp_received_role_ids` | Many2many | Escalamientos que recibe | Actividades cuyo atraso le escala a esta persona. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:241` |
+| `sgi_mp_role_ids` | Many2many | Mis actividades | Actividades que la persona ejecuta o aprueba por su puesto o su familia. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:237` |
+| `sgi_mp_short_role_ids` | Many2many | Participa o se entera | Actividades en las que la persona participa o solo se entera. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:245` |
 | `sgi_my_procedure_ack_state` | Selection | Mi procedimiento | Si la persona ya firmó de leído su Mi procedimiento vigente. Se calcula solo. |  |  | compute `_compute_sgi_my_procedure_ack`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:746` |
 | `sgi_pending_ack_count` | Integer | # Acuses pendientes |  |  |  | compute `_compute_sgi_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_integration.py:263` |
+| `sgi_pending_saved_late` | Integer | Pendientes atrasados (resumen guardado) |  |  |  |  | base.group_system | `addons/quimibond_sgi/models/sgi_my_pending.py:882` |
+| `sgi_pending_saved_state` | Selection | Semáforo (resumen guardado) |  |  |  |  | base.group_system | `addons/quimibond_sgi/models/sgi_my_pending.py:885` |
+| `sgi_pending_saved_total` | Integer | Pendientes (resumen guardado) | Total de Mis pendientes de la persona la última vez que se calculó. |  |  |  | base.group_system | `addons/quimibond_sgi/models/sgi_my_pending.py:878` |
 | `sgi_procedure_count` | Integer | # Mis procedimientos |  |  |  | compute `_compute_sgi_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_integration.py:262` |
 | `sgi_skill_gap_count` | Integer | Brechas de competencia |  |  |  | compute `_compute_sgi_skill_gap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_competence.py:8` |
 | `sgi_team_ids` | Many2many | Equipos de venta | Equipos de venta de los que su usuario es miembro o líder (se capturan en Ventas). Filtran su «Mi procedimiento». |  | `crm.team` | compute `_compute_sgi_team_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_business_line.py:192` |
