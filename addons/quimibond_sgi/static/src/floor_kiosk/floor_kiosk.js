@@ -13,6 +13,9 @@ import { useService } from "@web/core/utils/hooks";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "borrar", "0", "ok"];
 const PIN_MAX = 12;
 const MODEL = "sgi.floor.kiosk";
+// Leyendo un documento la persona puede pasar minutos sin tocar la pantalla
+// de la tableta: ahí la salida sola espera más.
+const DOC_IDLE_MS = 10 * 60 * 1000;
 
 export class SgiFloorKiosk extends Component {
     static template = "quimibond_sgi.FloorKiosk";
@@ -32,6 +35,9 @@ export class SgiFloorKiosk extends Component {
         });
         this.idleMs = 90000;
         this.timer = null;
+        // Una llamada a la vez: dos toques rápidos no mandan dos firmas
+        // encimadas (ver call()).
+        this.pending = Promise.resolve();
         this.onActivity = () => this.resetIdle();
         // Teclear (descripción del casi accidente, observaciones) también es
         // actividad: con solo pointerdown la pantalla salía a los 90 s a media
@@ -51,19 +57,33 @@ export class SgiFloorKiosk extends Component {
     }
 
     // El mensaje del servidor (UserError / AccessError) se muestra en la
-    // pantalla; null le dice a quien llama que no siga.
-    async call(method, args) {
-        this.state.error = "";
-        this.state.busy = true;
-        try {
-            return await this.orm.call(MODEL, method, args);
-        } catch (error) {
-            this.state.error = (error && error.data && error.data.message)
-                || (error && error.message) || "No se pudo completar. Intente de nuevo.";
-            return null;
-        } finally {
-            this.state.busy = false;
-        }
+    // pantalla; null le dice a quien llama que no siga. Las llamadas van en
+    // fila, y la respuesta de una persona que ya salió (Salir o tiempo) se
+    // descarta: la pantalla ya es de otra.
+    call(method, args) {
+        const person = this.state.person;
+        const run = async () => {
+            if (this.state.person !== person) {
+                return null;
+            }
+            this.state.error = "";
+            this.state.busy = true;
+            try {
+                const result = await this.orm.call(MODEL, method, args);
+                return this.state.person === person ? result : null;
+            } catch (error) {
+                if (this.state.person === person) {
+                    this.state.error = (error && error.data && error.data.message)
+                        || (error && error.message) || "No se pudo completar. Intente de nuevo.";
+                }
+                return null;
+            } finally {
+                this.state.busy = false;
+            }
+        };
+        const result = this.pending.then(run, run);
+        this.pending = result.catch(() => null);
+        return result;
     }
 
     get personArgs() {
@@ -139,11 +159,13 @@ export class SgiFloorKiosk extends Component {
 
     // ---- documentos por leer ---------------------------------------------
     async openDocs() {
+        this.revokeDoc();
         const docs = await this.call("kiosk_pending_docs", this.personArgs);
         if (docs) {
             this.state.docs = docs;
             this.state.screen = "docs";
         }
+        this.resetIdle();
     }
 
     async readDoc(doc) {
@@ -167,6 +189,20 @@ export class SgiFloorKiosk extends Component {
                 : this.blobUrl;
         }
         this.state.screen = "doc";
+        this.resetIdle();
+    }
+
+    // Tocar o desplazarse dentro del visor (otro documento, mismo origen) no
+    // llega a la ventana de la pantalla: se escucha también ahí.
+    onViewerLoad(ev) {
+        try {
+            const win = ev.target.contentWindow;
+            for (const name of [...this.activityEvents, "scroll", "wheel"]) {
+                win.addEventListener(name, this.onActivity, true);
+            }
+        } catch {
+            // Otro origen (no debería): queda el tiempo largo de lectura.
+        }
     }
 
     revokeDoc() {
@@ -260,17 +296,15 @@ export class SgiFloorKiosk extends Component {
         clearTimeout(this.timer);
         Object.assign(this.state, {
             person: null, pin: "", counts: {}, docs: [], doc: null,
-            epp: [], checklists: [], sheet: null, screen: "mosaic", error: "",
+            epp: [], checklists: [], sheet: null, screen: "mosaic", error: "", message: "",
         });
     }
 
     resetIdle() {
         clearTimeout(this.timer);
         if (this.state.person) {
-            this.timer = setTimeout(() => {
-                this.state.message = "";
-                this.exit();
-            }, this.idleMs);
+            const limit = this.state.screen === "doc" ? DOC_IDLE_MS : this.idleMs;
+            this.timer = setTimeout(() => this.exit(), limit);
         }
     }
 }
