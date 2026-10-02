@@ -1092,9 +1092,12 @@ class SgiActionLine(models.Model):
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
         ('preventiva', "Acción preventiva"),
+        # 57.97.0 (N-09): los acuerdos de la revisión por la dirección ya no
+        # cuentan como acciones correctivas (ni piden su evidencia).
+        ('acuerdo', "Acuerdo de la revisión por la dirección"),
     ], string="Tipo", default='correccion', required=True,
         help="Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la "
-             "preventiva, una causa potencial.")
+             "preventiva, una causa potencial; el acuerdo es una salida de la revisión por la dirección.")
     # 57.96.0 (N-06): jerarquía del control que aplica la acción (riesgos e
     # incidentes). Cuenta para el candado de los IPER de riesgo alto.
     control_hierarchy = fields.Selection(

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
@@ -87,6 +88,14 @@ class SgiManagementReview(models.Model):
     # Salidas
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',
                                     string="Acuerdos")
+    # 57.97.0 (N-09): los acuerdos abiertos de revisiones anteriores pasan a
+    # esta. Siguen siendo de su revisión (E1-02 los mide en su fecha límite).
+    carried_agreement_ids = fields.Many2many(
+        'sgi.management.review.agreement', 'sgi_review_carried_agreement_rel',
+        'review_id', 'agreement_id', string="Acuerdos abiertos de revisiones anteriores",
+        readonly=True,
+        help="Acuerdos de revisiones ya realizadas o cerradas que siguen sin cumplirse. Se cargan con "
+             "«Cargar entradas»; cada uno sigue siendo de su revisión.")
 
 
     # V-M07 (57.42.0): título legible de la ficha (el folio va debajo).
@@ -248,6 +257,17 @@ class SgiManagementReview(models.Model):
                 agr.deadline or '-', agr.status_label))
         return "\n".join(lines)
 
+    def _sgi_open_previous_agreements(self):
+        """57.97.0 (N-09): acuerdos sin cumplir de cualquier revisión anterior
+        ya realizada o cerrada. «Cumplido» como en E1-02: su acción terminada
+        o la fecha de cumplimiento capturada a mano."""
+        self.ensure_one()
+        agreements = self.env['sgi.management.review.agreement'].search([
+            ('review_id', '!=', self.id),
+            ('review_id.state', 'in', ('realizada', 'cerrada')),
+            ('review_id.date', '<=', self.date)])
+        return agreements.filtered(lambda a: not a.is_done and not a.done_date)
+
     def _sgi_load_nc(self):
         self.ensure_one()
         dt_from, dt_to = self._sgi_bounds()
@@ -391,13 +411,15 @@ class SgiManagementReview(models.Model):
             # DIR-3 (52.0.0): cada acuerdo es una ACCIÓN del SGI (sgi.action.line)
             # con responsable y compromiso: actividad nativa al responsable,
             # escalamiento del cron de acciones vencidas y medición de E1-02.
+            # 57.97.0 (N-09): del tipo «acuerdo» (antes «correctiva»): no infla
+            # las acciones correctivas ni pide su evidencia.
             Line = self.env['sgi.action.line']
             for agr in review.agreement_ids:
                 if agr.action_line_id:
                     continue
                 agr.action_line_id = Line.create({
                     'review_id': review.id,
-                    'action_type': 'correctiva',
+                    'action_type': 'acuerdo',
                     'name': agr.name,
                     'responsible_id': agr.responsible_id.id,
                     'date_commit': agr.deadline,
@@ -414,6 +436,19 @@ class SgiManagementReview(models.Model):
     def action_close(self):
         self._sgi_check_mast()
         self.write({'state': 'cerrada'})
+        # 57.97.0 (N-09): cerrar no se bloquea; los acuerdos abiertos quedan en
+        # el historial y la siguiente revisión los carga («Cargar entradas»).
+        for review in self:
+            pending = review.agreement_ids.filtered(lambda a: not a.is_done and not a.done_date)
+            if not pending:
+                continue
+            items = Markup("<br/>").join(
+                Markup("• %s (responsable: %s, límite: %s)") % (
+                    agr.name, agr.responsible_id.name or '-', agr.deadline or '-')
+                for agr in pending)
+            review.message_post(body=Markup(
+                "<b>Acuerdos abiertos al cerrar:</b> pasan a la siguiente revisión por la "
+                "dirección (se cargan con «Cargar entradas»).<br/>%s") % items)
 
     def action_draft(self):
         self._sgi_check_mast()
@@ -490,3 +525,13 @@ class SgiActionLineReview(models.Model):
             if any(others):
                 raise ValidationError("Un acuerdo de la Revisión por la Dirección no puede tener otro origen.")
         return super(SgiActionLineReview, self - with_review)._check_parent_xor()
+
+    @api.constrains('action_type', 'review_id')
+    def _check_acuerdo_only_in_review(self):
+        """57.97.0 (N-09): «Acuerdo» es solo para los acuerdos de una revisión
+        por la dirección."""
+        wrong = self.filtered(lambda l: l.action_type == 'acuerdo' and not l.review_id)
+        if wrong:
+            raise ValidationError(
+                "El tipo «Acuerdo de la revisión por la dirección» es solo para los acuerdos de una "
+                "revisión por la dirección. Elija otro tipo para: %s" % ", ".join(wrong.mapped('name')))
