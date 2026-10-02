@@ -177,7 +177,7 @@ checklist no se generan en festivos.
 
 ## 11. Crons
 
-Hay 25 acciones planificadas del SGI (tabla completa en
+Hay 26 acciones planificadas del SGI (tabla completa en
 [../tecnica/crons.md](../tecnica/crons.md)). Viven en `noupdate`: cambiarlas
 en la base requiere migración. Desde 57.94.0 incluye «SGI: Empleados sin
 puesto, sin PIN o sin correo (aviso a RH)», semanal (lunes). Si una falla, Odoo la apaga tras 5 fallos en

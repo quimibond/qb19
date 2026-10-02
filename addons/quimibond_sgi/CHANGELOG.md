@@ -13,6 +13,146 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.94.0 — 2026-10-02
+
+**SGI en planta: la planta firma en la tableta a su nombre** (auditoría 2026-10: U-01, U-08, I-03, I-05).
+
+### Agregado
+
+- **SGI en planta (U-01):** app nueva para las tabletas de planta (acción
+  cliente `sgi_floor_kiosk`, pantalla completa). La persona toca su foto,
+  teclea su PIN (el mismo de Asistencias) y, en su menú, firma sus
+  **documentos por leer**, **reporta un casi accidente**, firma su
+  **responsiva de EPP** y llena el **checklist de su equipo**. Cada llamada
+  (`sgi.floor.kiosk`) valida en el servidor la tableta, que la persona sea de
+  sus departamentos y de la empresa del SGI, y su PIN; lo firmado queda con el
+  empleado y «firmado con PIN en la tableta X» (`sgi.pin.signature.mixin`:
+  tableta y hora), nunca solo a nombre de la cuenta compartida. La pantalla
+  sale sola a los 90 s sin uso (10 min leyendo un documento; tocar o
+  desplazarse dentro del visor cuenta), manda las llamadas en fila, desactiva
+  los botones mientras hay una en curso y descarta la respuesta de quien ya
+  salió. Los PDF se leen con el visor pdf.js de Odoo.
+- **Tabletas de planta** (`sgi.floor.tablet`, SGI → Administración SGI →
+  Configuración → Tabletas de planta): cuenta compartida interna y sin
+  empleado (se vuelve a revisar en cada llamada), departamentos y checklists.
+  Grupo nuevo «Tableta de planta (SGI)» con ACL mínima (lee su tableta; nada
+  más). App raíz «SGI en planta» para las tabletas y el Jefe MAST.
+- **Validación de PIN común** (`sgi.pin`): la usan el asistente «Terminar
+  checklist» y la tableta. Persona activa, de la empresa del SGI y de la lista
+  de la plantilla; compara en tiempo constante; sin límite de intentos (D-08 /
+  F-018, ver Q12). El parámetro `quimibond_sgi.checklist_pin_required` no
+  cambia: lo enciende MAST cuando RH termine de capturar los PIN.
+- **Incidente: «Reportado por (empleado)»** (`reporter_employee_id`, sin
+  seguimiento en el chatter: el empleado lo lee solo RH en Odoo 19). Desde la
+  tableta, el casi accidente queda a nombre del empleado (y de su usuario si
+  tiene, que lo sigue) y avisa a Salud ocupacional o al Jefe MAST («Revisar
+  casi accidente…»).
+- **RH (U-08):** lista «Empleados sin puesto, sin PIN o sin correo»
+  (Empleados → Empleados, solo RH), columna «Le falta» (sin mostrar el PIN) y
+  aviso semanal por departamento en Mis pendientes (cron nuevo, lunes 13:00
+  UTC; «Ir» abre la lista del departamento a quien es de RH). Recibe el aviso
+  `quimibond_sgi.hr_user_id`; vacío, el Usuario de RH de
+  `quimibond_sgi.rh_user_id` y, sin él, el Jefe MAST. Manual
+  `docs/sgi/usuarios/rh.md`.
+- **Kanban móvil (I-05):** Mis pendientes, Incidentes, Mis indicadores,
+  Documentos vigentes, Responsivas de EPP y Permisos de trabajo abren en
+  tarjetas en el celular y la tableta (`mobile_view_mode`), con el botón
+  principal grande; en el escritorio la lista sigue primero.
+
+### Cambiado
+
+- **Checklist (I-03):** «Marcar el resto como Bien» en el encabezado de la
+  hoja (oculto con la hoja firmada o completa); los puntos son tarjetas con
+  tres botones grandes (un toque por punto) y la observación se escribe en la
+  ficha del punto. La hoja firmada guarda la tableta y la hora si se firmó con
+  PIN. El asistente «Terminar checklist» valida con `sgi.pin`.
+- Plantilla y día de la hoja con `copy=False`: duplicar una hoja (o la
+  recurrencia de un preventivo) da una solicitud de mantenimiento normal.
+
+### Seguridad
+
+- Una hoja de checklist firmada ya no cambia respuestas ni notas, ni se le
+  sacan, meten o agregan puntos (la vista lo decía; el servidor no).
+- «Lo llenó», «Terminado el», la plantilla y el día de una hoja solo los
+  escribe el sistema (antes un write por RPC de cualquier usuario interno los
+  ponía); el asistente «Terminar checklist» solo acepta hojas de checklist con
+  puntos.
+- La firma con PIN (tableta y hora) solo la escribe el sistema, y lo firmado
+  con PIN no cambia de persona (acuse, incidente, EPP, hoja), ni con el Jefe
+  MAST.
+- Estos candados se revisan también después del alta: un `default_*` en el
+  contexto ya no firma ni pone a otro como reportante.
+- En el backend nadie reporta un incidente a nombre de otro empleado ni de
+  otro usuario (salvo MAST y Salud ocupacional); en la ficha, «Reportado por
+  (empleado)» solo lo cambian ellos.
+- El casi accidente de la tableta no lo sigue la cuenta compartida, y «lo
+  creé yo» ya no le da a esa cuenta lectura ni edición de lo reportado en ella
+  (reglas `rule_sgi_incident_user_read_own` y `_user_edit_reported`).
+- La cuenta de una tableta no firma acuses por el backend
+  (`action_mark_read` revisa primero el permiso de escribir).
+- En la tableta solo se abren PDF e imágenes, por tipo guardado y por
+  contenido, y el tamaño se revisa antes de cargar el archivo (un HTML
+  subido como documento correría su JavaScript con la sesión de la tableta);
+  los enlaces, solo `http(s)`.
+- **Sin límite de intentos de PIN** (D-08): quien tenga la tableta en la mano
+  puede probar PIN por RPC. Cada intento fallido queda en el log del servidor
+  (sin el PIN). Ver Q12.
+
+### Migración
+
+Ninguna. Tablas y columnas nuevas vacías (`sgi_floor_tablet` y sus dos
+tablas de relación; `sgi_pin_tablet_id` y `sgi_pin_signed_at` en acuses,
+incidentes, responsivas y solicitudes de mantenimiento;
+`sgi_incident.reporter_employee_id`); 0 incidentes, 0 responsivas y 0 hojas
+de checklist en producción. El cron nuevo va en un XML nuevo `noupdate` (se
+crea en la primera carga).
+
+### Datos de producción
+
+A mano, después de desplegar (no lo hace el código):
+
+1. MAST da de alta las tabletas en Configuración → Tabletas de planta
+   (cuenta, departamentos, checklists). Sistemas pone «SGI en planta» como
+   acción de inicio de cada cuenta.
+2. Sistemas ajusta los grupos de `supervisor@` y `manufactura@` (hoy Usuario
+   SGI): dejarles «Tableta de planta (SGI)» y lo que usen fuera del SGI (Q8).
+3. RH captura los PIN con la lista «Empleados sin puesto, sin PIN o sin
+   correo» (hoy 2 de 165 tienen PIN).
+4. Cuando RH termine, MAST enciende «PIN obligatorio para firmar checklists»
+   (Ajustes → SGI).
+
+**Decisiones por omisión (confirmar con Jose):** Q7 dos tabletas con las
+cuentas que ya entran (`supervisor@` → Tejido y áreas de producción,
+`manufactura@` → Mantenimiento, Almacén y Laboratorio) y RH captura los PIN
+por departamento en dos semanas; Q8 las cuentas compartidas pierden Usuario
+SGI; Q9 `quimibond_sgi.hr_user_id` vacío (aviso al Usuario de RH de
+`rh_user_id` o al Jefe MAST); Q10 un aviso por departamento; Q11 el casi
+accidente entra «leve» y lo clasifica quien investiga; **Q12 (contestar ANTES
+de desplegar a producción): límite de intentos de PIN; hoy ninguno (D-08)** —
+la revisión recomienda bloqueo de 5 minutos tras 5 fallos por empleado; Q13
+la pantalla completa no muestra la barra de Odoo (MAST sale con `/odoo`).
+
+**Pruebas:** `test_sgi_en_planta` (16 casos: PIN común, mosaico sin PIN,
+solo tabletas registradas, PIN válido e inválido, acuse, casi accidente, EPP y
+checklist a nombre del empleado, plantilla de otras personas, firma no
+falsificable ni con `default_*`, la cuenta compartida no lee lo reportado en
+ella y nadie cambia al firmante, «Marcar el resto como Bien», hoja firmada sin
+mover puntos y duplicable, aviso de RH, kanban de piso) y
+`test_sgi_en_planta_tour` (`HttpCase`, recorrido de la pantalla).
+
+**Verificación pendiente en Odoo.sh:** (1) `ir.actions.client` con
+`target = fullscreen` (si no carga, quitar el campo); (2) el visor pdf.js en
+`/web/static/lib/pdfjs/web/viewer.html` abre el `blob:` en la tableta Android;
+(3) `t-on-load` del visor y los eventos dentro de él; (4) forma del error de
+`orm.call` (`error.data.message`) y que atraparlo evita el diálogo de Odoo;
+(5) botones de objeto en el kanban del one2many de la hoja (guardan la hoja y
+llaman al punto); (6) `<a type="open">` en la tarjeta de permisos de trabajo;
+(7) `mobile_view_mode` en las acciones XML; (8) `test_12`: `pin = False` con
+PIN vacío, el menú padre `hr.menu_hr_employee_payroll` y actividades en
+`hr.department`; (9) `mail_create_nosubscribe` deja fuera a la cuenta
+compartida (`test_10c`); (10) `index='btree_not_null'` en el mixin;
+(11) formato del tour de Odoo 19 y la URL `/odoo/action-…`.
+
 ## 19.0.57.93.0 — 2026-10-02
 
 **NC y auditoría con evidencia** (auditoría 2026-10: N-02, N-03, N-12, K-03; y lo pendiente de 57.91.0: FUNC-C13 al crear, K-07 portal).

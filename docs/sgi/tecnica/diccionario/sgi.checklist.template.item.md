@@ -14,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_checklist.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `hint` | Char | Cómo / criterio | Ej. «Presión entre 6 y 8 bar», «Llantas sin cortes». |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:176` |
-| `name` | Char | Qué se revisa |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:175` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:174` |
-| `template_id` | Many2one |  |  | sí | `sgi.checklist.template` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:173` |
+| `hint` | Char | Cómo / criterio | Ej. «Presión entre 6 y 8 bar», «Llantas sin cortes». |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:181` |
+| `name` | Char | Qué se revisa |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:180` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:179` |
+| `template_id` | Many2one |  |  | sí | `sgi.checklist.template` |  |  | `addons/quimibond_sgi/models/sgi_checklist.py:178` |
 

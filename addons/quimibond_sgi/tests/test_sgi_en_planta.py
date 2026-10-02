@@ -24,10 +24,6 @@ from .common_users import sgi_set_mast
 # archivo importe aunque el modelo todavía no exista: el fallo esperado antes
 # del código es por prueba, no del paquete de pruebas completo).
 HR_GAPS_KEY = 'rh_empleados_incompletos'
-# Prefijo de los xmlid que llegan con el código (lista de RH, kanban de Mis
-# pendientes): con el xmlid completo y literal en la llamada, tools/check_addons.py
-# marca error mientras el registro todavía no existe.
-SGI = 'quimibond_sgi.'
 
 LONG_TEXT = 'Se cayó una bobina del montacargas junto al pasillo 3'
 
@@ -394,7 +390,7 @@ class TestRhFaltantes(_PlantaCase):
         # worker sin correo de trabajo; no_pin sin PIN, sin puesto y sin correo.
         self.assertIn('ZK Tejido: 2', notice.summary)
         # La lista de RH los trae.
-        action = self.env.ref(SGI + 'sgi_hr_employee_gaps_action')
+        action = self.env.ref('quimibond_sgi.sgi_hr_employee_gaps_action')
         found = self.env['hr.employee'].with_user(rh).search(safe_eval(action.domain))
         self.assertIn(self.no_pin, found)
         self.assertEqual(self.no_pin.with_user(rh).sgi_missing_data, 'puesto, PIN, correo')
@@ -441,8 +437,8 @@ class TestVistasDePiso(_PlantaCase):
         action = self.env['sgi.my.pending'].with_user(user).action_open_mine()
         self.assertEqual(action.get('mobile_view_mode'), 'kanban')
         kanban_id = dict((mode, vid) for vid, mode in action['views'])['kanban']
-        self.assertEqual(kanban_id, self.env.ref(SGI + 'sgi_my_pending_view_kanban').id)
+        self.assertEqual(kanban_id, self.env.ref('quimibond_sgi.sgi_my_pending_view_kanban').id)
         for xmlid in ('sgi_my_pending_view_kanban', 'sgi_indicator_view_kanban_mine',
                       'sgi_current_document_view_kanban', 'sgi_epp_delivery_view_kanban',
                       'sgi_work_permit_view_kanban'):
-            self.assertIn('btn-lg', self.env.ref(SGI + xmlid).arch, xmlid)
+            self.assertIn('btn-lg', self.env.ref('quimibond_sgi.' + xmlid).arch, xmlid)

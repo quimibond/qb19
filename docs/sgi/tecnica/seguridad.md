@@ -2,7 +2,7 @@
 
 # Seguridad del SGI
 
-## Grupos (10)
+## Grupos (11)
 
 «+» = implica ese grupo; «−» = quita una implicación que ya estaba en la base.
 
@@ -18,8 +18,9 @@
 | `quimibond_sgi.group_sgi_health` | Salud ocupacional (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_salary` | Salarios de eficiencias (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_csh` | Comisión de Seguridad e Higiene (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.group_sgi_floor_tablet` | Tableta de planta (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 
-## Permisos por modelo (308 renglones del CSV)
+## Permisos por modelo (311 renglones del CSV)
 
 l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso efectivo suma lo que implican los grupos y lo que quitan las reglas.
 
@@ -165,6 +166,9 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.epp.delivery.line` | `base.group_user` | l | quimibond_sgi |
 | `sgi.epp.delivery.line` | `hr.group_hr_user` | lecb | quimibond_sgi |
 | `sgi.epp.delivery.line` | `quimibond_sgi.group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.floor.tablet` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.floor.tablet` | `group_sgi_floor_tablet` | l | quimibond_sgi |
+| `sgi.floor.tablet` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.fmea` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.fmea` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.fmea` | `group_sgi_user` | lec | quimibond_sgi |
@@ -334,7 +338,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `stock.picking` | `group_sgi_auditor` | l | quimibond_sgi |
 | `survey.user.input` | `group_sgi_auditor` | l | quimibond_sgi |
 
-## Reglas de registro (61)
+## Reglas de registro (63)
 
 | Regla | Nombre | Modelo | Dominio | Grupos | Archivo |
 |---|---|---|---|---|---|
@@ -364,11 +368,13 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `quimibond_sgi.rule_sgi_dropbox_key_readable_document` | SGI: clave anterior solo de documentos que el usuario puede leer | `sgi.dropbox.key` | `['\|', ('document_id', '=', False), ('document_id', 'any', [])]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_dropbox_progress_company` | SGI: avance de la transición por empresa | `sgi.dropbox.progress` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_env_aspect_company` | SGI: Aspectos ambientales por empresa | `sgi.env.aspect` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_floor_tablet_manager` | SGI: MAST y Auditor ven todas las tabletas | `sgi.floor.tablet` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager')), (4, ref('group_sgi_auditor'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_floor_tablet_own` | SGI: la tableta lee solo su registro | `sgi.floor.tablet` | `[('user_id', '=', user.id)]` | [(4, ref('group_sgi_floor_tablet'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_health_record_company` | SGI: Expedientes de salud por empresa | `sgi.health.record` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_incident_auditor_read` | SGI: Auditor y Dirección leen todos los incidentes | `sgi.incident` | `[(1, '=', 1)]` | [(4, ref('group_sgi_auditor'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_incident_sst_all` | SGI: MAST y Salud ocupacional investigan todos los incidentes | `sgi.incident` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager')), (4, ref('group_sgi_health'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
-| `quimibond_sgi.rule_sgi_incident_user_edit_reported` | SGI: el reportante edita su incidente mientras está reportado | `sgi.incident` | `[('state', '=', 'reportado'), '\|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id)]` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
-| `quimibond_sgi.rule_sgi_incident_user_read_own` | SGI: el usuario consulta los incidentes que reportó o donde tiene una acción | `sgi.incident` | `['\|', '\|', ('reporter_id', '=', user.id), ('create_uid', '=', user.id), ('action_line_ids.responsible_id', '=', user.id)]` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_incident_user_edit_reported` | SGI: el reportante edita su incidente mientras está reportado | `sgi.incident` | `[('state', '=', 'reportado'), '\|', ('reporter_id', '=', user.id), '&', ('create_uid', '=', user.id), ('sgi_pin_tablet_id', '=', False)]` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_incident_user_read_own` | SGI: el usuario consulta los incidentes que reportó o donde tiene una acción | `sgi.incident` | `['\|', '\|', ('reporter_id', '=', user.id), '&', ('create_uid', '=', user.id), ('sgi_pin_tablet_id', '=', False), ('action_line_ids.responsible_id', '=', user.id…` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_inventory_value_company` | SGI: Valor del inventario por empresa | `sgi.inventory.value` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_job_family_company` | SGI: Familias de puestos por empresa | `sgi.job.family` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_legal_eval_manager_all` | SGI: MAST registra cualquier evaluación legal | `sgi.legal.evaluation` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
