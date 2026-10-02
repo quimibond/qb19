@@ -21,7 +21,9 @@ TUTEO = re.compile(
     r"|[Rr]ecalcúlal[oa]s?|[Ee]nvíal[oa]s?|[Rr]evísal[oa]s?|[Mm]ándal[oa]s?|[Qq]uítal[oa]s?"
     r"|[Aa]págal[oa]s?|[Mm]árcal[oa]s?|[Ii]nstálal[oa]s?|[Ee]nlázal[oa]s?|[Aa]sígnal[oa]s?"
     r"|[Cc]aptúral[oa]s?|[Dd]ecláral[oa]s?|[Dd]ecídel[oa]s?|[Dd]efínel[oa]s?|[Ii]mprímel[oa]s?"
-    r"|[Dd]éjal[oa]s?|[Ll]lámale)\b")
+    r"|[Dd]éjal[oa]s?|[Ll]lámale)\b"
+    # «Corrige» / «Corrija», «Pasa el mouse» / «Pase», «da clic» / «dé clic».
+    r"|\bCorrige\b|\b[Pp]asa el mouse\b|\bda clic\b")
 # Excepciones explícitas: sustantivos que empiezan como un imperativo de «tú»
 # («Programa de auditorías», el modo de indicador «Captura manual», la clase de
 # valor «Agrega valor»). Se quitan del texto antes de buscar; no relajan TUTEO.

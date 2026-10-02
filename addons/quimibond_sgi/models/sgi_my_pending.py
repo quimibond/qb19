@@ -205,6 +205,15 @@ class SgiMyPending(models.TransientModel):
     state_rank = fields.Integer(readonly=True, help="Orden para mostrar primero lo atrasado.")
     res_model = fields.Char(readonly=True)
     res_id = fields.Integer(readonly=True)
+    # 57.92.0 (U-05): «Hecho» y «Leído y entendido» solo salen en los
+    # renglones de quien abre la lista (no en los de Mi equipo).
+    is_mine = fields.Boolean(compute='_compute_is_mine',
+                             help="El renglón es de quien abre la lista.")
+
+    @api.depends_context('uid')
+    def _compute_is_mine(self):
+        for row in self:
+            row.is_mine = row.user_id == self.env.user
 
     # ------------------------------------------------------------------
     # Fuentes: una búsqueda por tipo para todos los usuarios a la vez.
@@ -716,12 +725,15 @@ class SgiMyPending(models.TransientModel):
                     # Texto de «Dónde se ejecuta» que no resuelve a un menú y
                     # sin medición ligada: se abre la ficha, como antes.
                     pass
-        # 57.92.0 (U-05): «Leer» abre el documento del acuse, no el acuse.
+        # 57.92.0 (U-05): «Leer» abre el archivo del documento del acuse.
         if self.kind == 'acuse' and self.res_model == 'sgi.document.ack':
+            # El acuse se lee con sudo solo para saber su documento; el
+            # archivo se abre con los permisos de quien abre la lista
+            # (PDF en el navegador, URL o la vista real del formulario).
             ack = self.env['sgi.document.ack'].sudo().browse(self.res_id).exists()
             if ack:
-                return {'type': 'ir.actions.act_window', 'res_model': 'documents.document',
-                        'res_id': ack.document_id.id, 'view_mode': 'form', 'target': 'current'}
+                return self.env['documents.document'].browse(
+                    ack.document_id.id).action_sgi_view_file()
         return {
             'type': 'ir.actions.act_window', 'res_model': self.res_model, 'res_id': self.res_id,
             'view_mode': 'form', 'target': 'current',

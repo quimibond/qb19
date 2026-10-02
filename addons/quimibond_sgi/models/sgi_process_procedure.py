@@ -1390,7 +1390,7 @@ class SgiProcessActivity(models.Model):
         except Exception as exc:
             raise UserError(
                 "El «Filtro de evidencia» de la actividad %s es inválido para "
-                "el modelo %s:\n%s\n\nCorrige el dominio en la pestaña de "
+                "el modelo %s:\n%s\n\nCorrija el dominio en la pestaña de "
                 "medición (solo campos reales y almacenados del modelo)." % (
                     self.display_name, self.measure_model_id.model, exc))
         return domain

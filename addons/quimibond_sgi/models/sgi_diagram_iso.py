@@ -176,7 +176,7 @@ class SgiDiagramIso(models.AbstractModel):
                               'label': "Ejecuta" if role.role == 'ejecuta' else "Aprueba"})
         return {
             'title': "Roles, responsabilidades y autoridades (ISO 9001 5.3)",
-            'subtitle': "Dueño → proceso → puestos que ejecutan o aprueban · pasa el mouse por un proceso",
+            'subtitle': "Dueño → proceso → puestos que ejecutan o aprueban · pase el mouse por un proceso",
             'layout': 'columns',
             'lanes': [
                 {'key': 'owners', 'label': "Dueños de proceso", 'items': [

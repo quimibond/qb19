@@ -430,7 +430,8 @@ class TestBandeja(TransactionCase):
 
     def test_24_ir_a_hacerlo_y_leer(self):
         """U-05: «Ir» lleva al menú donde se hace la actividad; «Leer» abre el
-        documento del acuse y «Leído y entendido» lo firma desde el renglón."""
+        archivo del documento del acuse (como el usuario, no sudo) y «Leído y
+        entendido» lo firma desde el renglón."""
         # Un menú con acción (Inicio → Documentos vigentes).
         menu = self.env.ref('quimibond_sgi.menu_sgi_current_documents')
         self.activity.sudo().write({'odoo_menu_id': menu.id})
@@ -441,20 +442,41 @@ class TestBandeja(TransactionCase):
         self.assertNotEqual(action.get('res_model'), 'sgi.process.activity',
                             "Lleva al menú donde se hace, no a la ficha del catálogo.")
         self.assertEqual(action.get('id'), menu.action.id)
+        attachment = self.env['ir.attachment'].create({
+            'name': 'IT-Z8A-01.pdf', 'raw': _blank_pdf(), 'mimetype': 'application/pdf'})
         doc = self.env['documents.document'].create({
             'name': 'Leer 8A', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-01', 'sgi_state': 'vigente',
-            'sgi_process_id': self.process.id})
+            'sgi_process_id': self.process.id, 'attachment_id': attachment.id})
         ack = self.env['sgi.document.ack'].create({'document_id': doc.id, 'employee_id': self.emp.id})
         row = self.Pending.with_user(self.user).create({
             'kind': 'acuse', 'name': 'Leer', 'employee_id': self.emp.id,
             'res_model': 'sgi.document.ack', 'res_id': ack.id})
         action = row.with_user(self.user).action_open()
-        self.assertEqual((action['res_model'], action['res_id']), ('documents.document', doc.id))
+        # El archivo en el navegador (act_url inline al adjunto), no la ficha.
+        self.assertEqual(action['type'], 'ir.actions.act_url')
+        self.assertIn('/web/content/%d' % doc.attachment_id.id, action['url'])
+        self.assertNotIn('download=true', action['url'])
         result = row.with_user(self.user).action_sign_ack()
         self.assertEqual(result['tag'], 'soft_reload')
         self.assertEqual(ack.state, 'leido')
         self.assertFalse(row.exists(), "El renglón firmado sale de la lista.")
+
+    def test_24b_botones_solo_en_lo_propio(self):
+        """U-05: «Hecho» y «Leído y entendido» solo salen en los renglones de
+        quien abre la lista: un jefe que ve los de su equipo no los tiene."""
+        self._late()
+        Public = self.env['hr.employee.public'].with_user(self.boss_user)
+        theirs = self.Pending.with_user(self.boss_user).search(
+            Public.browse(self.emp.id).action_sgi_open_pending()['domain'])
+        self.assertTrue(theirs)
+        self.assertEqual(set(theirs.mapped('user_id').ids), {self.user.id})
+        self.assertFalse(any(theirs.mapped('is_mine')),
+                         "Los renglones del subordinado no son del jefe.")
+        mine = self.Pending.with_user(self.boss_user).create({
+            'kind': 'aviso', 'name': 'Aviso propio 8A', 'user_id': self.boss_user.id,
+            'employee_id': self.boss.id})
+        self.assertTrue(mine.is_mine)
 
     def test_25_avisos_de_los_crons(self):
         """U-03 (D-04): los avisos de los crons del SGI, vencidos o de los

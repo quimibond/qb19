@@ -47,6 +47,13 @@ proceso (contención, causa raíz, plan) y los riesgos con revisión vencida.
    **Validar**, desde el renglón o desde la medición.
 3. Si el valor está mal, corríjalo antes de validar. Un rojo necesita causa y
    plan de acción; si el indicador tiene «NC en rojo», se levanta una NC.
+4. Para validar varias a la vez, selecciónelas y pulse **Validar
+   seleccionadas** (arriba de la lista). Solo se validan las de sus
+   indicadores; las demás se dejan y un aviso le dice cuántas.
+
+Mis pendientes abre con el filtro **Atrasadas o por vencer**. Las
+validaciones que vencen más adelante no se ven con ese filtro: quítelo en
+la barra de búsqueda para validarlas por adelantado.
 
 ### 2.4 Aprobar propuestas de cambio de su proceso
 

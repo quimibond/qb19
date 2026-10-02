@@ -24,10 +24,13 @@ Retirado, Seguridad, Migración, Datos de producción.
   (`sgi_can_validate`) y avisa con una notificación cuáles omitió.
 - **«Ir» y «Leer» (U-05):** «Ir» abre el menú o la acción de la actividad, o su
   evidencia (como «Ir a hacerlo»), con respaldo a la ficha de la actividad si
-  falla (savepoint). «Leer» abre el documento por leer. «Leído y entendido»
-  firma el acuse desde el renglón (el candado de identidad no cambia: en Mi
-  equipo, un jefe ve el botón en el renglón de su subordinado pero no puede
-  firmar por él y recibe el mensaje de identidad).
+  falla (savepoint). «Leer» abre el archivo del documento por leer
+  (`action_sgi_view_file`, con los permisos del usuario: PDF en el navegador,
+  URL o la vista real de un «Formulario de Odoo»). «Leído y entendido» firma el
+  acuse desde el renglón (el candado de identidad no cambia).
+- **Botones solo en lo propio (U-05):** «Hecho» y «Leído y entendido» solo
+  salen en los renglones de quien abre la lista (`is_mine`, calculado por
+  usuario); en Mi equipo, un jefe ya no los ve en los renglones de su gente.
 - **Tipo «Aviso» (U-03):** las actividades nativas sobre modelos `sgi.*` y los
   avisos de los crons del SGI (con `sgi_cron_key`) sobre quality.alert,
   documents.document, maintenance.request, helpdesk.ticket y project.task,
@@ -50,7 +53,9 @@ Retirado, Seguridad, Migración, Datos de producción.
   semanal de atrasados.
 - **U-06:** textos para el usuario en «usted» y con el glosario en unos 50
   archivos. Etiquetas cambiadas, por ejemplo «Qué propones» a «Qué propone» y
-  COA a CoA (etiquetas y `_description`). El nombre por defecto «COA» del buzón
+  COA a CoA (etiquetas y `_description`). También «Pase el mouse o dé clic»
+  en los diagramas y «Corrija el dominio» en el aviso de evidencia; la prueba
+  `test_usted` ya los detecta. El nombre por defecto «COA» del buzón
   de CoA (`sgi_coa.py`) se queda como dato, a propósito.
 
 ### Datos de producción
@@ -75,7 +80,9 @@ Ninguna (ver Datos de producción).
 ### Pruebas
 
 - `test_bandeja` test_20 a test_25: validar en lote, mezcla de permisos, avisa
-  de las omitidas, abre desplegada, Ir/Leer, avisos.
+  de las omitidas, abre desplegada, Ir/Leer (Leer abre el adjunto del
+  documento), avisos; test_24b: el jefe no tiene «Hecho» ni «Leído y
+  entendido» en los renglones de su gente (`is_mine`).
 - Nueva `test_usted`: vigila el «usted» y el glosario en los textos del módulo.
 - Aserciones actualizadas en `test_vistas_pulido` y `test_coa`.
 
