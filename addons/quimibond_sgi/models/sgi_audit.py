@@ -60,9 +60,10 @@ class SgiAuditProgram(models.Model):
                                 help="Auditorías cerradas entre auditorías programadas, en %.")
     # 57.93.0 (N-03): ISO 9.2.2, todos los procesos dentro del ciclo de 3 años.
     coverage_gap_ids = fields.Many2many(
-        'sgi.process', string="Sin auditar en 3 años", compute='_compute_coverage_gap',
-        help="Subprocesos sin renglón en este programa ni en los de los dos años anteriores.")
-    coverage_gap_count = fields.Integer(string="Procesos sin auditar en 3 años",
+        'sgi.process', string="Sin programar en 3 años", compute='_compute_coverage_gap',
+        help="Subprocesos sin renglón en este programa ni en los de los dos años anteriores "
+             "registrados en Odoo.")
+    coverage_gap_count = fields.Integer(string="Procesos sin programar en 3 años",
                                         compute='_compute_coverage_gap')
 
     _year_uniq = models.Constraint(
@@ -86,7 +87,8 @@ class SgiAuditProgram(models.Model):
 
     @api.depends('year', 'line_ids.process_id')
     def _compute_coverage_gap(self):
-        processes = self.env['sgi.process'].search([('parent_id', '!=', False)])
+        processes = self.env['sgi.process'].search([
+            ('parent_id', '!=', False), ('company_id', 'in', (self.env.company.id, False))])
         for program in self:
             previous = self.search([('year', '>=', (program.year or 0) - 2),
                                     ('year', '<', program.year or 0)])
@@ -116,7 +118,7 @@ class SgiAuditProgram(models.Model):
             program.state = 'aprobado'
             if program.coverage_gap_ids:
                 program.message_post(body=Markup(
-                    "<b>Cobertura de 3 años:</b> se aprobó con %d subproceso(s) sin auditar en este "
+                    "<b>Cobertura de 3 años:</b> se aprobó con %d subproceso(s) sin renglón en este "
                     "programa ni en los dos anteriores: %s.") % (
                         program.coverage_gap_count,
                         ", ".join(program.coverage_gap_ids.mapped('display_name'))))
@@ -149,7 +151,8 @@ class SgiAuditProgram(models.Model):
                 raise UserError("El programa sugerido solo se arma en borrador.")
             existing = program.line_ids.mapped('process_id')
             processes = self.env['sgi.process'].search(
-                [('parent_id', '!=', False)], order='code, name')
+                [('parent_id', '!=', False), ('company_id', 'in', (self.env.company.id, False))],
+                order='code, name')
             for index, process in enumerate(p for p in processes if p not in existing):
                 twice = bool(process.nc_count or process.red_kpi_count)
                 month = quarter_months[index % 4]
@@ -656,7 +659,10 @@ class SgiAuditFinding(models.Model):
             vals['sgi_supplier_id'] = audit.partner_id.id
         if team:
             vals['team_id'] = team.id
-        alert = self.env['quality.alert'].sgi_auto_create('auditoria_hallazgo', vals)
+        # 57.93.0 (N-03): el auditor solo lee NC y el cierre exige la NC de
+        # cada no conformidad; quien puede editar el hallazgo la levanta.
+        self.check_access('write')
+        alert = self.env['quality.alert'].sudo().sgi_auto_create('auditoria_hallazgo', vals)
         self.write({'disposition': 'genera_nc', 'alert_id': alert.id})
         return {
             'type': 'ir.actions.act_window',

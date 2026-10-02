@@ -414,7 +414,7 @@ class TestAuditoriaCierre(_NcEvidenciaCase):
         assert_locked(self, audit.with_user(self.auditor).action_close)
         finding.write({'disposition': 'mejora'})
         assert_locked(self, audit.with_user(self.auditor).action_close)
-        finding.action_generate_nc()   # superusuario: el auditor solo lee NC
+        finding.with_user(self.auditor).action_generate_nc()   # el auditor solo lee NC; la levanta igual
         audit.with_user(self.auditor).action_close()
         self.assertEqual(audit.state, 'cerrada')
 
