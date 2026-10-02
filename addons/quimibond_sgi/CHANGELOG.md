@@ -13,6 +13,189 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.96.0 — 2026-10-02
+
+**SST y ambiente** (auditoría 2026-10: N-06, N-07 e incidente desde la
+incapacidad; es la ficha «57.95.0» del plan general, renumerada porque 57.95.0
+fue «Rendimiento y robustez»). Plan:
+`docs/superpowers/plans/2026-10-02-sgi-57-96-0-sst-ambiente.md`. **Ningún dato
+de negocio cambia en el despliegue.**
+
+### Agregado
+
+- **Jerarquía de controles (ISO 45001 8.1.2):** `control_hierarchy` en
+  `sgi.risk` («Control existente de mayor nivel») y en `sgi.action.line`
+  («Jerarquía del control»): eliminación, sustitución, ingeniería,
+  administrativo, EPP. La lista vive en `models/sgi_control_hierarchy.py`
+  (módulo sin modelos).
+- **Incidente:** equipo de investigación (`investigation_team_ids`) y
+  verificación de eficacia (`sgi_effective` Eficaz / No eficaz, fecha, nota,
+  «Verificó» y cuántas veces salió no eficaz), en la pestaña nueva
+  «Investigación y eficacia».
+- **Permiso de trabajo:** pestaña «Bloqueos (LOTO)» (`loto_ids`) y columna
+  «Vencido» en la lista.
+- **Competencias por tipo de permiso** (Administración SGI → Configuración,
+  `sgi.work.permit.skill`): qué competencia exige cada tipo de trabajo. Vacía
+  no exige nada.
+- **Contratista:** «Evaluación SST vigente hasta» y «Qué se revisó (SST)» en
+  el contacto (pestaña SGI, grupo «Contratista (SST, ISO 45001 8.1.4)»); solo
+  el Jefe MAST los escribe (al crear y al editar) y para los demás se ven de
+  solo lectura.
+- **Etapa del ciclo de vida** en el aspecto ambiental (`life_cycle_stage`), en
+  la ficha, la lista y la búsqueda (agrupar por etapa). Las listas de tipo,
+  condición y etapa son constantes del módulo (`ASPECT_TYPES`,
+  `ASPECT_CONDITIONS`, `LIFE_CYCLE_STAGES`).
+- **«Traspaso de riesgos ambientales»** (Administración SGI → Configuración,
+  solo Jefe MAST, `sgi.env.aspect.transfer` con renglones): al abrir solo
+  cuenta y propone un renglón por riesgo ambiental sin aspecto (activo o
+  archivado); «Traspasar a la matriz» crea cada aspecto «En evaluación» en su
+  savepoint, ligado al riesgo como su tratamiento, con nota en los dos y el
+  antes y el después en el log; el renglón que falla dice por qué. Conserva
+  los riesgos salvo que se marque «Archivar los riesgos originales».
+  Idempotente; nada se borra; nunca corre solo.
+- **Incidente desde la incapacidad:** una ausencia que pasa a «Aprobado» del
+  tipo «Riesgo de trabajo (IMSS)» (`hr_holidays.l10n_mx_leave_type_work_risk_imss`,
+  o los del parámetro `quimibond_sgi.work_risk_leave_type_ids`) crea el
+  incidente en «Reportado» (lesión, moderado, persona, días perdidos,
+  `sgi_from_leave`) y agenda al Jefe MAST «Investigar riesgo de trabajo…»; la
+  subsecuente de la misma persona (hasta `quimibond_sgi.work_risk_followup_days`,
+  3) se suma al mismo incidente abierto. Sin diagnóstico ni la descripción de
+  la ausencia. `hr.leave.sgi_incident_id` solo lo ven RH de ausencias, el Jefe
+  MAST y Salud ocupacional; en el incidente solo hay conteos.
+- **Acción planificada «SGI: Permisos de trabajo vencidos (cada hora)»**
+  (`sgi_cron_work_permits`, `data/sgi_sst_cron.xml`, `noupdate`, solo el
+  sistema): marca vencidos los permisos autorizados que pasaron su hora de fin
+  y avisa sobre el permiso al jefe del área (o a quien lo solicitó, si es
+  Usuario SGI) y al Jefe MAST; los avisos se cierran solos al cerrar, cancelar
+  o renovar el permiso. 28 acciones planificadas del SGI.
+- Ruta «Aspectos ambientales» en `SGI_MENU_PATHS` (la vigila `test_menu_tree`).
+
+### Cambiado
+
+- **IPER de riesgo alto:** no se controla ni se cierra sin jerarquía declarada
+  (en el riesgo o en sus acciones terminadas) ni con EPP como único control.
+  Solo en la transición a controlado o cerrado (también de controlado a
+  cerrado): no alcanza a lo ya controlado ni lo disparan las acciones. Sin
+  excepción para el superusuario, como H11.
+- **Cerrar un incidente** pide además: equipo con al menos un trabajador sin
+  personal a su cargo o un integrante de la Comisión de Seguridad e Higiene;
+  eficacia «Eficaz» con fecha y nota (no futura, no antes de la última acción
+  terminada); tras un «No eficaz», una acción nueva terminada (ronda de
+  eficacia en la acción del incidente, como en la NC); si es moderado, grave o
+  fatal con IPER ligado, el IPER reevaluado después del incidente. «No
+  eficaz» deja nota, suma el contador, limpia la verificación, regresa a
+  «Acciones» y agenda «Registrar acción nueva del incidente…» (la acción nueva
+  lo cierra). Solo el Jefe MAST y Salud ocupacional registran la eficacia: de
+  los demás se descarta al crear (también por RPC) y se rechaza al editar. El
+  candado de cierre se revisa después de escribir (como la NC); el
+  superusuario sigue exento.
+- **Permiso de trabajo:** `expired` guardado e indexado (el filtro «Vencidos
+  sin cerrar» lo usa); no se cierra **ni se cancela** con un bloqueo (LOTO)
+  ligado todavía aplicado, por ninguna vía; al solicitar y autorizar, cada
+  persona que ejecuta debe tener las competencias del tipo vigentes hasta el
+  fin del permiso; contratista sin evaluación SST vigente: aviso en la ficha
+  (bloquea solo con `quimibond_sgi.permit_contractor_eval_required` = 1).
+- **Aspecto ambiental en la matriz:** «Aspecto ambiental» ya no se elige al
+  crear o reclasificar un riesgo a mano (`create` y `write` lo rechazan sin el
+  contexto `sgi_from_env_aspect`, que ponen «Tratar como riesgo» y el
+  traspaso; tampoco se duplica uno existente). Los 5 riesgos ambientales
+  existentes se siguen editando; su ficha avisa que la evaluación vive en la
+  matriz y muestra su aspecto. El campo «Riesgo ambiental (tratamiento)» del
+  aspecto ya no crea riesgos al vuelo. Registrar la evaluación de un aspecto
+  pide la etapa del ciclo de vida: **los aspectos ya evaluados la piden en su
+  siguiente revisión** (hoy 0 en producción).
+- **Lo legal:** «Cumple», «Cumple parcialmente», «No cumple» y «No aplica»
+  abren «Registrar evaluación» con el resultado elegido; la evidencia (o el
+  motivo por el que no aplica) es obligatoria y no basta con espacios. El
+  asistente avisa que «Parcial» y «No cumple» levantan una NC.
+
+### Migración
+
+Ninguna. Columnas nuevas vacías (`sgi_risk.control_hierarchy`,
+`sgi_action_line.control_hierarchy`, `sgi_env_aspect.life_cycle_stage`, los
+campos de eficacia e incapacidad de `sgi_incident`, la tabla
+`sgi_incident_investigation_rel`, `res_partner.sgi_sst_eval_*`,
+`hr_leave.sgi_incident_id`); `sgi_work_permit.expired` se calcula al crearse
+la columna (0 permisos en producción). Registros nuevos: acción planificada
+`noupdate` en un XML nuevo, tres vistas primarias, dos acciones, dos menús y
+cinco líneas de ACL. Dependencia nueva `hr_holidays` (ya instalada en
+producción). La ficha del plan general pedía un post-migrate que pasara los 5
+riesgos ambientales a aspectos: es un cambio de datos de negocio y quedó como
+asistente manual (Q1).
+
+### Datos de producción
+
+- **El traspaso de los 5 riesgos ambientales no se aplica en el despliegue.**
+  Solo con el **visto bueno escrito de Jose** (en el PR), el Jefe MAST abre
+  Administración SGI → Configuración → «Traspaso de riesgos ambientales»,
+  revisa que proponga 5 renglones (RSG-2026-09 a 13), corrige actividad, tipo,
+  condición y etapa, y traspasa. Los 5 aspectos quedarán significativos
+  (puntaje 12 = «Severo», 8 = «Moderado» en la matriz) y piden control
+  operacional para evaluarse. Volver a abrir el asistente debe contar 0.
+- Los 5 IPER de riesgo alto (todos «Identificado», sin acciones) pedirán la
+  jerarquía cuando se controlen.
+- La configuración de competencias por tipo de permiso queda vacía y el
+  parámetro del contratista apagado hasta que Dirección decida (Q4, Q10).
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó el 2026-10-02 las opciones por omisión de Q1 a Q11 (registradas en
+`docs/audit/decisiones.md`): traspaso manual con su visto bueno y riesgos
+conservados (Q1); la matriz oficial no se carga aquí (Q2); MOC sigue archivada
+(Q3); el contratista solo avisa y Frontdesk no se instala (Q4); sin excepción
+para «solo EPP» (Q5); tipo de ausencia existente, incidente «moderado», aviso
+solo al Jefe MAST, subsecuente de 3 días (Q6); `hr_holidays` en `depends`
+(Q7); trabajador = sin personal a su cargo o integrante de la Comisión (Q8);
+eficacia en todos los incidentes sin plazo mínimo (Q9); competencias vacías
+hasta capturarlas (Q10); aviso de vencido cada hora, uno por permiso y persona
+(Q11). Con la misma regla («bloquear por cualquier vía»), el permiso con LOTO
+aplicado tampoco se cancela.
+
+### Desviaciones respecto del plan
+
+- `create` del riesgo también rechaza «ambiental» que llegue por
+  `default_instrument` del contexto.
+- El aviso de permiso vencido usa la zona del calendario del SGI (`sgi_tz`) y
+  también omite a un jefe de área inactivo.
+- Los conteos de incapacidad del incidente dan 0 si `hr.leave` o su liga no
+  existen (la vista los muestra antes de que cargue la extensión).
+- El botón rápido de lo legal no lleva texto de ayuda (no se confirmó que el
+  botón de formulario de Odoo 19 lo acepte).
+
+**Pruebas:** `test_sst_ambiente` (21 casos: IPER alto con solo EPP, sin
+jerarquía, no retroactivo; «ambiental» solo desde la matriz; ciclo de vida;
+traspaso que solo cuenta al abrir, que liga e idempotente, archivo solo a
+pedido; botones legales que abren el asistente; equipo con trabajador o
+Comisión, eficacia y «No eficaz», IPER reevaluado, solo quien investiga
+registra la eficacia (también por RPC al crear); permiso vencido guardado y
+aviso cada hora, cierre y cancelación con LOTO aplicado, competencias por
+tipo, contratista con aviso o bloqueo; incapacidad aprobada que crea el
+incidente y suma la subsecuente, otro tipo no y rechazo con nota, aprobación
+que no falla por el SGI). Ajustadas: `test_entrega4.test_07` y
+`test_audit_hardening.test_a6` (equipo y eficacia antes de cerrar),
+`test_ola_certificable` (evaluación con el asistente), `test_env_aspect`
+(etapa del ciclo de vida) y `test_work_permit` (sin configuración real de
+competencias ni parámetro del contratista).
+
+**Verificación pendiente en Odoo.sh:** (1) los caminos de aprobación y
+rechazo de `hr.leave` en Odoo 19 pasan por `write` de `state` (o nacen
+aprobados en `create`), y los nombres `action_approve`, `action_validate`,
+`action_refuse` que usan las pruebas; (2) `valid_to` de `hr.employee.skill`
+(la prueba usa un tipo de certificación; en uno que no lo es, el candado solo
+revisa que la persona tenga la competencia); (3) que el cron conserve
+`expired` escrito sobre un calculado guardado; (4) que agregar `hr_holidays` a
+`depends` no pida reinstalar (`update.log`); (5) que `many2many_tags` pinte el
+One2many `sgi_env_aspect_ids` en la ficha del riesgo (si no, una lista de solo
+lectura); (6) que el Jefe MAST de prueba con `base.group_partner_manager`
+escriba el contacto. (Los nombres de campos de `hr.leave`, `hr.leave.type`,
+`hr_skills` y los grupos de `hr_holidays` ya se verificaron por MCP.)
+
+**Revisión final:** la evaluación SST del contratista no se copia al duplicar
+el contacto (`copy=False`; antes un usuario que no es Jefe MAST no podía
+duplicar ni fusionar contratistas evaluados); la competencia por tipo de
+permiso se muestra como «Tipo de trabajo: competencia». Duplicar un riesgo
+ambiental existente ya no se permite (se registra el aspecto en la matriz).
+
 ## 19.0.57.95.0 — 2026-10-02
 
 **Rendimiento y robustez** (auditoría 2026-10: K-08, K-05 y D-06 de datos; es

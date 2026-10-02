@@ -9,6 +9,7 @@ from odoo.exceptions import UserError, ValidationError
 
 from .sgi_base import SGI_FREE_PREFIXES, sgi_bypass_allowed
 from .sgi_calendar import sgi_add_business_days, sgi_business_days
+from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
 from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
@@ -1040,6 +1041,11 @@ class SgiActionLine(models.Model):
     ], string="Tipo", default='correccion', required=True,
         help="Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la "
              "preventiva, una causa potencial.")
+    # 57.96.0 (N-06): jerarquía del control que aplica la acción (riesgos e
+    # incidentes). Cuenta para el candado de los IPER de riesgo alto.
+    control_hierarchy = fields.Selection(
+        CONTROL_HIERARCHY, string="Jerarquía del control", tracking=True,
+        help=CONTROL_HIERARCHY_HELP)
     name = fields.Char(string="Descripción", required=True)
     responsible_id = fields.Many2one('res.users', string="Responsable", required=True,
                                      tracking=True,
@@ -1330,6 +1336,10 @@ class SgiActionLine(models.Model):
             if vals.get('alert_id'):
                 vals = dict(vals, effectiveness_round=Alert.browse(vals['alert_id']).sudo()
                             .sgi_ineffective_count)
+            elif vals.get('incident_id'):
+                # 57.96.0 (N-06): la ronda de eficacia también para incidentes.
+                vals = dict(vals, effectiveness_round=self.env['sgi.incident'].browse(
+                    vals['incident_id']).sudo().sgi_ineffective_count)
             prepared.append(vals)
         lines = super().create(prepared)
         # 57.93.0 (K-03): a un registro cerrado no se le agregan acciones.
@@ -1344,6 +1354,12 @@ class SgiActionLine(models.Model):
             line.alert_id.sudo().activity_ids.filtered(
                 lambda a: (a.summary or '').startswith("Registrar acción correctiva nueva")
             ).action_feedback(feedback="Se registró la acción correctiva «%s»." % line.name)
+        # 57.96.0 (N-06): la acción nueva atiende el aviso del «No eficaz» del incidente.
+        for line in lines.filtered(lambda l: l.incident_id and l.effectiveness_round
+                                   and l.effectiveness_round >= l.incident_id.sudo().sgi_ineffective_count):
+            line.incident_id.sudo().activity_ids.filtered(
+                lambda a: (a.summary or '').startswith("Registrar acción nueva del incidente")
+            ).action_feedback(feedback="Se registró la acción «%s»." % line.name)
         return lines
 
     def write(self, vals):

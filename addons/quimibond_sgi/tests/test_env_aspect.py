@@ -18,7 +18,7 @@ class TestEnvAspect(TransactionCase):
     def _aspect(self, **vals):
         base = {'process_id': self.process.id, 'activity': 'Lavado de tambos XAA',
                 'name': 'Descarga de agua con residuos XAA', 'impact': 'Contaminación del agua',
-                'aspect_type': 'descarga'}
+                'aspect_type': 'descarga', 'life_cycle_stage': 'proceso'}
         base.update(vals)
         return self.Aspect.create(base)
 

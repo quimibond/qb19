@@ -14,11 +14,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_legal.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_id` | Many2one | NC |  |  |  | related `requirement_id.alert_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_legal.py:266` |
-| `date` | Date | Fecha | Fecha de la evaluación. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:253` |
-| `evidence` | Text | Evidencia revisada |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:262` |
-| `next_date` | Date | Próxima evaluación | Fecha de la siguiente evaluación. |  |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:263` |
-| `requirement_id` | Many2one | Requisito | Requisito evaluado. | sí | `sgi.legal.requirement` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:250` |
-| `result` | Selection | Resultado | Resultado de la evaluación. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:255` |
-| `user_id` | Many2one | Evaluó | Persona que evaluó. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:264` |
+| `alert_id` | Many2one | NC |  |  |  | related `requirement_id.alert_id`, sin guardar |  | `addons/quimibond_sgi/models/sgi_legal.py:272` |
+| `date` | Date | Fecha | Fecha de la evaluación. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:259` |
+| `evidence` | Text | Evidencia revisada |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:268` |
+| `next_date` | Date | Próxima evaluación | Fecha de la siguiente evaluación. |  |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:269` |
+| `requirement_id` | Many2one | Requisito | Requisito evaluado. | sí | `sgi.legal.requirement` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:256` |
+| `result` | Selection | Resultado | Resultado de la evaluación. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_legal.py:261` |
+| `user_id` | Many2one | Evaluó | Persona que evaluó. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_legal.py:270` |
 

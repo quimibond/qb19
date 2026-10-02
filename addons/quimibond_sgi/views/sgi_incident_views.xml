@@ -78,6 +78,7 @@
                                       decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
+                                    <field name="control_hierarchy" optional="show"/>
                                     <field name="evidence_note" optional="show"/>
                                     <field name="responsible_id" widget="many2one_avatar_user"/>
                                     <field name="date_commit" widget="remaining_days" invisible="date_done"/>
@@ -87,6 +88,34 @@
                                            decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                 </list>
                             </field>
+                        </page>
+                        <!-- 57.96.0 (N-06): equipo de investigación (45001 5.4) y eficacia (10.2). -->
+                        <page string="Investigación y eficacia" name="investigation">
+                            <group>
+                                <field name="investigation_team_ids" readonly="sgi_is_locked"
+                                       widget="many2many_tags" options="{'no_create': True}"/>
+                            </group>
+                            <div class="text-muted mb-2">
+                                Al menos un trabajador sin personal a su cargo o un integrante de la
+                                Comisión de Seguridad e Higiene participa en la investigación
+                                (ISO 45001 5.4).
+                            </div>
+                            <group string="Verificación de eficacia">
+                                <field name="sgi_effective" widget="radio"
+                                       readonly="sgi_is_locked or not sgi_user_can_investigate"/>
+                                <field name="sgi_effectiveness_date"
+                                       readonly="sgi_is_locked or not sgi_user_can_investigate"/>
+                                <field name="sgi_effectiveness_note"
+                                       readonly="sgi_is_locked or not sgi_user_can_investigate"
+                                       placeholder="Qué se revisó para saber que no se repite"/>
+                                <field name="sgi_effectiveness_by" invisible="not sgi_effectiveness_by"/>
+                                <field name="sgi_ineffective_count" invisible="not sgi_ineffective_count"/>
+                            </group>
+                            <group string="Incapacidad por riesgo de trabajo" invisible="not sgi_from_leave">
+                                <field name="sgi_from_leave" invisible="1"/>
+                                <field name="sgi_leave_count"/>
+                                <field name="sgi_leave_days"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>

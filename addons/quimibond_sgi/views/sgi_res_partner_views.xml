@@ -50,6 +50,13 @@
                             <field name="sgi_last_eval_date"/>
                         </group>
                     </group>
+                    <!-- 57.96.0 (N-06): la registra el Jefe MAST (candado en write). -->
+                    <group string="Contratista (SST, ISO 45001 8.1.4)">
+                        <field name="sgi_user_can_eval_sst" invisible="1"/>
+                        <field name="sgi_sst_eval_valid_until" readonly="not sgi_user_can_eval_sst"/>
+                        <field name="sgi_sst_eval_note" readonly="not sgi_user_can_eval_sst"
+                               placeholder="REPSE, SUA, constancias DC-3, inducción de seguridad…"/>
+                    </group>
                     <div groups="quimibond_sgi.group_sgi_manager">
                         <button name="action_sgi_approve_supplier" type="object"
                                 string="Aprobar proveedor" class="btn-primary"

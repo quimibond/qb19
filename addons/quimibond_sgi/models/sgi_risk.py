@@ -2,6 +2,9 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
+from .sgi_menu_paths import sgi_menu_path
+
 SCALE_1_5 = [('1', "1"), ('2', "2"), ('3', "3"), ('4', "4"), ('5', "5")]
 
 ATTENTION_LEVELS = [
@@ -21,6 +24,17 @@ ATTENTION_LEVELS = [
 # día se normaliza la escala, se migra desde aquí. La escala doble en sí es
 # deliberada: cada instrumento conserva su vocabulario del formato original.
 SGI_HIGH_ATTENTION = ('inmediata', 'alto')
+
+# 57.96.0 (N-07): «Aspecto ambiental» ya no se elige a mano en un riesgo. La
+# evaluación del aspecto vive en la matriz (sgi.env.aspect); el riesgo
+# ambiental solo nace desde ahí, como tratamiento («Tratar como riesgo») o con
+# el asistente de traspaso, que ponen este contexto. Es una guía de captura,
+# no un control de seguridad (un cliente RPC puede poner el contexto).
+SGI_ENV_ASPECT_CONTEXT = 'sgi_from_env_aspect'
+SGI_ENV_ASPECT_MSG = (
+    "Los aspectos ambientales se registran en %s (una sola matriz, ISO 14001 6.1.2); tampoco se "
+    "duplica un riesgo ambiental: registre el aspecto nuevo en la matriz. Si el aspecto necesita "
+    "acciones, use «Tratar como riesgo» desde el aspecto." % sgi_menu_path('aspectos_ambientales'))
 
 
 class SgiRiskCategory(models.Model):
@@ -61,7 +75,7 @@ class SgiRisk(models.Model):
         ('foda', "FODA"),
     ], string="Instrumento", default='ryo', required=True, tracking=True,
         help="Con qué instrumento se evalúa: riesgos y oportunidades, IPER, aspecto ambiental, patrimonial o "
-             "FODA.")
+             "FODA. «Aspecto ambiental» solo lo pone la matriz de aspectos (Tratar como riesgo).")
     kind = fields.Selection([
         ('riesgo', "Riesgo"),
         ('oportunidad', "Oportunidad"),
@@ -86,6 +100,15 @@ class SgiRisk(models.Model):
                                   help="Área del SGI del riesgo.")
     job_id = fields.Many2one('hr.job', string="Puesto", help="Puesto expuesto al riesgo (IPER).")
     existing_controls = fields.Text(string="Controles existentes")
+    # 57.96.0 (N-06): jerarquía de controles (45001 8.1.2).
+    control_hierarchy = fields.Selection(
+        CONTROL_HIERARCHY, string="Control existente de mayor nivel", tracking=True,
+        help=CONTROL_HIERARCHY_HELP)
+    # 57.96.0 (N-07): el aspecto de la matriz cuyo tratamiento es este riesgo.
+    sgi_env_aspect_ids = fields.One2many(
+        'sgi.env.aspect', 'risk_id', string="Aspecto ambiental de la matriz",
+        help="Aspecto ambiental cuya evaluación vive en la matriz; este riesgo guarda sus "
+             "acciones de tratamiento.")
     operational_control_id = fields.Many2one('documents.document',
                                              string="Control operacional (ambiental)",
                                              help="Documento de control operacional del aspecto ambiental.")
@@ -335,12 +358,58 @@ class SgiRisk(models.Model):
                     "%s:\n%s" % (level, risk.folio or risk.name,
                                  "\n".join(problems)))
 
+    def _sgi_check_control_hierarchy(self):
+        """57.96.0 (N-06, 45001 8.1.2): un IPER de riesgo alto no se controla
+        ni se cierra sin jerarquía de controles declarada, ni con EPP como
+        único control. Cuentan el control existente del riesgo y el de sus
+        acciones terminadas. Lo llama ``write`` solo en la transición (no es
+        retroactivo y no lo disparan las acciones). Sin excepción para el
+        superusuario, como H11: ningún proceso del sistema controla riesgos."""
+        labels = dict(CONTROL_HIERARCHY)
+        for risk in self:
+            if risk.instrument != 'iper' or risk.attention_level not in self._SGI_HIGH_ATTENTION:
+                continue
+            levels = {risk.control_hierarchy} | set(
+                risk.action_line_ids.filtered('date_done').mapped('control_hierarchy'))
+            levels.discard(False)
+            if not levels:
+                raise UserError(
+                    "No se puede controlar ni cerrar el IPER de riesgo alto %s: indique la "
+                    "jerarquía del control (eliminación, sustitución, ingeniería, administrativo o "
+                    "EPP) en el riesgo o en sus acciones terminadas (ISO 45001 8.1.2)."
+                    % (risk.folio or risk.name))
+            if levels == {'epp'}:
+                raise UserError(
+                    "No se puede controlar ni cerrar el IPER de riesgo alto %s con solo «%s»: el "
+                    "EPP es el último recurso. Registre y termine un control de mayor nivel "
+                    "(eliminación, sustitución, ingeniería o administrativo)."
+                    % (risk.folio or risk.name, labels['epp']))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # 57.96.0 (N-07): el riesgo ambiental nace desde la matriz de aspectos.
+        if not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) and any(
+                vals.get('instrument', self.env.context.get('default_instrument')) == 'ambiental'
+                for vals in vals_list):
+            raise UserError(SGI_ENV_ASPECT_MSG)
+        return super().create(vals_list)
+
     def write(self, vals):
+        # 57.96.0 (N-07): un riesgo que ya es ambiental se sigue editando; lo
+        # que no se hace es reclasificar otro como «Aspecto ambiental».
+        if vals.get('instrument') == 'ambiental' and not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) \
+                and self.filtered(lambda r: r.instrument != 'ambiental'):
+            raise UserError(SGI_ENV_ASPECT_MSG)
+        # 57.96.0 (N-06): la jerarquía se revisa solo en la transición a
+        # controlado o cerrado (registros cuyo estado de antes era otro).
+        closing = vals.get('state') in self._SGI_CLOSING_STATES
+        moving = self.filtered(lambda r: r.state != vals['state']) if closing else self.browse()
         res = super().write(vals)
-        if vals.get('state') in self._SGI_CLOSING_STATES:
+        if closing:
             self.filtered(
                 lambda r: r.state in self._SGI_CLOSING_STATES
             )._sgi_check_can_close()
+            moving._sgi_check_control_hierarchy()
         return res
 
     # Botones explícitos de transición (consistencia con el resto del SGI:

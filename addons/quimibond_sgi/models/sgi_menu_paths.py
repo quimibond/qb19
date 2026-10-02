@@ -38,6 +38,8 @@ SGI_MENU_PATHS = {
                            ('SGI', 'Dirección', 'Partes interesadas')),
     'planes_emergencia': ('quimibond_sgi.menu_sgi_emergency_plans',
                           ('SGI', 'Seguridad y ambiente', 'Planes de emergencia')),
+    'aspectos_ambientales': ('quimibond_sgi.menu_sgi_env_aspects',
+                             ('SGI', 'Seguridad y ambiente', 'Aspectos ambientales')),
     'no_conformidades': ('quimibond_sgi.menu_sgi_nc',
                          ('SGI', 'Mejora', 'No conformidades')),
     'fuentes_nc': ('quimibond_sgi.menu_sgi_config_alert_sources',

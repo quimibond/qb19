@@ -135,13 +135,14 @@ class SgiLegalRequirement(models.Model):
                                 if req.reference else req.name)
 
     # ------------------------------------------------------------------
-    # Evaluación: tres botones explícitos, con sello de fecha y NC en
-    # incumplimiento (parcial o total).
+    # Evaluación: con sello de fecha y NC en incumplimiento (parcial o
+    # total). Desde 57.96.0 todo pasa por el asistente con evidencia.
     # ------------------------------------------------------------------
     def _sgi_mark(self, state, evidence=None, next_date=None):
         """Registra una evaluación: fila en el historial, estado y fechas en
         el requisito. El asistente «Registrar evaluación» pasa evidencia y
-        próxima fecha; los botones rápidos usan la nota y la frecuencia."""
+        próxima fecha (desde 57.96.0 los botones rápidos también abren el
+        asistente)."""
         today = fields.Date.context_today(self)
         Evaluation = self.env['sgi.legal.evaluation']
         for req in self:
@@ -159,9 +160,6 @@ class SgiLegalRequirement(models.Model):
             req.message_post(body=Markup("Evaluación de cumplimiento registrada: <b>%s</b>.") % dict(
                 self._fields['compliance_state'].selection)[state])
         return True
-
-    def action_mark_no_aplica(self):
-        return self._sgi_mark('no_aplica')
 
     def action_evaluate(self):
         """DIR-1: asistente con resultado, evidencia y próxima fecha."""
@@ -181,18 +179,26 @@ class SgiLegalRequirement(models.Model):
             'context': {'default_requirement_id': self.id},
         }
 
+    # 57.96.0 (N-07, 9.1.2): los botones rápidos ya no registran sin
+    # evidencia; abren el asistente con el resultado elegido. La NC por
+    # «Parcial» o «No cumple» la levanta el asistente al confirmar.
+    def _sgi_open_evaluate(self, result):
+        self.ensure_one()
+        action = self.action_evaluate()
+        action['context'] = dict(action['context'], default_result=result)
+        return action
+
     def action_mark_cumple(self):
-        return self._sgi_mark('cumple')
+        return self._sgi_open_evaluate('cumple')
 
     def action_mark_parcial(self):
-        self._sgi_mark('parcial')
-        self._sgi_create_alert()
-        return True
+        return self._sgi_open_evaluate('parcial')
 
     def action_mark_no_cumple(self):
-        self._sgi_mark('no_cumple')
-        self._sgi_create_alert()
-        return True
+        return self._sgi_open_evaluate('no_cumple')
+
+    def action_mark_no_aplica(self):
+        return self._sgi_open_evaluate('no_aplica')
 
     def _sgi_create_alert(self):
         """NC por incumplimiento legal, vía el punto único de entrada.
@@ -305,6 +311,9 @@ class SgiLegalEvaluate(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         req = self.requirement_id
+        # 57.96.0 (N-07): evidencia (o motivo) de verdad, no solo espacios.
+        if not (self.evidence or '').strip():
+            raise UserError("Escriba la evidencia revisada o el motivo por el que no aplica.")
         if not self.next_date and self.result != 'no_aplica':
             raise UserError("Indique la fecha de la próxima evaluación.")
         req._sgi_mark(self.result, evidence=self.evidence, next_date=self.next_date)

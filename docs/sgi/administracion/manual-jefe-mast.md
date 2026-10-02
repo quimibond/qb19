@@ -226,6 +226,88 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
   NC tiene su interruptor. Apagarlo no desinstala nada, queda firmado en el
   historial y cuenta las omisiones.
 
+### Seguridad y ambiente (desde 57.96.0)
+
+- **Jerarquía de controles (ISO 45001 8.1.2):** «Control existente de mayor
+  nivel» en el riesgo y «Jerarquía del control» en cada acción. Un IPER de
+  riesgo alto no pasa a Controlado ni a Cerrado sin jerarquía declarada (en
+  el riesgo o en sus acciones terminadas) ni con EPP como único control. Solo
+  se revisa al cambiar el estado: lo ya controlado no cambia hasta que se
+  reabra.
+- **Incidentes:** para cerrar, equipo de investigación (al menos un
+  trabajador sin personal a su cargo o un integrante de la Comisión de
+  Seguridad e Higiene), eficacia «Eficaz» con fecha (no futura ni antes de la
+  última acción terminada) y nota, y, si es moderado o más con IPER ligado, el
+  IPER reevaluado después del evento. Solo usted y Salud ocupacional registran
+  la eficacia. «No eficaz» suma el contador, regresa el incidente a Acciones
+  y agenda «Registrar acción nueva del incidente…»; el cierre pide entonces
+  una acción nueva terminada.
+- **Requisitos legales:** los cuatro botones rápidos abren «Registrar
+  evaluación» con el resultado elegido; la evidencia (o el motivo por el que
+  no aplica) es obligatoria. «Parcial» y «No cumple» levantan la NC al
+  confirmar.
+
+### Traspaso de riesgos ambientales (57.96.0)
+
+**Administración SGI → Configuración → Traspaso de riesgos ambientales**
+(solo el Jefe MAST). Los riesgos capturados con el instrumento «Aspecto
+ambiental» (5 el 2026-10-02) pasan a la matriz de aspectos, donde vive la
+evaluación (ISO 14001 6.1.2). Es un cambio de datos: **úselo solo después del
+visto bueno por escrito de Dirección (Jose)**.
+
+1. Al abrirlo solo **cuenta y propone**: un renglón por riesgo ambiental
+   (activo o archivado) que todavía no tiene aspecto. No escribe nada.
+2. En cada renglón decida lo que el riesgo no dice: **actividad** (propuesta:
+   el nombre del riesgo), **tipo de aspecto** (propuesta: Otro),
+   **condición** (propuesta: Normal) y **etapa del ciclo de vida**. Quite los
+   renglones que no deban pasar (por ejemplo, una oportunidad que prefiera
+   dejar solo como riesgo).
+3. **Traspasar a la matriz** crea cada aspecto «En evaluación» con la
+   severidad, la frecuencia, el proceso, los controles y los requisitos
+   legales del riesgo, y lo liga al riesgo como su tratamiento. Deja nota en
+   los dos y registra en el log del servidor el antes y el después.
+4. Los riesgos **se conservan** activos; se archivan solo si marca «Archivar
+   los riesgos originales». No se borra nada.
+5. Revise cada aspecto y pulse **Registrar evaluación**: con la escala de la
+   matriz, los 5 quedan significativos y piden su control operacional.
+6. Vuelva a abrir el asistente: debe contar 0.
+
+Desde 57.96.0 un riesgo ya no se crea ni se reclasifica a mano como «Aspecto
+ambiental» (tampoco se duplica uno): el aspecto se registra en **SGI →
+Seguridad y ambiente → Aspectos ambientales** y, si necesita acciones, se
+usa **Tratar como riesgo**. Registrar la evaluación del aspecto pide la etapa
+del ciclo de vida.
+
+### Competencias por tipo de permiso (57.96.0)
+
+**Administración SGI → Configuración → Competencias por tipo de permiso.**
+Sin filas no exige nada. Con filas, al solicitar y al autorizar un permiso de
+trabajo, cada persona que ejecuta debe tener cada competencia del tipo
+vigente hasta el fin del permiso (la vigencia sale de la competencia del
+empleado). Para que una DC-3 venza, su tipo de competencia debe ser de
+certificación.
+
+### Contratistas (57.96.0)
+
+En el contacto del contratista, pestaña **SGI**, grupo «Contratista (SST, ISO
+45001 8.1.4)»: **Evaluación SST vigente hasta** y **Qué se revisó** (REPSE,
+SUA, DC-3, inducción). Solo usted los escribe. El permiso de trabajo avisa si
+el contratista no tiene evaluación vigente hasta el fin del permiso; el
+parámetro `quimibond_sgi.permit_contractor_eval_required` = 1 lo vuelve
+obligatorio (bloquea la solicitud y la autorización).
+
+### Incidentes desde incapacidades (57.96.0)
+
+Una ausencia aprobada del tipo «Riesgo de trabajo (IMSS)» crea el incidente
+en «Reportado» (lesión, moderado, la persona y los días perdidos, sin
+diagnóstico) y le agenda «Investigar riesgo de trabajo…». Parámetros:
+`quimibond_sgi.work_risk_leave_type_ids` (ids de tipos de ausencia separados
+por coma; vacío: «Riesgo de trabajo (IMSS)») y
+`quimibond_sgi.work_risk_followup_days` (3: una incapacidad que empieza
+hasta esos días después de otra ligada a un incidente abierto se suma a él).
+Rechazar o cancelar una incapacidad ligada deja nota en el incidente y
+recalcula los días; no se borra nada.
+
 ## 10. Calendario
 
 Días inhábiles: LFT art. 74 (cargados por la migración 57.15.0 para
@@ -237,7 +319,7 @@ checklist no se generan en festivos.
 
 ## 11. Crons
 
-Hay 27 acciones planificadas del SGI (tabla completa en
+Hay 28 acciones planificadas del SGI (tabla completa en
 [../tecnica/crons.md](../tecnica/crons.md)). Viven en `noupdate`: cambiarlas
 en la base requiere migración. Desde 57.94.0 incluye «SGI: Empleados sin
 puesto o sin correo (aviso a RH)», semanal (lunes). Desde 57.95.0 incluye
@@ -247,7 +329,10 @@ el resumen de pendientes que usan los filtros de Mi equipo. En el log del
 servidor deja «respaldo nocturno de Mi procedimiento: 0 cambios en N
 personas»; si aparece «falta un disparo de recálculo», avise a quien
 mantiene el módulo: alguna pantalla cambió roles o actividades sin
-recalcular Mi procedimiento (el respaldo ya lo corrigió). Si una falla, Odoo la apaga tras 5 fallos en
+recalcular Mi procedimiento (el respaldo ya lo corrigió). Desde 57.96.0
+incluye «SGI: Permisos de trabajo vencidos (cada hora)»: marca vencidos los
+permisos autorizados que pasaron su hora de fin y avisa al jefe del área y a
+usted; los avisos se cierran solos al cerrar, cancelar o renovar el permiso. Si una falla, Odoo la apaga tras 5 fallos en
 más de 7 días: revise **Ajustes → Técnico → Acciones planificadas** (filtro
 «SGI»).
 

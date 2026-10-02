@@ -98,6 +98,13 @@ el jefe directo de quien propone y el dueño del proceso.
    impacto y pulse **Registrar evaluación**.
 3. Un riesgo alto sin acción abierta le llega como aviso: registre al menos
    una acción.
+4. Desde 57.96.0, al registrar una acción de un riesgo IPER o de un
+   incidente, indique la **Jerarquía del control**: un IPER de riesgo alto no
+   se controla con equipo de protección personal (EPP) como único control.
+
+Si usted autoriza permisos de trabajo: cuando uno vence y sigue autorizado,
+le llega un aviso cada hora hasta que se cierre o se renueve. El permiso no
+se cierra ni se cancela mientras un bloqueo (LOTO) ligado siga aplicado.
 
 ### 2.7 Decidir las rutinas pendientes del Dropbox
 
@@ -114,6 +121,8 @@ parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 - Avisos de revisión de riesgos y de documentos de su proceso.
 - Un aviso por los acuses pendientes de su gente sin usuario (ver 2.1).
 - Solicitudes de aprobación de propuestas de cambio.
+- Permisos de trabajo vencidos que usted autorizó por el área (cada hora,
+  hasta que se cierren o se renueven).
 
 ## 4. Lo que no puede hacer y a quién pedirlo
 

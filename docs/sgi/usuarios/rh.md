@@ -53,6 +53,15 @@ MAST: él enciende «PIN obligatorio para firmar checklists» en Ajustes → SGI
 | Entregar EPP | Ficha del empleado → «Entregar EPP» |
 | Exámenes médicos | SGI → Seguridad y ambiente → Estudios de higiene y exámenes médicos (grupo Salud ocupacional) |
 
+**Incapacidad por riesgo de trabajo (desde 57.96.0).** Al aprobar en
+Ausencias una incapacidad del tipo «Riesgo de trabajo (IMSS)», el SGI abre
+solo el incidente en «Reportado» con la persona y los días perdidos, y avisa
+al Jefe MAST, que lo investiga. Una incapacidad subsecuente de la misma
+persona (hasta 3 días después) suma días al mismo incidente. **No escriba el
+diagnóstico en la descripción de la ausencia**: el incidente no lo copia, pero
+la ausencia sí lo guarda. Si la aprobación de la ausencia falla por el SGI,
+la ausencia se aprueba de todos modos y el Jefe MAST revisa el log.
+
 ## 5. Preguntas frecuentes
 
 Las tres preguntas siguientes aplican solo cuando se encienda SGI en planta:

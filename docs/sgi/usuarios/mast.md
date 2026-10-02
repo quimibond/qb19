@@ -77,7 +77,31 @@ procedimientos, Faltantes de especificación (lo que impide publicar un
 proceso) y Cumplimiento semanal. Detalle de cómo leerlos en el manual de
 administración.
 
-### 2.6 La transición
+### 2.6 Seguridad y ambiente (desde 57.96.0)
+
+- **IPER de riesgo alto:** al controlarlo o cerrarlo, declare la jerarquía del
+  control (eliminación, sustitución, ingeniería, administrativo o EPP) en el
+  riesgo o en sus acciones terminadas. Con solo EPP no se puede: registre y
+  termine un control de mayor nivel.
+- **Cerrar un incidente** pide, además del SCAT y las acciones terminadas:
+  equipo de investigación con al menos un trabajador sin personal a su cargo
+  o un integrante de la Comisión de Seguridad e Higiene; verificación de
+  eficacia «Eficaz» con fecha y nota (pestaña **Investigación y eficacia**);
+  y, si es moderado, grave o fatal con IPER ligado, el IPER reevaluado
+  después del evento (**Registrar evaluación** en el riesgo). «No eficaz»
+  regresa el incidente a Acciones y pide una acción nueva.
+- **Permisos de trabajo:** cada hora le llega un aviso por cada permiso
+  vencido que sigue autorizado. Un permiso no se cierra ni se cancela mientras
+  un bloqueo (LOTO) ligado siga aplicado.
+- **Requisitos legales:** los botones **Cumple**, **Cumple parcialmente**,
+  **No cumple** y **No aplica** abren el registro de la evaluación con la
+  evidencia (o el motivo por el que no aplica). Sin ella no se registra.
+- **Aspectos ambientales:** se registran en **SGI → Seguridad y ambiente →
+  Aspectos ambientales**, con su etapa del ciclo de vida. Un riesgo ya no se
+  captura a mano como «Aspecto ambiental»; si el aspecto necesita acciones,
+  use **Tratar como riesgo** desde el aspecto.
+
+### 2.7 La transición
 
 **Procesos → Del Dropbox a Odoo → Avance de la transición**: por proceso,
 procedimientos sustituidos, rutinas resueltas y documentos migrados. Usted
