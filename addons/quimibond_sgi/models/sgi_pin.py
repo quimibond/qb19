@@ -78,6 +78,8 @@ class SgiPinSignatureMixin(models.AbstractModel):
         """Empleado que firmó (cada modelo lo sobrescribe)."""
         return self.env['hr.employee']
 
+    # Sin store: se calcula al leer, así que no hace falta depender del campo
+    # del empleado que firma (distinto en cada modelo, ``_sgi_pin_employee``).
     @api.depends('sgi_pin_tablet_id', 'sgi_pin_signed_at')
     def _compute_sgi_pin_signature(self):
         for rec in self:
@@ -99,7 +101,13 @@ class SgiPinSignatureMixin(models.AbstractModel):
     def create(self, vals_list):
         for vals in vals_list:
             self._sgi_check_pin_fields(vals)
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        # Después del alta: un ``default_sgi_pin_*`` en el contexto no pasa
+        # por ``vals_list`` y también firmaría.
+        if not self.env.su and any(rec.sgi_pin_tablet_id or rec.sgi_pin_signed_at
+                                   for rec in records.sudo()):
+            self._sgi_check_pin_fields(SGI_PIN_FIELDS)
+        return records
 
     def write(self, vals):
         self._sgi_check_pin_fields(vals)

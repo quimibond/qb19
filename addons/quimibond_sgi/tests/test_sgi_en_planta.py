@@ -53,11 +53,13 @@ class _PlantaCase(TransactionCase):
             env, login='zk_worker_user', groups='base.group_user,quimibond_sgi.group_sgi_user')
         Emp = env['hr.employee']
         base = {'company_id': cls.company.id}
+        # work_email=False explícito: test_12 cuenta a quién le falta el correo.
         cls.worker = Emp.create(dict(base, name='ZK Operadora', department_id=cls.dept.id,
-                                     job_id=cls.job.id, pin='1357'))
+                                     job_id=cls.job.id, pin='1357', work_email=False))
         cls.worker2 = Emp.create(dict(base, name='ZK Operador turno 2', department_id=cls.subdept.id,
                                       job_id=cls.job.id, pin='2468', user_id=cls.worker_user.id))
-        cls.no_pin = Emp.create(dict(base, name='ZK Sin PIN', department_id=cls.dept.id))
+        cls.no_pin = Emp.create(dict(base, name='ZK Sin PIN', department_id=cls.dept.id,
+                                     work_email=False))
         cls.outsider = Emp.create(dict(base, name='ZK Almacenista', department_id=cls.other_dept.id,
                                        pin='9753'))
         other_company = env['res.company'].create({'name': 'ZK Otra empresa'})
@@ -274,6 +276,28 @@ class TestKiosco(_PlantaCase):
         own = self.env['sgi.incident'].with_user(self.worker_user).create({'name': 'ZK reporte propio'})
         self.assertEqual(own.reporter_employee_id, self.worker2)
 
+    def test_10b_tampoco_con_valores_por_defecto(self):
+        """Los candados se revisan después del alta: un ``default_*`` en el
+        contexto no pasa por los valores del create."""
+        Incident = self.env['sgi.incident'].with_user(self.worker_user)
+        with self.assertRaisesRegex(UserError, 'sistema'):
+            Incident.with_context(default_sgi_pin_tablet_id=self.tablet.id).create({'name': 'ZK firma falsa'})
+        with self.assertRaisesRegex(UserError, 'a su nombre'):
+            Incident.with_context(default_reporter_employee_id=self.worker.id).create(
+                {'name': 'ZK reporte ajeno por contexto'})
+        with self.assertRaisesRegex(UserError, 'a su nombre'):
+            Incident.with_context(default_reporter_id=self.mast.id).create({'name': 'ZK usuario ajeno'})
+        with self.assertRaisesRegex(UserError, 'sistema'):
+            self.env['sgi.document.ack'].with_user(self.mast).with_context(
+                default_sgi_pin_tablet_id=self.tablet.id).create(
+                {'document_id': self._doc('F-P-A92-03').id, 'employee_id': self.worker.id})
+        Request = self.env['maintenance.request'].with_user(self.worker_user)
+        with self.assertRaisesRegex(UserError, 'sistema'):
+            Request.with_context(default_sgi_checklist_employee_id=self.worker.id).create(
+                {'name': 'ZK hoja firmada por contexto'})
+        with self.assertRaisesRegex(UserError, 'sistema'):
+            Request.create({'name': 'ZK hoja fabricada', 'sgi_checklist_date': sgi_today(self.env)})
+
 
 @tagged('post_install', '-at_install')
 class TestChecklistBackend(_PlantaCase):
@@ -294,6 +318,29 @@ class TestChecklistBackend(_PlantaCase):
         self.assertFalse(sheet.sgi_pin_tablet_id)
         with self.assertRaisesRegex(UserError, 'firmada'):
             sheet.action_sgi_checklist_all_ok()
+
+    def test_11b_hoja_firmada_sin_mover_renglones(self):
+        sheet = self._sheet()
+        sheet.action_sgi_checklist_all_ok()
+        self.env['sgi.checklist.finish'].create({
+            'request_id': sheet.id, 'employee_id': self.worker.id, 'pin': '1357'}).action_confirm()
+        other = self._sheet()
+        signed_line = sheet.sgi_checklist_line_ids[:1].with_user(self.worker_user)
+        open_line = other.sgi_checklist_line_ids[:1].with_user(self.worker_user)
+        Line = self.env['sgi.checklist.line'].with_user(self.worker_user)
+        with self.assertRaisesRegex(UserError, 'firmada'):
+            signed_line.write({'request_id': other.id})
+        with self.assertRaisesRegex(UserError, 'firmada'):
+            open_line.write({'request_id': sheet.id})
+        with self.assertRaisesRegex(UserError, 'firmada'):
+            Line.create({'request_id': sheet.id, 'name': 'ZK punto agregado'})
+        with self.assertRaisesRegex(UserError, 'firmada'):
+            Line.with_context(default_request_id=sheet.id).create({'name': 'ZK punto por contexto'})
+        self.assertEqual(len(sheet.sgi_checklist_line_ids), 3)
+        # Sin puntos no hay hoja que firmar.
+        empty = self.env['maintenance.request'].create({'name': 'ZK solicitud sin puntos'})
+        with self.assertRaisesRegex(UserError, 'no es una hoja'):
+            empty._sgi_checklist_precheck()
 
 
 @tagged('post_install', '-at_install')

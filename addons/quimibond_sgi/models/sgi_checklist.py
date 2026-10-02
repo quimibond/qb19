@@ -200,15 +200,28 @@ class SgiChecklistLine(models.Model):
     # 57.94.0 (U-01, I-03): una hoja firmada es evidencia; sus respuestas no se
     # cambian (la vista ya lo decía, el servidor no). «Crear correctivos» sí
     # escribe corrective_request_id después de firmar.
-    _SGI_SIGNED_LOCKED = frozenset({'answer', 'note', 'name', 'hint', 'sequence'})
+    # ``request_id``: un renglón no sale de una hoja firmada ni entra a una.
+    _SGI_SIGNED_LOCKED = frozenset({'answer', 'note', 'name', 'hint', 'sequence', 'request_id'})
 
-    def write(self, vals):
+    def _sgi_check_signed_sheet(self, requests):
         # sudo al leer la hoja: la regla nativa de Mantenimiento («Users are
         # allowed to access their own maintenance requests») daría AccessError
         # a un usuario interno que no sigue la solicitud, en vez del aviso.
-        if not self.env.su and self._SGI_SIGNED_LOCKED & set(vals) \
-                and any(line.request_id.sgi_checklist_employee_id for line in self.sudo()):
+        if not self.env.su and any(req.sgi_checklist_employee_id for req in requests.sudo()):
             raise UserError("La hoja ya está firmada: sus respuestas son evidencia y no se cambian.")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        lines = super().create(vals_list)
+        # Después del alta: también cuenta un ``default_request_id`` del contexto.
+        self._sgi_check_signed_sheet(lines.sudo().request_id)
+        return lines
+
+    def write(self, vals):
+        if self._SGI_SIGNED_LOCKED & set(vals):
+            self._sgi_check_signed_sheet(self.sudo().request_id)
+            if vals.get('request_id'):
+                self._sgi_check_signed_sheet(self.env['maintenance.request'].browse(vals['request_id']))
         return super().write(vals)
 
     def action_sgi_answer(self):
@@ -274,18 +287,28 @@ class MaintenanceRequestChecklist(models.Model):
     # poner a otro empleado como «Lo llenó» con un write por RPC. Solo el
     # sistema: el asistente «Terminar checklist» y SGI en planta escriben con
     # sudo después de validar el PIN.
-    _SGI_SIGNER_FIELDS = frozenset({'sgi_checklist_employee_id', 'sgi_checklist_done_at'})
+    # La plantilla y el día también: solo los pone ``_sgi_generate`` (con
+    # sudo); con ellos cualquiera fabricaba una «hoja» que sale en la tableta.
+    _SGI_SIGNER_FIELDS = frozenset({'sgi_checklist_employee_id', 'sgi_checklist_done_at',
+                                    'sgi_checklist_template_id', 'sgi_checklist_date'})
 
     def _sgi_check_signer_fields(self, keys):
         if self._SGI_SIGNER_FIELDS & set(keys) and not self.env.su:
             raise UserError("Quién llenó la hoja lo registra el sistema al terminarla (con su PIN, "
-                            "en «Terminar checklist» o en SGI en planta).")
+                            "en «Terminar checklist» o en SGI en planta); la hoja la genera el sistema "
+                            "desde su plantilla.")
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             self._sgi_check_signer_fields(vals)
-        return super().create(vals_list)
+        requests = super().create(vals_list)
+        # Después del alta: un ``default_*`` del contexto no pasa por vals_list.
+        if not self.env.su and any(
+                req.sgi_checklist_employee_id or req.sgi_checklist_done_at
+                or req.sgi_checklist_template_id or req.sgi_checklist_date for req in requests.sudo()):
+            self._sgi_check_signer_fields(self._SGI_SIGNER_FIELDS)
+        return requests
 
     def write(self, vals):
         self._sgi_check_signer_fields(vals)
@@ -295,7 +318,7 @@ class MaintenanceRequestChecklist(models.Model):
         self.ensure_one()
         # Solo hojas de checklist: sin esto el asistente servía para probar PIN
         # sobre cualquier solicitud de mantenimiento (sin puntos = «completa»).
-        if not self.sgi_checklist_template_id:
+        if not self.sgi_checklist_template_id or not self.sgi_checklist_line_ids:
             raise UserError("Esta solicitud no es una hoja de checklist.")
         if self.sgi_checklist_employee_id:
             raise UserError("Esta hoja ya la firmó %s." % self.sgi_checklist_employee_id.name)
