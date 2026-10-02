@@ -21,8 +21,10 @@ from datetime import timedelta
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.tools.mimetypes import guess_mimetype
+from odoo.tools.safe_eval import safe_eval
 
 from .sgi_calendar import sgi_today
+from .sgi_guard import sgi_require_system
 from .sgi_menu_paths import sgi_menu_path
 
 KIOSK_IDLE_SECONDS = 90
@@ -30,6 +32,8 @@ KIOSK_FILE_LIMIT = 15 * 1024 * 1024
 # Solo PDF e imágenes se abren en la tableta (ver kiosk_document_file).
 KIOSK_MIMETYPES = ('application/pdf', 'image/png', 'image/jpeg')
 CHECKLIST_DAYS_BACK = 6
+# Clave del aviso semanal de RH (la misma, literal, en sgi_my_pending.action_open).
+HR_GAPS_KEY = 'rh_empleados_incompletos'
 
 
 def _kiosk_int(value):
@@ -385,3 +389,96 @@ class SgiFloorKiosk(models.AbstractModel):
         if finish:
             sheet._sgi_checklist_sign(employee, True, tablet=tablet)
         return self._kiosk_sheet(sheet)
+
+
+class HrEmployeeSgiGaps(models.Model):
+    _inherit = 'hr.employee'
+
+    # 57.94.0 (U-08): lo que le falta a la ficha para que la persona use el
+    # SGI. Sin el valor del PIN: solo si falta.
+    sgi_missing_data = fields.Char(
+        string="Le falta", compute='_compute_sgi_missing_data', groups='hr.group_hr_user',
+        help="Puesto (sin él no hay Mi procedimiento), PIN (sin él no firma en SGI en planta) o "
+             "correo de trabajo (sin él no recibe firmas de Firma electrónica).")
+
+    @api.depends('job_id', 'pin', 'work_email')
+    def _compute_sgi_missing_data(self):
+        for employee in self:
+            data = employee.sudo()
+            missing = [label for label, value in (("puesto", data.job_id), ("PIN", data.pin),
+                                                  ("correo", data.work_email)) if not value]
+            employee.sgi_missing_data = ", ".join(missing)
+
+    @api.model
+    def _sgi_hr_gaps_action(self, department_id=False):
+        action = self.env.ref('quimibond_sgi.sgi_hr_employee_gaps_action').sudo().read()[0]
+        if department_id:
+            context = safe_eval(action.get('context') or '{}')
+            context['search_default_department_id'] = department_id
+            action['context'] = context
+        return action
+
+
+class SgiCronHrGaps(models.AbstractModel):
+    _inherit = 'sgi.cron'
+
+    @api.model
+    def _sgi_hr_employee_gaps(self):
+        company = self.env['sgi.config']._sgi_company()
+        return self.env['hr.employee'].sudo().search([
+            ('active', '=', True), ('company_id', '=', company.id),
+            '|', '|', ('job_id', '=', False), ('pin', '=', False), ('work_email', '=', False)])
+
+    @api.model
+    def _sgi_hr_user_id(self):
+        """Quién de RH recibe el aviso: ``quimibond_sgi.hr_user_id``; sin él,
+        el Coordinador de RH de los demás avisos (``quimibond_sgi.rh_user_id``)
+        y, sin ninguno, el Jefe MAST (pregunta Q9). La lista de faltantes
+        filtra por PIN (campo de ``hr.group_hr_user``): si quien recibe no es
+        de RH, su «Ir» abre la ficha del departamento
+        (``sgi.my.pending.action_open``)."""
+        param = self.env['ir.config_parameter'].sudo().get_param('quimibond_sgi.hr_user_id')
+        if param and param.isdigit():
+            user = self.env['res.users'].sudo().browse(int(param)).exists()
+            if user.active:
+                return user.id
+        return self._sgi_rh_user_id()
+
+    @api.model
+    def cron_hr_employee_gaps(self):
+        """57.94.0 (U-08), cada lunes: un aviso por departamento con empleados
+        sin puesto, sin PIN o sin correo, a RH. Sale en Mis pendientes como
+        «Aviso». Si la persona lo marcó «Hecho» y siguen faltando datos, el
+        lunes siguiente llega otro (se cierra el episodio del aviso hecho). Los
+        departamentos ya completos cierran su aviso."""
+        sgi_require_system(self.env)
+        Cron = self._sgi_new_run()
+        Activity = self.env['mail.activity'].sudo().with_context(active_test=False)
+        key_domain = [('res_model', '=', 'hr.department'), ('sgi_cron_key', '=', HR_GAPS_KEY),
+                      ('sgi_episode_closed', '=', False)]
+        Activity.search(key_domain + [('active', '=', False)]).write({'sgi_episode_closed': True})
+        gaps = self._sgi_hr_employee_gaps()
+        by_department = {}
+        for employee in gaps.filtered('department_id'):
+            by_department.setdefault(employee.department_id, self.env['hr.employee'])
+            by_department[employee.department_id] |= employee
+        user_id = self._sgi_hr_user_id()
+        deadline = sgi_today(self.env) + timedelta(days=7)
+        for department, employees in by_department.items():
+            note = ("Sin puesto: %d (no tienen Mi procedimiento). Sin PIN: %d (no pueden firmar en SGI "
+                    "en planta). Sin correo de trabajo: %d (no reciben firmas de Firma electrónica). "
+                    "Complételos en %s." % (
+                        len(employees.filtered(lambda e: not e.job_id)),
+                        len(employees.filtered(lambda e: not e.pin)),
+                        len(employees.filtered(lambda e: not e.work_email)),
+                        sgi_menu_path('rh_faltantes')))
+            Cron._sgi_step(
+                "aviso de RH %s" % department.id,
+                lambda department=department, employees=employees, note=note: Cron._sgi_schedule(
+                    department.sudo(), "Empleados sin puesto, sin PIN o sin correo en %s: %d" % (
+                        department.name, len(employees)),
+                    note, user_id, date_deadline=deadline, key=HR_GAPS_KEY))
+        complete = Activity.search(key_domain + [('active', '=', True),
+                                                 ('res_id', 'not in', [d.id for d in by_department])])
+        Cron._sgi_close_activities(complete, "el departamento ya tiene sus datos completos")
+        return len(gaps)

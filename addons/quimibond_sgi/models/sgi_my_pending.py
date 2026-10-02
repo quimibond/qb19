@@ -77,7 +77,9 @@ HORIZON_DAYS = 60
 # 57.92.0 (U-03): actividades nativas (avisos de los crons) de estas apps que
 # se muestran en Mis pendientes, además de las de los modelos ``sgi.*``.
 NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
-                 'helpdesk.ticket', 'project.task')
+                 'helpdesk.ticket', 'project.task',
+                 # 57.94.0 (U-08): aviso semanal de RH por departamento.
+                 'hr.department')
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
 CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
@@ -699,6 +701,13 @@ class SgiMyPending(models.TransientModel):
         # 57.92.0 (U-03): el aviso abre el registro sobre el que está.
         if self.kind == 'aviso' and self.res_model == 'mail.activity':
             act = self.env['mail.activity'].sudo().browse(self.res_id).exists()
+            # 57.94.0 (U-08): el aviso de RH abre la lista de faltantes del
+            # departamento, no su ficha. Solo con «Empleados / Encargado»: la
+            # lista filtra por PIN (campo de RH); sin el grupo (el Jefe MAST
+            # mientras quimibond_sgi.hr_user_id esté vacío) abre la ficha.
+            if act and act.sgi_cron_key == 'rh_empleados_incompletos' and act.res_model == 'hr.department' \
+                    and self.env.user.has_group('hr.group_hr_user'):
+                return self.env['hr.employee']._sgi_hr_gaps_action(act.res_id)
             if act and act.res_model and act.res_id:
                 return {'type': 'ir.actions.act_window', 'res_model': act.res_model,
                         'res_id': act.res_id, 'view_mode': 'form', 'target': 'current'}
