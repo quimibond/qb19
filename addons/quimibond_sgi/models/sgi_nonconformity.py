@@ -259,6 +259,23 @@ class QualityAlert(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # 57.93.0 (FUNC-C13 al crear): una NC nace abierta. Crearla en
+        # Cerrada se brincaba los candados de cierre y quién cierra; en
+        # Cancelada, el motivo aprobado (NC-4). Se revisa ANTES de crear para
+        # no gastar folio (la secuencia no regresa números). La etapa puede
+        # venir en los valores o en ``default_stage_id`` del contexto (alta
+        # rápida en la columna «Cerrada» del kanban). El Jefe MAST y el
+        # sistema sí pueden (cargas históricas).
+        if not sgi_bypass_allowed(self.env):
+            default_stage = self.env.context.get('default_stage_id')
+            stage_ids = {vals.get('stage_id') or default_stage for vals in vals_list} - {False, None}
+            bad = self.env['quality.alert.stage'].sudo().browse(stage_ids).filtered(
+                lambda s: s.sgi_is_closing_stage or s.sgi_is_cancel_stage)
+            if bad:
+                raise UserError(
+                    "Una NC nace abierta: no se crea directamente en «%s». Créela, registre sus "
+                    "acciones y ciérrela (o pida su cancelación) desde la ficha."
+                    % ", ".join(bad.mapped('name')))
         # 57.93.0 (N-02): el contador de «No eficaz» y la fecha programada de
         # la eficacia los pone el sistema; no se aceptan del cliente.
         if not sgi_bypass_allowed(self.env):
