@@ -23,7 +23,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_calendar import sgi_local_datetime_utc
+from .sgi_calendar import sgi_local_datetime_utc, sgi_today
 from .sgi_health_const import (
     EXCLUDED_USERS_PARAM, FORMAT_USE_DAYS, HEALTH_MODES, HEALTH_PRIVATE_MODELS,
     HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, NC_OPEN_DAYS, NC_WINDOW_DAYS, PEOPLE_DAYS,
@@ -398,6 +398,33 @@ class SgiIndicatorHealth(models.Model):
 
 class SgiIndicatorMeasureHealth(models.Model):
     _inherit = 'sgi.indicator.measure'
+
+    sgi_validated_date = fields.Date(
+        string="Validada el", readonly=True, copy=False, index=True,
+        help="Día en que la medición pasó a «Validado». Con él se mide si se validó a "
+             "tiempo (3 días hábiles desde la captura).")
+
+    def write(self, vals):
+        """57.99.0: guarda el día en que la medición PASA a validada (SG-05).
+        Re-validar una ya validada no lo mueve."""
+        newly = self.browse()
+        if vals.get('state') == 'validado':
+            newly = self.filtered(lambda m: m.state != 'validado')
+        res = super().write(vals)
+        if newly:
+            # sudo: el campo no está en el candado de la validada, pero así
+            # queda explícito que lo escribe el sistema.
+            newly.sudo().write({'sgi_validated_date': sgi_today(self.env)})
+        return res
+
+    @api.depends('semaphore', 'state', 'small_sample', 'period_date', 'cause',
+                 'action_line_ids', 'indicator_id.frequency', 'indicator_id.calc_mode')
+    def _compute_plan(self):
+        """Salud: un rojo no pide causa y plan ni escala (su respuesta es la
+        revisión semanal de Dirección)."""
+        super()._compute_plan()
+        for measure in self.filtered(lambda m: m.indicator_id.calc_mode in HEALTH_MODES):
+            measure.plan_required = False
 
     def action_view_evidence(self):
         """Los de salud guardan sus registros en la medición: «Ver evidencia»

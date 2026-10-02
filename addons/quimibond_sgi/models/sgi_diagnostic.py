@@ -16,6 +16,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
 
+from .sgi_health_const import HEALTH_MODES
 from .sgi_menu_paths import sgi_menu_path
 
 LEVELS = [('bad', 'Falla'), ('warn', 'Aviso'), ('ok', 'Bien')]
@@ -200,7 +201,9 @@ class SgiDiagnostic(models.TransientModel):
                 sgi_menu_path('indicadores')))
         Measure = env['sgi.indicator.measure']
         pend = Measure.search_count([('state', '=', 'pendiente')])
-        capt = Measure.search_count([('state', '=', 'capturado')])
+        # 57.99.0: las de salud del SGI se quedan capturadas a propósito.
+        capt = Measure.search_count([('state', '=', 'capturado'),
+                                     ('indicator_id.calc_mode', 'not in', HEALTH_MODES)])
         valid = Measure.search_count([('state', '=', 'validado')])
         if capt and not valid:
             lines.append(self._sgi_line(

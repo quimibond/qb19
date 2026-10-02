@@ -4,6 +4,7 @@ import logging
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
 
+from .sgi_health_const import HEALTH_MODES
 from .sgi_risk import SGI_HIGH_ATTENTION
 
 _logger = logging.getLogger(__name__)
@@ -352,8 +353,10 @@ class SgiProcess(models.Model):
         indicators = processes.indicator_ids
         if indicators:
             seen = set()
+            # 57.99.0: los de salud del SGI no pintan al proceso.
             for measure in Measure.search(
                     [('indicator_id', 'in', indicators.ids),
+                     ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
                      ('state', '=', 'validado')],
                     order='indicator_id, period_date desc, id desc'):
                 ind = measure.indicator_id
