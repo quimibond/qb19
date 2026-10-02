@@ -489,6 +489,8 @@ class SgiDiagramIso(models.AbstractModel):
             ('doc_changes_summary', "Cambios documentales"), ('legal_summary', "Requisitos legales"),
             ('participation_summary', "Participación"), ('objectives_summary', "Objetivos"),
             ('satisfaction_summary', "Satisfacción del cliente"), ('resources_note', "Recursos"),
+            ('incidents_summary', "Incidentes y SST"), ('context_summary', "Contexto y partes interesadas"),
+            ('env_aspects_summary', "Aspectos significativos"), ('improvement_summary', "Oportunidades de mejora"),
         ]
         open_action = {'type': 'ir.actions.act_window', 'res_model': 'sgi.management.review',
                        'res_id': review.id, 'views': [[False, 'form']], 'target': 'current'}
