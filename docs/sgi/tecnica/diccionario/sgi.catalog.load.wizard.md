@@ -19,7 +19,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_load_wizard.py`.
 | `payload_file` | Binary | Archivo JSON |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:29` |
 | `payload_filename` | Char | Nombre del archivo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:30` |
 | `payload_text` | Text | JSON |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:28` |
-| `state` | Selection | Estado | Captura, probado (sin escribir nada) o cargado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:31` |
+| `state` | Selection | Estado | En captura, probado (sin escribir nada) o cargado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:31` |
 | `summary` | Text | Resumen |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_load_wizard.py:39` |
 
 ## Métodos públicos (2)

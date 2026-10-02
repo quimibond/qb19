@@ -443,8 +443,8 @@ class QualityAlert(models.Model):
                 continue
             if new_stage.sgi_is_cancel_stage and not cancel_ok and not force:
                 raise UserError(
-                    "La NC %s no se cancela arrastrándola: usa el botón «Cancelar NC», "
-                    "captura el motivo y el Jefe de MAST la aprueba." % (alert.sgi_folio))
+                    "La NC %s no se cancela arrastrándola: use el botón «Cancelar NC», "
+                    "capture el motivo y el Jefe MAST la aprueba." % (alert.sgi_folio))
             # 57.91.0 (FUNC-C13): cerrar es de quien responde por el proceso.
             if new_stage.sgi_is_closing_stage and not force \
                     and not alert._sgi_user_can_close():
@@ -478,7 +478,7 @@ class QualityAlert(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "Cancelar No Conformidad",
+            'name': "Cancelar no conformidad",
             'res_model': 'sgi.nc.cancel',
             'view_mode': 'form',
             'target': 'new',
@@ -702,8 +702,8 @@ class QualityAlert(models.Model):
         for alert in self.filtered(lambda a: a.sgi_followup_action == 'administrativa'):
             Cron._sgi_schedule(
                 alert, "Levantar acta administrativa (S4.32)",
-                "La NC %s pide acción administrativa. Levanta el acta con los responsables "
-                "y adjúntala a la NC." % (alert.sgi_folio or alert.name), rh_id)
+                "La NC %s pide acción administrativa. Levante el acta con los responsables "
+                "y adjúntela a la NC." % (alert.sgi_folio or alert.name), rh_id)
 
     def _sgi_notify_mayor_closed(self):
         """PROT-05/D7: al cerrar una NC mayor, recordar actualizar AMEF y plan de
@@ -719,7 +719,7 @@ class QualityAlert(models.Model):
             return
         summary = "NC mayor cerrada: actualizar AMEF y plan de control (%s)" % (
             self.sgi_folio or self.name)
-        note = ("Se cerró una No Conformidad mayor. Revise si el AMEF y el plan "
+        note = ("Se cerró una no conformidad mayor. Revise si el AMEF y el plan "
                 "de control del proceso/producto deben actualizarse con la "
                 "lección aprendida.")
         if self.sgi_fmea_id:
@@ -773,7 +773,7 @@ class QualityAlert(models.Model):
                 vals['stage_id'] = open_stage.id
             alert.write(vals)
             alert.message_post(
-                body="Alerta escalada a No Conformidad del SGI: <b>%s</b>." % alert.sgi_folio)
+                body="Alerta escalada a no conformidad del SGI: <b>%s</b>." % alert.sgi_folio)
         return True
 
 
@@ -786,10 +786,10 @@ class SgiActionLine(models.Model):
     # auditoría. Sin mail.activity.mixin: la actividad accionable vive en el
     # registro origen (``activity_id``).
     _inherit = ['mail.thread']
-    _description = "Acción / corrección de No Conformidad"
+    _description = "Acción / corrección de no conformidad"
     _order = 'date_commit, id'
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", ondelete='restrict',
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", ondelete='restrict',
                                help="No conformidad a la que pertenece la acción.")
     risk_id = fields.Many2one('sgi.risk', string="Riesgo / Oportunidad", ondelete='cascade',
                               help="Riesgo u oportunidad al que pertenece la acción.")
@@ -898,7 +898,7 @@ class SgiActionLine(models.Model):
         for line in self.filtered('date_done'):
             if line.date_done > today:
                 raise ValidationError(
-                    "La acción «%s» no puede terminar en el futuro (%s). Captura la fecha "
+                    "La acción «%s» no puede terminar en el futuro (%s). Capture la fecha "
                     "en que realmente se terminó." % (line.name, line.date_done))
             if line.progress != '100':
                 raise ValidationError(
@@ -1069,16 +1069,16 @@ class SgiActionLine(models.Model):
 class SgiNcForceClose(models.TransientModel):
     """Asistente de cierre forzado de una NC con motivo; solo Jefe MAST."""
     _name = 'sgi.nc.force.close'
-    _description = "Cierre forzado de No Conformidad"
+    _description = "Cierre forzado de no conformidad"
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", required=True,
                                help="No conformidad que se va a cerrar sin cumplir los candados.")
     reason = fields.Text(string="Motivo del cierre forzado", required=True)
 
     def action_confirm(self):
         self.ensure_one()
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-            raise UserError("Solo el Jefe de MAST y SGI puede realizar un cierre forzado.")
+            raise UserError("Solo el Jefe MAST y SGI puede realizar un cierre forzado.")
         alert = self.alert_id
         closing_stage = self.env['quality.alert.stage'].search([
             ('sgi_is_closing_stage', '=', True),
@@ -1099,9 +1099,9 @@ class SgiNcCancel(models.TransientModel):
     agenda la aprobación a MAST); el Jefe MAST la aprueba con el mismo
     asistente. Nunca se llega a Cancelada arrastrando la tarjeta."""
     _name = 'sgi.nc.cancel'
-    _description = "Cancelación de No Conformidad"
+    _description = "Cancelación de no conformidad"
 
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", required=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", required=True,
                                help="No conformidad que se cancela.")
     reason = fields.Text(string="Motivo de la cancelación", required=True)
     is_manager = fields.Boolean(compute='_compute_is_manager', help="Indica si usted es Jefe MAST y SGI.")
@@ -1119,7 +1119,7 @@ class SgiNcCancel(models.TransientModel):
             raise UserError("La NC %s ya está cancelada." % (alert.sgi_folio or alert.name))
         reason = (self.reason or '').strip()
         if not reason:
-            raise UserError("Captura el motivo de la cancelación.")
+            raise UserError("Capture el motivo de la cancelación.")
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
             # Solicitud: motivo al historial y actividad al Jefe MAST.
             alert.write({'sgi_cancel_reason': reason,

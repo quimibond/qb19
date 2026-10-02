@@ -754,10 +754,10 @@ class SgiMyProcedure(models.TransientModel):
             vals['job_id'] = job_id
         wiz = self.create(vals)
         if wiz.employee_id and wiz.employee_id.id not in wiz.allowed_employee_ids.ids:
-            raise UserError("Esa persona no está en tu equipo; solo ves a tu gente, tus "
-                            "departamentos y los puestos de tus procesos.")
+            raise UserError("Esa persona no está en su equipo; solo ve a su gente, sus "
+                            "departamentos y los puestos de sus procesos.")
         if not wiz.employee_id and wiz.job_id and wiz.job_id.id not in wiz.allowed_job_ids.ids:
-            raise UserError("Ese puesto no está en tu equipo.")
+            raise UserError("Ese puesto no está en su equipo.")
         return {
             'type': 'ir.actions.act_window',
             'name': "Mi procedimiento — %s" % (wiz.employee_id.name or wiz.job_id.name or ''),
@@ -773,12 +773,12 @@ class SgiMyProcedure(models.TransientModel):
         self.ensure_one()
         me = self._sgi_mp_my_employee()
         if not me or self.employee_id.id != me.id:
-            raise UserError("Solo puedes firmar tu propio «Mi procedimiento».")
+            raise UserError("Solo puede firmar su propio «Mi procedimiento».")
         doc = self.job_id.sudo()._sgi_my_procedure_current_doc() if self.job_id else False
         if not doc:
             raise UserError("Aún no hay una revisión publicada de este puesto para firmar.")
         if me.job_id.id != self.job_id.id:
-            raise UserError("Tu puesto ya no es %s: no hay acuse que firmar." % self.job_id.name)
+            raise UserError("Su puesto ya no es %s: no hay acuse que firmar." % self.job_id.name)
         Ack = self.env['sgi.document.ack']
         ack = Ack.sudo().search([('document_id', '=', doc.id), ('employee_id', '=', me.id)], limit=1)
         if not ack:
@@ -789,14 +789,14 @@ class SgiMyProcedure(models.TransientModel):
     def action_print(self):
         self.ensure_one()
         if not self.job_id:
-            raise UserError("Elige un puesto.")
+            raise UserError("Elija un puesto.")
         return self.job_id.sudo().with_context(
             sgi_mp_employee_id=self.employee_id.id).action_sgi_print_my_procedure()
 
     def action_publish(self):
         self.ensure_one()
         if not self.job_id:
-            raise UserError("Elige un puesto.")
+            raise UserError("Elija un puesto.")
         self.job_id.action_sgi_publish_my_procedure()
         return self._reload()
 
@@ -1050,6 +1050,6 @@ class HrEmployeePublicMyTeam(models.Model):
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_team_view_search').id, 'search'],
             'domain': [('id', 'in', team.ids)],
             'context': {},
-            'help': "<p class='o_view_nocontent_smiling_face'>No tienes personas a tu cargo en Odoo</p>"
-                    "<p>Reportes directos, tu departamento o los puestos de tus procesos.</p>",
+            'help': "<p class='o_view_nocontent_smiling_face'>No tiene personas a su cargo en Odoo</p>"
+                    "<p>Reportes directos, su departamento o los puestos de sus procesos.</p>",
         }

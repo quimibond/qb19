@@ -179,7 +179,7 @@ class SgiBaseMixin(models.AbstractModel):
             if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
                 raise UserError(
                     "Este registro del SGI está cerrado y es evidencia: no puede "
-                    "modificarse ni reabrirse. Pida al Jefe de MAST reabrirlo "
+                    "modificarse ni reabrirse. Pida al Jefe MAST reabrirlo "
                     "(cambiar su estado) si hay un error real.\n\n"
                     "Registros bloqueados: %s"
                     % ", ".join(locked.sudo().mapped('display_name')))
@@ -198,7 +198,7 @@ class SgiBaseMixin(models.AbstractModel):
             if locked:
                 raise UserError(
                     "Este registro del SGI está cerrado y es evidencia: no puede "
-                    "borrarse. Pida al Jefe de MAST reabrirlo si hay un error "
+                    "borrarse. Pida al Jefe MAST reabrirlo si hay un error "
                     "real.\n\nRegistros bloqueados: %s"
                     % ", ".join(locked.sudo().mapped('display_name')))
         return super().unlink()

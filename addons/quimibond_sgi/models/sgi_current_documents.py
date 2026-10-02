@@ -25,8 +25,8 @@ class DocumentsDocumentCurrent(models.Model):
     sgi_my_ack_state = fields.Selection(
         ACK_STATES, string="Mi acuse", compute='_compute_sgi_my_ack_state',
         search='_search_sgi_my_ack_state',
-        help="Tu acuse de lectura de este documento: «Por leer» si te toca "
-             "firmarlo, «Leído» si ya lo firmaste y «Sin acuse» si no aplica a tu puesto.")
+        help="Su acuse de lectura de este documento: «Por leer» si le toca "
+             "firmarlo, «Leído» si ya lo firmó y «Sin acuse» si no aplica a su puesto.")
 
     def _sgi_my_acks(self):
         """Acuses del usuario actual (por su empleado) de estos documentos."""
@@ -67,6 +67,6 @@ class DocumentsDocumentCurrent(models.Model):
             ('document_id', 'in', self.ids), ('user_id', '=', self.env.uid),
             ('state', '=', 'pendiente')])
         if not acks:
-            raise UserError("No tienes acuse de lectura pendiente de este documento.")
+            raise UserError("No tiene acuse de lectura pendiente de este documento.")
         acks.action_mark_read()
         return True

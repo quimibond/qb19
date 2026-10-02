@@ -291,7 +291,7 @@ class SgiPpapElement(models.Model):
             if locked:
                 raise UserError(
                     "No se puede borrar un elemento de un PPAP aprobado (es "
-                    "evidencia presentada al cliente). Pide al Jefe de MAST "
+                    "evidencia presentada al cliente). Pida al Jefe MAST "
                     "reabrirlo.\n\nPPAP: %s" % ", ".join(
                         locked.mapped('ppap_id.display_name')))
         return super().unlink()

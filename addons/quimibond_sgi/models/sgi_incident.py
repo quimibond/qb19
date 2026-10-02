@@ -68,7 +68,7 @@ class SgiIncident(models.Model):
                               domain="[('instrument', '=', 'iper')]",
                               help="Riesgo de la matriz IPER relacionado con el evento.")
     action_line_ids = fields.One2many('sgi.action.line', 'incident_id', string="Acciones")
-    sgi_alert_id = fields.Many2one('quality.alert', string="No Conformidad generada",
+    sgi_alert_id = fields.Many2one('quality.alert', string="No conformidad generada",
                                    readonly=True, copy=False,
                                    help="No conformidad generada desde el incidente.")
 
@@ -102,7 +102,7 @@ class SgiIncident(models.Model):
             if self.filtered(lambda i: i.state != vals['state']):
                 raise UserError(
                     "Solo el Jefe MAST y Salud ocupacional investigan, cierran o reabren "
-                    "un incidente. Tú puedes reportarlo y consultar cómo se cerró.")
+                    "un incidente. Usted puede reportarlo y consultar cómo se cerró.")
         escalating = self.browse()
         if vals.get('severity') in ('grave', 'fatal'):
             escalating = self.filtered(

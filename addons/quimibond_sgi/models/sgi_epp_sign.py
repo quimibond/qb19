@@ -57,7 +57,7 @@ class SgiEppDeliverySign(models.Model):
         if 'line_ids' in vals:
             signed = self.filtered(lambda r: r.state == 'firmada')
             if signed and not self.env.su:
-                raise UserError("Una responsiva firmada no se modifica: haz una entrega nueva.")
+                raise UserError("Una responsiva firmada no se modifica: haga una entrega nueva.")
         return super().write(vals)
 
     def _sgi_epp_sign_template(self):

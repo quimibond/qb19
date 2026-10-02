@@ -87,7 +87,7 @@ class SgiAuditProgram(models.Model):
             if missing:
                 raise UserError(
                     "El programa %s tiene %d auditoría(s) interna(s) sin auditor líder: %s. "
-                    "Asigna el auditor líder de cada una antes de aprobar." % (
+                    "Asigne el auditor líder de cada una antes de aprobar." % (
                         program.year, len(missing), ", ".join(
                             "%s (%s)" % (line.process_id.code or line.process_id.name or '—',
                                          dict(line._fields['planned_month'].selection).get(
@@ -544,7 +544,7 @@ class SgiAuditFinding(models.Model):
     ], string="Disposición",
         help="Qué se hace con el hallazgo: generar NC, registrar una mejora o no hacer nada (con motivo). "
              "Sin disposición la auditoría no se cierra.")
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", readonly=True,
                                help="No conformidad generada desde este hallazgo.")
     reason_no_action = fields.Text(string="Justificación sin acción")
 
@@ -569,7 +569,7 @@ class SgiAuditFinding(models.Model):
             if locked:
                 raise UserError(
                     "No se puede borrar un hallazgo de una auditoría cerrada (es "
-                    "evidencia). Pide al Jefe de MAST reabrir la auditoría.\n\n"
+                    "evidencia). Pida al Jefe MAST reabrir la auditoría.\n\n"
                     "Auditoría: %s" % ", ".join(locked.mapped('audit_id.display_name')))
         return super().unlink()
 
@@ -604,7 +604,7 @@ class SgiAuditFinding(models.Model):
         self.write({'disposition': 'genera_nc', 'alert_id': alert.id})
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidad",
+            'name': "No conformidad",
             'res_model': 'quality.alert',
             'res_id': alert.id,
             'view_mode': 'form',

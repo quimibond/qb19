@@ -772,7 +772,7 @@ class HrEmployeeMyProcedure(models.Model):
         self.ensure_one()
         if not self.job_id:
             raise UserError(
-                "%s no tiene puesto asignado. Pide a RH que lo capture en la "
+                "%s no tiene puesto asignado. Pida a RH que lo capture en la "
                 "ficha del empleado." % self.name)
         return self.job_id
 

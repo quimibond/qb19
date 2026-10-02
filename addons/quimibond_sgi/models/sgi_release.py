@@ -121,7 +121,7 @@ class StockPicking(models.Model):
                 for line, why in problems)
             raise UserError(
                 "%s: no se puede surtir con lotes que Calidad no ha liberado:\n%s\n\n"
-                "Avisa a Control de producción y a Calidad; surte solo lotes liberados "
+                "Avise a Control de producción y a Calidad; surta solo lotes liberados "
                 "(C6.10)." % (picking.name, detail))
 
     def button_validate(self):

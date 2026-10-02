@@ -155,7 +155,7 @@
         <field name="arch" type="xml">
             <form string="Validar sin CoA">
                 <p>Estas salidas requieren CoA y no lo tienen. Como Jefe de Calidad
-                    puedes validarlas dejando el motivo; queda en el chatter.</p>
+                    puede validarlas dejando el motivo; queda en el chatter.</p>
                 <group>
                     <field name="picking_ids" widget="many2many_tags" readonly="1"/>
                     <field name="reason" placeholder="Por qué sale sin CoA"/>

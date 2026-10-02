@@ -112,7 +112,7 @@ class DocumentsDocument(models.Model):
         inverse='_inverse_sgi_doc_type', store=True, readonly=False,
         help="Código del tipo de documento (compatibilidad). Un tipo nuevo "
              "creado en Configuración que no esté en esta lista deja este "
-             "campo vacío; usa «Tipo de documento».")
+             "campo vacío; use «Tipo de documento».")
     # El «documento» que ya no es un archivo: el formato migrado vive como
     # vista/transacción de Odoo y este registro solo lo controla (clave,
     # revisión, difusión) y lo abre con un clic.
@@ -449,8 +449,8 @@ class DocumentsDocument(models.Model):
         if action:
             if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
                 raise UserError(
-                    "Este documento vive en Odoo en «%s», pero tu usuario no tiene acceso a ese "
-                    "menú. Pide el acceso a tu jefe o al Jefe MAST." % menu.sudo().complete_name)
+                    "Este documento vive en Odoo en «%s», pero su usuario no tiene acceso a ese "
+                    "menú. Pida el acceso a su jefe o al Jefe MAST." % menu.sudo().complete_name)
             if action._name == 'ir.actions.act_window':
                 return action.read()[0]
             return {'type': 'ir.actions.client', 'tag': 'reload', 'params': {'menu_id': menu.id}}
@@ -458,7 +458,7 @@ class DocumentsDocument(models.Model):
             return self.action_sgi_open_migration_point()
         raise UserError(
             "Este documento todavía no tiene destino en Odoo (ni menú ni worksheet ligados). "
-            "Si ya se hace en Odoo, avísale al Jefe MAST para que lo ligue.")
+            "Si ya se hace en Odoo, avise al Jefe MAST para que lo ligue.")
 
     sgi_ack_ids = fields.One2many('sgi.document.ack', 'document_id', string="Acuses de lectura")
     # 56.7.0 (1.8): guardados para filtrar y reportar la difusión.
@@ -485,7 +485,7 @@ class DocumentsDocument(models.Model):
         'documents.document', 'sgi_doc_reference_rel', 'doc_id', 'ref_id',
         string="Referencias cruzadas",
         help="Documentos de OTRAS familias que este documento menciona "
-             "(ej. P-A28 referencia P-A22, P-C01, P-D01). Captura de MAST.")
+             "(ej. P-A28 referencia P-A22, P-C01, P-D01). Lo captura MAST.")
 
     @api.depends('sgi_parent_document_id',
                  'sgi_parent_document_id.sgi_child_document_ids',
@@ -669,7 +669,7 @@ class DocumentsDocument(models.Model):
                     continue
                 raise ValidationError(
                     "La clave SGI '%s' no corresponde a ningún tipo de "
-                    "documento. Elige el tipo o corrige la clave." % code)
+                    "documento. Elija el tipo o corrija la clave." % code)
             if not dtype._sgi_code_ok(code, doc.sgi_process_id):
                 raise ValidationError(
                     "La clave SGI '%s' no cumple la nomenclatura del tipo «%s» "
@@ -1327,7 +1327,7 @@ class DocumentsDocument(models.Model):
             }
         raise UserError(
             "Este documento no tiene archivo ni enlace para abrir. "
-            "Sube el PDF en «Archivo adjunto» o captura la URL.")
+            "Suba el PDF en «Archivo adjunto» o capture la URL.")
 
     def action_sgi_open_in_documents(self):
         """Abre el documento en la app nativa de Documentos (visor completo con
@@ -1386,7 +1386,7 @@ class SgiDocumentAck(models.Model):
         for ack in self:
             if not ack.user_id or ack.user_id != self.env.user:
                 raise UserError(
-                    "Solo el propio empleado (o el Jefe de MAST) puede firmar o "
+                    "Solo el propio empleado (o el Jefe MAST) puede firmar o "
                     "modificar el acuse de lectura de %s." % ack.employee_id.name)
 
     @api.model_create_multi

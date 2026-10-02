@@ -152,7 +152,7 @@ class SgiChecklistTemplate(models.Model):
                 lambda template=template: Cron._sgi_schedule(
                     template, "Checklist sin equipos: %s" % template.name,
                     "La plantilla «%s» no tiene equipos o unidades: el cron no genera "
-                    "hojas. Agrega los equipos en la plantilla." % template.name,
+                    "hojas. Agregue los equipos en la plantilla." % template.name,
                     manager_id, date_deadline=sgi_today(self.env),
                     key='checklist_sin_equipos'))
         # Solo las plantillas que tocaban hoy se revisan: las demás conservan
@@ -301,7 +301,7 @@ class SgiChecklistFinish(models.TransientModel):
         if not real_pin and self._sgi_pin_required():
             raise UserError(
                 "%s no tiene PIN registrado y el PIN es obligatorio para firmar el "
-                "checklist. Pide a RH que lo capture en su ficha de empleado (el mismo "
+                "checklist. Pida a RH que lo capture en su ficha de empleado (el mismo "
                 "del quiosco de asistencia)." % self.employee_id.name)
         if real_pin and (self.pin or '') != real_pin:
             raise UserError("PIN incorrecto para %s." % self.employee_id.name)

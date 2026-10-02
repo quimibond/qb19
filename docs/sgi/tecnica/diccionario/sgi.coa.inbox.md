@@ -2,7 +2,7 @@
 
 # `sgi.coa.inbox`
 
-**COA recibido por correo** (Model). Hereda de: `mail.thread`.
+**CoA recibido por correo** (Model). Hereda de: `mail.thread`.
 
 Correos al buzón «COA»: cada PDF se liga a su salida por el nombre del archivo. Lo que no se liga queda aquí para que Calidad lo asigne.
 
@@ -18,9 +18,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`.
 | `email_from` | Char | Remitente |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:329` |
 | `name` | Char | Asunto |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:328` |
 | `picking_id` | Many2one | Asignar a la salida | Para los que no se ligaron solos: la salida a la que pertenecen. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:339` |
-| `picking_ids` | Many2many | Salidas ligadas | Salidas a las que se ligó este COA. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:335` |
+| `picking_ids` | Many2many | Salidas ligadas | Salidas a las que se ligó este CoA. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:335` |
 | `result` | Text | Resultado |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:343` |
-| `state` | Selection | Estado | Sin ligar hasta que el COA se asocia a una salida. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:330` |
+| `state` | Selection | Estado | Sin ligar hasta que el CoA se asocia a una salida. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:330` |
 
 ## Métodos públicos (2)
 

@@ -1025,7 +1025,7 @@ class _SgiLoader:
         given = [k for k in ('job', 'job_id', 'family', 'relative') if role.get(k) not in (None, '', False)]
         if len(given) != 1:
             raise ValidationError(
-                "Rol %s: indica exactamente uno de «job», «family» o «relative»."
+                "Rol %s: indique exactamente uno de «job», «family» o «relative»."
                 % role.get('role'))
         kind = given[0]
         if kind in ('job', 'job_id'):
@@ -1047,7 +1047,7 @@ class _SgiLoader:
             # 57.13.0 (J-010): quien pide no se aprueba a sí mismo; en cada
             # registro sube a su jefe (sgi_relative_roles). Se carga, pero avisa.
             self.report.warn('role', key, "«Aprueba = Solicitante»: quien pide no se aprueba "
-                                          "a sí mismo; se resuelve a su jefe. Usa «Jefe del "
+                                          "a sí mismo; se resuelve a su jefe. Use «Jefe del "
                                           "área que pide» o «Dueño del proceso».")
         return {'target_type': 'relative', 'relative_role': relative}, ('relative', relative)
 
@@ -1375,8 +1375,8 @@ class _SgiLoader:
                 continue
             if not successor or not successor.active:
                 self.report.warn('process', old.code, "archivado sin sucesor con %d indicador(es), "
-                                 "%d riesgo(s) y %d documento(s) vigentes colgados: asigna «Sustituido "
-                                 "por» o reubícalos." % (len(indicators), len(risks), len(docs)))
+                                 "%d riesgo(s) y %d documento(s) vigentes colgados: asigne «Sustituido "
+                                 "por» o reubíquelos." % (len(indicators), len(risks), len(docs)))
                 continue
 
             def run(old=old, successor=successor, indicators=indicators, risks=risks):
@@ -1584,7 +1584,7 @@ class _SgiLoader:
                                 item['objective'], "ambiguo" if objective else "no existe"))
                     vals['objective_id'] = objective.id
                 if item.get('responsible_employee_id') and item.get('responsible'):
-                    raise ValidationError("Indica «responsible» o «responsible_employee_id», "
+                    raise ValidationError("Indique «responsible» o «responsible_employee_id», "
                                           "no los dos.")
                 if 'responsible_employee_id' in item:
                     emp_id = item['responsible_employee_id']

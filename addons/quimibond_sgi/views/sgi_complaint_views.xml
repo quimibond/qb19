@@ -112,7 +112,7 @@ action = {
     'context': {'default_team_id': team.id} if team else {},
     'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;La voz del trabajador (45001 5.4)&lt;/p&gt;
 &lt;p&gt;Cualquier queja, sugerencia o condición insegura entra aquí — también por
-correo al alias &lt;b&gt;quejas-sugerencias&lt;/b&gt;. Usa las etiquetas Queja /
+correo al alias &lt;b&gt;quejas-sugerencias&lt;/b&gt;. Use las etiquetas Queja /
 Sugerencia / SST-Condición insegura para clasificarla.&lt;/p&gt;""",
 }
         </field>

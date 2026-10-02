@@ -194,7 +194,7 @@ class SgiActivityChange(models.Model):
     ], string="Estado", default='borrador', required=True, readonly=True,
         help="Borrador mientras se escribe; enviada cuando está en aprobación; aplicada cuando el cambio ya "
              "quedó en la actividad.")
-    change_type = fields.Selection(MP_CHANGE_TYPES, string="Qué propones", required=True, default='cambiar',
+    change_type = fields.Selection(MP_CHANGE_TYPES, string="Qué propone", required=True, default='cambiar',
                                    help="Agregar una actividad nueva, cambiar esta o quitarla.")
     activity_id = fields.Many2one('sgi.process.activity', string="Actividad", readonly=True, index=True,
                                   help="Actividad a la que se refiere la propuesta. Vacío si se propone una "
@@ -208,7 +208,7 @@ class SgiActivityChange(models.Model):
         for change in self:
             if change.state != 'borrador':
                 raise UserError("La propuesta «%s» ya se envió y no se puede cambiar; si hace falta, "
-                                "haz otra." % (change.display_title or change.name or ''))
+                                "haga otra." % (change.display_title or change.name or ''))
             if change.create_uid and change.create_uid != self.env.user:
                 raise UserError("Solo quien hizo la propuesta puede cambiarla.")
 
@@ -431,20 +431,20 @@ class SgiActivityChange(models.Model):
         if self.state != 'borrador':
             raise UserError("Esta propuesta ya se envió.")
         if not (self.reason or '').strip():
-            raise UserError("Escribe por qué propones el cambio.")
+            raise UserError("Escriba por qué propone el cambio.")
         if self.change_type in ('cambiar', 'quitar') and not self.activity_id:
-            raise UserError("Para cambiar o quitar, abre la propuesta desde la tarjeta de la actividad.")
+            raise UserError("Para cambiar o quitar, abra la propuesta desde la tarjeta de la actividad.")
         if self.change_type == 'agregar':
             if not self.process_id:
-                raise UserError("Elige el proceso donde va la actividad nueva.")
+                raise UserError("Elija el proceso donde va la actividad nueva.")
             if not (self.name or '').strip():
-                raise UserError("Escribe el resumen de la actividad nueva.")
+                raise UserError("Escriba el resumen de la actividad nueva.")
         if self.change_type == 'cambiar' and not self._sgi_changes():
             raise UserError("No cambiaste ningún campo de la actividad.")
         category = self.env['approval.category']._sgi_mp_change_category()
         if not category:
             raise UserError("No existe la categoría de Aprobaciones «Proponer cambio a mi "
-                            "procedimiento (SGI)». Pide al Jefe MAST y SGI que la cree.")
+                            "procedimiento (SGI)». Pida al Jefe MAST y SGI que la cree.")
         snapshot = self.diff_html
         request = self.env['approval.request'].create({
             'name': self.display_title,

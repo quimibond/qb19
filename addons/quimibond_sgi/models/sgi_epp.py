@@ -74,7 +74,7 @@ class SgiEppDelivery(models.Model):
         for rec in self:
             if not rec.user_id or rec.user_id != self.env.user:
                 raise UserError(
-                    "Solo el propio empleado (o el Jefe de MAST) puede firmar la "
+                    "Solo el propio empleado (o el Jefe MAST) puede firmar la "
                     "responsiva de EPP de %s." % rec.sudo().employee_id.name)
 
     @api.model_create_multi
@@ -102,7 +102,7 @@ class SgiEppDelivery(models.Model):
         if 'items' in vals or 'employee_id' in vals:
             signed = self.filtered(lambda r: r.state == 'firmada')
             if signed and not self.env.su:
-                raise UserError("Una responsiva firmada no se modifica: haz una entrega nueva.")
+                raise UserError("Una responsiva firmada no se modifica: haga una entrega nueva.")
         return super().write(vals)
 
     def action_sign(self):

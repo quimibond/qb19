@@ -407,11 +407,11 @@
                 </div>
                 <div class="alert alert-success" role="status"
                      invisible="state != 'tested' or not dry_run_ok">
-                    La prueba pasó sin errores. Ya puedes cargar.
+                    La prueba pasó sin errores. Ya puede cargar.
                 </div>
                 <div class="alert alert-danger" role="alert"
                      invisible="state == 'draft' or error_count == 0">
-                    Hay <field name="error_count" class="d-inline"/> error(es): revisa la lista.
+                    Hay <field name="error_count" class="d-inline"/> error(es): revise la lista.
                 </div>
                 <group invisible="state == 'loaded'">
                     <field name="payload_file" filename="payload_filename"/>

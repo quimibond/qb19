@@ -10,7 +10,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_complaint.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_alert_id` | Many2one | No Conformidad | No conformidad que se generó desde esta reclamación con el botón «Generar NC». |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_complaint.py:94` |
+| `sgi_alert_id` | Many2one | No conformidad | No conformidad que se generó desde esta reclamación con el botón «Generar NC». |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_complaint.py:94` |
 | `sgi_disposition` | Selection | Disposición | Qué se hizo con el producto reclamado: devolución, reposición, nota de crédito o concesión al cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_complaint.py:85` |
 | `sgi_is_complaint_team` | Boolean | Es reclamación (SGI) |  |  |  | related `team_id.sgi_is_complaint`, sin guardar |  | `addons/quimibond_sgi/models/sgi_complaint.py:74` |
 | `sgi_lot_id` | Many2one | Lote | Lote del producto reclamado, para rastrear la producción de origen. |  | `stock.lot` |  |  | `addons/quimibond_sgi/models/sgi_complaint.py:81` |

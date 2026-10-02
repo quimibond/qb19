@@ -188,8 +188,8 @@
                 <sheet>
                     <div class="alert alert-warning" role="alert" invisible="not no_employee">
                         <i class="fa fa-user-times me-1" title="Sin empleado"/>
-                        <strong>Tu usuario no está ligado a un empleado.</strong>
-                        Pide a RH que te ligue en tu ficha de empleado para ver tu procedimiento.
+                        <strong>Su usuario no está ligado a un empleado.</strong>
+                        Pida a RH que lo ligue en su ficha de empleado para ver su procedimiento.
                     </div>
                     <div class="oe_button_box" name="button_box">
                         <!-- 56.3.0: un solo botón para todos los pendientes,

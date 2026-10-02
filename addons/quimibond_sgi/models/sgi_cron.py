@@ -1124,7 +1124,7 @@ class SgiCron(models.AbstractModel):
             self._sgi_schedule(
                 risk, "Riesgo alto sin acción: %s" % (risk.folio or risk.name),
                 "El riesgo está en atención alta o inmediata y no tiene ninguna acción de "
-                "tratamiento abierta. Registra una acción con responsable y compromiso.",
+                "tratamiento abierta. Registre una acción con responsable y compromiso.",
                 owner.id if owner else manager_id, date_deadline=today,
                 key='riesgo_alto_sin_accion')
 

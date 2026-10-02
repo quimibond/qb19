@@ -29,7 +29,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_incident.py`.
 | `reporter_id` | Many2one | Reportado por | Persona que reporta. Puede consultar cómo se cerró. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:51` |
 | `risk_id` | Many2one | Riesgo / IPER relacionado | Riesgo de la matriz IPER relacionado con el evento. |  | `sgi.risk` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:67` |
 | `severity` | Selection | Severidad | Leve, moderado, grave o fatal. Los graves y fatales avisan de inmediato. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:43` |
-| `sgi_alert_id` | Many2one | No Conformidad generada | No conformidad generada desde el incidente. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:71` |
+| `sgi_alert_id` | Many2one | No conformidad generada | No conformidad generada desde el incidente. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:71` |
 | `sgi_area_id` | Many2one | Área SGI | Área del SGI donde ocurrió. |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_incident.py:57` |
 | `state` | Selection | Estado | Reportado, en investigación, acciones o cerrado. No se cierra sin el análisis SCAT ni con acciones abiertas. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_incident.py:75` |
 

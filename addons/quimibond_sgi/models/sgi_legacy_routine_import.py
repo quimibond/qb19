@@ -51,7 +51,7 @@ def read_book(raw, filename):
         try:
             import openpyxl
         except ImportError:
-            raise UserError("openpyxl no está disponible en este servidor: sube la hoja en CSV.")
+            raise UserError("openpyxl no está disponible en este servidor: suba la hoja en CSV.")
         try:
             book = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
         except Exception as exc:
@@ -200,7 +200,7 @@ class SgiLegacyRoutineImport(models.TransientModel):
         self.ensure_one()
         _check_manager(self.env)
         if not self.file:
-            raise UserError("Sube el libro de rutinas (XLSX o la hoja «Rutina por rutina» en CSV).")
+            raise UserError("Suba el libro de rutinas (XLSX o la hoja «Rutina por rutina» en CSV).")
         raw = base64.b64decode(self.file)
         digest = hashlib.sha256(raw).hexdigest()
         if not dry_run:
@@ -210,7 +210,7 @@ class SgiLegacyRoutineImport(models.TransientModel):
             if not self.dry_run_ok:
                 raise UserError("La prueba tuvo errores: corrígelos en el libro y vuelve a probar.")
             if not self.confirm:
-                raise UserError("Marca «Entiendo que se escribe en la base» para cargar.")
+                raise UserError("Marque «Entiendo que se escribe en la base» para cargar.")
         payload, structure_errors = book_to_payload(read_book(raw, self.filename))
         lines = [(5, 0, 0)]
         if structure_errors:

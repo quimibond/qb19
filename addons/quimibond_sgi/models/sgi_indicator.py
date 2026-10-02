@@ -1038,7 +1038,7 @@ class SgiIndicatorMeasure(models.Model):
         ('validado', "Validado"),
     ], string="Estado", default='pendiente', required=True, tracking=True,
         help="Pendiente, capturado, validado o sin dato. El dueño del indicador valida lo capturado.")
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", readonly=True,
                                help="No conformidad levantada por esta medición en rojo.")
     # V-A06 (57.43.0): «Validar» solo se ofrece a quien puede validar (I-006).
     sgi_can_validate = fields.Boolean(
@@ -1318,7 +1318,7 @@ class SgiIndicatorMeasure(models.Model):
             if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
                 raise UserError(
                     "La medición validada de %s es evidencia del SGI y no puede "
-                    "modificarse ni regresarse a borrador. Pide al Jefe de MAST "
+                    "modificarse ni regresarse a borrador. Pida al Jefe MAST "
                     "reabrirla si hay un error real." % ', '.join(
                         locked.mapped('indicator_id.name')))
         return super().write(vals)

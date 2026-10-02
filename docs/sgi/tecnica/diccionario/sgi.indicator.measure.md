@@ -15,7 +15,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `action_line_ids` | One2many | Acciones |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:115` |
-| `alert_id` | Many2one | No Conformidad | No conformidad levantada por esta medición en rojo. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1041` |
+| `alert_id` | Many2one | No conformidad | No conformidad levantada por esta medición en rojo. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1041` |
 | `captured_date` | Date | Capturada el | Día en que la medición pasó a «Capturado» (a mano o por el cálculo automático). El dueño del indicador tiene 3 días hábiles desde aquí para validarla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:111` |
 | `cause` | Text | Causa | Por qué salió en rojo (I-4). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:114` |
 | `denominator` | Float | Denominador | Denominador del cálculo (la base contra la que se mide). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:380` |

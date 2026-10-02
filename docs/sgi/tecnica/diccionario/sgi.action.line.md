@@ -2,7 +2,7 @@
 
 # `sgi.action.line`
 
-**Acción / corrección de No Conformidad** (Model). Hereda de: `mail.thread`.
+**Acción / corrección de no conformidad** (Model). Hereda de: `mail.thread`.
 
 Acción o corrección con responsable y fecha compromiso. Cuelga de una NC, riesgo, AMEF, incidente, simulacro, medición en rojo, objetivo o acuerdo de la revisión por la dirección; se cierra con «Marcar hecha».
 
@@ -16,7 +16,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_
 |---|---|---|---|---|---|---|---|---|
 | `action_type` | Selection | Tipo | Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la preventiva, una causa potencial. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:806` |
 | `activity_id` | Many2one | Actividad |  |  | `mail.activity` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:838` |
-| `alert_id` | Many2one | No Conformidad | No conformidad a la que pertenece la acción. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:792` |
+| `alert_id` | Many2one | No conformidad | No conformidad a la que pertenece la acción. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:792` |
 | `date_commit` | Date | Compromiso | Fecha en que el responsable se compromete a terminar la acción. Pasada esta fecha, la acción se marca vencida y escala. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:819` |
 | `date_done` | Date | Terminada el | Fecha en que se terminó la acción. Al capturarla, la acción queda terminada. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:822` |
 | `drill_id` | Many2one | Simulacro | Simulacro al que pertenece la acción. |  | `sgi.emergency.drill` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:801` |

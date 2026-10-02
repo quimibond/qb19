@@ -304,7 +304,7 @@ class SgiLegalEvaluate(models.TransientModel):
         self.ensure_one()
         req = self.requirement_id
         if not self.next_date and self.result != 'no_aplica':
-            raise UserError("Indica la fecha de la próxima evaluación.")
+            raise UserError("Indique la fecha de la próxima evaluación.")
         req._sgi_mark(self.result, evidence=self.evidence, next_date=self.next_date)
         if self.result in ('parcial', 'no_cumple'):
             req._sgi_create_alert()

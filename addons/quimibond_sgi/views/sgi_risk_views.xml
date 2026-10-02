@@ -127,7 +127,7 @@
                     </div>
                     <div class="alert alert-info mb-2" role="status"
                          invisible="next_review_date or instrument == 'foda'">
-                        <i class="fa fa-lightbulb-o" title="Sugerencia"/> Captura la <b>Próxima revisión</b>: sin ella nadie
+                        <i class="fa fa-lightbulb-o" title="Sugerencia"/> Capture la <b>Próxima revisión</b>: sin ella nadie
                         recibirá el recordatorio de revalorar este riesgo.
                     </div>
                     <group string="Evaluación" invisible="instrument == 'foda'">

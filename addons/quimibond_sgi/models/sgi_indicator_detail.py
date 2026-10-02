@@ -443,7 +443,7 @@ class SgiIndicatorMeasureDetail(models.Model):
             indicator = measure.indicator_id
             if measure.state == 'validado':
                 raise UserError(
-                    "La medición de %s ya está validada (es evidencia): pide "
+                    "La medición de %s ya está validada (es evidencia): pida "
                     "al Jefe MAST regresarla a pendiente antes de recalcular."
                     % indicator.code)
             if indicator.calc_mode == 'manual':

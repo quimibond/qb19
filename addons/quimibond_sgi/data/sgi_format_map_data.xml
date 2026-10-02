@@ -46,7 +46,7 @@
     <record id="format_map_quality_alert" model="sgi.format.map">
         <field name="model_id" ref="quality.model_quality_alert"/>
         <field name="sgi_code">F-P-G05-01</field>
-        <field name="note">Reporte de No Conformidad</field>
+        <field name="note">Reporte de no conformidad</field>
     </record>
 
     <record id="format_map_stock_lot" model="sgi.format.map">

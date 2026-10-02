@@ -20,7 +20,7 @@
                         icon="fa-eye" title="Abrir el documento"/>
                 <button name="action_sgi_mark_my_ack_read" type="object" string="Leído y entendido"
                         icon="fa-check" invisible="sgi_my_ack_state != 'pendiente'"
-                        confirm="Confirmas que leíste y entendiste este documento. Tu acuse queda registrado con la fecha de hoy."/>
+                        confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
             </list>
         </field>
     </record>

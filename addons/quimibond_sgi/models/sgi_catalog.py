@@ -223,7 +223,7 @@ class SgiActivityRole(models.Model):
         for role in self:
             if role.role == 'escala' and role.after_days <= 0:
                 raise ValidationError(
-                    "«%s» escala: indica a los cuántos días hábiles (after_days)."
+                    "«%s» escala: indique a los cuántos días hábiles (after_days)."
                     % role.display_name)
             if role.role != 'escala' and role.after_days:
                 raise ValidationError(
@@ -680,7 +680,7 @@ class SgiDocumentType(models.Model):
                 dtype._sgi_format_code('X', 1)
             except (KeyError, ValueError, IndexError, re.error) as exc:
                 raise ValidationError(
-                    "El patrón de clave «%s» no es válido (%s). Usa solo "
+                    "El patrón de clave «%s» no es válido (%s). Use solo "
                     "{process} y {seq} / {seq:02d}." % (dtype.prefix_pattern, exc))
 
     _TOKEN_RE = re.compile(r'\{(process|seq)(?::0?(\d+)d)?\}')

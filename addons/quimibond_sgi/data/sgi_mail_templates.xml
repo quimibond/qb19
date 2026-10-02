@@ -12,7 +12,7 @@
     <record id="mail_template_sgi_incident_grave" model="mail.template">
         <field name="name">SGI: Incidente grave/fatal</field>
         <field name="model_id" ref="model_sgi_incident"/>
-        <field name="subject">⚠ Incidente {{ object.severity == 'fatal' and 'FATAL' or 'GRAVE' }}: {{ object.name }}</field>
+        <field name="subject">[Urgente] Incidente {{ object.severity == 'fatal' and 'FATAL' or 'GRAVE' }}: {{ object.name }}</field>
         <field name="email_to">{{ ctx.get('sgi_email_to') }}</field>
         <field name="body_html" type="html">
 <div>
@@ -34,11 +34,11 @@
     <record id="mail_template_sgi_nc_mayor" model="mail.template">
         <field name="name">SGI: NC mayor</field>
         <field name="model_id" ref="quality.model_quality_alert"/>
-        <field name="subject">⚠ NC MAYOR {{ object.sgi_folio or '' }}: {{ object.title or object.name }}</field>
+        <field name="subject">[Urgente] NC MAYOR {{ object.sgi_folio or '' }}: {{ object.title or object.name }}</field>
         <field name="email_to">{{ ctx.get('sgi_email_to') }}</field>
         <field name="body_html" type="html">
 <div>
-    <p>Se abrió (o se reclasificó a) una <b>No Conformidad MAYOR</b> del SGI:</p>
+    <p>Se abrió (o se reclasificó a) una <b>no conformidad MAYOR</b> del SGI:</p>
     <ul>
         <li><b>Folio:</b> <t t-out="object.sgi_folio or ''"/></li>
         <li><b>Título:</b> <t t-out="object.title or object.name"/></li>
@@ -56,7 +56,7 @@
     <record id="mail_template_sgi_calibration_blocked" model="mail.template">
         <field name="name">SGI: Equipo bloqueado por calibración vencida</field>
         <field name="model_id" ref="maintenance.model_maintenance_equipment"/>
-        <field name="subject">⚠ Equipo BLOQUEADO por calibración vencida: {{ object.name }}</field>
+        <field name="subject">[Urgente] Equipo BLOQUEADO por calibración vencida: {{ object.name }}</field>
         <field name="email_to">{{ ctx.get('sgi_email_to') }}</field>
         <field name="body_html" type="html">
 <div>
@@ -78,13 +78,13 @@
     <record id="mail_template_sgi_weekly_overdue" model="mail.template">
         <field name="name">SGI: Mis pendientes atrasados (semanal)</field>
         <field name="model_id" ref="base.model_res_users"/>
-        <field name="subject">SGI: tienes {{ ctx.get('sgi_total') }} pendiente(s) atrasado(s)</field>
+        <field name="subject">SGI: tiene {{ ctx.get('sgi_total') }} pendientes atrasados</field>
         <field name="email_to">{{ object.email_formatted }}</field>
         <field name="lang">{{ object.lang }}</field>
         <field name="body_html" type="html">
 <div>
     <p>Hola <t t-out="object.name"/>:</p>
-    <p>Esto es lo que tienes <b>atrasado</b> en «Mis pendientes» del SGI
+    <p>Esto es lo que tiene <b>atrasado</b> en «Mis pendientes» del SGI
        (<t t-out="ctx.get('sgi_total')"/> en total):</p>
     <table style="border-collapse:collapse;">
         <tr>
@@ -102,7 +102,7 @@
     </table>
     <p t-if="ctx.get('sgi_more')">… y <t t-out="ctx.get('sgi_more')"/> más.</p>
     <p><a t-att-href="ctx.get('sgi_link')">Abrir Mis pendientes en Odoo</a></p>
-    <p style="color:#888;">Si no quieres este correo, apágalo en tu perfil →
+    <p style="color:#888;">Si no quiere este correo, apáguelo en su perfil →
        Preferencias → «Correo semanal de mis pendientes atrasados (SGI)».</p>
 </div>
         </field>

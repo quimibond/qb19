@@ -31,8 +31,9 @@ incidente, consultar planes de emergencia).
 2. Arriba aparecen primero los **atrasados**, luego lo que **vence esta
    semana**. Cada renglón dice qué es (acción, NC, medición, acuse, firma,
    aprobación, actividad atrasada…), de qué proceso y cuándo vence.
-3. Pulse **Abrir** para ir al registro y resolverlo. Al resolverlo, el
-   renglón desaparece solo.
+3. Pulse **Ir** para ir al registro y resolverlo. Al resolverlo, el
+   renglón desaparece solo. En un acuse de lectura, **Leer** abre el
+   documento y **Leído y entendido** lo firma desde el renglón.
 4. Los avisos automáticos del SGI (en no conformidades, documentos,
    mantenimiento, mesa de ayuda o proyectos) y las actividades sobre
    registros del SGI, vencidos o que vencen esta semana, también salen en la

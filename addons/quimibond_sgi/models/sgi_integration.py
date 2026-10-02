@@ -138,7 +138,7 @@ class PurchaseOrder(models.Model):
             if partner.sgi_supplier_status == 'bloqueado':
                 raise UserError(
                     "El proveedor %s está BLOQUEADO por el SGI (8.4.1): no se "
-                    "pueden confirmar órdenes de compra. Pida al Jefe de MAST "
+                    "pueden confirmar órdenes de compra. Pida al Jefe MAST "
                     "revisar su aprobación." % partner.display_name)
         return super().button_confirm()
 
@@ -179,7 +179,7 @@ class MaintenanceRequest(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidad",
+            'name': "No conformidad",
             'res_model': 'quality.alert',
             'view_mode': 'form',
             'res_id': self.sgi_alert_id.id,
@@ -280,10 +280,10 @@ class HrEmployee(models.Model):
             ],
             'domain': [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.job_id.ids)],
             'help': "<p class='o_view_nocontent_smiling_face'>Sin procedimientos "
-                    "asignados a tu puesto</p><p>Aquí aparecen los documentos "
-                    "VIGENTES que aplican a tu puesto — tu referencia de cómo se "
+                    "asignados a su puesto</p><p>Aquí aparecen los documentos "
+                    "VIGENTES que aplican a su puesto — su referencia de cómo se "
                     "hace el trabajo (botón «Ver archivo»). Si está vacío y no "
-                    "debería, pide a RH que asigne tu puesto en tu ficha de "
+                    "debería, pida a RH que asigne su puesto en su ficha de "
                     "empleado y a MAST que ligue los puestos al documento.</p>",
         }
 

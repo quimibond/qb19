@@ -14,7 +14,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `alert_id` | Many2one | No Conformidad | No conformidad generada desde este hallazgo. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:547` |
+| `alert_id` | Many2one | No conformidad | No conformidad generada desde este hallazgo. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:547` |
 | `audit_id` | Many2one | Auditoría | Auditoría a la que pertenece el hallazgo. | sí | `sgi.audit` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:521` |
 | `checklist_line_id` | Many2one | Pregunta del checklist |  |  | `sgi.audit.checklist.line` |  |  | `addons/quimibond_sgi/models/sgi_audit.py:534` |
 | `description` | Text | Descripción |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:538` |

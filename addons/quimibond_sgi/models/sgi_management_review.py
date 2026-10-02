@@ -386,7 +386,7 @@ class SgiManagementReview(models.Model):
                 raise UserError(
                     "Todo acuerdo de la Revisión por la Dirección debe tener "
                     "responsable y fecha límite (ISO 9.3.3: las salidas son "
-                    "accionables). Completa: %s" % ", ".join(
+                    "accionables). Complete: %s" % ", ".join(
                         incomplete.mapped('name')))
             # DIR-3 (52.0.0): cada acuerdo es una ACCIÓN del SGI (sgi.action.line)
             # con responsable y compromiso: actividad nativa al responsable,

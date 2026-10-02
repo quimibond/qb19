@@ -118,7 +118,7 @@
                     <button name="action_generate_checklist" type="object"
                             string="Regenerar checklist" icon="fa-refresh"
                             invisible="state not in ('planificada', 'en_ejecucion')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
-                            help="Agrega las actividades de los procesos auditados que falten en el checklist (no borra respuestas)."/>
+                            help="Trae al checklist las actividades de los procesos auditados que falten (no borra respuestas)."/>
                     <button name="action_open_report_document" type="object"
                             string="Ver informe" icon="fa-file-pdf-o"
                             invisible="not report_document_id"/>

@@ -61,7 +61,7 @@ class DocumentsDocumentSign(models.Model):
         creación corre con sudo (el candado real es el grupo del botón)."""
         self.ensure_one()
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-            raise UserError("Solo el Jefe de MAST envía acuses a firma.")
+            raise UserError("Solo el Jefe MAST envía acuses a firma.")
         pending = self.sgi_ack_ids.filtered(
             lambda a: a.state == 'pendiente' and (
                 not a.sign_request_id

@@ -71,7 +71,7 @@ class QualityAlertSupplierPortal(models.Model):
             raise UserError("Solo una NC del SGI (con folio) se envía al proveedor.")
         supplier = self.sgi_supplier_id or self.partner_id
         if not supplier:
-            raise UserError("Captura el proveedor en la NC antes de enviarla.")
+            raise UserError("Capture el proveedor en la NC antes de enviarla.")
         if not supplier.email:
             raise UserError("El proveedor %s no tiene correo." % supplier.display_name)
         try:
@@ -125,7 +125,7 @@ class QualityAlertSupplierPortal(models.Model):
         Cron = self.env['sgi.cron'].sudo()
         Cron._sgi_schedule(
             self.sudo(), "El proveedor contestó la NC %s: revisar causa y acción" % (self.sgi_folio,),
-            "Revisa la respuesta del proveedor y registra las acciones en la NC.",
+            "Revise la respuesta del proveedor y registre las acciones en la NC.",
             self.user_id.id or Cron._sgi_manager_user_id())
         return True
 

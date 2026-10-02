@@ -479,7 +479,7 @@ class _RoutineLoader:
         text = ' '.join(sgi_cell(row.get(k)) for k in ('rutina', 'motivo', 'responsable_anterior',
                                                           'comentario'))
         if RE_CREDENCIAL.search(text):
-            self.error('credencial', "Texto con forma de credencial; revisa la fila a mano (no se "
+            self.error('credencial', "Texto con forma de credencial; revise la fila a mano (no se "
                        "muestra).", fila=fila, clave=clave, n=n_txt)
             return None
         ok = True

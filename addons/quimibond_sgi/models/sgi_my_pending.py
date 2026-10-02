@@ -836,8 +836,8 @@ class SgiMyProcedurePending(models.TransientModel):
         me = self._sgi_mp_my_employee()
         allowed = (me | me._sgi_mp_team_employees()) if me else me
         if set(employees.ids) - set(allowed.ids):
-            raise AccessError("Esa persona no está en tu equipo; solo ves a tu gente, tus "
-                              "departamentos y los puestos de tus procesos.")
+            raise AccessError("Esa persona no está en su equipo; solo ve a su gente, sus "
+                              "departamentos y los puestos de sus procesos.")
         return True
 
     def action_show_pending(self):

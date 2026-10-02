@@ -41,10 +41,10 @@
                         <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <div class="text-muted mb-2">
-                        Flujo: define el periodo → <b>Cargar entradas</b> llena
+                        Flujo: defina el periodo → <b>Cargar entradas</b> llena
                         las entradas 9.3.2 con los datos reales del periodo
                         (NC, reclamaciones, auditorías, indicadores en rojo, riesgos
-                        altos…) → captura los <b>Acuerdos</b> (cada uno se
+                        altos…) → capture los <b>Acuerdos</b> (cada uno se
                         vuelve tarea rastreable con responsable y fecha) →
                         <b>Marcar realizada</b> y <b>Cerrar</b>.
                     </div>
