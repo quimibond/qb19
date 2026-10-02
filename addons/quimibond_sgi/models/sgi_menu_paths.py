@@ -52,7 +52,7 @@ SGI_MENU_PATHS = {
     # Fuera del SGI: la raíz es de otra app («Empleados»); la prueba solo
     # compara los menús del módulo.
     'rh_faltantes': ('quimibond_sgi.menu_hr_sgi_employee_gaps',
-                     ('Empleados', 'Empleados', 'Empleados sin puesto, sin PIN o sin correo')),
+                     ('Empleados', 'Empleados', 'Empleados sin puesto o sin correo')),
     'brechas_competencia': ('quimibond_sgi.menu_sgi_competences',
                             ('Empleados', 'Competencias SGI', 'Brechas de competencia (DNC)')),
 }

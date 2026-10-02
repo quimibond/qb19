@@ -78,7 +78,9 @@ Administración SGI. El árbol completo con grupos está en
 **Capturista de planta** = persona sin usuario que firma en la tableta (app
 SGI en planta) con su PIN de empleado; las cuentas de tableta se dan de alta
 en Configuración → Tabletas de planta. El PIN no tiene límite de intentos; se
-acepta en planta (F-018).
+acepta en planta (F-018). **Apagado por ahora** (decisión de Dirección,
+2026-10-02): no hay tabletas dadas de alta; encenderlo pide antes contestar el
+límite de intentos (Q12).
 
 ## Satélites
 

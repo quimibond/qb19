@@ -8,6 +8,12 @@ El CHANGELOG mezcla dos series que son decisiones distintas: `D-xx` (dos dígito
 
 Las rutas son relativas a `addons/quimibond_sgi/` salvo donde dice `qb_mcp_politica/`. Cuando una clave solo aparece nombrada en una lista (sin texto propio), la fila dice «ver» y la línea.
 
+## Decisiones de la auditoría 2026-10
+
+- **2026-10-02 — SGI en planta apagado.** Por ahora no se identifica a la gente de planta con PIN: 57.94.0 entrega el kiosco sin tabletas dadas de alta, la lista y el aviso de RH no piden PIN y `checklist_pin_required` sigue apagado. Encenderlo pide antes contestar Q12 (límite de intentos del PIN). Fuente: `addons/quimibond_sgi/CHANGELOG.md`, entrada 19.0.57.94.0.
+
+## Índice D-xx y D-0xx
+
 | Serie | Clave | Decisión (resumen) | Primera aparición |
 |---|---|---|---|
 | D-xx | D-01 | Los 10 términos de fórmula de `sgi_indicator_formula_data.xml` salen del núcleo (pasan a `__export__` con prefijo `quimibond_sgi_legado_`; el mapa los trae). | `CHANGELOG.md:2579` (también `migrations/19.0.56.35.0/pre-migrate.py:5`) |

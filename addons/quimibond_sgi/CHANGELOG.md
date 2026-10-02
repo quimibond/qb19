@@ -17,6 +17,15 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 **SGI en planta: la planta firma en la tableta a su nombre** (auditoría 2026-10: U-01, U-08, I-03, I-05).
 
+**SGI en planta se entrega apagado** (decisión de Jose, 2026-10-02: por ahora
+no se identifica a la gente de planta con PIN). El código queda, pero no se
+dan de alta tabletas, la lista y el aviso de RH no piden PIN y
+`checklist_pin_required` sigue apagado. Sin tabletas dadas de alta nadie entra
+a la app, así que Q12 deja de bloquear el despliegue; se contesta cuando se
+decida encenderlo. Lo que sí se usa desde el despliegue: checklist táctil
+(I-03), tarjetas en el celular (I-05), lista y aviso de RH (U-08) y los
+candados de firma del checklist.
+
 ### Agregado
 
 - **SGI en planta (U-01):** app nueva para las tabletas de planta (acción
@@ -48,8 +57,9 @@ Retirado, Seguridad, Migración, Datos de producción.
   tableta, el casi accidente queda a nombre del empleado (y de su usuario si
   tiene, que lo sigue) y avisa a Salud ocupacional o al Jefe MAST («Revisar
   casi accidente…»).
-- **RH (U-08):** lista «Empleados sin puesto, sin PIN o sin correo»
-  (Empleados → Empleados, solo RH), columna «Le falta» (sin mostrar el PIN) y
+- **RH (U-08):** lista «Empleados sin puesto o sin correo»
+  (Empleados → Empleados, solo RH), columna «Le falta» (el PIN no se pide
+  mientras SGI en planta esté apagado) y
   aviso semanal por departamento en Mis pendientes (cron nuevo, lunes 13:00
   UTC; «Ir» abre la lista del departamento a quien es de RH). Recibe el aviso
   `quimibond_sgi.hr_user_id`; vacío, el Coordinador de RH de
@@ -111,26 +121,28 @@ crea en la primera carga).
 
 ### Datos de producción
 
-A mano, después de desplegar (no lo hace el código):
+Ninguno mientras SGI en planta esté apagado. Para encenderlo, a mano
+(no lo hace el código), después de contestar Q12:
 
 1. MAST da de alta las tabletas en Configuración → Tabletas de planta
    (cuenta, departamentos, checklists). Sistemas pone «SGI en planta» como
    acción de inicio de cada cuenta.
 2. Sistemas ajusta los grupos de `supervisor@` y `manufactura@` (hoy Usuario
    SGI): dejarles «Tableta de planta (SGI)» y lo que usen fuera del SGI (Q8).
-3. RH captura los PIN con la lista «Empleados sin puesto, sin PIN o sin
-   correo» (hoy 2 de 165 tienen PIN).
+3. RH captura los PIN en la ficha de cada empleado (hoy 2 de 165 tienen PIN);
+   la columna «PIN» vuelve a la lista de RH en esa entrega.
 4. Cuando RH termine, MAST enciende «PIN obligatorio para firmar checklists»
    (Ajustes → SGI).
 
-**Decisiones por omisión (confirmar con Jose):** Q7 dos tabletas con las
+**Decisiones por omisión, para cuando se encienda (Jose decidió apagarlo por
+ahora):** Q7 dos tabletas con las
 cuentas que ya entran (`supervisor@` → Tejido y áreas de producción,
 `manufactura@` → Mantenimiento, Almacén y Laboratorio) y RH captura los PIN
 por departamento en dos semanas; Q8 las cuentas compartidas pierden Usuario
 SGI; Q9 `quimibond_sgi.hr_user_id` vacío (aviso al Coordinador de RH de
 `rh_user_id` o al Jefe MAST); Q10 un aviso por departamento; Q11 el casi
 accidente entra «leve» y lo clasifica quien investiga; **Q12 (contestar ANTES
-de desplegar a producción): límite de intentos de PIN; hoy ninguno (D-08)** —
+de encenderlo): límite de intentos de PIN; hoy ninguno (D-08)** —
 la revisión recomienda bloqueo de 5 minutos tras 5 fallos por empleado; Q13
 la pantalla completa no muestra la barra de Odoo (MAST sale con `/odoo`).
 

@@ -10,7 +10,7 @@
   intentos, D-08 / F-018).
 - Checklist: «Marcar el resto como Bien» y una hoja firmada no se reescribe.
 - Kanban móvil en las 6 acciones de piso.
-- RH: lista de empleados sin puesto, sin PIN o sin correo y aviso semanal por
+- RH: lista de empleados sin puesto o sin correo y aviso semanal por
   departamento en Mis pendientes."""
 from odoo.exceptions import AccessError, UserError
 from odoo.tests import TransactionCase, new_test_user, tagged
@@ -387,13 +387,13 @@ class TestRhFaltantes(_PlantaCase):
         notice = self._notices(self.dept).filtered('active')
         self.assertEqual(len(notice), 1)
         self.assertEqual(notice.user_id, rh)
-        # worker sin correo de trabajo; no_pin sin PIN, sin puesto y sin correo.
+        # worker sin correo de trabajo; no_pin sin puesto y sin correo (el PIN no se pide).
         self.assertIn('ZK Tejido: 2', notice.summary)
         # La lista de RH los trae.
         action = self.env.ref('quimibond_sgi.sgi_hr_employee_gaps_action')
         found = self.env['hr.employee'].with_user(rh).search(safe_eval(action.domain))
         self.assertIn(self.no_pin, found)
-        self.assertEqual(self.no_pin.with_user(rh).sgi_missing_data, 'puesto, PIN, correo')
+        self.assertEqual(self.no_pin.with_user(rh).sgi_missing_data, 'puesto, correo')
         # Mis pendientes: «Ir» abre la lista de RH filtrada por el departamento.
         Pending = self.env['sgi.my.pending'].with_user(rh)
         rows = Pending.browse(Pending.action_open_mine()['domain'][0][2])

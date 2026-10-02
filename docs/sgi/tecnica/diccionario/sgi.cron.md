@@ -19,7 +19,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/model
 | `cron_dnc` | Cron trimestral: cierra el ciclo de la DNC (P-A01). Cuenta las brechas de competencia abiertas y agenda al coordinador de RH la distribución de la encuesta DNC (F-P-A01-17) y el plan de capacitación.… |
 | `cron_documents` | Cron diario de documentos: avisos de revisión bienal, pilotos por vencer y acuses pendientes (un aviso por documento y clave). |
 | `cron_emergency_drills` | Cron diario: vigila los simulacros de los planes de emergencia vigentes (14001/45001 8.2). Idempotente por resumen. |
-| `cron_hr_employee_gaps` | 57.94.0 (U-08), cada lunes: un aviso por departamento con empleados sin puesto, sin PIN o sin correo, a RH. Sale en Mis pendientes como «Aviso». Si la persona lo marcó «Hecho» y siguen faltando datos… |
+| `cron_hr_employee_gaps` | 57.94.0 (U-08), cada lunes: un aviso por departamento con empleados sin puesto o sin correo, a RH. Sale en Mis pendientes como «Aviso». Si la persona lo marcó «Hecho» y siguen faltando datos, el lune… |
 | `cron_indicators` | Diario desde I-6: escala los planes vencidos todos los días y mide solo el tercer día hábil (o cuando el mes anterior siga sin medir). Sin ``scheduled`` (a mano) mide siempre, como antes. |
 | `cron_indicators_weekly` | Cron semanal: mide los indicadores de frecuencia semanal de la semana previa. |
 | `cron_legal_requirements` | Cron diario: evaluaciones de cumplimiento vencidas y permisos por vencer (≤60 días) o vencidos. Idempotente por resumen. |

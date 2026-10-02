@@ -23,13 +23,6 @@ incidente, consultar planes de emergencia).
 > Si no ve el menú SGI, no está en el grupo Usuario SGI: pídalo a su jefe;
 > los usuarios los autoriza la Dirección y los crea Sistemas.
 
-> **Si no tiene usuario de Odoo:** use la tableta de su área, app **SGI en
-> planta**. Toque su foto, teclee su PIN (el mismo de Asistencias) y elija:
-> **Documentos por leer** (lea y firme «Leído y entendido»), **Reportar casi
-> accidente**, **Mi EPP** (firme que lo recibió) o **Checklist de mi equipo**.
-> Todo queda a su nombre. Pulse **Salir** al terminar (la tableta sale sola a
-> los 90 segundos). Si no tiene PIN, pídalo a RH.
-
 ## 2. Su día
 
 ### 2.1 Revisar Mis pendientes
@@ -106,13 +99,13 @@ Si una actividad ya no se hace así, o falta una:
 
 ### 2.7 Checklist de planta (capturista)
 
-1. En la tableta, app **SGI en planta** → su foto → su PIN → **Checklist de
-   mi equipo**, o en una computadora **Mantenimiento → Checklists de hoy**.
+1. En **Mantenimiento → Checklists de hoy** están las hojas del día de su
+   equipo o unidad.
 2. Toque **Bien**, **Falla** o **No aplica** en cada punto (un toque). Si casi
    todo está bien, marque las fallas y pulse **Marcar el resto como Bien**.
 3. Escriba la observación en las fallas.
-4. Pulse **Terminar checklist**. En la tableta queda firmado a su nombre con su
-   PIN; en la computadora elija su nombre y teclee su PIN.
+4. Pulse **Terminar checklist** y elija su nombre (el PIN solo se pide si el
+   Jefe MAST lo activó).
 5. Una hoja firmada ya no se cambia. De las fallas, Mantenimiento crea los
    correctivos.
 

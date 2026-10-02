@@ -7,7 +7,7 @@
 Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia dentro de cada padre. El árbol que valida `test_menu_tree` está en `addons/quimibond_sgi/tools/sgi_menu_tree.txt`.
 
 - **Checklists de hoy** — `maintenance.request`; bajo `maintenance.menu_maintenance_title`
-- **Empleados sin puesto, sin PIN o sin correo** — `hr.employee`; grupos: hr.group_hr_user; bajo `hr.menu_hr_employee_payroll`
+- **Empleados sin puesto o sin correo** — `hr.employee`; grupos: hr.group_hr_user; bajo `hr.menu_hr_employee_payroll`
 - **Calidad preventiva** — grupos: quality.group_quality_user, quimibond_sgi.group_sgi_user; bajo `quality_control.menu_quality_root`
   - **Planes de control** — `sgi.control.plan`
   - **AMEF** — `sgi.fmea`
@@ -181,7 +181,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_fmea_action` | act_window | AMEF | `sgi.fmea` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_fmea_views.xml` |
 | `quimibond_sgi.sgi_format_map_action` | act_window | Formatos en documentos de Odoo | `sgi.format.map` | list,form | sí | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
 | `quimibond_sgi.sgi_health_record_action` | act_window | Estudios de higiene y exámenes médicos | `sgi.health.record` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
-| `quimibond_sgi.sgi_hr_employee_gaps_action` | act_window | Empleados sin puesto, sin PIN o sin correo | `hr.employee` | list,form | sí | `addons/quimibond_sgi/views/sgi_floor_views.xml` |
+| `quimibond_sgi.sgi_hr_employee_gaps_action` | act_window | Empleados sin puesto o sin correo | `hr.employee` | list,form | sí | `addons/quimibond_sgi/views/sgi_floor_views.xml` |
 | `quimibond_sgi.sgi_hr_job_action_roles` | act_window | Puestos y procesos | `hr.job` | sgi_diagram,list,form | sí | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `quimibond_sgi.sgi_improvement_action` | server | Mejora continua | `project.task` |  |  | `addons/quimibond_sgi/views/sgi_improvement_views.xml` |
 | `quimibond_sgi.sgi_incident_action` | act_window | Incidentes y accidentes | `sgi.incident` | list,kanban,form,graph,pivot,activity | sí | `addons/quimibond_sgi/views/sgi_incident_views.xml` |

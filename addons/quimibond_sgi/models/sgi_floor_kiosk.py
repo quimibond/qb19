@@ -419,17 +419,18 @@ class HrEmployeeSgiGaps(models.Model):
     _inherit = 'hr.employee'
 
     # 57.94.0 (U-08): lo que le falta a la ficha para que la persona use el
-    # SGI. Sin el valor del PIN: solo si falta.
+    # SGI. El PIN no se pide: SGI en planta queda apagado por ahora (decisión
+    # de Jose, 2026-10-02); cuando se encienda, se agrega aquí.
     sgi_missing_data = fields.Char(
         string="Le falta", compute='_compute_sgi_missing_data', groups='hr.group_hr_user',
-        help="Puesto (sin él no hay Mi procedimiento), PIN (sin él no firma en SGI en planta) o "
-             "correo de trabajo (sin él no recibe firmas de Firma electrónica).")
+        help="Puesto (sin él no hay Mi procedimiento) o correo de trabajo (sin él no recibe "
+             "firmas de Firma electrónica).")
 
-    @api.depends('job_id', 'pin', 'work_email')
+    @api.depends('job_id', 'work_email')
     def _compute_sgi_missing_data(self):
         for employee in self:
             data = employee.sudo()
-            missing = [label for label, value in (("puesto", data.job_id), ("PIN", data.pin),
+            missing = [label for label, value in (("puesto", data.job_id),
                                                   ("correo", data.work_email)) if not value]
             employee.sgi_missing_data = ", ".join(missing)
 
@@ -451,16 +452,15 @@ class SgiCronHrGaps(models.AbstractModel):
         company = self.env['sgi.config']._sgi_company()
         return self.env['hr.employee'].sudo().search([
             ('active', '=', True), ('company_id', '=', company.id),
-            '|', '|', ('job_id', '=', False), ('pin', '=', False), ('work_email', '=', False)])
+            '|', ('job_id', '=', False), ('work_email', '=', False)])
 
     @api.model
     def _sgi_hr_user_id(self):
         """Quién de RH recibe el aviso: ``quimibond_sgi.hr_user_id``; sin él,
         el Coordinador de RH de los demás avisos (``quimibond_sgi.rh_user_id``)
-        y, sin ninguno, el Jefe MAST (pregunta Q9). La lista de faltantes
-        filtra por PIN (campo de ``hr.group_hr_user``): si quien recibe no es
-        de RH, su «Ir» abre la ficha del departamento
-        (``sgi.my.pending.action_open``)."""
+        y, sin ninguno, el Jefe MAST (pregunta Q9). La lista de faltantes es
+        de ``hr.group_hr_user``: si quien recibe no es de RH, su «Ir» abre la
+        ficha del departamento (``sgi.my.pending.action_open``)."""
         param = self.env['ir.config_parameter'].sudo().get_param('quimibond_sgi.hr_user_id')
         if param and param.isdigit():
             user = self.env['res.users'].sudo().browse(int(param)).exists()
@@ -471,7 +471,7 @@ class SgiCronHrGaps(models.AbstractModel):
     @api.model
     def cron_hr_employee_gaps(self):
         """57.94.0 (U-08), cada lunes: un aviso por departamento con empleados
-        sin puesto, sin PIN o sin correo, a RH. Sale en Mis pendientes como
+        sin puesto o sin correo, a RH. Sale en Mis pendientes como
         «Aviso». Si la persona lo marcó «Hecho» y siguen faltando datos, el
         lunes siguiente llega otro (se cierra el episodio del aviso hecho). Los
         departamentos ya completos cierran su aviso."""
@@ -489,17 +489,15 @@ class SgiCronHrGaps(models.AbstractModel):
         user_id = self._sgi_hr_user_id()
         deadline = sgi_today(self.env) + timedelta(days=7)
         for department, employees in by_department.items():
-            note = ("Sin puesto: %d (no tienen Mi procedimiento). Sin PIN: %d (no pueden firmar en SGI "
-                    "en planta). Sin correo de trabajo: %d (no reciben firmas de Firma electrónica). "
-                    "Complételos en %s." % (
+            note = ("Sin puesto: %d (no tienen Mi procedimiento). Sin correo de trabajo: %d (no "
+                    "reciben firmas de Firma electrónica). Complételos en %s." % (
                         len(employees.filtered(lambda e: not e.job_id)),
-                        len(employees.filtered(lambda e: not e.pin)),
                         len(employees.filtered(lambda e: not e.work_email)),
                         sgi_menu_path('rh_faltantes')))
             Cron._sgi_step(
                 "aviso de RH %s" % department.id,
                 lambda department=department, employees=employees, note=note: Cron._sgi_schedule(
-                    department.sudo(), "Empleados sin puesto, sin PIN o sin correo en %s: %d" % (
+                    department.sudo(), "Empleados sin puesto o sin correo en %s: %d" % (
                         department.name, len(employees)),
                     note, user_id, date_deadline=deadline, key=HR_GAPS_KEY))
         complete = Activity.search(key_domain + [('active', '=', True),

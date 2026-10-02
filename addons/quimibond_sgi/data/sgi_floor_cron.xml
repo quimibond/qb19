@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
     <!-- 57.94.0 (U-08): cada lunes, aviso a RH por departamento con empleados
-         sin puesto, sin PIN o sin correo (Mis pendientes, tipo «Aviso»). -->
+         sin puesto o sin correo (Mis pendientes, tipo «Aviso»). -->
     <record id="sgi_cron_hr_employee_gaps" model="ir.cron">
-        <field name="name">SGI: Empleados sin puesto, sin PIN o sin correo (aviso a RH)</field>
+        <field name="name">SGI: Empleados sin puesto o sin correo (aviso a RH)</field>
         <field name="model_id" ref="model_sgi_cron"/>
         <field name="state">code</field>
         <field name="code">model.cron_hr_employee_gaps()</field>

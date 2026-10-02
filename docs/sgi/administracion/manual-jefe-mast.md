@@ -51,6 +51,12 @@ El módulo se instala **vacío**: trae estructura, no el mapa de procesos.
 
 ### Tabletas de planta (SGI en planta)
 
+**Apagado por ahora** (decisión de Dirección, 2-oct-2026): no se dan de alta
+tabletas ni se capturan PIN, y «PIN obligatorio para firmar checklists» sigue
+apagado. Sin tabletas dadas de alta, nadie entra a «SGI en planta». Si se
+decide encenderlo, antes hay que contestar el límite de intentos del PIN
+(pregunta Q12) y después seguir estos pasos:
+
 1. Sistemas crea la cuenta compartida (por ejemplo supervisor@), **sin
    empleado ligado**, y le pone «SGI en planta» como acción de inicio.
 2. Usted la da de alta en **SGI → Administración SGI → Configuración →
@@ -60,9 +66,8 @@ El módulo se instala **vacío**: trae estructura, no el mapa de procesos.
 3. Pida a Sistemas que le quite a la cuenta los grupos del SGI que no use
    (Usuario SGI): lo firmado en la tableta queda a nombre de quien teclea su
    PIN, y la cuenta sola no firma nada.
-4. RH captura los PIN (Empleados → Empleados sin puesto, sin PIN o sin
-   correo). Cuando terminen, encienda «PIN obligatorio para firmar
-   checklists» (Ajustes → SGI).
+4. RH captura los PIN en la ficha de cada empleado. Cuando terminen,
+   encienda «PIN obligatorio para firmar checklists» (Ajustes → SGI).
 5. Los casi accidentes que llegan de la tableta le llegan como aviso
    «Revisar casi accidente…» (o a Salud ocupacional, si tiene miembros):
    clasifíquelos e investíguelos.
@@ -180,7 +185,7 @@ checklist no se generan en festivos.
 Hay 26 acciones planificadas del SGI (tabla completa en
 [../tecnica/crons.md](../tecnica/crons.md)). Viven en `noupdate`: cambiarlas
 en la base requiere migración. Desde 57.94.0 incluye «SGI: Empleados sin
-puesto, sin PIN o sin correo (aviso a RH)», semanal (lunes). Si una falla, Odoo la apaga tras 5 fallos en
+puesto o sin correo (aviso a RH)», semanal (lunes). Si una falla, Odoo la apaga tras 5 fallos en
 más de 7 días: revise **Ajustes → Técnico → Acciones planificadas** (filtro
 «SGI»).
 
@@ -191,7 +196,7 @@ valores de fábrica, en [../tecnica/parametros.md](../tecnica/parametros.md).
 Otros que conviene conocer: `quimibond_sgi.mast_user_id` (a quién llegan los
 avisos de MAST), `quimibond_sgi.rh_user_id`,
 `quimibond_sgi.checklist_pin_required`, `quimibond_sgi.hr_user_id` (usuario de RH
-que recibe el aviso semanal de empleados sin puesto, sin PIN o sin correo; vacío:
+que recibe el aviso semanal de empleados sin puesto o sin correo; vacío:
 el de `quimibond_sgi.rh_user_id` y, sin él, el Jefe MAST; debe tener «Empleados /
 Encargado» para que «Ir» abra la lista),
 `quimibond_sgi.legacy_decision_deadline` (fecha límite de las rutinas
