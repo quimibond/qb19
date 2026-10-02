@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Limpieza 19.0.45.0.0: el árbol de seis entradas, los xmlids retirados,
-el religado de los procesos viejos y el retiro automático de lo sustituido."""
+"""Limpieza 19.0.45.0.0: el árbol de entradas (siete desde 57.98.0, con
+Reportar), los xmlids retirados, el religado de los procesos viejos y el
+retiro automático de lo sustituido."""
 from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
@@ -30,13 +31,13 @@ class TestCleanup45(TransactionCase):
         return self.Document.create(vals)
 
     def test_01_menu_tree_has_six_entries(self):
-        """Todo menú bajo el raíz del SGI desciende de una de las seis
-        entradas (Inicio, Procesos, Mejora, Seguridad y ambiente, Dirección,
-        Administración SGI). Falla si alguien cuelga un menú suelto del raíz."""
+        """Todo menú bajo el raíz del SGI desciende de una de las siete
+        entradas (Inicio, Reportar, Procesos, Mejora, Seguridad y ambiente,
+        Dirección, Administración SGI). Falla si alguien cuelga un menú suelto del raíz."""
         Menu = self.env['ir.ui.menu']
         self.assertFalse(
             Menu._sgi_menu_tree_offenders().mapped('complete_name'),
-            "Hay menús fuera de las seis entradas del SGI.")
+            "Hay menús fuera de las siete entradas del SGI.")
         root = self.env.ref('quimibond_sgi.menu_sgi_root')
         for xmlid in SGI_MENU_ENTRIES:
             self.assertEqual(self.env.ref(xmlid).parent_id, root, "%s debe colgar del raíz." % xmlid)

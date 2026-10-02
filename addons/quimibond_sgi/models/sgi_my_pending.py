@@ -714,6 +714,47 @@ class SgiMyPending(models.TransientModel):
                                 for row in self._sgi_pending_values(user).get(user.id, [])])
         return self._sgi_action(rows, "Mis pendientes")
 
+    @api.model
+    def action_open_home(self):
+        """57.98.0 (U-07, Q20): acción del menú raíz «SGI». Dirección abre en
+        el Tablero; los demás, en Mis pendientes (como antes). No toca la
+        acción de inicio de ningún usuario."""
+        if self.env.user.has_group('quimibond_sgi.group_sgi_director'):
+            return self.env['sgi.direction.board'].action_open()
+        return self.action_open_mine()
+
+    # 57.98.0 (U-07): SGI → Reportar. tipo: (modelo, título, valores por
+    # omisión; ``default_team_id`` es el xmlid del equipo del SGI).
+    _SGI_REPORT_KINDS = {
+        'nc': ('quality.alert', "Reportar una no conformidad",
+               {'default_team_id': 'quimibond_sgi.sgi_quality_team_internal',
+                'default_sgi_origin_type': 'proceso'}),
+        'incident': ('sgi.incident', "Reportar un casi accidente o incidente",
+                     {'default_incident_type': 'casi_accidente'}),
+        'voice': ('helpdesk.ticket', "Reportar una queja o sugerencia",
+                  {'default_team_id': 'quimibond_sgi.sgi_helpdesk_team_voice'}),
+    }
+
+    @api.model
+    def action_sgi_report(self, kind):
+        """57.98.0 (U-07): SGI → Reportar abre la ficha NUEVA de una NC, un
+        incidente o una queja, con su equipo del SGI. Sin el equipo (base sin
+        datos) avisa en lugar de abrir Calidad o Soporte completos."""
+        model, title, defaults = self._SGI_REPORT_KINDS[kind]
+        context = {}
+        for key, value in defaults.items():
+            if key == 'default_team_id':
+                team = self.env.ref(value, raise_if_not_found=False)
+                if not team:
+                    raise UserError("Falta el equipo del SGI para reportar; avise al Jefe MAST.")
+                value = team.id
+            context[key] = value
+        return {
+            'type': 'ir.actions.act_window', 'name': title, 'res_model': model,
+            'view_mode': 'form', 'views': [(False, 'form')], 'target': 'current',
+            'context': context,
+        }
+
     def action_open(self):
         """Abre el registro de origen (la acción, la NC, la medición…)."""
         self.ensure_one()
