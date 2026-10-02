@@ -26,13 +26,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi
 | `state_rank` | Integer |  | Orden para mostrar primero lo atrasado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:207` |
 | `user_id` | Many2one | Usuario |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:195` |
 
-## Métodos públicos (6)
+## Métodos públicos (8)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_done_notice` | 57.92.0 (U-03): «Hecho» marca hecho el aviso (la actividad nativa), solo si es de quien abre la lista. |
 | `action_open` | Abre el registro de origen (la acción, la NC, la medición…). |
+| `action_open_home` | 57.98.0 (U-07, Q20): acción del menú raíz «SGI». Dirección abre en el Tablero; los demás, en Mis pendientes (como antes). No toca la acción de inicio de ningún usuario. |
 | `action_open_mine` | Inicio → Mis pendientes: los del usuario actual. Sin empleado ligado, los renglones van solo con el usuario. |
+| `action_sgi_report` | 57.98.0 (U-07): SGI → Reportar abre la ficha NUEVA de una NC, un incidente o una queja, con su equipo del SGI. Sin el equipo (base sin datos) avisa en lugar de abrir Calidad o Soporte completos. |
 | `action_sign_ack` | 57.92.0 (U-05): «Leído y entendido» desde el renglón. El candado de identidad de ``sgi.document.ack`` decide si quien abre la lista puede firmar: el propio empleado o el Jefe MAST. |
 | `action_validate_measure` | «Validar» desde el renglón (I-006). Valida quien abre la lista, con sus permisos: solo el dueño del indicador o el Jefe MAST pueden (``_sgi_check_validate_access``). |
 | `action_validate_selected` | 57.92.0 (U-02): «Validar seleccionadas». Ignora los renglones que no son mediciones. Valida, con los permisos de quien abre la lista, solo las mediciones que puede validar (``sgi_can_validate``: dueñ… |
