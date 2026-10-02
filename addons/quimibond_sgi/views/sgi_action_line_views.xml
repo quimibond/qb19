@@ -46,7 +46,7 @@
             <search>
                 <field name="name"/>
                 <field name="responsible_id"/>
-                <filter name="mine" string="Mis acciones"
+                <filter name="mine" string="Míos"
                         domain="[('responsible_id', '=', uid)]"/>
                 <filter name="open" string="Abiertas"
                         domain="[('state', '=', 'abierta')]"/>

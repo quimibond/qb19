@@ -95,6 +95,8 @@
         <field name="res_model">sgi.supplier.eval</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_supplier_eval_view_search"/>
+        <!-- 57.98.0 (I-04): agrupada por clasificación. -->
+        <field name="context">{'search_default_group_class': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin evaluaciones de proveedores aún</p>
             <p>El cron trimestral evalúa solo a los proveedores con recepciones: entregas a tiempo + NC dan la clase Acreditado / Condicionado / Baja; sin recepciones con fecha compromiso el OTD queda <b>sin datos</b> (no cuenta como 0 %) y, si tampoco hubo NC, la clase es <b>Sin datos</b>. El OTD compara por <b>día calendario</b> con tolerancia configurable en Ajustes; si cambia la regla o la tolerancia, seleccione las evaluaciones y use <b>Acción → Recalcular métricas</b> y después «Aplicar al proveedor». La aprobación inicial (8.4.1) vive en la ficha del proveedor, pestaña SGI.</p>

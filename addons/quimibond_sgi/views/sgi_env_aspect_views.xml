@@ -145,6 +145,8 @@
         <field name="res_model">sgi.env.aspect</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_env_aspect_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los significativos. -->
+        <field name="context">{'search_default_significant': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Registre el primer aspecto ambiental</p>
             <p>ISO 14001 6.1.2: por cada actividad, su aspecto, el impacto que causa y la condición

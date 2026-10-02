@@ -248,7 +248,7 @@
                 <field name="name"/>
                 <field name="sgi_area_id"/>
                 <field name="responsible_id"/>
-                <filter name="mine" string="Mis indicadores"
+                <filter name="mine" string="Míos"
                         domain="[('responsible_id', '=', uid)]"/>
                 <filter name="red" string="En rojo" domain="[('last_semaphore', '=', 'rojo')]"/>
                 <filter name="no_calc" string="No calcula" domain="[('calc_status', 'in', ('error', 'sin_formula', 'sin_datos'))]"/>
@@ -515,7 +515,7 @@
         <field name="arch" type="xml">
             <search string="Mediciones">
                 <field name="indicator_id"/>
-                <filter name="mine" string="Mis mediciones"
+                <filter name="mine" string="Míos"
                         domain="[('indicator_id.responsible_id', '=', uid)]"/>
                 <filter name="red" string="En rojo" domain="[('semaphore','=','rojo')]"/>
                 <filter name="pending" string="Pendientes" domain="[('state','=','pendiente')]"/>
