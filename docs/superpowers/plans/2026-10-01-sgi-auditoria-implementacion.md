@@ -41,14 +41,21 @@ Leer antes de empezar: `CLAUDE.md` (raíz), `addons/quimibond_sgi/README.md` (gl
 | 57.92.0 | Bandeja: Mis pendientes útil | U-02, U-03, U-05, U-06 | — | Ninguna (D-05 se decide en la pista de datos) |
 | 57.93.0 | NC y auditoría con evidencia | N-02, N-03, N-12, K-03 | 57.91.0 | Ninguna |
 | 57.94.0 | SGI en planta (kiosco con PIN) | U-01, U-08, I-03, I-05 | 57.92.0 | Q7: tabletas y captura de PIN por RH |
-| 57.95.0 | SST y ambiente | N-06, N-07 | 57.93.0 | Q9 (MOC), Q10 (matriz ambiental), Q11 (contratistas) |
+| 57.95.0 → 57.96.0 o siguiente libre | SST y ambiente | N-06, N-07 | 57.93.0 | Q9 (MOC), Q10 (matriz ambiental), Q11 (contratistas) |
 | 57.96.0 | Cláusulas y revisión por la dirección | N-05, N-09 | — | Q13 (requisitos de cliente) |
 | 57.97.0 | Interfaz | I-01, I-02, I-04, I-06, U-07 | 57.92.0 | Q20 (arranque de Dirección) |
 | 57.98.0 | Salud del SGI (tablero de adopción) | Sección 8 del reporte, D-01 | 57.93.0, 57.94.0 | Metas del tablero |
-| 57.99.0 | Rendimiento y robustez | K-08, K-05, D-06 | 57.92.0 | Ninguna |
+| 57.99.0 → **entregada como 57.95.0** (2026-10-02) | Rendimiento y robustez | K-08, K-05, D-06 | 57.92.0 | Ninguna |
 | 57.100.0 | Integridad, competencias, PPAP, IA | K-04, N-13, N-14, D7 | 57.96.0 | Q12 (PPAP), Q16 (IA) |
 
 Los IDs (K-01, U-02, N-02…) y las preguntas (Q1…Q20) son los del reporte de auditoría.
+
+**Renumeración (2026-10-02):** «Rendimiento y robustez» (ficha 57.99.0) salió
+como **19.0.57.95.0** porque no tiene puerta de decisión
+(`docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-robustez.md`). Las
+fichas con puerta (SST y ambiente, Cláusulas, Interfaz, Salud del SGI y las
+siguientes) toman el siguiente número libre (57.96.0 en adelante) cuando se
+inicien; sus títulos de abajo conservan el número original del mapa.
 
 ---
 
@@ -1170,7 +1177,7 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
 - **Alcance:** los 10 indicadores de la sección 8 del reporte como `sgi.indicator` de nivel Dirección en E2 con `calc_mode` propio (procesos vigentes, personas activas en 30 días, planta identificable, acuses al día, mediciones validadas a tiempo, rojos con respuesta, NC eficaces, avisos vencidos y su concentración, programa de auditoría cumplido, formatos migrados utilizables) y un correo semanal a Dirección.
 - **Pruebas:** cálculo de cada `calc_mode` con datos de prueba.
 
-### 57.99.0 — Rendimiento y robustez
+### 57.99.0 — Rendimiento y robustez (entregada como 57.95.0)
 
 - **Alcance:** K-08 (un aviso por documento o por jefe en lugar de uno por acuse, `sgi_cron.py:679-687`; resumen guardado por empleado para Mi equipo; columna `sgi_cron_kind` indexada en `mail.activity` con backfill en post-migrate; recálculo nocturno de respaldo de las cuatro listas de Mi procedimiento con el número de cambios en el log), K-05 (dependencias de `sgi_picking_ids` y `sgi_payment_date`; separar propuesto de ajustado), D-06 (post-migrate: compañía 1 en los documentos controlados sin compañía, con log; regla de compañía en `sgi.legacy.routine`).
 - **Pruebas:** el recálculo nocturno reporta 0 cambios en régimen; búsqueda de Mi equipo sin recorrer a toda la empresa.
