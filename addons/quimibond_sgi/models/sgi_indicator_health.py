@@ -24,14 +24,18 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_calendar import sgi_local_date, sgi_local_datetime_utc, sgi_today
+from .sgi_guard import sgi_require_system
 from .sgi_health_const import (
     EXCLUDED_USERS_PARAM, FORMAT_USE_DAYS, HEALTH_MODES, HEALTH_PRIVATE_MODELS,
-    HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, IDLE_DAYS, NC_OPEN_DAYS, NC_WINDOW_DAYS, PEOPLE_DAYS,
-    RED_WINDOW_MONTHS, VALIDATION_PREFILTER_DAYS, VALIDATION_WINDOW_DAYS, param_ids)
+    HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, IDLE_DAYS, MAIL_USERS_PARAM, NC_OPEN_DAYS,
+    NC_WINDOW_DAYS, PEOPLE_DAYS, RED_WINDOW_MONTHS, VALIDATION_PREFILTER_DAYS,
+    VALIDATION_WINDOW_DAYS, param_ids)
 
 _logger = logging.getLogger(__name__)
 
 _SEMAPHORE = [('verde', "Verde"), ('amarillo', "Amarillo"), ('rojo', "Rojo")]
+_SEM_COLOR = {'verde': '#1e7e34', 'amarillo': '#b58105', 'rojo': '#c82333'}
+_NO_COLOR = '#6c757d'
 _DATA_STATES = ('capturado', 'validado')
 
 _SELECTION = [
@@ -88,15 +92,15 @@ class SgiIndicatorHealth(models.Model):
             previous = by_key.get((indicator.id, before))
             with_data = current and current.state in _DATA_STATES
             indicator.sgi_health_week_measure_id = current.id if current else False
-            indicator.sgi_health_week_value = indicator._sgi_health_fmt(current) \
+            indicator.sgi_health_week_value = indicator._sgi_health_fmt(current.value) \
                 if with_data else "Sin dato"
             indicator.sgi_health_week_semaphore = current.semaphore if with_data else False
-            indicator.sgi_health_week_previous = indicator._sgi_health_fmt(previous) \
+            indicator.sgi_health_week_previous = indicator._sgi_health_fmt(previous.value) \
                 if previous and previous.state in _DATA_STATES else "—"
 
-    def _sgi_health_fmt(self, measure):
+    def _sgi_health_fmt(self, value):
         """«75 %», «12 personas»: el valor sin ceros de más, con su unidad."""
-        text = ('%.1f' % (measure.value or 0.0)).rstrip('0').rstrip('.') or '0'
+        text = ('%.1f' % (value or 0.0)).rstrip('0').rstrip('.') or '0'
         return ("%s %s" % (text, self.uom or '')).strip()
 
     # ---- comunes ---------------------------------------------------------
@@ -570,3 +574,114 @@ class SgiDirectionBoardHealth(models.TransientModel):
             board.health_note = False if indicators else (
                 "No hay indicadores de salud del SGI activos. Revise Administración SGI → "
                 "Indicadores (claves SG-01 a SG-10).")
+
+
+class SgiCronHealth(models.AbstractModel):
+    """Correo semanal «Salud del SGI» a Dirección (patrón de D-14)."""
+    _inherit = 'sgi.cron'
+
+    @api.model
+    def _sgi_health_mail_users(self):
+        """Dirección de Operaciones (SGI) y los de
+        quimibond_sgi.health_mail_user_ids: activos, internos, con correo y
+        con acceso a la empresa del SGI (D-03, como D-14)."""
+        company = self.env['sgi.config']._sgi_company()
+        users = self.env['res.users'].sudo()
+        group = self.env.ref('quimibond_sgi.group_sgi_director', raise_if_not_found=False)
+        if group:
+            users |= group.sudo().all_user_ids
+        users |= self.env['res.users'].sudo().browse(
+            param_ids(self.env, MAIL_USERS_PARAM)).exists()
+        return users.filtered(lambda u: u.active and not u.share and u.email
+                              and company in u.company_ids)
+
+    @api.model
+    def _sgi_health_rows(self, indicators):
+        """Un renglón por indicador con la medición de la semana pasada."""
+        semaphores = dict(_SEMAPHORE)
+        rows = []
+        for indicator in indicators:
+            measure = indicator.sgi_health_week_measure_id
+            semaphore = indicator.sgi_health_week_semaphore
+            rows.append({
+                'code': indicator.code or '',
+                'name': indicator.name or '',
+                'value': indicator.sgi_health_week_value or "Sin dato",
+                'target': indicator._sgi_health_fmt(indicator.target_objective),
+                'semaphore': semaphores.get(semaphore, "—"),
+                'red': semaphore == 'rojo',
+                'color': _SEM_COLOR.get(semaphore, _NO_COLOR),
+                'previous': indicator.sgi_health_week_previous or "—",
+                'note': " ".join((measure.note or '').split()) if measure else '',
+            })
+        return rows
+
+    @api.model
+    def _sgi_health_owner_rows(self):
+        """La tabla por dueño de proceso (hallazgo D-01): solo conteos y el
+        nombre del dueño, que Dirección ya ve en el mapa de procesos."""
+        company = self.env['sgi.config']._sgi_company()
+        processes = self.env['sgi.process'].sudo().search(
+            [('company_id', '=', company.id), ('owner_id', '!=', False)], order='code')
+        rows = []
+        for process in processes:
+            if not process.sgi_health_owner_user_id:
+                idle = "—"
+            elif process.sgi_health_idle_days > IDLE_DAYS:
+                idle = "más de %d" % IDLE_DAYS
+            else:
+                idle = str(process.sgi_health_idle_days)
+            rows.append({
+                'process': "%s %s" % (process.code or '', process.name or ''),
+                'owner': process.owner_id.name or '',
+                'overdue': process.sgi_health_overdue_count,
+                'late': process.sgi_health_late_validation_count,
+                'idle': idle,
+            })
+        return rows
+
+    @api.model
+    def cron_health_weekly_mail(self):
+        """57.99.0, cada lunes: mide (si falta) la semana pasada de los
+        indicadores de salud y manda a Dirección el correo con su valor, meta,
+        semáforo, la semana anterior y la tabla por dueño de proceso (hallazgo
+        D-01). Un correo por persona, cada uno en su savepoint. Solo conteos.
+        Devuelve los ids de usuario a los que se mandó."""
+        sgi_require_system(self.env)  # F-008
+        Indicator = self.env['sgi.indicator'].sudo()
+        indicators = Indicator.search([('calc_mode', 'in', HEALTH_MODES)], order='code')
+        if not indicators:
+            return []
+        prev = Indicator._sgi_health_week()
+        monday = prev + timedelta(days=7)
+        label = "semana del %s" % prev.strftime('%d/%m/%Y')
+        weekly = indicators.filtered(lambda i: i.frequency == 'weekly')
+        if weekly:
+            # Idempotente: el cron semanal de indicadores pudo correr más tarde.
+            self._sgi_step("mediciones de salud del SGI", lambda: self._sgi_generate_measures(
+                weekly, prev, prev, prev + timedelta(days=6), monday, label))
+        template = self.env.ref('quimibond_sgi.mail_template_sgi_health_weekly',
+                                raise_if_not_found=False)
+        users = self._sgi_health_mail_users()
+        if not template or not users:
+            return []
+        indicators.invalidate_recordset()
+        rows = self._sgi_health_rows(indicators)
+        owners = self._sgi_health_owner_rows()
+        base_url = (self.env['ir.config_parameter'].sudo().get_param('web.base.url') or '').rstrip('/')
+        ctx = {
+            'sgi_week': prev.strftime('%d/%m/%Y'),
+            'sgi_rows': rows,
+            'sgi_owners': owners,
+            'sgi_red': len([row for row in rows if row['red']]),
+            'sgi_link': "%s/odoo/action-quimibond_sgi.sgi_direction_board_action_open" % base_url,
+        }
+        sent = []
+        for user in users:
+            def _send(user=user):
+                template.sudo().with_context(**ctx).send_mail(
+                    user.id, email_layout_xmlid='mail.mail_notification_light')
+            if self._sgi_step("correo de salud del SGI a %s" % user.login, _send):
+                sent.append(user.id)
+        _logger.info("SGI 57.99.0: correo semanal de salud del SGI a %d persona(s).", len(sent))
+        return sent

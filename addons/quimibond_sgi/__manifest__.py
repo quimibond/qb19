@@ -92,6 +92,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_approval_cron.xml',
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
+        'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
         'data/sgi_sign_elearning_data.xml',
