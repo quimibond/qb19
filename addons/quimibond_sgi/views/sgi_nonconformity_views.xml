@@ -34,6 +34,7 @@
                     <div invisible="not sgi_folio">
                         <i class="fa fa-thumb-tack" title="NC del SGI"/> <b>NC del SGI</b> — folio
                         <field name="sgi_folio" readonly="1" class="oe_inline fw-bold"/>.
+                        Para pasarla a Seguimiento: clasificación y requisito (cláusula).
                         Para cerrarla: causa raíz, acciones terminadas (las correctivas, con
                         evidencia) y verificación de eficacia «Eficaz» en la fecha programada o
                         después (las mayores además piden los 5 porqués y la lección aplicada).

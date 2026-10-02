@@ -29,7 +29,9 @@ sin duplicarlas. Versión y cambios: `CHANGELOG.md` (una entrada por versión).
   (`sgi.process.load_payload`), nunca XML del núcleo. La norma «Requisitos
   específicos de clientes» y sus cláusulas CLI-01…CLI-10 existen solo en
   producción, sin XML ID; no se agregan por XML sin una migración que cree
-  antes los XML IDs de los registros existentes (A-029).
+  antes los XML IDs de los registros existentes (A-029). Las cláusulas de
+  tercer nivel de ISO 9001, 14001 y 45001 (57.97.0) sí traen XML ID
+  (`data/sgi_norms_tercer_nivel.xml`); las CLI siguen sin él.
 - **Claves:** en pantalla solo la clave nueva (`PR-{proceso}`, `F-{proceso}-{nn}`,
   `IT-…`, `DA-…`; D-02). La clave del Dropbox solo aparece en «Del Dropbox a
   Odoo» (decisión 1).

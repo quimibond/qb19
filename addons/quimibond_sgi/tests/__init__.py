@@ -140,3 +140,4 @@ from . import test_sgi_en_planta
 from . import test_sgi_en_planta_tour
 from . import test_rendimiento_robustez
 from . import test_sst_ambiente
+from . import test_clausulas_revision

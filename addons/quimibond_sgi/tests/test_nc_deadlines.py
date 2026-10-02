@@ -50,6 +50,11 @@ class TestNcDeadlines(TransactionCase):
             alert._sgi_set_deadlines(force=True)
         return alert
 
+    def _classified(self):
+        """57.97.0 (N-05): pasar de Abierta a Seguimiento pide clasificación y cláusula."""
+        return {'sgi_classification': 'menor',
+                'sgi_norm_clause_id': self.env.ref('quimibond_sgi.c_9001_102').id}
+
     def _summaries(self, alert, user=None):
         domain = [('res_model', '=', 'quality.alert'), ('res_id', '=', alert.id)]
         if user:
@@ -101,7 +106,7 @@ class TestNcDeadlines(TransactionCase):
         self.env['sgi.cron'].cron_nonconformities()
 
     def test_03_reclamacion_no_avanza_sin_contencion(self):
-        nc = self._nc(sgi_origin_type='reclamacion')
+        nc = self._nc(sgi_origin_type='reclamacion', **self._classified())
         with self.assertRaises(UserError):
             nc.with_user(self.manager).write({'stage_id': self.stage_follow.id})
         self.env['sgi.action.line'].create({
@@ -110,7 +115,7 @@ class TestNcDeadlines(TransactionCase):
         nc.with_user(self.manager).write({'stage_id': self.stage_follow.id})
         self.assertEqual(nc.stage_id, self.stage_follow)
         # Una NC de proceso avanza sin contención.
-        other = self._nc()
+        other = self._nc(**self._classified())
         other.with_user(self.manager).write({'stage_id': self.stage_follow.id})
 
     def test_04_eficacia_programada_y_cierre(self):

@@ -116,11 +116,13 @@ class QualityAlert(models.Model):
         ('menor', "Menor"),
         ('observacion', "Observación"),
     ], string="Clasificación", tracking=True,
-        help="Mayor, menor u observación. Una NC mayor manda un correo crítico al abrirse y exige aplicar la "
-             "lección aprendida antes de cerrar.")
+        help="Mayor, menor u observación. Obligatoria para pasar la NC de Abierta a Seguimiento. Una NC "
+             "mayor manda un correo crítico al abrirse y exige aplicar la lección aprendida antes de cerrar.")
     sgi_norm_clause_id = fields.Many2one('sgi.norm.clause', string="Requisito (cláusula)",
                                          ondelete='restrict',
-                                         help="Cláusula de la norma que se incumplió.")
+                                         help="Cláusula de la norma que se incumplió (también las de "
+                                              "requisitos de clientes). Obligatoria para pasar la NC de "
+                                              "Abierta a Seguimiento.")
     sgi_requester_id = fields.Many2one('res.users', string="Solicitante",
                                        help="Persona que levanta la no conformidad.")
     sgi_requester_job = fields.Char(related='sgi_requester_id.employee_id.job_title',
@@ -149,14 +151,14 @@ class QualityAlert(models.Model):
     sgi_effectiveness_by = fields.Many2one('res.users', string="Eficacia verificada por",
                                            help="Persona que verificó que las acciones fueron eficaces.")
     # 57.93.0 (N-02): la verificación de eficacia tiene resultado. Solo
-    # «Eficaz» deja cerrar; «No eficaz» regresa la NC a Seguimiento y pide
-    # una acción correctiva nueva (_sgi_on_ineffective).
+    # «Eficaz» deja cerrar; «No eficaz» pide una acción correctiva nueva y,
+    # si la NC estaba cerrada, la regresa a Seguimiento (_sgi_on_ineffective).
     sgi_effective = fields.Selection([
         ('eficaz', "Eficaz"),
         ('no_eficaz', "No eficaz"),
     ], string="Resultado de la eficacia", tracking=True, copy=False,
-        help="Resultado de la verificación de eficacia. La NC solo cierra con «Eficaz». «No eficaz» la "
-             "regresa a Seguimiento y pide una acción correctiva nueva.")
+        help="Resultado de la verificación de eficacia. La NC solo cierra con «Eficaz». «No eficaz» pide "
+             "una acción correctiva nueva y, si la NC estaba cerrada, la regresa a Seguimiento.")
     sgi_ineffective_count = fields.Integer(
         string="Verificaciones no eficaces", readonly=True, copy=False,
         help="Veces que la verificación de eficacia salió «No eficaz». Cero al cerrar = eficaz a la primera.")
@@ -311,6 +313,20 @@ class QualityAlert(models.Model):
                     "Una NC nace abierta: no se crea directamente en «%s». Créela, registre sus "
                     "acciones y ciérrela (o pida su cancelación) desde la ficha."
                     % ", ".join(bad.mapped('name')))
+        # 57.97.0 (N-05): nacer en «Seguimiento» (alta rápida en esa columna
+        # del kanban, RPC) es pasar a Seguimiento sin pasar por el write: pide
+        # clasificación y cláusula. Antes de crear (no gasta folio). Solo el
+        # sistema queda exento; el Jefe MAST no (como en el write).
+        followup = self.env.ref('quimibond_sgi.sgi_nc_int_stage_followup', raise_if_not_found=False)
+        if followup and not user._is_superuser():
+            ctx_stage = self.env.context.get('default_stage_id')
+            for vals in vals_list:
+                if (vals.get('stage_id') or ctx_stage) == followup.id and not (
+                        vals.get('sgi_classification') and vals.get('sgi_norm_clause_id')):
+                    raise UserError(
+                        "Una NC no nace en «Seguimiento» sin la clasificación (mayor, menor u "
+                        "observación) y el requisito (cláusula) que se incumplió. Créela en "
+                        "«Abierta» o capture los dos en el alta.")
         # 57.93.0 (N-02): el contador de «No eficaz» y la fecha programada de
         # la eficacia los pone el sistema; no se aceptan del cliente.
         if not sgi_bypass_allowed(self.env):
@@ -506,14 +522,17 @@ class QualityAlert(models.Model):
         """57.93.0 (N-02): la verificación salió «No eficaz». Deja la
         verificación en el historial (chatter y contador), la limpia para la
         siguiente (el resultado también, para que otro «No eficaz» vuelva a
-        contar), regresa la NC a Seguimiento y pide la acción correctiva nueva.
+        contar), regresa a Seguimiento la NC cerrada y pide la acción correctiva
+        nueva.
 
         La etapa: una NC en Abierta se queda ahí (todavía no la trabaja nadie
         y moverla chocaría con la contención obligatoria de las
-        reclamaciones); en Seguimiento no cambia; desde cualquier otra
-        (Cerrada) regresa a Seguimiento. Una NC cancelada no entra aquí."""
+        reclamaciones); en Seguimiento no cambia; desde una etapa de cierre
+        (Cerrada) regresa a Seguimiento. Una NC cancelada no entra aquí.
+        57.97.0: solo desde una etapa de cierre; una NC sin etapa o en una
+        etapa genérica de Calidad se queda donde está (moverla a Seguimiento
+        pediría clasificación y cláusula, N-05)."""
         followup = self.env.ref('quimibond_sgi.sgi_nc_int_stage_followup', raise_if_not_found=False)
-        open_stage = self.env.ref('quimibond_sgi.sgi_nc_int_stage_open', raise_if_not_found=False)
         Cron = self.env['sgi.cron']
         for alert in self:
             if alert.stage_id.sgi_is_cancel_stage:
@@ -536,7 +555,7 @@ class QualityAlert(models.Model):
                 'sgi_effectiveness_note': False,
                 'sgi_effectiveness_date': False,
             }
-            if followup and alert.stage_id != followup and alert.stage_id != open_stage:
+            if followup and alert.stage_id.sgi_is_closing_stage:
                 vals['stage_id'] = followup.id
             alert.write(vals)
             Cron._sgi_schedule(
@@ -624,6 +643,37 @@ class QualityAlert(models.Model):
             return True
         owner_user = self.sudo().sgi_process_id.owner_id.user_id
         return bool(owner_user) and owner_user == self.env.user
+
+    def _sgi_leaving_open(self, new_stage):
+        """57.97.0 (N-05): las NC con folio que salen de Abierta (o de ninguna
+        etapa, o de una etapa genérica) hacia Seguimiento o hacia una etapa de
+        cierre. Se arma con la etapa de ANTES del write. Reabrir una cerrada,
+        el «No eficaz» y lo que ya está en Seguimiento no entran: el candado no
+        es retroactivo."""
+        followup = self.env.ref('quimibond_sgi.sgi_nc_int_stage_followup', raise_if_not_found=False)
+        if not ((followup and new_stage == followup) or new_stage.sgi_is_closing_stage):
+            return self.browse()
+        # «Antes de Seguimiento»: sin etapa, Abierta o una etapa genérica de
+        # Calidad (base nueva); no Seguimiento, cierre ni cancelación.
+        return self.filtered(lambda a: a.sgi_folio and a.stage_id != new_stage and not (
+            (followup and a.stage_id == followup) or a.stage_id.sgi_is_closing_stage
+            or a.stage_id.sgi_is_cancel_stage))
+
+    def _sgi_check_classified(self):
+        """57.97.0 (N-05, ISO 10.2): una NC no se trabaja sin decir qué
+        requisito se incumplió y qué tan grave es. Se revisa DESPUÉS del
+        write (cuenta lo que el formulario manda junto con la etapa)."""
+        for alert in self:
+            missing = []
+            if not alert.sgi_classification:
+                missing.append("• la clasificación (mayor, menor u observación)")
+            if not alert.sgi_norm_clause_id:
+                missing.append("• el requisito (cláusula de la norma) que se incumplió")
+            if missing:
+                raise UserError(
+                    "La NC %s no pasa a «%s» sin:\n%s\nCaptúrelos en «Datos de la NC» y vuelva a "
+                    "moverla. (ISO 10.2: qué requisito se incumplió y qué tan grave es.)"
+                    % (alert.sgi_folio or alert.name, alert.stage_id.name or '', "\n".join(missing)))
 
     def _sgi_check_closed_edit(self, vals):
         """57.93.0 (K-03): una NC cerrada es evidencia. Quien no es Jefe MAST
@@ -864,6 +914,7 @@ class QualityAlert(models.Model):
                 and not a.stage_id.sgi_is_cancel_stage)
         newly_closed = self.env['quality.alert']
         to_check = self.env['quality.alert']
+        to_classify = self.env['quality.alert']
         new_stage = self.env['quality.alert.stage']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
@@ -873,6 +924,13 @@ class QualityAlert(models.Model):
             # para brincarse los candados de cierre.
             force = (self.env.context.get('sgi_force_close')
                      and sgi_bypass_allowed(self.env))
+            # 57.97.0 (N-05): clasificación y cláusula al salir de Abierta (a
+            # Seguimiento o directo a Cerrada). El cierre forzado del Jefe MAST
+            # y el sistema quedan exentos; se revisa después de escribir.
+            # Aquí basta env.su (sudo de código); al crear (FUNC-C13) solo se
+            # exime al superusuario. Hoy ningún sudo mueve una NC de Abierta.
+            if not force and not self.env.su:
+                to_classify = self._sgi_leaving_open(new_stage)
             # 57.93.0 (N-02): los candados de cierre se revisan DESPUÉS de
             # escribir, con lo que la persona capturó: el formulario manda los
             # campos sin guardar y la etapa en un solo write. Quién mueve y a
@@ -893,6 +951,7 @@ class QualityAlert(models.Model):
                 recurrence_scope = self.sgi_process_id
         res = super().write(vals)
         # Un UserError aquí deshace el write completo (misma transacción).
+        to_classify._sgi_check_classified()
         to_check._sgi_check_can_close()
         if newly_ineffective:
             newly_ineffective._sgi_on_ineffective()
@@ -1038,9 +1097,12 @@ class SgiActionLine(models.Model):
         ('correccion', "Corrección"),
         ('correctiva', "Acción correctiva"),
         ('preventiva', "Acción preventiva"),
+        # 57.97.0 (N-09): los acuerdos de la revisión por la dirección ya no
+        # cuentan como acciones correctivas (ni piden su evidencia).
+        ('acuerdo', "Acuerdo de la revisión por la dirección"),
     ], string="Tipo", default='correccion', required=True,
         help="Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la "
-             "preventiva, una causa potencial.")
+             "preventiva, una causa potencial; el acuerdo es una salida de la revisión por la dirección.")
     # 57.96.0 (N-06): jerarquía del control que aplica la acción (riesgos e
     # incidentes). Cuenta para el candado de los IPER de riesgo alto.
     control_hierarchy = fields.Selection(

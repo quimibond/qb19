@@ -70,6 +70,24 @@
                             <span style="white-space: pre-line;" t-field="doc.objectives_summary"/></p>
                         <p><strong>14. Satisfacción del cliente:</strong><br/>
                             <span style="white-space: pre-line;" t-field="doc.satisfaction_summary"/></p>
+                        <p><strong>15. Incidentes y desempeño de SST (45001 9.3):</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.incidents_summary"/></p>
+                        <p><strong>16. Cambios en el contexto y las partes interesadas (9.3.2 b):</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.context_summary"/></p>
+                        <p><strong>17. Aspectos ambientales significativos (14001 9.3):</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.env_aspects_summary"/></p>
+                        <p><strong>18. Oportunidades de mejora (9.3.2 f):</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.improvement_summary"/></p>
+
+                        <h4>Conclusiones (9.3.3)</h4>
+                        <p><strong>Conveniencia:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.conclusion_suitability"/></p>
+                        <p><strong>Adecuación:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.conclusion_adequacy"/></p>
+                        <p><strong>Eficacia:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.conclusion_effectiveness"/></p>
+                        <p><strong>Mejora, cambios y recursos:</strong><br/>
+                            <span style="white-space: pre-line;" t-field="doc.output_needs"/></p>
 
                         <h4>Acuerdos (salidas)</h4>
                         <table class="table table-sm table-bordered">
@@ -78,6 +96,22 @@
                             </thead>
                             <tbody>
                                 <tr t-foreach="doc.agreement_ids" t-as="agr">
+                                    <td><span t-field="agr.name"/></td>
+                                    <td><span t-field="agr.responsible_id"/></td>
+                                    <td><span t-field="agr.deadline"/></td>
+                                    <td><span t-out="agr.status_label"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <h4>Acuerdos abiertos de revisiones anteriores</h4>
+                        <p t-if="not doc.carried_agreement_ids">Ninguno.</p>
+                        <table t-else="" class="table table-sm table-bordered">
+                            <thead>
+                                <tr><th>Revisión</th><th>Acuerdo</th><th>Responsable</th><th>Fecha límite</th><th>Estado</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="doc.carried_agreement_ids" t-as="agr">
+                                    <td><span t-field="agr.review_id.folio"/></td>
                                     <td><span t-field="agr.name"/></td>
                                     <td><span t-field="agr.responsible_id"/></td>
                                     <td><span t-field="agr.deadline"/></td>

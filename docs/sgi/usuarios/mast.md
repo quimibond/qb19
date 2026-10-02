@@ -33,12 +33,17 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
    con evidencia: una nota o un archivo) y verificación de eficacia con
    resultado **Eficaz**, registrada en la fecha programada o después (y en una
    NC mayor, los 5 porqués y la lección aplicada). Si la verificación sale
-   **No eficaz**, la NC regresa a Seguimiento y pide una acción correctiva
-   nueva. Solo la cierran el dueño del proceso o el Jefe MAST; ya cerrada,
+   **No eficaz**, la NC pide una acción correctiva nueva (y, si estaba
+   cerrada, regresa a Seguimiento). Solo la cierran el dueño del proceso o el Jefe MAST; ya cerrada,
    solo el Jefe MAST la modifica (el dueño del proceso puede reabrirla
    cambiando solo la etapa). Si hay que cerrarla sin cumplirlo, use **Cierre
    forzado (Jefe MAST)** con motivo; queda en el historial.
-3. **SGI → Mejora → Acciones correctivas** muestra todas las acciones de
+3. Para pasar una NC de Abierta a Seguimiento (o cerrarla sin pasar por
+   Seguimiento) capture la **clasificación** y el **requisito (cláusula)**.
+   Desde 57.97.0 hay cláusulas de tercer nivel (por ejemplo, 45001 8.1.2
+   jerarquía de controles, 8.1.4 contratistas, 14001 6.1.2 aspectos
+   ambientales); use la más precisa. El cierre forzado no lo pide.
+4. **SGI → Mejora → Acciones correctivas** muestra todas las acciones de
    todos los orígenes, con filtro «De …».
 
 ### 2.3 Publicar Mi procedimiento

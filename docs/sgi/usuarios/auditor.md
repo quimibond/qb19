@@ -63,6 +63,9 @@ También puede registrar un hallazgo desde la ficha de un proceso con
 - **Indicadores:** cada medición trae **Registros** con los documentos de
   Odoo que dieron el número.
 - **NC y acciones:** historial completo en el chatter de cada NC.
+- **Cumplimiento de la norma:** la Matriz de cumplimiento muestra, desde
+  57.97.0, las cláusulas de tercer nivel; las que salen en rojo no tienen
+  ninguna actividad ligada.
 - **Transición:** **Del Dropbox a Odoo** muestra qué pasó con cada
   procedimiento, formato y rutina anterior (ver
   [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md)).

@@ -60,6 +60,9 @@ class TestManagementReview(TransactionCase):
             'responsible_id': self.env.user.id,
             'deadline': date.today() + timedelta(days=30),
         })
+        # 57.97.0 (N-09): las conclusiones 9.3.3 son obligatorias para marcarla realizada.
+        review.write({'conclusion_suitability': 'Conveniente', 'conclusion_adequacy': 'Adecuado',
+                      'conclusion_effectiveness': 'Eficaz', 'output_needs': 'Sin cambios'})
         review.action_mark_done()
         self.assertEqual(review.state, 'realizada')
         agreement = review.agreement_ids

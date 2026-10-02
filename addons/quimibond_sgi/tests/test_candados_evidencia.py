@@ -73,7 +73,10 @@ class TestCandadosEvidencia(TransactionCase):
             'title': 'K01 NC', 'team_id': self.team_int.id,
             'sgi_process_id': self.process.id, 'sgi_root_cause': 'Causa K01',
             'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'Eficaz',
-            'sgi_effectiveness_date': date.today()})
+            'sgi_effectiveness_date': date.today(),
+            # 57.97.0 (N-05): de Abierta a Cerrada pide clasificación y cláusula.
+            'sgi_classification': 'menor',
+            'sgi_norm_clause_id': self.env.ref('quimibond_sgi.c_9001_102').id})
         self.env['sgi.action.line'].create({
             'alert_id': alert.id, 'name': 'Corregir K01', 'responsible_id': self.env.user.id,
             'action_type': 'correctiva',

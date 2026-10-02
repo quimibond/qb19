@@ -28,12 +28,20 @@ toca, pero **no** tiene los permisos de configuración del Jefe MAST y SGI.
 ### 2.2 La revisión por la dirección
 
 1. **Revisión por la dirección → Nuevo**, con el periodo (desde y hasta).
-2. **Cargar entradas** llena las entradas de la norma (auditorías, NC,
+2. **Cargar entradas** llena las 18 entradas de la norma (auditorías, NC,
    indicadores en rojo, quejas, riesgos altos, cambios, satisfacción,
-   proveedores) con los datos reales del periodo. Se pueden ajustar.
+   proveedores y, desde 57.97.0, incidentes y desempeño de SST, cambios en
+   el contexto y las partes interesadas, aspectos ambientales significativos
+   y oportunidades de mejora) con los datos reales del periodo, y trae los
+   **acuerdos abiertos de revisiones anteriores**. Se pueden ajustar.
 3. En la reunión, capture los **Acuerdos** con responsable y fecha.
-4. **Marcar realizada**: cada acuerdo se vuelve una acción con seguimiento.
-   Cerrar la revisión o regresarla a borrador lo hace el Jefe MAST y SGI.
+4. Escriba las **Conclusiones (9.3.3)**: conveniencia, adecuación, eficacia
+   y mejora, cambios y recursos. Sin ellas no se marca realizada; si no hay
+   cambios, escríbalo.
+5. **Marcar realizada**: cada acuerdo se vuelve una acción del tipo
+   «Acuerdo» con seguimiento. Cerrar la revisión o regresarla a borrador lo
+   hace el Jefe MAST y SGI. Cerrar con acuerdos abiertos se permite: quedan
+   anotados en el historial y la siguiente revisión los carga.
 
 ### 2.3 Aprobar lo que le toca
 
