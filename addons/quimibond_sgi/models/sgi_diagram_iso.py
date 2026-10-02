@@ -485,7 +485,7 @@ class SgiDiagramIso(models.AbstractModel):
         inputs = [
             ('prev_agreements_summary', "Acuerdos previos"), ('nc_summary', "No conformidades"),
             ('complaints_summary', "Reclamaciones"), ('audit_summary', "Auditorías"),
-            ('supplier_summary', "Proveedores"), ('env_summary', "Ambiental y SST"),
+            ('supplier_summary', "Proveedores"), ('env_summary', "Desempeño ambiental (scrap)"),
             ('doc_changes_summary', "Cambios documentales"), ('legal_summary', "Requisitos legales"),
             ('participation_summary', "Participación"), ('objectives_summary', "Objetivos"),
             ('satisfaction_summary', "Satisfacción del cliente"), ('resources_note', "Recursos"),

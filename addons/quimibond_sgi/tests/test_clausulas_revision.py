@@ -113,7 +113,7 @@ class TestClausulasTercerNivel(_Case):
         IMD.search([('module', '=', 'quimibond_sgi'), ('name', '=', 'c_9001_7_1_5')]).unlink()
         missing.code = 'Z7.1.5'
         self.env.flush_all()
-        self.env.registry.clear_cache()  # VERIFICAR (1.9)
+        self.env.registry.clear_cache()  # caché de xmlid (env.ref)
         before = Clause.search_count([])
         name_before = manual.name
         # Sin assertLogs: el logger del archivo cargado con importlib se llama

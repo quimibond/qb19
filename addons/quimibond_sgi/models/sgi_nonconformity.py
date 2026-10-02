@@ -927,6 +927,8 @@ class QualityAlert(models.Model):
             # 57.97.0 (N-05): clasificación y cláusula al salir de Abierta (a
             # Seguimiento o directo a Cerrada). El cierre forzado del Jefe MAST
             # y el sistema quedan exentos; se revisa después de escribir.
+            # Aquí basta env.su (sudo de código); al crear (FUNC-C13) solo se
+            # exime al superusuario. Hoy ningún sudo mueve una NC de Abierta.
             if not force and not self.env.su:
                 to_classify = self._sgi_leaving_open(new_stage)
             # 57.93.0 (N-02): los candados de cierre se revisan DESPUÉS de

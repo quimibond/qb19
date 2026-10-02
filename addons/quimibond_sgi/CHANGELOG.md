@@ -19,7 +19,8 @@ Retirado, Seguridad, Migración, Datos de producción.
 la ficha «57.96.0» del plan general, renumerada porque 57.96.0 fue «SST y
 ambiente»). Plan:
 `docs/superpowers/plans/2026-10-02-sgi-57-97-0-clausulas-revision.md`.
-**Ningún dato de negocio cambia en el despliegue.**
+**Ningún dato de negocio cambia en el despliegue**, salvo las 13 cláusulas
+nuevas del catálogo (ver Migración).
 
 ### Agregado
 
@@ -45,6 +46,11 @@ ambiente»). Plan:
 
 ### Cambiado
 
+- Diagrama 9.3: la entrada «Ambiental y SST» se llama «Desempeño ambiental
+  (scrap)», como el campo, para no confundirse con «Incidentes y SST».
+- La entrada 1 («Acuerdos previos») sigue tomando la última revisión en
+  cualquier estado; los acuerdos abiertos que se arrastran solo salen de
+  revisiones realizadas o cerradas. La redundancia es intencional.
 - **NC:** con folio, no sale de «Abierta» hacia «Seguimiento» ni directo a
   «Cerrada» sin clasificación y requisito (cláusula), ni nace en
   «Seguimiento» sin ellos (alta rápida en esa columna del kanban; se revisa
