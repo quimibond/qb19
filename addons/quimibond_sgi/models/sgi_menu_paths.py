@@ -4,7 +4,7 @@
 Los textos del Diagnóstico, de los avisos y de los errores decían rutas del
 árbol viejo («SGI → Medición → Indicadores», «SGI → Panel → …») que ya no
 existen. Todas salen de aquí, con los nombres del árbol decidido
-(docs/audit/05-menus/arbol_final.md y tools/sgi_menu_tree.txt).
+(views/sgi_menus.xml y tools/sgi_menu_tree.txt).
 
 Cada entrada es (xmlid del menú, nombres de la ruta). La prueba
 tests/test_menu_tree.py sube por los padres del menú y compara los nombres de

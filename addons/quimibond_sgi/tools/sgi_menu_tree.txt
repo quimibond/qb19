@@ -10,9 +10,9 @@
 #            propios (hereda lo que ve la carpeta)
 # Calidad preventiva y Paretos de calidad cuelgan de la app Calidad (padre
 # fijo quality_control.menu_quality_root desde 57.5.0, E-008) y no
-# entran aquí. Fuente del árbol: docs/audit/05-menus/arbol_final.md («Del
-# Dropbox a Odoo» desde la entrega 6; «Reportar» y «Checklists de hoy» en
-# Inicio desde 57.98.0).
+# entran aquí. Fuente del árbol: views/sgi_menus.xml («Del Dropbox a Odoo»
+# desde la entrega 6; «Reportar» y «Checklists de hoy» en Inicio desde
+# 57.98.0, plan docs/superpowers/plans/2026-10-02-sgi-57-98-0-interfaz.md).
 SGI | menu_sgi_root | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_user
 SGI/Inicio | menu_sgi_panel | -
 SGI/Inicio/Mis pendientes | menu_sgi_my_pending | -

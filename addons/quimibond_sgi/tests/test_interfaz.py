@@ -188,16 +188,16 @@ class TestPieFormato(_Case):
             self.assertIn('quimibond_sgi.sgi_report_layout', arch, report_xmlid)
         for view in _own_views(self.env, 'qweb'):
             arch = view.arch_db or ''
-            if 'quimibond_sgi.sgi_report_layout"' in arch:
-                self.assertNotIn('web.external_layout', arch, view.key)
-                self.assertNotIn('quimibond_sgi.sgi_format_footer"', arch,
+            if 't-call="quimibond_sgi.sgi_report_layout"' in arch:
+                self.assertNotIn('t-call="web.external_layout"', arch, view.key)
+                self.assertNotIn('t-call="quimibond_sgi.sgi_format_footer"', arch,
                                  "%s: el pie saldría dos veces." % view.key)
-            if 'quimibond_sgi.sgi_format_page_footer"' in arch:
+            if 't-call="quimibond_sgi.sgi_format_page_footer"' in arch:
                 self.assertEqual(view.key, 'quimibond_sgi.sgi_report_layout')
         for xmlid in ('report_saleorder_document_sgi', 'report_purchaseorder_document_sgi',
                       'report_delivery_document_sgi', 'report_mrporder_sgi'):
             arch = self.env.ref('quimibond_sgi.' + xmlid).arch_db
-            self.assertIn('quimibond_sgi.sgi_format_footer"', arch, xmlid)
+            self.assertIn('t-call="quimibond_sgi.sgi_format_footer"', arch, xmlid)
 
     def test_06_diagnostico_lista_reportes_sin_mapeo(self):
         news = self.env.ref('quimibond_sgi.action_report_news').name
