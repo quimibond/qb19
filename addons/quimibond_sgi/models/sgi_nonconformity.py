@@ -7,7 +7,7 @@ from markupsafe import Markup
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
-from .sgi_base import sgi_bypass_allowed
+from .sgi_base import SGI_FREE_PREFIXES, sgi_bypass_allowed
 from .sgi_calendar import sgi_add_business_days, sgi_business_days
 from .sgi_menu_paths import sgi_menu_path
 
@@ -72,6 +72,13 @@ _SGI_DEADLINE_STATES = [
     ('vencida', "Vencida"),
     ('hecha', "Hecha"),
 ]
+
+# 57.93.0 (K-03): campos de una NC cerrada que se escriben solos y no cuentan
+# como edición, además de los del chatter (SGI_FREE_PREFIXES). ``date_close``
+# lo escribe Calidad (``quality``) en un segundo write justo después de mover
+# la NC a una etapa «hecha»: sin esta excepción, el dueño del proceso no
+# podría cerrar.
+_SGI_CLOSED_FREE_FIELDS = frozenset({'date_close'})
 
 
 class QualityAlert(models.Model):
@@ -614,6 +621,33 @@ class QualityAlert(models.Model):
         owner_user = self.sudo().sgi_process_id.owner_id.user_id
         return bool(owner_user) and owner_user == self.env.user
 
+    def _sgi_check_closed_edit(self, vals):
+        """57.93.0 (K-03): una NC cerrada es evidencia. Quien no es Jefe MAST
+        (ni código de sistema) solo escribe en el chatter y las actividades
+        y, si es el dueño del proceso, la reabre cambiando solo la etapa
+        (D-009, el mismo criterio de quién cierra)."""
+        if sgi_bypass_allowed(self.env):
+            return
+        touched = {k for k in vals
+                   if not k.startswith(SGI_FREE_PREFIXES) and k not in _SGI_CLOSED_FREE_FIELDS}
+        if not touched:
+            return
+        closed = self.sudo().filtered(
+            lambda a: a.sgi_folio and a.stage_id.sgi_is_closing_stage).with_env(self.env)
+        if not closed:
+            return
+        if touched == {'stage_id'}:
+            cannot = closed.filtered(lambda a: not a._sgi_user_can_close())
+            if cannot:
+                raise UserError(
+                    "La NC %s está cerrada: solo la reabren el Jefe MAST o el dueño del proceso."
+                    % ", ".join(cannot.sudo().mapped('sgi_folio')))
+            return
+        raise UserError(
+            "La NC %s está cerrada y es evidencia: solo el Jefe MAST la modifica. Si hay un "
+            "error real, pida al dueño del proceso o al Jefe MAST que la reabra."
+            % ", ".join(closed.sudo().mapped('sgi_folio')))
+
     def action_sgi_cancel(self):
         self.ensure_one()
         return {
@@ -803,6 +837,10 @@ class QualityAlert(models.Model):
             vals = {k: v for k, v in vals.items() if k not in _SGI_SYSTEM_FIELDS}
             if not vals:
                 return True
+        # 57.93.0 (K-03): lo cerrado solo lo modifica el Jefe MAST; el dueño
+        # del proceso la reabre. Se revisa con la etapa de ANTES del write:
+        # cerrar (entrar a la etapa) no se detiene aquí.
+        self._sgi_check_closed_edit(vals)
         # Reclasificar a MAYOR una NC con folio también dispara el correo
         # crítico (solo la transición: no re-avisa a las que ya eran mayores).
         newly_mayor = self.browse()
@@ -1192,6 +1230,36 @@ class SgiActionLine(models.Model):
             return self.fmea_line_id.fmea_id
         return self.env['sgi.action.line'].browse()
 
+    def _sgi_origin_closed(self):
+        """57.93.0 (K-03): ¿ya cerró el registro dueño de la acción? NC en
+        etapa de cierre o incidente cerrado; la revisión por la dirección se
+        agrega en sgi_management_review.py."""
+        self.ensure_one()
+        line = self.sudo()
+        if line.alert_id:
+            return bool(line.alert_id.stage_id.sgi_is_closing_stage)
+        if line.incident_id:
+            return line.incident_id.state == 'cerrado'
+        return False
+
+    def _sgi_check_closed_origin(self, vals=None, any_line=False):
+        """57.93.0 (K-03): con el origen cerrado, quien no es Jefe MAST (ni
+        código de sistema) no cambia una acción terminada; con ``any_line``
+        tampoco agrega ni borra ninguna. Las pendientes sí se trabajan y se
+        terminan (cierre forzado de una NC, acuerdos de una revisión cerrada).
+        Chatter y actividad espejo (``activity_id``) se mueven solos."""
+        if sgi_bypass_allowed(self.env):
+            return
+        if vals is not None and not any(not k.startswith(SGI_FREE_PREFIXES) for k in vals):
+            return
+        locked = self.sudo().filtered(
+            lambda l: (any_line or l.date_done) and l._sgi_origin_closed())
+        if locked:
+            raise UserError(
+                "La acción «%s» pertenece a un registro cerrado y es evidencia: solo el Jefe MAST "
+                "la modifica. Si hay un error real, pida que reabran el registro."
+                % "», «".join(locked.mapped('name')))
+
     def _sgi_activity_note(self):
         self.ensure_one()
         label = dict(self._fields['action_type'].selection).get(
@@ -1256,6 +1324,8 @@ class SgiActionLine(models.Model):
                             .sgi_ineffective_count)
             prepared.append(vals)
         lines = super().create(prepared)
+        # 57.93.0 (K-03): a un registro cerrado no se le agregan acciones.
+        lines._sgi_check_closed_origin(any_line=True)
         # 57.93.0 (N-02): una correctiva que nace terminada también trae evidencia.
         lines.filtered('date_done')._sgi_check_evidence()
         lines._sgi_sync_activity()
@@ -1269,6 +1339,8 @@ class SgiActionLine(models.Model):
         return lines
 
     def write(self, vals):
+        # 57.93.0 (K-03): la acción terminada de un registro cerrado es evidencia.
+        self._sgi_check_closed_origin(vals)
         vals = self._sgi_done_vals(vals)
         # 57.93.0 (N-02): la ronda de eficacia solo la cambia el sistema.
         if 'effectiveness_round' in vals and not sgi_bypass_allowed(self.env):
@@ -1303,11 +1375,17 @@ class SgiActionLine(models.Model):
                 lambda r: r.state in ('controlado', 'cerrado')
             )._sgi_check_can_close()
         # NC-3: terminar la última correctiva programa la eficacia a 90 días.
+        # 57.93.0 (K-03): no en una NC ya cerrada (cierre forzado con acciones
+        # pendientes): la NC cerrada no se modifica ni se reprograma.
         if vals.get('date_done'):
-            self.mapped('alert_id').filtered('sgi_folio')._sgi_schedule_effectiveness()
+            self.mapped('alert_id').filtered(
+                lambda a: a.sgi_folio and not a.stage_id.sgi_is_closing_stage
+            )._sgi_schedule_effectiveness()
         return res
 
     def unlink(self):
+        # 57.93.0 (K-03): antes que el ACL, para que hable el candado.
+        self._sgi_check_closed_origin(any_line=True)
         risks = self.mapped('risk_id').filtered(
             lambda r: r.state in ('controlado', 'cerrado'))
         res = super().unlink()

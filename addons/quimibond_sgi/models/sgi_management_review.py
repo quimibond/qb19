@@ -473,6 +473,13 @@ class SgiActionLineReview(models.Model):
             return self.review_id
         return super()._sgi_origin()
 
+    def _sgi_origin_closed(self):
+        """57.93.0 (K-03): un acuerdo terminado de una revisión cerrada es evidencia."""
+        self.ensure_one()
+        if self.review_id:
+            return self.sudo().review_id.state == 'cerrada'
+        return super()._sgi_origin_closed()
+
     @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id',
                     'drill_id', 'objective_id', 'review_id', 'name')
     def _check_parent_xor(self):

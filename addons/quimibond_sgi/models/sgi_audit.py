@@ -7,6 +7,8 @@ from markupsafe import Markup
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_base import sgi_bypass_allowed
+
 _logger = logging.getLogger(__name__)
 
 # AU-1: respuesta del checklist → tipo de hallazgo.
@@ -559,6 +561,31 @@ class SgiAuditFinding(models.Model):
             if finding.norm_clause_id:
                 parts.append(finding.norm_clause_id.display_name)
             finding.display_name = " — ".join(p for p in parts if p) or "Hallazgo"
+
+    def _sgi_check_audit_open(self):
+        """57.93.0 (K-03): con la auditoría cerrada, sus hallazgos son
+        evidencia: solo el Jefe MAST (o el sistema) los crea o modifica."""
+        if sgi_bypass_allowed(self.env):
+            return
+        locked = self.sudo().filtered(lambda f: f.audit_id.state == 'cerrada')
+        if locked:
+            raise UserError(
+                "La auditoría %s está cerrada: sus hallazgos son evidencia y solo el Jefe MAST "
+                "los modifica. Pídale reabrir la auditoría si hay un error real."
+                % ", ".join(locked.mapped('audit_id.display_name')))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        findings = super().create(vals_list)
+        findings._sgi_check_audit_open()
+        return findings
+
+    def write(self, vals):
+        self._sgi_check_audit_open()
+        res = super().write(vals)
+        if 'audit_id' in vals:
+            self._sgi_check_audit_open()
+        return res
 
     def unlink(self):
         # Los hallazgos de una auditoría cerrada son evidencia: no se borran
