@@ -78,6 +78,7 @@
                                       decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
+                                    <field name="control_hierarchy" optional="show"/>
                                     <field name="evidence_note" optional="show"/>
                                     <field name="responsible_id" widget="many2one_avatar_user"/>
                                     <field name="date_commit" widget="remaining_days" invisible="date_done"/>

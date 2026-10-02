@@ -9,6 +9,7 @@ from odoo.exceptions import UserError, ValidationError
 
 from .sgi_base import SGI_FREE_PREFIXES, sgi_bypass_allowed
 from .sgi_calendar import sgi_add_business_days, sgi_business_days
+from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
 from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
@@ -1040,6 +1041,11 @@ class SgiActionLine(models.Model):
     ], string="Tipo", default='correccion', required=True,
         help="Contención y corrección atienden el efecto; la acción correctiva ataca la causa; la "
              "preventiva, una causa potencial.")
+    # 57.96.0 (N-06): jerarquía del control que aplica la acción (riesgos e
+    # incidentes). Cuenta para el candado de los IPER de riesgo alto.
+    control_hierarchy = fields.Selection(
+        CONTROL_HIERARCHY, string="Jerarquía del control", tracking=True,
+        help=CONTROL_HIERARCHY_HELP)
     name = fields.Char(string="Descripción", required=True)
     responsible_id = fields.Many2one('res.users', string="Responsable", required=True,
                                      tracking=True,

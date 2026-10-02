@@ -115,6 +115,7 @@
                     <group>
                         <group string="Compromiso">
                             <field name="action_type"/>
+                            <field name="control_hierarchy" invisible="not risk_id and not incident_id"/>
                             <field name="responsible_id" widget="many2one_avatar_user"/>
                             <field name="date_commit"/>
                         </group>
