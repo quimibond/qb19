@@ -66,15 +66,18 @@ class TestCandadosEvidencia(TransactionCase):
         # CORRECTIVA terminada (_sgi_check_can_close): se registra correctiva.
         # H8 (_sgi_check_root_cause_before_capa): sin causa raíz no se registra
         # una correctiva, así que la causa va primero.
+        # 57.93.0 (N-02): eficacia «Eficaz» con fecha de hoy desde el alta. Si
+        # se capturara después de terminar la correctiva por write, la eficacia
+        # quedaría programada a 90 días y la de hoy ya no cerraría.
         alert = self.env['quality.alert'].create({
             'title': 'K01 NC', 'team_id': self.team_int.id,
-            'sgi_process_id': self.process.id, 'sgi_root_cause': 'Causa K01'})
+            'sgi_process_id': self.process.id, 'sgi_root_cause': 'Causa K01',
+            'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'Eficaz',
+            'sgi_effectiveness_date': date.today()})
         self.env['sgi.action.line'].create({
             'alert_id': alert.id, 'name': 'Corregir K01', 'responsible_id': self.env.user.id,
             'action_type': 'correctiva',
             'date_commit': date.today(), 'date_done': date.today(), 'progress': '100'})
-        alert.write({'sgi_effectiveness_note': 'Eficaz',
-                     'sgi_effectiveness_date': date.today()})
         return alert
 
     def _assert_restricted(self, record):

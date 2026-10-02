@@ -33,6 +33,7 @@ class TestPegamentoNcMayor(TransactionCase):
             'sgi_why_1': 'Porqué 1', 'sgi_why_2': 'Porqué 2',
             'sgi_why_3': 'Porqué 3', 'sgi_why_4': 'Porqué 4',
             'sgi_why_5': 'Porqué 5',
+            'sgi_effective': 'eficaz',
             'sgi_effectiveness_note': 'Eficaz',
             'sgi_effectiveness_date': date.today(),
             'sgi_lesson_captured': True,

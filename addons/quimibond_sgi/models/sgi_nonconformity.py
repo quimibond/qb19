@@ -121,6 +121,18 @@ class QualityAlert(models.Model):
                                               "todas las acciones.")
     sgi_effectiveness_by = fields.Many2one('res.users', string="Eficacia verificada por",
                                            help="Persona que verificó que las acciones fueron eficaces.")
+    # 57.93.0 (N-02): la verificación de eficacia tiene resultado. Solo
+    # «Eficaz» deja cerrar; «No eficaz» regresa la NC a Seguimiento y pide
+    # una acción correctiva nueva (_sgi_on_ineffective).
+    sgi_effective = fields.Selection([
+        ('eficaz', "Eficaz"),
+        ('no_eficaz', "No eficaz"),
+    ], string="Resultado de la eficacia", tracking=True, copy=False,
+        help="Resultado de la verificación de eficacia. La NC solo cierra con «Eficaz». «No eficaz» la "
+             "regresa a Seguimiento y pide una acción correctiva nueva.")
+    sgi_ineffective_count = fields.Integer(
+        string="Verificaciones no eficaces", readonly=True, copy=False,
+        help="Veces que la verificación de eficacia salió «No eficaz». Cero al cerrar = eficaz a la primera.")
     # Último eslabón de la línea dorada (IATF 10.2.3): la lección de una NC mayor
     # se lleva al AMEF / plan de control / documento. Se atestigua explícitamente
     # (queda en el chatter por tracking) y es requisito para cerrar la NC mayor.
@@ -396,16 +408,66 @@ class QualityAlert(models.Model):
     # ------------------------------------------------------------------
     # NC-3: eficacia programada
     # ------------------------------------------------------------------
+    def _sgi_effectiveness_user_id(self):
+        """57.93.0 (FUNC-C13): la eficacia la verifica quien puede cerrar la
+        NC: el usuario activo del dueño del proceso; sin él, el Jefe MAST."""
+        self.ensure_one()
+        owner_user = self.sudo().sgi_process_id.owner_id.user_id
+        if owner_user and owner_user.active:
+            return owner_user.id
+        return self.env['sgi.cron']._sgi_manager_user_id()
+
+    def _sgi_needs_new_corrective(self):
+        """57.93.0 (N-02): tras un «No eficaz», ¿falta la acción correctiva
+        nueva terminada? Nueva = registrada en la ronda actual
+        (effectiveness_round >= sgi_ineffective_count)."""
+        self.ensure_one()
+        if not self.sgi_ineffective_count:
+            return False
+        return not self.sgi_action_line_ids.filtered(
+            lambda l: l.action_type == 'correctiva' and l.date_done
+            and l.effectiveness_round >= self.sgi_ineffective_count)
+
+    def _sgi_on_ineffective(self):
+        """57.93.0 (N-02): la verificación salió «No eficaz». Deja la
+        verificación en el historial, la limpia para la siguiente, regresa la
+        NC a Seguimiento y pide la acción correctiva nueva."""
+        followup = self.env.ref('quimibond_sgi.sgi_nc_int_stage_followup', raise_if_not_found=False)
+        Cron = self.env['sgi.cron']
+        for alert in self:
+            folio = alert.sgi_folio or alert.name
+            alert.message_post(body=Markup(
+                "<b>Verificación de eficacia: no eficaz</b> (%s).<br/>%s") % (
+                    alert.sgi_effectiveness_date or fields.Date.context_today(alert),
+                    alert.sgi_effectiveness_note or ''))
+            alert.activity_ids.sudo().filtered(
+                lambda a: (a.summary or '').startswith("Verificar eficacia")).action_feedback(
+                feedback="No eficaz: se pidió una acción correctiva nueva.")
+            vals = {
+                'sgi_ineffective_count': alert.sgi_ineffective_count + 1,
+                'sgi_effectiveness_note': False,
+                'sgi_effectiveness_date': False,
+                'sgi_effectiveness_due': False,
+            }
+            if followup and alert.stage_id != followup and not alert.stage_id.sgi_is_cancel_stage:
+                vals['stage_id'] = followup.id
+            alert.write(vals)
+            Cron._sgi_schedule(
+                alert, "Registrar acción correctiva nueva de la NC %s (no eficaz)" % folio,
+                "La verificación de eficacia salió «No eficaz». Revise la causa raíz y registre "
+                "una acción correctiva nueva; la NC no cierra sin ella.",
+                alert._sgi_effectiveness_user_id())
+
     def _sgi_schedule_effectiveness(self):
         """Al terminar la última acción correctiva: fecha de verificación a N
-        días (parámetro) y actividad al Jefe MAST con esa fecha límite."""
+        días (parámetro) y actividad a quien puede cerrar la NC (57.93.0:
+        dueño del proceso o Jefe MAST, antes «verificada por»)."""
         Param = self.env['ir.config_parameter'].sudo()
         try:
             days = int(Param.get_param('quimibond_sgi.nc_effectiveness_days', 90) or 90)
         except (TypeError, ValueError):
             days = 90
         Cron = self.env['sgi.cron']
-        manager_id = Cron._sgi_manager_user_id()
         for alert in self:
             corrective = alert.sgi_action_line_ids.filtered(lambda l: l.action_type == 'correctiva')
             if not corrective or any(not l.date_done for l in corrective):
@@ -415,16 +477,18 @@ class QualityAlert(models.Model):
             last = max(corrective.mapped('date_done'))
             due = last + relativedelta(days=days)
             alert.sgi_effectiveness_due = due
-            user_id = alert.sgi_effectiveness_by.id or manager_id
+            user_id = alert._sgi_effectiveness_user_id()
             summary = "Verificar eficacia de la NC %s (a %d días)" % (alert.sgi_folio or alert.name, days)
             if user_id and not Cron._sgi_activity_exists(alert, summary, user_id):
                 alert.activity_schedule(
                     'mail.mail_activity_data_todo', summary=summary,
-                    note="La última acción correctiva terminó el %s. Verifique la eficacia y "
-                         "regístrela (nota y fecha) en la pestaña Verificación y cierre; sin "
-                         "eficacia la NC no cierra." % last,
+                    note="La última acción correctiva terminó el %s. Verifique la eficacia el %s o "
+                         "después y registre el resultado («Eficaz» o «No eficaz»), la nota y la "
+                         "fecha en la pestaña Verificación y cierre; la NC solo cierra con "
+                         "«Eficaz»." % (last, due),
                     user_id=user_id, date_deadline=due)
-            alert.message_post(body="Verificación de eficacia programada para el <b>%s</b>." % due)
+            alert.message_post(body=Markup(
+                "Verificación de eficacia programada para el <b>%s</b>.") % due)
 
     # ------------------------------------------------------------------
     # NC-2 / NC-4: candados de etapa
@@ -606,6 +670,28 @@ class QualityAlert(models.Model):
                 problems.append("• Hay %d acción(es) sin fecha de terminación." % len(pending))
             if not alert.sgi_effectiveness_note or not alert.sgi_effectiveness_date:
                 problems.append("• Falta la verificación de eficacia (nota y fecha).")
+            # 57.93.0 (N-02): resultado y fecha de la eficacia.
+            if alert.sgi_effective != 'eficaz':
+                problems.append("• Falta el resultado de la verificación de eficacia: «Eficaz» "
+                                "(pestaña Verificación y cierre).")
+            eff_date = alert.sgi_effectiveness_date
+            if eff_date:
+                if eff_date > fields.Date.context_today(alert):
+                    problems.append("• La fecha de eficacia (%s) no puede ser futura." % eff_date)
+                due = alert.sgi_effectiveness_due
+                if due and eff_date < due:
+                    problems.append(
+                        "• La eficacia se programó para el %s y se registró el %s: verifíquela en "
+                        "esa fecha o después, o pida al Jefe MAST un cierre forzado con motivo."
+                        % (due, eff_date))
+                done_dates = [d for d in alert.sgi_action_line_ids.mapped('date_done') if d]
+                if done_dates and eff_date < max(done_dates):
+                    problems.append(
+                        "• La eficacia (%s) se registró antes de que terminara la última acción (%s)."
+                        % (eff_date, max(done_dates)))
+            if alert._sgi_needs_new_corrective():
+                problems.append("• La verificación anterior salió «No eficaz»: registre y termine "
+                                "una ACCIÓN CORRECTIVA nueva.")
             # NC mayor (refinamiento H1): exige el análisis de causa completo.
             if alert.sgi_classification == 'mayor':
                 if not all((alert.sgi_why_1, alert.sgi_why_2, alert.sgi_why_3,
@@ -642,6 +728,11 @@ class QualityAlert(models.Model):
         if vals.get('sgi_classification') == 'mayor':
             newly_mayor = self.filtered(
                 lambda a: a.sgi_folio and a.sgi_classification != 'mayor')
+        # 57.93.0 (N-02): solo la transición a «No eficaz» dispara el flujo.
+        newly_ineffective = self.browse()
+        if vals.get('sgi_effective') == 'no_eficaz':
+            newly_ineffective = self.filtered(
+                lambda a: a.sgi_folio and a.sgi_effective != 'no_eficaz')
         newly_closed = self.env['quality.alert']
         if 'stage_id' in vals:
             new_stage = self.env['quality.alert.stage'].browse(vals['stage_id'])
@@ -668,6 +759,8 @@ class QualityAlert(models.Model):
             if target.sgi_is_cancel_stage or any(self.stage_id.mapped('sgi_is_cancel_stage')):
                 recurrence_scope = self.sgi_process_id
         res = super().write(vals)
+        if newly_ineffective:
+            newly_ineffective._sgi_on_ineffective()
         if 'sgi_process_id' in vals or recurrence_scope:
             self._sgi_recompute_later_recurrence(recurrence_scope | self.sgi_process_id)
         Cron = self.env['sgi.cron']
@@ -837,6 +930,11 @@ class SgiActionLine(models.Model):
     # Actividad nativa que hace accionable la acción en el registro origen.
     activity_id = fields.Many2one('mail.activity', string="Actividad",
                                   readonly=True, copy=False, index=True)
+    # 57.93.0 (N-02): ronda de verificación de eficacia de su NC al crearse.
+    effectiveness_round = fields.Integer(
+        string="Ronda de eficacia", readonly=True, copy=False, default=0,
+        help="Veces que la eficacia de la NC había salido «No eficaz» cuando se registró la acción. "
+             "Tras un «No eficaz» la NC pide una correctiva de la ronda nueva.")
     origin_display = fields.Char(string="Origen", compute='_compute_origin_display')
 
     @api.depends('alert_id', 'risk_id', 'incident_id', 'drill_id',
@@ -1022,12 +1120,32 @@ class SgiActionLine(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        lines = super().create([self._sgi_done_vals(vals) for vals in vals_list])
+        Alert = self.env['quality.alert']
+        prepared = []
+        for vals in vals_list:
+            vals = self._sgi_done_vals(vals)
+            # La ronda la pone el sistema (no se acepta del cliente): así un
+            # «No eficaz» no se atiende con una acción de una ronda inventada.
+            if vals.get('alert_id'):
+                vals = dict(vals, effectiveness_round=Alert.browse(vals['alert_id']).sudo()
+                            .sgi_ineffective_count)
+            prepared.append(vals)
+        lines = super().create(prepared)
         lines._sgi_sync_activity()
+        # 57.93.0 (N-02): la correctiva nueva atiende el aviso del «No eficaz».
+        for line in lines.filtered(lambda l: l.action_type == 'correctiva' and l.alert_id
+                                   and l.effectiveness_round
+                                   and l.effectiveness_round >= l.alert_id.sudo().sgi_ineffective_count):
+            line.alert_id.sudo().activity_ids.filtered(
+                lambda a: (a.summary or '').startswith("Registrar acción correctiva nueva")
+            ).action_feedback(feedback="Se registró la acción correctiva «%s»." % line.name)
         return lines
 
     def write(self, vals):
         vals = self._sgi_done_vals(vals)
+        # 57.93.0 (N-02): la ronda de eficacia solo la cambia el sistema.
+        if 'effectiveness_round' in vals and not sgi_bypass_allowed(self.env):
+            vals = {k: v for k, v in vals.items() if k != 'effectiveness_round'}
         res = super().write(vals)
         resync = bool({'responsible_id', 'date_commit', 'name'} & set(vals))
         if 'date_done' in vals:

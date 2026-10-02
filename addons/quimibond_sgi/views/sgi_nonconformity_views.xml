@@ -34,10 +34,10 @@
                     <div invisible="not sgi_folio">
                         <i class="fa fa-thumb-tack" title="NC del SGI"/> <b>NC del SGI</b> — folio
                         <field name="sgi_folio" readonly="1" class="oe_inline fw-bold"/>.
-                        Para cerrarla: causa raíz + acciones terminadas + verificación
-                        de eficacia (las mayores además piden los 5 porqués y la
-                        lección aplicada). Pase la etapa a «Cerrada» cuando todo
-                        esté completo.
+                        Para cerrarla: causa raíz, acciones terminadas (las correctivas, con
+                        evidencia) y verificación de eficacia «Eficaz» en la fecha programada o
+                        después (las mayores además piden los 5 porqués y la lección aplicada).
+                        La cierran el dueño del proceso o el Jefe MAST.
                     </div>
                     <div invisible="not sgi_format_banner">
                         <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado:
@@ -185,9 +185,11 @@
                 <page string="Verificación y cierre" name="sgi_close" invisible="not sgi_folio and id">
                     <group>
                         <group string="Eficacia">
+                            <field name="sgi_effective" widget="radio" options="{'horizontal': true}"/>
                             <field name="sgi_effectiveness_note"/>
                             <field name="sgi_effectiveness_date"/>
                             <field name="sgi_effectiveness_by"/>
+                            <field name="sgi_ineffective_count" invisible="not sgi_ineffective_count"/>
                             <field name="sgi_lesson_captured"
                                    invisible="sgi_classification != 'mayor'"/>
                         </group>

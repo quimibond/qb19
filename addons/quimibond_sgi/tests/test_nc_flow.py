@@ -70,6 +70,7 @@ class TestNcFlow(TransactionCase):
         alert.sgi_action_line_ids.write({'date_done': date.today(), 'progress': '100'})
         alert.write({
             'sgi_root_cause': 'Causa raíz identificada',
+            'sgi_effective': 'eficaz',
             'sgi_effectiveness_note': 'Eficaz',
             'sgi_effectiveness_date': date.today(),
         })

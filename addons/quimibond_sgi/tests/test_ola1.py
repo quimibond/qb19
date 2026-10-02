@@ -69,7 +69,7 @@ class TestOla1RootCause(TransactionCase):
     # --- H1: cierre real de NC mayor --------------------------------------
     def _mayor_ready(self):
         alert = self._nc(sgi_classification='mayor', sgi_root_cause='Causa',
-                         sgi_effectiveness_note='Eficaz',
+                         sgi_effective='eficaz', sgi_effectiveness_note='Eficaz',
                          sgi_effectiveness_date=date.today(),
                          sgi_lesson_captured=True)
         return alert
@@ -118,7 +118,7 @@ class TestOla1Links(TransactionCase):
                 'sgi_classification': 'mayor', 'sgi_root_cause': 'c',
                 'sgi_why_1': '1', 'sgi_why_2': '2', 'sgi_why_3': '3',
                 'sgi_why_4': '4', 'sgi_why_5': '5',
-                'sgi_effectiveness_note': 'e',
+                'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'e',
                 'sgi_effectiveness_date': date.today(),
                 'sgi_lesson_captured': True}
         base.update(vals)
@@ -230,7 +230,7 @@ class TestOla1Recurrence(TransactionCase):
 
     def test_05_recurrent_close_requires_corrective(self):
         self._nc()
-        nc2 = self._nc(sgi_root_cause='c', sgi_effectiveness_note='e',
+        nc2 = self._nc(sgi_root_cause='c', sgi_effective='eficaz', sgi_effectiveness_note='e',
                        sgi_effectiveness_date=date.today())
         self.env['sgi.action.line'].create({
             'alert_id': nc2.id, 'action_type': 'correccion', 'name': 'x',
@@ -251,7 +251,7 @@ class TestOla1Recurrence(TransactionCase):
         fmea_b = self.env['sgi.fmea'].create({
             'name': 'B', 'fmea_type': 'proceso', 'process_id': self.proc.id})
         self._nc()  # primera del proceso
-        nc2 = self._nc(sgi_root_cause='c', sgi_effectiveness_note='e',
+        nc2 = self._nc(sgi_root_cause='c', sgi_effective='eficaz', sgi_effectiveness_note='e',
                        sgi_effectiveness_date=date.today(), sgi_fmea_id=fmea_a.id)
         self.env['sgi.action.line'].create({
             'alert_id': nc2.id, 'action_type': 'correctiva', 'name': 'cap',
