@@ -37,9 +37,9 @@ class MailActivity(models.Model):
             missing = lines.filtered(lambda l: l._sgi_needs_evidence() and not l._sgi_has_evidence())
             if missing and not attachment_ids:
                 raise UserError(
-                    "La acción correctiva «%s» necesita evidencia: adjunte el archivo al marcar "
-                    "hecha la actividad, o capture la evidencia en la acción."
-                    % ", ".join(missing.mapped('name')))
+                    "Una acción correctiva no se da por terminada sin evidencia. Abra la acción "
+                    "«%s» y capture la evidencia (nota o archivo); después marque hecha la actividad."
+                    % "», «".join(missing.mapped('name')))
             if missing:
                 missing.write({'evidence_attachment_ids': [(4, att_id) for att_id in attachment_ids]})
         res = super()._action_done(feedback=feedback, attachment_ids=attachment_ids)
@@ -257,6 +257,24 @@ class QualityAlert(models.Model):
         help="Se marca sola si el mismo proceso tuvo otra NC en los últimos meses (parámetro "
              "quimibond_sgi.nc_recurrence_months, 12 de fábrica).")
 
+    def copy_data(self, default=None):
+        """57.93.0 (FUNC-C13): una NC duplicada nace abierta: la copia toma
+        la primera etapa de su equipo (la de ``create``), no la del original.
+        Copiar una NC cerrada o cancelada no crea otra cerrada o cancelada."""
+        default = dict(default or {})
+        vals_list = super().copy_data(default=default)
+        if 'stage_id' in default:
+            return vals_list
+        Stage = self.env['quality.alert.stage'].sudo()
+        for alert, vals in zip(self, vals_list):
+            first = Stage.search([('team_ids', 'in', alert.team_id.ids)],
+                                 order='sequence, id', limit=1) if alert.team_id else Stage
+            if first:
+                vals['stage_id'] = first.id
+            else:
+                vals.pop('stage_id', None)
+        return vals_list
+
     @api.model_create_multi
     def create(self, vals_list):
         # 57.93.0 (FUNC-C13 al crear): una NC nace abierta. Crearla en
@@ -265,11 +283,17 @@ class QualityAlert(models.Model):
         # no gastar folio (la secuencia no regresa números). La etapa puede
         # venir en los valores o en ``default_stage_id`` del contexto (alta
         # rápida en la columna «Cerrada» del kanban). El Jefe MAST y el
-        # sistema sí pueden (cargas históricas).
-        if not sgi_bypass_allowed(self.env):
-            default_stage = self.env.context.get('default_stage_id')
+        # sistema (superusuario) sí pueden (cargas históricas). Un sudo() no
+        # exime: los caminos con sudo conservan el contexto del cliente
+        # (``default_stage_id``).
+        user = self.env.user
+        if not (user._is_superuser() or user.has_group('quimibond_sgi.group_sgi_manager')):
+            ctx_stage = self.env.context.get('default_stage_id')
+            default_stage = ctx_stage if isinstance(ctx_stage, int) and not isinstance(ctx_stage, bool) \
+                else False
             stage_ids = {vals.get('stage_id') or default_stage for vals in vals_list} - {False, None}
-            bad = self.env['quality.alert.stage'].sudo().browse(stage_ids).filtered(
+            stage_ids = {sid for sid in stage_ids if isinstance(sid, int) and not isinstance(sid, bool)}
+            bad = self.env['quality.alert.stage'].sudo().browse(stage_ids).exists().filtered(
                 lambda s: s.sgi_is_closing_stage or s.sgi_is_cancel_stage)
             if bad:
                 raise UserError(
@@ -1100,9 +1124,9 @@ class SgiActionLine(models.Model):
             lambda l: l.date_done and l._sgi_needs_evidence() and not l._sgi_has_evidence())
         if missing:
             raise UserError(
-                "Una acción correctiva no se da por terminada sin evidencia. Abra la acción y "
-                "escriba en «Evidencia» qué lo demuestra (orden, documento, registro) o adjunte "
-                "el archivo: %s" % ", ".join(missing.mapped('name')))
+                "Una acción correctiva no se da por terminada sin evidencia. Abra la acción "
+                "«%s» y capture la evidencia (nota o archivo: orden, documento, registro, foto); "
+                "después termínela." % "», «".join(missing.mapped('name')))
 
     @staticmethod
     def _sgi_done_vals(vals):

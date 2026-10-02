@@ -236,6 +236,15 @@ class TestNcEficacia(_NcEvidenciaCase):
             'title': 'N02 carga histórica', 'team_id': self.team.id, 'stage_id': self.stage_closed.id})
         self.assertEqual(legacy.stage_id, self.stage_closed)
 
+    def test_07b_nc_duplicada_nace_abierta(self):
+        closed = self.env['quality.alert'].create({
+            'title': 'N02 cerrada original', 'team_id': self.team.id,
+            'stage_id': self.stage_closed.id})
+        dup = closed.with_user(self.sgi_user).copy()
+        self.assertEqual(dup.stage_id, self.stage_open)
+        self.assertFalse(dup.stage_id.sgi_is_closing_stage or dup.stage_id.sgi_is_cancel_stage)
+        self.assertNotEqual(dup.sgi_folio, closed.sgi_folio)
+
 
 @tagged('post_install', '-at_install')
 class TestAccionEvidencia(_NcEvidenciaCase):
