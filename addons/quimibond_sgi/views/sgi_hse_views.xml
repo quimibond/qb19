@@ -404,8 +404,15 @@
         <field name="arch" type="xml">
             <form string="Hoja de checklist" create="0">
                 <header>
+                    <!-- 57.94.0 (I-03): un toque llena lo que falta con «Bien». -->
+                    <!-- Visible mientras no esté firmada: con una falla ya marcada
+                         el estado es «con_fallas» aunque falten puntos, y ese es
+                         justo el caso de «marque las fallas y el resto Bien». -->
+                    <button name="action_sgi_checklist_all_ok" type="object"
+                            string="Marcar el resto como Bien" class="btn-secondary btn-lg"
+                            invisible="sgi_checklist_employee_id or sgi_checklist_state == 'completo'"/>
                     <button name="action_sgi_checklist_finish" type="object"
-                            string="Terminar checklist" class="btn-primary"
+                            string="Terminar checklist" class="btn-primary btn-lg"
                             invisible="sgi_checklist_employee_id"/>
                     <button name="action_sgi_create_correctives" type="object"
                             string="Crear correctivos de las fallas"
@@ -429,17 +436,48 @@
                         el <field name="sgi_checklist_done_at" readonly="1" class="oe_inline"/>.
                         <div invisible="not sgi_pin_signature"><field name="sgi_pin_signature" readonly="1"/></div>
                     </div>
-                    <field name="sgi_checklist_line_ids" nolabel="1"
+                    <!-- 57.94.0 (I-03): una tarjeta por punto con tres botones
+                         grandes (un toque); la observación se escribe tocando la
+                         tarjeta. Antes: lista editable, dos toques por punto. -->
+                    <field name="sgi_checklist_line_ids" nolabel="1" mode="kanban"
                            readonly="sgi_checklist_employee_id">
-                        <list editable="bottom" create="0" delete="0"
-                              decoration-danger="answer == 'falla'">
-                            <field name="sequence" column_invisible="1"/>
-                            <field name="name" readonly="1"/>
-                            <field name="hint" readonly="1" optional="show"/>
-                            <field name="answer" widget="selection_badge" options="{'size': 'lg'}"/>
-                            <field name="note"/>
-                            <field name="corrective_request_id" readonly="1" optional="hide"/>
-                        </list>
+                        <kanban create="0" delete="0">
+                            <field name="answer"/>
+                            <field name="corrective_request_id"/>
+                            <templates>
+                                <t t-name="card">
+                                    <field name="name" class="fs-4 fw-bold"/>
+                                    <field name="hint" class="text-muted"/>
+                                    <field name="note" class="fst-italic"/>
+                                    <footer class="d-flex flex-wrap gap-2 pt-2">
+                                        <field name="answer" widget="badge"
+                                               decoration-success="answer == 'ok'"
+                                               decoration-danger="answer == 'falla'"/>
+                                        <button name="action_sgi_answer" type="object" string="Bien"
+                                                context="{'sgi_answer': 'ok'}" class="btn btn-success btn-lg"
+                                                invisible="parent.sgi_checklist_employee_id"/>
+                                        <button name="action_sgi_answer" type="object" string="Falla"
+                                                context="{'sgi_answer': 'falla'}" class="btn btn-danger btn-lg"
+                                                invisible="parent.sgi_checklist_employee_id"/>
+                                        <button name="action_sgi_answer" type="object" string="No aplica"
+                                                context="{'sgi_answer': 'na'}" class="btn btn-secondary btn-lg"
+                                                invisible="parent.sgi_checklist_employee_id"/>
+                                    </footer>
+                                </t>
+                            </templates>
+                        </kanban>
+                        <form string="Punto del checklist">
+                            <group>
+                                <field name="name" readonly="1"/>
+                                <field name="hint" readonly="1"/>
+                                <!-- selection_badge: tests/test_vistas_pulido.py test_03
+                                     exige //field[@name='answer'][@widget='selection_badge']
+                                     en esta ficha (con la lista ya no estaría). -->
+                                <field name="answer" widget="selection_badge" options="{'size': 'lg'}"/>
+                                <field name="note"/>
+                                <field name="corrective_request_id" readonly="1"/>
+                            </group>
+                        </form>
                     </field>
                     <group string="Datos de la solicitud" invisible="not sgi_checklist_employee_id">
                         <field name="name" readonly="1"/>
