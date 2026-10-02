@@ -15,7 +15,7 @@ import logging
 from markupsafe import Markup
 
 from odoo import Command, api, fields, models
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 from .sgi_env_aspect import ASPECT_CONDITIONS, ASPECT_TYPES, LIFE_CYCLE_STAGES
 
@@ -126,10 +126,14 @@ class SgiEnvAspectTransfer(models.TransientModel):
                         risk.write({'active': False})
                         risk.message_post(body="Archivado al traspasarlo a la matriz (no se borró).")
                 done |= aspect
-            except Exception:
+            except Exception as error:
                 failed |= risk
                 _logger.warning("SGI N-07: el riesgo %s (%s) no se pudo traspasar.",
                                 risk.id, risk.folio, exc_info=True)
+                # El motivo en el renglón (el mensaje del candado, sin traza).
+                line.error = error.args[0] if isinstance(error, (UserError, ValidationError)) \
+                    and error.args else "Error inesperado; el detalle está en el log del servidor."
+
         _logger.info("SGI N-07: después, %d aspectos creados %s, %d riesgos con error %s; "
                      "%d riesgos ambientales siguen sin aspecto.", len(done), done.ids,
                      len(failed), failed.ids, len(self._sgi_candidates()))
@@ -165,3 +169,5 @@ class SgiEnvAspectTransferLine(models.TransientModel):
     aspect_type = fields.Selection(ASPECT_TYPES, string="Tipo de aspecto", required=True)
     condition = fields.Selection(ASPECT_CONDITIONS, string="Condición", required=True)
     life_cycle_stage = fields.Selection(LIFE_CYCLE_STAGES, string="Etapa del ciclo de vida")
+    error = fields.Char(string="Por qué no se traspasó", readonly=True,
+                        help="Lo llena «Traspasar a la matriz» si este renglón falló.")

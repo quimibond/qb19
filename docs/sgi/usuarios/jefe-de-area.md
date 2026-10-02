@@ -104,7 +104,7 @@ el jefe directo de quien propone y el dueño del proceso.
 
 Si usted autoriza permisos de trabajo: cuando uno vence y sigue autorizado,
 le llega un aviso cada hora hasta que se cierre o se renueve. El permiso no
-se cierra mientras un bloqueo (LOTO) ligado siga aplicado.
+se cierra ni se cancela mientras un bloqueo (LOTO) ligado siga aplicado.
 
 ### 2.7 Decidir las rutinas pendientes del Dropbox
 

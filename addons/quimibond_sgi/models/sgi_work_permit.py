@@ -211,10 +211,10 @@ class SgiWorkPermit(models.Model):
         return permits
 
     def write(self, vals):
-        # 57.96.0 (N-06): con energía bloqueada el permiso no se cierra (por
-        # el botón o por escritura directa; tampoco el Jefe MAST).
-        if vals.get('state') == 'cerrado':
-            self.filtered(lambda p: p.state != 'cerrado')._sgi_check_loto_released()
+        # 57.96.0 (N-06): con energía bloqueada el permiso no se cierra ni se
+        # cancela (por el botón o por escritura directa; tampoco el Jefe MAST).
+        if vals.get('state') in ('cerrado', 'cancelado'):
+            self.filtered(lambda p: p.state != vals['state'])._sgi_check_loto_released()
         return super().write(vals)
 
     def _sgi_check_loto_released(self):
@@ -223,8 +223,9 @@ class SgiWorkPermit(models.Model):
             applied = Loto.search([('work_permit_id', '=', permit.id), ('state', '=', 'bloqueado')])
             if applied:
                 raise UserError(
-                    "No se puede cerrar el permiso %s: el bloqueo %s sigue aplicado. Cada "
-                    "trabajador retira su candado y se retira el bloqueo antes de cerrar el permiso."
+                    "No se puede cerrar ni cancelar el permiso %s: el bloqueo %s sigue aplicado. "
+                    "Cada trabajador retira su candado y se retira el bloqueo antes de cerrar o "
+                    "cancelar el permiso."
                     % (permit.folio or permit.name, ", ".join(applied.mapped('display_name'))))
 
     def _sgi_load_checks(self):

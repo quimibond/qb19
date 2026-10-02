@@ -135,13 +135,14 @@ class SgiLegalRequirement(models.Model):
                                 if req.reference else req.name)
 
     # ------------------------------------------------------------------
-    # Evaluación: tres botones explícitos, con sello de fecha y NC en
-    # incumplimiento (parcial o total).
+    # Evaluación: con sello de fecha y NC en incumplimiento (parcial o
+    # total). Desde 57.96.0 todo pasa por el asistente con evidencia.
     # ------------------------------------------------------------------
     def _sgi_mark(self, state, evidence=None, next_date=None):
         """Registra una evaluación: fila en el historial, estado y fechas en
         el requisito. El asistente «Registrar evaluación» pasa evidencia y
-        próxima fecha; los botones rápidos usan la nota y la frecuencia."""
+        próxima fecha (desde 57.96.0 los botones rápidos también abren el
+        asistente)."""
         today = fields.Date.context_today(self)
         Evaluation = self.env['sgi.legal.evaluation']
         for req in self:
@@ -310,6 +311,9 @@ class SgiLegalEvaluate(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         req = self.requirement_id
+        # 57.96.0 (N-07): evidencia (o motivo) de verdad, no solo espacios.
+        if not (self.evidence or '').strip():
+            raise UserError("Escriba la evidencia revisada o el motivo por el que no aplica.")
         if not self.next_date and self.result != 'no_aplica':
             raise UserError("Indique la fecha de la próxima evaluación.")
         req._sgi_mark(self.result, evidence=self.evidence, next_date=self.next_date)

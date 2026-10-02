@@ -311,6 +311,24 @@ class TestIncidenteInvestigacion(_SstCase):
             'reporter_id': self.sgi_user.id, 'reporter_employee_id': False})
         assert_locked(self, incident.with_user(self.sgi_user).write, {'sgi_effective': 'eficaz'})
 
+    def test_21_eficacia_por_rpc_de_quien_no_investiga_no_cuenta(self):
+        incident = self.env['sgi.incident'].with_user(self.sgi_user).create({
+            'name': 'Corte en mano ZST', 'incident_type': 'lesion',
+            'date': fields.Datetime.now() - timedelta(days=2),
+            'immediate_causes': 'a', 'basic_causes': 'b', 'lack_of_control': 'c',
+            'sgi_effective': 'eficaz', 'sgi_effectiveness_date': self.today,
+            'sgi_effectiveness_note': 'Lo puse yo'})
+        self.assertFalse(incident.sgi_effective or incident.sgi_effectiveness_date
+                         or incident.sgi_effectiveness_note or incident.sgi_effectiveness_by)
+        self._done_action(incident, 'ingenieria', date_done=self.today - timedelta(days=1))
+        incident.with_user(self.mast).write({'state': 'investigacion',
+                                             'investigation_team_ids': [(6, 0, self.worker.ids)]})
+        self._locked("eficacia", incident.with_user(self.mast).action_set_cerrado)
+        self._effective(incident)
+        self.assertEqual(incident.sgi_effectiveness_by, self.mast)
+        incident.with_user(self.mast).action_set_cerrado()
+        self.assertEqual(incident.state, 'cerrado')
+
 
 @tagged('post_install', '-at_install')
 class TestPermisoDeTrabajo(_SstCase):
@@ -386,6 +404,7 @@ class TestPermisoDeTrabajo(_SstCase):
         self._locked("bloqueo", permit.action_close)
         with self.assertRaises(UserError):
             permit.with_user(self.mast).write({'state': 'cerrado'})
+        self._locked("cancelar", permit.with_user(self.mast).action_cancel)
         loto.lock_ids.action_remove_lock()
         loto.write({'area_notified_end': True, 'removal_note': 'Guardas colocadas'})
         loto.action_remove()

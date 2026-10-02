@@ -34,6 +34,12 @@
         <field name="arch" type="xml">
             <form string="Registrar evaluación de cumplimiento">
                 <field name="requirement_id" invisible="1"/>
+                <!-- 57.96.0 (N-07): que se sepa antes de registrar. -->
+                <div class="alert alert-warning mb-2" role="status"
+                     invisible="result not in ('parcial', 'no_cumple')">
+                    Al registrar «Cumple parcialmente» o «No cumple» se levanta una no conformidad
+                    por el incumplimiento.
+                </div>
                 <group>
                     <field name="result"/>
                     <!-- 57.96.0 (N-07): «No aplica» también pide su motivo. -->

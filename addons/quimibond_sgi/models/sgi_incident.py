@@ -163,12 +163,19 @@ class SgiIncident(models.Model):
 
     # 57.96.0 (N-06): campos que solo escribe el sistema (con sudo).
     _SGI_SYSTEM_FIELDS = ('sgi_ineffective_count', 'sgi_effectiveness_by', 'sgi_from_leave')
+    # 57.96.0 (N-06): la verificación de eficacia es de quien investiga.
+    _SGI_EFFECTIVENESS_FIELDS = ('sgi_effective', 'sgi_effectiveness_date', 'sgi_effectiveness_note')
 
     @api.model_create_multi
     def create(self, vals_list):
         if not self.env.su:
-            vals_list = [{k: v for k, v in vals.items() if k not in self._SGI_SYSTEM_FIELDS}
-                         for vals in vals_list]
+            # Lo del sistema, y la eficacia de quien no investiga (alta por
+            # RPC o importación), no se aceptan al crear.
+            drop = self._SGI_SYSTEM_FIELDS if self._sgi_can_investigate() \
+                else self._SGI_SYSTEM_FIELDS + self._SGI_EFFECTIVENESS_FIELDS
+            vals_list = [{k: v for k, v in vals.items() if k not in drop} for vals in vals_list]
+        vals_list = [dict(vals, sgi_effectiveness_by=self.env.uid) if vals.get('sgi_effective')
+                     else vals for vals in vals_list]
         incidents = super().create(vals_list)
         incidents._sgi_check_reporter_employee([
             {'reporter_employee_id': inc.sudo().reporter_employee_id.id,
@@ -200,7 +207,8 @@ class SgiIncident(models.Model):
                 raise UserError(
                     "Solo el Jefe MAST y Salud ocupacional investigan, cierran o reabren "
                     "un incidente. Usted puede reportarlo y consultar cómo se cerró.")
-        if 'sgi_effective' in vals and not self.env.su and not self._sgi_can_investigate():
+        if any(f in vals for f in self._SGI_EFFECTIVENESS_FIELDS) and not self.env.su \
+                and not self._sgi_can_investigate():
             raise UserError("Solo el Jefe MAST y Salud ocupacional registran la verificación de "
                             "eficacia de un incidente.")
         if vals.get('sgi_effective'):
@@ -418,7 +426,8 @@ class SgiIncident(models.Model):
             incident.sudo().write({
                 'sgi_ineffective_count': incident.sgi_ineffective_count + 1,
                 'sgi_effective': False, 'sgi_effectiveness_date': False,
-                'sgi_effectiveness_note': False, 'state': 'acciones'})
+                'sgi_effectiveness_note': False, 'sgi_effectiveness_by': False,
+                'state': 'acciones'})
             if user_id:
                 Cron._sgi_schedule(
                     incident, "Registrar acción nueva del incidente %s (no eficaz)" % folio,

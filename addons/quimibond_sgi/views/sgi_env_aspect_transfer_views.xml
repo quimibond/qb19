@@ -34,6 +34,7 @@
                             <field name="aspect_type"/>
                             <field name="condition"/>
                             <field name="life_cycle_stage"/>
+                            <field name="error" optional="show" decoration-danger="error"/>
                         </list>
                     </field>
                 </sheet>

@@ -91,8 +91,8 @@ administración.
   después del evento (**Registrar evaluación** en el riesgo). «No eficaz»
   regresa el incidente a Acciones y pide una acción nueva.
 - **Permisos de trabajo:** cada hora le llega un aviso por cada permiso
-  vencido que sigue autorizado. Un permiso no se cierra mientras un bloqueo
-  (LOTO) ligado siga aplicado.
+  vencido que sigue autorizado. Un permiso no se cierra ni se cancela mientras
+  un bloqueo (LOTO) ligado siga aplicado.
 - **Requisitos legales:** los botones **Cumple**, **Cumple parcialmente**,
   **No cumple** y **No aplica** abren el registro de la evaluación con la
   evidencia (o el motivo por el que no aplica). Sin ella no se registra.
