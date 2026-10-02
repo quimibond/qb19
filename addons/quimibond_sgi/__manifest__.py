@@ -209,6 +209,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_audit_finding_legal_eval_views.xml',
         # 57.95.0 (D-06 de datos): empresa en documentos controlados.
         'views/sgi_company_fix_views.xml',
+        # 57.96.0 (N-07): traspaso de riesgos ambientales a la matriz.
+        'views/sgi_env_aspect_transfer_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         # 57.94.0 «SGI en planta»: tabletas de planta.

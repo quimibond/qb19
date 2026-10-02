@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.96.0 (N-07): el Jefe MAST traspasa a la matriz los riesgos
+         ambientales capturados como riesgo. Al abrir solo cuenta. -->
+    <record id="sgi_env_aspect_transfer_view_form" model="ir.ui.view">
+        <field name="name">sgi.env.aspect.transfer.form</field>
+        <field name="model">sgi.env.aspect.transfer</field>
+        <field name="arch" type="xml">
+            <form string="Traspaso de riesgos ambientales a la matriz">
+                <sheet>
+                    <div class="alert alert-info" role="status">
+                        Cada renglón es un riesgo con el instrumento «Aspecto ambiental» que todavía no
+                        tiene aspecto en la matriz. Corrija la actividad, el tipo, la condición y la
+                        etapa del ciclo de vida; quite los renglones que no deban pasar. «Traspasar»
+                        crea cada aspecto «En evaluación», lo liga al riesgo como su tratamiento, deja
+                        una nota en los dos y no borra nada. Úselo solo con el visto bueno de Dirección.
+                    </div>
+                    <group>
+                        <field name="risk_count"/>
+                        <field name="archive_risks"/>
+                        <field name="done_count" invisible="not done_count"/>
+                        <field name="failed_count" invisible="not failed_count"/>
+                    </group>
+                    <field name="line_ids">
+                        <list editable="bottom" create="0">
+                            <!-- force_save: risk_id es de solo lectura y el cliente web
+                                 no manda los campos de solo lectura al guardar; sin él el
+                                 renglón llega sin riesgo (required) al pulsar «Traspasar». -->
+                            <field name="risk_id" force_save="1"/>
+                            <field name="risk_kind"/>
+                            <field name="process_id"/>
+                            <field name="score"/>
+                            <field name="activity"/>
+                            <field name="aspect_type"/>
+                            <field name="condition"/>
+                            <field name="life_cycle_stage"/>
+                        </list>
+                    </field>
+                </sheet>
+                <footer>
+                    <button name="action_apply" type="object" string="Traspasar a la matriz"
+                            class="btn-primary" invisible="not risk_count"
+                            confirm="Se crearán los aspectos de los renglones de la lista y se ligarán a sus riesgos. ¿Continuar?"/>
+                    <button name="action_view_aspects" type="object" string="Ver los aspectos en la matriz"
+                            invisible="not done_count"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_env_aspect_transfer_action" model="ir.actions.act_window">
+        <field name="name">Traspaso de riesgos ambientales</field>
+        <field name="res_model">sgi.env.aspect.transfer</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>
