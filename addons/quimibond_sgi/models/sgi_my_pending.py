@@ -617,13 +617,17 @@ class SgiMyPending(models.TransientModel):
                 return {'type': 'ir.actions.act_url', 'target': 'self',
                         'url': '/sign/document/%d/%s' % (item.sign_request_id.id, item.access_token)}
         # 57.92.0 (U-05): «Ir» lleva a la pantalla de Odoo donde se hace la
-        # actividad (su menú o acción), no a la ficha del catálogo.
+        # actividad (su menú o acción) o a su evidencia, como «Ir a hacerlo»
+        # de Mi procedimiento (``mp_can_go``); no a la ficha del catálogo.
         if self.kind == 'actividad' and self.res_model == 'sgi.process.activity':
             activity = self.env['sgi.process.activity'].sudo().browse(self.res_id).exists()
-            if activity and (activity.odoo_menu_id or activity.odoo_ref
-                             or ('odoo_action_id' in activity._fields and activity.odoo_action_id)):
+            if activity and (activity.odoo_menu_id or activity.odoo_action_id
+                             or activity.odoo_ref or activity.measure_model_id):
                 try:
-                    return activity.action_open_odoo()
+                    # Savepoint: un dominio de evidencia malo no deja el
+                    # cursor abortado al caer a la ficha.
+                    with self.env.cr.savepoint():
+                        return activity.action_open_odoo()
                 except UserError:
                     # Texto de «Dónde se ejecuta» que no resuelve a un menú y
                     # sin medición ligada: se abre la ficha, como antes.
