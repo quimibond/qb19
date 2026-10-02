@@ -293,6 +293,9 @@
               action="sgi_risk_category_action" sequence="40"/>
     <menuitem id="menu_sgi_checklist_templates" name="Checklists de planta y unidades"
               parent="menu_sgi_config" action="sgi_checklist_template_action" sequence="50"/>
+    <!-- 57.94.0 (U-01): qué cuentas compartidas son tabletas de planta. -->
+    <menuitem id="menu_sgi_floor_tablets" name="Tabletas de planta"
+              parent="menu_sgi_config" action="sgi_floor_tablet_action" sequence="55"/>
     <menuitem id="menu_sgi_config_format_map" name="Formatos en documentos de Odoo" parent="menu_sgi_config"
               action="sgi_format_map_action" sequence="60"/>
     <menuitem id="menu_sgi_config_alert_sources" name="Fuentes de NC automáticas" parent="menu_sgi_config"

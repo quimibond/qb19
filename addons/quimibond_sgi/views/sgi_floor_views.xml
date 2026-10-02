@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.94.0 «SGI en planta» (U-01): tabletas de planta (Jefe MAST). -->
+    <record id="sgi_floor_tablet_view_list" model="ir.ui.view">
+        <field name="name">sgi.floor.tablet.list</field>
+        <field name="model">sgi.floor.tablet</field>
+        <field name="arch" type="xml">
+            <list string="Tabletas de planta">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="department_ids" widget="many2many_tags"/>
+                <field name="checklist_template_ids" widget="many2many_tags" optional="show"/>
+                <field name="active" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_floor_tablet_view_form" model="ir.ui.view">
+        <field name="name">sgi.floor.tablet.form</field>
+        <field name="model">sgi.floor.tablet</field>
+        <field name="arch" type="xml">
+            <form string="Tableta de planta">
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <label for="name"/>
+                        <h1><field name="name" placeholder="Ej. Tableta Tejido"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="user_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="department_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="checklist_template_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <field name="note" placeholder="Dónde está y quién la cuida"/>
+                    <div class="alert alert-info" role="note">
+                        La cuenta recibe el grupo «Tableta de planta (SGI)» al guardar. Pida a Sistemas que ponga
+                        «SGI en planta» como su acción de inicio y que le quite los grupos del SGI que no use.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_floor_tablet_view_search" model="ir.ui.view">
+        <field name="name">sgi.floor.tablet.search</field>
+        <field name="model">sgi.floor.tablet</field>
+        <field name="arch" type="xml">
+            <search string="Tabletas de planta">
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="department_ids"/>
+                <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_user" string="Cuenta" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_floor_tablet_action" model="ir.actions.act_window">
+        <field name="name">Tabletas de planta</field>
+        <field name="res_model">sgi.floor.tablet</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_floor_tablet_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Dé de alta la primera tableta de planta</p>
+            <p>Cada tableta es una cuenta compartida (por ejemplo supervisor@) con sus departamentos. En la
+            tableta, la persona toca su foto y teclea su PIN para firmar sus documentos, reportar un casi
+            accidente, firmar su EPP y llenar el checklist de su equipo.</p>
+        </field>
+    </record>
+</odoo>
