@@ -455,3 +455,43 @@ class TestBandeja(TransactionCase):
         self.assertEqual(result['tag'], 'soft_reload')
         self.assertEqual(ack.state, 'leido')
         self.assertFalse(row.exists(), "El renglón firmado sale de la lista.")
+
+    def test_25_avisos_de_los_crons(self):
+        """U-03 (D-04): los avisos nativos de las apps del SGI, vencidos o de
+        los próximos 7 días, salen como «Aviso» y «Hecho» los cierra; lo que
+        ya tiene renglón propio no se duplica."""
+        team = self.env.ref('quimibond_sgi.sgi_quality_team_internal')
+        alert = self.env['quality.alert'].create({'title': 'Aviso 8A', 'team_id': team.id})
+        # La NC de la prueba no tiene responsables: su aviso no lo cubre el
+        # renglón «nc» (que solo sale a los responsables).
+        self.assertFalse(alert.sgi_responsible_ids)
+        notice = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today - timedelta(days=1),
+            summary='Revisar aviso 8A', user_id=self.user.id)
+        far = alert.activity_schedule(
+            'mail.mail_activity_data_todo', date_deadline=self.today + timedelta(days=30),
+            summary='Aviso lejano 8A', user_id=self.user.id)
+        row = self._row('aviso', notice.id)
+        self.assertTrue(row)
+        self.assertEqual(row['state'], 'atrasada')
+        self.assertIn('Revisar aviso 8A', row['name'])
+        self.assertFalse(self._row('aviso', far.id), "Solo vencidos o de los próximos 7 días.")
+        # Lo que ya tiene renglón propio no se duplica (acuse pendiente).
+        doc = self.env['documents.document'].create({
+            'name': 'Acuse aviso 8A', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'instructivo', 'sgi_code': 'IT-Z8A-02', 'sgi_state': 'vigente',
+            'sgi_process_id': self.process.id})
+        dup = doc.activity_schedule('mail.mail_activity_data_todo', date_deadline=self.today,
+                                    summary='Acuse 8A', user_id=self.user.id)
+        dup.sgi_cron_key = 'acuse_pendiente:1'
+        self.assertFalse(self._row('aviso', dup.id))
+        # «Ir» abre la NC; «Hecho» cierra el aviso.
+        rows = self.Pending.with_user(self.user)._sgi_build(self.emp)
+        line = rows.filtered(lambda r: r.kind == 'aviso' and r.res_id == notice.id)
+        self.assertEqual(len(line), 1)
+        action = line.with_user(self.user).action_open()
+        self.assertEqual((action['res_model'], action['res_id']), ('quality.alert', alert.id))
+        result = line.with_user(self.user).action_done_notice()
+        self.assertEqual(result['tag'], 'soft_reload')
+        self.assertFalse(notice.exists() and notice.active, "El aviso queda hecho.")
+        self.assertFalse(line.exists(), "El renglón hecho sale de la lista.")

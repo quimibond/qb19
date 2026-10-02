@@ -117,6 +117,12 @@ class SgiMyPendingArchivedFilter(models.TransientModel):
             ref = rec.sign_request_id.reference_doc if 'reference_doc' in rec.sign_request_id._fields \
                 else False
             target = ref.sudo().exists() if ref else False
+        elif kind == 'aviso':
+            # 57.92.0 (U-03): el aviso es de la empresa del registro sobre el
+            # que está (la actividad no tiene empresa).
+            if not rec.res_model or rec.res_model not in self.env:
+                return True
+            target = self.env[rec.res_model].sudo().browse(rec.res_id).exists()
         else:
             target = rec
         if not target or 'company_id' not in target._fields:

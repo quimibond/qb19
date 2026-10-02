@@ -61,6 +61,7 @@ PENDING_KINDS = [
     ('actividad', "Actividad atrasada"),
     ('acuse', "Acuse de lectura"),
     ('firma', "Firma"),
+    ('aviso', "Aviso"),
 ]
 # Los tipos que salen de la persona (hr.employee) y no del usuario: la gente
 # de planta sin usuario también los tiene.
@@ -73,6 +74,10 @@ PENDING_STATES = [
 STATE_RANK = {'atrasada': 0, 'por_vencer': 1, 'al_dia': 2}
 SOON_DAYS = 7
 HORIZON_DAYS = 60
+# 57.92.0 (U-03): actividades nativas (avisos de los crons) de estas apps que
+# se muestran en Mis pendientes, además de las de los modelos ``sgi.*``.
+NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
+                 'helpdesk.ticket', 'project.task')
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
 CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
@@ -253,6 +258,39 @@ class SgiMyPending(models.TransientModel):
             records['firma'] = env['sign.request.item'].sudo().search(
                 [('partner_id', 'in', users.partner_id.ids), ('state', '=', 'sent'),
                  ('sign_request_id.state', '=', 'sent')], order='create_date')
+        # 57.92.0 (U-03, D-04): avisos de los crons y actividades de las apps
+        # del SGI, vencidos o de los próximos 7 días. Las actividades nativas
+        # siguen existiendo; aquí solo se muestran, sin las que ya tienen
+        # renglón propio.
+        Activity = env['mail.activity'].sudo()
+        notices = Activity.search(
+            [('user_id', 'in', ids), ('date_deadline', '<=', today + timedelta(days=SOON_DAYS)),
+             '|', ('res_model', '=like', 'sgi.%'), ('res_model', 'in', NOTICE_MODELS)],
+            order='date_deadline, id')
+        if notices:
+            covered = Activity
+            # Aprobación nativa (Studio): su renglón es «aprobacion».
+            if records.get('aprobacion'):
+                covered |= records['aprobacion'].mapped('mail_activity_id')
+            # Espejo de una acción: su renglón es «accion».
+            covered |= env['sgi.action.line'].sudo().search(
+                [('activity_id', 'in', notices.ids)]).mapped('activity_id')
+            # Los avisos de plazo de una NC con responsables ya salen en su
+            # renglón «nc» (solo las NC donde la persona es responsable).
+            nc_ids = set(records['nc'].ids) if records.get('nc') else set()
+            covered |= notices.filtered(
+                lambda a: a.res_model == 'quality.alert' and a.res_id in nc_ids)
+            has_key = 'sgi_cron_key' in Activity._fields
+
+            def own_row(act):
+                # Acuse pendiente y revisión bienal: renglones «acuse» y
+                # «documento»; «Capturar indicador»: renglón «medicion».
+                key = (act.sgi_cron_key or '') if has_key else ''
+                return (key.startswith('acuse_pendiente:') or key == 'revision_bienal'
+                        or (act.res_model == 'sgi.indicator'
+                            and (act.summary or '').startswith('Capturar indicador ')))
+            notices = notices.filtered(lambda a: a not in covered and not own_row(a))
+        records['aviso'] = notices
         return records
 
     @api.model
@@ -308,6 +346,11 @@ class SgiMyPending(models.TransientModel):
                 due = sgi_add_business_days(self.env, request.create_date, self._SGI_REQUEST_DAYS)
             return {'name': "Firmar %s" % (request.reference or request.display_name or ''),
                     'date_due': due, 'process_id': False}
+        if kind == 'aviso':
+            # 57.92.0 (U-03): qué dice el aviso y sobre qué registro.
+            what = rec.summary or rec.activity_type_id.name or "Aviso"
+            return {'name': "%s — %s" % (what, rec.res_name or rec.res_model),
+                    'date_due': rec.date_deadline, 'process_id': False}
         # I-007: el documento se nombra por su título limpio, sin la clave vieja.
         title = rec.sgi_title if 'sgi_title' in rec._fields else False
         return {'name': "Revisar %s" % (title or rec.name or ''),
@@ -329,6 +372,8 @@ class SgiMyPending(models.TransientModel):
             return rec.user_id
         if kind == 'firma':
             return rec.partner_id.user_ids
+        if kind == 'aviso':
+            return rec.user_id
         return rec.sgi_owner_id
 
     # ------------------------------------------------------------------
@@ -606,6 +651,12 @@ class SgiMyPending(models.TransientModel):
     def action_open(self):
         """Abre el registro de origen (la acción, la NC, la medición…)."""
         self.ensure_one()
+        # 57.92.0 (U-03): el aviso abre el registro sobre el que está.
+        if self.kind == 'aviso' and self.res_model == 'mail.activity':
+            act = self.env['mail.activity'].sudo().browse(self.res_id).exists()
+            if act and act.res_model and act.res_id:
+                return {'type': 'ir.actions.act_window', 'res_model': act.res_model,
+                        'res_id': act.res_id, 'view_mode': 'form', 'target': 'current'}
         if self.kind == 'firma' and self.res_model == 'sign.request.item':
             item = self.env['sign.request.item'].sudo().browse(self.res_id).exists()
             # La liga con token firma A NOMBRE del firmante: solo se le da a
@@ -654,6 +705,21 @@ class SgiMyPending(models.TransientModel):
         if not ack:
             raise UserError("El acuse ya no existe.")
         ack.action_mark_read()
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+
+    def action_done_notice(self):
+        """57.92.0 (U-03): «Hecho» marca hecho el aviso (la actividad nativa),
+        solo si es de quien abre la lista."""
+        self.ensure_one()
+        act = self.env['mail.activity'].browse(self.res_id).exists() \
+            if self.kind == 'aviso' and self.res_model == 'mail.activity' else False
+        if not act:
+            raise UserError("El aviso ya no existe.")
+        # La dueña se lee con sudo; el cierre va con los permisos de quien abre.
+        if act.sudo().user_id != self.env.user:
+            raise UserError("Solo la persona a quien está asignado el aviso puede marcarlo hecho.")
+        act.action_feedback(feedback="Hecho desde Mis pendientes.")
         self.unlink()
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 

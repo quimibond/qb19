@@ -33,6 +33,10 @@ incidente, consultar planes de emergencia).
    aprobación, actividad atrasada…), de qué proceso y cuándo vence.
 3. Pulse **Abrir** para ir al registro y resolverlo. Al resolverlo, el
    renglón desaparece solo.
+4. Los avisos que Odoo le manda desde el SGI (actividades vencidas o que
+   vencen esta semana) también salen en la misma lista, como **Aviso**.
+   Cuando lo atienda, pulse **Hecho** en el renglón: el aviso se cierra en
+   Odoo y sale de la lista. El filtro **Avisos** los muestra solos.
 
 ### 2.2 Hacer una actividad de su procedimiento
 
