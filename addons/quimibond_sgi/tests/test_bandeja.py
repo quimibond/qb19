@@ -323,6 +323,9 @@ class TestBandeja(TransactionCase):
         Public.invalidate_model()
         row = Public.browse(self.floor.id)
         self.assertEqual(row.sgi_mp_pending_state, 'atrasada')
+        # 57.95.0 (K-08): el filtro lee el resumen guardado.
+        self.env['hr.employee']._sgi_refresh_pending_summary(
+            self.env['hr.employee'].browse(self.floor.id))
         self.assertIn(self.floor.id, Public.search([('sgi_mp_pending_state', '=', 'atrasada')]).ids)
         rows = self.env['sgi.my.pending'].with_user(self.boss_user).search(
             row.action_sgi_open_pending()['domain'])

@@ -12,15 +12,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_mp_ack_state` | Selection | Mi procedimiento | Si la persona ya firmó de leído su Mi procedimiento vigente. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:914` |
-| `sgi_mp_acks_pending` | Integer | Firmas pendientes | Acuses de lectura pendientes de la persona (Mi procedimiento y demás documentos). |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:910` |
-| `sgi_mp_late` | Integer | Atrasadas | Actividades del puesto (ejecuta o aprueba) que hoy están atrasadas. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:903` |
-| `sgi_mp_ok` | Integer | Al día |  |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:906` |
-| `sgi_mp_pending_late` | Integer | Pendientes atrasados | Pendientes atrasados de la persona en Mis pendientes. |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:883` |
-| `sgi_mp_pending_state` | Selection | Semáforo | El peor estado de sus pendientes: atrasada, por vencer o al día. |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:887` |
-| `sgi_mp_pending_total` | Integer | Pendientes | Total de pendientes de la persona en Mis pendientes. |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:879` |
-| `sgi_mp_total` | Integer | Actividades | Número de actividades del SGI que le tocan a la persona. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:908` |
-| `sgi_mp_unmeasured` | Integer | Sin medición automática |  |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:907` |
+| `sgi_mp_ack_state` | Selection | Mi procedimiento | Si la persona ya firmó de leído su Mi procedimiento vigente. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:952` |
+| `sgi_mp_acks_pending` | Integer | Firmas pendientes | Acuses de lectura pendientes de la persona (Mi procedimiento y demás documentos). |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:948` |
+| `sgi_mp_late` | Integer | Atrasadas | Actividades del puesto (ejecuta o aprueba) que hoy están atrasadas. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:941` |
+| `sgi_mp_ok` | Integer | Al día |  |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:944` |
+| `sgi_mp_pending_late` | Integer | Pendientes atrasados | Pendientes atrasados de la persona en Mis pendientes. En los filtros se usa el resumen guardado (de la noche o de la última vez que se abrió su lista). |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:997` |
+| `sgi_mp_pending_state` | Selection | Semáforo | El peor estado de sus pendientes: atrasada, por vencer o al día. En los filtros se usa el resumen guardado (de la noche o de la última vez que se abrió su lista). |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:1002` |
+| `sgi_mp_pending_total` | Integer | Pendientes | Total de pendientes de la persona en Mis pendientes. En los filtros se usa el resumen guardado (de la noche o de la última vez que se abrió su lista). |  |  | compute `_compute_sgi_mp_pending`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_pending.py:992` |
+| `sgi_mp_total` | Integer | Actividades | Número de actividades del SGI que le tocan a la persona. |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:946` |
+| `sgi_mp_unmeasured` | Integer | Sin medición automática |  |  |  | compute `_compute_sgi_mp_stats`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:945` |
 
 ## Métodos públicos (5)
 

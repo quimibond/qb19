@@ -6,13 +6,14 @@ from collections import defaultdict
 from datetime import date
 from dateutil.relativedelta import relativedelta
 
-from markupsafe import escape
+from markupsafe import Markup, escape
 
 from odoo import models, fields, api
+from odoo.exceptions import AccessError
 from odoo.tools import html2plaintext
 
 from .sgi_calendar import (
-    sgi_add_business_days, sgi_business_days, sgi_local_datetime_utc, sgi_today)
+    sgi_add_business_days, sgi_business_days, sgi_local_date, sgi_local_datetime_utc, sgi_today)
 
 from .sgi_guard import sgi_require_system
 from .sgi_menu_paths import sgi_menu_path
@@ -54,6 +55,19 @@ class MailActivitySgiCron(models.Model):
         help="La causa del aviso ya se resolvió; si vuelve, nace otro aviso.")
     sgi_cron_run = fields.Char(
         string="Última corrida que lo vio (SGI)", copy=False, readonly=True)
+    # 57.95.0 (K-08): la clase del aviso (la clave antes del primer «:»),
+    # guardada e indexada solo donde hay clave. El barrido de episodios
+    # busca por aquí en vez de ``sgi_cron_key =like 'clase:%'``, que recorría
+    # todas las actividades con sus archivadas. La columna la crea y la llena
+    # migrations/19.0.57.95.0/pre-migrate.py.
+    sgi_cron_kind = fields.Char(
+        string="Clase del aviso (SGI)", compute='_compute_sgi_cron_kind', store=True,
+        index='btree_not_null', copy=False, readonly=True)
+
+    @api.depends('sgi_cron_key')
+    def _compute_sgi_cron_kind(self):
+        for activity in self:
+            activity.sgi_cron_kind = (activity.sgi_cron_key or '').split(':', 1)[0] or False
 
 
 class SgiCron(models.AbstractModel):
@@ -199,13 +213,11 @@ class SgiCron(models.AbstractModel):
                 _logger.warning("SGI: %d registro(s) fallaron; no cierro avisos de %s en esta corrida.",
                                 failures, ", ".join(kinds))
             return 0
-        key_domain = []
-        for kind in kinds:
-            key_domain = (['|'] if key_domain else []) + key_domain + [
-                '|', ('sgi_cron_key', '=', kind), ('sgi_cron_key', '=like', kind + ':%')]
+        # 57.95.0 (K-08): por la clase indexada. Misma semántica que antes
+        # (clave igual a la clase o que empieza con «clase:»).
         stale = self.env['mail.activity'].sudo().with_context(active_test=False).search(
-            key_domain + [('sgi_episode_closed', '=', False),
-                          '|', ('sgi_cron_run', '=', False), ('sgi_cron_run', '!=', run)])
+            [('sgi_cron_kind', 'in', list(kinds)), ('sgi_episode_closed', '=', False),
+             '|', ('sgi_cron_run', '=', False), ('sgi_cron_run', '!=', run)])
         closed = self._sgi_close_activities(stale, reason)
         if closed:
             _logger.info("SGI: %d aviso(s) cerrados porque ya no aplican (%s).", closed, ", ".join(kinds))
@@ -256,6 +268,257 @@ class SgiCron(models.AbstractModel):
         de Odoo; fallback al Jefe MAST/SGI."""
         group = self.env.ref('sales_team.group_sale_manager', raise_if_not_found=False)
         return self._sgi_first_user_id(group) or self._sgi_manager_user_id()
+
+    # ------------------------------------------------------------------
+    # 57.95.0 (K-08): avisos de acuse agrupados. Uno por persona con usuario
+    # («acuses_propios:<empleado>») y uno por jefe para su gente sin usuario
+    # («acuses_equipo:<jefe>»). Nunca sobre la ficha del empleado
+    # (hr.employee), que no lee quien no es de RH: el de la persona va sobre
+    # el documento de su acuse pendiente más viejo (el acuse no lleva
+    # actividades: no hereda mail.activity.mixin); el del jefe, sobre su
+    # departamento. Sin departamento, sin usuario o sin jefe, al Jefe MAST
+    # (sobre el departamento si lo hay; si no, sobre el documento del acuse
+    # más viejo del grupo).
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_user_can_read(self, record, user_id):
+        """¿El usuario ``user_id`` puede leer ``record``? Con sus empresas,
+        como lo revisa Odoo al asignarle una actividad."""
+        if not user_id or not record:
+            return False
+        user = self.env['res.users'].sudo().browse(user_id)
+        try:
+            record.with_user(user).with_context(
+                allowed_company_ids=user.company_ids.ids).check_access('read')
+        except AccessError:
+            return False
+        return True
+
+    @api.model
+    def _sgi_ack_limit(self):
+        """(días hábiles, fecha UTC límite): un acuse pendiente creado antes
+        de la fecha límite ya pasó el umbral del aviso. La usan el cron y
+        «Ir» de Mis pendientes, para listar lo mismo."""
+        ack_days = int(self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.doc_ack_pending_days', 7))
+        limit_day = sgi_add_business_days(self.env, sgi_today(self.env), -ack_days)
+        return ack_days, sgi_local_datetime_utc(self.env, limit_day + relativedelta(days=1), 0)
+
+    @api.model
+    def _sgi_ack_overdue(self):
+        ack_days, limit_date = self._sgi_ack_limit()
+        acks = self.env['sgi.document.ack'].sudo().search([
+            ('state', '=', 'pendiente'),
+            ('create_date', '<', limit_date),
+            ('document_id.active', '=', True),
+            # Solo gente activa: el acuse de quien ya se fue no se avisa.
+            ('employee_id.active', '=', True),
+        ], order='create_date, id')
+        return ack_days, acks
+
+    @api.model
+    def _sgi_ack_groups(self, acks, manager_id):
+        """Agrupa los acuses vencidos por aviso. Devuelve {clave: dict} con
+        ``kind``, ``owner`` (la persona o el jefe), ``acks``, ``user_id``
+        (quien recibe), ``anchor`` (registro del aviso) y ``reason``
+        (propio, jefe, sin_usuario, sin_departamento, sin_jefe)."""
+        Ack = self.env['sgi.document.ack'].sudo()
+        own = defaultdict(lambda: Ack)
+        team = defaultdict(lambda: Ack)
+        def boss_of(emp):
+            # Un jefe archivado cuenta como sin jefe.
+            return emp.parent_id if emp.parent_id.active else emp
+
+        for ack in acks.sudo():
+            emp = ack.employee_id
+            if emp.user_id and emp.user_id.active:
+                own[emp] |= ack
+            else:
+                team[boss_of(emp)] |= ack
+        groups = {}
+        for emp, group in own.items():
+            anchor = group[:1].document_id
+            if self._sgi_user_can_read(anchor, emp.user_id.id):
+                groups['acuses_propios:%d' % emp.id] = {
+                    'kind': 'acuses_propios', 'owner': emp, 'acks': group,
+                    'user_id': emp.user_id.id, 'anchor': anchor, 'reason': 'propio'}
+            else:
+                # Su usuario no lee el documento: sus acuses van con los de
+                # su equipo, como si no tuviera usuario.
+                team[boss_of(emp)] |= group
+        for owner, group in team.items():
+            group = group.sorted(lambda a: (a.create_date, a.id))
+            alone = group.employee_id == owner
+            boss_user = owner.user_id if not alone and owner.user_id.active else False
+            dept = owner.department_id
+            # Decisión 57.95.0: el aviso de equipo vive en el departamento
+            # del jefe. Un jefe con usuario activo pero SIN departamento no
+            # lo recibe: va al Jefe MAST (sobre el documento del acuse más
+            # viejo), igual que el de un jefe sin usuario o sin permiso de
+            # leer su departamento.
+            if boss_user and dept and self._sgi_user_can_read(dept, boss_user.id):
+                user_id, anchor, reason = boss_user.id, dept, 'jefe'
+            else:
+                user_id = manager_id
+                anchor = dept if dept and self._sgi_user_can_read(dept, manager_id) \
+                    else group[:1].document_id
+                reason = 'sin_jefe' if alone else ('sin_departamento' if boss_user else 'sin_usuario')
+            groups['acuses_equipo:%d' % owner.id] = {
+                'kind': 'acuses_equipo', 'owner': owner, 'acks': group,
+                'user_id': user_id, 'anchor': anchor, 'reason': reason}
+        return groups
+
+    @api.model
+    def _sgi_ack_team_acks(self, owner_id):
+        """Acuses que cuenta hoy el aviso «acuses_equipo» del jefe (o de la
+        persona sin jefe) ``owner_id``: los mismos que ve el cron, con la
+        misma fecha límite. Lo usa «Ir» de Mis pendientes."""
+        _days, acks = self._sgi_ack_overdue()
+        group = self._sgi_ack_groups(acks, self._sgi_manager_user_id()).get(
+            'acuses_equipo:%d' % owner_id)
+        return group['acks'] if group else self.env['sgi.document.ack'].sudo()
+
+    @api.model
+    def _sgi_ack_summary(self, group):
+        acks, owner = group['acks'], group['owner']
+        n_acks = len(acks)
+        n_people = len(acks.employee_id)
+        people = "%d persona%s" % (n_people, '' if n_people == 1 else 's')
+        reason = group['reason']
+        if reason == 'propio':
+            return "Documentos por leer y firmar: %d" % n_acks
+        if reason == 'sin_jefe':
+            return "Acuses pendientes de %s (sin jefe): %d" % (owner.name, n_acks)
+        if reason == 'jefe':
+            return "Acuses pendientes de su gente: %d (%s)" % (n_acks, people)
+        why = "sin departamento" if reason == 'sin_departamento' else "sin usuario"
+        return "Acuses pendientes de la gente de %s (%s): %d (%s)" % (owner.name, why, n_acks, people)
+
+    @api.model
+    def _sgi_ack_note(self, acks, ack_days, limit=20):
+        rows = []
+        for ack in acks[:limit]:
+            doc = ack.document_id
+            since = sgi_local_date(self.env, ack.create_date)
+            rows.append(Markup("<li>%s — %s (desde el %s)</li>") % (
+                ack.employee_id.name or '', doc.sgi_title or doc.name or '',
+                since.strftime('%d/%m/%Y') if since else '-'))
+        more = Markup("<p>Y %d más.</p>") % (len(acks) - limit) if len(acks) > limit else Markup('')
+        return Markup("<p>Llevan más de %d días hábiles sin firmar de leído y entendido:</p>"
+                      "<ul>%s</ul>%s") % (ack_days, Markup('').join(rows), more)
+
+    @api.model
+    def _sgi_ack_deadline(self, acks, ack_days):
+        """El día en que el acuse más viejo cruzó el umbral: fijo mientras el
+        grupo no cambie (el aviso no se reescribe cada día)."""
+        first = sgi_local_date(self.env, min(acks.mapped('create_date')))
+        return sgi_add_business_days(self.env, first, ack_days)
+
+    @api.model
+    def _sgi_ack_schedule(self, anchor, summary, note, user_id, deadline, key):
+        """Agenda o actualiza el aviso ``key`` sobre ``anchor`` sin dejar a
+        quien lo recibe como seguidor del registro (departamento o
+        documento) si no lo era: el aviso le llega por la actividad. Si ya
+        hay un aviso abierto con la clave sobre otro registro (cambió el
+        ancla de modelo: departamento ↔ documento), se cierra al quedar el
+        nuevo, con su motivo."""
+        partner = self.env['res.users'].sudo().browse(user_id).partner_id
+        anchor = anchor.sudo()
+        followed = partner in anchor.message_partner_ids
+        activity = self._sgi_schedule(anchor, summary, note, user_id, date_deadline=deadline,
+                                      key=key, anywhere=True)
+        if partner and not followed and partner in anchor.message_partner_ids:
+            anchor.message_unsubscribe(partner_ids=partner.ids)
+        if activity:
+            moved = self.env['mail.activity'].sudo().search([
+                ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False),
+                ('id', '!=', activity.id)])
+            self._sgi_close_activities(moved, "el aviso pasó a otro registro")
+        return activity
+
+    @api.model
+    def _sgi_ack_keep(self, key):
+        """Conserva el aviso abierto de ``key`` en esta corrida (el barrido no
+        lo cierra): cuando no hay a quién o dónde agendarlo hoy."""
+        run = self.env.context.get('sgi_cron_run')
+        self.env['mail.activity'].sudo().with_context(active_test=False).search([
+            ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False),
+        ]).write({'sgi_cron_run': run or False})
+
+    @api.model
+    def _sgi_ack_attempts(self, key, group, manager_id):
+        """Destinos en orden: (registro, usuario, resumen alterno o None).
+
+        Primero el del grupo; si ya hay un aviso abierto con esta clave sobre
+        un registro que quien recibe puede leer, ese mismo registro (se
+        reutiliza tal cual: el aviso no salta de ancla cada vez que se firma
+        el acuse más viejo o cambia el departamento). Después, el Jefe MAST
+        sobre el documento del acuse más viejo; un aviso propio que cae ahí
+        dice de quién es. Sin usuario (no hay Jefe MAST) no hay destino."""
+        user_id, anchor = group['user_id'], group['anchor']
+        current = self.env['mail.activity'].sudo().search([
+            ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False)], order='id', limit=1)
+        if current and current.res_model and current.res_id and current.user_id.id == user_id:
+            record = self.env[current.res_model].sudo().browse(current.res_id).exists()
+            if record and self._sgi_user_can_read(record, user_id):
+                anchor = record
+        attempts = [(anchor, user_id, None)]
+        fallback_summary = None
+        if group['kind'] == 'acuses_propios':
+            fallback_summary = "Acuses pendientes de %s (no puede abrir el documento): %d" % (
+                group['owner'].name, len(group['acks']))
+        fallback = (group['acks'][:1].document_id, manager_id, fallback_summary)
+        if fallback[:2] != (anchor, user_id):
+            attempts.append(fallback)
+        return [a for a in attempts if a[0] and a[1]]
+
+    @api.model
+    def _sgi_ack_notices(self, groups, ack_days, manager_id):
+        """Agenda un aviso por grupo, cada uno en su savepoint. Si Odoo no
+        deja asignarlo (quien recibe no lee el registro), se reintenta al
+        Jefe MAST sobre el documento del acuse más viejo (WARNING con la
+        traza); si tampoco, o si no hay a quién mandarlo (sin Jefe MAST), el
+        aviso que ya existía se conserva en esta corrida (el barrido no lo
+        cierra). Un grupo que falla no detiene a los demás ni a cron_documents.
+        Devuelve cuántos grupos no se pudieron ni agendar ni conservar."""
+        failures = 0
+        for key, group in groups.items():
+            try:
+                summary = self._sgi_ack_summary(group)
+                note = self._sgi_ack_note(group['acks'], ack_days)
+                deadline = self._sgi_ack_deadline(group['acks'], ack_days)
+                attempts = self._sgi_ack_attempts(key, group, manager_id)
+            except Exception:
+                failures += 1
+                _logger.exception("SGI: no se pudo armar el aviso %s; continúo.", key)
+                continue
+            done = False
+            for index, (anchor, user_id, alt_summary) in enumerate(attempts):
+                last = index == len(attempts) - 1
+                try:
+                    with self.env.cr.savepoint():
+                        self._sgi_ack_schedule(anchor, alt_summary or summary, note, user_id,
+                                               deadline, key)
+                    done = True
+                    break
+                except Exception:
+                    if last:
+                        _logger.exception("SGI: no se pudo agendar el aviso %s sobre %s (usuario %s).",
+                                          key, anchor, user_id)
+                    else:
+                        _logger.warning("SGI: no se pudo agendar el aviso %s sobre %s (usuario %s); "
+                                        "pruebo el siguiente destino.", key, anchor, user_id,
+                                        exc_info=True)
+            if done:
+                continue
+            try:
+                with self.env.cr.savepoint():
+                    self._sgi_ack_keep(key)
+                _logger.warning("SGI: el aviso %s no se pudo agendar hoy; se conserva el anterior.", key)
+            except Exception:
+                failures += 1
+                _logger.exception("SGI: el aviso %s no se pudo agendar ni conservar.", key)
+        return failures
 
     # ------------------------------------------------------------------
     # Aislamiento de errores: un registro/paso envenenado no debe tumbar
@@ -616,7 +879,7 @@ class SgiCron(models.AbstractModel):
     @api.model
     def cron_documents(self):
         """Cron diario de documentos: avisos de revisión bienal, pilotos por vencer y acuses
-        pendientes (un aviso por documento y clave)."""
+        pendientes (57.95.0: un aviso por persona o por jefe, no por acuse)."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         today = sgi_today(self.env)
@@ -625,7 +888,6 @@ class SgiCron(models.AbstractModel):
         notice_days = int(Param.get_param('quimibond_sgi.doc_review_notice_days', 60))
         notice_final = int(Param.get_param('quimibond_sgi.doc_review_notice_days_final', 30))
         pilot_days = int(Param.get_param('quimibond_sgi.doc_pilot_notice_days', 7))
-        ack_days = int(Param.get_param('quimibond_sgi.doc_ack_pending_days', 7))
         failures = 0
 
         # Revisión bienal: dos avisos configurables (por defecto 60 y 30 días).
@@ -674,25 +936,35 @@ class SgiCron(models.AbstractModel):
 
         # Acuses pendientes (umbral configurable, por defecto 7 días). 57.15.0
         # (G-009): días hábiles; cuenta el día local en que nació el acuse.
-        limit_day = sgi_add_business_days(self.env, today, -ack_days)
-        limit_date = sgi_local_datetime_utc(self.env, limit_day + relativedelta(days=1), 0)
-        acks = self.env['sgi.document.ack'].search([
-            ('state', '=', 'pendiente'),
-            ('create_date', '<', limit_date),
-        ])
+        # 57.95.0 (K-08): un aviso por persona con usuario y uno por jefe para
+        # su gente sin usuario (antes, uno por acuse sobre el documento: con
+        # Mi procedimiento publicado eran 147, 116 al Jefe MAST, 2026-10-02).
+        ack_days, acks = self._sgi_ack_overdue()
         manager_id = self._sgi_manager_user_id()
+        groups = self._sgi_ack_groups(acks, manager_id)
+        failures += self._sgi_ack_notices(groups, ack_days, manager_id)
+        self._sgi_sweep(['revision_bienal', 'piloto_por_vencer', 'acuses_propios', 'acuses_equipo'],
+                        "el documento ya se revisó, el piloto cerró o los acuses se dieron", failures)
+        # Los de uno por acuse (antes de 57.95.0) ya no se ven en ninguna corrida.
+        self._sgi_sweep(['acuse_pendiente'],
+                        "se reemplazó por un aviso por persona o por jefe", failures)
+        return True
 
-        def _ack_notice(ack):
-            user_id = ack.user_id.id or manager_id
-            self._sgi_schedule(
-                ack.document_id,
-                "Acuse pendiente: %s" % (ack.employee_id.name),
-                "El acuse de lectura lleva más de %d días hábiles pendiente." % ack_days,
-                user_id, date_deadline=today, key='acuse_pendiente:%d' % ack.id)
-
-        failures += self._sgi_for_each(acks, _ack_notice, "acuses pendientes")
-        self._sgi_sweep(['revision_bienal', 'piloto_por_vencer', 'acuse_pendiente'],
-                        "el documento ya se revisó, el piloto cerró o el acuse se dio", failures)
+    # ------------------------------------------------------------------
+    # 57.95.0 (K-08) — Respaldo nocturno
+    # ------------------------------------------------------------------
+    @api.model
+    def cron_nightly_backup(self):
+        """Cron diario (02:15 de México): recalcula las cuatro listas guardadas
+        de Mi procedimiento y anota en el log cuántas personas cambiaron (si no
+        es 0, falta un disparo), y refresca el resumen de Mis pendientes que
+        leen los filtros de Mi equipo. Cada paso en su savepoint."""
+        sgi_require_system(self.env)
+        Employee = self.env['hr.employee']
+        self._sgi_step("respaldo de las listas de Mi procedimiento",
+                       Employee._sgi_mp_nightly_recompute)
+        self._sgi_step("resumen de Mis pendientes por persona",
+                       Employee._sgi_refresh_pending_summary)
         return True
 
     # ------------------------------------------------------------------

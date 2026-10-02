@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.94.2',
+    'version': '19.0.57.95.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -96,6 +96,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_checklist_cron.xml',
         # 57.94.0 (U-08): aviso semanal a RH.
         'data/sgi_floor_cron.xml',
+        # 57.95.0 (K-08): respaldo nocturno de Mi procedimiento y Mi equipo.
+        'data/sgi_nightly_cron.xml',
         'data/sgi_coa_data.xml',
         'data/sgi_my_procedure_data.xml',
         'data/sgi_mp_change_category_data.xml',
@@ -205,6 +207,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_work_permit_views.xml',
         'views/sgi_loto_views.xml',
         'views/sgi_audit_finding_legal_eval_views.xml',
+        # 57.95.0 (D-06 de datos): empresa en documentos controlados.
+        'views/sgi_company_fix_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
         # 57.94.0 «SGI en planta»: tabletas de planta.

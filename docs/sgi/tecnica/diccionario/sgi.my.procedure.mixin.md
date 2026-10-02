@@ -12,15 +12,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_mp_ack_ids` | Many2many | Acuses de lectura (Mi procedimiento) |  |  | `sgi.document.ack` | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:137` |
-| `sgi_mp_can_sign` | Boolean | Puede firmar |  |  |  | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:144` |
-| `sgi_mp_document_ids` | Many2many | Documentos que aplican al puesto |  |  | `documents.document` | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:139` |
-| `sgi_mp_epp_ids` | Many2many | Responsivas de EPP (Mi procedimiento) |  |  | `sgi.epp.delivery` | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:141` |
-| `sgi_mp_epp_text` | Text | EPP requerido (Mi procedimiento) |  |  |  | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:143` |
-| `sgi_mp_process_ids` | Many2many | Procesos donde participa |  |  | `sgi.process` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:145` |
-| `sgi_mp_received_role_ids` | Many2many | Escalamientos que recibe |  |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:133` |
-| `sgi_mp_role_ids` | Many2many | Mis actividades |  |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:131` |
-| `sgi_mp_short_role_ids` | Many2many | Participa o se entera |  |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:135` |
+| `sgi_mp_ack_ids` | Many2many | Acuses de lectura (Mi procedimiento) |  |  | `sgi.document.ack` | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:140` |
+| `sgi_mp_can_sign` | Boolean | Puede firmar |  |  |  | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:147` |
+| `sgi_mp_document_ids` | Many2many | Documentos que aplican al puesto |  |  | `documents.document` | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:142` |
+| `sgi_mp_epp_ids` | Many2many | Responsivas de EPP (Mi procedimiento) |  |  | `sgi.epp.delivery` | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:144` |
+| `sgi_mp_epp_text` | Text | EPP requerido (Mi procedimiento) |  |  |  | compute `_compute_sgi_mp_lists`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:146` |
+| `sgi_mp_process_ids` | Many2many | Procesos donde participa |  |  | `sgi.process` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:148` |
+| `sgi_mp_received_role_ids` | Many2many | Escalamientos que recibe |  |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:136` |
+| `sgi_mp_role_ids` | Many2many | Mis actividades |  |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:134` |
+| `sgi_mp_short_role_ids` | Many2many | Participa o se entera |  |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:138` |
 
 ## Métodos públicos (1)
 

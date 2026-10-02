@@ -17,12 +17,15 @@ sola. Por eso:
   actividad». Al ser acciones de ventana, las migas de pan regresan solas.
 - El PDF (QWeb) y la huella siguen en ``hr.job._sgi_my_procedure_data``.
 """
+import logging
 from collections.abc import Iterable
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_my_procedure import _CADENCE_RANK, _DETAIL_ROLES, _SHORT_ROLES
+
+_logger = logging.getLogger(__name__)
 
 _MP_STATUS = [
     ('al_dia', "Al día"),
@@ -287,6 +290,41 @@ class HrEmployeeMyProcedureTab(models.Model):
         for fname in ('sgi_mp_role_ids', 'sgi_mp_received_role_ids', 'sgi_mp_short_role_ids',
                       'sgi_mp_process_ids', 'sgi_my_procedure_ack_state'):
             self.env.add_to_compute(self._fields[fname], employees)
+
+    _SGI_MP_LIST_FIELDS = ('sgi_mp_role_ids', 'sgi_mp_received_role_ids',
+                           'sgi_mp_short_role_ids', 'sgi_mp_process_ids')
+
+    @api.model
+    def _sgi_mp_nightly_recompute(self):
+        """57.95.0 (K-08): respaldo de los disparos a mano
+        (``_sgi_mp_touch_jobs``). Recalcula las cuatro listas guardadas de
+        todas las personas activas y compara con lo que había. En régimen da 0;
+        si da más, la lista vieja se corrige aquí y el log dice cuántas y
+        quiénes: falta un disparo en algún cambio de roles, actividades o
+        publicación (así nació el error de 57.13.0 a 57.88.0). Devuelve los
+        empleados que cambiaron."""
+        fnames = self._SGI_MP_LIST_FIELDS
+        employees = self.sudo().search([])
+
+        def snapshot(emp):
+            return tuple(frozenset(emp[fname].ids) for fname in fnames)
+
+        before = {emp.id: snapshot(emp) for emp in employees}
+        for fname in fnames:
+            self.env.add_to_compute(self._fields[fname], employees)
+        self.env.flush_all()
+        employees.invalidate_recordset(list(fnames))
+        changed = employees.filtered(lambda emp: snapshot(emp) != before[emp.id])
+        if changed:
+            changed.sgi_mp_job_id._sgi_mp_mark_dirty()
+            _logger.warning(
+                "SGI: el respaldo nocturno de Mi procedimiento corrigió las listas de %d de %d "
+                "persona(s) %s: falta un disparo de recálculo.",
+                len(changed), len(employees), changed.ids[:50])
+        else:
+            _logger.info("SGI: respaldo nocturno de Mi procedimiento: 0 cambios en %d personas.",
+                         len(employees))
+        return changed
 
 
 class HrEmployeePublicMyProcedureTab(models.Model):

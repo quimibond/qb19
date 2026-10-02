@@ -21,6 +21,13 @@ class TestPr6External(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
+        # 57.95.0: los acuses pendientes reales de la copia de producción no
+        # cruzan el umbral en estas pruebas (sus avisos agrupados no deben
+        # fallar ni ensuciar cron_documents). Se deshace al final.
+        cls.env.flush_all()
+        cls.env.cr.execute("UPDATE sgi_document_ack SET create_date = now() "
+                           "WHERE state = 'pendiente'")
+        cls.env.invalidate_all()
         cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.team_int = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.team_ext = cls.env.ref('quimibond_sgi.sgi_quality_team_external')

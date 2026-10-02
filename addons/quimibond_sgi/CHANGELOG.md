@@ -13,6 +13,187 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.95.0 — 2026-10-02
+
+**Rendimiento y robustez** (auditoría 2026-10: K-08, K-05 y D-06 de datos; es
+la ficha «57.99.0» del plan general, renumerada porque sale antes de las fichas
+con puerta de decisión, que toman el siguiente número libre, 57.96.0, al
+iniciarse). Plan: `docs/superpowers/plans/2026-10-02-sgi-57-95-0-rendimiento-robustez.md`.
+
+### Cambiado
+
+- **Un aviso de acuses por persona o por jefe (K-08).** Antes, uno por acuse
+  pendiente sobre el documento (147 acuses el 2026-10-02; 116 avisos le
+  habrían llegado al Jefe MAST la semana del 5-oct). Ningún aviso va sobre la
+  ficha del empleado (`hr.employee`), que no lee quien no es de RH:
+  - quien tiene usuario activo recibe «Documentos por leer y firmar: N»
+    (clave `acuses_propios:<empleado>`) sobre el **documento de su acuse
+    pendiente más viejo**; Mis pendientes no lo repite (ya tiene sus
+    renglones «acuse»), aunque ese acuse ya se haya firmado;
+  - la gente sin usuario, **un** aviso por jefe «Acuses pendientes de su
+    gente: N (P personas)» (clave `acuses_equipo:<jefe>`) sobre el
+    **departamento del jefe**, a su usuario; «Ir» en Mis pendientes abre los
+    acuses de esa gente que pasaron la misma fecha límite del cron;
+  - **al Jefe MAST:** los equipos de jefes sin usuario, los de **jefes con
+    usuario pero sin departamento** (decisión: el aviso de equipo vive en el
+    departamento del jefe; sin él, va al Jefe MAST), las personas sin jefe y,
+    si el destino no se puede agendar (quien recibe no puede abrir el
+    registro), el aviso con un resumen que dice de quién es («Acuses
+    pendientes de <persona> (no puede abrir el documento): N»). Sin
+    departamento (o si el Jefe MAST no lo lee), sobre el documento del acuse
+    más viejo del grupo;
+  - antes de asignar se revisa que quien recibe pueda leer el registro; quien
+    recibe no queda como seguidor del departamento o del documento si no lo
+    era; si un destino falla y el respaldo funciona, el log dice WARNING (con
+    la traza) y la corrida sigue; sin Jefe MAST configurado se conserva el
+    aviso anterior;
+  - si ya hay un aviso abierto con la clave sobre un registro que quien
+    recibe puede leer, se reutiliza (no salta de ancla cada vez que se firma
+    el acuse más viejo); si cambia de modelo, el anterior se cierra con «el
+    aviso pasó a otro registro»;
+  - quien tiene usuario pero no puede abrir el documento entra en el aviso de
+    su jefe (al Jefe MAST solo sin jefe, sin departamento o sin usuario del
+    jefe; un jefe archivado cuenta como sin jefe); «no puede abrir el
+    documento» solo sale cuando agendar el aviso propio falla de verdad;
+  - vence el día en que el acuse más viejo del grupo cruzó el umbral; solo
+    cuentan acuses de gente activa; singular y plural en el resumen;
+  - los avisos de uno por acuse (`acuse_pendiente:<id>`) se cierran en la
+    primera corrida con «se reemplazó por un aviso por persona o por jefe».
+- **Mi equipo (K-08):** «Con pendientes atrasados», «Con pendientes por
+  vencer» y «Al día» leen un resumen guardado por persona
+  (`hr.employee.sgi_pending_saved_total/_late/_state`, técnicos, solo
+  sistema) en lugar de armar Mis pendientes de toda la empresa en cada
+  búsqueda. Lo refrescan el respaldo nocturno y cada lista de pendientes que se
+  abre (Mis pendientes, «Ver pendientes», «Pendientes del equipo»): abrir una
+  lista escribe en `hr.employee` (en sudo, sin seguimiento) **solo** los
+  campos que cambiaron; esa escritura puede bloquear un momento las filas de
+  `hr_employee` de esas personas (si choca con otra transacción, Odoo
+  reintenta). Durante el día el filtro puede ir atrás de las columnas, que
+  siguen en vivo.
+- **Barrido de avisos (K-08):** por la clase indexada
+  `mail.activity.sgi_cron_kind` (la clave antes del primer «:»; índice
+  parcial `btree_not_null`) en lugar de `sgi_cron_key =like 'clase:%'`, que
+  recorría todas las actividades con sus archivadas y tomaba «_» como
+  comodín.
+- **Entregas facturadas (K-05):** `account.move.sgi_picking_ids` depende del
+  tipo de factura y del estado de las entregas (una factura hecha antes de
+  validar la entrega se llena al validarla). Lo propuesto se ve aparte
+  (`sgi_picking_proposed_ids`, sin guardar). Escribir a mano entregas
+  distintas de las propuestas enciende `sgi_picking_manual` y las guarda en
+  `sgi_picking_manual_ids` (guardado, no calculado); el cálculo siempre
+  asigna: lo ajustado si hay ajuste; si no hay propuesta, lo que ya estaba
+  guardado (protege los ajustes a mano de antes de 57.95.0, que no traen la
+  marca); si no, lo propuesto. Un ajuste de antes de 57.95.0 se conserva
+  **solo mientras no haya propuesta**: en cuanto se valida una entrega ligada
+  a la factura, la propuesta lo reemplaza. El formulario que reenvía lo mismo que lo
+  propuesto, o lo mismo que se conservaba sin propuesta, no marca ajuste.
+  Propuesta y comparación se leen en sudo y por ids: una regla de registro
+  sobre las entregas no hace parecer «a mano» una factura. Botón «Volver a las
+  entregas propuestas» en la pestaña SGI (con ajuste o cuando lo guardado
+  difiere: `sgi_picking_outdated`).
+- `sgi_payment_date` depende también de `invoice_date` y de la cuenta de las
+  líneas.
+- **Pruebas que corren `cron_documents`** (`test_avisos_crons`,
+  `test_pr6_external`): neutralizan los acuses pendientes reales de la copia
+  de producción, como `test_rendimiento_robustez`.
+- **Documentos controlados (D-06 de datos):** un documento que nace o se
+  vuelve controlado sin empresa toma la de su familia (misma clave, aunque sea
+  ninguna, para no partir la familia antes de correr el asistente) o, con
+  clave nueva, la empresa del SGI; la carpeta con empresa manda (la de los
+  valores o la del contexto `default_folder_id`).
+
+### Agregado
+
+- **Respaldo nocturno** (acción planificada nueva `sgi_cron_nightly_backup`,
+  «SGI: Respaldo nocturno (Mi procedimiento y Mi equipo)», diaria a las 08:15
+  UTC = 02:15 de México, `noupdate`, solo el sistema): recalcula las cuatro
+  listas guardadas de Mi procedimiento de cada persona activa y dice en el log
+  «respaldo nocturno de Mi procedimiento: 0 cambios en N personas» (INFO) o
+  cuántas y quiénes cambiaron, «falta un disparo de recálculo» (WARNING, y las
+  corrige); después refresca el resumen de Mi equipo. 27 acciones planificadas
+  del SGI.
+- **«Empresa en documentos controlados»** (Administración SGI →
+  Configuración, solo Jefe MAST, `sgi.company.fix`): al abrir **cuenta** sin
+  escribir (por estado y las rutinas que arrastra); «Ver los documentos»;
+  «Asignar la empresa del SGI» escribe en lotes de 100 (si un lote falla,
+  documento por documento), deja una nota en cada documento y el antes y el
+  después en el log, y cuenta los que no se pudieron. Idempotente; nada se
+  borra.
+
+### Seguridad
+
+- Regla de empresa `rule_sgi_legacy_routine_company` en `sgi.legacy.routine`
+  (era el único modelo con `company_id` sin regla). Con las 815 rutinas sin
+  empresa nadie deja de ver nada.
+
+### Migración
+
+`migrations/19.0.57.95.0/pre-migrate.py`: solo crea y llena con SQL la columna
+técnica `mail_activity.sgi_cron_kind` (80 filas con clave en producción el
+2026-10-02), en lotes de 5,000 e idempotente; el índice lo crea el ORM. No
+toca datos de negocio. Lo demás son columnas nuevas vacías y registros nuevos
+(cron `noupdate` en un XML nuevo, regla, ACL, vista, acción y menú).
+
+### Datos de producción
+
+- **D-06 no se aplica en el despliegue.** Solo con el **visto bueno escrito
+  de Jose** (en el PR), el Jefe MAST abre Administración SGI → Configuración →
+  «Empresa en documentos controlados», revisa que cuente 492 (482 vigentes, 9
+  obsoletos, 1 borrador) y 815 rutinas, y aplica. Efecto: quien trabaje con
+  otra razón social seleccionada (sin PNTQ) deja de ver esos documentos hasta
+  seleccionarla.
+- **Después del despliegue, correr una vez a mano el respaldo nocturno**
+  (Ajustes → Técnico → Acciones planificadas → «SGI: Respaldo nocturno…» →
+  Ejecutar manualmente): sin eso, los filtros de Mi equipo salen vacíos hasta
+  la noche (o hasta que cada quien abra su lista).
+- Producción sigue en 57.90.1 (aviso de uno por acuse): los acuses del 24 y
+  28-sep cruzan el umbral el 5 y el 7-oct.
+
+### Decisiones por omisión (preguntas del plan)
+
+- **Q1** D-06: asistente manual después del OK escrito de Jose; nada en el
+  despliegue.
+- **Q2** acuses de gente sin usuario: al jefe directo con usuario activo y
+  departamento; si no, al Jefe MAST (no se sube por la cadena).
+- **Q3** uno por jefe (y uno por persona con usuario), no uno por documento.
+- **Q4** filtros de Mi equipo con el resumen guardado; columnas en vivo.
+- **Q5** ya no aplica: los avisos no van sobre `hr.employee` y `hr.employee`
+  no entró a los modelos de avisos de Mis pendientes.
+- **Q6** respaldo nocturno a las 02:15 de México.
+- **Q7** la factura de proveedor que quedó sin entregas no se recalcula por
+  migración: sale «Volver a las entregas propuestas» (lo guardado difiere).
+- **Q8** desplegar 57.91.0–57.95.0 antes del 7-oct; si no se alcanza, subir
+  temporalmente `quimibond_sgi.doc_ack_pending_days` necesita su OK.
+
+**Pruebas:** `test_rendimiento_robustez` (21 casos: aviso por jefe sobre su
+departamento sin seguidores de más; al Jefe MAST sin usuario, sin
+departamento o sin jefe; propio sobre el documento sin repetirse en Mis
+pendientes, también tras firmar el más viejo; idempotencia, cierre al firmar y
+cierre de los de uno por acuse; «Ir» con la misma fecha límite; usuario sin
+Usuario SGI; primer destino que falla con respaldo y WARNING; sin Jefe MAST se
+conserva; clase indexada y barrido sin comodín; filtro de Mi equipo sin
+recalcular la empresa; resumen que solo escribe cambios y que se refresca al
+abrir la lista; respaldo con 0 cambios en régimen y corrección con WARNING;
+solo el sistema; entregas que siguen al estado; ajuste a mano y regreso;
+ajuste de antes de 57.95.0 que se conserva; dependencias; asistente de empresa; empresa en controlados nuevos y en su
+familia; regla de rutinas). `test_my_pending.test_02` y `test_bandeja.test_13`
+refrescan el resumen antes de filtrar.
+
+**Verificación pendiente en Odoo.sh:** (1) que el ORM no recalcule
+`sgi_cron_kind` con la columna ya creada (si lo hace, cambia `write_date` de
+las actividades); (2) el índice parcial `mail_activity__sgi_cron_kind_index`;
+(3) que agendar un aviso sobre `hr.department` y sobre un documento controlado
+no exija más permisos de los revisados, y `message_unsubscribe` en ambos;
+(4) que `env.add_to_compute` + `flush_all` recalcule las listas guardadas;
+(5) que `hr.employee.write` de los campos del resumen no pase por
+`hr.version`; (6) el flujo de venta de las pruebas de K-05, que el
+formulario de la factura no marque ajuste a mano al reenviar lo propuesto o lo
+conservado, y que el cálculo lea lo guardado (`_origin`) cuando no hay
+propuesta;
+(7) que Documents no impida poner empresa a un documento en carpeta sin
+empresa; (8) en el log del día siguiente al despliegue, «respaldo nocturno de
+Mi procedimiento: 0 cambios» o la lista de quienes cambiaron.
+
 ## 19.0.57.94.2 — 2026-10-02
 
 **Corregido: dos avisos de accesibilidad en el build de `main`** (pintaban el
