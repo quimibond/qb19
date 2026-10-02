@@ -73,11 +73,12 @@ Administración SGI. El árbol completo con grupos está en
 | Salud ocupacional (SGI) | Solo el Coordinador de RH: exámenes y estudios de higiene |
 | Salarios de eficiencias (SGI) | Importes de eficiencias (RH y Nóminas) |
 | Comisión de Seguridad e Higiene (SGI) | Recorridos y hallazgos de la CSH |
+| Tableta de planta (SGI) | Cuenta compartida de una tableta: solo la app SGI en planta; firma a nombre de quien teclea su PIN |
 
-**Capturista de planta** = usuario interno sin grupo SGI con su nombre en la
-plantilla de checklist: captura desde Mantenimiento → Checklists de hoy y
-firma con el PIN del empleado (F-021). El PIN no tiene límite de intentos;
-se acepta en planta (F-018).
+**Capturista de planta** = persona sin usuario que firma en la tableta (app
+SGI en planta) con su PIN de empleado; las cuentas de tableta se dan de alta
+en Configuración → Tabletas de planta. El PIN no tiene límite de intentos; se
+acepta en planta (F-018).
 
 ## Satélites
 
