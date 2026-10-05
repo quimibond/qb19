@@ -35,6 +35,9 @@ DEFAULT_MIN_SAMPLE = 5
 SNAPSHOT_MODES = ('cartera_vencida', 'cartera_vencida_60',
                   'inventario_diferencia', 'capacitacion') + HEALTH_SNAPSHOT_MODES
 SNAPSHOT_NOTE = "Sin dato: indicador de foto, no reconstruible para un periodo pasado."
+# 57.102.0 (B4): mediciones anteriores a «Medir desde».
+BEFORE_FROM_NOTE = "Antes de «Medir desde» (%s): no cuenta. Valor anterior %s."
+BEFORE_FROM_CALC = "Antes de «Medir desde» (%s): no se mide."
 
 
 def _min_sample(env):
@@ -143,6 +146,8 @@ class SgiIndicatorDetail(models.Model):
             return 'manual', False
         if vals.get('state') != 'sin_dato':
             return 'ok', False
+        if (vals.get('note') or '').startswith("Antes de «Medir desde»"):
+            return 'antes', vals['note']
         missing = self.spec_missing or ''
         if any(key in missing for key in ('sin fórmula', 'sin fuente', 'sin actividad', 'sin entregable',
                                           'no dice cuándo')):
@@ -183,6 +188,43 @@ class SgiIndicatorDetail(models.Model):
             indicator._sgi_set_calc(status, "%s: %s" % (prefix, reason) if reason else prefix + ".")
             done += 1
         return done
+
+    def write(self, vals):
+        res = super().write(vals)
+        # B4 (57.102.0): cambiar «Medir desde» marca las anteriores. Moverla
+        # hacia atrás no revive las ya marcadas: quedan «sin dato» y las
+        # re-mide el recálculo (cron con ventana o el botón).
+        if 'measure_from' in vals:
+            self._sgi_mark_before_measure_from()
+        return res
+
+    def _sgi_mark_before_measure_from(self):
+        """B4 (57.102.0): las mediciones no validadas cuyo periodo termina antes
+        de «Medir desde» pasan a «Sin dato» con el valor anterior en la nota.
+        Las validadas no se tocan (evidencia) y se cuentan en el chatter. Nada
+        se borra. Idempotente. Devuelve las mediciones cambiadas."""
+        changed = self.env['sgi.indicator.measure']
+        for indicator in self.filtered('measure_from'):
+            measures = indicator.measure_ids.filtered(
+                lambda m: indicator._sgi_period_bounds(m.period_date)[1] < indicator.measure_from)
+            to_mark = measures.filtered(lambda m: m.state not in ('validado', 'sin_dato'))
+            since = indicator.measure_from.strftime('%d/%m/%Y')
+            for measure in to_mark:
+                prev = "sin dato" if measure.state == 'pendiente' else measure.value
+                measure.with_context(sgi_calc_write=True).sudo().write({
+                    'state': 'sin_dato', 'value': 0.0, 'numerator': False, 'denominator': False,
+                    'sample_size': 0, 'detail_model': False, 'detail_ids': False,
+                    'note': "\n".join(n for n in (BEFORE_FROM_NOTE % (since, prev), measure.note) if n),
+                })
+            if to_mark:
+                validated = measures.filtered(lambda m: m.state == 'validado')
+                indicator.message_post(body=(
+                    "«Medir desde» %s: %d medición(es) anteriores pasan a «Sin dato» (el valor "
+                    "anterior queda en su nota)%s." % (
+                        since, len(to_mark),
+                        "; %d validada(s) no se tocan" % len(validated) if validated else "")))
+            changed |= to_mark
+        return changed
 
     def action_set_official(self):
         self.write({'status': 'oficial'})
@@ -240,6 +282,16 @@ class SgiIndicatorDetail(models.Model):
             return {'note': SNAPSHOT_NOTE, 'state': 'sin_dato', 'value': 0.0,
                     'numerator': None, 'denominator': None, 'sample_size': 0,
                     'detail_model': False, 'detail_ids': False}
+        # B4 (57.102.0): antes de «Medir desde» no se mide (ni se pide la
+        # captura de un manual). Así «Recalcular» no vuelve a llenar las
+        # marcadas. Los modos con plazo (sgi_indicator_ind2) responden
+        # «pendiente» antes de llegar aquí mientras el plazo no vence; el
+        # recálculo nunca regresa una medición a pendiente.
+        if not self._sgi_measurable_on(date_to):
+            return {'note': BEFORE_FROM_CALC % self.measure_from.strftime('%d/%m/%Y'),
+                    'state': 'sin_dato', 'value': 0.0, 'numerator': None,
+                    'denominator': None, 'sample_size': 0, 'detail_model': False,
+                    'detail_ids': False}
         note = self._sgi_compute_note(date_from, date_to)
         vals = {'note': note or False}
         if self.calc_mode == 'manual':
