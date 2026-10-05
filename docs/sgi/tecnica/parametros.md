@@ -52,3 +52,11 @@ Valores de arranque de `sgi.config._SGI_DEFAULT_PARAMS` (`addons/quimibond_sgi/m
 | `quimibond_sgi.production_monthly_capacity` | `0` | Capacidad instalada mensual de producción (misma unidad que la producción, p.ej. kg) para el KPI MA-02. 0 = captura manual. |
 | `quimibond_sgi.energy_partner_id` | `0` | Proveedor de energía (res.partner) para el KPI TR-03. 0 = sin configurar. |
 | `quimibond_sgi.satisfaction_survey_id` | `0` | Encuesta que alimenta el KPI CA-02 (survey.survey). 0 = usar la sembrada del módulo. Permite re-apuntar al histórico archivado. |
+| `quimibond_sgi.training_effectiveness_days` | `90` | 57.100.0 (N-13): días para evaluar la eficacia de la capacitación y encuesta opcional al jefe (survey.survey; 0 = sin encuesta). |
+| `quimibond_sgi.training_effectiveness_survey_id` | `0` |  |
+| `quimibond_sgi.ppap_sales_window_months` | `12` | 57.100.0 (N-14): meses de ventas que hacen «cliente del producto» en el ECO. |
+| `quimibond_sgi.ai_enabled` | `False` | 57.100.0 (IA, puerta Q16): apagada hasta la autorización escrita de Jose. Proveedor Anthropic; modelo configurable; segundos de espera; si se mandan las 3 NC cerradas del mismo proceso. La llave (quimibond_sgi.ai_api_key) no se siembra: la captura un administrador. |
+| `quimibond_sgi.ai_backend` | `anthropic` |  |
+| `quimibond_sgi.ai_model` | `claude-opus-5-5` |  |
+| `quimibond_sgi.ai_timeout` | `60` |  |
+| `quimibond_sgi.ai_include_history` | `True` |  |

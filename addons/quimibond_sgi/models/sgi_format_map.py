@@ -579,8 +579,6 @@ class SgiConfig(models.AbstractModel):
         # Encuesta que alimenta el KPI CA-02 (survey.survey). 0 = usar la
         # sembrada del módulo. Permite re-apuntar al histórico archivado.
         'quimibond_sgi.satisfaction_survey_id': '0',
-        # 57.11.0 (A-016): los 9 parámetros del presupuesto y del pronóstico de
-        # ventas los siembra quimibond_ventas_presupuesto (mismas claves).
         # 57.100.0 (N-13): días para evaluar la eficacia de la capacitación y
         # encuesta opcional al jefe (survey.survey; 0 = sin encuesta).
         'quimibond_sgi.training_effectiveness_days': '90',
@@ -596,6 +594,8 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.ai_model': 'claude-opus-5-5',
         'quimibond_sgi.ai_timeout': '60',
         'quimibond_sgi.ai_include_history': 'True',
+        # 57.11.0 (A-016): los 9 parámetros del presupuesto y del pronóstico de
+        # ventas los siembra quimibond_ventas_presupuesto (mismas claves).
     }
 
     @api.model

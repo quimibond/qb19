@@ -8,7 +8,7 @@ Un renglón del desglose (equipo de ventas o mercado) dentro de la medición del
 
 Orden: `measure_id, market, team_id, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_indicator_integrity.py`.
 
 ## Campos (15)
 

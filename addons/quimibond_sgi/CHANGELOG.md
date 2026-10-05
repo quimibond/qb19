@@ -16,14 +16,167 @@ Retirado, Seguridad, Migración, Datos de producción.
 ## 19.0.57.100.0 — 2026-10-05
 
 **Integridad, competencias, PPAP e IA** (auditoría 2026-10: K-04, N-13, N-14 y
-la sección 7 del reporte). En curso; la entrada completa llega con la versión
-(Task 10.12).
+la sección 7 del reporte, «IA que propone y la persona decide»; última ficha
+del plan general, que queda completo en código). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-100-0-integridad.md`. Va con
+`quimibond_sgi_plm` 19.0.3.2.0. **La IA sale apagada.**
 
 ### Agregado
 
-- **Metas congeladas al validar (K-04):** la medición validada guarda las
-  metas con las que se juzgó; cambiar la meta del indicador o un escalón ya no
-  le cambia el color.
+- **Metas congeladas al validar (K-04, `models/sgi_indicator_integrity.py`):**
+  al pasar a «Validado» por cualquier vía, la medición guarda sentido,
+  objetivo, aceptable (los del escalón del periodo si hay trayectoria) y, en
+  «dentro de un rango», mínimo, máximo y tolerancia (`sgi_targets_frozen`,
+  `sgi_frozen_*`). Su semáforo, el objetivo y el aceptable que muestra y el
+  semáforo de su desglose salen de esas metas aunque cambie la meta del
+  indicador o se corrija un escalón. Reabrirla (Jefe MAST) las suelta con nota
+  en el chatter; validarla otra vez guarda las de ese momento. Corregir el
+  valor sin reabrir recalcula contra lo guardado (P3). Nadie las escribe por
+  RPC. El indicador avisa en su chatter cuántas validadas conservan sus metas.
+  Ficha: aviso `role="status"` y rango guardado.
+- **Competencia por examen o curso (N-13, `models/sgi_competence_grant.py`):**
+  el examen de certificación (`survey.survey.sgi_skill_id`,
+  `sgi_skill_level_id`) y el curso (con «Vigencia (meses)»,
+  `slide.channel.sgi_skill_validity_months`) otorgan la competencia. La línea
+  de currículum nativa (al crearse o reescribirse en la recertificación) la
+  convierte en `hr.employee.skill` con la vigencia de la certificación o del
+  curso. Un solo camino, `hr.employee._sgi_grant_skill`: crea, sube de nivel
+  (cierra el renglón viejo el día anterior, I-4) o renueva; nunca baja ni
+  acorta; solo empleados de la empresa del SGI (I-6). El examen aprobado de
+  quien no tiene usuario se resuelve por su contacto de trabajo (I-2). Lista
+  «Exámenes y competencias (Encuestas)» (Jefe MAST; la liga la escribe el
+  servidor con sudo, I-7; lectura de encuestas para el Jefe MAST).
+- **Eficacia de la capacitación (7.2 c):** modelo `sgi.training.effectiveness`.
+  Cada competencia nueva o subida de nivel abre su evaluación con aviso
+  (`eficacia_capacitacion:<id>`) al jefe inmediato (o responsable del
+  departamento, RH, Jefe MAST) a los 90 días. «Eficaz» o «No eficaz» (pide
+  comentario y agenda a RH «Reprogramar capacitación»,
+  `reprogramar_capacitacion:<id>`; la competencia no se quita). Ya evaluada,
+  solo el Jefe MAST cambia el resultado; quien evalúa sin ser RH ni MAST solo
+  escribe su comentario (I-11); no se borra; no se crea desde la interfaz.
+  Encuesta opcional al jefe por parámetro. Menú «Empleados → Competencias SGI
+  → Eficacia de la capacitación».
+- **Cliente automotriz (N-14):** «Exige PPAP ante cambios» y «Exige plan de
+  contingencia» en el contacto (por compañía, vacías; solo SGI o Calidad las
+  cambian), grupo «Cliente automotriz» en la ficha.
+- **Aviso de salida sin CoA:** al validar una salida a un cliente que exige CoA
+  sin adjuntarlo, nota en la salida y aviso «Salida sin CoA»
+  (`coa_sin_adjuntar:<id>`, día hábil siguiente) al Jefe de Calidad del puesto
+  de excepción o, si no hay, al Jefe MAST; se cierra solo al adjuntar. Cada
+  salida en su savepoint (C-3). Sin aviso cuando el Jefe de Calidad valida la
+  excepción con motivo (I-8).
+- **Sugerencia de IA en la NC** (`models/sgi_ai.py`, apagada): en la NC con
+  folio abierta, «Pedir sugerencia a la IA» (Usuario SGI) llena solo campos de
+  sugerencia (`sgi_ai_*`): cláusula (de las cargadas), clasificación, motivo,
+  borrador de 5 porqués e Ishikawa 6M. «Usar cláusula y clasificación
+  sugeridas» (con confirmación) y «Copiar el borrador de porqués» (solo los
+  vacíos) escriben con el usuario. Nunca escribe la causa raíz, la etapa ni la
+  eficacia. **Proveedor: Anthropic** con el SDK `anthropic` de
+  `requirements.txt`, sin streaming, `max_tokens` 16000, modelo configurable
+  (`quimibond_sgi.ai_model`, `claude-opus-5-5`), **respaldo del servidor ante
+  un rechazo activado** (`fallbacks: default`, encabezado
+  `server-side-fallback-2026-07-01`). **Qué sale:** título, desviación,
+  descripción, origen, proceso, producto, lote y la lista de cláusulas, con
+  correos, teléfonos (8+ dígitos; no fechas ni folios) y RFC tachados, y la
+  desviación y la causa raíz de hasta 3 NC cerradas del mismo proceso; nunca
+  cliente o proveedor, N° NCR, usuarios, responsables ni adjuntos. Rechazo,
+  corte por límite, JSON inválido o error del SDK: `warning` sin el texto de la
+  NC y aviso en «usted».
+- Parámetros sembrados: `training_effectiveness_days` (90),
+  `training_effectiveness_survey_id` (0), `ppap_sales_window_months` (12),
+  `ai_enabled` (False), `ai_backend` (`anthropic`), `ai_model`
+  (`claude-opus-5-5`), `ai_timeout` (60), `ai_include_history` (True). La
+  llave `quimibond_sgi.ai_api_key` no se siembra.
+
+### Cambiado
+
+- Dependencias: `hr_skills_survey`, `hr_skills_slides` (instalados en
+  producción).
+- El cron de cursos usa la misma regla (con vigencia y eficacia), sin renovar.
+- `cron_competences` avisa el vencimiento de toda competencia con vigencia, no
+  solo de certificaciones («Competencia…» o «Certificación…»; claves
+  conservadas), solo del renglón más reciente de cada competencia; «Formación
+  por concluir» ya no repite exámenes ni cursos que otorgan competencia (I-5).
+- Las salidas (`stock.picking`) con aviso del SGI entran a Mis pendientes y al
+  correo semanal (`NOTICE_MODELS`).
+- `quimibond_sgi_plm` 3.2.0: «Requiere PPAP» se marca solo por los clientes
+  del producto (compras confirmadas de 12 meses en la compañía del ECO o PPAP
+  previo; nunca se desmarca; los ECO aplicados no se tocan); un PPAP por
+  cliente al aplicar (`sgi_ppap_ids`; `sgi_ppap_id` queda como el primero); el
+  folio va en negritas con `Markup` (K-07); primeras pruebas propias. Los ECO
+  viejos con `sgi_ppap_id` no se copian a `sgi_ppap_ids` (0 PPAP en
+  producción).
+
+### Migración
+
+`migrations/19.0.57.100.0/post-migrate.py`: las mediciones ya validadas
+guardan las metas de hoy, con la fecha del despliegue (en producción, 5: ids
+19, 49, 68, 71 y 95 — EX-02 y EX-05 de agosto, TI-01 de junio a agosto). El
+color no cambia y el log lo comprueba («N medición(es)… ; 0 cambiaron de
+color»; `warning` con los ids si alguna cambiara). Idempotente. Sin
+pre-migrate. `seed_parameters` (en cada `-u`) crea solo las 8 claves que
+faltan.
+
+### Datos de producción
+
+Medido el 2026-10-05 (compañía 1): mediciones validadas 5; competencias de
+empleados 0 (1,113 requeridas por puesto); ningún tipo de competencia de
+certificación; 23 cursos (21 ligados a una competencia SGI, 0 terminados);
+1 encuesta de certificación sin respuestas; 125 ECO en 2026 (0 con «Requiere
+PPAP»); 0 PPAP; 12 clientes con «Requiere CoA en cada embarque» y 31 salidas
+validadas sin CoA desde julio (sin avisos retroactivos); 16 NC con folio (0
+con clasificación); 83 cláusulas. **Al actualizar:** 5 mediciones guardan sus
+metas (sin cambio de color), 8 parámetros nuevos, 2 columnas `jsonb` en
+`res_partner` (vacías), columnas nuevas vacías en medición, NC, curso,
+encuesta y ECO, tabla `sgi_training_effectiveness` vacía y la de relación
+ECO–PPAP; 0 avisos nuevos. Nada se borra; ningún ECO, cliente, salida, NC ni
+competencia existente cambia.
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó P1 a P20 por omisión (2026-10-05; `docs/audit/decisiones.md`):
+congelar metas (P1) y las 5 validadas (P2); corrección del Jefe MAST contra lo
+guardado (P3); dependencias nuevas (P4); vigencia de cursos 0 = no vence (P5);
+eficacia a 90 días con el jefe inmediato, sin encuesta, solo en nueva o subida
+(P6); «No eficaz» no quita la competencia (P7); ven las evaluaciones quien
+evalúa, RH y el Jefe MAST (P8); aviso de vencimiento para toda competencia con
+vigencia (P9); la carga inicial es de RH (P10); casillas automotrices vacías
+hasta la lista de Q12 (P11) y el plan de contingencia solo como casilla
+(P12); cliente del producto = 12 meses de compras o PPAP previo (P13); un
+PPAP por cliente (P14); aviso de salida sin CoA al Jefe de Calidad o al Jefe
+MAST, sin retroactivos y sin bloqueo (P15); IA apagada, Anthropic, solo NC
+(P16; la rama de la IA de Odoo queda para después); la pide el Usuario SGI
+(P17); la persona decide con el botón (P18); el build corre las dos etiquetas
+de prueba (P19); numeración 57.100.0 y plm 3.2.0 (P20).
+
+**Pruebas:** `test_integridad_metas` (10), `test_competencias_capacitacion`
+(14), `test_ppap_coa_cliente` (7), `test_ia_nc` (14) y, en
+`quimibond_sgi_plm`, `test_eco_ppap` (8). Ninguna sale a la red: las de IA
+sustituyen el método que llama al proveedor. El build de la rama corre con
+`--test-tags /quimibond_sgi,/quimibond_sgi_plm` (las etiquetas de la rama las
+cambia a mano Jose o el administrador de Odoo.sh).
+
+**Verificación pendiente en el build de Odoo.sh** (no se puede sin Odoo):
+
+1. `hr_skills_survey` / `hr_skills_slides` crean y reescriben la línea de
+   currículum con `create`/`write` del ORM (el gancho depende de eso; revisado
+   en el código de Odoo 19 community).
+2. `hr.employee.skill`: escribir `valid_to` y `skill_level_id` sobre un renglón
+   de tipo no certificación se guarda tal cual, y la restricción de traslape
+   no salta al cerrar el viejo y crear el nuevo.
+3. El evaluador sin grupo de RH lee su evaluación (nombre por
+   `employee_name`) y responde desde el aviso.
+4. SDK `anthropic` instalado en el build (`pip show anthropic`) y que
+   `messages.create` acepte `extra_headers`/`extra_body`; con una llave de
+   prueba autorizada, que la API acepte `fallbacks: "default"` con su
+   encabezado (si no, quitar el respaldo).
+5. `mrp.eco` en pruebas: campos requeridos (`type_id`, `type`, `stage_id`),
+   `company_id` y `state` escribible; `sale.order.line.order_partner_id`
+   buscable; `res.partner.sgi_requires_ppap` leído con `with_company`.
+6. `survey._create_answer` para la encuesta opcional al jefe (firma de Odoo 19
+   revisada; solo corre si se configura el parámetro).
+7. `update.log` sin `ERROR` y con «SGI 57.100.0 (K-04): 5 medición(es)…; 0
+   cambiaron de color».
 
 ## 19.0.57.99.0 — 2026-10-02
 
