@@ -1435,6 +1435,7 @@ class SgiProcessActivity(models.Model):
         if not self.odoo_menu_id and self.odoo_ref:
             self._sgi_resolve_menu()
         action = self.odoo_menu_id.action if self.odoo_menu_id else False
+        action = action.exists() if action else action
         if action and action._name == 'ir.actions.act_window':
             return action.read()[0]
         if self.measure_model_id:

@@ -14,14 +14,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_document.py`, `addons/quimibond_sgi/m
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `ack_date` | Datetime | Fecha de acuse | Fecha y hora en que la persona firmó de leído. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:1405` |
-| `document_id` | Many2one | Documento | Documento que se debe leer. | sí | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:1393` |
-| `employee_id` | Many2one | Empleado | Persona que debe leer el documento. | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_document.py:1396` |
-| `sgi_code` | Char | Clave |  |  |  | related `document_id.sgi_code`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:1395` |
+| `ack_date` | Datetime | Fecha de acuse | Fecha y hora en que la persona firmó de leído. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:1406` |
+| `document_id` | Many2one | Documento | Documento que se debe leer. | sí | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:1394` |
+| `employee_id` | Many2one | Empleado | Persona que debe leer el documento. | sí | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_document.py:1397` |
+| `sgi_code` | Char | Clave |  |  |  | related `document_id.sgi_code`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:1396` |
 | `sign_request_id` | Many2one | Solicitud de firma |  |  | `sign.request` |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:125` |
 | `sign_state` | Selection | Firma electrónica |  |  |  | related `sign_request_id.state`, guardado |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:130` |
-| `state` | Selection | Estado | Pendiente hasta que la persona firma «Leído y entendido». Los pendientes aparecen en Mis pendientes. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:1399` |
-| `user_id` | Many2one | Usuario |  |  | `res.users` | related `employee_id.user_id`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:1398` |
+| `state` | Selection | Estado | Pendiente hasta que la persona firma «Leído y entendido». Los pendientes aparecen en Mis pendientes. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:1400` |
+| `user_id` | Many2one | Usuario |  |  | `res.users` | related `employee_id.user_id`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:1399` |
 
 ## Métodos públicos (4)
 
