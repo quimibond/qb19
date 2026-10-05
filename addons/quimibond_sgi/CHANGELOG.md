@@ -13,6 +13,23 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.102.0 — 2026-10-05
+
+**NC de auditoría: a quién le sale.** Sin campos nuevos, sin ACL, sin menús
+y sin migración; las NC que ya existen no cambian.
+
+### Corregido
+
+- **Filtro «Míos» de No conformidades:** también incluye las NC donde usted
+  es el responsable de la alerta (`user_id`), no solo los «Responsables a
+  contestar». Las NC de **Generar NC** no le salían a nadie.
+- **Generar NC (hallazgo de auditoría):** propone como responsable a
+  contestar (y responsable de la alerta) al usuario activo del dueño del
+  proceso del hallazgo; quien pulsa el botón queda como solicitante. Sin
+  dueño con usuario activo, se comporta como antes.
+- **Tablero de NC (kanban):** cada columna ordena por fecha de creación
+  descendente; la recién creada queda arriba.
+
 ## 19.0.57.101.0 — 2026-10-05
 
 **Reportes y diagramas** (primera entrega después del plan de la auditoría
