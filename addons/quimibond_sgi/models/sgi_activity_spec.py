@@ -242,7 +242,8 @@ class SgiActivitySpec(models.Model):
     @api.depends('odoo_menu_id')
     def _compute_odoo_action_id(self):
         for act in self:
-            action = act.odoo_menu_id.action
+            action = act.odoo_menu_id.sudo().action
+            action = action.exists() if action else action
             act.odoo_action_id = action if action and action._name == 'ir.actions.act_window' \
                 else False
 
@@ -477,7 +478,10 @@ class SgiActivitySpec(models.Model):
         action = self.sudo().odoo_action_id
         if action and action.res_model:
             return (menu.complete_name or action.name or ''), action.res_model
+        # 57.109.1: un menú puede apuntar a una acción borrada (producción,
+        # ir.actions.server 2882); Odoo no limpia esa referencia.
         menu_action = menu.action
+        menu_action = menu_action.exists() if menu_action else menu_action
         if menu_action and menu_action._name == 'ir.actions.server' and menu_action.model_id:
             return (menu.complete_name or menu_action.name or ''), menu_action.model_id.model
         return (menu.complete_name or ''), None

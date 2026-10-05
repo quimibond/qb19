@@ -448,6 +448,7 @@ class DocumentsDocument(models.Model):
         self.ensure_one()
         menu = self.sgi_odoo_menu_id
         action = menu.sudo().action if menu else False
+        action = action.exists() if action else action
         if action:
             if menu.id not in self.env['ir.ui.menu']._visible_menu_ids():
                 raise UserError(

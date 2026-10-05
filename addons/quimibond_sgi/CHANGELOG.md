@@ -13,6 +13,31 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.109.1 — 2026-10-05
+
+**Corrección urgente: el `odoo-update` de producción de 57.101.0 a
+57.109.0 falló** en el post-migrate de 57.104.0 (P-c, entregable de C2-06).
+Al guardar el entregable se recalculan los faltantes de sus actividades, y
+una de ellas tiene la pantalla «Inventario/Operaciones/Traslados/Entregas»
+(menú 1471), cuyo menú apunta a una acción de servidor que ya no existe
+(`ir.actions.server` 2882). Leer esa acción lanzaba `MissingError` y
+deshacía toda la actualización; la base quedó en 57.101.0, sin cambios.
+
+### Corregido
+
+- Toda lectura de la acción de un menú pasa por `exists()`. Una acción
+  borrada se trata como un menú sin acción: la pantalla no se compara con la
+  medición y no se abre. Aplica a `_sgi_screen_model` y al cálculo de
+  `odoo_action_id` de la actividad, a «Abrir en Odoo» del documento y del
+  Dropbox, y a la pantalla de la actividad.
+- Prueba `test_medicion_por_revisar.test_04_menu_con_accion_borrada`.
+
+### Datos de producción
+
+- El menú 1471 sigue apuntando a la acción borrada; Odoo no limpia esa
+  referencia. El módulo ya no se cae por eso. Reparar el menú es decisión
+  aparte, y no se toca desde el módulo.
+
 ## 19.0.57.109.0 — 2026-10-05
 
 **Asistentes en lenguaje normal: aprobaciones, indicadores, medición y
