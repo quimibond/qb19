@@ -395,6 +395,7 @@
                     <div class="alert alert-warning mb-0" role="alert"
                          invisible="source_type != 'manual'">
                         <i class="fa fa-pencil" title="Captura manual"/> <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                        <div>Para un 0, escriba en la nota por qué es cero (sin nota, un 0 no se captura).</div>
                     </div>
                     <div class="alert alert-secondary mb-0" role="alert"
                          invisible="state != 'sin_dato'">

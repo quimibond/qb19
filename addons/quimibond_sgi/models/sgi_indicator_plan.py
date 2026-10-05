@@ -319,14 +319,19 @@ class SgiManagementReviewValidate(models.Model):
         captured = Measure.search([
             ('state', '=', 'capturado'), ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to)])
-        captured.action_validate()
+        # 57.102.0 (B5): las manuales sin valor capturado no se validan (el
+        # write las rechazaría y el botón reventaba por una sola); se listan.
+        empty = captured._sgi_without_value()
+        (captured - empty).action_validate()
         reds = Measure.search([
             ('semaphore', '=', 'rojo'), ('state', '=', 'validado'),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to),
         ]).filtered(lambda m: m.plan_required and not m.plan_done)
         self.message_post(body=Markup(
-            "Revisión: %d mediciones validadas; %d rojas sin causa ni acción.") % (
-            len(captured), len(reds)))
+            "Revisión: %d mediciones validadas; %d manuales sin valor capturado (no se "
+            "validaron: %s); %d rojas sin causa ni acción.") % (
+            len(captured - empty), len(empty),
+            ", ".join(empty.mapped('display_name')) or "—", len(reds)))
         return {
             'type': 'ir.actions.act_window', 'name': "Rojos sin plan de acción",
             'res_model': 'sgi.indicator.measure', 'view_mode': 'list,form',

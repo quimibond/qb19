@@ -464,6 +464,36 @@ class SgiIndicatorMeasureDetail(models.Model):
                     measure.period_date, indicator.calc_mode, label))
         return True
 
+    # ---- B5 (57.102.0): una manual sin valor no se captura ni se valida ----
+    def _sgi_without_value(self):
+        """Mediciones de indicador manual sin valor capturado: valor 0, sin
+        numerador, sin denominador y sin nota. Un ``Float`` no distingue «nadie
+        escribió» de «escribieron 0»; para un 0 de verdad, el responsable lo
+        explica en la nota."""
+        return self.filtered(
+            lambda m: m.indicator_id.calc_mode == 'manual' and not m.value
+            and not m.numerator and not m.denominator and not (m.note or '').strip())
+
+    def _sgi_check_has_value(self):
+        missing = self._sgi_without_value()
+        if missing:
+            raise UserError(
+                "Capture el valor de %s antes de marcarla capturada o validarla. "
+                "Si el valor de verdad es 0, escriba en la nota por qué (p. ej. «0: sin "
+                "caídas en el mes»)." % ", ".join(missing.mapped('display_name')))
+
+    def write(self, vals):
+        # B5: solo cuando una persona (no el sistema) la PASA a capturada o
+        # validada. Se revisa después de escribir, con los valores nuevos
+        # aplicados; el UserError revierte todo.
+        moving = self.browse()
+        if vals.get('state') in ('capturado', 'validado') and not self.env.su:
+            moving = self.filtered(lambda m: m.state != vals['state'])
+        res = super().write(vals)
+        if moving:
+            moving._sgi_check_has_value()
+        return res
+
     def action_validate(self):
         """Una medición sin dato no se valida: no hay nada que confirmar y
         validarla la convertiría en un cero rojo."""
