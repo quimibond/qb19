@@ -55,6 +55,8 @@
         <field name="report_name">quimibond_sgi.report_audit_report_document</field>
         <field name="report_file">quimibond_sgi.report_audit_report_document</field>
         <field name="print_report_name">'Informe de auditoría - %s' % (object.folio or object.name)</field>
+        <!-- 57.101.0: sin copia por «attachment»: sgi.audit._sgi_archive_report
+             ya archiva el informe al cerrar (AU-3) en Documentos y en el chatter. -->
         <field name="binding_model_id" ref="model_sgi_audit"/>
         <field name="binding_type">report</field>
     </record>

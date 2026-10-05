@@ -9,6 +9,11 @@
         <field name="print_report_name">'Acta de revisión por la dirección - %s' % (object.folio or object.name)</field>
         <field name="binding_model_id" ref="model_sgi_management_review"/>
         <field name="binding_type">report</field>
+        <!-- 57.101.0 (B3): copia guardada del acta CERRADA (en «Realizada» los
+             acuerdos siguen cambiando). Mismo nombre que la descarga. Reabrir
+             la renombra (sgi.management.review._sgi_retire_stored_minutes). -->
+        <field name="attachment">(object.state == 'cerrada') and object.sgi_minutes_filename()</field>
+        <field name="attachment_use" eval="True"/>
     </record>
 
     <template id="report_mgmt_review_document">
