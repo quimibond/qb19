@@ -204,7 +204,9 @@ class TestPieFormato(_Case):
         self.assertNotIn(news, self.Map._sgi_unmapped_reports())
         self.env.ref('quimibond_sgi.format_ref_news').active = False
         self.assertIn(news, self.Map._sgi_unmapped_reports())
-        lines = self.env['sgi.diagnostic']._sgi_unmapped_report_lines()
+        # 57.101.0: los reportes sin clave del SGI van en otra línea (informativa).
+        lines = [line for line in self.env['sgi.diagnostic']._sgi_unmapped_report_lines()
+                 if line['level'] == 'warn']
         self.assertEqual(len(lines), 1)
         self.assertEqual(lines[0]['level'], 'warn')
         self.assertIn('sin formato controlado', lines[0]['text'])

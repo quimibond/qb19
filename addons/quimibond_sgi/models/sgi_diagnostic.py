@@ -145,14 +145,29 @@ class SgiDiagnostic(models.TransientModel):
     @api.model
     def _sgi_unmapped_report_lines(self):
         """57.98.0 (I-01): reportes del SGI que imprimen sin formato
-        controlado (sección Documental). En el papel no se avisa nada."""
+        controlado (sección Documental). En el papel no se avisa nada.
+
+        57.101.0: los que aún no tienen clave del SGI (su referencia no
+        existe en el código; hoy imprimen solo con la página, como se decidió)
+        van en una línea aparte, informativa: no se arreglan en «Formatos en
+        documentos de Odoo»."""
+        from .sgi_format_map import SGI_NO_KEY_SUFFIX
         unmapped = self.env['sgi.format.map']._sgi_unmapped_reports()
-        if not unmapped:
-            return []
-        return [self._sgi_line(
-            'warn', "%d reporte(s) del SGI imprimen sin formato controlado: %s."
-            % (len(unmapped), ", ".join(unmapped)),
-            sgi_menu_path('formatos_odoo'))]
+        no_key = [name for name in unmapped if name.endswith(SGI_NO_KEY_SUFFIX)]
+        missing = [name for name in unmapped if name not in no_key]
+        lines = []
+        if missing:
+            lines.append(self._sgi_line(
+                'warn', "%d reporte(s) del SGI imprimen sin formato controlado: %s."
+                % (len(missing), ", ".join(missing)),
+                sgi_menu_path('formatos_odoo')))
+        if no_key:
+            lines.append(self._sgi_line(
+                'ok', "%d reporte(s) del SGI imprimen el pie solo con la página porque su formato "
+                "aún no tiene clave del SGI: %s." % (
+                    len(no_key), ", ".join(name[:-len(SGI_NO_KEY_SUFFIX)] for name in no_key)),
+                "La clave se da de alta en el código del SGI cuando se decida el formato."))
+        return lines
 
     @api.model
     def _sgi_build_report(self):
