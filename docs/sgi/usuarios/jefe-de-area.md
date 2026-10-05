@@ -84,6 +84,14 @@ quítelo si quiere ver también los pendientes y los «sin dato». **Ficha en
 PDF** imprime la hoja del indicador con su gráfica, sus metas y la causa y
 acciones de los rojos.
 
+**«Sin dato» y el 0 (desde 57.102.0).** Si ninguna medición de un
+indicador tiene dato, su «Último valor» dice **Sin dato** (no 0). Para
+capturar un 0 real en un indicador de captura manual, escriba en la nota por
+qué es cero («0: sin caídas en el mes»): una medición manual en 0 sin nota,
+sin numerador ni denominador no se marca capturada ni se valida. Si corrige
+a mano el valor de un indicador automático, la medición queda «Valor
+corregido a mano» y el recálculo diario ya no la toca.
+
 ### 2.4 Aprobar propuestas de cambio de su proceso
 
 Las propuestas que hace su gente con **Proponer cambio** llegan a la app
