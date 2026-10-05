@@ -24,7 +24,10 @@
                 <field name="status" widget="badge" optional="show"
                        decoration-success="status == 'oficial'"
                        decoration-muted="status == 'prueba'"/>
-                <field name="last_value"/>
+                <!-- 57.102.0 (B1): «Sin dato» si ninguna medición tiene dato;
+                     el número queda para ordenar. -->
+                <field name="sgi_last_value_label" string="Último valor"/>
+                <field name="last_value" string="Último valor (número)" optional="hide"/>
                 <field name="last_semaphore" widget="badge"
                        decoration-success="last_semaphore == 'verde'"
                        decoration-warning="last_semaphore == 'amarillo'"
@@ -212,7 +215,8 @@
                                       decoration-danger="semaphore == 'rojo'"
                                       decoration-muted="state == 'sin_dato'">
                                     <field name="period_date"/>
-                                    <field name="value"/>
+                                    <!-- 57.102.0 (B1): el 0 guardado de una sin dato no se muestra. -->
+                                    <field name="value" invisible="state == 'sin_dato'"/>
                                     <field name="numerator" optional="show"/>
                                     <field name="denominator" optional="show"/>
                                     <field name="sample_size" optional="show"/>
@@ -309,7 +313,8 @@
                 <field name="period_date"/>
                 <field name="indicator_id"/>
                 <field name="indicator_status" optional="hide"/>
-                <field name="value"/>
+                <!-- 57.102.0 (B1): pendiente y sin dato no tienen valor que mostrar. -->
+                <field name="value" invisible="state in ('pendiente', 'sin_dato')"/>
                 <field name="window_label" optional="show"/>
                 <field name="numerator" optional="hide"/>
                 <field name="denominator" optional="hide"/>
@@ -411,7 +416,7 @@
                     <group>
                         <group>
                             <field name="period_date"/>
-                            <field name="value"/>
+                            <field name="value" invisible="state == 'sin_dato'"/>
                             <field name="window_label"/>
                             <field name="uom"/>
                             <field name="numerator"/>
@@ -450,7 +455,7 @@
                                   decoration-warning="semaphore == 'amarillo'"
                                   decoration-muted="state == 'sin_dato'">
                                 <field name="label"/>
-                                <field name="value"/>
+                                <field name="value" invisible="state == 'sin_dato'"/>
                                 <field name="uom"/>
                                 <field name="numerator" optional="show"/>
                                 <field name="denominator" optional="show"/>

@@ -436,7 +436,8 @@ class SgiDiagram(models.AbstractModel):
         status_labels = dict(Indicator._fields['status'].selection) if 'status' in Indicator._fields else {}
         items = []
         for ind in indicators:
-            value = ("%s %s" % (('%g' % ind.last_value) if ind.last_value else '—', ind.uom or '')).strip()
+            # 57.102.0 (B1): «Sin dato» si nada tiene dato; un 0 real se muestra.
+            value = ind.sgi_last_value_label
             status = status_labels.get(getattr(ind, 'status', None), '')
             items.append({
                 'key': _key(ind), 'model': 'sgi.indicator', 'res_id': ind.id,

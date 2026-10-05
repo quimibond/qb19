@@ -232,6 +232,12 @@ class SgiIndicator(models.Model):
         ('rojo', "Rojo"),
     ], string="Último semáforo", compute='_compute_last_measure', store=True,
         help="Semáforo de la última medición. Se calcula solo.")
+    # 57.102.0 (B1): lo que se muestra. ``last_value`` guarda 0 cuando ninguna
+    # medición tiene dato; en pantalla eso es «Sin dato», no un cero.
+    sgi_last_value_label = fields.Char(
+        string="Último valor (texto)", compute='_compute_sgi_last_value_label',
+        help="Valor de la última medición con dato, con su unidad. «Sin dato» si "
+             "ninguna medición tiene dato todavía (un 0 real sí se muestra).")
 
     _code_uniq = models.Constraint(
         'unique(code)',
@@ -250,6 +256,22 @@ class SgiIndicator(models.Model):
             indicator.last_measure_id = last.id
             indicator.last_value = last.value if last else 0.0
             indicator.last_semaphore = last.semaphore if last else False
+
+    @api.depends('last_measure_id', 'last_value', 'uom')
+    def _compute_sgi_last_value_label(self):
+        for indicator in self:
+            indicator.sgi_last_value_label = indicator._sgi_value_text(
+                indicator.last_value if indicator.last_measure_id else None)
+
+    def _sgi_value_text(self, value):
+        """«95.2 %», «0 accidentes», o «Sin dato» si ``value`` es None."""
+        self.ensure_one()
+        if value is None:
+            return "Sin dato"
+        text = ('%.2f' % (value or 0.0)).rstrip('0').rstrip('.')
+        if text in ('', '-0'):
+            text = '0'
+        return ("%s %s" % (text, self.uom or '')).strip()
 
     @api.depends('code', 'name')
     def _compute_display_name(self):
