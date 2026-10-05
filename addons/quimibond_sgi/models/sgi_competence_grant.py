@@ -131,7 +131,7 @@ class HrEmployeeGrant(models.Model):
                 # Nunca acorta: si la vigente dura más, la nueva hereda su fecha.
                 if date_to and current.valid_to and current.valid_to > date_to:
                     new_vals['valid_to'] = current.valid_to
-                if current.valid_from < date_from:
+                if current.valid_from and current.valid_from < date_from:
                     # I-4: el renglón viejo se cierra el día anterior (historia).
                     current.write({'valid_to': date_from - timedelta(days=1)})
                     Skill.create(new_vals)
