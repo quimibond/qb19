@@ -71,6 +71,10 @@ DELTA_OPS = [('<=', "≤"), ('<', "<"), ('>=', "≥"), ('>', ">"), ('=', "=")]
 _TRACKED = ('model_id', 'domain', 'date_field', 'aggregation', 'field_name', 'field_name_2',
             'delta_unit', 'delta_op', 'delta_value', 'factor', 'window')
 # '{cierre}', '{cierre-30d}', '{cierre-2dh}', '{cierre+48h}', '{inicio}', '{hoy}', '{bloqueo}'
+# 57.102.0 (B6): «más bajo es mejor» en 0 con la fuente vacía no es un verde.
+EMPTY_SOURCE_NOTE = ("Registro vacío: %s no tiene ningún registro con el que medir "
+                     "(un 0 aquí no se distingue de «no se registra»). En cuanto se "
+                     "capture el primero, el indicador mide solo.")
 _PLACEHOLDER = re.compile(r"\{(cierre|inicio|hoy|bloqueo)(?:([+-]\d+)(dh|d|h))?\}")
 
 
@@ -237,6 +241,25 @@ class SgiIndicatorTerm(models.Model):
         elif Model._name == 'account.move':
             domain += self.env['sgi.indicator']._sgi_closing_move_domain()
         return Model.search(domain)
+
+    def _sgi_source_empty(self):
+        """B6 (57.102.0): la fuente del término nunca ha tenido con qué medir.
+        «Contar» y «Contar donde B − A»: el modelo no tiene ningún registro (en
+        la compañía de los KPI si el modelo tiene compañía). «Sumar» y «Sumar
+        el valor absoluto»: ningún registro del filtro del término (sin
+        ventana de fechas) tiene el campo sumado distinto de 0. «Promedio de
+        B − A» ya da sin dato sin registros."""
+        self.ensure_one()
+        Model = self.env[self.model_id.model].sudo().with_context(active_test=False)
+        company_field = Model._fields.get('company_id')
+        company = ([('company_id', '=', self.indicator_id._sgi_kpi_company().id)]
+                   if company_field and company_field.store else [])
+        if self.aggregation in ('sum', 'sum_abs'):
+            domain = self._sgi_domain() + company
+            return not Model.search_count(domain + [(self.field_name, '!=', 0)], limit=1)
+        if self.aggregation in ('count', 'count_delta'):
+            return not Model.search_count(company, limit=1)
+        return False
 
     def _sgi_delta(self, record):
         """B − A del registro en la unidad del término; None si falta una fecha.
@@ -464,6 +487,15 @@ class SgiIndicatorFormula(models.Model):
             numerator += value
             if term.model_id.model == model:
                 ids += term._sgi_matching(records).ids
+        # B6 (57.102.0): un 0 «más bajo es mejor» con un término del numerador
+        # sin ningún registro en su fuente no es verde: es «sin dato» (también
+        # en solo conteo, SST-01). Un 0 con registros en la fuente es real.
+        if not numerator and self.direction == 'lower_better':
+            empty = nums.filtered(lambda t: t._sgi_source_empty())
+            if empty:
+                names = ", ".join(sorted({t.model_id.name or t.model_id.model for t in empty}))
+                return {'value': None, 'numerator': 0.0, 'denominator': None, 'model': model,
+                        'ids': [], 'note': EMPTY_SOURCE_NOTE % names}
         pct = '%' in (self.uom or '')
         if not dens:
             # Solo conteo: el valor es el numerador; sin registros, 0.
