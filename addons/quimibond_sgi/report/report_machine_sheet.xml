@@ -15,7 +15,8 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="quimibond_sgi.sgi_report_layout">
-                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja.
+                         57.101.0: sin el pie escrito a mano al final (salía doble). -->
                     <t t-set="sgi_rec" t-value="doc"/>
                     <t t-set="sgi_fmt_ref" t-value="'format_ref_machine_sheet'"/>
                     <div class="page">
@@ -63,9 +64,6 @@
                                 <td class="text-center" style="border-top:1px solid #000;">Jefe de ingeniería de procesos<br/><span t-out="doc.engineering_by_id.name or ''"/></td>
                             </tr>
                         </table>
-                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
-                            Formato controlado del SGI: <span class="fw-bold" t-out="doc.sgi_format_info()"/> · PNTQ
-                        </div>
                     </div>
                 </t>
             </t>
