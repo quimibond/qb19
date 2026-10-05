@@ -204,14 +204,14 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
 - **NC en rojo** (`nc_on_red`): un rojo levanta NC; úselo en los críticos.
 - **Recalcular mediciones** (en la lista de indicadores, Administrador SGI)
   vuelve a medir lo pendiente; con indicadores seleccionados (desde
-  57.102.0) re-mide todo lo no validado de ellos, sin dato y capturadas,
+  57.104.0) re-mide todo lo no validado de ellos, sin dato y capturadas,
   salvo lo corregido a mano, con NC o con causa o acciones. Úselo después de
   corregir una fórmula.
-- **Recálculo diario (57.102.0):** el cron re-mide además las «sin dato» y
+- **Recálculo diario (57.104.0):** el cron re-mide además las «sin dato» y
   las capturadas no validadas de los últimos 2 meses
   (`quimibond_sgi.indicator_recompute_months`). Nunca toca validadas, foto,
   salud, con NC, con causa o acciones, ni las «Valor corregido a mano».
-- **«Sin dato» y el 0 (57.102.0):** sin ninguna medición con dato, el
+- **«Sin dato» y el 0 (57.104.0):** sin ninguna medición con dato, el
   indicador dice «Sin dato». Una medición manual en 0 sin nota, numerador ni
   denominador no se captura ni se valida. Cambiar «Medir desde» pasa a «Sin
   dato» las mediciones no validadas anteriores (el valor anterior queda en
@@ -417,7 +417,7 @@ pendientes) y los plazos de Mis pendientes
 `quimibond_sgi.health_mail_user_ids` (destinatarios del correo de los lunes
 además de Dirección); ids de usuario separados por coma, vacíos de fábrica.
 
-Desde 57.102.0: `quimibond_sgi.indicator_recompute_months` (2, no se
+Desde 57.104.0: `quimibond_sgi.indicator_recompute_months` (2, no se
 siembra): cuántos meses hacia atrás re-mide el cron diario las «sin dato» y
 las capturadas no validadas.
 

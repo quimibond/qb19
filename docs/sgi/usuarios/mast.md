@@ -91,7 +91,7 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
    use «Regresar a pendiente» y vuelva a validarla. Si corrige el valor de
    una validada sin reabrirla, el color sale de las metas guardadas.
 
-6. **Sin dato y recálculo (desde 57.102.0):** el menú **Mediciones** y el
+6. **Sin dato y recálculo (desde 57.104.0):** el menú **Mediciones** y el
    botón «Mediciones» abren con el filtro «Con dato»; quítelo para ver las
    pendientes y las sin dato. El cron diario re-mide también las «sin dato»
    y las capturadas no validadas de los últimos 2 meses (el antes y el

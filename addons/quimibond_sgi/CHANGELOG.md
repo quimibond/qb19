@@ -13,12 +13,12 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
-## 19.0.57.102.0 — 2026-10-05
+## 19.0.57.104.0 — 2026-10-05
 
 **Indicadores: sin dato y cálculos** (diagnóstico de producción del
 2026-10-05: 35 de 106 indicadores activos con «Último valor 0»; segunda
 entrega después del mapa de la auditoría). Plan:
-`docs/superpowers/plans/2026-10-05-sgi-57-102-0-indicadores.md`. Un campo
+`docs/superpowers/plans/2026-10-05-sgi-57-104-0-indicadores.md`. Un campo
 guardado nuevo (`sgi.indicator.measure.sgi_value_by_hand`, nace en False sin
 respaldo) y uno calculado sin guardar (`sgi.indicator.sgi_last_value_label`);
 sin modelos, menús, ACL ni herencias de vista. Nada se borra; ninguna
@@ -32,7 +32,7 @@ medición validada cambia.
   (sudo) y las rutas de cálculo (contexto `sgi_calc_write`) no marcan.
 - Parámetro `quimibond_sgi.indicator_recompute_months` (2, no se siembra):
   meses hacia atrás del recálculo diario.
-- `_sgi_formula_fixes_57102` y `_sgi_deliverable_fix_57102`: correcciones de
+- `_sgi_formula_fixes_57104` y `_sgi_deliverable_fix_57104`: correcciones de
   TR-01, C5-02 y C2-06 con candado (solo si siguen exactamente como el
   2026-10-05; si no, «distinto» en el log y no se tocan).
 
@@ -109,7 +109,7 @@ medición validada cambia.
 
 ### Migración
 
-- `migrations/19.0.57.102.0/post-migrate.py`, idempotente, con conteos en el
+- `migrations/19.0.57.104.0/post-migrate.py`, idempotente, con conteos en el
   log: P-a indicadores con «Medir desde» → mediciones no validadas
   anteriores a «Sin dato» con nota (esperado: 9, todas de S6-02); P-b
   términos de TR-01 (51) y C5-02 (42) con candado, más su fórmula y fuente
@@ -147,7 +147,7 @@ no recalcula. (Q7) Registro vacío solo en configurables «más bajo es mejor».
 se corrigen con candado. (Q10) C2-06 mide el sello de embarque. (Q11) RH-02
 con la empresa del SGI. (Q12) Un 0 manual pide nota, numerador o
 denominador. (Q13) La corrección a mano se respeta. (Q14) Sale como
-57.102.0.
+57.104.0.
 
 ### Solo se verifica en el build de Odoo.sh
 
@@ -164,6 +164,80 @@ denominador. (Q13) La corrección a mano se respeta. (Q14) Sale como
   minutos).
 - Mis indicadores en el celular dice «Sin dato»; P-40 con una manual
   pendiente en 0 la salta.
+
+## 19.0.57.103.0 — 2026-10-05
+
+**Registro de cumplimiento por actividad y periodo** (pedido de Jose del
+2026-10-05). Modelo nuevo `sgi.activity.execution` (y el asistente
+`sgi.activity.execution.mark`), dos menús en Administración SGI →
+Diagnóstico y migración `post-migrate` que arma el periodo en curso.
+
+### Agregado
+
+- **Registro de cumplimiento** (`sgi.activity.execution`): un renglón por
+  actividad, responsable y periodo de su cadencia, con el vencimiento de la
+  actividad (el capturado; sin él, el último día hábil del periodo). Lo crea
+  el respaldo nocturno (`cron_nightly_backup`, el que guarda el resumen de
+  Mis pendientes) para el periodo en curso; quita los «Pendiente» sin tocar
+  de quien ya no la ejecuta. Responsables: los de «Mis actividades» de Mi
+  procedimiento con rol «Ejecuta». Las «por evento» no llevan renglones.
+- **Estados:** Pendiente → En proceso (nota de avance obligatoria y fecha
+  estimada opcional; no quita el atraso) → Hecha, o «No aplica este
+  periodo» con motivo. Marca la persona, cualquiera de sus jefes o el Jefe
+  MAST; solo el Jefe MAST reabre.
+- **Evidencia:** las de registro manual (también correo y muestreo) piden
+  una nota o un archivo para «Hecha». Las que se miden solas (Registro en
+  Odoo, Por su entregable, Por consecuencia) se marcan hechas solas cuando
+  aparece su registro de evidencia dentro del periodo (mismo modelo,
+  filtro, fecha y empresa que la medición); cerrarlas a mano también pide
+  evidencia.
+- **Mis pendientes:** las actividades con registro salen por periodo
+  abierto (atrasadas, por vencer o al día, con su avance), con los botones
+  **En proceso** y **Hecho** junto a «Ir»; columna y filtro «En proceso».
+  Para las de registro manual, «Ir» abre su registro (criterio de
+  terminado, pasos, instructivo y dónde adjuntar) y el menú de Odoo queda
+  como «Abrir pantalla relacionada», solo si está capturado. Mi equipo ve
+  los mismos renglones.
+- **Diagnóstico → Registro de cumplimiento** (lista y pivote) y
+  **Diagnóstico → Pantallas que no van con su medición**: faltante nuevo
+  `menu_model_mismatch` (advertencia) cuando la actividad se mide sola con
+  un modelo y su pantalla abre otro.
+
+### Cambiado
+
+- **Medición de las de registro manual** con cadencia: sale del registro.
+  Verde si los renglones del periodo en curso están hechos o no aplican;
+  vencido el periodo sin eso, rojo; antes de vencer, manda el periodo
+  anterior; sin renglones, «pendiente» como antes. Se recalcula al marcar.
+  Las 63 «por evento» siguen «pendiente».
+
+### Migración
+
+- `post-migrate`: recalcula los faltantes de las actividades con modelo y
+  pantalla, arma el periodo en curso, cierra los que ya tienen registro y
+  mide las de registro manual. Esperado (MCP, 2026-10-05): 80 manuales y 40
+  que se miden solas con cadencia periódica.
+
+## 19.0.57.102.0 — 2026-10-05
+
+**NC de auditoría: a quién le sale.** Sin campos nuevos, sin ACL, sin menús
+y sin migración; las NC que ya existen no cambian.
+
+### Corregido
+
+- **Filtro «Míos» de No conformidades:** también incluye las NC donde usted
+  es el responsable de la alerta (`user_id`), no solo los «Responsables a
+  contestar». Las NC de **Generar NC** no le salían a nadie.
+- **Generar NC (hallazgo de auditoría):** propone como responsable a
+  contestar (y responsable de la alerta) al usuario activo del dueño del
+  proceso del hallazgo; quien pulsa el botón queda como solicitante. Sin
+  dueño con usuario activo, se comporta como antes.
+- **Generar NC (hallazgo del recorrido de la Comisión de Seguridad e
+  Higiene):** el «Responsable» del hallazgo, que ya quedaba como responsable
+  de la alerta, ahora también queda como responsable a contestar (lo ve en
+  Mis pendientes); quien pulsa queda como solicitante.
+- **Tablero de NC (kanban):** cada columna ordena por fecha de creación
+  descendente; la recién creada queda arriba.
 
 ## 19.0.57.101.0 — 2026-10-05
 

@@ -15,7 +15,7 @@ from .sgi_health_const import HEALTH_MODES
 
 _logger = logging.getLogger(__name__)
 
-# 57.102.0 (B3): meses hacia atrás que el cron diario vuelve a medir las «sin
+# 57.104.0 (B3): meses hacia atrás que el cron diario vuelve a medir las «sin
 # dato» y las capturadas no validadas (desde el día 1 del mes de hace N meses).
 # No se siembra: se lee con este valor por omisión.
 RECOMPUTE_MONTHS_PARAM = 'quimibond_sgi.indicator_recompute_months'
@@ -671,7 +671,7 @@ class SgiConfig(models.AbstractModel):
 
     @api.model
     def _sgi_recompute_domain(self, recent=True):
-        """57.102.0 (B3): mediciones «sin dato» y capturadas que el recálculo
+        """57.104.0 (B3): mediciones «sin dato» y capturadas que el recálculo
         vuelve a medir. Nunca: validadas, manuales, de salud (57.99.0), de foto
         (57.90.0), con NC ni corregidas a mano. Con ``recent='all'`` sin
         ventana; si no, desde el día 1 del mes de hace N meses."""
@@ -726,7 +726,7 @@ class SgiConfig(models.AbstractModel):
         un indicador con error se registra en el log y no detiene a los
         demás. ``indicators`` acota a esos indicadores.
 
-        57.102.0 (B3): con ``recent=True`` (el cron diario programado) también
+        57.104.0 (B3): con ``recent=True`` (el cron diario programado) también
         re-mide las «sin dato» y las capturadas (no validadas) de los últimos
         N meses (``quimibond_sgi.indicator_recompute_months``, 2 por omisión:
         desde el día 1 del mes de hace N meses). Con ``recent='all'`` (el botón
@@ -810,7 +810,7 @@ class SgiConfig(models.AbstractModel):
                         # Un solo rastro: el mensaje con el antes y el después.
                         measure.with_context(sgi_calc_write=True, tracking_disable=True).write(vals)
                         measure.message_post(
-                            body="Recalculada por el SGI (57.102.0): antes %s, ahora %s." % (
+                            body="Recalculada por el SGI (57.104.0): antes %s, ahora %s." % (
                                 before, after))
                         result['recalculadas'] += 1
                     if measure.period_date >= latest.get(indicator.id, (measure.period_date, None))[0]:

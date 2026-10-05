@@ -109,7 +109,7 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
   riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
 
-## Indicadores: sin dato y cálculos (57.102.0)
+## Indicadores: sin dato y cálculos (57.104.0)
 
 - **«Sin dato» no es 0.** Un indicador sin ninguna medición con dato dice
   «Sin dato» en la lista de indicadores, el Tablero, la pestaña Indicadores
@@ -125,7 +125,7 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   («0: sin caídas en el mes»). Solo aplica a personas (el sistema no se
   revisa); «Validar mediciones» de la revisión (P-40) las salta y las lista.
 - **Recálculo diario.** El cron de indicadores re-mide las pendientes y,
-  desde 57.102.0, las «sin dato» y las capturadas no validadas de los
+  desde 57.104.0, las «sin dato» y las capturadas no validadas de los
   últimos `quimibond_sgi.indicator_recompute_months` meses (2 por omisión,
   desde el día 1 del mes de hace 2 meses). Nunca toca validadas, indicadores
   de foto ni de salud, mediciones con NC, con causa o acciones, ni las

@@ -652,6 +652,14 @@ class SgiAuditFinding(models.Model):
             'sgi_deviation': self.description or '',
             'sgi_external_ref': audit.external_report_ref or False,
         }
+        # 57.102.0: contesta el dueño del proceso del hallazgo, no el auditor
+        # que pulsa el botón (antes la NC no le salía a nadie en «Míos»).
+        # Quien la levanta queda como solicitante.
+        vals['sgi_requester_id'] = self.env.user.id
+        owner_user = self.sudo().process_id.owner_id.user_id
+        if owner_user and owner_user.active:
+            vals['user_id'] = owner_user.id
+            vals['sgi_responsible_ids'] = [(6, 0, owner_user.ids)]
         if audit.partner_id:
             vals['partner_id'] = audit.partner_id.id
         if audit.audit_type == 'proveedor':

@@ -74,7 +74,7 @@ DELTA_OPS = [('<=', "≤"), ('<', "<"), ('>=', "≥"), ('>', ">"), ('=', "=")]
 _TRACKED = ('model_id', 'domain', 'date_field', 'aggregation', 'field_name', 'field_name_2',
             'delta_unit', 'delta_op', 'delta_value', 'factor', 'window')
 # '{cierre}', '{cierre-30d}', '{cierre-2dh}', '{cierre+48h}', '{inicio}', '{hoy}', '{bloqueo}'
-# 57.102.0 (B6): «más bajo es mejor» en 0 con la fuente vacía no es un verde.
+# 57.104.0 (B6): «más bajo es mejor» en 0 con la fuente vacía no es un verde.
 EMPTY_SOURCE_NOTE = ("Registro vacío: %s no tiene ningún registro con el que medir "
                      "(un 0 aquí no se distingue de «no se registra»). En cuanto se "
                      "capture el primero, el indicador mide solo.")
@@ -246,7 +246,7 @@ class SgiIndicatorTerm(models.Model):
         return Model.search(domain)
 
     def _sgi_source_empty(self):
-        """B6 (57.102.0): la fuente del término nunca ha tenido con qué medir.
+        """B6 (57.104.0): la fuente del término nunca ha tenido con qué medir.
         «Contar» y «Contar donde B − A»: el modelo no tiene ningún registro (en
         la compañía de los KPI si el modelo tiene compañía). «Sumar» y «Sumar
         el valor absoluto»: ningún registro del filtro del término (sin
@@ -429,7 +429,7 @@ class SgiIndicatorFormula(models.Model):
     # de creación, SIN las canceladas. El modo de código contaba también las
     # canceladas (agosto de 2026: 17 levantadas, 13 canceladas el 28-sep,
     # ninguna cerrada) y dejaba el % en 0 aunque no hubiera nada que cerrar.
-    # 57.102.0 (B7): numerador = las MISMAS NC (levantadas en el periodo, sin
+    # 57.104.0 (B7): numerador = las MISMAS NC (levantadas en el periodo, sin
     # canceladas) que ya tienen fecha de cierre. Antes contaba las cerradas en
     # el periodo por fecha de cierre: otra población que la del denominador.
     _CIERRE_NC_TERMS = [
@@ -483,11 +483,11 @@ class SgiIndicatorFormula(models.Model):
             done.append(indicator.id)
         return done
 
-    # ---- B7 (57.102.0): TR-01 y C5-02 con candado ---------------------------
+    # ---- B7 (57.104.0): TR-01 y C5-02 con candado ---------------------------
     # código: [(papel, filtro de hoy, campo de fecha de hoy, agregación de hoy,
     # valores nuevos)]. Solo se corrige un término que siga EXACTAMENTE como
     # estaba en producción el 2026-10-05.
-    _FIXES_57102 = {
+    _FIXES_57104 = {
         'TR-01': [('numerator',
                    "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]",
                    'date_close', 'count',
@@ -505,7 +505,7 @@ class SgiIndicatorFormula(models.Model):
                     'delta_value': 30.0})],
     }
     # Fórmula y fuente en palabras que acompañan la corrección del término.
-    _FIXES_57102_TEXTS = {
+    _FIXES_57104_TEXTS = {
         'TR-01': {
             'formula': "NC levantadas en el periodo (sin canceladas) que ya están cerradas "
                        "÷ NC levantadas en el periodo (sin canceladas) × 100",
@@ -519,8 +519,8 @@ class SgiIndicatorFormula(models.Model):
     }
 
     @api.model
-    def _sgi_formula_fixes_57102(self, codes=None):
-        """B7 (57.102.0): corrige los términos de TR-01 y C5-02 SOLO si siguen
+    def _sgi_formula_fixes_57104(self, codes=None):
+        """B7 (57.104.0): corrige los términos de TR-01 y C5-02 SOLO si siguen
         exactamente como estaban el 2026-10-05; si MAST ya los cambió, no los
         toca y lo dice en el log. ``codes`` = {código: indicadores} (por
         omisión, los indicadores con esa clave, activos o archivados). La
@@ -529,12 +529,12 @@ class SgiIndicatorFormula(models.Model):
         Devuelve {id del indicador: 'corregido'|'sin cambio'|'distinto'}."""
         if codes is None:
             Indicator = self.with_context(active_test=False)
-            codes = {code: Indicator.search([('code', '=', code)]) for code in self._FIXES_57102}
+            codes = {code: Indicator.search([('code', '=', code)]) for code in self._FIXES_57104}
         result = {}
         for code, indicators in codes.items():
             for indicator in indicators.sudo():
                 status = 'sin cambio'
-                for role, old_domain, old_date, old_agg, new in self._FIXES_57102[code]:
+                for role, old_domain, old_date, old_agg, new in self._FIXES_57104[code]:
                     terms = indicator.term_ids.filtered(lambda t: t.role == role)
                     if len(terms) != 1:
                         status = 'distinto'
@@ -547,20 +547,20 @@ class SgiIndicatorFormula(models.Model):
                         continue
                     terms.write(new)
                     status = 'corregido'
-                    texts = self._FIXES_57102_TEXTS.get(code)
+                    texts = self._FIXES_57104_TEXTS.get(code)
                     if texts:
                         before = "Fórmula: %s. Fuente: %s." % (indicator.formula or '—',
                                                              indicator.source or '—')
                         indicator.write(texts)
                         indicator.message_post(body=Markup(
-                            "57.102.0: la fórmula en palabras cambia con el término.<br/>"
+                            "57.104.0: la fórmula en palabras cambia con el término.<br/>"
                             "Antes: %s<br/>Ahora: Fórmula: %s. Fuente: %s.") % (
                                 before, texts['formula'], texts['source']))
                 result[indicator.id] = status
-        _logger.info("SGI 57.102.0: fórmulas TR-01/C5-02: %s", result)
+        _logger.info("SGI 57.104.0: fórmulas TR-01/C5-02: %s", result)
         return result
 
-    # ---- B7 (57.102.0): C2-06 deja el campo de Studio -----------------------
+    # ---- B7 (57.104.0): C2-06 deja el campo de Studio -----------------------
     _C206_OLD_COMPLETE = ("[('x_studio_tipo_de_transporte', '!=', False), '|', "
                           "('x_studio_tipo_de_transporte', '=', 'Transporte Interno'), "
                           "('sgi_seal_number', '!=', False)]")
@@ -574,8 +574,8 @@ class SgiIndicatorFormula(models.Model):
     }
 
     @api.model
-    def _sgi_deliverable_fix_57102(self, code='C2-06'):
-        """B7 (57.102.0): el entregable que mide C2-06 («Salida validada») deja
+    def _sgi_deliverable_fix_57104(self, code='C2-06'):
+        """B7 (57.104.0): el entregable que mide C2-06 («Salida validada») deja
         el campo de Studio «Tipo de transporte» (nunca capturado) y cuenta como
         completa la salida con sello de embarque. Solo si su filtro «está
         completo» sigue exactamente como el 2026-10-05. Reescribe también la
@@ -597,7 +597,7 @@ class SgiIndicatorFormula(models.Model):
             deliverable.write(self._C206_NEW)
             indicator.write(self._C206_TEXTS)
             indicator.message_post(body=Markup(
-                "57.102.0: la salida completa ya no pide el campo de Studio «Tipo de "
+                "57.104.0: la salida completa ya no pide el campo de Studio «Tipo de "
                 "transporte» (nunca capturado); cuenta la salida con sello de embarque "
                 "(entregable «%s»).<br/>Antes: %s<br/>Ahora: Filtro «está completo»: %s (%s). "
                 "Fórmula: %s. Fuente: %s.") % (
@@ -605,7 +605,7 @@ class SgiIndicatorFormula(models.Model):
                     self._C206_NEW['complete_criteria'], self._C206_TEXTS['formula'],
                     self._C206_TEXTS['source']))
             result = 'corregido'
-        _logger.info("SGI 57.102.0: entregable de %s: %s", code, result)
+        _logger.info("SGI 57.104.0: entregable de %s: %s", code, result)
         return result
 
     def _detail_configurable(self, date_from, date_to):
@@ -621,7 +621,7 @@ class SgiIndicatorFormula(models.Model):
             numerator += value
             if term.model_id.model == model:
                 ids += term._sgi_matching(records).ids
-        # B6 (57.102.0): un 0 «más bajo es mejor» con un término del numerador
+        # B6 (57.104.0): un 0 «más bajo es mejor» con un término del numerador
         # sin ningún registro en su fuente no es verde: es «sin dato» (también
         # en solo conteo, SST-01). Un 0 con registros en la fuente es real.
         if not numerator and self.direction == 'lower_better':
@@ -700,7 +700,7 @@ class SgiIndicatorFormula(models.Model):
                     result['note'] = "La medición ya está validada (evidencia): no se tocó."
                 else:
                     if measure:
-                        # 57.102.0 (B3): lo escribe el SGI; deja de estar
+                        # 57.104.0 (B3): lo escribe el SGI; deja de estar
                         # «corregida a mano».
                         measure.with_context(sgi_calc_write=True).write(
                             dict(vals, sgi_value_by_hand=False))

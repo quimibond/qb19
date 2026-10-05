@@ -84,7 +84,7 @@ quítelo si quiere ver también los pendientes y los «sin dato». **Ficha en
 PDF** imprime la hoja del indicador con su gráfica, sus metas y la causa y
 acciones de los rojos.
 
-**«Sin dato» y el 0 (desde 57.102.0).** Si ninguna medición de un
+**«Sin dato» y el 0 (desde 57.104.0).** Si ninguna medición de un
 indicador tiene dato, su «Último valor» dice **Sin dato** (no 0). Para
 capturar un 0 real en un indicador de captura manual, escriba en la nota por
 qué es cero («0: sin caídas en el mes»): una medición manual en 0 sin nota,

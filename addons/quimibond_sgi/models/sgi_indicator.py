@@ -232,7 +232,7 @@ class SgiIndicator(models.Model):
         ('rojo', "Rojo"),
     ], string="Último semáforo", compute='_compute_last_measure', store=True,
         help="Semáforo de la última medición. Se calcula solo.")
-    # 57.102.0 (B1): lo que se muestra. ``last_value`` guarda 0 cuando ninguna
+    # 57.104.0 (B1): lo que se muestra. ``last_value`` guarda 0 cuando ninguna
     # medición tiene dato; en pantalla eso es «Sin dato», no un cero.
     sgi_last_value_label = fields.Char(
         string="Último valor (texto)", compute='_compute_sgi_last_value_label',
@@ -314,7 +314,7 @@ class SgiIndicator(models.Model):
     def action_sgi_measures(self):
         """Mis indicadores → «Mediciones»: la lista de mediciones con dato del
         indicador (primero lo más reciente); quite «Con dato» para ver las
-        pendientes y las sin dato. 57.102.0 (B2): la gráfica ya no promedia
+        pendientes y las sin dato. 57.104.0 (B2): la gráfica ya no promedia
         los ceros de las sin dato. La pendiente se captura con «Capturar»."""
         self.ensure_one()
         return {
@@ -348,7 +348,7 @@ class SgiIndicator(models.Model):
     def action_sgi_recompute_pending_measures(self):
         """D-12 (57.5.0): botón «Recalcular mediciones» de la lista de
         indicadores, solo para el Administrador SGI. Sin selección, re-mide
-        las pendientes de todos (como el cron diario). 57.102.0 (B3): con
+        las pendientes de todos (como el cron diario). 57.104.0 (B3): con
         indicadores seleccionados re-mide todo lo no validado de ellos (sin
         dato y capturadas, sin ventana de meses), salvo lo corregido a mano,
         con NC, con causa o acciones."""
@@ -737,7 +737,7 @@ class SgiIndicator(models.Model):
         """% de competencias del puesto VIGENTES (certificación al día) vs las
         requeridas, a través de la vista de brechas (sgi.competence.gap): una
         competencia caducada (valid_to vencido) cuenta como brecha. Es una foto
-        del estado actual, no acumula por periodo. 57.102.0 (B7): el cálculo
+        del estado actual, no acumula por periodo. 57.104.0 (B7): el cálculo
         vive en ``_detail_capacitacion`` (solo la empresa del SGI, con
         numerador y denominador)."""
         return self._detail_capacitacion(date_from, date_to)['value']
@@ -1276,7 +1276,7 @@ class SgiIndicatorMeasure(models.Model):
             }
         if mode == 'capacitacion':
             # Evidencia = las brechas de competencia (foto a hoy; sin cota de
-            # periodo), de los mismos empleados que el cálculo (57.102.0).
+            # periodo), de los mismos empleados que el cálculo (57.104.0).
             employees = indicator._sgi_capacitacion_employees()
             return {
                 'type': 'ir.actions.act_window',

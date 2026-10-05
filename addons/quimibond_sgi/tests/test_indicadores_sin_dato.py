@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""57.102.0 — Indicadores: sin dato y cálculos.
+"""57.104.0 — Indicadores: sin dato y cálculos.
 
 B1 «Sin dato» en pantalla; B2 las mediciones abren con «Con dato»; B3 el
 recálculo diario re-mide sin dato y capturadas recientes (nunca validadas,
@@ -25,7 +25,7 @@ from odoo.addons.quimibond_sgi.models import sgi_format_map
 from .common_users import sgi_set_mast
 
 _MODULE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_POST = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.102.0', 'post-migrate.py')
+_POST = os.path.join(_MODULE_DIR, 'migrations', '19.0.57.104.0', 'post-migrate.py')
 
 
 @tagged('post_install', '-at_install')
@@ -252,12 +252,12 @@ class TestIndicadoresSinDato(TransactionCase):
     def test_10_correccion_tr01_c502_con_candado(self):
         Indicator = self.Indicator
         tr = Indicator.create({'code': 'ZS02-TR', 'name': 'TR prueba', 'calc_mode': 'configurable'})
-        old = Indicator._FIXES_57102['TR-01'][0]
+        old = Indicator._FIXES_57104['TR-01'][0]
         term = self._alert_term(tr, old[1], old[2])
         other = Indicator.create({'code': 'ZS02-TR2', 'name': 'TR distinto',
                                   'calc_mode': 'configurable'})
         term2 = self._alert_term(other, "[('sgi_folio', '!=', False)]", 'date_close')
-        res = Indicator._sgi_formula_fixes_57102(codes={'TR-01': tr | other})
+        res = Indicator._sgi_formula_fixes_57104(codes={'TR-01': tr | other})
         self.assertEqual(term.date_field, 'create_date')
         self.assertIn("('date_close', '!=', False)", term.domain)
         self.assertEqual(term2.date_field, 'date_close', "Un término distinto no se toca.")
@@ -265,7 +265,7 @@ class TestIndicadoresSinDato(TransactionCase):
         self.assertEqual(res[other.id], 'distinto')
         self.assertTrue(any('Antes: Numerador' in (b or '') for b in tr.message_ids.mapped('body')),
                         "El antes y el después quedan en el chatter.")
-        res = Indicator._sgi_formula_fixes_57102(codes={'TR-01': tr})
+        res = Indicator._sgi_formula_fixes_57104(codes={'TR-01': tr})
         self.assertEqual(res[tr.id], 'sin cambio', "Idempotente.")
 
     def test_11_capacitacion_con_detalle_y_empresa(self):
@@ -348,7 +348,7 @@ class TestIndicadoresSinDato(TransactionCase):
         """Solo se comprueba que el archivo existe y define ``migrate``: correrlo
         aquí tocaría S6-02, TR-01, C5-02 y C2-06 reales de la copia."""
         self.assertTrue(os.path.exists(_POST), _POST)
-        spec = importlib.util.spec_from_file_location('sgi_mig_57_102_0', _POST)
+        spec = importlib.util.spec_from_file_location('sgi_mig_57_104_0', _POST)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         self.assertTrue(callable(getattr(module, 'migrate', None)))

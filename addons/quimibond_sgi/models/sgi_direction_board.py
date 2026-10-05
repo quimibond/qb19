@@ -36,7 +36,7 @@ class SgiIndicatorLevel(models.Model):
         for indicator in self:
             measures = indicator.measure_ids.filtered(
                 lambda m: m.state != 'pendiente').sorted('period_date', reverse=True)[:6]
-            # 57.102.0 (B1): una medición sin dato dice «sin dato», no «0.0 -».
+            # 57.104.0 (B1): una medición sin dato dice «sin dato», no «0.0 -».
             indicator.last_six = " · ".join(
                 "%s: %s" % (m.period_date.strftime('%m/%y'), "sin dato" if m.state == 'sin_dato'
                             else "%s %s" % (round(m.value, 2), _SEM.get(m.semaphore, '-')))

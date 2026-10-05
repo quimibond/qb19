@@ -1220,8 +1220,8 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
   solicitud de desarrollo, responsiva y eficiencias, copia guardada del acta,
   ficha del indicador, diagramas en PDF, programa contra realizado y mapa de
   calor por instrumento.
-- **Después del plan (2026-10-05):** 57.102.0 «Indicadores: sin dato y
-  cálculos» (`docs/superpowers/plans/2026-10-05-sgi-57-102-0-indicadores.md`),
+- **Después del plan (2026-10-05):** 57.104.0 «Indicadores: sin dato y
+  cálculos» (`docs/superpowers/plans/2026-10-05-sgi-57-104-0-indicadores.md`),
   segunda entrega después del mapa de la auditoría: «Sin dato» en pantalla,
   mediciones con dato en las gráficas, recálculo diario de sin dato y
   capturadas recientes, «Medir desde» que marca las anteriores, manual en 0

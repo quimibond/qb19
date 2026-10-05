@@ -35,7 +35,7 @@ DEFAULT_MIN_SAMPLE = 5
 SNAPSHOT_MODES = ('cartera_vencida', 'cartera_vencida_60',
                   'inventario_diferencia', 'capacitacion') + HEALTH_SNAPSHOT_MODES
 SNAPSHOT_NOTE = "Sin dato: indicador de foto, no reconstruible para un periodo pasado."
-# 57.102.0 (B4): mediciones anteriores a «Medir desde».
+# 57.104.0 (B4): mediciones anteriores a «Medir desde».
 BEFORE_FROM_NOTE = "Antes de «Medir desde» (%s): no cuenta. Valor anterior %s."
 BEFORE_FROM_CALC = "Antes de «Medir desde» (%s): no se mide."
 
@@ -191,7 +191,7 @@ class SgiIndicatorDetail(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        # B4 (57.102.0): cambiar «Medir desde» marca las anteriores. Moverla
+        # B4 (57.104.0): cambiar «Medir desde» marca las anteriores. Moverla
         # hacia atrás no revive las ya marcadas: quedan «sin dato» y las
         # re-mide el recálculo (cron con ventana o el botón).
         if 'measure_from' in vals:
@@ -199,7 +199,7 @@ class SgiIndicatorDetail(models.Model):
         return res
 
     def _sgi_mark_before_measure_from(self):
-        """B4 (57.102.0): las mediciones no validadas cuyo periodo termina antes
+        """B4 (57.104.0): las mediciones no validadas cuyo periodo termina antes
         de «Medir desde» pasan a «Sin dato» con el valor anterior en la nota.
         Las validadas no se tocan (evidencia) y se cuentan en el chatter. Nada
         se borra. Idempotente. Devuelve las mediciones cambiadas."""
@@ -282,7 +282,7 @@ class SgiIndicatorDetail(models.Model):
             return {'note': SNAPSHOT_NOTE, 'state': 'sin_dato', 'value': 0.0,
                     'numerator': None, 'denominator': None, 'sample_size': 0,
                     'detail_model': False, 'detail_ids': False}
-        # B4 (57.102.0): antes de «Medir desde» no se mide (ni se pide la
+        # B4 (57.104.0): antes de «Medir desde» no se mide (ni se pide la
         # captura de un manual). Así «Recalcular» no vuelve a llenar las
         # marcadas. Los modos con plazo (sgi_indicator_ind2) responden
         # «pendiente» antes de llegar aquí mientras el plazo no vence; el
@@ -419,13 +419,13 @@ class SgiIndicatorDetail(models.Model):
                 'denominator': total, 'model': 'account.move', 'ids': overdue_moves.ids}
 
     def _sgi_capacitacion_employees(self):
-        """RH-02 (57.102.0): empleados activos de la empresa del SGI (D-03).
+        """RH-02 (57.104.0): empleados activos de la empresa del SGI (D-03).
         Antes eran todos los que veía el usuario del cron."""
         company = self.env['sgi.config']._sgi_company()
         return self.env['hr.employee'].sudo().search([('company_id', '=', company.id)])
 
     def _detail_capacitacion(self, date_from, date_to):
-        """RH-02 (57.102.0): competencias del puesto vigentes ÷ requeridas, solo
+        """RH-02 (57.104.0): competencias del puesto vigentes ÷ requeridas, solo
         empleados activos de la empresa del SGI. Numerador = requeridas −
         brechas (nunca negativo); registros = las brechas. Foto a hoy: las
         cotas del periodo no aplican."""
@@ -466,7 +466,7 @@ class SgiIndicatorMeasureDetail(models.Model):
     indicator_status = fields.Selection(related='indicator_id.status',
                                         string="Estado del indicador",
                                         help="Si el indicador es oficial o está a prueba.")
-    # 57.102.0 (B3): el recálculo diario respeta un valor corregido a mano.
+    # 57.104.0 (B3): el recálculo diario respeta un valor corregido a mano.
     sgi_value_by_hand = fields.Boolean(
         string="Valor corregido a mano", readonly=True, copy=False,
         help="Alguien escribió a mano el valor de esta medición automática: el "
@@ -532,7 +532,7 @@ class SgiIndicatorMeasureDetail(models.Model):
                     "recalcular." % indicator.code)
             date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
             vals = indicator._sgi_measure_vals(date_from, date_to)
-            # 57.102.0 (B3): lo escribe el SGI; deja de estar «corregida a mano».
+            # 57.104.0 (B3): lo escribe el SGI; deja de estar «corregida a mano».
             measure.with_context(sgi_calc_write=True).write(dict(vals, sgi_value_by_hand=False))
             # 57.1.0: el recálculo desde la medición también deja el motivo.
             indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
@@ -543,7 +543,7 @@ class SgiIndicatorMeasureDetail(models.Model):
                     measure.period_date, indicator.calc_mode, label))
         return True
 
-    # ---- B5 (57.102.0): una manual sin valor no se captura ni se valida ----
+    # ---- B5 (57.104.0): una manual sin valor no se captura ni se valida ----
     def _sgi_without_value(self):
         """Mediciones de indicador manual sin valor capturado: valor 0, sin
         numerador, sin denominador y sin nota. Un ``Float`` no distingue «nadie

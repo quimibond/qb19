@@ -34,7 +34,7 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
    semáforo y la semana anterior, y la tabla **Por dueño de proceso** (ver
    2.5).
 
-Desde 57.102.0, un indicador sin ninguna medición con dato dice **Sin dato**
+Desde 57.104.0, un indicador sin ninguna medición con dato dice **Sin dato**
 en el Tablero, en los «Últimos 6 periodos» y en el texto de la revisión por
 la dirección, en lugar de 0. Un 0 que sí se midió se muestra como 0.
 
@@ -47,7 +47,7 @@ la dirección, en lugar de 0. Un 0 que sí se midió se muestra como 0.
    el contexto y las partes interesadas, aspectos ambientales significativos
    y oportunidades de mejora) con los datos reales del periodo, y trae los
    **acuerdos abiertos de revisiones anteriores**. Se pueden ajustar. Desde
-   57.102.0, «Validar mediciones» no valida las mediciones manuales en 0 sin
+   57.104.0, «Validar mediciones» no valida las mediciones manuales en 0 sin
    nota: las lista en el chatter de la revisión para que su responsable las
    capture.
 3. En la reunión, capture los **Acuerdos** con responsable y fecha.

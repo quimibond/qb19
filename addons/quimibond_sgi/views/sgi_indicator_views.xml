@@ -24,7 +24,7 @@
                 <field name="status" widget="badge" optional="show"
                        decoration-success="status == 'oficial'"
                        decoration-muted="status == 'prueba'"/>
-                <!-- 57.102.0 (B1): «Sin dato» si ninguna medición tiene dato;
+                <!-- 57.104.0 (B1): «Sin dato» si ninguna medición tiene dato;
                      el número queda para ordenar. -->
                 <field name="sgi_last_value_label" string="Último valor"/>
                 <field name="last_value" string="Último valor (número)" optional="hide"/>
@@ -215,7 +215,7 @@
                                       decoration-danger="semaphore == 'rojo'"
                                       decoration-muted="state == 'sin_dato'">
                                     <field name="period_date"/>
-                                    <!-- 57.102.0 (B1): el 0 guardado de una sin dato no se muestra. -->
+                                    <!-- 57.104.0 (B1): el 0 guardado de una sin dato no se muestra. -->
                                     <field name="value" invisible="state == 'sin_dato'"/>
                                     <field name="numerator" optional="show"/>
                                     <field name="denominator" optional="show"/>
@@ -313,7 +313,7 @@
                 <field name="period_date"/>
                 <field name="indicator_id"/>
                 <field name="indicator_status" optional="hide"/>
-                <!-- 57.102.0 (B1): pendiente y sin dato no tienen valor que mostrar. -->
+                <!-- 57.104.0 (B1): pendiente y sin dato no tienen valor que mostrar. -->
                 <field name="value" invisible="state in ('pendiente', 'sin_dato')"/>
                 <field name="window_label" optional="show"/>
                 <field name="numerator" optional="hide"/>
@@ -598,7 +598,7 @@
         <field name="name">Mediciones</field>
         <field name="res_model">sgi.indicator.measure</field>
         <field name="view_mode">list,graph,pivot,form</field>
-        <!-- 57.102.0 (B2): abre con «Con dato» (la gráfica no promedia ceros
+        <!-- 57.104.0 (B2): abre con «Con dato» (la gráfica no promedia ceros
              falsos). «Pendientes» y «Con dato» juntos dan una lista vacía. -->
         <field name="context">{'search_default_con_dato': 1, 'search_default_mine': 1}</field>
         <field name="search_view_id" ref="sgi_measure_view_search"/>

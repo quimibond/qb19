@@ -299,7 +299,7 @@
                 <field name="sgi_process_id"/>
                 <field name="team_id"/>
                 <filter name="mine" string="Míos"
-                        domain="[('sgi_responsible_ids', 'in', uid)]"/>
+                        domain="['|', ('sgi_responsible_ids', 'in', uid), ('user_id', '=', uid)]"/>
                 <separator/>
                 <filter name="sgi_open" string="Abiertas"
                         domain="[('stage_id.sgi_is_closing_stage','=',False),('stage_id.sgi_is_cancel_stage','=',False)]"/>
@@ -373,7 +373,8 @@
         <field name="model">quality.alert</field>
         <field name="priority">90</field>
         <field name="arch" type="xml">
-            <kanban default_group_by="stage_id" class="o_kanban_small_column" sample="1">
+            <kanban default_group_by="stage_id" default_order="create_date desc"
+                    class="o_kanban_small_column" sample="1">
                 <field name="sgi_deadline_overdue"/>
                 <templates>
                     <t t-name="card">

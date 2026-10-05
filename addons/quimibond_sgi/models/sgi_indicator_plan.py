@@ -292,7 +292,7 @@ class SgiCronCalendar(models.AbstractModel):
                     self._SGI_MONTHLY_DONE_PARAM, today.strftime('%Y-%m'))
         # 57.5.0 (D-12, A-006): re-mide las mediciones pendientes que ya
         # tienen dato. Antes corría en cada actualización del módulo.
-        # 57.102.0 (B3): la corrida programada también re-mide las «sin dato»
+        # 57.104.0 (B3): la corrida programada también re-mide las «sin dato»
         # y las capturadas no validadas de los últimos meses, con tiempo
         # tope (lo que falte sigue al día siguiente); una corrida a mano
         # (pruebas, botón del cron) se queda en las pendientes. Va DESPUÉS de
@@ -325,7 +325,7 @@ class SgiManagementReviewValidate(models.Model):
         captured = Measure.search([
             ('state', '=', 'capturado'), ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to)])
-        # 57.102.0 (B5): las manuales sin valor capturado no se validan (el
+        # 57.104.0 (B5): las manuales sin valor capturado no se validan (el
         # write las rechazaría y el botón reventaba por una sola); se listan.
         empty = captured._sgi_without_value()
         (captured - empty).action_validate()

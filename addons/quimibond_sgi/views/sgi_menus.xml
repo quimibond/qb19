@@ -300,6 +300,11 @@
               parent="menu_sgi_analysis" action="sgi_activity_spec_gap_action" sequence="40"/>
     <menuitem id="menu_sgi_week_stats" name="Cumplimiento semanal"
               parent="menu_sgi_analysis" action="sgi_activity_week_stat_action" sequence="50"/>
+    <!-- 57.103.0: registro de cumplimiento y pantallas que no van con su medición. -->
+    <menuitem id="menu_sgi_activity_executions" name="Registro de cumplimiento"
+              parent="menu_sgi_analysis" action="sgi_activity_execution_action" sequence="60"/>
+    <menuitem id="menu_sgi_menu_mismatch" name="Pantallas que no van con su medición"
+              parent="menu_sgi_analysis" action="sgi_activity_menu_mismatch_action" sequence="70"/>
 
     <!-- 6.5 Firmas de lectura -->
     <menuitem id="menu_sgi_admin_signatures" name="Firmas de lectura" parent="menu_sgi_admin" sequence="40"/>

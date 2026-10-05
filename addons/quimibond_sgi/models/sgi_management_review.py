@@ -203,7 +203,7 @@ class SgiManagementReview(models.Model):
                 objective.name, dict(objective._fields['health'].selection).get(objective.health, '-')
                 if 'health' in objective._fields else '-', len(indicators)))
             for ind in indicators:
-                # 57.102.0 (B1): «Sin dato» en vez de un 0 que nadie midió.
+                # 57.104.0 (B1): «Sin dato» en vez de un 0 que nadie midió.
                 lines.append("    - %s %s: %s (%s)" % (
                     ind.code, ind.name, ind.sgi_last_value_label,
                     ind.last_semaphore or 'sin dato'))
