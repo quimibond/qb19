@@ -737,24 +737,10 @@ class SgiIndicator(models.Model):
         """% de competencias del puesto VIGENTES (certificación al día) vs las
         requeridas, a través de la vista de brechas (sgi.competence.gap): una
         competencia caducada (valid_to vencido) cuenta como brecha. Es una foto
-        del estado actual, no acumula por periodo; las cotas del periodo no aplican
-        (competencia = vigencia a hoy)."""
-        Employee = self.env['hr.employee']
-        JobSkill = self.env['hr.job.skill']
-        employees = Employee.search([])
-        jobs = employees.job_id
-        required = 0
-        if jobs:
-            # Una _read_group por puesto (antes: un search_count POR empleado).
-            counts = {job.id: count for job, count in JobSkill._read_group(
-                [('job_id', 'in', jobs.ids)], ['job_id'], ['__count'])}
-            required = sum(counts.get(employee.job_id.id, 0)
-                           for employee in employees if employee.job_id)
-        if not required:
-            return None
-        gaps = self.env['sgi.competence.gap'].search_count(
-            [('employee_id', 'in', employees.ids)])
-        return round((required - gaps) / required * 100.0, 2)
+        del estado actual, no acumula por periodo. 57.102.0 (B7): el cálculo
+        vive en ``_detail_capacitacion`` (solo la empresa del SGI, con
+        numerador y denominador)."""
+        return self._detail_capacitacion(date_from, date_to)['value']
 
     def _sgi_satisfaction_survey(self):
         """Encuesta que alimenta CA-02. Configurable en Ajustes
@@ -1289,8 +1275,9 @@ class SgiIndicatorMeasure(models.Model):
                            ('create_date', '>=', dt_from), ('create_date', '<', dt_to)],
             }
         if mode == 'capacitacion':
-            # Evidencia = las brechas de competencia (foto a hoy; sin cota de periodo).
-            employees = self.env['hr.employee'].search([])
+            # Evidencia = las brechas de competencia (foto a hoy; sin cota de
+            # periodo), de los mismos empleados que el cálculo (57.102.0).
+            employees = indicator._sgi_capacitacion_employees()
             return {
                 'type': 'ir.actions.act_window',
                 'name': "Brechas de competencia — evidencia",

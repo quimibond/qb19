@@ -35,6 +35,7 @@ Reglas:
   la fórmula **en paralelo**: cada medición nueva guarda también el valor de
   la fórmula (``parallel_value``) para compararla un mes antes de migrar.
 """
+import logging
 import re
 from datetime import datetime, timedelta
 
@@ -46,6 +47,8 @@ from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 from .sgi_calendar import sgi_add_business_days, sgi_business_days
+
+_logger = logging.getLogger(__name__)
 
 WINDOWS = [
     ('period', "El periodo"),
@@ -419,14 +422,17 @@ class SgiIndicatorFormula(models.Model):
             indicator.message_post(body=body)
 
     # ---- TR-01: del modo «cierre_nc» a fórmula (57.1.0) --------------------
-    # Numerador: NC del SGI (con folio) cerradas en el periodo, por fecha de
-    # cierre. Denominador: NC del SGI levantadas en el periodo, por fecha de
-    # creación, SIN las canceladas. El modo de código contaba también las
+    # Denominador: NC del SGI (con folio) levantadas en el periodo, por fecha
+    # de creación, SIN las canceladas. El modo de código contaba también las
     # canceladas (agosto de 2026: 17 levantadas, 13 canceladas el 28-sep,
     # ninguna cerrada) y dejaba el % en 0 aunque no hubiera nada que cerrar.
+    # 57.102.0 (B7): numerador = las MISMAS NC (levantadas en el periodo, sin
+    # canceladas) que ya tienen fecha de cierre. Antes contaba las cerradas en
+    # el periodo por fecha de cierre: otra población que la del denominador.
     _CIERRE_NC_TERMS = [
-        {'role': 'numerator', 'date_field': 'date_close',
-         'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]"},
+        {'role': 'numerator', 'date_field': 'create_date',
+         'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False), "
+                   "('date_close', '!=', False)]"},
         {'role': 'denominator', 'date_field': 'create_date',
          'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]"},
     ]
@@ -473,6 +479,131 @@ class SgiIndicatorFormula(models.Model):
                     "modo anterior «%s».") % (before, before))
             done.append(indicator.id)
         return done
+
+    # ---- B7 (57.102.0): TR-01 y C5-02 con candado ---------------------------
+    # código: [(papel, filtro de hoy, campo de fecha de hoy, agregación de hoy,
+    # valores nuevos)]. Solo se corrige un término que siga EXACTAMENTE como
+    # estaba en producción el 2026-10-05.
+    _FIXES_57102 = {
+        'TR-01': [('numerator',
+                   "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]",
+                   'date_close', 'count',
+                   {'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False), "
+                              "('date_close', '!=', False)]",
+                    'date_field': 'create_date'})],
+        'C5-02': [('numerator',
+                   "[('sgi_origin_type', '=', 'reclamacion'), ('sgi_stage_is_cancel', '=', False), "
+                   "('sgi_effectiveness_date', '!=', False)]",
+                   'create_date', 'count',
+                   {'domain': "[('sgi_origin_type', '=', 'reclamacion'), ('sgi_stage_is_cancel', '=', False), "
+                              "('date_close', '!=', False)]",
+                    'aggregation': 'count_delta', 'field_name': 'create_date',
+                    'field_name_2': 'date_close', 'delta_unit': 'days', 'delta_op': '<=',
+                    'delta_value': 30.0})],
+    }
+    # Fórmula y fuente en palabras que acompañan la corrección del término.
+    _FIXES_57102_TEXTS = {
+        'TR-01': {
+            'formula': "NC levantadas en el periodo (sin canceladas) que ya están cerradas "
+                       "÷ NC levantadas en el periodo (sin canceladas) × 100",
+            'source': "SGI: no conformidades con folio, por fecha de alta y fecha de cierre",
+        },
+        'C5-02': {
+            'formula': "Reclamaciones del periodo cerradas en 30 días naturales desde su alta "
+                       "÷ reclamaciones del periodo (sin canceladas) × 100",
+            'source': "No conformidades con origen Reclamación: fecha de apertura y de cierre",
+        },
+    }
+
+    @api.model
+    def _sgi_formula_fixes_57102(self, codes=None):
+        """B7 (57.102.0): corrige los términos de TR-01 y C5-02 SOLO si siguen
+        exactamente como estaban el 2026-10-05; si MAST ya los cambió, no los
+        toca y lo dice en el log. ``codes`` = {código: indicadores} (por
+        omisión, los indicadores con esa clave, activos o archivados). La
+        escritura del término valida el filtro y deja el antes y el después
+        en el chatter del indicador (que vuelve a «prueba»). Idempotente.
+        Devuelve {id del indicador: 'corregido'|'sin cambio'|'distinto'}."""
+        if codes is None:
+            Indicator = self.with_context(active_test=False)
+            codes = {code: Indicator.search([('code', '=', code)]) for code in self._FIXES_57102}
+        result = {}
+        for code, indicators in codes.items():
+            for indicator in indicators.sudo():
+                status = 'sin cambio'
+                for role, old_domain, old_date, old_agg, new in self._FIXES_57102[code]:
+                    terms = indicator.term_ids.filtered(lambda t: t.role == role)
+                    if len(terms) != 1:
+                        status = 'distinto'
+                        continue
+                    if all(terms[key] == value for key, value in new.items()):
+                        continue
+                    if ((terms.domain or '').strip(), terms.date_field, terms.aggregation) \
+                            != (old_domain, old_date, old_agg):
+                        status = 'distinto'
+                        continue
+                    terms.write(new)
+                    status = 'corregido'
+                    texts = self._FIXES_57102_TEXTS.get(code)
+                    if texts:
+                        before = "Fórmula: %s. Fuente: %s." % (indicator.formula or '—',
+                                                             indicator.source or '—')
+                        indicator.write(texts)
+                        indicator.message_post(body=Markup(
+                            "57.102.0: la fórmula en palabras cambia con el término.<br/>"
+                            "Antes: %s<br/>Ahora: Fórmula: %s. Fuente: %s.") % (
+                                before, texts['formula'], texts['source']))
+                result[indicator.id] = status
+        _logger.info("SGI 57.102.0: fórmulas TR-01/C5-02: %s", result)
+        return result
+
+    # ---- B7 (57.102.0): C2-06 deja el campo de Studio -----------------------
+    _C206_OLD_COMPLETE = ("[('x_studio_tipo_de_transporte', '!=', False), '|', "
+                          "('x_studio_tipo_de_transporte', '=', 'Transporte Interno'), "
+                          "('sgi_seal_number', '!=', False)]")
+    _C206_NEW = {
+        'complete_domain': "[('sgi_seal_number', '!=', False)]",
+        'complete_criteria': "Salida con sello de embarque capturado",
+    }
+    _C206_TEXTS = {
+        'formula': "Entregas validadas con sello de embarque ÷ entregas validadas de la semana",
+        'source': "Orden de entrega: Sello de embarque",
+    }
+
+    @api.model
+    def _sgi_deliverable_fix_57102(self, code='C2-06'):
+        """B7 (57.102.0): el entregable que mide C2-06 («Salida validada») deja
+        el campo de Studio «Tipo de transporte» (nunca capturado) y cuenta como
+        completa la salida con sello de embarque. Solo si su filtro «está
+        completo» sigue exactamente como el 2026-10-05. Reescribe también la
+        fórmula y la fuente del indicador; antes y después en su chatter.
+        Devuelve 'corregido', 'sin cambio' o 'distinto'."""
+        indicator = self.with_context(active_test=False).sudo().search(
+            [('code', '=', code), ('calc_mode', '=', 'entregable_completo')], limit=1)
+        deliverable = indicator._sgi_measured_deliverable() if indicator else None
+        if not deliverable:
+            result = 'distinto'
+        elif (deliverable.complete_domain or '').strip() == self._C206_NEW['complete_domain']:
+            result = 'sin cambio'
+        elif (deliverable.complete_domain or '').strip() != self._C206_OLD_COMPLETE:
+            result = 'distinto'
+        else:
+            before = "Filtro «está completo»: %s (%s). Fórmula: %s. Fuente: %s." % (
+                deliverable.complete_domain, deliverable.complete_criteria or '—',
+                indicator.formula or '—', indicator.source or '—')
+            deliverable.write(self._C206_NEW)
+            indicator.write(self._C206_TEXTS)
+            indicator.message_post(body=Markup(
+                "57.102.0: la salida completa ya no pide el campo de Studio «Tipo de "
+                "transporte» (nunca capturado); cuenta la salida con sello de embarque "
+                "(entregable «%s»).<br/>Antes: %s<br/>Ahora: Filtro «está completo»: %s (%s). "
+                "Fórmula: %s. Fuente: %s.") % (
+                    deliverable.name, before, self._C206_NEW['complete_domain'],
+                    self._C206_NEW['complete_criteria'], self._C206_TEXTS['formula'],
+                    self._C206_TEXTS['source']))
+            result = 'corregido'
+        _logger.info("SGI 57.102.0: entregable de %s: %s", code, result)
+        return result
 
     def _detail_configurable(self, date_from, date_to):
         nums, dens = self._sgi_terms()

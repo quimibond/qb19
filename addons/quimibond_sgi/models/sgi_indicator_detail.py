@@ -418,6 +418,27 @@ class SgiIndicatorDetail(models.Model):
         return {'value': round(overdue / total * 100.0, 2), 'numerator': overdue,
                 'denominator': total, 'model': 'account.move', 'ids': overdue_moves.ids}
 
+    def _sgi_capacitacion_employees(self):
+        """RH-02 (57.102.0): empleados activos de la empresa del SGI (D-03).
+        Antes eran todos los que veía el usuario del cron."""
+        company = self.env['sgi.config']._sgi_company()
+        return self.env['hr.employee'].sudo().search([('company_id', '=', company.id)])
+
+    def _detail_capacitacion(self, date_from, date_to):
+        """RH-02 (57.102.0): competencias del puesto vigentes ÷ requeridas, solo
+        empleados activos de la empresa del SGI. Numerador = requeridas −
+        brechas (nunca negativo); registros = las brechas. Foto a hoy: las
+        cotas del periodo no aplican."""
+        employees = self._sgi_capacitacion_employees()
+        JobSkill = self.env['hr.job.skill'].sudo()
+        jobs = employees.job_id
+        counts = {job.id: n for job, n in JobSkill._read_group(
+            [('job_id', 'in', jobs.ids)], ['job_id'], ['__count'])} if jobs else {}
+        required = sum(counts.get(e.job_id.id, 0) for e in employees if e.job_id)
+        gaps = self.env['sgi.competence.gap'].sudo().search([('employee_id', 'in', employees.ids)])
+        covered = max(required - len(gaps), 0)
+        return self._ratio(covered, required, gaps)
+
     def _detail_cartera_vencida(self, date_from, date_to):
         return self._sgi_detail_overdue(date_to, 0)
 
