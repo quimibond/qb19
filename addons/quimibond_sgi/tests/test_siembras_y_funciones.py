@@ -50,6 +50,8 @@ class TestSiembrasYFunciones(TransactionCase):
                           autospec=True, return_value={}) as mocked:
             self.env['sgi.cron'].cron_indicators(scheduled=True)
         self.assertTrue(mocked.called, "El cron diario debe recalcular las pendientes.")
+        self.assertEqual(mocked.call_args.kwargs.get('recent'), True,
+                         "El cron programado re-mide también las recientes (57.102.0).")
 
     def test_05_stale_cron_is_noupdate(self):
         data = self.env['ir.model.data'].sudo().search([
