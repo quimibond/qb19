@@ -316,6 +316,9 @@
                 <button name="action_view_records" type="object" icon="fa-list"
                         title="Ver registros" invisible="not detail_count"/>
                 <field name="target_objective"/>
+                <!-- 57.101.0 (A1): las dos metas del periodo (respetan las
+                     guardadas al validar y los escalones). -->
+                <field name="target_acceptable" optional="show"/>
                 <field name="source_type" widget="badge"
                        decoration-success="source_type == 'auto'"
                        decoration-warning="source_type == 'manual'"/>
@@ -517,6 +520,22 @@
         </field>
     </record>
 
+    <!-- 57.101.0 (A1): tendencia de los indicadores semanales (una medición
+         por semana; el lunes es el periodo). Prioridad 20: la gráfica por
+         omisión del modelo sigue siendo la mensual. -->
+    <record id="sgi_measure_view_graph_weekly" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.graph.weekly</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <graph string="Mediciones por semana" type="line">
+                <field name="period_date" interval="week"/>
+                <field name="indicator_id"/>
+                <field name="value" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
     <record id="sgi_measure_view_pivot" model="ir.ui.view">
         <field name="name">sgi.indicator.measure.pivot</field>
         <field name="model">sgi.indicator.measure</field>
@@ -547,6 +566,12 @@
                         domain="[('indicator_id.status','=','oficial')]"/>
                 <filter name="to_validate" string="Por validar"
                         domain="[('state','=','capturado')]"/>
+                <!-- 57.101.0 (A1): la tendencia abre con este filtro; un «sin
+                     dato» o un pendiente valen 0 y bajaban la línea. Aparte
+                     (separador): se combina con Y con los de arriba. -->
+                <separator/>
+                <filter name="con_dato" string="Con dato"
+                        domain="[('state', 'in', ('capturado', 'validado'))]"/>
                 <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
                 <separator/>
                 <filter name="filter_period" string="Periodo" date="period_date"/>

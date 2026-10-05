@@ -304,15 +304,21 @@ class SgiIndicator(models.Model):
 
     def action_view_trend(self):
         """La pregunta real de MAST frente a un KPI: ¿cómo viene la tendencia?
-        Abre las mediciones del indicador en gráfica de línea por periodo."""
+        Abre las mediciones con dato del indicador en gráfica de línea: por
+        mes, o por semana si el indicador es semanal (57.101.0, A1). El
+        filtro «Con dato» se puede quitar; el dominio no cambia."""
         self.ensure_one()
+        graph = self.env.ref('quimibond_sgi.sgi_measure_view_graph_weekly'
+                             if self.frequency == 'weekly'
+                             else 'quimibond_sgi.sgi_measure_view_graph')
         return {
             'type': 'ir.actions.act_window',
             'name': "Tendencia — %s" % (self.code or self.name),
             'res_model': 'sgi.indicator.measure',
             'view_mode': 'graph,list,form',
+            'views': [(graph.id, 'graph'), (False, 'list'), (False, 'form')],
             'domain': [('indicator_id', '=', self.id)],
-            'context': {'default_indicator_id': self.id},
+            'context': {'default_indicator_id': self.id, 'search_default_con_dato': 1},
         }
 
     def action_sgi_recompute_pending_measures(self):
@@ -1031,7 +1037,11 @@ class SgiIndicatorMeasure(models.Model):
                               string="Fuente del dato")
     period_date = fields.Date(string="Periodo", required=True,
                               help="Día 1 del mes medido.")
-    value = fields.Float(string="Valor", tracking=True, help="Valor medido en el periodo.")
+    # 57.101.0 (A1): promedio al agrupar (gráfica, pivote, lista agrupada).
+    # Con la suma por omisión de Odoo, las 4-5 semanales del mes se sumaban
+    # (LO-01: 218 % de OTIF en julio).
+    value = fields.Float(string="Valor", tracking=True, aggregator='avg',
+                         help="Valor medido en el periodo.")
     direction = fields.Selection(related='indicator_id.direction', help="Sentido del indicador.")
     target_objective = fields.Float(related='indicator_id.target_objective', string="Objetivo")
     target_acceptable = fields.Float(related='indicator_id.target_acceptable', string="Aceptable")
