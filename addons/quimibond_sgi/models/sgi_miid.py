@@ -16,13 +16,13 @@ import json
 import logging
 import re
 
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 # Sin modelos (sgi_calendar, sgi_menu_paths) o ya cargados (sgi_report_print).
-from .sgi_calendar import sgi_add_business_days, sgi_today
+from .sgi_calendar import sgi_add_business_days, sgi_local_date, sgi_today
 from .sgi_menu_paths import sgi_menu_path
 from .sgi_report_print import DG_COLORS, DG_LEVEL_BG
 
@@ -872,6 +872,55 @@ class SgiMiid(models.Model):
         return {'type': 'ir.actions.act_window', 'res_model': 'approval.request',
                 'res_id': request.id, 'view_mode': 'form', 'target': 'current'}
 
+    # ------------------------------------------------------------------
+    # Comparación diaria y aviso (1.8)
+    # ------------------------------------------------------------------
+    def _sgi_notice_note(self, since, diffs):
+        self.ensure_one()
+        doc = self._sgi_current_document()
+        head = escape("Desde el %s el MIID vigente (Rev. %s%s) no coincide con el sistema:" % (
+            since.strftime('%d/%m/%Y'), doc.sgi_revision_label or '00',
+            ", emisión %s" % doc.sgi_issue_date.strftime('%d/%m/%Y') if doc.sgi_issue_date else ''))
+        items = Markup('').join(Markup("<li>%s</li>") % d for d in diffs)
+        tail = []
+        pending = self._sgi_open_request(doc)
+        if pending:
+            tail.append("Ya está en curso la solicitud %s." % (pending.name or ''))
+        tail.append("Abra %s y use «Solicitar cambio del MIID»." % sgi_menu_path('miid'))
+        return Markup("<p>%s</p><ul>%s</ul><p>%s</p>") % (head, items, " ".join(tail))
+
+    def _sgi_check(self):
+        """Compara la huella viva con la revisión vigente; pone o quita
+        «Desactualizado desde» y agenda o cierra el aviso al Jefe MAST (uno por
+        empresa, clave miid_desactualizado:<empresa>). Nunca solicita ni aprueba."""
+        Cron = self.env['sgi.cron']
+        now = fields.Datetime.now()
+        for miid in self.sudo():
+            miid.invalidate_recordset()
+            status = miid._sgi_status()
+            key = '%s:%d' % (MIID_NOTICE_KIND, miid.company_id.id)
+            open_notices = self.env['mail.activity'].sudo().with_context(active_test=False).search([
+                ('sgi_cron_key', '=', key), ('sgi_episode_closed', '=', False)])
+            vals = {'last_check': now}
+            if status['state'] != 'desactualizado':
+                vals['outdated_since'] = False
+                miid.write(vals)
+                reason = ("el MIID ya coincide con el sistema" if status['state'] == 'al_dia'
+                          else "el MIID vigente no tiene contra qué comparar")
+                Cron._sgi_close_activities(open_notices, reason)
+                continue
+            vals['outdated_since'] = miid.outdated_since or now
+            miid.write(vals)
+            manager_id = Cron._sgi_manager_user_id()
+            if not manager_id:
+                continue
+            since = sgi_local_date(self.env, miid.outdated_since)
+            deadline = sgi_add_business_days(self.env, since, MIID_NOTICE_BUSINESS_DAYS)
+            Cron._sgi_schedule(miid, "El MIID vigente ya no coincide con el sistema",
+                               miid._sgi_notice_note(since, status['diffs']), manager_id,
+                               date_deadline=deadline, key=key)
+        return True
+
 class ReportSgiMiid(models.AbstractModel):
     """57.105.0: valores del PDF del MIID. Modo por contexto: «live» (vista del
     sistema, copia no controlada) o «request» (el PDF de la solicitud, que es
@@ -1084,4 +1133,21 @@ class ApprovalRequestMiid(models.Model):
         target = self.sgi_new_document_id or self.sgi_document_id
         target.sudo().write({'sgi_content_hash': self.sgi_miid_hash})
         self._sgi_miid_close_held("el MIID se aprobó")
+        miid._sgi_check()
         return res
+
+
+class SgiCronMiid(models.AbstractModel):
+    _inherit = 'sgi.cron'
+
+    @api.model
+    def cron_documents(self):
+        res = super().cron_documents()
+        self._sgi_step("MIID al día", self._sgi_miid_check)
+        return res
+
+    @api.model
+    def _sgi_miid_check(self):
+        """57.105.0: compara el MIID de la empresa del SGI con el sistema."""
+        self.env['sgi.miid']._sgi_get()._sgi_check()
+        return True
