@@ -232,6 +232,12 @@ class SgiIndicator(models.Model):
         ('rojo', "Rojo"),
     ], string="Último semáforo", compute='_compute_last_measure', store=True,
         help="Semáforo de la última medición. Se calcula solo.")
+    # 57.104.0 (B1): lo que se muestra. ``last_value`` guarda 0 cuando ninguna
+    # medición tiene dato; en pantalla eso es «Sin dato», no un cero.
+    sgi_last_value_label = fields.Char(
+        string="Último valor (texto)", compute='_compute_sgi_last_value_label',
+        help="Valor de la última medición con dato, con su unidad. «Sin dato» si "
+             "ninguna medición tiene dato todavía (un 0 real sí se muestra).")
 
     _code_uniq = models.Constraint(
         'unique(code)',
@@ -250,6 +256,22 @@ class SgiIndicator(models.Model):
             indicator.last_measure_id = last.id
             indicator.last_value = last.value if last else 0.0
             indicator.last_semaphore = last.semaphore if last else False
+
+    @api.depends('last_measure_id', 'last_value', 'uom')
+    def _compute_sgi_last_value_label(self):
+        for indicator in self:
+            indicator.sgi_last_value_label = indicator._sgi_value_text(
+                indicator.last_value if indicator.last_measure_id else None)
+
+    def _sgi_value_text(self, value):
+        """«95.2 %», «0 accidentes», o «Sin dato» si ``value`` es None."""
+        self.ensure_one()
+        if value is None:
+            return "Sin dato"
+        text = ('%.2f' % (value or 0.0)).rstrip('0').rstrip('.')
+        if text in ('', '-0'):
+            text = '0'
+        return ("%s %s" % (text, self.uom or '')).strip()
 
     @api.depends('code', 'name')
     def _compute_display_name(self):
@@ -290,8 +312,10 @@ class SgiIndicator(models.Model):
         }
 
     def action_sgi_measures(self):
-        """Mis indicadores → «Mediciones»: la lista de mediciones del
-        indicador para capturar la pendiente (primero lo más reciente)."""
+        """Mis indicadores → «Mediciones»: la lista de mediciones con dato del
+        indicador (primero lo más reciente); quite «Con dato» para ver las
+        pendientes y las sin dato. 57.104.0 (B2): la gráfica ya no promedia
+        los ceros de las sin dato. La pendiente se captura con «Capturar»."""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
@@ -299,7 +323,7 @@ class SgiIndicator(models.Model):
             'res_model': 'sgi.indicator.measure',
             'view_mode': 'list,form,graph',
             'domain': [('indicator_id', '=', self.id)],
-            'context': {'default_indicator_id': self.id},
+            'context': {'default_indicator_id': self.id, 'search_default_con_dato': 1},
         }
 
     def action_view_trend(self):
@@ -322,21 +346,23 @@ class SgiIndicator(models.Model):
         }
 
     def action_sgi_recompute_pending_measures(self):
-        """D-12 (57.5.0): botón «Recalcular mediciones pendientes» de la lista
-        de indicadores, solo para el Administrador SGI. Con indicadores
-        seleccionados recalcula solo esos; sin selección, todos. El cron
-        diario de indicadores hace lo mismo cada día."""
+        """D-12 (57.5.0): botón «Recalcular mediciones» de la lista de
+        indicadores, solo para el Administrador SGI. Sin selección, re-mide
+        las pendientes de todos (como el cron diario). 57.104.0 (B3): con
+        indicadores seleccionados re-mide todo lo no validado de ellos (sin
+        dato y capturadas, sin ventana de meses), salvo lo corregido a mano,
+        con NC, con causa o acciones."""
         if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_admin')):
             raise AccessError("Solo el Administrador SGI puede recalcular las mediciones pendientes.")
         result = self.env['sgi.config'].sudo().recompute_pending_measures(
-            indicators=self or None)
-        message = ("%(revisadas)d medición(es) pendiente(s) revisada(s): %(capturadas)d "
-                   "capturada(s) con dato nuevo, %(errores)d con error.") % result
+            indicators=self or None, recent='all' if self else False)
+        message = ("%(revisadas)d revisadas: %(capturadas)d pendientes con dato nuevo, "
+                   "%(recalculadas)d recalculadas, %(errores)d con error.") % result
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': "Mediciones pendientes",
+                'title': "Recalcular mediciones",
                 'message': message,
                 'type': 'warning' if result['errores'] else 'success',
                 'sticky': False,
@@ -711,24 +737,10 @@ class SgiIndicator(models.Model):
         """% de competencias del puesto VIGENTES (certificación al día) vs las
         requeridas, a través de la vista de brechas (sgi.competence.gap): una
         competencia caducada (valid_to vencido) cuenta como brecha. Es una foto
-        del estado actual, no acumula por periodo; las cotas del periodo no aplican
-        (competencia = vigencia a hoy)."""
-        Employee = self.env['hr.employee']
-        JobSkill = self.env['hr.job.skill']
-        employees = Employee.search([])
-        jobs = employees.job_id
-        required = 0
-        if jobs:
-            # Una _read_group por puesto (antes: un search_count POR empleado).
-            counts = {job.id: count for job, count in JobSkill._read_group(
-                [('job_id', 'in', jobs.ids)], ['job_id'], ['__count'])}
-            required = sum(counts.get(employee.job_id.id, 0)
-                           for employee in employees if employee.job_id)
-        if not required:
-            return None
-        gaps = self.env['sgi.competence.gap'].search_count(
-            [('employee_id', 'in', employees.ids)])
-        return round((required - gaps) / required * 100.0, 2)
+        del estado actual, no acumula por periodo. 57.104.0 (B7): el cálculo
+        vive en ``_detail_capacitacion`` (solo la empresa del SGI, con
+        numerador y denominador)."""
+        return self._detail_capacitacion(date_from, date_to)['value']
 
     def _sgi_satisfaction_survey(self):
         """Encuesta que alimenta CA-02. Configurable en Ajustes
@@ -1263,8 +1275,9 @@ class SgiIndicatorMeasure(models.Model):
                            ('create_date', '>=', dt_from), ('create_date', '<', dt_to)],
             }
         if mode == 'capacitacion':
-            # Evidencia = las brechas de competencia (foto a hoy; sin cota de periodo).
-            employees = self.env['hr.employee'].search([])
+            # Evidencia = las brechas de competencia (foto a hoy; sin cota de
+            # periodo), de los mismos empleados que el cálculo (57.104.0).
+            employees = indicator._sgi_capacitacion_employees()
             return {
                 'type': 'ir.actions.act_window',
                 'name': "Brechas de competencia — evidencia",

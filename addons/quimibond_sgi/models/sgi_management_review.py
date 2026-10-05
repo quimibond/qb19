@@ -203,8 +203,9 @@ class SgiManagementReview(models.Model):
                 objective.name, dict(objective._fields['health'].selection).get(objective.health, '-')
                 if 'health' in objective._fields else '-', len(indicators)))
             for ind in indicators:
-                lines.append("    - %s %s: %s %s (%s)" % (
-                    ind.code, ind.name, ind.last_value, ind.uom or '',
+                # 57.104.0 (B1): «Sin dato» en vez de un 0 que nadie midió.
+                lines.append("    - %s %s: %s (%s)" % (
+                    ind.code, ind.name, ind.sgi_last_value_label,
                     ind.last_semaphore or 'sin dato'))
         reds = self._sgi_load_red_measures().filtered(lambda m: m.plan_required and not m.plan_done)
         if reds:
@@ -219,7 +220,8 @@ class SgiManagementReview(models.Model):
         ca02 = self.env['sgi.indicator'].search([('code', '=', 'CA-02')], limit=1)
         if ca02:
             measures = ca02.measure_ids.filtered(
-                lambda m: self.period_from <= m.period_date <= self.period_to and m.state != 'pendiente')
+                lambda m: self.period_from <= m.period_date <= self.period_to
+                and m.state in ('capturado', 'validado'))
             if measures:
                 values = ", ".join("%s: %s" % (m.period_date, m.value) for m in measures.sorted('period_date'))
                 parts.append("CA-02 satisfacción del cliente en el periodo → %s." % values)

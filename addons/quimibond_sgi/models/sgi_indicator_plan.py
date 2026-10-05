@@ -284,16 +284,22 @@ class SgiCronCalendar(models.AbstractModel):
         # en que se mide).
         self._sgi_step("último cálculo de los indicadores sin diagnóstico",
                        lambda: self.env['sgi.indicator']._sgi_calc_status_backfill())
+        res = True
+        if not scheduled or self._sgi_monthly_run_due(today):
+            res = super().cron_indicators()
+            if scheduled:
+                self.env['ir.config_parameter'].sudo().set_param(
+                    self._SGI_MONTHLY_DONE_PARAM, today.strftime('%Y-%m'))
         # 57.5.0 (D-12, A-006): re-mide las mediciones pendientes que ya
         # tienen dato. Antes corría en cada actualización del módulo.
+        # 57.104.0 (B3): la corrida programada también re-mide las «sin dato»
+        # y las capturadas no validadas de los últimos meses, con tiempo
+        # tope (lo que falte sigue al día siguiente); una corrida a mano
+        # (pruebas, botón del cron) se queda en las pendientes. Va DESPUÉS de
+        # la medición mensual: primero se crean las del mes.
         self._sgi_step("mediciones pendientes re-medidas",
-                       lambda: self.env['sgi.config'].recompute_pending_measures())
-        if scheduled and not self._sgi_monthly_run_due(today):
-            return True
-        res = super().cron_indicators()
-        if scheduled:
-            self.env['ir.config_parameter'].sudo().set_param(
-                self._SGI_MONTHLY_DONE_PARAM, today.strftime('%Y-%m'))
+                       lambda: self.env['sgi.config'].recompute_pending_measures(
+                           recent=bool(scheduled)))
         return res
 
     @api.model
@@ -319,14 +325,19 @@ class SgiManagementReviewValidate(models.Model):
         captured = Measure.search([
             ('state', '=', 'capturado'), ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to)])
-        captured.action_validate()
+        # 57.104.0 (B5): las manuales sin valor capturado no se validan (el
+        # write las rechazaría y el botón reventaba por una sola); se listan.
+        empty = captured._sgi_without_value()
+        (captured - empty).action_validate()
         reds = Measure.search([
             ('semaphore', '=', 'rojo'), ('state', '=', 'validado'),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to),
         ]).filtered(lambda m: m.plan_required and not m.plan_done)
         self.message_post(body=Markup(
-            "Revisión: %d mediciones validadas; %d rojas sin causa ni acción.") % (
-            len(captured), len(reds)))
+            "Revisión: %d mediciones validadas; %d manuales sin valor capturado (no se "
+            "validaron: %s); %d rojas sin causa ni acción.") % (
+            len(captured - empty), len(empty),
+            ", ".join(empty.mapped('display_name')) or "—", len(reds)))
         return {
             'type': 'ir.actions.act_window', 'name': "Rojos sin plan de acción",
             'res_model': 'sgi.indicator.measure', 'view_mode': 'list,form',

@@ -91,6 +91,21 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
    use «Regresar a pendiente» y vuelva a validarla. Si corrige el valor de
    una validada sin reabrirla, el color sale de las metas guardadas.
 
+6. **Sin dato y recálculo (desde 57.104.0):** el menú **Mediciones** y el
+   botón «Mediciones» abren con el filtro «Con dato»; quítelo para ver las
+   pendientes y las sin dato. El cron diario re-mide también las «sin dato»
+   y las capturadas no validadas de los últimos 2 meses (el antes y el
+   después quedan en el chatter de cada medición). Para re-medir todos los
+   meses de un indicador: lista de indicadores → selecciónelo → **Recalcular
+   mediciones** (solo Administrador SGI). Una medición con «Valor corregido
+   a mano» no se recalcula sola; «Recalcular valor» quita la marca.
+   **Registro vacío:** una fórmula «más bajo es mejor» cuya fuente nunca ha
+   tenido registros (SST-01, C5-01) sale «Sin dato» hasta que alguien
+   capture el primero. **TI-01:** junio, julio y agosto de 2026 quedaron
+   validadas en 0 sin dato real; regréselas a pendiente, capture la
+   disponibilidad del reporte de Odoo.sh y valídelas (las metas se vuelven a
+   guardar).
+
 ### 2.4.1 Competencias, cliente automotriz e IA (desde 57.100.0)
 
 - **Exámenes y cursos:** en **Empleados → Competencias SGI**, «Exámenes y

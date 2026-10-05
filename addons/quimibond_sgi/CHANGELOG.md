@@ -13,6 +13,158 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.104.0 — 2026-10-05
+
+**Indicadores: sin dato y cálculos** (diagnóstico de producción del
+2026-10-05: 35 de 106 indicadores activos con «Último valor 0»; segunda
+entrega después del mapa de la auditoría). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-104-0-indicadores.md`. Un campo
+guardado nuevo (`sgi.indicator.measure.sgi_value_by_hand`, nace en False sin
+respaldo) y uno calculado sin guardar (`sgi.indicator.sgi_last_value_label`);
+sin modelos, menús, ACL ni herencias de vista. Nada se borra; ninguna
+medición validada cambia.
+
+### Agregado
+
+- **«Valor corregido a mano»** (`sgi_value_by_hand`): una persona que cambia
+  el valor de una medición automática la marca; el recálculo diario ya no la
+  toca. «Recalcular valor» y «Recalcular ahora» quitan la marca. El sistema
+  (sudo) y las rutas de cálculo (contexto `sgi_calc_write`) no marcan.
+- Parámetro `quimibond_sgi.indicator_recompute_months` (2, no se siembra):
+  meses hacia atrás del recálculo diario.
+- `_sgi_formula_fixes_57104` y `_sgi_deliverable_fix_57104`: correcciones de
+  TR-01, C5-02 y C2-06 con candado (solo si siguen exactamente como el
+  2026-10-05; si no, «distinto» en el log y no se tocan).
+
+### Corregido
+
+- **«Sin dato» no es 0:** la lista de indicadores, el Tablero, la pestaña
+  Indicadores del proceso, Mis indicadores (lista y celular), el texto de la
+  revisión por la dirección, los «Últimos 6 periodos» y el diagrama de
+  indicadores dicen «Sin dato» cuando ninguna medición tiene dato (16
+  indicadores en producción); un 0 real se muestra (el diagrama pintaba
+  «—»). Las mediciones sin dato (y pendientes en la lista) no muestran el 0
+  guardado. CA-02 en la revisión solo toma mediciones con dato.
+- **Gráficas:** «Mediciones» (Mis indicadores, proceso, celular) y el menú
+  Administración → Indicadores → Mediciones abren con «Con dato» y «Míos»;
+  el menú ya no abre con «Pendientes» (juntos daban vacío).
+- **Recálculo:** el cron diario re-mide también las «sin dato» y las
+  capturadas no validadas de los últimos 2 meses (E1-01 se quedaba en 0/80
+  porque las validaciones llegan después del cálculo; C2-05 y E2-02 nunca
+  volvían a medir). Nunca toca validadas, indicadores de foto ni de salud,
+  mediciones con NC, con causa o acciones, ni las corregidas a mano. Solo
+  escribe si algo cambió (antes y después en el chatter de la medición, un
+  solo rastro); una capturada nunca regresa a pendiente.
+- **Medir desde:** al cambiarla, las mediciones no validadas anteriores
+  pasan a «Sin dato» con el valor anterior en la nota; el cálculo de un
+  periodo anterior da «Sin dato» (último cálculo «Antes de medir desde»),
+  también en el desglose por línea de negocio.
+- **Manual sin valor:** una medición manual en 0 sin numerador, denominador
+  ni nota ya no se marca capturada ni se valida (TI-01 jun–ago se validó
+  así); para un 0 real, el responsable lo explica en la nota. Solo aplica a
+  personas; «Validar mediciones» de la revisión (P-40) las salta y las lista.
+- **Registro vacío:** una fórmula «más bajo es mejor» con el numerador en 0 y
+  un término cuya fuente nunca ha tenido registros (SST-01: `sgi.incident`
+  vacío) o cuyo campo sumado nunca se ha capturado (C5-01: metros
+  reclamados) da «Sin dato» con nota, no un verde falso.
+- **TR-01:** numerador y denominador son las mismas NC (levantadas en el
+  periodo, sin canceladas); el numerador, las que ya están cerradas. También
+  para instalaciones nuevas (`_CIERRE_NC_TERMS`).
+- **C5-02:** cuenta las reclamaciones cerradas en 30 días naturales desde su
+  alta, no las que tienen verificación de eficacia.
+- **C2-06:** el entregable «Salida validada» deja el campo de Studio «Tipo de
+  transporte» (0 de 729 salidas) y cuenta la salida con sello de embarque;
+  fórmula y fuente reescritas. Seguirá en 0 % rojo hasta que Logística
+  capture sellos: es el dato real.
+- **RH-02:** solo empleados de la empresa del SGI (D-03); la medición guarda
+  numerador (competencias vigentes) y denominador (requeridas), y la
+  evidencia lista las brechas de esos mismos empleados.
+
+### Cambiado
+
+- Botón «Recalcular mediciones pendientes» → **«Recalcular mediciones»**:
+  sin selección, las pendientes (como antes); con indicadores seleccionados,
+  todo lo no validado de ellos, sin ventana de meses.
+- Los errores del recálculo por medición quedan como aviso (WARNING) en el
+  log, no como error.
+- Al pasar de «sin dato» a capturada por el recálculo, la fecha de captura
+  (plazo de validación y del plan) es la del recálculo. **Al día siguiente
+  del despliegue, los meses viejos que el cron vuelva a medir (E1-01, E2-02,
+  C2-05, …) aparecerán en Mis pendientes de sus responsables como «Validar
+  medición»**, con plazo contado desde ese día.
+- El recálculo diario corre **después** de la medición mensual del cron y
+  tiene tiempo tope (240 s): lo que no alcanza queda para el día siguiente,
+  que sigue desde donde se quedó (`quimibond_sgi.indicator_recompute_cursor`,
+  lo escribe el cron); el log dice cuántas faltan.
+- El recálculo conserva la nota que escribió una persona (la detecta por el
+  seguimiento de la nota): agrega la nota nueva del cálculo y deja la suya.
+- «Validar seleccionadas» de Mis pendientes salta, como P-40, las manuales
+  sin valor capturado y las dice en el aviso, en vez de fallar todo el lote.
+- «Registro vacío» no se presume cuando el campo sumado no está guardado en
+  la base (no se puede buscar por él).
+- `quimibond_sgi_mapa` 19.0.1.1.2: el mapa trae las mismas fórmulas de
+  TR-01, C5-02 y C2-06 y el filtro nuevo del entregable C2-SALIDA. Queda pendiente la
+  entrada «aplica» del mapa que usa el mismo campo de Studio
+  (`x_studio_tipo_de_transporte = 'Transporte Interno'`): no se tocó.
+
+### Migración
+
+- `migrations/19.0.57.104.0/post-migrate.py`, idempotente, con conteos en el
+  log: P-a indicadores con «Medir desde» → mediciones no validadas
+  anteriores a «Sin dato» con nota (esperado: 9, todas de S6-02); P-b
+  términos de TR-01 (51) y C5-02 (42) con candado, más su fórmula y fuente
+  (esperado: «corregido» los dos); P-c entregable de C2-06 (165) con candado
+  (esperado: «corregido»). No recalcula nada.
+
+### Datos de producción
+
+- S6-02: mediciones 714, 642, 570, 498, 426, 358, 305, 165 y 249 (ene–sep,
+  capturadas en 0) a «Sin dato», con el valor anterior en la nota y un
+  mensaje en el chatter del indicador.
+- Términos 51 (TR-01) y 42 (C5-02), fórmula y fuente de los dos; entregable
+  165 (`complete_domain` y `complete_criteria`) y fórmula y fuente de C2-06.
+  El antes y el después quedan en el chatter de cada indicador; los tres ya
+  estaban en prueba.
+- Desde el día siguiente, el cron diario recalcula las sin dato y capturadas
+  de agosto, septiembre y octubre (y semanales de esas semanas): E1-01,
+  SST-01, C5-01, C5-02, TR-01 cambian de valor; el antes y el después quedan
+  en cada medición.
+- TI-01 no se toca.
+- **Para el Jefe MAST, a mano:** TI-01 junio, julio y agosto (ids 19, 49 y
+  95) están validadas en 0 sin dato real: regresarlas a pendiente, capturar
+  la disponibilidad del reporte de Odoo.sh y validar (las metas se vuelven a
+  guardar, K-04). Para que SST-01, C5-01 y E1-01 se recalculen en todos sus
+  meses: Indicadores → seleccionarlos → «Recalcular mediciones».
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó Q1–Q14 por omisión el 2026-10-05: (Q1) «Sin dato» en la columna
+«Último valor». (Q2) El menú Mediciones abre con «Con dato» y «Míos». (Q3)
+Recálculo diario de sin dato y capturadas de 2 meses. (Q4) S6-02 se marca en
+el despliegue. (Q5) TI-01 no se reabre en el despliegue. (Q6) El despliegue
+no recalcula. (Q7) Registro vacío solo en configurables «más bajo es mejor».
+(Q8) SST-01, C5-01 y E1-01 completos se recalculan a mano. (Q9) TR-01 y C5-02
+se corrigen con candado. (Q10) C2-06 mide el sello de embarque. (Q11) RH-02
+con la empresa del SGI. (Q12) Un 0 manual pide nota, numerador o
+denominador. (Q13) La corrección a mano se respeta. (Q14) Sale como
+57.104.0.
+
+### Solo se verifica en el build de Odoo.sh
+
+- `test_indicadores_sin_dato` (19 casos) y el suite `--test-tags
+  /quimibond_sgi` sin fallos nuevos ni `ERROR` en el log.
+- Cerrar una NC con folio y leer `date_close` (TR-01 y C5-02 dependen de
+  que la etapa de cierre la llene).
+- En una lista no editable, `invisible` en el valor deja la celda vacía por
+  renglón.
+- «Recalcular ahora» en SST-01 y C5-01 (Sin dato, «Registro vacío»), E2-01 y
+  C5-04 (siguen en 0 verde), TR-01, C5-02, C2-06 y RH-02.
+- Conteo del universo del recálculo y tiempo de
+  `recompute_pending_measures(recent=True)` en el shell (meta: menos de 5
+  minutos).
+- Mis indicadores en el celular dice «Sin dato»; P-40 con una manual
+  pendiente en 0 la salta.
+
 ## 19.0.57.103.0 — 2026-10-05
 
 **Registro de cumplimiento por actividad y periodo** (pedido de Jose del
