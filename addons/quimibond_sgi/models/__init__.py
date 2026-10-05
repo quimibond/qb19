@@ -114,3 +114,4 @@ from . import sgi_indicator_health
 # 57.100.0: al final (heredan medición, desglose, indicador, empleado,
 # currículum, encuestas, cursos y NC, todos definidos antes).
 from . import sgi_indicator_integrity
+from . import sgi_competence_grant

@@ -46,6 +46,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'sign',  # firmas de documentos, registros y aprobaciones
         'portal',  # respuesta del proveedor a su NC (controllers/portal_nc.py)
         'website_slides',  # cursos ligados a competencias
+        'hr_skills_survey',  # 57.100.0 (N-13): certificación aprobada → línea de currículum (instalado en producción)
+        'hr_skills_slides',  # 57.100.0 (N-13): curso terminado → línea de currículum (instalado en producción)
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
     ],
     'data': [

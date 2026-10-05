@@ -581,6 +581,21 @@ class SgiConfig(models.AbstractModel):
         'quimibond_sgi.satisfaction_survey_id': '0',
         # 57.11.0 (A-016): los 9 parámetros del presupuesto y del pronóstico de
         # ventas los siembra quimibond_ventas_presupuesto (mismas claves).
+        # 57.100.0 (N-13): días para evaluar la eficacia de la capacitación y
+        # encuesta opcional al jefe (survey.survey; 0 = sin encuesta).
+        'quimibond_sgi.training_effectiveness_days': '90',
+        'quimibond_sgi.training_effectiveness_survey_id': '0',
+        # 57.100.0 (N-14): meses de ventas que hacen «cliente del producto» en el ECO.
+        'quimibond_sgi.ppap_sales_window_months': '12',
+        # 57.100.0 (IA, puerta Q16): apagada hasta la autorización escrita de
+        # Jose. Proveedor Anthropic; modelo configurable; segundos de espera;
+        # si se mandan las 3 NC cerradas del mismo proceso. La llave
+        # (quimibond_sgi.ai_api_key) no se siembra: la captura un administrador.
+        'quimibond_sgi.ai_enabled': 'False',
+        'quimibond_sgi.ai_backend': 'anthropic',
+        'quimibond_sgi.ai_model': 'claude-opus-5-5',
+        'quimibond_sgi.ai_timeout': '60',
+        'quimibond_sgi.ai_include_history': 'True',
     }
 
     @api.model
