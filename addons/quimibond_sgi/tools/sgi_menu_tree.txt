@@ -92,7 +92,7 @@ SGI/Administración SGI/Diagnóstico/Cumplimiento de procedimientos | menu_sgi_c
 SGI/Administración SGI/Diagnóstico/Faltantes de especificación | menu_sgi_spec_gaps | -
 SGI/Administración SGI/Diagnóstico/Cumplimiento semanal | menu_sgi_week_stats | -
 SGI/Administración SGI/Diagnóstico/Registro de cumplimiento | menu_sgi_activity_executions | -
-SGI/Administración SGI/Diagnóstico/Pantallas que no van con su medición | menu_sgi_menu_mismatch | -
+SGI/Administración SGI/Diagnóstico/Medición por revisar | menu_sgi_menu_mismatch | -
 SGI/Administración SGI/Firmas de lectura | menu_sgi_admin_signatures | -
 SGI/Administración SGI/Firmas de lectura/Publicar Mi procedimiento | menu_sgi_my_procedure_publish | quimibond_sgi.group_sgi_manager
 SGI/Administración SGI/Firmas de lectura/Acuses de lectura | menu_sgi_config_acks | -

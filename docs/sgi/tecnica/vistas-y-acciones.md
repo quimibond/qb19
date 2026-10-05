@@ -111,7 +111,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Faltantes de especificación** — `sgi.activity.spec.gap`
       - **Cumplimiento semanal** — `sgi.activity.week.stat`
       - **Registro de cumplimiento** — `sgi.activity.execution`
-      - **Pantallas que no van con su medición** — `sgi.activity.spec.gap`
+      - **Medición por revisar** — `sgi.activity.spec.gap`
     - **Firmas de lectura**
       - **Publicar Mi procedimiento** — `sgi.my.procedure.check`; grupos: quimibond_sgi.group_sgi_manager
       - **Acuses de lectura** — `sgi.document.ack`
@@ -145,7 +145,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_activity_compliance_action` | act_window | Cumplimiento de procedimientos | `sgi.process.activity` | pivot,graph,list | sí | `addons/quimibond_sgi/views/sgi_process_procedure_views.xml` |
 | `quimibond_sgi.sgi_activity_exec_stat_action_who` | act_window | Matriz de responsabilidades | `sgi.activity.exec.stat` | pivot,sgi_diagram,list,graph | sí | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_activity_execution_action` | act_window | Registro de cumplimiento | `sgi.activity.execution` | list,pivot,form | sí | `addons/quimibond_sgi/views/sgi_activity_execution_views.xml` |
-| `quimibond_sgi.sgi_activity_menu_mismatch_action` | act_window | Pantallas que no van con su medición | `sgi.activity.spec.gap` | list,pivot | sí | `addons/quimibond_sgi/views/sgi_activity_execution_views.xml` |
+| `quimibond_sgi.sgi_activity_menu_mismatch_action` | act_window | Medición por revisar | `sgi.activity.spec.gap` | list,pivot | sí | `addons/quimibond_sgi/views/sgi_activity_execution_views.xml` |
 | `quimibond_sgi.sgi_activity_method_action` | act_window | Cobertura de medición | `sgi.process.activity` | pivot,list | sí | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_activity_role_action_approval` | act_window | Aprobaciones del SGI | `sgi.activity.role` | list | sí | `addons/quimibond_sgi/views/sgi_approval_native_views.xml` |
 | `quimibond_sgi.sgi_activity_spec_gap_action` | act_window | Faltantes de especificación | `sgi.activity.spec.gap` | pivot,list | sí | `addons/quimibond_sgi/views/sgi_activity_spec_views.xml` |

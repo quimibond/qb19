@@ -13,6 +13,41 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.106.0 — 2026-10-05
+
+**Medición por revisar** (pedido de Jose del 2026-10-05: asegurar que cada
+actividad apunte al menú correcto y que la medición capture bien). Sin
+modelos ni campos guardados nuevos; migración `post-migrate` que recalcula
+faltantes.
+
+### Agregado
+
+- Faltante **«Evidencia que no aparece»** (`measure_never`, advertencia):
+  la actividad se mide sola y su medición no encuentra registros, o el
+  último tiene más de 60 días (o la ventana de su cadencia si es más larga,
+  380 días la anual). Las recién creadas esperan el mismo plazo. Dice si el
+  filtro de evidencia es inválido.
+- Faltante **«Atribución débil»** (`weak_attribution`, advertencia): se
+  atribuye con `write_uid` (el último que editó, no quien hizo la
+  actividad) o, en 4 semanas, hay ejecuciones de otro puesto o de cuentas
+  compartidas y la adherencia es menor a 50 %.
+- El cron de medición recalcula los faltantes de las actividades con modelo
+  de medición después de medir (solo escribe los que cambian).
+
+### Cambiado
+
+- **«Pantalla que no va con su medición»** también compara los menús que
+  lanzan una acción de servidor (Traslados, No conformidades,
+  Reclamaciones…): usa el modelo sobre el que corre la acción. Las acciones
+  de cliente (reportes, tableros) siguen sin compararse.
+- Diagnóstico → «Pantallas que no van con su medición» pasa a **«Medición
+  por revisar»**: los tres faltantes, agrupados por faltante.
+
+### Migración
+
+- `post-migrate`: recalcula los faltantes de las actividades con pantalla o
+  con modelo de medición y anota cuántos salen de cada uno. Esperado (MCP,
+  2026-10-05): unas 39 sin un solo registro, todas «por evento».
 ## 19.0.57.105.0 — 2026-10-05
 
 **MIID desde Odoo** (especificación y borrador Rev. 03 de Jose del
