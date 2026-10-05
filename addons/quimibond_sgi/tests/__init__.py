@@ -143,3 +143,7 @@ from . import test_sst_ambiente
 from . import test_clausulas_revision
 from . import test_interfaz
 from . import test_salud_sgi
+from . import test_integridad_metas
+from . import test_competencias_capacitacion
+from . import test_ppap_coa_cliente
+from . import test_ia_nc
