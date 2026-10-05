@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""57.104.0: «Medición por revisar»: evidencia que no aparece, atribución
+"""57.106.0: «Medición por revisar»: evidencia que no aparece, atribución
 débil y pantallas de acción de servidor que no van con su medición."""
 from datetime import timedelta
 

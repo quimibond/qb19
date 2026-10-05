@@ -35,6 +35,9 @@ DEFAULT_MIN_SAMPLE = 5
 SNAPSHOT_MODES = ('cartera_vencida', 'cartera_vencida_60',
                   'inventario_diferencia', 'capacitacion') + HEALTH_SNAPSHOT_MODES
 SNAPSHOT_NOTE = "Sin dato: indicador de foto, no reconstruible para un periodo pasado."
+# 57.104.0 (B4): mediciones anteriores a «Medir desde».
+BEFORE_FROM_NOTE = "Antes de «Medir desde» (%s): no cuenta. Valor anterior %s."
+BEFORE_FROM_CALC = "Antes de «Medir desde» (%s): no se mide."
 
 
 def _min_sample(env):
@@ -102,7 +105,7 @@ class SgiIndicatorDetail(models.Model):
                 ('write_date', '>=', since),
             ])
             for measure in measures:
-                measure.write({
+                measure.with_context(sgi_calc_write=True).write({
                     'state': 'sin_dato', 'value': 0.0, 'numerator': False,
                     'denominator': False, 'sample_size': 0, 'detail_model': False,
                     'detail_ids': False,
@@ -143,6 +146,8 @@ class SgiIndicatorDetail(models.Model):
             return 'manual', False
         if vals.get('state') != 'sin_dato':
             return 'ok', False
+        if (vals.get('note') or '').startswith("Antes de «Medir desde»"):
+            return 'antes', vals['note']
         missing = self.spec_missing or ''
         if any(key in missing for key in ('sin fórmula', 'sin fuente', 'sin actividad', 'sin entregable',
                                           'no dice cuándo')):
@@ -183,6 +188,43 @@ class SgiIndicatorDetail(models.Model):
             indicator._sgi_set_calc(status, "%s: %s" % (prefix, reason) if reason else prefix + ".")
             done += 1
         return done
+
+    def write(self, vals):
+        res = super().write(vals)
+        # B4 (57.104.0): cambiar «Medir desde» marca las anteriores. Moverla
+        # hacia atrás no revive las ya marcadas: quedan «sin dato» y las
+        # re-mide el recálculo (cron con ventana o el botón).
+        if 'measure_from' in vals:
+            self._sgi_mark_before_measure_from()
+        return res
+
+    def _sgi_mark_before_measure_from(self):
+        """B4 (57.104.0): las mediciones no validadas cuyo periodo termina antes
+        de «Medir desde» pasan a «Sin dato» con el valor anterior en la nota.
+        Las validadas no se tocan (evidencia) y se cuentan en el chatter. Nada
+        se borra. Idempotente. Devuelve las mediciones cambiadas."""
+        changed = self.env['sgi.indicator.measure']
+        for indicator in self.filtered('measure_from'):
+            measures = indicator.measure_ids.filtered(
+                lambda m: indicator._sgi_period_bounds(m.period_date)[1] < indicator.measure_from)
+            to_mark = measures.filtered(lambda m: m.state not in ('validado', 'sin_dato'))
+            since = indicator.measure_from.strftime('%d/%m/%Y')
+            for measure in to_mark:
+                prev = "sin dato" if measure.state == 'pendiente' else measure.value
+                measure.with_context(sgi_calc_write=True).sudo().write({
+                    'state': 'sin_dato', 'value': 0.0, 'numerator': False, 'denominator': False,
+                    'sample_size': 0, 'detail_model': False, 'detail_ids': False,
+                    'note': "\n".join(n for n in (BEFORE_FROM_NOTE % (since, prev), measure.note) if n),
+                })
+            if to_mark:
+                validated = measures.filtered(lambda m: m.state == 'validado')
+                indicator.message_post(body=(
+                    "«Medir desde» %s: %d medición(es) anteriores pasan a «Sin dato» (el valor "
+                    "anterior queda en su nota)%s." % (
+                        since, len(to_mark),
+                        "; %d validada(s) no se tocan" % len(validated) if validated else "")))
+            changed |= to_mark
+        return changed
 
     def action_set_official(self):
         self.write({'status': 'oficial'})
@@ -240,6 +282,16 @@ class SgiIndicatorDetail(models.Model):
             return {'note': SNAPSHOT_NOTE, 'state': 'sin_dato', 'value': 0.0,
                     'numerator': None, 'denominator': None, 'sample_size': 0,
                     'detail_model': False, 'detail_ids': False}
+        # B4 (57.104.0): antes de «Medir desde» no se mide (ni se pide la
+        # captura de un manual). Así «Recalcular» no vuelve a llenar las
+        # marcadas. Los modos con plazo (sgi_indicator_ind2) responden
+        # «pendiente» antes de llegar aquí mientras el plazo no vence; el
+        # recálculo nunca regresa una medición a pendiente.
+        if not self._sgi_measurable_on(date_to):
+            return {'note': BEFORE_FROM_CALC % self.measure_from.strftime('%d/%m/%Y'),
+                    'state': 'sin_dato', 'value': 0.0, 'numerator': None,
+                    'denominator': None, 'sample_size': 0, 'detail_model': False,
+                    'detail_ids': False}
         note = self._sgi_compute_note(date_from, date_to)
         vals = {'note': note or False}
         if self.calc_mode == 'manual':
@@ -366,6 +418,27 @@ class SgiIndicatorDetail(models.Model):
         return {'value': round(overdue / total * 100.0, 2), 'numerator': overdue,
                 'denominator': total, 'model': 'account.move', 'ids': overdue_moves.ids}
 
+    def _sgi_capacitacion_employees(self):
+        """RH-02 (57.104.0): empleados activos de la empresa del SGI (D-03).
+        Antes eran todos los que veía el usuario del cron."""
+        company = self.env['sgi.config']._sgi_company()
+        return self.env['hr.employee'].sudo().search([('company_id', '=', company.id)])
+
+    def _detail_capacitacion(self, date_from, date_to):
+        """RH-02 (57.104.0): competencias del puesto vigentes ÷ requeridas, solo
+        empleados activos de la empresa del SGI. Numerador = requeridas −
+        brechas (nunca negativo); registros = las brechas. Foto a hoy: las
+        cotas del periodo no aplican."""
+        employees = self._sgi_capacitacion_employees()
+        JobSkill = self.env['hr.job.skill'].sudo()
+        jobs = employees.job_id
+        counts = {job.id: n for job, n in JobSkill._read_group(
+            [('job_id', 'in', jobs.ids)], ['job_id'], ['__count'])} if jobs else {}
+        required = sum(counts.get(e.job_id.id, 0) for e in employees if e.job_id)
+        gaps = self.env['sgi.competence.gap'].sudo().search([('employee_id', 'in', employees.ids)])
+        covered = max(required - len(gaps), 0)
+        return self._ratio(covered, required, gaps)
+
     def _detail_cartera_vencida(self, date_from, date_to):
         return self._sgi_detail_overdue(date_to, 0)
 
@@ -393,6 +466,11 @@ class SgiIndicatorMeasureDetail(models.Model):
     indicator_status = fields.Selection(related='indicator_id.status',
                                         string="Estado del indicador",
                                         help="Si el indicador es oficial o está a prueba.")
+    # 57.104.0 (B3): el recálculo diario respeta un valor corregido a mano.
+    sgi_value_by_hand = fields.Boolean(
+        string="Valor corregido a mano", readonly=True, copy=False,
+        help="Alguien escribió a mano el valor de esta medición automática: el "
+             "recálculo diario ya no la toca. «Recalcular valor» quita la marca.")
 
     @api.depends('sample_size', 'state', 'detail_ids')
     def _compute_small_sample(self):
@@ -454,7 +532,8 @@ class SgiIndicatorMeasureDetail(models.Model):
                     "recalcular." % indicator.code)
             date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
             vals = indicator._sgi_measure_vals(date_from, date_to)
-            measure.write(vals)
+            # 57.104.0 (B3): lo escribe el SGI; deja de estar «corregida a mano».
+            measure.with_context(sgi_calc_write=True).write(dict(vals, sgi_value_by_hand=False))
             # 57.1.0: el recálculo desde la medición también deja el motivo.
             indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
             label = ("sin dato calculable" if vals['state'] == 'sin_dato'
@@ -463,6 +542,46 @@ class SgiIndicatorMeasureDetail(models.Model):
                 body="Medición de %s recalculada con el modo «%s» — %s." % (
                     measure.period_date, indicator.calc_mode, label))
         return True
+
+    # ---- B5 (57.104.0): una manual sin valor no se captura ni se valida ----
+    def _sgi_without_value(self):
+        """Mediciones de indicador manual sin valor capturado: valor 0, sin
+        numerador, sin denominador y sin nota. Un ``Float`` no distingue «nadie
+        escribió» de «escribieron 0»; para un 0 de verdad, el responsable lo
+        explica en la nota."""
+        return self.filtered(
+            lambda m: m.indicator_id.calc_mode == 'manual' and not m.value
+            and not m.numerator and not m.denominator and not (m.note or '').strip())
+
+    def _sgi_check_has_value(self):
+        missing = self._sgi_without_value()
+        if missing:
+            raise UserError(
+                "Capture el valor de %s antes de marcarla capturada o validarla. "
+                "Si el valor de verdad es 0, escriba en la nota por qué (p. ej. «0: sin "
+                "caídas en el mes»)." % ", ".join(missing.mapped('display_name')))
+
+    def write(self, vals):
+        # B5: solo cuando una persona (no el sistema) la PASA a capturada o
+        # validada. Se revisa después de escribir, con los valores nuevos
+        # aplicados; el UserError revierte todo.
+        moving = self.browse()
+        if vals.get('state') in ('capturado', 'validado') and not self.env.su:
+            moving = self.filtered(lambda m: m.state != vals['state'])
+        # B3: una persona que cambia el valor de una medición automática la
+        # marca «corregida a mano». Las rutas del sistema escriben con
+        # ``sgi_calc_write`` (recálculo, «Recalcular valor», «Recalcular
+        # ahora», foto, «medir desde»); el sistema (sudo) tampoco marca.
+        if ('value' in vals and 'sgi_value_by_hand' not in vals and not self.env.su
+                and not self.env.context.get('sgi_calc_write')):
+            auto = self.filtered(lambda m: m.indicator_id.calc_mode != 'manual'
+                                 and round(m.value or 0.0, 6) != round(vals['value'] or 0.0, 6))
+            if auto:
+                super(SgiIndicatorMeasureDetail, auto).write({'sgi_value_by_hand': True})
+        res = super().write(vals)
+        if moving:
+            moving._sgi_check_has_value()
+        return res
 
     def action_validate(self):
         """Una medición sin dato no se valida: no hay nada que confirmar y

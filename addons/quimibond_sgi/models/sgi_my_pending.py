@@ -82,7 +82,9 @@ NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
                  # 57.94.0 (U-08): aviso semanal de RH por departamento.
                  'hr.department',
                  # 57.100.0 (N-14): salida validada sin CoA.
-                 'stock.picking')
+                 'stock.picking',
+                 # 57.105.0: aprobación del MIID retenida por candados.
+                 'approval.request')
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
 CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
@@ -1004,16 +1006,27 @@ class SgiMyPending(models.TransientModel):
         if existing and not allowed:
             raise UserError("Solo el responsable del indicador o el Jefe MAST puede validar "
                             "estas mediciones.")
+        # 57.104.0 (B5): como P-40, las manuales en 0 sin nota no se validan
+        # (el write las rechazaría y todo el lote fallaba); se dejan y se avisan.
+        empty = allowed._sgi_without_value()
+        allowed -= empty
         allowed.action_validate()
-        rows.filtered(lambda r: r.res_id not in skipped.ids).unlink()
+        left = skipped | empty
+        rows.filtered(lambda r: r.res_id not in left.ids).unlink()
         reload = {'type': 'ir.actions.client', 'tag': 'soft_reload'}
-        if skipped:
+        if left:
+            parts = []
+            if skipped:
+                parts.append("%d no son de sus indicadores y se dejaron" % len(skipped))
+            if empty:
+                parts.append("%d manuales no tienen valor capturado y se dejaron (%s): "
+                             "capture el valor o, si es 0, escriba en la nota por qué"
+                             % (len(empty), ", ".join(empty.mapped('display_name'))))
             return {
                 'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {
                     'type': 'warning',
-                    'message': "Se validaron %d mediciones; %d no son de sus indicadores "
-                               "y se dejaron." % (len(allowed), len(skipped)),
+                    'message': "Se validaron %d mediciones; %s." % (len(allowed), "; ".join(parts)),
                     'next': reload,
                 },
             }

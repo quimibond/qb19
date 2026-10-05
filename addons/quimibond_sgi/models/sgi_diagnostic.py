@@ -274,6 +274,9 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line(
                 'warn', "Ninguna revisión documental ha pasado por el flujo de Aprobaciones (F-P-G01-06).",
                 sgi_menu_path('solicitudes_cambio')))
+        # 57.105.0: el MIID vigente contra el sistema y lo que impide aprobar
+        # la siguiente revisión.
+        lines += env['sgi.miid']._sgi_diagnostic_lines()
         lines += self._sgi_unmapped_report_lines()
         lines = self._sgi_with_operating(lines, "Difusión documental operando.")
         section("Documental", lines)

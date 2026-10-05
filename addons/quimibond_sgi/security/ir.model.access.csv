@@ -320,3 +320,13 @@ access_survey_survey_sgi_manager,survey.survey sgi manager,survey.model_survey_s
 access_sgi_activity_execution_user,sgi.activity.execution.user,model_sgi_activity_execution,base.group_user,1,0,0,0
 access_sgi_activity_execution_manager,sgi.activity.execution.manager,model_sgi_activity_execution,group_sgi_manager,1,1,1,1
 access_sgi_activity_execution_mark_user,sgi.activity.execution.mark.user,model_sgi_activity_execution_mark,base.group_user,1,1,1,1
+access_sgi_miid_section_user,sgi.miid.section.user,model_sgi_miid_section,group_sgi_user,1,0,0,0
+access_sgi_miid_section_auditor,sgi.miid.section.auditor,model_sgi_miid_section,group_sgi_auditor,1,0,0,0
+access_sgi_miid_section_director,sgi.miid.section.director,model_sgi_miid_section,group_sgi_director,1,1,0,0
+access_sgi_miid_section_manager,sgi.miid.section.manager,model_sgi_miid_section,group_sgi_manager,1,1,1,0
+access_sgi_miid_row_note_user,sgi.miid.row.note.user,model_sgi_miid_row_note,group_sgi_user,1,0,0,0
+access_sgi_miid_row_note_auditor,sgi.miid.row.note.auditor,model_sgi_miid_row_note,group_sgi_auditor,1,0,0,0
+access_sgi_miid_row_note_manager,sgi.miid.row.note.manager,model_sgi_miid_row_note,group_sgi_manager,1,1,1,0
+access_sgi_miid_user,sgi.miid.user,model_sgi_miid,group_sgi_user,1,0,0,0
+access_sgi_miid_auditor,sgi.miid.auditor,model_sgi_miid,group_sgi_auditor,1,0,0,0
+access_sgi_miid_manager,sgi.miid.manager,model_sgi_miid,group_sgi_manager,1,1,1,0

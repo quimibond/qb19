@@ -94,10 +94,10 @@ SGI_GAP_SEVERITY = {
     'menu_no_visible': 'warning', 'menu_model_mismatch': 'warning',
     'measure_never': 'warning', 'weak_attribution': 'warning',
 }
-# 57.104.0: días mínimos sin evidencia para «Evidencia que no aparece» (la
+# 57.106.0: días mínimos sin evidencia para «Evidencia que no aparece» (la
 # cadencia larga manda: una anual espera su ventana de 380 días).
 MEASURE_NEVER_DAYS = 60
-# 57.104.0: adherencia (%) por debajo de la cual la atribución es débil
+# 57.106.0: adherencia (%) por debajo de la cual la atribución es débil
 # cuando hay ejecuciones de otro puesto o de cuentas compartidas.
 WEAK_ATTRIBUTION_PCT = 50
 
@@ -379,7 +379,7 @@ class SgiActivitySpec(models.Model):
         if mismatch:
             add('menu_model_mismatch', "La pantalla «%s» abre %s, pero la actividad se mide con "
                                        "%s: corrija el menú o el modelo de medición." % mismatch)
-        # 57.104.0: la medición no encuentra registros o no sabe de quién son.
+        # 57.106.0: la medición no encuentra registros o no sabe de quién son.
         never = self._sgi_measure_never()
         if never:
             add('measure_never', never)
@@ -414,7 +414,7 @@ class SgiActivitySpec(models.Model):
         return bool(self.measure_model_id) and self.measure_method in (False, 'odoo', 'entregable')
 
     def _sgi_measure_never(self):
-        """57.104.0: mensaje si la actividad se mide sola y su evidencia no
+        """57.106.0: mensaje si la actividad se mide sola y su evidencia no
         aparece: ningún registro, o el último hace más de 60 días (o de la
         ventana de su cadencia, si es más larga). Las recién creadas esperan
         el mismo plazo. None si va bien."""
@@ -437,7 +437,7 @@ class SgiActivitySpec(models.Model):
                     self.measure_model_id.model, fields.Date.to_string(last.date()), days))
 
     def _sgi_weak_attribution(self):
-        """57.104.0: mensajes si la medición no puede decir quién hizo la
+        """57.106.0: mensajes si la medición no puede decir quién hizo la
         actividad: usa «write_uid» (el último que editó, no quien la hizo) o
         la mayoría de las ejecuciones de 4 semanas son de otro puesto o de
         cuentas compartidas."""
@@ -457,7 +457,7 @@ class SgiActivitySpec(models.Model):
         return out
 
     def _sgi_screen_model(self):
-        """57.104.0: (pantalla, modelo que abre) de la actividad: el de la
+        """57.106.0: (pantalla, modelo que abre) de la actividad: el de la
         acción de ventana o, si el menú lanza una acción de servidor, el
         modelo sobre el que corre. (pantalla, None) si es una acción de
         cliente (reporte, tablero) o no hay pantalla."""
@@ -476,7 +476,7 @@ class SgiActivitySpec(models.Model):
         actividad se mide sola con un modelo y su pantalla abre otro; None si
         van juntos o no hay con qué comparar (sin pantalla, acción de cliente,
         sin modelo de medición o medida por consecuencia o a mano). Desde
-        57.104.0 también compara los menús con acción de servidor."""
+        57.106.0 también compara los menús con acción de servidor."""
         self.ensure_one()
         if self.measure_method not in (False, 'odoo', 'entregable'):
             return None
@@ -1277,7 +1277,7 @@ class SgiActivityWeekCounts(models.Model):
         # «Mi procedimiento» de cada puesto (Mi equipo las lee de ahí).
         Cron._sgi_step("cifras de Mi procedimiento por puesto",
                        lambda: self.env['hr.job']._sgi_mp_refresh_all())
-        # 57.104.0: con la medición fresca, los faltantes que dependen de ella
+        # 57.106.0: con la medición fresca, los faltantes que dependen de ella
         # («Evidencia que no aparece», «Atribución débil»). Solo escribe los
         # que cambiaron.
         Cron._sgi_step("faltantes de medición",

@@ -166,7 +166,7 @@
         </field>
     </record>
 
-    <!-- 57.104.0: «Medición por revisar»: pantallas que no van con su
+    <!-- 57.106.0: «Medición por revisar»: pantallas que no van con su
          medición, evidencia que no aparece y atribución débil. -->
     <record id="sgi_activity_menu_mismatch_action" model="ir.actions.act_window">
         <field name="name">Medición por revisar</field>

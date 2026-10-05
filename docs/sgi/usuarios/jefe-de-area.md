@@ -84,6 +84,14 @@ quítelo si quiere ver también los pendientes y los «sin dato». **Ficha en
 PDF** imprime la hoja del indicador con su gráfica, sus metas y la causa y
 acciones de los rojos.
 
+**«Sin dato» y el 0 (desde 57.104.0).** Si ninguna medición de un
+indicador tiene dato, su «Último valor» dice **Sin dato** (no 0). Para
+capturar un 0 real en un indicador de captura manual, escriba en la nota por
+qué es cero («0: sin caídas en el mes»): una medición manual en 0 sin nota,
+sin numerador ni denominador no se marca capturada ni se valida. Si corrige
+a mano el valor de un indicador automático, la medición queda «Valor
+corregido a mano» y el recálculo diario ya no la toca.
+
 ### 2.4 Aprobar propuestas de cambio de su proceso
 
 Las propuestas que hace su gente con **Proponer cambio** llegan a la app
@@ -159,6 +167,14 @@ parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 procedimiento del Dropbox de su proceso, qué proceso de Odoo lo sustituye,
 en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
+
+## 5.1 El Manual del SGI (MIID)
+
+**SGI → Dirección → Manual del SGI (MIID)**: «PDF de la revisión vigente» es
+el manual aprobado (el que se firma de leído); la pestaña «Vista del sistema»
+es el manual con los datos de hoy y no está vigente. Si cambia el dueño, el
+estado o los flujos de su proceso, el Jefe MAST recibe el aviso para
+actualizar el MIID.
 
 ## 6. Preguntas frecuentes
 

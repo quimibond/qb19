@@ -228,6 +228,10 @@
     <menuitem id="menu_sgi_mgmt_review" name="Revisión por la dirección"
               parent="menu_sgi_direction" action="sgi_management_review_action" sequence="20"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <!-- 57.105.0: el MIID desde Odoo. Lo leen todos los que ven la carpeta;
+         editar textos y solicitar el cambio es del Jefe MAST. -->
+    <menuitem id="menu_sgi_miid" name="Manual del SGI (MIID)" parent="menu_sgi_direction"
+              action="sgi_miid_action_open" sequence="25"/>
     <menuitem id="menu_sgi_policy" name="Política integral" parent="menu_sgi_direction"
               action="sgi_policy_action" sequence="30"/>
     <menuitem id="menu_sgi_objectives" name="Objetivos integrales" parent="menu_sgi_direction"
@@ -300,7 +304,7 @@
               parent="menu_sgi_analysis" action="sgi_activity_spec_gap_action" sequence="40"/>
     <menuitem id="menu_sgi_week_stats" name="Cumplimiento semanal"
               parent="menu_sgi_analysis" action="sgi_activity_week_stat_action" sequence="50"/>
-    <!-- 57.103.0: registro de cumplimiento; 57.104.0: medición por revisar. -->
+    <!-- 57.103.0: registro de cumplimiento; 57.106.0: medición por revisar. -->
     <menuitem id="menu_sgi_activity_executions" name="Registro de cumplimiento"
               parent="menu_sgi_analysis" action="sgi_activity_execution_action" sequence="60"/>
     <menuitem id="menu_sgi_menu_mismatch" name="Medición por revisar"
