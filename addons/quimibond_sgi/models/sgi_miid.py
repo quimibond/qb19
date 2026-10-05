@@ -10,6 +10,8 @@ publica) y el paso diario compara la huella viva con la de la revisión
 vigente. Ninguna revisión se envía ni se aprueba con secciones «Por
 confirmar» o procesos que no estén vigentes. Plan:
 docs/superpowers/plans/2026-10-05-sgi-57-105-0-miid.md."""
+import hashlib
+import json
 import re
 
 from markupsafe import Markup
@@ -192,3 +194,362 @@ class SgiMiidRowNote(models.Model):
     key = fields.Char(string="Renglón", required=True,
                       help="Clave del renglón al que se pega la nota (p. ej. ANEXO 9).")
     text = fields.Char(string="Nota", required=True)
+
+
+class SgiMiid(models.Model):
+    """Manual del SGI (MIID) de una empresa: la vista del sistema, su
+    comparación con la revisión vigente y el historial de revisiones. Uno por
+    empresa; lo crea la primera apertura o el paso diario."""
+    _name = 'sgi.miid'
+    _description = "Manual del SGI (MIID)"
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+
+    name = fields.Char(string="Nombre", compute='_compute_name')
+    company_id = fields.Many2one('res.company', string="Empresa", required=True, index=True, readonly=True)
+    document_id = fields.Many2one('documents.document', string="Revisión vigente del MIID",
+                                  compute='_compute_document', compute_sudo=True)
+    revision_label = fields.Char(string="Rev. vigente", compute='_compute_document', compute_sudo=True)
+    issue_date = fields.Date(string="Emisión de la revisión vigente", compute='_compute_document',
+                             compute_sudo=True)
+    revision_ids = fields.Many2many('documents.document', string="Revisiones del MIID",
+                                    compute='_compute_document', compute_sudo=True)
+    pending_request_id = fields.Many2one('approval.request', string="Solicitud de cambio en curso",
+                                         compute='_compute_document', compute_sudo=True)
+    state = fields.Selection([
+        ('al_dia', "Al día"), ('desactualizado', "Desactualizado"),
+        ('sin_base', "Sin línea base"), ('sin_documento', "Sin MIID vigente"),
+    ], string="Situación del MIID", compute='_compute_state', compute_sudo=True,
+        help="Al día: la revisión vigente coincide con los datos del sistema. Sin línea base: la "
+             "revisión vigente no se generó desde Odoo y no hay contra qué comparar.")
+    diff_html = fields.Html(string="Diferencias con la revisión vigente", compute='_compute_state',
+                            compute_sudo=True, sanitize=False)
+    blocker_html = fields.Html(string="Lo que impide aprobar una revisión", compute='_compute_blockers',
+                               compute_sudo=True, sanitize=False)
+    to_confirm_count = fields.Integer(string="Secciones por confirmar", compute='_compute_blockers',
+                                      compute_sudo=True)
+    outdated_since = fields.Datetime(string="Desactualizado desde", readonly=True, copy=False)
+    last_check = fields.Datetime(string="Última comparación", readonly=True, copy=False)
+    _company_uniq = models.Constraint('UNIQUE(company_id)', "Ya existe el MIID de esta empresa.")
+
+    # ------------------------------------------------------------------
+    # Búsquedas
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_get(self, company=None):
+        company = company or self.env['sgi.config']._sgi_company()
+        miid = self.sudo().search([('company_id', '=', company.id)], limit=1)
+        return miid or self.sudo().create({'company_id': company.id})
+
+    def _sgi_documents(self):
+        """Todas las revisiones del MIID de la empresa (por la clave, no por el
+        tipo: en la copia de producción de las pruebas el real queda REAL~…)."""
+        self.ensure_one()
+        return self.env['documents.document'].sudo().with_context(active_test=False).search([
+            ('sgi_code', '=', MIID_CODE), ('sgi_is_controlled', '=', True),
+            ('company_id', '=', self.company_id.id)], order='sgi_revision desc, id desc')
+
+    def _sgi_current_document(self):
+        self.ensure_one()
+        return self._sgi_documents().filtered(lambda d: d.active and d.sgi_state == 'vigente')[:1]
+
+    def _sgi_open_request(self, doc):
+        if not doc:
+            return self.env['approval.request']
+        return self.env['approval.request'].sudo().search([
+            ('sgi_document_id', '=', doc.id), ('sgi_miid_hash', '!=', False),
+            ('request_status', 'in', ('new', 'pending'))], order='id desc', limit=1)
+
+    @staticmethod
+    def _sgi_next_revision(doc):
+        """Q5: vigente + 1; sin línea base, al menos la Rev. 03."""
+        revision = (doc.sgi_revision or 0) + 1 if doc else MIID_FIRST_ODOO_REVISION
+        if not (doc and doc.sgi_content_hash):
+            revision = max(revision, MIID_FIRST_ODOO_REVISION)
+        return revision
+
+    @api.depends('company_id')
+    def _compute_name(self):
+        for miid in self:
+            miid.name = "Manual del SGI (MIID) — %s" % (miid.company_id.name or '')
+
+    @api.depends('company_id')
+    def _compute_document(self):
+        for miid in self:
+            docs = miid._sgi_documents()
+            vigente = docs.filtered(lambda d: d.active and d.sgi_state == 'vigente')[:1]
+            miid.document_id = vigente
+            miid.revision_label = vigente.sgi_revision_label if vigente else False
+            miid.issue_date = vigente.sgi_issue_date if vigente else False
+            miid.revision_ids = docs
+            miid.pending_request_id = miid._sgi_open_request(vigente)
+
+    @api.depends('company_id')
+    def _compute_state(self):
+        for miid in self:
+            status = miid._sgi_status()
+            miid.state = status['state']
+            diffs = status['diffs']
+            miid.diff_html = Markup("<ul>%s</ul>") % Markup('').join(
+                Markup("<li>%s</li>") % d for d in diffs) if diffs else False
+
+    @api.depends('company_id')
+    def _compute_blockers(self):
+        for miid in self:
+            blockers = miid._sgi_blockers()
+            miid.to_confirm_count = miid.env['sgi.miid.section'].sudo().search_count(
+                [('company_id', '=', miid.company_id.id), ('to_confirm', '=', True)])
+            miid.blocker_html = Markup("<ul class='mb-0'>%s</ul>") % Markup('').join(
+                Markup("<li>%s</li>") % b for b in blockers) if blockers else False
+
+    # ------------------------------------------------------------------
+    # Foto de los datos y huella (1.5)
+    # ------------------------------------------------------------------
+    def _sgi_env(self):
+        return self.sudo().with_context(lang=MIID_LANG, active_test=True).env
+
+    def _sgi_snapshot(self):
+        """Foto de lo que imprime el MIID, con claves (nunca etiquetas
+        traducibles). Lo impreso sale de la misma foto."""
+        self.ensure_one()
+        env = self._sgi_env()
+        company = self.company_id
+        Doc = env['documents.document']
+        excluded = Doc._sgi_dropbox_excluded_domain()
+        Param = env['ir.config_parameter']
+        raw = {}
+
+        sections = env['sgi.miid.section'].search([('company_id', '=', company.id)])
+        raw['sections'] = {str(s.id): [s.clause or '', s.name or '', s.heading_level or '',
+                                       _miid_plain(s.body), s.live_block or '', bool(s.body_fallback)]
+                           for s in sections}
+        raw['row_notes'] = {str(s.id): {n.key: n.text for n in s.row_note_ids}
+                            for s in sections if s.row_note_ids}
+        raw['pendientes'] = sorted(sections.filtered('to_confirm').ids)
+
+        processes = env['sgi.process'].search([('company_id', '=', company.id)])
+        raw['processes'] = {p.code: [p.name or '', p.process_type or '', p.owner_id.name or '',
+                                     p.state or '', p.parent_id.code or ''] for p in processes}
+        flows = env['sgi.process.flow'].search([('from_process_id', 'in', processes.ids),
+                                                ('to_process_id', 'in', processes.ids)])
+        raw['flows'] = sorted([f.from_process_id.code, f.to_process_id.code, f.name or ''] for f in flows)
+
+        policy = env['sgi.policy'].search([('state', '=', 'vigente')], limit=1)
+        raw['policy'] = [policy.folio or '', policy.name or '', policy.issue_date,
+                         _miid_plain(policy.policy_text)] if policy else None
+        objectives = env['sgi.objective'].search([('policy_id', '=', policy.id)]) if policy \
+            else env['sgi.objective']
+        raw['objectives'] = {str(o.id): [o.name or '', o.target_year or 0,
+                                         sorted(o.indicator_ids.filtered('active').mapped('code'))]
+                             for o in objectives}
+
+        types = env['sgi.document.type'].search([('company_id', 'in', [company.id, False])])
+        raw['doc_types'] = {t.code: [t.name or '', t.prefix_pattern or '', t.legacy_code_regex or '',
+                                     bool(t.code_required)] for t in types}
+
+        base = [('sgi_is_controlled', '=', True), ('company_id', '=', company.id)] + excluded
+        controls = Doc.search(base + [('sgi_doc_type', '=', 'control_operacional'),
+                                      ('sgi_state', '=', 'vigente')])
+        raw['controls'] = {d.sgi_code: [d.sgi_revision or 0, d.sgi_title or d.name or '',
+                                        d.sgi_previous_code or ''] for d in controls if d.sgi_code}
+
+        raw['nc'] = dict(env['quality.alert']._sgi_deadline_days(),
+                         escalation=_miid_int(Param, 'quimibond_sgi.nc_escalation_days', 5),
+                         escalation_external=_miid_int(Param, 'quimibond_sgi.nc_escalation_days_external', 3),
+                         effectiveness=_miid_int(Param, 'quimibond_sgi.nc_effectiveness_days', 90))
+
+        norms = env['sgi.norm'].search([]).filtered('clause_ids')
+        raw['norms'] = {n.code: [n.name or '', sorted(n.clause_ids.mapped('code'))] for n in norms}
+
+        # Solo los del Dropbox (clave P-X99): los procedimientos de proceso
+        # nuevos (PR-…) no son «anteriores».
+        legacy = base + [('sgi_doc_type', '=', 'procedimiento'), ('sgi_legacy_family', '!=', False)]
+        previous = Doc.search(legacy + [('sgi_state', '=', 'vigente')])
+        previous |= Doc.search(legacy + [('sgi_state', '=', 'obsoleto'),
+                                         ('sgi_replaced_by_process_id', 'in', processes.ids)])
+        raw['previous'] = {}
+        for doc in previous:
+            code = doc.sgi_previous_code or doc.sgi_code
+            if not code:
+                continue
+            process = doc.sgi_replaced_by_process_id or doc.sgi_process_id
+            raw['previous'][code] = [doc.sgi_revision or 0, doc.sgi_title or doc.name or '',
+                                     doc.sgi_state or '', process.code or '']
+
+        annexes = Doc.search(base + [('sgi_doc_type', '=', 'anexo'), ('sgi_state', '=', 'vigente')])
+        raw['annexes'] = {d.sgi_code: [d.sgi_revision or 0, d.sgi_title or d.name or '']
+                          for d in annexes if d.sgi_code}
+
+        current = self._sgi_current_document()
+        raw['identificacion'] = {
+            'code': MIID_CODE,
+            'revision': current.sgi_revision if current else None,
+            'issue_date': current.sgi_issue_date if current else None,
+            'baseline': bool(current.sgi_content_hash) if current else False,
+            'processes_total': len(processes),
+            'processes_ready': len(processes.filtered(lambda p: p.state in MIID_READY_PROCESS_STATES)),
+        }
+        raw['historial'] = [[d.sgi_revision or 0, d.sgi_issue_date, d.sgi_state or '',
+                             d.sgi_doc_change_id.name or '', d.sgi_doc_change_id.sgi_reason or '']
+                            for d in self._sgi_documents()]
+        # C-2: claves en texto y tipos de JSON, igual que la foto guardada.
+        return json.loads(json.dumps(raw, sort_keys=True, ensure_ascii=False, default=str))
+
+    @api.model
+    def _sgi_hash(self, snapshot):
+        content = {k: v for k, v in (snapshot or {}).items() if k not in MIID_UNHASHED}
+        raw = json.dumps(content, sort_keys=True, ensure_ascii=False, default=str)
+        return hashlib.sha256(raw.encode('utf-8')).hexdigest()
+
+    def _sgi_approved_snapshot(self):
+        """Foto con que se generó la revisión vigente (la de su solicitud)."""
+        self.ensure_one()
+        raw = self._sgi_current_document().sgi_doc_change_id.sgi_miid_snapshot
+        try:
+            return json.loads(raw) if raw else None
+        except ValueError:
+            return None
+
+    # ------------------------------------------------------------------
+    # Diferencias legibles
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_diff(self, old, new):
+        """Textos de lo que cambió entre dos fotos (máximo MIID_DIFF_LIMIT)."""
+        old, new, out = old or {}, new or {}, []
+        Process = self.env['sgi.process'].with_context(lang=MIID_LANG)
+        state_labels = dict(Process._fields['state']._description_selection(Process.env))
+        type_labels = dict(Process._fields['process_type']._description_selection(Process.env))
+
+        def keyed(key, added, removed, changed):
+            before, after = old.get(key) or {}, new.get(key) or {}
+            out.extend(added(k, after[k]) for k in sorted(set(after) - set(before)))
+            out.extend(removed(k, before[k]) for k in sorted(set(before) - set(after)))
+            for k in sorted(set(before) & set(after)):
+                if before[k] != after[k]:
+                    out.extend(changed(k, before[k], after[k]))
+
+        def heading(row):
+            return " ".join(x for x in (row[0], row[1]) if x)
+
+        def section_changed(_k, a, b):
+            return ["Sección editada: %s" % heading(b)]
+        keyed('sections', lambda k, v: "Sección nueva: %s" % heading(v),
+              lambda k, v: "Sección archivada: %s" % heading(v), section_changed)
+
+        def note_changed(_k, a, b):
+            rows = []
+            for key in sorted(set(a) | set(b)):
+                if a.get(key) != b.get(key):
+                    rows.append("Cambió la situación del %s" % key)
+            return rows
+        keyed('row_notes', lambda k, v: "Notas nuevas en una sección (%s)" % ", ".join(sorted(v)),
+              lambda k, v: "Se quitaron notas de una sección (%s)" % ", ".join(sorted(v)), note_changed)
+
+        def process_changed(code, a, b):
+            rows = []
+            if a[0] != b[0] or a[1] != b[1]:
+                rows.append("Cambió el nombre o el tipo de %s: %s → %s (%s)" % (
+                    code, a[0], b[0], type_labels.get(b[1], b[1])))
+            if a[2] != b[2]:
+                rows.append("Cambió el dueño de %s: %s → %s" % (code, a[2] or "sin dueño", b[2] or "sin dueño"))
+            if a[3] != b[3]:
+                rows.append("Cambió el estado de %s: %s → %s" % (
+                    code, state_labels.get(a[3], a[3]), state_labels.get(b[3], b[3])))
+            if a[4:] != b[4:]:
+                rows.append("Cambió el macroproceso de %s" % code)
+            return rows
+        keyed('processes', lambda k, v: "Proceso nuevo: %s %s" % (k, v[0]),
+              lambda k, v: "Proceso dado de baja: %s %s" % (k, v[0]), process_changed)
+
+        old_flows = {tuple(f) for f in old.get('flows') or []}
+        new_flows = {tuple(f) for f in new.get('flows') or []}
+        if old_flows != new_flows:
+            out.append("Cambió la interacción entre procesos (%d flujo(s) nuevo(s), %d quitado(s))" % (
+                len(new_flows - old_flows), len(old_flows - new_flows)))
+
+        old_policy, new_policy = old.get('policy'), new.get('policy')
+        if (old_policy or [None])[0] != (new_policy or [None])[0]:
+            out.append("Política nueva: %s" % (new_policy[0] or new_policy[1]) if new_policy
+                       else "Ya no hay política vigente")
+        elif old_policy != new_policy:
+            out.append("Cambió el texto de la política")
+
+        keyed('objectives', lambda k, v: "Objetivo nuevo: %s" % v[0],
+              lambda k, v: "Objetivo retirado: %s" % v[0],
+              lambda k, a, b: ["Cambiaron los indicadores del objetivo %s" % b[0]] if a[2] != b[2]
+              else ["Cambió el objetivo %s" % b[0]])
+        keyed('doc_types', lambda k, v: "Tipo de documento nuevo: %s" % v[0],
+              lambda k, v: "Tipo de documento retirado: %s" % v[0],
+              lambda k, a, b: ["Cambió el patrón de clave de %s" % b[0]])
+        keyed('controls', lambda k, v: "Control operacional nuevo: %s" % k,
+              lambda k, v: "Control operacional que ya no está vigente: %s" % k,
+              lambda k, a, b: ["Nueva revisión de %s (Rev. %02d)" % (k, b[0] or 0)] if a[0] != b[0]
+              else ["Cambió el título de %s" % k])
+
+        old_nc, new_nc = old.get('nc') or {}, new.get('nc') or {}
+        for key, label, unit in MIID_NC_ROWS:
+            if old_nc.get(key) != new_nc.get(key):
+                out.append("Cambiaron los plazos de NC: %s %s → %s %s" % (
+                    label.lower(), old_nc.get(key), new_nc.get(key), unit))
+
+        keyed('norms', lambda k, v: "Norma nueva: %s" % k, lambda k, v: "Norma retirada: %s" % k,
+              lambda k, a, b: ["Cambiaron las cláusulas de %s" % k])
+
+        def previous_changed(code, a, b):
+            if a[3] != b[3]:
+                return ["Procedimiento anterior: %s ahora lo sustituye %s" % (code, b[3] or "ningún proceso")]
+            if a[2] != b[2]:
+                return ["Procedimiento anterior %s: ahora %s" % (code, b[2])]
+            return ["Cambió el procedimiento anterior %s" % code]
+        keyed('previous', lambda k, v: "Procedimiento anterior nuevo: %s" % k,
+              lambda k, v: "Procedimiento anterior que ya no aparece: %s" % k, previous_changed)
+        keyed('annexes', lambda k, v: "Anexo nuevo: %s" % k, lambda k, v: "Anexo que ya no está vigente: %s" % k,
+              lambda k, a, b: ["Nueva revisión del %s (Rev. %02d)" % (k, b[0] or 0)] if a[0] != b[0]
+              else ["Cambió el título del %s" % k])
+
+        if len(out) > MIID_DIFF_LIMIT:
+            out = out[:MIID_DIFF_LIMIT] + ["… y %d diferencia(s) más." % (len(out) - MIID_DIFF_LIMIT)]
+        return out
+
+    # ------------------------------------------------------------------
+    # Situación y candados (C-3: por método; los campos son para mostrar)
+    # ------------------------------------------------------------------
+    def _sgi_status(self):
+        """{'state', 'diffs'} de la revisión vigente contra la vista del sistema."""
+        self.ensure_one()
+        doc = self._sgi_current_document()
+        if not doc:
+            return {'state': 'sin_documento', 'diffs': []}
+        if not doc.sgi_content_hash:
+            return {'state': 'sin_base', 'diffs': []}
+        live = self._sgi_snapshot()
+        if self._sgi_hash(live) == doc.sgi_content_hash:
+            return {'state': 'al_dia', 'diffs': []}
+        diffs = self._sgi_diff(self._sgi_approved_snapshot(), live) or [
+            "La revisión vigente no tiene la foto de sus datos."]
+        return {'state': 'desactualizado', 'diffs': diffs}
+
+    def _sgi_blockers(self):
+        """Lo que impide enviar o aprobar una revisión del MIID (Q16, Q17)."""
+        self.ensure_one()
+        env = self._sgi_env()
+        out = []
+        for section in env['sgi.miid.section'].search([('company_id', '=', self.company_id.id),
+                                                       ('to_confirm', '=', True)]):
+            out.append("La sección %s está por confirmar: %s" % (
+                section._sgi_heading(), section.to_confirm_note or ''))
+        processes = env['sgi.process'].search([('company_id', '=', self.company_id.id)])
+        if not processes:
+            out.append("No hay procesos activos en la empresa.")
+        pending = processes.filtered(lambda p: p.state not in MIID_READY_PROCESS_STATES)
+        if pending:
+            Process = env['sgi.process']
+            labels = dict(Process._fields['state']._description_selection(env))
+            by_state = {}
+            for process in pending:
+                by_state.setdefault(process.state, []).append(process.code)
+            out.append("%s: el MIID solo se aprueba cuando todos los procesos están vigentes." % "; ".join(
+                "%d proceso(s) en %s (%s)" % (len(codes), (labels.get(state) or state or '').lower(),
+                                              ", ".join(sorted(codes)))
+                for state, codes in sorted(by_state.items())))
+        return out

@@ -327,3 +327,6 @@ access_sgi_miid_section_manager,sgi.miid.section.manager,model_sgi_miid_section,
 access_sgi_miid_row_note_user,sgi.miid.row.note.user,model_sgi_miid_row_note,group_sgi_user,1,0,0,0
 access_sgi_miid_row_note_auditor,sgi.miid.row.note.auditor,model_sgi_miid_row_note,group_sgi_auditor,1,0,0,0
 access_sgi_miid_row_note_manager,sgi.miid.row.note.manager,model_sgi_miid_row_note,group_sgi_manager,1,1,1,0
+access_sgi_miid_user,sgi.miid.user,model_sgi_miid,group_sgi_user,1,0,0,0
+access_sgi_miid_auditor,sgi.miid.auditor,model_sgi_miid,group_sgi_auditor,1,0,0,0
+access_sgi_miid_manager,sgi.miid.manager,model_sgi_miid,group_sgi_manager,1,1,1,0

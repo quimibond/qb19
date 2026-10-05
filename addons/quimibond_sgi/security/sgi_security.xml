@@ -114,6 +114,11 @@
         <field name="model_id" ref="model_sgi_miid_row_note"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
+    <record id="rule_sgi_miid_company" model="ir.rule">
+        <field name="name">SGI: Manual del SGI (MIID) por empresa</field>
+        <field name="model_id" ref="model_sgi_miid"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
     <record id="rule_sgi_process_activity_company" model="ir.rule">
         <field name="name">SGI: Actividades por empresa</field>
         <field name="model_id" ref="model_sgi_process_activity"/>
