@@ -2,19 +2,107 @@
 <odoo>
     <!-- 56.4.0: la propuesta edita la actividad de verdad (mismos campos que
          la ficha y quién la hace); al aprobarse se aplica sola. -->
+    <!-- 57.108.0: proponer en lenguaje normal. Seis preguntas en una pantalla;
+         lo técnico (instructivo, formatos, aprueba y escala, contra qué se
+         compara) lo completa el Jefe MAST al aprobar. -->
     <record id="sgi_activity_change_view_form" model="ir.ui.view">
         <field name="name">sgi.activity.change.form</field>
         <field name="model">sgi.activity.change</field>
+        <field name="priority">10</field>
         <field name="arch" type="xml">
             <form string="Proponer cambio a mi procedimiento">
                 <field name="allowed_process_ids" invisible="1"/>
                 <field name="state" invisible="1"/>
+                <field name="job_id" invisible="1"/>
+                <field name="is_sgi_manager" invisible="1"/>
+                <field name="measure_cadence" invisible="1"/>
                 <p class="text-muted">
-                    Cambie directamente los campos de la actividad. Su propuesta va a Aprobaciones
-                    («Proponer cambio a mi procedimiento»): la aprueban su jefe directo y el Jefe MAST
-                    y SGI. Al aprobarse, el cambio se aplica solo a la actividad y MAST vuelve a
-                    publicar el procedimiento.
+                    Conteste con sus palabras. Su jefe directo, el dueño del proceso y el Jefe MAST la
+                    revisan; el Jefe MAST completa lo técnico antes de aprobarla.
                 </p>
+                <group>
+                    <field name="change_type" widget="radio" options="{'horizontal': true}"
+                           readonly="not activity_id" invisible="not activity_id"/>
+                    <field name="activity_id" invisible="not activity_id" options="{'no_open': True}"/>
+                    <field name="process_id" string="¿En qué proceso?" readonly="activity_id"
+                           required="change_type == 'agregar'"
+                           domain="[('id', 'in', allowed_process_ids)] if allowed_process_ids else []"
+                           options="{'no_create': True, 'no_open': True}"/>
+                </group>
+                <div invisible="change_type == 'quitar'">
+                    <group string="1. ¿Qué se hace?">
+                        <field name="name" nolabel="1" colspan="2" required="change_type == 'agregar'"
+                               placeholder="Un verbo y lo que se entrega. Ej.: «Publicar el programa semanal de producción»"/>
+                    </group>
+                    <group string="2. ¿Cada cuándo?">
+                        <field name="q_when" nolabel="1" colspan="2" widget="radio"/>
+                        <field name="trigger_note" string="¿Qué la dispara?" invisible="q_when != 'evento'"
+                               placeholder="Ej.: «llega un pedido nuevo», «se rechaza un lote»"/>
+                        <field name="due_weekday" string="¿Qué día?" invisible="q_when != 'semanal'"/>
+                        <field name="due_business_day" string="A más tardar el día hábil número"
+                               invisible="q_when != 'mensual'"
+                               help="3 = el tercer día hábil del mes (sin contar fines de semana ni festivos)."/>
+                        <field name="q_other_cadence" invisible="q_when != 'otra'" widget="radio"/>
+                        <field name="due_month" string="¿En qué mes?"
+                               invisible="q_when != 'anual' and q_other_cadence not in ('trimestral', 'semestral')"/>
+                        <field name="due_day" string="¿Qué día del mes?"
+                               invisible="q_when != 'anual' and q_other_cadence not in ('trimestral', 'semestral')"/>
+                    </group>
+                    <group string="3. ¿Quién la hace?">
+                        <field name="q_who" nolabel="1" colspan="2" widget="radio"/>
+                        <field name="q_who_job_id" string="¿Qué puesto?" invisible="q_who != 'otro'"
+                               required="q_who == 'otro'" options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <group string="4. ¿Dónde se hace?">
+                        <field name="q_where" nolabel="1" colspan="2" widget="radio"/>
+                        <field name="odoo_menu_id" string="¿En qué pantalla? (si la sabe)" invisible="q_where != 'odoo'"
+                               options="{'no_create': True, 'no_open': True}"/>
+                        <field name="external_system" string="¿En cuál?" invisible="q_where != 'otro_sistema'"
+                               placeholder="Ej.: portal de GM, VUCEM, banco"/>
+                    </group>
+                    <group string="5. ¿Cómo sabe que quedó bien?">
+                        <field name="done_criteria" nolabel="1" colspan="2"
+                               placeholder="Una frase que se conteste con sí o no. Ej.: «El programa está publicado en Odoo antes de las 9 del lunes»"/>
+                        <field name="how_steps" string="¿Cómo se hace? (opcional)" placeholder="1 a 5 pasos cortos"/>
+                    </group>
+                </div>
+                <group string="6. ¿Por qué?">
+                    <field name="reason" nolabel="1" colspan="2" required="1"
+                           placeholder="¿Qué problema resuelve? ¿Qué pasa hoy?"/>
+                    <field name="attachment" filename="attachment_name"/>
+                    <field name="attachment_name" invisible="1"/>
+                </group>
+                <div class="alert alert-info" role="status" invisible="not preview_html">
+                    <b>Así quedará en su procedimiento:</b>
+                    <field name="preview_html" nolabel="1"/>
+                </div>
+                <div class="alert alert-warning" role="status" invisible="not hints_html">
+                    <field name="hints_html" nolabel="1"/>
+                </div>
+                <footer>
+                    <button name="action_submit" type="object" string="Enviar propuesta" class="btn-primary"/>
+                    <button name="action_open_full_form" type="object" string="Ver todos los campos"
+                            class="btn-secondary" invisible="not is_sgi_manager"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_activity_change_view_form_full" model="ir.ui.view">
+        <field name="name">sgi.activity.change.form.full</field>
+        <field name="priority">30</field>
+        <field name="model">sgi.activity.change</field>
+        <field name="arch" type="xml">
+            <form string="Propuesta: todos los campos">
+                <field name="allowed_process_ids" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <!-- 57.108.0: la ficha técnica completa es del Jefe MAST; quien propone usa
+                     la pantalla de seis preguntas (sgi_activity_change_view_form). -->
+                <div class="alert alert-warning" role="status" invisible="not missing_html">
+                    <b>Lo que falta para publicarla:</b>
+                    <field name="missing_html" nolabel="1"/>
+                </div>
                 <group>
                     <group>
                         <field name="change_type" widget="radio" readonly="not activity_id"/>
@@ -40,6 +128,9 @@
                         </group>
                     </page>
                     <page string="Cuándo y dónde" name="cuando">
+                        <group>
+                            <field name="trigger_note" invisible="measure_cadence != 'evento'"/>
+                        </group>
                         <group>
                             <group string="Cuándo">
                                 <field name="measure_cadence"/>
@@ -87,7 +178,10 @@
                     <field name="attachment_name" invisible="1"/>
                 </group>
                 <footer>
-                    <button name="action_submit" type="object" string="Enviar propuesta" class="btn-primary"/>
+                    <button name="action_submit" type="object" string="Enviar propuesta" class="btn-primary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_sgi_mast_complete" type="object" string="Guardar y actualizar la solicitud"
+                            class="btn-primary" invisible="state != 'enviada'"/>
                     <button string="Descartar" special="cancel" class="btn-secondary"/>
                 </footer>
             </form>
@@ -113,6 +207,11 @@
                     <field name="sgi_mp_change_type" readonly="1"/>
                     <field name="sgi_activity_id" readonly="1"/>
                     <field name="sgi_mp_apply_scheduled" readonly="1"/>
+                    <!-- 57.108.0: el Jefe MAST completa lo técnico antes de aprobar. -->
+                    <button name="action_sgi_mp_complete" type="object" string="Completar antes de aprobar"
+                            icon="fa-pencil" class="btn-link" colspan="2"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            invisible="not sgi_mp_proposal_id or request_status != 'pending'"/>
                 </group>
                 <field name="sgi_mp_diff_html" nolabel="1" invisible="not sgi_mp_proposal_id" readonly="1"/>
                 <field name="sgi_mp_proposal_id" invisible="1"/>

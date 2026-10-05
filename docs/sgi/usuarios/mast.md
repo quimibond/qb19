@@ -288,3 +288,13 @@ procedimiento sin publicar o desactualizado.
   cuenta las omisiones y guarda la última.
 - **«Un aviso sigue abierto aunque ya se resolvió.»** Los crons cierran solos
   los avisos cuya causa se resolvió en su siguiente corrida diaria.
+
+## Completar las propuestas de actividad (57.108.0)
+
+Quien propone una actividad contesta seis preguntas sencillas; lo técnico lo
+completa usted antes de aprobar. En la solicitud de Aprobaciones
+(«Proponer cambio a mi procedimiento»), pulse **Completar antes de aprobar**:
+abre la propuesta con todos los campos y arriba **lo que falta para
+publicarla** (criterio de terminado, escalamiento, vencimiento, pantalla de
+Odoo, instructivo o pasos). Complete y pulse **Guardar y actualizar la
+solicitud**: el antes → después de la solicitud ya incluye lo que agregó.

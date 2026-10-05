@@ -13,6 +13,42 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.108.0 — 2026-10-05
+
+**Proponer una actividad en lenguaje normal** (pedido de Jose del
+2026-10-05: «hay muchos campos técnicos que un usuario común no
+entendería»). En producción había tres propuestas, las tres en borrador y
+dos vacías. Sin campos guardados nuevos salvo `trigger_note`; sin migración.
+
+### Cambiado
+
+- **La propuesta (`sgi.activity.change`) es una pantalla de seis
+  preguntas:** ¿qué se hace?, ¿cada cuándo? (cada vez que pasa algo y qué
+  la dispara, diario, cada semana y qué día, cada mes y a más tardar qué
+  día hábil, cada año y qué día, u otra), ¿quién la hace? (yo, otro puesto o
+  como está hoy), ¿dónde se hace? (Odoo y la pantalla si la sabe, papel,
+  otro sistema, correo o teléfono, trabajo físico), ¿cómo sabe que quedó
+  bien? y ¿por qué? Las preguntas 2 a 4 son campos calculados con inverso
+  sobre la cadencia, el vencimiento, el canal y el rol «Ejecuta»: la ficha
+  técnica y la pantalla sencilla leen y escriben lo mismo.
+- Abajo, en vivo, **cómo quedará en su procedimiento** («Cada lunes,
+  Planeador: publicar el programa semanal en Odoo. Terminada cuando…») y
+  avisos en lenguaje normal (verbo vago, sin criterio de terminado, sin qué
+  la dispara, sin motivo).
+- Cambiar la cadencia limpia el vencimiento que ya no aplica.
+
+### Agregado
+
+- **«Qué la dispara»** (`trigger_note`): en las «por evento», al aprobarse
+  queda al inicio de la descripción («Se hace cuando…») y sale en el antes
+  → después.
+- **Completar antes de aprobar** (Jefe MAST): botón en la solicitud de
+  Aprobaciones que abre la propuesta con todos los campos y **lo que falta
+  para publicarla**; «Guardar y actualizar la solicitud» lleva lo completado
+  al antes → después de la solicitud. «Ver todos los campos» en la pantalla
+  sencilla, solo para el Jefe MAST.
+- Manuales: operador o supervisor (2.6) y Jefe MAST.
+
 ## 19.0.57.107.0 — 2026-10-05
 
 **Revisión mensual de la medición por el dueño del proceso** (punto 4 de

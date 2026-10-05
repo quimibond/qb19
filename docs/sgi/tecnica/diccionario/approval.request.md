@@ -6,7 +6,7 @@ Modelo de otra app que el SGI extiende.
 
 La solicitud de cambio del MIID es una solicitud de cambio documental de siempre con la huella y la foto de los datos con que se generó su PDF.
 
-Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py`.
 
 ## Campos (32)
 
@@ -45,7 +45,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi
 | `sgi_sign_state` | Selection | Estado de la firma | Estado de la firma en Sign. |  |  | related `sgi_sign_request_id.state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:59` |
 | `sgi_what_changes` | Selection | ¿Qué se modifica? | Si cambia solo el formato (presentación) o el contenido del documento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:44` |
 
-## Métodos públicos (7)
+## Métodos públicos (8)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -53,6 +53,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi
 | `action_confirm` | — |
 | `action_create_purchase_orders` | approvals_purchase crea las órdenes desde las líneas; aquí se les deja escrita la requisición de la que salieron. |
 | `action_sgi_create_document` | Alta documental aprobada: abre el formulario del documento nuevo con el contexto que lo liga de vuelta a esta solicitud (trazabilidad del alta — antes el documento se creaba suelto en la app Document… |
+| `action_sgi_mp_complete` | «Completar antes de aprobar» (Jefe MAST): abre la propuesta con todos los campos y lo que le falta. |
 | `action_sgi_send_to_sign` | «Reenviar a firma»: la firma anterior se canceló o venció. |
 | `create` | — |
 | `write` | — |
