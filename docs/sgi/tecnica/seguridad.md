@@ -20,7 +20,7 @@
 | `quimibond_sgi.group_sgi_csh` | Comisión de Seguridad e Higiene (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_floor_tablet` | Tableta de planta (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 
-## Permisos por modelo (339 renglones del CSV)
+## Permisos por modelo (345 renglones del CSV)
 
 l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso efectivo suma lo que implican los grupos y lo que quitan las reglas.
 
@@ -75,6 +75,8 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.alert.source` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.alert.source` | `group_sgi_manager` | le | quimibond_sgi |
 | `sgi.alert.source` | `group_sgi_user` | l | quimibond_sgi |
+| `sgi.approval.wizard` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.approval.wizard.button` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.area` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.area` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.area` | `group_sgi_user` | l | quimibond_sgi |
@@ -200,12 +202,15 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.indicator.measure.split` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.indicator.measure.split` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.indicator.measure.split` | `group_sgi_user` | lecb | quimibond_sgi |
+| `sgi.indicator.source` | `group_sgi_manager` | lecb | quimibond_sgi |
+| `sgi.indicator.source` | `group_sgi_user` | l | quimibond_sgi |
 | `sgi.indicator.step` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.indicator.step` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.indicator.step` | `group_sgi_user` | l | quimibond_sgi |
 | `sgi.indicator.term` | `group_sgi_admin` | lecb | quimibond_sgi |
 | `sgi.indicator.term` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.indicator.term` | `group_sgi_user` | l | quimibond_sgi |
+| `sgi.indicator.wizard` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.instruction.publish` | `quimibond_sgi.group_sgi_manager` | lecb | quimibond_sgi_knowledge |
 | `sgi.interested.party` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.interested.party` | `group_sgi_manager` | lecb | quimibond_sgi |
@@ -331,6 +336,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.risk.category` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.risk.category` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.risk.category` | `group_sgi_user` | l | quimibond_sgi |
+| `sgi.risk.report` | `group_sgi_user` | lecb | quimibond_sgi |
 | `sgi.sign.request.wizard` | `group_sgi_user` | lecb | quimibond_sgi |
 | `sgi.staff.efficiency` | `group_sgi_salary` | lecb | quimibond_sgi |
 | `sgi.staff.efficiency` | `hr.group_hr_user` | lecb | quimibond_sgi |

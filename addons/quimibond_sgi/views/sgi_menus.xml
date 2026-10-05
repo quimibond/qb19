@@ -82,6 +82,9 @@
               parent="menu_sgi_report" action="sgi_report_incident_action" sequence="20"/>
     <menuitem id="menu_sgi_report_voice" name="Queja o sugerencia"
               parent="menu_sgi_report" action="sgi_report_voice_action" sequence="30"/>
+    <!-- 57.109.0: con preguntas sencillas; el Jefe MAST lo evalúa. -->
+    <menuitem id="menu_sgi_report_risk" name="Riesgo u oportunidad"
+              parent="menu_sgi_report" action="sgi_risk_report_action" sequence="40"/>
 
     <!-- ============================================================
          2. Procesos (todos leen; los dueños editan).
@@ -277,6 +280,9 @@
     <menuitem id="menu_sgi_admin_indicators" name="Indicadores" parent="menu_sgi_admin" sequence="20"/>
     <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_admin_indicators"
               action="sgi_indicator_action" sequence="10"/>
+    <!-- 57.109.0: asistente con preguntas y vista previa. -->
+    <menuitem id="menu_sgi_indicator_wizard" name="Nuevo indicador" parent="menu_sgi_admin_indicators"
+              action="sgi_indicator_wizard_action" sequence="15" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_measures" name="Mediciones" parent="menu_sgi_admin_indicators"
               action="sgi_measure_action" sequence="20"/>
     <menuitem id="menu_sgi_measures_split" name="Mediciones por equipo o mercado"
@@ -361,6 +367,9 @@
     <!-- 57.96.0 (N-06): competencias que exige cada tipo de permiso. -->
     <menuitem id="menu_sgi_config_work_permit_skills" name="Competencias por tipo de permiso"
               parent="menu_sgi_config" action="sgi_work_permit_skill_action" sequence="96"/>
+    <!-- 57.109.0: fuentes con nombre de negocio para «Nuevo indicador». -->
+    <menuitem id="menu_sgi_config_indicator_sources" name="Fuentes de indicadores"
+              parent="menu_sgi_config" action="sgi_indicator_source_action" sequence="97"/>
 
     <!-- 5.6 (retirado en 19.0.45.0.0): «Datos técnicos» y los «Mis…» viejos.
          Ver models/sgi_cleanup.py (SGI_REMOVED_XMLIDS): la prueba falla si

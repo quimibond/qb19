@@ -26,6 +26,7 @@ SGI/Reportar | menu_sgi_report | quimibond_sgi.group_sgi_user
 SGI/Reportar/No conformidad | menu_sgi_report_nc | -
 SGI/Reportar/Casi accidente o incidente | menu_sgi_report_incident | -
 SGI/Reportar/Queja o sugerencia | menu_sgi_report_voice | -
+SGI/Reportar/Riesgo u oportunidad | menu_sgi_report_risk | -
 SGI/Procesos | menu_sgi_processes | -
 SGI/Procesos/Mapa de procesos | menu_sgi_process_map | -
 SGI/Procesos/Actividades | menu_sgi_activities | -
@@ -82,6 +83,7 @@ SGI/Administración SGI/Documentos/Solicitudes de cambio | menu_sgi_doc_changes 
 SGI/Administración SGI/Documentos/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
 SGI/Administración SGI/Indicadores | menu_sgi_admin_indicators | -
 SGI/Administración SGI/Indicadores/Indicadores | menu_sgi_indicators | -
+SGI/Administración SGI/Indicadores/Nuevo indicador | menu_sgi_indicator_wizard | quimibond_sgi.group_sgi_manager
 SGI/Administración SGI/Indicadores/Mediciones | menu_sgi_measures | -
 SGI/Administración SGI/Indicadores/Mediciones por equipo o mercado | menu_sgi_measures_split | -
 SGI/Administración SGI/Aprobaciones del SGI | menu_sgi_approvals_native | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
@@ -113,3 +115,4 @@ SGI/Administración SGI/Configuración/Elementos PPAP | menu_sgi_config_ppap_ele
 SGI/Administración SGI/Configuración/Empresa en documentos controlados | menu_sgi_config_company_fix | -
 SGI/Administración SGI/Configuración/Traspaso de riesgos ambientales | menu_sgi_config_env_aspect_transfer | -
 SGI/Administración SGI/Configuración/Competencias por tipo de permiso | menu_sgi_config_work_permit_skills | -
+SGI/Administración SGI/Configuración/Fuentes de indicadores | menu_sgi_config_indicator_sources | -

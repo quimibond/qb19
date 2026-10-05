@@ -154,3 +154,6 @@ from . import test_miid
 from . import test_medicion_por_revisar
 from . import test_revision_medicion
 from . import test_propuesta_sencilla
+from . import test_aprobaciones_asistente
+from . import test_indicador_asistente
+from . import test_riesgo_reportar
