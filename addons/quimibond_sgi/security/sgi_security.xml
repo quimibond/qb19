@@ -662,4 +662,26 @@
         <field name="groups" eval="[(4, ref('group_sgi_manager')), (4, ref('group_sgi_auditor'))]"/>
         <field name="domain_force">[(1, '=', 1)]</field>
     </record>
+
+    <!-- 57.100.0 (N-13, P8): la evaluación de eficacia la ve quien evalúa; RH
+         y el Jefe MAST, todas. Son datos de RH: el Auditor y Dirección no la
+         ven (solo la suya, si les toca evaluar). Por compañía del empleado. -->
+    <record id="rule_sgi_training_effectiveness_own" model="ir.rule">
+        <field name="name">SGI: eficacia de la capacitación, solo las que evalúo</field>
+        <field name="model_id" ref="model_sgi_training_effectiveness"/>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="domain_force">[('evaluator_id', '=', user.id)]</field>
+    </record>
+    <record id="rule_sgi_training_effectiveness_all" model="ir.rule">
+        <field name="name">SGI: eficacia de la capacitación, RH y Jefe MAST ven todas</field>
+        <field name="model_id" ref="model_sgi_training_effectiveness"/>
+        <field name="groups" eval="[(4, ref('hr.group_hr_user')), (4, ref('group_sgi_manager'))]"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+    </record>
+    <record id="rule_sgi_training_effectiveness_company" model="ir.rule">
+        <field name="name">SGI: eficacia de la capacitación por compañía</field>
+        <field name="model_id" ref="model_sgi_training_effectiveness"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
 </odoo>

@@ -13,6 +13,12 @@ nivel o renueva; nunca baja de nivel ni acorta la vigencia). Lo usan el gancho
 de la línea de currículum, el cron de cursos (respaldo para quien terminó sin
 línea) y el examen aprobado de quien no tiene usuario (I-2). Solo empleados
 de la empresa del SGI (I-6).
+
+Cada competencia nueva o subida de nivel abre una evaluación de eficacia
+(``sgi.training.effectiveness``, ISO 9001 7.2 c): a los 90 días su jefe
+inmediato dice «Eficaz» o «No eficaz»; «No eficaz» avisa a RH para
+reprogramar la capacitación (la competencia no se quita, P7). Son datos de
+RH: los ve quien evalúa, RH y el Jefe MAST (P8).
 """
 import logging
 from datetime import timedelta
@@ -22,9 +28,12 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
-from .sgi_calendar import sgi_today
+from .sgi_calendar import sgi_add_business_days, sgi_today
 
 _logger = logging.getLogger(__name__)
+
+EFFECTIVENESS_DAYS_PARAM = 'quimibond_sgi.training_effectiveness_days'
+EFFECTIVENESS_SURVEY_PARAM = 'quimibond_sgi.training_effectiveness_survey_id'
 
 # Campos del SGI en la encuesta: los liga el Jefe MAST desde «Exámenes y
 # competencias» aunque no tenga permisos de la app Encuestas (I-7).
@@ -141,8 +150,9 @@ class HrEmployeeGrant(models.Model):
         return result
 
     def _sgi_after_grant(self, skill, level, granted, origin, channel=None, survey=None):
-        """Lo que sigue a una competencia nueva o subida (la eficacia, Task 10.5)."""
-        return False
+        """Competencia nueva o subida de nivel: evaluación de eficacia (7.2 c)."""
+        return self.env['sgi.training.effectiveness'].sudo()._sgi_open(
+            self, skill, level, granted, origin, channel=channel, survey=survey)
 
 
 class HrResumeLineSgi(models.Model):
@@ -244,3 +254,214 @@ class SurveyUserInputSgi(models.Model):
                 existing.write(vals)
             else:
                 Line.create(vals)
+
+
+class SgiTrainingEffectiveness(models.Model):
+    """Eficacia de la capacitación (ISO 9001 7.2 c): a los 90 días de otorgar
+    una competencia por examen o curso, el jefe inmediato dice si fue eficaz."""
+    _name = 'sgi.training.effectiveness'
+    _description = "Eficacia de la capacitación"
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _order = 'due_date desc, id desc'
+    _rec_name = 'skill_id'
+
+    employee_id = fields.Many2one(
+        'hr.employee', string="Empleado", required=True, ondelete='restrict', index=True,
+        readonly=True, help="Persona que recibió la competencia.")
+    # 1.8-4: quien evalúa sin permisos de RH no lee la ficha del empleado;
+    # el nombre le llega por este campo (relacionado, se lee como sistema).
+    employee_name = fields.Char(related='employee_id.name', string="Persona", compute_sudo=True,
+                                help="Nombre de la persona que recibió la competencia.")
+    company_id = fields.Many2one(related='employee_id.company_id', store=True, index=True,
+                                 string="Empresa")
+    skill_id = fields.Many2one('hr.skill', string="Competencia", required=True,
+                               ondelete='restrict', readonly=True,
+                               help="Competencia que se otorgó.")
+    skill_level_id = fields.Many2one('hr.skill.level', string="Nivel", readonly=True,
+                                     help="Nivel otorgado.")
+    origin = fields.Selection([
+        ('curso', "Curso de eLearning"),
+        ('examen', "Examen de certificación"),
+    ], string="Origen", required=True, readonly=True,
+        help="Cómo se otorgó la competencia: curso terminado o examen aprobado.")
+    channel_id = fields.Many2one('slide.channel', string="Curso", readonly=True)
+    survey_id = fields.Many2one('survey.survey', string="Examen", readonly=True)
+    granted_date = fields.Date(string="Otorgada el", required=True, readonly=True,
+                               help="Día en que la persona recibió la competencia.")
+    due_date = fields.Date(
+        string="Evaluar a más tardar", required=True, index=True, readonly=True,
+        help="Día en que vence la evaluación de eficacia (90 días después de otorgarla; "
+             "parámetro quimibond_sgi.training_effectiveness_days).")
+    evaluator_id = fields.Many2one(
+        'res.users', string="Evalúa", required=True, index=True, readonly=True,
+        help="Jefe inmediato; si no tiene usuario, el responsable del departamento, RH o "
+             "el Jefe MAST.")
+    state = fields.Selection([
+        ('pendiente', "Pendiente"),
+        ('eficaz', "Eficaz"),
+        ('no_eficaz', "No eficaz"),
+    ], string="Resultado", default='pendiente', required=True, tracking=True, index=True,
+        help="Pendiente hasta que quien evalúa dice si la capacitación fue eficaz.")
+    result_note = fields.Text(
+        string="Comentario", tracking=True,
+        help="Qué se observó en el trabajo de la persona. Obligatorio si no fue eficaz.")
+    evaluated_date = fields.Date(string="Evaluada el", readonly=True)
+    evaluated_by = fields.Many2one('res.users', string="Evaluada por", readonly=True)
+    survey_input_id = fields.Many2one(
+        'survey.user_input', string="Encuesta al jefe", readonly=True,
+        help="Invitación a la encuesta de eficacia (opcional; parámetro "
+             "quimibond_sgi.training_effectiveness_survey_id).")
+
+    _employee_skill_date_uniq = models.Constraint(
+        'unique(employee_id, skill_id, granted_date)',
+        "Ya hay una evaluación de eficacia para esa competencia y fecha.")
+
+    # ---- abrir --------------------------------------------------------------
+    @api.model
+    def _sgi_evaluator(self, employee):
+        """Jefe inmediato → responsable del departamento → RH → Jefe MAST (P6)."""
+        employee = employee.sudo()
+        for user in (employee.parent_id.user_id, employee.department_id.manager_id.user_id):
+            if user and user.active and not user.share:
+                return user
+        cron = self.env['sgi.cron']
+        return self.env['res.users'].browse(cron._sgi_rh_user_id() or cron._sgi_manager_user_id())
+
+    @api.model
+    def _sgi_open(self, employee, skill, level, granted, origin, channel=None, survey=None):
+        """Abre la evaluación (idempotente) y su aviso al evaluador."""
+        existing = self.search([('employee_id', '=', employee.id), ('skill_id', '=', skill.id),
+                                ('granted_date', '=', granted)], limit=1)
+        if existing:
+            return existing
+        evaluator = self._sgi_evaluator(employee)
+        if not evaluator:
+            _logger.warning("SGI: sin evaluador para la eficacia de la competencia %s del "
+                            "empleado %s (ni jefe, ni RH, ni Jefe MAST).", skill.id, employee.id)
+            return self.browse()
+        raw = self.env['ir.config_parameter'].sudo().get_param(EFFECTIVENESS_DAYS_PARAM, '90')
+        days = int(raw) if str(raw).strip().isdigit() else 90
+        rec = self.create({
+            'employee_id': employee.id, 'skill_id': skill.id, 'skill_level_id': level.id,
+            'origin': origin, 'channel_id': channel.id if channel else False,
+            'survey_id': survey.id if survey else False, 'granted_date': granted,
+            'due_date': granted + timedelta(days=days), 'evaluator_id': evaluator.id})
+        rec._sgi_invite_survey()
+        self.env['sgi.cron']._sgi_schedule(
+            rec, "Evaluar la eficacia de la capacitación: %s — %s" % (
+                skill.name, employee.sudo().name),
+            rec._sgi_activity_note(), evaluator.id, date_deadline=rec.due_date,
+            key='eficacia_capacitacion:%d' % rec.id)
+        return rec
+
+    def _sgi_invite_survey(self):
+        """Invitación opcional a una encuesta de eficacia para el evaluador."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(EFFECTIVENESS_SURVEY_PARAM, '0')
+        survey_id = int(raw) if str(raw).strip().isdigit() else 0
+        survey = self.env['survey.survey'].sudo().browse(survey_id).exists() if survey_id else None
+        if not survey or not survey.active:
+            return False
+        for rec in self.sudo():
+            try:
+                with self.env.cr.savepoint():
+                    answer = survey._create_answer(
+                        user=rec.evaluator_id, partner=rec.evaluator_id.partner_id,
+                        check_attempts=False)
+                    rec.survey_input_id = answer[:1]
+            except UserError as exc:
+                _logger.warning("SGI: no se creó la encuesta de eficacia de %s (%s).",
+                                rec.id, type(exc).__name__)
+        return True
+
+    def _sgi_activity_note(self):
+        self.ensure_one()
+        note = ("Diga si la capacitación cambió el trabajo de la persona: abra la evaluación y "
+                "pulse «Eficaz» o «No eficaz». Si no fue eficaz, escriba qué observó; RH "
+                "reprograma la capacitación.")
+        answer = self.sudo().survey_input_id
+        if answer:
+            note += " Puede contestar también la encuesta: %s" % answer.get_start_url()
+        return note
+
+    # ---- evaluar ------------------------------------------------------------
+    def _sgi_is_admin(self):
+        user = self.env.user
+        return self.env.su or user.has_group('hr.group_hr_user') \
+            or user.has_group('quimibond_sgi.group_sgi_manager')
+
+    def _sgi_check_can_evaluate(self):
+        if self._sgi_is_admin():
+            return
+        for rec in self:
+            if rec.evaluator_id != self.env.user:
+                raise UserError("Solo quien evalúa (%s), RH o el Jefe MAST dicen si la "
+                                "capacitación fue eficaz." % rec.sudo().evaluator_id.name)
+
+    def _sgi_mark(self, state):
+        self._sgi_check_can_evaluate()
+        pending = self.filtered(lambda r: r.state == 'pendiente')
+        if pending != self:
+            raise UserError("Esta evaluación ya tiene resultado. Solo el Jefe MAST lo cambia.")
+        self.with_context(sgi_effectiveness_result=True).write({
+            'state': state, 'evaluated_date': sgi_today(self.env),
+            'evaluated_by': self.env.user.id})
+        Cron = self.env['sgi.cron']
+        for rec in self:
+            acts = self.env['mail.activity'].sudo().search([
+                ('res_model', '=', self._name), ('res_id', '=', rec.id),
+                ('sgi_cron_key', '=', 'eficacia_capacitacion:%d' % rec.id)])
+            if acts:
+                Cron._sgi_close_activities(acts, "evaluación registrada")
+        return True
+
+    def action_mark_effective(self):
+        return self._sgi_mark('eficaz')
+
+    def action_mark_ineffective(self):
+        missing = self.filtered(lambda r: not (r.result_note or '').strip())
+        if missing:
+            raise UserError("Escriba en «Comentario» qué observó en el trabajo de la persona: "
+                            "RH lo usa para reprogramar la capacitación.")
+        self._sgi_mark('no_eficaz')
+        Cron = self.env['sgi.cron'].sudo()
+        rh_id = Cron._sgi_rh_user_id()
+        deadline = sgi_add_business_days(self.env, sgi_today(self.env), 5)
+        for rec in self.sudo():
+            Cron._sgi_schedule(
+                rec, "Reprogramar capacitación: %s — %s" % (rec.skill_id.name, rec.employee_id.name),
+                "La capacitación no fue eficaz según %s: %s. Reprograme la capacitación o "
+                "acuerde con el jefe cómo reforzarla." % (
+                    rec.evaluated_by.name or rec.evaluator_id.name, rec.result_note.strip()),
+                rh_id, date_deadline=deadline, key='reprogramar_capacitacion:%d' % rec.id)
+        return True
+
+    # ---- candados -----------------------------------------------------------
+    _SGI_FREE_PREFIXES = ('message_', 'activity_')
+
+    def write(self, vals):
+        if not self.env.su:
+            admin = self._sgi_is_admin()
+            mast = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+            by_button = self.env.context.get('sgi_effectiveness_result')
+            keys = {k for k in vals if not k.startswith(self._SGI_FREE_PREFIXES)}
+            # I-11: quien evalúa sin ser RH ni Jefe MAST solo escribe su
+            # comentario; el resultado, con los botones.
+            allowed = {'result_note'} | ({'state', 'evaluated_date', 'evaluated_by'}
+                                         if by_button else set())
+            if not admin and keys - allowed:
+                raise UserError("En la evaluación de eficacia usted solo escribe el comentario; "
+                                "el resultado se registra con «Eficaz» o «No eficaz».")
+            if keys & {'state', 'result_note'}:
+                if not by_button and 'state' in vals:
+                    self._sgi_check_can_evaluate()
+                done = self.filtered(lambda r: r.state != 'pendiente')
+                if done and not mast:
+                    raise UserError("La evaluación de eficacia ya tiene resultado: solo el Jefe "
+                                    "MAST lo cambia.")
+        return super().write(vals)
+
+    def unlink(self):
+        if not self.env.su:
+            raise UserError("La evaluación de eficacia es evidencia de la competencia (7.2) y no "
+                            "se borra.")
+        return super().unlink()

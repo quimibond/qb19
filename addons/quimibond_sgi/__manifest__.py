@@ -225,6 +225,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # acciones ya están cargadas y el padre va antes que el hijo.
         # 57.94.0 «SGI en planta»: tabletas de planta.
         'views/sgi_floor_views.xml',
+        'views/sgi_training_effectiveness_views.xml',  # 57.100.0 (N-13): eficacia y exámenes
         'views/sgi_menus.xml',
     ],
     'demo': [
