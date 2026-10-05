@@ -312,8 +312,10 @@ class SgiIndicator(models.Model):
         }
 
     def action_sgi_measures(self):
-        """Mis indicadores → «Mediciones»: la lista de mediciones del
-        indicador para capturar la pendiente (primero lo más reciente)."""
+        """Mis indicadores → «Mediciones»: la lista de mediciones con dato del
+        indicador (primero lo más reciente); quite «Con dato» para ver las
+        pendientes y las sin dato. 57.102.0 (B2): la gráfica ya no promedia
+        los ceros de las sin dato. La pendiente se captura con «Capturar»."""
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
@@ -321,7 +323,7 @@ class SgiIndicator(models.Model):
             'res_model': 'sgi.indicator.measure',
             'view_mode': 'list,form,graph',
             'domain': [('indicator_id', '=', self.id)],
-            'context': {'default_indicator_id': self.id},
+            'context': {'default_indicator_id': self.id, 'search_default_con_dato': 1},
         }
 
     def action_view_trend(self):

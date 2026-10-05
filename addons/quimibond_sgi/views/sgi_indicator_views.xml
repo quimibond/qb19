@@ -596,11 +596,14 @@
         <field name="name">Mediciones</field>
         <field name="res_model">sgi.indicator.measure</field>
         <field name="view_mode">list,graph,pivot,form</field>
-        <field name="context">{'search_default_pending': 1, 'search_default_mine': 1}</field>
+        <!-- 57.102.0 (B2): abre con «Con dato» (la gráfica no promedia ceros
+             falsos). «Pendientes» y «Con dato» juntos dan una lista vacía. -->
+        <field name="context">{'search_default_con_dato': 1, 'search_default_mine': 1}</field>
         <field name="search_view_id" ref="sgi_measure_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>
             <p>El cron mensual las crea automáticamente; las manuales llegan como actividad a su responsable antes del día 5.</p>
+            <p>Abre con las mediciones con dato; quite el filtro para ver las pendientes y las sin dato.</p>
         </field>
     </record>
 
