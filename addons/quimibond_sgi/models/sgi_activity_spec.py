@@ -81,6 +81,7 @@ SGI_SPEC_GAPS = [
     ('measure_never', "Evidencia que no aparece"),
     ('weak_attribution', "Atribución débil"),
     ('review_rejected', "Revisión del dueño: no corresponde"),
+    ('approval_missing', "Aprobación sin activar"),
 ]
 # Severidad por código (error bloquea publicar; warning solo avisa).
 SGI_GAP_SEVERITY = {
@@ -94,6 +95,7 @@ SGI_GAP_SEVERITY = {
     'paper_channel': 'warning', 'mixed_channel': 'warning', 'no_match': 'warning',
     'menu_no_visible': 'warning', 'menu_model_mismatch': 'warning',
     'measure_never': 'warning', 'weak_attribution': 'warning', 'review_rejected': 'warning',
+    'approval_missing': 'warning',
 }
 # 57.106.0: días mínimos sin evidencia para «Evidencia que no aparece» (la
 # cadencia larga manda: una anual espera su ventana de 380 días).
@@ -390,6 +392,10 @@ class SgiActivitySpec(models.Model):
         rejected = self._sgi_review_rejected()
         if rejected:
             add('review_rejected', rejected)
+        # 57.109.0: el procedimiento dice que se aprueba y Odoo no lo pide
+        # (sgi_approval_wizard).
+        for message in self._sgi_approval_problems():
+            add('approval_missing', message)
         if channel in SGI_EXTERNAL_CHANNELS and not (self.external_system or '').strip():
             add('external_no_name', "Falta el nombre del sistema externo.")
         if not self.instruction_id and not (self.how_steps or '').strip():

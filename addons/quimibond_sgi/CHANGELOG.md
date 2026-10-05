@@ -13,6 +13,69 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.109.0 — 2026-10-05
+
+**Asistentes en lenguaje normal: aprobaciones, indicadores, medición y
+riesgos** (pedido de Jose del 2026-10-05, «haz todo lo que propones»).
+Modelos nuevos `sgi.indicator.source` y los asistentes
+`sgi.approval.wizard`, `sgi.approval.wizard.button`,
+`sgi.indicator.wizard` y `sgi.risk.report`; tres menús; migración
+`post-migrate`.
+
+### Agregado
+
+- **Configurar aprobación** (Aprobaciones del SGI → «Configurar» en cada
+  renglón; Jefe MAST): tres preguntas. ¿Qué se aprueba? (un documento de
+  Odoo y qué acción, elegida por su etiqueta del formulario; una decisión
+  sin documento, que se pide en Aprobaciones; o algo que se firma en papel),
+  ¿siempre o solo a veces? (campo, operador y valor) y una vista previa
+  («Cuando Planeador pulse «Confirmar» en Orden de compra con total mayor
+  que 50000, Odoo le pedirá la aprobación a …»). «Activar» la escribe en el
+  rol y la sincroniza.
+- **Sugerencia por rol** (columna «Sugerencia»): botón conocido del
+  documento que materializa la actividad, o solicitud en Aprobaciones.
+  **«Activar las sugeridas como solicitud»** en lote (solo las que no
+  bloquean botones; las de botón, una por una).
+- Faltante **«Aprobación sin activar»** (`approval_missing`, advertencia) y
+  un aviso al Jefe MAST por proceso en Mis pendientes, que se cierra solo
+  al activarlas; los recalcula el cron nocturno de aprobaciones.
+- **Nuevo indicador** (Administración SGI → Indicadores; Jefe MAST): ¿qué
+  quiere saber? (qué porcentaje cumple, cuántos hay, cuánto suman), ¿de qué
+  registros? (fuente con nombre de negocio), ¿cuáles cuentan? (filtro visual
+  de Odoo), meta, sentido y frecuencia. La vista previa calcula los últimos
+  tres periodos con el mismo motor de la fórmula, sin guardar nada, y «Ver lo
+  que cuenta el último periodo» abre los registros. Crea el indicador en
+  «prueba» con sus términos.
+- **Fuentes de indicadores** (Configuración): doce fuentes de inicio
+  (facturas de cliente y de proveedor, notas de crédito, pedidos de venta,
+  órdenes de compra, entregas, recepciones, órdenes de producción, controles
+  de calidad, NC, mantenimiento, soporte); las de un modelo no instalado no
+  se ofrecen.
+- **Reportar → Riesgo u oportunidad** (cualquier usuario del SGI): qué puede
+  pasar, qué pasaría, en qué proceso, qué tan seguido y qué tan grave (o qué
+  tanto ganaríamos) en palabras, y qué se hace hoy. Las respuestas proponen
+  probabilidad e impacto de la matriz de riesgos y oportunidades; el Jefe
+  MAST recibe «Evaluar riesgo reportado».
+
+### Cambiado
+
+- **Medición de la actividad:** el filtro de evidencia es el filtro visual
+  de Odoo; «Fecha que cuenta» y «Quién la hizo» se eligen por su etiqueta
+  (antes, `create_date` y `write_uid` escritos a mano), y «Lo que cuenta
+  hoy» dice cuántos registros hubo en 30 días y a quién se le atribuyen.
+
+### Datos de producción
+
+- 2026-10-05, por MCP con el visto bueno de Jose: S6.03 («Dar usuario,
+  correo y equipo al nuevo ingreso…», aprueba el Director de Finanzas y
+  Administración) pasó de «Botón de Odoo» sin configurar a «Solicitud en
+  Aprobaciones»; categoría 22 activa con su aprobador.
+
+### Migración
+
+- `post-migrate`: faltantes de las actividades con rol «Aprueba» y avisos
+  al Jefe MAST. Esperado: unos 64 roles sin activar de 82.
+
 ## 19.0.57.108.0 — 2026-10-05
 
 **Proponer una actividad en lenguaje normal** (pedido de Jose del

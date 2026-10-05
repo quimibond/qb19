@@ -298,3 +298,24 @@ abre la propuesta con todos los campos y arriba **lo que falta para
 publicarla** (criterio de terminado, escalamiento, vencimiento, pantalla de
 Odoo, instructivo o pasos). Complete y pulse **Guardar y actualizar la
 solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
+
+## Asistentes (57.109.0)
+
+- **Configurar una aprobación.** En Administración SGI → Aprobaciones del
+  SGI, pulse **Configurar** en el renglón: diga qué se aprueba (la acción de
+  un documento, una decisión que se pide en Aprobaciones o algo que se firma),
+  si es siempre o solo a veces, y revise la vista previa antes de
+  **Activar**. Las que solo necesitan una solicitud en Aprobaciones se activan
+  en lote con **Activar las sugeridas como solicitud**. Las que faltan le
+  llegan como aviso por proceso en Mis pendientes.
+- **Nuevo indicador.** En Administración SGI → Indicadores → Nuevo indicador:
+  elija qué quiere saber, de qué registros y cuáles cuentan (filtro visual);
+  la vista previa muestra cómo habrían salido los últimos tres periodos y
+  qué registros cuenta. Se crea en «prueba».
+- **Medición de una actividad.** En la pestaña de medición de la actividad,
+  el filtro es visual, la fecha y quién la hizo se eligen por su nombre, y
+  «Lo que cuenta hoy» muestra los registros de 30 días y a quién se le
+  atribuyen.
+- **Riesgos reportados.** Cualquiera puede reportar un riesgo u oportunidad
+  en SGI → Reportar; a usted le llega «Evaluar riesgo reportado» para
+  confirmar probabilidad, impacto, proceso y categoría.

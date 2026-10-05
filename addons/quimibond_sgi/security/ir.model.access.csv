@@ -335,3 +335,9 @@ access_sgi_measure_review_manager,sgi.measure.review.manager,model_sgi_measure_r
 access_sgi_measure_review_line_user,sgi.measure.review.line.user,model_sgi_measure_review_line,base.group_user,1,0,0,0
 access_sgi_measure_review_line_manager,sgi.measure.review.line.manager,model_sgi_measure_review_line,group_sgi_manager,1,1,1,1
 access_sgi_measure_review_reject_user,sgi.measure.review.reject.user,model_sgi_measure_review_reject,base.group_user,1,1,1,1
+access_sgi_approval_wizard_manager,sgi.approval.wizard.manager,model_sgi_approval_wizard,group_sgi_manager,1,1,1,1
+access_sgi_approval_wizard_button_manager,sgi.approval.wizard.button.manager,model_sgi_approval_wizard_button,group_sgi_manager,1,1,1,1
+access_sgi_indicator_source_user,sgi.indicator.source.user,model_sgi_indicator_source,group_sgi_user,1,0,0,0
+access_sgi_indicator_source_manager,sgi.indicator.source.manager,model_sgi_indicator_source,group_sgi_manager,1,1,1,1
+access_sgi_indicator_wizard_manager,sgi.indicator.wizard.manager,model_sgi_indicator_wizard,group_sgi_manager,1,1,1,1
+access_sgi_risk_report_user,sgi.risk.report.user,model_sgi_risk_report,group_sgi_user,1,1,1,1

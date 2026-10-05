@@ -132,3 +132,11 @@ from . import sgi_measure_review
 # 57.108.0: proponer una actividad en lenguaje normal (hereda la propuesta y
 # approval.request, definidos antes en sgi_mp_change).
 from . import sgi_mp_change_simple
+# 57.109.0: asistente de aprobaciones (hereda el rol con su aprobación nativa
+# y la actividad, definidos antes).
+from . import sgi_approval_wizard
+# 57.109.0: asistente «Nuevo indicador» y medición de la actividad sin nombres
+# técnicos (heredan indicador, término y actividad, definidos antes).
+from . import sgi_indicator_wizard
+# 57.109.0: reportar un riesgo u oportunidad en lenguaje normal (crea sgi.risk).
+from . import sgi_risk_report

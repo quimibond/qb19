@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.108.0',
+    'version': '19.0.57.109.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -214,7 +214,9 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
+        'data/sgi_indicator_sources.xml',
         'views/sgi_activity_execution_views.xml',
+        'views/sgi_indicator_wizard_views.xml',
         'views/sgi_measure_review_views.xml',
         'views/sgi_current_documents_views.xml',
         # 57.0.0 (entrega 6): «Del Dropbox a Odoo» (rutinas, buscador, avance).
