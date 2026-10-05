@@ -128,6 +128,42 @@
                     <group string="Notas Ishikawa (5-6M)">
                         <field name="sgi_ishikawa_notes" nolabel="1"/>
                     </group>
+                    <!-- 57.100.0 (sección 7 del reporte): la IA propone y la persona decide.
+                         Apagada por omisión (quimibond_sgi.ai_enabled). -->
+                    <field name="sgi_ai_available" invisible="1"/>
+                    <group string="Sugerencia de IA (borrador)" name="sgi_ai"
+                           invisible="not sgi_ai_available and not sgi_ai_date">
+                        <div class="alert alert-info" role="status" colspan="2">
+                            La IA propone y usted decide. La sugerencia no cambia la NC: use los
+                            botones para copiarla. La causa raíz la escribe el responsable; la IA
+                            nunca la escribe ni cierra la NC. Una NC «mayor» manda el correo
+                            crítico a Dirección.
+                        </div>
+                        <button name="action_sgi_ai_suggest" type="object" string="Pedir sugerencia a la IA"
+                                class="btn-secondary" colspan="2" groups="quimibond_sgi.group_sgi_user"
+                                invisible="not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"/>
+                        <field name="sgi_ai_clause_id" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_classification" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_reason" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_whys" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_ishikawa" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_date" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_model" invisible="not sgi_ai_date"/>
+                        <button name="action_sgi_ai_use_classification" type="object"
+                                string="Usar cláusula y clasificación sugeridas" colspan="2"
+                                groups="quimibond_sgi.group_sgi_user"
+                                invisible="sgi_classification or not sgi_ai_date or not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"
+                                confirm="La clasificación y la cláusula sugeridas quedan en la NC a su nombre. Si es «mayor», se manda el correo crítico. ¿Continuar?"/>
+                        <button name="action_sgi_ai_use_classification" type="object"
+                                string="Usar cláusula y clasificación sugeridas" colspan="2"
+                                groups="quimibond_sgi.group_sgi_user"
+                                invisible="not sgi_classification or not sgi_ai_date or not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"
+                                confirm="La NC ya tiene clasificación. La sugerencia la reemplaza a su nombre (si es «mayor», se manda el correo crítico). ¿Continuar?"/>
+                        <button name="action_sgi_ai_use_whys" type="object"
+                                string="Copiar el borrador de porqués" colspan="2"
+                                groups="quimibond_sgi.group_sgi_user"
+                                invisible="not sgi_ai_date or not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"/>
+                    </group>
                 </page>
                 <page string="Correcciones y acciones" name="sgi_actions" invisible="not sgi_folio and id">
                     <field name="sgi_action_line_ids">

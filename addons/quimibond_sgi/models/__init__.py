@@ -115,3 +115,4 @@ from . import sgi_indicator_health
 # currículum, encuestas, cursos y NC, todos definidos antes).
 from . import sgi_indicator_integrity
 from . import sgi_competence_grant
+from . import sgi_ai
