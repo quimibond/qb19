@@ -13,6 +13,139 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.101.0 — 2026-10-05
+
+**Reportes y diagramas** (primera entrega después del plan de la auditoría
+2026-10; alcance aprobado por Jose el 2026-10-05). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-101-0-reportes.md`.
+**Ningún dato de negocio cambia en el despliegue.** Sin campos guardados
+nuevos, sin ACL, sin menús y sin migración; dos modelos abstractos de reporte
+(`report.quimibond_sgi.report_sgi_diagram_document`,
+`report.quimibond_sgi.report_risk_heatmap_document`).
+
+### Corregido
+
+- **Tendencia del indicador:** la gráfica sumaba las mediciones del mes (las
+  semanales: LO-01 marcaba 218 % de OTIF en julio). La medición promedia al
+  agrupar (`value`, `aggregator='avg'`, también en pivote y lista agrupada);
+  los semanales abren por semana (`sgi_measure_view_graph_weekly`); la
+  tendencia abre con el filtro nuevo «Con dato» (los «sin dato» y
+  pendientes valían 0; el filtro va aparte y se combina con Y). La lista de
+  mediciones muestra también el aceptable.
+- **Mapa de calor (pivote) de riesgos:** filas por instrumento y proceso; ya
+  no mezcla la escala de R&O y ambiental (baja a inmediata) con la de IPER y
+  patrimonial (bajo a alto) en las mismas filas.
+- **Desglose de la medición** (`sgi.indicator.measure.split`, pivote y
+  gráfica): `value` también promedia al agrupar (`aggregator='avg'`); sumaba
+  como la medición. Ningún cálculo dependía de esa suma.
+- **Diagnóstico → Documental:** la línea informativa «sin clave del SGI» no
+  quita «Difusión documental operando.» (`_sgi_with_operating`: solo cuentan
+  fallas y avisos).
+- **Ficha de proceso por máquina:** ya usaba el layout del SGI y además
+  pintaba el pie escrito a mano al final (doble pie); se quita el escrito a
+  mano.
+
+### Agregado
+
+- **Ficha del indicador en PDF** (`models/sgi_indicator_sheet.py`,
+  `report/report_indicator_sheet.xml`; Imprimir o «Ficha en PDF»; todas las
+  del proceso desde Imprimir del proceso, una hoja por indicador activo):
+  cómo se mide, metas y escalones, gráfica SVG (generada en el servidor) de
+  los últimos 12 periodos con medición con las franjas de las metas de cada
+  periodo (las guardadas al validar, K-04, o las vigentes del periodo),
+  semáforo guardado por periodo («—» en pendientes y sin dato; la línea se
+  corta y marca «s/d»), tabla por periodo y causa y acciones de los rojos. El
+  eje de los semanales dice dd/mm. `sgi_sheet_svg_b64` queda listo por si
+  wkhtmltopdf no pinta el SVG en línea.
+- **Diagramas en formato controlado** (`models/sgi_report_print.py`,
+  `report/report_sgi_diagram.xml`): botón PDF en la barra del diagrama para
+  mapa de procesos, interacción (4.4), tortuga, roles (5.3) y contexto
+  (4.1/4.2); reporte con `data` (kind, res_id, params) sobre los mismos datos
+  de `sgi.diagram.data`; las flechas van como tabla «Conexiones»; el
+  subtítulo sin las instrucciones de pantalla. En riesgos el botón imprime el
+  mapa de calor del instrumento y proceso elegidos (no en patrimonial).
+  Carriles y PDCA siguen con la impresión de pantalla.
+- **Programa de auditorías: programado contra realizado**
+  (`report/report_audit_program.xml`; botón del programa, también en
+  borrador, y menú Imprimir): proceso × mes con todas las marcas de cada
+  celda (pendiente, vencida, ejecutada en «Informe», cerrada y «P→» si se hizo
+  en otro mes, con folio), totales por mes, avance de las internas hasta el
+  mes en curso con la regla de SG-09 (renglón cerrado o auditoría en
+  «Informe» o «Cerrada»), hallazgos por auditoría y auditorías del año fuera
+  del programa.
+- **Mapa de calor de riesgos por instrumento** (R&O, IPER, ambiental;
+  `report/report_risk_heatmap.xml`): cuadrícula P×I inicial y residual con
+  folios por celda y el color del nivel de la escala de cada instrumento;
+  tabla de riesgos y los que no tienen evaluación; IPER con su formato
+  F-P-S01-01.
+- Copia guardada del **acta de revisión por la dirección cerrada**
+  (`attachment` + `attachment_use`, mismo nombre que la descarga); reabrirla
+  renombra la copia («… (reabierta el dd-mm-aaaa).pdf») con nota en el
+  chatter, no la borra.
+
+### Cambiado
+
+- Nombre de archivo con folio: NC, 8D, plan e informe de auditoría, acta,
+  investigación de incidente y AMEF.
+- **8D, solicitud de desarrollo, responsiva de EPP y eficiencias** usan el
+  layout del SGI (pie en cada hoja con página; 57.98.0 Q3 revertida con el
+  alcance aprobado) y pierden el pie escrito a mano. El 8D sigue sin la clave
+  de la NC (57.44.0): pie solo con la página.
+- `SGI_FORMAT_REPORTS` suma 9 reportes. Diagnóstico → Documental: los
+  reportes cuya referencia de formato no existe en el código salen en una
+  línea aparte, informativa (nivel «Bien»: imprimen como se decidió),
+  «sin clave del SGI»; la existencia se comprueba con `env.ref` (una
+  referencia archivada sigue en el aviso de siempre). `test_interfaz.test_06`
+  cuenta solo la línea de aviso.
+- `sgi_risk.sgi_attention_color` es la regla única del semáforo de riesgo
+  (`_compute_semaphore` la usa; mismo resultado).
+
+### Pendiente
+
+- El diagrama de pantalla «Riesgos (6.1)» colorea por fracción del puntaje
+  máximo, no por la escala del instrumento (el PDF sí usa la escala).
+- Claves de formato para la ficha, los diagramas, el programa contra
+  realizado, el mapa de calor de R&O y ambiental y el 8D (Q1–Q3).
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó las opciones por omisión de Q1 a Q17 (2026-10-05):
+
+- (Q1) Sin claves nuevas: ficha, diagramas, programa contra realizado y mapa
+  de calor de R&O llevan solo la página y el Diagnóstico los lista «sin clave
+  del SGI»; el mapa de calor IPER usa F-P-S01-01. (Q2) Mapa de calor
+  ambiental: solo la página. (Q3) 8D sin clave propia.
+- (Q4) La gráfica lleva los últimos 12 periodos con medición. (Q5) La
+  tendencia promedia, los semanales por semana, y abre con «Con dato».
+  (Q6) Objetivo y aceptable no se dibujan en la gráfica de pantalla (van en
+  la lista y como franjas en la ficha).
+- (Q7) Diagramas en formato controlado: mapa de procesos, 4.4, tortuga, 5.3,
+  4.1/4.2 y, en riesgos, el mapa de calor. (Q8) Carriles y PDCA fuera.
+- (Q9) Copia guardada solo del acta cerrada; el informe de auditoría no (AU-3
+  ya lo archiva). (Q10) El mapa de calor no incluye patrimonial. (Q11)
+  Inicial y residual lado a lado, folios por celda, solo no cerrados, tabla
+  debajo. (Q12) Una auditoría cuenta como realizada en «Informe» o «Cerrada»
+  (o con el renglón cerrado), en el mes de su fecha de fin.
+- (Q13) Menú Imprimir de cada modelo más botones en el indicador, el programa
+  y la barra del diagrama; sin menús nuevos. **Ajuste de la revisión:** el
+  botón «Programado contra realizado» se ve también en borrador (los dos
+  programas de producción lo están).
+- (Q14) La ficha lleva la tabla por periodo. (Q15) Solicitud de desarrollo,
+  responsiva y eficiencias al layout del SGI con su clave de siempre (la
+  plantilla de firma manual de EPP no cambia). (Q16) Nombres de archivo con
+  folio. (Q17) Sale como 57.101.0, anotada en «Seguimiento» del plan general.
+
+**Pruebas:** `test_reportes_diagramas` (16 casos).
+
+**Verificación pendiente en Odoo.sh (solo se ve en el build):** que
+wkhtmltopdf pinte el SVG de la ficha en línea (si no, `<img>` con
+`sgi_sheet_svg_b64`); que el cliente web descargue los reportes con `data` y
+sin registros (diagrama y mapa de calor desde el diagrama) y el nombre del
+archivo; `aggregator='avg'` en la gráfica de línea y en el pivote de
+mediciones; márgenes del pie en 8D, solicitud de desarrollo, responsiva y
+eficiencias con el papel de la empresa; la copia guardada del acta al
+imprimir un acta cerrada dos veces (un solo adjunto).
+
 ## 19.0.57.100.0 — 2026-10-05
 
 **Integridad, competencias, PPAP e IA** (auditoría 2026-10: K-04, N-13, N-14 y

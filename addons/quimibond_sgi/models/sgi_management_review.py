@@ -658,8 +658,33 @@ class SgiManagementReview(models.Model):
                 "<b>Acuerdos abiertos al cerrar:</b> pasan a la siguiente revisión por la "
                 "dirección (se cargan con «Cargar entradas»).<br/>%s") % items)
 
+    def sgi_minutes_filename(self):
+        """57.101.0 (B3): nombre de la copia guardada del acta cerrada (la
+        expresión ``attachment`` del reporte la llama). Es el mismo nombre que
+        el de la descarga (``print_report_name``) más «.pdf»."""
+        self.ensure_one()
+        return "Acta de revisión por la dirección - %s.pdf" % (self.folio or self.name)
+
+    def _sgi_retire_stored_minutes(self):
+        """57.101.0 (B3): al reabrir un acta cerrada, su copia guardada se
+        renombra (no se borra) para que al cerrarla otra vez se guarde la
+        nueva; la anterior queda como evidencia."""
+        Attachment = self.env['ir.attachment'].sudo()
+        stamp = fields.Date.context_today(self).strftime('%d-%m-%Y')
+        for review in self.filtered(lambda r: r.state == 'cerrada'):
+            name = review.sgi_minutes_filename()
+            stored = Attachment.search([('res_model', '=', review._name),
+                                        ('res_id', '=', review.id), ('name', '=', name)])
+            if not stored:
+                continue
+            new_name = "%s (reabierta el %s).pdf" % (name[:-4], stamp)
+            stored.write({'name': new_name})
+            review.message_post(body="Se reabrió el acta cerrada: su copia guardada queda como "
+                                     "«%s». Al cerrarla de nuevo se guarda la nueva." % new_name)
+
     def action_draft(self):
         self._sgi_check_mast()
+        self._sgi_retire_stored_minutes()
         self.write({'state': 'borrador'})
 
 

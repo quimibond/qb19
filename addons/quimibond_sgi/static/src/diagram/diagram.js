@@ -295,6 +295,15 @@ export class SgiDiagram extends Component {
         win.document.close();
     }
 
+    // 57.101.0 (C3): el mismo diagrama en PDF con el pie del formato
+    // controlado (página, clave y revisión), generado en el servidor. La
+    // impresión rápida de arriba se queda.
+    async printControlled() {
+        const action = await this.orm.call("sgi.diagram", "action_print_controlled",
+            [this.state.kind, this.state.resId || false, this.state.params || {}]);
+        await this.actionService.doAction(action);
+    }
+
     // ---- flechas ----------------------------------------------------
     _boxRect(key) {
         const root = this.root.el;

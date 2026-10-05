@@ -143,6 +143,30 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
   aspectos significativos, objetivos por política, proveedores por
   clasificación): quite el filtro para ver todo.
 
+### 2.5.2 Fichas, diagramas y copias guardadas (desde 57.101.0)
+
+- **8D, solicitud de desarrollo, responsiva de EPP y eficiencias** también
+  llevan el pie en cada hoja. El 8D sale solo con la página: no comparte la
+  clave del reporte de NC.
+- **Diagnóstico → Documental:** los reportes cuyo formato aún no tiene clave
+  del SGI (ficha del indicador, diagramas, programa contra realizado, mapa de
+  calor de R&O y ambiental, 8D) salen en una línea aparte, informativa:
+  imprimen solo con la página y la clave se da de alta en el código, no en
+  «Formatos en documentos de Odoo».
+- **Diagramas en PDF:** en la barra del diagrama, el botón PDF (junto a la
+  impresora) imprime en formato controlado el mapa de procesos, la
+  interacción (4.4), la tortuga, los roles (5.3) y el contexto (4.1/4.2); las
+  flechas salen como tabla «Conexiones». En riesgos imprime el mapa de calor
+  del instrumento elegido. Carriles y PDCA siguen con la impresora de
+  pantalla.
+- **Acta de revisión por la dirección:** al imprimir un acta **cerrada**, la
+  copia queda guardada como adjunto y se vuelve a entregar igual. Si usted la
+  regresa a borrador, la copia se renombra «(reabierta el …)» y no se borra;
+  al cerrarla otra vez se guarda la nueva. El acta cerrada imprime la copia
+  guardada; para corregirla, reábrala (la copia anterior se renombra).
+- **Nombre del archivo** con folio en NC, 8D, auditoría, acta, incidente y
+  AMEF.
+
 ### 2.6 Seguridad y ambiente (desde 57.96.0)
 
 - **IPER de riesgo alto:** al controlarlo o cerrarlo, declare la jerarquía del

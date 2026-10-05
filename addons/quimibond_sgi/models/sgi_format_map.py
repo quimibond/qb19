@@ -34,7 +34,25 @@ SGI_FORMAT_REPORTS = (
     ('quimibond_sgi.action_report_retention', None),
     ('quimibond_sgi.action_report_work_permit', None),
     ('quimibond_sgi.action_report_machine_sheet', 'format_ref_machine_sheet'),
+    # 57.101.0: reportes y diagramas. Las referencias que no existen en
+    # sgi_format_map_data.xml (format_ref_8d, _indicator_sheet, _diagrams,
+    # _audit_program, _ryo_matrix) dejan el pie solo con la página y el
+    # Diagnóstico los lista «(sin clave del SGI)» hasta que se decida su
+    # formato (plan 57.101.0, Q1-Q3). La solicitud de desarrollo y las
+    # eficiencias eligen la referencia por registro; aquí va la general.
+    ('quimibond_sgi.action_report_8d', 'format_ref_8d'),
+    ('quimibond_sgi.action_report_dev_request', 'format_ref_dev_general'),
+    ('quimibond_sgi.action_report_epp_delivery', 'format_ref_epp_responsiva'),
+    ('quimibond_sgi.action_report_staff_efficiency', 'format_ref_staff_efficiency'),
+    ('quimibond_sgi.action_report_indicator_sheet', 'format_ref_indicator_sheet'),
+    ('quimibond_sgi.action_report_indicator_sheet_process', 'format_ref_indicator_sheet'),
+    ('quimibond_sgi.action_report_sgi_diagram', 'format_ref_diagrams'),
+    ('quimibond_sgi.action_report_audit_program', 'format_ref_audit_program'),
+    ('quimibond_sgi.action_report_risk_heatmap', 'format_ref_ryo_matrix'),
 )
+# 57.101.0: sufijo del Diagnóstico para los reportes cuya referencia de formato
+# no existe en el código (el Jefe MAST no la puede dar de alta en pantalla).
+SGI_NO_KEY_SUFFIX = " (sin clave del SGI)"
 
 
 class SgiFormatMap(models.Model):
@@ -459,11 +477,19 @@ class SgiFormatMap(models.Model):
         ``format_ref_*`` activo con clave; por modelo, basta un mapeo activo
         del modelo del reporte. Un modelo con solo mapeos con criterio
         (57.60.0) cuenta como mapeado, aunque algún registro no cumpla
-        ningún criterio e imprima sin clave."""
+        ningún criterio e imprima sin clave.
+
+        57.101.0: si la referencia ni siquiera existe (``format_ref_8d``…),
+        el nombre lleva «(sin clave del SGI)»: no se resuelve en «Formatos en
+        documentos de Odoo», necesita código. Una referencia archivada sí
+        existe y conserva el nombre tal cual."""
         names = []
         for report_xmlid, ref in SGI_FORMAT_REPORTS:
             report = self.env.ref(report_xmlid, raise_if_not_found=False)
             if not report:
+                continue
+            if ref and not self.env.ref('quimibond_sgi.%s' % ref, raise_if_not_found=False):
+                names.append(report.name + SGI_NO_KEY_SUFFIX)
                 continue
             if ref:
                 mapped = bool(self._sgi_ref(ref).sgi_live_label())

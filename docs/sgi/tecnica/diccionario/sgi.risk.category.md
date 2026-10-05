@@ -14,6 +14,6 @@ Archivos: `addons/quimibond_sgi/models/sgi_risk.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:47` |
-| `name` | Char | Categoría |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:46` |
+| `active` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:61` |
+| `name` | Char | Categoría |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_risk.py:60` |
 

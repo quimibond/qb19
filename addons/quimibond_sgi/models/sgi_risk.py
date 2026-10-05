@@ -25,6 +25,20 @@ ATTENTION_LEVELS = [
 # deliberada: cada instrumento conserva su vocabulario del formato original.
 SGI_HIGH_ATTENTION = ('inmediata', 'alto')
 
+
+def sgi_attention_color(level):
+    """57.101.0: semáforo de un nivel de atención (las dos escalas): rojo el
+    máximo de cada instrumento, amarillo los intermedios, verde el resto;
+    False sin nivel. Regla única del semáforo del riesgo y del mapa de calor."""
+    if not level:
+        return False
+    if level in SGI_HIGH_ATTENTION:
+        return 'rojo'
+    if level in ('media', 'medio', 'intermedia'):
+        return 'amarillo'
+    return 'verde'
+
+
 # 57.96.0 (N-07): «Aspecto ambiental» ya no se elige a mano en un riesgo. La
 # evaluación del aspecto vive en la matriz (sgi.env.aspect); el riesgo
 # ambiental solo nace desde ahí, como tratamiento («Tratar como riesgo») o con
@@ -263,14 +277,7 @@ class SgiRisk(models.Model):
     @api.depends('attention_level', 'instrument')
     def _compute_semaphore(self):
         for risk in self:
-            if not risk.attention_level:
-                risk.semaphore = False
-            elif risk.attention_level in SGI_HIGH_ATTENTION:
-                risk.semaphore = 'rojo'
-            elif risk.attention_level in ('media', 'medio', 'intermedia'):
-                risk.semaphore = 'amarillo'
-            else:
-                risk.semaphore = 'verde'
+            risk.semaphore = sgi_attention_color(risk.attention_level)
 
     @api.depends('attention_level', 'state', 'action_line_ids.date_done')
     def _compute_high_without_action(self):

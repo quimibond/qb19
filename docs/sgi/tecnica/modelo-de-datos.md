@@ -2,12 +2,14 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (122) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (124) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
 | Modelo | Descripción | Qué es (docstring) | Tipo | Campos | Archivo |
 |---|---|---|---|---:|---|
+| [`report.quimibond_sgi.report_risk_heatmap_document`](diccionario/report.quimibond_sgi.report_risk_heatmap_document.md) | Mapa de calor de riesgos por instrumento (PDF) | 57.101.0 (C7): valores del PDF del mapa de calor. Con registros elegidos (menú Imprimir de la lista), esos; con ``data`` (botón del diagrama de riesgos), el instrumento y el proceso del diagrama. | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_report_print.py` |
+| [`report.quimibond_sgi.report_sgi_diagram_document`](diccionario/report.quimibond_sgi.report_sgi_diagram_document.md) | Diagrama del SGI en formato controlado (PDF) | 57.101.0 (C3): valores del PDF de un diagrama. Se imprime con ``data`` (kind, res_id, params), sin registros; los datos son los de pantalla (``sgi.diagram.data``, con los permisos del usuario). | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_report_print.py` |
 | [`sgi.action.line`](diccionario/sgi.action.line.md) | Acción / corrección de no conformidad | Acción o corrección con responsable y fecha compromiso. Cuelga de una NC, riesgo, AMEF, incidente, simulacro, medición en rojo, objetivo o acuerdo de la revisión por la dirección; se cierra con «Marc… | Model | 21 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`sgi.activity.change`](diccionario/sgi.activity.change.md) | Propuesta de cambio a una actividad (Mi procedimiento) | Propuesta de cambio a una actividad: los mismos campos de la actividad con los valores propuestos, más quién la hace. Nace con los valores de hoy; lo que la persona cambie es lo que se aprueba y se a… | Model | 32 | `addons/quimibond_sgi/models/sgi_mp_change.py` |
 | [`sgi.activity.change.role`](diccionario/sgi.activity.change.role.md) | Quién hace la actividad (propuesta) | Renglón «quién hace» de una propuesta de cambio (``sgi.activity.change``): puesto, familia o rol relativo con su papel. Al aprobarse la propuesta pasa a ``sgi.activity.role``. | Model | 9 | `addons/quimibond_sgi/models/sgi_mp_change.py` |
@@ -188,4 +190,4 @@ Modelos que definen el núcleo y sus satélites (122) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 7 de 122.
+Modelos propios sin docstring de clase: 7 de 124.

@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.101.0 (C5): programa de auditorías, programado contra realizado.
+         Proceso × mes con las marcas de cada renglón (pendiente, vencida,
+         ejecutada, cerrada, movida), avance, hallazgos por auditoría y
+         auditorías fuera del programa. Datos: sgi.audit.program._sgi_program_grid.
+         Pie por la referencia format_ref_audit_program: hoy no existe, sale
+         solo la página. -->
+    <record id="action_report_audit_program" model="ir.actions.report">
+        <field name="name">Programa de auditorías: programado contra realizado</field>
+        <field name="model">sgi.audit.program</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_audit_program_document</field>
+        <field name="report_file">quimibond_sgi.report_audit_program_document</field>
+        <field name="print_report_name">'Programa de auditorías %s - realizado' % object.year</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta_horizontal"/>
+        <field name="binding_model_id" ref="model_sgi_audit_program"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_audit_program_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_audit_program'"/>
+                    <t t-set="grid" t-value="doc._sgi_program_grid()"/>
+                    <t t-set="bg" t-value="{'pendiente': '#fff3cd', 'vencida': '#f8d7da', 'ejecutada': '#cff4fc', 'cerrada': '#d1e7dd', 'movida': '#e9ecef'}"/>
+                    <t t-set="sym" t-value="{'pendiente': 'P', 'vencida': 'P', 'ejecutada': 'E', 'cerrada': 'C', 'movida': 'P→'}"/>
+                    <div class="page" style="font-size:9px;">
+                        <h3 class="text-center">Programa de auditorías <t t-out="doc.year"/>: programado contra realizado</h3>
+                        <p class="text-center text-muted">Estado del programa: <span t-field="doc.state"/>
+                            <t t-if="grid['progress'][1]"> · Avance: <b t-out="grid['progress'][0]"/> de
+                                <b t-out="grid['progress'][1]"/> auditorías internas programadas hasta
+                                <t t-out="grid['cutoff_label'].lower()"/> hechas (en «Informe» o «Cerrada»).</t>
+                        </p>
+                        <table class="table table-sm table-bordered" style="font-size:8px;">
+                            <thead>
+                                <tr><th>Proceso / cliente o proveedor</th><th>Tipo</th>
+                                    <th t-foreach="grid['months']" t-as="month" class="text-center" t-out="month[:3]"/>
+                                    <th>Auditor líder</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="grid['rows']" t-as="row">
+                                    <td t-out="row['label']"/>
+                                    <td t-out="row['type']"/>
+                                    <t t-foreach="range(1, 13)" t-as="m">
+                                        <t t-set="cell" t-value="row['months'][m]"/>
+                                        <td class="text-center" style="padding:1px;">
+                                            <div t-foreach="cell['marks']" t-as="mark"
+                                                 t-attf-style="background:#{bg[mark['status']]}; #{'color:#b02a37;' if mark['status'] == 'vencida' else ''}">
+                                                <b t-out="sym[mark['status']]"/>
+                                                <div t-if="mark['folio']" style="font-size:6px;" t-out="mark['folio']"/>
+                                            </div>
+                                        </td>
+                                    </t>
+                                    <td t-out="', '.join(row['auditors'])"/>
+                                </tr>
+                                <tr t-if="not grid['rows']"><td colspan="15" class="text-muted">El programa no tiene renglones.</td></tr>
+                            </tbody>
+                            <tfoot>
+                                <tr><th colspan="2">Planeadas / hechas</th>
+                                    <th t-foreach="range(1, 13)" t-as="m" class="text-center">
+                                        <t t-out="grid['totals'][m]['planned']"/> / <t t-out="grid['totals'][m]['done']"/></th>
+                                    <th/></tr>
+                            </tfoot>
+                        </table>
+                        <p class="text-muted" style="font-size:8px;">
+                            <span style="background:#fff3cd;">&#160;P&#160;</span> pendiente ·
+                            <span style="background:#f8d7da; color:#b02a37;">&#160;P&#160;</span> vencida (mes ya pasado sin ejecutar) ·
+                            <span style="background:#cff4fc;">&#160;E&#160;</span> ejecutada (auditoría en «Informe») ·
+                            <span style="background:#d1e7dd;">&#160;C&#160;</span> cerrada ·
+                            <span style="background:#e9ecef;">&#160;P→&#160;</span> planeada este mes y hecha en otro.
+                            La ejecutada se cuenta en el mes de fin de la auditoría.
+                        </p>
+
+                        <h5>Hallazgos por auditoría</h5>
+                        <p t-if="not grid['findings']" class="text-muted">Ninguna auditoría del programa está hecha todavía.</p>
+                        <table t-if="grid['findings']" class="table table-sm table-bordered" style="font-size:8px;">
+                            <thead><tr><th>Folio</th><th>Proceso</th><th>Auditor líder</th><th>Fecha de fin</th>
+                                <th>NC mayor</th><th>NC menor</th><th>Observaciones</th><th>Oportunidades</th><th>Conformidades</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="grid['findings']" t-as="item">
+                                    <td t-out="item['audit'].folio or ''"/>
+                                    <td t-out="item['label']"/>
+                                    <td t-out="item['auditor']"/>
+                                    <td><span t-if="item['date']" t-out="item['date']" t-options="{'widget': 'date'}"/></td>
+                                    <td class="text-center" t-out="item['counts'].get('nc_mayor', 0)"/>
+                                    <td class="text-center" t-out="item['counts'].get('nc_menor', 0)"/>
+                                    <td class="text-center" t-out="item['counts'].get('observacion', 0)"/>
+                                    <td class="text-center" t-out="item['counts'].get('oportunidad', 0)"/>
+                                    <td class="text-center" t-out="item['counts'].get('conformidad', 0)"/>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <t t-if="grid['outside']">
+                            <h5>Auditorías del año fuera del programa</h5>
+                            <table class="table table-sm table-bordered" style="font-size:8px;">
+                                <thead><tr><th>Folio</th><th>Tipo</th><th>Procesos / cliente o proveedor</th><th>Inicio</th><th>Estado</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="grid['outside']" t-as="audit">
+                                        <td t-out="audit.folio or ''"/>
+                                        <td><span t-field="audit.audit_type"/></td>
+                                        <td t-out="audit.partner_id.display_name or ', '.join(audit.process_ids.mapped('display_name'))"/>
+                                        <td><span t-field="audit.date_start"/></td>
+                                        <td><span t-field="audit.state"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

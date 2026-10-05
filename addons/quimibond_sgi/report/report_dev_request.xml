@@ -15,7 +15,12 @@
     <template id="report_dev_request_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.101.0 (B2): pie controlado en cada hoja (antes, escrito
+                         solo al final). La referencia por tipo es la de
+                         _sgi_dev_format_map. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_dev_%s' % (doc.sgi_dev_type or 'general')"/>
                     <div class="page">
                         <h2 class="text-center">Solicitud de desarrollo</h2>
                         <h4 class="text-center"><span t-out="dict(doc._fields['sgi_dev_type'].selection).get(doc.sgi_dev_type or 'general')"/></h4>
@@ -60,9 +65,6 @@
                             <tr><td class="text-center" style="border-top:1px solid #000;">Elaboró · Diseño y Desarrollo<br/><span t-out="doc.sgi_dev_prepared_by_id.name or ''"/></td>
                                 <td class="text-center" style="border-top:1px solid #000;">Aprobó · Dirección de Operaciones<br/><span t-out="doc.sgi_dev_approved_by_id.name or ''"/></td></tr>
                         </table>
-                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
-                            Formato controlado del SGI: <span class="fw-bold" t-out="doc.sgi_dev_format_info()"/> · PNTQ
-                        </div>
                     </div>
                 </t>
             </t>

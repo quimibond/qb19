@@ -8,7 +8,7 @@ Indicador del SGI (F-P-A10-03): fórmula o modo de cálculo, metas, frecuencia y
 
 Orden: `code`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibond_sgi/models/sgi_indicator_detail.py`, `addons/quimibond_sgi/models/sgi_indicator_formula.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_i3.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_indicator_integrity.py`, `addons/quimibond_sgi/models/sgi_indicator_p21.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_indicator_trajectory.py`, `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_direction_board.py`, `addons/quimibond_sgi/models/sgi_indicator_detail.py`, `addons/quimibond_sgi/models/sgi_indicator_formula.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_i3.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_indicator_integrity.py`, `addons/quimibond_sgi/models/sgi_indicator_p21.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_indicator_sheet.py`, `addons/quimibond_sgi/models/sgi_indicator_trajectory.py`, `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py`.
 
 ## Campos (58)
 
@@ -73,19 +73,23 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `uom` | Char | Unidad | % , MXN, unidades, kg, m… |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:102` |
 | `window_label` | Char | Ventana | Qué periodo de datos resume cada medición. |  |  | compute `_compute_window_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:64` |
 
-## Métodos públicos (12)
+## Métodos públicos (16)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_generate_trajectory` | Escalones trimestrales entre arranque y meta final. Los corregidos a mano se conservan; los demás se recalculan. |
+| `action_print_sheet` | Botón «Ficha en PDF» del indicador. |
 | `action_recalculate_now` | Botón «Recalcular ahora»: el último periodo cerrado, guardando. |
 | `action_set_official` | — |
 | `action_set_trial` | — |
 | `action_sgi_capture` | «Capturar»: abre en ficha la medición pendiente más antigua; si no hay, la lista de mediciones del indicador. |
 | `action_sgi_measures` | Mis indicadores → «Mediciones»: la lista de mediciones del indicador para capturar la pendiente (primero lo más reciente). |
 | `action_sgi_recompute_pending_measures` | D-12 (57.5.0): botón «Recalcular mediciones pendientes» de la lista de indicadores, solo para el Administrador SGI. Con indicadores seleccionados recalcula solo esos; sin selección, todos. El cron di… |
-| `action_view_trend` | La pregunta real de MAST frente a un KPI: ¿cómo viene la tendencia? Abre las mediciones del indicador en gráfica de línea por periodo. |
+| `action_view_trend` | La pregunta real de MAST frente a un KPI: ¿cómo viene la tendencia? Abre las mediciones con dato del indicador en gráfica de línea: por mes, o por semana si el indicador es semanal (57.101.0, A1). El… |
 | `create` | — |
 | `cron_missing_trajectories` | Paso del cron de indicadores: escalones para los que ya tienen fechas. |
 | `sgi_recalculate` | Calcula el indicador en un periodo con su modo actual, sin esperar al cron. Por MCP: ``call_model_method('sgi.indicator', 'sgi_recalculate', [ids], {'period_date': '2026-08-01', 'save': True})``. |
+| `sgi_sheet_num` | — |
+| `sgi_sheet_svg` | La gráfica de la ficha (Markup con el SVG). |
+| `sgi_sheet_svg_b64` | El mismo SVG en base64, por si el PDF lo necesita como imagen. |
 | `write` | — |
