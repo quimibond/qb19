@@ -111,3 +111,6 @@ from . import sgi_incident_leave
 # proceso, Tablero y sgi.cron), la salud del SGI.
 from . import sgi_health_const
 from . import sgi_indicator_health
+# 57.100.0: al final (heredan medición, desglose, indicador, empleado,
+# currículum, encuestas, cursos y NC, todos definidos antes).
+from . import sgi_indicator_integrity

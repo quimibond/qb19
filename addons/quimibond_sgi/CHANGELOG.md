@@ -13,6 +13,18 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.100.0 — 2026-10-05
+
+**Integridad, competencias, PPAP e IA** (auditoría 2026-10: K-04, N-13, N-14 y
+la sección 7 del reporte). En curso; la entrada completa llega con la versión
+(Task 10.12).
+
+### Agregado
+
+- **Metas congeladas al validar (K-04):** la medición validada guarda las
+  metas con las que se juzgó; cambiar la meta del indicador o un escalón ya no
+  le cambia el color.
+
 ## 19.0.57.99.0 — 2026-10-02
 
 **Salud del SGI** (auditoría 2026-10: sección 8 del reporte y hallazgo D-01
