@@ -129,3 +129,6 @@ from . import sgi_miid
 # 57.107.0: revisión mensual de la medición por el dueño del proceso (hereda
 # la actividad y la lee Mis pendientes, ambos definidos antes).
 from . import sgi_measure_review
+# 57.108.0: proponer una actividad en lenguaje normal (hereda la propuesta y
+# approval.request, definidos antes en sgi_mp_change).
+from . import sgi_mp_change_simple

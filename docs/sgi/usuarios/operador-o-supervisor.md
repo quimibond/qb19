@@ -110,10 +110,14 @@ Si una actividad ya no se hace así, o falta una:
 
 1. En **Mi procedimiento**, en la actividad, pulse **Proponer cambio** (o
    **Proponer actividad** arriba, para una nueva).
-2. Cambie solo lo que debe cambiar (quién, cuándo, dónde, cómo) y pulse
-   **Enviar propuesta**.
-3. La propuesta va a Aprobaciones: la revisan su jefe y el dueño del
-   proceso. Cuando se aprueba, la actividad cambia sola.
+2. Conteste las seis preguntas con sus palabras: **qué se hace**, **cada
+   cuándo**, **quién la hace**, **dónde se hace**, **cómo sabe que quedó
+   bien** y **por qué** la propone. Abajo ve cómo quedará escrita en su
+   procedimiento y, si algo falta o no se entiende, un aviso.
+3. Pulse **Enviar propuesta**. Va a Aprobaciones: la revisan su jefe, el
+   dueño del proceso y el Jefe MAST, que completa lo técnico (instructivo,
+   formatos, a quién se escala). Cuando se aprueba, la actividad cambia
+   sola.
 
 ### 2.7 Checklist de planta (capturista)
 
