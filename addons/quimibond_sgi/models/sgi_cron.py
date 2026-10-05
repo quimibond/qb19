@@ -1678,8 +1678,10 @@ class SgiCron(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def cron_competences(self):
-        """Cron diario: certificaciones de empleados por vencer (30 días) al empleado y a RH; los
-        satélites y extensiones agregan exámenes y estudios."""
+        """Cron diario: competencias con vigencia (certificaciones y, desde 57.100.0,
+        cualquier competencia con «válida hasta», N-13/P9) por vencer (30 días)
+        o vencidas, al empleado y a RH; los satélites y extensiones agregan
+        exámenes y estudios."""
         sgi_require_system(self.env)  # F-008
         self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         today = sgi_today(self.env)
@@ -1689,13 +1691,41 @@ class SgiCron(models.AbstractModel):
         # 57.16.0 (G-019, D-03): solo empleados de la empresa del SGI.
         company = self.env['sgi.config']._sgi_company()
 
-        # Certificaciones (hr.employee.skill de tipo certificación) con vigencia.
+        # Competencias con vigencia (hr.employee.skill). 57.100.0 (N-13, P9):
+        # las certificaciones y, de los demás tipos, solo las que el SGI
+        # otorga con vigencia (un examen ligado o un curso con «Vigencia
+        # (meses)»): un «válida hasta» de otro tipo lo pone Odoo al cambiar la
+        # competencia y no es un vencimiento. Solo el renglón más reciente de
+        # cada competencia: el que se renovó o se cerró al subir de nivel no
+        # avisa, ni uno con fechas al revés.
         certs = self.env['hr.employee.skill'].search([
             ('employee_id.company_id', '=', company.id),
-            ('is_certification', '=', True),
             ('valid_to', '!=', False),
             ('valid_to', '<=', soon),
         ])
+        certs = certs.filtered(lambda c: not c.valid_from or c.valid_from <= c.valid_to)
+        granted = set(self.env['survey.survey'].sudo().with_context(active_test=False).search(
+            [('sgi_skill_id', '!=', False)]).sgi_skill_id.ids)
+        granted |= set(self.env['slide.channel'].sudo().with_context(active_test=False).search(
+            [('sgi_skill_id', '!=', False), ('sgi_skill_validity_months', '>', 0)]).sgi_skill_id.ids)
+        certs = certs.filtered(lambda c: c.is_certification or c.skill_id.id in granted)
+        rows_by_key = {}
+        for row in self.env['hr.employee.skill'].search([
+                ('employee_id', 'in', certs.employee_id.ids),
+                ('skill_id', 'in', certs.skill_id.ids)]):
+            rows_by_key.setdefault((row.employee_id.id, row.skill_id.id), []).append(row)
+
+        def _superseded(cert):
+            for row in rows_by_key.get((cert.employee_id.id, cert.skill_id.id), []):
+                if row == cert:
+                    continue
+                if not row.valid_to or row.valid_to > cert.valid_to:
+                    return True   # renovada o subida de nivel (dura más)
+                if row.valid_from and row.valid_from > cert.valid_to:
+                    return True   # cerrada al subir de nivel (la sigue otra)
+            return False
+
+        certs = certs.filtered(lambda c: not _superseded(c))
 
         def _cert(cert):
             employee = cert.employee_id
@@ -1703,14 +1733,18 @@ class SgiCron(models.AbstractModel):
             label = "%s — %s" % (employee.name, cert.skill_id.name or '')
             # 56.37.0: una clave por certificación y destinatario (empleado,
             # RH, MAST); si dos papeles son la misma persona, un solo aviso.
+            # 57.100.0: las claves se conservan (episodios abiertos); el texto
+            # dice «Competencia» si el tipo no es de certificación.
+            kind_label = "Certificación" if cert.is_certification else "Competencia"
             if cert.valid_to < today:
-                summary = "Certificación VENCIDA: %s" % label
-                note = "La certificación venció el %s. Reprograme la recertificación." % cert.valid_to
+                summary = "%s VENCIDA: %s" % (kind_label, label)
+                note = "La %s venció el %s. Reprograme la capacitación o la recertificación." % (
+                    kind_label.lower(), cert.valid_to)
                 roles = (('empleado', emp_user_id), ('rh', rh_id), ('mast', manager_id))
                 kind, deadline = 'certificacion_vencida', today
             else:
-                summary = "Certificación por vencer: %s" % label
-                note = "La certificación vence el %s (≤30 días)." % cert.valid_to
+                summary = "%s por vencer: %s" % (kind_label, label)
+                note = "La %s vence el %s (≤30 días)." % (kind_label.lower(), cert.valid_to)
                 roles = (('empleado', emp_user_id), ('rh', rh_id))
                 kind, deadline = 'certificacion_por_vencer', cert.valid_to
             seen = set()
@@ -1724,11 +1758,15 @@ class SgiCron(models.AbstractModel):
         failures = self._sgi_for_each(certs, _cert, "certificaciones")
 
         # Currículos / cursos con fecha de fin próxima (hr.resume.line).
+        # 57.100.0 (I-5): sin las líneas de un examen o de un curso que otorga
+        # competencia: su vencimiento ya lo avisa la competencia (arriba).
         resume_lines = self.env['hr.resume.line'].search([
             ('employee_id.company_id', '=', company.id),
             ('date_end', '!=', False),
             ('date_end', '<=', soon),
             ('date_end', '>=', today),
+            ('survey_id', '=', False),
+            '|', ('channel_id', '=', False), ('channel_id.sgi_skill_id', '=', False),
         ])
 
         def _resume(line):

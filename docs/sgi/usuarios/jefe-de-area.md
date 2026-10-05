@@ -130,6 +130,12 @@ parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 - Solicitudes de aprobación de propuestas de cambio.
 - Permisos de trabajo vencidos que usted autorizó por el área (cada hora,
   hasta que se cierren o se renueven).
+- **Eficacia de la capacitación (desde 57.100.0):** a los 90 días de que
+  alguien de su equipo apruebe un examen o termine un curso que le da una
+  competencia, le llega «Evaluar la eficacia de la capacitación». Abra la
+  evaluación y diga si fue eficaz: «Eficaz», o escriba en «Comentario» qué
+  observó y pulse «No eficaz» (RH reprograma la capacitación). Solo ve las
+  evaluaciones que le tocan.
 
 ## 4. Lo que no puede hacer y a quién pedirlo
 

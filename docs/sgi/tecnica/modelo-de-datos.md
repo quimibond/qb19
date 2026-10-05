@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (120) y modelos de otras apps que extienden (49). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (122) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -18,6 +18,7 @@ Modelos que definen el núcleo y sus satélites (120) y modelos de otras apps qu
 | [`sgi.activity.spec.gap`](diccionario/sgi.activity.spec.gap.md) | Faltante de especificación de una actividad SGI | Faltante de especificación de una actividad (sin ejecutor, sin entregable, verbo vago…). Se recalcula; alimenta Diagnóstico → Faltantes de especificación. | Model | 6 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`sgi.activity.week.stat`](diccionario/sgi.activity.week.stat.md) | Cumplimiento semanal de una actividad SGI | Aplicables, hechas, completas, a tiempo y vencidas abiertas, por actividad y semana. Va aparte de ``sgi.activity.exec.stat`` (que tiene un renglón por usuario): repetir estos totales en cada renglón … | Model | 13 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`sgi.acuse.attach.wizard`](diccionario/sgi.acuse.attach.wizard.md) | Adjuntar acuse firmado a la entrega | Asistente para adjuntar a una entrega (``stock.picking``) el acuse firmado por el cliente. | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_links.py` |
+| [`sgi.ai.client`](diccionario/sgi.ai.client.md) | Cliente de IA del SGI (sugerencias) | — | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_ai.py` |
 | [`sgi.alert.source`](diccionario/sgi.alert.source.md) | Fuente de NC automática | Fuente de NC automática (pesaje, calibración, indicador en rojo…). MAST la enciende o apaga sin tocar código; ``quality.alert.sgi_auto_create`` la consulta y cuenta lo suprimido. | Model | 10 | `addons/quimibond_sgi/models/sgi_alert_source.py` |
 | [`sgi.area`](diccionario/sgi.area.md) | Área documental SGI | Área documental del SGI (G, A, C, D…), ligada a un departamento. Catálogo que trae el módulo. | Model | 4 | `addons/quimibond_sgi/models/sgi_area.py` |
 | [`sgi.audit`](diccionario/sgi.audit.md) | Auditoría interna (P-G03) | Auditoría interna o a proveedor/cliente (P-G03): planeación, checklist generado del proceso, hallazgos y cierre con informe. Nace del programa anual o a mano. | Model | 25 | `addons/quimibond_sgi/models/sgi_audit.py` |
@@ -71,7 +72,7 @@ Modelos que definen el núcleo y sus satélites (120) y modelos de otras apps qu
 | [`sgi.health.record`](diccionario/sgi.health.record.md) | Estudio de higiene o examen médico por trabajador | Estudio de higiene o examen médico de un trabajador, con resultado y vigencia. Dato sensible: solo Salud ocupacional y Jefe MAST. | Model | 14 | `addons/quimibond_sgi/models/sgi_hse_records.py` |
 | [`sgi.incident`](diccionario/sgi.incident.md) | Incidente / Accidente SST (P-S02, SCAT) | Incidente o accidente de SST (P-S02) con análisis SCAT (causas inmediatas, básicas y falta de control). Todos reportan; SST, MAST y Salud ocupacional investigan y cierran. | Model | 29 | `addons/quimibond_sgi/models/sgi_incident.py` |
 | [`sgi.indicator`](diccionario/sgi.indicator.md) | Indicador SGI (F-P-A10-03) | Indicador del SGI (F-P-A10-03): fórmula o modo de cálculo, metas, frecuencia y semáforo. El cron crea las mediciones del periodo; con ``nc_on_red`` un rojo levanta NC. | Model | 58 | `addons/quimibond_sgi/models/sgi_indicator.py` |
-| [`sgi.indicator.measure`](diccionario/sgi.indicator.measure.md) | Medición de indicador SGI | Medición de un indicador en un periodo: valor, semáforo, evidencia y, si sale en rojo, causa y plan. Se calcula sola o se captura; el dueño la valida. | Model | 38 | `addons/quimibond_sgi/models/sgi_indicator.py` |
+| [`sgi.indicator.measure`](diccionario/sgi.indicator.measure.md) | Medición de indicador SGI | Medición de un indicador en un periodo: valor, semáforo, evidencia y, si sale en rojo, causa y plan. Se calcula sola o se captura; el dueño la valida. | Model | 46 | `addons/quimibond_sgi/models/sgi_indicator.py` |
 | [`sgi.indicator.measure.split`](diccionario/sgi.indicator.measure.split.md) | Desglose de medición de indicador (equipo o mercado) | Un renglón del desglose (equipo de ventas o mercado) dentro de la medición del periodo. La oficial (NC, semáforo del proceso, tablero, RxD) sigue siendo el total. | Model | 15 | `addons/quimibond_sgi/models/sgi_business_line.py` |
 | [`sgi.indicator.step`](diccionario/sgi.indicator.step.md) | Escalón trimestral de la meta de un indicador SGI | Escalón trimestral de la meta de un indicador con trayectoria (meta y aceptable desde una fecha). | Model | 7 | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py` |
 | [`sgi.indicator.term`](diccionario/sgi.indicator.term.md) | Término de la fórmula de un indicador SGI | Término de la fórmula configurable de un indicador: modelo, dominio, campo, agregación y papel (numerador o denominador). | Model | 14 | `addons/quimibond_sgi/models/sgi_indicator_formula.py` |
@@ -125,6 +126,7 @@ Modelos que definen el núcleo y sus satélites (120) y modelos de otras apps qu
 | [`sgi.staff.efficiency`](diccionario/sgi.staff.efficiency.md) | Eficiencias de personal (F-P-A01-32/34) | Hoja mensual de eficiencias de personal de un área: carga empleados, calcula y la recibe RH. Los importes solo los ve el grupo de salarios. | Model | 13 | `addons/quimibond_sgi/models/sgi_staff_efficiency.py` |
 | [`sgi.staff.efficiency.line`](diccionario/sgi.staff.efficiency.line.md) | Calificación mensual de un empleado | Calificación mensual de un empleado (eficiencia, calidad, orden, asistencia) y su importe. | Model | 17 | `addons/quimibond_sgi/models/sgi_staff_efficiency.py` |
 | [`sgi.supplier.eval`](diccionario/sgi.supplier.eval.md) | Evaluación de proveedor SGI (8.4) | Evaluación trimestral de un proveedor (8.4): entrega a tiempo, NC y clase. La crea el cron; se puede recalcular y aplicar al contacto. | Model | 9 | `addons/quimibond_sgi/models/sgi_supplier_eval.py` |
+| [`sgi.training.effectiveness`](diccionario/sgi.training.effectiveness.md) | Eficacia de la capacitación | Eficacia de la capacitación (ISO 9001 7.2 c): a los 90 días de otorgar una competencia por examen o curso, el jefe inmediato dice si fue eficaz. | Model | 16 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`sgi.work.permit`](diccionario/sgi.work.permit.md) | Permiso de trabajo de alto riesgo | — | Model | 27 | `addons/quimibond_sgi/models/sgi_work_permit.py` |
 | [`sgi.work.permit.check`](diccionario/sgi.work.permit.check.md) | Verificación o EPP del permiso de trabajo | — | Model | 6 | `addons/quimibond_sgi/models/sgi_work_permit.py` |
 | [`sgi.work.permit.skill`](diccionario/sgi.work.permit.skill.md) | Competencia requerida por tipo de permiso de trabajo | 57.96.0 (N-06, 45001 7.2): competencia exigida por tipo de permiso. | Model | 5 | `addons/quimibond_sgi/models/sgi_work_permit.py` |
@@ -143,10 +145,11 @@ Modelos que definen el núcleo y sus satélites (120) y modelos de otras apps qu
 | [`helpdesk.team`](diccionario/helpdesk.team.md) | 1 | `addons/quimibond_sgi/models/sgi_complaint.py` |
 | [`helpdesk.ticket`](diccionario/helpdesk.ticket.md) | 7 | `addons/quimibond_sgi/models/sgi_complaint.py` |
 | [`hr.department`](diccionario/hr.department.md) | 0 | `addons/quimibond_sgi/models/sgi_competence.py` |
-| [`hr.employee`](diccionario/hr.employee.md) | 21 | `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_competence.py`, `addons/quimibond_sgi/models/sgi_epp.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
+| [`hr.employee`](diccionario/hr.employee.md) | 21 | `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_competence.py`, `addons/quimibond_sgi/models/sgi_competence_grant.py`, `addons/quimibond_sgi/models/sgi_epp.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`hr.employee.public`](diccionario/hr.employee.public.md) | 9 | `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`hr.job`](diccionario/hr.job.md) | 22 | `addons/quimibond_sgi/models/sgi_archived_filters.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`hr.leave`](diccionario/hr.leave.md) | 1 | `addons/quimibond_sgi/models/sgi_incident_leave.py` |
+| [`hr.resume.line`](diccionario/hr.resume.line.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`hr.version`](diccionario/hr.version.md) | 2 | `addons/quimibond_sgi/models/sgi_kpi_hr.py` |
 | [`ir.actions.act_window.view`](diccionario/ir.actions.act_window.view.md) | 1 | `addons/quimibond_sgi/models/sgi_diagram_view.py` |
 | [`ir.attachment`](diccionario/ir.attachment.md) | 1 | `addons/quimibond_sgi/models/sgi_links.py` |
@@ -157,7 +160,7 @@ Modelos que definen el núcleo y sus satélites (120) y modelos de otras apps qu
 | [`maintenance.equipment`](diccionario/maintenance.equipment.md) | 18 | `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_msa.py` |
 | [`maintenance.request`](diccionario/maintenance.request.md) | 7 | `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py` |
 | [`mrp.bom`](diccionario/mrp.bom.md) | 0 | `addons/quimibond_sgi/models/sgi_links.py` |
-| [`mrp.eco`](diccionario/mrp.eco.md) | 6 | `addons/quimibond_sgi_plm/models/mrp_eco.py` |
+| [`mrp.eco`](diccionario/mrp.eco.md) | 10 | `addons/quimibond_sgi_plm/models/mrp_eco.py` |
 | [`mrp.production`](diccionario/mrp.production.md) | 2 | `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`mrp.weigh.roll.wizard`](diccionario/mrp.weigh.roll.wizard.md) | 0 | `addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py` |
 | [`product.product`](diccionario/product.product.md) | 3 | `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
@@ -166,21 +169,23 @@ Modelos que definen el núcleo y sus satélites (120) y modelos de otras apps qu
 | [`project.task`](diccionario/project.task.md) | 10 | `addons/quimibond_sgi/models/sgi_improvement.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`project.task.type`](diccionario/project.task.type.md) | 1 | `addons/quimibond_sgi/models/sgi_improvement.py` |
 | [`purchase.order`](diccionario/purchase.order.md) | 2 | `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
-| [`quality.alert`](diccionario/quality.alert.md) | 77 | `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_incident.py`, `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_kpi_quality.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_sgi/models/sgi_supplier_nc.py` |
+| [`quality.alert`](diccionario/quality.alert.md) | 85 | `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_incident.py`, `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_kpi_quality.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_sgi/models/sgi_supplier_nc.py` |
 | [`quality.alert.stage`](diccionario/quality.alert.stage.md) | 2 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`quality.alert.team`](diccionario/quality.alert.team.md) | 1 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`quality.check`](diccionario/quality.check.md) | 1 | `addons/quimibond_sgi/models/sgi_calibration.py` |
 | [`quality.point`](diccionario/quality.point.md) | 9 | `addons/quimibond_sgi/models/sgi_control_plan.py` |
 | [`res.company`](diccionario/res.company.md) | 0 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
 | [`res.config.settings`](diccionario/res.config.settings.md) | 36 | `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py` |
-| [`res.partner`](diccionario/res.partner.md) | 17 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_supplier_eval.py`, `addons/quimibond_sgi/models/sgi_work_permit.py` |
+| [`res.partner`](diccionario/res.partner.md) | 19 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_supplier_eval.py`, `addons/quimibond_sgi/models/sgi_work_permit.py` |
 | [`res.users`](diccionario/res.users.md) | 2 | `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py` |
 | [`sale.order`](diccionario/sale.order.md) | 5 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_sale_commitment.py` |
 | [`sign.request`](diccionario/sign.request.md) | 0 | `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py` |
 | [`sign.request.item`](diccionario/sign.request.item.md) | 0 | `addons/quimibond_sgi/models/sgi_doc_change_sign.py` |
-| [`slide.channel`](diccionario/slide.channel.md) | 3 | `addons/quimibond_sgi/models/sgi_sign_elearning.py` |
+| [`slide.channel`](diccionario/slide.channel.md) | 4 | `addons/quimibond_sgi/models/sgi_competence_grant.py`, `addons/quimibond_sgi/models/sgi_sign_elearning.py` |
 | [`stock.lot`](diccionario/stock.lot.md) | 0 | `addons/quimibond_sgi/models/sgi_control_plan.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`stock.picking`](diccionario/stock.picking.md) | 17 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_release.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`studio.approval.rule`](diccionario/studio.approval.rule.md) | 1 | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`, `addons/quimibond_sgi_studio/models/studio_approval_rule_archive.py` |
+| [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
+| [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 6 de 120.
+Modelos propios sin docstring de clase: 7 de 122.

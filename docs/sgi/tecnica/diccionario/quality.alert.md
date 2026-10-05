@@ -4,13 +4,21 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_incident.py`, `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_kpi_quality.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_sgi/models/sgi_supplier_nc.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_incident.py`, `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_kpi_quality.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py`, `addons/quimibond_sgi/models/sgi_supplier_nc.py`.
 
-## Campos (77)
+## Campos (85)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_action_line_ids` | One2many | Correcciones y acciones |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:197` |
+| `sgi_ai_available` | Boolean | IA disponible | La sugerencia de IA está encendida y usted puede pedirla. |  |  | compute `_compute_sgi_ai_available`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ai.py:253` |
+| `sgi_ai_classification` | Selection | Clasificación sugerida (IA) | Clasificación que propone la IA. No cambia la NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:244` |
+| `sgi_ai_clause_id` | Many2one | Cláusula sugerida (IA) | Cláusula que propone la IA. No cambia la NC. |  | `sgi.norm.clause` |  |  | `addons/quimibond_sgi/models/sgi_ai.py:241` |
+| `sgi_ai_date` | Datetime | Sugerencia del |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:251` |
+| `sgi_ai_ishikawa` | Text | Borrador de Ishikawa 6M (IA) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:250` |
+| `sgi_ai_model` | Char | Modelo de IA |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:252` |
+| `sgi_ai_reason` | Text | Por qué lo sugiere la IA |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:248` |
+| `sgi_ai_whys` | Text | Borrador de 5 porqués (IA) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:249` |
 | `sgi_approved_by` | Many2one | Aprobó | Persona que aprueba el cierre de la no conformidad. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:188` |
 | `sgi_approved_date` | Date | Fecha de aprobación | Fecha en que se aprobó el cierre de la no conformidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:190` |
 | `sgi_cancel_reason` | Text | Motivo de cancelación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:243` |
@@ -88,10 +96,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond
 | `sgi_why_4` | Char | ¿Por qué? 4 |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:143` |
 | `sgi_why_5` | Char | ¿Por qué? 5 |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:144` |
 
-## Métodos públicos (9)
+## Métodos públicos (12)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `action_sgi_ai_suggest` | — |
+| `action_sgi_ai_use_classification` | P18: la persona copia cláusula y clasificación; queda a su nombre. |
+| `action_sgi_ai_use_whys` | Copia el borrador solo a los porqués vacíos y a las notas Ishikawa si están vacías. Nunca la causa raíz. |
 | `action_sgi_cancel` | — |
 | `action_sgi_escalate_to_nc` | Escala una alerta operativa de piso a una No Conformidad sistémica del SGI: la mueve al equipo NC Internas, le asigna folio y origen 'proceso', conservando producto/orden/picking. Las alertas rutinar… |
 | `action_sgi_force_close` | — |

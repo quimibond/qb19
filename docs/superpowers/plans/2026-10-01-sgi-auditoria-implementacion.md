@@ -46,7 +46,7 @@ Leer antes de empezar: `CLAUDE.md` (raíz), `addons/quimibond_sgi/README.md` (gl
 | 57.97.0 → **entregada como 57.98.0** (2026-10-02) | Interfaz | I-01, I-02, I-04, I-06, U-07 | 57.92.0 | Q20 (arranque de Dirección) |
 | 57.98.0 → **entregada como 57.99.0** (2026-10-02) | Salud del SGI (tablero de adopción) | Sección 8 del reporte, D-01 | 57.93.0, 57.94.0 | Metas del tablero |
 | 57.99.0 → **entregada como 57.95.0** (2026-10-02) | Rendimiento y robustez | K-08, K-05, D-06 | 57.92.0 | Ninguna |
-| 57.100.0 | Integridad, competencias, PPAP, IA | K-04, N-13, N-14, D7 | 57.96.0 | Q12 (PPAP), Q16 (IA) |
+| 57.100.0 → **entregada como 57.100.0** (2026-10-05) | Integridad, competencias, PPAP, IA | K-04, N-13, N-14, D7 | 57.96.0 | Q12 (PPAP), Q16 (IA) |
 
 Los IDs (K-01, U-02, N-02…) y las preguntas (Q1…Q20) son los del reporte de auditoría.
 
@@ -64,8 +64,11 @@ revisión por la dirección» (ficha 57.96.0) salió como **19.0.57.97.0**
 (`docs/superpowers/plans/2026-10-02-sgi-57-98-0-interfaz.md`); «Salud del
 SGI» (ficha 57.98.0) salió como **19.0.57.99.0** (libre: la ficha 57.99.0
 salió como 57.95.0;
-`docs/superpowers/plans/2026-10-02-sgi-57-99-0-salud.md`). La siguiente,
-«Integridad, competencias, PPAP e IA», toma 57.100.0.
+`docs/superpowers/plans/2026-10-02-sgi-57-99-0-salud.md`). «Integridad,
+competencias, PPAP e IA» salió como **19.0.57.100.0**, su número original
+(`docs/superpowers/plans/2026-10-05-sgi-57-100-0-integridad.md`), con
+`quimibond_sgi_plm` 19.0.3.2.0. **Con ella se entregaron las diez fichas del
+mapa.**
 
 ---
 
@@ -1192,7 +1195,7 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
 - **Alcance:** K-08 (un aviso por documento o por jefe en lugar de uno por acuse, `sgi_cron.py:679-687`; resumen guardado por empleado para Mi equipo; columna `sgi_cron_kind` indexada en `mail.activity` con backfill en post-migrate; recálculo nocturno de respaldo de las cuatro listas de Mi procedimiento con el número de cambios en el log), K-05 (dependencias de `sgi_picking_ids` y `sgi_payment_date`; separar propuesto de ajustado), D-06 (post-migrate: compañía 1 en los documentos controlados sin compañía, con log; regla de compañía en `sgi.legacy.routine`).
 - **Pruebas:** el recálculo nocturno reporta 0 cambios en régimen; búsqueda de Mi equipo sin recorrer a toda la empresa.
 
-### 57.100.0 — Integridad, competencias, PPAP e IA
+### 57.100.0 — Integridad, competencias, PPAP e IA (entregada como 57.100.0)
 
 - **Puertas:** Q12 (clientes que exigen PPAP, CoA y contingencia), Q16 (autorización de IA).
 - **Alcance:** K-04 (semáforo y metas congelados al validar), N-13 (`hr_skills_survey`/`hr_skills_slides`: examen o curso aprobado crea la competencia con vigencia; encuesta de eficacia a 90 días), N-14 (`sgi_requires_ppap` calculado en el ECO, aviso al embarcar sin CoA; pruebas para `quimibond_sgi_plm`, que no tiene), IA (sugerencia de cláusula y clasificación, borrador de 5 porqués que el responsable edita; nunca escribe `sgi_root_cause` ni cierra).
@@ -1203,4 +1206,11 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
 ## Seguimiento
 
 - Cada entrega se cierra con: build verde, PR a `main`, PR a `quimibond`, `odoo-update quimibond_sgi`, verificación de solo lectura y una línea en este plan con la fecha.
+- **Plan completo (2026-10-05):** las diez entregas están en código (57.100.0
+  en la rama, PR a `main`). Producción sigue en 19.0.57.90.1 hasta el
+  despliegue conjunto 57.91.0–57.100.0 (runbook). Quedan fuera, con su razón:
+  SGI en planta con PIN (decisión de 57.94.0), bloqueo de embarque sin CoA
+  (decisión de Calidad), los demás usos de IA de la sección 7 (P16 de
+  57.100.0) y la pista de datos de la sección 2 (casillas abiertas: clientes
+  de Q12, autorización de IA de Q16, carga inicial de competencias de RH).
 - El tablero de «Salud del SGI» (entregado como 57.99.0 el 2026-10-02: Tablero → «Salud del SGI» y correo de los lunes) se revisa cada semana con Dirección desde el primer correo; hasta ese despliegue, las cifras de la sección 2 del reporte se re-miden a mano cada dos semanas con las consultas del reporte.

@@ -21,6 +21,17 @@
                            invisible="not sgi_requires_coa"
                            groups="!quimibond_sgi.group_sgi_user,!quality.group_quality_user"/>
                 </group>
+                <!-- 57.100.0 (N-14): requisitos del cliente automotriz (por compañía). -->
+                <group string="Cliente automotriz" name="sgi_automotive">
+                    <field name="sgi_requires_ppap"
+                           groups="quimibond_sgi.group_sgi_user,quality.group_quality_user"/>
+                    <field name="sgi_requires_contingency"
+                           groups="quimibond_sgi.group_sgi_user,quality.group_quality_user"/>
+                    <field name="sgi_requires_ppap" readonly="1"
+                           groups="!quimibond_sgi.group_sgi_user,!quality.group_quality_user"/>
+                    <field name="sgi_requires_contingency" readonly="1"
+                           groups="!quimibond_sgi.group_sgi_user,!quality.group_quality_user"/>
+                </group>
             </xpath>
         </field>
     </record>

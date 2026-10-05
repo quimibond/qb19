@@ -12,8 +12,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `picking_ids` | Many2many | Salidas | Salidas que se validan sin CoA. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:304` |
-| `reason` | Text | Motivo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:305` |
+| `picking_ids` | Many2many | Salidas | Salidas que se validan sin CoA. |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:378` |
+| `reason` | Text | Motivo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_coa.py:379` |
 
 ## Métodos públicos (1)
 

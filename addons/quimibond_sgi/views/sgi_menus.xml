@@ -376,6 +376,14 @@
     <menuitem id="menu_sgi_elearning_skills" name="Cursos y competencias (eLearning)"
               parent="menu_hr_sgi_competences" action="sgi_slide_channel_action" sequence="30"
               groups="quimibond_sgi.group_sgi_manager"/>
+    <!-- 57.100.0 (N-13): exámenes que otorgan competencia y eficacia a 90 días.
+         Quien evalúa sin grupo de RH ni del SGI entra por su aviso. -->
+    <menuitem id="menu_sgi_survey_skills" name="Exámenes y competencias (Encuestas)"
+              parent="menu_hr_sgi_competences" action="sgi_survey_skill_action" sequence="35"
+              groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_training_effectiveness" name="Eficacia de la capacitación"
+              parent="menu_hr_sgi_competences" action="sgi_training_effectiveness_action"
+              sequence="40"/>
 
     <!-- Empleados: RH recibe las hojas de eficiencias (D-20: sin paréntesis). -->
     <menuitem id="menu_hr_sgi_staff_efficiency" name="Eficiencias de personal"

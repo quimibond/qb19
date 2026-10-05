@@ -8,15 +8,15 @@ Medición de un indicador en un periodo: valor, semáforo, evidencia y, si sale 
 
 Orden: `period_date desc, indicator_id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_indicator_detail.py`, `addons/quimibond_sgi/models/sgi_indicator_formula.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_indicator_trajectory.py`, `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_indicator_detail.py`, `addons/quimibond_sgi/models/sgi_indicator_formula.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_ind2.py`, `addons/quimibond_sgi/models/sgi_indicator_integrity.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_indicator_trajectory.py`, `addons/quimibond_sgi/models/sgi_my_pending.py`, `addons/quimibond_sgi_revisado/models/sgi_calidad_pq.py`.
 
-## Campos (38)
+## Campos (46)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `action_line_ids` | One2many | Acciones |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:127` |
 | `alert_id` | Many2one | No conformidad | No conformidad levantada por esta medición en rojo. |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1052` |
-| `captured_date` | Date | Capturada el | Día en que la medición pasó a «Capturado» (a mano o por el cálculo automático). El dueño del indicador tiene 3 días hábiles desde aquí para validarla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:114` |
+| `captured_date` | Date | Capturada el | Día en que la medición pasó a «Capturado» (a mano o por el cálculo automático). El dueño del indicador tiene 3 días hábiles desde aquí para validarla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_pending.py:116` |
 | `cause` | Text | Causa | Por qué salió en rojo (I-4). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_plan.py:126` |
 | `denominator` | Float | Denominador | Denominador del cálculo (la base contra la que se mide). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:382` |
 | `detail_count` | Integer | Registros |  |  |  | compute `_compute_detail_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:391` |
@@ -39,7 +39,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_indicator.py`, `addons/quimibond_sgi/
 | `sample_size` | Integer | Casos | Registros que forman la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:384` |
 | `semaphore` | Selection | Semáforo | Verde, amarillo o rojo según el valor y las metas. Se calcula solo. |  |  | compute `_compute_semaphore`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator.py:1039` |
 | `sgi_can_validate` | Boolean | Puede validar |  |  |  | compute `_compute_sgi_can_validate`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1055` |
+| `sgi_frozen_acceptable` | Float | Aceptable al validar | Aceptable del periodo con el que se validó la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:62` |
+| `sgi_frozen_date` | Date | Metas guardadas el | Día en que la medición guardó sus metas (al validarla). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:51` |
+| `sgi_frozen_direction` | Char | Sentido al validar | Sentido del indicador cuando se validó la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:54` |
+| `sgi_frozen_objective` | Float | Objetivo al validar | Objetivo del periodo con el que se validó la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:59` |
+| `sgi_frozen_range_max` | Float | Máximo al validar | Límite superior del rango con el que se validó la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:68` |
+| `sgi_frozen_range_min` | Float | Mínimo al validar | Límite inferior del rango con el que se validó la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:65` |
+| `sgi_frozen_range_tolerance` | Float | Tolerancia al validar | Tolerancia del rango con la que se validó la medición. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:71` |
 | `sgi_nc_suppressed` | Boolean | NC omitida (fuente apagada) | La medición ameritaba NC pero la fuente «Indicador en semáforo rojo» estaba desactivada. Se reintenta sola en cuanto se reactive. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator.py:1057` |
+| `sgi_targets_frozen` | Boolean | Metas congeladas | La medición está validada y conserva las metas con las que se validó: cambiar la meta del indicador no le cambia el color. |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_integrity.py:47` |
 | `sgi_validated_date` | Date | Validada el | Día en que la medición pasó a «Validado». Con él se mide si se validó a tiempo (3 días hábiles desde la captura). |  |  |  |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:473` |
 | `small_sample` | Boolean | Muestra chica | Menos casos que el mínimo (quimibond_sgi.indicator_min_sample): se mide, pero no abre NC. |  |  | compute `_compute_small_sample`, guardado |  | `addons/quimibond_sgi/models/sgi_indicator_detail.py:385` |
 | `source_info` | Char | Fuente del dato |  |  |  | related `indicator_id.source_info`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator.py:1030` |

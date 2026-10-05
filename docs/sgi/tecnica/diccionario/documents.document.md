@@ -68,9 +68,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_routine_pending_count` | Integer | Pendientes |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:723` |
 | `sgi_routine_replaced_count` | Integer | La hace Odoo |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:719` |
 | `sgi_routine_resolved_pct` | Float | % resuelto |  |  |  | compute `_compute_sgi_routine_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_legacy_routine.py:725` |
-| `sgi_sign_template_auto` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:31` |
-| `sgi_sign_template_id` | Many2one | Plantilla de firma (Sign) | Vacío: el SGI la arma sola (el PDF del documento más una hoja «Leí y entendí» con la firma colocada). Solo si se quiere otra, se elige aquí una plantilla hecha a mano en la app Firma. |  | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:24` |
-| `sgi_sign_template_rev` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:32` |
+| `sgi_sign_template_auto` | Boolean |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:33` |
+| `sgi_sign_template_id` | Many2one | Plantilla de firma (Sign) | Vacío: el SGI la arma sola (el PDF del documento más una hoja «Leí y entendí» con la firma colocada). Solo si se quiere otra, se elige aquí una plantilla hecha a mano en la app Firma. |  | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:26` |
+| `sgi_sign_template_rev` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sign_elearning.py:34` |
 | `sgi_state` | Selection | Estado SGI | Solo los documentos controlados del SGI llevan estado; los demás archivos de Documentos quedan sin él (2026-09-25). |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:145` |
 | `sgi_title` | Char | Título | Nombre del documento sin la clave ni la extensión del archivo. El archivo conserva su nombre original. |  |  | compute `_compute_sgi_title`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:85` |
 

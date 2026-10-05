@@ -110,6 +110,97 @@ prueba y sin NC automática (`data/sgi_health_indicators.xml`, `noupdate`):
   calculó»: su respuesta es la revisión semanal. Tampoco cuentan en SG-05 ni
   en SG-06.
 
+## Metas congeladas (K-04)
+
+Desde 57.100.0, una medición validada guarda las metas con las que se juzgó:
+sentido, objetivo y aceptable del periodo (el escalón de la trayectoria si lo
+hay) y, en «dentro de un rango», mínimo, máximo y tolerancia
+(`models/sgi_indicator_integrity.py`). Su semáforo, el objetivo y el
+aceptable que muestra y el semáforo de su desglose salen de esas metas aunque
+después cambie la meta del indicador o se corrija un escalón. Al cambiar las
+metas de un indicador con validadas, su chatter dice cuántas las conservan.
+
+- **Reabrir:** solo el Jefe MAST («Regresar a pendiente»); las metas se
+  sueltan (nota en el chatter) y la medición se juzga con las actuales.
+  Validarla otra vez guarda las de ese momento.
+- **Corregir el valor sin reabrir** (Jefe MAST): el color se recalcula contra
+  las metas guardadas.
+- Nadie escribe las metas guardadas por RPC. El despliegue de 57.100.0
+  guardó las metas de las validadas que ya había (el color no cambió).
+
+## Competencias por examen o curso y eficacia (N-13)
+
+- **Ligar:** el Jefe MAST liga un examen de certificación (Empleados →
+  Competencias SGI → Exámenes y competencias (Encuestas)) o un curso de
+  eLearning (… → Cursos y competencias (eLearning)) con una competencia y un
+  nivel. Del curso se captura «Vigencia (meses)» (0 = no vence); la del examen
+  es la validez de la certificación (app Encuestas).
+- **Otorgar:** quien aprueba el examen o termina el curso recibe la
+  competencia (`hr.employee.skill`) con su vigencia en cuanto lo nativo
+  escribe la línea de currículum; el cron diario de cursos es el respaldo.
+  Sube de nivel (el renglón viejo se cierra el día anterior) o renueva; nunca
+  baja ni acorta. Solo empleados de la empresa del SGI. Quien aprueba sin
+  usuario se encuentra por su contacto de trabajo.
+- **Vencimientos:** el aviso «por vencer / vencida» (cron de competencias)
+  cubre toda competencia con vigencia, no solo las certificaciones.
+- **Eficacia (ISO 9001 7.2 c):** cada competencia nueva o subida de nivel abre
+  una evaluación (`sgi.training.effectiveness`) con aviso al jefe inmediato
+  (si no tiene usuario: responsable del departamento, RH, Jefe MAST) a los
+  `quimibond_sgi.training_effectiveness_days` días (90). «Eficaz» o «No
+  eficaz» (pide comentario y avisa a RH «Reprogramar capacitación»; la
+  competencia no se quita). Ya evaluada, solo el Jefe MAST cambia el
+  resultado; no se borra. La ven quien evalúa (las suyas), RH y el Jefe MAST;
+  el Auditor y Dirección no (datos de RH). Encuesta opcional al jefe:
+  `quimibond_sgi.training_effectiveness_survey_id` (0 = sin encuesta).
+- Colores de la eficacia: pendiente amarillo, eficaz verde, no eficaz rojo.
+
+## Cliente automotriz (N-14)
+
+- En el contacto del cliente, grupo «Cliente automotriz» (por compañía, solo
+  SGI o Calidad lo cambian): «Exige PPAP ante cambios» y «Exige plan de
+  contingencia». Salen vacías; las marca Calidad (pista de datos de Q12).
+- Con `quimibond_sgi_plm`, el ECO marca solo «Requiere PPAP» cuando el
+  producto se vendió en los últimos `quimibond_sgi.ppap_sales_window_months`
+  meses (12) o ya tiene PPAP con un cliente que lo exige, y al aplicarlo
+  genera un PPAP por cliente. Nunca desmarca.
+- **Salida sin CoA:** validar una salida a un cliente con «Requiere CoA en
+  cada embarque» sin el CoA adjunto deja nota en la salida y un aviso «Salida
+  sin CoA» al Jefe de Calidad (puesto `quimibond_sgi.coa_exception_job_id`) o,
+  si no hay, al Jefe MAST, que se cierra solo al adjuntar el CoA. Llega a Mis
+  pendientes y al correo semanal. El bloqueo (`coa_block_validation`) sigue
+  apagado.
+- El plan de contingencia es solo la casilla: qué documento se exige se
+  decide con Q12.
+
+## Sugerencia de IA en la NC
+
+Desde 57.100.0 (sección 7 del reporte de auditoría, puerta Q16;
+`models/sgi_ai.py`). **Sale apagada.**
+
+- **Encender** (solo con la autorización escrita de Jose, anotada en
+  `docs/audit/decisiones.md`): un administrador captura la llave de Anthropic
+  en `quimibond_sgi.ai_api_key` y pone `quimibond_sgi.ai_enabled = True`.
+  Otros parámetros: `ai_model` (`claude-opus-5-5`; `claude-sonnet-5-5` cuesta
+  la mitad), `ai_timeout` (segundos, 60), `ai_include_history` (manda la
+  desviación y la causa raíz de hasta 3 NC cerradas del mismo proceso),
+  `ai_backend` (solo `anthropic`).
+- **Qué hace:** en la NC con folio abierta, un Usuario SGI pulsa «Pedir
+  sugerencia a la IA» (pestaña «Desviación y análisis»): cláusula sugerida
+  (de las cargadas), clasificación, el porqué, borrador de 5 porqués e
+  Ishikawa 6M, en campos de sugerencia. «Usar cláusula y clasificación
+  sugeridas» y «Copiar el borrador de porqués» (solo los vacíos) los copian
+  con su nombre en el seguimiento. **Nunca escribe la causa raíz, nunca cambia
+  la etapa ni cierra.**
+- **Qué se manda:** título, desviación, descripción, origen, proceso,
+  producto, lote y la lista de cláusulas, con correos, teléfonos y RFC
+  tachados. Nunca cliente o proveedor, N° NCR del cliente, usuarios,
+  responsables ni adjuntos. Un nombre escrito a mano dentro de la desviación
+  no se puede tachar con certeza, y el nombre del producto puede llevar el de
+  un cliente.
+- **Fallas:** si la IA no responde, rechaza o contesta algo que no sirve,
+  aparece un aviso y nada cambia; en el log queda un `warning` sin el texto de
+  la NC.
+
 ## Menú
 
 Siete entradas bajo **SGI** (57.98.0): Inicio (Mis pendientes, Mi
@@ -153,7 +244,7 @@ límite de intentos (Q12).
 |---|---|---|
 | `quimibond_sgi_mapa` | El mapa de procesos de producción (JSON) y el asistente de carga | A mano, solo staging o recuperación |
 | `quimibond_sgi_pesaje` | Rollo fuera de tolerancia → alerta de calidad; parámetro `pesaje_tolerance_kg` | `auto_install` con `pesaje_rollos_tejido` |
-| `quimibond_sgi_plm` | ECO que requiere PPAP → expediente PPAP y aviso a ventas | `auto_install` con `mrp_plm` |
+| `quimibond_sgi_plm` | «Requiere PPAP» por los clientes del producto → un PPAP por cliente y aviso a ventas (pruebas propias desde 3.2.0) | `auto_install` con `mrp_plm` |
 | `quimibond_sgi_revisado` | Pareto de defectos del revisado e indicador MA-03 «Calidad PQ» | `auto_install` con `mrp_revisado_telas` |
 | `quimibond_sgi_knowledge` | Instructivo escrito en Conocimiento y publicado como IT | `auto_install` con `knowledge` |
 | `quimibond_sgi_studio` | Regla de aprobación de Studio para el rol «Aprueba» | `auto_install` con `web_studio` |
@@ -179,7 +270,9 @@ odoo-update quimibond_sgi,quimibond_sgi_pesaje && odoosh-restart http && odoosh-
   `--test-tags`**, porque el suite completo se detiene en las pruebas de
   nómina:
   `odoo-bin -u quimibond_sgi --test-tags /quimibond_sgi --stop-after-init --no-http`
-  (agregar `,/quimibond_sgi_pesaje`… para los satélites).
+  (agregar `,/quimibond_sgi_pesaje`… para los satélites). Desde 57.100.0 el
+  build de la rama corre `--test-tags /quimibond_sgi,/quimibond_sgi_plm`
+  (`quimibond_sgi_plm` estrena pruebas; P19).
 - `post_init_hook` (`__init__.py`): al instalar, liga los puntos de control de
   los equipos «CALIDAD Materia Prima» y «Revisado de Tela» a los planes de
   control del módulo; busca por nombre y nunca detiene la instalación (A-030).

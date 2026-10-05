@@ -50,6 +50,7 @@ MAST: él enciende «PIN obligatorio para firmar checklists» en Ajustes → SGI
 |---|---|
 | Recibir las hojas de eficiencias | Empleados → Eficiencias de personal → Hojas mensuales |
 | Brechas de competencia (DNC) | Empleados → Competencias SGI → Brechas de competencia (DNC) |
+| Eficacia de la capacitación (desde 57.100.0) | Empleados → Competencias SGI → Eficacia de la capacitación |
 | Entregar EPP | Ficha del empleado → «Entregar EPP» |
 | Exámenes médicos | SGI → Seguridad y ambiente → Estudios de higiene y exámenes médicos (grupo Salud ocupacional) |
 
@@ -61,6 +62,24 @@ persona (hasta 3 días después) suma días al mismo incidente. **No escriba el
 diagnóstico en la descripción de la ausencia**: el incidente no lo copia, pero
 la ausencia sí lo guarda. Si la aprobación de la ausencia falla por el SGI,
 la ausencia se aprueba de todos modos y el Jefe MAST revisa el log.
+
+**Competencias por examen o curso y eficacia (desde 57.100.0).** Quien
+aprueba un examen de certificación o termina un curso de eLearning ligado a
+una competencia (los liga el Jefe MAST en «Exámenes y competencias
+(Encuestas)» y «Cursos y competencias (eLearning)») recibe esa competencia
+con su vigencia. A los 90 días su jefe inmediato recibe el aviso «Evaluar la
+eficacia de la capacitación» y dice «Eficaz» o «No eficaz». Si no tiene jefe
+con usuario, le llega al responsable del departamento y, si tampoco, a usted.
+Cuando el jefe marca «No eficaz», a usted le llega «Reprogramar capacitación»
+con su comentario: reprograme la capacitación o acuerde con el jefe cómo
+reforzarla (la competencia no se quita). Las evaluaciones las ven quien
+evalúa, usted y el Jefe MAST. El vencimiento de cualquier competencia con
+vigencia le avisa 30 días antes.
+
+**Carga inicial de competencias.** Las competencias que la gente ya tiene
+(1,113 requeridas por los puestos, 0 registradas) se capturan a mano en la
+ficha del empleado (pestaña de competencias); el SGI no las inventa ni las
+otorga en lote.
 
 ## 5. Preguntas frecuentes
 

@@ -20,7 +20,7 @@
 | `quimibond_sgi.group_sgi_csh` | Comisión de Seguridad e Higiene (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_floor_tablet` | Tableta de planta (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 
-## Permisos por modelo (317 renglones del CSV)
+## Permisos por modelo (321 renglones del CSV)
 
 l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso efectivo suma lo que implican los grupos y lo que quitan las reglas.
 
@@ -326,6 +326,9 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.supplier.eval` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.supplier.eval` | `group_sgi_user` | lec | quimibond_sgi |
 | `sgi.supplier.eval` | `purchase.group_purchase_user` | lec | quimibond_sgi |
+| `sgi.training.effectiveness` | `base.group_user` | le | quimibond_sgi |
+| `sgi.training.effectiveness` | `group_sgi_manager` | le | quimibond_sgi |
+| `sgi.training.effectiveness` | `hr.group_hr_user` | le | quimibond_sgi |
 | `sgi.work.permit` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.work.permit` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.work.permit` | `group_sgi_user` | lec | quimibond_sgi |
@@ -342,9 +345,10 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `stock.lot` | `group_sgi_auditor` | l | quimibond_sgi |
 | `stock.move` | `group_sgi_auditor` | l | quimibond_sgi |
 | `stock.picking` | `group_sgi_auditor` | l | quimibond_sgi |
-| `survey.user.input` | `group_sgi_auditor` | l | quimibond_sgi |
+| `survey.survey` | `group_sgi_manager` | le | quimibond_sgi |
+| `survey.user_input` | `group_sgi_auditor` | l | quimibond_sgi |
 
-## Reglas de registro (64)
+## Reglas de registro (67)
 
 | Regla | Nombre | Modelo | Dominio | Grupos | Archivo |
 |---|---|---|---|---|---|
@@ -411,4 +415,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `quimibond_sgi.rule_sgi_staff_eff_line_payroll_all` | SGI: Salarios de eficiencias ve todos los renglones | `sgi.staff.efficiency.line` | `[(1, '=', 1)]` | [(4, ref('group_sgi_salary'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_staff_eff_payroll_all` | SGI: Salarios de eficiencias ve todas las hojas | `sgi.staff.efficiency` | `[(1, '=', 1)]` | [(4, ref('group_sgi_salary'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_staff_efficiency_company` | SGI: Eficiencia de personal por empresa | `sgi.staff.efficiency` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_training_effectiveness_all` | SGI: eficacia de la capacitación, RH y Jefe MAST ven todas | `sgi.training.effectiveness` | `[(1, '=', 1)]` | [(4, ref('hr.group_hr_user')), (4, ref('group_sgi_manager'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_training_effectiveness_company` | SGI: eficacia de la capacitación por compañía | `sgi.training.effectiveness` | `[('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_training_effectiveness_own` | SGI: eficacia de la capacitación, solo las que evalúo | `sgi.training.effectiveness` | `[('evaluator_id', '=', user.id)]` | [(4, ref('base.group_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_work_permit_company` | SGI: Permisos de trabajo de alto riesgo por empresa | `sgi.work.permit` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |

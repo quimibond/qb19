@@ -27,6 +27,8 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
   - **Brechas de competencia (DNC)** — `sgi.competence.gap`
   - **Encuesta DNC** — `survey.survey`
   - **Cursos y competencias (eLearning)** — `slide.channel`; grupos: quimibond_sgi.group_sgi_manager
+  - **Exámenes y competencias (Encuestas)** — `survey.survey`; grupos: quimibond_sgi.group_sgi_manager
+  - **Eficacia de la capacitación** — `sgi.training.effectiveness`
 - **Eficiencias de personal** — grupos: hr.group_hr_user; bajo `hr.menu_hr_root`
   - **Hojas mensuales** — `sgi.staff.efficiency`
   - **Análisis por empleado** — `sgi.staff.efficiency.line`
@@ -88,7 +90,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Requisitos legales** — `sgi.legal.requirement`
     - **Evaluaciones de cumplimiento legal** — `sgi.legal.evaluation`
     - **Partes interesadas** — `sgi.interested.party`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
-    - **Satisfacción del cliente** — `survey.user.input`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
+    - **Satisfacción del cliente** — `survey.user_input`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
   - **Administración SGI** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
     - **Documentos**
       - **Documentos** — `documents.document`
@@ -131,7 +133,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (110)
+## Acciones (112)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -234,19 +236,21 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_report_voice_action` | server | Queja o sugerencia | `sgi.my.pending` |  |  | `addons/quimibond_sgi/data/sgi_my_procedure_data.xml` |
 | `quimibond_sgi.sgi_risk_action` | act_window | Riesgos y oportunidades | `sgi.risk` | list,kanban,sgi_diagram,pivot,form,activity | sí | `addons/quimibond_sgi/views/sgi_risk_views.xml` |
 | `quimibond_sgi.sgi_risk_category_action` | act_window | Categorías de riesgo | `sgi.risk.category` | list | sí | `addons/quimibond_sgi/views/sgi_risk_views.xml` |
-| `quimibond_sgi.sgi_satisfaction_action` | server | Satisfacción del cliente | `survey.user.input` |  |  | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
+| `quimibond_sgi.sgi_satisfaction_action` | server | Satisfacción del cliente | `survey.user_input` |  |  | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
 | `quimibond_sgi.sgi_slide_channel_action` | act_window | Cursos y competencias (eLearning) | `slide.channel` | list | sí | `addons/quimibond_sgi/views/sgi_sign_elearning_views.xml` |
 | `quimibond_sgi.sgi_spreadsheet_dashboard_action` | client | Tablero SGI |  |  |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_staff_efficiency_action` | act_window | Eficiencias de personal | `sgi.staff.efficiency` | list,form | sí | `addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml` |
 | `quimibond_sgi.sgi_staff_efficiency_line_action` | act_window | Análisis por empleado | `sgi.staff.efficiency.line` | pivot,list | sí | `addons/quimibond_sgi/views/sgi_staff_efficiency_views.xml` |
 | `quimibond_sgi.sgi_supplier_eval_action` | act_window | Evaluación de proveedores | `sgi.supplier.eval` | list,form | sí | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `quimibond_sgi.sgi_supplier_eval_recompute_action` | server | Recalcular métricas | `sgi.supplier.eval` |  |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
+| `quimibond_sgi.sgi_survey_skill_action` | act_window | Exámenes y competencias (Encuestas) | `survey.survey` | list | sí | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
+| `quimibond_sgi.sgi_training_effectiveness_action` | act_window | Eficacia de la capacitación | `sgi.training.effectiveness` | list,form | sí | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
 | `quimibond_sgi.sgi_work_permit_action` | act_window | Permisos de trabajo de alto riesgo | `sgi.work.permit` | list,kanban,form | sí | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `quimibond_sgi.sgi_work_permit_skill_action` | act_window | Competencias por tipo de permiso | `sgi.work.permit.skill` | list | sí | `addons/quimibond_sgi/views/sgi_work_permit_skill_views.xml` |
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (362; 63 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (366; 63 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -597,6 +601,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_form` | form |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_list` | list |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
 | `sgi.supplier.eval` | `quimibond_sgi.sgi_supplier_eval_view_search` | search |  | `addons/quimibond_sgi/views/sgi_supplier_eval_views.xml` |
+| `sgi.training.effectiveness` | `quimibond_sgi.sgi_training_effectiveness_view_form` | form |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
+| `sgi.training.effectiveness` | `quimibond_sgi.sgi_training_effectiveness_view_list` | list |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
+| `sgi.training.effectiveness` | `quimibond_sgi.sgi_training_effectiveness_view_search` | search |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
 | `sgi.work.permit` | `quimibond_sgi.sgi_work_permit_view_form` | form |  | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `sgi.work.permit` | `quimibond_sgi.sgi_work_permit_view_kanban` | kanban |  | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `sgi.work.permit` | `quimibond_sgi.sgi_work_permit_view_list` | list |  | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
@@ -612,3 +619,4 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `stock.picking` | `quimibond_sgi.sgi_format_banner_stock_picking` | herencia | `stock.view_picking_form` | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
 | `stock.picking` | `quimibond_sgi.sgi_stock_picking_view_form` | herencia | `stock.view_picking_form` | `addons/quimibond_sgi/views/sgi_integration_views.xml` |
 | `stock.picking` | `quimibond_sgi.sgi_stock_picking_view_form_kpi` | herencia | `stock.view_picking_form` | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
+| `survey.survey` | `quimibond_sgi.sgi_survey_skill_view_list` | list |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |

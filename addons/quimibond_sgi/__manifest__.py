@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.99.0',
+    'version': '19.0.57.100.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -46,6 +46,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'sign',  # firmas de documentos, registros y aprobaciones
         'portal',  # respuesta del proveedor a su NC (controllers/portal_nc.py)
         'website_slides',  # cursos ligados a competencias
+        'hr_skills_survey',  # 57.100.0 (N-13): certificación aprobada → línea de currículum (instalado en producción)
+        'hr_skills_slides',  # 57.100.0 (N-13): curso terminado → línea de currículum (instalado en producción)
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
     ],
     'data': [
@@ -223,6 +225,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # acciones ya están cargadas y el padre va antes que el hijo.
         # 57.94.0 «SGI en planta»: tabletas de planta.
         'views/sgi_floor_views.xml',
+        'views/sgi_training_effectiveness_views.xml',  # 57.100.0 (N-13): eficacia y exámenes
         'views/sgi_menus.xml',
     ],
     'demo': [

@@ -80,7 +80,9 @@ HORIZON_DAYS = 60
 NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
                  'helpdesk.ticket', 'project.task',
                  # 57.94.0 (U-08): aviso semanal de RH por departamento.
-                 'hr.department')
+                 'hr.department',
+                 # 57.100.0 (N-14): salida validada sin CoA.
+                 'stock.picking')
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
 CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
