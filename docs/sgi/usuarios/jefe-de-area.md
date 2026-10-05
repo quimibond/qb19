@@ -168,6 +168,14 @@ procedimiento del Dropbox de su proceso, qué proceso de Odoo lo sustituye,
 en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
 
+## 5.1 El Manual del SGI (MIID)
+
+**SGI → Dirección → Manual del SGI (MIID)**: «PDF de la revisión vigente» es
+el manual aprobado (el que se firma de leído); la pestaña «Vista del sistema»
+es el manual con los datos de hoy y no está vigente. Si cambia el dueño, el
+estado o los flujos de su proceso, el Jefe MAST recibe el aviso para
+actualizar el MIID.
+
 ## 6. Preguntas frecuentes
 
 - **«Una persona de mi equipo no ve su procedimiento.»** Revise que tenga

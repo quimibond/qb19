@@ -13,6 +13,185 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.105.0 — 2026-10-05
+
+**MIID desde Odoo** (especificación y borrador Rev. 03 de Jose del
+2026-10-05; tercera entrega después del mapa de la auditoría). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-105-0-miid.md` (escrito como
+57.103.0; sus «Correcciones de la revisión del plan» prevalecen). Tres
+modelos nuevos (`sgi.miid.section`, `sgi.miid.row.note`, `sgi.miid`), cuatro
+campos guardados nuevos en `approval.request` (`sgi_miid_hash`,
+`sgi_miid_snapshot`, `sgi_miid_generated`, `sgi_miid_blocked_note`), un
+menú, sin herencias de vista propias, sin migración. **No congela ni aprueba
+la Rev. 03.**
+
+### Agregado
+
+- **Manual del SGI (MIID)** en SGI → Dirección (entre «Revisión por la
+  dirección» y «Política integral»; todo Usuario SGI y Auditor): vista del
+  sistema (texto fijo + datos vivos) marcada «Borrador — no vigente», lo que
+  impide aprobar, situación «Al día / Desactualizado / Sin línea base / Sin
+  MIID vigente», diferencias, historial de revisiones, «Vista en PDF
+  (borrador)», «PDF de la revisión vigente» y «Textos del manual».
+- **Secciones del MIID** (`sgi.miid.section`): una por título y subtítulo
+  del borrador Rev. 03; numeral, nivel, texto, el bloque de datos que llevan
+  (la marca `[[datos]]` decide dónde), «Texto solo si no hay datos», **«Por
+  confirmar»** con nota y notas por renglón (la «Situación» de los anexos,
+  `sgi.miid.row.note`). Las edita el Jefe MAST; «Por confirmar» lo quitan el
+  Jefe MAST, Dirección o el Administrador SGI, con rastro (seguimiento y
+  nota en el chatter). Se archivan, no se borran.
+- **Bloques vivos:** identificación, procesos (con mapa e interacción 4.4 en
+  el PDF, solo los de la empresa), política, objetivos e indicadores, tipos
+  de documento y su clave, controles operacionales, plazos de NC
+  (`quality.alert._sgi_deadline_days()` y los parámetros de escalamiento y
+  eficacia), correspondencia por cláusula (de la matriz de cumplimiento; la
+  tabla escrita es el respaldo), procedimientos anteriores por proceso (sin
+  P-I01 ni su familia, L-001), anexos y control de cambios. Un bloque sin
+  sección sale en «Datos del sistema sin sección»; sin datos, cada bloque
+  dice su estado vacío.
+- **Candados:** ninguna revisión del MIID se envía, se reenvía a firma ni se
+  aprueba mientras haya secciones «Por confirmar» o procesos activos que no
+  estén «Vigente» (piloto no cuenta). Por Sign no se interrumpe la
+  sincronización: la solicitud espera, se anota una vez y el Jefe MAST
+  recibe un aviso (clave `miid_retenido:<solicitud>`); al levantarse los
+  candados, la sincronización diaria la aprueba y cierra el aviso.
+- **«Solicitar cambio del MIID»** (Jefe MAST): arma o abre la solicitud de
+  cambio documental de siempre (categoría «Modificación de documento SGI»,
+  referencia MIID) con el PDF generado, la huella, la foto de los datos y las
+  diferencias; la primera revisión desde Odoo es la 03. Nunca se envía ni se
+  aprueba sola. Al enviar, si los datos cambiaron o el PDF se generó con
+  candados, se genera otra vez y el anterior se renombra «(sustituido el
+  …)». Lo que se manda a firmar es lo que se publica: al aprobarse se
+  publica como «MIID Rev. NN.pdf» (DOC-1: documento nuevo, la anterior
+  obsoleta con su archivo, aviso de difusión y acuses) y la revisión nueva
+  lleva la huella; el PDF firmado de Sign se archiva en la revisión nueva.
+- **Aviso diario** al Jefe MAST (paso «MIID al día» de «SGI: Vencimientos
+  documentales»): «El MIID vigente ya no coincide con el sistema», uno por
+  empresa (`miid_desactualizado:<empresa>`), con las diferencias, vence a 3
+  días hábiles y se cierra solo. Sin línea base no avisa.
+- **Diagnóstico → Documental:** «MIID al día», «MIID desactualizado desde
+  …», «El MIID vigente no se generó desde Odoo», «No hay MIID vigente» y, si
+  hay candados, «La siguiente revisión del MIID no se puede aprobar».
+- Parámetro `quimibond_sgi.miid_approver_user_id` (no se siembra): quién
+  firma «Aprobó» el MIID; vacío = primer integrante activo de Dirección de
+  Operaciones (SGI).
+- `docs/sgi/transicion/miid-rev03-borrador.md`: el borrador de Jose (fuente
+  de la semilla).
+
+### Cambiado
+
+- `sgi_format_page_footer` acepta un pie ya armado (`sgi_fmt_info`; con
+  `plain` sale sin «Formato controlado del SGI:»). Los demás reportes no
+  cambian.
+- `report_sgi_diagram_body`: el cuerpo del PDF de diagramas (57.101.0) se
+  separó para reusarlo en el MIID; el PDF no cambia.
+
+### Datos de producción
+
+- En el despliegue se crean las **46 secciones** del MIID (empresa del SGI,
+  `noupdate`) con el texto [FIJO] del borrador Rev. 03 y **15 notas** de la
+  columna «Situación» de los anexos. Quedan **por confirmar**: 1.2 (alcance
+  de ISO 45001), 1.3 (justificación de las no aplicabilidades), 11.2 (P-A13,
+  P-A22 y P-A30 no registrados en Odoo) y 12.1 (situación de cada anexo).
+  No se cargan la portada ni 12.3 («Pendiente antes de aprobar»).
+- Nada más cambia: **no** se crea solicitud de cambio ni se aprueba la Rev.
+  03; el documento 3495 sigue vigente sin tocar (revisión 0 en Odoo; 02 en
+  el borrador), igual la categoría de cambio documental, los parámetros y
+  las actividades. La primera corrida diaria (o la primera apertura) crea
+  el registro `sgi.miid` de la empresa del SGI, sin aviso (sin línea base).
+- **En el Diagnóstico** las líneas del MIID salen como aviso (sin línea base
+  y los candados: 4 secciones por confirmar, 14 procesos sin publicar), así
+  que «Difusión documental operando» deja de verse hasta que se aprueba la
+  primera revisión desde Odoo.
+- **Para el Jefe MAST** (la lista 12.3 del borrador, que no se carga):
+  publicar los 14 procesos (hoy 13 en borrador y C2 en piloto); confirmar el
+  alcance de ISO 45001; confirmar la justificación de 1.3; confirmar la
+  situación de cada anexo; registrar P-A13, P-A22 y P-A30; capturar los
+  puestos del MIID (3495); decidir si corrige la revisión de 3495 a 02
+  (hasta entonces el control de cambios imprime «00»); después «Solicitar
+  cambio del MIID», revisión del Jefe MAST y aprobación del Director de
+  Operaciones en Sign.
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó Q1–Q17 por omisión el 2026-10-05, con dos ajustes (Q7 y quién
+quita «Por confirmar»): (Q1) Al cargar el borrador se quitan las cifras y
+fechas del 5-oct que ahora son vivas (identificación sin «Clave» ni
+«Revisión»; 4.4 «mediante los procesos de la tabla siguiente»; 10.2
+«Abierta» remite a la tabla de plazos; 11.2 sin «Según el registro de Odoo
+al 5 de octubre»), las frases «por confirmar» pasan a la nota y «Jefe de
+MAST» se escribe «Jefe MAST» (glosario); «Qué cambia» (tabla) y 3 (término
+«Proceso») dicen «los procesos del SGI» en vez de «14 procesos»; 7.5 y 8.2 imprimen los nombres de
+tipos y controles de producción («Procedimiento (P)», no «Procedimiento de
+proceso»). (Q2) La huella cubre textos, notas, procesos, flujos, política,
+objetivos e indicadores, tipos y patrones, controles, anexos,
+procedimientos anteriores, plazos de NC y normas con numerales; no los
+procesos por cláusula ni la revisión, emisión o control de cambios del
+MIID. (Q3) Comparación diaria y aviso a 3 días hábiles. (Q4) «Aprobó» lo
+firma Dirección; hoy la categoría la firma solo Areli (Elaboró y Revisó en
+una firma) y Dirección (usuario 35) firma «Aprobó» y tiene correo. (Q5) La
+solicitud propone la Rev. 03; el 3495 no se toca y se recomienda corregirlo a
+mano a 02. (Q6) Sin línea base, sin aviso. (Q7, ajustado) Se publica el PDF
+que se firmó (no se regenera un PDF final); el que completa Sign queda como
+evidencia. (Q8) Acuses por la regla de siempre; el Jefe MAST captura antes
+los puestos del 3495. (Q9) 11.1 sale de la matriz; la tabla escrita es el
+respaldo. (Q10) Procedimientos anteriores por «Lo sustituye el proceso» o,
+si falta, el proceso del documento. (Q11) Seis plazos de NC con su unidad.
+(Q12) Pantalla para todo Usuario SGI y Auditor; textos y solicitud, Jefe MAST
+y Administrador; «Por confirmar» también lo quita Dirección. (Q13) Marca
+«Borrador — no vigente» en la vista (franja, marca de agua y pie) y en el
+PDF de una solicitud generada con candados. (Q14) Mapa de procesos e
+interacción 4.4 en el bloque de procesos (solo en el PDF). (Q15) P-I01 no se
+lista. (Q16) Solo «Vigente» cuenta como publicado. (Q17) Sale como
+57.105.0, tercera entrega después del mapa.
+
+**Desviaciones del plan:** el PDF de la solicitud solo lleva la marca de
+borrador si se generó con candados (al enviar se regenera sin ellos), porque
+con Q7 ajustado ese PDF es el que se publica; el historial de la pantalla es
+un Html calculado con sudo (`history_html`, 1.12-4) y `revision_ids` queda
+para el código; la tabla de procedimientos anteriores toma solo claves del
+Dropbox (`sgi_legacy_family`), no los procedimientos de proceso nuevos;
+controles, anexos y procedimientos se leen de la empresa del MIID (no los
+que no tienen empresa); el menú y la ruta entraron con la pantalla.
+
+**Revisión final:** la nota y el aviso de una aprobación retenida dicen
+«Firmas completas» solo si la firma de Sign terminó (si no, «Firma en curso
+(N de M)»; el aviso de la solicitud es neutro); el PDF firmado de una
+solicitud rechazada o cancelada sí se archiva (deja de reintentarse); el
+orden de las secciones entra a la huella («Sección movida de lugar»);
+`approval.request` entra a `NOTICE_MODELS`, así que el aviso «MIID
+retenido» (con clave) sale en Mis pendientes; crear el registro `sgi.miid`
+de la empresa tolera que otra transacción lo cree al mismo tiempo (sin
+ERROR en el log); la comparación diaria es solo de la empresa del SGI.
+
+**Pruebas:** `test_miid` (21 casos).
+
+### Solo se verifica en el build de Odoo.sh
+
+- `test_miid` 21/21 y el suite `--test-tags /quimibond_sgi` sin fallos
+  nuevos ni `ERROR` en el log (en especial `test_doc_change`,
+  `test_doc_change_sign`, `test_interfaz`, `test_reportes_diagramas`,
+  `test_menu_tree`, `test_bandeja`, `test_rendimiento_robustez`,
+  `test_usted`); ningún WARNING nuevo de etiquetas o roles.
+- QWeb: `sgi_fmt_info` sin definir vale `None` en `sgi_format_page_footer`
+  (el pie de los demás reportes no cambia).
+- `html_to_inner_content` existe en `odoo.tools.mail` (si no, la huella usa
+  el respaldo por expresión regular).
+- La semilla: 46 secciones con sus tablas (`table table-sm table-bordered`
+  se conserva al sanear), negritas, `[[datos]]` en 4.4, 5.2, 7.5, 8.2 y 10.2.
+- «Vista en PDF (borrador)»: la marca de agua sale en **cada** hoja con
+  wkhtmltopdf, recuadros «POR CONFIRMAR», portada e índice, pie en cada hoja;
+  la tabla de procesos, la interacción 4.4 (14 × 14) y la correspondencia
+  caben en carta vertical.
+- La pestaña «Vista del sistema» (Html calculado, `sanitize=False`) se ve
+  completa en solo lectura, como Usuario SGI y como Auditor.
+- Como Jefe MAST, «Solicitar cambio del MIID» crea la solicitud Rev. 03 y
+  «Enviar» se detiene con el mensaje de candados (procesos en borrador en la
+  copia de producción).
+- El PDF a firmar en Sign (F-P-G01-06 + MIID + hoja de firmas) se arma con un
+  MIID de 30 a 50 hojas; tiempo de `_sgi_snapshot()` en el shell (meta:
+  menos de 1 s) y de abrir la pantalla.
+
 ## 19.0.57.104.0 — 2026-10-05
 
 **Indicadores: sin dato y cálculos** (diagnóstico de producción del

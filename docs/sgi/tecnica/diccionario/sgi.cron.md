@@ -6,7 +6,7 @@
 
 Tareas programadas del SGI. Cada método ``cron_*`` es una acción planificada (ver ``docs/sgi/tecnica/crons.md``); agendan actividades con ``_sgi_schedule`` (idempotente por clave) y cada paso corre en su savepoint.
 
-Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
 
 ## Métodos públicos (25)
 

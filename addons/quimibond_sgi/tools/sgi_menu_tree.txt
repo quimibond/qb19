@@ -65,6 +65,7 @@ SGI/Seguridad y ambiente/Bloqueo y etiquetado | menu_sgi_loto | -
 SGI/Dirección | menu_sgi_direction | -
 SGI/Dirección/Tablero | menu_sgi_dashboard_health | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Dirección/Revisión por la dirección | menu_sgi_mgmt_review | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Dirección/Manual del SGI (MIID) | menu_sgi_miid | -
 SGI/Dirección/Política integral | menu_sgi_policy | -
 SGI/Dirección/Objetivos integrales | menu_sgi_objectives | -
 SGI/Dirección/Riesgos y oportunidades | menu_sgi_risks | -

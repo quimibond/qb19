@@ -20,7 +20,7 @@
 | `quimibond_sgi.group_sgi_csh` | Comisión de Seguridad e Higiene (SGI) | `+quimibond_sgi.group_sgi_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.group_sgi_floor_tablet` | Tableta de planta (SGI) | `+base.group_user` | `addons/quimibond_sgi/security/sgi_security.xml` |
 
-## Permisos por modelo (324 renglones del CSV)
+## Permisos por modelo (334 renglones del CSV)
 
 l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso efectivo suma lo que implican los grupos y lo que quitan las reglas.
 
@@ -260,6 +260,16 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `sgi.management.review.agreement` | `group_sgi_user` | l | quimibond_sgi |
 | `sgi.mapa.load.wizard` | `quimibond_sgi.group_sgi_admin` | lecb | quimibond_sgi_mapa |
 | `sgi.mapa.load.wizard.line` | `quimibond_sgi.group_sgi_admin` | lecb | quimibond_sgi_mapa |
+| `sgi.miid` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.miid` | `group_sgi_manager` | lec | quimibond_sgi |
+| `sgi.miid` | `group_sgi_user` | l | quimibond_sgi |
+| `sgi.miid.row.note` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.miid.row.note` | `group_sgi_manager` | lec | quimibond_sgi |
+| `sgi.miid.row.note` | `group_sgi_user` | l | quimibond_sgi |
+| `sgi.miid.section` | `group_sgi_auditor` | l | quimibond_sgi |
+| `sgi.miid.section` | `group_sgi_director` | le | quimibond_sgi |
+| `sgi.miid.section` | `group_sgi_manager` | lec | quimibond_sgi |
+| `sgi.miid.section` | `group_sgi_user` | l | quimibond_sgi |
 | `sgi.msa.study` | `group_sgi_auditor` | l | quimibond_sgi |
 | `sgi.msa.study` | `group_sgi_manager` | lecb | quimibond_sgi |
 | `sgi.msa.study` | `group_sgi_user` | lec | quimibond_sgi |
@@ -351,7 +361,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `survey.survey` | `group_sgi_manager` | le | quimibond_sgi |
 | `survey.user_input` | `group_sgi_auditor` | l | quimibond_sgi |
 
-## Reglas de registro (67)
+## Reglas de registro (70)
 
 | Regla | Nombre | Modelo | Dominio | Grupos | Archivo |
 |---|---|---|---|---|---|
@@ -402,6 +412,9 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `quimibond_sgi.rule_sgi_measure_split_manager_all` | SGI: MAST recalcula el desglose de cualquier indicador | `sgi.indicator.measure.split` | `[(1, '=', 1)]` | [(4, ref('group_sgi_manager'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_measure_split_user_own` | SGI: el usuario recalcula el desglose de solo sus indicadores | `sgi.indicator.measure.split` | `['\|', ('measure_id.indicator_id.responsible_id', '=', user.id), ('measure_id.indicator_id.process_id.owner_id.user_id', '=', user.id)]` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_measure_user_own` | SGI: el usuario captura solo sus indicadores | `sgi.indicator.measure` | `['\|', ('indicator_id.responsible_id', '=', user.id), ('indicator_id.process_id.owner_id.user_id', '=', user.id)]` | [(4, ref('group_sgi_user'))] | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_miid_company` | SGI: Manual del SGI (MIID) por empresa | `sgi.miid` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_miid_row_note_company` | SGI: Notas por renglón del MIID por empresa | `sgi.miid.row.note` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
+| `quimibond_sgi.rule_sgi_miid_section_company` | SGI: Secciones del MIID por empresa | `sgi.miid.section` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_process_activity_company` | SGI: Actividades por empresa | `sgi.process.activity` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_process_company` | SGI: Procesos por empresa | `sgi.process` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
 | `quimibond_sgi.rule_sgi_process_flow_company` | SGI: Flujos entre procesos por empresa | `sgi.process.flow` | `['\|', ('company_id', '=', False), ('company_id', 'in', company_ids)]` |  | `addons/quimibond_sgi/security/sgi_security.xml` |
