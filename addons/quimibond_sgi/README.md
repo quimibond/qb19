@@ -109,6 +109,48 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
   riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
 
+## Manual del SGI (MIID) desde Odoo (57.105.0)
+
+**SGI → Dirección → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
+El MIID se arma con **texto fijo** (`sgi.miid.section`: una sección por
+título y subtítulo, sembradas `noupdate` con el texto [FIJO] del borrador
+Rev. 03, `docs/sgi/transicion/miid-rev03-borrador.md`; las edita el Jefe
+MAST) y **datos vivos** (un bloque por sección: identificación, procesos con
+mapa e interacción 4.4, política, objetivos e indicadores, tipos de
+documento y su clave, controles operacionales, plazos de NC, correspondencia
+por cláusula, procedimientos anteriores, anexos con su «Situación» como nota
+por renglón, `sgi.miid.row.note`, y control de cambios). La marca `[[datos]]`
+en un párrafo decide dónde va el bloque; «Texto solo si no hay datos» deja
+el texto como respaldo. Un bloque que ninguna sección lleva sale al final
+(«Datos del sistema sin sección»).
+
+- **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
+  «Borrador — no vigente». La revisión vigente es el documento controlado de
+  clave MIID.
+- **Huella** (`sgi.miid._sgi_hash`): textos de las secciones sin formato y
+  notas por renglón, procesos (nombre, tipo, dueño, estado, macroproceso),
+  flujos, política vigente, objetivos con sus indicadores, tipos de
+  documento y su patrón, controles operacionales y anexos vigentes,
+  procedimientos anteriores y su proceso, los seis plazos de NC y las normas
+  con sus numerales. No cubre qué procesos cumplen cada cláusula, la
+  revisión y emisión del propio MIID, el control de cambios ni «Por
+  confirmar».
+- **Candados:** ninguna revisión se envía ni se aprueba con secciones «Por
+  confirmar» o con procesos activos que no estén «Vigente». Por Sign la
+  aprobación espera (no se interrumpe la sincronización) y avisa al Jefe
+  MAST.
+- **Actualizar:** aviso diario «El MIID vigente ya no coincide con el
+  sistema» (paso «MIID al día» de «SGI: Vencimientos documentales», uno por
+  empresa, 3 días hábiles) → pantalla → **Solicitar cambio del MIID**
+  (solicitud de cambio documental de siempre con el PDF generado, la huella y
+  las diferencias) → Enviar (regenera el PDF si los datos cambiaron) →
+  firmas (Elaboró, Revisó el dueño de E2, Aprobó Dirección,
+  `quimibond_sgi.miid_approver_user_id`) → revisión nueva con la huella (DOC-1:
+  la anterior obsoleta con su archivo, acuses). Lo que se firma es lo que se
+  publica. Nada se aprueba solo.
+- **Sin línea base:** el MIID cargado del Dropbox (sin huella) no avisa; la
+  primera revisión desde Odoo es la 03.
+
 ## Indicadores: sin dato y cálculos (57.104.0)
 
 - **«Sin dato» no es 0.** Un indicador sin ninguna medición con dato dice

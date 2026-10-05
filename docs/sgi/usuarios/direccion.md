@@ -90,6 +90,18 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
 - La **tendencia** de un indicador promedia las mediciones del periodo (antes
   las sumaba) y abre con el filtro «Con dato».
 
+### 2.4.2 El Manual del SGI (MIID) (desde 57.105.0)
+
+**SGI → Dirección → Manual del SGI (MIID)** muestra el manual armado desde
+Odoo (texto fijo más los datos vivos), marcado «Borrador — no vigente»; la
+revisión vigente es «PDF de la revisión vigente». Usted firma **«Aprobó»**
+del MIID en Sign (si nadie se configuró en
+`quimibond_sgi.miid_approver_user_id`, el primer integrante de Dirección de
+Operaciones). Puede quitar «Por confirmar» de una sección cuando lo
+confirme (en «Textos del manual»); el texto lo edita el Jefe MAST. Ninguna
+revisión se aprueba con secciones por confirmar o con procesos que no estén
+vigentes.
+
 ### 2.5 El correo de los lunes (salud del SGI)
 
 Cada lunes a las 08:00 le llega «SGI: salud del sistema, semana del…» con

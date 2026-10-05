@@ -79,6 +79,13 @@ También puede registrar un hallazgo desde la ficha de un proceso con
 - **Seguridad e higiene:** los hallazgos de la Comisión de Seguridad e
   Higiene se leen, sin editarlos.
 
+- **Manual del SGI (MIID):** **SGI → Dirección → Manual del SGI (MIID)**.
+  «PDF de la revisión vigente» es el documento controlado aprobado; la
+  pestaña «Vista del sistema» y «Vista en PDF (borrador)» son el manual con
+  los datos de hoy, marcados «Borrador — no vigente». «Diferencias» dice qué
+  cambió en el sistema desde la revisión vigente e «Historial de revisiones»
+  las lista todas con su solicitud.
+
 ## 3. Lo que no ve ni hace
 
 | No… | Por qué / quién |

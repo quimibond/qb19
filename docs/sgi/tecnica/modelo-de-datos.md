@@ -2,12 +2,13 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (126) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (130) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
 | Modelo | Descripción | Qué es (docstring) | Tipo | Campos | Archivo |
 |---|---|---|---|---:|---|
+| [`report.quimibond_sgi.report_miid_document`](diccionario/report.quimibond_sgi.report_miid_document.md) | MIID (PDF) | 57.105.0: valores del PDF del MIID. Modo por contexto: «live» (vista del sistema, copia no controlada) o «request» (el PDF de la solicitud, que es el que se firma y se publica). | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_miid.py` |
 | [`report.quimibond_sgi.report_risk_heatmap_document`](diccionario/report.quimibond_sgi.report_risk_heatmap_document.md) | Mapa de calor de riesgos por instrumento (PDF) | 57.101.0 (C7): valores del PDF del mapa de calor. Con registros elegidos (menú Imprimir de la lista), esos; con ``data`` (botón del diagrama de riesgos), el instrumento y el proceso del diagrama. | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_report_print.py` |
 | [`report.quimibond_sgi.report_sgi_diagram_document`](diccionario/report.quimibond_sgi.report_sgi_diagram_document.md) | Diagrama del SGI en formato controlado (PDF) | 57.101.0 (C3): valores del PDF de un diagrama. Se imprime con ``data`` (kind, res_id, params), sin registros; los datos son los de pantalla (``sgi.diagram.data``, con los permisos del usuario). | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_report_print.py` |
 | [`sgi.action.line`](diccionario/sgi.action.line.md) | Acción / corrección de no conformidad | Acción o corrección con responsable y fecha compromiso. Cuelga de una NC, riesgo, AMEF, incidente, simulacro, medición en rojo, objetivo o acuerdo de la revisión por la dirección; se cierra con «Marc… | Model | 21 | `addons/quimibond_sgi/models/sgi_nonconformity.py` |
@@ -101,6 +102,9 @@ Modelos que definen el núcleo y sus satélites (126) y modelos de otras apps qu
 | [`sgi.management.review.agreement`](diccionario/sgi.management.review.agreement.md) | Acuerdo de Revisión por la Dirección | Acuerdo de una revisión por la dirección con responsable y fecha; se sigue como acción o tarea. | Model | 10 | `addons/quimibond_sgi/models/sgi_management_review.py` |
 | [`sgi.mapa.load.wizard`](diccionario/sgi.mapa.load.wizard.md) | Cargar mapa de procesos SGI | Asistente «Cargar mapa de procesos» de ``quimibond_sgi_mapa``: prueba y carga el JSON del módulo o uno subido, y descarga el de la base. | TransientModel | 13 | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py` |
 | [`sgi.mapa.load.wizard.line`](diccionario/sgi.mapa.load.wizard.line.md) | Resultado de la carga del mapa SGI | Renglón del resultado de la carga del mapa. | TransientModel | 5 | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py` |
+| [`sgi.miid`](diccionario/sgi.miid.md) | Manual del SGI (MIID) | Manual del SGI (MIID) de una empresa: la vista del sistema, su comparación con la revisión vigente y el historial de revisiones. Uno por empresa; lo crea la primera apertura o el paso diario. | Model | 15 | `addons/quimibond_sgi/models/sgi_miid.py` |
+| [`sgi.miid.row.note`](diccionario/sgi.miid.row.note.md) | Nota de renglón del MIID | Nota fija de un renglón de un bloque vivo del MIID (la «Situación» de cada anexo en 12.1). La edita el Jefe MAST. | Model | 5 | `addons/quimibond_sgi/models/sgi_miid.py` |
+| [`sgi.miid.section`](diccionario/sgi.miid.section.md) | Sección del MIID | Sección de texto fijo del MIID (una por título y subtítulo). La edita el Jefe MAST; los datos del sistema salen del bloque que declara. «Por confirmar» impide enviar o aprobar una revisión del MIID. | Model | 12 | `addons/quimibond_sgi/models/sgi_miid.py` |
 | [`sgi.msa.study`](diccionario/sgi.msa.study.md) | Estudio MSA (IATF 7.1.5.1.1) | Estudio de sistema de medición (MSA) de un equipo: GR&R, ndc y veredicto. | Model | 9 | `addons/quimibond_sgi/models/sgi_msa.py` |
 | [`sgi.my.pending`](diccionario/sgi.my.pending.md) | Mis pendientes (SGI) | Mis pendientes: bandeja de cada persona con actividades atrasadas, firmas, acuses, capturas, validaciones y aprobaciones. Se recalcula al abrirla; no guarda historia. | TransientModel | 15 | `addons/quimibond_sgi/models/sgi_my_pending.py` |
 | [`sgi.my.procedure`](diccionario/sgi.my.procedure.md) | Mi procedimiento (pantalla) | Pantalla de Mi procedimiento de una persona o un puesto: actividades por rol, documentos, indicadores, EPP y acuse. Se arma al abrirla. | TransientModel | 43 | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
@@ -142,7 +146,7 @@ Modelos que definen el núcleo y sus satélites (126) y modelos de otras apps qu
 | [`account.move`](diccionario/account.move.md) | 6 | `addons/quimibond_sgi/models/sgi_kpi_account.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`account.move.line`](diccionario/account.move.line.md) | 1 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
 | [`approval.category`](diccionario/approval.category.md) | 5 | `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
-| [`approval.request`](diccionario/approval.request.md) | 28 | `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
+| [`approval.request`](diccionario/approval.request.md) | 32 | `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
 | [`crm.team`](diccionario/crm.team.md) | 1 | `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py` |
 | [`crm.team.member`](diccionario/crm.team.member.md) | 0 | `addons/quimibond_sgi/models/sgi_business_line.py` |
 | [`documents.document`](diccionario/documents.document.md) | 61 | `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimibond_sgi/models/sgi_document.py`, `addons/quimibond_sgi/models/sgi_document_owner.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_formatos_bloque3.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_sign_elearning.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py` |
@@ -192,4 +196,4 @@ Modelos que definen el núcleo y sus satélites (126) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 7 de 126.
+Modelos propios sin docstring de clase: 7 de 130.
