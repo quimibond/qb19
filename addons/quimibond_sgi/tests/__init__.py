@@ -148,3 +148,4 @@ from . import test_competencias_capacitacion
 from . import test_ppap_coa_cliente
 from . import test_ia_nc
 from . import test_reportes_diagramas
+from . import test_registro_cumplimiento

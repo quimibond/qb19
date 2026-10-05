@@ -77,6 +77,7 @@ SGI_SPEC_GAPS = [
     ('paper_channel', "En papel"),
     ('mixed_channel', "Junta trabajo físico y captura"),
     ('no_match', "Entrada que no se liga con la salida"),
+    ('menu_model_mismatch', "Pantalla que no va con su medición"),
 ]
 # Severidad por código (error bloquea publicar; warning solo avisa).
 SGI_GAP_SEVERITY = {
@@ -88,7 +89,7 @@ SGI_GAP_SEVERITY = {
     'no_output': 'warning', 'no_escalation': 'warning',
     'measure_no_complete': 'warning', 'odoo_measured_manual': 'warning',
     'paper_channel': 'warning', 'mixed_channel': 'warning', 'no_match': 'warning',
-    'menu_no_visible': 'warning',
+    'menu_no_visible': 'warning', 'menu_model_mismatch': 'warning',
 }
 
 VAGUE_VERBS_PARAM = 'quimibond_sgi.vague_verbs'
@@ -363,6 +364,12 @@ class SgiActivitySpec(models.Model):
                 add('menu_no_visible', "Nadie de quien la ejecuta ve «%s»: apunte a una "
                                        "entrada que sí vea (p. ej. Inicio → Mis indicadores) "
                                        "o dele el grupo." % self.odoo_menu_id.sudo().complete_name)
+        # 57.103.0: la pantalla (menú o acción) abre un modelo y la evidencia
+        # se cuenta en otro: «Ir» manda a un lugar y la medición mira otro.
+        mismatch = self._sgi_menu_model_mismatch()
+        if mismatch:
+            add('menu_model_mismatch', "La pantalla «%s» abre %s, pero la actividad se mide con "
+                                       "%s: corrija el menú o el modelo de medición." % mismatch)
         if channel in SGI_EXTERNAL_CHANNELS and not (self.external_system or '').strip():
             add('external_no_name', "Falta el nombre del sistema externo.")
         if not self.instruction_id and not (self.how_steps or '').strip():
@@ -384,6 +391,25 @@ class SgiActivitySpec(models.Model):
                                     "«match»." % (line.deliverable_id.name, model.model,
                                                  output.odoo_model_id.model))
         return out
+
+    def _sgi_menu_model_mismatch(self):
+        """57.103.0: (pantalla, modelo que abre, modelo de medición) si la
+        actividad se mide sola con un modelo y su pantalla abre otro; None si
+        van juntos o no hay con qué comparar (sin pantalla de lista, sin
+        modelo de medición o medida por consecuencia o a mano)."""
+        self.ensure_one()
+        if self.measure_method not in (False, 'odoo', 'entregable'):
+            return None
+        measured = self.measure_model_id
+        if not measured and self.measure_method == 'entregable':
+            measured = self._sgi_output_deliverable().odoo_model_id
+        action = self.sudo().odoo_action_id
+        if not measured or not action or not action.res_model:
+            return None
+        if action.res_model == measured.model:
+            return None
+        screen = self.sudo().odoo_menu_id.complete_name or action.name or ''
+        return screen, action.res_model, measured.model
 
     def _sgi_executor_users(self):
         """Usuarios activos de los puestos con rol «Ejecuta» (E-010)."""

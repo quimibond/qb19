@@ -317,3 +317,6 @@ access_sgi_training_effectiveness_user,sgi.training.effectiveness.user,model_sgi
 access_sgi_training_effectiveness_hr,sgi.training.effectiveness.hr,model_sgi_training_effectiveness,hr.group_hr_user,1,1,0,0
 access_sgi_training_effectiveness_manager,sgi.training.effectiveness.manager,model_sgi_training_effectiveness,group_sgi_manager,1,1,0,0
 access_survey_survey_sgi_manager,survey.survey sgi manager,survey.model_survey_survey,group_sgi_manager,1,1,0,0
+access_sgi_activity_execution_user,sgi.activity.execution.user,model_sgi_activity_execution,base.group_user,1,0,0,0
+access_sgi_activity_execution_manager,sgi.activity.execution.manager,model_sgi_activity_execution,group_sgi_manager,1,1,1,1
+access_sgi_activity_execution_mark_user,sgi.activity.execution.mark.user,model_sgi_activity_execution_mark,base.group_user,1,1,1,1

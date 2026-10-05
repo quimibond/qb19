@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.103.0: registro de cumplimiento por actividad, responsable y
+         periodo. Los campos son de solo lectura: el avance se marca con los
+         botones (En proceso, Hecha, No aplica este periodo). -->
+    <record id="sgi_activity_execution_view_form" model="ir.ui.view">
+        <field name="name">sgi.activity.execution.form</field>
+        <field name="model">sgi.activity.execution</field>
+        <field name="arch" type="xml">
+            <form string="Registro de cumplimiento" create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_mark_progress" type="object" string="En proceso"
+                            invisible="state not in ('pendiente', 'en_proceso') or not can_mark"/>
+                    <button name="action_mark_done" type="object" string="Hecha" class="btn-primary"
+                            invisible="state not in ('pendiente', 'en_proceso') or not can_mark"/>
+                    <button name="action_mark_not_applicable" type="object" string="No aplica este periodo"
+                            invisible="state not in ('pendiente', 'en_proceso') or not can_mark"/>
+                    <button name="action_open_related_screen" type="object" string="Abrir pantalla relacionada"
+                            icon="fa-external-link" invisible="not has_related_screen"/>
+                    <button name="action_reopen" type="object" string="Reabrir"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            invisible="state not in ('hecha', 'no_aplica')"
+                            confirm="¿Reabre este periodo? Vuelve a «Pendiente» y la medición de la actividad se recalcula."/>
+                    <field name="state" widget="statusbar" statusbar_visible="pendiente,en_proceso,hecha"/>
+                </header>
+                <sheet>
+                    <field name="can_mark" invisible="1"/>
+                    <field name="has_related_screen" invisible="1"/>
+                    <field name="needs_evidence" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <div class="alert alert-info" role="status"
+                         invisible="state not in ('pendiente', 'en_proceso') or not needs_evidence">
+                        Esta actividad es de <b>registro manual</b>: al terminarla pulse
+                        <b>Hecha</b> y deje la evidencia (una nota con el folio, documento o
+                        registro, o un archivo). «En proceso» guarda su avance pero no quita el atraso.
+                    </div>
+                    <div class="alert alert-info" role="status"
+                         invisible="state not in ('pendiente', 'en_proceso') or needs_evidence">
+                        Esta actividad se marca <b>hecha sola</b> cuando aparece su registro en Odoo
+                        dentro del periodo. Use «Abrir pantalla relacionada» para hacerla.
+                    </div>
+                    <group>
+                        <group string="Periodo">
+                            <field name="activity_id"/>
+                            <field name="process_id"/>
+                            <field name="employee_id"/>
+                            <field name="period_label"/>
+                            <field name="date_due"/>
+                        </group>
+                        <group string="Avance">
+                            <field name="progress_note" invisible="not progress_note"/>
+                            <field name="date_estimated" invisible="not date_estimated"/>
+                            <field name="date_done" invisible="not date_done"/>
+                            <field name="done_by_id" invisible="not done_by_id"/>
+                            <field name="done_auto" invisible="not done_auto"/>
+                            <field name="on_time" invisible="state != 'hecha'"/>
+                            <field name="na_reason" invisible="state != 'no_aplica'"/>
+                        </group>
+                    </group>
+                    <group string="Qué hay que hacer">
+                        <field name="done_criteria"/>
+                        <field name="how_steps" invisible="not how_steps"/>
+                        <label for="instruction_id" invisible="not instruction_id"/>
+                        <div invisible="not instruction_id" class="d-flex gap-2">
+                            <field name="instruction_id"/>
+                            <button name="action_view_instruction" type="object" string="Ver instructivo"
+                                    icon="fa-book" class="btn-link"/>
+                        </div>
+                        <field name="on_fail" invisible="not on_fail"/>
+                    </group>
+                    <group string="Evidencia" invisible="state != 'hecha'">
+                        <field name="evidence_note"/>
+                        <field name="evidence_attachment_ids" widget="many2many_binary"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_activity_execution_view_list" model="ir.ui.view">
+        <field name="name">sgi.activity.execution.list</field>
+        <field name="model">sgi.activity.execution</field>
+        <field name="arch" type="xml">
+            <list string="Registro de cumplimiento" create="0" edit="0" delete="0"
+                  decoration-success="state == 'hecha'" decoration-muted="state == 'no_aplica'"
+                  decoration-info="state == 'en_proceso'">
+                <field name="process_id"/>
+                <field name="activity_id"/>
+                <field name="employee_id"/>
+                <field name="period_label"/>
+                <field name="date_due"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'hecha'"
+                       decoration-info="state == 'en_proceso'"
+                       decoration-warning="state == 'pendiente'"/>
+                <field name="on_time" optional="show"/>
+                <field name="done_auto" optional="hide"/>
+                <field name="date_done" optional="hide"/>
+                <field name="measure_method" optional="hide"/>
+                <field name="progress_note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_execution_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.activity.execution.pivot</field>
+        <field name="model">sgi.activity.execution</field>
+        <field name="arch" type="xml">
+            <pivot string="Registro de cumplimiento" sample="1">
+                <field name="process_id" type="row"/>
+                <field name="state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_activity_execution_view_search" model="ir.ui.view">
+        <field name="name">sgi.activity.execution.search</field>
+        <field name="model">sgi.activity.execution</field>
+        <field name="arch" type="xml">
+            <search string="Registro de cumplimiento">
+                <field name="activity_id"/>
+                <field name="process_id"/>
+                <field name="employee_id"/>
+                <filter name="open" string="Abiertas"
+                        domain="[('state', 'in', ('pendiente', 'en_proceso'))]"/>
+                <filter name="late" string="Vencidas sin hacer"
+                        domain="[('state', 'in', ('pendiente', 'en_proceso')), ('date_due', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="in_progress" string="En proceso" domain="[('state', '=', 'en_proceso')]"/>
+                <filter name="done" string="Hechas" domain="[('state', '=', 'hecha')]"/>
+                <filter name="not_applicable" string="No aplica este periodo"
+                        domain="[('state', '=', 'no_aplica')]"/>
+                <separator/>
+                <filter name="manual" string="Registro manual"
+                        domain="[('activity_id.measure_method', 'in', ('manual', 'correo', 'muestreo'))]"/>
+                <filter name="auto" string="Hechas por su registro de Odoo" domain="[('done_auto', '=', True)]"/>
+                <filter name="late_done" string="Hechas tarde"
+                        domain="[('state', '=', 'hecha'), ('on_time', '=', False)]"/>
+                <separator/>
+                <filter name="date_due" string="Vence" date="date_due"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_activity" string="Actividad" context="{'group_by': 'activity_id'}"/>
+                    <filter name="group_employee" string="Responsable" context="{'group_by': 'employee_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_due" string="Mes de vencimiento" context="{'group_by': 'date_due:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_execution_action" model="ir.actions.act_window">
+        <field name="name">Registro de cumplimiento</field>
+        <field name="res_model">sgi.activity.execution</field>
+        <field name="view_mode">list,pivot,form</field>
+        <field name="view_id" ref="sgi_activity_execution_view_list"/>
+        <field name="search_view_id" ref="sgi_activity_execution_view_search"/>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Un renglón por actividad, responsable y periodo</p>
+            <p>El respaldo nocturno crea el periodo en curso de cada actividad con cadencia (las «por evento» no llevan).
+                Las de registro manual se cierran con «Hecha» y su evidencia; las que se miden solas, cuando aparece su
+                registro en Odoo. La medición de las manuales sale de aquí.</p>
+        </field>
+    </record>
+
+    <!-- «Pantalla que no va con su medición»: los faltantes de ese código. -->
+    <record id="sgi_activity_menu_mismatch_action" model="ir.actions.act_window">
+        <field name="name">Pantallas que no van con su medición</field>
+        <field name="res_model">sgi.activity.spec.gap</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="view_id" ref="sgi_activity_spec_gap_view_list"/>
+        <field name="search_view_id" ref="sgi_activity_spec_gap_view_search"/>
+        <field name="domain">[('code', '=', 'menu_model_mismatch')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Cada pantalla va con su medición</p>
+            <p>Actividades que se miden solas cuyo menú abre un modelo distinto del que cuenta su evidencia: «Ir» manda
+                a un lugar y la medición mira otro. Corrija el menú o el modelo de medición en la actividad.</p>
+        </field>
+    </record>
+
+    <!-- Asistente: En proceso, Hecha y No aplica este periodo. -->
+    <record id="sgi_activity_execution_mark_view_form" model="ir.ui.view">
+        <field name="name">sgi.activity.execution.mark.form</field>
+        <field name="model">sgi.activity.execution.mark</field>
+        <field name="arch" type="xml">
+            <form string="Marcar avance">
+                <field name="mode" invisible="1"/>
+                <field name="needs_evidence" invisible="1"/>
+                <field name="execution_id" invisible="1"/>
+                <div class="alert alert-warning" role="status" invisible="mode != 'progress'">
+                    «En proceso» se ve en Mis pendientes y en Mi equipo, pero <b>no quita el atraso</b>.
+                </div>
+                <div class="alert alert-info" role="status" invisible="mode != 'done' or not needs_evidence">
+                    Deje la evidencia: una nota (folio, documento, registro) o un archivo.
+                </div>
+                <div class="alert alert-info" role="status" invisible="mode != 'done' or needs_evidence">
+                    Esta actividad se marca sola cuando aparece su registro en Odoo. Si se hizo por otro lado,
+                    diga dónde (nota o archivo).
+                </div>
+                <group>
+                    <field name="name"/>
+                    <field name="date_due"/>
+                    <field name="done_criteria" invisible="mode != 'done' or not done_criteria"/>
+                    <field name="progress_note" required="mode == 'progress'"
+                           invisible="mode != 'progress'" placeholder="Qué lleva y qué le falta"/>
+                    <field name="date_estimated" invisible="mode != 'progress'"/>
+                    <field name="evidence_note" invisible="mode != 'done'"
+                           placeholder="Folio, documento o registro que demuestra que se hizo"/>
+                    <field name="attachment_ids" widget="many2many_binary" invisible="mode != 'done'"/>
+                    <field name="na_reason" required="mode == 'na'" invisible="mode != 'na'"
+                           placeholder="Por qué no aplica en este periodo"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

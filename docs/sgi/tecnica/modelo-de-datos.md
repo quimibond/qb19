@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (124) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (126) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -14,6 +14,8 @@ Modelos que definen el núcleo y sus satélites (124) y modelos de otras apps qu
 | [`sgi.activity.change`](diccionario/sgi.activity.change.md) | Propuesta de cambio a una actividad (Mi procedimiento) | Propuesta de cambio a una actividad: los mismos campos de la actividad con los valores propuestos, más quién la hace. Nace con los valores de hoy; lo que la persona cambie es lo que se aprueba y se a… | Model | 32 | `addons/quimibond_sgi/models/sgi_mp_change.py` |
 | [`sgi.activity.change.role`](diccionario/sgi.activity.change.role.md) | Quién hace la actividad (propuesta) | Renglón «quién hace» de una propuesta de cambio (``sgi.activity.change``): puesto, familia o rol relativo con su papel. Al aprobarse la propuesta pasa a ``sgi.activity.role``. | Model | 9 | `addons/quimibond_sgi/models/sgi_mp_change.py` |
 | [`sgi.activity.exec.stat`](diccionario/sgi.activity.exec.stat.md) | Ejecuciones de una actividad SGI por semana y usuario | Ejecuciones de una actividad por semana y usuario (cuántos registros del entregable hizo cada quien). Lo llena la medición de actividades; sirve para ver quién la ejecuta de verdad. | Model | 13 | `addons/quimibond_sgi/models/sgi_exec_stat.py` |
+| [`sgi.activity.execution`](diccionario/sgi.activity.execution.md) | Registro de cumplimiento de actividad | Cumplimiento de una actividad en un periodo, por persona. | Model | 28 | `addons/quimibond_sgi/models/sgi_activity_execution.py` |
+| [`sgi.activity.execution.mark`](diccionario/sgi.activity.execution.mark.md) | Marcar avance de una actividad | Asistente de «En proceso», «Hecha» y «No aplica este periodo». | TransientModel | 11 | `addons/quimibond_sgi/models/sgi_activity_execution.py` |
 | [`sgi.activity.input`](diccionario/sgi.activity.input.md) | Entregable que recibe una actividad SGI | Un «recibe» de la actividad: qué entregable y en cuántos días hábiles debe llegar a ella. El plazo es de quien recibe (la misma salida puede urgirle a uno y no a otro) y de él sale el eslabón atorado. | Model | 11 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
 | [`sgi.activity.link`](diccionario/sgi.activity.link.md) | Encadenamiento entre actividades | Liga entre dos actividades de procedimiento: qué ENTREGABLE pasa de un paso al siguiente. Puede cruzar procesos (el pedido de Ventas alimenta el programa de Planeación): es el hilo conductor de la op… | Model | 13 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.activity.role`](diccionario/sgi.activity.role.md) | Rol de un puesto en una actividad SGI | Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, aprueba, participa, informa, escala). Es la fuente de Mi procedimiento, de Mis pendientes y de los aprobadores nativos. | Model | 47 | `addons/quimibond_sgi/models/sgi_catalog.py` |
@@ -100,7 +102,7 @@ Modelos que definen el núcleo y sus satélites (124) y modelos de otras apps qu
 | [`sgi.mapa.load.wizard`](diccionario/sgi.mapa.load.wizard.md) | Cargar mapa de procesos SGI | Asistente «Cargar mapa de procesos» de ``quimibond_sgi_mapa``: prueba y carga el JSON del módulo o uno subido, y descarga el de la base. | TransientModel | 13 | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py` |
 | [`sgi.mapa.load.wizard.line`](diccionario/sgi.mapa.load.wizard.line.md) | Resultado de la carga del mapa SGI | Renglón del resultado de la carga del mapa. | TransientModel | 5 | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py` |
 | [`sgi.msa.study`](diccionario/sgi.msa.study.md) | Estudio MSA (IATF 7.1.5.1.1) | Estudio de sistema de medición (MSA) de un equipo: GR&R, ndc y veredicto. | Model | 9 | `addons/quimibond_sgi/models/sgi_msa.py` |
-| [`sgi.my.pending`](diccionario/sgi.my.pending.md) | Mis pendientes (SGI) | Mis pendientes: bandeja de cada persona con actividades atrasadas, firmas, acuses, capturas, validaciones y aprobaciones. Se recalcula al abrirla; no guarda historia. | TransientModel | 11 | `addons/quimibond_sgi/models/sgi_my_pending.py` |
+| [`sgi.my.pending`](diccionario/sgi.my.pending.md) | Mis pendientes (SGI) | Mis pendientes: bandeja de cada persona con actividades atrasadas, firmas, acuses, capturas, validaciones y aprobaciones. Se recalcula al abrirla; no guarda historia. | TransientModel | 15 | `addons/quimibond_sgi/models/sgi_my_pending.py` |
 | [`sgi.my.procedure`](diccionario/sgi.my.procedure.md) | Mi procedimiento (pantalla) | Pantalla de Mi procedimiento de una persona o un puesto: actividades por rol, documentos, indicadores, EPP y acuse. Se arma al abrirla. | TransientModel | 43 | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`sgi.my.procedure.check`](diccionario/sgi.my.procedure.check.md) | Mi procedimiento: revisión previa a publicar | Revisión previa a publicar, con listas nativas (antes HTML). | TransientModel | 5 | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
 | [`sgi.my.procedure.mixin`](diccionario/sgi.my.procedure.mixin.md) | Mi procedimiento en la ficha | «Mi procedimiento» dentro de la ficha (empleado, empleado público y puesto): las mismas listas que la pantalla de Inicio, como campos calculados, para que el procedimiento se vea donde vive la person… | AbstractModel | 9 | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py` |
@@ -116,7 +118,7 @@ Modelos que definen el núcleo y sus satélites (124) y modelos de otras apps qu
 | [`sgi.ppap.element`](diccionario/sgi.ppap.element.md) | Elemento de un PPAP | Elemento de un PPAP con su documento, AMEF o plan de control y su estado. | Model | 10 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.ppap.element.template`](diccionario/sgi.ppap.element.template.md) | Elemento PPAP (catálogo AIAG) | Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía. | Model | 4 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.process`](diccionario/sgi.process.md) | Proceso SGI | Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores, riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo. | Model | 77 | `addons/quimibond_sgi/models/sgi_process.py` |
-| [`sgi.process.activity`](diccionario/sgi.process.activity.md) | Actividad del procedimiento | Actividad (numeral) del Desarrollo del procedimiento (sección 4). | Model | 87 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
+| [`sgi.process.activity`](diccionario/sgi.process.activity.md) | Actividad del procedimiento | Actividad (numeral) del Desarrollo del procedimiento (sección 4). | Model | 88 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.flow`](diccionario/sgi.process.flow.md) | Flujo entre procesos SGI | Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué modelo. | Model | 8 | `addons/quimibond_sgi/models/sgi_process.py` |
 | [`sgi.process.responsibility`](diccionario/sgi.process.responsibility.md) | Responsabilidad de área en el procedimiento | Responsabilidad de un rol/puesto dentro del procedimiento (sección 3). | Model | 6 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.stage`](diccionario/sgi.process.stage.md) | Etapa de un proceso SGI | Etapa de un proceso; agrupa sus actividades. | Model | 7 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
@@ -190,4 +192,4 @@ Modelos que definen el núcleo y sus satélites (124) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 7 de 124.
+Modelos propios sin docstring de clase: 7 de 126.
