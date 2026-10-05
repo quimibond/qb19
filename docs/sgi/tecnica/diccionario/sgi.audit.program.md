@@ -8,7 +8,7 @@ Programa anual de auditorías (P-G03). Lo arma MAST (puede sugerir renglones), s
 
 Orden: `year desc`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_audit.py`, `addons/quimibond_sgi/models/sgi_report_print.py`.
 
 ## Campos (9)
 
@@ -24,11 +24,12 @@ Archivos: `addons/quimibond_sgi/models/sgi_audit.py`.
 | `state` | Selection | Estado | Borrador mientras se arma; aprobado cuando se autoriza (desde ahí se avisa cada auditoría); cerrado al terminar el año. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:46` |
 | `year` | Integer | Año | Año que cubre el programa. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_audit.py:43` |
 
-## Métodos públicos (4)
+## Métodos públicos (5)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_approve` | 4.4: solo MAST aprueba, y cada auditoría interna del programa lleva su auditor líder (en 2026 las 14 líneas estaban sin auditor). |
 | `action_close` | — |
 | `action_draft` | — |
+| `action_print_execution` | Botón «Programado contra realizado» del programa. |
 | `action_suggest_lines` | AU-5 (53.0.0): programa sugerido. Una línea por subproceso, repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año. Solo agrega los que aún no están. 57.93.0 (… |
