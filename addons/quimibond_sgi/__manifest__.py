@@ -193,6 +193,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # _carta_horizontal, definidos arriba).
         'report/report_indicator_sheet.xml',
         'report/report_sgi_diagram.xml',
+        'report/report_audit_program.xml',
         'report/report_dev_request.xml',
         'report/report_machine_sheet.xml',
         'report/report_calibration_label.xml',

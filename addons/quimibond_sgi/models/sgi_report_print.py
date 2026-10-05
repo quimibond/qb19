@@ -3,6 +3,9 @@
 SGI. Diagramas (C3) con los datos de ``sgi.diagram.data``; programa de
 auditorías contra lo realizado (C5); mapa de calor de riesgos por
 instrumento (C7)."""
+from collections import Counter
+from datetime import date
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -15,6 +18,9 @@ DG_COLORS = {'success': '#198754', 'warning': '#ffc107', 'danger': '#dc3545',
 DG_LEVEL_BG = {3: '#a3cfbb', 2: '#ffe69c', 1: '#cff4fc'}
 # Instrucciones de pantalla que no van en el papel («Pase el mouse…», «clic…»).
 SCREEN_HINTS = ('mouse', 'clic')
+# Programado contra realizado (C5): de la marca más importante a la menos,
+# para el color de la celda (cada marca se dibuja aparte).
+PROGRAM_STATUS_RANK = {'cerrada': 5, 'ejecutada': 4, 'vencida': 3, 'pendiente': 2, 'movida': 1}
 
 
 class SgiDiagramPrint(models.AbstractModel):
@@ -99,3 +105,88 @@ class ReportSgiDiagram(models.AbstractModel):
             'dg_level_bg': DG_LEVEL_BG, 'dg_anchor': process or self.env.company,
             'dg_printed': now.strftime('%d/%m/%Y %H:%M'),
         }
+
+
+class SgiAuditProgramPrint(models.Model):
+    """57.101.0 (C5): programa de auditorías, programado contra realizado
+    (botón del programa y menú Imprimir)."""
+    _inherit = 'sgi.audit.program'
+
+    @staticmethod
+    def _sgi_mark(cell, status, folio=''):
+        cell['marks'].append({'status': status, 'folio': folio or ''})
+        if PROGRAM_STATUS_RANK[status] > PROGRAM_STATUS_RANK.get(cell['status'], 0):
+            cell['status'] = status
+
+    @staticmethod
+    def _sgi_line_done(line):
+        """La regla de SG-09 (``_detail_salud_auditoria``): renglón cerrado o
+        auditoría en «Informe» o «Cerrada»."""
+        return line.state == 'cerrada' or line.audit_id.state in ('informe', 'cerrada')
+
+    def _sgi_program_grid(self):
+        """Programado contra realizado: una fila por (proceso o cliente /
+        proveedor, tipo), 12 meses. Cada celda guarda sus marcas (pendiente,
+        vencida, ejecutada, cerrada, movida) con el folio; ejecutada cuenta
+        en el mes de fin (o de inicio) de la auditoría si es del año del
+        programa, si no en el planeado."""
+        self.ensure_one()
+        from .sgi_diagram_iso import MONTHS
+        Line = self.env['sgi.audit.program.line']
+        types = dict(Line._fields['audit_type'].selection)
+        today = fields.Date.context_today(self)
+        rows, findings = {}, []
+        totals = {m: {'planned': 0, 'done': 0} for m in range(1, 13)}
+        lines = self.line_ids.sorted(lambda l: (l.process_id.code or l.partner_id.name or '',
+                                                int(l.planned_month), l.id))
+        for line in lines:
+            key = (line.process_id.id, line.partner_id.id, line.audit_type)
+            label = (line.process_id.display_name or line.partner_id.display_name
+                     or types.get(line.audit_type, ''))
+            row = rows.setdefault(key, {
+                'label': label, 'type': types.get(line.audit_type, ''), 'auditors': [],
+                'months': {m: {'planned': False, 'status': False, 'marks': []} for m in range(1, 13)}})
+            planned = int(line.planned_month)
+            audit = line.audit_id
+            auditor = audit.lead_auditor_id or line.lead_auditor_id
+            if auditor and auditor.name not in row['auditors']:
+                row['auditors'].append(auditor.name)
+            cell = row['months'][planned]
+            cell['planned'] = True
+            totals[planned]['planned'] += 1
+            if self._sgi_line_done(line):
+                when = audit.date_end or audit.date_start
+                month = when.month if when and when.year == self.year else planned
+                closed = line.state == 'cerrada' or audit.state == 'cerrada'
+                self._sgi_mark(row['months'][month], 'cerrada' if closed else 'ejecutada',
+                               audit.folio)
+                totals[month]['done'] += 1
+                if month != planned:
+                    self._sgi_mark(cell, 'movida', audit.folio)
+                if audit:
+                    findings.append({'audit': audit, 'label': label,
+                                     'auditor': auditor.name or '', 'date': when,
+                                     'counts': Counter(audit.finding_ids.mapped('finding_type'))})
+            elif date(self.year, planned, 1) < today.replace(day=1):
+                self._sgi_mark(cell, 'vencida', audit.folio)
+            else:
+                self._sgi_mark(cell, 'pendiente', audit.folio)
+        cutoff = 12 if self.year < today.year else (today.month if self.year == today.year else 0)
+        due = self.line_ids.filtered(
+            lambda l: l.audit_type == 'interna' and int(l.planned_month) <= cutoff)
+        done = due.filtered(self._sgi_line_done)
+        start, end = date(self.year, 1, 1), date(self.year, 12, 31)
+        outside = self.env['sgi.audit'].search([
+            ('program_line_id', '=', False),
+            '|', '&', ('date_start', '>=', start), ('date_start', '<=', end),
+            '&', ('date_start', '=', False),
+            '&', ('date_planned', '>=', start), ('date_planned', '<=', end)])
+        return {'months': MONTHS, 'rows': list(rows.values()), 'totals': totals,
+                'findings': findings, 'outside': outside,
+                'progress': (len(done), len(due)),
+                'cutoff_label': MONTHS[cutoff - 1] if cutoff else ''}
+
+    def action_print_execution(self):
+        """Botón «Programado contra realizado» del programa."""
+        return self.env.ref('quimibond_sgi.action_report_audit_program').report_action(
+            self, config=False)
