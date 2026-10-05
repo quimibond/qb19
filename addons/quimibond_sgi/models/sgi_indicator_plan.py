@@ -284,20 +284,22 @@ class SgiCronCalendar(models.AbstractModel):
         # en que se mide).
         self._sgi_step("último cálculo de los indicadores sin diagnóstico",
                        lambda: self.env['sgi.indicator']._sgi_calc_status_backfill())
+        res = True
+        if not scheduled or self._sgi_monthly_run_due(today):
+            res = super().cron_indicators()
+            if scheduled:
+                self.env['ir.config_parameter'].sudo().set_param(
+                    self._SGI_MONTHLY_DONE_PARAM, today.strftime('%Y-%m'))
         # 57.5.0 (D-12, A-006): re-mide las mediciones pendientes que ya
         # tienen dato. Antes corría en cada actualización del módulo.
         # 57.102.0 (B3): la corrida programada también re-mide las «sin dato»
-        # y las capturadas no validadas de los últimos meses; una corrida a
-        # mano (pruebas, botón del cron) se queda en las pendientes.
+        # y las capturadas no validadas de los últimos meses, con tiempo
+        # tope (lo que falte sigue al día siguiente); una corrida a mano
+        # (pruebas, botón del cron) se queda en las pendientes. Va DESPUÉS de
+        # la medición mensual: primero se crean las del mes.
         self._sgi_step("mediciones pendientes re-medidas",
                        lambda: self.env['sgi.config'].recompute_pending_measures(
                            recent=bool(scheduled)))
-        if scheduled and not self._sgi_monthly_run_due(today):
-            return True
-        res = super().cron_indicators()
-        if scheduled:
-            self.env['ir.config_parameter'].sudo().set_param(
-                self._SGI_MONTHLY_DONE_PARAM, today.strftime('%Y-%m'))
         return res
 
     @api.model

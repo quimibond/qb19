@@ -13,11 +13,14 @@ prueba recalcula sin acotar a sus propios indicadores."""
 import importlib.util
 import os
 from datetime import date
+from unittest.mock import patch
 
 from dateutil.relativedelta import relativedelta
 
 from odoo.exceptions import UserError
 from odoo.tests import TransactionCase, tagged
+
+from odoo.addons.quimibond_sgi.models import sgi_format_map
 
 from .common_users import sgi_set_mast
 
@@ -35,6 +38,9 @@ class TestIndicadoresSinDato(TransactionCase):
         cls.Measure = cls.env['sgi.indicator.measure']
         cls.mast = sgi_set_mast(cls.env, login='sgi_mast_s02')
         cls.company = cls.env['res.company'].create({'name': 'ZS02 Cía'})
+        # El contacto de la compañía nueva no cuenta como registro de la fuente
+        # (según la versión, Odoo le pone o no la compañía).
+        cls.company.partner_id.company_id = False
         cls.env['ir.config_parameter'].sudo().set_param(
             'quimibond_sgi.kpi_company_id', cls.company.id)
         cls.partner_model = cls.env['ir.model']._get('res.partner')
@@ -164,7 +170,8 @@ class TestIndicadoresSinDato(TransactionCase):
     # ---- B6 ------------------------------------------------------------------
     def test_07_registro_vacio_da_sin_dato(self):
         Partner = self.env['res.partner'].with_context(active_test=False)
-        self.assertFalse(Partner.search_count([('company_id', '=', self.company.id)]))
+        self.assertFalse(Partner.search_count([('company_id', '=', self.company.id),
+                                               ('id', '!=', self.company.partner_id.id)]))
         ind = self._configurable('ZS02-07')
         vals = self._last_month_vals(ind)
         self.assertEqual(vals['state'], 'sin_dato')
@@ -266,7 +273,8 @@ class TestIndicadoresSinDato(TransactionCase):
         level = self.env['hr.skill.level'].create({
             'skill_type_id': stype.id, 'name': 'Vigente', 'level_progress': 100})
         skill = self.env['hr.skill'].create({'name': 'Norma ZS02', 'skill_type_id': stype.id})
-        job = self.env['hr.job'].create({'name': 'Puesto ZS02'})
+        # Sin compañía: lo ocupan empleados de las dos compañías.
+        job = self.env['hr.job'].create({'name': 'Puesto ZS02', 'company_id': False})
         self.env['hr.job.skill'].create({'job_id': job.id, 'skill_id': skill.id,
                                          'skill_type_id': stype.id, 'skill_level_id': level.id})
         sgi_company = self.env['sgi.config']._sgi_company()
@@ -282,6 +290,58 @@ class TestIndicadoresSinDato(TransactionCase):
         self.assertLessEqual(detail['numerator'], detail['denominator'])
         employees = ind._sgi_capacitacion_employees()
         self.assertNotIn(self.company, employees.company_id, "Solo la empresa del SGI.")
+
+    # ---- Revisión final ----------------------------------------------------
+    def test_13_tiempo_tope_detiene_limpio(self):
+        ind = self._configurable('ZS02-13', direction='higher_better')
+        first = self._measure(ind, self.last_month, state='sin_dato')
+        second = self._measure(ind, self.this_month, state='sin_dato')
+        Param = self.env['ir.config_parameter'].sudo()
+        Param.set_param(sgi_format_map.RECOMPUTE_CURSOR_PARAM, '0')
+        # inicio, revisión antes de la 1.ª (a tiempo), antes de la 2.ª (se acabó)
+        with patch.object(sgi_format_map, '_now', side_effect=[0, 0, 10000, 10000]):
+            result = self.env['sgi.config'].sudo().recompute_pending_measures(
+                indicators=ind, recent=True)
+        self.assertEqual(result['sin_tiempo'], 1)
+        self.assertEqual(result['errores'], 0)
+        self.assertEqual(first.state, 'capturado', "La primera sí se midió.")
+        self.assertEqual(second.state, 'sin_dato', "La segunda queda para mañana.")
+        self.assertEqual(Param.get_param(sgi_format_map.RECOMPUTE_CURSOR_PARAM), str(first.id))
+        result = self.env['sgi.config'].sudo().recompute_pending_measures(
+            indicators=ind, recent=True)
+        self.assertEqual(result['sin_tiempo'], 0)
+        self.assertEqual(second.state, 'capturado', "La siguiente corrida sigue donde se quedó.")
+        self.assertEqual(Param.get_param(sgi_format_map.RECOMPUTE_CURSOR_PARAM), '0')
+
+    def test_14_recalculo_conserva_la_nota_de_una_persona(self):
+        ind = self._configurable('ZS02-14', direction='higher_better')
+        self._partner()
+        human = self._measure(ind, self.this_month, value=0.0, numerator=0.0)
+        human.with_user(self.mast).write({'note': "Revisado con Logística"})
+        system = self._measure(ind, self.last_month, state='sin_dato',
+                               note="Registro vacío: nota vieja del cálculo")
+        self.env.flush_all()
+        self.env.cr.precommit.run()  # el seguimiento de la nota
+        self.env['sgi.config'].sudo().recompute_pending_measures(indicators=ind, recent='all')
+        self.assertEqual(human.value, 1.0)
+        self.assertIn("Revisado con Logística", human.note or '')
+        self.assertFalse(system.note, "La nota que escribió el cálculo se reemplaza.")
+
+    def test_15_validar_seleccionadas_salta_manuales_sin_valor(self):
+        ind = self._manual('ZS02-15')
+        empty = self._measure(ind, date(2046, 1, 1))
+        full = self._measure(ind, date(2046, 2, 1), value=95.0)
+        Pending = self.env['sgi.my.pending'].with_user(self.mast)
+        rows = Pending.create([{'kind': 'validacion', 'name': 'Validar %s' % m.id,
+                                'res_model': 'sgi.indicator.measure', 'res_id': m.id,
+                                'user_id': self.mast.id} for m in (empty, full)])
+        result = rows.action_validate_selected()
+        self.assertEqual(result['tag'], 'display_notification')
+        self.assertIn("no tienen valor capturado", result['params']['message'])
+        self.assertEqual(full.state, 'validado')
+        self.assertEqual(empty.state, 'capturado')
+        self.assertTrue(rows.filtered(lambda r: r.res_id == empty.id).exists(),
+                        "La que no se validó se queda en la lista.")
 
     # ---- Migración --------------------------------------------------------
     def test_12_post_migrate_existe(self):

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import logging
 import re
+import time
 
 from dateutil.relativedelta import relativedelta
 
@@ -19,6 +20,26 @@ _logger = logging.getLogger(__name__)
 # No se siembra: se lee con este valor por omisión.
 RECOMPUTE_MONTHS_PARAM = 'quimibond_sgi.indicator_recompute_months'
 DEFAULT_RECOMPUTE_MONTHS = 2
+# Tiempo tope (segundos) de la corrida del cron (``recent=True``); lo que no
+# alcanzó sigue al día siguiente desde donde se quedó (cursor por id).
+RECOMPUTE_BUDGET_SECONDS = 240
+RECOMPUTE_CURSOR_PARAM = 'quimibond_sgi.indicator_recompute_cursor'
+
+
+def _now():
+    """Reloj del tiempo tope (aparte, para poder simularlo en las pruebas)."""
+    return time.monotonic()
+
+
+def _sgi_merge_note(computed, previous):
+    """Nota nueva del cálculo más las líneas de la nota anterior que no trae:
+    un recálculo nunca borra lo que una persona escribió."""
+    lines = [line for line in (computed or '').splitlines() if line.strip()]
+    for line in (previous or '').splitlines():
+        if line.strip() and line not in lines:
+            lines.append(line)
+    return "\n".join(lines) or False
+
 
 # 57.98.0 (I-01): reportes propios que imprimen el pie del formato controlado
 # en cada hoja (layout quimibond_sgi.sgi_report_layout): (xmlid del reporte,
@@ -680,6 +701,17 @@ class SgiConfig(models.AbstractModel):
         return text
 
     @api.model
+    def _sgi_note_by_person(self, measure):
+        """Si alguien que no es el sistema editó la nota de la medición (queda
+        en su seguimiento: la nota lleva ``tracking``)."""
+        root = self.env.ref('base.partner_root', raise_if_not_found=False)
+        values = self.env['mail.tracking.value'].sudo().search([
+            ('mail_message_id.model', '=', 'sgi.indicator.measure'),
+            ('mail_message_id.res_id', '=', measure.id),
+            ('field_id.name', '=', 'note'), ('field_id.model', '=', 'sgi.indicator.measure')])
+        return any(v.mail_message_id.author_id != root for v in values)
+
+    @api.model
     def recompute_pending_measures(self, indicators=None, recent=False):
         """Re-mide las mediciones PENDIENTES de indicadores automáticos.
         Es la contracara de la deuda B.16: el cron solo crea la medición
@@ -706,8 +738,13 @@ class SgiConfig(models.AbstractModel):
         chatter de la medición el antes y el después. Un error por medición
         queda como aviso (WARNING) en el log.
 
+        La corrida del cron (``recent=True``) tiene tiempo tope
+        (``RECOMPUTE_BUDGET_SECONDS``): al agotarse deja un cursor y la
+        siguiente sigue desde ahí. El recálculo conserva las líneas de la nota
+        que escribió una persona.
+
         Devuelve ``{'revisadas': n, 'capturadas': n, 'recalculadas': n,
-        'errores': n}``."""
+        'errores': n, 'sin_tiempo': n}``."""
         sgi_require_system(self.env)  # F-008
         Measure = self.env['sgi.indicator.measure']
         pending = [
@@ -721,15 +758,38 @@ class SgiConfig(models.AbstractModel):
             stale = Measure.search(self._sgi_recompute_domain(recent) + scope)
             # Un rojo con causa o acciones ya se trabajó: su valor no se mueve.
             measures |= stale.filtered(lambda m: not (m.cause or m.action_line_ids))
-        measures = measures.sorted(lambda m: (m.indicator_id.id, m.period_date))
-        result = {'revisadas': len(measures), 'capturadas': 0, 'recalculadas': 0, 'errores': 0}
+        Param = self.env['ir.config_parameter'].sudo()
+        budget = RECOMPUTE_BUDGET_SECONDS if recent is True else None
+        if budget:
+            # Con tiempo tope se sigue desde donde se quedó la corrida anterior
+            # (ids mayores al cursor primero) para que la cola no se atore.
+            cursor = int(Param.get_param(RECOMPUTE_CURSOR_PARAM, 0) or 0)
+            measures = measures.sorted('id')
+            measures = measures.filtered(lambda m: m.id > cursor) \
+                | measures.filtered(lambda m: m.id <= cursor)
+        else:
+            measures = measures.sorted(lambda m: (m.indicator_id.id, m.period_date))
+        result = {'revisadas': len(measures), 'capturadas': 0, 'recalculadas': 0,
+                  'errores': 0, 'sin_tiempo': 0}
         latest = {}
-        for measure in measures:
+        start = _now()
+        for position, measure in enumerate(measures):
+            if budget and _now() - start > budget:
+                result['sin_tiempo'] = len(measures) - position
+                Param.set_param(RECOMPUTE_CURSOR_PARAM, str(measures[position - 1].id)
+                                if position else '0')
+                _logger.info("SGI: recálculo de mediciones detenido por tiempo (%d s): faltan %d; "
+                             "siguen en la próxima corrida.", budget, result['sin_tiempo'])
+                break
             indicator = measure.indicator_id
             try:
                 with self.env.cr.savepoint():
                     date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
                     vals = indicator._sgi_measure_vals(date_from, date_to)
+                    # I-3: la nota que escribió una persona no se pierde.
+                    if 'note' in vals and measure.note and measure.note != vals['note'] \
+                            and self._sgi_note_by_person(measure):
+                        vals['note'] = _sgi_merge_note(vals['note'], measure.note)
                     if measure.state == 'pendiente':
                         if vals.get('state') != 'capturado':
                             continue
@@ -753,14 +813,17 @@ class SgiConfig(models.AbstractModel):
                             body="Recalculada por el SGI (57.102.0): antes %s, ahora %s." % (
                                 before, after))
                         result['recalculadas'] += 1
-                    latest[indicator.id] = vals
+                    if measure.period_date >= latest.get(indicator.id, (measure.period_date, None))[0]:
+                        latest[indicator.id] = (measure.period_date, vals)
             except Exception as error:  # noqa: BLE001 - un indicador no detiene a los demás
                 result['errores'] += 1
                 _logger.warning("SGI: no se pudo recalcular la medición %s de %s: %s",
                                 measure.id, indicator.display_name, str(error)[:250])
-        # El diagnóstico del indicador sale de su periodo más reciente tocado
-        # (las mediciones van ordenadas por periodo).
-        for indicator_id, vals in latest.items():
+        else:
+            if budget:
+                Param.set_param(RECOMPUTE_CURSOR_PARAM, '0')  # vuelta completa
+        # El diagnóstico del indicador sale del último periodo tocado.
+        for indicator_id, (_period, vals) in latest.items():
             indicator = self.env['sgi.indicator'].browse(indicator_id)
             indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
         _logger.info("SGI: mediciones pendientes recalculadas: %(revisadas)d revisadas, "

@@ -88,9 +88,22 @@ medición validada cambia.
 - Los errores del recálculo por medición quedan como aviso (WARNING) en el
   log, no como error.
 - Al pasar de «sin dato» a capturada por el recálculo, la fecha de captura
-  (plazo de validación y del plan) es la del recálculo.
+  (plazo de validación y del plan) es la del recálculo. **Al día siguiente
+  del despliegue, los meses viejos que el cron vuelva a medir (E1-01, E2-02,
+  C2-05, …) aparecerán en Mis pendientes de sus responsables como «Validar
+  medición»**, con plazo contado desde ese día.
+- El recálculo diario corre **después** de la medición mensual del cron y
+  tiene tiempo tope (240 s): lo que no alcanza queda para el día siguiente,
+  que sigue desde donde se quedó (`quimibond_sgi.indicator_recompute_cursor`,
+  lo escribe el cron); el log dice cuántas faltan.
+- El recálculo conserva la nota que escribió una persona (la detecta por el
+  seguimiento de la nota): agrega la nota nueva del cálculo y deja la suya.
+- «Validar seleccionadas» de Mis pendientes salta, como P-40, las manuales
+  sin valor capturado y las dice en el aviso, en vez de fallar todo el lote.
+- «Registro vacío» no se presume cuando el campo sumado no está guardado en
+  la base (no se puede buscar por él).
 - `quimibond_sgi_mapa` 19.0.1.1.2: el mapa trae las mismas fórmulas de
-  TR-01, C5-02 y C2-06 y el entregable C2-SALIDA nuevo. Queda pendiente la
+  TR-01, C5-02 y C2-06 y el filtro nuevo del entregable C2-SALIDA. Queda pendiente la
   entrada «aplica» del mapa que usa el mismo campo de Studio
   (`x_studio_tipo_de_transporte = 'Transporte Interno'`): no se tocó.
 
@@ -138,7 +151,7 @@ denominador. (Q13) La corrección a mano se respeta. (Q14) Sale como
 
 ### Solo se verifica en el build de Odoo.sh
 
-- `test_indicadores_sin_dato` (16 casos) y el suite `--test-tags
+- `test_indicadores_sin_dato` (19 casos) y el suite `--test-tags
   /quimibond_sgi` sin fallos nuevos ni `ERROR` en el log.
 - Cerrar una NC con folio y leer `date_close` (TR-01 y C5-02 dependen de
   que la etapa de cierre la llene).

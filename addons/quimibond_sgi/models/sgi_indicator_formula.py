@@ -258,6 +258,9 @@ class SgiIndicatorTerm(models.Model):
         company = ([('company_id', '=', self.indicator_id._sgi_kpi_company().id)]
                    if company_field and company_field.store else [])
         if self.aggregation in ('sum', 'sum_abs'):
+            field = Model._fields.get(self.field_name or '')
+            if not field or not field.store:
+                return False  # no se puede buscar por el campo: no se presume vacío
             domain = self._sgi_domain() + company
             return not Model.search_count(domain + [(self.field_name, '!=', 0)], limit=1)
         if self.aggregation in ('count', 'count_delta'):

@@ -134,7 +134,9 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   quitan la marca). Solo escribe si algo cambió y deja el antes y el después
   en el chatter de la medición. El botón **Recalcular mediciones** de la
   lista (Administrador SGI) con indicadores seleccionados re-mide todo lo no
-  validado de ellos, sin ventana de meses.
+  validado de ellos, sin ventana de meses. La corrida del cron va después de
+  la medición mensual y tiene tiempo tope (240 s): lo que no alcanza sigue al
+  día siguiente. Una nota que escribió una persona no se borra al recalcular.
 - **«Medir desde».** Al cambiarla, las mediciones no validadas cuyo periodo
   termina antes pasan a «Sin dato» con el valor anterior en la nota; las
   validadas no se tocan y nada se borra.
