@@ -59,6 +59,9 @@
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_view_trend" type="object"
                             string="Tendencia" icon="fa-line-chart"/>
+                    <!-- 57.101.0 (C1): ficha del indicador en PDF (también en Imprimir). -->
+                    <button name="action_print_sheet" type="object"
+                            string="Ficha en PDF" icon="fa-file-pdf-o"/>
                     <button name="action_recalculate_now" type="object"
                             string="Recalcular ahora" icon="fa-refresh"
                             invisible="calc_mode == 'manual'"

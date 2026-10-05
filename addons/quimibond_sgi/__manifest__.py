@@ -189,6 +189,9 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_direction.xml',
         'report/report_retention.xml',
         'report/sgi_format_footer.xml',
+        # 57.101.0: reportes y diagramas (usan paperformat_sgi_carta y
+        # _carta_horizontal, definidos arriba).
+        'report/report_indicator_sheet.xml',
         'report/report_dev_request.xml',
         'report/report_machine_sheet.xml',
         'report/report_calibration_label.xml',

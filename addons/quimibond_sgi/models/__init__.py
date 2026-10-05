@@ -116,3 +116,6 @@ from . import sgi_indicator_health
 from . import sgi_indicator_integrity
 from . import sgi_competence_grant
 from . import sgi_ai
+# 57.101.0: reportes y diagramas (heredan indicador, medición, proceso,
+# sgi.diagram, programa de auditorías y riesgo, todos definidos antes).
+from . import sgi_indicator_sheet
