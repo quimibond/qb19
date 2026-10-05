@@ -30,6 +30,8 @@ SGI_MENU_PATHS = {
                            ('SGI', 'Administración SGI', 'Documentos', 'Solicitudes de cambio')),
     'politica': ('quimibond_sgi.menu_sgi_policy',
                  ('SGI', 'Dirección', 'Política integral')),
+    'miid': ('quimibond_sgi.menu_sgi_miid',
+             ('SGI', 'Dirección', 'Manual del SGI (MIID)')),
     'riesgos': ('quimibond_sgi.menu_sgi_risks',
                 ('SGI', 'Dirección', 'Riesgos y oportunidades')),
     'requisitos_legales': ('quimibond_sgi.menu_sgi_legal',

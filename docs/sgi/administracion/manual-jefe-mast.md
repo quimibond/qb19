@@ -202,8 +202,21 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
 - Si un automático no da un valor confiable, cambie su modo de cálculo a
   captura manual y anote el motivo en el indicador.
 - **NC en rojo** (`nc_on_red`): un rojo levanta NC; úselo en los críticos.
-- **Recalcular mediciones pendientes** (en la lista de indicadores) vuelve a
-  medir lo pendiente después de corregir una fórmula.
+- **Recalcular mediciones** (en la lista de indicadores, Administrador SGI)
+  vuelve a medir lo pendiente; con indicadores seleccionados (desde
+  57.104.0) re-mide todo lo no validado de ellos, sin dato y capturadas,
+  salvo lo corregido a mano, con NC o con causa o acciones. Úselo después de
+  corregir una fórmula.
+- **Recálculo diario (57.104.0):** el cron re-mide además las «sin dato» y
+  las capturadas no validadas de los últimos 2 meses
+  (`quimibond_sgi.indicator_recompute_months`). Nunca toca validadas, foto,
+  salud, con NC, con causa o acciones, ni las «Valor corregido a mano».
+- **«Sin dato» y el 0 (57.104.0):** sin ninguna medición con dato, el
+  indicador dice «Sin dato». Una medición manual en 0 sin nota, numerador ni
+  denominador no se captura ni se valida. Cambiar «Medir desde» pasa a «Sin
+  dato» las mediciones no validadas anteriores (el valor anterior queda en
+  la nota). Una fórmula «más bajo es mejor» con la fuente vacía da «Sin
+  dato» con la nota «Registro vacío».
 - **Salud del SGI (57.99.0):** SG-01 a SG-10, de nivel Dirección y del proceso
   E2, semanales. Nacen en prueba y sin NC automática; páselos a oficial
   después de revisar su primera medición contra la realidad. Sus mediciones
@@ -403,6 +416,10 @@ pendientes) y los plazos de Mis pendientes
 (quién no cuenta en SG-02 «Personas que usan el SGI») y
 `quimibond_sgi.health_mail_user_ids` (destinatarios del correo de los lunes
 además de Dirección); ids de usuario separados por coma, vacíos de fábrica.
+
+Desde 57.104.0: `quimibond_sgi.indicator_recompute_months` (2, no se
+siembra): cuántos meses hacia atrás re-mide el cron diario las «sin dato» y
+las capturadas no validadas.
 
 Desde 57.100.0: `quimibond_sgi.training_effectiveness_days` (90),
 `quimibond_sgi.training_effectiveness_survey_id` (0 = sin encuesta al jefe),

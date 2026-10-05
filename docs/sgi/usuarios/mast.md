@@ -91,6 +91,21 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
    use «Regresar a pendiente» y vuelva a validarla. Si corrige el valor de
    una validada sin reabrirla, el color sale de las metas guardadas.
 
+6. **Sin dato y recálculo (desde 57.104.0):** el menú **Mediciones** y el
+   botón «Mediciones» abren con el filtro «Con dato»; quítelo para ver las
+   pendientes y las sin dato. El cron diario re-mide también las «sin dato»
+   y las capturadas no validadas de los últimos 2 meses (el antes y el
+   después quedan en el chatter de cada medición). Para re-medir todos los
+   meses de un indicador: lista de indicadores → selecciónelo → **Recalcular
+   mediciones** (solo Administrador SGI). Una medición con «Valor corregido
+   a mano» no se recalcula sola; «Recalcular valor» quita la marca.
+   **Registro vacío:** una fórmula «más bajo es mejor» cuya fuente nunca ha
+   tenido registros (SST-01, C5-01) sale «Sin dato» hasta que alguien
+   capture el primero. **TI-01:** junio, julio y agosto de 2026 quedaron
+   validadas en 0 sin dato real; regréselas a pendiente, capture la
+   disponibilidad del reporte de Odoo.sh y valídelas (las metas se vuelven a
+   guardar).
+
 ### 2.4.1 Competencias, cliente automotriz e IA (desde 57.100.0)
 
 - **Exámenes y cursos:** en **Empleados → Competencias SGI**, «Exámenes y
@@ -167,6 +182,55 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
 - **Nombre del archivo** con folio en NC, 8D, auditoría, acta, incidente y
   AMEF.
 
+### 2.5.3 El Manual del SGI (MIID) desde Odoo (desde 57.105.0)
+
+**SGI → Dirección → Manual del SGI (MIID)** junta el texto fijo del manual
+(una sección por título, «Textos del manual») y los datos vivos del SGI
+(procesos con su mapa e interacción, política, objetivos, tipos de documento,
+controles operacionales, plazos de NC, correspondencia por cláusula,
+procedimientos anteriores, anexos y control de cambios).
+
+- **Lo que ve en pantalla y en «Vista en PDF (borrador)»** es la vista del
+  sistema, marcada «Borrador — no vigente». La revisión vigente es el
+  documento MIID de Documentos («PDF de la revisión vigente»).
+- **Textos del manual:** usted edita el texto de cada sección. Escriba
+  `[[datos]]` en un párrafo propio para decidir dónde van los datos del
+  sistema (si no, van al final). «Texto solo si no hay datos» deja el texto
+  como respaldo (11.1: la tabla escrita sale solo si la matriz de
+  cumplimiento no trae datos). La «Situación» de cada anexo es una nota por
+  renglón (12.1). Las secciones se archivan; no se borran.
+- **«Por confirmar»:** mientras una sección esté marcada (con la nota de qué
+  falta), ninguna revisión del MIID se envía ni se aprueba. La carga trae
+  cuatro: 1.2 (alcance de ISO 45001), 1.3 (justificación de las no
+  aplicabilidades), 11.2 (P-A13, P-A22 y P-A30 sin registrar) y 12.1
+  (situación de cada anexo). Lo quitan usted, Dirección o el Administrador
+  SGI; queda en el historial de la sección.
+- **Procesos:** el MIID solo se aprueba cuando **todos** los procesos activos
+  están «Vigente» (piloto no cuenta). La pantalla y el Diagnóstico dicen qué
+  falta.
+- **Solicitar el cambio:** con todo confirmado y los procesos publicados,
+  **Solicitar cambio del MIID** arma la solicitud de cambio documental de
+  siempre con el PDF generado, la revisión propuesta (la primera desde Odoo es
+  la 03) y las diferencias. Revísela y **Envíela** usted: si los datos
+  cambiaron desde que se armó, al enviar se genera otra vez el PDF (el
+  anterior queda renombrado «(sustituido el …)»). Firman: Elaboró usted,
+  Revisó el dueño de E2 y Aprobó Dirección. Lo que se firma es lo que se
+  publica: al aprobarse queda la revisión nueva (la anterior obsoleta, con su
+  archivo) y empiezan los acuses.
+- **Si los datos cambian a mitad de la firma:** se publica lo firmado y al día
+  siguiente le llega el aviso de que el MIID ya no coincide; solicite otro
+  cambio. Si las firmas se completan pero hay una sección por confirmar o un
+  proceso sin publicar, la aprobación espera y le llega un aviso; al quitar
+  el candado, la sincronización diaria con Sign la aprueba.
+- **Aviso diario:** cuando el MIID vigente ya no coincide con el sistema le
+  llega un solo aviso, «El MIID vigente ya no coincide con el sistema», con
+  las diferencias; vence a los 3 días hábiles y se cierra solo cuando vuelve
+  a coincidir. El MIID cargado del Dropbox no tiene contra qué comparar: no
+  avisa hasta la primera revisión aprobada desde Odoo.
+- **Antes de la primera aprobación:** capture los puestos del MIID vigente
+  (los acuses salen de ahí) y, si lo decide, corrija su revisión de 00 a 02
+  (el control de cambios imprime lo que hay en Odoo).
+
 ### 2.6 Seguridad y ambiente (desde 57.96.0)
 
 - **IPER de riesgo alto:** al controlarlo o cerrarlo, declare la jerarquía del
@@ -224,3 +288,34 @@ procedimiento sin publicar o desactualizado.
   cuenta las omisiones y guarda la última.
 - **«Un aviso sigue abierto aunque ya se resolvió.»** Los crons cierran solos
   los avisos cuya causa se resolvió en su siguiente corrida diaria.
+
+## Completar las propuestas de actividad (57.108.0)
+
+Quien propone una actividad contesta seis preguntas sencillas; lo técnico lo
+completa usted antes de aprobar. En la solicitud de Aprobaciones
+(«Proponer cambio a mi procedimiento»), pulse **Completar antes de aprobar**:
+abre la propuesta con todos los campos y arriba **lo que falta para
+publicarla** (criterio de terminado, escalamiento, vencimiento, pantalla de
+Odoo, instructivo o pasos). Complete y pulse **Guardar y actualizar la
+solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
+
+## Asistentes (57.109.0)
+
+- **Configurar una aprobación.** En Administración SGI → Aprobaciones del
+  SGI, pulse **Configurar** en el renglón: diga qué se aprueba (la acción de
+  un documento, una decisión que se pide en Aprobaciones o algo que se firma),
+  si es siempre o solo a veces, y revise la vista previa antes de
+  **Activar**. Las que solo necesitan una solicitud en Aprobaciones se activan
+  en lote con **Activar las sugeridas como solicitud**. Las que faltan le
+  llegan como aviso por proceso en Mis pendientes.
+- **Nuevo indicador.** En Administración SGI → Indicadores → Nuevo indicador:
+  elija qué quiere saber, de qué registros y cuáles cuentan (filtro visual);
+  la vista previa muestra cómo habrían salido los últimos tres periodos y
+  qué registros cuenta. Se crea en «prueba».
+- **Medición de una actividad.** En la pestaña de medición de la actividad,
+  el filtro es visual, la fecha y quién la hizo se eligen por su nombre, y
+  «Lo que cuenta hoy» muestra los registros de 30 días y a quién se le
+  atribuyen.
+- **Riesgos reportados.** Cualquiera puede reportar un riesgo u oportunidad
+  en SGI → Reportar; a usted le llega «Evaluar riesgo reportado» para
+  confirmar probabilidad, impacto, proceso y categoría.

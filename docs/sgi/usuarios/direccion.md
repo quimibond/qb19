@@ -34,6 +34,10 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
    semáforo y la semana anterior, y la tabla **Por dueño de proceso** (ver
    2.5).
 
+Desde 57.104.0, un indicador sin ninguna medición con dato dice **Sin dato**
+en el Tablero, en los «Últimos 6 periodos» y en el texto de la revisión por
+la dirección, en lugar de 0. Un 0 que sí se midió se muestra como 0.
+
 ### 2.2 La revisión por la dirección
 
 1. **Revisión por la dirección → Nuevo**, con el periodo (desde y hasta).
@@ -42,7 +46,10 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
    proveedores y, desde 57.97.0, incidentes y desempeño de SST, cambios en
    el contexto y las partes interesadas, aspectos ambientales significativos
    y oportunidades de mejora) con los datos reales del periodo, y trae los
-   **acuerdos abiertos de revisiones anteriores**. Se pueden ajustar.
+   **acuerdos abiertos de revisiones anteriores**. Se pueden ajustar. Desde
+   57.104.0, «Validar mediciones» no valida las mediciones manuales en 0 sin
+   nota: las lista en el chatter de la revisión para que su responsable las
+   capture.
 3. En la reunión, capture los **Acuerdos** con responsable y fecha.
 4. Escriba las **Conclusiones (9.3.3)**: conveniencia, adecuación, eficacia
    y mejora, cambios y recursos. Sin ellas no se marca realizada; si no hay
@@ -82,6 +89,18 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
   instrumento.
 - La **tendencia** de un indicador promedia las mediciones del periodo (antes
   las sumaba) y abre con el filtro «Con dato».
+
+### 2.4.2 El Manual del SGI (MIID) (desde 57.105.0)
+
+**SGI → Dirección → Manual del SGI (MIID)** muestra el manual armado desde
+Odoo (texto fijo más los datos vivos), marcado «Borrador — no vigente»; la
+revisión vigente es «PDF de la revisión vigente». Usted firma **«Aprobó»**
+del MIID en Sign (si nadie se configuró en
+`quimibond_sgi.miid_approver_user_id`, el primer integrante de Dirección de
+Operaciones). Puede quitar «Por confirmar» de una sección cuando lo
+confirme (en «Textos del manual»); el texto lo edita el Jefe MAST. Ninguna
+revisión se aprueba con secciones por confirmar o con procesos que no estén
+vigentes.
 
 ### 2.5 El correo de los lunes (salud del SGI)
 

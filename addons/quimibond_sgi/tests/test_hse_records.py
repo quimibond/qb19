@@ -40,7 +40,8 @@ class TestHseRecords(TransactionCase):
     def test_02_recorrido_csh(self):
         inspection = self.env['sgi.csh.inspection'].create({
             'date': date(2046, 3, 5), 'area': 'Tejido',
-            'finding_ids': [(0, 0, {'description': 'Guarda de máquina suelta', 'severity': 'alta'}),
+            'finding_ids': [(0, 0, {'description': 'Guarda de máquina suelta', 'severity': 'alta',
+                                     'responsible_id': self.rh.id}),
                             (0, 0, {'description': 'Pasillo obstruido', 'severity': 'baja'})],
         })
         self.assertEqual(inspection.name, 'CSH-2046-03-05')
@@ -50,6 +51,10 @@ class TestHseRecords(TransactionCase):
         guard.action_generate_nc()
         self.assertEqual(guard.alert_id.sgi_origin_type, 'recorrido_csh')
         self.assertEqual(guard.alert_id.sgi_classification, 'mayor')
+        # 57.102.0: el responsable del hallazgo contesta la NC.
+        self.assertEqual(guard.alert_id.sgi_responsible_ids, self.rh)
+        self.assertEqual(guard.alert_id.user_id, self.rh)
+        self.assertEqual(guard.alert_id.sgi_requester_id, self.env.user)
         aisle.disposition = 'corregido'
         inspection.action_close()
         self.assertEqual(inspection.state, 'cerrado')

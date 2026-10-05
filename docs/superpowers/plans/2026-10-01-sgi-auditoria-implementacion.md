@@ -1220,4 +1220,16 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
   solicitud de desarrollo, responsiva y eficiencias, copia guardada del acta,
   ficha del indicador, diagramas en PDF, programa contra realizado y mapa de
   calor por instrumento.
+- **Después del plan (2026-10-05):** 57.104.0 «Indicadores: sin dato y
+  cálculos» (`docs/superpowers/plans/2026-10-05-sgi-57-104-0-indicadores.md`),
+  segunda entrega después del mapa de la auditoría: «Sin dato» en pantalla,
+  mediciones con dato en las gráficas, recálculo diario de sin dato y
+  capturadas recientes, «Medir desde» que marca las anteriores, manual en 0
+  sin nota, registro vacío y fórmulas de TR-01, C5-02, C2-06 y RH-02.
+- **Después del plan (2026-10-05):** 57.105.0 «MIID desde Odoo»
+  (`docs/superpowers/plans/2026-10-05-sgi-57-105-0-miid.md`), tercera entrega
+  después del mapa de la auditoría: el Manual del SGI sale de Odoo (texto fijo
+  por sección con el borrador Rev. 03 más los datos vivos), «Por confirmar» y
+  candados (procesos vigentes), solicitud de cambio por el flujo documental
+  de siempre con huella, aviso diario y Diagnóstico. No aprueba la Rev. 03.
 - El tablero de «Salud del SGI» (entregado como 57.99.0 el 2026-10-02: Tablero → «Salud del SGI» y correo de los lunes) se revisa cada semana con Dirección desde el primer correo; hasta ese despliegue, las cifras de la sección 2 del reporte se re-miden a mano cada dos semanas con las consultas del reporte.

@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.101.0',
+    'version': '19.0.57.109.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -113,6 +113,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_supplier_nc_data.xml',
         'data/sgi_offboarding_plan_data.xml',
         'data/sgi_sst_sequences.xml',
+        # 57.105.0: MIID, texto del borrador Rev. 03 (noupdate).
+        'data/sgi_miid_sections.xml',
         # views
         'views/sgi_area_views.xml',
         'report/report_compliance_matrix.xml',
@@ -195,6 +197,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_sgi_diagram.xml',
         'report/report_audit_program.xml',
         'report/report_risk_heatmap.xml',
+        # 57.105.0: MIID desde Odoo (usa paperformat_sgi_carta y report_sgi_diagram_body).
+        'report/report_miid.xml',
         'report/report_dev_request.xml',
         'report/report_machine_sheet.xml',
         'report/report_calibration_label.xml',
@@ -210,6 +214,10 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
+        'data/sgi_indicator_sources.xml',
+        'views/sgi_activity_execution_views.xml',
+        'views/sgi_indicator_wizard_views.xml',
+        'views/sgi_measure_review_views.xml',
         'views/sgi_current_documents_views.xml',
         # 57.0.0 (entrega 6): «Del Dropbox a Odoo» (rutinas, buscador, avance).
         'views/sgi_dropbox_views.xml',
@@ -232,6 +240,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # 57.94.0 «SGI en planta»: tabletas de planta.
         'views/sgi_floor_views.xml',
         'views/sgi_training_effectiveness_views.xml',  # 57.100.0 (N-13): eficacia y exámenes
+        # 57.105.0: pantalla del MIID (antes de los menús que la abren).
+        'views/sgi_miid_views.xml',
         'views/sgi_menus.xml',
     ],
     'demo': [

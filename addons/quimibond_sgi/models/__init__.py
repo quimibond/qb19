@@ -120,3 +120,23 @@ from . import sgi_ai
 # sgi.diagram, programa de auditorías y riesgo, todos definidos antes).
 from . import sgi_indicator_sheet
 from . import sgi_report_print
+# 57.103.0: registro de cumplimiento por actividad, responsable y periodo
+# (hereda la actividad y lo lee Mis pendientes, ambos definidos antes).
+from . import sgi_activity_execution
+# 57.105.0: MIID desde Odoo (hereda approval.request —su extensión de Sign ya
+# cargó— y sgi.cron; usa sgi_report_print).
+from . import sgi_miid
+# 57.107.0: revisión mensual de la medición por el dueño del proceso (hereda
+# la actividad y la lee Mis pendientes, ambos definidos antes).
+from . import sgi_measure_review
+# 57.108.0: proponer una actividad en lenguaje normal (hereda la propuesta y
+# approval.request, definidos antes en sgi_mp_change).
+from . import sgi_mp_change_simple
+# 57.109.0: asistente de aprobaciones (hereda el rol con su aprobación nativa
+# y la actividad, definidos antes).
+from . import sgi_approval_wizard
+# 57.109.0: asistente «Nuevo indicador» y medición de la actividad sin nombres
+# técnicos (heredan indicador, término y actividad, definidos antes).
+from . import sgi_indicator_wizard
+# 57.109.0: reportar un riesgo u oportunidad en lenguaje normal (crea sgi.risk).
+from . import sgi_risk_report

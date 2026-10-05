@@ -13,6 +13,572 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.109.0 — 2026-10-05
+
+**Asistentes en lenguaje normal: aprobaciones, indicadores, medición y
+riesgos** (pedido de Jose del 2026-10-05, «haz todo lo que propones»).
+Modelos nuevos `sgi.indicator.source` y los asistentes
+`sgi.approval.wizard`, `sgi.approval.wizard.button`,
+`sgi.indicator.wizard` y `sgi.risk.report`; tres menús; migración
+`post-migrate`.
+
+### Agregado
+
+- **Configurar aprobación** (Aprobaciones del SGI → «Configurar» en cada
+  renglón; Jefe MAST): tres preguntas. ¿Qué se aprueba? (un documento de
+  Odoo y qué acción, elegida por su etiqueta del formulario; una decisión
+  sin documento, que se pide en Aprobaciones; o algo que se firma en papel),
+  ¿siempre o solo a veces? (campo, operador y valor) y una vista previa
+  («Cuando Planeador pulse «Confirmar» en Orden de compra con total mayor
+  que 50000, Odoo le pedirá la aprobación a …»). «Activar» la escribe en el
+  rol y la sincroniza.
+- **Sugerencia por rol** (columna «Sugerencia»): botón conocido del
+  documento que materializa la actividad, o solicitud en Aprobaciones.
+  **«Activar las sugeridas como solicitud»** en lote (solo las que no
+  bloquean botones; las de botón, una por una).
+- Faltante **«Aprobación sin activar»** (`approval_missing`, advertencia) y
+  un aviso al Jefe MAST por proceso en Mis pendientes, que se cierra solo
+  al activarlas; los recalcula el cron nocturno de aprobaciones.
+- **Nuevo indicador** (Administración SGI → Indicadores; Jefe MAST): ¿qué
+  quiere saber? (qué porcentaje cumple, cuántos hay, cuánto suman), ¿de qué
+  registros? (fuente con nombre de negocio), ¿cuáles cuentan? (filtro visual
+  de Odoo), meta, sentido y frecuencia. La vista previa calcula los últimos
+  tres periodos con el mismo motor de la fórmula, sin guardar nada, y «Ver lo
+  que cuenta el último periodo» abre los registros. Crea el indicador en
+  «prueba» con sus términos.
+- **Fuentes de indicadores** (Configuración): doce fuentes de inicio
+  (facturas de cliente y de proveedor, notas de crédito, pedidos de venta,
+  órdenes de compra, entregas, recepciones, órdenes de producción, controles
+  de calidad, NC, mantenimiento, soporte); las de un modelo no instalado no
+  se ofrecen.
+- **Reportar → Riesgo u oportunidad** (cualquier usuario del SGI): qué puede
+  pasar, qué pasaría, en qué proceso, qué tan seguido y qué tan grave (o qué
+  tanto ganaríamos) en palabras, y qué se hace hoy. Las respuestas proponen
+  probabilidad e impacto de la matriz de riesgos y oportunidades; el Jefe
+  MAST recibe «Evaluar riesgo reportado».
+
+### Cambiado
+
+- **Medición de la actividad:** el filtro de evidencia es el filtro visual
+  de Odoo; «Fecha que cuenta» y «Quién la hizo» se eligen por su etiqueta
+  (antes, `create_date` y `write_uid` escritos a mano), y «Lo que cuenta
+  hoy» dice cuántos registros hubo en 30 días y a quién se le atribuyen.
+
+### Datos de producción
+
+- 2026-10-05, por MCP con el visto bueno de Jose: S6.03 («Dar usuario,
+  correo y equipo al nuevo ingreso…», aprueba el Director de Finanzas y
+  Administración) pasó de «Botón de Odoo» sin configurar a «Solicitud en
+  Aprobaciones»; categoría 22 activa con su aprobador.
+
+### Migración
+
+- `post-migrate`: faltantes de las actividades con rol «Aprueba» y avisos
+  al Jefe MAST. Esperado: unos 64 roles sin activar de 82.
+
+## 19.0.57.108.0 — 2026-10-05
+
+**Proponer una actividad en lenguaje normal** (pedido de Jose del
+2026-10-05: «hay muchos campos técnicos que un usuario común no
+entendería»). En producción había tres propuestas, las tres en borrador y
+dos vacías. Sin campos guardados nuevos salvo `trigger_note`; sin migración.
+
+### Cambiado
+
+- **La propuesta (`sgi.activity.change`) es una pantalla de seis
+  preguntas:** ¿qué se hace?, ¿cada cuándo? (cada vez que pasa algo y qué
+  la dispara, diario, cada semana y qué día, cada mes y a más tardar qué
+  día hábil, cada año y qué día, u otra), ¿quién la hace? (yo, otro puesto o
+  como está hoy), ¿dónde se hace? (Odoo y la pantalla si la sabe, papel,
+  otro sistema, correo o teléfono, trabajo físico), ¿cómo sabe que quedó
+  bien? y ¿por qué? Las preguntas 2 a 4 son campos calculados con inverso
+  sobre la cadencia, el vencimiento, el canal y el rol «Ejecuta»: la ficha
+  técnica y la pantalla sencilla leen y escriben lo mismo.
+- Abajo, en vivo, **cómo quedará en su procedimiento** («Cada lunes,
+  Planeador: publicar el programa semanal en Odoo. Terminada cuando…») y
+  avisos en lenguaje normal (verbo vago, sin criterio de terminado, sin qué
+  la dispara, sin motivo).
+- Cambiar la cadencia limpia el vencimiento que ya no aplica.
+
+### Agregado
+
+- **«Qué la dispara»** (`trigger_note`): en las «por evento», al aprobarse
+  queda al inicio de la descripción («Se hace cuando…») y sale en el antes
+  → después.
+- **Completar antes de aprobar** (Jefe MAST): botón en la solicitud de
+  Aprobaciones que abre la propuesta con todos los campos y **lo que falta
+  para publicarla**; «Guardar y actualizar la solicitud» lleva lo completado
+  al antes → después de la solicitud. «Ver todos los campos» en la pantalla
+  sencilla, solo para el Jefe MAST.
+- Manuales: operador o supervisor (2.6) y Jefe MAST.
+
+## 19.0.57.107.0 — 2026-10-05
+
+**Revisión mensual de la medición por el dueño del proceso** (punto 4 de
+«Medición por revisar», aprobado por Jose el 2026-10-05). Modelos nuevos
+`sgi.measure.review`, `sgi.measure.review.line` y el asistente
+`sgi.measure.review.reject`; un menú en Diagnóstico. Sin migración: el cron
+de medición crea las del mes en su siguiente corrida.
+
+### Agregado
+
+- **Revisión mensual:** cada mes, por cada actividad que se mide sola
+  (Registro en Odoo o Por su entregable) y tuvo evidencia en los últimos 60
+  días, el dueño del proceso (sin usuario activo, el Jefe MAST) recibe en
+  **Mis pendientes** «Revisar medición de …» con tres registros al azar de
+  la evidencia (nombre, fecha que cuenta la medición y a quién se le
+  atribuye, con botón para abrirlos). Vence en 5 días hábiles (parámetro
+  `quimibond_sgi.measure_review_business_days`).
+- Contesta **«Sí, esto es lo que hago»** o **«No corresponde»** con nota
+  obligatoria (qué está mal). Contestan quien revisa o el Jefe MAST.
+- Faltante **«Revisión del dueño: no corresponde»** (`review_rejected`,
+  advertencia) mientras la última revisión contestada diga «No
+  corresponde»; entra en Diagnóstico → Medición por revisar.
+- **Diagnóstico → Revisiones de medición** (lista por estado).
+- Paso nuevo en el cron de medición (diario, idempotente: una por actividad
+  y mes). Al crear las del mes, las pendientes de meses anteriores quedan
+  «Sin respuesta».
+
+## 19.0.57.106.0 — 2026-10-05
+
+**Medición por revisar** (pedido de Jose del 2026-10-05: asegurar que cada
+actividad apunte al menú correcto y que la medición capture bien). Sin
+modelos ni campos guardados nuevos; migración `post-migrate` que recalcula
+faltantes.
+
+### Agregado
+
+- Faltante **«Evidencia que no aparece»** (`measure_never`, advertencia):
+  la actividad se mide sola y su medición no encuentra registros, o el
+  último tiene más de 60 días (o la ventana de su cadencia si es más larga,
+  380 días la anual). Las recién creadas esperan el mismo plazo. Dice si el
+  filtro de evidencia es inválido.
+- Faltante **«Atribución débil»** (`weak_attribution`, advertencia): se
+  atribuye con `write_uid` (el último que editó, no quien hizo la
+  actividad) o, en 4 semanas, hay ejecuciones de otro puesto o de cuentas
+  compartidas y la adherencia es menor a 50 %.
+- El cron de medición recalcula los faltantes de las actividades con modelo
+  de medición después de medir (solo escribe los que cambian).
+
+### Cambiado
+
+- **«Pantalla que no va con su medición»** también compara los menús que
+  lanzan una acción de servidor (Traslados, No conformidades,
+  Reclamaciones…): usa el modelo sobre el que corre la acción. Las acciones
+  de cliente (reportes, tableros) siguen sin compararse.
+- Diagnóstico → «Pantallas que no van con su medición» pasa a **«Medición
+  por revisar»**: los tres faltantes, agrupados por faltante.
+
+### Migración
+
+- `post-migrate`: recalcula los faltantes de las actividades con pantalla o
+  con modelo de medición y anota cuántos salen de cada uno. Esperado (MCP,
+  2026-10-05): unas 39 sin un solo registro, todas «por evento».
+## 19.0.57.105.0 — 2026-10-05
+
+**MIID desde Odoo** (especificación y borrador Rev. 03 de Jose del
+2026-10-05; tercera entrega después del mapa de la auditoría). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-105-0-miid.md` (escrito como
+57.103.0; sus «Correcciones de la revisión del plan» prevalecen). Tres
+modelos nuevos (`sgi.miid.section`, `sgi.miid.row.note`, `sgi.miid`), cuatro
+campos guardados nuevos en `approval.request` (`sgi_miid_hash`,
+`sgi_miid_snapshot`, `sgi_miid_generated`, `sgi_miid_blocked_note`), un
+menú, sin herencias de vista propias, sin migración. **No congela ni aprueba
+la Rev. 03.**
+
+### Agregado
+
+- **Manual del SGI (MIID)** en SGI → Dirección (entre «Revisión por la
+  dirección» y «Política integral»; todo Usuario SGI y Auditor): vista del
+  sistema (texto fijo + datos vivos) marcada «Borrador — no vigente», lo que
+  impide aprobar, situación «Al día / Desactualizado / Sin línea base / Sin
+  MIID vigente», diferencias, historial de revisiones, «Vista en PDF
+  (borrador)», «PDF de la revisión vigente» y «Textos del manual».
+- **Secciones del MIID** (`sgi.miid.section`): una por título y subtítulo
+  del borrador Rev. 03; numeral, nivel, texto, el bloque de datos que llevan
+  (la marca `[[datos]]` decide dónde), «Texto solo si no hay datos», **«Por
+  confirmar»** con nota y notas por renglón (la «Situación» de los anexos,
+  `sgi.miid.row.note`). Las edita el Jefe MAST; «Por confirmar» lo quitan el
+  Jefe MAST, Dirección o el Administrador SGI, con rastro (seguimiento y
+  nota en el chatter). Se archivan, no se borran.
+- **Bloques vivos:** identificación, procesos (con mapa e interacción 4.4 en
+  el PDF, solo los de la empresa), política, objetivos e indicadores, tipos
+  de documento y su clave, controles operacionales, plazos de NC
+  (`quality.alert._sgi_deadline_days()` y los parámetros de escalamiento y
+  eficacia), correspondencia por cláusula (de la matriz de cumplimiento; la
+  tabla escrita es el respaldo), procedimientos anteriores por proceso (sin
+  P-I01 ni su familia, L-001), anexos y control de cambios. Un bloque sin
+  sección sale en «Datos del sistema sin sección»; sin datos, cada bloque
+  dice su estado vacío.
+- **Candados:** ninguna revisión del MIID se envía, se reenvía a firma ni se
+  aprueba mientras haya secciones «Por confirmar» o procesos activos que no
+  estén «Vigente» (piloto no cuenta). Por Sign no se interrumpe la
+  sincronización: la solicitud espera, se anota una vez y el Jefe MAST
+  recibe un aviso (clave `miid_retenido:<solicitud>`); al levantarse los
+  candados, la sincronización diaria la aprueba y cierra el aviso.
+- **«Solicitar cambio del MIID»** (Jefe MAST): arma o abre la solicitud de
+  cambio documental de siempre (categoría «Modificación de documento SGI»,
+  referencia MIID) con el PDF generado, la huella, la foto de los datos y las
+  diferencias; la primera revisión desde Odoo es la 03. Nunca se envía ni se
+  aprueba sola. Al enviar, si los datos cambiaron o el PDF se generó con
+  candados, se genera otra vez y el anterior se renombra «(sustituido el
+  …)». Lo que se manda a firmar es lo que se publica: al aprobarse se
+  publica como «MIID Rev. NN.pdf» (DOC-1: documento nuevo, la anterior
+  obsoleta con su archivo, aviso de difusión y acuses) y la revisión nueva
+  lleva la huella; el PDF firmado de Sign se archiva en la revisión nueva.
+- **Aviso diario** al Jefe MAST (paso «MIID al día» de «SGI: Vencimientos
+  documentales»): «El MIID vigente ya no coincide con el sistema», uno por
+  empresa (`miid_desactualizado:<empresa>`), con las diferencias, vence a 3
+  días hábiles y se cierra solo. Sin línea base no avisa.
+- **Diagnóstico → Documental:** «MIID al día», «MIID desactualizado desde
+  …», «El MIID vigente no se generó desde Odoo», «No hay MIID vigente» y, si
+  hay candados, «La siguiente revisión del MIID no se puede aprobar».
+- Parámetro `quimibond_sgi.miid_approver_user_id` (no se siembra): quién
+  firma «Aprobó» el MIID; vacío = primer integrante activo de Dirección de
+  Operaciones (SGI).
+- `docs/sgi/transicion/miid-rev03-borrador.md`: el borrador de Jose (fuente
+  de la semilla).
+
+### Cambiado
+
+- `sgi_format_page_footer` acepta un pie ya armado (`sgi_fmt_info`; con
+  `plain` sale sin «Formato controlado del SGI:»). Los demás reportes no
+  cambian.
+- `report_sgi_diagram_body`: el cuerpo del PDF de diagramas (57.101.0) se
+  separó para reusarlo en el MIID; el PDF no cambia.
+
+### Datos de producción
+
+- En el despliegue se crean las **46 secciones** del MIID (empresa del SGI,
+  `noupdate`) con el texto [FIJO] del borrador Rev. 03 y **15 notas** de la
+  columna «Situación» de los anexos. Quedan **por confirmar**: 1.2 (alcance
+  de ISO 45001), 1.3 (justificación de las no aplicabilidades), 11.2 (P-A13,
+  P-A22 y P-A30 no registrados en Odoo) y 12.1 (situación de cada anexo).
+  No se cargan la portada ni 12.3 («Pendiente antes de aprobar»).
+- Nada más cambia: **no** se crea solicitud de cambio ni se aprueba la Rev.
+  03; el documento 3495 sigue vigente sin tocar (revisión 0 en Odoo; 02 en
+  el borrador), igual la categoría de cambio documental, los parámetros y
+  las actividades. La primera corrida diaria (o la primera apertura) crea
+  el registro `sgi.miid` de la empresa del SGI, sin aviso (sin línea base).
+- **En el Diagnóstico** las líneas del MIID salen como aviso (sin línea base
+  y los candados: 4 secciones por confirmar, 14 procesos sin publicar), así
+  que «Difusión documental operando» deja de verse hasta que se aprueba la
+  primera revisión desde Odoo.
+- **Para el Jefe MAST** (la lista 12.3 del borrador, que no se carga):
+  publicar los 14 procesos (hoy 13 en borrador y C2 en piloto); confirmar el
+  alcance de ISO 45001; confirmar la justificación de 1.3; confirmar la
+  situación de cada anexo; registrar P-A13, P-A22 y P-A30; capturar los
+  puestos del MIID (3495); decidir si corrige la revisión de 3495 a 02
+  (hasta entonces el control de cambios imprime «00»); después «Solicitar
+  cambio del MIID», revisión del Jefe MAST y aprobación del Director de
+  Operaciones en Sign.
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó Q1–Q17 por omisión el 2026-10-05, con dos ajustes (Q7 y quién
+quita «Por confirmar»): (Q1) Al cargar el borrador se quitan las cifras y
+fechas del 5-oct que ahora son vivas (identificación sin «Clave» ni
+«Revisión»; 4.4 «mediante los procesos de la tabla siguiente»; 10.2
+«Abierta» remite a la tabla de plazos; 11.2 sin «Según el registro de Odoo
+al 5 de octubre»), las frases «por confirmar» pasan a la nota y «Jefe de
+MAST» se escribe «Jefe MAST» (glosario); «Qué cambia» (tabla) y 3 (término
+«Proceso») dicen «los procesos del SGI» en vez de «14 procesos»; 7.5 y 8.2 imprimen los nombres de
+tipos y controles de producción («Procedimiento (P)», no «Procedimiento de
+proceso»). (Q2) La huella cubre textos, notas, procesos, flujos, política,
+objetivos e indicadores, tipos y patrones, controles, anexos,
+procedimientos anteriores, plazos de NC y normas con numerales; no los
+procesos por cláusula ni la revisión, emisión o control de cambios del
+MIID. (Q3) Comparación diaria y aviso a 3 días hábiles. (Q4) «Aprobó» lo
+firma Dirección; hoy la categoría la firma solo Areli (Elaboró y Revisó en
+una firma) y Dirección (usuario 35) firma «Aprobó» y tiene correo. (Q5) La
+solicitud propone la Rev. 03; el 3495 no se toca y se recomienda corregirlo a
+mano a 02. (Q6) Sin línea base, sin aviso. (Q7, ajustado) Se publica el PDF
+que se firmó (no se regenera un PDF final); el que completa Sign queda como
+evidencia. (Q8) Acuses por la regla de siempre; el Jefe MAST captura antes
+los puestos del 3495. (Q9) 11.1 sale de la matriz; la tabla escrita es el
+respaldo. (Q10) Procedimientos anteriores por «Lo sustituye el proceso» o,
+si falta, el proceso del documento. (Q11) Seis plazos de NC con su unidad.
+(Q12) Pantalla para todo Usuario SGI y Auditor; textos y solicitud, Jefe MAST
+y Administrador; «Por confirmar» también lo quita Dirección. (Q13) Marca
+«Borrador — no vigente» en la vista (franja, marca de agua y pie) y en el
+PDF de una solicitud generada con candados. (Q14) Mapa de procesos e
+interacción 4.4 en el bloque de procesos (solo en el PDF). (Q15) P-I01 no se
+lista. (Q16) Solo «Vigente» cuenta como publicado. (Q17) Sale como
+57.105.0, tercera entrega después del mapa.
+
+**Desviaciones del plan:** el PDF de la solicitud solo lleva la marca de
+borrador si se generó con candados (al enviar se regenera sin ellos), porque
+con Q7 ajustado ese PDF es el que se publica; el historial de la pantalla es
+un Html calculado con sudo (`history_html`, 1.12-4) y `revision_ids` queda
+para el código; la tabla de procedimientos anteriores toma solo claves del
+Dropbox (`sgi_legacy_family`), no los procedimientos de proceso nuevos;
+controles, anexos y procedimientos se leen de la empresa del MIID (no los
+que no tienen empresa); el menú y la ruta entraron con la pantalla.
+
+**Revisión final:** la nota y el aviso de una aprobación retenida dicen
+«Firmas completas» solo si la firma de Sign terminó (si no, «Firma en curso
+(N de M)»; el aviso de la solicitud es neutro); el PDF firmado de una
+solicitud rechazada o cancelada sí se archiva (deja de reintentarse); el
+orden de las secciones entra a la huella («Sección movida de lugar»);
+`approval.request` entra a `NOTICE_MODELS`, así que el aviso «MIID
+retenido» (con clave) sale en Mis pendientes; crear el registro `sgi.miid`
+de la empresa tolera que otra transacción lo cree al mismo tiempo (sin
+ERROR en el log); la comparación diaria es solo de la empresa del SGI.
+
+**Pruebas:** `test_miid` (21 casos).
+
+### Solo se verifica en el build de Odoo.sh
+
+- `test_miid` 21/21 y el suite `--test-tags /quimibond_sgi` sin fallos
+  nuevos ni `ERROR` en el log (en especial `test_doc_change`,
+  `test_doc_change_sign`, `test_interfaz`, `test_reportes_diagramas`,
+  `test_menu_tree`, `test_bandeja`, `test_rendimiento_robustez`,
+  `test_usted`); ningún WARNING nuevo de etiquetas o roles.
+- QWeb: `sgi_fmt_info` sin definir vale `None` en `sgi_format_page_footer`
+  (el pie de los demás reportes no cambia).
+- `html_to_inner_content` existe en `odoo.tools.mail` (si no, la huella usa
+  el respaldo por expresión regular).
+- La semilla: 46 secciones con sus tablas (`table table-sm table-bordered`
+  se conserva al sanear), negritas, `[[datos]]` en 4.4, 5.2, 7.5, 8.2 y 10.2.
+- «Vista en PDF (borrador)»: la marca de agua sale en **cada** hoja con
+  wkhtmltopdf, recuadros «POR CONFIRMAR», portada e índice, pie en cada hoja;
+  la tabla de procesos, la interacción 4.4 (14 × 14) y la correspondencia
+  caben en carta vertical.
+- La pestaña «Vista del sistema» (Html calculado, `sanitize=False`) se ve
+  completa en solo lectura, como Usuario SGI y como Auditor.
+- Como Jefe MAST, «Solicitar cambio del MIID» crea la solicitud Rev. 03 y
+  «Enviar» se detiene con el mensaje de candados (procesos en borrador en la
+  copia de producción).
+- El PDF a firmar en Sign (F-P-G01-06 + MIID + hoja de firmas) se arma con un
+  MIID de 30 a 50 hojas; tiempo de `_sgi_snapshot()` en el shell (meta:
+  menos de 1 s) y de abrir la pantalla.
+
+## 19.0.57.104.0 — 2026-10-05
+
+**Indicadores: sin dato y cálculos** (diagnóstico de producción del
+2026-10-05: 35 de 106 indicadores activos con «Último valor 0»; segunda
+entrega después del mapa de la auditoría). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-104-0-indicadores.md`. Un campo
+guardado nuevo (`sgi.indicator.measure.sgi_value_by_hand`, nace en False sin
+respaldo) y uno calculado sin guardar (`sgi.indicator.sgi_last_value_label`);
+sin modelos, menús, ACL ni herencias de vista. Nada se borra; ninguna
+medición validada cambia.
+
+### Agregado
+
+- **«Valor corregido a mano»** (`sgi_value_by_hand`): una persona que cambia
+  el valor de una medición automática la marca; el recálculo diario ya no la
+  toca. «Recalcular valor» y «Recalcular ahora» quitan la marca. El sistema
+  (sudo) y las rutas de cálculo (contexto `sgi_calc_write`) no marcan.
+- Parámetro `quimibond_sgi.indicator_recompute_months` (2, no se siembra):
+  meses hacia atrás del recálculo diario.
+- `_sgi_formula_fixes_57104` y `_sgi_deliverable_fix_57104`: correcciones de
+  TR-01, C5-02 y C2-06 con candado (solo si siguen exactamente como el
+  2026-10-05; si no, «distinto» en el log y no se tocan).
+
+### Corregido
+
+- **«Sin dato» no es 0:** la lista de indicadores, el Tablero, la pestaña
+  Indicadores del proceso, Mis indicadores (lista y celular), el texto de la
+  revisión por la dirección, los «Últimos 6 periodos» y el diagrama de
+  indicadores dicen «Sin dato» cuando ninguna medición tiene dato (16
+  indicadores en producción); un 0 real se muestra (el diagrama pintaba
+  «—»). Las mediciones sin dato (y pendientes en la lista) no muestran el 0
+  guardado. CA-02 en la revisión solo toma mediciones con dato.
+- **Gráficas:** «Mediciones» (Mis indicadores, proceso, celular) y el menú
+  Administración → Indicadores → Mediciones abren con «Con dato» y «Míos»;
+  el menú ya no abre con «Pendientes» (juntos daban vacío).
+- **Recálculo:** el cron diario re-mide también las «sin dato» y las
+  capturadas no validadas de los últimos 2 meses (E1-01 se quedaba en 0/80
+  porque las validaciones llegan después del cálculo; C2-05 y E2-02 nunca
+  volvían a medir). Nunca toca validadas, indicadores de foto ni de salud,
+  mediciones con NC, con causa o acciones, ni las corregidas a mano. Solo
+  escribe si algo cambió (antes y después en el chatter de la medición, un
+  solo rastro); una capturada nunca regresa a pendiente.
+- **Medir desde:** al cambiarla, las mediciones no validadas anteriores
+  pasan a «Sin dato» con el valor anterior en la nota; el cálculo de un
+  periodo anterior da «Sin dato» (último cálculo «Antes de medir desde»),
+  también en el desglose por línea de negocio.
+- **Manual sin valor:** una medición manual en 0 sin numerador, denominador
+  ni nota ya no se marca capturada ni se valida (TI-01 jun–ago se validó
+  así); para un 0 real, el responsable lo explica en la nota. Solo aplica a
+  personas; «Validar mediciones» de la revisión (P-40) las salta y las lista.
+- **Registro vacío:** una fórmula «más bajo es mejor» con el numerador en 0 y
+  un término cuya fuente nunca ha tenido registros (SST-01: `sgi.incident`
+  vacío) o cuyo campo sumado nunca se ha capturado (C5-01: metros
+  reclamados) da «Sin dato» con nota, no un verde falso.
+- **TR-01:** numerador y denominador son las mismas NC (levantadas en el
+  periodo, sin canceladas); el numerador, las que ya están cerradas. También
+  para instalaciones nuevas (`_CIERRE_NC_TERMS`).
+- **C5-02:** cuenta las reclamaciones cerradas en 30 días naturales desde su
+  alta, no las que tienen verificación de eficacia.
+- **C2-06:** el entregable «Salida validada» deja el campo de Studio «Tipo de
+  transporte» (0 de 729 salidas) y cuenta la salida con sello de embarque;
+  fórmula y fuente reescritas. Seguirá en 0 % rojo hasta que Logística
+  capture sellos: es el dato real.
+- **RH-02:** solo empleados de la empresa del SGI (D-03); la medición guarda
+  numerador (competencias vigentes) y denominador (requeridas), y la
+  evidencia lista las brechas de esos mismos empleados.
+
+### Cambiado
+
+- Botón «Recalcular mediciones pendientes» → **«Recalcular mediciones»**:
+  sin selección, las pendientes (como antes); con indicadores seleccionados,
+  todo lo no validado de ellos, sin ventana de meses.
+- Los errores del recálculo por medición quedan como aviso (WARNING) en el
+  log, no como error.
+- Al pasar de «sin dato» a capturada por el recálculo, la fecha de captura
+  (plazo de validación y del plan) es la del recálculo. **Al día siguiente
+  del despliegue, los meses viejos que el cron vuelva a medir (E1-01, E2-02,
+  C2-05, …) aparecerán en Mis pendientes de sus responsables como «Validar
+  medición»**, con plazo contado desde ese día.
+- El recálculo diario corre **después** de la medición mensual del cron y
+  tiene tiempo tope (240 s): lo que no alcanza queda para el día siguiente,
+  que sigue desde donde se quedó (`quimibond_sgi.indicator_recompute_cursor`,
+  lo escribe el cron); el log dice cuántas faltan.
+- El recálculo conserva la nota que escribió una persona (la detecta por el
+  seguimiento de la nota): agrega la nota nueva del cálculo y deja la suya.
+- «Validar seleccionadas» de Mis pendientes salta, como P-40, las manuales
+  sin valor capturado y las dice en el aviso, en vez de fallar todo el lote.
+- «Registro vacío» no se presume cuando el campo sumado no está guardado en
+  la base (no se puede buscar por él).
+- `quimibond_sgi_mapa` 19.0.1.1.2: el mapa trae las mismas fórmulas de
+  TR-01, C5-02 y C2-06 y el filtro nuevo del entregable C2-SALIDA. Queda pendiente la
+  entrada «aplica» del mapa que usa el mismo campo de Studio
+  (`x_studio_tipo_de_transporte = 'Transporte Interno'`): no se tocó.
+
+### Migración
+
+- `migrations/19.0.57.104.0/post-migrate.py`, idempotente, con conteos en el
+  log: P-a indicadores con «Medir desde» → mediciones no validadas
+  anteriores a «Sin dato» con nota (esperado: 9, todas de S6-02); P-b
+  términos de TR-01 (51) y C5-02 (42) con candado, más su fórmula y fuente
+  (esperado: «corregido» los dos); P-c entregable de C2-06 (165) con candado
+  (esperado: «corregido»). No recalcula nada.
+
+### Datos de producción
+
+- S6-02: mediciones 714, 642, 570, 498, 426, 358, 305, 165 y 249 (ene–sep,
+  capturadas en 0) a «Sin dato», con el valor anterior en la nota y un
+  mensaje en el chatter del indicador.
+- Términos 51 (TR-01) y 42 (C5-02), fórmula y fuente de los dos; entregable
+  165 (`complete_domain` y `complete_criteria`) y fórmula y fuente de C2-06.
+  El antes y el después quedan en el chatter de cada indicador; los tres ya
+  estaban en prueba.
+- Desde el día siguiente, el cron diario recalcula las sin dato y capturadas
+  de agosto, septiembre y octubre (y semanales de esas semanas): E1-01,
+  SST-01, C5-01, C5-02, TR-01 cambian de valor; el antes y el después quedan
+  en cada medición.
+- TI-01 no se toca.
+- **Para el Jefe MAST, a mano:** TI-01 junio, julio y agosto (ids 19, 49 y
+  95) están validadas en 0 sin dato real: regresarlas a pendiente, capturar
+  la disponibilidad del reporte de Odoo.sh y validar (las metas se vuelven a
+  guardar, K-04). Para que SST-01, C5-01 y E1-01 se recalculen en todos sus
+  meses: Indicadores → seleccionarlos → «Recalcular mediciones».
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó Q1–Q14 por omisión el 2026-10-05: (Q1) «Sin dato» en la columna
+«Último valor». (Q2) El menú Mediciones abre con «Con dato» y «Míos». (Q3)
+Recálculo diario de sin dato y capturadas de 2 meses. (Q4) S6-02 se marca en
+el despliegue. (Q5) TI-01 no se reabre en el despliegue. (Q6) El despliegue
+no recalcula. (Q7) Registro vacío solo en configurables «más bajo es mejor».
+(Q8) SST-01, C5-01 y E1-01 completos se recalculan a mano. (Q9) TR-01 y C5-02
+se corrigen con candado. (Q10) C2-06 mide el sello de embarque. (Q11) RH-02
+con la empresa del SGI. (Q12) Un 0 manual pide nota, numerador o
+denominador. (Q13) La corrección a mano se respeta. (Q14) Sale como
+57.104.0.
+
+### Solo se verifica en el build de Odoo.sh
+
+- `test_indicadores_sin_dato` (19 casos) y el suite `--test-tags
+  /quimibond_sgi` sin fallos nuevos ni `ERROR` en el log.
+- Cerrar una NC con folio y leer `date_close` (TR-01 y C5-02 dependen de
+  que la etapa de cierre la llene).
+- En una lista no editable, `invisible` en el valor deja la celda vacía por
+  renglón.
+- «Recalcular ahora» en SST-01 y C5-01 (Sin dato, «Registro vacío»), E2-01 y
+  C5-04 (siguen en 0 verde), TR-01, C5-02, C2-06 y RH-02.
+- Conteo del universo del recálculo y tiempo de
+  `recompute_pending_measures(recent=True)` en el shell (meta: menos de 5
+  minutos).
+- Mis indicadores en el celular dice «Sin dato»; P-40 con una manual
+  pendiente en 0 la salta.
+
+## 19.0.57.103.0 — 2026-10-05
+
+**Registro de cumplimiento por actividad y periodo** (pedido de Jose del
+2026-10-05). Modelo nuevo `sgi.activity.execution` (y el asistente
+`sgi.activity.execution.mark`), dos menús en Administración SGI →
+Diagnóstico y migración `post-migrate` que arma el periodo en curso.
+
+### Agregado
+
+- **Registro de cumplimiento** (`sgi.activity.execution`): un renglón por
+  actividad, responsable y periodo de su cadencia, con el vencimiento de la
+  actividad (el capturado; sin él, el último día hábil del periodo). Lo crea
+  el respaldo nocturno (`cron_nightly_backup`, el que guarda el resumen de
+  Mis pendientes) para el periodo en curso; quita los «Pendiente» sin tocar
+  de quien ya no la ejecuta. Responsables: los de «Mis actividades» de Mi
+  procedimiento con rol «Ejecuta». Las «por evento» no llevan renglones.
+- **Estados:** Pendiente → En proceso (nota de avance obligatoria y fecha
+  estimada opcional; no quita el atraso) → Hecha, o «No aplica este
+  periodo» con motivo. Marca la persona, cualquiera de sus jefes o el Jefe
+  MAST; solo el Jefe MAST reabre.
+- **Evidencia:** las de registro manual (también correo y muestreo) piden
+  una nota o un archivo para «Hecha». Las que se miden solas (Registro en
+  Odoo, Por su entregable, Por consecuencia) se marcan hechas solas cuando
+  aparece su registro de evidencia dentro del periodo (mismo modelo,
+  filtro, fecha y empresa que la medición); cerrarlas a mano también pide
+  evidencia.
+- **Mis pendientes:** las actividades con registro salen por periodo
+  abierto (atrasadas, por vencer o al día, con su avance), con los botones
+  **En proceso** y **Hecho** junto a «Ir»; columna y filtro «En proceso».
+  Para las de registro manual, «Ir» abre su registro (criterio de
+  terminado, pasos, instructivo y dónde adjuntar) y el menú de Odoo queda
+  como «Abrir pantalla relacionada», solo si está capturado. Mi equipo ve
+  los mismos renglones.
+- **Diagnóstico → Registro de cumplimiento** (lista y pivote) y
+  **Diagnóstico → Pantallas que no van con su medición**: faltante nuevo
+  `menu_model_mismatch` (advertencia) cuando la actividad se mide sola con
+  un modelo y su pantalla abre otro.
+
+### Cambiado
+
+- **Medición de las de registro manual** con cadencia: sale del registro.
+  Verde si los renglones del periodo en curso están hechos o no aplican;
+  vencido el periodo sin eso, rojo; antes de vencer, manda el periodo
+  anterior; sin renglones, «pendiente» como antes. Se recalcula al marcar.
+  Las 63 «por evento» siguen «pendiente».
+
+### Migración
+
+- `post-migrate`: recalcula los faltantes de las actividades con modelo y
+  pantalla, arma el periodo en curso, cierra los que ya tienen registro y
+  mide las de registro manual. Esperado (MCP, 2026-10-05): 80 manuales y 40
+  que se miden solas con cadencia periódica.
+
+## 19.0.57.102.0 — 2026-10-05
+
+**NC de auditoría: a quién le sale.** Sin campos nuevos, sin ACL, sin menús
+y sin migración; las NC que ya existen no cambian.
+
+### Corregido
+
+- **Filtro «Míos» de No conformidades:** también incluye las NC donde usted
+  es el responsable de la alerta (`user_id`), no solo los «Responsables a
+  contestar». Las NC de **Generar NC** no le salían a nadie.
+- **Generar NC (hallazgo de auditoría):** propone como responsable a
+  contestar (y responsable de la alerta) al usuario activo del dueño del
+  proceso del hallazgo; quien pulsa el botón queda como solicitante. Sin
+  dueño con usuario activo, se comporta como antes.
+- **Generar NC (hallazgo del recorrido de la Comisión de Seguridad e
+  Higiene):** el «Responsable» del hallazgo, que ya quedaba como responsable
+  de la alerta, ahora también queda como responsable a contestar (lo ve en
+  Mis pendientes); quien pulsa queda como solicitante.
+- **Tablero de NC (kanban):** cada columna ordena por fecha de creación
+  descendente; la recién creada queda arriba.
+
 ## 19.0.57.101.0 — 2026-10-05
 
 **Reportes y diagramas** (primera entrega después del plan de la auditoría

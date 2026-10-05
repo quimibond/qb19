@@ -266,8 +266,7 @@
                                            decoration-success="status == 'oficial'"/>
                                     <field name="frequency" optional="show"/>
                                     <field name="target_objective" string="Meta"/>
-                                    <field name="last_value"/>
-                                    <field name="uom" optional="show"/>
+                                    <field name="sgi_last_value_label" string="Último valor"/>
                                     <field name="last_semaphore" widget="badge"
                                            decoration-success="last_semaphore == 'verde'"
                                            decoration-warning="last_semaphore == 'amarillo'"
@@ -597,8 +596,7 @@
                   decoration-danger="last_semaphore == 'rojo'">
                 <field name="code" string="Clave"/>
                 <field name="name"/>
-                <field name="uom" optional="show"/>
-                <field name="last_value"/>
+                <field name="sgi_last_value_label" string="Último valor"/>
                 <field name="last_semaphore" widget="badge"
                        decoration-success="last_semaphore == 'verde'"
                        decoration-warning="last_semaphore == 'amarillo'"
@@ -627,7 +625,7 @@
                 <templates>
                     <t t-name="card">
                         <div class="fs-5 fw-bold"><field name="code"/> · <field name="name"/></div>
-                        <div>Último valor: <field name="last_value"/> <field name="uom"/></div>
+                        <div>Último valor: <field name="sgi_last_value_label"/></div>
                         <div>Siguiente medición: <field name="sgi_next_pending_date" widget="remaining_days"/></div>
                         <footer class="d-flex flex-wrap gap-2 pt-2">
                             <field name="last_semaphore" widget="badge"

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 57.109.0: fuentes con nombre de negocio para el asistente «Nuevo
+         indicador». El Jefe MAST agrega más en Configuración → Fuentes de
+         indicadores. Las de un modelo que no está instalado no se ofrecen. -->
+    <record id="sgi_indicator_source_out_invoice" model="sgi.indicator.source">
+        <field name="name">Facturas de cliente publicadas</field>
+        <field name="sequence">10</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]</field>
+        <field name="date_field">invoice_date</field>
+        <field name="amount_field">amount_untaxed_signed</field>
+        <field name="description">Por fecha de factura; suma el subtotal sin impuestos</field>
+    </record>
+    <record id="sgi_indicator_source_out_refund" model="sgi.indicator.source">
+        <field name="name">Notas de crédito a clientes publicadas</field>
+        <field name="sequence">20</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', '=', 'out_refund'), ('state', '=', 'posted')]</field>
+        <field name="date_field">invoice_date</field>
+        <field name="amount_field">amount_untaxed_signed</field>
+        <field name="description">Por fecha de la nota</field>
+    </record>
+    <record id="sgi_indicator_source_in_invoice" model="sgi.indicator.source">
+        <field name="name">Facturas de proveedor publicadas</field>
+        <field name="sequence">30</field>
+        <field name="model_name">account.move</field>
+        <field name="domain">[('move_type', '=', 'in_invoice'), ('state', '=', 'posted')]</field>
+        <field name="date_field">invoice_date</field>
+        <field name="amount_field">amount_untaxed_signed</field>
+        <field name="description">Por fecha de factura</field>
+    </record>
+    <record id="sgi_indicator_source_sale_order" model="sgi.indicator.source">
+        <field name="name">Pedidos de venta confirmados</field>
+        <field name="sequence">40</field>
+        <field name="model_name">sale.order</field>
+        <field name="domain">[('state', '=', 'sale')]</field>
+        <field name="date_field">date_order</field>
+        <field name="amount_field">amount_untaxed</field>
+        <field name="description">Por fecha del pedido</field>
+    </record>
+    <record id="sgi_indicator_source_purchase_order" model="sgi.indicator.source">
+        <field name="name">Órdenes de compra confirmadas</field>
+        <field name="sequence">50</field>
+        <field name="model_name">purchase.order</field>
+        <field name="domain">[('state', 'in', ('purchase', 'done'))]</field>
+        <field name="date_field">date_approve</field>
+        <field name="amount_field">amount_untaxed</field>
+        <field name="description">Por fecha de confirmación</field>
+    </record>
+    <record id="sgi_indicator_source_outgoing" model="sgi.indicator.source">
+        <field name="name">Entregas a clientes validadas</field>
+        <field name="sequence">60</field>
+        <field name="model_name">stock.picking</field>
+        <field name="domain">[('picking_type_code', '=', 'outgoing'), ('state', '=', 'done')]</field>
+        <field name="date_field">date_done</field>
+        <field name="description">Por fecha efectiva</field>
+    </record>
+    <record id="sgi_indicator_source_incoming" model="sgi.indicator.source">
+        <field name="name">Recepciones de proveedor validadas</field>
+        <field name="sequence">70</field>
+        <field name="model_name">stock.picking</field>
+        <field name="domain">[('picking_type_code', '=', 'incoming'), ('state', '=', 'done')]</field>
+        <field name="date_field">date_done</field>
+        <field name="description">Por fecha efectiva</field>
+    </record>
+    <record id="sgi_indicator_source_mrp_done" model="sgi.indicator.source">
+        <field name="name">Órdenes de producción terminadas</field>
+        <field name="sequence">80</field>
+        <field name="model_name">mrp.production</field>
+        <field name="domain">[('state', '=', 'done')]</field>
+        <field name="date_field">date_finished</field>
+        <field name="amount_field">qty_produced</field>
+        <field name="description">Por fecha de terminación; suma la cantidad producida</field>
+    </record>
+    <record id="sgi_indicator_source_quality_check" model="sgi.indicator.source">
+        <field name="name">Controles de calidad hechos</field>
+        <field name="sequence">90</field>
+        <field name="model_name">quality.check</field>
+        <field name="domain">[('quality_state', '!=', 'none')]</field>
+        <field name="date_field">control_date</field>
+        <field name="description">Por fecha del control</field>
+    </record>
+    <record id="sgi_indicator_source_nc" model="sgi.indicator.source">
+        <field name="name">No conformidades del SGI</field>
+        <field name="sequence">100</field>
+        <field name="model_name">quality.alert</field>
+        <field name="domain">[('sgi_folio', '!=', False)]</field>
+        <field name="date_field">create_date</field>
+        <field name="description">Las que tienen folio, por fecha de creación</field>
+    </record>
+    <record id="sgi_indicator_source_maintenance" model="sgi.indicator.source">
+        <field name="name">Solicitudes de mantenimiento</field>
+        <field name="sequence">110</field>
+        <field name="model_name">maintenance.request</field>
+        <field name="domain">[]</field>
+        <field name="date_field">request_date</field>
+        <field name="description">Por fecha de la solicitud</field>
+    </record>
+    <record id="sgi_indicator_source_helpdesk" model="sgi.indicator.source">
+        <field name="name">Tickets de soporte</field>
+        <field name="sequence">120</field>
+        <field name="model_name">helpdesk.ticket</field>
+        <field name="domain">[]</field>
+        <field name="date_field">create_date</field>
+        <field name="description">Por fecha de creación</field>
+    </record>
+</odoo>

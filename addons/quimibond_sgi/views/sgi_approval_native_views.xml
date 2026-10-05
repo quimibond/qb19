@@ -17,6 +17,11 @@
                 <header>
                     <button name="action_sgi_sync_approval" type="object" string="Sincronizar"
                             icon="fa-refresh" groups="quimibond_sgi.group_sgi_manager"/>
+                    <!-- 57.109.0: las sugeridas como solicitud, en lote (no bloquean botones). -->
+                    <button name="action_sgi_activate_suggested" type="object"
+                            string="Activar las sugeridas como solicitud" icon="fa-check"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Las aprobaciones seleccionadas sin configurar cuya sugerencia es «Solicitud en Aprobaciones» se activan ahora: cada una tendrá su categoría en Aprobaciones con las personas del puesto. Las de botón se configuran una por una. ¿Continuar?"/>
                 </header>
                 <field name="process_id" readonly="1"/>
                 <field name="activity_id" readonly="1"/>
@@ -45,6 +50,10 @@
                 <field name="approval_last_date" optional="hide"/>
                 <button name="action_sgi_sync_approval" type="object" string="Sincronizar" icon="fa-refresh"
                         invisible="approval_state not in ('por_sincronizar', 'activa')" groups="quimibond_sgi.group_sgi_manager"/>
+                <!-- 57.109.0: el asistente de tres preguntas. -->
+                <field name="approval_suggestion" optional="show"/>
+                <button name="action_sgi_approval_wizard" type="object" string="Configurar" icon="fa-magic"
+                        class="btn-link" groups="quimibond_sgi.group_sgi_manager"/>
             </list>
         </field>
     </record>
@@ -81,8 +90,66 @@
         <field name="context">{'search_default_group_process': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin aprobaciones en los procedimientos</p>
-            <p>Cada renglón «Aprueba» de una actividad se liga aquí al documento y al botón de
-               Odoo que se aprueban; «Sincronizar» crea la regla de aprobación nativa.</p>
+            <p>Cada renglón «Aprueba» de una actividad se liga aquí a cómo se aprueba en Odoo. Use
+               «Configurar» en cada renglón: tres preguntas y una vista previa de cómo funcionará.</p>
+        </field>
+    </record>
+
+    <!-- 57.109.0: configurar una aprobación con tres preguntas. -->
+    <record id="sgi_approval_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.approval.wizard.form</field>
+        <field name="model">sgi.approval.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Configurar aprobación">
+                <field name="step" invisible="1"/>
+                <field name="button_supported" invisible="1"/>
+                <group>
+                    <field name="activity_id" readonly="1" options="{'no_open': True}"/>
+                    <field name="approver_user_ids" widget="many2many_tags" readonly="1"/>
+                    <field name="suggestion" readonly="1"/>
+                </group>
+                <div invisible="step != 'what'">
+                    <group string="1. ¿Qué se aprueba?">
+                        <field name="q_what" nolabel="1" colspan="2" widget="radio"/>
+                        <field name="model_id" invisible="q_what != 'documento'" required="q_what == 'documento'"
+                               options="{'no_create': True, 'no_open': True}"/>
+                        <field name="category_name" invisible="q_what != 'decision'"/>
+                        <field name="sign_template_id" invisible="q_what != 'papel'"
+                               options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <div class="alert alert-warning" role="status"
+                         invisible="q_what != 'documento' or button_supported">
+                        Bloquear el botón de un documento necesita el módulo «Quimibond SGI - Aprobaciones de
+                        Studio», que no está instalado. Elija «Una decisión o petición sin documento».
+                    </div>
+                </div>
+                <div invisible="step != 'how'">
+                    <group string="2. ¿Al pulsar qué?" invisible="q_what != 'documento'">
+                        <field name="button_line_id" nolabel="1" colspan="2" widget="radio"
+                               options="{'no_create': True}"/>
+                    </group>
+                    <group string="3. ¿Siempre o solo a veces?" invisible="q_what != 'documento'">
+                        <field name="condition_on"/>
+                        <field name="condition_field_id" invisible="not condition_on"
+                               options="{'no_create': True, 'no_open': True}"/>
+                        <field name="condition_operator" invisible="not condition_on"/>
+                        <field name="condition_value" invisible="not condition_on"/>
+                    </group>
+                </div>
+                <div class="alert alert-info" role="status" invisible="not preview_html">
+                    <b>Así funcionará:</b>
+                    <field name="preview_html" nolabel="1"/>
+                </div>
+                <footer>
+                    <button name="action_next" type="object" string="Siguiente" class="btn-primary"
+                            invisible="step != 'what' or q_what != 'documento'"/>
+                    <button name="action_activate" type="object" string="Activar" class="btn-primary"
+                            invisible="step == 'what' and q_what == 'documento'"/>
+                    <button name="action_back" type="object" string="Atrás" class="btn-secondary"
+                            invisible="step != 'how'"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
         </field>
     </record>
 </odoo>

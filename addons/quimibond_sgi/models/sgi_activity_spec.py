@@ -77,6 +77,11 @@ SGI_SPEC_GAPS = [
     ('paper_channel', "En papel"),
     ('mixed_channel', "Junta trabajo físico y captura"),
     ('no_match', "Entrada que no se liga con la salida"),
+    ('menu_model_mismatch', "Pantalla que no va con su medición"),
+    ('measure_never', "Evidencia que no aparece"),
+    ('weak_attribution', "Atribución débil"),
+    ('review_rejected', "Revisión del dueño: no corresponde"),
+    ('approval_missing', "Aprobación sin activar"),
 ]
 # Severidad por código (error bloquea publicar; warning solo avisa).
 SGI_GAP_SEVERITY = {
@@ -88,8 +93,16 @@ SGI_GAP_SEVERITY = {
     'no_output': 'warning', 'no_escalation': 'warning',
     'measure_no_complete': 'warning', 'odoo_measured_manual': 'warning',
     'paper_channel': 'warning', 'mixed_channel': 'warning', 'no_match': 'warning',
-    'menu_no_visible': 'warning',
+    'menu_no_visible': 'warning', 'menu_model_mismatch': 'warning',
+    'measure_never': 'warning', 'weak_attribution': 'warning', 'review_rejected': 'warning',
+    'approval_missing': 'warning',
 }
+# 57.106.0: días mínimos sin evidencia para «Evidencia que no aparece» (la
+# cadencia larga manda: una anual espera su ventana de 380 días).
+MEASURE_NEVER_DAYS = 60
+# 57.106.0: adherencia (%) por debajo de la cual la atribución es débil
+# cuando hay ejecuciones de otro puesto o de cuentas compartidas.
+WEAK_ATTRIBUTION_PCT = 50
 
 VAGUE_VERBS_PARAM = 'quimibond_sgi.vague_verbs'
 COMPARE_VERBS_PARAM = 'quimibond_sgi.compare_verbs'
@@ -363,6 +376,26 @@ class SgiActivitySpec(models.Model):
                 add('menu_no_visible', "Nadie de quien la ejecuta ve «%s»: apunte a una "
                                        "entrada que sí vea (p. ej. Inicio → Mis indicadores) "
                                        "o dele el grupo." % self.odoo_menu_id.sudo().complete_name)
+        # 57.103.0: la pantalla (menú o acción) abre un modelo y la evidencia
+        # se cuenta en otro: «Ir» manda a un lugar y la medición mira otro.
+        mismatch = self._sgi_menu_model_mismatch()
+        if mismatch:
+            add('menu_model_mismatch', "La pantalla «%s» abre %s, pero la actividad se mide con "
+                                       "%s: corrija el menú o el modelo de medición." % mismatch)
+        # 57.106.0: la medición no encuentra registros o no sabe de quién son.
+        never = self._sgi_measure_never()
+        if never:
+            add('measure_never', never)
+        for message in self._sgi_weak_attribution():
+            add('weak_attribution', message)
+        # 57.107.0: la revisión mensual del dueño del proceso (sgi_measure_review).
+        rejected = self._sgi_review_rejected()
+        if rejected:
+            add('review_rejected', rejected)
+        # 57.109.0: el procedimiento dice que se aprueba y Odoo no lo pide
+        # (sgi_approval_wizard).
+        for message in self._sgi_approval_problems():
+            add('approval_missing', message)
         if channel in SGI_EXTERNAL_CHANNELS and not (self.external_system or '').strip():
             add('external_no_name', "Falta el nombre del sistema externo.")
         if not self.instruction_id and not (self.how_steps or '').strip():
@@ -384,6 +417,89 @@ class SgiActivitySpec(models.Model):
                                     "«match»." % (line.deliverable_id.name, model.model,
                                                  output.odoo_model_id.model))
         return out
+
+    def _sgi_measures_itself(self):
+        """Se mide sola con un modelo de Odoo (Registro en Odoo, Por su
+        entregable o las heredadas sin método y con modelo)."""
+        self.ensure_one()
+        return bool(self.measure_model_id) and self.measure_method in (False, 'odoo', 'entregable')
+
+    def _sgi_measure_never(self):
+        """57.106.0: mensaje si la actividad se mide sola y su evidencia no
+        aparece: ningún registro, o el último hace más de 60 días (o de la
+        ventana de su cadencia, si es más larga). Las recién creadas esperan
+        el mismo plazo. None si va bien."""
+        self.ensure_one()
+        if not self._sgi_measures_itself() or not self.create_date:
+            return None
+        days = max(MEASURE_NEVER_DAYS, self._SGI_CADENCE_DAYS.get(self.measure_cadence, 0))
+        limit = fields.Datetime.now() - timedelta(days=days)
+        last = self.measure_last_date
+        if (last or self.create_date) >= limit:
+            return None
+        if self.measure_warning:
+            return ("La medición no cuenta nada: %s" % self.measure_warning.strip().splitlines()[0])
+        if not last:
+            return ("La medición nunca ha encontrado un registro de %s: revise el filtro de "
+                    "evidencia y el campo de fecha, o si de verdad se registra en Odoo."
+                    % self.measure_model_id.model)
+        return ("El último registro de %s que cuenta la medición es del %s (más de %d días): "
+                "revise el filtro de evidencia y el campo de fecha." % (
+                    self.measure_model_id.model, fields.Date.to_string(last.date()), days))
+
+    def _sgi_weak_attribution(self):
+        """57.106.0: mensajes si la medición no puede decir quién hizo la
+        actividad: usa «write_uid» (el último que editó, no quien la hizo) o
+        la mayoría de las ejecuciones de 4 semanas son de otro puesto o de
+        cuentas compartidas."""
+        self.ensure_one()
+        out = []
+        if not self._sgi_measures_itself():
+            return out
+        if (self.measure_user_field or '').strip() == 'write_uid':
+            out.append("Se atribuye con «write_uid», el último que editó el registro, no quien "
+                       "hizo la actividad: use el campo del responsable o de quien valida o cierra.")
+        wrong = (self.measure_count_other_job or 0) + (self.measure_count_generic or 0)
+        if wrong and (self.measure_adherence_pct or 0.0) < WEAK_ATTRIBUTION_PCT:
+            out.append("En 4 semanas, %d ejecuciones son de otro puesto o de cuentas compartidas y "
+                       "solo el %.0f %% del puesto asignado: revise el puesto en la Matriz de "
+                       "responsabilidades o el campo de usuario." % (
+                           wrong, self.measure_adherence_pct or 0.0))
+        return out
+
+    def _sgi_screen_model(self):
+        """57.106.0: (pantalla, modelo que abre) de la actividad: el de la
+        acción de ventana o, si el menú lanza una acción de servidor, el
+        modelo sobre el que corre. (pantalla, None) si es una acción de
+        cliente (reporte, tablero) o no hay pantalla."""
+        self.ensure_one()
+        menu = self.sudo().odoo_menu_id
+        action = self.sudo().odoo_action_id
+        if action and action.res_model:
+            return (menu.complete_name or action.name or ''), action.res_model
+        menu_action = menu.action
+        if menu_action and menu_action._name == 'ir.actions.server' and menu_action.model_id:
+            return (menu.complete_name or menu_action.name or ''), menu_action.model_id.model
+        return (menu.complete_name or ''), None
+
+    def _sgi_menu_model_mismatch(self):
+        """57.103.0: (pantalla, modelo que abre, modelo de medición) si la
+        actividad se mide sola con un modelo y su pantalla abre otro; None si
+        van juntos o no hay con qué comparar (sin pantalla, acción de cliente,
+        sin modelo de medición o medida por consecuencia o a mano). Desde
+        57.106.0 también compara los menús con acción de servidor."""
+        self.ensure_one()
+        if self.measure_method not in (False, 'odoo', 'entregable'):
+            return None
+        measured = self.measure_model_id
+        if not measured and self.measure_method == 'entregable':
+            measured = self._sgi_output_deliverable().odoo_model_id
+        if not measured:
+            return None
+        screen, model = self._sgi_screen_model()
+        if not model or model == measured.model:
+            return None
+        return screen, model, measured.model
 
     def _sgi_executor_users(self):
         """Usuarios activos de los puestos con rol «Ejecuta» (E-010)."""
@@ -1172,4 +1288,9 @@ class SgiActivityWeekCounts(models.Model):
         # «Mi procedimiento» de cada puesto (Mi equipo las lee de ahí).
         Cron._sgi_step("cifras de Mi procedimiento por puesto",
                        lambda: self.env['hr.job']._sgi_mp_refresh_all())
+        # 57.106.0: con la medición fresca, los faltantes que dependen de ella
+        # («Evidencia que no aparece», «Atribución débil»). Solo escribe los
+        # que cambiaron.
+        Cron._sgi_step("faltantes de medición",
+                       lambda: self.search([('measure_model_id', '!=', False)])._sgi_refresh_spec_gaps())
         return res

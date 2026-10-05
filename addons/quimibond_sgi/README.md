@@ -109,6 +109,93 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
   riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
 
+## Manual del SGI (MIID) desde Odoo (57.105.0)
+
+**SGI → Dirección → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
+El MIID se arma con **texto fijo** (`sgi.miid.section`: una sección por
+título y subtítulo, sembradas `noupdate` con el texto [FIJO] del borrador
+Rev. 03, `docs/sgi/transicion/miid-rev03-borrador.md`; las edita el Jefe
+MAST) y **datos vivos** (un bloque por sección: identificación, procesos con
+mapa e interacción 4.4, política, objetivos e indicadores, tipos de
+documento y su clave, controles operacionales, plazos de NC, correspondencia
+por cláusula, procedimientos anteriores, anexos con su «Situación» como nota
+por renglón, `sgi.miid.row.note`, y control de cambios). La marca `[[datos]]`
+en un párrafo decide dónde va el bloque; «Texto solo si no hay datos» deja
+el texto como respaldo. Un bloque que ninguna sección lleva sale al final
+(«Datos del sistema sin sección»).
+
+- **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
+  «Borrador — no vigente». La revisión vigente es el documento controlado de
+  clave MIID.
+- **Huella** (`sgi.miid._sgi_hash`): textos de las secciones sin formato y
+  notas por renglón, procesos (nombre, tipo, dueño, estado, macroproceso),
+  flujos, política vigente, objetivos con sus indicadores, tipos de
+  documento y su patrón, controles operacionales y anexos vigentes,
+  procedimientos anteriores y su proceso, los seis plazos de NC y las normas
+  con sus numerales. No cubre qué procesos cumplen cada cláusula, la
+  revisión y emisión del propio MIID, el control de cambios ni «Por
+  confirmar».
+- **Candados:** ninguna revisión se envía ni se aprueba con secciones «Por
+  confirmar» o con procesos activos que no estén «Vigente». Por Sign la
+  aprobación espera (no se interrumpe la sincronización) y avisa al Jefe
+  MAST.
+- **Actualizar:** aviso diario «El MIID vigente ya no coincide con el
+  sistema» (paso «MIID al día» de «SGI: Vencimientos documentales», uno por
+  empresa, 3 días hábiles) → pantalla → **Solicitar cambio del MIID**
+  (solicitud de cambio documental de siempre con el PDF generado, la huella y
+  las diferencias) → Enviar (regenera el PDF si los datos cambiaron) →
+  firmas (Elaboró, Revisó el dueño de E2, Aprobó Dirección,
+  `quimibond_sgi.miid_approver_user_id`) → revisión nueva con la huella (DOC-1:
+  la anterior obsoleta con su archivo, acuses). Lo que se firma es lo que se
+  publica. Nada se aprueba solo.
+- **Sin línea base:** el MIID cargado del Dropbox (sin huella) no avisa; la
+  primera revisión desde Odoo es la 03.
+- **Una empresa:** la comparación diaria y el aviso son solo de la empresa
+  del SGI (`quimibond_sgi.sgi_company_id`, D-03).
+
+## Indicadores: sin dato y cálculos (57.104.0)
+
+- **«Sin dato» no es 0.** Un indicador sin ninguna medición con dato dice
+  «Sin dato» en la lista de indicadores, el Tablero, la pestaña Indicadores
+  del proceso, Mis indicadores (lista y celular), el texto de la revisión
+  por la dirección, los «Últimos 6 periodos» y el diagrama de indicadores
+  (campo `sgi_last_value_label`); un 0 real se muestra como 0. El valor de
+  una medición sin dato se sigue **guardando** en 0 (un `Float` no guarda
+  vacío): por eso las listas no lo muestran y «Mediciones» y «Tendencia»
+  abren con el filtro «Con dato».
+- **Capturar un 0 (manuales).** Una medición de indicador manual en 0, sin
+  numerador, sin denominador y **sin nota** no se marca capturada ni se
+  valida: si el valor de verdad es 0, el responsable lo dice en la nota
+  («0: sin caídas en el mes»). Solo aplica a personas (el sistema no se
+  revisa); «Validar mediciones» de la revisión (P-40) las salta y las lista.
+- **Recálculo diario.** El cron de indicadores re-mide las pendientes y,
+  desde 57.104.0, las «sin dato» y las capturadas no validadas de los
+  últimos `quimibond_sgi.indicator_recompute_months` meses (2 por omisión,
+  desde el día 1 del mes de hace 2 meses). Nunca toca validadas, indicadores
+  de foto ni de salud, mediciones con NC, con causa o acciones, ni las
+  **corregidas a mano** (quien cambia el valor de una medición automática la
+  marca «Valor corregido a mano»; «Recalcular valor» o «Recalcular ahora»
+  quitan la marca). Solo escribe si algo cambió y deja el antes y el después
+  en el chatter de la medición. El botón **Recalcular mediciones** de la
+  lista (Administrador SGI) con indicadores seleccionados re-mide todo lo no
+  validado de ellos, sin ventana de meses. La corrida del cron va después de
+  la medición mensual y tiene tiempo tope (240 s): lo que no alcanza sigue al
+  día siguiente. Una nota que escribió una persona no se borra al recalcular.
+- **«Medir desde».** Al cambiarla, las mediciones no validadas cuyo periodo
+  termina antes pasan a «Sin dato» con el valor anterior en la nota; las
+  validadas no se tocan y nada se borra.
+- **Registro vacío.** En una fórmula configurable «más bajo es mejor», un
+  numerador en 0 con algún término cuya fuente nunca ha tenido registros
+  (contar) o cuyo campo sumado nunca se ha capturado (sumar) da «Sin dato»
+  con la nota «Registro vacío…», no un verde falso (SST-01, C5-01). En «más
+  alto es mejor» el 0 rojo se deja.
+- **Fórmulas corregidas:** TR-01 = NC levantadas en el periodo (sin
+  canceladas) que ya están cerradas ÷ NC levantadas en el periodo; C5-02 =
+  reclamaciones cerradas en 30 días naturales ÷ reclamaciones del periodo;
+  C2-06 = salidas con sello de embarque ÷ salidas validadas de la semana (el
+  campo de Studio «Tipo de transporte» nunca se capturó); RH-02 = solo
+  empleados de la empresa del SGI, con numerador y denominador.
+
 ## Salud del SGI
 
 Desde 57.99.0 (auditoría 2026-10, sección 8 y hallazgo D-01) Dirección ve
