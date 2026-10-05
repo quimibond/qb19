@@ -10,6 +10,7 @@ publica) y el paso diario compara la huella viva con la de la revisión
 vigente. Ninguna revisión se envía ni se aprueba con secciones «Por
 confirmar» o procesos que no estén vigentes. Plan:
 docs/superpowers/plans/2026-10-05-sgi-57-105-0-miid.md."""
+import base64
 import hashlib
 import json
 import logging
@@ -20,8 +21,9 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
 
-# Sin modelos (sgi_calendar) o ya cargados (sgi_report_print).
-from .sgi_calendar import sgi_today
+# Sin modelos (sgi_calendar, sgi_menu_paths) o ya cargados (sgi_report_print).
+from .sgi_calendar import sgi_add_business_days, sgi_today
+from .sgi_menu_paths import sgi_menu_path
 from .sgi_report_print import DG_COLORS, DG_LEVEL_BG
 
 try:  # C-1: texto sin formato (html2plaintext convierte <b> en *…*).
@@ -831,6 +833,45 @@ class SgiMiid(models.Model):
         return {'type': 'ir.actions.act_window', 'res_model': 'approval.request',
                 'res_id': self.pending_request_id.id, 'view_mode': 'form', 'target': 'current'}
 
+    # ------------------------------------------------------------------
+    # Solicitud de cambio (1.7)
+    # ------------------------------------------------------------------
+    def action_sgi_miid_request_change(self):
+        """Arma (o abre) la solicitud de cambio documental del MIID con el PDF
+        generado, la huella y las diferencias. Nunca la envía ni la aprueba."""
+        self.ensure_one()
+        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise UserError("Solo el Jefe MAST solicita el cambio del MIID.")
+        doc = self._sgi_current_document()
+        if not doc:
+            raise UserError("No hay MIID vigente (clave MIID) en Documentos: cárguelo o publíquelo primero.")
+        request = self._sgi_open_request(doc)
+        if not request:
+            snapshot = self._sgi_snapshot()
+            baseline = bool(doc.sgi_content_hash)
+            revision = self._sgi_next_revision(doc)
+            diffs = self._sgi_diff(self._sgi_approved_snapshot(), snapshot) if baseline else []
+            category = self.env.ref('quimibond_sgi.sgi_approval_category_doc_change')
+            request = self.env['approval.request'].create({
+                'name': "Cambio al MIID (Rev. %02d)" % revision,
+                'category_id': category.id, 'request_owner_id': self.env.user.id, 'reference': MIID_CODE,
+                'sgi_change_kind': 'modificacion', 'sgi_what_changes': 'contenido',
+                'sgi_document_id': doc.id, 'sgi_new_revision': revision,
+                'sgi_affected_process_ids': [(6, 0, doc.sgi_process_id.ids)],
+                'sgi_reason': ("El MIID vigente ya no coincide con el sistema." if baseline
+                               else "Primera revisión del MIID generada desde Odoo."),
+                'sgi_changes': "\n".join(diffs) or (
+                    "Revisión generada desde Odoo con los datos del sistema al %s."
+                    % sgi_today(self.env).strftime('%d/%m/%Y')),
+                'sgi_miid_hash': self._sgi_hash(snapshot),
+                'sgi_miid_snapshot': json.dumps(snapshot, ensure_ascii=False, sort_keys=True),
+                'sgi_miid_generated': fields.Datetime.now(),
+            })
+            request._sgi_miid_attach("MIID Rev. %02d (para aprobación).pdf" % revision)
+            request.message_post(body="Solicitud del MIID creada desde %s." % sgi_menu_path('miid'))
+        return {'type': 'ir.actions.act_window', 'res_model': 'approval.request',
+                'res_id': request.id, 'view_mode': 'form', 'target': 'current'}
+
 class ReportSgiMiid(models.AbstractModel):
     """57.105.0: valores del PDF del MIID. Modo por contexto: «live» (vista del
     sistema, copia no controlada) o «request» (el PDF de la solicitud, que es
@@ -852,3 +893,195 @@ class ReportSgiMiid(models.AbstractModel):
             'miid_printed': now.strftime('%d/%m/%Y %H:%M'),
             'dg_colors': DG_COLORS, 'dg_level_bg': DG_LEVEL_BG,
         }
+
+
+class ApprovalRequestMiid(models.Model):
+    """La solicitud de cambio del MIID es una solicitud de cambio documental de
+    siempre con la huella y la foto de los datos con que se generó su PDF."""
+    _inherit = 'approval.request'
+
+    sgi_miid_hash = fields.Char(string="Huella del MIID", readonly=True, copy=False,
+                                help="Huella de los datos con que se generó el PDF del MIID de esta solicitud.")
+    sgi_miid_snapshot = fields.Text(string="Datos del MIID", readonly=True, copy=False,
+                                    help="Foto de los datos con que se generó el PDF del MIID.")
+    sgi_miid_generated = fields.Datetime(string="MIID generado el", readonly=True, copy=False,
+                                         help="Cuándo se generó el PDF del MIID que lleva esta solicitud.")
+    sgi_miid_blocked_note = fields.Text(string="Último aviso de candados del MIID", readonly=True, copy=False,
+                                        help="Lo que detiene la aprobación del MIID aunque las firmas estén "
+                                             "completas.")
+
+    def _sgi_miid(self):
+        self.ensure_one()
+        return self.env['sgi.miid']._sgi_get(self.sudo().sgi_document_id.company_id or None)
+
+    def _sgi_miid_attach(self, name):
+        """Genera el PDF del MIID para esta solicitud, lo adjunta y lo deja
+        como el archivo que se manda a firmar (y que se publica)."""
+        self.ensure_one()
+        pdf = self._sgi_miid()._sgi_render_pdf('request', revision=self.sgi_new_revision, request=self)
+        attachment = self.env['ir.attachment'].sudo().create({
+            'name': name, 'res_model': 'approval.request', 'res_id': self.id,
+            'datas': base64.b64encode(pdf), 'mimetype': 'application/pdf'})
+        self.sudo().sgi_change_attachment_id = attachment
+        return attachment
+
+    def _sgi_miid_raise_blockers(self, verb):
+        for req in self.filtered('sgi_miid_hash'):
+            blockers = req._sgi_miid()._sgi_blockers()
+            if blockers:
+                raise UserError(
+                    "No se puede %s el cambio del MIID todavía:\n%s\nQuite «Por confirmar» cuando el texto "
+                    "esté confirmado y publique los procesos; después vuelva a intentarlo." % (
+                        verb, "\n".join("• " + b for b in blockers)))
+
+    def _sgi_miid_needs_refresh(self, digest):
+        """Otra vez el PDF si cambiaron los datos o si se generó con secciones
+        por confirmar (llevaba la marca de borrador)."""
+        self.ensure_one()
+        if digest != self.sgi_miid_hash:
+            return True
+        try:
+            old = json.loads(self.sgi_miid_snapshot or '{}')
+        except ValueError:
+            return True
+        return bool(old.get('pendientes')) or not old.get('identificacion', {}).get('processes_total') or \
+            old['identificacion'].get('processes_ready') != old['identificacion'].get('processes_total')
+
+    def _sgi_miid_refresh_before_send(self):
+        self.ensure_one()
+        miid = self._sgi_miid()
+        snapshot = miid._sgi_snapshot()
+        digest = miid._sgi_hash(snapshot)
+        if not self._sgi_miid_needs_refresh(digest):
+            return
+        # I-4: el anterior es el que se iba a mandar a firmar.
+        old = self.sgi_change_attachment_id or self._sgi_change_attachment()
+        stamp = sgi_today(self.env).strftime('%d-%m-%Y')
+        if old:
+            base = old.name[:-4] if (old.name or '').lower().endswith('.pdf') else (old.name or 'MIID')
+            old.sudo().write({'name': "%s (sustituido el %s).pdf" % (base, stamp)})
+        try:
+            previous = json.loads(self.sgi_miid_snapshot or '{}')
+        except ValueError:
+            previous = {}
+        diffs = miid._sgi_diff(previous, snapshot)
+        vals = {'sgi_miid_hash': digest,
+                'sgi_miid_snapshot': json.dumps(snapshot, ensure_ascii=False, sort_keys=True),
+                'sgi_miid_generated': fields.Datetime.now()}
+        if diffs:
+            vals['sgi_changes'] = "%s\nActualizado al enviar:\n%s" % (self.sgi_changes or '', "\n".join(diffs))
+        self.sudo().write(vals)
+        self._sgi_miid_attach("MIID Rev. %02d (para aprobación).pdf" % (self.sgi_new_revision or 0))
+        self.message_post(body="Se generó otra vez el PDF del MIID antes de enviar (datos del sistema "
+                               "actualizados); el anterior queda como «%s»." % (old.name if old else '—'))
+
+    def action_confirm(self):
+        self._sgi_miid_raise_blockers("enviar")
+        for req in self.filtered(lambda r: r.sgi_miid_hash and r.request_status == 'new'):
+            req._sgi_miid_refresh_before_send()
+        return super().action_confirm()
+
+    def action_sgi_send_to_sign(self):
+        self._sgi_miid_raise_blockers("mandar a firmar")
+        return super().action_sgi_send_to_sign()
+
+    def _sgi_miid_held_key(self):
+        return '%s:%d' % (MIID_HELD_KIND, self.id)
+
+    def _sgi_miid_close_held(self, reason):
+        for req in self:
+            notices = self.env['mail.activity'].sudo().with_context(active_test=False).search([
+                ('res_model', '=', 'approval.request'), ('res_id', '=', req.id),
+                ('sgi_cron_key', '=', req._sgi_miid_held_key()), ('sgi_episode_closed', '=', False)])
+            if notices:
+                self.env['sgi.cron']._sgi_close_activities(notices, reason)
+            if req.sgi_miid_blocked_note:
+                req.sudo().sgi_miid_blocked_note = False
+
+    def action_approve(self, approver=None):
+        """Candados del MIID (Q16, Q17). Con el botón: error claro. Desde Sign
+        (``sgi_sign_sync``; el cron diario no tiene savepoint por solicitud): no se
+        levanta nada, la solicitud del MIID se salta, se anota una vez y se
+        avisa al Jefe MAST."""
+        if not self.env.context.get('sgi_sign_sync'):
+            self._sgi_miid_raise_blockers("aprobar")
+            return super().action_approve(approver=approver)
+        held = self.env['approval.request']
+        Cron = self.env['sgi.cron']
+        for req in self.filtered('sgi_miid_hash'):
+            blockers = req._sgi_miid()._sgi_blockers()
+            if not blockers:
+                continue
+            held |= req
+            text = "\n".join(blockers)
+            if req.sgi_miid_blocked_note == text:
+                continue
+            req.sudo().sgi_miid_blocked_note = text
+            req.message_post(body=Markup("Firmas completas, pero el MIID no se aprueba hasta que:<br/>%s") %
+                             Markup("<br/>").join(Markup("• %s") % b for b in blockers))
+            manager_id = Cron._sgi_manager_user_id()
+            if manager_id:
+                Cron._sgi_schedule(
+                    req.sudo(), "Firmas del MIID completas: faltan los candados",
+                    Markup("<p>%s</p><ul>%s</ul><p>%s</p>") % (
+                        "La solicitud %s ya tiene sus firmas, pero el MIID no se aprueba hasta que:" % (
+                            req.name or ''),
+                        Markup('').join(Markup("<li>%s</li>") % b for b in blockers),
+                        "Quite «Por confirmar» cuando el texto esté confirmado y publique los procesos; la "
+                        "sincronización diaria con Sign la aprueba sola."),
+                    manager_id, date_deadline=sgi_add_business_days(self.env, sgi_today(self.env),
+                                                                    MIID_NOTICE_BUSINESS_DAYS),
+                    key=req._sgi_miid_held_key())
+        rest = self - held
+        if not rest:
+            return True
+        rest.filtered('sgi_miid_hash')._sgi_miid_close_held("se levantaron los candados del MIID")
+        return super(ApprovalRequestMiid, rest).action_approve(approver=approver)
+
+    def _sgi_sign_mast_users(self):
+        """Q4: el MIID lo aprueba Dirección (parámetro o primer miembro activo
+        de «Dirección de Operaciones (SGI)»); si no hay, el de siempre."""
+        if not self.sgi_miid_hash:
+            return super()._sgi_sign_mast_users()
+        param = self.env['ir.config_parameter'].sudo().get_param(MIID_APPROVER_PARAM)
+        user = self.env['res.users'].sudo().browse(int(param)).exists() if param and param.isdigit() \
+            else self.env['res.users']
+        if not (user and user.active):
+            user_id = self.env['sgi.cron']._sgi_first_user_id(
+                self.env.ref('quimibond_sgi.group_sgi_director', raise_if_not_found=False))
+            user = self.env['res.users'].sudo().browse(user_id) if user_id else self.env['res.users']
+        return user[:1] or super()._sgi_sign_mast_users()
+
+    def _sgi_archive_signed_pdf(self):
+        """I-2: con la aprobación retenida por candados, el PDF firmado espera
+        a la revisión nueva (si no, se archivaba en la revisión vieja)."""
+        if self.sgi_miid_hash and self.request_status != 'approved':
+            return False
+        return super()._sgi_archive_signed_pdf()
+
+    def _sgi_apply_doc_change(self):
+        """El MIID se publica con el PDF que se firmó (Q7, lo que se firma es lo
+        que se publica) y la revisión nueva lleva la huella de la solicitud."""
+        self.ensure_one()
+        if not (self.sgi_miid_hash and self.sgi_change_kind == 'modificacion'):
+            return super()._sgi_apply_doc_change()
+        miid = self._sgi_miid()
+        blockers = miid._sgi_blockers()
+        if blockers:  # última red: action_approve ya los revisó
+            if not self.env.context.get('sgi_sign_sync'):
+                raise UserError("No se puede aprobar el cambio del MIID todavía:\n%s" % "\n".join(
+                    "• " + b for b in blockers))
+            self.message_post(body="El MIID no se publicó: hay candados (secciones por confirmar o "
+                                   "procesos sin publicar).")
+            return False
+        if miid._sgi_hash(miid._sgi_snapshot()) != self.sgi_miid_hash:
+            self.message_post(body="Los datos del sistema cambiaron después del envío: se publica el MIID "
+                                   "que se firmó; la comparación diaria lo marcará desactualizado.")
+        sent = self._sgi_change_attachment()
+        if sent:
+            sent.sudo().write({'name': "MIID Rev. %02d.pdf" % (self.sgi_new_revision or 0)})
+        res = super()._sgi_apply_doc_change()
+        target = self.sgi_new_document_id or self.sgi_document_id
+        target.sudo().write({'sgi_content_hash': self.sgi_miid_hash})
+        self._sgi_miid_close_held("el MIID se aprobó")
+        return res

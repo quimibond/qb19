@@ -10,6 +10,9 @@
         <field name="arch" type="xml">
             <form string="Manual del SGI (MIID)" create="0" delete="0">
                 <header>
+                    <button name="action_sgi_miid_request_change" type="object" string="Solicitar cambio del MIID"
+                            class="btn-primary" icon="fa-pencil" groups="quimibond_sgi.group_sgi_manager"
+                            invisible="not document_id or pending_request_id"/>
                     <button name="action_print_live" type="object" string="Vista en PDF (borrador)"
                             class="btn-secondary" icon="fa-file-pdf-o"/>
                     <button name="action_open_vigente_pdf" type="object" string="PDF de la revisión vigente"

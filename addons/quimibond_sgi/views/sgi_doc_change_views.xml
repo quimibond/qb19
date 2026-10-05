@@ -38,6 +38,19 @@
                             (Jefe MAST). Cada firma aprueba su paso; con la última el cambio
                             se aplica solo.
                         </div>
+                        <!-- 57.105.0: solicitud del MIID (PDF generado por Odoo y candados). -->
+                        <field name="sgi_miid_hash" invisible="1"/>
+                        <div class="alert alert-info mb-2" role="status" invisible="not sgi_miid_hash">
+                            Solicitud del <b>MIID</b>: el PDF adjunto lo generó Odoo con los datos del sistema
+                            (<field name="sgi_miid_generated" readonly="1" class="oe_inline" nolabel="1"/>). Si los
+                            datos cambian antes de enviarla, al enviar se genera otra vez. Lo que se firma es lo que
+                            se publica. «Aprobó» lo firma Dirección. No se puede enviar ni aprobar mientras haya
+                            secciones por confirmar o procesos que no estén vigentes.
+                        </div>
+                        <div class="alert alert-danger mb-2" role="alert" invisible="not sgi_miid_blocked_note">
+                            <b>Firmas completas, pero el MIID no se aprueba hasta que:</b>
+                            <field name="sgi_miid_blocked_note" readonly="1" nolabel="1"/>
+                        </div>
                         <group invisible="not sgi_sign_request_id">
                             <group>
                                 <field name="sgi_sign_request_id" readonly="1"/>
