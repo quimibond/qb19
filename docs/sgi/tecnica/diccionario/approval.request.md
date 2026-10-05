@@ -22,10 +22,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi
 | `sgi_document_id` | Many2one | Documento afectado | Documento controlado que se modifica o se da de baja. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:36` |
 | `sgi_is_doc_change` | Boolean |  | Se marca sola cuando la categoría es de cambio documental del SGI. |  |  | related `category_id.sgi_is_doc_change`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:27` |
 | `sgi_is_moc` | Boolean |  | Se marca sola cuando la categoría es de gestión del cambio. |  |  | related `category_id.sgi_is_moc`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:30` |
-| `sgi_miid_blocked_note` | Text | Último aviso de candados del MIID | Lo que detiene la aprobación del MIID aunque las firmas estén completas. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:997` |
-| `sgi_miid_generated` | Datetime | MIID generado el | Cuándo se generó el PDF del MIID que lleva esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:995` |
-| `sgi_miid_hash` | Char | Huella del MIID | Huella de los datos con que se generó el PDF del MIID de esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:991` |
-| `sgi_miid_snapshot` | Text | Datos del MIID | Foto de los datos con que se generó el PDF del MIID. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:993` |
+| `sgi_miid_blocked_note` | Text | Último aviso de candados del MIID | Lo que detiene la aprobación del MIID aunque las firmas estén completas. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1017` |
+| `sgi_miid_generated` | Datetime | MIID generado el | Cuándo se generó el PDF del MIID que lleva esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1015` |
+| `sgi_miid_hash` | Char | Huella del MIID | Huella de los datos con que se generó el PDF del MIID de esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1011` |
+| `sgi_miid_snapshot` | Text | Datos del MIID | Foto de los datos con que se generó el PDF del MIID. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1013` |
 | `sgi_moc_risk_note` | Text | Evaluación de riesgos del cambio | 45001 §8.1.3 / 9001 §6.3: riesgos del cambio para calidad, ambiente y SST, y cómo se controlan. Obligatoria para aprobar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:32` |
 | `sgi_mp_apply_scheduled` | Boolean | Cambio aplicado | Se marca cuando la propuesta aprobada ya se aplicó a la actividad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:78` |
 | `sgi_mp_change_type` | Selection | Tipo de propuesta | Qué propone la persona: agregar una actividad, cambiar esta o quitarla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:70` |

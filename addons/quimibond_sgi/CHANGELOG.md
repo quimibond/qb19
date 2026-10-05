@@ -120,7 +120,8 @@ fechas del 5-oct que ahora son vivas (identificación sin «Clave» ni
 «Revisión»; 4.4 «mediante los procesos de la tabla siguiente»; 10.2
 «Abierta» remite a la tabla de plazos; 11.2 sin «Según el registro de Odoo
 al 5 de octubre»), las frases «por confirmar» pasan a la nota y «Jefe de
-MAST» se escribe «Jefe MAST» (glosario); 7.5 y 8.2 imprimen los nombres de
+MAST» se escribe «Jefe MAST» (glosario); «Qué cambia» (tabla) y 3 (término
+«Proceso») dicen «los procesos del SGI» en vez de «14 procesos»; 7.5 y 8.2 imprimen los nombres de
 tipos y controles de producción («Procedimiento (P)», no «Procedimiento de
 proceso»). (Q2) La huella cubre textos, notas, procesos, flujos, política,
 objetivos e indicadores, tipos y patrones, controles, anexos,
@@ -152,6 +153,16 @@ para el código; la tabla de procedimientos anteriores toma solo claves del
 Dropbox (`sgi_legacy_family`), no los procedimientos de proceso nuevos;
 controles, anexos y procedimientos se leen de la empresa del MIID (no los
 que no tienen empresa); el menú y la ruta entraron con la pantalla.
+
+**Revisión final:** la nota y el aviso de una aprobación retenida dicen
+«Firmas completas» solo si la firma de Sign terminó (si no, «Firma en curso
+(N de M)»; el aviso de la solicitud es neutro); el PDF firmado de una
+solicitud rechazada o cancelada sí se archiva (deja de reintentarse); el
+orden de las secciones entra a la huella («Sección movida de lugar»);
+`approval.request` entra a `NOTICE_MODELS`, así que el aviso «MIID
+retenido» (con clave) sale en Mis pendientes; crear el registro `sgi.miid`
+de la empresa tolera que otra transacción lo cree al mismo tiempo (sin
+ERROR en el log); la comparación diaria es solo de la empresa del SGI.
 
 **Pruebas:** `test_miid` (21 casos).
 

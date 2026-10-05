@@ -48,7 +48,7 @@
                             secciones por confirmar o procesos que no estén vigentes.
                         </div>
                         <div class="alert alert-danger mb-2" role="alert" invisible="not sgi_miid_blocked_note">
-                            <b>Firmas completas, pero el MIID no se aprueba hasta que:</b>
+                            <b>La aprobación del MIID está retenida hasta que:</b>
                             <field name="sgi_miid_blocked_note" readonly="1" nolabel="1"/>
                         </div>
                         <group invisible="not sgi_sign_request_id">

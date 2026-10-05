@@ -82,7 +82,9 @@ NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
                  # 57.94.0 (U-08): aviso semanal de RH por departamento.
                  'hr.department',
                  # 57.100.0 (N-14): salida validada sin CoA.
-                 'stock.picking')
+                 'stock.picking',
+                 # 57.105.0: aprobación del MIID retenida por candados.
+                 'approval.request')
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
 CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)

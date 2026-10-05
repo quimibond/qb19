@@ -16,10 +16,12 @@ import json
 import logging
 import re
 
+import psycopg2
 from markupsafe import Markup, escape
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools import mute_logger
 
 # Sin modelos (sgi_calendar, sgi_menu_paths) o ya cargados (sgi_report_print).
 from .sgi_calendar import sgi_add_business_days, sgi_local_date, sgi_today
@@ -250,9 +252,20 @@ class SgiMiid(models.Model):
     # ------------------------------------------------------------------
     @api.model
     def _sgi_get(self, company=None):
+        """El MIID de la empresa; lo crea si no existe. Si otra transacción lo
+        crea al mismo tiempo (índice único), no truena ni deja ERROR en el
+        log: devuelve lo que vea (puede venir vacío hasta la siguiente vez)."""
         company = company or self.env['sgi.config']._sgi_company()
-        miid = self.sudo().search([('company_id', '=', company.id)], limit=1)
-        return miid or self.sudo().create({'company_id': company.id})
+        Miid = self.sudo()
+        miid = Miid.search([('company_id', '=', company.id)], limit=1)
+        if miid:
+            return miid
+        try:
+            with self.env.cr.savepoint(), mute_logger('odoo.sql_db'):
+                return Miid.create({'company_id': company.id})
+        except psycopg2.IntegrityError:
+            _logger.info("SGI: el MIID de %s lo creó otra transacción.", company.name)
+            return Miid.search([('company_id', '=', company.id)], limit=1)
 
     def _sgi_documents(self):
         """Todas las revisiones del MIID de la empresa (por la clave, no por el
@@ -355,7 +368,8 @@ class SgiMiid(models.Model):
 
         sections = env['sgi.miid.section'].search([('company_id', '=', company.id)])
         raw['sections'] = {str(s.id): [s.clause or '', s.name or '', s.heading_level or '',
-                                       _miid_plain(s.body), s.live_block or '', bool(s.body_fallback)]
+                                       _miid_plain(s.body), s.live_block or '', bool(s.body_fallback),
+                                       s.sequence or 0]
                            for s in sections}
         raw['row_notes'] = {str(s.id): {n.key: n.text for n in s.row_note_ids}
                             for s in sections if s.row_note_ids}
@@ -467,6 +481,8 @@ class SgiMiid(models.Model):
             return " ".join(x for x in (row[0], row[1]) if x)
 
         def section_changed(_k, a, b):
+            if a[:6] == b[:6]:
+                return ["Sección movida de lugar: %s" % heading(b)]
             return ["Sección editada: %s" % heading(b)]
         keyed('sections', lambda k, v: "Sección nueva: %s" % heading(v),
               lambda k, v: "Sección archivada: %s" % heading(v), section_changed)
@@ -800,6 +816,8 @@ class SgiMiid(models.Model):
     @api.model
     def action_open(self):
         miid = self._sgi_get()
+        if not miid:
+            raise UserError("Se está creando el MIID de la empresa; intente de nuevo en un momento.")
         miid.invalidate_recordset()
         return {'type': 'ir.actions.act_window', 'name': "Manual del SGI (MIID)",
                 'res_model': 'sgi.miid', 'res_id': miid.id, 'view_mode': 'form',
@@ -822,7 +840,7 @@ class SgiMiid(models.Model):
                 'res_model': 'sgi.miid.section', 'view_mode': 'list,form',
                 'views': [(self.env.ref('quimibond_sgi.sgi_miid_section_view_list').id, 'list'),
                           (self.env.ref('quimibond_sgi.sgi_miid_section_view_form').id, 'form')],
-                'search_view_id': self.env.ref('quimibond_sgi.sgi_miid_section_view_search').id,
+                'search_view_id': [self.env.ref('quimibond_sgi.sgi_miid_section_view_search').id],
                 'domain': [('company_id', '=', self.company_id.id)],
                 'context': {'default_company_id': self.company_id.id}}
 
@@ -927,6 +945,8 @@ class SgiMiid(models.Model):
     @api.model
     def _sgi_diagnostic_lines(self):
         miid = self._sgi_get()
+        if not miid:
+            return []
         miid.invalidate_recordset()
         Diag = self.env['sgi.diagnostic']
         fix = sgi_menu_path('miid')
@@ -1073,6 +1093,17 @@ class ApprovalRequestMiid(models.Model):
         self._sgi_miid_raise_blockers("mandar a firmar")
         return super().action_sgi_send_to_sign()
 
+    def _sgi_miid_held_head(self):
+        """«Firmas completas» solo con la firma de Sign terminada; si no,
+        cuántas van."""
+        self.ensure_one()
+        sign = self.sudo().sgi_sign_request_id
+        if sign and sign.state == 'signed':
+            return "Firmas completas"
+        if sign and self.sgi_sign_progress:
+            return "Firma en curso (%s)" % self.sgi_sign_progress
+        return "Firma en curso"
+
     def _sgi_miid_held_key(self):
         return '%s:%d' % (MIID_HELD_KIND, self.id)
 
@@ -1105,15 +1136,16 @@ class ApprovalRequestMiid(models.Model):
             if req.sgi_miid_blocked_note == text:
                 continue
             req.sudo().sgi_miid_blocked_note = text
-            req.message_post(body=Markup("Firmas completas, pero el MIID no se aprueba hasta que:<br/>%s") %
-                             Markup("<br/>").join(Markup("• %s") % b for b in blockers))
+            head = req._sgi_miid_held_head()
+            req.message_post(body=Markup("%s, pero el MIID no se aprueba hasta que:<br/>%s") % (
+                head, Markup("<br/>").join(Markup("• %s") % b for b in blockers)))
             manager_id = Cron._sgi_manager_user_id()
             if manager_id:
                 Cron._sgi_schedule(
-                    req.sudo(), "Firmas del MIID completas: faltan los candados",
+                    req.sudo(), "MIID retenido: faltan los candados",
                     Markup("<p>%s</p><ul>%s</ul><p>%s</p>") % (
-                        "La solicitud %s ya tiene sus firmas, pero el MIID no se aprueba hasta que:" % (
-                            req.name or ''),
+                        "Solicitud %s: %s, pero el MIID no se aprueba hasta que:" % (
+                            req.name or '', head.lower()),
                         Markup('').join(Markup("<li>%s</li>") % b for b in blockers),
                         "Quite «Por confirmar» cuando el texto esté confirmado y publique los procesos; la "
                         "sincronización diaria con Sign la aprueba sola."),
@@ -1142,8 +1174,9 @@ class ApprovalRequestMiid(models.Model):
 
     def _sgi_archive_signed_pdf(self):
         """I-2: con la aprobación retenida por candados, el PDF firmado espera
-        a la revisión nueva (si no, se archivaba en la revisión vieja)."""
-        if self.sgi_miid_hash and self.request_status != 'approved':
+        a la revisión nueva (si no, se archivaba en la revisión vieja). Una
+        solicitud rechazada o cancelada sí archiva (deja de reintentarse)."""
+        if self.sgi_miid_hash and self.request_status in ('new', 'pending'):
             return False
         return super()._sgi_archive_signed_pdf()
 
@@ -1188,5 +1221,6 @@ class SgiCronMiid(models.AbstractModel):
     @api.model
     def _sgi_miid_check(self):
         """57.105.0: compara el MIID de la empresa del SGI con el sistema."""
+        # Solo la empresa del SGI (D-03).
         self.env['sgi.miid']._sgi_get()._sgi_check()
         return True

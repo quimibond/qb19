@@ -36,7 +36,7 @@
                 <thead><tr><th>Tema</th><th>Revisión 02</th><th>Revisión 03</th></tr></thead>
                 <tbody>
                 <tr><td>Dónde vive el sistema</td><td>Carpetas del Dropbox, con PDF y Excel</td><td>Odoo, menú SGI</td></tr>
-                <tr><td>Cómo se describe la operación</td><td>52 procedimientos por área o puesto (P-A, P-C, P-D, P-E, P-G, P-M, P-P, P-S)</td><td>14 procesos con actividades, dueño y medición</td></tr>
+                <tr><td>Cómo se describe la operación</td><td>52 procedimientos por área o puesto (P-A, P-C, P-D, P-E, P-G, P-M, P-P, P-S)</td><td>Los procesos del SGI, con actividades, dueño y medición</td></tr>
                 <tr><td>Registros</td><td>Formatos en Excel y papel</td><td>Registros de Odoo, que imprimen la clave y la revisión del formato</td></tr>
                 <tr><td>Riesgos, aspectos, IPER, requisitos legales</td><td>Matrices en Excel por área</td><td>Registros en Odoo con evaluación, acciones e historial</td></tr>
                 <tr><td>Indicadores</td><td>Captura mensual en F-P-A10-03</td><td>Medición automática o captura, validada por el dueño</td></tr>
@@ -146,7 +146,7 @@
                 <thead><tr><th>Término</th><th>Significado</th></tr></thead>
                 <tbody>
                 <tr><td>Odoo</td><td>El sistema de gestión empresarial de PNTQ. El SGI opera en su menú <b>SGI</b></td></tr>
-                <tr><td>Proceso</td><td>Uno de los 14 procesos del SGI, con clave (E, C o S), dueño y actividades</td></tr>
+                <tr><td>Proceso</td><td>Uno de los procesos del SGI, con clave (E, C o S), dueño y actividades</td></tr>
                 <tr><td>Actividad</td><td>Una tarea de un proceso: qué se hace, quién, dónde, cómo, cuándo, cuándo está terminada y qué hacer si falla</td></tr>
                 <tr><td>Dueño de proceso</td><td>Quien responde por el resultado de un proceso</td></tr>
                 <tr><td>Mi procedimiento</td><td>El conjunto de actividades, documentos, indicadores y equipo de protección del puesto de cada persona</td></tr>

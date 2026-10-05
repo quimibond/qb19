@@ -188,6 +188,7 @@ class TestMiidDatos(_Case):
                          "«Por confirmar» no entra a la huella (una revisión aprobada nunca lo tiene).")
         cases = [
             ('sección', lambda: self.s_proc.write({'body': '<p>Otro texto</p>'})),
+            ('orden', lambda: self.s_ctrl.write({'sequence': 5})),
             ('dueño', lambda: self.p1.write({'owner_id': self.emp_b.id})),
             ('proceso nuevo', lambda: self.env['sgi.process'].create(
                 {'code': 'ZM2', 'name': 'Proceso MIID dos', 'company_id': self.company.id})),
@@ -217,6 +218,10 @@ class TestMiidDatos(_Case):
         self.assertIn("Cambió el dueño de ZM1: ZM Dueña A → ZM Dueño B", text)
         self.assertIn("Control operacional nuevo: CO-ZM1-03", text)
         self.assertIn("Sección editada: 8 Operación ZM", text)
+        old = self.miid._sgi_snapshot()
+        self.s_proc.sequence = 30
+        self.assertIn("Sección movida de lugar: 4.4 Procesos ZM",
+                      self.Miid._sgi_diff(old, self.miid._sgi_snapshot()))
 
     def test_08_vista_html_con_pie_propio(self):
         self._control('CO-ZM1-04')
@@ -414,10 +419,15 @@ class TestMiidCandados(_Case):
         self.assertEqual(req.request_status, 'pending', "Las firmas no aprueban el MIID con candados.")
         notes = req.message_ids.filtered(lambda m: 'no se aprueba hasta que' in (m.body or ''))
         self.assertEqual(len(notes), 1, "Una sola nota, no una por sincronización.")
+        self.assertIn('Firma en curso', notes.body, "Sin la firma de Sign terminada no dice «Firmas completas».")
+        self.assertNotIn('Firmas completas', notes.body)
         held = self.env['mail.activity'].search([
             ('res_model', '=', 'approval.request'), ('res_id', '=', req.id),
             ('sgi_cron_key', '=', 'miid_retenido:%d' % req.id)])
         self.assertEqual(held.user_id, self.mast, "El Jefe MAST recibe un aviso, no solo la nota.")
+        rows = self.env['sgi.my.pending']._sgi_pending_values(self.mast)[self.mast.id]
+        self.assertTrue([r for r in rows if r['kind'] == 'aviso' and r['res_id'] == held.id],
+                        "El aviso de la solicitud retenida cae en Mis pendientes.")
         # Se levanta el candado: la siguiente sincronización aprueba y cierra el aviso.
         self.s_ctrl.write({'to_confirm': False})
         req.with_user(self.mast).with_context(sgi_sign_sync=True).action_approve(approver=approver)

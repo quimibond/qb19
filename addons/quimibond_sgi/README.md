@@ -150,6 +150,8 @@ el texto como respaldo. Un bloque que ninguna sección lleva sale al final
   publica. Nada se aprueba solo.
 - **Sin línea base:** el MIID cargado del Dropbox (sin huella) no avisa; la
   primera revisión desde Odoo es la 03.
+- **Una empresa:** la comparación diaria y el aviso son solo de la empresa
+  del SGI (`quimibond_sgi.sgi_company_id`, D-03).
 
 ## Indicadores: sin dato y cálculos (57.104.0)
 
