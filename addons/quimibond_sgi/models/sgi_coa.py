@@ -12,15 +12,24 @@ parámetro ``quimibond_sgi.coa_block_validation``: con él, solo el Jefe de
 Calidad (puesto ``quimibond_sgi.coa_exception_job_id``) valida sin COA y deja
 el motivo.
 
+57.100.0 (N-14): la salida validada sin COA deja nota en su chatter y un aviso
+(clave ``coa_sin_adjuntar:<id>``) al Jefe de Calidad (o al Jefe MAST) que se
+cierra solo al adjuntar el COA. Sin avisos retroactivos (P15).
+
 Lo que se siga mandando por correo se liga solo: el buzón «COA» lee el nombre
 del archivo (``<código de producto> <factura>.pdf``), sigue la factura al
 pedido y al pedido a su salida con ese producto. Lo que no se liga queda en la
 cola «COA sin ligar» para asignarlo a mano.
 """
+import logging
 import re
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+from .sgi_calendar import sgi_add_business_days, sgi_today
+
+_logger = logging.getLogger(__name__)
 
 COA_STATUS = [
     ('no_aplica', "No aplica"),
@@ -167,6 +176,8 @@ class StockPicking(models.Model):
         if sent:
             vals['sgi_coa_sent_date'] = when
         self.write(vals)
+        # 57.100.0 (N-14): el aviso de «Salida sin CoA» se cierra solo.
+        self._sgi_coa_close_notice()
 
     def _sgi_coa_send(self, attachments, recipients):
         """Correo al cliente con la plantilla y los PDF; queda en el chatter."""
@@ -209,7 +220,70 @@ class StockPicking(models.Model):
                     "Estas salidas requieren CoA y no lo tienen adjunto: %s.\n"
                     "Adjunte el certificado (botón «Adjuntar CoA») o pida al Jefe "
                     "de Calidad que valide la excepción." % ", ".join(missing.mapped('name')))
-        return super().button_validate()
+        # 57.100.0 (N-14): las que salen sin CoA dejan nota y aviso. Solo las
+        # que de verdad quedaron hechas (el super puede regresar un asistente
+        # de entrega parcial sin validar nada). I-8: la excepción con motivo
+        # del Jefe de Calidad ya tiene responsable y motivo: sin aviso.
+        pending = self.filtered(lambda p: p.sgi_coa_status == 'pendiente')
+        if self.env.context.get('sgi_coa_exception_reason') and self._sgi_user_is_quality_head():
+            pending = self.browse()
+        res = super().button_validate()
+        shipped = pending.filtered(lambda p: p.state == 'done' and p.sgi_coa_status == 'pendiente')
+        if shipped:
+            shipped._sgi_coa_missing_notice()
+        return res
+
+    def _sgi_coa_notice_user_id(self):
+        """Un usuario activo del puesto Jefe de Calidad (parámetro
+        ``coa_exception_job_id``); si no hay, el Jefe MAST (P15)."""
+        raw = self.env['ir.config_parameter'].sudo().get_param(EXCEPTION_JOB_PARAM, '204')
+        job_id = int(raw) if str(raw).strip().isdigit() else 0
+        if job_id:
+            employee = self.env['hr.employee'].sudo().search(
+                [('job_id', '=', job_id), ('user_id', '!=', False),
+                 ('user_id.active', '=', True), ('user_id.share', '=', False)],
+                order='id', limit=1)
+            if employee:
+                return employee.user_id.id
+        return self.env['sgi.cron']._sgi_manager_user_id()
+
+    def _sgi_coa_missing_notice(self):
+        """57.100.0 (N-14): la salida se fue sin CoA a un cliente que lo exige.
+        Cada salida en su savepoint (C-3): un aviso que falla se registra y
+        nunca revierte ni detiene la validación."""
+        Cron = self.env['sgi.cron'].sudo()
+        user_id = self._sgi_coa_notice_user_id()
+        deadline = sgi_add_business_days(self.env, sgi_today(self.env), 1)
+        for picking in self.sudo():
+            try:
+                with self.env.cr.savepoint():
+                    picking.message_post(
+                        body="Salida validada sin CoA; el cliente lo exige en cada embarque. "
+                             "Adjúntelo con «Adjuntar CoA».")
+                    Cron._sgi_schedule(
+                        picking, "Salida sin CoA: %s (%s)" % (
+                            picking.name, picking.partner_id.commercial_partner_id.name or ''),
+                        "La salida se validó sin el certificado de análisis que pide el cliente. "
+                        "Adjunte el CoA con «Adjuntar CoA» y envíelo; el aviso se cierra solo.",
+                        user_id, date_deadline=deadline, key='coa_sin_adjuntar:%d' % picking.id)
+            except Exception as exc:  # noqa: BLE001 — el aviso nunca tumba el embarque
+                _logger.warning("SGI: no se pudo avisar la salida %s validada sin CoA (%s).",
+                                picking.id, type(exc).__name__)
+        return True
+
+    def _sgi_coa_close_notice(self):
+        """Cierra el aviso «Salida sin CoA» de estas salidas (C-3: en savepoint)."""
+        try:
+            with self.env.cr.savepoint():
+                acts = self.env['mail.activity'].sudo().search([
+                    ('res_model', '=', 'stock.picking'), ('res_id', 'in', self.ids),
+                    ('sgi_cron_key', '=like', 'coa_sin_adjuntar:%')])
+                if acts:
+                    self.env['sgi.cron'].sudo()._sgi_close_activities(acts, "CoA adjunto")
+        except Exception as exc:  # noqa: BLE001 — adjuntar el CoA nunca falla por el aviso
+            _logger.warning("SGI: no se pudo cerrar el aviso de CoA de %s (%s).",
+                            self.ids, type(exc).__name__)
+        return True
 
 
 class SaleOrder(models.Model):

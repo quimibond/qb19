@@ -193,6 +193,28 @@ class ResPartnerPpap(models.Model):
     _inherit = 'res.partner'
 
     sgi_ppap_count = fields.Integer(string="PPAP", compute='_compute_sgi_ppap_count')
+    # 57.100.0 (N-14): requisitos del cliente automotriz, por compañía como
+    # «Requiere CoA en cada embarque». Vacíos hasta que Calidad los marque
+    # (pista de datos de Q12).
+    sgi_requires_ppap = fields.Boolean(
+        string="Exige PPAP ante cambios", company_dependent=True,
+        help="Todo cambio de ingeniería de un producto que se le vende pide PPAP: el SGI "
+             "marca «Requiere PPAP» en el ECO y genera un PPAP por cliente al aplicarlo.")
+    sgi_requires_contingency = fields.Boolean(
+        string="Exige plan de contingencia", company_dependent=True,
+        help="El cliente pide un plan de contingencia de suministro.")
+
+    _SGI_AUTOMOTIVE_FIELDS = ('sgi_requires_ppap', 'sgi_requires_contingency')
+
+    def write(self, vals):
+        # Solo SGI o Calidad deciden qué exige un cliente (la vista lo muestra
+        # de solo lectura a los demás; esta es la regla real), como el CoA.
+        if (set(vals) & set(self._SGI_AUTOMOTIVE_FIELDS) and not self.env.su
+                and not (self.env.user.has_group('quimibond_sgi.group_sgi_user')
+                         or self.env.user.has_group('quality.group_quality_user'))):
+            raise UserError("Solo SGI o Calidad pueden cambiar los requisitos de cliente "
+                            "automotriz (PPAP y plan de contingencia).")
+        return super().write(vals)
 
     def _compute_sgi_ppap_count(self):
         data = self.env['sgi.ppap']._read_group(
