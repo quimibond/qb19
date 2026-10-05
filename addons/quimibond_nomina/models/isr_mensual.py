@@ -98,7 +98,12 @@ class HrPayslip(models.Model):
     # 0. Fecha de pago y nóminas del mes
     # ------------------------------------------------------------------
     def _qb_nomina_dia_pago(self):
+        # get_param devuelve False cuando el parámetro no existe, e int(False)
+        # es 0 (lunes): en 1.8.0 eso movió la semana 41 a septiembre. Sin
+        # parámetro, viernes.
         valor = self.env['ir.config_parameter'].sudo().get_param(PARAM_DIA_PAGO)
+        if not valor:
+            return DIA_PAGO_DEFAULT
         try:
             dia = int(valor)
         except (TypeError, ValueError):
