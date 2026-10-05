@@ -384,7 +384,7 @@ lectura o valores en memoria del CFDI de cada recibo.
 | Vista QWeb `cfdiv40_nomina_quimibond` y vista `cfdiv40_nomina_horas_extra` (herencias de la plantilla del CFDI) | al instalar; la segunda reescribe su propio `arch`/`active` en cada actualización | registros propios del módulo; la plantilla de Odoo no se modifica |
 | Vistas del empleado, plantilla de contrato y del centinela; menú del centinela (se cuelga de Nómina → Configuración en cada actualización) | al instalar | registros propios del módulo |
 | Parámetro `quimibond_nomina.isr_mensual_incluye_borrador` | nunca lo escribe; sólo lo lee | lo pone a mano quien corre las pilotos |
-| Parámetro `quimibond_nomina.dia_pago_semanal` (0 = lunes … 6 = domingo; sin él, viernes) | nunca lo escribe; sólo lo lee | sólo si el día de pago semanal deja de ser viernes |
+| Parámetro `quimibond_nomina.dia_pago_semanal` (0 = lunes … 6 = domingo; sin él, viernes) | nunca lo escribe; sólo lo lee | sólo si el día de pago semanal deja de ser viernes. En producción está en `4` desde el 2026-10-05 (1.8.0 leía `False` como lunes; 1.8.1 lo corrige) |
 | Fila de `hr.payslip.line`, `hr.payslip`, `hr.salary.rule`, `l10n.mx.concept`, `res.company`, `res.partner` | nunca | — |
 
 Las reglas `H_SENC`, `ISR`, `SUBSIDY` (2026-09-29) y `FONACOT` (2026-10-02)
