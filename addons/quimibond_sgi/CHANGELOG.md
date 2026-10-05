@@ -27,6 +27,10 @@ y sin migración; las NC que ya existen no cambian.
   contestar (y responsable de la alerta) al usuario activo del dueño del
   proceso del hallazgo; quien pulsa el botón queda como solicitante. Sin
   dueño con usuario activo, se comporta como antes.
+- **Generar NC (hallazgo del recorrido de la Comisión de Seguridad e
+  Higiene):** el «Responsable» del hallazgo, que ya quedaba como responsable
+  de la alerta, ahora también queda como responsable a contestar (lo ve en
+  Mis pendientes); quien pulsa queda como solicitante.
 - **Tablero de NC (kanban):** cada columna ordena por fecha de creación
   descendente; la recién creada queda arriba.
 
