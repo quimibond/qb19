@@ -316,4 +316,4 @@ access_sgi_work_permit_skill_manager,sgi.work.permit.skill.manager,model_sgi_wor
 access_sgi_training_effectiveness_user,sgi.training.effectiveness.user,model_sgi_training_effectiveness,base.group_user,1,1,0,0
 access_sgi_training_effectiveness_hr,sgi.training.effectiveness.hr,model_sgi_training_effectiveness,hr.group_hr_user,1,1,0,0
 access_sgi_training_effectiveness_manager,sgi.training.effectiveness.manager,model_sgi_training_effectiveness,group_sgi_manager,1,1,0,0
-access_survey_survey_sgi_manager,survey.survey sgi manager,survey.model_survey_survey,group_sgi_manager,1,0,0,0
+access_survey_survey_sgi_manager,survey.survey sgi manager,survey.model_survey_survey,group_sgi_manager,1,1,0,0

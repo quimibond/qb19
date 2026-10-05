@@ -114,3 +114,11 @@ class TestEcoPpap(TransactionCase):
         eco._sgi_handle_ppap()
         self.assertFalse(eco.sgi_ppap_ids)
         self.assertTrue(eco.activity_ids.filtered(lambda a: 'Crear PPAP' in (a.summary or '')))
+
+    def test_09_marcado_a_mano_sin_cliente_usa_los_del_producto(self):
+        self._sell(self.auto)
+        eco = self._eco(sgi_requires_ppap=True)
+        self.assertFalse(eco.sgi_ppap_auto)
+        self.assertFalse(eco.sgi_customer_id)
+        eco._sgi_handle_ppap()
+        self.assertEqual(eco.sgi_ppap_ids.partner_id, self.auto)

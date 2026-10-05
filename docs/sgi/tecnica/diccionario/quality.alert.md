@@ -11,14 +11,14 @@ Archivos: `addons/quimibond_sgi/models/sgi_ai.py`, `addons/quimibond_sgi/models/
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_action_line_ids` | One2many | Correcciones y acciones |  |  | `sgi.action.line` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:197` |
-| `sgi_ai_available` | Boolean | IA disponible | La sugerencia de IA está encendida y usted puede pedirla. |  |  | compute `_compute_sgi_ai_available`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ai.py:237` |
-| `sgi_ai_classification` | Selection | Clasificación sugerida (IA) | Clasificación que propone la IA. No cambia la NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:228` |
-| `sgi_ai_clause_id` | Many2one | Cláusula sugerida (IA) | Cláusula que propone la IA. No cambia la NC. |  | `sgi.norm.clause` |  |  | `addons/quimibond_sgi/models/sgi_ai.py:225` |
-| `sgi_ai_date` | Datetime | Sugerencia del |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:235` |
-| `sgi_ai_ishikawa` | Text | Borrador de Ishikawa 6M (IA) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:234` |
-| `sgi_ai_model` | Char | Modelo de IA |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:236` |
-| `sgi_ai_reason` | Text | Por qué lo sugiere la IA |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:232` |
-| `sgi_ai_whys` | Text | Borrador de 5 porqués (IA) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:233` |
+| `sgi_ai_available` | Boolean | IA disponible | La sugerencia de IA está encendida y usted puede pedirla. |  |  | compute `_compute_sgi_ai_available`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ai.py:253` |
+| `sgi_ai_classification` | Selection | Clasificación sugerida (IA) | Clasificación que propone la IA. No cambia la NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:244` |
+| `sgi_ai_clause_id` | Many2one | Cláusula sugerida (IA) | Cláusula que propone la IA. No cambia la NC. |  | `sgi.norm.clause` |  |  | `addons/quimibond_sgi/models/sgi_ai.py:241` |
+| `sgi_ai_date` | Datetime | Sugerencia del |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:251` |
+| `sgi_ai_ishikawa` | Text | Borrador de Ishikawa 6M (IA) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:250` |
+| `sgi_ai_model` | Char | Modelo de IA |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:252` |
+| `sgi_ai_reason` | Text | Por qué lo sugiere la IA |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:248` |
+| `sgi_ai_whys` | Text | Borrador de 5 porqués (IA) |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_ai.py:249` |
 | `sgi_approved_by` | Many2one | Aprobó | Persona que aprueba el cierre de la no conformidad. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:188` |
 | `sgi_approved_date` | Date | Fecha de aprobación | Fecha en que se aprobó el cierre de la no conformidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:190` |
 | `sgi_cancel_reason` | Text | Motivo de cancelación |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:243` |

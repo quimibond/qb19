@@ -28,8 +28,12 @@ class TestCompetenciasCapacitacion(TransactionCase):
             'name': 'Jefe Z13', 'user_id': cls.boss_user.id, 'company_id': cls.company.id})
         cls.emp = cls.env['hr.employee'].create({
             'name': 'Empleado Z13', 'parent_id': cls.boss.id, 'company_id': cls.company.id})
+        # Tipo de certificación: Odoo guarda su «válida hasta» tal cual y
+        # permite un renglón por periodo (las aserciones de vigencia no
+        # dependen de cómo trate Odoo los tipos normales). El tipo normal se
+        # prueba aparte (_regular_type).
         cls.stype = cls.env['hr.skill.type'].create({
-            'name': 'Z13 Capacitación',
+            'name': 'Z13 Capacitación', 'is_certification': True,
             'skill_ids': [(0, 0, {'name': 'Z13 Extintores'})],
             'skill_level_ids': [
                 (0, 0, {'name': 'Z13 Básico', 'level_progress': 50}),
@@ -55,6 +59,14 @@ class TestCompetenciasCapacitacion(TransactionCase):
     def _skill(self, employee=None):
         return self.env['hr.employee.skill'].search(
             [('employee_id', '=', (employee or self.emp).id), ('skill_id', '=', self.skill.id)])
+
+    def _regular_type(self, name):
+        """Tipo de competencia normal (no certificación) con una competencia."""
+        stype = self.env['hr.skill.type'].create({
+            'name': name, 'skill_ids': [(0, 0, {'name': name + ' habilidad'})],
+            'skill_level_ids': [(0, 0, {'name': name + ' nivel', 'level_progress': 100,
+                                        'default_level': True})]})
+        return stype, stype.skill_ids, stype.skill_level_ids
 
     def _evaluation(self):
         return self.env['sgi.training.effectiveness'].search([('employee_id', '=', self.emp.id)])
@@ -94,13 +106,14 @@ class TestCompetenciasCapacitacion(TransactionCase):
             'title': 'Z13 Examen básico', 'certification': True,
             'scoring_type': 'scoring_with_answers',
             'sgi_skill_id': self.skill.id, 'sgi_skill_level_id': self.level_low.id})
-        self._resume(survey_id=low.id, date_start=date(2046, 1, 10))
-        self._resume(survey_id=self.survey.id, date_start=date(2046, 6, 1),
-                     date_end=date(2047, 6, 1))
+        today = fields.Date.context_today(self.env.user)
+        self._resume(survey_id=low.id, date_start=today - timedelta(days=30))
+        self._resume(survey_id=self.survey.id, date_start=today,
+                     date_end=today + timedelta(days=365))
         rows = self._skill().sorted('valid_from')
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0].skill_level_id, self.level_low)
-        self.assertEqual(rows[0].valid_to, date(2046, 5, 31))
+        self.assertEqual(rows[0].valid_to, today - timedelta(days=1), "Cerrado ayer.")
         self.assertEqual(rows[1].skill_level_id, self.level)
         self.assertEqual(len(self._evaluation()), 2, "Nueva y subida abren evaluación.")
 
@@ -151,6 +164,11 @@ class TestCompetenciasCapacitacion(TransactionCase):
         # I-11: quien no es RH ni Jefe MAST no cambia los datos de la evaluación.
         with self.assertRaises(UserError):
             ev.with_user(self.boss_user).write({'due_date': date(2046, 12, 1)})
+        # El contexto no abre el candado: quién evaluó y cuándo solo los
+        # escriben los botones.
+        with self.assertRaises(UserError):
+            ev.with_user(self.boss_user).with_context(sgi_effectiveness_result=True).write(
+                {'evaluated_by': self.boss_user.id, 'evaluated_date': date(2046, 1, 1)})
         ev.with_user(self.mast).write({'state': 'no_eficaz', 'result_note': 'Corrección MAST'})
         self.assertEqual(ev.state, 'no_eficaz')
         with self.assertRaises(UserError):
@@ -172,9 +190,14 @@ class TestCompetenciasCapacitacion(TransactionCase):
 
     def test_10_aviso_de_vencimiento_tambien_sin_certificacion(self):
         today = fields.Date.context_today(self.env.user)
-        self._resume(survey_id=self.survey.id, date_start=today - timedelta(days=1),
+        stype, skill, level = self._regular_type('Z13 Normal')
+        survey = self.env['survey.survey'].create({
+            'title': 'Z13 Examen normal', 'certification': True,
+            'scoring_type': 'scoring_with_answers',
+            'sgi_skill_id': skill.id, 'sgi_skill_level_id': level.id})
+        self._resume(survey_id=survey.id, date_start=today - timedelta(days=1),
                      date_end=today + timedelta(days=10))
-        self.assertFalse(self.stype.is_certification)
+        self.assertFalse(stype.is_certification)
         self.env['sgi.cron'].sudo().cron_competences()
         acts = self.env['mail.activity'].sudo().search(
             [('res_model', '=', 'hr.employee'), ('res_id', '=', self.emp.id),
@@ -185,6 +208,32 @@ class TestCompetenciasCapacitacion(TransactionCase):
         self.assertFalse(self.env['mail.activity'].sudo().search(
             [('res_model', '=', 'hr.employee'), ('res_id', '=', self.emp.id),
              ('sgi_cron_key', '=like', 'formacion_por_concluir:%')]))
+
+    def test_10b_vencimiento_solo_de_lo_que_otorga_el_sgi(self):
+        """I-3: una competencia normal con «válida hasta» que el SGI no otorga
+        (sin examen ni curso con vigencia) no avisa; un renglón cerrado al
+        subir de nivel tampoco."""
+        today = fields.Date.context_today(self.env.user)
+        _stype, skill, level = self._regular_type('Z13 Suelta')
+        loose = self.env['hr.employee.skill'].create({
+            'employee_id': self.emp.id, 'skill_id': skill.id,
+            'skill_type_id': skill.skill_type_id.id, 'skill_level_id': level.id,
+            'valid_from': today - timedelta(days=10), 'valid_to': today + timedelta(days=5)})
+        low = self.env['survey.survey'].create({
+            'title': 'Z13 Examen básico 10b', 'certification': True,
+            'scoring_type': 'scoring_with_answers',
+            'sgi_skill_id': self.skill.id, 'sgi_skill_level_id': self.level_low.id})
+        self._resume(survey_id=low.id, date_start=today - timedelta(days=30))
+        self._resume(survey_id=self.survey.id, date_start=today,
+                     date_end=today + timedelta(days=365))
+        closed = self._skill().filtered(lambda r: r.skill_level_id == self.level_low)
+        self.assertEqual(closed.valid_to, today - timedelta(days=1))
+        self.env['sgi.cron'].sudo().cron_competences()
+        Activity = self.env['mail.activity'].sudo()
+        for row in loose | closed:
+            self.assertFalse(Activity.search(
+                [('res_model', '=', 'hr.employee'), ('res_id', '=', self.emp.id),
+                 ('sgi_cron_key', '=like', 'certificacion_%%:%d:%%' % row.id)]), row.id)
 
     def test_11_gancho_no_tumba_la_linea_si_falla(self):
         broken = self.env['survey.survey'].create({
@@ -207,14 +256,27 @@ class TestCompetenciasCapacitacion(TransactionCase):
         survey = self.env['survey.survey'].create({
             'title': 'Z13 Examen sin usuario', 'certification': True,
             'scoring_type': 'scoring_with_answers', 'scoring_success_min': 0.0,
-            'certification_validity_months': 12,
+            'certification_validity_months': 12, 'certification_mail_template_id': False,
             'sgi_skill_id': self.skill.id, 'sgi_skill_level_id': self.level.id})
         partner = self.emp.work_contact_id or self.env['res.partner'].create({'name': 'Z13 c'})
         self.emp.work_contact_id = partner
         answer = self.env['survey.user_input'].create({
-            'survey_id': survey.id, 'partner_id': partner.id, 'test_entry': True})
+            'survey_id': survey.id, 'partner_id': partner.id})
         answer._mark_done()
         line = self.env['hr.resume.line'].search(
             [('employee_id', '=', self.emp.id), ('survey_id', '=', survey.id)])
         self.assertEqual(len(line), 1)
         self.assertEqual(len(self._skill()), 1)
+
+    def test_14_lista_de_examenes_solo_liga(self):
+        """I-4/I-7: el Jefe MAST sin la app Encuestas liga la competencia,
+        pero no cambia nada más del examen; nadie más la liga."""
+        self.survey.write({'sgi_skill_id': False, 'sgi_skill_level_id': False})
+        as_mast = self.survey.with_user(self.mast)
+        if not self.mast.has_group('survey.group_survey_user'):
+            with self.assertRaises(UserError):
+                as_mast.write({'title': 'Z13 cambiado'})
+        as_mast.write({'sgi_skill_id': self.skill.id, 'sgi_skill_level_id': self.level.id})
+        self.assertEqual(self.survey.sgi_skill_id, self.skill)
+        with self.assertRaises(UserError):
+            self.survey.with_user(self.boss_user).write({'sgi_skill_id': False})

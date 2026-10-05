@@ -13,8 +13,9 @@ las suelta; validarla otra vez guarda las de ese momento. Si el Jefe MAST
 corrige el valor sin reabrirla, el color se recalcula contra las metas
 guardadas (P3).
 
-Las metas guardadas solo las escribe el SGI (contexto ``sgi_freeze`` o el
-superusuario): por RPC se rechazan.
+Las metas guardadas solo las escribe el SGI con sudo (el contexto
+``sgi_freeze`` solo marca el camino; por sí solo no basta): por RPC se
+rechazan.
 """
 from odoo import api, fields, models
 from odoo.exceptions import UserError
@@ -138,8 +139,9 @@ class SgiIndicatorMeasureIntegrity(models.Model):
         return True
 
     def _sgi_check_frozen_vals(self, vals):
-        if set(vals) & set(FROZEN_FIELDS) and not self.env.su \
-                and not self.env.context.get('sgi_freeze'):
+        # Solo el sistema (sudo): el contexto lo puede mandar cualquier
+        # cliente RPC, así que por sí solo no basta.
+        if set(vals) & set(FROZEN_FIELDS) and not self.env.su:
             raise UserError("Las metas guardadas de una medición validada las escribe el SGI "
                             "al validarla; no se editan a mano. Para juzgarla con otra meta, "
                             "el Jefe MAST la reabre y se valida de nuevo.")

@@ -345,7 +345,7 @@ l = leer, e = escribir, c = crear, b = borrar. Es el CSV tal cual; el permiso ef
 | `stock.lot` | `group_sgi_auditor` | l | quimibond_sgi |
 | `stock.move` | `group_sgi_auditor` | l | quimibond_sgi |
 | `stock.picking` | `group_sgi_auditor` | l | quimibond_sgi |
-| `survey.survey` | `group_sgi_manager` | l | quimibond_sgi |
+| `survey.survey` | `group_sgi_manager` | le | quimibond_sgi |
 | `survey.user_input` | `group_sgi_auditor` | l | quimibond_sgi |
 
 ## Reglas de registro (67)

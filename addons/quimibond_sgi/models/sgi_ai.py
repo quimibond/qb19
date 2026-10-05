@@ -50,13 +50,29 @@ SIXM_LABELS = {'mano_de_obra': "Mano de obra", 'metodo': "Método", 'maquina': "
 
 _SCRUB = (
     (re.compile(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+'), '[correo]'),
-    (re.compile(r'\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b'), '[RFC]'),
-    # Teléfonos: 8 o más dígitos reales, con espacios, puntos, guiones o
-    # paréntesis. No toca fechas (2026-10-05, 05/10/2026) ni folios pegados a
-    # letras o guiones (NCI-2026-0012).
-    (re.compile(r'(?<![\w/-])(?:\+\d{1,3}[\s.]?)?(?:\(?\d{2,3}\)?[\s.-]?)?\d{3,4}[\s.-]?\d{4}'
-                r'(?![\w/-])'), '[teléfono]'),
+    (re.compile(r'\b[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}\b', re.I), '[RFC]'),
 )
+# Teléfonos: candidatos con dígitos, espacios, puntos, guiones, paréntesis o
+# «+», sin pegarse a letras, «/» ni «-» (folios como NCI-2026-0012, fechas
+# 05/10/2026). Se tachan con 10 o más dígitos (número de México, con o sin
+# lada internacional) o con 8 o más si traen paréntesis o «+», o si los
+# antecede «tel», «cel», «whatsapp» o «ext». Así sobreviven lotes, órdenes,
+# fechas y cantidades («Lote 1234567», «OP 20261005», «2500 3000 kg»).
+_PHONE_CANDIDATE = re.compile(r'(?<![\w/-])\+?\(?\d[\d\s().-]{6,}\d(?![\w/-])')
+_PHONE_CUE = re.compile(r'(?:tel|tél|cel|móvil|movil|whats\w*|ext)\W{0,6}$', re.I)
+
+
+def _scrub_phones(text):
+    def repl(match):
+        chunk = match.group(0)
+        digits = sum(ch.isdigit() for ch in chunk)
+        before = text[max(0, match.start() - 14):match.start()]
+        if digits >= 10 or (digits >= 8 and ('(' in chunk or '+' in chunk
+                                             or _PHONE_CUE.search(before))):
+            return '[teléfono]'
+        return chunk
+    return _PHONE_CANDIDATE.sub(repl, text)
+
 
 SCHEMA = {
     'type': 'object', 'additionalProperties': False,
@@ -93,7 +109,7 @@ def sgi_ai_scrub(text):
     text = text or ''
     for pattern, repl in _SCRUB:
         text = pattern.sub(repl, text)
-    return text
+    return _scrub_phones(text)
 
 
 def _truthy(value):
@@ -247,7 +263,9 @@ class QualityAlertAi(models.Model):
             alert.sgi_ai_available = bool(on and alert.sgi_folio)
 
     def write(self, vals):
-        if set(vals) & set(self._SGI_AI_FIELDS) and not self.env.context.get('sgi_ai_write'):
+        # Solo el método de sugerencia, con sudo: el contexto sgi_ai_write por
+        # sí solo no basta (lo puede mandar cualquier cliente RPC).
+        if set(vals) & set(self._SGI_AI_FIELDS) and not self.env.su:
             raise UserError("Los campos de la sugerencia de IA los llena la IA; para usarla, "
                             "pulse los botones de la sugerencia.")
         return super().write(vals)
@@ -286,6 +304,7 @@ class QualityAlertAi(models.Model):
                 and alert.sgi_process_id:
             prev = alert.search([
                 ('id', '!=', alert.id), ('sgi_folio', '!=', False),
+                ('company_id', '=', alert.company_id.id),
                 ('sgi_process_id', '=', alert.sgi_process_id.id),
                 ('stage_id.sgi_is_closing_stage', '=', True)], order='id desc', limit=3)
             for p in prev:
@@ -370,4 +389,5 @@ class QualityAlertAi(models.Model):
         if not vals:
             raise UserError("No hay porqués vacíos que llenar ni notas Ishikawa vacías.")
         self.write(vals)
+        self.message_post(body="Borrador de porqués de IA copiado por %s." % self.env.user.name)
         return True

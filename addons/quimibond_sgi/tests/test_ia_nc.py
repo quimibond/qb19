@@ -116,6 +116,8 @@ class TestIaNc(TransactionCase):
         self.assertFalse(self.nc.sgi_why_4)
         self.assertIn('Método: m', self.nc.sgi_ishikawa_notes)
         self.assertFalse(self.nc.sgi_root_cause)
+        self.assertTrue(any('Borrador de porqués de IA copiado' in (b or '')
+                            for b in self.nc.message_ids.mapped('body')))
 
     def test_05_lo_que_se_manda_no_trae_datos_personales(self):
         system, user_text = self.nc._sgi_ai_payload()
@@ -133,8 +135,11 @@ class TestIaNc(TransactionCase):
                          'Escriba a [correo] o al [teléfono]')
         self.assertIn('[RFC]', sgi_ai_scrub('RFC PNT920101AB1'))
         self.assertIn('[teléfono]', sgi_ai_scrub('Tel. (55) 1234-5678'))
-        # Fechas y folios no son teléfonos.
-        for text in ('Lote del 2026-10-05', 'Folio NCI-2026-0012', 'Pedido del 05/10/2026'):
+        self.assertIn('[RFC]', sgi_ai_scrub('rfc pnt920101ab1'))
+        self.assertIn('[teléfono]', sgi_ai_scrub('Cel 1234 5678'))
+        # Fechas, folios, lotes, órdenes y cantidades no son teléfonos.
+        for text in ('Lote del 2026-10-05', 'Folio NCI-2026-0012', 'Pedido del 05/10/2026',
+                     'Lote 1234567', 'OP 20261005', '2500 3000 kg'):
             self.assertEqual(sgi_ai_scrub(text), text)
 
     def test_07_clausula_inventada_se_descarta(self):
@@ -179,6 +184,10 @@ class TestIaNc(TransactionCase):
             self.nc.with_user(self.user).write({'sgi_ai_classification': 'mayor'})
         with self.assertRaises(UserError):
             self.nc.with_user(self.mast).write({'sgi_ai_whys': 'inventado'})
+        # El contexto del método no basta: solo el método, con sudo.
+        with self.assertRaises(UserError):
+            self.nc.with_user(self.mast).with_context(sgi_ai_write=True).write(
+                {'sgi_ai_classification': 'mayor'})
 
     def test_11_anthropic_arma_la_llamada_sin_red(self):
         """El cliente de Anthropic se sustituye: revisa modelo, límite de

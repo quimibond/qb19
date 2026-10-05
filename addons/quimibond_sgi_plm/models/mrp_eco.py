@@ -146,7 +146,9 @@ class MrpEco(models.Model):
         Cron = self.env['sgi.cron']
         if self.sgi_requires_ppap and self.product_tmpl_id:
             customers = self.sgi_customer_id
-            if self.sgi_ppap_auto:
+            # Marcado por el SGI, o marcado a mano sin cliente: los clientes
+            # del producto que exigen PPAP.
+            if self.sgi_ppap_auto or not customers:
                 customers |= self.sgi_ppap_customer_ids
             for customer in customers:
                 done = self.sgi_ppap_ids | self.sgi_ppap_id

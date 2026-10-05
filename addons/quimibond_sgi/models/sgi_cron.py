@@ -1692,24 +1692,40 @@ class SgiCron(models.AbstractModel):
         company = self.env['sgi.config']._sgi_company()
 
         # Competencias con vigencia (hr.employee.skill). 57.100.0 (N-13, P9):
-        # todas, no solo las de tipo certificación: la que otorga un examen o
-        # un curso con «Vigencia (meses)» también vence. Solo el renglón más
-        # reciente de cada competencia: el que se renovó o se cerró al subir
-        # de nivel (otro renglón dura más) no avisa.
+        # las certificaciones y, de los demás tipos, solo las que el SGI
+        # otorga con vigencia (un examen ligado o un curso con «Vigencia
+        # (meses)»): un «válida hasta» de otro tipo lo pone Odoo al cambiar la
+        # competencia y no es un vencimiento. Solo el renglón más reciente de
+        # cada competencia: el que se renovó o se cerró al subir de nivel no
+        # avisa, ni uno con fechas al revés.
         certs = self.env['hr.employee.skill'].search([
             ('employee_id.company_id', '=', company.id),
             ('valid_to', '!=', False),
             ('valid_to', '<=', soon),
         ])
-        latest = {}
+        certs = certs.filtered(lambda c: not c.valid_from or c.valid_from <= c.valid_to)
+        granted = set(self.env['survey.survey'].sudo().with_context(active_test=False).search(
+            [('sgi_skill_id', '!=', False)]).sgi_skill_id.ids)
+        granted |= set(self.env['slide.channel'].sudo().with_context(active_test=False).search(
+            [('sgi_skill_id', '!=', False), ('sgi_skill_validity_months', '>', 0)]).sgi_skill_id.ids)
+        certs = certs.filtered(lambda c: c.is_certification or c.skill_id.id in granted)
+        rows_by_key = {}
         for row in self.env['hr.employee.skill'].search([
                 ('employee_id', 'in', certs.employee_id.ids),
                 ('skill_id', 'in', certs.skill_id.ids)]):
-            key = (row.employee_id.id, row.skill_id.id)
-            end = row.valid_to or date.max
-            latest[key] = max(latest.get(key, end), end)
-        certs = certs.filtered(
-            lambda c: latest.get((c.employee_id.id, c.skill_id.id), c.valid_to) <= c.valid_to)
+            rows_by_key.setdefault((row.employee_id.id, row.skill_id.id), []).append(row)
+
+        def _superseded(cert):
+            for row in rows_by_key.get((cert.employee_id.id, cert.skill_id.id), []):
+                if row == cert:
+                    continue
+                if not row.valid_to or row.valid_to > cert.valid_to:
+                    return True   # renovada o subida de nivel (dura más)
+                if row.valid_from and row.valid_from > cert.valid_to:
+                    return True   # cerrada al subir de nivel (la sigue otra)
+            return False
+
+        certs = certs.filtered(lambda c: not _superseded(c))
 
         def _cert(cert):
             employee = cert.employee_id

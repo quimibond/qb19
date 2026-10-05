@@ -142,6 +142,10 @@ class TestIntegridadMetas(TransactionCase):
             m.with_user(self.mast).write({'sgi_frozen_objective': 1.0})
         with self.assertRaises(UserError):
             m.with_user(self.mast).write({'sgi_targets_frozen': False})
+        # El contexto del SGI no basta: solo el sistema (sudo) las escribe.
+        with self.assertRaises(UserError):
+            m.with_user(self.mast).with_context(sgi_freeze=True).write(
+                {'sgi_frozen_objective': 1.0})
         self.assertEqual(m.sgi_frozen_objective, 90.0)
 
     def test_08_desglose_de_validada_conserva_color(self):

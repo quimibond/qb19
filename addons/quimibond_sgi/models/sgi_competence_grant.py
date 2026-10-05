@@ -58,12 +58,21 @@ class SurveySurveySkill(models.Model):
     def write(self, vals):
         """I-7: ligar un examen con una competencia es del Jefe MAST, por el
         servidor y con sudo (no necesita permisos de la app Encuestas)."""
+        if self.env.su:
+            return super().write(vals)
         touched = set(vals) & SURVEY_SKILL_FIELDS
-        if touched and not self.env.su:
-            if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-                raise UserError("Solo el Jefe MAST liga exámenes con competencias del SGI.")
-            if set(vals) <= SURVEY_SKILL_FIELDS:
-                return super(SurveySurveySkill, self.sudo()).write(vals)
+        if touched and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
+            raise UserError("Solo el Jefe MAST liga exámenes con competencias del SGI.")
+        # El Jefe MAST tiene escritura sobre las encuestas solo para la liga
+        # (ACL access_survey_survey_sgi_manager): sin permisos de la app
+        # Encuestas no cambia nada más de la encuesta.
+        other = {k for k in vals if k not in SURVEY_SKILL_FIELDS
+                 and not k.startswith(('message_', 'activity_'))}
+        if other and not self.env.user.has_group('survey.group_survey_user'):
+            raise UserError("Desde «Exámenes y competencias» usted solo liga la competencia y su "
+                            "nivel; el examen se edita en la app Encuestas.")
+        if touched and not other:
+            return super(SurveySurveySkill, self.sudo()).write(vals)
         return super().write(vals)
 
 
@@ -223,7 +232,7 @@ class SurveyUserInputSgi(models.Model):
 
     def _sgi_resume_without_user(self):
         inputs = self.sudo().filtered(
-            lambda i: i.state == 'done' and i.scoring_success and i.partner_id
+            lambda i: i.state == 'done' and not i.test_entry and i.scoring_success and i.partner_id
             and i.survey_id.certification and i.survey_id.sgi_skill_id)
         if not inputs:
             return
@@ -402,7 +411,9 @@ class SgiTrainingEffectiveness(models.Model):
         pending = self.filtered(lambda r: r.state == 'pendiente')
         if pending != self:
             raise UserError("Esta evaluación ya tiene resultado. Solo el Jefe MAST lo cambia.")
-        self.with_context(sgi_effectiveness_result=True).write({
+        # sudo: quién puede evaluar ya se revisó arriba; el resultado, la fecha
+        # y quién evaluó solo se escriben por aquí (el contexto no basta).
+        self.sudo().write({
             'state': state, 'evaluated_date': sgi_today(self.env),
             'evaluated_by': self.env.user.id})
         Cron = self.env['sgi.cron']
@@ -442,17 +453,15 @@ class SgiTrainingEffectiveness(models.Model):
         if not self.env.su:
             admin = self._sgi_is_admin()
             mast = self.env.user.has_group('quimibond_sgi.group_sgi_manager')
-            by_button = self.env.context.get('sgi_effectiveness_result')
             keys = {k for k in vals if not k.startswith(self._SGI_FREE_PREFIXES)}
             # I-11: quien evalúa sin ser RH ni Jefe MAST solo escribe su
-            # comentario; el resultado, con los botones.
-            allowed = {'result_note'} | ({'state', 'evaluated_date', 'evaluated_by'}
-                                         if by_button else set())
-            if not admin and keys - allowed:
+            # comentario; el resultado, la fecha y quién evaluó, con los
+            # botones (que escriben con sudo). Ningún contexto lo salta.
+            if not admin and keys - {'result_note'}:
                 raise UserError("En la evaluación de eficacia usted solo escribe el comentario; "
                                 "el resultado se registra con «Eficaz» o «No eficaz».")
             if keys & {'state', 'result_note'}:
-                if not by_button and 'state' in vals:
+                if 'state' in vals:
                     self._sgi_check_can_evaluate()
                 done = self.filtered(lambda r: r.state != 'pendiente')
                 if done and not mast:

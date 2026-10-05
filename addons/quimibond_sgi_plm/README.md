@@ -9,8 +9,12 @@ Satélite de `quimibond_sgi` (`auto_install` con `mrp_plm`).
   la compañía del ECO) o ya tiene PPAP con un cliente marcado «Exige PPAP ante
   cambios» en esa compañía; si es un solo cliente, también lo pone como
   «Cliente del PPAP». Solo en ECO sin aplicar y sin la casilla; nunca la
-  desmarca. Al aplicar un ECO marcado crea **un PPAP por cliente** (motivo:
-  cambio de ingeniería; sin repetir el de un cliente que ya lo tiene), le liga
+  desmarca. **Aplicar el ECO vuelve a correr la regla** (el producto o los
+  clientes pudieron cambiar desde que se creó). Al aplicar un ECO marcado crea
+  **un PPAP por cliente** (motivo:
+  cambio de ingeniería; sin repetir el de un cliente que ya lo tiene; si se
+  marcó a mano sin «Cliente del PPAP», uno por cada cliente del producto que
+  lo exige), le liga
   el AMEF y el plan de control del ECO y, si no hay cliente ni producto,
   agenda una actividad al Jefe MAST; si el cambio pide aviso al cliente,
   agenda otra al equipo de ventas.

@@ -105,7 +105,30 @@ del plan general, que queda completo en código). Plan:
   cliente al aplicar (`sgi_ppap_ids`; `sgi_ppap_id` queda como el primero); el
   folio va en negritas con `Markup` (K-07); primeras pruebas propias. Los ECO
   viejos con `sgi_ppap_id` no se copian a `sgi_ppap_ids` (0 PPAP en
-  producción).
+  producción). Un ECO marcado a mano sin «Cliente del PPAP» genera uno por
+  cada cliente del producto que lo exige; aplicar el ECO vuelve a correr la
+  regla.
+- **Ajustes de la revisión final:**
+  - Los candados de las metas guardadas, de los campos de sugerencia de IA y
+    del resultado de la eficacia solo se abren con sudo (el código del SGI);
+    un contexto mandado por RPC (`sgi_freeze`, `sgi_ai_write`) ya no basta.
+    Quién evaluó y cuándo solo los escriben «Eficaz» / «No eficaz».
+  - El aviso de vencimiento de una competencia que no es de certificación
+    solo sale si el SGI la otorga con vigencia (examen ligado o curso con
+    «Vigencia (meses)» > 0); no avisa un renglón cerrado al subir de nivel ni
+    uno con fechas al revés.
+  - «Exámenes y competencias»: el Jefe MAST tiene escritura sobre
+    `survey.survey` (ACL) solo para ligar competencia y nivel; sin la app
+    Encuestas no cambia nada más del examen.
+  - Teléfonos tachados con 10 o más dígitos (o 8 con paréntesis, «+» o «tel»,
+    «cel»…): lotes, órdenes, fechas y cantidades sobreviven; RFC sin importar
+    mayúsculas; «Copiar el borrador de porqués» deja nota en el chatter; las
+    NC anteriores que se mandan son de la misma compañía; el examen de
+    prueba (`test_entry`) no otorga competencia por el contacto de trabajo.
+- **Requisito de datos:** `quimibond_sgi.rh_user_id` debe ser un usuario con
+  «Empleados / Oficial» (`hr.group_hr_user`): recibe «Reprogramar
+  capacitación» y las evaluaciones sin jefe, y solo ese grupo (o el Jefe
+  MAST) ve todas las evaluaciones.
 
 ### Migración
 
@@ -145,7 +168,9 @@ hasta la lista de Q12 (P11) y el plan de contingencia solo como casilla
 (P12); cliente del producto = 12 meses de compras o PPAP previo (P13); un
 PPAP por cliente (P14); aviso de salida sin CoA al Jefe de Calidad o al Jefe
 MAST, sin retroactivos y sin bloqueo (P15); IA apagada, Anthropic, solo NC
-(P16; la rama de la IA de Odoo queda para después); la pide el Usuario SGI
+(P16; la rama de la IA de Odoo queda para después; **la autorización debe
+saber que se manda el nombre del producto, que puede llevar el nombre de un
+cliente**); la pide el Usuario SGI
 (P17); la persona decide con el botón (P18); el build corre las dos etiquetas
 de prueba (P19); numeración 57.100.0 y plm 3.2.0 (P20).
 

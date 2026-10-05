@@ -195,7 +195,8 @@ Desde 57.100.0 (sección 7 del reporte de auditoría, puerta Q16;
   producto, lote y la lista de cláusulas, con correos, teléfonos y RFC
   tachados. Nunca cliente o proveedor, N° NCR del cliente, usuarios,
   responsables ni adjuntos. Un nombre escrito a mano dentro de la desviación
-  no se puede tachar con certeza.
+  no se puede tachar con certeza, y el nombre del producto puede llevar el de
+  un cliente.
 - **Fallas:** si la IA no responde, rechaza o contesta algo que no sirve,
   aparece un aviso y nada cambia; en el log queda un `warning` sin el texto de
   la NC.
