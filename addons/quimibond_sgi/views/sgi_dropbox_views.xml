@@ -19,21 +19,21 @@
                 <field name="dry_run_ok" invisible="1"/>
                 <field name="tested_hash" invisible="1"/>
                 <div class="alert alert-info" role="status" invisible="state != 'draft'">
-                    Sube el libro «Del Dropbox a Odoo — rutina por rutina» (XLSX) o su hoja
+                    Suba el libro «Del Dropbox a Odoo — rutina por rutina» (XLSX) o su hoja
                     «Rutina por rutina» en CSV UTF-8. <b>Probar</b> no escribe nada: dice
                     qué rutinas se crearían o actualizarían y qué filas tienen error.
                     <b>Cargar</b> solo se puede después de probar el mismo archivo, sin
-                    errores; se puede repetir sin duplicar. Antes, corre
+                    errores; se puede repetir sin duplicar. Antes, corra
                     <code>validar_rutinas.py</code> (mismas reglas).
                 </div>
                 <div class="alert alert-success" role="status"
                      invisible="state != 'tested' or not dry_run_ok">
-                    La prueba pasó sin errores. Revisa los cambios y las advertencias antes de cargar.
+                    La prueba pasó sin errores. Revise los cambios y las advertencias antes de cargar.
                 </div>
                 <div class="alert alert-danger" role="alert"
                      invisible="state == 'draft' or error_count == 0">
                     Hay <field name="error_count" class="d-inline"/> error(es). Un procedimiento con
-                    una fila mala no se carga; corrige el libro y vuelve a probar.
+                    una fila mala no se carga; corrija el libro y vuelva a probar.
                 </div>
                 <group invisible="state == 'loaded'">
                     <field name="file" filename="filename"/>
@@ -94,9 +94,11 @@
                 <field name="name"/>
                 <field name="frequency" optional="show"/>
                 <field name="previous_owner" optional="show"/>
+                <!-- 57.98.0 (I-06): pendiente en amarillo; el renglón «pendiente y
+                     sin decisión» y su fecha límite siguen en rojo. -->
                 <field name="state" widget="badge"
                        decoration-success="state in ('cubierta', 'reemplazada')"
-                       decoration-danger="state == 'pendiente'"
+                       decoration-warning="state == 'pendiente'"
                        decoration-muted="state == 'eliminada'"/>
                 <field name="activity_numbers"/>
                 <field name="reason" optional="hide"/>
@@ -419,7 +421,7 @@
                               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner">
                             <field name="sgi_legacy_routine_ids" readonly="not sgi_can_edit_transition"
                                    context="{'default_procedure_id': id}">
-                                <list decoration-danger="state == 'pendiente'">
+                                <list decoration-warning="state == 'pendiente'">
                                     <field name="n"/>
                                     <field name="name"/>
                                     <field name="frequency" optional="show"/>

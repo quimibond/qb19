@@ -7,6 +7,8 @@ from markupsafe import Markup
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_base import sgi_bypass_allowed
+
 _logger = logging.getLogger(__name__)
 
 # AU-1: respuesta del checklist → tipo de hallazgo.
@@ -56,6 +58,13 @@ class SgiAuditProgram(models.Model):
                                      help="Renglones cuya auditoría ya se cerró.")
     progress_pct = fields.Float(string="Avance", compute='_compute_progress',
                                 help="Auditorías cerradas entre auditorías programadas, en %.")
+    # 57.93.0 (N-03): ISO 9.2.2, todos los procesos dentro del ciclo de 3 años.
+    coverage_gap_ids = fields.Many2many(
+        'sgi.process', string="Sin programar en 3 años", compute='_compute_coverage_gap',
+        help="Subprocesos sin renglón en este programa ni en los de los dos años anteriores "
+             "registrados en Odoo.")
+    coverage_gap_count = fields.Integer(string="Procesos sin programar en 3 años",
+                                        compute='_compute_coverage_gap')
 
     _year_uniq = models.Constraint(
         'unique(year)',
@@ -76,6 +85,18 @@ class SgiAuditProgram(models.Model):
             program.line_done_count = done
             program.progress_pct = round(100.0 * done / total, 1) if total else 0.0
 
+    @api.depends('year', 'line_ids.process_id')
+    def _compute_coverage_gap(self):
+        processes = self.env['sgi.process'].search([
+            ('parent_id', '!=', False), ('company_id', 'in', (self.env.company.id, False))])
+        for program in self:
+            previous = self.search([('year', '>=', (program.year or 0) - 2),
+                                    ('year', '<', program.year or 0)])
+            covered = previous.line_ids.process_id | program.line_ids.process_id
+            gap = processes - covered
+            program.coverage_gap_ids = gap
+            program.coverage_gap_count = len(gap)
+
     def action_approve(self):
         """4.4: solo MAST aprueba, y cada auditoría interna del programa
         lleva su auditor líder (en 2026 las 14 líneas estaban sin auditor)."""
@@ -87,7 +108,7 @@ class SgiAuditProgram(models.Model):
             if missing:
                 raise UserError(
                     "El programa %s tiene %d auditoría(s) interna(s) sin auditor líder: %s. "
-                    "Asigna el auditor líder de cada una antes de aprobar." % (
+                    "Asigne el auditor líder de cada una antes de aprobar." % (
                         program.year, len(missing), ", ".join(
                             "%s (%s)" % (line.process_id.code or line.process_id.name or '—',
                                          dict(line._fields['planned_month'].selection).get(
@@ -95,6 +116,12 @@ class SgiAuditProgram(models.Model):
                             for line in missing)))
         for program in self:
             program.state = 'aprobado'
+            if program.coverage_gap_ids:
+                program.message_post(body=Markup(
+                    "<b>Cobertura de 3 años:</b> se aprobó con %d subproceso(s) sin renglón en este "
+                    "programa ni en los dos anteriores: %s.") % (
+                        program.coverage_gap_count,
+                        ", ".join(program.coverage_gap_ids.mapped('display_name'))))
             manager_id = self.env['sgi.cron']._sgi_manager_user_id()
             if manager_id:
                 program.activity_schedule(
@@ -111,10 +138,11 @@ class SgiAuditProgram(models.Model):
         self.write({'state': 'borrador'})
 
     def action_suggest_lines(self):
-        """AU-5 (53.0.0): programa sugerido. Una línea por proceso vigente o en
-        piloto (subprocesos), repartidos por trimestre; los procesos con NC
-        abiertas o indicadores en rojo, dos veces al año. Solo agrega los que
-        aún no están en el programa."""
+        """AU-5 (53.0.0): programa sugerido. Una línea por subproceso,
+        repartidos por trimestre; los procesos con NC abiertas o indicadores
+        en rojo, dos veces al año. Solo agrega los que aún no están.
+        57.93.0 (N-03): también los procesos en borrador (casi todos lo están
+        mientras el Dropbox siga vigente; ISO 9.2.2 pide cubrirlos)."""
         Line = self.env['sgi.audit.program.line']
         quarter_months = ('2', '5', '8', '11')
         created = 0
@@ -123,7 +151,7 @@ class SgiAuditProgram(models.Model):
                 raise UserError("El programa sugerido solo se arma en borrador.")
             existing = program.line_ids.mapped('process_id')
             processes = self.env['sgi.process'].search(
-                [('parent_id', '!=', False), ('state', 'in', ('vigente', 'piloto'))],
+                [('parent_id', '!=', False), ('company_id', 'in', (self.env.company.id, False))],
                 order='code, name')
             for index, process in enumerate(p for p in processes if p not in existing):
                 twice = bool(process.nc_count or process.red_kpi_count)
@@ -133,8 +161,9 @@ class SgiAuditProgram(models.Model):
                     Line.create({'program_id': program.id, 'process_id': process.id,
                                  'planned_month': planned, 'audit_type': 'interna'})
                     created += 1
-            program.message_post(body="Programa sugerido: %d línea(s) agregadas (procesos con NC "
-                                      "abiertas o indicadores en rojo, dos veces al año)." % created)
+            program.message_post(body="Programa sugerido: %d línea(s) agregadas (todos los "
+                                      "subprocesos; los que tienen NC abiertas o indicadores en "
+                                      "rojo, dos veces al año)." % created)
         return True
 
 
@@ -419,7 +448,7 @@ class SgiAudit(models.Model):
             pdf, _ = self.env['ir.actions.report'].sudo()._render_qweb_pdf(report.report_name, self.ids)
         except Exception:  # noqa: BLE001 - el cierre no debe caerse por wkhtmltopdf
             _logger.exception("SGI: no se pudo generar el informe PDF de la auditoría %s.", self.folio)
-            self.message_post(body="No se pudo generar el informe en PDF; imprímelo desde el menú Imprimir.")
+            self.message_post(body="No se pudo generar el informe en PDF; imprímalo desde el menú Imprimir.")
             return self.env['documents.document']
         name = "Informe de auditoría %s (F-P-G03-07).pdf" % (self.folio or self.id)
         doc = self.env['documents.document'].sudo().create({
@@ -456,11 +485,14 @@ class SgiAudit(models.Model):
         problems = []
         for finding in self.finding_ids:
             label = finding.description or finding.finding_type
-            # Un hallazgo MAYOR obliga NC ligada, sin importar la disposición.
-            if finding.finding_type == 'nc_mayor' and not finding.alert_id:
+            # 57.93.0 (N-03): toda no conformidad de auditoría, menor o mayor,
+            # se trata como NC (ISO 10.2): «sin acción» y «mejora» quedan para
+            # observaciones, oportunidades y conformidades.
+            if finding.finding_type in ('nc_menor', 'nc_mayor') and not finding.alert_id:
                 problems.append(
-                    "• El hallazgo mayor '%s' debe tener una NC ligada "
-                    "(usa «Crear NC desde hallazgo»)." % label)
+                    "• El hallazgo «%s» es una no conformidad %s: debe tener su NC ligada "
+                    "(use «Generar NC»)." % (
+                        label, "mayor" if finding.finding_type == 'nc_mayor' else "menor"))
                 continue
             if not finding.disposition:
                 problems.append("• El hallazgo '%s' no tiene disposición." % label)
@@ -544,7 +576,7 @@ class SgiAuditFinding(models.Model):
     ], string="Disposición",
         help="Qué se hace con el hallazgo: generar NC, registrar una mejora o no hacer nada (con motivo). "
              "Sin disposición la auditoría no se cierra.")
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", readonly=True,
                                help="No conformidad generada desde este hallazgo.")
     reason_no_action = fields.Text(string="Justificación sin acción")
 
@@ -560,6 +592,31 @@ class SgiAuditFinding(models.Model):
                 parts.append(finding.norm_clause_id.display_name)
             finding.display_name = " — ".join(p for p in parts if p) or "Hallazgo"
 
+    def _sgi_check_audit_open(self):
+        """57.93.0 (K-03): con la auditoría cerrada, sus hallazgos son
+        evidencia: solo el Jefe MAST (o el sistema) los crea o modifica."""
+        if sgi_bypass_allowed(self.env):
+            return
+        locked = self.sudo().filtered(lambda f: f.audit_id.state == 'cerrada')
+        if locked:
+            raise UserError(
+                "La auditoría %s está cerrada: sus hallazgos son evidencia y solo el Jefe MAST "
+                "los modifica. Pídale reabrir la auditoría si hay un error real."
+                % ", ".join(locked.mapped('audit_id.display_name')))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        findings = super().create(vals_list)
+        findings._sgi_check_audit_open()
+        return findings
+
+    def write(self, vals):
+        self._sgi_check_audit_open()
+        res = super().write(vals)
+        if 'audit_id' in vals:
+            self._sgi_check_audit_open()
+        return res
+
     def unlink(self):
         # Los hallazgos de una auditoría cerrada son evidencia: no se borran
         # (salvo MAST). Mientras la auditoría sigue abierta el auditor los edita.
@@ -569,12 +626,14 @@ class SgiAuditFinding(models.Model):
             if locked:
                 raise UserError(
                     "No se puede borrar un hallazgo de una auditoría cerrada (es "
-                    "evidencia). Pide al Jefe de MAST reabrir la auditoría.\n\n"
+                    "evidencia). Pida al Jefe MAST reabrir la auditoría.\n\n"
                     "Auditoría: %s" % ", ".join(locked.mapped('audit_id.display_name')))
         return super().unlink()
 
     def action_generate_nc(self):
         self.ensure_one()
+        # 57.93.0 (K-03): antes de crear la NC, para no gastar folio.
+        self._sgi_check_audit_open()
         if self.alert_id:
             raise UserError("Este hallazgo ya tiene una NC ligada.")
         audit = self.audit_id
@@ -600,11 +659,14 @@ class SgiAuditFinding(models.Model):
             vals['sgi_supplier_id'] = audit.partner_id.id
         if team:
             vals['team_id'] = team.id
-        alert = self.env['quality.alert'].sgi_auto_create('auditoria_hallazgo', vals)
+        # 57.93.0 (N-03): el auditor solo lee NC y el cierre exige la NC de
+        # cada no conformidad; quien puede editar el hallazgo la levanta.
+        self.check_access('write')
+        alert = self.env['quality.alert'].sudo().sgi_auto_create('auditoria_hallazgo', vals)
         self.write({'disposition': 'genera_nc', 'alert_id': alert.id})
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidad",
+            'name': "No conformidad",
             'res_model': 'quality.alert',
             'res_id': alert.id,
             'view_mode': 'form',

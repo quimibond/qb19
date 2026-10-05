@@ -108,7 +108,7 @@ class SgiHealthRecord(models.Model):
             late = rec.next_date < today
             Cron._sgi_schedule(
                 rec, "%s %s de %s" % ("Vencido:" if late else "Por vencer:", rec.name, rec.employee_id.name),
-                "Vence el %s. Programa el %s." % (rec.next_date, dict(_HEALTH_KINDS)[rec.kind].lower()),
+                "Vence el %s. Programe el %s." % (rec.next_date, dict(_HEALTH_KINDS)[rec.kind].lower()),
                 rh_id)
         return len(records)
 

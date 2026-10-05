@@ -62,8 +62,10 @@ class AccountMovePaymentDate(models.Model):
         help="Fecha del último pago que dejó la factura pagada (S1-04: pagada en su "
              "vencimiento o antes).")
 
-    @api.depends('payment_state', 'line_ids.matched_debit_ids.max_date',
-                 'line_ids.matched_credit_ids.max_date')
+    # 57.95.0 (K-05): también la fecha de factura (respaldo) y la cuenta de
+    # las líneas (filtro por tipo de cuenta).
+    @api.depends('payment_state', 'invoice_date', 'line_ids.account_id',
+                 'line_ids.matched_debit_ids.max_date', 'line_ids.matched_credit_ids.max_date')
     def _compute_sgi_payment_date(self):
         for move in self:
             if move.payment_state not in ('paid', 'in_payment'):

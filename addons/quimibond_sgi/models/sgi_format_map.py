@@ -10,6 +10,32 @@ from .sgi_guard import sgi_require_system
 
 _logger = logging.getLogger(__name__)
 
+# 57.98.0 (I-01): reportes propios que imprimen el pie del formato controlado
+# en cada hoja (layout quimibond_sgi.sgi_report_layout): (xmlid del reporte,
+# referencia del mapeo o None = por el modelo del reporte). El Diagnóstico
+# lista los que hoy imprimen sin clave (``_sgi_unmapped_reports``).
+SGI_FORMAT_REPORTS = (
+    ('quimibond_sgi.action_report_nc', None),
+    ('quimibond_sgi.action_report_incident', None),
+    ('quimibond_sgi.action_report_mgmt_review', None),
+    ('quimibond_sgi.action_report_audit_plan', 'format_ref_audit_plan'),
+    ('quimibond_sgi.action_report_audit_report', 'format_ref_audit_report'),
+    ('quimibond_sgi.action_report_coa', None),
+    ('quimibond_sgi.action_report_compliance_matrix', None),
+    ('quimibond_sgi.action_report_risk_matrix', None),
+    ('quimibond_sgi.action_report_competence_matrix', None),
+    ('quimibond_sgi.action_report_env_aspect', None),
+    ('quimibond_sgi.action_report_fmea', None),
+    ('quimibond_sgi.action_report_loto', None),
+    ('quimibond_sgi.action_report_master_list', 'format_ref_master_list'),
+    ('quimibond_sgi.action_report_legal_matrix', None),
+    ('quimibond_sgi.action_report_master_list_all', 'format_ref_master_list'),
+    ('quimibond_sgi.action_report_news', 'format_ref_news'),
+    ('quimibond_sgi.action_report_retention', None),
+    ('quimibond_sgi.action_report_work_permit', None),
+    ('quimibond_sgi.action_report_machine_sheet', 'format_ref_machine_sheet'),
+)
+
 
 class SgiFormatMap(models.Model):
     """Mapeo formato SGI ↔ documento de Odoo que lo sustituye.
@@ -400,6 +426,54 @@ class SgiFormatMap(models.Model):
         return fmap.sgi_live_label() if fmap else False
 
     @api.model
+    def _sgi_footer_document(self, record, ref=False):
+        """57.98.0 (I-01): documento vigente que se imprime en el pie, por el
+        mismo camino que ``sgi_footer_label`` (referencia, mixin o modelo)."""
+        Doc = self.env['documents.document'].sudo()
+        if ref:
+            return self.sudo().sgi_ref_document(ref)
+        record = record[:1] if record else record
+        if not record:
+            return Doc
+        if 'sgi_format_banner' in record._fields:
+            return record.sudo()._sgi_format_document()
+        fmap = self.sudo()._sgi_map_for(record)
+        return fmap.sgi_live_document() if fmap else Doc
+
+    @api.model
+    def sgi_footer_info(self, record, ref=False):
+        """57.98.0 (I-01): {'label': 'F-P-A10-01 · Rev. 00', 'issue_date':
+        date | False} del pie «formato controlado»; False sin mapeo. La fecha
+        de emisión es la del documento vigente ligado (sin fecha, el pie no
+        la pinta)."""
+        label = self.sgi_footer_label(record, ref)
+        if not label:
+            return False
+        doc = self._sgi_footer_document(record, ref)
+        return {'label': label, 'issue_date': doc.sgi_issue_date if doc else False}
+
+    @api.model
+    def _sgi_unmapped_reports(self):
+        """57.98.0 (I-01): nombres de los reportes del SGI que hoy imprimen
+        sin clave controlada (para el Diagnóstico). Por referencia, el mapeo
+        ``format_ref_*`` activo con clave; por modelo, basta un mapeo activo
+        del modelo del reporte. Un modelo con solo mapeos con criterio
+        (57.60.0) cuenta como mapeado, aunque algún registro no cumpla
+        ningún criterio e imprima sin clave."""
+        names = []
+        for report_xmlid, ref in SGI_FORMAT_REPORTS:
+            report = self.env.ref(report_xmlid, raise_if_not_found=False)
+            if not report:
+                continue
+            if ref:
+                mapped = bool(self._sgi_ref(ref).sgi_live_label())
+            else:
+                mapped = bool(self.sudo().search_count([('model_name', '=', report.model)], limit=1))
+            if not mapped:
+                names.append(report.name)
+        return names
+
+    @api.model
     def sgi_ref_document(self, name):
         return self._sgi_ref(name).sgi_live_document()
 
@@ -505,6 +579,21 @@ class SgiConfig(models.AbstractModel):
         # Encuesta que alimenta el KPI CA-02 (survey.survey). 0 = usar la
         # sembrada del módulo. Permite re-apuntar al histórico archivado.
         'quimibond_sgi.satisfaction_survey_id': '0',
+        # 57.100.0 (N-13): días para evaluar la eficacia de la capacitación y
+        # encuesta opcional al jefe (survey.survey; 0 = sin encuesta).
+        'quimibond_sgi.training_effectiveness_days': '90',
+        'quimibond_sgi.training_effectiveness_survey_id': '0',
+        # 57.100.0 (N-14): meses de ventas que hacen «cliente del producto» en el ECO.
+        'quimibond_sgi.ppap_sales_window_months': '12',
+        # 57.100.0 (IA, puerta Q16): apagada hasta la autorización escrita de
+        # Jose. Proveedor Anthropic; modelo configurable; segundos de espera;
+        # si se mandan las 3 NC cerradas del mismo proceso. La llave
+        # (quimibond_sgi.ai_api_key) no se siembra: la captura un administrador.
+        'quimibond_sgi.ai_enabled': 'False',
+        'quimibond_sgi.ai_backend': 'anthropic',
+        'quimibond_sgi.ai_model': 'claude-opus-5-5',
+        'quimibond_sgi.ai_timeout': '60',
+        'quimibond_sgi.ai_include_history': 'True',
         # 57.11.0 (A-016): los 9 parámetros del presupuesto y del pronóstico de
         # ventas los siembra quimibond_ventas_presupuesto (mismas claves).
     }
@@ -663,6 +752,15 @@ class SgiFormatMixin(models.AbstractModel):
         if not fmap or (fmap.is_general and not self._sgi_format_applies()):
             return False
         return fmap.sgi_live_label(alt=self._sgi_format_use_alt(fmap))
+
+    def _sgi_format_document(self):
+        """57.98.0 (I-01): documento vigente del formato de este registro
+        (misma regla que ``sgi_format_info``); vacío si no aplica."""
+        self.ensure_one()
+        fmap = self.env['sgi.format.map'].sudo()._sgi_map_for(self)
+        if not fmap or (fmap.is_general and not self._sgi_format_applies()):
+            return self.env['documents.document'].sudo()
+        return fmap.sgi_live_document(alt=self._sgi_format_use_alt(fmap))
 
     def _compute_sgi_format_banner(self):
         for record in self:

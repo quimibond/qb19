@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.95.0 (D-06 de datos): el Jefe MAST pone la empresa del SGI en los
+         controlados sin empresa. Al abrir solo cuenta. -->
+    <record id="sgi_company_fix_view_form" model="ir.ui.view">
+        <field name="name">sgi.company.fix.form</field>
+        <field name="model">sgi.company.fix</field>
+        <field name="arch" type="xml">
+            <form string="Empresa del SGI en documentos controlados">
+                <sheet>
+                    <div class="alert alert-info" role="alert">
+                        Revise primero cuántos documentos controlados no tienen empresa.
+                        «Asignar la empresa del SGI» les pone la empresa, deja una nota en el
+                        historial de cada uno y no borra nada. Úselo solo con el visto bueno de
+                        Dirección.
+                    </div>
+                    <group>
+                        <field name="company_id"/>
+                        <field name="doc_count"/>
+                        <field name="vigente_count"/>
+                        <field name="obsoleto_count"/>
+                        <field name="other_count"/>
+                        <field name="routine_count"/>
+                        <field name="done_count" invisible="not done_count"/>
+                        <field name="failed_count" invisible="not failed_count"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_apply" type="object" string="Asignar la empresa del SGI"
+                            class="btn-primary" invisible="not doc_count"
+                            confirm="Se pondrá la empresa del SGI en todos los documentos contados. ¿Continuar?"/>
+                    <button name="action_view_docs" type="object" string="Ver los documentos"
+                            invisible="not doc_count"/>
+                    <button string="Cerrar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_company_fix_action" model="ir.actions.act_window">
+        <field name="name">Empresa en documentos controlados</field>
+        <field name="res_model">sgi.company.fix</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

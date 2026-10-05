@@ -31,6 +31,7 @@
                         <group>
                             <field name="delivered_by_id" readonly="state == 'firmada'"/>
                             <field name="signed_date" invisible="not signed_date"/>
+                            <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                             <field name="sign_request_id" invisible="not sign_request_id"/>
                             <field name="sign_state" invisible="not sign_request_id"/>
                             <field name="can_sign" invisible="1"/>
@@ -85,6 +86,29 @@
         </field>
     </record>
 
+    <!-- 57.94.0 (I-05). -->
+    <record id="sgi_epp_delivery_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.epp.delivery.kanban</field>
+        <field name="model">sgi.epp.delivery</field>
+        <field name="arch" type="xml">
+            <kanban create="0">
+                <field name="can_sign"/>
+                <templates>
+                    <t t-name="card">
+                        <div class="fs-5 fw-bold"><field name="name"/> · <field name="employee_id"/></div>
+                        <div>Entregada el <field name="date"/></div>
+                        <footer class="d-flex flex-wrap gap-2 pt-2">
+                            <field name="state" widget="badge"
+                                   decoration-success="state == 'firmada'" decoration-warning="state == 'entregada'"/>
+                            <button name="action_sign" type="object" string="Firmar"
+                                    class="btn btn-success btn-lg" invisible="not can_sign"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_epp_delivery_view_search" model="ir.ui.view">
         <field name="name">sgi.epp.delivery.search</field>
         <field name="model">sgi.epp.delivery</field>
@@ -111,7 +135,10 @@
     <record id="sgi_epp_delivery_action" model="ir.actions.act_window">
         <field name="name">Responsivas de EPP</field>
         <field name="res_model">sgi.epp.delivery</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
+
         <field name="context">{'search_default_pending': 1}</field>
         <field name="search_view_id" ref="sgi_epp_delivery_view_search"/>
         <field name="help" type="html">

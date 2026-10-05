@@ -94,8 +94,27 @@ class SgiMyPendingArchivedFilter(models.TransientModel):
             records['documento'] = records['documento'].filtered(lambda d: alive(d.sgi_process_id))
         company = self.env['sgi.config']._sgi_company()
         for kind, recs in records.items():
+            if kind == 'aviso':
+                records[kind] = self._sgi_notices_in_company(recs, company)
+                continue
             records[kind] = recs.filtered(lambda rec: self._sgi_in_company(kind, rec, company))
         return records
+
+    @api.model
+    def _sgi_notices_in_company(self, notices, company):
+        """57.92.0 (U-03, D-03): el aviso es de la empresa del registro sobre
+        el que está (la actividad no tiene empresa). Una lectura por modelo."""
+        by_model = {}
+        for act in notices:
+            by_model.setdefault(act.res_model, set()).add(act.res_id)
+        foreign = set()
+        for model, res_ids in by_model.items():
+            if not model or model not in self.env or 'company_id' not in self.env[model]._fields:
+                continue
+            for target in self.env[model].sudo().browse(list(res_ids)).exists():
+                if target.company_id and target.company_id != company:
+                    foreign.add((model, target.id))
+        return notices.filtered(lambda a: (a.res_model, a.res_id) not in foreign)
 
     @api.model
     def _sgi_in_company(self, kind, rec, company):

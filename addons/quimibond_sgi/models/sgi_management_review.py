@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 from dateutil.relativedelta import relativedelta
+from markupsafe import Markup
 
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_health_const import HEALTH_MODES
 from .sgi_risk import SGI_HIGH_ATTENTION
 from .sgi_menu_paths import sgi_menu_path
+
+# 57.97.0 (N-09, ISO 9001 9.3.3; 14001 y 45001 9.3): sin estas salidas la
+# revisión no se marca realizada.
+SGI_REVIEW_CONCLUSIONS = ('conclusion_suitability', 'conclusion_adequacy',
+                          'conclusion_effectiveness', 'output_needs')
 
 
 class SgiManagementReview(models.Model):
@@ -83,10 +90,52 @@ class SgiManagementReview(models.Model):
     satisfaction_summary = fields.Text(
         string="14. Satisfacción del cliente", readonly=True,
         help="Indicador CA-02 y reclamaciones del periodo.")
+    # 57.97.0 (N-09): las entradas que faltaban (45001 9.3 d, 9.3.2 b,
+    # 14001 9.3, 9.3.2 f). Snapshot de «Cargar entradas».
+    incidents_summary = fields.Text(
+        string="15. Incidentes y desempeño de SST", readonly=True,
+        help="45001 9.3: incidentes del periodo por tipo y severidad, días perdidos, abiertos, IPER de "
+             "riesgo alto sin acción y permisos de trabajo vencidos. Solo conteos, sin nombres.")
+    context_summary = fields.Text(
+        string="16. Cambios en el contexto y las partes interesadas", readonly=True,
+        help="9.3.2 b: partes interesadas nuevas y revisadas, revisiones vencidas y cuestiones FODA "
+             "nuevas o evaluadas en el periodo.")
+    env_aspects_summary = fields.Text(
+        string="17. Aspectos ambientales significativos", readonly=True,
+        help="14001 9.3: aspectos significativos de la matriz, sin control operacional o en evaluación.")
+    improvement_summary = fields.Text(
+        string="18. Oportunidades de mejora", readonly=True,
+        help="9.3.2 f: propuestas de Mejora Continua, oportunidades de la matriz de riesgos y de las "
+             "auditorías del periodo.")
 
     # Salidas
     agreement_ids = fields.One2many('sgi.management.review.agreement', 'review_id',
                                     string="Acuerdos")
+    # 57.97.0 (N-09): los acuerdos abiertos de revisiones anteriores pasan a
+    # esta. Siguen siendo de su revisión (E1-02 los mide en su fecha límite).
+    carried_agreement_ids = fields.Many2many(
+        'sgi.management.review.agreement', 'sgi_review_carried_agreement_rel',
+        'review_id', 'agreement_id', string="Acuerdos abiertos de revisiones anteriores",
+        readonly=True,
+        help="Acuerdos de revisiones ya realizadas o cerradas que siguen sin cumplirse. Se cargan con "
+             "«Cargar entradas»; cada uno sigue siendo de su revisión.")
+    # 57.97.0 (N-09): conclusiones y salidas 9.3.3.
+    conclusion_suitability = fields.Text(
+        string="Conveniencia",
+        help="¿El SGI sigue siendo conveniente para la empresa y su contexto? Obligatoria para marcar la "
+             "revisión como Realizada; si no hay cambios, escríbalo.")
+    conclusion_adequacy = fields.Text(
+        string="Adecuación",
+        help="¿El SGI cubre lo que la empresa necesita (procesos, requisitos, partes interesadas)? "
+             "Obligatoria para marcar la revisión como Realizada.")
+    conclusion_effectiveness = fields.Text(
+        string="Eficacia",
+        help="¿El SGI logra los resultados previstos (objetivos, indicadores, NC, incidentes)? "
+             "Obligatoria para marcar la revisión como Realizada.")
+    output_needs = fields.Text(
+        string="Mejora, cambios y recursos",
+        help="Decisiones sobre oportunidades de mejora, cambios al SGI y recursos que se necesitan "
+             "(9.3.3 a, b y c). Obligatoria para marcar la revisión como Realizada.")
 
 
     # V-M07 (57.42.0): título legible de la ficha (el folio va debajo).
@@ -134,6 +183,11 @@ class SgiManagementReview(models.Model):
                 'participation_summary': review._sgi_load_participation(),
                 'objectives_summary': review._sgi_load_objectives(),
                 'satisfaction_summary': review._sgi_load_satisfaction(),
+                'incidents_summary': review._sgi_load_incidents(),
+                'context_summary': review._sgi_load_context(),
+                'env_aspects_summary': review._sgi_load_env_aspects(),
+                'improvement_summary': review._sgi_load_improvements(),
+                'carried_agreement_ids': [(6, 0, review._sgi_open_previous_agreements().ids)],
             })
         return True
 
@@ -174,6 +228,146 @@ class SgiManagementReview(models.Model):
         else:
             parts.append("No existe el indicador CA-02 (satisfacción del cliente).")
         parts.append(self._sgi_load_complaints())
+        return "\n".join(parts)
+
+    @staticmethod
+    def _sgi_count_by(records, field_name):
+        """«Etiqueta: n, …» en el orden de la lista de selección."""
+        counts = {}
+        for value in records.mapped(field_name):
+            counts[value] = counts.get(value, 0) + 1
+        return ", ".join("%s: %d" % (label, counts[key])
+                         for key, label in records._fields[field_name].selection if counts.get(key))
+
+    @staticmethod
+    def _sgi_names(records, limit=10):
+        """Los nombres de los más nuevos primero, «… y N más». Solo para
+        registros que no son personas."""
+        names = records.sorted('id', reverse=True).mapped('display_name')
+        if len(names) > limit:
+            return "%s y %d más" % (", ".join(names[:limit]), len(names) - limit)
+        return ", ".join(names)
+
+    def _sgi_load_incidents(self):
+        """Entrada 15 (45001 9.3 d): incidentes y desempeño de SST. Solo
+        conteos: el incidente lo leen quien lo reportó, el Jefe MAST, Salud
+        ocupacional y el Auditor; se cuenta con sudo y no se nombra nada."""
+        self.ensure_one()
+        dt_from, dt_to = self._sgi_bounds()
+        Incident = self.env['sgi.incident'].sudo()
+        incidents = Incident.search([('date', '>=', dt_from), ('date', '<', dt_to)])
+        parts = []
+        if incidents:
+            parts.append("Incidentes en el periodo: %d (%s)." % (
+                len(incidents), self._sgi_count_by(incidents, 'incident_type')))
+            parts.append("Por severidad: %s." % self._sgi_count_by(incidents, 'severity'))
+            parts.append("Días perdidos: %d." % sum(incidents.mapped('days_lost')))
+        else:
+            parts.append("Sin incidentes registrados en el periodo.")
+        parts.append("Incidentes abiertos hoy: %d." % Incident.search_count([('state', '!=', 'cerrado')]))
+        parts.append("Verificados como eficaces en el periodo: %d." % Incident.search_count([
+            ('sgi_effective', '=', 'eficaz'), ('sgi_effectiveness_date', '>=', self.period_from),
+            ('sgi_effectiveness_date', '<=', self.period_to)]))
+        parts.append("IPER de riesgo alto sin acción abierta: %d." % self.env['sgi.risk'].sudo().search_count([
+            ('instrument', '=', 'iper'), ('high_without_action', '=', True)]))
+        # D-03: el permiso sí tiene empresa (regla multiempresa); con sudo, explícita.
+        parts.append("Permisos de trabajo vencidos sin cerrar: %d." % self.env['sgi.work.permit'].sudo()
+                     .search_count([('expired', '=', True),
+                                    ('company_id', '=', self.env['sgi.config']._sgi_company().id)]))
+        return "\n".join(parts)
+
+    def _sgi_load_context(self):
+        """Entrada 16 (9.3.2 b): cambios en las cuestiones externas e internas
+        (FODA) y en las partes interesadas."""
+        self.ensure_one()
+        dt_from, dt_to = self._sgi_bounds()
+        today = fields.Date.context_today(self)
+        Party = self.env['sgi.interested.party'].sudo()
+        parts = []
+        total = Party.search_count([])
+        if not total:
+            parts.append("Sin partes interesadas registradas (%s)." % sgi_menu_path('partes_interesadas'))
+        else:
+            reviewed = Party.search_count([('last_review_date', '>=', self.period_from),
+                                           ('last_review_date', '<=', self.period_to)])
+            overdue = Party.search_count([('next_review_date', '!=', False),
+                                          ('next_review_date', '<', today)])
+            parts.append("Partes interesadas: %d; revisadas en el periodo: %d; con revisión vencida "
+                         "hoy: %d." % (total, reviewed, overdue))
+            new = Party.search([('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
+            if new:
+                parts.append("Nuevas en el periodo: %s." % self._sgi_names(new))
+        Risk = self.env['sgi.risk'].sudo()
+        foda = Risk.search([
+            ('instrument', '=', 'foda'), '|',
+            '&', ('create_date', '>=', dt_from), ('create_date', '<', dt_to),
+            '&', ('last_eval_date', '>=', self.period_from), ('last_eval_date', '<=', self.period_to)])
+        parts.append("FODA: %d cuestión(es); nuevas o evaluadas en el periodo: %s." % (
+            Risk.search_count([('instrument', '=', 'foda')]),
+            self._sgi_names(foda) if foda else "ninguna"))
+        return "\n".join(parts)
+
+    def _sgi_load_env_aspects(self):
+        """Entrada 17 (14001 9.3 y 6.1.2): aspectos significativos de la
+        matriz de la empresa del SGI (D-03)."""
+        self.ensure_one()
+        company = self.env['sgi.config']._sgi_company()
+        Aspect = self.env['sgi.env.aspect'].sudo()
+        domain = [('company_id', '=', company.id), ('state', '!=', 'obsoleto')]
+        total = Aspect.search_count(domain)
+        if not total:
+            parts = ["Sin aspectos ambientales en la matriz (%s)." % sgi_menu_path('aspectos_ambientales')]
+        else:
+            significant = Aspect.search(domain + [('significant', '=', True)])
+            levels = dict(Aspect._fields['level'].selection)
+            no_control = significant.filtered(
+                lambda a: not a.operational_control_id and not (a.control_description or '').strip())
+            parts = [
+                "Aspectos en la matriz: %d; significativos: %d (%s)." % (
+                    total, len(significant), self._sgi_count_by(significant, 'level') or "-"),
+                "Significativos sin control operacional: %d. En evaluación: %d." % (
+                    len(no_control), Aspect.search_count(domain + [('state', '=', 'borrador')])),
+            ]
+            for aspect in significant[:15]:
+                parts.append("• %s %s (%s)" % (aspect.folio or '', aspect.name,
+                                               levels.get(aspect.level, '-')))
+            if len(significant) > 15:
+                parts.append("… y %d más." % (len(significant) - 15))
+        # Activos o archivados, como los cuenta el «Traspaso de riesgos ambientales» (57.96.0).
+        legacy = self.env['sgi.risk'].sudo().with_context(active_test=False).search_count([
+            ('instrument', '=', 'ambiental'), ('sgi_env_aspect_ids', '=', False)])
+        if legacy:
+            parts.append("Riesgos ambientales que aún no pasan a la matriz: %d (Traspaso de riesgos "
+                         "ambientales)." % legacy)
+        return "\n".join(parts)
+
+    def _sgi_load_improvements(self):
+        """Entrada 18 (9.3.2 f, 10.3): oportunidades de mejora. Solo el
+        proyecto «Mejora Continua SGI» (el de Diseño y Desarrollo también
+        trae ``sgi_is_improvement``)."""
+        self.ensure_one()
+        dt_from, dt_to = self._sgi_bounds()
+        parts = []
+        project = self.env.ref('quimibond_sgi.sgi_project_improvement', raise_if_not_found=False)
+        if project:
+            Task = self.env['project.task'].sudo()
+            base = [('project_id', '=', project.id)]
+            new = Task.search(base + [('create_date', '>=', dt_from), ('create_date', '<', dt_to)])
+            done = Task.search_count(base + [('stage_id.sgi_is_done_stage', '=', True),
+                                             ('date_last_stage_update', '>=', dt_from),
+                                             ('date_last_stage_update', '<', dt_to)])
+            open_now = Task.search_count(base + [('stage_id.sgi_is_done_stage', '=', False)])
+            parts.append("Mejora Continua SGI: %d propuesta(s) nuevas, %d terminadas en el periodo, "
+                         "%d abiertas hoy." % (len(new), done, open_now))
+            if new:
+                parts.append("Nuevas: %s." % self._sgi_names(new))
+        opportunities = self.env['sgi.risk'].sudo().search([
+            ('kind', '=', 'oportunidad'), ('state', '!=', 'cerrado')])
+        parts.append("Oportunidades abiertas en la matriz de riesgos: %d%s" % (
+            len(opportunities), (": %s." % self._sgi_names(opportunities)) if opportunities else "."))
+        findings = self._sgi_period_audits().sudo().finding_ids.filtered(
+            lambda f: f.finding_type == 'oportunidad')
+        parts.append("Oportunidades de mejora de las auditorías del periodo: %d." % len(findings))
         return "\n".join(parts)
 
     def _sgi_load_legal(self):
@@ -248,6 +442,17 @@ class SgiManagementReview(models.Model):
                 agr.deadline or '-', agr.status_label))
         return "\n".join(lines)
 
+    def _sgi_open_previous_agreements(self):
+        """57.97.0 (N-09): acuerdos sin cumplir de cualquier revisión anterior
+        ya realizada o cerrada. «Cumplido» como en E1-02: su acción terminada
+        o la fecha de cumplimiento capturada a mano."""
+        self.ensure_one()
+        agreements = self.env['sgi.management.review.agreement'].search([
+            ('review_id', '!=', self.id),
+            ('review_id.state', 'in', ('realizada', 'cerrada')),
+            ('review_id.date', '<=', self.date)])
+        return agreements.filtered(lambda a: not a.is_done and not a.done_date)
+
     def _sgi_load_nc(self):
         self.ensure_one()
         dt_from, dt_to = self._sgi_bounds()
@@ -277,7 +482,7 @@ class SgiManagementReview(models.Model):
             ])
             result.append("%s: %d abiertas, %d en seguimiento, %d cerradas en el periodo." % (
                 label, abiertas, seguimiento, cerradas))
-        return "\n".join(result) or "Sin No Conformidades."
+        return "\n".join(result) or "Sin no conformidades."
 
     def _sgi_load_complaints(self):
         self.ensure_one()
@@ -315,8 +520,10 @@ class SgiManagementReview(models.Model):
 
     def _sgi_load_red_measures(self):
         self.ensure_one()
+        # 57.99.0: los rojos de salud del SGI no entran a la revisión.
         return self.env['sgi.indicator.measure'].search([
             ('semaphore', '=', 'rojo'),
+            ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
             ('period_date', '>=', self.period_from),
             ('period_date', '<=', self.period_to),
         ])
@@ -338,20 +545,28 @@ class SgiManagementReview(models.Model):
             ('state', '!=', 'cerrado'),
         ])
 
-    def _sgi_load_env(self):
+    def _sgi_scrap_domain(self):
+        """57.97.0 (N-09, D-03): el scrap del periodo de la empresa del SGI.
+        Antes se buscaba sin empresa y podía sumar el de otras razones
+        sociales activas en la sesión."""
         self.ensure_one()
         dt_from, dt_to = self._sgi_bounds()
-        scraps = self.env['stock.scrap'].search([
-            ('state', '=', 'done'),
-            ('date_done', '>=', dt_from), ('date_done', '<', dt_to),
-        ])
+        company = self.env['sgi.config']._sgi_company()
+        return [('company_id', '=', company.id), ('state', '=', 'done'),
+                ('date_done', '>=', dt_from), ('date_done', '<', dt_to)]
+
+    def _sgi_load_env(self):
+        self.ensure_one()
+        company = self.env['sgi.config']._sgi_company()
+        # sudo: Dirección no siempre tiene Inventario; la empresa va explícita.
+        scraps = self.env['stock.scrap'].sudo().search(self._sgi_scrap_domain())
         if not scraps:
-            return "Sin registros de scrap en el periodo."
+            return "Sin registros de scrap de %s en el periodo." % company.name
         by_reason = {}
         for scrap in scraps:
             reason = ", ".join(scrap.scrap_reason_tag_ids.mapped('name')) or "Sin motivo"
             by_reason[reason] = by_reason.get(reason, 0.0) + scrap.scrap_qty
-        lines = ["Scrap por motivo (%d movimientos):" % len(scraps)]
+        lines = ["Scrap de %s por motivo (%d movimientos):" % (company.name, len(scraps))]
         for reason, qty in by_reason.items():
             lines.append("• %s: %s" % (reason, round(qty, 2)))
         return "\n".join(lines)
@@ -374,6 +589,18 @@ class SgiManagementReview(models.Model):
     # ------------------------------------------------------------------
     # Salidas
     # ------------------------------------------------------------------
+    def _sgi_check_conclusions(self):
+        """57.97.0 (N-09): las conclusiones 9.3.3 no vacías (ni solo espacios).
+        Solo al marcar realizada (el cambio de estado), no en write."""
+        for review in self:
+            missing = [review._fields[name].string for name in SGI_REVIEW_CONCLUSIONS
+                       if not (review[name] or '').strip()]
+            if missing:
+                raise UserError(
+                    "No se puede marcar como Realizada la revisión %s sin las conclusiones (ISO 9.3.3): "
+                    "%s. Captúrelas en la pestaña «Conclusiones (9.3.3)»; si no hay cambios, "
+                    "escríbalo («Sin cambios»)." % (review.folio or review.name, ", ".join(missing)))
+
     def action_mark_done(self):
         for review in self:
             if not review.agreement_ids:
@@ -386,18 +613,21 @@ class SgiManagementReview(models.Model):
                 raise UserError(
                     "Todo acuerdo de la Revisión por la Dirección debe tener "
                     "responsable y fecha límite (ISO 9.3.3: las salidas son "
-                    "accionables). Completa: %s" % ", ".join(
+                    "accionables). Complete: %s" % ", ".join(
                         incomplete.mapped('name')))
+            review._sgi_check_conclusions()
             # DIR-3 (52.0.0): cada acuerdo es una ACCIÓN del SGI (sgi.action.line)
             # con responsable y compromiso: actividad nativa al responsable,
             # escalamiento del cron de acciones vencidas y medición de E1-02.
+            # 57.97.0 (N-09): del tipo «acuerdo» (antes «correctiva»): no infla
+            # las acciones correctivas ni pide su evidencia.
             Line = self.env['sgi.action.line']
             for agr in review.agreement_ids:
                 if agr.action_line_id:
                     continue
                 agr.action_line_id = Line.create({
                     'review_id': review.id,
-                    'action_type': 'correctiva',
+                    'action_type': 'acuerdo',
                     'name': agr.name,
                     'responsible_id': agr.responsible_id.id,
                     'date_commit': agr.deadline,
@@ -414,6 +644,19 @@ class SgiManagementReview(models.Model):
     def action_close(self):
         self._sgi_check_mast()
         self.write({'state': 'cerrada'})
+        # 57.97.0 (N-09): cerrar no se bloquea; los acuerdos abiertos quedan en
+        # el historial y la siguiente revisión los carga («Cargar entradas»).
+        for review in self:
+            pending = review.agreement_ids.filtered(lambda a: not a.is_done and not a.done_date)
+            if not pending:
+                continue
+            items = Markup("<br/>").join(
+                Markup("• %s (responsable: %s, límite: %s)") % (
+                    agr.name, agr.responsible_id.name or '-', agr.deadline or '-')
+                for agr in pending)
+            review.message_post(body=Markup(
+                "<b>Acuerdos abiertos al cerrar:</b> pasan a la siguiente revisión por la "
+                "dirección (se cargan con «Cargar entradas»).<br/>%s") % items)
 
     def action_draft(self):
         self._sgi_check_mast()
@@ -473,6 +716,13 @@ class SgiActionLineReview(models.Model):
             return self.review_id
         return super()._sgi_origin()
 
+    def _sgi_origin_closed(self):
+        """57.93.0 (K-03): un acuerdo terminado de una revisión cerrada es evidencia."""
+        self.ensure_one()
+        if self.review_id:
+            return self.sudo().review_id.state == 'cerrada'
+        return super()._sgi_origin_closed()
+
     @api.constrains('alert_id', 'risk_id', 'fmea_line_id', 'incident_id',
                     'drill_id', 'objective_id', 'review_id', 'name')
     def _check_parent_xor(self):
@@ -483,3 +733,13 @@ class SgiActionLineReview(models.Model):
             if any(others):
                 raise ValidationError("Un acuerdo de la Revisión por la Dirección no puede tener otro origen.")
         return super(SgiActionLineReview, self - with_review)._check_parent_xor()
+
+    @api.constrains('action_type', 'review_id')
+    def _check_acuerdo_only_in_review(self):
+        """57.97.0 (N-09): «Acuerdo» es solo para los acuerdos de una revisión
+        por la dirección."""
+        wrong = self.filtered(lambda l: l.action_type == 'acuerdo' and not l.review_id)
+        if wrong:
+            raise ValidationError(
+                "El tipo «Acuerdo de la revisión por la dirección» es solo para los acuerdos de una "
+                "revisión por la dirección. Elija otro tipo para: %s" % ", ".join(wrong.mapped('name')))

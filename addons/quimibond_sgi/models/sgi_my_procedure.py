@@ -772,7 +772,7 @@ class HrEmployeeMyProcedure(models.Model):
         self.ensure_one()
         if not self.job_id:
             raise UserError(
-                "%s no tiene puesto asignado. Pide a RH que lo capture en la "
+                "%s no tiene puesto asignado. Pida a RH que lo capture en la "
                 "ficha del empleado." % self.name)
         return self.job_id
 
@@ -801,7 +801,7 @@ class SgiCronMyProcedure(models.AbstractModel):
             return True
         summary = "Mi procedimiento: %d puesto(s) por publicar" % len(stale)
         note = "Puestos con personas cuya revisión no existe o ya no coincide con sus " \
-               "actividades: %s. Publícalos desde %s " \
+               "actividades: %s. Publíquelos desde %s " \
                "(«Publicar todos los puestos»)." % (", ".join(stale.mapped('name')),
                                                   sgi_menu_path('publicar_mi_procedimiento'))
         # La actividad cuelga de la revisión vigente del primer puesto

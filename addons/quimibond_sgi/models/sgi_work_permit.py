@@ -105,7 +105,18 @@ class SgiWorkPermit(models.Model):
     date_start = fields.Datetime(string="Vigente desde", required=True,
                                  default=fields.Datetime.now, tracking=True)
     date_end = fields.Datetime(string="Vigente hasta", required=True, tracking=True)
-    expired = fields.Boolean(string="Vencido", compute='_compute_expired')
+    # 57.96.0 (N-06): guardado e indexado para buscar y avisar. Al guardar se
+    # compara con la hora de ese momento; el paso del tiempo lo pone la acción
+    # planificada «SGI: Permisos de trabajo vencidos (cada hora)».
+    expired = fields.Boolean(string="Vencido", compute='_compute_expired', store=True, index=True,
+                             help="Autorizado y pasada su hora de fin. Se revisa cada hora.")
+    loto_ids = fields.One2many('sgi.loto', 'work_permit_id', string="Bloqueos (LOTO)",
+                               help="Bloqueos de energía ligados al permiso. El permiso no se "
+                                    "cierra mientras uno siga aplicado.")
+    # 57.96.0 (N-06, 45001 8.1.4): evaluación SST del contratista.
+    sgi_contractor_eval_ok = fields.Boolean(
+        string="Contratista con evaluación SST vigente", compute='_compute_sgi_contractor_eval_ok',
+        help="La evaluación SST del contratista cubre hasta el fin del permiso.")
 
     # --- Autorizaciones (quién y cuándo, sellado) -------------------------
     area_manager_id = fields.Many2one(
@@ -141,12 +152,51 @@ class SgiWorkPermit(models.Model):
                 raise ValidationError("El permiso %s debe vencer después de su inicio." % (
                     permit.folio or permit.name))
 
+    @api.depends('contractor_id.commercial_partner_id.sgi_sst_eval_valid_until', 'date_end')
+    def _compute_sgi_contractor_eval_ok(self):
+        for permit in self:
+            partner = permit.contractor_id.commercial_partner_id.sudo()
+            until = permit.date_end.date() if permit.date_end else fields.Date.context_today(permit)
+            permit.sgi_contractor_eval_ok = bool(
+                not partner or (partner.sgi_sst_eval_valid_until
+                                and partner.sgi_sst_eval_valid_until >= until))
+
+    def _sgi_people_problems(self):
+        """57.96.0 (N-06, 45001 7.2 y 8.1.4): competencias exigidas por tipo
+        de trabajo (sin configuración no exige nada) y evaluación SST del
+        contratista (bloquea solo con el parámetro encendido). sudo: hr.employee
+        y sus competencias solo los lee RH."""
+        self.ensure_one()
+        problems = []
+        until = (self.date_end or fields.Datetime.now()).date()
+        rules = self.env['sgi.work.permit.skill'].sudo().search([('work_type', '=', self.work_type)])
+        if rules:
+            Skill = self.env['hr.employee.skill'].sudo()
+            for employee in self.sudo().executor_ids:
+                missing = rules.filtered(lambda r: not Skill.search_count([
+                    ('employee_id', '=', employee.id), ('skill_id', '=', r.skill_id.id),
+                    '|', ('valid_to', '=', False), ('valid_to', '>=', until)]))
+                if missing:
+                    problems.append("• %s no tiene vigente hasta el %s: %s." % (
+                        employee.name, until, ", ".join(missing.mapped('skill_id.name'))))
+        required = self.env['ir.config_parameter'].sudo().get_param(
+            'quimibond_sgi.permit_contractor_eval_required', '0') in ('1', 'True', 'true')
+        if required and self.contractor_id and not self.sgi_contractor_eval_ok:
+            problems.append(
+                "• El contratista %s no tiene evaluación SST vigente hasta el fin del permiso (%s). "
+                "La registra el Jefe MAST en el contacto, pestaña SGI."
+                % (self.contractor_id.commercial_partner_id.sudo().display_name, until))
+        return problems
+
+    def _sgi_expired_on(self, now):
+        self.ensure_one()
+        return bool(self.state == 'autorizado' and self.date_end and self.date_end < now)
+
     @api.depends('date_end', 'state')
     def _compute_expired(self):
         now = fields.Datetime.now()
         for permit in self:
-            permit.expired = bool(permit.state == 'autorizado' and permit.date_end
-                                  and permit.date_end < now)
+            permit.expired = permit._sgi_expired_on(now)
 
     @api.depends('folio', 'name')
     def _compute_display_name(self):
@@ -159,6 +209,24 @@ class SgiWorkPermit(models.Model):
         permits = super().create(vals_list)
         permits.filtered(lambda p: not p.check_ids)._sgi_load_checks()
         return permits
+
+    def write(self, vals):
+        # 57.96.0 (N-06): con energía bloqueada el permiso no se cierra ni se
+        # cancela (por el botón o por escritura directa; tampoco el Jefe MAST).
+        if vals.get('state') in ('cerrado', 'cancelado'):
+            self.filtered(lambda p: p.state != vals['state'])._sgi_check_loto_released()
+        return super().write(vals)
+
+    def _sgi_check_loto_released(self):
+        Loto = self.env['sgi.loto'].sudo()
+        for permit in self:
+            applied = Loto.search([('work_permit_id', '=', permit.id), ('state', '=', 'bloqueado')])
+            if applied:
+                raise UserError(
+                    "No se puede cerrar ni cancelar el permiso %s: el bloqueo %s sigue aplicado. "
+                    "Cada trabajador retira su candado y se retira el bloqueo antes de cerrar o "
+                    "cancelar el permiso."
+                    % (permit.folio or permit.name, ", ".join(applied.mapped('display_name'))))
 
     def _sgi_load_checks(self):
         """Carga las verificaciones y el EPP sugeridos para el tipo de trabajo,
@@ -199,6 +267,7 @@ class SgiWorkPermit(models.Model):
                 problems.append("• Conteste todas las verificaciones y el EPP (Sí, No o No aplica).")
             if permit.check_ids.filtered(lambda c: c.answer == 'no'):
                 problems.append("• Hay verificaciones o EPP en «No»: corríjalos antes de solicitar.")
+            problems += permit._sgi_people_problems()
             if problems:
                 raise UserError("No se puede solicitar el permiso %s:\n%s" % (
                     permit.folio or permit.name, "\n".join(problems)))
@@ -218,6 +287,10 @@ class SgiWorkPermit(models.Model):
                     "No se puede autorizar el permiso %s: hay verificaciones o EPP en «No». "
                     "Corríjalos antes de empezar el trabajo:\n%s" % (
                         permit.folio, "\n".join("• %s" % c.name for c in failing)))
+            people = permit._sgi_people_problems()
+            if people:
+                raise UserError("No se puede autorizar el permiso %s:\n%s" % (
+                    permit.folio, "\n".join(people)))
 
     def _sgi_maybe_authorized(self):
         for permit in self:
@@ -320,3 +393,68 @@ class SgiWorkPermitCheck(models.Model):
     def unlink(self):
         self._sgi_check_parent_open()
         return super().unlink()
+
+
+class SgiWorkPermitSkill(models.Model):
+    """57.96.0 (N-06, 45001 7.2): competencia exigida por tipo de permiso."""
+    _name = 'sgi.work.permit.skill'
+    _description = "Competencia requerida por tipo de permiso de trabajo"
+    _order = 'work_type, id'
+
+    _work_type_skill_uniq = models.Constraint(
+        'unique(work_type, skill_id)', "Esa competencia ya se exige para ese tipo de trabajo.")
+
+    work_type = fields.Selection(WORK_TYPES, string="Tipo de trabajo", required=True)
+    skill_id = fields.Many2one('hr.skill', string="Competencia", required=True, ondelete='restrict',
+                               help="Competencia que cada persona que ejecuta debe tener vigente "
+                                    "hasta el fin del permiso.")
+    skill_type_id = fields.Many2one(related='skill_id.skill_type_id', string="Tipo de competencia")
+    note = fields.Char(string="Por qué se exige", help="NOM o procedimiento: NOM-009-STPS, DC-3…")
+    active = fields.Boolean(default=True)
+
+    @api.depends('work_type', 'skill_id')
+    def _compute_display_name(self):
+        labels = dict(self._fields['work_type'].selection)
+        for rec in self:
+            rec.display_name = "%s: %s" % (labels.get(rec.work_type, rec.work_type or ''),
+                                           rec.skill_id.display_name or '')
+
+
+class ResPartnerSstContractor(models.Model):
+    """57.96.0 (N-06, 45001 8.1.4): evaluación SST del contratista."""
+    _inherit = 'res.partner'
+
+    sgi_sst_eval_valid_until = fields.Date(
+        string="Evaluación SST vigente hasta", tracking=True, copy=False,
+        help="Hasta cuándo vale la evaluación de seguridad y salud del contratista. El permiso de "
+             "trabajo la revisa. La registra el Jefe MAST.")
+    sgi_sst_eval_note = fields.Text(
+        string="Qué se revisó (SST)", copy=False,
+        help="REPSE, SUA, constancias DC-3, inducción de seguridad, seguro…")
+
+    sgi_user_can_eval_sst = fields.Boolean(
+        compute='_compute_sgi_user_can_eval_sst',
+        help="Usted es Jefe MAST: puede registrar la evaluación SST del contratista.")
+
+    _SGI_SST_EVAL_FIELDS = ('sgi_sst_eval_valid_until', 'sgi_sst_eval_note')
+
+    @api.depends_context('uid')
+    def _compute_sgi_user_can_eval_sst(self):
+        can = self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')
+        for partner in self:
+            partner.sgi_user_can_eval_sst = can
+
+    def _sgi_check_sst_eval(self, vals_list):
+        if any(f in vals for vals in vals_list for f in self._SGI_SST_EVAL_FIELDS) and not (
+                self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_manager')):
+            raise UserError("La evaluación SST del contratista la registra el Jefe MAST.")
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # También al crear (importación o RPC), no solo al editar.
+        self._sgi_check_sst_eval(vals_list)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._sgi_check_sst_eval([vals])
+        return super().write(vals)

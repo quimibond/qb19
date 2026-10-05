@@ -7,33 +7,50 @@ toca, pero **no** tiene los permisos de configuración del Jefe MAST y SGI.
 
 ## 1. Qué ve al entrar
 
+Al tocar la app **SGI** se abre directamente el **Tablero** (desde 57.98.0).
+Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
+
 | Menú | Para qué |
 |---|---|
-| **SGI → Dirección → Tablero** | Indicadores de dirección, rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
+| **SGI → Dirección → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
 | **SGI → Dirección → Revisión por la dirección** | La reunión de revisión: entradas, acuerdos y seguimiento |
 | **SGI → Dirección → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
 | **SGI → Dirección → Riesgos y oportunidades / Requisitos legales / Partes interesadas / Satisfacción del cliente** | Contexto, riesgos y cumplimiento |
 | **SGI → Administración SGI** | Consulta de documentos, indicadores, aprobaciones y diagnóstico |
 | **SGI → Inicio** | Sus propios pendientes y su procedimiento |
+| **SGI → Reportar** | Una no conformidad, un casi accidente o incidente, o una queja o sugerencia (abre la ficha nueva) |
 
 ## 2. Su día
 
 ### 2.1 Revisar el tablero
 
-1. **SGI → Dirección → Tablero**. Se calcula al abrirlo.
+1. Toque la app **SGI** (o **SGI → Dirección → Tablero**). Se calcula al
+   abrirlo.
 2. Revise primero **Rojos sin causa ni plan** y **Acuerdos de la RxD
    vencidos**: son lo que está detenido.
 3. **Hoja de cálculo** abre el tablero en hoja de cálculo para analizarlo.
+4. La página **Salud del SGI** (desde 57.99.0) dice si el SGI se está usando:
+   diez indicadores SG-01 a SG-10 con el valor de la semana pasada, su
+   semáforo y la semana anterior, y la tabla **Por dueño de proceso** (ver
+   2.5).
 
 ### 2.2 La revisión por la dirección
 
 1. **Revisión por la dirección → Nuevo**, con el periodo (desde y hasta).
-2. **Cargar entradas** llena las entradas de la norma (auditorías, NC,
+2. **Cargar entradas** llena las 18 entradas de la norma (auditorías, NC,
    indicadores en rojo, quejas, riesgos altos, cambios, satisfacción,
-   proveedores) con los datos reales del periodo. Se pueden ajustar.
+   proveedores y, desde 57.97.0, incidentes y desempeño de SST, cambios en
+   el contexto y las partes interesadas, aspectos ambientales significativos
+   y oportunidades de mejora) con los datos reales del periodo, y trae los
+   **acuerdos abiertos de revisiones anteriores**. Se pueden ajustar.
 3. En la reunión, capture los **Acuerdos** con responsable y fecha.
-4. **Marcar realizada**: cada acuerdo se vuelve una acción con seguimiento.
-   Cerrar la revisión o regresarla a borrador lo hace el Jefe MAST y SGI.
+4. Escriba las **Conclusiones (9.3.3)**: conveniencia, adecuación, eficacia
+   y mejora, cambios y recursos. Sin ellas no se marca realizada; si no hay
+   cambios, escríbalo.
+5. **Marcar realizada**: cada acuerdo se vuelve una acción del tipo
+   «Acuerdo» con seguimiento. Cerrar la revisión o regresarla a borrador lo
+   hace el Jefe MAST y SGI. Cerrar con acuerdos abiertos se permite: quedan
+   anotados en el historial y la siguiente revisión los carga.
 
 ### 2.3 Aprobar lo que le toca
 
@@ -51,9 +68,32 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
   marcado y le llega el aviso al dueño del proceso; en la revisión por la
   dirección aparecen los de atención inmediata o alta.
 
+### 2.5 El correo de los lunes (salud del SGI)
+
+Cada lunes a las 08:00 le llega «SGI: salud del sistema, semana del…» con
+lo mismo que la página **Salud del SGI** del Tablero:
+
+- **Indicadores:** clave, valor de la semana pasada, meta, semáforo, semana
+  anterior y una nota (por ejemplo, cuántas NC llevan más de 60 días
+  abiertas o qué parte de los avisos vencidos tiene una sola persona, sin
+  nombre).
+- **Por dueño de proceso:** avisos del SGI vencidos, validaciones de
+  mediciones atrasadas y días desde su último movimiento en el SGI. «Más de
+  90» es que no ha tocado el SGI en tres meses; «—», que el dueño no tiene
+  usuario. Un dueño con dos procesos sale en los dos renglones con las
+  mismas cifras.
+- Solo conteos; sin datos de salud ni de nómina.
+
+Para agregar o quitar destinatarios, o para que alguien no cuente en
+«Personas que usan el SGI», pídalo al Jefe MAST (parámetros
+`quimibond_sgi.health_mail_user_ids` y `quimibond_sgi.health_excluded_user_ids`).
+Los diez nacen **en prueba**: el Jefe MAST revisa su primera medición contra
+la realidad y los pasa a oficial.
+
 ## 3. Lo que le llega solo
 
 - Correo crítico de NC mayor e incidentes graves o fatales.
+- Desde 57.99.0, el correo de los lunes con la salud del SGI (ver 2.5).
 - Acciones vencidas que escalan a Dirección (después del jefe directo del
   responsable).
 

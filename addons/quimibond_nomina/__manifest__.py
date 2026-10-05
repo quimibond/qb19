@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Nómina (CFDI y centinela de reglas)',
-    'version': '19.0.1.7.1',
+    'version': '19.0.1.8.0',
     'license': 'LGPL-3',
     'category': 'Human Resources/Payroll',
     'summary': 'Registro patronal por contrato, SDI y SBC del recibo y nodo HorasExtra en el CFDI de nómina, '
@@ -36,7 +36,9 @@ resuelve y que hacen falta para timbrar la nómina de Quimibond:
   Odoo calculaba cada periodo por separado. ``payslip._qb_isr_mensual()``
   hace ese cálculo (tarifa mensual y subsidio de los parámetros de la
   localización, acumulado de los recibos validados del mes) y las reglas
-  ``ISR`` y ``SUBSIDY`` lo llaman.
+  ``ISR`` y ``SUBSIDY`` lo llaman. Una nómina es del mes de su **fecha de
+  pago** (viernes de la semana), como en NOI; ``_qb_nomina_periodos_del_mes``
+  dice cuántas nóminas paga el mes para repartir el FONACOT.
     """,
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',

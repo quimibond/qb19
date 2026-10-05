@@ -16,7 +16,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_alert_source.py`.
 |---|---|---|---|---|---|---|---|---|
 | `alert_count` | Integer | # NC generadas |  |  |  | compute `_compute_alert_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_alert_source.py:52` |
 | `code` | Char | Clave técnica | Identificador que usa el código para pedir permiso antes de levantar la NC. No se edita: lo fija el módulo que la dispara. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:28` |
-| `enabled` | Boolean | Activa | Desactívala para dejar de generar No Conformidades por este motivo. El cambio queda registrado en el historial con autor y fecha, para poder justificarlo en auditoría. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:34` |
+| `enabled` | Boolean | Activa | Desactívela para dejar de generar no conformidades por este motivo. El cambio queda registrado en el historial con autor y fecha, para poder justificarlo en auditoría. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:34` |
 | `last_suppressed_on` | Datetime | Última omisión | Última vez que esta fuente, apagada, dejó de crear una NC. |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:57` |
 | `name` | Char | Fuente |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:32` |
 | `origin_module` | Char | Módulo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_alert_source.py:50` |

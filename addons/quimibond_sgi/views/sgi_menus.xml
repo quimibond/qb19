@@ -22,9 +22,20 @@
          Dirección debe entrar, se nombra explícito.
          ================================================================ -->
 
+    <!-- 57.98.0 (U-07, Q20): la app abre con sgi_home_action: el Tablero para
+         Dirección y Mis pendientes para los demás (sin tocar res.users). -->
     <menuitem id="menu_sgi_root" name="SGI" sequence="90"
               web_icon="quimibond_sgi,static/description/icon.png"
+              action="sgi_home_action"
               groups="quimibond_sgi.group_sgi_user,quimibond_sgi.group_sgi_auditor"/>
+
+    <!-- 57.94.0 (U-01): app «SGI en planta» de las tabletas de planta. Va fuera
+         del árbol «SGI» a propósito (la cuenta de la tableta no ve el menú SGI);
+         por eso no está en tools/sgi_menu_tree.txt. -->
+    <menuitem id="menu_sgi_floor_root" name="SGI en planta" sequence="91"
+              web_icon="quimibond_sgi,static/description/icon.png"
+              action="sgi_floor_kiosk_action"
+              groups="quimibond_sgi.group_sgi_floor_tablet,quimibond_sgi.group_sgi_manager"/>
 
     <!-- ============================================================
          1. Inicio (todos): la persona y su equipo.
@@ -49,11 +60,28 @@
               parent="menu_sgi_panel" action="sgi_indicator_action_mine" sequence="30"/>
     <menuitem id="menu_sgi_my_team" name="Mi equipo"
               parent="menu_sgi_panel" action="sgi_my_team_action_mine" sequence="40"/>
+    <!-- 57.98.0 (U-07): los checklists del día también en Inicio (el de
+         Mantenimiento se queda para quien no es Usuario SGI). -->
+    <menuitem id="menu_sgi_home_checklist_today" name="Checklists de hoy"
+              parent="menu_sgi_panel" action="sgi_checklist_today_action" sequence="45"/>
     <!-- 56.22.0: C4.25. El jefe o supervisor captura y cierra la hoja de su
          departamento; RH la recibe en Empleados → Eficiencias de personal. -->
     <menuitem id="menu_sgi_my_staff_efficiency" name="Eficiencias de mi área"
               parent="menu_sgi_panel" action="sgi_staff_efficiency_action" sequence="50"
               groups="quimibond_sgi.group_sgi_efficiency_capture"/>
+
+    <!-- ============================================================
+         1b. Reportar (Usuario SGI, 57.98.0, U-07): cada entrada abre la
+         ficha nueva. Agrupador sin acción. Menús nuevos: sin «-».
+         ============================================================ -->
+    <menuitem id="menu_sgi_report" name="Reportar" parent="menu_sgi_root" sequence="15"
+              groups="quimibond_sgi.group_sgi_user"/>
+    <menuitem id="menu_sgi_report_nc" name="No conformidad"
+              parent="menu_sgi_report" action="sgi_report_nc_action" sequence="10"/>
+    <menuitem id="menu_sgi_report_incident" name="Casi accidente o incidente"
+              parent="menu_sgi_report" action="sgi_report_incident_action" sequence="20"/>
+    <menuitem id="menu_sgi_report_voice" name="Queja o sugerencia"
+              parent="menu_sgi_report" action="sgi_report_voice_action" sequence="30"/>
 
     <!-- ============================================================
          2. Procesos (todos leen; los dueños editan).
@@ -71,17 +99,25 @@
     <!-- 57.64.0 (bloque 2 de formularios): entregables y flujos con menú.
          57.67.0: con xmlids nuevos; menu_sgi_deliverables,
          sgi_deliverable_action y sgi_process_flow_action se retiraron en
-         45.0.0 y no vuelven (SGI_REMOVED_XMLIDS, test_cleanup_45). -->
+         45.0.0 y no vuelven (SGI_REMOVED_XMLIDS, test_cleanup_45).
+         57.98.0 (U-07): estos cinco catálogos, solo para dueño de proceso,
+         Jefe MAST, Dirección y Auditor (hoy no tienen grupos: no hace falta
+         «-»). Mapa de procesos y Actividades siguen para todos. -->
     <menuitem id="menu_sgi_deliverable_list" name="Entregables" parent="menu_sgi_processes"
-              action="sgi_deliverable_list_action" sequence="22"/>
+              action="sgi_deliverable_list_action" sequence="22"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
     <menuitem id="menu_sgi_process_flows" name="Flujos entre procesos" parent="menu_sgi_processes"
-              action="sgi_process_flow_list_action" sequence="24"/>
+              action="sgi_process_flow_list_action" sequence="24"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
     <menuitem id="menu_sgi_analysis_who" name="Matriz de responsabilidades"
-              parent="menu_sgi_processes" action="sgi_activity_exec_stat_action_who" sequence="30"/>
+              parent="menu_sgi_processes" action="sgi_activity_exec_stat_action_who" sequence="30"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
     <menuitem id="menu_sgi_jobs_roles" name="Puestos y procesos"
-              parent="menu_sgi_processes" action="sgi_hr_job_action_roles" sequence="40"/>
+              parent="menu_sgi_processes" action="sgi_hr_job_action_roles" sequence="40"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
     <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina"
-              parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"/>
+              parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
     <!-- Entrega 6 (E-001, decisión 7): sección permanente «Del Dropbox a
          Odoo». Solo el Jefe MAST edita (vistas y guarda L-010 en
          documents.document). La clave vieja solo se muestra aquí (decisión
@@ -293,6 +329,9 @@
               action="sgi_risk_category_action" sequence="40"/>
     <menuitem id="menu_sgi_checklist_templates" name="Checklists de planta y unidades"
               parent="menu_sgi_config" action="sgi_checklist_template_action" sequence="50"/>
+    <!-- 57.94.0 (U-01): qué cuentas compartidas son tabletas de planta. -->
+    <menuitem id="menu_sgi_floor_tablets" name="Tabletas de planta"
+              parent="menu_sgi_config" action="sgi_floor_tablet_action" sequence="55"/>
     <menuitem id="menu_sgi_config_format_map" name="Formatos en documentos de Odoo" parent="menu_sgi_config"
               action="sgi_format_map_action" sequence="60"/>
     <menuitem id="menu_sgi_config_alert_sources" name="Fuentes de NC automáticas" parent="menu_sgi_config"
@@ -301,6 +340,15 @@
          mientras, al final para no empatar secuencia (E-013). -->
     <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
               action="sgi_ppap_element_template_action" sequence="80"/>
+    <!-- 57.95.0 (D-06 de datos): asistente manual del Jefe MAST. -->
+    <menuitem id="menu_sgi_config_company_fix" name="Empresa en documentos controlados"
+              parent="menu_sgi_config" action="sgi_company_fix_action" sequence="90"/>
+    <!-- 57.96.0 (N-07): asistente manual del Jefe MAST. -->
+    <menuitem id="menu_sgi_config_env_aspect_transfer" name="Traspaso de riesgos ambientales"
+              parent="menu_sgi_config" action="sgi_env_aspect_transfer_action" sequence="95"/>
+    <!-- 57.96.0 (N-06): competencias que exige cada tipo de permiso. -->
+    <menuitem id="menu_sgi_config_work_permit_skills" name="Competencias por tipo de permiso"
+              parent="menu_sgi_config" action="sgi_work_permit_skill_action" sequence="96"/>
 
     <!-- 5.6 (retirado en 19.0.45.0.0): «Datos técnicos» y los «Mis…» viejos.
          Ver models/sgi_cleanup.py (SGI_REMOVED_XMLIDS): la prueba falla si
@@ -328,6 +376,14 @@
     <menuitem id="menu_sgi_elearning_skills" name="Cursos y competencias (eLearning)"
               parent="menu_hr_sgi_competences" action="sgi_slide_channel_action" sequence="30"
               groups="quimibond_sgi.group_sgi_manager"/>
+    <!-- 57.100.0 (N-13): exámenes que otorgan competencia y eficacia a 90 días.
+         Quien evalúa sin grupo de RH ni del SGI entra por su aviso. -->
+    <menuitem id="menu_sgi_survey_skills" name="Exámenes y competencias (Encuestas)"
+              parent="menu_hr_sgi_competences" action="sgi_survey_skill_action" sequence="35"
+              groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_training_effectiveness" name="Eficacia de la capacitación"
+              parent="menu_hr_sgi_competences" action="sgi_training_effectiveness_action"
+              sequence="40"/>
 
     <!-- Empleados: RH recibe las hojas de eficiencias (D-20: sin paréntesis). -->
     <menuitem id="menu_hr_sgi_staff_efficiency" name="Eficiencias de personal"
@@ -337,8 +393,14 @@
     <menuitem id="menu_sgi_staff_efficiency_analysis" name="Análisis por empleado"
               parent="menu_hr_sgi_staff_efficiency" action="sgi_staff_efficiency_line_action" sequence="20"/>
 
+    <!-- 57.94.0 (U-08): RH ve a quién le falta puesto, PIN o correo. -->
+    <menuitem id="menu_hr_sgi_employee_gaps" name="Empleados sin puesto o sin correo"
+              parent="hr.menu_hr_employee_payroll" action="sgi_hr_employee_gaps_action" sequence="20"
+              groups="hr.group_hr_user"/>
+
     <!-- Mantenimiento: los checklists del día. Secuencia 2: con 1 empataba
-         con «Mantenimiento» y el orden lo decidía el id (E-013). -->
+         con «Mantenimiento» y el orden lo decidía el id (E-013). También en
+         Inicio desde 57.98.0 (menu_sgi_home_checklist_today). -->
     <menuitem id="menu_sgi_checklist_today" name="Checklists de hoy"
               parent="maintenance.menu_maintenance_title" action="sgi_checklist_today_action" sequence="2"/>
 

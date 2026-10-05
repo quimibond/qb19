@@ -23,11 +23,18 @@ class TestOlaCertificable(TransactionCase):
     # ------------------------------------------------------------------
     # Requisitos legales (6.1.3 / 9.1.2)
     # ------------------------------------------------------------------
+    def _evaluate(self, req, result):
+        """57.96.0 (N-07): los botones rápidos abren el asistente con evidencia."""
+        action = getattr(req, {'cumple': 'action_mark_cumple', 'parcial': 'action_mark_parcial',
+                               'no_cumple': 'action_mark_no_cumple'}[result])()
+        self.env['sgi.legal.evaluate'].with_context(action['context']).create({
+            'evidence': 'Evidencia de prueba'}).action_confirm()
+
     def test_legal_no_cumple_creates_nc(self):
         req = self.env['sgi.legal.requirement'].create({
             'name': 'Registro de residuos peligrosos',
             'reference': 'NOM-052-SEMARNAT-2005', 'system': 'ambiental'})
-        req.action_mark_no_cumple()
+        self._evaluate(req, 'no_cumple')
         self.assertEqual(req.compliance_state, 'no_cumple')
         self.assertTrue(req.last_eval_date)
         self.assertTrue(req.alert_id)
@@ -36,10 +43,10 @@ class TestOlaCertificable(TransactionCase):
                          'requisito_legal_incumplido')
         # Idempotente mientras la NC siga abierta.
         first = req.alert_id
-        req.action_mark_parcial()
+        self._evaluate(req, 'parcial')
         self.assertEqual(req.alert_id, first)
         # Cumplir no borra la trazabilidad de la NC.
-        req.action_mark_cumple()
+        self._evaluate(req, 'cumple')
         self.assertEqual(req.compliance_state, 'cumple')
         self.assertTrue(req.next_eval_date)
 
@@ -51,7 +58,7 @@ class TestOlaCertificable(TransactionCase):
             'name': 'Permiso de descarga', 'system': 'ambiental'})
         # Fuente manual apagada: el botón AVISA en vez de callar.
         with self.assertRaises(UserError):
-            req.action_mark_no_cumple()
+            self._evaluate(req, 'no_cumple')
 
     # ------------------------------------------------------------------
     # Partes interesadas (4.2)

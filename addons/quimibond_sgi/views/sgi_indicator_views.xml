@@ -87,7 +87,7 @@
                         <field name="calc_status" class="d-inline" readonly="1"/> —
                         <field name="calc_message" class="d-inline" readonly="1"/>
                         (<field name="calc_checked" class="d-inline" readonly="1"/>).
-                        Corrígelo y pulsa «Recalcular ahora».
+                        Corríjalo y pulse «Recalcular ahora».
                     </div>
                     <group>
                         <group string="Clasificación">
@@ -248,7 +248,7 @@
                 <field name="name"/>
                 <field name="sgi_area_id"/>
                 <field name="responsible_id"/>
-                <filter name="mine" string="Mis indicadores"
+                <filter name="mine" string="Míos"
                         domain="[('responsible_id', '=', uid)]"/>
                 <filter name="red" string="En rojo" domain="[('last_semaphore', '=', 'rojo')]"/>
                 <filter name="no_calc" string="No calcula" domain="[('calc_status', 'in', ('error', 'sin_formula', 'sin_datos'))]"/>
@@ -294,11 +294,14 @@
         <field name="name">sgi.indicator.measure.list</field>
         <field name="model">sgi.indicator.measure</field>
         <field name="arch" type="xml">
+            <!-- 57.98.0 (I-06): pendiente en amarillo y capturada en azul (tabla
+                 de colores del README); una medición pendiente aún no tiene
+                 semáforo, así que no se pisan. -->
             <list string="Mediciones"
                   decoration-success="semaphore == 'verde'"
-                  decoration-warning="semaphore == 'amarillo'"
+                  decoration-warning="semaphore == 'amarillo' or state == 'pendiente'"
                   decoration-danger="semaphore == 'rojo'"
-                  decoration-info="state == 'pendiente'"
+                  decoration-info="state == 'capturado'"
                   decoration-muted="state == 'sin_dato'">
                 <field name="period_date"/>
                 <field name="indicator_id"/>
@@ -325,8 +328,8 @@
                        invisible="not plan_required"/>
                 <!-- V-M05 (57.80.0): estado como pastilla. -->
                 <field name="state" widget="badge"
-                       decoration-info="state == 'pendiente'"
-                       decoration-warning="state == 'capturado'"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-info="state == 'capturado'"
                        decoration-success="state == 'validado'"
                        decoration-muted="state == 'sin_dato'"/>
                 <button name="action_view_evidence" type="object" icon="fa-search-plus"
@@ -390,6 +393,15 @@
                          invisible="not small_sample">
                         <b>Muestra chica:</b> menos casos que el mínimo; se mide pero no abre NC.
                     </div>
+                    <!-- 57.100.0 (K-04): la validada conserva las metas con las que se juzgó. -->
+                    <field name="sgi_targets_frozen" invisible="1"/>
+                    <field name="sgi_frozen_direction" invisible="1"/>
+                    <div class="alert alert-info mb-0" role="status"
+                         invisible="not sgi_targets_frozen">
+                        <b>Validada con las metas de ese momento:</b> su objetivo, su aceptable y su
+                        color ya no cambian aunque cambie la meta del indicador. Para juzgarla con la
+                        meta nueva, el Jefe MAST la regresa a pendiente y se valida de nuevo.
+                    </div>
                     <group>
                         <group>
                             <field name="period_date"/>
@@ -405,12 +417,22 @@
                             <field name="indicator_status" widget="badge"
                                    decoration-success="indicator_status == 'oficial'"
                                    decoration-muted="indicator_status == 'prueba'"/>
-                            <field name="target_objective" invisible="direction == 'range'"/>
-                            <field name="target_acceptable" invisible="direction == 'range'"/>
+                            <!-- 57.100.0 (K-04, I-10): congelada, manda el sentido con el que se validó. -->
+                            <field name="target_objective"
+                                   invisible="(sgi_targets_frozen and sgi_frozen_direction == 'range') or (not sgi_targets_frozen and direction == 'range')"/>
+                            <field name="target_acceptable"
+                                   invisible="(sgi_targets_frozen and sgi_frozen_direction == 'range') or (not sgi_targets_frozen and direction == 'range')"/>
                             <field name="direction" invisible="1"/>
-                            <field name="range_min" invisible="direction != 'range'"/>
-                            <field name="range_max" invisible="direction != 'range'"/>
+                            <field name="range_min" invisible="sgi_targets_frozen or direction != 'range'"/>
+                            <field name="range_max" invisible="sgi_targets_frozen or direction != 'range'"/>
+                            <field name="sgi_frozen_range_min"
+                                   invisible="not sgi_targets_frozen or sgi_frozen_direction != 'range'"/>
+                            <field name="sgi_frozen_range_max"
+                                   invisible="not sgi_targets_frozen or sgi_frozen_direction != 'range'"/>
+                            <field name="sgi_frozen_range_tolerance"
+                                   invisible="not sgi_targets_frozen or sgi_frozen_direction != 'range'"/>
                             <field name="semaphore" widget="badge"/>
+                            <field name="sgi_frozen_date" invisible="not sgi_targets_frozen"/>
                             <field name="small_sample" invisible="not small_sample"/>
                             <field name="alert_id" readonly="1"/>
                         </group>
@@ -461,6 +483,7 @@
                             <list editable="bottom" decoration-danger="state == 'vencida'"
                                   decoration-muted="state == 'terminada'">
                                 <field name="name"/>
+                                <field name="evidence_note" optional="show"/>
                                 <field name="responsible_id" widget="many2one_avatar_user"/>
                                 <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                 <field name="date_done"/>
@@ -514,7 +537,7 @@
         <field name="arch" type="xml">
             <search string="Mediciones">
                 <field name="indicator_id"/>
-                <filter name="mine" string="Mis mediciones"
+                <filter name="mine" string="Míos"
                         domain="[('indicator_id.responsible_id', '=', uid)]"/>
                 <filter name="red" string="En rojo" domain="[('semaphore','=','rojo')]"/>
                 <filter name="pending" string="Pendientes" domain="[('state','=','pendiente')]"/>

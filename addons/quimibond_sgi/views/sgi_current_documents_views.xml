@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Inicio → Documentos vigentes (I-015 / D-21, entrega 4): título y
-         revisión de los documentos controlados vigentes, sin la clave del
-         Dropbox (decisión 11 de la tanda 2), y el acuse de lectura pendiente
-         del usuario en el mismo renglón. Solo lectura. -->
+         revisión de los documentos controlados vigentes y el acuse de lectura
+         pendiente del usuario en el mismo renglón. Solo lectura.
+         57.98.0 (I-02): clave nueva (D-02), tipo y proceso; la clave del
+         Dropbox (clave anterior) sigue sin mostrarse (decisión 11 de la
+         tanda 2): se busca, no se ve. -->
     <record id="sgi_current_document_view_list" model="ir.ui.view">
         <field name="name">documents.document.list.sgi.current</field>
         <field name="model">documents.document</field>
@@ -11,7 +13,10 @@
         <field name="arch" type="xml">
             <list string="Documentos vigentes" create="0" edit="0" delete="0"
                   decoration-warning="sgi_my_ack_state == 'pendiente'">
-                <field name="name" string="Documento"/>
+                <field name="sgi_code" string="Clave"/>
+                <field name="sgi_title" string="Documento"/>
+                <field name="sgi_doc_type_id" string="Tipo" optional="show"/>
+                <field name="sgi_process_id" string="Proceso" optional="show"/>
                 <field name="sgi_revision_label" string="Revisión"/>
                 <field name="sgi_my_ack_state" widget="badge"
                        decoration-warning="sgi_my_ack_state == 'pendiente'"
@@ -20,8 +25,37 @@
                         icon="fa-eye" title="Abrir el documento"/>
                 <button name="action_sgi_mark_my_ack_read" type="object" string="Leído y entendido"
                         icon="fa-check" invisible="sgi_my_ack_state != 'pendiente'"
-                        confirm="Confirmas que leíste y entendiste este documento. Tu acuse queda registrado con la fecha de hoy."/>
+                        confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
             </list>
+        </field>
+    </record>
+
+    <!-- 57.94.0 (I-05). Prioridad 90: no le gana al kanban de la app Documentos. -->
+    <record id="sgi_current_document_view_kanban" model="ir.ui.view">
+        <field name="name">documents.document.kanban.sgi.current</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <kanban create="0">
+                <field name="sgi_my_ack_state"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="sgi_title" class="fs-5 fw-bold"/>
+                        <div><field name="sgi_code"/> · <field name="sgi_doc_type_id"/></div>
+                        <div>Revisión <field name="sgi_revision_label"/></div>
+                        <footer class="d-flex flex-wrap gap-2 pt-2">
+                            <field name="sgi_my_ack_state" widget="badge"
+                                   decoration-warning="sgi_my_ack_state == 'pendiente'"
+                                   decoration-success="sgi_my_ack_state == 'leido'"/>
+                            <button name="action_sgi_view_file" type="object" string="Ver"
+                                    class="btn btn-primary btn-lg"/>
+                            <button name="action_sgi_mark_my_ack_read" type="object" string="Leído y entendido"
+                                    class="btn btn-success btn-lg" invisible="sgi_my_ack_state != 'pendiente'"
+                                    confirm="¿Confirma que leyó y entendió este documento? Su acuse queda registrado con la fecha de hoy."/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
         </field>
     </record>
 
@@ -31,13 +65,26 @@
         <field name="priority">90</field>
         <field name="arch" type="xml">
             <search string="Documentos vigentes">
-                <field name="name" string="Documento"/>
+                <field name="sgi_title" string="Documento"/>
+                <!-- 57.98.0 (I-02): la clave nueva o la anterior (la del
+                     Dropbox se busca, no se muestra). -->
+                <field name="sgi_code" string="Clave"
+                       filter_domain="['|', ('sgi_code', 'ilike', self), ('sgi_previous_code', 'ilike', self)]"/>
+                <field name="sgi_doc_type_id" string="Tipo"/>
+                <field name="sgi_process_id" string="Proceso"/>
+                <filter name="procedures" string="Procedimientos" domain="[('sgi_doc_type', '=', 'procedimiento')]"/>
+                <filter name="instructions" string="Instructivos" domain="[('sgi_doc_type', '=', 'instructivo')]"/>
+                <filter name="formats" string="Formatos"
+                        domain="[('sgi_doc_type', 'in', ('formato', 'formato_it', 'formulario_odoo'))]"/>
+                <separator/>
                 <filter name="my_pending_acks" string="Mis acuses pendientes"
                         domain="[('sgi_my_ack_state', '=', 'pendiente')]"/>
-                <filter name="my_acks" string="Los que me tocan"
+                <!-- 57.98.0 (I-04): antes «Los que me tocan» (my_acks). -->
+                <filter name="mine" string="Míos"
                         domain="[('sgi_my_ack_state', '!=', 'no_aplica')]"/>
                 <group>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'sgi_process_id'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'sgi_doc_type_id'}"/>
                 </group>
             </search>
         </field>
@@ -46,15 +93,24 @@
     <record id="sgi_current_document_action" model="ir.actions.act_window">
         <field name="name">Documentos vigentes</field>
         <field name="res_model">documents.document</field>
-        <field name="view_mode">list</field>
-        <field name="domain">[('sgi_is_controlled', '=', True), ('sgi_state', '=', 'vigente')]</field>
-        <field name="context">{'create': False, 'edit': False, 'delete': False}</field>
-        <field name="view_id" ref="sgi_current_document_view_list"/>
+        <field name="view_mode">list,kanban</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
+        <!-- 57.98.0 (I-02): sin Mi procedimiento (tiene su propia entrada en
+             Inicio); el «|» explícito conserva los documentos sin tipo. Abre
+             con «Míos» agrupado por proceso. -->
+        <field name="domain">[('sgi_is_controlled', '=', True), ('sgi_state', '=', 'vigente'), '|', ('sgi_doc_type_id', '=', False), ('sgi_doc_type_id.code', '!=', 'mi_procedimiento')]</field>
+        <field name="context">{'create': False, 'edit': False, 'delete': False, 'search_default_mine': 1, 'search_default_group_process': 1}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_current_document_view_list')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('sgi_current_document_view_kanban')})]"/>
         <field name="search_view_id" ref="sgi_current_document_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin documentos vigentes</p>
-            <p>Los documentos controlados vigentes del SGI con su revisión. «Ver» abre el archivo; si le toca
-            firmar la lectura, el renglón dice «Por leer» y el botón «Leído y entendido» deja su acuse.</p>
+            <p class="o_view_nocontent_smiling_face">Sin documentos vigentes que le toquen</p>
+            <p>Se abre con «Míos»: los documentos que le toca leer, agrupados por proceso. Quite el
+            filtro para ver todos los vigentes; busque por clave (también la anterior), tipo o proceso.
+            «Ver» abre el archivo; si le toca firmar la lectura, el renglón dice «Por leer» y el botón
+            «Leído y entendido» deja su acuse.</p>
         </field>
     </record>
 </odoo>

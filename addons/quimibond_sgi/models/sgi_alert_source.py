@@ -33,7 +33,7 @@ class SgiAlertSource(models.Model):
     sequence = fields.Integer(default=10)
     enabled = fields.Boolean(
         string="Activa", default=True, tracking=True,
-        help="Desactívala para dejar de generar No Conformidades por este "
+        help="Desactívela para dejar de generar no conformidades por este "
              "motivo. El cambio queda registrado en el historial con autor y "
              "fecha, para poder justificarlo en auditoría.")
     trigger_type = fields.Selection([

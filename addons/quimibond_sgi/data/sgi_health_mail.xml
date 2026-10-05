@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 57.99.0 «Salud del SGI»: correo semanal a Dirección. Renglones por
+         contexto desde sgi.cron.cron_health_weekly_mail (patrón de D-14).
+         Solo conteos; sin datos de salud ni de nómina. -->
+    <record id="mail_template_sgi_health_weekly" model="mail.template">
+        <field name="name">SGI: Salud del SGI (semanal a Dirección)</field>
+        <field name="model_id" ref="base.model_res_users"/>
+        <field name="subject">SGI: salud del sistema, semana del {{ ctx.get('sgi_week') }} ({{ ctx.get('sgi_red') }} en rojo)</field>
+        <field name="email_to">{{ object.email_formatted }}</field>
+        <field name="lang">{{ object.lang }}</field>
+        <field name="body_html" type="html">
+<div>
+    <p>Buen día, <t t-out="object.name"/>:</p>
+    <p>Esta es la salud del SGI de la semana del <t t-out="ctx.get('sgi_week')"/>
+       (auditoría 2026-10, sección 8).</p>
+    <table style="border-collapse:collapse;">
+        <tr>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Clave</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Indicador</th>
+            <th style="text-align:right;padding:4px 12px 4px 0;">Valor</th>
+            <th style="text-align:right;padding:4px 12px 4px 0;">Meta</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Semáforo</th>
+            <th style="text-align:right;padding:4px 12px 4px 0;">Semana anterior</th>
+            <th style="text-align:left;padding:4px 0;">Nota</th>
+        </tr>
+        <tr t-foreach="ctx.get('sgi_rows') or []" t-as="row">
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['code']"/></td>
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['name']"/></td>
+            <td style="padding:4px 12px 4px 0;text-align:right;"><t t-out="row['value']"/></td>
+            <td style="padding:4px 12px 4px 0;text-align:right;"><t t-out="row['target']"/></td>
+            <td t-att-style="'padding:4px 12px 4px 0;font-weight:bold;color:%s;' % row['color']"><t t-out="row['semaphore']"/></td>
+            <td style="padding:4px 12px 4px 0;text-align:right;"><t t-out="row['previous']"/></td>
+            <td style="padding:4px 0;"><t t-out="row['note']"/></td>
+        </tr>
+    </table>
+    <p><b>Por dueño de proceso</b> (avisos vencidos, validaciones atrasadas y días
+       sin movimiento en el SGI):</p>
+    <table style="border-collapse:collapse;">
+        <tr>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Proceso</th>
+            <th style="text-align:left;padding:4px 12px 4px 0;">Dueño</th>
+            <th style="text-align:right;padding:4px 12px 4px 0;">Avisos vencidos</th>
+            <th style="text-align:right;padding:4px 12px 4px 0;">Validaciones atrasadas</th>
+            <th style="text-align:right;padding:4px 0;">Días sin movimiento</th>
+        </tr>
+        <tr t-foreach="ctx.get('sgi_owners') or []" t-as="row">
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['process']"/></td>
+            <td style="padding:4px 12px 4px 0;"><t t-out="row['owner']"/></td>
+            <td style="padding:4px 12px 4px 0;text-align:right;"><t t-out="row['overdue']"/></td>
+            <td style="padding:4px 12px 4px 0;text-align:right;"><t t-out="row['late']"/></td>
+            <td style="padding:4px 0;text-align:right;"><t t-out="row['idle']"/></td>
+        </tr>
+    </table>
+    <p><a t-att-href="ctx.get('sgi_link')">Abrir el Tablero en Odoo</a> (página «Salud del SGI»).</p>
+    <p style="color:#888;">Solo conteos; sin datos de salud ni de nómina. Lo calcula el SGI
+       cada lunes; las mediciones de salud no se validan: su respuesta es esta revisión.</p>
+</div>
+        </field>
+        <field name="auto_delete" eval="True"/>
+    </record>
+
+    <record id="sgi_cron_health_weekly" model="ir.cron">
+        <field name="name">SGI: Salud del SGI (correo semanal a Dirección)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_health_weekly_mail()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <!-- Lunes 14:00 UTC (08:00 de México); primera corrida el lunes siguiente. -->
+        <field name="nextcall" eval="(DateTime.today() + relativedelta(days=1, weekday=0, hour=14, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

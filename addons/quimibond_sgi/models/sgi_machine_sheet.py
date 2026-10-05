@@ -85,7 +85,7 @@ class SgiMachineSheet(models.Model):
                                  ('workcenter_id', '=', sheet.workcenter_id.id)], limit=1)
             if other:
                 raise ValidationError(
-                    "Ya hay una ficha vigente de %s en %s (%s). Márcala obsoleta antes de poner esta en vigor."
+                    "Ya hay una ficha vigente de %s en %s (%s). Márquela obsoleta antes de poner esta en vigor."
                     % (sheet.product_id.display_name, sheet.workcenter_id.name, other.name))
 
     def action_set_current(self):

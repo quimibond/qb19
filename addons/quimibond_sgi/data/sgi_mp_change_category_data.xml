@@ -9,7 +9,7 @@
 <odoo noupdate="1">
     <record id="sgi_approval_category_mp_change" model="approval.category">
         <field name="name">Proponer cambio a mi procedimiento (SGI)</field>
-        <field name="description">Cualquier empleado propone agregar, quitar o cambiar una actividad de su procedimiento. En Referencia pon el proceso y la actividad. En Descripción escribe cómo se hace hoy, cómo propones que se haga y por qué. Adjunta foto o formato si ayuda. Aprueban tu jefe directo y el Jefe MAST y SGI; al aprobarse, MAST actualiza la actividad y vuelve a publicar el procedimiento.</field>
+        <field name="description">Cualquier empleado propone agregar, quitar o cambiar una actividad de su procedimiento. En Referencia ponga el proceso y la actividad. En Descripción escriba cómo se hace hoy, cómo propone que se haga y por qué. Adjunte foto o formato si ayuda. Aprueban su jefe directo y el Jefe MAST y SGI; al aprobarse, MAST actualiza la actividad y vuelve a publicar el procedimiento.</field>
         <field name="sgi_is_mp_change" eval="True"/>
         <field name="has_reference">required</field>
         <field name="manager_approval">required</field>

@@ -34,10 +34,11 @@
                     <div invisible="not sgi_folio">
                         <i class="fa fa-thumb-tack" title="NC del SGI"/> <b>NC del SGI</b> — folio
                         <field name="sgi_folio" readonly="1" class="oe_inline fw-bold"/>.
-                        Para cerrarla: causa raíz + acciones terminadas + verificación
-                        de eficacia (las mayores además piden los 5 porqués y la
-                        lección aplicada). Pase la etapa a «Cerrada» cuando todo
-                        esté completo.
+                        Para pasarla a Seguimiento: clasificación y requisito (cláusula).
+                        Para cerrarla: causa raíz, acciones terminadas (las correctivas, con
+                        evidencia) y verificación de eficacia «Eficaz» en la fecha programada o
+                        después (las mayores además piden los 5 porqués y la lección aplicada).
+                        La cierran el dueño del proceso o el Jefe MAST.
                     </div>
                     <div invisible="not sgi_format_banner">
                         <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado:
@@ -127,6 +128,42 @@
                     <group string="Notas Ishikawa (5-6M)">
                         <field name="sgi_ishikawa_notes" nolabel="1"/>
                     </group>
+                    <!-- 57.100.0 (sección 7 del reporte): la IA propone y la persona decide.
+                         Apagada por omisión (quimibond_sgi.ai_enabled). -->
+                    <field name="sgi_ai_available" invisible="1"/>
+                    <group string="Sugerencia de IA (borrador)" name="sgi_ai"
+                           invisible="not sgi_ai_available and not sgi_ai_date">
+                        <div class="alert alert-info" role="status" colspan="2">
+                            La IA propone y usted decide. La sugerencia no cambia la NC: use los
+                            botones para copiarla. La causa raíz la escribe el responsable; la IA
+                            nunca la escribe ni cierra la NC. Una NC «mayor» manda el correo
+                            crítico a Dirección.
+                        </div>
+                        <button name="action_sgi_ai_suggest" type="object" string="Pedir sugerencia a la IA"
+                                class="btn-secondary" colspan="2" groups="quimibond_sgi.group_sgi_user"
+                                invisible="not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"/>
+                        <field name="sgi_ai_clause_id" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_classification" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_reason" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_whys" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_ishikawa" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_date" invisible="not sgi_ai_date"/>
+                        <field name="sgi_ai_model" invisible="not sgi_ai_date"/>
+                        <button name="action_sgi_ai_use_classification" type="object"
+                                string="Usar cláusula y clasificación sugeridas" colspan="2"
+                                groups="quimibond_sgi.group_sgi_user"
+                                invisible="sgi_classification or not sgi_ai_date or not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"
+                                confirm="La clasificación y la cláusula sugeridas quedan en la NC a su nombre. Si es «mayor», se manda el correo crítico. ¿Continuar?"/>
+                        <button name="action_sgi_ai_use_classification" type="object"
+                                string="Usar cláusula y clasificación sugeridas" colspan="2"
+                                groups="quimibond_sgi.group_sgi_user"
+                                invisible="not sgi_classification or not sgi_ai_date or not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"
+                                confirm="La NC ya tiene clasificación. La sugerencia la reemplaza a su nombre (si es «mayor», se manda el correo crítico). ¿Continuar?"/>
+                        <button name="action_sgi_ai_use_whys" type="object"
+                                string="Copiar el borrador de porqués" colspan="2"
+                                groups="quimibond_sgi.group_sgi_user"
+                                invisible="not sgi_ai_date or not sgi_ai_available or sgi_stage_is_closing or sgi_stage_is_cancel"/>
+                    </group>
                 </page>
                 <page string="Correcciones y acciones" name="sgi_actions" invisible="not sgi_folio and id">
                     <field name="sgi_action_line_ids">
@@ -135,6 +172,7 @@
                               decoration-muted="state == 'terminada'">
                             <field name="action_type"/>
                             <field name="name"/>
+                            <field name="evidence_note" optional="show"/>
                             <field name="responsible_id" widget="many2one_avatar_user"/>
                             <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                             <field name="date_done"/>
@@ -185,9 +223,11 @@
                 <page string="Verificación y cierre" name="sgi_close" invisible="not sgi_folio and id">
                     <group>
                         <group string="Eficacia">
+                            <field name="sgi_effective" widget="radio" options="{'horizontal': true}"/>
                             <field name="sgi_effectiveness_note"/>
                             <field name="sgi_effectiveness_date"/>
                             <field name="sgi_effectiveness_by"/>
+                            <field name="sgi_ineffective_count" invisible="not sgi_ineffective_count"/>
                             <field name="sgi_lesson_captured"
                                    invisible="sgi_classification != 'mayor'"/>
                         </group>
@@ -258,7 +298,7 @@
                 <field name="sgi_deviation"/>
                 <field name="sgi_process_id"/>
                 <field name="team_id"/>
-                <filter name="sgi_mine" string="Mis NC"
+                <filter name="mine" string="Míos"
                         domain="[('sgi_responsible_ids', 'in', uid)]"/>
                 <separator/>
                 <filter name="sgi_open" string="Abiertas"

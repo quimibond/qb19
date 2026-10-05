@@ -14,7 +14,10 @@
     <template id="report_machine_sheet_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_machine_sheet'"/>
                     <div class="page">
                         <h2 class="text-center">Ficha técnica de control de proceso</h2>
                         <table class="table table-sm table-bordered" style="font-size:11px;">

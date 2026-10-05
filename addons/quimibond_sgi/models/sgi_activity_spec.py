@@ -312,7 +312,7 @@ class SgiActivitySpec(models.Model):
             and not any(line.deliverable_id.producer_activity_ids
                         for line in self.input_ids))
         if not timed_input and not periodic and not external_start:
-            add('no_timing', "Sin plazo: pon días a alguna entrada o un vencimiento periódico.")
+            add('no_timing', "Sin plazo: ponga días a alguna entrada o un vencimiento periódico.")
         elif (self.measure_cadence in SGI_CADENCE_MONTHS
               and not (self.due_month or self.due_day)):
             # 57.15.0 (G-008 a): una trimestral, semestral o anual sin mes ni
@@ -332,9 +332,9 @@ class SgiActivitySpec(models.Model):
             add('due_mismatch', "Falta el %s del vencimiento." % ("día" if self.due_month else "mes"))
         unconditioned = executors.filtered(lambda r: not (r.condition or '').strip())
         if len(unconditioned) > 1:
-            add('multi_exec', "Más de un puesto la ejecuta: parte la actividad.")
+            add('multi_exec', "Más de un puesto la ejecuta: divida la actividad.")
         if first in vague or first_two in vague:
-            add('vague_verb', "«%s» no se puede observar: usa un verbo que diga qué "
+            add('vague_verb', "«%s» no se puede observar: use un verbo que diga qué "
                               "se entrega." % (first_two if first_two in vague else first))
         if first == 'recibir':
             add('trigger_as_activity', "«Recibir» es el disparador de la siguiente "
@@ -342,7 +342,7 @@ class SgiActivitySpec(models.Model):
         if first in compare and not (self.check_against or '').strip():
             add('no_check_against', "«%s» sin decir contra qué se compara." % first)
         if not self.output_deliverable_ids and self.measure_method != 'entregable':
-            add('no_output', "Sin salida: únela con la actividad que la usa o declara "
+            add('no_output', "Sin salida: únala con la actividad que la usa o declare "
                              "qué entrega.")
         if not escala:
             add('no_escalation', "Sin rol «Escala».")
@@ -360,20 +360,20 @@ class SgiActivitySpec(models.Model):
             # que su usuario no puede abrir (p. ej. Administración SGI).
             users = self._sgi_executor_users()
             if users and not any(sgi_menu_visible_for(self.odoo_menu_id, user) for user in users):
-                add('menu_no_visible', "Nadie de quien la ejecuta ve «%s»: apunta a una "
+                add('menu_no_visible', "Nadie de quien la ejecuta ve «%s»: apunte a una "
                                        "entrada que sí vea (p. ej. Inicio → Mis indicadores) "
-                                       "o dale el grupo." % self.odoo_menu_id.sudo().complete_name)
+                                       "o dele el grupo." % self.odoo_menu_id.sudo().complete_name)
         if channel in SGI_EXTERNAL_CHANNELS and not (self.external_system or '').strip():
             add('external_no_name', "Falta el nombre del sistema externo.")
         if not self.instruction_id and not (self.how_steps or '').strip():
             add('no_how', "Falta cómo se hace: instructivo o pasos.")
         if channel == 'odoo' and self.measure_method in ('manual', 'correo'):
-            add('odoo_measured_manual', "Se hace en Odoo pero se mide a mano: define "
+            add('odoo_measured_manual', "Se hace en Odoo pero se mide a mano: defina "
                                         "el entregable.")
         if channel == 'papel':
             add('paper_channel', "En papel: candidata a pasarse a Odoo.")
         if ' y registrar' in name or ' y capturar' in name:
-            add('mixed_channel', "Junta trabajo físico y captura: pártela en dos "
+            add('mixed_channel', "Junta trabajo físico y captura: pártala en dos "
                                  "actividades para medir cada una.")
         output = self._sgi_output_deliverable()
         if output and output.odoo_model_id:

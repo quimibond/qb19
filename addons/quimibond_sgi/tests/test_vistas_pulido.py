@@ -356,7 +356,7 @@ class TestDocumentosEImpresos(TransactionCase):
     def test_03_nc_solo_con_folio_y_sin_vacios(self):
         floor = self.env['quality.alert'].create({'title': 'Alerta de piso VP'})
         self.assertFalse(floor.sgi_folio)
-        self.assertIn('no es una No Conformidad', self._html('quimibond_sgi.report_nc_document', floor))
+        self.assertIn('no es una no conformidad', self._html('quimibond_sgi.report_nc_document', floor))
         nc = self.env['quality.alert'].create({
             'title': 'NC VP', 'team_id': self.env.ref('quimibond_sgi.sgi_quality_team_internal').id,
             'stage_id': self.env.ref('quimibond_sgi.sgi_nc_int_stage_open').id})

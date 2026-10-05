@@ -14,7 +14,7 @@ Estos son los campos que faltaban:
 - C2.34: el acuse adjunto guarda su entrega (y la entrega, sus acuses).
 - C4.19: el traspaso a liberación guarda su orden de producción.
 """
-from odoo import api, fields, models
+from odoo import Command, api, fields, models
 
 
 class SgiDydTaskMixin(models.AbstractModel):
@@ -162,6 +162,11 @@ class ApprovalRequestLink(models.Model):
 
 
 class AccountMoveLink(models.Model):
+    """S2.08: entregas que factura la factura. 57.95.0 (K-05): lo propuesto
+    (entregas hechas de las líneas, sin guardar) va aparte de lo ajustado a
+    mano (``sgi_picking_manual_ids``, guardado y no calculado, que solo llena
+    ``write``). El cálculo de ``sgi_picking_ids`` siempre asigna: lo ajustado
+    si hay ajuste; si no, lo propuesto."""
     _inherit = 'account.move'
 
     sgi_picking_ids = fields.Many2many(
@@ -170,19 +175,111 @@ class AccountMoveLink(models.Model):
         readonly=False, copy=False,
         help="Entregas (o recepciones) que esta factura cobra (S2.08). Se proponen "
              "desde las líneas del pedido; se pueden ajustar a mano.")
+    sgi_picking_proposed_ids = fields.Many2many(
+        'stock.picking', string="Entregas propuestas", compute='_compute_sgi_picking_proposed_ids',
+        compute_sudo=True,
+        help="Entregas hechas de las líneas de la factura: lo que el sistema propone.")
+    sgi_picking_manual = fields.Boolean(
+        string="Entregas ajustadas a mano", readonly=True, copy=False,
+        help="Alguien cambió a mano las entregas facturadas: el sistema ya no las reemplaza "
+             "con las propuestas. «Volver a las entregas propuestas» lo quita.")
+    sgi_picking_manual_ids = fields.Many2many(
+        'stock.picking', 'sgi_move_picking_manual_rel', 'move_id', 'picking_id',
+        string="Entregas ajustadas a mano (guardadas)", readonly=True, copy=False,
+        help="Las entregas que alguien escribió a mano; las conserva aunque cambie lo propuesto.")
+    sgi_picking_outdated = fields.Boolean(
+        string="Entregas distintas de las propuestas", compute='_compute_sgi_picking_outdated',
+        compute_sudo=True,
+        help="Las entregas guardadas no son las que el sistema propone hoy.")
 
-    @api.depends('invoice_line_ids.sale_line_ids.move_ids.picking_id',
-                 'invoice_line_ids.purchase_line_id.move_ids.picking_id')
+    _SGI_PICKING_DEPENDS = ('move_type',
+                            'invoice_line_ids.sale_line_ids.move_ids.picking_id.state',
+                            'invoice_line_ids.purchase_line_id.move_ids.picking_id.state')
+
+    def _sgi_proposed_pickings(self):
+        self.ensure_one()
+        Picking = self.env['stock.picking']
+        if not self.is_invoice(include_receipts=True):
+            return Picking
+        lines = self.invoice_line_ids
+        pickings = lines.sale_line_ids.move_ids.picking_id | lines.purchase_line_id.move_ids.picking_id
+        return pickings.filtered(lambda p: p.state == 'done')
+
+    @api.depends(*_SGI_PICKING_DEPENDS)
+    def _compute_sgi_picking_proposed_ids(self):
+        for move in self:
+            move.sgi_picking_proposed_ids = move._sgi_proposed_pickings()
+
+    # 57.95.0 (K-05): antes no dependía del estado de la entrega (una factura
+    # hecha antes de validarla se quedaba vacía) y pisaba lo ajustado a mano.
+    @api.depends('sgi_picking_manual', 'sgi_picking_manual_ids', *_SGI_PICKING_DEPENDS)
     def _compute_sgi_picking_ids(self):
         for move in self:
             if not move.is_invoice(include_receipts=True):
                 move.sgi_picking_ids = False
                 continue
-            lines = move.invoice_line_ids
-            pickings = lines.sale_line_ids.move_ids.picking_id | lines.purchase_line_id.move_ids.picking_id
-            pickings = pickings.filtered(lambda p: p.state == 'done')
-            if pickings or not move.sgi_picking_ids:
-                move.sgi_picking_ids = pickings.ids
+            if move.sgi_picking_manual:
+                move.sgi_picking_ids = move.sgi_picking_manual_ids
+                continue
+            proposed = move._sgi_proposed_pickings()
+            if not proposed:
+                # Sin propuesta se conserva lo guardado: protege los ajustes a
+                # mano de antes de 57.95.0, que no traen la marca. En el
+                # formulario (_origin) es lo guardado en la base, y el
+                # onchange lo reenvía igual (write no lo toma por ajuste).
+                kept = move._origin.sgi_picking_ids if move._origin else move.sgi_picking_manual_ids
+                move.sgi_picking_ids = kept or move.sgi_picking_manual_ids
+                continue
+            move.sgi_picking_ids = proposed
+
+    @api.depends('sgi_picking_ids', *_SGI_PICKING_DEPENDS)
+    def _compute_sgi_picking_outdated(self):
+        for move in self:
+            move.sgi_picking_outdated = bool(move.is_invoice(include_receipts=True)) \
+                and move.sgi_picking_ids != move._sgi_proposed_pickings()
+
+    def write(self, vals):
+        # La marca de ajuste a mano se decide DESPUÉS de escribir y solo si lo
+        # escrito difiere de lo propuesto: el formulario de la factura manda
+        # ``sgi_picking_ids`` al guardar cada vez que un onchange lo recalcula;
+        # marcarlo siempre que viniera en ``vals`` congelaría facturas que
+        # nadie ajustó. Todo se compara en sudo y por ids: una regla de
+        # registro sobre las entregas no debe hacer parecer «a mano» una
+        # factura que nadie tocó.
+        track = 'sgi_picking_ids' in vals and 'sgi_picking_manual' not in vals
+        before = {move.id: set(move.sudo().sgi_picking_ids.ids) for move in self} if track else {}
+        res = super().write(vals)
+        if track:
+            for move in self.sudo():
+                written = set(move.sgi_picking_ids.ids)
+                proposed = set(move._sgi_proposed_pickings().ids)
+                if written == proposed:
+                    if move.sgi_picking_manual or move.sgi_picking_manual_ids:
+                        super(AccountMoveLink, move).write({
+                            'sgi_picking_manual': False,
+                            'sgi_picking_manual_ids': [Command.clear()]})
+                    continue
+                if not proposed and written == before.get(move.id) and not move.sgi_picking_manual:
+                    # Lo guardado que se conservó sin propuesta (ajuste de
+                    # antes de 57.95.0) y que el formulario reenvía igual.
+                    continue
+                if not move.sgi_picking_manual or set(move.sgi_picking_manual_ids.ids) != written:
+                    super(AccountMoveLink, move).write({
+                        'sgi_picking_manual': True,
+                        'sgi_picking_manual_ids': [Command.set(list(written))]})
+        return res
+
+    def action_sgi_picking_reset(self):
+        """«Volver a las entregas propuestas»: quita el ajuste a mano y pone
+        lo propuesto, aunque venga vacío (también quita lo que se conservaba
+        sin propuesta)."""
+        for move in self:
+            proposed = move.sudo()._sgi_proposed_pickings()
+            super(AccountMoveLink, move).write({
+                'sgi_picking_manual': False,
+                'sgi_picking_manual_ids': [Command.clear()],
+                'sgi_picking_ids': [Command.set(proposed.ids)]})
+        return True
 
 
 class IrAttachmentLink(models.Model):

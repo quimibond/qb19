@@ -31,6 +31,35 @@
         <field name="code">action = env['sgi.my.pending'].action_open_mine()</field>
     </record>
 
+    <!-- 57.98.0 (U-07, Q20): acción del menú raíz «SGI». Dirección abre en el
+         Tablero; los demás, en Mis pendientes. No toca res.users. -->
+    <record id="sgi_home_action" model="ir.actions.server">
+        <field name="name">SGI</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_open_home()</field>
+    </record>
+
+    <!-- 57.98.0 (U-07): SGI → Reportar (cada una abre la ficha nueva). -->
+    <record id="sgi_report_nc_action" model="ir.actions.server">
+        <field name="name">No conformidad</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_sgi_report('nc')</field>
+    </record>
+    <record id="sgi_report_incident_action" model="ir.actions.server">
+        <field name="name">Casi accidente o incidente</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_sgi_report('incident')</field>
+    </record>
+    <record id="sgi_report_voice_action" model="ir.actions.server">
+        <field name="name">Queja o sugerencia</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_sgi_report('voice')</field>
+    </record>
+
     <!-- 56.7.0: Administración SGI → Firmas de lectura → «Publicar Mi
          procedimiento» (revisión previa y «Publicar todos los puestos»; antes
          vivían en el encabezado de la pantalla de cada empleado). -->

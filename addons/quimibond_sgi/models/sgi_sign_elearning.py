@@ -7,8 +7,10 @@
   «Enviar acuses a firma» genera una solicitud por empleado pendiente y el
   cron diario sella el acuse cuando la solicitud queda firmada.
 - **eLearning**: un curso puede otorgar una competencia (hr.skill) a un nivel
-  dado. Al terminar el curso, el cron diario registra/sube la competencia del
-  empleado, cerrando la brecha en la DNC sin captura manual.
+  dado. Al terminar el curso, el empleado recibe la competencia con la
+  vigencia del curso (57.100.0, N-13: la línea de currículum nativa la otorga
+  al momento; el cron diario es el respaldo para quien terminó sin línea),
+  cerrando la brecha en la DNC sin captura manual.
 """
 import logging
 
@@ -61,7 +63,7 @@ class DocumentsDocumentSign(models.Model):
         creación corre con sudo (el candado real es el grupo del botón)."""
         self.ensure_one()
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-            raise UserError("Solo el Jefe de MAST envía acuses a firma.")
+            raise UserError("Solo el Jefe MAST envía acuses a firma.")
         pending = self.sgi_ack_ids.filtered(
             lambda a: a.state == 'pendiente' and (
                 not a.sign_request_id
@@ -175,9 +177,13 @@ class SlideChannelSgi(models.Model):
     @api.model
     def _sgi_sync_completions(self):
         """Asistentes con curso terminado → competencia del empleado creada o
-        subida de nivel (nunca bajada). Idempotente."""
+        subida de nivel (nunca bajada), con la vigencia del curso. Idempotente.
+
+        57.100.0 (N-13): usa la misma regla que la línea de currículum
+        (``hr.employee._sgi_grant_skill``) sin renovar: si el empleado ya tuvo
+        la competencia a ese nivel, el cron no la vuelve a dar (con vigencia,
+        «hoy + N meses» la renovaría cada noche)."""
         today = fields.Date.context_today(self)
-        Skill = self.env['hr.employee.skill'].sudo()
         channels = self.sudo().search([
             ('sgi_skill_id', '!=', False),
             ('sgi_skill_level_id', '!=', False),
@@ -192,22 +198,9 @@ class SlideChannelSgi(models.Model):
                 employee = channel._sgi_employee_for_partner(member.partner_id)
                 if not employee:
                     continue
-                current = Skill.search([
-                    ('employee_id', '=', employee.id),
-                    ('skill_id', '=', channel.sgi_skill_id.id),
-                    '|', ('valid_to', '=', False), ('valid_to', '>=', today),
-                ], limit=1)
-                target = channel.sgi_skill_level_id
-                if current:
-                    if current.skill_level_id.level_progress >= target.level_progress:
-                        continue
-                    current.write({'skill_level_id': target.id})
-                else:
-                    Skill.create({
-                        'employee_id': employee.id,
-                        'skill_id': channel.sgi_skill_id.id,
-                        'skill_type_id': channel.sgi_skill_id.skill_type_id.id,
-                        'skill_level_id': target.id,
-                    })
-                granted += 1
+                if employee._sgi_grant_skill(
+                        channel.sgi_skill_id, channel.sgi_skill_level_id, today,
+                        channel._sgi_skill_date_to(today), 'curso', channel=channel,
+                        renew=False):
+                    granted += 1
         return granted

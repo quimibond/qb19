@@ -11,8 +11,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `commitment_date` | Datetime |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_sale_commitment.py:17` |
-| `sgi_coa_attachment_count` | Integer | # COA |  |  |  | compute `_compute_sgi_coa_attachment_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_coa.py:221` |
-| `sgi_coa_status` | Selection | COA | El peor estado del COA de sus salidas que lo requieren. |  |  | compute `_compute_sgi_coa_status`, guardado |  | `addons/quimibond_sgi/models/sgi_coa.py:218` |
+| `sgi_coa_attachment_count` | Integer | # CoA |  |  |  | compute `_compute_sgi_coa_attachment_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_coa.py:295` |
+| `sgi_coa_status` | Selection | CoA | El peor estado del CoA de sus salidas que lo requieren. |  |  | compute `_compute_sgi_coa_status`, guardado |  | `addons/quimibond_sgi/models/sgi_coa.py:292` |
 | `sgi_commitment_set_at` | Datetime | Fecha compromiso registrada el | Cuándo se registró por primera vez la fecha compromiso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_sale_commitment.py:18` |
 | `sgi_commitment_set_uid` | Many2one | Fecha compromiso registrada por | Quién registró por primera vez la fecha compromiso. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_sale_commitment.py:21` |
 

@@ -63,8 +63,7 @@
                         <field name="measure_state" widget="badge" nolabel="1" class="d-inline"
                                decoration-success="measure_state == 'verde'"
                                decoration-danger="measure_state == 'rojo'"
-                               decoration-warning="measure_state == 'pendiente'"
-                               decoration-muted="measure_state == 'no_aplica'"/>
+                               decoration-muted="measure_state in ('pendiente', 'no_aplica')"/>
                     </div>
                     <group>
                         <group>
@@ -286,7 +285,7 @@
                         <page string="Cadena" name="cadena">
                             <div class="text-muted mb-2">
                                 Las ligas se calculan solas de «Recibe» y «Entrega» y no se
-                                editan a mano. Si una no aplica, apágala y escribe el motivo.
+                                editan a mano. Si una no aplica, apáguela y escriba el motivo.
                             </div>
                             <separator string="Recibe de"/>
                             <field name="in_link_ids" context="{'active_test': False}">
@@ -457,7 +456,7 @@
                 <separator/>
                 <!-- «Mis actividades» de Inicio: todos los roles del puesto (y de su
                      familia), no solo «ejecuta» (antes herencia propia; A-008). -->
-                <filter name="my_activities" string="Mis actividades"
+                <filter name="mine" string="Míos"
                         domain="['|', '|', ('responsible_job_ids.employee_ids.user_id', '=', uid), ('role_ids.job_id.employee_ids.user_id', '=', uid), ('role_ids.family_id.job_ids.employee_ids.user_id', '=', uid)]"/>
                 <filter name="no_responsible" string="Sin responsable"
                         domain="[('responsible_job_ids', '=', False), ('responsible_role', '=', False)]"/>
@@ -540,11 +539,13 @@
         <field name="search_view_id" ref="sgi_process_activity_view_search"/>
         <!-- 57.66.0: explícito. Hasta 45.0.0 abría agrupada por proceso
              ({'search_default_group_process': 1}); quitar el campo del XML no
-             lo borra de la base, y producción lo seguía teniendo. -->
-        <field name="context">{}</field>
+             lo borra de la base, y producción lo seguía teniendo.
+             57.98.0 (I-04): abre con «Míos» (las actividades de su puesto). -->
+        <field name="context">{'search_default_mine': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin actividades</p>
             <p>Se capturan desde el botón Actividades de cada proceso; «Ir a hacerlo» abre el menú de Odoo donde se ejecuta.</p>
+            <p>Se abre con «Míos»: las actividades de su puesto. Quite el filtro para ver todas.</p>
         </field>
     </record>
 

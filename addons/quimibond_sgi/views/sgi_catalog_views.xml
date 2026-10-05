@@ -399,19 +399,19 @@
             <form string="Cargar catálogo">
                 <field name="state" invisible="1"/>
                 <div class="alert alert-info" role="status" invisible="state != 'draft'">
-                    Pega el JSON del catálogo (familias, procesos, actividades con
-                    roles y medición, ligas, flujos, indicadores) o sube el archivo.
+                    Pegue el JSON del catálogo (familias, procesos, actividades con
+                    roles y medición, ligas, flujos, indicadores) o suba el archivo.
                     <b>Probar</b> no escribe nada: muestra qué se crearía, qué se
                     actualizaría y los errores. <b>Cargar</b> escribe; se puede
                     repetir sin duplicar.
                 </div>
                 <div class="alert alert-success" role="status"
                      invisible="state != 'tested' or not dry_run_ok">
-                    La prueba pasó sin errores. Ya puedes cargar.
+                    La prueba pasó sin errores. Ya puede cargar.
                 </div>
                 <div class="alert alert-danger" role="alert"
                      invisible="state == 'draft' or error_count == 0">
-                    Hay <field name="error_count" class="d-inline"/> error(es): revisa la lista.
+                    Hay <field name="error_count" class="d-inline"/> error(es): revise la lista.
                 </div>
                 <group invisible="state == 'loaded'">
                     <field name="payload_file" filename="payload_filename"/>

@@ -17,12 +17,15 @@ sola. Por eso:
   actividad». Al ser acciones de ventana, las migas de pan regresan solas.
 - El PDF (QWeb) y la huella siguen en ``hr.job._sgi_my_procedure_data``.
 """
+import logging
 from collections.abc import Iterable
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_my_procedure import _CADENCE_RANK, _DETAIL_ROLES, _SHORT_ROLES
+
+_logger = logging.getLogger(__name__)
 
 _MP_STATUS = [
     ('al_dia', "Al día"),
@@ -287,6 +290,41 @@ class HrEmployeeMyProcedureTab(models.Model):
         for fname in ('sgi_mp_role_ids', 'sgi_mp_received_role_ids', 'sgi_mp_short_role_ids',
                       'sgi_mp_process_ids', 'sgi_my_procedure_ack_state'):
             self.env.add_to_compute(self._fields[fname], employees)
+
+    _SGI_MP_LIST_FIELDS = ('sgi_mp_role_ids', 'sgi_mp_received_role_ids',
+                           'sgi_mp_short_role_ids', 'sgi_mp_process_ids')
+
+    @api.model
+    def _sgi_mp_nightly_recompute(self):
+        """57.95.0 (K-08): respaldo de los disparos a mano
+        (``_sgi_mp_touch_jobs``). Recalcula las cuatro listas guardadas de
+        todas las personas activas y compara con lo que había. En régimen da 0;
+        si da más, la lista vieja se corrige aquí y el log dice cuántas y
+        quiénes: falta un disparo en algún cambio de roles, actividades o
+        publicación (así nació el error de 57.13.0 a 57.88.0). Devuelve los
+        empleados que cambiaron."""
+        fnames = self._SGI_MP_LIST_FIELDS
+        employees = self.sudo().search([])
+
+        def snapshot(emp):
+            return tuple(frozenset(emp[fname].ids) for fname in fnames)
+
+        before = {emp.id: snapshot(emp) for emp in employees}
+        for fname in fnames:
+            self.env.add_to_compute(self._fields[fname], employees)
+        self.env.flush_all()
+        employees.invalidate_recordset(list(fnames))
+        changed = employees.filtered(lambda emp: snapshot(emp) != before[emp.id])
+        if changed:
+            changed.sgi_mp_job_id._sgi_mp_mark_dirty()
+            _logger.warning(
+                "SGI: el respaldo nocturno de Mi procedimiento corrigió las listas de %d de %d "
+                "persona(s) %s: falta un disparo de recálculo.",
+                len(changed), len(employees), changed.ids[:50])
+        else:
+            _logger.info("SGI: respaldo nocturno de Mi procedimiento: 0 cambios en %d personas.",
+                         len(employees))
+        return changed
 
 
 class HrEmployeePublicMyProcedureTab(models.Model):
@@ -754,10 +792,10 @@ class SgiMyProcedure(models.TransientModel):
             vals['job_id'] = job_id
         wiz = self.create(vals)
         if wiz.employee_id and wiz.employee_id.id not in wiz.allowed_employee_ids.ids:
-            raise UserError("Esa persona no está en tu equipo; solo ves a tu gente, tus "
-                            "departamentos y los puestos de tus procesos.")
+            raise UserError("Esa persona no está en su equipo; solo ve a su gente, sus "
+                            "departamentos y los puestos de sus procesos.")
         if not wiz.employee_id and wiz.job_id and wiz.job_id.id not in wiz.allowed_job_ids.ids:
-            raise UserError("Ese puesto no está en tu equipo.")
+            raise UserError("Ese puesto no está en su equipo.")
         return {
             'type': 'ir.actions.act_window',
             'name': "Mi procedimiento — %s" % (wiz.employee_id.name or wiz.job_id.name or ''),
@@ -773,12 +811,12 @@ class SgiMyProcedure(models.TransientModel):
         self.ensure_one()
         me = self._sgi_mp_my_employee()
         if not me or self.employee_id.id != me.id:
-            raise UserError("Solo puedes firmar tu propio «Mi procedimiento».")
+            raise UserError("Solo puede firmar su propio «Mi procedimiento».")
         doc = self.job_id.sudo()._sgi_my_procedure_current_doc() if self.job_id else False
         if not doc:
             raise UserError("Aún no hay una revisión publicada de este puesto para firmar.")
         if me.job_id.id != self.job_id.id:
-            raise UserError("Tu puesto ya no es %s: no hay acuse que firmar." % self.job_id.name)
+            raise UserError("Su puesto ya no es %s: no hay acuse que firmar." % self.job_id.name)
         Ack = self.env['sgi.document.ack']
         ack = Ack.sudo().search([('document_id', '=', doc.id), ('employee_id', '=', me.id)], limit=1)
         if not ack:
@@ -789,14 +827,14 @@ class SgiMyProcedure(models.TransientModel):
     def action_print(self):
         self.ensure_one()
         if not self.job_id:
-            raise UserError("Elige un puesto.")
+            raise UserError("Elija un puesto.")
         return self.job_id.sudo().with_context(
             sgi_mp_employee_id=self.employee_id.id).action_sgi_print_my_procedure()
 
     def action_publish(self):
         self.ensure_one()
         if not self.job_id:
-            raise UserError("Elige un puesto.")
+            raise UserError("Elija un puesto.")
         self.job_id.action_sgi_publish_my_procedure()
         return self._reload()
 
@@ -1050,6 +1088,6 @@ class HrEmployeePublicMyTeam(models.Model):
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_team_view_search').id, 'search'],
             'domain': [('id', 'in', team.ids)],
             'context': {},
-            'help': "<p class='o_view_nocontent_smiling_face'>No tienes personas a tu cargo en Odoo</p>"
-                    "<p>Reportes directos, tu departamento o los puestos de tus procesos.</p>",
+            'help': "<p class='o_view_nocontent_smiling_face'>No tiene personas a su cargo en Odoo</p>"
+                    "<p>Reportes directos, su departamento o los puestos de sus procesos.</p>",
         }

@@ -183,6 +183,17 @@ class SgiIndicator(models.Model):
         'desperdicio_kg': "Inventario → kg que entran a las ubicaciones de desperdicio (órdenes y ajustes) ÷ kg de hilo y fibra consumidos en órdenes, en los últimos 3 meses.",
         'margen_ebitda': "Contabilidad → (ingresos − costo de ventas − gastos de operación) ÷ ingresos, últimos 12 meses; sin depreciación, sin otros ingresos ni gastos financieros.",
         'acuerdos_rxd': "SGI → acuerdos de la Revisión por la Dirección con fecha límite en el periodo cumplidos a tiempo ÷ acuerdos con fecha límite en el periodo.",
+        # 57.99.0: salud del SGI (sgi_indicator_health.py).
+        'salud_procesos': "SGI → procesos activos de la empresa del SGI en «Vigente» ÷ procesos activos. Foto al calcular.",
+        'salud_personas': "SGI → personas con usuario y empleado de la empresa del SGI que crearon, modificaron o comentaron algo del SGI en los últimos 30 días (sin OdooBot, el administrador ni las excluidas en Ajustes). Foto al calcular.",
+        'salud_planta': "Empleados → empleados activos con puesto de la empresa del SGI que tienen usuario de Odoo ÷ empleados activos con puesto. Foto al calcular.",
+        'salud_acuses': "Documentos → acuses de documentos vigentes leídos o pendientes dentro del plazo del aviso ÷ acuses de los empleados activos de la empresa del SGI. Foto al calcular.",
+        'salud_validacion': "SGI → mediciones validadas a más tardar en su plazo (3 días hábiles desde la captura) ÷ mediciones cuyo plazo de validación cayó en los últimos 30 días. Sin los indicadores de salud.",
+        'salud_rojos': "SGI → mediciones en rojo de los últimos 3 meses con NC o con causa y al menos una acción ÷ mediciones en rojo con dato. Sin los indicadores de salud. Foto al calcular.",
+        'salud_nc': "Calidad → NC con folio cerradas en los últimos 90 días sin ninguna verificación «No eficaz» ÷ NC cerradas en esos días. La nota da las NC abiertas con más de 60 días.",
+        'salud_avisos': "SGI → avisos del SGI (actividades) vencidos al cierre. La nota dice qué parte los tiene una sola persona. Foto al calcular.",
+        'salud_auditoria': "SGI → auditorías internas del programa del año hechas (en «Informe» o «Cerrada») ÷ auditorías internas programadas hasta el mes en curso. Foto al calcular.",
+        'salud_formatos': "Documentos → formatos «Migrado a Odoo» con destino activo y uso en los últimos 90 días ÷ formatos «Migrado a Odoo». Foto al calcular.",
         'compras_mp_vs_ventas': "Contabilidad → facturas de proveedor de materia prima (menos notas de crédito) ÷ ingresos (cuentas de ingreso), últimos 3 meses.",
         'complementos_pago': "Contabilidad → pagos de clientes del periodo a facturas PPD cuyo complemento de pago se timbró a más tardar el día 5 del mes siguiente al pago (hora de México) ÷ esos pagos. Se mide cuando vence el plazo.",
         'desviacion_precio_compra': "Contabilidad → Σ |precio pagado − precio de la OC| × cantidad ÷ importe, en las líneas de factura de proveedor del periodo que vienen de una OC (moneda de la compañía; la OC se convierte a la unidad y moneda de la factura). La nota separa lo pagado de más y de menos y la cobertura con OC.",
@@ -1038,7 +1049,7 @@ class SgiIndicatorMeasure(models.Model):
         ('validado', "Validado"),
     ], string="Estado", default='pendiente', required=True, tracking=True,
         help="Pendiente, capturado, validado o sin dato. El dueño del indicador valida lo capturado.")
-    alert_id = fields.Many2one('quality.alert', string="No Conformidad", readonly=True,
+    alert_id = fields.Many2one('quality.alert', string="No conformidad", readonly=True,
                                help="No conformidad levantada por esta medición en rojo.")
     # V-A06 (57.43.0): «Validar» solo se ofrece a quien puede validar (I-006).
     sgi_can_validate = fields.Boolean(
@@ -1219,7 +1230,7 @@ class SgiIndicatorMeasure(models.Model):
             # Evidencia = las líneas del presupuesto aprobado del periodo.
             if 'sgi.sales.budget.line' not in self.env:
                 raise UserError("La evidencia de este indicador son las líneas del presupuesto "
-                                "de ventas: instala «Quimibond - Presupuesto y pronóstico de ventas».")
+                                "de ventas: instale «Quimibond - Presupuesto y pronóstico de ventas».")
             return {
                 'type': 'ir.actions.act_window',
                 'name': "Presupuesto del periodo — evidencia de %s" % self.period_date,
@@ -1318,7 +1329,7 @@ class SgiIndicatorMeasure(models.Model):
             if locked and not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
                 raise UserError(
                     "La medición validada de %s es evidencia del SGI y no puede "
-                    "modificarse ni regresarse a borrador. Pide al Jefe de MAST "
+                    "modificarse ni regresarse a borrador. Pida al Jefe MAST "
                     "reabrirla si hay un error real." % ', '.join(
                         locked.mapped('indicator_id.name')))
         return super().write(vals)

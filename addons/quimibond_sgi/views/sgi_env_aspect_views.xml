@@ -41,6 +41,7 @@
                         <group string="Aspecto e impacto">
                             <field name="aspect_type"/>
                             <field name="condition"/>
+                            <field name="life_cycle_stage"/>
                             <field name="impact"/>
                         </group>
                     </group>
@@ -61,7 +62,7 @@
                         <group string="Control operacional">
                             <field name="control_description"/>
                             <field name="operational_control_id"/>
-                            <field name="risk_id"/>
+                            <field name="risk_id" options="{'no_create': True}"/>
                         </group>
                         <group string="Revisión periódica">
                             <field name="review_frequency_months"/>
@@ -91,6 +92,7 @@
                 <field name="impact" optional="hide"/>
                 <field name="aspect_type" optional="show"/>
                 <field name="condition"/>
+                <field name="life_cycle_stage" optional="show"/>
                 <field name="severity"/>
                 <field name="frequency"/>
                 <field name="legal_requirement"/>
@@ -129,6 +131,8 @@
                 <group>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
                     <filter name="group_type" string="Tipo de aspecto" context="{'group_by': 'aspect_type'}"/>
+                    <filter name="group_life_cycle" string="Etapa del ciclo de vida"
+                            context="{'group_by': 'life_cycle_stage'}"/>
                     <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
                 </group>
@@ -141,6 +145,8 @@
         <field name="res_model">sgi.env.aspect</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_env_aspect_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los significativos. -->
+        <field name="context">{'search_default_significant': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Registre el primer aspecto ambiental</p>
             <p>ISO 14001 6.1.2: por cada actividad, su aspecto, el impacto que causa y la condición

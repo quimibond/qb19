@@ -223,7 +223,7 @@ class SgiActivityRole(models.Model):
         for role in self:
             if role.role == 'escala' and role.after_days <= 0:
                 raise ValidationError(
-                    "«%s» escala: indica a los cuántos días hábiles (after_days)."
+                    "«%s» escala: indique a los cuántos días hábiles (after_days)."
                     % role.display_name)
             if role.role != 'escala' and role.after_days:
                 raise ValidationError(
@@ -481,8 +481,8 @@ class HrJob(models.Model):
         if len(matches) > 1:
             return Job.browse(), (
                 "El puesto «%s» es ambiguo: hay %d con ese nombre (ids %s). "
-                "Fusiona los duplicados (hr.job.sgi_merge_duplicate_jobs) o "
-                "usa el id." % (ref, len(matches), matches.ids))
+                "Fusione los duplicados (hr.job.sgi_merge_duplicate_jobs) o "
+                "use el id." % (ref, len(matches), matches.ids))
         return matches, None
 
     # ------------------------------------------------------------------
@@ -647,7 +647,7 @@ class SgiDocumentType(models.Model):
              "proceso (salvo que conserve una clave heredada).")
     code_required = fields.Boolean(
         string="Exige clave", default=True,
-        help="Apágalo para tipos sin clave propia (documentos externos, "
+        help="Apáguelo para tipos sin clave propia (documentos externos, "
              "formularios de Odoo).")
     legacy_code_regex = fields.Char(
         string="Claves heredadas aceptadas (regex)",
@@ -680,7 +680,7 @@ class SgiDocumentType(models.Model):
                 dtype._sgi_format_code('X', 1)
             except (KeyError, ValueError, IndexError, re.error) as exc:
                 raise ValidationError(
-                    "El patrón de clave «%s» no es válido (%s). Usa solo "
+                    "El patrón de clave «%s» no es válido (%s). Use solo "
                     "{process} y {seq} / {seq:02d}." % (dtype.prefix_pattern, exc))
 
     _TOKEN_RE = re.compile(r'\{(process|seq)(?::0?(\d+)d)?\}')
@@ -897,8 +897,7 @@ class SgiConfigStudioCleanup(models.AbstractModel):
         'inbound_fields', 'backups', 'dropped', 'kept', 'missing',
         'aborted'}``; en ``backups``, los acompañantes que se respaldan (en la
         prueba) o los ids de los adjuntos (al borrar)."""
-        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_admin')):
-            raise UserError("Solo un Administrador SGI puede borrar modelos de Studio.")
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         IrModel = self.env['ir.model'].sudo()
         IrFields = self.env['ir.model.fields'].sudo()
         report = {'dry_run': bool(dry_run), 'counts': {}, 'companions': {},

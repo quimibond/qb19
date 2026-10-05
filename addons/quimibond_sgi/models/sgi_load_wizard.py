@@ -33,7 +33,7 @@ class SgiCatalogLoadWizard(models.TransientModel):
         ('tested', "Probado"),
         ('loaded', "Cargado"),
     ], string="Estado", default='draft', readonly=True,
-        help="Captura, probado (sin escribir nada) o cargado.")
+        help="En captura, probado (sin escribir nada) o cargado.")
     dry_run_ok = fields.Boolean(readonly=True,
                                 help="Indica que la prueba salió sin errores y ya se puede cargar.")
     summary = fields.Text(string="Resumen", readonly=True)
@@ -56,7 +56,7 @@ class SgiCatalogLoadWizard(models.TransientModel):
         else:
             raw = self.payload_text or ''
         if not raw.strip():
-            raise UserError("Pega el JSON o sube el archivo.")
+            raise UserError("Pegue el JSON o suba el archivo.")
         try:
             return json.loads(raw)
         except ValueError as exc:

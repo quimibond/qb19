@@ -75,6 +75,29 @@ def _module_dirs(paths):
             yield os.path.dirname(manifest)
 
 
+_ALERT_ROLES = ('alert', 'alertdialog', 'status')
+
+
+def _check_view_roles(xml_path, view_id, arch):
+    """Avisos de accesibilidad que Odoo 19 deja en el log del build (y pintan
+    de naranja): un ``<a>`` con clase ``btn`` lleva ``role="button"``; un
+    elemento con clase ``alert-*`` lleva ``role`` alert, alertdialog o status
+    (o la clase ``alert-link``). 57.94.2, 2026-10-02."""
+    errors = []
+    for el in arch.iter():
+        if not isinstance(el.tag, str):
+            continue
+        classes = (el.get('class') or '').split()
+        where = "%s:%s (vista %s)" % (os.path.relpath(xml_path, ROOT), el.sourceline, view_id)
+        if el.tag == 'a' and 'btn' in classes and el.get('role') != 'button':
+            errors.append('%s: <a> con clase "btn" necesita role="button".' % where)
+        if 'alert-link' not in classes and any(c.startswith('alert-') for c in classes) \
+                and el.get('role') not in _ALERT_ROLES:
+            errors.append('%s: un aviso (clase alert-*) necesita role="alert", "alertdialog" o '
+                          '"status" (para avisos que no detienen la lectura, "status").' % where)
+    return errors
+
+
 def check_views(module_dir, validators):
     errors = []
     for xml_path in glob.glob(os.path.join(module_dir, '**', '*.xml'), recursive=True):
@@ -90,6 +113,7 @@ def check_views(module_dir, validators):
             if arch is None or len(arch) == 0:
                 continue
             view = arch[0]
+            errors += _check_view_roles(xml_path, record.get('id'), arch)
             validator = validators.get(view.tag)
             if validator is None:
                 continue
@@ -537,7 +561,8 @@ def _model_classes(path):
 
 def check_model_kinds(module_dirs):
     """Una extensión (`_inherit = 'x'` sin `_name` distinto) debe ser del
-    mismo tipo que la clase que define `x` en el repo. Odoo rechaza al cargar
+    mismo tipo que la clase que define `x` en el repo. Con varias clases en
+    `_inherit`, la extensión lleva `_name` (si no, no extiende nada). Odoo rechaza al cargar
     convertir un TransientModel en Model (y al revés) o un modelo concreto en
     abstracto. Los modelos que no se definen en el repo (los de Odoo) no se
     revisan."""
@@ -554,6 +579,15 @@ def check_model_kinds(module_dirs):
             defined.setdefault(name, set()).add(kind)
     errors = []
     for path, cls, kind, name, inherit, line in classes:
+        # Varias clases en `_inherit` y sin `_name`: Odoo no sabe cuál
+        # extiende y la clase no extiende ninguna (los campos no llegan al
+        # modelo; 57.94.0 rompió el build de main así, 2026-10-02).
+        if not name and len(inherit) > 1:
+            errors.append(
+                "%s:%d: %s tiene varias clases en _inherit (%s) y no tiene _name; ponga "
+                "_name = '%s' para extender ese modelo." % (
+                    os.path.relpath(path, ROOT), line, cls, ", ".join(inherit), inherit[0]))
+            continue
         if len(inherit) != 1 or (name and name != inherit[0]):
             continue
         original = defined.get(inherit[0])

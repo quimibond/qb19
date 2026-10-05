@@ -18,7 +18,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_mp_change.py`.
 | `allowed_process_ids` | Many2many | Procesos del puesto | Procesos en los que participa el puesto de quien propone. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:224` |
 | `attachment` | Binary | Adjunto |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:232` |
 | `attachment_name` | Char | Nombre del adjunto |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:233` |
-| `change_type` | Selection | Qué propones | Agregar una actividad nueva, cambiar esta o quitarla. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:197` |
+| `change_type` | Selection | Qué propone | Agregar una actividad nueva, cambiar esta o quitarla. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:197` |
 | `check_against` | Char | Contra qué se compara |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:267` |
 | `description` | Text | Descripción |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:237` |
 | `diff_html` | Html | Qué cambia |  |  |  | compute `_compute_diff_html`, sin guardar |  | `addons/quimibond_sgi/models/sgi_mp_change.py:271` |

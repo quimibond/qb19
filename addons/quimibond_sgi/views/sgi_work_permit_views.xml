@@ -35,6 +35,12 @@
                 <div class="alert alert-danger mb-0" role="alert" invisible="not expired">
                     El permiso ya venció. Suspenda el trabajo o ciérrelo y solicite uno nuevo.
                 </div>
+                <!-- 57.96.0 (N-06, 45001 8.1.4): por omisión solo avisa. -->
+                <div class="alert alert-warning mb-0" role="alert"
+                     invisible="not contractor_id or sgi_contractor_eval_ok">
+                    El contratista no tiene evaluación SST vigente hasta el fin del permiso. El Jefe MAST
+                    la registra en el contacto, pestaña SGI.
+                </div>
                 <sheet>
                     <div class="oe_title">
                         <h1><field name="name" placeholder="Ej. Cambio de lámparas en nave 2"
@@ -54,6 +60,7 @@
                             <field name="date_start" readonly="state != 'borrador'"/>
                             <field name="date_end" readonly="state != 'borrador'"/>
                             <field name="expired" invisible="1"/>
+                            <field name="sgi_contractor_eval_ok" invisible="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
@@ -86,6 +93,17 @@
                                 </list>
                             </field>
                         </page>
+                        <!-- 57.96.0 (N-06): el permiso no se cierra con un bloqueo aplicado. -->
+                        <page string="Bloqueos (LOTO)" name="loto">
+                            <field name="loto_ids" readonly="1">
+                                <list>
+                                    <field name="folio"/>
+                                    <field name="name"/>
+                                    <field name="equipment_id"/>
+                                    <field name="state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Cierre" name="closing">
                             <group>
                                 <field name="close_note" readonly="state != 'autorizado'"/>
@@ -106,7 +124,8 @@
         <field name="arch" type="xml">
             <list string="Permisos de trabajo de alto riesgo"
                   decoration-info="state == 'solicitado'"
-                  decoration-muted="state in ('cerrado', 'cancelado')">
+                  decoration-success="state == 'cerrado'"
+                  decoration-muted="state == 'cancelado'">
                 <field name="folio"/>
                 <field name="name"/>
                 <field name="work_type"/>
@@ -114,12 +133,36 @@
                 <field name="requester_id" optional="show"/>
                 <field name="date_start"/>
                 <field name="date_end"/>
+                <field name="expired" optional="show" widget="boolean"/>
                 <field name="area_approved_by_id" optional="hide"/>
                 <field name="sst_approved_by_id" optional="hide"/>
                 <field name="state" widget="badge"
                        decoration-info="state == 'solicitado'"
                        decoration-success="state == 'autorizado'"/>
             </list>
+        </field>
+    </record>
+
+    <!-- 57.94.0 (I-05). -->
+    <record id="sgi_work_permit_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.work.permit.kanban</field>
+        <field name="model">sgi.work.permit</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <templates>
+                    <t t-name="card">
+                        <div class="fs-5 fw-bold"><field name="folio"/> · <field name="name"/></div>
+                        <div><field name="work_type"/> · <field name="location"/></div>
+                        <div>Desde <field name="date_start"/> hasta <field name="date_end"/></div>
+                        <footer class="d-flex flex-wrap gap-2 pt-2">
+                            <field name="state" widget="badge"
+                                   decoration-info="state == 'solicitado'"
+                                   decoration-success="state == 'autorizado'"/>
+                            <a type="open" class="btn btn-primary btn-lg" role="button">Abrir</a>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
         </field>
     </record>
 
@@ -136,9 +179,13 @@
                 <filter name="to_authorize" string="Por autorizar" domain="[('state', '=', 'solicitado')]"/>
                 <filter name="authorized" string="Autorizados" domain="[('state', '=', 'autorizado')]"/>
                 <filter name="expired_open" string="Vencidos sin cerrar"
-                        domain="[('state', '=', 'autorizado'), ('date_end', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                        domain="[('expired', '=', True)]"/>
+                <!-- 57.98.0 (I-04): la lista abre con los permisos sin cerrar. -->
                 <separator/>
-                <filter name="mine" string="Mis solicitudes" domain="[('requester_id', '=', uid)]"/>
+                <filter name="open" string="Sin cerrar"
+                        domain="[('state', 'in', ('borrador', 'solicitado', 'autorizado'))]"/>
+                <separator/>
+                <filter name="mine" string="Míos" domain="[('requester_id', '=', uid)]"/>
                 <filter name="to_me" string="Me toca autorizar" domain="[('state', '=', 'solicitado'), ('area_manager_id', '=', uid), ('area_approved_by_id', '=', False)]"/>
                 <group>
                     <filter name="group_type" string="Tipo de trabajo" context="{'group_by': 'work_type'}"/>
@@ -152,8 +199,13 @@
     <record id="sgi_work_permit_action" model="ir.actions.act_window">
         <field name="name">Permisos de trabajo de alto riesgo</field>
         <field name="res_model">sgi.work.permit</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
+
         <field name="search_view_id" ref="sgi_work_permit_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los permisos sin cerrar. -->
+        <field name="context">{'search_default_open': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Solicite el primer permiso de trabajo</p>
             <p>ISO 45001 8.1: antes de un trabajo en alturas, en espacio confinado, en caliente o

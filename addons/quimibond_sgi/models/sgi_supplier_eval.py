@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
 
 # «Sin datos» (56.14.0): sin recepciones con fecha compromiso el OTD valía 0
@@ -63,7 +65,7 @@ class ResPartner(models.Model):
                 'sgi_supplier_approved_date': fields.Date.context_today(partner),
             })
             partner.message_post(
-                body="Proveedor <b>aprobado</b> para el SGI (8.4.1) por %s."
+                body=Markup("Proveedor <b>aprobado</b> para el SGI (8.4.1) por %s.")
                      % self.env.user.name)
         return True
 
@@ -71,8 +73,8 @@ class ResPartner(models.Model):
         for partner in self:
             partner.write({'sgi_supplier_status': 'bloqueado'})
             partner.message_post(
-                body="Proveedor <b>BLOQUEADO</b> por el SGI (8.4.1) por %s: no se "
-                     "podrán confirmar órdenes de compra." % self.env.user.name)
+                body=Markup("Proveedor <b>BLOQUEADO</b> por el SGI (8.4.1) por %s: no se "
+                            "podrán confirmar órdenes de compra.") % self.env.user.name)
         return True
 
     def action_sgi_open_evals(self):

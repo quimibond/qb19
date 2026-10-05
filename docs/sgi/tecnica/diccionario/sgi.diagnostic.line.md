@@ -14,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_diagnostic.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `diagnostic_id` | Many2one | Diagnóstico | Corrida del diagnóstico a la que pertenece el hallazgo. | sí | `sgi.diagnostic` |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:31` |
-| `fix` | Char | Dónde se arregla |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:38` |
-| `level` | Selection | Nivel | Qué tan grave es el hallazgo. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:36` |
-| `section` | Char | Sección |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:35` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:34` |
-| `text` | Text | Hallazgo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:37` |
+| `diagnostic_id` | Many2one | Diagnóstico | Corrida del diagnóstico a la que pertenece el hallazgo. | sí | `sgi.diagnostic` |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:32` |
+| `fix` | Char | Dónde se arregla |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:39` |
+| `level` | Selection | Nivel | Qué tan grave es el hallazgo. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:37` |
+| `section` | Char | Sección |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:36` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:35` |
+| `text` | Text | Hallazgo |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_diagnostic.py:38` |
 

@@ -29,6 +29,34 @@ ASPECT_LEVELS = [
 # Niveles que vuelven significativo al aspecto (P-E01: «los aspectos
 # moderados, severos y críticos» llevan control operacional).
 SIGNIFICANT_LEVELS = ('moderado', 'severo', 'critico')
+# 57.96.0 (N-07): listas a nivel de módulo para que el asistente de traspaso
+# (sgi_env_aspect_transfer.py) use exactamente las mismas.
+ASPECT_TYPES = [
+    ('emision', "Emisión a la atmósfera"),
+    ('descarga', "Descarga de agua residual"),
+    ('residuo_peligroso', "Residuo peligroso"),
+    ('residuo_manejo_especial', "Residuo de manejo especial"),
+    ('residuo_urbano', "Residuo sólido urbano"),
+    ('energia', "Consumo de energía"),
+    ('agua', "Consumo de agua"),
+    ('materiales', "Consumo de materiales o químicos"),
+    ('ruido', "Ruido"),
+    ('suelo', "Afectación al suelo"),
+    ('otro', "Otro"),
+]
+ASPECT_CONDITIONS = [
+    ('normal', "Normal"),
+    ('anormal', "Anormal"),
+    ('emergencia', "Emergencia"),
+]
+# 57.96.0 (N-07, ISO 14001 6.1.2): perspectiva de ciclo de vida.
+LIFE_CYCLE_STAGES = [
+    ('materia_prima', "Obtención de materia prima e insumos"),
+    ('proceso', "Proceso en planta"),
+    ('transporte', "Transporte y distribución"),
+    ('uso', "Uso por el cliente"),
+    ('fin_vida', "Fin de vida y disposición"),
+]
 
 
 class SgiEnvAspect(models.Model):
@@ -50,31 +78,21 @@ class SgiEnvAspect(models.Model):
     sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict')
     activity = fields.Char(string="Actividad u operación", required=True, tracking=True,
                            help="Qué se hace: «Lavado de tambos», «Carga de caldera».")
-    aspect_type = fields.Selection([
-        ('emision', "Emisión a la atmósfera"),
-        ('descarga', "Descarga de agua residual"),
-        ('residuo_peligroso', "Residuo peligroso"),
-        ('residuo_manejo_especial', "Residuo de manejo especial"),
-        ('residuo_urbano', "Residuo sólido urbano"),
-        ('energia', "Consumo de energía"),
-        ('agua', "Consumo de agua"),
-        ('materiales', "Consumo de materiales o químicos"),
-        ('ruido', "Ruido"),
-        ('suelo', "Afectación al suelo"),
-        ('otro', "Otro"),
-    ], string="Tipo de aspecto", required=True, default='residuo_peligroso', tracking=True)
+    aspect_type = fields.Selection(ASPECT_TYPES, string="Tipo de aspecto", required=True,
+                                   default='residuo_peligroso', tracking=True)
     name = fields.Char(string="Aspecto ambiental", required=True, tracking=True,
                        help="El elemento de la actividad que interactúa con el ambiente: "
                             "«Generación de estopas impregnadas de aceite».")
     impact = fields.Text(string="Impacto ambiental", required=True,
                          help="El cambio en el ambiente que causa: «Contaminación del suelo».")
-    condition = fields.Selection([
-        ('normal', "Normal"),
-        ('anormal', "Anormal"),
-        ('emergencia', "Emergencia"),
-    ], string="Condición", required=True, default='normal', tracking=True,
+    condition = fields.Selection(
+        ASPECT_CONDITIONS, string="Condición", required=True, default='normal', tracking=True,
         help="Normal: operación diaria. Anormal: arranques, paros, mantenimiento. "
              "Emergencia: derrame, fuga, incendio.")
+    life_cycle_stage = fields.Selection(
+        LIFE_CYCLE_STAGES, string="Etapa del ciclo de vida", tracking=True,
+        help="En qué etapa del ciclo de vida del producto ocurre el aspecto (ISO 14001 6.1.2). "
+             "Se pide para registrar la evaluación.")
 
     # --- Criterios de significancia --------------------------------------
     severity = fields.Selection(SCALE_1_5, string="Severidad", tracking=True,
@@ -174,6 +192,8 @@ class SgiEnvAspect(models.Model):
             problems = []
             if not (aspect.severity and aspect.frequency):
                 problems.append("• Capture la severidad y la frecuencia.")
+            if not aspect.life_cycle_stage:
+                problems.append("• Indique la etapa del ciclo de vida (ISO 14001 6.1.2).")
             if aspect.significant and not (
                     (aspect.control_description or '').strip() or aspect.operational_control_id):
                 problems.append(
@@ -217,7 +237,8 @@ class SgiEnvAspect(models.Model):
         tratamiento. Probabilidad = frecuencia, impacto = severidad."""
         self.ensure_one()
         if not self.risk_id:
-            self.risk_id = self.env['sgi.risk'].create({
+            # 57.96.0 (N-07): el riesgo ambiental solo nace desde la matriz.
+            self.risk_id = self.env['sgi.risk'].with_context(sgi_from_env_aspect=True).create({
                 'name': self.name,
                 'instrument': 'ambiental',
                 'kind': 'riesgo',

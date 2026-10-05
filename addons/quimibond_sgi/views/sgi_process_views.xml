@@ -39,7 +39,7 @@
                         <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>.
                         Se calcula solo del <b>entregable</b>: sale de las actividades
                         que lo entregan y llega a las que lo reciben. Para cambiarlo,
-                        cambia el entregable o las actividades.
+                        cambie el entregable o las actividades.
                     </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
@@ -439,7 +439,7 @@
                 <field name="name"/>
                 <field name="owner_id"/>
                 <field name="activity_team_ids" string="Tiene actividades del equipo"/>
-                <filter name="mine" string="Mis procesos" domain="[('owner_id.user_id', '=', uid)]"/>
+                <filter name="mine" string="Míos" domain="[('owner_id.user_id', '=', uid)]"/>
                 <separator/>
                 <filter name="tipo_cop" string="Cadena de valor" domain="[('process_type', '=', 'cop')]"/>
                 <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>

@@ -10,5 +10,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_sequence_id` | Many2one | Secuencia de folio SGI | Secuencia anual para el folio de las NC de este equipo. |  | `ir.sequence` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:49` |
+| `sgi_sequence_id` | Many2one | Secuencia de folio SGI | Secuencia anual para el folio de las NC de este equipo. |  | `ir.sequence` |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:63` |
 

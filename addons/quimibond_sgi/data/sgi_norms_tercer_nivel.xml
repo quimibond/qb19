@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.97.0 (N-05): cláusulas de tercer nivel. noupdate="1" como sgi_norms.xml:
+     en un -u se crean las que no existen y no se tocan las que el Jefe MAST
+     edite después. Si ya había una capturada a mano con el mismo numeral, el
+     pre-migrate de 57.97.0 le liga el xmlid y aquí no se duplica. Solo normas
+     con xmlid: la de requisitos de clientes (CLI-xx) no se toca (A-029). -->
+<odoo noupdate="1">
+    <record id="c_9001_7_1_5" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">7.1.5</field><field name="name">Recursos de seguimiento y medición</field></record>
+    <record id="c_9001_9_1_2" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_9001"/><field name="code">9.1.2</field><field name="name">Satisfacción del cliente</field></record>
+
+    <record id="c_14001_6_1_2" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">6.1.2</field><field name="name">Aspectos ambientales</field></record>
+    <record id="c_14001_6_1_3" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">6.1.3</field><field name="name">Requisitos legales y otros requisitos</field></record>
+    <record id="c_14001_6_1_4" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">6.1.4</field><field name="name">Planificación de acciones</field></record>
+    <record id="c_14001_9_1_2" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_14001"/><field name="code">9.1.2</field><field name="name">Evaluación del cumplimiento</field></record>
+
+    <record id="c_45001_6_1_2" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">6.1.2</field><field name="name">Identificación de peligros y evaluación de los riesgos y oportunidades</field></record>
+    <record id="c_45001_6_1_3" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">6.1.3</field><field name="name">Determinación de los requisitos legales y otros requisitos</field></record>
+    <record id="c_45001_6_1_4" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">6.1.4</field><field name="name">Planificación de acciones</field></record>
+    <record id="c_45001_8_1_2" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">8.1.2</field><field name="name">Eliminar peligros y reducir riesgos para la SST (jerarquía de controles)</field></record>
+    <record id="c_45001_8_1_3" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">8.1.3</field><field name="name">Gestión del cambio</field></record>
+    <record id="c_45001_8_1_4" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">8.1.4</field><field name="name">Compras (contratistas y contratación externa)</field></record>
+    <record id="c_45001_9_1_2" model="sgi.norm.clause"><field name="norm_id" ref="sgi_norm_45001"/><field name="code">9.1.2</field><field name="name">Evaluación del cumplimiento</field></record>
+</odoo>

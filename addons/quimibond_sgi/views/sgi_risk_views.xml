@@ -82,6 +82,12 @@
                         <h1><field name="name" readonly="sgi_is_locked" placeholder="Aspecto / peligro / situación"/></h1>
                         <h3><field name="folio" readonly="1"/></h3>
                     </div>
+                    <!-- 57.96.0 (N-07): el aspecto ambiental vive en la matriz. -->
+                    <div class="alert alert-info mb-2" role="status" invisible="instrument != 'ambiental'">
+                        La evaluación de este aspecto vive en SGI → Seguridad y ambiente → Aspectos
+                        ambientales. Este riesgo guarda sus acciones de tratamiento. Los aspectos nuevos
+                        se registran en la matriz, no aquí.
+                    </div>
                     <group>
                         <group string="Clasificación">
                             <field name="instrument" readonly="sgi_is_locked"/>
@@ -101,11 +107,15 @@
                             <field name="next_review_date" readonly="sgi_is_locked"/>
                             <field name="operational_control_id" readonly="sgi_is_locked"
                                    invisible="instrument != 'ambiental'"/>
+                            <field name="sgi_env_aspect_ids" widget="many2many_tags" readonly="1"
+                                   invisible="instrument != 'ambiental'"/>
                         </group>
                     </group>
                     <group string="Descripción">
                         <field name="consequence" readonly="sgi_is_locked" placeholder="Consecuencia..."/>
                         <field name="existing_controls" readonly="sgi_is_locked" placeholder="Controles existentes..."/>
+                        <field name="control_hierarchy" readonly="sgi_is_locked"
+                               invisible="instrument == 'foda'"/>
                     </group>
                     <div class="text-muted mb-2" invisible="instrument not in ('ryo', 'ambiental')">
                         Escala 1–5 × 1–5. Nivel de atención: ≥16 Inmediata ·
@@ -117,6 +127,9 @@
                         IPER usa escala 1–3 × 1–3 (valores mayores se rechazan).
                         Nivel: ≥6 Alto · ≥3 Medio · resto Bajo. Los riesgos Alto
                         exigen acción terminada y residual a la baja para cerrar.
+                        Un IPER Alto tampoco se controla con EPP como único control:
+                        declare la jerarquía (eliminación, sustitución, ingeniería,
+                        administrativo) en el riesgo o en sus acciones.
                     </div>
                     <div class="text-muted mb-2" invisible="instrument != 'patrimonial'">
                         Escala 1–5 × 1–5. Nivel: ≥15 Alto · ≥6 Medio · resto Bajo.
@@ -127,7 +140,7 @@
                     </div>
                     <div class="alert alert-info mb-2" role="status"
                          invisible="next_review_date or instrument == 'foda'">
-                        <i class="fa fa-lightbulb-o" title="Sugerencia"/> Captura la <b>Próxima revisión</b>: sin ella nadie
+                        <i class="fa fa-lightbulb-o" title="Sugerencia"/> Capture la <b>Próxima revisión</b>: sin ella nadie
                         recibirá el recordatorio de revalorar este riesgo.
                     </div>
                     <group string="Evaluación" invisible="instrument == 'foda'">
@@ -164,6 +177,8 @@
                                       decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
+                                    <field name="control_hierarchy" optional="show"/>
+                                    <field name="evidence_note" optional="show"/>
                                     <field name="responsible_id" widget="many2one_avatar_user"/>
                                     <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>
@@ -270,7 +285,7 @@
                         domain="[('attention_level','in',('inmediata','alto'))]"/>
                 <!-- V-M03 (57.43.0): «Míos». -->
                 <separator/>
-                <filter name="mine" string="De mis procesos" domain="['|', ('process_id.owner_id.user_id', '=', uid), ('create_uid', '=', uid)]"/>
+                <filter name="my_processes" string="De mis procesos" domain="['|', ('process_id.owner_id.user_id', '=', uid), ('create_uid', '=', uid)]"/>
                 <group>
                     <filter name="group_instrument" string="Instrumento" context="{'group_by': 'instrument'}"/>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>

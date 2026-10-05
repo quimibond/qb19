@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 57.99.0 «Salud del SGI» (auditoría 2026-10, sección 8): diez
+         indicadores de nivel Dirección, semanales, con modo propio
+         (models/sgi_indicator_health.py). noupdate: MAST ajusta metas,
+         responsable y estado sin que un update los pise. Nacen en prueba y
+         sin NC automática. Metas: las de las preguntas Q1 a Q10 del plan
+         (objetivo = verde; aceptable = límite del amarillo). El proceso E2
+         viene del mapa: lo liga la función de abajo al instalar y el
+         post-migrate de 19.0.57.99.0 en una base existente. -->
+    <record id="sgi_ind_salud_procesos" model="sgi.indicator">
+        <field name="code">SG-01</field>
+        <field name="name">Procesos en vigor</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_procesos</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">100</field>
+        <field name="target_acceptable">20</field>
+        <field name="formula">Procesos en «Vigente» ÷ procesos activos de la empresa del SGI × 100</field>
+        <field name="source">SGI → Procesos (estado del proceso)</field>
+    </record>
+    <record id="sgi_ind_salud_personas" model="sgi.indicator">
+        <field name="code">SG-02</field>
+        <field name="name">Personas que usan el SGI (30 días)</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_personas</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">personas</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">25</field>
+        <field name="target_acceptable">15</field>
+        <field name="formula">Personas con usuario y empleado de la empresa del SGI que crearon, modificaron o comentaron algo del SGI en los últimos 30 días</field>
+        <field name="source">SGI → altas, cambios y mensajes en registros del SGI, NC con folio y documentos controlados</field>
+    </record>
+    <record id="sgi_ind_salud_planta" model="sgi.indicator">
+        <field name="code">SG-03</field>
+        <field name="name">Planta identificable</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_planta</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">50</field>
+        <field name="formula">Empleados activos con puesto que tienen usuario de Odoo ÷ empleados activos con puesto × 100</field>
+        <field name="source">Empleados → puesto y usuario de cada empleado</field>
+    </record>
+    <record id="sgi_ind_salud_acuses" model="sgi.indicator">
+        <field name="code">SG-04</field>
+        <field name="name">Acuses al día</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_acuses</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">70</field>
+        <field name="formula">(Acuses leídos + pendientes dentro del plazo del aviso) ÷ acuses de documentos vigentes × 100</field>
+        <field name="source">Documentos → acuses de lectura de los documentos controlados</field>
+    </record>
+    <record id="sgi_ind_salud_validacion" model="sgi.indicator">
+        <field name="code">SG-05</field>
+        <field name="name">Mediciones validadas a tiempo</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_validacion</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">90</field>
+        <field name="target_acceptable">70</field>
+        <field name="formula">Mediciones validadas a más tardar 3 días hábiles después de la captura ÷ mediciones cuyo plazo de validación cayó en los últimos 30 días × 100</field>
+        <field name="source">SGI → mediciones de indicadores (fecha de captura y fecha de validación)</field>
+    </record>
+    <record id="sgi_ind_salud_rojos" model="sgi.indicator">
+        <field name="code">SG-06</field>
+        <field name="name">Rojos con respuesta</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_rojos</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">100</field>
+        <field name="target_acceptable">80</field>
+        <field name="formula">Mediciones en rojo de los últimos 3 meses con NC o con causa y acción ÷ mediciones en rojo con dato × 100</field>
+        <field name="source">SGI → mediciones de indicadores y su plan de acción</field>
+    </record>
+    <record id="sgi_ind_salud_nc" model="sgi.indicator">
+        <field name="code">SG-07</field>
+        <field name="name">NC eficaces a la primera</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_nc</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">80</field>
+        <field name="target_acceptable">60</field>
+        <field name="formula">NC cerradas en los últimos 90 días sin ninguna verificación «No eficaz» ÷ NC cerradas en esos días × 100</field>
+        <field name="source">Calidad → NC con folio (cierre y verificación de eficacia)</field>
+    </record>
+    <record id="sgi_ind_salud_avisos" model="sgi.indicator">
+        <field name="code">SG-08</field>
+        <field name="name">Avisos vencidos</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_avisos</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">avisos</field>
+        <field name="direction">lower_better</field>
+        <field name="target_objective">10</field>
+        <field name="target_acceptable">25</field>
+        <field name="formula">Avisos del SGI (actividades) con vencimiento al cierre de la semana o antes</field>
+        <field name="source">Actividades del SGI: avisos de los crons y actividades de los registros del SGI</field>
+    </record>
+    <record id="sgi_ind_salud_auditoria" model="sgi.indicator">
+        <field name="code">SG-09</field>
+        <field name="name">Programa de auditoría cumplido</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_auditoria</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">100</field>
+        <field name="target_acceptable">80</field>
+        <field name="formula">Auditorías internas hechas (en «Informe» o «Cerrada») ÷ auditorías internas programadas del año hasta el mes en curso × 100</field>
+        <field name="source">SGI → programa anual de auditorías</field>
+    </record>
+    <record id="sgi_ind_salud_formatos" model="sgi.indicator">
+        <field name="code">SG-10</field>
+        <field name="name">Formatos migrados utilizables</field>
+        <field name="level">direccion</field>
+        <field name="frequency">weekly</field>
+        <field name="calc_mode">salud_formatos</field>
+        <field name="status">prueba</field>
+        <field name="nc_on_red" eval="False"/>
+        <field name="uom">%</field>
+        <field name="direction">higher_better</field>
+        <field name="target_objective">100</field>
+        <field name="target_acceptable">70</field>
+        <field name="formula">Formatos «Migrado a Odoo» con destino activo y uso en los últimos 90 días ÷ formatos «Migrado a Odoo» × 100</field>
+        <field name="source">Documentos → formatos migrados (menú o worksheet de destino y sus registros)</field>
+    </record>
+    <function model="sgi.indicator" name="_sgi_health_link_process"/>
+</odoo>

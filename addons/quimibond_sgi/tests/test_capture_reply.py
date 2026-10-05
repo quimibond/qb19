@@ -93,7 +93,9 @@ class TestCaptureReply(TransactionCase):
     def _closable(self, vals):
         alert = self.env['quality.alert'].create(dict({
             'name': 'ZS NC cliente', 'sgi_root_cause': 'Tensión de urdido',
-            'sgi_effectiveness_note': 'Sin reincidencia', 'sgi_effectiveness_date': date(2046, 4, 1),
+            # 57.93.0 (N-02): resultado «Eficaz» y fecha no futura (la acción termina hoy).
+            'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'Sin reincidencia',
+            'sgi_effectiveness_date': fields.Date.context_today(self),
             'sgi_classification': 'menor',
         }, **vals))
         self.env['sgi.action.line'].create({

@@ -16,6 +16,7 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
 
+from .sgi_health_const import HEALTH_MODES
 from .sgi_menu_paths import sgi_menu_path
 
 LEVELS = [('bad', 'Falla'), ('warn', 'Aviso'), ('ok', 'Bien')]
@@ -142,6 +143,18 @@ class SgiDiagnostic(models.TransientModel):
         return []
 
     @api.model
+    def _sgi_unmapped_report_lines(self):
+        """57.98.0 (I-01): reportes del SGI que imprimen sin formato
+        controlado (sección Documental). En el papel no se avisa nada."""
+        unmapped = self.env['sgi.format.map']._sgi_unmapped_reports()
+        if not unmapped:
+            return []
+        return [self._sgi_line(
+            'warn', "%d reporte(s) del SGI imprimen sin formato controlado: %s."
+            % (len(unmapped), ", ".join(unmapped)),
+            sgi_menu_path('formatos_odoo'))]
+
+    @api.model
     def _sgi_build_report(self):
         """Lista de dicts (section, level, text, fix) en el orden del reporte."""
         env = self.env
@@ -188,7 +201,9 @@ class SgiDiagnostic(models.TransientModel):
                 sgi_menu_path('indicadores')))
         Measure = env['sgi.indicator.measure']
         pend = Measure.search_count([('state', '=', 'pendiente')])
-        capt = Measure.search_count([('state', '=', 'capturado')])
+        # 57.99.0: las de salud del SGI se quedan capturadas a propósito.
+        capt = Measure.search_count([('state', '=', 'capturado'),
+                                     ('indicator_id.calc_mode', 'not in', HEALTH_MODES)])
         valid = Measure.search_count([('state', '=', 'validado')])
         if capt and not valid:
             lines.append(self._sgi_line(
@@ -235,6 +250,7 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line(
                 'warn', "Ninguna revisión documental ha pasado por el flujo de Aprobaciones (F-P-G01-06).",
                 sgi_menu_path('solicitudes_cambio')))
+        lines += self._sgi_unmapped_report_lines()
         if not lines:
             lines.append(self._sgi_line('ok', "Difusión documental operando."))
         section("Documental", lines)

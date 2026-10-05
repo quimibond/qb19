@@ -24,14 +24,16 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 
 from .sgi_calendar import sgi_local_date
+from .sgi_health_const import HEALTH_SNAPSHOT_MODES
 
 MIN_SAMPLE_PARAM = 'quimibond_sgi.indicator_min_sample'
 DEFAULT_MIN_SAMPLE = 5
 
 # 57.90.0: modos de código que miden el estado de HOY (saldo pendiente,
 # existencias, vigencias): un periodo pasado no se puede reconstruir.
+# 57.99.0: también los de salud del SGI que miden el estado al calcular.
 SNAPSHOT_MODES = ('cartera_vencida', 'cartera_vencida_60',
-                  'inventario_diferencia', 'capacitacion')
+                  'inventario_diferencia', 'capacitacion') + HEALTH_SNAPSHOT_MODES
 SNAPSHOT_NOTE = "Sin dato: indicador de foto, no reconstruible para un periodo pasado."
 
 
@@ -422,8 +424,8 @@ class SgiIndicatorMeasureDetail(models.Model):
         valor), no una consulta nueva."""
         self.ensure_one()
         if not self.detail_model or not self.detail_count:
-            raise UserError("Esta medición no guardó registros. Recalcúlala con el "
-                            "modo actual o usa «Ver evidencia».")
+            raise UserError("Esta medición no guardó registros. Recalcúlela con el "
+                            "modo actual o use «Ver evidencia».")
         if self.detail_model not in self.env:
             raise UserError("El modelo %s ya no existe." % self.detail_model)
         ids = [int(i) for i in self.detail_ids.split(',') if i]
@@ -443,7 +445,7 @@ class SgiIndicatorMeasureDetail(models.Model):
             indicator = measure.indicator_id
             if measure.state == 'validado':
                 raise UserError(
-                    "La medición de %s ya está validada (es evidencia): pide "
+                    "La medición de %s ya está validada (es evidencia): pida "
                     "al Jefe MAST regresarla a pendiente antes de recalcular."
                     % indicator.code)
             if indicator.calc_mode == 'manual':

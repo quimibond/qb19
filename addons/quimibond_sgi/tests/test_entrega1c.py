@@ -64,6 +64,13 @@ class TestEntrega1c(TransactionCase):
         with self.assertRaises(AccessError):
             self.env['sgi.config'].with_user(self.user).seed_parameters()
         self.assertTrue(self.env['sgi.config'].seed_parameters(), "El sistema sí lo corre.")
+        # 57.91.0 (K-06): los procesos pesados de cron, también solo del sistema.
+        for model, method in (('sgi.activity.role', 'cron_sgi_sync_approvals'),
+                              ('sgi.checklist.template', 'cron_generate'),
+                              ('sgi.process.activity', 'cron_measure_activities'),
+                              ('sgi.indicator', 'cron_missing_trajectories')):
+            with self.assertRaises(AccessError):
+                getattr(self.env[model].with_user(self.user), method)()
 
     # ---- N-001 -------------------------------------------------------------
     def test_05_controlled_document_always_has_owner(self):

@@ -48,6 +48,7 @@ from odoo.exceptions import AccessError, UserError
 
 # sgi_calendar no define modelos: importarlo aquí no cambia el registro.
 from .sgi_calendar import sgi_add_business_days, sgi_nth_business_day
+from .sgi_health_const import HEALTH_MODES
 
 PENDING_KINDS = [
     ('accion', "Acción"),
@@ -61,6 +62,7 @@ PENDING_KINDS = [
     ('actividad', "Actividad atrasada"),
     ('acuse', "Acuse de lectura"),
     ('firma', "Firma"),
+    ('aviso', "Aviso"),
 ]
 # Los tipos que salen de la persona (hr.employee) y no del usuario: la gente
 # de planta sin usuario también los tiene.
@@ -73,6 +75,14 @@ PENDING_STATES = [
 STATE_RANK = {'atrasada': 0, 'por_vencer': 1, 'al_dia': 2}
 SOON_DAYS = 7
 HORIZON_DAYS = 60
+# 57.92.0 (U-03): actividades nativas (avisos de los crons) de estas apps que
+# se muestran en Mis pendientes, además de las de los modelos ``sgi.*``.
+NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
+                 'helpdesk.ticket', 'project.task',
+                 # 57.94.0 (U-08): aviso semanal de RH por departamento.
+                 'hr.department',
+                 # 57.100.0 (N-14): salida validada sin CoA.
+                 'stock.picking')
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
 CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
@@ -200,6 +210,15 @@ class SgiMyPending(models.TransientModel):
     state_rank = fields.Integer(readonly=True, help="Orden para mostrar primero lo atrasado.")
     res_model = fields.Char(readonly=True)
     res_id = fields.Integer(readonly=True)
+    # 57.92.0 (U-05): «Hecho» y «Leído y entendido» solo salen en los
+    # renglones de quien abre la lista (no en los de Mi equipo).
+    is_mine = fields.Boolean(compute='_compute_is_mine',
+                             help="El renglón es de quien abre la lista.")
+
+    @api.depends_context('uid')
+    def _compute_is_mine(self):
+        for row in self:
+            row.is_mine = row.user_id == self.env.user
 
     # ------------------------------------------------------------------
     # Fuentes: una búsqueda por tipo para todos los usuarios a la vez.
@@ -228,8 +247,10 @@ class SgiMyPending(models.TransientModel):
             if 'sgi_responsible_ids' in Alert._fields else Alert,
             # G-001: «Capturar» solo lo que alguien tiene que capturar.
             'medicion': measures.filtered(lambda m: m.state == 'pendiente' and m._sgi_needs_capture()),
-            # I-006: lo ya calculado lo valida el dueño.
-            'validacion': measures.filtered(lambda m: m.state == 'capturado'),
+            # I-006: lo ya calculado lo valida el dueño. 57.99.0: los de salud
+            # del SGI no se validan (su respuesta es la revisión semanal).
+            'validacion': measures.filtered(
+                lambda m: m.state == 'capturado' and m.indicator_id.calc_mode not in HEALTH_MODES),
             'legal': env['sgi.legal.requirement'].sudo().search(
                 [('responsible_id', 'in', ids),
                  '|', ('next_eval_date', '<=', soon), ('expiry_date', '<=', soon)],
@@ -253,7 +274,88 @@ class SgiMyPending(models.TransientModel):
             records['firma'] = env['sign.request.item'].sudo().search(
                 [('partner_id', 'in', users.partner_id.ids), ('state', '=', 'sent'),
                  ('sign_request_id.state', '=', 'sent')], order='create_date')
+        # 57.92.0 (U-03, D-04): avisos de los crons del SGI y actividades de
+        # los modelos ``sgi.*``, vencidos o de los próximos 7 días. Las
+        # actividades nativas siguen existiendo; aquí solo se muestran. De las
+        # apps de NOTICE_MODELS solo los avisos de los crons (con clave).
+        Activity = env['mail.activity'].sudo()
+        notices = Activity.search(
+            [('user_id', 'in', ids), ('date_deadline', '<=', today + timedelta(days=SOON_DAYS)),
+             '|', ('res_model', '=like', 'sgi.%'),
+             '&', ('res_model', 'in', NOTICE_MODELS), ('sgi_cron_key', '!=', False)],
+            order='date_deadline, id')
+        if notices:
+            covered = self._sgi_notice_covered(records, notices)
+            notices = notices.filtered(lambda a: a.id not in covered)
+        records['aviso'] = notices
         return records
+
+    @api.model
+    def _sgi_notice_covered(self, records, notices):
+        """57.92.0 (U-03): ids de los avisos que ya tienen renglón propio para
+        la misma persona (se compara por destinatario, no por clave)."""
+        env = self.env
+        covered = set()
+        # Aprobación nativa (Studio): su renglón es «aprobacion».
+        if records.get('aprobacion'):
+            covered |= set(records['aprobacion'].mapped('mail_activity_id').ids)
+        # Espejo de una acción: su renglón es «accion».
+        covered |= set(env['sgi.action.line'].sudo().search(
+            [('activity_id', 'in', notices.ids)]).mapped('activity_id').ids)
+        # Mismo registro y misma persona que un renglón de otro tipo (NC,
+        # requisito legal, documento por revisar…).
+        own = set()
+        for kind, recs in records.items():
+            if kind in ('aprobacion', 'solicitud', 'aviso'):
+                continue
+            for rec in recs:
+                for user in self._sgi_row_users(kind, rec):
+                    own.add((user.id, rec._name, rec.id))
+        # Acuse pendiente: el renglón «acuse» es del empleado del acuse.
+        ack_ids = {}
+        # Capturar indicador: el renglón «medicion» es del responsable.
+        indicator_acts = notices.browse()
+        # 57.95.0 (K-08): «Documentos por leer y firmar» de la persona: sus
+        # renglones son los «acuse» (la clave lleva su empleado; el ancla es
+        # el documento de su acuse más viejo, que puede ya estar firmado).
+        own_ack_acts = {}
+        for act in notices:
+            if (act.user_id.id, act.res_model, act.res_id) in own:
+                covered.add(act.id)
+                continue
+            key = act.sgi_cron_key or ''
+            if key.startswith('acuse_pendiente:'):
+                try:
+                    ack_ids[act.id] = int(key.split(':', 1)[1])
+                except ValueError:
+                    pass
+            elif key.startswith('acuses_propios:'):
+                try:
+                    own_ack_acts[act.id] = int(key.split(':', 1)[1])
+                except ValueError:
+                    pass
+            elif key.startswith('capturar_indicador:') and act.res_model == 'sgi.indicator':
+                indicator_acts |= act
+        if ack_ids:
+            acks = env['sgi.document.ack'].sudo().browse(set(ack_ids.values())).exists()
+            ack_user = {ack.id: ack.employee_id.user_id.id for ack in acks}
+            for act in notices.browse(list(ack_ids)):
+                if ack_user.get(ack_ids[act.id]) == act.user_id.id:
+                    covered.add(act.id)
+        if own_ack_acts:
+            emps = env['hr.employee'].sudo().browse(set(own_ack_acts.values())).exists()
+            emp_user = {emp.id: emp.user_id.id for emp in emps}
+            for act in notices.browse(list(own_ack_acts)):
+                if emp_user.get(own_ack_acts[act.id]) == act.user_id.id:
+                    covered.add(act.id)
+        if indicator_acts:
+            indicators = env['sgi.indicator'].sudo().browse(
+                set(indicator_acts.mapped('res_id'))).exists()
+            responsible = {ind.id: ind.responsible_id.id for ind in indicators}
+            for act in indicator_acts:
+                if responsible.get(act.res_id) == act.user_id.id:
+                    covered.add(act.id)
+        return covered
 
     @api.model
     def _sgi_row(self, kind, rec):
@@ -308,6 +410,11 @@ class SgiMyPending(models.TransientModel):
                 due = sgi_add_business_days(self.env, request.create_date, self._SGI_REQUEST_DAYS)
             return {'name': "Firmar %s" % (request.reference or request.display_name or ''),
                     'date_due': due, 'process_id': False}
+        if kind == 'aviso':
+            # 57.92.0 (U-03): qué dice el aviso y sobre qué registro.
+            what = rec.summary or rec.activity_type_id.name or "Aviso"
+            return {'name': "%s — %s" % (what, rec.res_name or rec.res_model),
+                    'date_due': rec.date_deadline, 'process_id': False}
         # I-007: el documento se nombra por su título limpio, sin la clave vieja.
         title = rec.sgi_title if 'sgi_title' in rec._fields else False
         return {'name': "Revisar %s" % (title or rec.name or ''),
@@ -329,6 +436,8 @@ class SgiMyPending(models.TransientModel):
             return rec.user_id
         if kind == 'firma':
             return rec.partner_id.user_ids
+        if kind == 'aviso':
+            return rec.user_id
         return rec.sgi_owner_id
 
     # ------------------------------------------------------------------
@@ -556,6 +665,10 @@ class SgiMyPending(models.TransientModel):
         self.search([('create_uid', '=', self.env.uid),
                      ('employee_id', 'in', employees.ids)]).unlink()
         values = self._sgi_pending_values_employees(employees)
+        # 57.95.0 (K-08): lo que se acaba de calcular refresca el resumen
+        # guardado que leen los filtros de Mi equipo (solo lo que cambió).
+        self.env['hr.employee']._sgi_save_pending_summary(
+            {emp.id: self._sgi_count(values.get(emp.id, [])) for emp in employees})
         vals_list = []
         for emp in employees:
             for row in values.get(emp.id, []):
@@ -569,17 +682,25 @@ class SgiMyPending(models.TransientModel):
             context['search_default_group_employee'] = 1
         else:
             context['search_default_group_state'] = 1
+        # 57.92.0 (U-02): abre con lo atrasado y por vencer (Mis pendientes,
+        # Mi procedimiento y «Pendientes — persona» de Mi equipo); solo
+        # «Pendientes del equipo» (agrupado por persona) muestra todo.
+        if not group_by_person:
+            context['search_default_actionable'] = 1
         return {
             'type': 'ir.actions.act_window', 'name': name, 'res_model': self._name,
-            'view_mode': 'list', 'domain': [('id', 'in', rows.ids)],
-            'views': [(self.env.ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list')],
+            # 57.94.0 (I-05): kanban en el celular y la tableta.
+            'view_mode': 'list,kanban', 'mobile_view_mode': 'kanban',
+            'domain': [('id', 'in', rows.ids)],
+            'views': [(self.env.ref('quimibond_sgi.sgi_my_pending_view_list').id, 'list'),
+                      (self.env.ref('quimibond_sgi.sgi_my_pending_view_kanban').id, 'kanban')],
             'search_view_id': [self.env.ref('quimibond_sgi.sgi_my_pending_view_search').id, 'search'],
             'context': context,
             # I-001: sin pendientes de verdad; las actividades sin medición
             # automática no pueden salir aquí, y se dice.
             'help': "<p class='o_view_nocontent_smiling_face'>Sin pendientes</p>"
-                    "<p>No tienes nada atrasado ni por vencer. Las actividades sin medición "
-                    "automática no salen aquí: revísalas en Mi procedimiento.</p>",
+                    "<p>No tiene nada atrasado ni por vencer. Las actividades sin medición "
+                    "automática no salen aquí: revíselas en Mi procedimiento.</p>",
         }
 
     @api.model
@@ -598,9 +719,81 @@ class SgiMyPending(models.TransientModel):
                                 for row in self._sgi_pending_values(user).get(user.id, [])])
         return self._sgi_action(rows, "Mis pendientes")
 
+    @api.model
+    def action_open_home(self):
+        """57.98.0 (U-07, Q20): acción del menú raíz «SGI». Dirección abre en
+        el Tablero; los demás, en Mis pendientes (como antes). No toca la
+        acción de inicio de ningún usuario."""
+        if self.env.user.has_group('quimibond_sgi.group_sgi_director'):
+            return self.env['sgi.direction.board'].action_open()
+        return self.action_open_mine()
+
+    # 57.98.0 (U-07): SGI → Reportar. tipo: (modelo, título, valores por
+    # omisión; ``default_team_id`` es el xmlid del equipo del SGI).
+    _SGI_REPORT_KINDS = {
+        'nc': ('quality.alert', "Reportar una no conformidad",
+               {'default_team_id': 'quimibond_sgi.sgi_quality_team_internal',
+                'default_sgi_origin_type': 'proceso'}),
+        'incident': ('sgi.incident', "Reportar un casi accidente o incidente",
+                     {'default_incident_type': 'casi_accidente'}),
+        'voice': ('helpdesk.ticket', "Reportar una queja o sugerencia",
+                  {'default_team_id': 'quimibond_sgi.sgi_helpdesk_team_voice'}),
+    }
+
+    @api.model
+    def action_sgi_report(self, kind):
+        """57.98.0 (U-07): SGI → Reportar abre la ficha NUEVA de una NC, un
+        incidente o una queja, con su equipo del SGI. Sin el equipo (base sin
+        datos) avisa en lugar de abrir Calidad o Soporte completos."""
+        model, title, defaults = self._SGI_REPORT_KINDS[kind]
+        context = {}
+        for key, value in defaults.items():
+            if key == 'default_team_id':
+                team = self.env.ref(value, raise_if_not_found=False)
+                if not team:
+                    raise UserError("Falta el equipo del SGI para reportar; avise al Jefe MAST.")
+                value = team.id
+            context[key] = value
+        return {
+            'type': 'ir.actions.act_window', 'name': title, 'res_model': model,
+            'view_mode': 'form', 'views': [(False, 'form')], 'target': 'current',
+            'context': context,
+        }
+
     def action_open(self):
         """Abre el registro de origen (la acción, la NC, la medición…)."""
         self.ensure_one()
+        # 57.92.0 (U-03): el aviso abre el registro sobre el que está.
+        if self.kind == 'aviso' and self.res_model == 'mail.activity':
+            act = self.env['mail.activity'].sudo().browse(self.res_id).exists()
+            # 57.94.0 (U-08): el aviso de RH abre la lista de faltantes del
+            # departamento, no su ficha. Solo con «Empleados / Encargado»: la
+            # lista filtra por PIN (campo de RH); sin el grupo (el Jefe MAST
+            # mientras quimibond_sgi.hr_user_id esté vacío) abre la ficha.
+            if act and act.sgi_cron_key == 'rh_empleados_incompletos' and act.res_model == 'hr.department' \
+                    and self.env.user.has_group('hr.group_hr_user'):
+                return self.env['hr.employee']._sgi_hr_gaps_action(act.res_id)
+            # 57.95.0 (K-08): el aviso de acuses de un equipo abre los acuses
+            # pendientes que cuenta (los de esa gente que pasaron la misma
+            # fecha límite del cron). Solo con Usuario SGI, que lee acuses;
+            # sin el grupo, el registro del aviso, como antes.
+            if act and act.sgi_cron_kind == 'acuses_equipo' \
+                    and self.env.user.has_group('quimibond_sgi.group_sgi_user'):
+                try:
+                    owner_id = int((act.sgi_cron_key or '').split(':', 1)[1])
+                except (IndexError, ValueError):
+                    owner_id = False
+                if owner_id:
+                    acks = self.env['sgi.cron']._sgi_ack_team_acks(owner_id)
+                    return {
+                        'type': 'ir.actions.act_window', 'name': "Acuses pendientes del equipo",
+                        'res_model': 'sgi.document.ack', 'view_mode': 'list,form',
+                        'views': [(self.env.ref('quimibond_sgi.sgi_document_ack_view_list').id, 'list'),
+                                  (self.env.ref('quimibond_sgi.sgi_document_ack_view_form').id, 'form')],
+                        'domain': [('id', 'in', acks.ids)], 'target': 'current'}
+            if act and act.res_model and act.res_id:
+                return {'type': 'ir.actions.act_window', 'res_model': act.res_model,
+                        'res_id': act.res_id, 'view_mode': 'form', 'target': 'current'}
         if self.kind == 'firma' and self.res_model == 'sign.request.item':
             item = self.env['sign.request.item'].sudo().browse(self.res_id).exists()
             # La liga con token firma A NOMBRE del firmante: solo se le da a
@@ -611,10 +804,65 @@ class SgiMyPending(models.TransientModel):
                 # La firma se hace en la página de Firma electrónica.
                 return {'type': 'ir.actions.act_url', 'target': 'self',
                         'url': '/sign/document/%d/%s' % (item.sign_request_id.id, item.access_token)}
+        # 57.92.0 (U-05): «Ir» lleva a la pantalla de Odoo donde se hace la
+        # actividad (su menú o acción) o a su evidencia, como «Ir a hacerlo»
+        # de Mi procedimiento (``mp_can_go``); no a la ficha del catálogo.
+        if self.kind == 'actividad' and self.res_model == 'sgi.process.activity':
+            activity = self.env['sgi.process.activity'].sudo().browse(self.res_id).exists()
+            if activity and (activity.odoo_menu_id or activity.odoo_action_id
+                             or activity.odoo_ref or activity.measure_model_id):
+                try:
+                    # Savepoint: un dominio de evidencia malo no deja el
+                    # cursor abortado al caer a la ficha.
+                    with self.env.cr.savepoint():
+                        return activity.action_open_odoo()
+                except UserError:
+                    # Texto de «Dónde se ejecuta» que no resuelve a un menú y
+                    # sin medición ligada: se abre la ficha, como antes.
+                    pass
+        # 57.92.0 (U-05): «Leer» abre el archivo del documento del acuse.
+        if self.kind == 'acuse' and self.res_model == 'sgi.document.ack':
+            # El acuse se lee con sudo solo para saber su documento; el
+            # archivo se abre con los permisos de quien abre la lista
+            # (PDF en el navegador, URL o la vista real del formulario).
+            ack = self.env['sgi.document.ack'].sudo().browse(self.res_id).exists()
+            if ack:
+                return self.env['documents.document'].browse(
+                    ack.document_id.id).action_sgi_view_file()
         return {
             'type': 'ir.actions.act_window', 'res_model': self.res_model, 'res_id': self.res_id,
             'view_mode': 'form', 'target': 'current',
         }
+
+    def action_sign_ack(self):
+        """57.92.0 (U-05): «Leído y entendido» desde el renglón. El candado de
+        identidad de ``sgi.document.ack`` decide si quien abre la lista puede
+        firmar: el propio empleado o el Jefe MAST."""
+        self.ensure_one()
+        if self.kind != 'acuse' or self.res_model != 'sgi.document.ack':
+            raise UserError("Este renglón no es un acuse de lectura.")
+        ack = self.env['sgi.document.ack'].browse(self.res_id).exists()
+        if not ack:
+            raise UserError("El acuse ya no existe.")
+        ack.action_mark_read()
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+
+    def action_done_notice(self):
+        """57.92.0 (U-03): «Hecho» marca hecho el aviso (la actividad nativa),
+        solo si es de quien abre la lista."""
+        self.ensure_one()
+        act = self.env['mail.activity'].browse(self.res_id).exists() \
+            if self.kind == 'aviso' and self.res_model == 'mail.activity' else False
+        if not act:
+            raise UserError("El aviso ya no existe.")
+        # La dueña se lee con sudo: solo la persona del aviso lo cierra.
+        if act.sudo().user_id != self.env.user:
+            raise UserError("Solo la persona a quien está asignado el aviso puede marcarlo hecho.")
+        # Sudo con el mismo uid: la nota queda a nombre de quien lo marcó.
+        act.sudo().action_feedback(feedback="Hecho desde Mis pendientes.")
+        self.unlink()
+        return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
 
     def action_validate_measure(self):
         """«Validar» desde el renglón (I-006). Valida quien abre la lista, con
@@ -629,6 +877,114 @@ class SgiMyPending(models.TransientModel):
         measure.action_validate()
         self.unlink()
         return {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+
+    def action_validate_selected(self):
+        """57.92.0 (U-02): «Validar seleccionadas». Ignora los renglones que no
+        son mediciones. Valida, con los permisos de quien abre la lista, solo
+        las mediciones que puede validar (``sgi_can_validate``: dueño del
+        indicador o Jefe MAST); las demás se dejan y se avisa cuántas. Quita
+        los renglones de lo validado y de las mediciones que ya no existen."""
+        rows = self.filtered(lambda r: r.kind == 'validacion'
+                             and r.res_model == 'sgi.indicator.measure')
+        if not rows:
+            raise UserError("Seleccione al menos una medición por validar.")
+        Measure = self.env['sgi.indicator.measure']
+        existing = Measure.browse(rows.mapped('res_id')).exists()
+        allowed = existing.filtered('sgi_can_validate')
+        skipped = existing - allowed
+        if existing and not allowed:
+            raise UserError("Solo el responsable del indicador o el Jefe MAST puede validar "
+                            "estas mediciones.")
+        allowed.action_validate()
+        rows.filtered(lambda r: r.res_id not in skipped.ids).unlink()
+        reload = {'type': 'ir.actions.client', 'tag': 'soft_reload'}
+        if skipped:
+            return {
+                'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {
+                    'type': 'warning',
+                    'message': "Se validaron %d mediciones; %d no son de sus indicadores "
+                               "y se dejaron." % (len(allowed), len(skipped)),
+                    'next': reload,
+                },
+            }
+        return reload
+
+
+class HrEmployeePendingSaved(models.Model):
+    """57.95.0 (K-08): resumen de Mis pendientes guardado por persona. Lo
+    leen los filtros de Mi equipo («Con pendientes atrasados», «por
+    vencer», «Al día»), que antes armaban Mis pendientes de toda la empresa
+    en cada búsqueda. Lo refrescan el respaldo nocturno (sgi.cron,
+    cron_nightly_backup) y cada lista de pendientes que se abre
+    (sgi.my.pending._sgi_build). Las columnas de Mi equipo siguen en vivo.
+    Técnicos: no salen en ninguna vista."""
+    _inherit = 'hr.employee'
+
+    sgi_pending_saved_total = fields.Integer(
+        string="Pendientes (resumen guardado)", readonly=True, copy=False, prefetch=False,
+        groups='base.group_system',
+        help="Total de Mis pendientes de la persona la última vez que se calculó.")
+    sgi_pending_saved_late = fields.Integer(
+        string="Pendientes atrasados (resumen guardado)", readonly=True, copy=False,
+        prefetch=False, groups='base.group_system')
+    sgi_pending_saved_state = fields.Selection(
+        PENDING_STATES, string="Semáforo (resumen guardado)", readonly=True, copy=False,
+        prefetch=False, groups='base.group_system')
+
+    _SGI_SAVED_FIELDS = ('sgi_pending_saved_total', 'sgi_pending_saved_late',
+                         'sgi_pending_saved_state')
+
+    @api.model
+    def _sgi_pending_scope_domain(self):
+        """Quienes salen en Mi equipo: la empresa del SGI, con usuario o
+        puesto (el alcance que usaban los filtros antes de 57.95.0)."""
+        # sgi_mp_job_id (guardado) y no job_id: en Odoo 19 job_id pasa por
+        # la versión y la búsqueda no encuentra a los empleados
+        # (_sgi_mp_ids_where).
+        company = self.env['sgi.config']._sgi_company()
+        return [('company_id', 'in', (company.id, False)),
+                '|', ('user_id', '!=', False), ('sgi_mp_job_id', '!=', False)]
+
+    @api.model
+    def _sgi_save_pending_summary(self, summary):
+        """{empleado.id: (total, atrasadas, peor estado)} → escribe solo los
+        campos que cambiaron, sin seguimiento ni correo. Devuelve los
+        empleados escritos (vacío si nada cambió: abrir una lista no escribe
+        en hr.employee cuando el resumen ya está al día)."""
+        if not summary:
+            return self.browse()
+        Employee = self.sudo().with_context(tracking_disable=True, mail_notrack=True)
+        changed = Employee.browse()
+        current = {row['id']: row for row in Employee.browse(list(summary)).exists().read(
+            list(self._SGI_SAVED_FIELDS))}
+        for emp_id, row in current.items():
+            total, late, worst = summary[emp_id]
+            new = {'sgi_pending_saved_total': total, 'sgi_pending_saved_late': late,
+                   'sgi_pending_saved_state': worst or ('al_dia' if total else False)}
+            vals = {k: v for k, v in new.items() if (row[k] or False) != (v or False)}
+            if vals:
+                emp = Employee.browse(emp_id)
+                emp.write(vals)
+                changed |= emp
+        return changed
+
+    @api.model
+    def _sgi_refresh_pending_summary(self, employees=None):
+        """Recalcula y guarda el resumen. Sin empleados: todo el alcance de Mi
+        equipo, y quien salió de él con un resumen viejo queda en cero."""
+        if employees:
+            scope = employees.sudo()
+        else:
+            scope = self.sudo().search(self._sgi_pending_scope_domain())
+        summary = self.env['sgi.my.pending']._sgi_summary_employees(scope)
+        summary = {emp.id: summary.get(emp.id, (0, 0, False)) for emp in scope}
+        if not employees:
+            gone = self.sudo().search([('id', 'not in', scope.ids), '|',
+                                       ('sgi_pending_saved_total', '>', 0),
+                                       ('sgi_pending_saved_state', '!=', False)])
+            summary.update({emp.id: (0, 0, False) for emp in gone})
+        return self._sgi_save_pending_summary(summary)
 
 
 class SgiMyProcedurePending(models.TransientModel):
@@ -663,8 +1019,8 @@ class SgiMyProcedurePending(models.TransientModel):
         me = self._sgi_mp_my_employee()
         allowed = (me | me._sgi_mp_team_employees()) if me else me
         if set(employees.ids) - set(allowed.ids):
-            raise AccessError("Esa persona no está en tu equipo; solo ves a tu gente, tus "
-                              "departamentos y los puestos de tus procesos.")
+            raise AccessError("Esa persona no está en su equipo; solo ve a su gente, sus "
+                              "departamentos y los puestos de sus procesos.")
         return True
 
     def action_show_pending(self):
@@ -682,15 +1038,18 @@ class HrEmployeePublicPending(models.Model):
     sgi_mp_pending_total = fields.Integer(
         string="Pendientes", compute='_compute_sgi_mp_pending',
         search='_search_sgi_mp_pending_total',
-        help="Total de pendientes de la persona en Mis pendientes.")
+        help="Total de pendientes de la persona en Mis pendientes. En los filtros se usa el "
+             "resumen guardado (de la noche o de la última vez que se abrió su lista).")
     sgi_mp_pending_late = fields.Integer(
         string="Pendientes atrasados", compute='_compute_sgi_mp_pending',
         search='_search_sgi_mp_pending_late',
-        help="Pendientes atrasados de la persona en Mis pendientes.")
+        help="Pendientes atrasados de la persona en Mis pendientes. En los filtros se usa el "
+             "resumen guardado (de la noche o de la última vez que se abrió su lista).")
     sgi_mp_pending_state = fields.Selection(
         PENDING_STATES, string="Semáforo", compute='_compute_sgi_mp_pending',
         search='_search_sgi_mp_pending_state',
-        help="El peor estado de sus pendientes: atrasada, por vencer o al día.")
+        help="El peor estado de sus pendientes: atrasada, por vencer o al día. En los filtros "
+             "se usa el resumen guardado (de la noche o de la última vez que se abrió su lista).")
 
     @api.model
     def _sgi_pending_by_employee(self, employees):
@@ -707,23 +1066,31 @@ class HrEmployeePublicPending(models.Model):
             rec.sgi_mp_pending_late = late
             rec.sgi_mp_pending_state = worst or ('al_dia' if total else False)
 
-    def _sgi_pending_ids_where(self, predicate):
-        company = self.env['sgi.config']._sgi_company()
-        employees = self.env['hr.employee'].sudo().search(
-            [('company_id', 'in', (company.id, False)),
-             '|', ('user_id', '!=', False), ('job_id', '!=', False)])
-        values = self._sgi_pending_by_employee(employees)
-        return [emp_id for emp_id, vals in values.items() if predicate(vals)]
+    def _sgi_saved_ids_where(self, predicate):
+        """57.95.0 (K-08): los filtros leen el resumen guardado en hr.employee
+        (sudo; solo esos tres campos del alcance de Mi equipo, sin calcular
+        nada). Ya no arman Mis pendientes de toda la empresa en cada
+        búsqueda. Lo que nunca se calculó cuenta como cero."""
+        Employee = self.env['hr.employee']
+        rows = Employee.sudo().search_read(Employee._sgi_pending_scope_domain(),
+                                           list(Employee._SGI_SAVED_FIELDS))
+        return [row['id'] for row in rows
+                if predicate((row['sgi_pending_saved_total'] or 0, row['sgi_pending_saved_late'] or 0,
+                              row['sgi_pending_saved_state'] or False))]
 
     @api.model
     def _search_sgi_mp_pending_total(self, operator, value):
+        if operator not in self._NUMERIC_OPS:
+            raise UserError("Filtro no soportado sobre los pendientes.")
         op = self._NUMERIC_OPS[operator]
-        return [('id', 'in', self._sgi_pending_ids_where(lambda v: op(v[0], value)))]
+        return [('id', 'in', self._sgi_saved_ids_where(lambda v: op(v[0], value)))]
 
     @api.model
     def _search_sgi_mp_pending_late(self, operator, value):
+        if operator not in self._NUMERIC_OPS:
+            raise UserError("Filtro no soportado sobre los pendientes.")
         op = self._NUMERIC_OPS[operator]
-        return [('id', 'in', self._sgi_pending_ids_where(lambda v: op(v[1], value)))]
+        return [('id', 'in', self._sgi_saved_ids_where(lambda v: op(v[1], value)))]
 
     @api.model
     def _search_sgi_mp_pending_state(self, operator, value):
@@ -732,8 +1099,8 @@ class HrEmployeePublicPending(models.Model):
         from .sgi_my_procedure_screen import _sgi_as_list
         values = _sgi_as_list(value)
         if operator in ('=', 'in'):
-            return [('id', 'in', self._sgi_pending_ids_where(lambda v: v[2] in values))]
-        return [('id', 'in', self._sgi_pending_ids_where(lambda v: v[2] not in values))]
+            return [('id', 'in', self._sgi_saved_ids_where(lambda v: v[2] in values))]
+        return [('id', 'in', self._sgi_saved_ids_where(lambda v: v[2] not in values))]
 
     def action_sgi_open_pending(self):
         self.ensure_one()

@@ -34,7 +34,7 @@
                 <button name="action_mark_done" type="object"
                         string="Terminar" icon="fa-check"
                         invisible="date_done"
-                        confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
+                        confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. Si es una acción correctiva, capture antes la evidencia. ¿La acción está realmente terminada?"/>
             </list>
         </field>
     </record>
@@ -46,7 +46,7 @@
             <search>
                 <field name="name"/>
                 <field name="responsible_id"/>
-                <filter name="mine" string="Mis acciones"
+                <filter name="mine" string="Míos"
                         domain="[('responsible_id', '=', uid)]"/>
                 <filter name="open" string="Abiertas"
                         domain="[('state', '=', 'abierta')]"/>
@@ -98,7 +98,7 @@
                     <button name="action_mark_done" type="object"
                             string="Terminar" class="btn-primary"
                             invisible="date_done"
-                            confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
+                            confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. Si es una acción correctiva, capture antes la evidencia. ¿La acción está realmente terminada?"/>
                     <button name="action_open_origin" type="object"
                             string="Abrir origen" icon="fa-external-link"/>
                     <field name="state" widget="statusbar"
@@ -115,6 +115,7 @@
                     <group>
                         <group string="Compromiso">
                             <field name="action_type"/>
+                            <field name="control_hierarchy" invisible="not risk_id and not incident_id"/>
                             <field name="responsible_id" widget="many2one_avatar_user"/>
                             <field name="date_commit"/>
                         </group>
@@ -122,6 +123,11 @@
                             <field name="progress" widget="selection_badge"/>
                             <field name="date_done"/>
                         </group>
+                    </group>
+                    <group string="Evidencia">
+                        <field name="evidence_note"
+                               placeholder="Qué demuestra que se hizo: orden, documento, registro…"/>
+                        <field name="evidence_attachment_ids" widget="many2many_binary"/>
                     </group>
                     <group invisible="1">
                         <field name="alert_id"/>

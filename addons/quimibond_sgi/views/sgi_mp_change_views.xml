@@ -10,8 +10,8 @@
                 <field name="allowed_process_ids" invisible="1"/>
                 <field name="state" invisible="1"/>
                 <p class="text-muted">
-                    Cambia directamente los campos de la actividad. Tu propuesta va a Aprobaciones
-                    («Proponer cambio a mi procedimiento»): la aprueban tu jefe directo y el Jefe MAST
+                    Cambie directamente los campos de la actividad. Su propuesta va a Aprobaciones
+                    («Proponer cambio a mi procedimiento»): la aprueban su jefe directo y el Jefe MAST
                     y SGI. Al aprobarse, el cambio se aplica solo a la actividad y MAST vuelve a
                     publicar el procedimiento.
                 </p>

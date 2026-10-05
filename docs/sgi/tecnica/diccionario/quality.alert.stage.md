@@ -10,6 +10,6 @@ Archivos: `addons/quimibond_sgi/models/sgi_nonconformity.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_is_cancel_stage` | Boolean | Etapa de cancelación SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:43` |
-| `sgi_is_closing_stage` | Boolean | Etapa de cierre SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:42` |
+| `sgi_is_cancel_stage` | Boolean | Etapa de cancelación SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:57` |
+| `sgi_is_closing_stage` | Boolean | Etapa de cierre SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_nonconformity.py:56` |
 

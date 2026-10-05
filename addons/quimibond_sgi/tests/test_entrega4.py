@@ -110,6 +110,11 @@ class TestEntrega4Groups(TransactionCase):
         self.env['sgi.action.line'].create({
             'incident_id': inc.id, 'name': 'Señalizar', 'responsible_id': self.mast.id,
             'date_commit': date.today(), 'date_done': date.today()})
+        # 57.96.0 (N-06): equipo con un trabajador y eficacia antes de cerrar.
+        worker = self.env['hr.employee'].create({'name': 'E4 Trabajador'})
+        inc.with_user(self.mast).write({
+            'investigation_team_ids': [(6, 0, worker.ids)], 'sgi_effective': 'eficaz',
+            'sgi_effectiveness_date': date.today(), 'sgi_effectiveness_note': 'Sin repetición'})
         inc.with_user(self.mast).action_set_cerrado()
         # El reportante consulta cómo se cerró (causas y acciones), sin editar.
         data = inc.with_user(self.user).read(['basic_causes', 'action_line_ids', 'state'])[0]
@@ -202,7 +207,10 @@ class TestEntrega4Groups(TransactionCase):
         self.assertNotIn(draft, Doc.with_user(self.user).search(domain), "Solo vigentes.")
         list_arch = self.env['documents.document'].with_user(self.user).get_view(
             self.env.ref('quimibond_sgi.sgi_current_document_view_list').id, 'list')['arch']
-        self.assertNotIn('sgi_code', list_arch, "Sin la clave del Dropbox (decisión 11).")
+        # 57.98.0 (I-02): la clave nueva (D-02) sí se muestra; la del Dropbox
+        # («Clave anterior») sigue fuera (decisión 11, D-21).
+        self.assertIn('sgi_code', list_arch)
+        self.assertNotIn('sgi_previous_code', list_arch, "Sin la clave del Dropbox (decisión 11).")
         with self.assertRaises(UserError):
             current.with_user(self.other).action_sgi_mark_my_ack_read()
         current.with_user(self.user).action_sgi_mark_my_ack_read()

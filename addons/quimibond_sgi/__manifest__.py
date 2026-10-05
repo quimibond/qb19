@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.90.1',
+    'version': '19.0.57.100.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -41,10 +41,13 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'stock_account',  # stock.move.value / stock.quant.value (AL-01)
         'survey',  # evaluaciones, DNC y encuestas como entregable
         'hr_skills',  # competencias por puesto; trae hr
+        'hr_holidays',  # 57.96.0: incapacidad por riesgo de trabajo → incidente (instalado en producción)
         'web_hierarchy',  # organigrama de procesos y puestos
         'sign',  # firmas de documentos, registros y aprobaciones
         'portal',  # respuesta del proveedor a su NC (controllers/portal_nc.py)
         'website_slides',  # cursos ligados a competencias
+        'hr_skills_survey',  # 57.100.0 (N-13): certificación aprobada → línea de currículum (instalado en producción)
+        'hr_skills_slides',  # 57.100.0 (N-13): curso terminado → línea de currículum (instalado en producción)
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
     ],
     'data': [
@@ -57,12 +60,14 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_sequences_audit_risk.xml',
         'data/sgi_areas.xml',
         'data/sgi_norms.xml',
+        'data/sgi_norms_tercer_nivel.xml',  # 57.97.0 (N-05): 13 cláusulas con xmlid
         # 57.4.0 (A-002, decisión 6): el SGI se instala sin procesos. El mapa
         # viejo (sgi_process_data.xml, sgi_process_flows_extra.xml) está en
         # docs/historico/quimibond_sgi_data/; sus 58 XML IDs pasan a __export__.
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
+        'data/sgi_health_indicators.xml',  # 57.99.0: salud del SGI (SG-01 a SG-10)
         'data/sgi_expansion_data.xml',
         # 56.35.0 (A-004/D-01): sgi_indicator_formula_data.xml salió del núcleo
         # (IDs de producción); los términos viajan en quimibond_sgi_mapa.
@@ -89,11 +94,18 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_approval_cron.xml',
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
+        'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
         'data/sgi_sign_elearning_data.xml',
         'data/sgi_doc_change_sign_data.xml',
         'data/sgi_checklist_cron.xml',
+        # 57.94.0 (U-08): aviso semanal a RH.
+        'data/sgi_floor_cron.xml',
+        # 57.95.0 (K-08): respaldo nocturno de Mi procedimiento y Mi equipo.
+        'data/sgi_nightly_cron.xml',
+        # 57.96.0 (N-06): permisos de trabajo vencidos, cada hora.
+        'data/sgi_sst_cron.xml',
         'data/sgi_coa_data.xml',
         'data/sgi_my_procedure_data.xml',
         'data/sgi_mp_change_category_data.xml',
@@ -202,9 +214,18 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_env_aspect_views.xml',
         'views/sgi_work_permit_views.xml',
         'views/sgi_loto_views.xml',
+        # 57.96.0 (N-06): competencias que exige cada tipo de permiso.
+        'views/sgi_work_permit_skill_views.xml',
         'views/sgi_audit_finding_legal_eval_views.xml',
+        # 57.95.0 (D-06 de datos): empresa en documentos controlados.
+        'views/sgi_company_fix_views.xml',
+        # 57.96.0 (N-07): traspaso de riesgos ambientales a la matriz.
+        'views/sgi_env_aspect_transfer_views.xml',
         # menus: TODOS en un archivo y al final (A-025, entrega 4): las
         # acciones ya están cargadas y el padre va antes que el hijo.
+        # 57.94.0 «SGI en planta»: tabletas de planta.
+        'views/sgi_floor_views.xml',
+        'views/sgi_training_effectiveness_views.xml',  # 57.100.0 (N-13): eficacia y exámenes
         'views/sgi_menus.xml',
     ],
     'demo': [
@@ -215,6 +236,11 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'web.assets_backend': [
             'quimibond_sgi/static/src/diagram/**/*',
             'quimibond_sgi/static/src/my_procedure/**/*',
+            # 57.94.0 (U-01): pantalla «SGI en planta».
+            'quimibond_sgi/static/src/floor_kiosk/**/*',
+        ],
+        'web.assets_tests': [
+            'quimibond_sgi/static/tests/tours/**/*',
         ],
     },
     'installable': True,

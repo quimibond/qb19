@@ -104,7 +104,16 @@
                 <page string="SGI" name="sgi" invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')">
                     <group>
                         <field name="sgi_picking_ids" widget="many2many_tags"/>
+                        <!-- 57.95.0 (K-05): lo propuesto, cuando hay ajuste a mano o
+                             lo guardado difiere. -->
+                        <field name="sgi_picking_manual" invisible="not sgi_picking_manual"/>
+                        <field name="sgi_picking_outdated" invisible="1"/>
+                        <field name="sgi_picking_proposed_ids" widget="many2many_tags"
+                               invisible="not sgi_picking_manual and not sgi_picking_outdated"/>
                     </group>
+                    <button name="action_sgi_picking_reset" type="object"
+                            string="Volver a las entregas propuestas" class="btn-secondary"
+                            invisible="not sgi_picking_manual and not sgi_picking_outdated"/>
                 </page>
             </xpath>
         </field>

@@ -19,6 +19,7 @@ en certificación (auditoría de septiembre de 2026, resultado pendiente). IATF
 | Jefe de área o dueño de un proceso | [usuarios/jefe-de-area.md](usuarios/jefe-de-area.md) |
 | Jefe MAST y SGI (día a día) | [usuarios/mast.md](usuarios/mast.md) y, para configurar, [administracion/manual-jefe-mast.md](administracion/manual-jefe-mast.md) |
 | Dirección | [usuarios/direccion.md](usuarios/direccion.md) |
+| RH (fichas de empleados, eficiencias) | [usuarios/rh.md](usuarios/rh.md) |
 | Auditor interno o externo | [usuarios/auditor.md](usuarios/auditor.md) |
 | Alguien que busca un formato o procedimiento del Dropbox | [transicion/del-dropbox-a-odoo.md](transicion/del-dropbox-a-odoo.md) |
 | Programador o administrador del sistema | [tecnica/README.md](tecnica/README.md) |

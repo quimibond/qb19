@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from . import sgi_base
+from . import sgi_pin
 from . import sgi_area
 from . import sgi_norm
 from . import sgi_alert_source
@@ -102,3 +103,16 @@ from . import sgi_loto
 from . import sgi_sst_links
 from . import sgi_formatos_bloque3
 from . import sgi_deploy_change
+from . import sgi_floor_kiosk
+from . import sgi_company_fix
+from . import sgi_env_aspect_transfer
+from . import sgi_incident_leave
+# 57.99.0: constantes sin modelos y, al final (hereda indicador, medición,
+# proceso, Tablero y sgi.cron), la salud del SGI.
+from . import sgi_health_const
+from . import sgi_indicator_health
+# 57.100.0: al final (heredan medición, desglose, indicador, empleado,
+# currículum, encuestas, cursos y NC, todos definidos antes).
+from . import sgi_indicator_integrity
+from . import sgi_competence_grant
+from . import sgi_ai

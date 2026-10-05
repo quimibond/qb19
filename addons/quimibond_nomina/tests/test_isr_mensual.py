@@ -6,7 +6,7 @@ y 19 de Toluca 2026, tablas 2026: UMA 3,566.22, subsidio 15.02 %, límite
 
 No corre en el CI (depende de Enterprise); se corre en el shell de Odoo.sh:
 ``odoo-bin ... --test-tags /quimibond_nomina --stop-after-init``."""
-from datetime import date
+from datetime import date, timedelta
 
 from odoo.tests.common import TransactionCase
 from odoo.tools import mute_logger
@@ -57,12 +57,60 @@ class TestIsrMensual(TransactionCase):
         self.assertTrue(self._recibo(date(2026, 2, 16), date(2026, 2, 28))._qb_isr_es_ultima_del_mes())
 
     def test_semanal_ultima_del_mes(self):
+        """La semana es del mes de su fecha de pago (viernes), como en NOI."""
         self.employee.version_id.schedule_pay = 'weekly'
         self.assertFalse(self._recibo(date(2026, 9, 14), date(2026, 9, 20))._qb_isr_es_ultima_del_mes())
-        # Semana 40: termina el 27-sep y la siguiente termina el 4-oct.
+        # Semana 40: se paga el 25-sep y la siguiente el 2-oct.
         self.assertTrue(self._recibo(date(2026, 9, 21), date(2026, 9, 27))._qb_isr_es_ultima_del_mes())
-        # Semana 41 cruza de mes: es de octubre y no es la última de octubre.
+        # Semana 41 cruza de mes: se paga el 2-oct, es la primera de octubre.
         self.assertFalse(self._recibo(date(2026, 9, 28), date(2026, 10, 4))._qb_isr_es_ultima_del_mes())
+        # Semana 44 (19 al 25-oct, pagada el 23): no es la última, octubre paga 5.
+        self.assertFalse(self._recibo(date(2026, 10, 19), date(2026, 10, 25))._qb_isr_es_ultima_del_mes())
+        # Semana 45 (26-oct a 1-nov, pagada el 30-oct): la última de octubre.
+        self.assertTrue(self._recibo(date(2026, 10, 26), date(2026, 11, 1))._qb_isr_es_ultima_del_mes())
+
+    def test_fecha_de_pago_y_periodos_del_mes(self):
+        self.employee.version_id.schedule_pay = 'weekly'
+        s41 = self._recibo(date(2026, 9, 28), date(2026, 10, 4))
+        self.assertEqual(s41._qb_nomina_fecha_pago(), date(2026, 10, 2))
+        self.assertEqual(s41._qb_nomina_periodos_del_mes(), 5)      # octubre 2026: 2, 9, 16, 23 y 30
+        s40 = self._recibo(date(2026, 9, 21), date(2026, 9, 27))
+        self.assertEqual(s40._qb_nomina_fecha_pago(), date(2026, 9, 25))
+        self.assertEqual(s40._qb_nomina_periodos_del_mes(), 4)      # septiembre 2026: 4, 11, 18 y 25
+        # El día de pago se puede cambiar por parámetro (jueves).
+        self.Param.set_param('quimibond_nomina.dia_pago_semanal', '3')
+        self.assertEqual(s41._qb_nomina_fecha_pago(), date(2026, 10, 1))
+        self.assertEqual(s41._qb_nomina_periodos_del_mes(), 5)      # jueves 1, 8, 15, 22 y 29
+        self.Param.set_param('quimibond_nomina.dia_pago_semanal', 'x')
+        self.assertEqual(s41._qb_nomina_fecha_pago(), date(2026, 10, 2))
+        self.Param.set_param('quimibond_nomina.dia_pago_semanal', '')
+        self.employee.version_id.schedule_pay = 'bi-weekly'
+        q19 = self._recibo(date(2026, 9, 16), date(2026, 9, 30))
+        self.assertEqual(q19._qb_nomina_fecha_pago(), date(2026, 9, 30))
+        self.assertEqual(q19._qb_nomina_periodos_del_mes(), 2)
+
+    @mute_logger(LOG)
+    def test_semanal_acumulado_por_mes_de_pago(self):
+        """Octubre 2026 acumula las semanas 41 a 45 (pagadas del 2 al 30-oct),
+        aunque la 41 empiece en septiembre y la 45 termine en noviembre; la
+        semana 40 (pagada el 25-sep) no entra."""
+        self.Param.set_param('quimibond_nomina.isr_mensual_incluye_borrador', '1')
+        self.employee.version_id.schedule_pay = 'weekly'
+        s40 = self._recibo(date(2026, 9, 21), date(2026, 9, 27), {'GROSS': 100.0})
+        semanas = [self._recibo(date(2026, 9, 28) + timedelta(days=7 * i), date(2026, 10, 4) + timedelta(days=7 * i),
+                                {'GROSS': 1000.0 * (i + 1)}) for i in range(4)]
+        s45 = self._recibo(date(2026, 10, 26), date(2026, 11, 1))
+        previos, completo = s45._qb_isr_recibos_previos_del_mes()
+        self.assertTrue(completo)
+        self.assertEqual(previos.ids, [r.id for r in semanas])
+        self.assertNotIn(s40.id, previos.ids)
+        # La semana 40 (septiembre) acumula la 37 (31-ago a 6-sep, pagada el 4-sep).
+        s37 = self._recibo(date(2026, 8, 31), date(2026, 9, 6), {'GROSS': 10.0})
+        s36 = self._recibo(date(2026, 8, 24), date(2026, 8, 30), {'GROSS': 10.0})
+        previos, completo = s40._qb_isr_recibos_previos_del_mes()
+        self.assertIn(s37.id, previos.ids)
+        self.assertNotIn(s36.id, previos.ids)
+        self.Param.set_param('quimibond_nomina.isr_mensual_incluye_borrador', '')
 
     def test_otra_periodicidad_no_ajusta(self):
         self.employee.version_id.schedule_pay = 'monthly'

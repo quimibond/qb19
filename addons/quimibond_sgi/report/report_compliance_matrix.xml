@@ -31,7 +31,10 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-set="matrix" t-value="doc._sgi_compliance_matrix()"/>
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
                     <div class="page" style="font-size:9px;">
                         <h3 class="text-center mb-1">Matriz de cumplimiento — <span t-out="doc.code"/></h3>
                         <p class="text-center text-muted mb-2">
@@ -73,10 +76,6 @@
                             Fuente: «Cumple con» de cada actividad del SGI (solo actividades vigentes).
                             Procesos: los que declaran la norma o tienen alguna actividad ligada a ella.
                         </div>
-                        <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
-                        <t t-call="quimibond_sgi.sgi_format_footer">
-                            <t t-set="sgi_rec" t-value="doc"/>
-                        </t>
                     </div>
                 </t>
             </t>

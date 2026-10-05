@@ -19,8 +19,9 @@
                 <field name="sgi_owner_id" string="Responsable"/>
                 <field name="sgi_issue_date" optional="show"/>
                 <field name="sgi_next_review_date" optional="hide"/>
+                <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
                 <field name="sgi_state" widget="badge" decoration-success="sgi_state == 'vigente'"
-                       decoration-warning="sgi_state == 'borrador'" decoration-muted="sgi_state == 'obsoleto'"/>
+                       decoration-muted="sgi_state in ('borrador', 'obsoleto')"/>
             </list>
         </field>
     </record>
@@ -54,7 +55,10 @@
     <template id="report_master_list_all_document">
         <t t-call="web.html_container">
             <t t-set="documents" t-value="docs.filtered('sgi_is_controlled').sorted(lambda d: (d.sgi_code or '', d.name or ''))"/>
-            <t t-call="web.external_layout">
+            <t t-call="quimibond_sgi.sgi_report_layout">
+                <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                <t t-set="sgi_rec" t-value="docs[:1]"/>
+                <t t-set="sgi_fmt_ref" t-value="'format_ref_master_list'"/>
                 <div class="page">
                     <h2 class="text-center">Lista de información documentada</h2>
                     <p class="text-muted text-center">
@@ -77,11 +81,6 @@
                             </tr>
                         </tbody>
                     </table>
-                    <!-- V-M08 (57.44.0): pie «formato controlado» en vivo (se perdió en 57.20.0). -->
-                    <t t-call="quimibond_sgi.sgi_format_footer">
-                        <t t-set="sgi_rec" t-value="docs[:1]"/>
-                        <t t-set="sgi_fmt_ref" t-value="'format_ref_master_list'"/>
-                    </t>
                 </div>
             </t>
         </t>
