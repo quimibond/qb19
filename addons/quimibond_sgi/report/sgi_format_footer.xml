@@ -28,11 +28,17 @@
          quimibond_sgi.sgi_report_layout. Recibe sgi_rec y, opcional,
          sgi_fmt_ref. Sin mapeo pinta solo la página (un pie por artículo
          siempre, para no desplazar los índices). -->
+    <!-- 57.105.0: el MIID pasa su pie ya armado en sgi_fmt_info (su propia
+         clave y revisión, no un formato del mapeo; con 'plain' sale sin
+         «Formato controlado del SGI:»). Los demás reportes no lo definen. -->
     <template id="sgi_format_page_footer">
-        <t t-set="sgi_fmt" t-value="sgi_rec and sgi_rec.env['sgi.format.map'].sgi_footer_info(sgi_rec, sgi_fmt_ref or False)"/>
+        <t t-set="sgi_fmt" t-value="sgi_fmt_info or (sgi_rec and sgi_rec.env['sgi.format.map'].sgi_footer_info(sgi_rec, sgi_fmt_ref or False))"/>
         <div class="footer">
             <div style="border-top:1px solid #999; padding-top:2px; font-size:8px;">
-                <span class="float-start" t-if="sgi_fmt">
+                <span class="float-start" t-if="sgi_fmt and sgi_fmt.get('plain')">
+                    <b t-out="sgi_fmt['label']"/> · PNTQ
+                </span>
+                <span class="float-start" t-elif="sgi_fmt">
                     Formato controlado del SGI: <b t-out="sgi_fmt['label']"/> · PNTQ
                     <t t-if="sgi_fmt['issue_date']"> · Emisión:
                         <span t-out="sgi_fmt['issue_date']" t-options="{'widget': 'date'}"/></t>

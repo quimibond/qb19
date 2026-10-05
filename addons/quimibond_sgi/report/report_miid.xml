@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.105.0: MIID desde Odoo. Texto fijo (sgi.miid.section) + datos vivos
+         (la foto de sgi.miid._sgi_print_data). Sin binding (se imprime con los
+         botones de la pantalla) y sin attachment: la copia guardada de cada
+         revisión es el documento controlado que publica el cambio documental
+         (DOC-1). Modo por contexto: «live» (vista del sistema, siempre con la
+         marca «Borrador — no vigente») o «request» (el PDF de la solicitud, el
+         que se firma y se publica; con marca solo si se generó con candados). -->
+    <record id="action_report_miid" model="ir.actions.report">
+        <field name="name">Manual del SGI (MIID)</field>
+        <field name="model">sgi.miid</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_miid_document</field>
+        <field name="report_file">quimibond_sgi.report_miid_document</field>
+        <field name="print_report_name">'MIID - borrador (vista del sistema)'</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta"/>
+    </record>
+
+    <!-- Bloques de datos: cada uno lee miid['blocks'][block]; sin datos
+         imprime su estado vacío (I-6). -->
+    <template id="report_miid_block_identificacion">
+        <table class="table table-sm table-bordered" style="font-size:9px;">
+            <tbody>
+                <tr t-foreach="miid['blocks']['identificacion']['rows']" t-as="row">
+                    <th style="width:30%;" t-out="row[0]"/>
+                    <td t-out="row[1]"/>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
+    <template id="report_miid_block_procesos">
+        <t t-set="bd" t-value="miid['blocks']['procesos']"/>
+        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Clave</th><th>Proceso</th><th>Tipo</th><th>Dueño</th><th>Estado</th></tr></thead>
+            <tbody>
+                <tr t-foreach="bd['rows']" t-as="row">
+                    <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/><td t-out="row[3]"/><td t-out="row[4]"/>
+                </tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">No hay procesos activos en la empresa.</p>
+        <t t-foreach="bd['diagrams']" t-as="dgx">
+            <t t-set="dg" t-value="dgx['dg']"/>
+            <t t-set="dg_edges" t-value="dgx['dg_edges']"/>
+            <h4 style="font-size:11px; page-break-after:avoid;" t-out="dg['title']"/>
+            <p t-if="dgx['dg_subtitle']" class="text-muted" t-out="dgx['dg_subtitle']"/>
+            <div style="font-size:8px;">
+                <t t-call="quimibond_sgi.report_sgi_diagram_body"/>
+            </div>
+        </t>
+        <p t-if="not bd['diagrams'] and bd['rows'] and miid_mode == 'screen'" class="text-muted">
+            El mapa de procesos y la interacción 4.4 salen en el PDF.</p>
+    </template>
+
+    <template id="report_miid_block_politica">
+        <t t-set="policy" t-value="miid['blocks']['politica']['policy']"/>
+        <div t-if="policy" style="border:1px solid #ccc; padding:4px;">
+            <p class="mb-1"><b t-out="policy['folio']"/> <t t-out="policy['name']"/>
+                <t t-if="policy['issue_date']"> · emisión <t t-out="policy['issue_date']"/></t></p>
+            <div t-out="policy['text']"/>
+        </div>
+        <p t-else="" class="text-muted">No hay política vigente.</p>
+    </template>
+
+    <template id="report_miid_block_objetivos">
+        <t t-set="rows" t-value="miid['blocks']['objetivos']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Objetivo integral</th><th>Año meta</th><th>Indicadores</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/></tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">La política vigente no tiene objetivos integrales activos.</p>
+    </template>
+
+    <template id="report_miid_block_tipos_documento">
+        <t t-set="rows" t-value="miid['blocks']['tipos_documento']['rows']"/>
+        <table t-if="rows" class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Tipo</th><th>Clave</th></tr></thead>
+            <tbody>
+                <tr t-foreach="rows" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/></tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">No hay tipos de documento con clave.</p>
+    </template>
+
+    <template id="report_miid_block_controles">
+        <t t-set="items" t-value="miid['blocks']['controles']['items']"/>
+        <p t-if="items"><b>Controles operacionales documentados:</b> <t t-out="', '.join(items)"/>.</p>
+        <p t-else="" class="text-muted">No hay controles operacionales vigentes.</p>
+    </template>
+
+    <template id="report_miid_block_plazos_nc">
+        <table class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Plazo</th><th>Días</th><th>Cómo se cuentan</th></tr></thead>
+            <tbody>
+                <tr t-foreach="miid['blocks']['plazos_nc']['rows']" t-as="row">
+                    <td t-out="row[0]"/><td class="text-end" t-out="row[1]"/><td t-out="row[2]"/>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
+    <template id="report_miid_block_correspondencia">
+        <t t-set="norms" t-value="miid['blocks']['correspondencia']['norms']"/>
+        <t t-foreach="norms" t-as="norm">
+            <h4 style="font-size:11px; page-break-after:avoid;" t-out="norm['name']"/>
+            <table class="table table-sm table-bordered" style="font-size:8px;">
+                <thead><tr><th>Numeral</th><th>Requisito</th><th>Procesos que lo cumplen</th></tr></thead>
+                <tbody>
+                    <tr t-foreach="norm['rows']" t-as="row">
+                        <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/>
+                    </tr>
+                </tbody>
+            </table>
+        </t>
+        <p t-if="not norms" class="text-muted">Ninguna actividad de los procesos de la empresa está ligada a
+            una cláusula («Cumple con»).</p>
+    </template>
+
+    <template id="report_miid_block_procedimientos_anteriores">
+        <t t-set="bd" t-value="miid['blocks']['procedimientos_anteriores']"/>
+        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Proceso</th><th>Procedimientos anteriores</th></tr></thead>
+            <tbody>
+                <tr t-foreach="bd['rows']" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/></tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">No hay procedimientos anteriores registrados.</p>
+        <p t-if="bd['kept']">Se conservan como controles operacionales, con clave nueva:
+            <t t-out="', '.join(bd['kept'])"/>.</p>
+    </template>
+
+    <template id="report_miid_block_anexos">
+        <t t-set="bd" t-value="miid['blocks']['anexos']"/>
+        <table t-if="bd['rows']" class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Anexo</th><th>Nombre</th><th>Situación</th></tr></thead>
+            <tbody>
+                <tr t-foreach="bd['rows']" t-as="row"><td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/></tr>
+            </tbody>
+        </table>
+        <p t-else="" class="text-muted">No hay anexos vigentes.</p>
+        <t t-if="bd['orphan_notes']">
+            <p class="mb-1">Notas de anexos que no están vigentes en Odoo:</p>
+            <ul>
+                <li t-foreach="bd['orphan_notes']" t-as="row"><b t-out="row[0]"/>: <t t-out="row[1]"/>
+                    (no está vigente en Odoo)</li>
+            </ul>
+        </t>
+    </template>
+
+    <template id="report_miid_block_historial">
+        <table class="table table-sm table-bordered" style="font-size:9px;">
+            <thead><tr><th>Revisión</th><th>Fecha</th><th>Cambio</th></tr></thead>
+            <tbody>
+                <tr t-foreach="miid['blocks']['historial']['rows']" t-as="row">
+                    <td t-out="row[0]"/><td t-out="row[1]"/><td t-out="row[2]"/>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
+    <template id="report_miid_block">
+        <!-- 11 ramas, sin t-call dinámico. -->
+        <t t-if="block == 'identificacion'" t-call="quimibond_sgi.report_miid_block_identificacion"/>
+        <t t-elif="block == 'procesos'" t-call="quimibond_sgi.report_miid_block_procesos"/>
+        <t t-elif="block == 'politica'" t-call="quimibond_sgi.report_miid_block_politica"/>
+        <t t-elif="block == 'objetivos'" t-call="quimibond_sgi.report_miid_block_objetivos"/>
+        <t t-elif="block == 'tipos_documento'" t-call="quimibond_sgi.report_miid_block_tipos_documento"/>
+        <t t-elif="block == 'controles'" t-call="quimibond_sgi.report_miid_block_controles"/>
+        <t t-elif="block == 'plazos_nc'" t-call="quimibond_sgi.report_miid_block_plazos_nc"/>
+        <t t-elif="block == 'correspondencia'" t-call="quimibond_sgi.report_miid_block_correspondencia"/>
+        <t t-elif="block == 'procedimientos_anteriores'" t-call="quimibond_sgi.report_miid_block_procedimientos_anteriores"/>
+        <t t-elif="block == 'anexos'" t-call="quimibond_sgi.report_miid_block_anexos"/>
+        <t t-elif="block == 'historial'" t-call="quimibond_sgi.report_miid_block_historial"/>
+    </template>
+
+    <!-- El cuerpo: lo usan el PDF y la pestaña «Vista del sistema». -->
+    <template id="report_miid_body">
+        <t t-foreach="miid['sections']" t-as="section">
+            <h2 t-if="section['level'] == '1'" style="font-size:15px; margin-top:10px; page-break-after:avoid;"><t t-out="section['clause']"/> <t t-out="section['name']"/></h2>
+            <h3 t-else="" style="font-size:13px; margin-top:8px; page-break-after:avoid;"><t t-out="section['clause']"/> <t t-out="section['name']"/></h3>
+            <div t-if="section['to_confirm'] and miid['draft']"
+                 style="border:2px solid #b02a37; color:#b02a37; padding:3px; margin:3px 0;">
+                <b>POR CONFIRMAR:</b> <t t-out="section['note']"/>
+            </div>
+            <t t-set="block" t-value="section['block']"/>
+            <t t-if="block and section['fallback']">
+                <t t-if="miid['has_data'][block]" t-call="quimibond_sgi.report_miid_block"/>
+                <t t-else="">
+                    <div t-out="section['before']"/>
+                    <div t-out="section['after']"/>
+                </t>
+            </t>
+            <t t-else="">
+                <div t-out="section['before']"/>
+                <t t-if="block" t-call="quimibond_sgi.report_miid_block"/>
+                <div t-out="section['after']"/>
+            </t>
+        </t>
+        <t t-if="miid['orphans']">
+            <h2 style="font-size:15px; margin-top:10px;">Datos del sistema sin sección</h2>
+            <p class="text-muted">Bloques de datos que ninguna sección activa lleva (en «Textos del manual»,
+                campo «Datos del sistema que lleva»).</p>
+            <t t-foreach="miid['orphans']" t-as="orphan">
+                <h4 style="font-size:11px;" t-out="orphan[1]"/>
+                <t t-set="block" t-value="orphan[0]"/>
+                <t t-call="quimibond_sgi.report_miid_block"/>
+            </t>
+        </t>
+        <t t-if="miid['draft'] and miid['blockers']">
+            <h2 style="font-size:15px; margin-top:10px;">Lo que impide aprobar esta revisión</h2>
+            <ul>
+                <li t-foreach="miid['blockers']" t-as="blocker" t-out="blocker"/>
+            </ul>
+        </t>
+    </template>
+
+    <!-- «Borrador — no vigente» en cada hoja (Q13): franja y marca de agua
+         dentro del artículo (VERIFICAR en el build que la marca fija salga en
+         cada hoja con wkhtmltopdf) y el texto del pie. -->
+    <template id="report_miid_draft_mark">
+        <t t-if="miid['draft']">
+            <div style="position:fixed; top:45%; left:0; width:100%; text-align:center; font-size:56px; font-weight:bold; color:rgba(176,42,55,0.10); -webkit-transform:rotate(-30deg); transform:rotate(-30deg); z-index:1000;">Borrador — no vigente</div>
+            <div style="background:#f8d7da; color:#842029; text-align:center; font-weight:bold; padding:2px;">
+                Borrador — no vigente<t t-if="miid_mode == 'live'"> · Vista del sistema al <t t-out="miid_printed"/></t>
+            </div>
+        </t>
+    </template>
+
+    <template id="report_miid_cover">
+        <div style="text-align:center; margin-top:60px;">
+            <h1 style="font-size:22px;">Manual Integral de Información Documentada (MIID)</h1>
+            <p style="font-size:13px;" t-out="miid['company']"/>
+            <p style="font-size:13px;">Revisión <t t-out="'%02d' % miid['revision']"/>
+                <t t-if="miid['draft']"> · Borrador — no vigente</t></p>
+            <p t-if="miid_mode == 'live'" class="text-muted">Vista del sistema al <t t-out="miid_printed"/>: copia no
+                controlada. La revisión vigente es el documento MIID publicado en Documentos.</p>
+            <p t-if="miid['request']" class="text-muted">Solicitud de cambio documental <t t-out="miid['request'].name"/>;
+                la emisión es la fecha en que se aprueba.</p>
+        </div>
+        <table t-if="miid['signers']" class="table table-sm table-bordered" style="font-size:9px; width:70%; margin:20px auto;">
+            <thead><tr><th>Papel</th><th>Nombre</th></tr></thead>
+            <tbody>
+                <tr t-foreach="miid['signers']" t-as="signer">
+                    <td t-out="signer[0]"/><td t-out="signer[1].name or '—'"/>
+                </tr>
+            </tbody>
+        </table>
+        <p t-if="miid['signers']" class="text-muted text-center" style="font-size:8px;">Las firmas van en la hoja
+            de firmas de la solicitud (Sign).</p>
+        <h3 style="font-size:13px; margin-top:20px;">Contenido</h3>
+        <ul style="list-style:none; padding-left:0;">
+            <li t-foreach="miid['sections']" t-as="section" t-att-style="'padding-left:16px;' if section['level'] != '1' else 'font-weight:bold;'">
+                <t t-out="section['clause']"/> <t t-out="section['name']"/>
+                <t t-if="section['to_confirm'] and miid['draft']"> (por confirmar)</t>
+            </li>
+        </ul>
+    </template>
+
+    <template id="report_miid_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="miid" t-value="doc._sgi_print_data(miid_mode, miid_request, miid_revision, True)"/>
+                <t t-set="sgi_fmt_info" t-value="doc._sgi_footer_info(miid_mode, miid['revision'], miid['draft'])"/>
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <div class="page" style="font-size:10px;">
+                        <t t-call="quimibond_sgi.report_miid_draft_mark"/>
+                        <t t-call="quimibond_sgi.report_miid_cover"/>
+                        <p style="page-break-before:always;"/>
+                        <t t-call="quimibond_sgi.report_miid_body"/>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

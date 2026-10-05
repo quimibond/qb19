@@ -197,6 +197,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_sgi_diagram.xml',
         'report/report_audit_program.xml',
         'report/report_risk_heatmap.xml',
+        # 57.105.0: MIID desde Odoo (usa paperformat_sgi_carta y report_sgi_diagram_body).
+        'report/report_miid.xml',
         'report/report_dev_request.xml',
         'report/report_machine_sheet.xml',
         'report/report_calibration_label.xml',
@@ -235,6 +237,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # 57.94.0 «SGI en planta»: tabletas de planta.
         'views/sgi_floor_views.xml',
         'views/sgi_training_effectiveness_views.xml',  # 57.100.0 (N-13): eficacia y exámenes
+        # 57.105.0: pantalla del MIID (antes de los menús que la abren).
+        'views/sgi_miid_views.xml',
         'views/sgi_menus.xml',
     ],
     'demo': [

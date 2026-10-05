@@ -12,19 +12,24 @@ confirmar» o procesos que no estén vigentes. Plan:
 docs/superpowers/plans/2026-10-05-sgi-57-105-0-miid.md."""
 import hashlib
 import json
+import logging
 import re
 
 from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
+# Sin modelos (sgi_calendar) o ya cargados (sgi_report_print).
+from .sgi_calendar import sgi_today
+from .sgi_report_print import DG_COLORS, DG_LEVEL_BG
 
 try:  # C-1: texto sin formato (html2plaintext convierte <b> en *…*).
     from odoo.tools.mail import html_to_inner_content
 except ImportError:  # pragma: no cover - versiones sin la función
     html_to_inner_content = None
 
+_logger = logging.getLogger(__name__)
 
 MIID_CODE = 'MIID'
 MIID_NOTICE_KIND = 'miid_desactualizado'
@@ -229,6 +234,13 @@ class SgiMiid(models.Model):
                                       compute_sudo=True)
     outdated_since = fields.Datetime(string="Desactualizado desde", readonly=True, copy=False)
     last_check = fields.Datetime(string="Última comparación", readonly=True, copy=False)
+    live_html = fields.Html(string="Vista del sistema", compute='_compute_live_html',
+                            compute_sudo=True, sanitize=False)
+    # 1.12-4: el historial se pinta con sudo (un Usuario SGI no siempre lee
+    # las revisiones obsoletas en Documentos).
+    history_html = fields.Html(string="Historial de revisiones", compute='_compute_history_html',
+                               compute_sudo=True, sanitize=False)
+
     _company_uniq = models.Constraint('UNIQUE(company_id)', "Ya existe el MIID de esta empresa.")
 
     # ------------------------------------------------------------------
@@ -300,6 +312,27 @@ class SgiMiid(models.Model):
                 [('company_id', '=', miid.company_id.id), ('to_confirm', '=', True)])
             miid.blocker_html = Markup("<ul class='mb-0'>%s</ul>") % Markup('').join(
                 Markup("<li>%s</li>") % b for b in blockers) if blockers else False
+
+    @api.depends('company_id')
+    def _compute_history_html(self):
+        for miid in self:
+            rows = Markup('').join(
+                Markup("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>") % (
+                    doc.sgi_revision_label or '', doc.sgi_issue_date.strftime('%d/%m/%Y') if doc.sgi_issue_date
+                    else '', dict(doc._fields['sgi_state']._description_selection(doc.env)).get(
+                        doc.sgi_state, doc.sgi_state or ''),
+                    doc.sgi_doc_change_id.name or "Carga inicial desde el Dropbox", doc.name or '')
+                for doc in miid._sgi_documents())
+            miid.history_html = Markup(
+                "<table class='table table-sm table-bordered'><thead><tr><th>Rev.</th><th>Emisión</th>"
+                "<th>Estado</th><th>Solicitud</th><th>Archivo</th></tr></thead><tbody>%s</tbody></table>") % rows \
+                if rows else False
+
+    def _compute_live_html(self):
+        for miid in self:
+            miid.live_html = self.env['ir.qweb'].sudo()._render('quimibond_sgi.report_miid_body', {
+                'doc': miid, 'miid': miid._sgi_print_data('live'), 'miid_mode': 'screen',
+                'dg_colors': DG_COLORS, 'dg_level_bg': DG_LEVEL_BG})
 
     # ------------------------------------------------------------------
     # Foto de los datos y huella (1.5)
@@ -553,3 +586,269 @@ class SgiMiid(models.Model):
                                               ", ".join(sorted(codes)))
                 for state, codes in sorted(by_state.items())))
         return out
+
+    # ------------------------------------------------------------------
+    # Lo que se imprime
+    # ------------------------------------------------------------------
+    def _sgi_filter_diagram(self, dg, process_ids):
+        """M-1: solo los procesos de la empresa del MIID (sgi.diagram busca en
+        todas las empresas)."""
+        keep = {"sgi.process,%d" % pid for pid in process_ids}
+        dg = dict(dg)
+        lanes = []
+        for lane in dg.get('lanes') or []:
+            items = [i for i in lane.get('items') or [] if i.get('key') in keep]
+            if items:
+                lanes.append(dict(lane, items=items))
+        dg['lanes'] = lanes
+        dg['edges'] = [e for e in dg.get('edges') or [] if e.get('from') in keep and e.get('to') in keep]
+        matrix = dg.get('matrix')
+        if matrix:
+            rows = [r for r in matrix.get('rows') or [] if r.get('key') in keep]
+            cols = [c for c in matrix.get('cols') or [] if c.get('key') in keep]
+            source, cells = matrix.get('cells') or {}, {}
+            for row in rows:
+                for col in cols:
+                    cell = source.get(row['key'], {}).get(col['key'])
+                    if cell:
+                        cells.setdefault(row['key'], {})[col['key']] = cell
+            dg['matrix'] = dict(matrix, rows=rows, cols=cols, cells=cells)
+        return dg
+
+    def _sgi_correspondence(self, env, process_ids):
+        """Por norma con cláusulas: numeral → procesos de la empresa que lo
+        cumplen (la matriz de cumplimiento, columnas de la empresa)."""
+        result = []
+        for norm in env['sgi.norm'].search([]).filtered('clause_ids'):
+            matrix = norm._sgi_compliance_matrix()
+            columns = [(index, p) for index, p in enumerate(matrix['processes']) if p.id in process_ids]
+            rows, covered = [], False
+            for row in matrix['rows']:
+                codes = [p.code for index, p in columns if row['cells'][index]]
+                covered = covered or bool(codes)
+                rows.append([row['clause'].code or '', row['clause'].name or '', ", ".join(codes) or "—"])
+            if covered:
+                result.append({'name': "%s %s" % (norm.code or '', norm.name or ''), 'rows': rows})
+        return result
+
+    def _sgi_print_data(self, mode='live', request=None, revision=None, with_diagrams=False):
+        """Lo que pinta la plantilla: la foto con etiquetas, las secciones
+        partidas en [[datos]], los bloques sin sección y los candados."""
+        self.ensure_one()
+        env = self._sgi_env()
+        snap = self._sgi_snapshot()
+        company = self.company_id
+        blockers = self._sgi_blockers()
+        draft = mode == 'live' or bool(blockers)
+        current = self._sgi_current_document()
+        today = sgi_today(env)
+        Process = env['sgi.process']
+        state_labels = dict(Process._fields['state']._description_selection(env))
+        type_labels = dict(Process._fields['process_type']._description_selection(env))
+        processes = Process.search([('company_id', '=', company.id)])
+        blocks = {}
+
+        ident = snap['identificacion']
+        next_revision = revision or (request.sgi_new_revision if request else None) \
+            or self._sgi_next_revision(current)
+        rows = [("Clave", MIID_CODE)]
+        if current:
+            rows.append(("Revisión vigente en Odoo", "%02d, emisión %s" % (
+                ident['revision'] or 0, current.sgi_issue_date.strftime('%d/%m/%Y')
+                if current.sgi_issue_date else "sin fecha")))
+        if mode == 'live':
+            rows.append(("Esta vista", "Revisión %02d en borrador%s" % (
+                next_revision, "; sustituye a la revisión %02d vigente" % (ident['revision'] or 0)
+                if current else "")))
+        else:
+            rows.append(("Revisión", "%02d%s" % (next_revision, "; sustituye a la revisión %02d" % (
+                ident['revision'] or 0) if current else "")))
+            if request:
+                rows.append(("Solicitud de cambio", request.name or ''))
+            rows.append(("Emisión", "La fecha de aprobación de la solicitud"))
+        rows.append(("Estado", "Borrador — no vigente" if draft else "Para aprobación"))
+        rows.append(("Procesos", "Al %s, %d de %d procesos vigentes" % (
+            today.strftime('%d/%m/%Y'), ident['processes_ready'], ident['processes_total'])))
+        blocks['identificacion'] = {'rows': rows}
+
+        blocks['procesos'] = {'rows': [
+            [code, values[0], type_labels.get(values[1], values[1]), values[2] or "—",
+             state_labels.get(values[3], values[3])]
+            for code, values in sorted(snap['processes'].items(),
+                                       key=lambda kv: (['estrategico', 'cop', 'soporte'].index(kv[1][1])
+                                                       if kv[1][1] in ('estrategico', 'cop', 'soporte') else 9,
+                                                       kv[0]))]}
+        diagrams = []
+        if with_diagrams and processes:
+            Diagram = env['sgi.diagram']
+            for kind in ('process_map', 'interaction_matrix'):
+                try:
+                    dg = self._sgi_filter_diagram(Diagram.data(kind), processes.ids)
+                except Exception:  # noqa: BLE001 - un diagrama roto no detiene el MIID
+                    _logger.warning("SGI: no se pudo armar el diagrama %s del MIID.", kind, exc_info=True)
+                    continue
+                diagrams.append({'dg': dg, 'dg_edges': Diagram._sgi_print_edges(dg),
+                                 'dg_subtitle': Diagram._sgi_print_subtitle(dg.get('subtitle'))})
+        blocks['procesos']['diagrams'] = diagrams
+
+        policy = env['sgi.policy'].search([('state', '=', 'vigente')], limit=1)
+        blocks['politica'] = {'policy': policy and {
+            'folio': policy.folio or '', 'name': policy.name or '',
+            'issue_date': policy.issue_date.strftime('%d/%m/%Y') if policy.issue_date else '',
+            'text': policy.policy_text or ''}}
+        objectives = env['sgi.objective'].search([('policy_id', '=', policy.id)]) if policy \
+            else env['sgi.objective']
+        blocks['objetivos'] = {'rows': [
+            [o.name or '', o.target_year or '', ", ".join(
+                "%s %s" % (i.code or '', i.name or '') for i in o.indicator_ids.filtered('active').sorted('code'))
+             or "—"] for o in objectives]}
+        blocks['tipos_documento'] = {'rows': [
+            [v[0], v[1] or "Conserva su clave"] for code, v in sorted(
+                snap['doc_types'].items(), key=lambda kv: kv[1][0]) if v[3]]}
+        blocks['controles'] = {'items': ["%s (%s)" % (v[1], code) for code, v in sorted(snap['controls'].items())]}
+        blocks['plazos_nc'] = {'rows': [[label, snap['nc'].get(key), unit] for key, label, unit in MIID_NC_ROWS]}
+        blocks['correspondencia'] = {'norms': self._sgi_correspondence(env, processes.ids)}
+
+        names = {p.code: "%s %s" % (p.code, p.name or '') for p in processes}
+        by_process = {}
+        for code, values in sorted(snap['previous'].items()):
+            by_process.setdefault(values[3] or '', []).append(code)
+        order = [p.code for p in processes.sorted(lambda p: (
+            ['estrategico', 'cop', 'soporte'].index(p.process_type)
+            if p.process_type in ('estrategico', 'cop', 'soporte') else 9, p.code or ''))]
+        prev_rows = [[names.get(code, code), ", ".join(by_process[code])] for code in order if code in by_process]
+        prev_rows += [[code, ", ".join(codes)] for code, codes in sorted(by_process.items())
+                      if code and code not in names]
+        if by_process.get(''):
+            prev_rows.append(["Sin proceso", ", ".join(by_process[''])])
+        kept = ["%s (%s)" % (v[2], code) for code, v in sorted(snap['controls'].items()) if v[2]]
+        blocks['procedimientos_anteriores'] = {'rows': prev_rows, 'kept': kept}
+
+        notes_section = env['sgi.miid.section'].search([('company_id', '=', company.id),
+                                                        ('live_block', '=', 'anexos')], limit=1)
+        notes = {n.key: n.text for n in notes_section.row_note_ids}
+        annex_rows = [[code, v[1], notes.get(code) or "—"] for code, v in sorted(
+            snap['annexes'].items(), key=lambda kv: [int(x) if x.isdigit() else x
+                                                     for x in re.split(r'(\d+)', kv[0])])]
+        orphan_notes = [[key, text] for key, text in notes.items() if key not in snap['annexes']]
+        blocks['anexos'] = {'rows': annex_rows, 'orphan_notes': orphan_notes}
+
+        history = []
+        if mode == 'live' or draft:
+            history.append(["%02d" % next_revision, "Borrador del %s" % today.strftime('%d/%m/%Y'),
+                            "En aprobación" if request else "Vista del sistema (no vigente)"])
+        elif request:
+            history.append(["%02d" % next_revision, "Al aprobarse %s" % (request.name or ''),
+                            request.sgi_reason or ''])
+        for rev, issue, state, req_name, reason in snap['historial']:
+            history.append(["%02d" % (rev or 0), issue and fields.Date.from_string(issue).strftime('%d/%m/%Y') or '',
+                            reason or ("Carga inicial desde el Dropbox" if not req_name else req_name)])
+        blocks['historial'] = {'rows': history}
+
+        has_data = {
+            'identificacion': True,
+            'procesos': bool(blocks['procesos']['rows']),
+            'politica': bool(policy),
+            'objetivos': bool(blocks['objetivos']['rows']),
+            'tipos_documento': bool(blocks['tipos_documento']['rows']),
+            'controles': bool(blocks['controles']['items']),
+            'plazos_nc': True,
+            'correspondencia': bool(blocks['correspondencia']['norms']),
+            'procedimientos_anteriores': bool(prev_rows or kept),
+            'anexos': bool(annex_rows or orphan_notes),
+            'historial': bool(history),
+        }
+
+        sections, used = [], set()
+        for section in env['sgi.miid.section'].search([('company_id', '=', company.id)]):
+            before, after = section._sgi_body_parts()
+            used.add(section.live_block)
+            sections.append({
+                'clause': section.clause or '', 'name': section.name or '', 'level': section.heading_level,
+                'block': section.live_block or False, 'fallback': bool(section.body_fallback),
+                'before': before, 'after': after, 'to_confirm': section.to_confirm,
+                'note': section.to_confirm_note or ''})
+        orphans = [(code, label) for code, label in MIID_BLOCKS if code not in used]
+        return {'sections': sections, 'blocks': blocks, 'has_data': has_data, 'orphans': orphans,
+                'blockers': blockers, 'draft': draft, 'company': company.name or '',
+                'revision': next_revision, 'request': request or False,
+                'signers': request._sgi_sign_rows() if request else []}
+
+    def _sgi_footer_info(self, mode, revision=None, draft=True):
+        """Pie de cada hoja (M-2: sin «Formato controlado del SGI:»)."""
+        if mode == 'live':
+            return {'label': "MIID · Borrador — no vigente", 'issue_date': False, 'plain': True}
+        label = "MIID · Rev. %02d" % (revision or 0)
+        if draft:
+            label += " · Borrador — no vigente"
+        return {'label': label, 'issue_date': False, 'plain': True}
+
+    def _sgi_render_pdf(self, mode='live', revision=None, issue_date=None, request=None):
+        """PDF del MIID (bytes). Las pruebas lo parchan."""
+        self.ensure_one()
+        pdf, _ = self.env['ir.actions.report'].with_context(
+            sgi_miid_mode=mode, sgi_miid_revision=revision,
+            sgi_miid_request_id=request.id if request else False,
+        )._render_qweb_pdf('quimibond_sgi.action_report_miid', self.ids)
+        return pdf
+
+    # ------------------------------------------------------------------
+    # Pantalla
+    # ------------------------------------------------------------------
+    @api.model
+    def action_open(self):
+        miid = self._sgi_get()
+        miid.invalidate_recordset()
+        return {'type': 'ir.actions.act_window', 'name': "Manual del SGI (MIID)",
+                'res_model': 'sgi.miid', 'res_id': miid.id, 'view_mode': 'form',
+                'views': [(self.env.ref('quimibond_sgi.sgi_miid_view_form').id, 'form')],
+                'target': 'current'}
+
+    def action_print_live(self):
+        self.ensure_one()
+        return self.env.ref('quimibond_sgi.action_report_miid').report_action(self, config=False)
+
+    def action_open_vigente_pdf(self):
+        self.ensure_one()
+        if not self.document_id:
+            raise UserError("No hay revisión vigente del MIID.")
+        return self.document_id.action_sgi_view_file()
+
+    def action_open_sections(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': "Textos del MIID",
+                'res_model': 'sgi.miid.section', 'view_mode': 'list,form',
+                'views': [(self.env.ref('quimibond_sgi.sgi_miid_section_view_list').id, 'list'),
+                          (self.env.ref('quimibond_sgi.sgi_miid_section_view_form').id, 'form')],
+                'search_view_id': self.env.ref('quimibond_sgi.sgi_miid_section_view_search').id,
+                'domain': [('company_id', '=', self.company_id.id)],
+                'context': {'default_company_id': self.company_id.id}}
+
+    def action_open_request(self):
+        self.ensure_one()
+        if not self.pending_request_id:
+            raise UserError("No hay solicitud de cambio del MIID en curso.")
+        return {'type': 'ir.actions.act_window', 'res_model': 'approval.request',
+                'res_id': self.pending_request_id.id, 'view_mode': 'form', 'target': 'current'}
+
+class ReportSgiMiid(models.AbstractModel):
+    """57.105.0: valores del PDF del MIID. Modo por contexto: «live» (vista del
+    sistema, copia no controlada) o «request» (el PDF de la solicitud, que es
+    el que se firma y se publica)."""
+    _name = 'report.quimibond_sgi.report_miid_document'
+    _description = "MIID (PDF)"
+
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        docs = self.env['sgi.miid'].browse(docids)
+        ctx = self.env.context
+        mode = ctx.get('sgi_miid_mode') or 'live'
+        request = self.env['approval.request'].sudo().browse(ctx.get('sgi_miid_request_id') or []).exists()
+        now = fields.Datetime.context_timestamp(self, fields.Datetime.now())
+        return {
+            'doc_ids': docs.ids, 'doc_model': 'sgi.miid', 'docs': docs,
+            'miid_mode': mode, 'miid_request': request or False,
+            'miid_revision': ctx.get('sgi_miid_revision'),
+            'miid_printed': now.strftime('%d/%m/%Y %H:%M'),
+            'dg_colors': DG_COLORS, 'dg_level_bg': DG_LEVEL_BG,
+        }
