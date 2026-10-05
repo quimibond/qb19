@@ -9,9 +9,19 @@ from datetime import date
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .sgi_risk import ATTENTION_LEVELS, sgi_attention_color
+
 # Diagramas con impresión controlada (pestañas «bands», «columns» y
 # «matrix»). Carriles y PDCA no: sus flechas solo existen en el navegador.
+# El diagrama de riesgos (risk_matrix) imprime el mapa de calor (C7) de los
+# instrumentos de HEATMAP_INSTRUMENTS.
 PRINT_KINDS = ('process_map', 'interaction_matrix', 'sipoc', 'roles_map', 'context_map')
+HEATMAP_INSTRUMENTS = ('ryo', 'iper', 'ambiental')
+# Formato por instrumento: IPER ya tiene su referencia (F-P-S01-01); las demás
+# no existen todavía y el pie sale solo con la página (Q1/Q2).
+HEATMAP_REFS = {'ryo': 'format_ref_ryo_matrix', 'iper': 'format_ref_iper_matrix',
+                'ambiental': 'format_ref_env_risk_matrix'}
+HEAT_BG = {'rojo': '#f1aeb5', 'amarillo': '#ffe69c', 'verde': '#a3cfbb', False: '#f8f9fa'}
 PRINT_LAYOUTS = ('bands', 'columns', 'matrix')
 DG_COLORS = {'success': '#198754', 'warning': '#ffc107', 'danger': '#dc3545',
              'info': '#0dcaf0', 'muted': '#adb5bd'}
@@ -30,7 +40,10 @@ class SgiDiagramPrint(models.AbstractModel):
 
     @api.model
     def _sgi_printable(self, kind, params=None):
-        """¿El diagrama tiene impresión en formato controlado?"""
+        """¿El diagrama tiene impresión en formato controlado? Riesgos, solo
+        con un instrumento del mapa de calor (patrimonial no, Q10)."""
+        if kind == 'risk_matrix':
+            return ((params or {}).get('instrument') or 'ryo') in HEATMAP_INSTRUMENTS
         return kind in PRINT_KINDS
 
     @api.model
@@ -42,6 +55,10 @@ class SgiDiagramPrint(models.AbstractModel):
 
     @api.model
     def _sgi_print_action(self, kind, res_id, params):
+        if kind == 'risk_matrix':
+            return self.env.ref('quimibond_sgi.action_report_risk_heatmap').report_action(
+                None, data={'instrument': params.get('instrument') or 'ryo', 'process_id': res_id},
+                config=False)
         return self.env.ref('quimibond_sgi.action_report_sgi_diagram').report_action(
             None, data={'kind': kind, 'res_id': res_id, 'params': params}, config=False)
 
@@ -190,3 +207,78 @@ class SgiAuditProgramPrint(models.Model):
         """Botón «Programado contra realizado» del programa."""
         return self.env.ref('quimibond_sgi.action_report_audit_program').report_action(
             self, config=False)
+
+
+class SgiRiskHeatmap(models.Model):
+    """57.101.0 (C7): mapa de calor de riesgos por instrumento (cuadrícula
+    P×I inicial y residual con los folios de cada celda)."""
+    _inherit = 'sgi.risk'
+
+    @api.model
+    def _sgi_heatmap_grid(self, instrument, scale, risks, p_field, i_field):
+        """Filas de impacto (mayor arriba) × columnas de probabilidad; cada
+        celda con el nivel real del instrumento y su color de semáforo."""
+        levels = dict(ATTENTION_LEVELS)
+        rows = []
+        for impact in reversed(scale):
+            cells = []
+            for prob in scale:
+                level = self._sgi_level(instrument, prob * impact)
+                here = risks.filtered(lambda r, p=str(prob), i=str(impact):
+                                      r[p_field] == p and r[i_field] == i)
+                color = sgi_attention_color(level)
+                cells.append({'prob': prob, 'score': prob * impact, 'level': levels.get(level, ''),
+                              'color': color, 'bg': HEAT_BG[color],
+                              'folios': [r.folio or str(r.id) for r in here]})
+            rows.append({'impact': impact, 'cells': cells})
+        return rows
+
+    @api.model
+    def _sgi_heatmap_sheets(self, risks):
+        """Una hoja por instrumento con P×I (R&O, IPER, ambiental): cuadrícula
+        inicial y residual con los folios por celda; solo riesgos no cerrados."""
+        labels = dict(self._fields['instrument'].selection)
+        sheets = []
+        for instrument in HEATMAP_INSTRUMENTS:
+            group = risks.filtered(lambda r, i=instrument: r.instrument == i and r.state != 'cerrado')
+            if not group:
+                continue
+            scale = [1, 2, 3] if instrument == 'iper' else [1, 2, 3, 4, 5]
+            sheets.append({
+                'instrument': instrument, 'label': labels[instrument],
+                'fmt_ref': HEATMAP_REFS[instrument],
+                'initial': self._sgi_heatmap_grid(instrument, scale, group,
+                                                  'eval_probability', 'eval_impact'),
+                'residual': self._sgi_heatmap_grid(instrument, scale, group,
+                                                   'residual_probability', 'residual_impact'),
+                'risks': group.sorted(lambda r: r.folio or ''),
+                'no_eval': group.filtered(lambda r: not (r.eval_probability and r.eval_impact)),
+                'no_residual': group.filtered(
+                    lambda r: not (r.residual_probability and r.residual_impact)),
+            })
+        return sheets
+
+
+class ReportRiskHeatmap(models.AbstractModel):
+    """57.101.0 (C7): valores del PDF del mapa de calor. Con registros
+    elegidos (menú Imprimir de la lista), esos; con ``data`` (botón del
+    diagrama de riesgos), el instrumento y el proceso del diagrama."""
+    _name = 'report.quimibond_sgi.report_risk_heatmap_document'
+    _description = "Mapa de calor de riesgos por instrumento (PDF)"
+
+    @api.model
+    def _get_report_values(self, docids, data=None):
+        Risk = self.env['sgi.risk']
+        data = data or {}
+        if docids:
+            risks = Risk.browse(docids)
+        else:
+            domain = [('instrument', '=', data.get('instrument') or 'ryo'),
+                      ('state', '!=', 'cerrado')]
+            if data.get('process_id'):
+                domain.append(('process_id', '=', int(data['process_id'])))
+            risks = Risk.search(domain)
+        now = fields.Datetime.context_timestamp(self, fields.Datetime.now())
+        return {'doc_ids': risks.ids, 'doc_model': 'sgi.risk', 'docs': risks,
+                'sheets': Risk._sgi_heatmap_sheets(risks),
+                'heat_printed': now.strftime('%d/%m/%Y %H:%M')}
