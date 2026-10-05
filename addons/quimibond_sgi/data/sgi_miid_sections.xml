@@ -4,7 +4,10 @@
          docs/sgi/transicion/miid-rev03-borrador.md): una sección por título y subtítulo,
          sin la portada ni 12.3. Lo [VIVO] no se siembra: lo ponen los bloques de datos.
          noupdate: lo que corrija el Jefe MAST no lo pisa ninguna actualización. Sin
-         company_id: toma la empresa del SGI (D-03). -->
+         company_id: toma la empresa del SGI (D-03).
+         57.110.0: completado con lo que traía la revisión 02 (4.1, 4.2, 6.1, 6.3, 7.1,
+         7.3, 7.4, 8.1, 8.3, 9.1, 10.2) y notas de 1.2, 1.3 y 12.1 corregidas; en
+         producción lo lleva la migración, solo a las secciones sin editar. -->
     <data noupdate="1">
 
         <record id="sgi_miid_section_01_identificacion" model="sgi.miid.section">
@@ -88,7 +91,7 @@
                 <p>Sitio: Carretera Toluca-Naucalpan km 52.8, Parque Industrial Toluca 2000, Calle 3 Sur, Manzana 7, Lotes 7, 9 y 10, C.P. 50233, Toluca, Estado de México.</p>
             </field>
             <field name="to_confirm" eval="True"/>
-            <field name="to_confirm_note">Alcance de ISO 45001: confirmar la redacción contra el certificado o el informe de la auditoría de septiembre de 2026.</field>
+            <field name="to_confirm_note">Alcance: confirmar contra el certificado o el informe de la auditoría de septiembre de 2026. La revisión 02 trae dos redacciones del alcance general: en 1.2, «maquila, fabricación, distribución y venta de entretelas tejidas y no tejidas, telas de todo tipo de fibras, así como la aplicación de resinas, laminados y acabados industriales»; en 3.3, «la maquila, fabricación, distribución, comercialización, importación y exportación de entretelas tejidas y no tejidas, telas de cualquier tipo de fibra y demás productos textiles, así como la aplicación de resinas, laminados y acabados industriales relacionados con dichos productos, incluyendo las distintas áreas, procesos y actividades que integran PNTQ». Para ISO 45001 dice «aplica a las actividades incluidas dentro del alcance definido del SGI».</field>
         </record>
 
         <record id="sgi_miid_section_06_no_aplica" model="sgi.miid.section">
@@ -106,7 +109,7 @@
                 <p>Estas no aplicabilidades no afectan la responsabilidad de asegurar la conformidad de los productos y servicios ni el aumento de la satisfacción del cliente.</p>
             </field>
             <field name="to_confirm" eval="True"/>
-            <field name="to_confirm_note">Justificación de 8.4.1 b) y 8.5.1 f): es redacción propuesta; la revisión 02 solo declara las exclusiones.</field>
+            <field name="to_confirm_note">La revisión 02 sí justifica las dos (3.3, 8.4.1 y 8.5.1): 8.4.1 b), «los productos y servicios no son proporcionados directamente a los clientes por proveedores externos en nombre de la organización»; 8.5.1 f), «los procesos de producción permiten la verificación de sus resultados mediante actividades de seguimiento y medición posteriores, por lo que no se requiere validación de procesos especiales». La justificación de esta sección dice lo mismo; falta que Dirección la confirme.</field>
         </record>
 
         <record id="sgi_miid_section_07_control_manual" model="sgi.miid.section">
@@ -175,7 +178,7 @@
                 <p>PNTQ fue fundada en 1992 por los señores José Mizrahi Daniel, Jaime Víctor Mizrahi Penhos y Jacobo Mizrahi Penhos. Inició con entretelas no tejidas, fusionables y no fusionables; en 2009 incorporó la entretela tejida y después se extendió a mercados industriales: pieles sintéticas, calzado, colchonería e industrial.</p>
                 <p><b>Productos.</b> Entretela no tejida termofusionada de poliéster o poliamida; entretela tejida de tejido circular; entretela fusionable (base tejida o no tejida con resina termoactivable); y entretela no tejida con hilos encadenados.</p>
                 <p><b>Servicios.</b> Corte y perforado; tintorería y acabado de telas tejidas; aplicación de resinas, laminados y acabados industriales; desarrollo de productos según especificación del cliente; y distribución de otros tipos de entretelas.</p>
-                <p><b>Cuestiones internas y externas.</b> La Dirección las determina y revisa en el Anexo 15 y en la Planeación Estratégica 2026-2030 (Anexo 1). Incluyen las condiciones ambientales que afectan o son afectadas por PNTQ, los peligros y riesgos, y las condiciones de trabajo. Su revisión es entrada de la revisión por la dirección (9.3).</p>
+                <p><b>Cuestiones internas y externas.</b> La Dirección las determina y revisa en el Anexo 15 y en la Planeación Estratégica 2026-2030 (Anexo 1). Incluyen las condiciones ambientales que afectan o son afectadas por PNTQ, los peligros y riesgos, y las condiciones de trabajo. En seguridad y salud consideran, entre otros, la seguridad de la maquinaria, los equipos y las instalaciones; la exposición a agentes físicos, químicos, ergonómicos y psicosociales; el cumplimiento de los requisitos legales; la preparación ante emergencias; y los cambios tecnológicos, operacionales y organizacionales. Su revisión es entrada de la revisión por la dirección (9.3).</p>
             </field>
         </record>
 
@@ -186,6 +189,7 @@
             <field name="heading_level">2</field>
             <field name="body" type="html">
                 <p>Las partes interesadas pertinentes (clientes, proveedores externos, el personal y los propietarios) y sus requisitos se registran en Odoo, en <b>SGI → Dirección → Partes interesadas</b>. Las necesidades que se convierten en requisitos legales u otros requisitos se llevan en <b>Requisitos legales</b> (6.1.3).</p>
+                <p>En seguridad y salud, las necesidades del personal incluyen condiciones de trabajo seguras y saludables, capacitación, consulta y participación, cumplimiento de los requisitos legales, prevención de lesiones, enfermedades e incidentes, y equipo de protección personal adecuado.</p>
             </field>
         </record>
 
@@ -300,6 +304,7 @@
             <field name="heading_level">2</field>
             <field name="body" type="html">
                 <p>PNTQ identifica, evalúa y trata sus riesgos y oportunidades en Odoo, con cuatro instrumentos. Cada registro lleva proceso, evaluación inicial y residual, acciones con responsable e historial de evaluaciones.</p>
+                <p>Se abordan para asegurar que el SGI logre sus resultados previstos, aumentar los efectos deseables, prevenir o reducir los efectos no deseados y lograr la mejora. Para determinarlos se consideran las cuestiones de 4.1 y los requisitos de las partes interesadas de 4.2.</p>
                 <table class="table table-sm table-bordered">
                 <thead><tr><th>Instrumento</th><th>Qué cubre</th><th>Dónde</th><th>Sustituye a</th></tr></thead>
                 <tbody>
@@ -342,7 +347,7 @@
                 <li><b>Cambios a un documento:</b> solicitud de cambio documental; al aprobarse se crea la revisión nueva, la anterior queda obsoleta y se generan los acuses.</li>
                 <li><b>Cambios de producto o de ingeniería:</b> órdenes de cambio en el proceso C1.</li>
                 </ul>
-                <p>Cada cambio considera su propósito y consecuencias, la integridad del SGI, los recursos, las responsabilidades y sus efectos en el ambiente y en la seguridad y salud.</p>
+                <p>Cada cambio considera su propósito y consecuencias, la integridad del SGI, los recursos, las responsabilidades, sus efectos en el ambiente y en la seguridad y salud, cuándo se termina y cómo se evalúa su resultado.</p>
             </field>
         </record>
 
@@ -360,9 +365,10 @@
             <field name="heading_level">2</field>
             <field name="body" type="html">
                 <ul>
-                <li><b>Personas e infraestructura:</b> la alta dirección determina y proporciona los recursos. La infraestructura se mantiene en el proceso S5 (mantenimiento preventivo, correctivo y checklists diarios).</li>
-                <li><b>Ambiente para la operación:</b> condiciones de trabajo, estudios de higiene y controles de seguridad, en el menú <b>Seguridad y ambiente</b>.</li>
-                <li><b>Recursos de seguimiento y medición (7.1.5):</b> los equipos de medición y de laboratorio, sus calibraciones y verificaciones se controlan en <b>Calidad → Calidad preventiva → Metrología</b>. Un equipo con calibración vencida no debe usarse para liberar producto.</li>
+                <li><b>Personas:</b> la alta dirección determina y proporciona el personal necesario; la plantilla autorizada se lleva en el proceso S4.</li>
+                <li><b>Infraestructura:</b> edificios y servicios, maquinaria y equipo, transporte y tecnologías de la información. Se mantiene en los procesos S5 (mantenimiento preventivo, correctivo y checklists diarios) y S6 (equipos de cómputo, sistemas y comunicaciones).</li>
+                <li><b>Ambiente para la operación:</b> factores físicos (temperatura, iluminación, ventilación, ruido e higiene), sociales (trato no discriminatorio, ambiente libre de conflictos) y psicosociales (prevención del estrés y del agotamiento). Las condiciones de trabajo, los estudios de higiene y los controles de seguridad están en el menú <b>Seguridad y ambiente</b>.</li>
+                <li><b>Recursos de seguimiento y medición (7.1.5):</b> los equipos de medición y de laboratorio, sus calibraciones y verificaciones se controlan en <b>Calidad → Calidad preventiva → Metrología</b>. Un equipo con calibración vencida no debe usarse para liberar producto. Si un equipo resulta fuera de calibración, se evalúa si afectó resultados ya liberados y se toman las acciones necesarias, con una no conformidad cuando aplique.</li>
                 <li><b>Conocimientos de la organización (7.1.6):</b> se conservan en las actividades e instructivos de cada proceso y en <b>Mejora → Lecciones aprendidas</b>, que sustituye a la bitácora de experiencias (Anexo 14).</li>
                 </ul>
             </field>
@@ -384,7 +390,12 @@
             <field name="name">Toma de conciencia</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>Toda persona conoce la política, los objetivos que le aplican, su contribución al SGI, los peligros y aspectos ambientales de su trabajo y las consecuencias de no cumplir. Se asegura con la firma de su procedimiento y de la política, y se verifica en las auditorías internas.</p>
+                <p>Toda persona conoce la política, los objetivos que le aplican, su contribución al SGI, los peligros y aspectos ambientales de su trabajo y las consecuencias de no cumplir.</p>
+                <ul>
+                <li><b>Inducción:</b> al ingresar, Recursos Humanos imparte la inducción a la empresa y, con el área de SGI, la inducción al SGI: misión, visión y valores; política y objetivos integrales; seguridad y salud en el trabajo (tipos de riesgo, actos y condiciones inseguras); planes de emergencia; y manejo de residuos. Se completa dentro de los tres meses siguientes al ingreso.</li>
+                <li><b>Puesto:</b> el jefe inmediato refuerza lo propio de cada puesto.</li>
+                <li><b>Evidencia:</b> la firma de su procedimiento y de la política; se verifica en las auditorías internas.</li>
+                </ul>
             </field>
         </record>
 
@@ -394,11 +405,19 @@
             <field name="name">Comunicación, consulta y participación</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <ul>
-                <li><b>Interna:</b> avisos y actividades de Odoo, acuses de lectura y el historial de cada registro. Los cambios documentales se difunden con su acuse.</li>
-                <li><b>Externa:</b> con clientes, proveedores y autoridades, a cargo del dueño del proceso correspondiente.</li>
-                <li><b>Consulta y participación de los trabajadores:</b> Comisión de Seguridad e Higiene y sus recorridos, reporte de incidentes y casi accidentes abierto a todo el personal, quejas y sugerencias, y participación en las investigaciones.</li>
-                </ul>
+                <p>PNTQ determina qué comunica, a quién, cómo, cuándo y quién lo hace:</p>
+                <table class="table table-sm table-bordered">
+                <thead><tr><th>Qué</th><th>A quién</th><th>Cómo y cuándo</th><th>Quién</th></tr></thead>
+                <tbody>
+                <tr><td>Política, objetivos, documentos y sus cambios</td><td>Personal</td><td>Acuse de lectura en Odoo, al publicarse</td><td>Jefe de MAST y SGI</td></tr>
+                <tr><td>Actividades, vencimientos y no conformidades</td><td>Responsables</td><td>Avisos y actividades de Odoo, al generarse</td><td>Dueño del proceso</td></tr>
+                <tr><td>Resultados del SGI: indicadores, auditorías y revisión por la dirección</td><td>Dirección y dueños de proceso</td><td>Tablero y actas en Odoo, en cada revisión</td><td>Jefe de MAST y SGI</td></tr>
+                <tr><td>Requisitos, pedidos, compras y reclamaciones</td><td>Clientes y proveedores</td><td>Correo y documentos del pedido o de la compra, cuando ocurren</td><td>Dueño del proceso (C2, S1, C5)</td></tr>
+                <tr><td>Trámites y reportes oficiales</td><td>Autoridades</td><td>Plataformas y trámites oficiales, en los plazos legales</td><td>Responsable del requisito legal</td></tr>
+                <tr><td>Peligros, controles y emergencias</td><td>Personal, contratistas y visitantes</td><td>Inducción, señalización, reglamento para contratistas y simulacros</td><td>Jefe de MAST y SGI</td></tr>
+                </tbody></table>
+                <p>La información ambiental y de seguridad que se comunica es coherente con la generada en el SGI y fiable. PNTQ responde a las comunicaciones pertinentes de las partes interesadas y conserva evidencia de sus comunicaciones en el historial de los registros de Odoo y en el correo.</p>
+                <p><b>Consulta y participación de los trabajadores:</b> Comisión de Seguridad e Higiene y sus recorridos; reporte de incidentes, casi accidentes, actos y condiciones inseguras abierto a todo el personal; formato de quejas y sugerencias, en papel y por código QR; encuesta de consulta y participación; Semana de seguridad y salud anual; y participación en la identificación de peligros, la determinación de controles y las investigaciones. Los trabajadores se consultan antes de los cambios que afecten su seguridad y salud.</p>
             </field>
         </record>
 
@@ -444,16 +463,16 @@
                 <tr><td>8.2 Requisitos para los productos y servicios</td><td>Cotización, revisión del pedido, confirmación y comunicación con el cliente</td><td>C2</td></tr>
                 <tr><td>8.3 Diseño y desarrollo</td><td>Solicitud de desarrollo, etapas, revisiones, validación con el cliente, cambios de ingeniería, AMEF, plan de control y PPAP cuando el cliente lo exige</td><td>C1</td></tr>
                 <tr><td>8.4 Procesos, productos y servicios suministrados externamente</td><td>Selección y evaluación de proveedores, órdenes de compra con requisitos, inspección de recibo y certificados de análisis</td><td>S1, C5</td></tr>
-                <tr><td>8.5.1 Control de la producción</td><td>Programa de producción, órdenes de fabricación, instructivos, fichas de proceso por máquina y mantenimiento</td><td>C3, C4, S5</td></tr>
+                <tr><td>8.5.1 Control de la producción</td><td>Programa de producción, órdenes de fabricación, instructivos, fichas de proceso por máquina, mantenimiento y acciones para prevenir errores humanos</td><td>C3, C4, S5</td></tr>
                 <tr><td>8.5.2 Identificación y trazabilidad</td><td>Lote por orden de fabricación, de la materia prima al producto entregado</td><td>C4, C6</td></tr>
-                <tr><td>8.5.3 Propiedad del cliente o del proveedor</td><td>Materiales de maquila identificados y controlados en inventario</td><td>C6</td></tr>
+                <tr><td>8.5.3 Propiedad del cliente o del proveedor</td><td>Materiales de maquila y bienes del cliente o del proveedor identificados y controlados en inventario; si se pierden, se deterioran o no sirven, se informa a su dueño, se toman acciones de contingencia y se conserva el registro</td><td>C6</td></tr>
                 <tr><td>8.5.4 Preservación</td><td>Almacenamiento, manejo, empaque y embarque</td><td>C6, C2</td></tr>
-                <tr><td>8.5.5 Actividades posteriores a la entrega</td><td>Atención de reclamaciones y devoluciones</td><td>C5, C2</td></tr>
+                <tr><td>8.5.5 Actividades posteriores a la entrega</td><td>Atención de reclamaciones y devoluciones, considerando los requisitos legales, las consecuencias no deseadas, la naturaleza y vida útil del producto, y los requisitos y la retroalimentación del cliente</td><td>C5, C2</td></tr>
                 <tr><td>8.5.6 Control de los cambios</td><td>Ver 6.3</td><td>C1, E2</td></tr>
                 <tr><td>8.6 Liberación de los productos</td><td>Inspección, pruebas de laboratorio y reporte de conformidad antes de embarcar</td><td>C5</td></tr>
                 <tr><td>8.7 Salidas no conformes</td><td>Retención e identificación del producto, disposición y no conformidad (ver 10.2)</td><td>C5</td></tr>
                 </tbody></table>
-                <p>No aplican 8.4.1 b) y 8.5.1 f), según 1.3.</p>
+                <p>No aplican 8.4.1 b) y 8.5.1 f), según 1.3. La situación del Plan integral (Anexo 13), donde la revisión 02 presentaba el resultado de esta planificación, se define en 12.1.</p>
             </field>
         </record>
 
@@ -481,7 +500,14 @@
             <field name="name">Preparación y respuesta ante emergencias</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>Los planes de emergencia y los simulacros se mantienen en <b>SGI → Seguridad y ambiente</b>. Cada simulacro queda registrado con su evaluación, y de una emergencia real se levanta una no conformidad para revisar el plan.</p>
+                <p>PNTQ se prepara y responde ante emergencias con los planes de emergencia del centro de trabajo y los simulacros, que se mantienen en <b>SGI → Seguridad y ambiente</b>.</p>
+                <ul>
+                <li><b>Escenarios:</b> emergencias médicas, incendio, fugas o derrames de sustancias químicas, fenómenos naturales y fallas operacionales que puedan afectar a las personas o al ambiente.</li>
+                <li><b>Recursos:</b> sistemas de alarma, equipo contra incendio, estaciones de primeros auxilios, equipo de contención de derrames, medios de comunicación interna y brigadas.</li>
+                <li><b>Prueba periódica:</b> los simulacros se programan y se evalúan por tiempo de respuesta, eficacia de la comunicación y desempeño de las brigadas. Cada uno queda registrado con su evaluación y sus oportunidades de mejora.</li>
+                <li><b>Revisión:</b> el plan se revisa después de cada simulacro y de cada emergencia real; de una emergencia real se levanta una no conformidad.</li>
+                <li><b>Información y formación:</b> el personal se capacita desde su inducción; contratistas y visitantes reciben la información de emergencia a su ingreso.</li>
+                </ul>
             </field>
         </record>
 
@@ -498,7 +524,7 @@
             <field name="name">Seguimiento, medición, análisis y evaluación</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p><b>Indicadores (9.1.1 y 9.1.3).</b> Cada indicador tiene proceso, dueño, fórmula, frecuencia, objetivo y rango aceptable. Sustituyen a la captura mensual en el formato F-P-A10-03.</p>
+                <p><b>Indicadores (9.1.1).</b> Cada indicador tiene proceso, dueño, fórmula, frecuencia, objetivo y rango aceptable. Sustituyen a la captura mensual en el formato F-P-A10-03.</p>
                 <ol>
                 <li>El sistema crea la medición de cada periodo; la calcula con los registros de Odoo o la pide a su responsable.</li>
                 <li>El dueño del indicador la valida contra la evidencia.</li>
@@ -507,8 +533,10 @@
                 </ol>
                 <p>Un indicador nuevo opera «en prueba» hasta que su dueño confirma una medición contra la realidad y lo pasa a oficial. La ficha de cada indicador, con su tendencia, se imprime desde Odoo.</p>
                 <p><b>Cumplimiento de las actividades.</b> El sistema mide por proceso y por puesto si cada actividad se hizo en su periodo (<b>Administración SGI → Diagnóstico → Cumplimiento de procedimientos</b>).</p>
+                <p><b>Desempeño de seguridad y salud.</b> Se evalúa con sus indicadores, los incidentes, los actos y condiciones inseguras, las inspecciones y recorridos, y el cumplimiento de los requisitos legales.</p>
                 <p><b>Satisfacción del cliente (9.1.2).</b> Se evalúa con las reclamaciones y devoluciones, las calificaciones de los clientes y el registro de <b>Satisfacción del cliente</b>.</p>
                 <p><b>Evaluación del cumplimiento (9.1.2 de ISO 14001 e ISO 45001).</b> Cada requisito legal se evalúa periódicamente con evidencia; el historial queda en <b>Evaluaciones de cumplimiento legal</b>.</p>
+                <p><b>Análisis y evaluación (9.1.3).</b> Los dueños de proceso y la Dirección analizan los resultados del seguimiento y la medición para evaluar la conformidad de los productos y servicios, la satisfacción del cliente, el desempeño y la eficacia del SGI, si lo planificado se implementó de forma eficaz, la eficacia de las acciones sobre riesgos y oportunidades, el desempeño de los proveedores externos y la necesidad de mejoras. Sus conclusiones son entrada de la revisión por la dirección (9.3).</p>
             </field>
         </record>
 
@@ -567,6 +595,7 @@
             <field name="live_block">plazos_nc</field>
             <field name="body" type="html">
                 <p>Toda no conformidad se registra y se trata en <b>SGI → Mejora → No conformidades</b>, sea cual sea su origen: proceso, auditoría interna o externa, reclamación de cliente, indicador incumplido, incidente o recorrido de la Comisión. Este apartado sustituye a los procedimientos P-G04 y P-G05 y al control F-P-G05-02.</p>
+                <p>Ante una no conformidad se reacciona para controlarla y corregirla y se hace frente a sus consecuencias, incluida la mitigación de los impactos ambientales adversos. Después se evalúa si hace falta eliminar su causa para que no vuelva a ocurrir ni ocurra en otra parte, revisando si existen no conformidades similares o que puedan ocurrir.</p>
                 <table class="table table-sm table-bordered">
                 <thead><tr><th>Etapa</th><th>Qué se exige</th></tr></thead>
                 <tbody>
@@ -670,7 +699,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">anexos</field>
             <field name="to_confirm" eval="True"/>
-            <field name="to_confirm_note">Situación de cada anexo: el Jefe MAST y SGI y la Dirección deben confirmar qué anexos se sustituyen y cuáles se conservan.</field>
+            <field name="to_confirm_note">Situación de cada anexo: el Jefe MAST y SGI y la Dirección deben confirmar qué anexos se sustituyen y cuáles se conservan. En la revisión 02 el Anexo 13 se llama «Plan integral» (aquí, «Plan de calidad») y es donde se presenta el resultado de la planificación operacional (8.1): confirmar su nombre y si se conserva o lo sustituyen las actividades de los procesos.</field>
         </record>
 
         <record id="sgi_miid_section_46_historial" model="sgi.miid.section">
