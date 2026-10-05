@@ -113,6 +113,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_supplier_nc_data.xml',
         'data/sgi_offboarding_plan_data.xml',
         'data/sgi_sst_sequences.xml',
+        # 57.105.0: MIID, texto del borrador Rev. 03 (noupdate).
+        'data/sgi_miid_sections.xml',
         # views
         'views/sgi_area_views.xml',
         'report/report_compliance_matrix.xml',

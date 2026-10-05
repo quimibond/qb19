@@ -103,6 +103,17 @@
         <field name="model_id" ref="model_sgi_process"/>
         <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
     </record>
+    <!-- 57.105.0: MIID por empresa (secciones, notas por renglón y la pantalla). -->
+    <record id="rule_sgi_miid_section_company" model="ir.rule">
+        <field name="name">SGI: Secciones del MIID por empresa</field>
+        <field name="model_id" ref="model_sgi_miid_section"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
+    <record id="rule_sgi_miid_row_note_company" model="ir.rule">
+        <field name="name">SGI: Notas por renglón del MIID por empresa</field>
+        <field name="model_id" ref="model_sgi_miid_row_note"/>
+        <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+    </record>
     <record id="rule_sgi_process_activity_company" model="ir.rule">
         <field name="name">SGI: Actividades por empresa</field>
         <field name="model_id" ref="model_sgi_process_activity"/>

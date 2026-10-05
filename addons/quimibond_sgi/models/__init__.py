@@ -123,3 +123,6 @@ from . import sgi_report_print
 # 57.103.0: registro de cumplimiento por actividad, responsable y periodo
 # (hereda la actividad y lo lee Mis pendientes, ambos definidos antes).
 from . import sgi_activity_execution
+# 57.105.0: MIID desde Odoo (hereda approval.request —su extensión de Sign ya
+# cargó— y sgi.cron; usa sgi_report_print).
+from . import sgi_miid
