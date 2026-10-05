@@ -149,3 +149,4 @@ from . import test_ppap_coa_cliente
 from . import test_ia_nc
 from . import test_reportes_diagramas
 from . import test_registro_cumplimiento
+from . import test_medicion_por_revisar

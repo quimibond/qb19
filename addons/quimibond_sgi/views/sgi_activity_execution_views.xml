@@ -166,18 +166,22 @@
         </field>
     </record>
 
-    <!-- «Pantalla que no va con su medición»: los faltantes de ese código. -->
+    <!-- 57.104.0: «Medición por revisar»: pantallas que no van con su
+         medición, evidencia que no aparece y atribución débil. -->
     <record id="sgi_activity_menu_mismatch_action" model="ir.actions.act_window">
-        <field name="name">Pantallas que no van con su medición</field>
+        <field name="name">Medición por revisar</field>
         <field name="res_model">sgi.activity.spec.gap</field>
         <field name="view_mode">list,pivot</field>
         <field name="view_id" ref="sgi_activity_spec_gap_view_list"/>
         <field name="search_view_id" ref="sgi_activity_spec_gap_view_search"/>
-        <field name="domain">[('code', '=', 'menu_model_mismatch')]</field>
+        <field name="domain">[('code', 'in', ('menu_model_mismatch', 'measure_never', 'weak_attribution'))]</field>
+        <field name="context">{'search_default_group_code': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Cada pantalla va con su medición</p>
-            <p>Actividades que se miden solas cuyo menú abre un modelo distinto del que cuenta su evidencia: «Ir» manda
-                a un lugar y la medición mira otro. Corrija el menú o el modelo de medición en la actividad.</p>
+            <p class="o_view_nocontent_smiling_face">La medición cuenta lo que debe y sabe quién lo hizo</p>
+            <p>Actividades que se miden solas con algo por revisar: la pantalla abre un modelo distinto del que cuenta
+                su evidencia, la medición no encuentra registros (filtro o fecha mal, o no se registra en Odoo), o no
+                sabe quién la hizo («write_uid» o la mayoría de otro puesto o de cuentas compartidas). Se recalcula
+                cada noche con la medición.</p>
         </field>
     </record>
 
