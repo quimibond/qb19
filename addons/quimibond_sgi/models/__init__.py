@@ -119,3 +119,4 @@ from . import sgi_ai
 # 57.101.0: reportes y diagramas (heredan indicador, medición, proceso,
 # sgi.diagram, programa de auditorías y riesgo, todos definidos antes).
 from . import sgi_indicator_sheet
+from . import sgi_report_print

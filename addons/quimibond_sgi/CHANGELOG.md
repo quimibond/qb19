@@ -13,6 +13,11 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.101.0 — 2026-10-05
+
+**Reportes y diagramas** (en curso; la entrada se completa al cerrar la
+entrega).
+
 ## 19.0.57.100.0 — 2026-10-05
 
 **Integridad, competencias, PPAP e IA** (auditoría 2026-10: K-04, N-13, N-14 y

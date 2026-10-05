@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.100.0',
+    'version': '19.0.57.101.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -192,6 +192,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # 57.101.0: reportes y diagramas (usan paperformat_sgi_carta y
         # _carta_horizontal, definidos arriba).
         'report/report_indicator_sheet.xml',
+        'report/report_sgi_diagram.xml',
         'report/report_dev_request.xml',
         'report/report_machine_sheet.xml',
         'report/report_calibration_label.xml',
