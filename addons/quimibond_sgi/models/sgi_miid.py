@@ -921,6 +921,45 @@ class SgiMiid(models.Model):
                                date_deadline=deadline, key=key)
         return True
 
+    # ------------------------------------------------------------------
+    # Diagnóstico (1.9)
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_diagnostic_lines(self):
+        miid = self._sgi_get()
+        miid.invalidate_recordset()
+        Diag = self.env['sgi.diagnostic']
+        fix = sgi_menu_path('miid')
+        status = miid._sgi_status()
+        doc = miid._sgi_current_document()
+        lines = []
+        if status['state'] == 'al_dia':
+            lines.append(Diag._sgi_line('ok', "MIID al día (Rev. %s, emisión %s)." % (
+                doc.sgi_revision_label, doc.sgi_issue_date.strftime('%d/%m/%Y') if doc.sgi_issue_date
+                else "sin fecha")))
+        elif status['state'] == 'desactualizado':
+            since = sgi_local_date(self.env, miid.outdated_since) if miid.outdated_since \
+                else sgi_today(self.env)
+            lines.append(Diag._sgi_line('warn', "MIID desactualizado desde %s: %d diferencia(s) con el sistema." % (
+                since.strftime('%d/%m/%Y'), len(status['diffs'])), fix))
+        elif status['state'] == 'sin_base':
+            lines.append(Diag._sgi_line('warn', "El MIID vigente (Rev. %s) no se generó desde Odoo: no se "
+                                                "puede comparar con el sistema." % doc.sgi_revision_label, fix))
+        else:
+            lines.append(Diag._sgi_line('bad', "No hay MIID vigente (clave MIID).", fix))
+        if doc:
+            env = miid._sgi_env()
+            sections = env['sgi.miid.section'].search_count([('company_id', '=', miid.company_id.id),
+                                                            ('to_confirm', '=', True)])
+            processes = env['sgi.process'].search([('company_id', '=', miid.company_id.id)])
+            not_ready = len(processes.filtered(lambda p: p.state not in MIID_READY_PROCESS_STATES))
+            if sections or not_ready or not processes:
+                lines.append(Diag._sgi_line(
+                    'warn', "La siguiente revisión del MIID no se puede aprobar: %d sección(es) por confirmar "
+                            "y %d proceso(s) sin publicar." % (sections, not_ready), fix))
+        return lines
+
+
 class ReportSgiMiid(models.AbstractModel):
     """57.105.0: valores del PDF del MIID. Modo por contexto: «live» (vista del
     sistema, copia no controlada) o «request» (el PDF de la solicitud, que es
