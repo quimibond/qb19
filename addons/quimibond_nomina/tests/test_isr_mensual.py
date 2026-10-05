@@ -72,6 +72,13 @@ class TestIsrMensual(TransactionCase):
     def test_fecha_de_pago_y_periodos_del_mes(self):
         self.employee.version_id.schedule_pay = 'weekly'
         s41 = self._recibo(date(2026, 9, 28), date(2026, 10, 4))
+        # Sin parámetro (get_param devuelve False), el día de pago es viernes.
+        self.assertFalse(self.Param.get_param('quimibond_nomina.dia_pago_semanal'))
+        self.assertEqual(s41._qb_nomina_dia_pago(), 4)
+        self.assertEqual(s41._qb_nomina_fecha_pago(), date(2026, 10, 2))
+        self.Param.set_param('quimibond_nomina.dia_pago_semanal', '0')
+        self.assertEqual(s41._qb_nomina_fecha_pago(), date(2026, 9, 28))     # lunes, explícito
+        self.Param.set_param('quimibond_nomina.dia_pago_semanal', '')
         self.assertEqual(s41._qb_nomina_fecha_pago(), date(2026, 10, 2))
         self.assertEqual(s41._qb_nomina_periodos_del_mes(), 5)      # octubre 2026: 2, 9, 16, 23 y 30
         s40 = self._recibo(date(2026, 9, 21), date(2026, 9, 27))
