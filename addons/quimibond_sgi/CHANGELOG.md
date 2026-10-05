@@ -13,6 +13,59 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.103.0 — 2026-10-05
+
+**Registro de cumplimiento por actividad y periodo** (pedido de Jose del
+2026-10-05). Modelo nuevo `sgi.activity.execution` (y el asistente
+`sgi.activity.execution.mark`), dos menús en Administración SGI →
+Diagnóstico y migración `post-migrate` que arma el periodo en curso.
+
+### Agregado
+
+- **Registro de cumplimiento** (`sgi.activity.execution`): un renglón por
+  actividad, responsable y periodo de su cadencia, con el vencimiento de la
+  actividad (el capturado; sin él, el último día hábil del periodo). Lo crea
+  el respaldo nocturno (`cron_nightly_backup`, el que guarda el resumen de
+  Mis pendientes) para el periodo en curso; quita los «Pendiente» sin tocar
+  de quien ya no la ejecuta. Responsables: los de «Mis actividades» de Mi
+  procedimiento con rol «Ejecuta». Las «por evento» no llevan renglones.
+- **Estados:** Pendiente → En proceso (nota de avance obligatoria y fecha
+  estimada opcional; no quita el atraso) → Hecha, o «No aplica este
+  periodo» con motivo. Marca la persona, cualquiera de sus jefes o el Jefe
+  MAST; solo el Jefe MAST reabre.
+- **Evidencia:** las de registro manual (también correo y muestreo) piden
+  una nota o un archivo para «Hecha». Las que se miden solas (Registro en
+  Odoo, Por su entregable, Por consecuencia) se marcan hechas solas cuando
+  aparece su registro de evidencia dentro del periodo (mismo modelo,
+  filtro, fecha y empresa que la medición); cerrarlas a mano también pide
+  evidencia.
+- **Mis pendientes:** las actividades con registro salen por periodo
+  abierto (atrasadas, por vencer o al día, con su avance), con los botones
+  **En proceso** y **Hecho** junto a «Ir»; columna y filtro «En proceso».
+  Para las de registro manual, «Ir» abre su registro (criterio de
+  terminado, pasos, instructivo y dónde adjuntar) y el menú de Odoo queda
+  como «Abrir pantalla relacionada», solo si está capturado. Mi equipo ve
+  los mismos renglones.
+- **Diagnóstico → Registro de cumplimiento** (lista y pivote) y
+  **Diagnóstico → Pantallas que no van con su medición**: faltante nuevo
+  `menu_model_mismatch` (advertencia) cuando la actividad se mide sola con
+  un modelo y su pantalla abre otro.
+
+### Cambiado
+
+- **Medición de las de registro manual** con cadencia: sale del registro.
+  Verde si los renglones del periodo en curso están hechos o no aplican;
+  vencido el periodo sin eso, rojo; antes de vencer, manda el periodo
+  anterior; sin renglones, «pendiente» como antes. Se recalcula al marcar.
+  Las 63 «por evento» siguen «pendiente».
+
+### Migración
+
+- `post-migrate`: recalcula los faltantes de las actividades con modelo y
+  pantalla, arma el periodo en curso, cierra los que ya tienen registro y
+  mide las de registro manual. Esperado (MCP, 2026-10-05): 80 manuales y 40
+  que se miden solas con cadencia periódica.
+
 ## 19.0.57.102.0 — 2026-10-05
 
 **NC de auditoría: a quién le sale.** Sin campos nuevos, sin ACL, sin menús

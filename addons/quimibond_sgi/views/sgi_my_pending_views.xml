@@ -15,6 +15,8 @@
                 </header>
                 <field name="state_rank" column_invisible="1"/>
                 <field name="is_mine" column_invisible="1"/>
+                <field name="can_mark_exec" column_invisible="1"/>
+                <field name="res_model" column_invisible="1"/>
                 <field name="employee_id" string="Persona" optional="hide"/>
                 <field name="kind" string="Tipo"/>
                 <field name="name" string="Qué"/>
@@ -24,6 +26,9 @@
                        decoration-danger="state == 'atrasada'"
                        decoration-warning="state == 'por_vencer'"
                        decoration-success="state == 'al_dia'"/>
+                <!-- 57.103.0: avance de las actividades del periodo. -->
+                <field name="exec_state" string="Avance" widget="badge" optional="show"
+                       decoration-info="exec_state == 'en_proceso'"/>
                 <!-- 57.92.0 (U-05): «Ir» lleva a donde se hace; «Leer» abre el
                      archivo del documento y «Leído y entendido» lo firma ahí mismo.
                      «Leído y entendido» y «Hecho» solo en los renglones propios. -->
@@ -40,6 +45,12 @@
                 <!-- 57.92.0 (U-03): el aviso del cron se marca hecho desde el renglón. -->
                 <button name="action_done_notice" type="object" string="Hecho" icon="fa-check"
                         class="btn-link" invisible="kind != 'aviso' or not is_mine"/>
+                <!-- 57.103.0: avance del registro de cumplimiento desde el renglón
+                     (la persona, su jefe o el Jefe MAST). -->
+                <button name="action_exec_progress" type="object" string="En proceso" icon="fa-hourglass-half"
+                        class="btn-link" invisible="res_model != 'sgi.activity.execution' or not can_mark_exec"/>
+                <button name="action_exec_done" type="object" string="Hecho" icon="fa-check"
+                        class="btn-link" invisible="res_model != 'sgi.activity.execution' or not can_mark_exec"/>
             </list>
         </field>
     </record>
@@ -54,11 +65,18 @@
                 <field name="state_rank"/>
                 <field name="is_mine"/>
                 <field name="kind"/>
+                <field name="can_mark_exec"/>
+                <field name="res_model"/>
+                <field name="exec_state"/>
+                <field name="exec_note"/>
                 <templates>
                     <t t-name="card">
                         <field name="name" class="fs-5 fw-bold"/>
                         <div class="text-muted"><field name="kind"/> · <field name="process_id"/></div>
                         <div>Vence: <field name="date_due"/></div>
+                        <div t-if="record.exec_state.raw_value == 'en_proceso'" class="text-info">
+                            En proceso<t t-if="record.exec_note.raw_value">: <field name="exec_note"/></t>
+                        </div>
                         <footer class="d-flex flex-wrap gap-2 pt-2">
                             <field name="state" widget="badge"
                                    decoration-danger="state == 'atrasada'"
@@ -75,6 +93,12 @@
                                     class="btn btn-success btn-lg" invisible="kind != 'validacion'"/>
                             <button name="action_done_notice" type="object" string="Hecho"
                                     class="btn btn-success btn-lg" invisible="kind != 'aviso' or not is_mine"/>
+                            <button name="action_exec_progress" type="object" string="En proceso"
+                                    class="btn btn-secondary btn-lg"
+                                    invisible="res_model != 'sgi.activity.execution' or not can_mark_exec"/>
+                            <button name="action_exec_done" type="object" string="Hecho"
+                                    class="btn btn-success btn-lg"
+                                    invisible="res_model != 'sgi.activity.execution' or not can_mark_exec"/>
                         </footer>
                     </t>
                 </templates>
@@ -99,6 +123,7 @@
                 <filter name="ok" string="Al día" domain="[('state', '=', 'al_dia')]"/>
                 <separator/>
                 <filter name="kind_activity" string="Actividades y escalamientos" domain="[('kind', '=', 'actividad')]"/>
+                <filter name="in_progress" string="En proceso" domain="[('exec_state', '=', 'en_proceso')]"/>
                 <filter name="kind_validate" string="Mediciones por validar" domain="[('kind', '=', 'validacion')]"/>
                 <filter name="kind_sign" string="Firmas y acuses" domain="[('kind', 'in', ('firma', 'acuse'))]"/>
                 <filter name="kind_notice" string="Avisos" domain="[('kind', '=', 'aviso')]"/>

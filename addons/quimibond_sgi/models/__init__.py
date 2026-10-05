@@ -120,3 +120,6 @@ from . import sgi_ai
 # sgi.diagram, programa de auditorías y riesgo, todos definidos antes).
 from . import sgi_indicator_sheet
 from . import sgi_report_print
+# 57.103.0: registro de cumplimiento por actividad, responsable y periodo
+# (hereda la actividad y lo lee Mis pendientes, ambos definidos antes).
+from . import sgi_activity_execution
