@@ -78,6 +78,12 @@ Mis pendientes abre con el filtro **Atrasadas o por vencer**. Las
 validaciones que vencen más adelante no se ven con ese filtro: quítelo en
 la barra de búsqueda para validarlas por adelantado.
 
+Desde 57.101.0, **Tendencia** promedia las mediciones del periodo (los
+indicadores semanales se ven por semana) y abre con el filtro «Con dato»:
+quítelo si quiere ver también los pendientes y los «sin dato». **Ficha en
+PDF** imprime la hoja del indicador con su gráfica, sus metas y la causa y
+acciones de los rojos.
+
 ### 2.4 Aprobar propuestas de cambio de su proceso
 
 Las propuestas que hace su gente con **Proponer cambio** llegan a la app

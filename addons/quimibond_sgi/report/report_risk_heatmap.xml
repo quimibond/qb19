@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.101.0 (C7): mapa de calor de riesgos por instrumento (R&O, IPER y
+         ambiental; patrimonial no, Q10). Una hoja por instrumento con la
+         cuadrícula P×I inicial y la residual, los folios en cada celda y el
+         color del nivel real de la escala del instrumento (sgi_attention_color,
+         la regla del semáforo del riesgo). Solo riesgos no cerrados. Desde
+         Imprimir (riesgos elegidos) o desde el diagrama de riesgos (data:
+         instrumento y proceso). Pie: IPER con su formato (format_ref_iper_matrix);
+         R&O y ambiental, hoy solo la página. -->
+    <record id="action_report_risk_heatmap" model="ir.actions.report">
+        <field name="name">Mapa de calor de riesgos</field>
+        <field name="model">sgi.risk</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_risk_heatmap_document</field>
+        <field name="report_file">quimibond_sgi.report_risk_heatmap_document</field>
+        <field name="print_report_name">'Mapa de calor de riesgos'</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta_horizontal"/>
+        <field name="binding_model_id" ref="model_sgi_risk"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_risk_heatmap_grid">
+        <table class="table table-sm table-bordered" style="font-size:8px; table-layout:fixed;">
+            <thead>
+                <tr><th style="width:16%;">Impacto / severidad ↓ · Probabilidad →</th>
+                    <th t-foreach="grid[0]['cells']" t-as="cell" class="text-center" t-out="'P%s' % cell['prob']"/></tr>
+            </thead>
+            <tbody>
+                <tr t-foreach="grid" t-as="row">
+                    <th class="text-center" t-out="'I%s' % row['impact']"/>
+                    <td t-foreach="row['cells']" t-as="cell" class="text-center"
+                        t-att-style="'background:%s; height:38px; vertical-align:top;' % cell['bg']">
+                        <div class="text-muted" style="font-size:7px;"><t t-out="cell['score']"/> · <t t-out="cell['level']"/></div>
+                        <b t-out="', '.join(cell['folios'])"/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </template>
+
+    <template id="report_risk_heatmap_document">
+        <t t-call="web.html_container">
+            <t t-foreach="sheets" t-as="sheet">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="sheet['risks'][:1]"/>
+                    <t t-set="sgi_fmt_ref" t-value="sheet['fmt_ref']"/>
+                    <div class="page" style="font-size:9px;">
+                        <h3 class="text-center">Mapa de calor — <t t-out="sheet['label']"/></h3>
+                        <p class="text-center text-muted">Riesgos no cerrados · impreso el <t t-out="heat_printed"/></p>
+                        <table style="width:100%;">
+                            <tr>
+                                <td style="width:50%; vertical-align:top; padding-right:6px;">
+                                    <h5>Inicial</h5>
+                                    <t t-set="grid" t-value="sheet['initial']"/>
+                                    <t t-call="quimibond_sgi.report_risk_heatmap_grid"/>
+                                </td>
+                                <td style="width:50%; vertical-align:top; padding-left:6px;">
+                                    <h5>Residual</h5>
+                                    <t t-set="grid" t-value="sheet['residual']"/>
+                                    <t t-call="quimibond_sgi.report_risk_heatmap_grid"/>
+                                </td>
+                            </tr>
+                        </table>
+                        <p class="text-muted" style="font-size:8px;">Color de cada celda: el nivel de la escala del
+                            instrumento para ese puntaje (rojo, el máximo; amarillo, los intermedios; verde, el resto).</p>
+                        <table class="table table-sm table-bordered" style="font-size:8px;">
+                            <thead><tr><th>Folio</th><th>Aspecto / peligro / situación</th><th>Proceso</th>
+                                <th>Inicial (P×I = nivel)</th><th>Residual</th><th>Estado</th><th>Acciones abiertas</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="sheet['risks']" t-as="risk">
+                                    <td t-out="risk.folio or ''"/>
+                                    <td t-out="risk.name"/>
+                                    <td t-out="risk.process_id.display_name or ''"/>
+                                    <td><t t-if="risk.score"><t t-out="risk.eval_probability"/>×<t t-out="risk.eval_impact"/>
+                                        = <t t-out="risk.score"/> · <span t-field="risk.attention_level"/></t>
+                                        <t t-else="">Sin evaluación</t></td>
+                                    <td><t t-if="risk.residual_score"><t t-out="risk.residual_probability"/>×<t t-out="risk.residual_impact"/>
+                                        = <t t-out="risk.residual_score"/> · <span t-field="risk.residual_level"/></t>
+                                        <t t-else="">Sin residual</t></td>
+                                    <td><span t-field="risk.state"/></td>
+                                    <td class="text-center" t-out="len(risk.action_line_ids.filtered(lambda l: not l.date_done))"/>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="sheet['no_eval']"><b>Sin evaluación:</b>
+                            <t t-out="', '.join(r.folio or r.name for r in sheet['no_eval'])"/>.</p>
+                        <p t-if="sheet['no_residual']"><b>Sin evaluación residual:</b>
+                            <t t-out="', '.join(r.folio or r.name for r in sheet['no_residual'])"/>.</p>
+                    </div>
+                </t>
+            </t>
+            <t t-if="not sheets" t-call="quimibond_sgi.sgi_report_layout">
+                <t t-set="sgi_rec" t-value="False"/>
+                <t t-set="sgi_fmt_ref" t-value="False"/>
+                <div class="page">
+                    <h3 class="text-center">Mapa de calor de riesgos</h3>
+                    <p class="text-muted">Sin riesgos abiertos de R&amp;O, IPER o ambientales en la selección.</p>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

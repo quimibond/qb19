@@ -36,6 +36,13 @@ ser dueño de un proceso auditado.
    del mes de cada auditoría, le llega el aviso al auditor líder.
 3. Desde cada renglón, **Crear auditoría**.
 
+4. Desde 57.101.0, **Programado contra realizado** (en la cabecera del
+   programa, también en borrador) imprime cada proceso por mes: P pendiente,
+   P en rojo vencida, E ejecutada (auditoría en «Informe»), C cerrada y
+   «P→» si se hizo en otro mes; con el avance de las internas hasta el mes en
+   curso, los hallazgos por auditoría y las auditorías del año fuera del
+   programa.
+
 ### 2.2 Una auditoría
 
 1. **Planificar**: fecha, auditor líder, equipo, procesos y normas.

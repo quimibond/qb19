@@ -68,6 +68,21 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
   marcado y le llega el aviso al dueño del proceso; en la revisión por la
   dirección aparecen los de atención inmediata o alta.
 
+### 2.4.1 Fichas de indicador y mapa de calor (desde 57.101.0)
+
+- **Ficha del indicador:** en el indicador, **Ficha en PDF** (o Imprimir)
+  da una hoja con cómo se mide, las metas, la gráfica de los últimos 12
+  periodos con medición (franjas verde, amarilla y roja con las metas de cada
+  periodo) y la causa y acciones de los rojos. Desde el proceso, Imprimir →
+  **Fichas de indicadores del proceso** da todas.
+- **Mapa de calor de riesgos:** en la lista de riesgos, Imprimir → **Mapa de
+  calor de riesgos**: una hoja por instrumento (R&O, IPER, ambiental) con la
+  cuadrícula probabilidad × impacto inicial y residual y los folios en cada
+  celda. El color de cada celda es el nivel real de la escala del
+  instrumento.
+- La **tendencia** de un indicador promedia las mediciones del periodo (antes
+  las sumaba) y abre con el filtro «Con dato».
+
 ### 2.5 El correo de los lunes (salud del SGI)
 
 Cada lunes a las 08:00 le llega «SGI: salud del sistema, semana del…» con

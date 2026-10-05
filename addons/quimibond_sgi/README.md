@@ -72,6 +72,43 @@ gris y, en «Rutina por rutina», el renglón pendiente sin decisión y su fecha
 límite siguen en rojo. Los estados intermedios propios de cada ficha
 (solicitado, capturado, adjunto…) van en azul.
 
+## Impresos
+
+Desde 57.98.0 los reportes propios del SGI llevan el pie del formato
+controlado en **cada hoja** (`quimibond_sgi.sgi_report_layout`: clave,
+revisión y emisión del documento vigente, y «Página x de y»); 57.101.0 lo
+agrega al 8D, la solicitud de desarrollo, la responsiva de EPP y las
+eficiencias, y a los PDF nuevos de esta tabla. Si el formato
+aún no tiene clave del SGI, el pie lleva solo la página y el Diagnóstico lo
+lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
+`format_ref_*` en `data/sgi_format_map_data.xml`).
+
+| PDF | Dónde se imprime | Pie |
+|---|---|---|
+| Ficha del indicador (cómo se mide, metas, gráfica de los últimos 12 periodos con medición, causa y acciones de los rojos) | Indicador: «Ficha en PDF» o Imprimir; todas las del proceso: Imprimir → «Fichas de indicadores del proceso» | Página (sin clave) |
+| Diagrama en formato controlado: mapa de procesos, interacción (4.4), tortuga, roles (5.3), contexto (4.1/4.2); las flechas van como tabla «Conexiones» | Barra del diagrama, botón PDF (junto a la impresora). Carriles y PDCA siguen con la impresión de pantalla | Página (sin clave) |
+| Programa de auditorías: programado contra realizado | Programa: «Programado contra realizado» o Imprimir | Página (sin clave) |
+| Mapa de calor de riesgos (R&O, IPER, ambiental; cuadrícula inicial y residual) | Lista de riesgos: Imprimir; diagrama de riesgos: botón PDF | IPER: F-P-S01-01; R&O y ambiental: página |
+| Reporte 8D | NC: Imprimir | Página (no comparte la clave del reporte de NC) |
+| Solicitud de desarrollo, responsiva de EPP, eficiencias del personal | Su ficha: Imprimir | La clave de su tipo |
+| Acta de revisión por la dirección | Revisión: Imprimir | Por el modelo |
+
+- **Nombre del archivo:** NC, 8D, plan e informe de auditoría, acta,
+  investigación de incidente y AMEF salen con su folio («Reporte de NC -
+  NCI-2026-001»).
+- **Copia guardada del acta:** al imprimir un acta **cerrada**, Odoo guarda
+  el PDF como adjunto de la revisión y lo vuelve a entregar igual. Reabrirla
+  (solo el Jefe MAST) renombra esa copia («… (reabierta el dd-mm-aaaa).pdf»),
+  no la borra; al cerrarla otra vez se guarda la nueva. El informe de
+  auditoría no lleva copia por este camino: se archiva en Documentos al
+  cerrar la auditoría (AU-3). El acta cerrada imprime la copia guardada;
+  para corregirla, reábrala (la copia anterior se renombra).
+- **Tendencia del indicador:** la gráfica **promedia** las mediciones del
+  periodo (antes las sumaba: las semanales daban 218 % de OTIF en un mes),
+  los indicadores semanales abren por semana y la tendencia abre con el
+  filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
+  riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
+
 ## Salud del SGI
 
 Desde 57.99.0 (auditoría 2026-10, sección 8 y hallazgo D-01) Dirección ve

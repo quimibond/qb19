@@ -1213,4 +1213,11 @@ Cada ficha se convierte en un plan detallado (mismo formato que arriba) al inici
   (decisión de Calidad), los demás usos de IA de la sección 7 (P16 de
   57.100.0) y la pista de datos de la sección 2 (casillas abiertas: clientes
   de Q12, autorización de IA de Q16, carga inicial de competencias de RH).
+- **Después del plan (2026-10-05):** 57.101.0 «Reportes y diagramas»
+  (`docs/superpowers/plans/2026-10-05-sgi-57-101-0-reportes.md`), entregada
+  después del mapa de la auditoría: tendencia que promedia, pivote de riesgos
+  por instrumento, nombres de archivo con folio, pie controlado en 8D,
+  solicitud de desarrollo, responsiva y eficiencias, copia guardada del acta,
+  ficha del indicador, diagramas en PDF, programa contra realizado y mapa de
+  calor por instrumento.
 - El tablero de «Salud del SGI» (entregado como 57.99.0 el 2026-10-02: Tablero → «Salud del SGI» y correo de los lunes) se revisa cada semana con Dirección desde el primer correo; hasta ese despliegue, las cifras de la sección 2 del reporte se re-miden a mano cada dos semanas con las consultas del reporte.

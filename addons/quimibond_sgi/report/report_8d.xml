@@ -10,6 +10,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_8d_document</field>
         <field name="report_file">quimibond_sgi.report_8d_document</field>
+        <field name="print_report_name">'Reporte 8D - %s' % (object.sgi_folio or object.name)</field>
         <field name="binding_model_id" ref="quality.model_quality_alert"/>
         <field name="binding_type">report</field>
     </record>
@@ -17,7 +18,13 @@
     <template id="report_8d_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.101.0 (B2): pie en cada hoja con la página. Por
+                         referencia y no por modelo: el mapeo de quality.alert es
+                         el reporte de NC y el 8D no comparte su clave (57.44.0).
+                         Sin la referencia (hoy no existe), solo la página. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_8d'"/>
                     <div class="page">
                         <h2 class="text-center">Reporte 8D — <t t-out="doc.sgi_folio or doc.name"/></h2>
                         <table class="table table-sm table-bordered">
