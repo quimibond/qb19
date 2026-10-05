@@ -64,3 +64,15 @@ class TestMedicionPorRevisar(TransactionCase):
         self.assertIn('menu_model_mismatch', self._codes())
         server.model_id = self.partner_model
         self.assertNotIn('menu_model_mismatch', self._codes())
+
+    def test_04_menu_con_accion_borrada(self):
+        """57.109.1: el menú apunta a una acción que ya no existe (producción,
+        ir.actions.server 2882): no truena, se trata como menú sin acción."""
+        menu = self.env['ir.ui.menu'].create({'name': 'Menú huérfano ZMR'})
+        self.env.cr.execute("UPDATE ir_ui_menu SET action = %s WHERE id = %s",
+                            ('ir.actions.server,999999999', menu.id))
+        menu.invalidate_recordset(['action'])
+        self.act.odoo_menu_id = menu
+        self.assertFalse(self.act.odoo_action_id)
+        self.assertEqual(self.act._sgi_screen_model()[1], None)
+        self.assertNotIn('menu_model_mismatch', self._codes())
