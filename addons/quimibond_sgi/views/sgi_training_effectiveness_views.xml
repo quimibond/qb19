@@ -124,6 +124,8 @@
     <record id="sgi_survey_skill_view_list" model="ir.ui.view">
         <field name="name">survey.survey.sgi.skill.list</field>
         <field name="model">survey.survey</field>
+        <!-- No le gana a la lista nativa de Encuestas (solo la usa su acción). -->
+        <field name="priority">99</field>
         <field name="arch" type="xml">
             <list string="Exámenes y competencias" editable="bottom" create="false" delete="false">
                 <field name="title" readonly="1"/>
