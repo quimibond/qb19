@@ -210,6 +210,33 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
   no se validan, no piden causa y plan, no escalan y un «sin dato» no avisa
   «Indicador no calculó». Las metas viven en la ficha de cada uno (archivo
   `noupdate`: un update no las pisa).
+- **Metas congeladas (57.100.0, K-04):** la medición validada guarda sentido,
+  objetivo, aceptable y rango del periodo; su color, su objetivo y su
+  desglose ya no cambian si cambia la meta del indicador o un escalón. Solo
+  usted la reabre («Regresar a pendiente»): las metas se sueltan y validarla
+  otra vez guarda las de ese momento. Nadie edita las metas guardadas.
+
+### Competencias por examen o curso y eficacia (57.100.0)
+
+- Ligue exámenes de certificación (**Empleados → Competencias SGI →
+  Exámenes y competencias (Encuestas)**; la vigencia es la validez de la
+  certificación) y cursos (**… → Cursos y competencias (eLearning)**, con
+  «Vigencia (meses)»; 0 = no vence) con una competencia y nivel.
+- La competencia se otorga sola al aprobar o terminar; el cron de cursos es el
+  respaldo. Cada competencia nueva o subida abre una evaluación de eficacia a
+  `quimibond_sgi.training_effectiveness_days` días (90) con el jefe inmediato.
+  «No eficaz» avisa a RH. Usted y RH ven todas; quien evalúa, las suyas.
+- La carga de las competencias que la gente ya tiene es de RH, a mano.
+
+### Cliente automotriz (57.100.0)
+
+- Casillas por compañía en el contacto: «Exige PPAP ante cambios» y «Exige
+  plan de contingencia» (las cambian SGI o Calidad). El ECO toma como
+  clientes del producto a quienes lo compraron en
+  `quimibond_sgi.ppap_sales_window_months` meses (12) o ya tienen PPAP de él.
+- Salida validada sin CoA: aviso «Salida sin CoA» al Jefe de Calidad o a
+  usted; se cierra al adjuntar. No hay avisos de las salidas anteriores al
+  despliegue. El bloqueo sigue en `quimibond_sgi.coa_block_validation`.
 
 ## 9. No conformidades y acciones
 
@@ -352,6 +379,9 @@ permisos autorizados que pasaron su hora de fin y avisa al jefe del área y a
 usted; los avisos se cierran solos al cerrar, cancelar o renovar el permiso. Desde 57.99.0
 incluye «SGI: Salud del SGI (correo semanal a Dirección)», los lunes a las 08:00
 de México: mide la semana pasada de SG-01 a SG-10 si falta y manda el correo.
+57.100.0 no agrega acciones planificadas (siguen 29); «SGI: Competencias»
+avisa ahora el vencimiento de toda competencia con vigencia, no solo de
+certificaciones.
 Si una falla, Odoo la apaga tras 5 fallos en
 más de 7 días: revise **Ajustes → Técnico → Acciones planificadas** (filtro
 «SGI»).
@@ -373,6 +403,26 @@ pendientes) y los plazos de Mis pendientes
 (quién no cuenta en SG-02 «Personas que usan el SGI») y
 `quimibond_sgi.health_mail_user_ids` (destinatarios del correo de los lunes
 además de Dirección); ids de usuario separados por coma, vacíos de fábrica.
+
+Desde 57.100.0: `quimibond_sgi.training_effectiveness_days` (90),
+`quimibond_sgi.training_effectiveness_survey_id` (0 = sin encuesta al jefe),
+`quimibond_sgi.ppap_sales_window_months` (12) y los de la **IA en la NC**,
+que sale apagada:
+
+- `quimibond_sgi.ai_enabled` (`False`): **solo se pone en `True` con la
+  autorización escrita de Jose** anotada en `docs/audit/decisiones.md`.
+- `quimibond_sgi.ai_api_key`: la llave de Anthropic. No viene sembrada; la
+  captura un administrador en **Ajustes → Técnico → Parámetros del sistema**.
+  Nunca la copie en un chatter, un correo o el log.
+- `quimibond_sgi.ai_model` (`claude-opus-5-5`; `claude-sonnet-5-5` cuesta la
+  mitad), `quimibond_sgi.ai_timeout` (60 segundos),
+  `quimibond_sgi.ai_include_history` (`True`: manda desviación y causa raíz de
+  hasta 3 NC cerradas del mismo proceso) y `quimibond_sgi.ai_backend` (solo
+  `anthropic`).
+
+La IA solo llena campos de sugerencia; la persona los copia con un botón. Se
+manda el texto de la NC con correos, teléfonos y RFC tachados; nunca el
+cliente, usuarios ni adjuntos. Nunca escribe la causa raíz ni cambia la etapa.
 
 ## 13. «Del Dropbox a Odoo»
 

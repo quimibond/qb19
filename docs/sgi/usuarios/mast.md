@@ -84,6 +84,33 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
    `quimibond_sgi.health_mail_user_ids` (ids separados por coma, en
    **Ajustes → Técnico → Parámetros del sistema**).
 
+5. **Metas congeladas (desde 57.100.0):** al validar, la medición guarda las
+   metas con las que se juzgó; si cambia la meta del indicador o corrige un
+   escalón, las validadas no cambian de color (la ficha lo dice y el chatter
+   del indicador cuenta cuántas). Para juzgar una validada con la meta nueva,
+   use «Regresar a pendiente» y vuelva a validarla. Si corrige el valor de
+   una validada sin reabrirla, el color sale de las metas guardadas.
+
+### 2.4.1 Competencias, cliente automotriz e IA (desde 57.100.0)
+
+- **Exámenes y cursos:** en **Empleados → Competencias SGI**, «Exámenes y
+  competencias (Encuestas)» y «Cursos y competencias (eLearning)» ligan cada
+  examen de certificación o curso con una competencia y un nivel; del curso,
+  capture «Vigencia (meses)» si la competencia se renueva (por ejemplo,
+  brigadas cada 12). Quien aprueba o termina la recibe sola y a los 90 días su
+  jefe evalúa la eficacia (usted ve todas en «Eficacia de la capacitación» y
+  es el único que cambia un resultado ya registrado).
+- **Cliente automotriz:** en el contacto, «Exige PPAP ante cambios» y «Exige
+  plan de contingencia» (las marca Calidad). Con ellas, el ECO de un producto
+  que se les vende marca solo «Requiere PPAP» y genera un PPAP por cliente al
+  aplicarse. Una salida validada sin CoA a un cliente que lo exige le avisa al
+  Jefe de Calidad (o a usted si no hay) hasta que se adjunte.
+- **IA en la NC:** apagada. Se enciende solo con la autorización escrita de
+  Jose (manual de administración, sección 12). Encendida, en la pestaña
+  «Desviación y análisis» de una NC abierta aparece «Pedir sugerencia a la
+  IA»; la sugerencia es un borrador que usted copia con los botones. La causa
+  raíz siempre la escribe el responsable.
+
 ### 2.5 Revisar la salud del SGI
 
 **Administración SGI → Diagnóstico**: Diagnóstico del SGI, Cobertura de
