@@ -74,9 +74,11 @@ límite siguen en rojo. Los estados intermedios propios de cada ficha
 
 ## Impresos
 
-Desde 57.101.0 los reportes propios del SGI llevan el pie del formato
+Desde 57.98.0 los reportes propios del SGI llevan el pie del formato
 controlado en **cada hoja** (`quimibond_sgi.sgi_report_layout`: clave,
-revisión y emisión del documento vigente, y «Página x de y»). Si el formato
+revisión y emisión del documento vigente, y «Página x de y»); 57.101.0 lo
+agrega al 8D, la solicitud de desarrollo, la responsiva de EPP y las
+eficiencias, y a los PDF nuevos de esta tabla. Si el formato
 aún no tiene clave del SGI, el pie lleva solo la página y el Diagnóstico lo
 lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
 `format_ref_*` en `data/sgi_format_map_data.xml`).
@@ -99,7 +101,8 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
   (solo el Jefe MAST) renombra esa copia («… (reabierta el dd-mm-aaaa).pdf»),
   no la borra; al cerrarla otra vez se guarda la nueva. El informe de
   auditoría no lleva copia por este camino: se archiva en Documentos al
-  cerrar la auditoría (AU-3).
+  cerrar la auditoría (AU-3). El acta cerrada imprime la copia guardada;
+  para corregirla, reábrala (la copia anterior se renombra).
 - **Tendencia del indicador:** la gráfica **promedia** las mediciones del
   periodo (antes las sumaba: las semanales daban 218 % de OTIF en un mes),
   los indicadores semanales abren por semana y la tendencia abre con el

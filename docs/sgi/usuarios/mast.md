@@ -162,7 +162,8 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
 - **Acta de revisión por la dirección:** al imprimir un acta **cerrada**, la
   copia queda guardada como adjunto y se vuelve a entregar igual. Si usted la
   regresa a borrador, la copia se renombra «(reabierta el …)» y no se borra;
-  al cerrarla otra vez se guarda la nueva.
+  al cerrarla otra vez se guarda la nueva. El acta cerrada imprime la copia
+  guardada; para corregirla, reábrala (la copia anterior se renombra).
 - **Nombre del archivo** con folio en NC, 8D, auditoría, acta, incidente y
   AMEF.
 

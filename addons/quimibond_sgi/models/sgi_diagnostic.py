@@ -143,6 +143,15 @@ class SgiDiagnostic(models.TransientModel):
         return []
 
     @api.model
+    def _sgi_with_operating(self, lines, text):
+        """57.101.0: agrega la línea «… operando» si la sección no tiene
+        fallas ni avisos. Las líneas informativas de nivel ok (los reportes
+        «sin clave del SGI») no la quitan."""
+        if any(line['level'] != 'ok' for line in lines):
+            return lines
+        return [self._sgi_line('ok', text)] + lines
+
+    @api.model
     def _sgi_unmapped_report_lines(self):
         """57.98.0 (I-01): reportes del SGI que imprimen sin formato
         controlado (sección Documental). En el papel no se avisa nada.
@@ -266,8 +275,7 @@ class SgiDiagnostic(models.TransientModel):
                 'warn', "Ninguna revisión documental ha pasado por el flujo de Aprobaciones (F-P-G01-06).",
                 sgi_menu_path('solicitudes_cambio')))
         lines += self._sgi_unmapped_report_lines()
-        if not lines:
-            lines.append(self._sgi_line('ok', "Difusión documental operando."))
+        lines = self._sgi_with_operating(lines, "Difusión documental operando.")
         section("Documental", lines)
 
         # ---- 4. Estrategia y planificación -------------------------------

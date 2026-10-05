@@ -59,6 +59,8 @@ class TestCorrecciones(_Case):
     def test_01_valor_promedia(self):
         self.assertEqual(self.env['sgi.indicator.measure']._fields['value'].aggregator, 'avg',
                          "Agrupar por mes promedia las mediciones (no las suma).")
+        self.assertEqual(self.env['sgi.indicator.measure.split']._fields['value'].aggregator, 'avg',
+                         "El desglose también promedia al agrupar.")
 
     def test_02_tendencia_semanal_por_semana_y_con_dato(self):
         weekly = self._ind('ZR01-W', frequency='weekly')
@@ -112,8 +114,25 @@ class TestImpresos(_Case):
         html = _html(self.env, 'quimibond_sgi.report_8d_document', alert.ids)
         self.assertIn('class="topage"', html)
         self.assertNotIn('F-P-G05-01', html, "El 8D no imprime la clave del reporte de NC (57.44.0).")
+        self.assertFalse(self.env['sgi.format.map'].sgi_footer_info(alert, 'format_ref_8d'),
+                         "Sin la referencia del 8D el pie no lleva clave.")
+        self.assertNotIn('Formato controlado del SGI', html)
         unmapped = self.env['sgi.format.map']._sgi_unmapped_reports()
         self.assertTrue(any(n.startswith('Reporte 8D') and 'sin clave del SGI' in n for n in unmapped))
+
+    def test_06b_diagnostico_sin_clave_no_quita_operando(self):
+        """La línea «sin clave del SGI» es informativa (ok): si no hay fallas
+        ni avisos, Documental sigue diciendo «operando»."""
+        Diag = self.env['sgi.diagnostic']
+        no_key = [line for line in Diag._sgi_unmapped_report_lines() if line['level'] == 'ok']
+        self.assertEqual(len(no_key), 1)
+        self.assertIn('sin clave del SGI', no_key[0]['text'])
+        lines = Diag._sgi_with_operating(list(no_key), "Difusión documental operando.")
+        self.assertEqual([l['text'] for l in lines][0], "Difusión documental operando.")
+        self.assertEqual(len(lines), 2)
+        warn = Diag._sgi_line('warn', "Aviso ZR")
+        self.assertEqual(Diag._sgi_with_operating([warn] + no_key, "Difusión documental operando."),
+                         [warn] + no_key, "Con un aviso no se dice «operando».")
 
     def test_07_copia_del_acta_solo_cerrada_y_se_renombra_al_reabrir(self):
         report = self.env.ref('quimibond_sgi.action_report_mgmt_review')

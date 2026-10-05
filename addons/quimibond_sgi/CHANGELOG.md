@@ -35,6 +35,12 @@ nuevos, sin ACL, sin menús y sin migración; dos modelos abstractos de reporte
 - **Mapa de calor (pivote) de riesgos:** filas por instrumento y proceso; ya
   no mezcla la escala de R&O y ambiental (baja a inmediata) con la de IPER y
   patrimonial (bajo a alto) en las mismas filas.
+- **Desglose de la medición** (`sgi.indicator.measure.split`, pivote y
+  gráfica): `value` también promedia al agrupar (`aggregator='avg'`); sumaba
+  como la medición. Ningún cálculo dependía de esa suma.
+- **Diagnóstico → Documental:** la línea informativa «sin clave del SGI» no
+  quita «Difusión documental operando.» (`_sgi_with_operating`: solo cuentan
+  fallas y avisos).
 - **Ficha de proceso por máquina:** ya usaba el layout del SGI y además
   pintaba el pie escrito a mano al final (doble pie); se quita el escrito a
   mano.
