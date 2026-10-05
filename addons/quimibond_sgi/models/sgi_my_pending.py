@@ -63,6 +63,7 @@ PENDING_KINDS = [
     ('acuse', "Acuse de lectura"),
     ('firma', "Firma"),
     ('aviso', "Aviso"),
+    ('revision', "Revisar medición"),
 ]
 # Los tipos que salen de la persona (hr.employee) y no del usuario: la gente
 # de planta sin usuario también los tiene.
@@ -296,6 +297,9 @@ class SgiMyPending(models.TransientModel):
             records['firma'] = env['sign.request.item'].sudo().search(
                 [('partner_id', 'in', users.partner_id.ids), ('state', '=', 'sent'),
                  ('sign_request_id.state', '=', 'sent')], order='create_date')
+        # 57.107.0: revisión mensual de la medición (dueño del proceso).
+        records['revision'] = env['sgi.measure.review'].sudo().search(
+            [('user_id', 'in', ids), ('state', '=', 'pendiente')], order='date_due, id')
         # 57.92.0 (U-03, D-04): avisos de los crons del SGI y actividades de
         # los modelos ``sgi.*``, vencidos o de los próximos 7 días. Las
         # actividades nativas siguen existiendo; aquí solo se muestran. De las
@@ -432,6 +436,8 @@ class SgiMyPending(models.TransientModel):
                 due = sgi_add_business_days(self.env, request.create_date, self._SGI_REQUEST_DAYS)
             return {'name': "Firmar %s" % (request.reference or request.display_name or ''),
                     'date_due': due, 'process_id': False}
+        if kind == 'revision':
+            return {'name': rec.name, 'date_due': rec.date_due, 'process_id': rec.process_id.id}
         if kind == 'aviso':
             # 57.92.0 (U-03): qué dice el aviso y sobre qué registro.
             what = rec.summary or rec.activity_type_id.name or "Aviso"
@@ -458,7 +464,7 @@ class SgiMyPending(models.TransientModel):
             return rec.user_id
         if kind == 'firma':
             return rec.partner_id.user_ids
-        if kind == 'aviso':
+        if kind in ('aviso', 'revision'):
             return rec.user_id
         return rec.sgi_owner_id
 

@@ -152,3 +152,4 @@ from . import test_indicadores_sin_dato
 from . import test_registro_cumplimiento
 from . import test_miid
 from . import test_medicion_por_revisar
+from . import test_revision_medicion

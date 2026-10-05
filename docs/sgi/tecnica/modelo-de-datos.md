@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (130) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (133) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -102,6 +102,9 @@ Modelos que definen el núcleo y sus satélites (130) y modelos de otras apps qu
 | [`sgi.management.review.agreement`](diccionario/sgi.management.review.agreement.md) | Acuerdo de Revisión por la Dirección | Acuerdo de una revisión por la dirección con responsable y fecha; se sigue como acción o tarea. | Model | 10 | `addons/quimibond_sgi/models/sgi_management_review.py` |
 | [`sgi.mapa.load.wizard`](diccionario/sgi.mapa.load.wizard.md) | Cargar mapa de procesos SGI | Asistente «Cargar mapa de procesos» de ``quimibond_sgi_mapa``: prueba y carga el JSON del módulo o uno subido, y descarga el de la base. | TransientModel | 13 | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py` |
 | [`sgi.mapa.load.wizard.line`](diccionario/sgi.mapa.load.wizard.line.md) | Resultado de la carga del mapa SGI | Renglón del resultado de la carga del mapa. | TransientModel | 5 | `addons/quimibond_sgi_mapa/models/sgi_mapa_wizard.py` |
+| [`sgi.measure.review`](diccionario/sgi.measure.review.md) | Revisión mensual de medición | Revisión mensual de la evidencia de una actividad por el dueño del proceso. | Model | 17 | `addons/quimibond_sgi/models/sgi_measure_review.py` |
+| [`sgi.measure.review.line`](diccionario/sgi.measure.review.line.md) | Muestra de la revisión de medición | Un registro de la evidencia tomado al azar para la revisión. | Model | 6 | `addons/quimibond_sgi/models/sgi_measure_review.py` |
+| [`sgi.measure.review.reject`](diccionario/sgi.measure.review.reject.md) | Revisión de medición: no corresponde | Asistente de «No corresponde» (la nota es obligatoria). | TransientModel | 2 | `addons/quimibond_sgi/models/sgi_measure_review.py` |
 | [`sgi.miid`](diccionario/sgi.miid.md) | Manual del SGI (MIID) | Manual del SGI (MIID) de una empresa: la vista del sistema, su comparación con la revisión vigente y el historial de revisiones. Uno por empresa; lo crea la primera apertura o el paso diario. | Model | 15 | `addons/quimibond_sgi/models/sgi_miid.py` |
 | [`sgi.miid.row.note`](diccionario/sgi.miid.row.note.md) | Nota de renglón del MIID | Nota fija de un renglón de un bloque vivo del MIID (la «Situación» de cada anexo en 12.1). La edita el Jefe MAST. | Model | 5 | `addons/quimibond_sgi/models/sgi_miid.py` |
 | [`sgi.miid.section`](diccionario/sgi.miid.section.md) | Sección del MIID | Sección de texto fijo del MIID (una por título y subtítulo). La edita el Jefe MAST; los datos del sistema salen del bloque que declara. «Por confirmar» impide enviar o aprobar una revisión del MIID. | Model | 12 | `addons/quimibond_sgi/models/sgi_miid.py` |
@@ -196,4 +199,4 @@ Modelos que definen el núcleo y sus satélites (130) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 7 de 130.
+Modelos propios sin docstring de clase: 7 de 133.

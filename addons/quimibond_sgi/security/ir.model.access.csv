@@ -330,3 +330,8 @@ access_sgi_miid_row_note_manager,sgi.miid.row.note.manager,model_sgi_miid_row_no
 access_sgi_miid_user,sgi.miid.user,model_sgi_miid,group_sgi_user,1,0,0,0
 access_sgi_miid_auditor,sgi.miid.auditor,model_sgi_miid,group_sgi_auditor,1,0,0,0
 access_sgi_miid_manager,sgi.miid.manager,model_sgi_miid,group_sgi_manager,1,1,1,0
+access_sgi_measure_review_user,sgi.measure.review.user,model_sgi_measure_review,base.group_user,1,0,0,0
+access_sgi_measure_review_manager,sgi.measure.review.manager,model_sgi_measure_review,group_sgi_manager,1,1,1,1
+access_sgi_measure_review_line_user,sgi.measure.review.line.user,model_sgi_measure_review_line,base.group_user,1,0,0,0
+access_sgi_measure_review_line_manager,sgi.measure.review.line.manager,model_sgi_measure_review_line,group_sgi_manager,1,1,1,1
+access_sgi_measure_review_reject_user,sgi.measure.review.reject.user,model_sgi_measure_review_reject,base.group_user,1,1,1,1
