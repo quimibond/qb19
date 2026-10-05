@@ -112,6 +112,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Cumplimiento semanal** — `sgi.activity.week.stat`
       - **Registro de cumplimiento** — `sgi.activity.execution`
       - **Medición por revisar** — `sgi.activity.spec.gap`
+      - **Revisiones de medición** — `sgi.measure.review`
     - **Firmas de lectura**
       - **Publicar Mi procedimiento** — `sgi.my.procedure.check`; grupos: quimibond_sgi.group_sgi_manager
       - **Acuses de lectura** — `sgi.document.ack`
@@ -136,7 +137,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (116)
+## Acciones (117)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -217,6 +218,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_machine_sheet_action` | act_window | Fichas de proceso por máquina | `sgi.machine.sheet` | list,form,activity | sí | `addons/quimibond_sgi/views/sgi_machine_sheet_views.xml` |
 | `quimibond_sgi.sgi_management_review_action` | act_window | Revisión por la dirección | `sgi.management.review` | list,sgi_diagram,form | sí | `addons/quimibond_sgi/views/sgi_management_review_views.xml` |
 | `quimibond_sgi.sgi_measure_action` | act_window | Mediciones | `sgi.indicator.measure` | list,graph,pivot,form | sí | `addons/quimibond_sgi/views/sgi_indicator_views.xml` |
+| `quimibond_sgi.sgi_measure_review_action` | act_window | Revisiones de medición | `sgi.measure.review` | list,form | sí | `addons/quimibond_sgi/views/sgi_measure_review_views.xml` |
 | `quimibond_sgi.sgi_measure_split_action` | act_window | Mediciones por equipo o mercado | `sgi.indicator.measure.split` | list,pivot,graph | sí | `addons/quimibond_sgi/views/sgi_business_line_views.xml` |
 | `quimibond_sgi.sgi_migration_action` | act_window | Formatos y documentos anteriores | `documents.document` | kanban,list,form | sí | `addons/quimibond_sgi/views/sgi_document_views.xml` |
 | `quimibond_sgi.sgi_miid_action_open` | server | Manual del SGI (MIID) | `sgi.miid` |  |  | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
@@ -257,7 +259,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (376; 63 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (380; 63 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -547,6 +549,10 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.management.review` | `quimibond_sgi.sgi_management_review_view_search` | search |  | `addons/quimibond_sgi/views/sgi_management_review_views.xml` |
 | `sgi.management.review` | `quimibond_sgi.sgi_management_review_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `sgi.mapa.load.wizard` | `quimibond_sgi_mapa.sgi_mapa_load_wizard_view_form` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
+| `sgi.measure.review` | `quimibond_sgi.sgi_measure_review_view_form` | form |  | `addons/quimibond_sgi/views/sgi_measure_review_views.xml` |
+| `sgi.measure.review` | `quimibond_sgi.sgi_measure_review_view_list` | list |  | `addons/quimibond_sgi/views/sgi_measure_review_views.xml` |
+| `sgi.measure.review` | `quimibond_sgi.sgi_measure_review_view_search` | search |  | `addons/quimibond_sgi/views/sgi_measure_review_views.xml` |
+| `sgi.measure.review.reject` | `quimibond_sgi.sgi_measure_review_reject_view_form` | form |  | `addons/quimibond_sgi/views/sgi_measure_review_views.xml` |
 | `sgi.miid` | `quimibond_sgi.sgi_miid_view_form` | form |  | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
 | `sgi.miid.section` | `quimibond_sgi.sgi_miid_section_view_form` | form |  | `addons/quimibond_sgi/views/sgi_miid_views.xml` |
 | `sgi.miid.section` | `quimibond_sgi.sgi_miid_section_view_list` | list |  | `addons/quimibond_sgi/views/sgi_miid_views.xml` |

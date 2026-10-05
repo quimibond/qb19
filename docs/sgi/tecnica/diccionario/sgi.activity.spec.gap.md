@@ -14,10 +14,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_activity_spec.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `activity_id` | Many2one | Actividad | Actividad a la que le falta especificación. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:150` |
-| `code` | Selection | Faltante | Qué le falta a la actividad. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:157` |
-| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:165` |
-| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:164` |
-| `process_id` | Many2one | Proceso | Proceso de la actividad. |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:154` |
-| `severity` | Selection | Severidad | Un error impide publicar el procedimiento; una advertencia no. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:159` |
+| `activity_id` | Many2one | Actividad | Actividad a la que le falta especificación. | sí | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:151` |
+| `code` | Selection | Faltante | Qué le falta a la actividad. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:158` |
+| `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:166` |
+| `message` | Char | Detalle |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:165` |
+| `process_id` | Many2one | Proceso | Proceso de la actividad. |  |  | related `activity_id.process_id`, guardado |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:155` |
+| `severity` | Selection | Severidad | Un error impide publicar el procedimiento; una advertencia no. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:160` |
 

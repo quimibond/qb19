@@ -309,6 +309,9 @@
               parent="menu_sgi_analysis" action="sgi_activity_execution_action" sequence="60"/>
     <menuitem id="menu_sgi_menu_mismatch" name="Medición por revisar"
               parent="menu_sgi_analysis" action="sgi_activity_menu_mismatch_action" sequence="70"/>
+    <!-- 57.107.0: revisión mensual de la medición por el dueño del proceso. -->
+    <menuitem id="menu_sgi_measure_reviews" name="Revisiones de medición"
+              parent="menu_sgi_analysis" action="sgi_measure_review_action" sequence="80"/>
 
     <!-- 6.5 Firmas de lectura -->
     <menuitem id="menu_sgi_admin_signatures" name="Firmas de lectura" parent="menu_sgi_admin" sequence="40"/>

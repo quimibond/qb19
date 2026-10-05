@@ -174,13 +174,14 @@
         <field name="view_mode">list,pivot</field>
         <field name="view_id" ref="sgi_activity_spec_gap_view_list"/>
         <field name="search_view_id" ref="sgi_activity_spec_gap_view_search"/>
-        <field name="domain">[('code', 'in', ('menu_model_mismatch', 'measure_never', 'weak_attribution'))]</field>
+        <field name="domain">[('code', 'in', ('menu_model_mismatch', 'measure_never', 'weak_attribution', 'review_rejected'))]</field>
         <field name="context">{'search_default_group_code': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">La medición cuenta lo que debe y sabe quién lo hizo</p>
             <p>Actividades que se miden solas con algo por revisar: la pantalla abre un modelo distinto del que cuenta
                 su evidencia, la medición no encuentra registros (filtro o fecha mal, o no se registra en Odoo), o no
-                sabe quién la hizo («write_uid» o la mayoría de otro puesto o de cuentas compartidas). Se recalcula
+                sabe quién la hizo («write_uid» o la mayoría de otro puesto o de cuentas compartidas), o el dueño
+                del proceso dijo en su revisión mensual que la evidencia no corresponde. Se recalcula
                 cada noche con la medición.</p>
         </field>
     </record>

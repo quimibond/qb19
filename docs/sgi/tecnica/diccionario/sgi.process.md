@@ -24,8 +24,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `chain_link_count` | Integer | Ligas de la cadena | Entregas entre actividades que tocan este proceso (entran o salen). |  |  | compute `_compute_chain_link_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:133` |
 | `chain_link_ids` | Many2many | Ligas entre actividades |  |  | `sgi.activity.link` | compute `_compute_chain_link_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:105` |
 | `chain_stuck_count` | Integer | Eslabones atorados | Ligas de este proceso donde el paso origen entregó pero el destino no tiene evidencia en su periodo. |  |  | compute `_compute_chain_link_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:182` |
-| `channel_manual_pct` | Integer | % en papel, correo o teléfono | La lista de trabajo de automatización. |  |  | compute `_compute_channel_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:841` |
-| `channel_odoo_pct` | Integer | % en Odoo | Actividades con canal Odoo, sobre las que tienen canal. |  |  | compute `_compute_channel_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:838` |
+| `channel_manual_pct` | Integer | % en papel, correo o teléfono | La lista de trabajo de automatización. |  |  | compute `_compute_channel_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:846` |
+| `channel_odoo_pct` | Integer | % en Odoo | Actividades con canal Odoo, sobre las que tienen canal. |  |  | compute `_compute_channel_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:843` |
 | `child_count` | Integer | Núm. de subprocesos |  |  |  | compute `_compute_child_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_hierarchy.py:55` |
 | `child_ids` | One2many | Subprocesos |  |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_process.py:42` |
 | `code` | Char | Clave |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_process.py:27` |
@@ -59,7 +59,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `nc_count` | Integer | NC abiertas |  |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:108` |
 | `nc_open_ids` | Many2many | No conformidades abiertas |  |  | `quality.alert` | compute `_compute_nc_open_ids`, sin guardar |  | `addons/quimibond_sgi/models/sgi_structure.py:21` |
 | `norm_ids` | Many2many | Marco normativo | Normas ISO que rigen el proceso (sección 7). |  | `sgi.norm` |  |  | `addons/quimibond_sgi/models/sgi_process_procedure.py:49` |
-| `odoo_measured_pct` | Integer | % de lo que se hace en Odoo que se mide solo | Actividades con canal Odoo que se miden por su entregable. Si se hace en Odoo y no se mide solo, es un hueco del SGI, no del proceso. |  |  | compute `_compute_channel_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:844` |
+| `odoo_measured_pct` | Integer | % de lo que se hace en Odoo que se mide solo | Actividades con canal Odoo que se miden por su entregable. Si se hace en Odoo y no se mide solo, es un hueco del SGI, no del proceso. |  |  | compute `_compute_channel_pct`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:849` |
 | `odoo_model_ids` | Many2many | Módulos de Odoo conectados | Modelos donde viven los registros reales de las entradas/salidas. |  | `ir.model` | compute `_compute_odoo_models`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:103` |
 | `open_high_risk_count` | Integer | Riesgos altos abiertos |  |  |  | compute `_compute_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_process.py:111` |
 | `out_flow_ids` | One2many | Flujos de salida |  |  | `sgi.process.flow` |  |  | `addons/quimibond_sgi/models/sgi_process.py:92` |
@@ -85,11 +85,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_process.py`, `addons/quimibond_sgi/mo
 | `sgi_health_late_validation_count` | Integer | Validaciones atrasadas | Mediciones que el dueño debía validar y cuyo plazo ya pasó. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:534` |
 | `sgi_health_overdue_count` | Integer | Avisos vencidos | Avisos del SGI vencidos que tiene el dueño del proceso. |  |  | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:531` |
 | `sgi_health_owner_user_id` | Many2one | Usuario del dueño | Usuario activo del dueño del proceso. Vacío si el dueño no tiene usuario. |  | `res.users` | compute `_compute_sgi_health`, sin guardar |  | `addons/quimibond_sgi/models/sgi_indicator_health.py:528` |
-| `spec_error_count` | Integer | Faltantes que bloquean |  |  |  | compute `_compute_spec_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:834` |
-| `spec_warning_count` | Integer | Advertencias |  |  |  | compute `_compute_spec_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:836` |
+| `spec_error_count` | Integer | Faltantes que bloquean |  |  |  | compute `_compute_spec_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:839` |
+| `spec_warning_count` | Integer | Advertencias |  |  |  | compute `_compute_spec_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:841` |
 | `stage_ids` | One2many | Etapas |  |  | `sgi.process.stage` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:404` |
 | `start_trigger` | Text | Disparador de inicio | Qué hace que el proceso arranque (ej. llega un pedido). |  |  |  |  | `addons/quimibond_sgi/models/sgi_process.py:56` |
-| `state` | Selection | Estado | Borrador y piloto se pueden cargar incompletos (los faltantes se ven). Vigente exige la especificación completa de actividades e indicadores. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:827` |
+| `state` | Selection | Estado | Borrador y piloto se pueden cargar incompletos (los faltantes se ven). Vigente exige la especificación completa de actividades e indicadores. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_activity_spec.py:832` |
 | `structure_status` | Char | Estado del proceso | Una línea: dueño, estado, semáforo, actividades atrasadas, KPIs en rojo y NC abiertas. |  |  | compute `_compute_structure_status`, sin guardar |  | `addons/quimibond_sgi/models/sgi_structure.py:24` |
 
 ## Métodos públicos (23)

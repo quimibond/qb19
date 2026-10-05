@@ -13,6 +13,33 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.107.0 — 2026-10-05
+
+**Revisión mensual de la medición por el dueño del proceso** (punto 4 de
+«Medición por revisar», aprobado por Jose el 2026-10-05). Modelos nuevos
+`sgi.measure.review`, `sgi.measure.review.line` y el asistente
+`sgi.measure.review.reject`; un menú en Diagnóstico. Sin migración: el cron
+de medición crea las del mes en su siguiente corrida.
+
+### Agregado
+
+- **Revisión mensual:** cada mes, por cada actividad que se mide sola
+  (Registro en Odoo o Por su entregable) y tuvo evidencia en los últimos 60
+  días, el dueño del proceso (sin usuario activo, el Jefe MAST) recibe en
+  **Mis pendientes** «Revisar medición de …» con tres registros al azar de
+  la evidencia (nombre, fecha que cuenta la medición y a quién se le
+  atribuye, con botón para abrirlos). Vence en 5 días hábiles (parámetro
+  `quimibond_sgi.measure_review_business_days`).
+- Contesta **«Sí, esto es lo que hago»** o **«No corresponde»** con nota
+  obligatoria (qué está mal). Contestan quien revisa o el Jefe MAST.
+- Faltante **«Revisión del dueño: no corresponde»** (`review_rejected`,
+  advertencia) mientras la última revisión contestada diga «No
+  corresponde»; entra en Diagnóstico → Medición por revisar.
+- **Diagnóstico → Revisiones de medición** (lista por estado).
+- Paso nuevo en el cron de medición (diario, idempotente: una por actividad
+  y mes). Al crear las del mes, las pendientes de meses anteriores quedan
+  «Sin respuesta».
+
 ## 19.0.57.106.0 — 2026-10-05
 
 **Medición por revisar** (pedido de Jose del 2026-10-05: asegurar que cada

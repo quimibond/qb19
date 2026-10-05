@@ -80,6 +80,7 @@ SGI_SPEC_GAPS = [
     ('menu_model_mismatch', "Pantalla que no va con su medición"),
     ('measure_never', "Evidencia que no aparece"),
     ('weak_attribution', "Atribución débil"),
+    ('review_rejected', "Revisión del dueño: no corresponde"),
 ]
 # Severidad por código (error bloquea publicar; warning solo avisa).
 SGI_GAP_SEVERITY = {
@@ -92,7 +93,7 @@ SGI_GAP_SEVERITY = {
     'measure_no_complete': 'warning', 'odoo_measured_manual': 'warning',
     'paper_channel': 'warning', 'mixed_channel': 'warning', 'no_match': 'warning',
     'menu_no_visible': 'warning', 'menu_model_mismatch': 'warning',
-    'measure_never': 'warning', 'weak_attribution': 'warning',
+    'measure_never': 'warning', 'weak_attribution': 'warning', 'review_rejected': 'warning',
 }
 # 57.106.0: días mínimos sin evidencia para «Evidencia que no aparece» (la
 # cadencia larga manda: una anual espera su ventana de 380 días).
@@ -385,6 +386,10 @@ class SgiActivitySpec(models.Model):
             add('measure_never', never)
         for message in self._sgi_weak_attribution():
             add('weak_attribution', message)
+        # 57.107.0: la revisión mensual del dueño del proceso (sgi_measure_review).
+        rejected = self._sgi_review_rejected()
+        if rejected:
+            add('review_rejected', rejected)
         if channel in SGI_EXTERNAL_CHANNELS and not (self.external_system or '').strip():
             add('external_no_name', "Falta el nombre del sistema externo.")
         if not self.instruction_id and not (self.how_steps or '').strip():

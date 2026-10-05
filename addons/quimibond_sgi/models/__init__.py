@@ -126,3 +126,6 @@ from . import sgi_activity_execution
 # 57.105.0: MIID desde Odoo (hereda approval.request —su extensión de Sign ya
 # cargó— y sgi.cron; usa sgi_report_print).
 from . import sgi_miid
+# 57.107.0: revisión mensual de la medición por el dueño del proceso (hereda
+# la actividad y la lee Mis pendientes, ambos definidos antes).
+from . import sgi_measure_review
