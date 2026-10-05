@@ -10,7 +10,7 @@
                      vuelve a revisar en el servidor. -->
                 <header>
                     <button name="action_sgi_recompute_pending_measures" type="object"
-                            string="Recalcular mediciones pendientes" display="always"
+                            string="Recalcular mediciones" display="always"
                             groups="quimibond_sgi.group_sgi_admin"/>
                 </header>
                 <field name="code"/>
@@ -446,6 +446,7 @@
                             <field name="semaphore" widget="badge"/>
                             <field name="sgi_frozen_date" invisible="not sgi_targets_frozen"/>
                             <field name="small_sample" invisible="not small_sample"/>
+                            <field name="sgi_value_by_hand" invisible="not sgi_value_by_hand"/>
                             <field name="alert_id" readonly="1"/>
                         </group>
                     </group>

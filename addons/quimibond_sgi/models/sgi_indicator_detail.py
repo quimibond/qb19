@@ -102,7 +102,7 @@ class SgiIndicatorDetail(models.Model):
                 ('write_date', '>=', since),
             ])
             for measure in measures:
-                measure.write({
+                measure.with_context(sgi_calc_write=True).write({
                     'state': 'sin_dato', 'value': 0.0, 'numerator': False,
                     'denominator': False, 'sample_size': 0, 'detail_model': False,
                     'detail_ids': False,
@@ -393,6 +393,11 @@ class SgiIndicatorMeasureDetail(models.Model):
     indicator_status = fields.Selection(related='indicator_id.status',
                                         string="Estado del indicador",
                                         help="Si el indicador es oficial o está a prueba.")
+    # 57.102.0 (B3): el recálculo diario respeta un valor corregido a mano.
+    sgi_value_by_hand = fields.Boolean(
+        string="Valor corregido a mano", readonly=True, copy=False,
+        help="Alguien escribió a mano el valor de esta medición automática: el "
+             "recálculo diario ya no la toca. «Recalcular valor» quita la marca.")
 
     @api.depends('sample_size', 'state', 'detail_ids')
     def _compute_small_sample(self):
@@ -454,7 +459,8 @@ class SgiIndicatorMeasureDetail(models.Model):
                     "recalcular." % indicator.code)
             date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
             vals = indicator._sgi_measure_vals(date_from, date_to)
-            measure.write(vals)
+            # 57.102.0 (B3): lo escribe el SGI; deja de estar «corregida a mano».
+            measure.with_context(sgi_calc_write=True).write(dict(vals, sgi_value_by_hand=False))
             # 57.1.0: el recálculo desde la medición también deja el motivo.
             indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
             label = ("sin dato calculable" if vals['state'] == 'sin_dato'
@@ -489,6 +495,16 @@ class SgiIndicatorMeasureDetail(models.Model):
         moving = self.browse()
         if vals.get('state') in ('capturado', 'validado') and not self.env.su:
             moving = self.filtered(lambda m: m.state != vals['state'])
+        # B3: una persona que cambia el valor de una medición automática la
+        # marca «corregida a mano». Las rutas del sistema escriben con
+        # ``sgi_calc_write`` (recálculo, «Recalcular valor», «Recalcular
+        # ahora», foto, «medir desde»); el sistema (sudo) tampoco marca.
+        if ('value' in vals and 'sgi_value_by_hand' not in vals and not self.env.su
+                and not self.env.context.get('sgi_calc_write')):
+            auto = self.filtered(lambda m: m.indicator_id.calc_mode != 'manual'
+                                 and round(m.value or 0.0, 6) != round(vals['value'] or 0.0, 6))
+            if auto:
+                super(SgiIndicatorMeasureDetail, auto).write({'sgi_value_by_hand': True})
         res = super().write(vals)
         if moving:
             moving._sgi_check_has_value()

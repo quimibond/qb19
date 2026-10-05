@@ -534,7 +534,10 @@ class SgiIndicatorFormula(models.Model):
                     result['note'] = "La medición ya está validada (evidencia): no se tocó."
                 else:
                     if measure:
-                        measure.write(vals)
+                        # 57.102.0 (B3): lo escribe el SGI; deja de estar
+                        # «corregida a mano».
+                        measure.with_context(sgi_calc_write=True).write(
+                            dict(vals, sgi_value_by_hand=False))
                     else:
                         measure = Measure.create(dict(vals, indicator_id=indicator.id, period_date=period))
                     indicator.message_post(body="Recalculado bajo demanda el periodo %s con el modo «%s»: %s." % (

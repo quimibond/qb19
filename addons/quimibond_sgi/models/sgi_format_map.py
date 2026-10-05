@@ -2,13 +2,23 @@
 import logging
 import re
 
+from dateutil.relativedelta import relativedelta
+
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 
+from .sgi_calendar import sgi_today
 from .sgi_guard import sgi_require_system
+from .sgi_health_const import HEALTH_MODES
 
 _logger = logging.getLogger(__name__)
+
+# 57.102.0 (B3): meses hacia atrás que el cron diario vuelve a medir las «sin
+# dato» y las capturadas no validadas (desde el día 1 del mes de hace N meses).
+# No se siembra: se lee con este valor por omisión.
+RECOMPUTE_MONTHS_PARAM = 'quimibond_sgi.indicator_recompute_months'
+DEFAULT_RECOMPUTE_MONTHS = 2
 
 # 57.98.0 (I-01): reportes propios que imprimen el pie del formato controlado
 # en cada hoja (layout quimibond_sgi.sgi_report_layout): (xmlid del reporte,
@@ -634,7 +644,43 @@ class SgiConfig(models.AbstractModel):
         return True
 
     @api.model
-    def recompute_pending_measures(self, indicators=None):
+    def _sgi_recompute_months(self):
+        raw = self.env['ir.config_parameter'].sudo().get_param(RECOMPUTE_MONTHS_PARAM, '')
+        return int(raw) if str(raw).strip().isdigit() else DEFAULT_RECOMPUTE_MONTHS
+
+    @api.model
+    def _sgi_recompute_domain(self, recent=True):
+        """57.102.0 (B3): mediciones «sin dato» y capturadas que el recálculo
+        vuelve a medir. Nunca: validadas, manuales, de salud (57.99.0), de foto
+        (57.90.0), con NC ni corregidas a mano. Con ``recent='all'`` sin
+        ventana; si no, desde el día 1 del mes de hace N meses."""
+        domain = [
+            ('state', 'in', ('sin_dato', 'capturado')),
+            ('indicator_id.calc_mode', '!=', 'manual'),
+            ('indicator_id.calc_mode', 'not in', list(HEALTH_MODES)),
+            ('indicator_id.snapshot', '=', False),
+            ('alert_id', '=', False),
+            ('sgi_value_by_hand', '=', False),
+        ]
+        if recent != 'all':
+            start = sgi_today(self.env).replace(day=1) - relativedelta(
+                months=self._sgi_recompute_months())
+            domain.append(('period_date', '>=', start))
+        return domain
+
+    @staticmethod
+    def _sgi_measure_summary(state, value, numerator, denominator):
+        """«sin dato» o «valor (numerador/denominador)», para comparar y para
+        el chatter de la medición."""
+        if state == 'sin_dato':
+            return "sin dato"
+        text = "%s" % round(value or 0.0, 2)
+        if numerator or denominator:
+            text += " (%s/%s)" % (round(numerator or 0.0, 2), round(denominator or 0.0, 2))
+        return text
+
+    @api.model
+    def recompute_pending_measures(self, indicators=None, recent=False):
         """Re-mide las mediciones PENDIENTES de indicadores automáticos.
         Es la contracara de la deuda B.16: el cron solo crea la medición
         faltante, así que activar un modo o corregir el motor dejaba los
@@ -644,35 +690,82 @@ class SgiConfig(models.AbstractModel):
 
         57.5.0 (D-12, A-006): ya no corre en cada actualización del módulo;
         lo corre el cron diario de indicadores y el botón «Recalcular
-        mediciones pendientes» del Administrador SGI. Cada medición va en su
-        savepoint: un indicador con error se registra en el log y no detiene
-        a los demás. ``indicators`` acota a esos indicadores. Devuelve
-        ``{'revisadas': n, 'capturadas': n, 'errores': n}``."""
+        mediciones» del Administrador SGI. Cada medición va en su savepoint:
+        un indicador con error se registra en el log y no detiene a los
+        demás. ``indicators`` acota a esos indicadores.
+
+        57.102.0 (B3): con ``recent=True`` (el cron diario programado) también
+        re-mide las «sin dato» y las capturadas (no validadas) de los últimos
+        N meses (``quimibond_sgi.indicator_recompute_months``, 2 por omisión:
+        desde el día 1 del mes de hace N meses). Con ``recent='all'`` (el botón
+        del Administrador SGI con indicadores seleccionados) re-mide todas las
+        no validadas de esos indicadores, sin ventana. Nunca toca: validadas,
+        indicadores de foto (57.90.0) ni de salud (57.99.0), mediciones con NC,
+        con causa o acciones capturadas, ni las que alguien corrigió a mano
+        (``sgi_value_by_hand``). Solo escribe si algo cambió, y deja en el
+        chatter de la medición el antes y el después. Un error por medición
+        queda como aviso (WARNING) en el log.
+
+        Devuelve ``{'revisadas': n, 'capturadas': n, 'recalculadas': n,
+        'errores': n}``."""
         sgi_require_system(self.env)  # F-008
-        domain = [
+        Measure = self.env['sgi.indicator.measure']
+        pending = [
             ('state', '=', 'pendiente'),
             ('indicator_id.calc_mode', '!=', 'manual'),
+            ('sgi_value_by_hand', '=', False),
         ]
-        if indicators is not None:
-            domain.append(('indicator_id', 'in', indicators.ids))
-        measures = self.env['sgi.indicator.measure'].search(domain)
-        result = {'revisadas': len(measures), 'capturadas': 0, 'errores': 0}
+        scope = [('indicator_id', 'in', indicators.ids)] if indicators is not None else []
+        measures = Measure.search(pending + scope)
+        if recent:
+            stale = Measure.search(self._sgi_recompute_domain(recent) + scope)
+            # Un rojo con causa o acciones ya se trabajó: su valor no se mueve.
+            measures |= stale.filtered(lambda m: not (m.cause or m.action_line_ids))
+        measures = measures.sorted(lambda m: (m.indicator_id.id, m.period_date))
+        result = {'revisadas': len(measures), 'capturadas': 0, 'recalculadas': 0, 'errores': 0}
+        latest = {}
         for measure in measures:
             indicator = measure.indicator_id
             try:
                 with self.env.cr.savepoint():
                     date_from, date_to = indicator._sgi_period_bounds(measure.period_date)
                     vals = indicator._sgi_measure_vals(date_from, date_to)
-                    if vals.get('state') != 'capturado':
-                        continue
-                    measure.write(vals)
-                    result['capturadas'] += 1
-            except Exception:  # noqa: BLE001 - un indicador no detiene a los demás
+                    if measure.state == 'pendiente':
+                        if vals.get('state') != 'capturado':
+                            continue
+                        measure.with_context(sgi_calc_write=True).write(vals)
+                        result['capturadas'] += 1
+                    else:
+                        # I-4: una capturada nunca regresa a pendiente (p. ej.
+                        # un modo con plazo que aún no vence).
+                        if vals.get('state') not in ('capturado', 'sin_dato'):
+                            continue
+                        before = self._sgi_measure_summary(
+                            measure.state, measure.value, measure.numerator, measure.denominator)
+                        after = self._sgi_measure_summary(
+                            vals['state'], vals.get('value'), vals.get('numerator'),
+                            vals.get('denominator'))
+                        if before == after:
+                            continue
+                        # Un solo rastro: el mensaje con el antes y el después.
+                        measure.with_context(sgi_calc_write=True, tracking_disable=True).write(vals)
+                        measure.message_post(
+                            body="Recalculada por el SGI (57.102.0): antes %s, ahora %s." % (
+                                before, after))
+                        result['recalculadas'] += 1
+                    latest[indicator.id] = vals
+            except Exception as error:  # noqa: BLE001 - un indicador no detiene a los demás
                 result['errores'] += 1
-                _logger.exception("SGI: no se pudo recalcular la medición %s de %s.",
-                                  measure.id, indicator.display_name)
+                _logger.warning("SGI: no se pudo recalcular la medición %s de %s: %s",
+                                measure.id, indicator.display_name, str(error)[:250])
+        # El diagnóstico del indicador sale de su periodo más reciente tocado
+        # (las mediciones van ordenadas por periodo).
+        for indicator_id, vals in latest.items():
+            indicator = self.env['sgi.indicator'].browse(indicator_id)
+            indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
         _logger.info("SGI: mediciones pendientes recalculadas: %(revisadas)d revisadas, "
-                     "%(capturadas)d capturadas, %(errores)d con error.", result)
+                     "%(capturadas)d capturadas, %(recalculadas)d recalculadas, "
+                     "%(errores)d con error.", result)
         return result
 
     @api.model
