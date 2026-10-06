@@ -498,7 +498,10 @@ mes; la vista SQL de 438 líneas no hace falta).
 Ninguna propia. Se instala `quimibond_ficha_tecnica_tela` (Consolti; decisión
 del CEO 2026-10-06) y el peso y el rendimiento m/kg se leen de ahí
 (`ficha.tecnica.acabado.peso_acabado`, `rendimiento_tela_acabada`,
-`ficha.tecnica.tejido.velocidad` como velocidad de tejido). Orden de
+`ficha.tecnica.tejido.velocidad` como velocidad de tejido). Regla de Jose
+(2026-10-06): hay dos rendimientos y los dos se conservan: el de tejido
+(`ficha.tecnica.tejido.rendimiento_tela_tejida`, rama `consolti`) alimenta el
+cálculo de tintorería; el de acabado valida los metros finales. Orden de
 precedencia del peso: `pesaje` (rollos reales) > `manual` > `ficha` >
 `nomenclatura`. `qb.producto.ficha` y sus 1,839 registros se
 archivan en la migración; lo que valía (gramaje, ancho, rendimiento) se copia a

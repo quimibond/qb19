@@ -85,3 +85,27 @@ Ver sección 8 del brief. En el código quedan como parámetro vacío o catálog
 sin renglones: margen mínimo, suplente de aprobación, recursos del checklist
 de factibilidad, lecturas por lote para Cpk, comité de pilotajes, tiempo de
 conservación de muestras, destino de los 152 lotes de la ubicación 57.
+
+## 5. Reglas de Jose del 2026-10-06 (tarde) para lo que sigue
+
+1. **Rama de Jose Sacramento.** Tiene trabajo local sin subir sobre
+   tintorería (fórmulas en g/L) y acabado (clasificación de calidad y
+   defectos). Cuando exista la rama, **revisarla antes de seguir**. Lo que
+   ya está subido en `consolti` (2026-10-01) para `quimibond_ficha_tecnica_tela`:
+   `rendimiento_tela_tejida`, `jefe_manufactura` / `auxiliar_procesos` a
+   `hr.employee`, `maquina_tejido` a `mrp.workcenter` con migraciones en
+   `19.0.2.1.0` y dependencia `hr`. **Choque de versión:** `main` ya usa
+   2.1.0 (PR #563, catálogo de características); al traer `consolti` su
+   versión y su carpeta de migración deben pasar a 2.2.0 para que la
+   migración corra en bases que ya estén en 2.1.0.
+2. **No eliminar ni renombrar columnas fijas** de `ficha.tecnica.tejido` ni
+   de `ficha.tecnica.acabado`: su código las lee. Los renglones de
+   características conviven con ellas (el PR #563 no las tocó).
+3. **Dos rendimientos, los dos como campo:** el de tejido alimenta el
+   cálculo de tintorería; el de acabado valida los metros finales. README
+   del módulo corregido en 2.1.1.
+4. **Bloque 6.7:** la ficha de proceso de tintorería y la receta de rama
+   **no capturan químicos**; apuntarán al modelo de fórmulas de Sacramento.
+   No se construye hasta ver su rama.
+5. `ficha.tecnica.tela` (modelo viejo) se borra del código: hecho en 2.1.1
+   (la tabla queda en la base).
