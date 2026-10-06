@@ -111,7 +111,7 @@ lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
 
 ## Manual del SGI (MIID) desde Odoo (57.105.0)
 
-**SGI → Dirección → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
+**SGI → Sistema → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
 El MIID se arma con **texto fijo** (`sgi.miid.section`: una sección por
 título y subtítulo, sembradas `noupdate` con el texto [FIJO] del borrador
 Rev. 03, `docs/sgi/transicion/miid-rev03-borrador.md`; las edita el Jefe
@@ -216,7 +216,7 @@ prueba y sin NC automática (`data/sgi_health_indicators.xml`, `noupdate`):
 | SG-09 | Auditorías internas del programa del año hechas hasta el mes en curso |
 | SG-10 | Formatos «Migrado a Odoo» con destino activo y uso en 90 días |
 
-- **Dónde se ven:** SGI → Dirección → Tablero → página «Salud del SGI»: los
+- **Dónde se ven:** SGI → Desempeño → Tablero → página «Salud del SGI»: los
   diez con la medición de la semana pasada y, por el hallazgo D-01, una
   tabla por dueño de proceso (avisos vencidos, validaciones atrasadas y días
   sin movimiento en el SGI). No ocupan los 12 lugares de «Indicadores de
@@ -327,16 +327,38 @@ Desde 57.100.0 (sección 7 del reporte de auditoría, puerta Q16;
 
 ## Menú
 
-Siete entradas bajo **SGI** (57.98.0): Inicio (Mis pendientes, Mi
-procedimiento, Documentos vigentes, Mis indicadores, Mi equipo, Checklists de
-hoy), Reportar (no conformidad, casi accidente o incidente, queja o
-sugerencia: cada una abre la ficha nueva), Procesos (mapa y actividades para
-todos; entregables, flujos, matriz de responsabilidades, puestos y procesos y
-fichas por máquina solo para dueño de proceso, Jefe MAST, Dirección y Auditor;
-«Del Dropbox a Odoo»), Mejora (NC, reclamaciones, acciones, mejora continua,
-auditorías), Seguridad y ambiente, Dirección y Administración SGI. Al tocar la
-app, Dirección abre en el Tablero y los demás en Mis pendientes (acción del
-menú raíz, `sgi_home_action`). El árbol completo con grupos está en
+Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las
+normas (57.113.0):
+
+- **Inicio**: Mis pendientes, Mi procedimiento, Mis indicadores, Mi equipo,
+  Checklists de hoy, Documentos vigentes.
+- **Reportar**: no conformidad, casi accidente o incidente, queja o
+  sugerencia, riesgo u oportunidad (cada una abre la ficha nueva).
+- **Sistema** (4 y 7.5; antes «Procesos»): mapa y actividades para todos;
+  entregables, flujos, matriz de responsabilidades, puestos y procesos y
+  fichas por máquina solo para dueño de proceso, Jefe MAST, Dirección y
+  Auditor; Documentos (Auditor, Jefe MAST y Dirección), el Manual del SGI
+  (MIID) y «Del Dropbox a Odoo».
+- **Planeación** (5 y 6; antes «Dirección»): política, objetivos, partes
+  interesadas, riesgos y oportunidades, aspectos ambientales, requisitos
+  legales y sus evaluaciones.
+- **Seguridad y ambiente** (8): incidentes, permisos de alto riesgo,
+  bloqueo y etiquetado, EPP, checklists, recorridos CSH, emergencias y
+  simulacros, estudios de higiene.
+- **Desempeño** (9): Tablero, Indicadores (con mediciones y revisiones de
+  medición), satisfacción del cliente, auditorías y revisión por la
+  dirección.
+- **Mejora** (10): NC, acciones correctivas, reclamaciones, mejora continua,
+  lecciones aprendidas, quejas y sugerencias del personal.
+- **Administración** (antes «Administración SGI»; Auditor, Jefe MAST y
+  Dirección): Diagnóstico (cuatro entradas) y Aprobaciones del SGI;
+  Publicar Mi procedimiento, Transición y Configuración solo Jefe MAST.
+
+Los xmlids no cambiaron; lo que salió del menú (Firmas de lectura, Cobertura
+de medición, Cumplimiento semanal, Medición por revisar) está archivado en su
+lugar, con su acción viva (`SGI_MENU_ARCHIVED`). Al tocar la app, Dirección
+abre en el Tablero y los demás en Mis pendientes (acción del menú raíz,
+`sgi_home_action`). El árbol completo con grupos está en
 `tools/sgi_menu_tree.txt`, y `tests/test_menu_tree.py` lo compara con la base.
 
 ## Grupos

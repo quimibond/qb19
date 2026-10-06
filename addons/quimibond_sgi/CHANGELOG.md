@@ -13,6 +13,93 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.113.0 — 2026-10-06
+
+**Menús por capítulos del MIID.** El menú del SGI sigue el orden de la
+norma: Inicio, Reportar, Sistema (4 y 7.5), Planeación (5 y 6), Seguridad
+y ambiente (8), Desempeño (9), Mejora (10) y Administración. Pedido del
+CEO del 2026-10-06; plan docs/superpowers/plans/2026-10-06-sgi-57-111-0-menus.md.
+Sin modelos, campos ni permisos nuevos; ningún xmlid cambia ni se borra.
+
+### Cambiado
+
+- **Carpetas** (`views/sgi_menus.xml`, árbol en `tools/sgi_menu_tree.txt`):
+  Procesos → **Sistema**, Dirección → **Planeación** (secuencia 25) y
+  Administración SGI → **Administración**, con los mismos xmlids.
+  **Desempeño** (`menu_sgi_performance`, sin grupos propios) y
+  **Transición** (`menu_sgi_transition`, Jefe MAST) son nuevas.
+- **15 menús cambian de carpeta:** Documentos (con los grupos que heredaba
+  de Administración SGI: Auditor, Jefe MAST, Dirección) y el MIID a Sistema;
+  Acuses de lectura a Sistema → Documentos; Aspectos ambientales a
+  Planeación; Tablero, Indicadores (con sus grupos heredados), Satisfacción
+  del cliente, Auditorías y Revisión por la dirección a Desempeño;
+  Revisiones de medición a Desempeño → Indicadores; Publicar Mi
+  procedimiento directo en Administración; Cargar catálogo, Empresa en
+  documentos controlados y Traspaso de riesgos ambientales a Transición;
+  Tipos de documento a Configuración. Nadie gana ni pierde una pantalla.
+- **Diagnóstico de 8 a 4 entradas:** Cumplimiento de procedimientos sin
+  dominio fijo y con el filtro «Medibles» por omisión (sin él y agrupado
+  por método de medición es la cobertura de medición); botón **Por semana**
+  en la lista de Registro de cumplimiento; filtro **Medición por revisar** en
+  Faltantes de especificación.
+- **Rutas que se le dicen al usuario:** `sgi_menu_paths.py` (15 rutas y la
+  clave nueva `aprobaciones`, que usan los avisos del asistente de
+  aprobaciones), el aviso de indicadores de salud, «Dónde se ejecuta» de las
+  ligas SST, F-P-A28-11, la ayuda de Revisiones de medición, el aviso del
+  riesgo ambiental, el pie de «Mi procedimiento», la fuente de SG-01, 24
+  rutas en 13 secciones del MIID (y `docs/sgi/transicion/miid-rev03-borrador.md`),
+  manuales por rol, README y runbook.
+- `quimibond_sgi_mapa` 19.0.1.1.3: «Cargar mapa de procesos» pasa a
+  Administración → Transición.
+
+### Corregido
+
+- El mensaje de la siembra del MIID (57.110.0) decía «nota de «Por
+  confirmar» actualizado»: ahora «texto actualizado», «nota … actualizada» o
+  «texto y nota … actualizados», y el aviso de lo no aplicado igual.
+  `_sgi_seed_update` recibe el motivo (`reason`).
+
+### Retirado
+
+- Del menú (archivados en su lugar, con su acción viva; `SGI_MENU_ARCHIVED`):
+  Firmas de lectura, Cobertura de medición, Cumplimiento semanal y Medición
+  por revisar.
+
+### Migración
+
+- `migrations/19.0.57.111.0/post-migrate.py`: 13 secciones del MIID con las
+  rutas nuevas, solo las que nadie editó (`_sgi_seed_update`); fuente de
+  SG-01 si sigue como se sembró; «Dónde se ejecuta» de E2.23, E2.30, E2.34 y
+  E2.37 solo si sigue idéntico al de 57.54.0 (nota en la actividad);
+  re-sello de «Mi procedimiento» (`hr.job._sgi_mp_reseal_menu_moves`): un
+  documento vigente o en firma recibe la huella nueva solo si, con las rutas
+  viejas, la huella de hoy es exactamente la guardada (nota en su chatter;
+  el PDF conserva la ruta anterior); un aviso al Jefe MAST para difundir el
+  menú nuevo (`menus_capitulos_57111`). Ningún menú se toca en la migración.
+
+### Decisiones por omisión (preguntas del plan, aprobadas por el CEO)
+
+- Q1: se reusan los xmlids; solo Desempeño y Transición son nuevas; lo que
+  sale del menú se archiva.
+- Q2: «Del Dropbox a Odoo» se queda en Sistema (lo ve todo el personal).
+- Q3: Publicar Mi procedimiento directo en Administración; Acuses de lectura
+  en Sistema → Documentos; Firmas de lectura archivada.
+- Q4: Tipos de documento en Configuración.
+- Q5: Diagnóstico con cuatro entradas; Revisiones de medición y Mediciones
+  por equipo o mercado en Desempeño → Indicadores.
+- Q6: Auditor y Dirección siguen viendo Administración (Diagnóstico y
+  Aprobaciones).
+- Q7: los dueños de proceso no ganan Indicadores ni Documentos.
+- Q8: re-sello en la migración solo cuando lo único que cambió es la ruta.
+
+### Pruebas
+
+- `tests/test_menus_capitulos.py` (nueva): orden de las ocho entradas,
+  padres, archivados que siguen archivados tras recargar el XML, quién ve
+  qué por perfil, Diagnóstico, rutas viejas en vistas y datos, re-sello,
+  migración idempotente, rutas que se le dicen al usuario y el mensaje de la
+  siembra. Ajustadas: `test_menu_tree`, `test_miid`, `test_cleanup_45`.
+
 ## 19.0.57.112.0 — 2026-10-06
 
 **Medición manual a propósito.** De las 84 actividades con «Se hace en Odoo,

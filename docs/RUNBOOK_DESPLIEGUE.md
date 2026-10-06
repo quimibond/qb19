@@ -267,8 +267,9 @@ SELECT name, latest_version, state FROM ir_module_module WHERE name LIKE 'quimib
 grep -E "quimibond_sgi" ~/logs/update.log | grep -E "WARNING|ERROR|migrat" | tail -40
 ```
 
-- **Menú:** SGI → las cinco entradas y «Procesos → Del Dropbox a Odoo»
-  visibles para Jefe MAST; el árbol esperado está en
+- **Menú:** SGI → las ocho entradas (Inicio, Reportar, Sistema, Planeación,
+  Seguridad y ambiente, Desempeño, Mejora, Administración; 57.113.0) y
+  «Sistema → Del Dropbox a Odoo» visibles para Jefe MAST; el árbol esperado está en
   `addons/quimibond_sgi/tools/sgi_menu_tree.txt` (`test_menu_tree` lo compara).
 - **Crons:** están en `noupdate`; un cambio de cron llega solo por migración.
   En Ajustes → Técnico → Acciones planificadas, los «SGI …» activos y sin

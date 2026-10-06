@@ -46,6 +46,9 @@ MIID_LANG = 'es_MX'
 MIID_DATA_MARK = "[[datos]]"
 MIID_SEED_FILE = 'quimibond_sgi/data/sgi_miid_sections.xml'
 MIID_EDITED_MSG = "Texto de la sección editado."
+# Por qué cambió la siembra (mensaje del chatter de _sgi_seed_update):
+# 57.110.0 usa este; 57.113.0 pasa el suyo.
+MIID_SEED_REASON = "lo que traía la revisión 02 del MIID"
 MIID_DATA_MARK_RE = re.compile(r'<p[^>]*>\s*\[\[datos\]\]\s*</p>|\[\[datos\]\]')
 # Q16: estados de proceso con los que se puede aprobar el MIID.
 MIID_READY_PROCESS_STATES = ('vigente',)
@@ -195,13 +198,29 @@ class SgiMiidSection(models.Model):
         return out
 
     @api.model
-    def _sgi_seed_update(self, body_xmlids, old_notes, tag):
+    def _sgi_seed_message(self, tag, keys, reason=MIID_SEED_REASON):
+        """Mensaje del chatter cuando la siembra actualiza una sección, con
+        el género y el número de lo que cambió (57.113.0): «texto
+        actualizado», «nota de «Por confirmar» actualizada» o «texto y nota
+        de «Por confirmar» actualizados»."""
+        keys = set(keys)
+        if keys == {'body'}:
+            what = "texto actualizado"
+        elif keys == {'to_confirm_note'}:
+            what = "nota de «Por confirmar» actualizada"
+        else:
+            what = "texto y nota de «Por confirmar» actualizados"
+        return "%s: %s con %s." % (tag, what, reason)
+
+    @api.model
+    def _sgi_seed_update(self, body_xmlids, old_notes, tag, reason=MIID_SEED_REASON):
         """Pone en producción el texto nuevo de la siembra sin pisar lo que
         corrigió el Jefe MAST (57.110.0). El texto se cambia solo en las
         secciones que nunca se editaron (sin el mensaje «Texto de la sección
         editado.»); la nota de «Por confirmar», solo si sigue idéntica a la
-        sembrada (old_notes: {xmlid: nota anterior}). Devuelve {xmlid:
-        resultado}."""
+        sembrada (old_notes: {xmlid: nota anterior}). ``reason`` completa el
+        mensaje del chatter («… actualizado con <reason>.»; 57.113.0 pasa las
+        rutas nuevas del menú). Devuelve {xmlid: resultado}."""
         result = {}
         Message = self.env['mail.message'].sudo()
         for xmlid in list(body_xmlids) + [x for x in old_notes if x not in body_xmlids]:
@@ -225,12 +244,19 @@ class SgiMiidSection(models.Model):
                     skipped.append("nota")
             if vals:
                 section.sudo().with_context(sgi_miid_seed=True).write(vals)
-                section.sudo().message_post(body="%s: %s actualizado con lo que traía la revisión 02 del MIID." % (
-                    tag, " y ".join(("texto" if k == 'body' else "nota de «Por confirmar»") for k in vals)))
+                section.sudo().message_post(body=self._sgi_seed_message(tag, vals, reason))
             if skipped:
+                if len(skipped) > 1:
+                    what = "texto y nota de «Por confirmar» nuevos para esta sección, pero no se aplicaron " \
+                           "porque ya se editaron"
+                elif skipped == ["texto"]:
+                    what = "texto nuevo para esta sección, pero no se aplicó porque ya se editó"
+                else:
+                    what = "una nota de «Por confirmar» nueva para esta sección, pero no se aplicó porque " \
+                           "ya se editó"
                 section.sudo().message_post(body=(
-                    "%s: la siembra trae %s nuevo para esta sección, pero no se aplicó porque ya se editó a "
-                    "mano. Compárelo con docs/sgi/transicion/miid-rev03-borrador.md.") % (tag, " y ".join(skipped)))
+                    "%s: la siembra trae %s a mano. Compárelo con "
+                    "docs/sgi/transicion/miid-rev03-borrador.md.") % (tag, what))
                 _logger.warning("%s: sección MIID %s editada a mano; no se toca (%s).", tag, xmlid,
                                 ", ".join(skipped))
             result[xmlid] = ("actualizada" if vals else "sin cambio") + (

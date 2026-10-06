@@ -30,6 +30,7 @@ from .sgi_health_const import (
     HEALTH_TOUCH_MODELS, HEALTH_XMLIDS, IDLE_DAYS, LATE_WINDOW_DAYS, MAIL_USERS_PARAM, NC_OPEN_DAYS,
     NC_WINDOW_DAYS, PEOPLE_DAYS, RED_WINDOW_MONTHS, VALIDATION_PREFILTER_DAYS,
     VALIDATION_WINDOW_DAYS, param_ids)
+from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -602,8 +603,8 @@ class SgiDirectionBoardHealth(models.TransientModel):
             board.health_indicator_ids = indicators.ids
             board.health_process_ids = processes.ids
             board.health_note = False if indicators else (
-                "No hay indicadores de salud del SGI activos. Revise Administración SGI → "
-                "Indicadores (claves SG-01 a SG-10).")
+                "No hay indicadores de salud del SGI activos. Revise %s "
+                "(claves SG-01 a SG-10)." % sgi_menu_path('indicadores'))
 
 
 class SgiCronHealth(models.AbstractModel):

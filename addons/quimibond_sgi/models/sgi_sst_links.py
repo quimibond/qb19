@@ -23,25 +23,25 @@ SGI_SST_ACTIVITY_LINKS = (
      "SGI → Seguridad y ambiente → Planes de emergencia (el programa interno "
      "de Protección Civil se revalida en su portal)", ()),
     ('E2.23', 'quimibond_sgi.menu_sgi_env_aspects',
-     "SGI → Seguridad y ambiente → Aspectos ambientales", ()),
+     "SGI → Planeación → Aspectos ambientales", ()),
     ('E2.28', 'quimibond_sgi.menu_sgi_incidents',
      "SGI → Seguridad y ambiente → Incidentes y accidentes (agrupar por mes y tipo "
      "para la estadística)", ('F-P-S02-01', 'F-P-S02-02')),
     ('E2.30', 'quimibond_sgi.menu_sgi_objectives',
-     "SGI → Dirección → Objetivos integrales (objetivos de SST con su plan de "
+     "SGI → Planeación → Objetivos integrales (objetivos de SST con su plan de "
      "acciones = programa anual)", ()),
     ('E2.33', 'maintenance.menu_m_request_form',
      "Mantenimiento → Solicitudes (preventivo mensual de control de plagas con el "
      "reporte del proveedor)", ()),
     ('E2.34', 'quimibond_sgi.menu_sgi_env_aspects',
-     "SGI → Seguridad y ambiente → Aspectos ambientales (control operacional de "
-     "los significativos) · SGI → Dirección → Riesgos y oportunidades (IPER)",
+     "SGI → Planeación → Aspectos ambientales (control operacional de "
+     "los significativos) · SGI → Planeación → Riesgos y oportunidades (IPER)",
      ('F-P-E03-01',)),
     ('E2.35', 'survey.menu_survey_form',
      "Encuestas → encuesta anual de consulta y participación de los trabajadores",
      ('F-P-A10-05',)),
     ('E2.37', 'quimibond_sgi.menu_sgi_audit_list',
-     "SGI → Mejora → Auditorías → Auditorías", ()),
+     "SGI → Desempeño → Auditorías → Auditorías", ()),
     ('S4.34', 'quimibond_sgi.menu_sgi_incidents',
      "SGI → Seguridad y ambiente → Incidentes y accidentes (aviso ST-7 al IMSS "
      "adjunto al accidente)", ('F-P-S02-01',)),

@@ -20,6 +20,12 @@
          Grupos: Usuario SGI (316) y Auditor (317) entran por el raíz.
          Dirección de Operaciones (319) ya no implica al Jefe MAST (318): donde
          Dirección debe entrar, se nombra explícito.
+
+         57.113.0: carpetas por capítulo del MIID y de las normas (Sistema,
+         Planeación, Seguridad y ambiente, Desempeño, Mejora). Procesos,
+         Dirección y Administración SGI conservan su xmlid con nombre nuevo;
+         lo que sale del menú se archiva en su lugar (active=False), nunca se
+         borra (SGI_MENU_ARCHIVED en models/sgi_cleanup.py).
          ================================================================ -->
 
     <!-- 57.98.0 (U-07, Q20): la app abre con sgi_home_action: el Tablero para
@@ -52,10 +58,6 @@
               parent="menu_sgi_panel" action="sgi_my_pending_action_mine" sequence="10"/>
     <menuitem id="menu_sgi_my_procedure" name="Mi procedimiento"
               parent="menu_sgi_panel" action="sgi_my_procedure_action_mine" sequence="20"/>
-    <!-- I-015 / D-21: los documentos vigentes (título y revisión, sin clave
-         del Dropbox) y el acuse de lectura del usuario en el mismo renglón. -->
-    <menuitem id="menu_sgi_current_documents" name="Documentos vigentes"
-              parent="menu_sgi_panel" action="sgi_current_document_action" sequence="25"/>
     <menuitem id="menu_sgi_my_indicators" name="Mis indicadores"
               parent="menu_sgi_panel" action="sgi_indicator_action_mine" sequence="30"/>
     <menuitem id="menu_sgi_my_team" name="Mi equipo"
@@ -64,6 +66,11 @@
          Mantenimiento se queda para quien no es Usuario SGI). -->
     <menuitem id="menu_sgi_home_checklist_today" name="Checklists de hoy"
               parent="menu_sgi_panel" action="sgi_checklist_today_action" sequence="45"/>
+    <!-- I-015 / D-21: los documentos vigentes (título y revisión, sin clave
+         del Dropbox) y el acuse de lectura del usuario en el mismo renglón.
+         57.113.0: después de lo que la persona hace cada día (secuencia 47). -->
+    <menuitem id="menu_sgi_current_documents" name="Documentos vigentes"
+              parent="menu_sgi_panel" action="sgi_current_document_action" sequence="47"/>
     <!-- 56.22.0: C4.25. El jefe o supervisor captura y cierra la hoja de su
          departamento; RH la recibe en Empleados → Eficiencias de personal. -->
     <menuitem id="menu_sgi_my_staff_efficiency" name="Eficiencias de mi área"
@@ -87,9 +94,11 @@
               parent="menu_sgi_report" action="sgi_risk_report_action" sequence="40"/>
 
     <!-- ============================================================
-         2. Procesos (todos leen; los dueños editan).
+         2. Sistema (MIID 4 y 7.5; antes «Procesos», mismo xmlid): el mapa,
+         sus catálogos, los documentos controlados, el MIID y «Del Dropbox a
+         Odoo». Todos leen; los dueños editan.
          ============================================================ -->
-    <menuitem id="menu_sgi_processes" name="Procesos" parent="menu_sgi_root" sequence="20"/>
+    <menuitem id="menu_sgi_processes" name="Sistema" parent="menu_sgi_root" sequence="20"/>
     <!-- 56.7.0: agrupador sin acción (en producción conservaba la del mapa,
          mismo patrón que dejó roto a Inicio). -->
     <record id="menu_sgi_processes" model="ir.ui.menu">
@@ -121,6 +130,31 @@
     <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina"
               parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+
+    <!-- 2.1 Documentos (7.5). 57.113.0: viene de Administración SGI y recibe
+         los grupos que heredaba de ella (Auditor, Jefe MAST, Dirección): nadie
+         gana ni pierde la carpeta. «Acuses de lectura» viene de «Firmas de
+         lectura» (archivada abajo); «Tipos de documento» pasó a Configuración. -->
+    <menuitem id="menu_sgi_documental" name="Documentos" parent="menu_sgi_processes" sequence="60"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
+              action="sgi_document_action" sequence="10"/>
+    <menuitem id="menu_sgi_master_list" name="Lista maestra" parent="menu_sgi_documental"
+              action="sgi_document_master_list_action" sequence="20"/>
+    <menuitem id="menu_sgi_external_docs" name="Documentos externos" parent="menu_sgi_documental"
+              action="sgi_external_doc_action" sequence="30"/>
+    <menuitem id="menu_sgi_doc_changes" name="Solicitudes de cambio" parent="menu_sgi_documental"
+              action="sgi_doc_change_board_action" sequence="40"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_documental"
+              action="sgi_document_ack_action" sequence="50"/>
+
+    <!-- 57.105.0: el MIID desde Odoo. Lo leen todos los que ven la carpeta;
+         editar textos y solicitar el cambio es del Jefe MAST. 57.113.0: de
+         Dirección a Sistema (es el manual del sistema, capítulo 4). -->
+    <menuitem id="menu_sgi_miid" name="Manual del SGI (MIID)" parent="menu_sgi_processes"
+              action="sgi_miid_action_open" sequence="70"/>
+
     <!-- Entrega 6 (E-001, decisión 7): sección permanente «Del Dropbox a
          Odoo». Solo el Jefe MAST edita (vistas y guarda L-010 en
          documents.document). La clave vieja solo se muestra aquí (decisión
@@ -130,10 +164,10 @@
          anteriores», «Rutina por rutina» y «Avance de la transición» solo
          Auditor, Jefe MAST, Dirección y Dueño de proceso (grupo sincronizado
          desde sgi.process). La restricción es también de ACL (rutinas y
-         avance) y de acción (group_ids en las tres acciones). Los tres menús
-         son nuevos en 57.0.0 (no existen en producción): no llevan «-». -->
+         avance) y de acción (group_ids en las tres acciones).
+         57.113.0 (Q2): se queda en Sistema porque la ve todo el personal. -->
     <menuitem id="menu_sgi_dropbox" name="Del Dropbox a Odoo"
-              parent="menu_sgi_processes" sequence="60"/>
+              parent="menu_sgi_processes" sequence="80"/>
     <!-- 2419 conserva su id (E-004): se reparenta, se renombra y el «-» le
          quita los grupos que tenía en Administración para que herede. -->
     <menuitem id="menu_sgi_dropbox_search" name="Buscador por clave anterior"
@@ -152,132 +186,81 @@
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
 
     <!-- ============================================================
-         3. Mejora (todos): lo que salió mal y lo que se hace para que no
-         vuelva.
+         3. Planeación (MIID 5 y 6; antes «Dirección», mismo xmlid). F-011,
+         decisión 10 de la tanda 2: la carpeta la ven todos. Política,
+         Objetivos, Riesgos, Aspectos ambientales y Requisitos legales
+         heredan; Partes interesadas es de Auditor, Jefe MAST y Dirección. El
+         «-» quitó en producción los grupos que tenía la carpeta.
+         57.113.0: Tablero, Revisión y Satisfacción pasaron a Desempeño y el
+         MIID a Sistema; Aspectos ambientales llegó de Seguridad y ambiente.
          ============================================================ -->
-    <menuitem id="menu_sgi_improvement_group" name="Mejora" parent="menu_sgi_root" sequence="30"/>
-    <menuitem id="menu_sgi_nc" name="No conformidades" parent="menu_sgi_improvement_group"
-              action="sgi_nc_board_action" sequence="10"/>
-    <menuitem id="menu_sgi_complaints" name="Reclamaciones de clientes"
-              parent="menu_sgi_improvement_group" action="sgi_complaint_action" sequence="20"/>
-    <!-- D-17: todas las acciones (NC, riesgos, AMEF, incidentes, simulacros,
-         objetivos, revisión por la dirección, indicadores en rojo) con
-         filtro por origen. Auditor, MAST y Dirección. -->
-    <menuitem id="menu_sgi_nc_all_actions" name="Acciones correctivas"
-              parent="menu_sgi_improvement_group" action="sgi_action_line_action_all" sequence="30"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-    <menuitem id="menu_sgi_improvements" name="Mejora continua" parent="menu_sgi_improvement_group"
-              action="sgi_improvement_action" sequence="40"/>
-    <menuitem id="menu_sgi_lessons" name="Lecciones aprendidas"
-              parent="menu_sgi_improvement_group" action="sgi_nc_lessons_action" sequence="50"/>
-    <menuitem id="menu_sgi_internal_complaints" name="Quejas y sugerencias del personal"
-              parent="menu_sgi_improvement_group" action="sgi_internal_complaint_action" sequence="60"/>
-    <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_improvement_group" sequence="70"/>
-    <menuitem id="menu_sgi_audit_programs" name="Programa"
-              parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="10"/>
-    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
-              action="sgi_audit_action" sequence="20"/>
-    <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha.
-         57.67.0: acción con xmlid nuevo (sgi_audit_finding_action se retiró
-         en 45.0.0 como acción huérfana y no vuelve). -->
-    <menuitem id="menu_sgi_audit_findings" name="Hallazgos" parent="menu_sgi_audits"
-              action="sgi_audit_finding_list_action" sequence="30"/>
-
-    <!-- ============================================================
-         4. Seguridad y ambiente (todos; exámenes médicos solo Salud
-         ocupacional y MAST).
-         ============================================================ -->
-    <menuitem id="menu_sgi_safety" name="Seguridad y ambiente" parent="menu_sgi_root" sequence="35"/>
-    <menuitem id="menu_sgi_incidents" name="Incidentes y accidentes"
-              parent="menu_sgi_safety" action="sgi_incident_action" sequence="10"/>
-    <menuitem id="menu_sgi_emergency_plans" name="Planes de emergencia"
-              parent="menu_sgi_safety" action="sgi_emergency_plan_action" sequence="20"/>
-    <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
-              parent="menu_sgi_safety" action="sgi_emergency_drill_action" sequence="30"/>
-    <menuitem id="menu_sgi_csh_inspections" name="Recorridos CSH"
-              parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="40"/>
-    <!-- F-004: «-hr.group_hr_user» quita el grupo en producción; sin el «-»
-         el menú seguiría abierto a «Empleados / Encargado». -->
-    <menuitem id="menu_sgi_health_records" name="Estudios de higiene y exámenes médicos"
-              parent="menu_sgi_safety" action="sgi_health_record_action" sequence="50"
-              groups="quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager,-hr.group_hr_user"/>
-    <menuitem id="menu_sgi_epp_deliveries" name="Responsivas de EPP"
-              parent="menu_sgi_safety" action="sgi_epp_delivery_action" sequence="60"/>
-    <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist"
-              parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="70"/>
-    <!-- 57.50.0 (bloque 1 de formularios): matriz de aspectos e impactos
-         ambientales (E2.23, E2.34). -->
-    <menuitem id="menu_sgi_env_aspects" name="Aspectos ambientales"
-              parent="menu_sgi_safety" action="sgi_env_aspect_action" sequence="80"/>
-    <!-- 57.51.0: permiso de trabajo de alto riesgo (E2.18). -->
-    <menuitem id="menu_sgi_work_permits" name="Permisos de trabajo de alto riesgo"
-              parent="menu_sgi_safety" action="sgi_work_permit_action" sequence="90"/>
-    <!-- 57.52.0: bloqueo y etiquetado de energías (S5.14). -->
-    <menuitem id="menu_sgi_loto" name="Bloqueo y etiquetado"
-              parent="menu_sgi_safety" action="sgi_loto_action" sequence="100"/>
-
-    <!-- ============================================================
-         5. Dirección (F-011, decisión 10 de la tanda 2): la carpeta la ven
-         todos. Política, Objetivos, Riesgos y Requisitos legales heredan;
-         Tablero, Revisión, Partes interesadas y Satisfacción son de Auditor,
-         Jefe MAST y Dirección. El «-» quita de producción los grupos que
-         tenía la carpeta.
-         ============================================================ -->
-    <menuitem id="menu_sgi_direction" name="Dirección" parent="menu_sgi_root" sequence="40"
+    <menuitem id="menu_sgi_direction" name="Planeación" parent="menu_sgi_root" sequence="25"
               groups="-quimibond_sgi.group_sgi_director,-quimibond_sgi.group_sgi_manager,-quimibond_sgi.group_sgi_auditor"/>
-    <menuitem id="menu_sgi_dashboard_health" name="Tablero" parent="menu_sgi_direction"
-              action="sgi_direction_board_action_open" sequence="10"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la dirección"
-              parent="menu_sgi_direction" action="sgi_management_review_action" sequence="20"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-    <!-- 57.105.0: el MIID desde Odoo. Lo leen todos los que ven la carpeta;
-         editar textos y solicitar el cambio es del Jefe MAST. -->
-    <menuitem id="menu_sgi_miid" name="Manual del SGI (MIID)" parent="menu_sgi_direction"
-              action="sgi_miid_action_open" sequence="25"/>
     <menuitem id="menu_sgi_policy" name="Política integral" parent="menu_sgi_direction"
-              action="sgi_policy_action" sequence="30"/>
+              action="sgi_policy_action" sequence="10"/>
     <menuitem id="menu_sgi_objectives" name="Objetivos integrales" parent="menu_sgi_direction"
-              action="sgi_objective_action" sequence="40"/>
+              action="sgi_objective_action" sequence="20"/>
+    <menuitem id="menu_sgi_interested_parties" name="Partes interesadas"
+              parent="menu_sgi_direction" action="sgi_interested_party_action" sequence="30"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
     <menuitem id="menu_sgi_risks" name="Riesgos y oportunidades" parent="menu_sgi_direction"
-              action="sgi_risk_action" sequence="50"/>
+              action="sgi_risk_action" sequence="40"/>
+    <!-- 57.50.0 (bloque 1 de formularios): matriz de aspectos e impactos
+         ambientales (E2.23, E2.34). 57.113.0: planeación ambiental (6.1.2). -->
+    <menuitem id="menu_sgi_env_aspects" name="Aspectos ambientales"
+              parent="menu_sgi_direction" action="sgi_env_aspect_action" sequence="50"/>
     <menuitem id="menu_sgi_legal" name="Requisitos legales" parent="menu_sgi_direction"
               action="sgi_legal_requirement_action" sequence="60"/>
     <!-- 57.53.0: evaluaciones del cumplimiento legal con su evidencia. -->
     <menuitem id="menu_sgi_legal_evaluations" name="Evaluaciones de cumplimiento legal"
               parent="menu_sgi_direction" action="sgi_legal_evaluation_action" sequence="65"/>
-    <menuitem id="menu_sgi_interested_parties" name="Partes interesadas"
-              parent="menu_sgi_direction" action="sgi_interested_party_action" sequence="70"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-    <menuitem id="menu_sgi_satisfaction" name="Satisfacción del cliente"
-              parent="menu_sgi_direction" action="sgi_satisfaction_action" sequence="80"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
 
     <!-- ============================================================
-         6. Administración SGI: Auditor, Jefe MAST y Dirección leen; lo que
-         edita o configura es solo de MAST (groups en cada submenú).
+         4. Seguridad y ambiente (MIID 8; todos; exámenes médicos solo Salud
+         ocupacional y MAST). 57.113.0: del trabajo de cada día a la
+         preparación para emergencias.
          ============================================================ -->
-    <menuitem id="menu_sgi_admin" name="Administración SGI" parent="menu_sgi_root" sequence="90"
-              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <menuitem id="menu_sgi_safety" name="Seguridad y ambiente" parent="menu_sgi_root" sequence="35"/>
+    <menuitem id="menu_sgi_incidents" name="Incidentes y accidentes"
+              parent="menu_sgi_safety" action="sgi_incident_action" sequence="10"/>
+    <!-- 57.51.0: permiso de trabajo de alto riesgo (E2.18). -->
+    <menuitem id="menu_sgi_work_permits" name="Permisos de trabajo de alto riesgo"
+              parent="menu_sgi_safety" action="sgi_work_permit_action" sequence="20"/>
+    <!-- 57.52.0: bloqueo y etiquetado de energías (S5.14). -->
+    <menuitem id="menu_sgi_loto" name="Bloqueo y etiquetado"
+              parent="menu_sgi_safety" action="sgi_loto_action" sequence="30"/>
+    <menuitem id="menu_sgi_epp_deliveries" name="Responsivas de EPP"
+              parent="menu_sgi_safety" action="sgi_epp_delivery_action" sequence="40"/>
+    <menuitem id="menu_sgi_checklist_requests" name="Hojas de checklist"
+              parent="menu_sgi_safety" action="sgi_checklist_request_action" sequence="50"/>
+    <menuitem id="menu_sgi_csh_inspections" name="Recorridos CSH"
+              parent="menu_sgi_safety" action="sgi_csh_inspection_action" sequence="60"/>
+    <menuitem id="menu_sgi_emergency_plans" name="Planes de emergencia"
+              parent="menu_sgi_safety" action="sgi_emergency_plan_action" sequence="70"/>
+    <menuitem id="menu_sgi_emergency_drills" name="Simulacros"
+              parent="menu_sgi_safety" action="sgi_emergency_drill_action" sequence="80"/>
+    <!-- F-004: «-hr.group_hr_user» quita el grupo en producción; sin el «-»
+         el menú seguiría abierto a «Empleados / Encargado». -->
+    <menuitem id="menu_sgi_health_records" name="Estudios de higiene y exámenes médicos"
+              parent="menu_sgi_safety" action="sgi_health_record_action" sequence="90"
+              groups="quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager,-hr.group_hr_user"/>
 
-    <!-- 6.1 Documentos -->
-    <menuitem id="menu_sgi_documental" name="Documentos" parent="menu_sgi_admin" sequence="10"/>
-    <menuitem id="menu_sgi_documents" name="Documentos" parent="menu_sgi_documental"
-              action="sgi_document_action" sequence="10"/>
-    <menuitem id="menu_sgi_master_list" name="Lista maestra" parent="menu_sgi_documental"
-              action="sgi_document_master_list_action" sequence="20"/>
-    <menuitem id="menu_sgi_external_docs" name="Documentos externos" parent="menu_sgi_documental"
-              action="sgi_external_doc_action" sequence="30"/>
-    <menuitem id="menu_sgi_doc_changes" name="Solicitudes de cambio" parent="menu_sgi_documental"
-              action="sgi_doc_change_board_action" sequence="40"
+    <!-- ============================================================
+         5. Desempeño (MIID 9; nueva en 57.113.0). Sin grupos propios: cada
+         entrada conserva los suyos y la carpeta se ve si hay algo que ver
+         (el personal ve Auditorías). Tablero, Revisión y Satisfacción vienen
+         de Dirección; Indicadores de Administración SGI; Auditorías de
+         Mejora.
+         ============================================================ -->
+    <menuitem id="menu_sgi_performance" name="Desempeño" parent="menu_sgi_root" sequence="40"/>
+    <menuitem id="menu_sgi_dashboard_health" name="Tablero" parent="menu_sgi_performance"
+              action="sgi_direction_board_action_open" sequence="10"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
-    <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_documental"
-              action="sgi_document_type_action" sequence="50" groups="quimibond_sgi.group_sgi_manager"/>
-    <!-- «Migración de formatos» (menu_sgi_migration, 2419) se mudó en la
-         entrega 6 a Procesos → Del Dropbox a Odoo. -->
-
-    <!-- 6.2 Indicadores y mediciones -->
-    <menuitem id="menu_sgi_admin_indicators" name="Indicadores" parent="menu_sgi_admin" sequence="20"/>
+    <!-- 5.1 Indicadores y mediciones (9.1). 57.113.0: viene de Administración
+         SGI y recibe los grupos que heredaba de ella (Auditor, Jefe MAST,
+         Dirección); el xmlid conserva «admin» (no se cambia nunca). -->
+    <menuitem id="menu_sgi_admin_indicators" name="Indicadores" parent="menu_sgi_performance" sequence="20"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
     <menuitem id="menu_sgi_indicators" name="Indicadores" parent="menu_sgi_admin_indicators"
               action="sgi_indicator_action" sequence="10"/>
     <!-- 57.109.0: asistente con preguntas y vista previa. -->
@@ -287,52 +270,135 @@
               action="sgi_measure_action" sequence="20"/>
     <menuitem id="menu_sgi_measures_split" name="Mediciones por equipo o mercado"
               parent="menu_sgi_admin_indicators" action="sgi_measure_split_action" sequence="30"/>
-
-    <!-- 6.3 Aprobaciones del SGI (quién aprueba cada actividad): lectura
-         para Auditor y Dirección; la sincronización es de MAST. -->
-    <menuitem id="menu_sgi_approvals_native" name="Aprobaciones del SGI" parent="menu_sgi_admin"
-              action="sgi_activity_role_action_approval" sequence="25"
+    <!-- 57.107.0: revisión mensual de la medición por el dueño del proceso.
+         57.113.0 (Q5): de Diagnóstico a Indicadores (seguimiento, 9.1). -->
+    <menuitem id="menu_sgi_measure_reviews" name="Revisiones de medición"
+              parent="menu_sgi_admin_indicators" action="sgi_measure_review_action" sequence="40"/>
+    <menuitem id="menu_sgi_satisfaction" name="Satisfacción del cliente"
+              parent="menu_sgi_performance" action="sgi_satisfaction_action" sequence="30"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <menuitem id="menu_sgi_audits" name="Auditorías" parent="menu_sgi_performance" sequence="40"/>
+    <menuitem id="menu_sgi_audit_programs" name="Programa"
+              parent="menu_sgi_audits" action="sgi_audit_program_action" sequence="10"/>
+    <menuitem id="menu_sgi_audit_list" name="Auditorías" parent="menu_sgi_audits"
+              action="sgi_audit_action" sequence="20"/>
+    <!-- 57.53.0 (bloque 1 de formularios): todos los hallazgos con su ficha.
+         57.67.0: acción con xmlid nuevo (sgi_audit_finding_action se retiró
+         en 45.0.0 como acción huérfana y no vuelve). -->
+    <menuitem id="menu_sgi_audit_findings" name="Hallazgos" parent="menu_sgi_audits"
+              action="sgi_audit_finding_list_action" sequence="30"/>
+    <menuitem id="menu_sgi_mgmt_review" name="Revisión por la dirección"
+              parent="menu_sgi_performance" action="sgi_management_review_action" sequence="50"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
 
-    <!-- 6.4 Diagnóstico (D-18): carpeta con cinco vistas; el Auditor y
-         Dirección la leen. «Diagnóstico del SGI» tenía el grupo 318 en
-         producción: el «-» lo quita para que herede de la carpeta. -->
-    <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_admin" sequence="30"
+    <!-- ============================================================
+         6. Mejora (MIID 10; todos): lo que salió mal y lo que se hace para
+         que no vuelva. 57.113.0: Auditorías pasó a Desempeño.
+         ============================================================ -->
+    <menuitem id="menu_sgi_improvement_group" name="Mejora" parent="menu_sgi_root" sequence="50"/>
+    <menuitem id="menu_sgi_nc" name="No conformidades" parent="menu_sgi_improvement_group"
+              action="sgi_nc_board_action" sequence="10"/>
+    <!-- D-17: todas las acciones (NC, riesgos, AMEF, incidentes, simulacros,
+         objetivos, revisión por la dirección, indicadores en rojo) con
+         filtro por origen. Auditor, MAST y Dirección. -->
+    <menuitem id="menu_sgi_nc_all_actions" name="Acciones correctivas"
+              parent="menu_sgi_improvement_group" action="sgi_action_line_action_all" sequence="20"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+    <menuitem id="menu_sgi_complaints" name="Reclamaciones de clientes"
+              parent="menu_sgi_improvement_group" action="sgi_complaint_action" sequence="30"/>
+    <menuitem id="menu_sgi_improvements" name="Mejora continua" parent="menu_sgi_improvement_group"
+              action="sgi_improvement_action" sequence="40"/>
+    <menuitem id="menu_sgi_lessons" name="Lecciones aprendidas"
+              parent="menu_sgi_improvement_group" action="sgi_nc_lessons_action" sequence="50"/>
+    <menuitem id="menu_sgi_internal_complaints" name="Quejas y sugerencias del personal"
+              parent="menu_sgi_improvement_group" action="sgi_internal_complaint_action" sequence="60"/>
+
+    <!-- ============================================================
+         7. Administración (antes «Administración SGI», mismo xmlid): Auditor,
+         Jefe MAST y Dirección leen Diagnóstico y Aprobaciones (Q6, evidencia
+         de 9.1); Publicar, Transición y Configuración son solo de MAST
+         (groups en cada submenú).
+         ============================================================ -->
+    <menuitem id="menu_sgi_admin" name="Administración" parent="menu_sgi_root" sequence="90"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+
+    <!-- 7.1 Diagnóstico (D-18): el Auditor y Dirección la leen. «Diagnóstico
+         del SGI» tenía el grupo 318 en producción: el «-» lo quita para que
+         herede de la carpeta. 57.113.0 (Q5): de 8 a 4 entradas; las otras se
+         archivan en su lugar con su acción viva y se llega a ellas por un
+         filtro, una agrupación o un botón. -->
+    <menuitem id="menu_sgi_analysis" name="Diagnóstico" parent="menu_sgi_admin" sequence="10"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
     <menuitem id="menu_sgi_diagnostic" name="Diagnóstico del SGI" parent="menu_sgi_analysis"
               action="sgi_diagnostic_run_action" sequence="10"
               groups="-quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_activity_methods" name="Cobertura de medición"
               parent="menu_sgi_analysis" action="sgi_activity_method_action" sequence="20"/>
+    <!-- 57.113.0 (Q5): archivado; se llega por «Cumplimiento de procedimientos»
+         sin el filtro «Medibles» y agrupado por «Método de medición». -->
+    <record id="menu_sgi_activity_methods" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
     <menuitem id="menu_sgi_compliance" name="Cumplimiento de procedimientos"
-              parent="menu_sgi_analysis" action="sgi_activity_compliance_action" sequence="30"/>
+              parent="menu_sgi_analysis" action="sgi_activity_compliance_action" sequence="20"/>
+    <!-- 57.103.0: registro de cumplimiento (con el botón «Por semana» desde
+         57.113.0). -->
+    <menuitem id="menu_sgi_activity_executions" name="Registro de cumplimiento"
+              parent="menu_sgi_analysis" action="sgi_activity_execution_action" sequence="30"/>
     <menuitem id="menu_sgi_spec_gaps" name="Faltantes de especificación"
               parent="menu_sgi_analysis" action="sgi_activity_spec_gap_action" sequence="40"/>
     <menuitem id="menu_sgi_week_stats" name="Cumplimiento semanal"
               parent="menu_sgi_analysis" action="sgi_activity_week_stat_action" sequence="50"/>
-    <!-- 57.103.0: registro de cumplimiento; 57.106.0: medición por revisar. -->
-    <menuitem id="menu_sgi_activity_executions" name="Registro de cumplimiento"
-              parent="menu_sgi_analysis" action="sgi_activity_execution_action" sequence="60"/>
+    <!-- 57.113.0 (Q5): archivado; se llega por el botón «Por semana» de
+         «Registro de cumplimiento». -->
+    <record id="menu_sgi_week_stats" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <!-- 57.106.0: medición por revisar. -->
     <menuitem id="menu_sgi_menu_mismatch" name="Medición por revisar"
               parent="menu_sgi_analysis" action="sgi_activity_menu_mismatch_action" sequence="70"/>
-    <!-- 57.107.0: revisión mensual de la medición por el dueño del proceso. -->
-    <menuitem id="menu_sgi_measure_reviews" name="Revisiones de medición"
-              parent="menu_sgi_analysis" action="sgi_measure_review_action" sequence="80"/>
+    <!-- 57.113.0 (Q5): archivado; se llega por el filtro «Medición por
+         revisar» de «Faltantes de especificación». -->
+    <record id="menu_sgi_menu_mismatch" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
 
-    <!-- 6.5 Firmas de lectura -->
-    <menuitem id="menu_sgi_admin_signatures" name="Firmas de lectura" parent="menu_sgi_admin" sequence="40"/>
+    <!-- 7.2 Aprobaciones del SGI (quién aprueba cada actividad): lectura
+         para Auditor y Dirección; la sincronización es de MAST. -->
+    <menuitem id="menu_sgi_approvals_native" name="Aprobaciones del SGI" parent="menu_sgi_admin"
+              action="sgi_activity_role_action_approval" sequence="20"
+              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director"/>
+
+    <!-- 7.3 Publicar Mi procedimiento (Q3): entrada directa; se usa cada vez
+         que cambia un procedimiento. -->
     <menuitem id="menu_sgi_my_procedure_publish" name="Publicar Mi procedimiento"
-              parent="menu_sgi_admin_signatures" action="sgi_my_procedure_action_publish" sequence="10"
+              parent="menu_sgi_admin" action="sgi_my_procedure_action_publish" sequence="30"
               groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_config_acks" name="Acuses de lectura" parent="menu_sgi_admin_signatures"
-              action="sgi_document_ack_action" sequence="20"/>
+    <!-- «Firmas de lectura» quedó vacía en 57.113.0 (Publicar arriba,
+         Acuses de lectura en Sistema → Documentos): archivada en su lugar. -->
+    <menuitem id="menu_sgi_admin_signatures" name="Firmas de lectura" parent="menu_sgi_admin" sequence="40"/>
+    <record id="menu_sgi_admin_signatures" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
 
-    <!-- 6.6 Configuración (solo MAST) -->
+    <!-- 7.4 Transición (57.113.0, Q2): herramientas de una sola vez del Jefe
+         MAST (lo que heredaba de Configuración). «Cargar mapa de procesos» de
+         quimibond_sgi_mapa cuelga aquí cuando está instalado. -->
+    <menuitem id="menu_sgi_transition" name="Transición" parent="menu_sgi_admin" sequence="40"
+              groups="quimibond_sgi.group_sgi_manager"/>
+    <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_transition"
+              action="sgi_catalog_load_wizard_action" sequence="10"
+              groups="quimibond_sgi.group_sgi_admin"/>
+    <!-- 57.95.0 (D-06 de datos): asistente manual del Jefe MAST. -->
+    <menuitem id="menu_sgi_config_company_fix" name="Empresa en documentos controlados"
+              parent="menu_sgi_transition" action="sgi_company_fix_action" sequence="20"/>
+    <!-- 57.96.0 (N-07): asistente manual del Jefe MAST. -->
+    <menuitem id="menu_sgi_config_env_aspect_transfer" name="Traspaso de riesgos ambientales"
+              parent="menu_sgi_transition" action="sgi_env_aspect_transfer_action" sequence="30"/>
+
+    <!-- 7.5 Configuración (solo MAST) -->
     <menuitem id="menu_sgi_config" name="Configuración" parent="menu_sgi_admin" sequence="50"
               groups="quimibond_sgi.group_sgi_manager"/>
-    <menuitem id="menu_sgi_config_load" name="Cargar catálogo" parent="menu_sgi_config"
-              action="sgi_catalog_load_wizard_action" sequence="2"
-              groups="quimibond_sgi.group_sgi_admin"/>
     <menuitem id="menu_sgi_job_families" name="Familias de puesto" parent="menu_sgi_config"
               action="sgi_job_family_action" sequence="3"/>
     <menuitem id="menu_sgi_config_settings" name="Ajustes" parent="menu_sgi_config"
@@ -345,6 +411,9 @@
               action="sgi_norm_clause_action" sequence="30"/>
     <menuitem id="menu_sgi_config_risk_cat" name="Categorías de riesgo" parent="menu_sgi_config"
               action="sgi_risk_category_action" sequence="40"/>
+    <!-- 57.113.0 (Q4): de Documentos a Configuración (catálogo). -->
+    <menuitem id="menu_sgi_config_doc_types" name="Tipos de documento" parent="menu_sgi_config"
+              action="sgi_document_type_action" sequence="45" groups="quimibond_sgi.group_sgi_manager"/>
     <menuitem id="menu_sgi_checklist_templates" name="Checklists de planta y unidades"
               parent="menu_sgi_config" action="sgi_checklist_template_action" sequence="50"/>
     <!-- 57.94.0 (U-01): qué cuentas compartidas son tabletas de planta. -->
@@ -358,12 +427,6 @@
          mientras, al final para no empatar secuencia (E-013). -->
     <menuitem id="menu_sgi_config_ppap_elements" name="Elementos PPAP" parent="menu_sgi_config"
               action="sgi_ppap_element_template_action" sequence="80"/>
-    <!-- 57.95.0 (D-06 de datos): asistente manual del Jefe MAST. -->
-    <menuitem id="menu_sgi_config_company_fix" name="Empresa en documentos controlados"
-              parent="menu_sgi_config" action="sgi_company_fix_action" sequence="90"/>
-    <!-- 57.96.0 (N-07): asistente manual del Jefe MAST. -->
-    <menuitem id="menu_sgi_config_env_aspect_transfer" name="Traspaso de riesgos ambientales"
-              parent="menu_sgi_config" action="sgi_env_aspect_transfer_action" sequence="95"/>
     <!-- 57.96.0 (N-06): competencias que exige cada tipo de permiso. -->
     <menuitem id="menu_sgi_config_work_permit_skills" name="Competencias por tipo de permiso"
               parent="menu_sgi_config" action="sgi_work_permit_skill_action" sequence="96"/>

@@ -910,7 +910,7 @@ class SgiMyProcedureCheck(models.TransientModel):
 
     @api.model
     def action_open(self):
-        """Administración SGI → Firmas de lectura → Publicar Mi procedimiento."""
+        """SGI → Administración → Publicar Mi procedimiento."""
         return {
             'type': 'ir.actions.act_window', 'res_model': self._name,
             'res_id': self.create({}).id, 'view_mode': 'form', 'target': 'current',

@@ -371,7 +371,7 @@ class SgiActivitySpec(models.Model):
             add('odoo_no_menu', "Canal Odoo sin la pantalla (menú) donde se hace.")
         if channel == 'odoo' and self.odoo_menu_id:
             # E-010 (entrega 4): Mi procedimiento le dice al ejecutor una ruta
-            # que su usuario no puede abrir (p. ej. Administración SGI).
+            # que su usuario no puede abrir (p. ej. Administración).
             users = self._sgi_executor_users()
             if users and not any(sgi_menu_visible_for(self.odoo_menu_id, user) for user in users):
                 add('menu_no_visible', "Nadie de quien la ejecuta ve «%s»: apunte a una "

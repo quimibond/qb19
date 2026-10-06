@@ -7,7 +7,9 @@
          company_id: toma la empresa del SGI (D-03).
          57.110.0: completado con lo que traía la revisión 02 (4.1, 4.2, 6.1, 6.3, 7.1,
          7.3, 7.4, 8.1, 8.3, 9.1, 10.2) y notas de 1.2, 1.3 y 12.1 corregidas; en
-         producción lo lleva la migración, solo a las secciones sin editar. -->
+         producción lo lleva la migración, solo a las secciones sin editar.
+         57.113.0: rutas del menú nuevo (menús por capítulos); en producción lo
+         lleva la migración, solo a las secciones sin editar. -->
     <data noupdate="1">
 
         <record id="sgi_miid_section_01_identificacion" model="sgi.miid.section">
@@ -134,7 +136,7 @@
                 <li>ISO 45001:2018, Sistemas de gestión de la seguridad y salud en el trabajo. Requisitos con orientación para su uso.</li>
                 <li>ISO 9000:2015, Fundamentos y vocabulario (NMX-CC-9000-IMNC-2015).</li>
                 </ul>
-                <p>Las disposiciones legales y reglamentarias aplicables se llevan en Odoo, en <b>SGI → Dirección → Requisitos legales</b> (ver 6.1.3).</p>
+                <p>Las disposiciones legales y reglamentarias aplicables se llevan en Odoo, en <b>SGI → Planeación → Requisitos legales</b> (ver 6.1.3).</p>
             </field>
         </record>
 
@@ -157,7 +159,7 @@
                 <tr><td>NC</td><td>No conformidad</td></tr>
                 <tr><td>MAST</td><td>Medio Ambiente y Seguridad en el Trabajo</td></tr>
                 </tbody></table>
-                <p><b>Regla general.</b> La información documentada del SGI se mantiene y se conserva en Odoo. Lo que está en Odoo es la versión oficial. El Dropbox queda como archivo histórico de solo lectura; la correspondencia entre cada documento anterior y su sustituto está en <b>SGI → Procesos → Del Dropbox a Odoo</b>.</p>
+                <p><b>Regla general.</b> La información documentada del SGI se mantiene y se conserva en Odoo. Lo que está en Odoo es la versión oficial. El Dropbox queda como archivo histórico de solo lectura; la correspondencia entre cada documento anterior y su sustituto está en <b>SGI → Sistema → Del Dropbox a Odoo</b>.</p>
                 <p>El detalle de operación de cada pantalla está en el Manual de usuario del SGI en Odoo, que es documento de apoyo de este Manual.</p>
             </field>
         </record>
@@ -188,7 +190,7 @@
             <field name="name">Necesidades y expectativas de las partes interesadas</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>Las partes interesadas pertinentes (clientes, proveedores externos, el personal y los propietarios) y sus requisitos se registran en Odoo, en <b>SGI → Dirección → Partes interesadas</b>. Las necesidades que se convierten en requisitos legales u otros requisitos se llevan en <b>Requisitos legales</b> (6.1.3).</p>
+                <p>Las partes interesadas pertinentes (clientes, proveedores externos, el personal y los propietarios) y sus requisitos se registran en Odoo, en <b>SGI → Planeación → Partes interesadas</b>. Las necesidades que se convierten en requisitos legales u otros requisitos se llevan en <b>Requisitos legales</b> (6.1.3).</p>
                 <p>En seguridad y salud, las necesidades del personal incluyen condiciones de trabajo seguras y saludables, capacitación, consulta y participación, cumplimiento de los requisitos legales, prevención de lesiones, enfermedades e incidentes, y equipo de protección personal adecuado.</p>
             </field>
         </record>
@@ -210,7 +212,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">procesos</field>
             <field name="body" type="html">
-                <p>PNTQ opera su SGI mediante los procesos de la tabla siguiente. Cada uno tiene dueño, entradas, salidas, actividades con responsable y vencimiento, indicadores y riesgos. Se consultan en <b>SGI → Procesos → Mapa de procesos</b>.</p>
+                <p>PNTQ opera su SGI mediante los procesos de la tabla siguiente. Cada uno tiene dueño, entradas, salidas, actividades con responsable y vencimiento, indicadores y riesgos. Se consultan en <b>SGI → Sistema → Mapa de procesos</b>.</p>
                 <p>[[datos]]</p>
                 <p>Para cada proceso, Odoo mantiene:</p>
                 <ul>
@@ -242,7 +244,7 @@
                 <thead><tr><th>Compromiso</th><th>Cómo se evidencia</th></tr></thead>
                 <tbody>
                 <tr><td>Rinde cuentas de la eficacia del SGI</td><td>Manifiesto de compromiso (Anexo 8), informes de auditoría y actas de revisión por la dirección en Odoo</td></tr>
-                <tr><td>Establece política y objetivos compatibles con el contexto y la estrategia</td><td><b>SGI → Dirección → Política integral</b> y <b>Objetivos integrales</b>; Planeación Estratégica (Anexo 1)</td></tr>
+                <tr><td>Establece política y objetivos compatibles con el contexto y la estrategia</td><td><b>SGI → Planeación → Política integral</b> y <b>Objetivos integrales</b>; Planeación Estratégica (Anexo 1)</td></tr>
                 <tr><td>Integra los requisitos del SGI en los procesos de negocio</td><td>Las actividades del SGI se ejecutan en las mismas pantallas de Odoo donde se opera el negocio</td></tr>
                 <tr><td>Promueve el enfoque a procesos y el pensamiento basado en riesgos</td><td>Mapa de procesos y <b>Riesgos y oportunidades</b></td></tr>
                 <tr><td>Asegura los recursos</td><td>Plan de Asignación de Recursos (confidencial)</td></tr>
@@ -262,7 +264,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">politica</field>
             <field name="body" type="html">
-                <p>La política integral (Anexo 9) se mantiene en <b>SGI → Dirección → Política integral</b>; solo una puede estar vigente. La política:</p>
+                <p>La política integral (Anexo 9) se mantiene en <b>SGI → Planeación → Política integral</b>; solo una puede estar vigente. La política:</p>
                 <ul>
                 <li>es apropiada al propósito y contexto de PNTQ, incluidos sus impactos ambientales;</li>
                 <li>da el marco para los objetivos integrales;</li>
@@ -308,10 +310,10 @@
                 <table class="table table-sm table-bordered">
                 <thead><tr><th>Instrumento</th><th>Qué cubre</th><th>Dónde</th><th>Sustituye a</th></tr></thead>
                 <tbody>
-                <tr><td>Riesgos y oportunidades</td><td>Lo que puede afectar los resultados del SGI y de cada proceso (6.1.1)</td><td>SGI → Dirección → Riesgos y oportunidades</td><td>Matriz F-P-C09-02 y FODA por área</td></tr>
-                <tr><td>Aspectos ambientales</td><td>Aspectos e impactos con perspectiva de ciclo de vida, y cuáles son significativos (6.1.2 de ISO 14001)</td><td>SGI → Seguridad y ambiente → Aspectos ambientales</td><td>Matriz F-P-E01-01</td></tr>
+                <tr><td>Riesgos y oportunidades</td><td>Lo que puede afectar los resultados del SGI y de cada proceso (6.1.1)</td><td>SGI → Planeación → Riesgos y oportunidades</td><td>Matriz F-P-C09-02 y FODA por área</td></tr>
+                <tr><td>Aspectos ambientales</td><td>Aspectos e impactos con perspectiva de ciclo de vida, y cuáles son significativos (6.1.2 de ISO 14001)</td><td>SGI → Planeación → Aspectos ambientales</td><td>Matriz F-P-E01-01</td></tr>
                 <tr><td>IPER</td><td>Peligros y riesgos de seguridad y salud (6.1.2 de ISO 45001)</td><td>Riesgos y oportunidades, instrumento IPER</td><td>Matriz F-P-S01-01</td></tr>
-                <tr><td>Requisitos legales y otros requisitos</td><td>Obligaciones aplicables y su evaluación de cumplimiento (6.1.3)</td><td>SGI → Dirección → Requisitos legales</td><td>Matriz F-P-E02-01</td></tr>
+                <tr><td>Requisitos legales y otros requisitos</td><td>Obligaciones aplicables y su evaluación de cumplimiento (6.1.3)</td><td>SGI → Planeación → Requisitos legales</td><td>Matriz F-P-E02-01</td></tr>
                 </tbody></table>
                 <p>Reglas de operación:</p>
                 <ul>
@@ -331,7 +333,7 @@
             <field name="heading_level">2</field>
             <field name="live_block">objetivos</field>
             <field name="body" type="html">
-                <p>Los objetivos integrales (Anexo 6) se mantienen en <b>SGI → Dirección → Objetivos integrales</b>. Son coherentes con la política, medibles y comunicados. Cada objetivo se liga a sus indicadores y toma el peor color de ellos, de modo que su seguimiento es continuo. Para cada uno se define qué se hará, con qué recursos, quién responde, cuándo termina y cómo se evalúa. Se revisan en la revisión por la dirección.</p>
+                <p>Los objetivos integrales (Anexo 6) se mantienen en <b>SGI → Planeación → Objetivos integrales</b>. Son coherentes con la política, medibles y comunicados. Cada objetivo se liga a sus indicadores y toma el peor color de ellos, de modo que su seguimiento es continuo. Para cada uno se define qué se hará, con qué recursos, quién responde, cuándo termina y cómo se evalúa. Se revisan en la revisión por la dirección.</p>
             </field>
         </record>
 
@@ -435,7 +437,7 @@
                 <li><b>Identificación:</b> todo documento lleva clave, revisión y fecha de emisión. Los registros que imprime Odoo los llevan en cada hoja, con el número de página.</li>
                 <li><b>Revisión y aprobación:</b> todo cambio pasa por una solicitud aprobada. Cada documento vigente tiene fecha de próxima revisión y su responsable recibe aviso.</li>
                 <li><b>Distribución y acceso:</b> el personal consulta en <b>SGI → Inicio → Documentos vigentes</b>. La difusión se evidencia con el acuse de lectura.</li>
-                <li><b>Lista maestra:</b> <b>Administración SGI → Documentos → Lista maestra</b>.</li>
+                <li><b>Lista maestra:</b> <b>SGI → Sistema → Documentos → Lista maestra</b>.</li>
                 <li><b>Documentos de origen externo:</b> normas, especificaciones de cliente y disposiciones oficiales se registran como documentos externos y se implantan en 10 días hábiles.</li>
                 <li><b>Conservación y protección:</b> los registros no se borran: se archivan o se cancelan con motivo. Lo cerrado solo lo modifica el Jefe MAST y SGI. El acceso depende del grupo de cada usuario. Los datos de salud y de salarios tienen acceso restringido.</li>
                 <li><b>Historia:</b> los documentos y registros anteriores a Odoo se conservan en el Dropbox, de solo lectura.</li>
@@ -532,7 +534,7 @@
                 <li>La medición validada conserva las metas con las que se juzgó.</li>
                 </ol>
                 <p>Un indicador nuevo opera «en prueba» hasta que su dueño confirma una medición contra la realidad y lo pasa a oficial. La ficha de cada indicador, con su tendencia, se imprime desde Odoo.</p>
-                <p><b>Cumplimiento de las actividades.</b> El sistema mide por proceso y por puesto si cada actividad se hizo en su periodo (<b>Administración SGI → Diagnóstico → Cumplimiento de procedimientos</b>).</p>
+                <p><b>Cumplimiento de las actividades.</b> El sistema mide por proceso y por puesto si cada actividad se hizo en su periodo (<b>SGI → Administración → Diagnóstico → Cumplimiento de procedimientos</b>).</p>
                 <p><b>Desempeño de seguridad y salud.</b> Se evalúa con sus indicadores, los incidentes, los actos y condiciones inseguras, las inspecciones y recorridos, y el cumplimiento de los requisitos legales.</p>
                 <p><b>Satisfacción del cliente (9.1.2).</b> Se evalúa con las reclamaciones y devoluciones, las calificaciones de los clientes y el registro de <b>Satisfacción del cliente</b>.</p>
                 <p><b>Evaluación del cumplimiento (9.1.2 de ISO 14001 e ISO 45001).</b> Cada requisito legal se evalúa periódicamente con evidencia; el historial queda en <b>Evaluaciones de cumplimiento legal</b>.</p>
@@ -546,7 +548,7 @@
             <field name="name">Auditoría interna</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>Las auditorías se planifican, ejecutan y cierran en <b>SGI → Mejora → Auditorías</b>. Este apartado sustituye al procedimiento P-G03.</p>
+                <p>Las auditorías se planifican, ejecutan y cierran en <b>SGI → Desempeño → Auditorías</b>. Este apartado sustituye al procedimiento P-G03.</p>
                 <ul>
                 <li><b>Programa anual:</b> lo aprueba el Jefe MAST y SGI y cubre todos los procesos en un ciclo máximo de tres años. El reporte «Programado contra realizado» muestra su avance.</li>
                 <li><b>Independencia:</b> ningún auditor audita su propio trabajo. El proceso E2 lo audita un auditor distinto del Jefe MAST y SGI.</li>
@@ -563,7 +565,7 @@
             <field name="name">Revisión por la dirección</field>
             <field name="heading_level">2</field>
             <field name="body" type="html">
-                <p>La Dirección de Operaciones revisa el SGI a intervalos planificados y después de cada auditoría, en <b>SGI → Dirección → Revisión por la dirección</b>. Sustituye al instructivo IT-P-A10-01.</p>
+                <p>La Dirección de Operaciones revisa el SGI a intervalos planificados y después de cada auditoría, en <b>SGI → Desempeño → Revisión por la dirección</b>. Sustituye al instructivo IT-P-A10-01.</p>
                 <p><b>Entradas.</b> El sistema carga, con los datos reales del periodo: el estado de los acuerdos anteriores; los cambios en el contexto y en las partes interesadas; el desempeño de los procesos y de los indicadores; las no conformidades y acciones correctivas; los resultados de auditorías; la satisfacción del cliente, las quejas y las reclamaciones; el desempeño de los proveedores; los riesgos y oportunidades; los aspectos ambientales significativos; el cumplimiento legal; los incidentes y el desempeño de seguridad y salud; la consulta y participación de los trabajadores; la adecuación de los recursos; y las oportunidades de mejora.</p>
                 <p><b>Salidas.</b> Las conclusiones sobre la conveniencia, adecuación y eficacia del SGI, las oportunidades de mejora, las necesidades de cambio y de recursos, y los acuerdos. Cada acuerdo se convierte en una acción con responsable y fecha; los que no se cierran se cargan en la siguiente revisión.</p>
                 <p>El acta de cada revisión cerrada se conserva en Odoo como evidencia.</p>
@@ -645,26 +647,26 @@
                 <table class="table table-sm table-bordered">
                 <thead><tr><th>Cláusula</th><th>Tema</th><th>Evidencia en Odoo</th></tr></thead>
                 <tbody>
-                <tr><td>4.1 y 4.2</td><td>Contexto y partes interesadas</td><td>SGI → Dirección → Partes interesadas; diagrama de contexto</td></tr>
-                <tr><td>4.4</td><td>Procesos</td><td>SGI → Procesos → Mapa de procesos y Actividades</td></tr>
-                <tr><td>5.2</td><td>Política</td><td>SGI → Dirección → Política integral, con sus acuses</td></tr>
+                <tr><td>4.1 y 4.2</td><td>Contexto y partes interesadas</td><td>SGI → Planeación → Partes interesadas; diagrama de contexto</td></tr>
+                <tr><td>4.4</td><td>Procesos</td><td>SGI → Sistema → Mapa de procesos y Actividades</td></tr>
+                <tr><td>5.2</td><td>Política</td><td>SGI → Planeación → Política integral, con sus acuses</td></tr>
                 <tr><td>5.3</td><td>Roles y responsabilidades</td><td>Matriz de responsabilidades; Mi procedimiento</td></tr>
-                <tr><td>6.1</td><td>Riesgos, aspectos, IPER y requisitos legales</td><td>SGI → Dirección → Riesgos y oportunidades y Requisitos legales; Seguridad y ambiente → Aspectos ambientales</td></tr>
-                <tr><td>6.2</td><td>Objetivos</td><td>SGI → Dirección → Objetivos integrales</td></tr>
+                <tr><td>6.1</td><td>Riesgos, aspectos, IPER y requisitos legales</td><td>SGI → Planeación → Riesgos y oportunidades, Aspectos ambientales y Requisitos legales</td></tr>
+                <tr><td>6.2</td><td>Objetivos</td><td>SGI → Planeación → Objetivos integrales</td></tr>
                 <tr><td>6.3 y 8.5.6</td><td>Cambios</td><td>App Aprobaciones; Solicitudes de cambio</td></tr>
                 <tr><td>7.1.5</td><td>Equipos de medición</td><td>Calidad → Calidad preventiva → Metrología</td></tr>
                 <tr><td>7.2 y 7.3</td><td>Competencia y toma de conciencia</td><td>Empleados → Competencias SGI; acuses de lectura</td></tr>
                 <tr><td>7.4</td><td>Comunicación, consulta y participación</td><td>Recorridos CSH; Reportar; Quejas y sugerencias del personal</td></tr>
-                <tr><td>7.5</td><td>Información documentada</td><td>Administración SGI → Documentos y Lista maestra</td></tr>
+                <tr><td>7.5</td><td>Información documentada</td><td>SGI → Sistema → Documentos y Lista maestra</td></tr>
                 <tr><td>8.1</td><td>Control operacional</td><td>Actividades de cada proceso; permisos de trabajo; bloqueo y etiquetado; checklists</td></tr>
                 <tr><td>8.2 de ISO 14001 e ISO 45001</td><td>Emergencias</td><td>Seguridad y ambiente → Planes de emergencia y Simulacros</td></tr>
                 <tr><td>8.3</td><td>Diseño y desarrollo</td><td>Proceso C1; AMEF, planes de control y PPAP</td></tr>
                 <tr><td>8.4</td><td>Proveedores</td><td>Compras → Evaluación de proveedores; CoA recibidos</td></tr>
                 <tr><td>8.7 y 10.2</td><td>Salidas no conformes, NC y acciones</td><td>SGI → Mejora → No conformidades y Acciones correctivas</td></tr>
-                <tr><td>9.1</td><td>Indicadores y cumplimiento</td><td>Administración SGI → Indicadores y Diagnóstico</td></tr>
+                <tr><td>9.1</td><td>Indicadores y cumplimiento</td><td>SGI → Desempeño → Indicadores; Administración → Diagnóstico</td></tr>
                 <tr><td>9.1.2</td><td>Satisfacción del cliente; cumplimiento legal</td><td>Satisfacción del cliente; Evaluaciones de cumplimiento legal</td></tr>
-                <tr><td>9.2</td><td>Auditoría interna</td><td>SGI → Mejora → Auditorías</td></tr>
-                <tr><td>9.3</td><td>Revisión por la dirección</td><td>SGI → Dirección → Revisión por la dirección</td></tr>
+                <tr><td>9.2</td><td>Auditoría interna</td><td>SGI → Desempeño → Auditorías</td></tr>
+                <tr><td>9.3</td><td>Revisión por la dirección</td><td>SGI → Desempeño → Revisión por la dirección</td></tr>
                 <tr><td>10.2 de ISO 45001</td><td>Incidentes</td><td>Seguridad y ambiente → Incidentes y accidentes</td></tr>
                 <tr><td>10.3</td><td>Mejora continua</td><td>SGI → Mejora → Mejora continua y Lecciones aprendidas</td></tr>
                 </tbody></table>
