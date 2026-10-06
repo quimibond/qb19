@@ -1,0 +1,1273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.117.0 (C1, bloque 1): catálogo de características de desarrollo, renglones
+     por tipo de desarrollo (sustituyen DEV_DEFAULT_LINES de sgi_dev_request.py y
+     recogen el anexo A del levantamiento del 2026-10-06) y claves de la regla de
+     codificación de artículos de tejido y acabado (DAT P-D02-01 rev. 05, mayo 2025,
+     cotejadas contra el PDF). noupdate: Diseño y Desarrollo las ajusta en
+     SGI → Administración → Configuración sin que el update las revierta. -->
+<odoo noupdate="1">
+
+    <!-- ===== Características (catálogo) ===== -->
+    <record id="sgi_dev_char_masa" model="sgi.dev.characteristic.type">
+        <field name="sequence">10</field>
+        <field name="code">masa</field>
+        <field name="name">Masa por unidad de área</field>
+        <field name="name_en">Weight</field>
+        <field name="kind">num</field>
+        <field name="unit">g/m²</field>
+        <field name="method">MT001 · NMX-A-3801-INNTEX-2012</field>
+    </record>
+    <record id="sgi_dev_char_ancho" model="sgi.dev.characteristic.type">
+        <field name="sequence">20</field>
+        <field name="code">ancho</field>
+        <field name="name">Ancho de la tela</field>
+        <field name="name_en">Width on roll</field>
+        <field name="kind">num</field>
+        <field name="unit">m</field>
+        <field name="method">MT002 · NMX-A-22198-INNTEX-2012</field>
+    </record>
+    <record id="sgi_dev_char_espesor" model="sgi.dev.characteristic.type">
+        <field name="sequence">30</field>
+        <field name="code">espesor</field>
+        <field name="name">Espesor</field>
+        <field name="name_en">Thickness</field>
+        <field name="kind">num</field>
+        <field name="unit">mm</field>
+        <field name="method">MT003 · NMX-A-301/2-INNTEX-2013</field>
+    </record>
+    <record id="sgi_dev_char_rendimiento" model="sgi.dev.characteristic.type">
+        <field name="sequence">40</field>
+        <field name="code">rendimiento</field>
+        <field name="name">Rendimiento</field>
+        <field name="name_en">Yield</field>
+        <field name="kind">num</field>
+        <field name="unit">m/kg</field>
+        <field name="method">Calculado: 1000 / (masa × ancho)</field>
+        <field name="formula">rendimiento</field>
+    </record>
+    <record id="sgi_dev_char_tipo_acabado" model="sgi.dev.characteristic.type">
+        <field name="sequence">50</field>
+        <field name="code">tipo_acabado</field>
+        <field name="name">Tipo de acabado</field>
+        <field name="name_en">Finish type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_engomado_tipo_tacto" model="sgi.dev.characteristic.type">
+        <field name="sequence">60</field>
+        <field name="code">engomado_tipo_tacto</field>
+        <field name="name">Tipo y tacto del engomado</field>
+        <field name="name_en">Edge gumming type and hand</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_elongacion_estatica" model="sgi.dev.characteristic.type">
+        <field name="sequence">70</field>
+        <field name="code">elongacion_estatica</field>
+        <field name="name">Elongación estática</field>
+        <field name="name_en">Static elongation</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+        <field name="method">MT005 · DIN 53360 (5 × 20 cm, 2.5 kg, 3 min)</field>
+    </record>
+    <record id="sgi_dev_char_densidad_mallas" model="sgi.dev.characteristic.type">
+        <field name="sequence">80</field>
+        <field name="code">densidad_mallas</field>
+        <field name="name">Densidad del tejido: mallas</field>
+        <field name="name_en">Weave density: courses</field>
+        <field name="kind">num</field>
+        <field name="unit">/10 cm</field>
+        <field name="method">MT004 · NMX-A-134-INNTEX-2013</field>
+    </record>
+    <record id="sgi_dev_char_densidad_columnas" model="sgi.dev.characteristic.type">
+        <field name="sequence">90</field>
+        <field name="code">densidad_columnas</field>
+        <field name="name">Densidad del tejido: columnas</field>
+        <field name="name_en">Weave density: wales</field>
+        <field name="kind">num</field>
+        <field name="unit">/10 cm</field>
+        <field name="method">MT004 · NMX-A-134-INNTEX-2013</field>
+    </record>
+    <record id="sgi_dev_char_cambio_dim_calor" model="sgi.dev.characteristic.type">
+        <field name="sequence">100</field>
+        <field name="code">cambio_dim_calor</field>
+        <field name="name">Cambios dimensionales al calor</field>
+        <field name="name_en">Heat shrinkage</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+        <field name="method">MT006 · ISO 9866 (200 °C, 30 s)</field>
+    </record>
+    <record id="sgi_dev_char_engomado_orillas" model="sgi.dev.characteristic.type">
+        <field name="sequence">110</field>
+        <field name="code">engomado_orillas</field>
+        <field name="name">Engomado de orillas</field>
+        <field name="name_en">Edge gumming</field>
+        <field name="kind">bool</field>
+    </record>
+    <record id="sgi_dev_char_rollo" model="sgi.dev.characteristic.type">
+        <field name="sequence">120</field>
+        <field name="code">rollo</field>
+        <field name="name">Tamaño de los rollos</field>
+        <field name="name_en">Roll length</field>
+        <field name="kind">num</field>
+        <field name="unit">m</field>
+    </record>
+    <record id="sgi_dev_char_tela_base" model="sgi.dev.characteristic.type">
+        <field name="sequence">130</field>
+        <field name="code">tela_base</field>
+        <field name="name">Tela base</field>
+        <field name="name_en">Base fabric</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_resina_cantidad" model="sgi.dev.characteristic.type">
+        <field name="sequence">140</field>
+        <field name="code">resina_cantidad</field>
+        <field name="name">Cantidad de resina</field>
+        <field name="name_en">Resin add-on</field>
+        <field name="kind">num</field>
+        <field name="unit">g/m²</field>
+    </record>
+    <record id="sgi_dev_char_cambio_dim_lavado" model="sgi.dev.characteristic.type">
+        <field name="sequence">150</field>
+        <field name="code">cambio_dim_lavado</field>
+        <field name="name">Cambios dimensionales al lavado ×2</field>
+        <field name="name_en">Shrinkage after two washes</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+    </record>
+    <record id="sgi_dev_char_maquina_proceso" model="sgi.dev.characteristic.type">
+        <field name="sequence">160</field>
+        <field name="code">maquina_proceso</field>
+        <field name="name">Máquina de proceso</field>
+        <field name="name_en">Process machine</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_fuerza_maxima" model="sgi.dev.characteristic.type">
+        <field name="sequence">170</field>
+        <field name="code">fuerza_maxima</field>
+        <field name="name">Fuerza máxima (método de la tira)</field>
+        <field name="name_en">Maximum force (strip method)</field>
+        <field name="kind">num</field>
+        <field name="unit">N/5 cm</field>
+    </record>
+    <record id="sgi_dev_char_tipo_resina" model="sgi.dev.characteristic.type">
+        <field name="sequence">180</field>
+        <field name="code">tipo_resina</field>
+        <field name="name">Tipo de resina</field>
+        <field name="name_en">Resin type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_adhesion" model="sgi.dev.characteristic.type">
+        <field name="sequence">190</field>
+        <field name="code">adhesion</field>
+        <field name="name">Adhesión por fusionado</field>
+        <field name="name_en">Bond strength</field>
+        <field name="kind">num</field>
+        <field name="unit">N/5 cm</field>
+    </record>
+    <record id="sgi_dev_char_tipo_polvo" model="sgi.dev.characteristic.type">
+        <field name="sequence">200</field>
+        <field name="code">tipo_polvo</field>
+        <field name="name">Tipo de polvo</field>
+        <field name="name_en">Powder type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_solidez_frote" model="sgi.dev.characteristic.type">
+        <field name="sequence">210</field>
+        <field name="code">solidez_frote</field>
+        <field name="name">Solidez del color al frote</field>
+        <field name="name_en">Colour fastness to rubbing</field>
+        <field name="kind">num</field>
+        <field name="unit">grado</field>
+    </record>
+    <record id="sgi_dev_char_mesh" model="sgi.dev.characteristic.type">
+        <field name="sequence">220</field>
+        <field name="code">mesh</field>
+        <field name="name">Mesh</field>
+        <field name="name_en">Mesh</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="sgi_dev_char_corte_orillas" model="sgi.dev.characteristic.type">
+        <field name="sequence">230</field>
+        <field name="code">corte_orillas</field>
+        <field name="name">Corte de orillas</field>
+        <field name="name_en">Edge trimming</field>
+        <field name="kind">bool</field>
+    </record>
+    <record id="sgi_dev_char_tipo_fibra" model="sgi.dev.characteristic.type">
+        <field name="sequence">240</field>
+        <field name="code">tipo_fibra</field>
+        <field name="name">Tipo de fibra</field>
+        <field name="name_en">Fibre type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_titulo_fibra" model="sgi.dev.characteristic.type">
+        <field name="sequence">250</field>
+        <field name="code">titulo_fibra</field>
+        <field name="name">Título de fibra</field>
+        <field name="name_en">Fibre count</field>
+        <field name="kind">num</field>
+        <field name="unit">dtex</field>
+    </record>
+    <record id="sgi_dev_char_acabado" model="sgi.dev.characteristic.type">
+        <field name="sequence">260</field>
+        <field name="code">acabado</field>
+        <field name="name">Acabado</field>
+        <field name="name_en">Finish</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_composicion" model="sgi.dev.characteristic.type">
+        <field name="sequence">270</field>
+        <field name="code">composicion</field>
+        <field name="name">Composición</field>
+        <field name="name_en">Composition</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_hilos_pulgada" model="sgi.dev.characteristic.type">
+        <field name="sequence">280</field>
+        <field name="code">hilos_pulgada</field>
+        <field name="name">Hilos por pulgada a lo ancho</field>
+        <field name="name_en">Picks per inch</field>
+        <field name="kind">num</field>
+        <field name="unit">/plg</field>
+    </record>
+    <record id="sgi_dev_char_tipo_hilo" model="sgi.dev.characteristic.type">
+        <field name="sequence">290</field>
+        <field name="code">tipo_hilo</field>
+        <field name="name">Tipo de hilo</field>
+        <field name="name_en">Yarn type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_titulo_hilo" model="sgi.dev.characteristic.type">
+        <field name="sequence">300</field>
+        <field name="code">titulo_hilo</field>
+        <field name="name">Título de hilo</field>
+        <field name="name_en">Yarn count</field>
+        <field name="kind">num</field>
+        <field name="unit">dtex</field>
+    </record>
+    <record id="sgi_dev_char_ligamento" model="sgi.dev.characteristic.type">
+        <field name="sequence">310</field>
+        <field name="code">ligamento</field>
+        <field name="name">Ligamento</field>
+        <field name="name_en">Stitch / weave</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_agujas" model="sgi.dev.characteristic.type">
+        <field name="sequence">320</field>
+        <field name="code">agujas</field>
+        <field name="name">Número de agujas</field>
+        <field name="name_en">Needle count</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="sgi_dev_char_galga" model="sgi.dev.characteristic.type">
+        <field name="sequence">330</field>
+        <field name="code">galga</field>
+        <field name="name">Galga</field>
+        <field name="name_en">Gauge</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="sgi_dev_char_construccion" model="sgi.dev.characteristic.type">
+        <field name="sequence">340</field>
+        <field name="code">construccion</field>
+        <field name="name">Construcción</field>
+        <field name="name_en">Construction</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_elongacion_dinamica" model="sgi.dev.characteristic.type">
+        <field name="sequence">350</field>
+        <field name="code">elongacion_dinamica</field>
+        <field name="name">Elongación dinámica</field>
+        <field name="name_en">Dynamic elongation</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+    </record>
+    <record id="sgi_dev_char_tipo_goma" model="sgi.dev.characteristic.type">
+        <field name="sequence">360</field>
+        <field name="code">tipo_goma</field>
+        <field name="name">Tipo de goma (continua o discontinua)</field>
+        <field name="name_en">Gum type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_tacto" model="sgi.dev.characteristic.type">
+        <field name="sequence">370</field>
+        <field name="code">tacto</field>
+        <field name="name">Tacto</field>
+        <field name="name_en">Hand</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="sgi_dev_char_color" model="sgi.dev.characteristic.type">
+        <field name="sequence">380</field>
+        <field name="code">color</field>
+        <field name="name">Color</field>
+        <field name="name_en">Colour</field>
+        <field name="kind">text</field>
+    </record>
+
+    <!-- ===== Renglones por tipo de desarrollo ===== -->
+    <!-- general -->
+    <record id="sgi_dev_tpl_general_masa" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">10</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">20</field>
+        <field name="type_id" ref="sgi_dev_char_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_espesor" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">30</field>
+        <field name="type_id" ref="sgi_dev_char_espesor"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">40</field>
+        <field name="type_id" ref="sgi_dev_char_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_general_tipo_acabado" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">50</field>
+        <field name="type_id" ref="sgi_dev_char_tipo_acabado"/>
+    </record>
+    <record id="sgi_dev_tpl_general_engomado_tipo_tacto" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">60</field>
+        <field name="type_id" ref="sgi_dev_char_engomado_tipo_tacto"/>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_estatica_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">70</field>
+        <field name="type_id" ref="sgi_dev_char_elongacion_estatica"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_estatica_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">80</field>
+        <field name="type_id" ref="sgi_dev_char_elongacion_estatica"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_densidad_mallas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">90</field>
+        <field name="type_id" ref="sgi_dev_char_densidad_mallas"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_densidad_columnas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">100</field>
+        <field name="type_id" ref="sgi_dev_char_densidad_columnas"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_cambio_dim_calor_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">110</field>
+        <field name="type_id" ref="sgi_dev_char_cambio_dim_calor"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_cambio_dim_calor_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">120</field>
+        <field name="type_id" ref="sgi_dev_char_cambio_dim_calor"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_engomado_orillas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">130</field>
+        <field name="type_id" ref="sgi_dev_char_engomado_orillas"/>
+    </record>
+    <record id="sgi_dev_tpl_general_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">140</field>
+        <field name="type_id" ref="sgi_dev_char_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_general_composicion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">150</field>
+        <field name="type_id" ref="sgi_dev_char_composicion"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_titulo_hilo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">160</field>
+        <field name="type_id" ref="sgi_dev_char_titulo_hilo"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_tipo_hilo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">170</field>
+        <field name="type_id" ref="sgi_dev_char_tipo_hilo"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_ligamento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">180</field>
+        <field name="type_id" ref="sgi_dev_char_ligamento"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_agujas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">190</field>
+        <field name="type_id" ref="sgi_dev_char_agujas"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_galga" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">200</field>
+        <field name="type_id" ref="sgi_dev_char_galga"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_construccion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">210</field>
+        <field name="type_id" ref="sgi_dev_char_construccion"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_dinamica_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">220</field>
+        <field name="type_id" ref="sgi_dev_char_elongacion_dinamica"/>
+        <field name="direction">largo</field>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_dinamica_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">230</field>
+        <field name="type_id" ref="sgi_dev_char_elongacion_dinamica"/>
+        <field name="direction">ancho</field>
+    </record>
+    <record id="sgi_dev_tpl_general_tipo_goma" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">240</field>
+        <field name="type_id" ref="sgi_dev_char_tipo_goma"/>
+    </record>
+    <record id="sgi_dev_tpl_general_tacto" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">250</field>
+        <field name="type_id" ref="sgi_dev_char_tacto"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">260</field>
+        <field name="type_id" ref="sgi_dev_char_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <!-- entretelas_v10 -->
+    <record id="sgi_dev_tpl_entretelas_v10_tela_base" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">10</field>
+        <field name="type_id" ref="sgi_dev_char_tela_base"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_masa" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">20</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_resina_cantidad" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">30</field>
+        <field name="type_id" ref="sgi_dev_char_resina_cantidad"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">40</field>
+        <field name="type_id" ref="sgi_dev_char_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_cambio_dim_lavado_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">50</field>
+        <field name="type_id" ref="sgi_dev_char_cambio_dim_lavado"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_cambio_dim_lavado_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">60</field>
+        <field name="type_id" ref="sgi_dev_char_cambio_dim_lavado"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_maquina_proceso" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">70</field>
+        <field name="type_id" ref="sgi_dev_char_maquina_proceso"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_fuerza_maxima_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">80</field>
+        <field name="type_id" ref="sgi_dev_char_fuerza_maxima"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_fuerza_maxima_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">90</field>
+        <field name="type_id" ref="sgi_dev_char_fuerza_maxima"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_tipo_resina" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">100</field>
+        <field name="type_id" ref="sgi_dev_char_tipo_resina"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_adhesion_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">110</field>
+        <field name="type_id" ref="sgi_dev_char_adhesion"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_adhesion_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">120</field>
+        <field name="type_id" ref="sgi_dev_char_adhesion"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_tipo_polvo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">130</field>
+        <field name="type_id" ref="sgi_dev_char_tipo_polvo"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_solidez_frote_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">140</field>
+        <field name="type_id" ref="sgi_dev_char_solidez_frote"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_solidez_frote_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">150</field>
+        <field name="type_id" ref="sgi_dev_char_solidez_frote"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_solidez_frote_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">160</field>
+        <field name="type_id" ref="sgi_dev_char_solidez_frote"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_mesh" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">170</field>
+        <field name="type_id" ref="sgi_dev_char_mesh"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">180</field>
+        <field name="type_id" ref="sgi_dev_char_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_corte_orillas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">190</field>
+        <field name="type_id" ref="sgi_dev_char_corte_orillas"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">200</field>
+        <field name="type_id" ref="sgi_dev_char_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_composicion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">210</field>
+        <field name="type_id" ref="sgi_dev_char_composicion"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">220</field>
+        <field name="type_id" ref="sgi_dev_char_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_tacto" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">230</field>
+        <field name="type_id" ref="sgi_dev_char_tacto"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <!-- carda -->
+    <record id="sgi_dev_tpl_carda_tipo_fibra" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">10</field>
+        <field name="type_id" ref="sgi_dev_char_tipo_fibra"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_titulo_fibra" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">20</field>
+        <field name="type_id" ref="sgi_dev_char_titulo_fibra"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_acabado" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">30</field>
+        <field name="type_id" ref="sgi_dev_char_acabado"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_masa_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">40</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_masa_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">50</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_masa_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">60</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">70</field>
+        <field name="type_id" ref="sgi_dev_char_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_espesor_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">80</field>
+        <field name="type_id" ref="sgi_dev_char_espesor"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_espesor_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">90</field>
+        <field name="type_id" ref="sgi_dev_char_espesor"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_espesor_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">100</field>
+        <field name="type_id" ref="sgi_dev_char_espesor"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_fuerza_maxima_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">110</field>
+        <field name="type_id" ref="sgi_dev_char_fuerza_maxima"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_fuerza_maxima_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">120</field>
+        <field name="type_id" ref="sgi_dev_char_fuerza_maxima"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">130</field>
+        <field name="type_id" ref="sgi_dev_char_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">140</field>
+        <field name="type_id" ref="sgi_dev_char_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">150</field>
+        <field name="type_id" ref="sgi_dev_char_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <!-- tramado -->
+    <record id="sgi_dev_tpl_tramado_composicion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">10</field>
+        <field name="type_id" ref="sgi_dev_char_composicion"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_masa_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">20</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_masa_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">30</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_masa_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">40</field>
+        <field name="type_id" ref="sgi_dev_char_masa"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">50</field>
+        <field name="type_id" ref="sgi_dev_char_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_espesor_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">60</field>
+        <field name="type_id" ref="sgi_dev_char_espesor"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_espesor_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">70</field>
+        <field name="type_id" ref="sgi_dev_char_espesor"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_espesor_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">80</field>
+        <field name="type_id" ref="sgi_dev_char_espesor"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_fuerza_maxima_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">90</field>
+        <field name="type_id" ref="sgi_dev_char_fuerza_maxima"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_fuerza_maxima_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">100</field>
+        <field name="type_id" ref="sgi_dev_char_fuerza_maxima"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_hilos_pulgada" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">110</field>
+        <field name="type_id" ref="sgi_dev_char_hilos_pulgada"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_tipo_hilo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">120</field>
+        <field name="type_id" ref="sgi_dev_char_tipo_hilo"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">130</field>
+        <field name="type_id" ref="sgi_dev_char_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">140</field>
+        <field name="type_id" ref="sgi_dev_char_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">150</field>
+        <field name="type_id" ref="sgi_dev_char_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+
+    <!-- ===== Claves de codificación de artículos (DAT P-D02-01) ===== -->
+    <record id="sgi_dev_code_composicion_b" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">10</field>
+        <field name="code">B</field>
+        <field name="name">Poliéster brillante (BTE) / poliéster semiopaco (SO)</field>
+    </record>
+    <record id="sgi_dev_code_composicion_c" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">20</field>
+        <field name="code">C</field>
+        <field name="name">Algodón (cotton)</field>
+    </record>
+    <record id="sgi_dev_code_composicion_d" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">30</field>
+        <field name="code">D</field>
+        <field name="name">Polipropileno 100 % (PP)</field>
+    </record>
+    <record id="sgi_dev_code_composicion_l" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">40</field>
+        <field name="code">L</field>
+        <field name="name">Lyocell</field>
+    </record>
+    <record id="sgi_dev_code_composicion_n" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">50</field>
+        <field name="code">N</field>
+        <field name="name">Nylon 100 %</field>
+    </record>
+    <record id="sgi_dev_code_composicion_t" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">60</field>
+        <field name="code">T</field>
+        <field name="name">Poliéster 100 % fibra corta</field>
+    </record>
+    <record id="sgi_dev_code_composicion_v" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">70</field>
+        <field name="code">V</field>
+        <field name="name">Poliéster / carbón</field>
+    </record>
+    <record id="sgi_dev_code_composicion_w" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">80</field>
+        <field name="code">W</field>
+        <field name="name">Poliéster 100 %</field>
+    </record>
+    <record id="sgi_dev_code_composicion_x" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">90</field>
+        <field name="code">X</field>
+        <field name="name">Poliéster / algodón</field>
+    </record>
+    <record id="sgi_dev_code_composicion_y" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">100</field>
+        <field name="code">Y</field>
+        <field name="name">Poliéster / mezcla</field>
+    </record>
+    <record id="sgi_dev_code_composicion_z" model="sgi.dev.code.catalog">
+        <field name="kind">composicion</field>
+        <field name="sequence">110</field>
+        <field name="code">Z</field>
+        <field name="name">Varios</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_a" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">10</field>
+        <field name="code">A</field>
+        <field name="name">Cardigan</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_b" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">20</field>
+        <field name="code">B</field>
+        <field name="name">Crepé anulado</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_c" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">30</field>
+        <field name="code">C</field>
+        <field name="name">Crepé cargas</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_d" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">40</field>
+        <field name="code">D</field>
+        <field name="name">Desagujado</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_f" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">50</field>
+        <field name="code">F</field>
+        <field name="name">Flece</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_j" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">60</field>
+        <field name="code">J</field>
+        <field name="name">Jersey</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_k" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">70</field>
+        <field name="code">K</field>
+        <field name="name">Interlock</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_l" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">80</field>
+        <field name="code">L</field>
+        <field name="name">Listado</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_m" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">90</field>
+        <field name="code">M</field>
+        <field name="name">Punto de Roma</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_n" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">100</field>
+        <field name="code">N</field>
+        <field name="name">Piqué anulado</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_p" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">110</field>
+        <field name="code">P</field>
+        <field name="name">Piqué cargas</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_q" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">120</field>
+        <field name="code">Q</field>
+        <field name="name">Jacquard</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_r" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">130</field>
+        <field name="code">R</field>
+        <field name="name">Rib</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_t" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">140</field>
+        <field name="code">T</field>
+        <field name="name">French terry</field>
+    </record>
+    <record id="sgi_dev_code_dibujo_v" model="sgi.dev.code.catalog">
+        <field name="kind">dibujo</field>
+        <field name="sequence">150</field>
+        <field name="code">V</field>
+        <field name="name">Vanizado</field>
+    </record>
+    <record id="sgi_dev_code_hilo_q" model="sgi.dev.code.catalog">
+        <field name="kind">hilo</field>
+        <field name="sequence">10</field>
+        <field name="code">Q</field>
+        <field name="name">Hilo natural</field>
+    </record>
+    <record id="sgi_dev_code_hilo_b" model="sgi.dev.code.catalog">
+        <field name="kind">hilo</field>
+        <field name="sequence">20</field>
+        <field name="code">B</field>
+        <field name="name">Hilo preteñido</field>
+    </record>
+    <record id="sgi_dev_code_hilo_r" model="sgi.dev.code.catalog">
+        <field name="kind">hilo</field>
+        <field name="sequence">30</field>
+        <field name="code">R</field>
+        <field name="name">Hilo reciclado</field>
+    </record>
+    <record id="sgi_dev_code_operacion_h" model="sgi.dev.code.catalog">
+        <field name="kind">operacion</field>
+        <field name="sequence">10</field>
+        <field name="code">H</field>
+        <field name="name">Tejido (crudo)</field>
+    </record>
+    <record id="sgi_dev_code_operacion_i" model="sgi.dev.code.catalog">
+        <field name="kind">operacion</field>
+        <field name="sequence">20</field>
+        <field name="code">I</field>
+        <field name="name">Teñido</field>
+    </record>
+    <record id="sgi_dev_code_operacion_j" model="sgi.dev.code.catalog">
+        <field name="kind">operacion</field>
+        <field name="sequence">30</field>
+        <field name="code">J</field>
+        <field name="name">Acabado</field>
+    </record>
+    <record id="sgi_dev_code_color_ac" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">10</field>
+        <field name="code">AC</field>
+        <field name="name">Azul cielo</field>
+    </record>
+    <record id="sgi_dev_code_color_am" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">20</field>
+        <field name="code">AM</field>
+        <field name="name">Amarillo</field>
+    </record>
+    <record id="sgi_dev_code_color_az" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">30</field>
+        <field name="code">AZ</field>
+        <field name="name">Azul marino</field>
+    </record>
+    <record id="sgi_dev_code_color_bl" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">40</field>
+        <field name="code">BL</field>
+        <field name="name">Blanco</field>
+    </record>
+    <record id="sgi_dev_code_color_cf" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">50</field>
+        <field name="code">CF</field>
+        <field name="name">Café</field>
+    </record>
+    <record id="sgi_dev_code_color_go" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">60</field>
+        <field name="code">GO</field>
+        <field name="name">Gris Oxford</field>
+    </record>
+    <record id="sgi_dev_code_color_hu" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">70</field>
+        <field name="code">HU</field>
+        <field name="name">Hueso</field>
+    </record>
+    <record id="sgi_dev_code_color_na" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">80</field>
+        <field name="code">NA</field>
+        <field name="name">Naranja</field>
+    </record>
+    <record id="sgi_dev_code_color_ng" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">90</field>
+        <field name="code">NG</field>
+        <field name="name">Negro</field>
+    </record>
+    <record id="sgi_dev_code_color_nt" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">100</field>
+        <field name="code">NT</field>
+        <field name="name">Natural</field>
+    </record>
+    <record id="sgi_dev_code_color_ro" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">110</field>
+        <field name="code">RO</field>
+        <field name="name">Rojo</field>
+    </record>
+    <record id="sgi_dev_code_color_cj" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">120</field>
+        <field name="code">CJ</field>
+        <field name="name">Café jaspe</field>
+    </record>
+    <record id="sgi_dev_code_color_aj" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">130</field>
+        <field name="code">AJ</field>
+        <field name="name">Azul jaspe</field>
+    </record>
+    <record id="sgi_dev_code_color_gj" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">140</field>
+        <field name="code">GJ</field>
+        <field name="name">Gris jaspe</field>
+    </record>
+    <record id="sgi_dev_code_color_gr" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">150</field>
+        <field name="code">GR</field>
+        <field name="name">Gris rata</field>
+    </record>
+    <record id="sgi_dev_code_color_gc" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">160</field>
+        <field name="code">GC</field>
+        <field name="name">Gris claro</field>
+    </record>
+    <record id="sgi_dev_code_color_mo" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">170</field>
+        <field name="code">MO</field>
+        <field name="name">Morado</field>
+    </record>
+    <record id="sgi_dev_code_color_mz" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">180</field>
+        <field name="code">MZ</field>
+        <field name="name">Mostaza</field>
+    </record>
+    <record id="sgi_dev_code_color_an" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">190</field>
+        <field name="code">AN</field>
+        <field name="name">Amarillo neón</field>
+    </record>
+    <record id="sgi_dev_code_color_nn" model="sgi.dev.code.catalog">
+        <field name="kind">color</field>
+        <field name="sequence">200</field>
+        <field name="code">NN</field>
+        <field name="name">Natural negro</field>
+    </record>
+    <record id="sgi_dev_code_acabado_in" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">10</field>
+        <field name="code">IN</field>
+        <field name="name">Ignífugo</field>
+    </record>
+    <record id="sgi_dev_code_acabado_ab" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">20</field>
+        <field name="code">AB</field>
+        <field name="name">Antibacterial</field>
+    </record>
+    <record id="sgi_dev_code_acabado_af" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">30</field>
+        <field name="code">AF</field>
+        <field name="name">Afelpado</field>
+    </record>
+    <record id="sgi_dev_code_acabado_es" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">40</field>
+        <field name="code">ES</field>
+        <field name="name">Esmerilado</field>
+    </record>
+    <record id="sgi_dev_code_acabado_su" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">50</field>
+        <field name="code">SU</field>
+        <field name="name">Tacto suave</field>
+    </record>
+    <record id="sgi_dev_code_acabado_ri" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">60</field>
+        <field name="code">RI</field>
+        <field name="name">Tacto rígido</field>
+    </record>
+    <record id="sgi_dev_code_acabado_ae" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">70</field>
+        <field name="code">AE</field>
+        <field name="name">Antiestático</field>
+    </record>
+    <record id="sgi_dev_code_acabado_re" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">80</field>
+        <field name="code">RE</field>
+        <field name="name">Repelente</field>
+    </record>
+    <record id="sgi_dev_code_acabado_di" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">90</field>
+        <field name="code">DI</field>
+        <field name="name">Dryfit</field>
+    </record>
+    <record id="sgi_dev_code_acabado_bi" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">100</field>
+        <field name="code">BI</field>
+        <field name="name">Biopulido</field>
+    </record>
+    <record id="sgi_dev_code_acabado_ra" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">110</field>
+        <field name="code">RA</field>
+        <field name="name">Resina acrílica</field>
+    </record>
+    <record id="sgi_dev_code_acabado_tf" model="sgi.dev.code.catalog">
+        <field name="kind">acabado</field>
+        <field name="sequence">120</field>
+        <field name="code">TF</field>
+        <field name="name">Termofijado</field>
+    </record>
+    <record id="sgi_dev_code_galga_14" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">10</field>
+        <field name="code">01</field>
+        <field name="name">Galga 14</field>
+        <field name="gauge">14</field>
+        <field name="range_from">1</field>
+        <field name="range_to">10</field>
+    </record>
+    <record id="sgi_dev_code_galga_16" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">20</field>
+        <field name="code">11</field>
+        <field name="name">Galga 16</field>
+        <field name="gauge">16</field>
+        <field name="range_from">11</field>
+        <field name="range_to">20</field>
+    </record>
+    <record id="sgi_dev_code_galga_18" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">30</field>
+        <field name="code">21</field>
+        <field name="name">Galga 18</field>
+        <field name="gauge">18</field>
+        <field name="range_from">21</field>
+        <field name="range_to">30</field>
+    </record>
+    <record id="sgi_dev_code_galga_22" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">40</field>
+        <field name="code">31</field>
+        <field name="name">Galga 22</field>
+        <field name="gauge">22</field>
+        <field name="range_from">31</field>
+        <field name="range_to">45</field>
+    </record>
+    <record id="sgi_dev_code_galga_24" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">50</field>
+        <field name="code">46</field>
+        <field name="name">Galga 24</field>
+        <field name="gauge">24</field>
+        <field name="range_from">46</field>
+        <field name="range_to">55</field>
+    </record>
+    <record id="sgi_dev_code_galga_26" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">60</field>
+        <field name="code">56</field>
+        <field name="name">Galga 26</field>
+        <field name="gauge">26</field>
+        <field name="range_from">56</field>
+        <field name="range_to">65</field>
+    </record>
+    <record id="sgi_dev_code_galga_28" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">70</field>
+        <field name="code">66</field>
+        <field name="name">Galga 28</field>
+        <field name="gauge">28</field>
+        <field name="range_from">66</field>
+        <field name="range_to">75</field>
+    </record>
+    <record id="sgi_dev_code_galga_30" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">80</field>
+        <field name="code">76</field>
+        <field name="name">Galga 30</field>
+        <field name="gauge">30</field>
+        <field name="range_from">76</field>
+        <field name="range_to">85</field>
+    </record>
+    <record id="sgi_dev_code_galga_32" model="sgi.dev.code.catalog">
+        <field name="kind">galga</field>
+        <field name="sequence">90</field>
+        <field name="code">86</field>
+        <field name="name">Galga 32</field>
+        <field name="gauge">32</field>
+        <field name="range_from">86</field>
+        <field name="range_to">95</field>
+    </record>
+
+</odoo>

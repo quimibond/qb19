@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.116.0',
+    'version': '19.0.57.117.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -97,6 +97,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
+        'data/sgi_dev_characteristic_data.xml',  # 57.117.0 (C1): catálogos de características y codificación
         'data/sgi_sign_elearning_data.xml',
         'data/sgi_doc_change_sign_data.xml',
         'data/sgi_checklist_cron.xml',
@@ -171,6 +172,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_links_views.xml',
         'views/sgi_diagram_views.xml',
         'views/sgi_kpi_fields_views.xml',
+        'views/sgi_dev_characteristic_views.xml',  # 57.117.0: antes que la pestaña del proyecto que la usa
         'views/sgi_dev_request_views.xml',
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',

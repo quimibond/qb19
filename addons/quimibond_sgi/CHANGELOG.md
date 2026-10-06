@@ -13,6 +13,65 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.117.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 1: la tabla de características.**
+Primera entrega del levantamiento del 2026-10-06 con Jessica Francisco y Jose
+(`docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`, plan en
+`docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). La misma
+tabla de características se recapturaba en siete formatos de Excel; ahora es
+una sola tabla por proyecto FT con una columna por momento del proceso y con
+**números**, no texto: lo que pide el cliente (nominal, tolerancia o máximo /
+mínimo, en unidades o en %), lo medido en su muestra, el límite de control
+interno (más cerrado; nunca se imprime al cliente), las tres lecturas de la
+corrida con su promedio, el dictamen de Diseño de Producto y la aprobación del
+cliente. Odoo marca cada renglón con tres resultados: cumple (dentro del
+control interno), fuera del control interno (se embarca con aviso) o no
+conforme (fuera del cliente). El rendimiento (m/kg) se calcula solo:
+1000 / (masa × ancho), con su tolerancia a partir de los extremos de masa y
+ancho.
+
+### Agregado
+
+- `sgi.dev.characteristic.type`: catálogo de características (clave, nombre en
+  español e inglés, tipo de dato numérico / cualitativo / sí-no, unidad,
+  método o norma, cálculo). 38 renglones sembrados (anexo A del brief).
+- `sgi.dev.characteristic.template`: qué renglones carga cada tipo de
+  desarrollo (general 26, entretelas V10 23, carda 15, tramado 15), con
+  dirección (largo / ancho), **posición** (izquierda / centro / derecha: la
+  solidez al frote y la masa por orillas) y si se mide en la muestra del
+  cliente, va a la especificación del cliente o al certificado. Sustituye a
+  `DEV_DEFAULT_LINES` del código.
+- `sgi.dev.code.catalog`: claves de la regla de codificación de artículos de
+  tejido y acabado (DAT P-D02-01 rev. 05, cotejadas contra el PDF):
+  composición, dibujo, tipo de hilo, galga por rango, operación, color y
+  acabado; `gauge_code()` y `gauge_from_code()` para el generador de código
+  del bloque siguiente.
+- Menú SGI → Administración → Configuración → **Desarrollo de producto**
+  (Características, Características por tipo de desarrollo, Claves de
+  codificación de artículos). Lectura para todos; edición para el Jefe MAST.
+- Ficha del renglón (se abre desde la tabla del proyecto) y contadores en la
+  pestaña Solicitud de desarrollo: características, pendientes de
+  laboratorio, fuera del control interno, no conformes.
+- Pruebas `tests/test_dev_characteristics.py`.
+
+### Cambiado
+
+- `sgi.dev.characteristic`: `value` y `tolerance` (texto) se retiran; entran
+  `type_id`, `kind`, `position`, `spec_*`, `ctrl_*`, `sample_*`, `run_*`,
+  `verdict`, `customer_approved`, `in_customer_spec`, `in_coa`. En producción
+  no había ningún renglón, así que no hay migración de datos.
+- El PDF de la Solicitud de desarrollo imprime la especificación como una sola
+  expresión («53 g/m² ± 3 g/m²», «≤ 1 %») y lo medido en la muestra.
+
+### Pendiente (bloques siguientes del plan)
+
+- Proyecto único con ciclo de vida y folio por secuencia (6.1), generador de
+  código (6.6), cotización por aprobar (6.8), laboratorio (6.4), factibilidad
+  (6.5), fichas de proceso (6.7), orden de muestra (6.10), pilotaje y
+  liberación (6.12). El paso de los renglones a la ficha técnica del artículo
+  espera a que se decida dónde vive esa ficha (ver el plan, discrepancia 1).
+
 ## 19.0.57.116.0 — 2026-10-06
 
 **Menos categorías en Aprobaciones.** Cada aprobación del SGI como solicitud

@@ -70,6 +70,7 @@ from . import sgi_kpi_quality
 from . import sgi_kpi_account
 from . import sgi_kpi_review
 from . import sgi_kpi_hr
+from . import sgi_dev_characteristic
 from . import sgi_dev_request
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency

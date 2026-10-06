@@ -1,0 +1,79 @@
+# C1 Desarrollo y alta de producto — plan de implementación
+
+**Fecha:** 2026-10-06 · **Brief:** `docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`
+(copia del documento de Drive `C1_desarrollo_producto_brief_claude_code.md`) ·
+**Módulo:** `quimibond_sgi` (+ satélite para lo que toca al costeo) ·
+**Rama:** `claude/compassionate-dirac-9qstog` → `main` por bloques.
+
+## 1. Lo que cambia respecto al brief (leído el código)
+
+El brief se levantó por MCP, no leyendo el módulo. Al leer el código salen
+cinco puntos que Jose debe conocer antes de los bloques 2 en adelante. El
+bloque 1 (tabla de características) no depende de ninguno.
+
+| # | Dice el brief | Lo que hay en el código | Propuesta |
+|---|---|---|---|
+| 1 | «Mismo catálogo para `qb.producto.ficha.spec`, para que al liberar el artículo los renglones pasen a su ficha técnica» (5.1) | `qb.producto.ficha` vive en `qb_capacidad_costeo`, no en el SGI, y el SGI **no depende** de ese módulo. Además la spec `2026-10-06-qb-costeo-v2-diseno.md` (aprobada por el CEO el mismo día, §8.6 y decisión 3) **retira** `qb.producto.ficha` y sus 1,839 fichas: la ficha del producto pasa a `quimibond_ficha_tecnica_tela` (Consolti). | El catálogo nace en el SGI (hecho en el bloque 1, con `code` estable por característica). El paso «proyecto → ficha del artículo» se construye cuando quede decidido el módulo de la ficha; si es `quimibond_ficha_tecnica_tela`, va en un satélite `quimibond_sgi_ficha` (`auto_install`), como `_pesaje` o `_plm`. La derivación de fichas desde el código (5.2, uso 2) también espera a esa decisión. |
+| 2 | Cotización (`qb.cotizacion`) con proyecto, estado «Por aprobar», seguimiento, tarifa (6.8) | `qb.cotizacion` está en `qb_capacidad_costeo` y la spec de costeo v2 lo sustituye por `qb_cotizador` + puente `qb_costeo_sgi` que ya contempla ligar la cotización al proyecto FT, tomar gramaje, ancho, precio objetivo y volumen de `sgi_dev_*`, y los campos `qb_workcenter_id` / `qb_hilo_ids` en la solicitud. | No tocar `qb_capacidad_costeo`. El bloque 6.8 se hace sobre `qb_cotizador` cuando exista (o en `qb_costeo_sgi`), con el estado «Por aprobar» del puesto 183. Del lado del SGI se dejan listos los campos que la cotización va a leer: la tabla numérica (masa y ancho ya son renglones con `code`), máquina propuesta e hilos (bloque 2). **Confirmar con Jose el orden entre este plan y el de costeo v2.** |
+| 3 | La pestaña de desarrollo se ve solo si `sgi_is_ft` (3) | `sgi_is_ft` se calcula del nombre («FT-…») con `store=True, readonly=False`; los 77 proyectos viejos no se recalcularon porque el compute solo corre al cambiar el nombre. | En el bloque 2 (proyecto único) la bandera deja de depender del nombre: la pone el tipo de proyecto («Desarrollo de producto») y una migración la marca en los FT- existentes. |
+| 4 | Tipo de desarrollo como catálogo (5.1 «por tipo de desarrollo») | `sgi_dev_type` es una `Selection` fija y `sgi.format.map` la usa para elegir el formato impreso (`format_ref_dev_<tipo>`). | Se conserva la selección (cuatro tipos estables) y los renglones por tipo son datos (`sgi.dev.characteristic.template`). Agregar un tipo sigue siendo cambio de código, igual que su formato impreso. |
+| 5 | «El módulo ya tiene» campos de muestra en m y kg, volumen, precio objetivo (3) | Correcto, pero `sgi_dev_requester` y `sgi_dev_norms` son texto y `sgi_dev_spec` es un texto largo para la especificación del cliente. | `sgi_dev_spec` queda como referencia a la hoja del cliente (el valor va en la tabla); el solicitante interno pasa a `hr.employee` y las normas a lista en el bloque 2. |
+
+Verificado contra el PDF del DAT P-D02-01 (rev. 05, mayo 2025): las tablas
+del brief son correctas; solo cambian dos etiquetas de acabado (DI es
+«Dryfit», RA es «Resina acrílica»). Los otros cuatro DAT (4695 a 4698) siguen
+sin revisar.
+
+## 2. Bloques y orden
+
+Cada bloque sube versión del SGI, agrega su entrada al CHANGELOG, trae sus
+pruebas y se prueba solo en el build de Odoo.sh de la rama con
+`--test-tags /quimibond_sgi`.
+
+| Bloque | Qué | Brief | Estado |
+|---|---|---|---|
+| 1 | Tabla numérica de características, catálogo por tipo, claves de codificación | 6.2, 5.1, 5.2 (modelos) | **Hecho, 57.117.0** |
+| 2 | Proyecto único con ciclo de vida: etapas de avance, folio FT por secuencia anual, origen, revisión y bitácora, alias de correo, pestaña comercial, muestra física, resultado del análisis, relojes por paso | 6.1 | Siguiente |
+| 3 | Artículo en desarrollo y generador de código (crudo, teñido, acabado); bloqueo de 16292 / 16293 con fecha acordada con Jose | 6.6 | — |
+| 4 | Búsqueda de parecidos, solicitud de pruebas a laboratorio, checklist de factibilidad (modelo y vista, catálogo vacío) | 6.3 a 6.5 | — |
+| 5 | Cotización: según discrepancia 2 | 6.8 | Espera decisión |
+| 6 | Solicitud de desarrollos (PDF con clave nueva, compuerta de Jorge, aviso a seis puestos, requisición ligada), orden de muestra, fichas de proceso de tintorería y acabado | 6.7, 6.9, 6.10 | — |
+| 7 | Envío de muestra, respuesta del cliente, pilotaje, habilidad, ficha interna, especificaciones al cliente, PPAP, liberación y cierre | 6.11, 6.12 | — |
+| 8 | Escalamiento configurable y correcciones de medición | 6.13, 7.2 | — |
+| 9 | Datos por MCP (fichas C1.01 a C1.19, plantillas 480 / 481, folios, partes interesadas, formatos obsoletos), primero en qbtesting | 7 | Al final |
+
+## 3. Decisiones de diseño del bloque 1
+
+- **Una tabla, columnas por momento.** `sgi.dev.characteristic` guarda por
+  renglón: especificación del cliente (`spec_nominal`, `spec_limit` nominal ±
+  / máximo / mínimo, `spec_tol_minus`, `spec_tol_plus`, `spec_tol_pct`),
+  control interno (`ctrl_tol_minus`, `ctrl_tol_plus`, sobre el mismo nominal
+  y nunca más abierto que el del cliente), medido en la muestra
+  (`sample_value`), corrida (`run_1..3`, `run_avg`), dictamen (`verdict`, lo
+  pone Diseño de Producto), aprobación del cliente y las marcas «va a la
+  especificación del cliente» / «va al certificado».
+- **Tres resultados** calculados contra límites: `cumple` (dentro del control
+  interno), `desviacion` (fuera del interno, dentro del cliente),
+  `no_conforme`. El certificado y el estudio de habilidad usan los límites del
+  cliente; el PDF de la solicitud no imprime el control interno.
+- **Cualitativas aparte.** `kind` del catálogo decide qué columnas aplican:
+  numérica, cualitativa (`spec_text`, `sample_text`, `run_text`) o sí / no
+  (`spec_bool`). Nada de valores en texto para lo que es número.
+- **Rendimiento calculado** 1000 / (masa × ancho) en todas las columnas, con
+  tolerancia a partir de los extremos de masa y ancho. En carda y tramado la
+  masa se mide en tres puntos y el rendimiento toma el centro.
+- **Posición** (izquierda / centro / derecha) además de dirección: solidez al
+  frote y masa / espesor por orillas.
+- **Catálogo con `code` estable** por característica: es la llave con la que
+  los bloques siguientes reconocen masa, ancho, galga, composición al generar
+  el código del artículo y al pasar renglones a la ficha del producto.
+- **Claves de codificación como datos** (`sgi.dev.code.catalog`,
+  `noupdate`), con `gauge_code()` / `gauge_from_code()` para la galga por
+  rango.
+
+## 4. Pendientes que el brief deja sin definir (no se inventan)
+
+Ver sección 8 del brief. En el código quedan como parámetro vacío o catálogo
+sin renglones: margen mínimo, suplente de aprobación, recursos del checklist
+de factibilidad, lecturas por lote para Cpk, comité de pilotajes, tiempo de
+conservación de muestras, destino de los 152 lotes de la ubicación 57.

@@ -325,6 +325,34 @@ Desde 57.100.0 (sección 7 del reporte de auditoría, puerta Q16;
   aparece un aviso y nada cambia; en el log queda un `warning` sin el texto de
   la NC.
 
+## Desarrollo de producto: la tabla de características (57.117.0)
+
+Primer bloque de la migración del procedimiento **C1 Desarrollo y alta de
+producto** (brief `docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`,
+plan `docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). La
+pestaña «Solicitud de desarrollo» del proyecto FT lleva **una sola tabla de
+características** (`sgi.dev.characteristic`) que sustituye la misma tabla
+recapturada en siete Excel: un renglón por característica y una columna por
+momento del proceso.
+
+| Columna | Quién | Qué guarda |
+|---|---|---|
+| Especificación del cliente | Ventas | Nominal, límite (nominal ± tolerancia, máximo o mínimo), tolerancias − / + en unidades o en %; texto solo en las cualitativas |
+| Control interno | Diseño de Producto | Margen más cerrado que el del cliente, sobre el mismo nominal. **Nunca se imprime al cliente** |
+| Muestra del cliente | Laboratorio | Lo medido en la muestra que mandó el cliente, y si cae dentro de lo que pide |
+| Corrida | Laboratorio | Tres lecturas y promedio; resultado: cumple (dentro del control interno), fuera del control interno (se embarca con aviso), no conforme (fuera del cliente) |
+| Dictamen y cliente | Diseño de Producto / Ventas | Cumple, con desviación o no cumple; aprobado por el cliente; si va a la especificación del cliente y al certificado |
+
+Los renglones se cargan desde los catálogos de **SGI → Administración →
+Configuración → Desarrollo de producto**: características (unidad, método o
+norma, tipo de dato), características por tipo de desarrollo (general,
+entretelas V10, carda, tramado, con dirección largo / ancho y posición
+izquierda / centro / derecha) y las claves de la regla de codificación de
+artículos (DAT P-D02-01). El rendimiento (m/kg) se calcula solo: 1000 / (masa
+× ancho). Los bloques siguientes (proyecto único, generador de código,
+cotización por aprobar, laboratorio, fichas de proceso, pilotaje y
+liberación) están en el plan.
+
 ## Menú
 
 Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las

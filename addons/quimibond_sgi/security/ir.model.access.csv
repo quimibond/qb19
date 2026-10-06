@@ -226,6 +226,12 @@ access_sgi_inventory_value_user,sgi.inventory.value.user,model_sgi_inventory_val
 access_sgi_inventory_value_manager,sgi.inventory.value.manager,model_sgi_inventory_value,group_sgi_manager,1,1,1,1
 access_sgi_inventory_value_auditor,sgi.inventory.value.auditor,model_sgi_inventory_value,group_sgi_auditor,1,0,0,0
 access_sgi_dev_characteristic_user,sgi.dev.characteristic.user,model_sgi_dev_characteristic,base.group_user,1,1,1,0
+access_sgi_dev_characteristic_type_user,sgi.dev.characteristic.type.user,model_sgi_dev_characteristic_type,base.group_user,1,0,0,0
+access_sgi_dev_characteristic_type_manager,sgi.dev.characteristic.type.manager,model_sgi_dev_characteristic_type,group_sgi_manager,1,1,1,1
+access_sgi_dev_characteristic_template_user,sgi.dev.characteristic.template.user,model_sgi_dev_characteristic_template,base.group_user,1,0,0,0
+access_sgi_dev_characteristic_template_manager,sgi.dev.characteristic.template.manager,model_sgi_dev_characteristic_template,group_sgi_manager,1,1,1,1
+access_sgi_dev_code_catalog_user,sgi.dev.code.catalog.user,model_sgi_dev_code_catalog,base.group_user,1,0,0,0
+access_sgi_dev_code_catalog_manager,sgi.dev.code.catalog.manager,model_sgi_dev_code_catalog,group_sgi_manager,1,1,1,1
 access_sgi_machine_sheet_user,sgi.machine.sheet.user,model_sgi_machine_sheet,base.group_user,1,0,0,0
 access_sgi_machine_sheet_mrp,sgi.machine.sheet.mrp,model_sgi_machine_sheet,mrp.group_mrp_user,1,1,1,0
 access_sgi_machine_sheet_manager,sgi.machine.sheet.manager,model_sgi_machine_sheet,quimibond_sgi.group_sgi_manager,1,1,1,1
