@@ -41,6 +41,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Checklists de hoy** — `maintenance.request`
     - **Documentos vigentes** — `documents.document`
     - **Eficiencias de mi área** — `sgi.staff.efficiency`; grupos: quimibond_sgi.group_sgi_efficiency_capture
+    - **Ayuda** — `knowledge.article`
   - **Reportar** — grupos: quimibond_sgi.group_sgi_user
     - **No conformidad** — `sgi.my.pending`
     - **Casi accidente o incidente** — `sgi.my.pending`
@@ -67,6 +68,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Formatos y documentos anteriores** — `documents.document`; grupos: -quimibond_sgi.group_sgi_auditor, -quimibond_sgi.group_sgi_manager, -quimibond_sgi.group_sgi_director
       - **Rutina por rutina** — `sgi.legacy.routine`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
       - **Avance de la transición** — `sgi.dropbox.progress`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
+    - **Conocimiento del SGI** — `knowledge.article`; grupos: quimibond_sgi.group_sgi_process_owner, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_auditor
   - **Planeación** — grupos: -quimibond_sgi.group_sgi_director, -quimibond_sgi.group_sgi_manager, -quimibond_sgi.group_sgi_auditor
     - **Política integral** — `sgi.policy`
     - **Objetivos integrales** — `sgi.objective`
@@ -122,6 +124,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Cargar mapa de procesos** — `sgi.mapa.load.wizard`; grupos: quimibond_sgi.group_sgi_admin
       - **Cargar catálogo** — `sgi.catalog.load.wizard`; grupos: quimibond_sgi.group_sgi_admin
       - **Empresa en documentos controlados** — `sgi.company.fix`
+      - **Importar documentos a Conocimiento** — `sgi.knowledge.import`; grupos: quimibond_sgi.group_sgi_manager
       - **Traspaso de riesgos ambientales** — `sgi.env.aspect.transfer`
     - **Configuración** — grupos: quimibond_sgi.group_sgi_manager
       - **Familias de puesto** — `sgi.job.family`
@@ -142,7 +145,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (120)
+## Acciones (124)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -264,10 +267,14 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_training_effectiveness_action` | act_window | Eficacia de la capacitación | `sgi.training.effectiveness` | list,form | sí | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |
 | `quimibond_sgi.sgi_work_permit_action` | act_window | Permisos de trabajo de alto riesgo | `sgi.work.permit` | list,kanban,form | sí | `addons/quimibond_sgi/views/sgi_work_permit_views.xml` |
 | `quimibond_sgi.sgi_work_permit_skill_action` | act_window | Competencias por tipo de permiso | `sgi.work.permit.skill` | list | sí | `addons/quimibond_sgi/views/sgi_work_permit_skill_views.xml` |
+| `quimibond_sgi_knowledge.sgi_kb_article_action` | act_window | Conocimiento del SGI | `knowledge.article` | list | sí | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
+| `quimibond_sgi_knowledge.sgi_kb_help_action` | server | Ayuda | `knowledge.article` |  |  | `addons/quimibond_sgi_knowledge/data/sgi_knowledge_data.xml` |
+| `quimibond_sgi_knowledge.sgi_knowledge_import_action` | act_window | Importar documentos a Conocimiento | `sgi.knowledge.import` | form |  | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
+| `quimibond_sgi_knowledge.sgi_knowledge_import_documents_action` | server | Importar a Conocimiento (SGI) | `documents.document` |  |  | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (387; 65 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (395; 70 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -297,6 +304,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `documents.document` | `quimibond_sgi.sgi_migration_view_kanban` | kanban |  | `addons/quimibond_sgi/views/sgi_document_views.xml` |
 | `documents.document` | `quimibond_sgi.sgi_migration_view_list` | list |  | `addons/quimibond_sgi/views/sgi_document_views.xml` |
 | `documents.document` | `quimibond_sgi.sgi_migration_view_search` | search |  | `addons/quimibond_sgi/views/sgi_document_views.xml` |
+| `documents.document` | `quimibond_sgi_knowledge.sgi_document_view_form_knowledge` | herencia | `quimibond_sgi.sgi_document_view_form` | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
 | `helpdesk.team` | `quimibond_sgi.sgi_helpdesk_team_view_form` | herencia | `helpdesk.helpdesk_team_view_form` | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
 | `helpdesk.ticket` | `quimibond_sgi.sgi_helpdesk_ticket_view_form` | herencia | `helpdesk.helpdesk_ticket_view_form` | `addons/quimibond_sgi/views/sgi_complaint_views.xml` |
 | `hr.employee` | `quimibond_sgi.sgi_employee_view_form_competence` | herencia | `hr.view_employee_form` | `addons/quimibond_sgi/views/sgi_competence_views.xml` |
@@ -315,6 +323,8 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `hr.job` | `quimibond_sgi.sgi_hr_job_view_form_headcount` | herencia | `hr.view_hr_job_form` | `addons/quimibond_sgi/views/sgi_hr_job_headcount_views.xml` |
 | `hr.job` | `quimibond_sgi.sgi_hr_job_view_form_mp_tab` | herencia | `hr.view_hr_job_form` | `addons/quimibond_sgi/views/sgi_my_procedure_tab_views.xml` |
 | `hr.job` | `quimibond_sgi.sgi_hr_job_view_list_headcount` | herencia | `hr.view_hr_job_tree` | `addons/quimibond_sgi/views/sgi_hr_job_headcount_views.xml` |
+| `knowledge.article` | `quimibond_sgi_knowledge.sgi_kb_article_view_list` | list |  | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
+| `knowledge.article` | `quimibond_sgi_knowledge.sgi_kb_article_view_search` | search |  | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.maintenance_equipment_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_form` | herencia | `maintenance.hr_equipment_view_form` | `addons/quimibond_sgi/views/sgi_calibration_views.xml` |
 | `maintenance.equipment` | `quimibond_sgi.sgi_equipment_view_form_msa` | herencia | `maintenance.hr_equipment_view_form` | `addons/quimibond_sgi/views/sgi_msa_views.xml` |
@@ -395,6 +405,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.activity.role` | `quimibond_sgi.sgi_activity_role_view_list_my_procedure` | list |  | `addons/quimibond_sgi/views/sgi_my_procedure_views.xml` |
 | `sgi.activity.role` | `quimibond_sgi.sgi_activity_role_view_search` | search |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `sgi.activity.role` | `quimibond_sgi.sgi_activity_role_view_search_approval` | search |  | `addons/quimibond_sgi/views/sgi_approval_native_views.xml` |
+| `sgi.activity.role` | `quimibond_sgi_knowledge.sgi_activity_role_view_kanban_mp_knowledge` | herencia | `quimibond_sgi.sgi_activity_role_view_kanban_mp` | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
+| `sgi.activity.role` | `quimibond_sgi_knowledge.sgi_activity_role_view_list_mp_embedded_knowledge` | herencia | `quimibond_sgi.sgi_activity_role_view_list_mp_embedded` | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
+| `sgi.activity.role` | `quimibond_sgi_knowledge.sgi_activity_role_view_list_my_procedure_knowledge` | herencia | `quimibond_sgi.sgi_activity_role_view_list_my_procedure` | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
 | `sgi.activity.role` | `quimibond_sgi_studio.sgi_activity_role_view_list_approval_studio` | herencia | `quimibond_sgi.sgi_activity_role_view_list_approval` | `addons/quimibond_sgi_studio/views/sgi_approval_studio_views.xml` |
 | `sgi.activity.role` | `quimibond_sgi_studio.sgi_activity_role_view_search_approval_studio` | herencia | `quimibond_sgi.sgi_activity_role_view_search_approval` | `addons/quimibond_sgi_studio/views/sgi_approval_studio_views.xml` |
 | `sgi.activity.spec.gap` | `quimibond_sgi.sgi_activity_spec_gap_view_list` | list |  | `addons/quimibond_sgi/views/sgi_activity_spec_views.xml` |
@@ -535,6 +548,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.job.family` | `quimibond_sgi.sgi_job_family_view_form` | form |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `sgi.job.family` | `quimibond_sgi.sgi_job_family_view_list` | list |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `sgi.job.family` | `quimibond_sgi.sgi_job_family_view_search` | search |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
+| `sgi.knowledge.import` | `quimibond_sgi_knowledge.sgi_knowledge_import_view_form` | form |  | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
 | `sgi.legacy.routine` | `quimibond_sgi.sgi_legacy_routine_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dropbox_views.xml` |
 | `sgi.legacy.routine` | `quimibond_sgi.sgi_legacy_routine_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dropbox_views.xml` |
 | `sgi.legacy.routine` | `quimibond_sgi.sgi_legacy_routine_view_pivot` | pivot |  | `addons/quimibond_sgi/views/sgi_dropbox_views.xml` |
@@ -606,6 +620,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.process` | `quimibond_sgi.sgi_process_view_list` | list |  | `addons/quimibond_sgi/views/sgi_process_views.xml` |
 | `sgi.process` | `quimibond_sgi.sgi_process_view_search` | search |  | `addons/quimibond_sgi/views/sgi_process_views.xml` |
 | `sgi.process` | `quimibond_sgi.sgi_process_view_sgi_diagram` | sgi_diagram |  | `addons/quimibond_sgi/views/sgi_diagram_views.xml` |
+| `sgi.process` | `quimibond_sgi_knowledge.sgi_process_view_form_knowledge` | herencia | `quimibond_sgi.sgi_process_view_form` | `addons/quimibond_sgi_knowledge/views/sgi_knowledge_views.xml` |
 | `sgi.process.activity` | `quimibond_sgi.sgi_activity_compliance_view_graph` | graph |  | `addons/quimibond_sgi/views/sgi_process_procedure_views.xml` |
 | `sgi.process.activity` | `quimibond_sgi.sgi_activity_compliance_view_pivot` | pivot |  | `addons/quimibond_sgi/views/sgi_process_procedure_views.xml` |
 | `sgi.process.activity` | `quimibond_sgi.sgi_activity_method_view_pivot` | pivot |  | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |

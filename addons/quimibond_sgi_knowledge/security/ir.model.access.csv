@@ -1,2 +1,3 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_sgi_instruction_publish_manager,sgi.instruction.publish.manager,model_sgi_instruction_publish,quimibond_sgi.group_sgi_manager,1,1,1,1
+access_sgi_knowledge_import_manager,sgi.knowledge.import.manager,model_sgi_knowledge_import,quimibond_sgi.group_sgi_manager,1,1,1,1

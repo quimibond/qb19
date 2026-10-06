@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.2.0: menús del satélite colgados de carpetas del SGI (como
+         quimibond_sgi_mapa). Al final del manifest: los padres y las
+         acciones ya existen. test_menu_tree los quita de la comparación del
+         árbol del núcleo (satélite instalado). -->
+    <menuitem id="menu_sgi_kb_help" name="Ayuda"
+              parent="quimibond_sgi.menu_sgi_panel" action="sgi_kb_help_action" sequence="90"/>
+    <menuitem id="menu_sgi_kb_articles" name="Conocimiento del SGI"
+              parent="quimibond_sgi.menu_sgi_processes" action="sgi_kb_article_action" sequence="95"
+              groups="quimibond_sgi.group_sgi_process_owner,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_auditor"/>
+    <menuitem id="menu_sgi_kb_import" name="Importar documentos a Conocimiento"
+              parent="quimibond_sgi.menu_sgi_transition" action="sgi_knowledge_import_action" sequence="25"
+              groups="quimibond_sgi.group_sgi_manager"/>
+</odoo>

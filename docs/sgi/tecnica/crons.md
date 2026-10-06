@@ -2,13 +2,14 @@
 
 # Acciones planificadas (crons) del SGI
 
-29 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
+30 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
 
 | Nombre | Modelo | Código | Cada | Activo | Qué hace (docstring del método) | Archivo |
 |---|---|---|---|---|---|---|
 | SGI: Avisos de programa de auditorías | `sgi.cron` | `model.cron_audit_program()` | 1 days | True | Cron diario: 15 días antes del mes planeado de cada renglón del programa aprobado, agenda al auditor líder (o a MAST) preparar la auditoría. | `addons/quimibond_sgi/data/sgi_cron_indicators_audit.xml` |
 | SGI: Boletín NEWS mensual | `sgi.cron` | `model.cron_news()` | 1 months | True | Cron mensual: si el mes anterior hubo cambios documentales aplicados, agenda al Jefe MAST el boletín NEWS. | `addons/quimibond_sgi/data/sgi_cron.xml` |
 | SGI: Competencias y certificaciones por vencer | `sgi.cron` | `model.cron_competences()` | 1 days | True | Cron diario: competencias con vigencia (certificaciones y, desde 57.100.0, cualquier competencia con «válida hasta», N-13/P9) por vencer (30 días) o vencidas, al empleado y a RH; los satélites y exte… | `addons/quimibond_sgi/data/sgi_cron_calibration_budget.xml` |
+| SGI: Conocimiento (miembros y artículos que cambiaron) | `knowledge.article` | `model._cron_sgi_kb_daily()` | 1 days | True | Diario: miembros del espacio y aviso al Jefe MAST de cada artículo publicado que cambió después de publicarse (una actividad por artículo). | `addons/quimibond_sgi_knowledge/data/sgi_knowledge_data.xml` |
 | SGI: Consulta y participación de trabajadores (45001 5.4) | `sgi.cron` | `model.cron_worker_participation()` | 6 months | True | Cron semestral: recuerda distribuir la encuesta de consulta y participación de los trabajadores (45001 §5.4). Las respuestas y las quejas del canal interno alimentan la entrada 12 de la RxD. Idempote… | `addons/quimibond_sgi/data/sgi_cumplimiento_data.xml` |
 | SGI: Cumplimiento legal (evaluaciones y permisos) | `sgi.cron` | `model.cron_legal_requirements()` | 1 days | True | Cron diario: evaluaciones de cumplimiento vencidas y permisos por vencer (≤60 días) o vencidos. Idempotente por resumen. | `addons/quimibond_sgi/data/sgi_cumplimiento_data.xml` |
 | SGI: DNC y plan de capacitación (P-A01) | `sgi.cron` | `model.cron_dnc()` | 3 months | True | Cron trimestral: cierra el ciclo de la DNC (P-A01). Cuenta las brechas de competencia abiertas y agenda al coordinador de RH la distribución de la encuesta DNC (F-P-A01-17) y el plan de capacitación.… | `addons/quimibond_sgi/data/sgi_emergency_satisfaction_data.xml` |
