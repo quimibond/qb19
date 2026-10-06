@@ -21,7 +21,7 @@ from markupsafe import Markup, escape
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.tools import mute_logger
+from odoo.tools import file_open, mute_logger
 
 # Sin modelos (sgi_calendar, sgi_menu_paths) o ya cargados (sgi_report_print).
 from .sgi_calendar import sgi_add_business_days, sgi_local_date, sgi_today
@@ -44,6 +44,8 @@ MIID_HELD_KIND = 'miid_retenido'
 MIID_FIRST_ODOO_REVISION = 3
 MIID_LANG = 'es_MX'
 MIID_DATA_MARK = "[[datos]]"
+MIID_SEED_FILE = 'quimibond_sgi/data/sgi_miid_sections.xml'
+MIID_EDITED_MSG = "Texto de la sección editado."
 MIID_DATA_MARK_RE = re.compile(r'<p[^>]*>\s*\[\[datos\]\]\s*</p>|\[\[datos\]\]')
 # Q16: estados de proceso con los que se puede aprobar el MIID.
 MIID_READY_PROCESS_STATES = ('vigente',)
@@ -169,9 +171,71 @@ class SgiMiidSection(models.Model):
                 section.message_post(body=(
                     "«Por confirmar» quitado por %s." % self.env.user.name if not section.to_confirm
                     else "Marcada «Por confirmar» por %s: %s" % (self.env.user.name, section.to_confirm_note or '')))
-            if 'body' in vals:
-                section.message_post(body="Texto de la sección editado.")
+            # 57.110.0: la marca de edición es la que respeta _sgi_seed_update;
+            # solo una migración (superusuario) la omite.
+            if 'body' in vals and not (self.env.su and self.env.context.get('sgi_miid_seed')):
+                section.message_post(body=MIID_EDITED_MSG)
         return res
+
+    @api.model
+    def _sgi_seed_fields(self, xmlid):
+        """{'body': html, 'to_confirm_note': texto} de la sección tal como está
+        hoy en el archivo de datos (la siembra es noupdate)."""
+        from lxml import etree
+        with file_open(MIID_SEED_FILE, 'rb') as fh:
+            tree = etree.parse(fh)
+        out = {}
+        for field in tree.xpath("//record[@id=$rid]/field", rid=xmlid):
+            name = field.get('name')
+            if name == 'body':
+                out['body'] = (field.text or '') + ''.join(
+                    etree.tostring(child, encoding='unicode') for child in field)
+            elif name == 'to_confirm_note':
+                out['to_confirm_note'] = field.text or ''
+        return out
+
+    @api.model
+    def _sgi_seed_update(self, body_xmlids, old_notes, tag):
+        """Pone en producción el texto nuevo de la siembra sin pisar lo que
+        corrigió el Jefe MAST (57.110.0). El texto se cambia solo en las
+        secciones que nunca se editaron (sin el mensaje «Texto de la sección
+        editado.»); la nota de «Por confirmar», solo si sigue idéntica a la
+        sembrada (old_notes: {xmlid: nota anterior}). Devuelve {xmlid:
+        resultado}."""
+        result = {}
+        Message = self.env['mail.message'].sudo()
+        for xmlid in list(body_xmlids) + [x for x in old_notes if x not in body_xmlids]:
+            section = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
+            if not section or section._name != self._name:
+                result[xmlid] = 'no existe'
+                continue
+            seed = self._sgi_seed_fields(xmlid)
+            vals, skipped = {}, []
+            if xmlid in body_xmlids and seed.get('body'):
+                edited = Message.search_count([('model', '=', self._name), ('res_id', '=', section.id),
+                                               ('body', 'ilike', MIID_EDITED_MSG)])
+                if edited:
+                    skipped.append("texto")
+                elif _miid_plain(section.body) != _miid_plain(seed['body']):
+                    vals['body'] = seed['body']
+            if xmlid in old_notes and seed.get('to_confirm_note'):
+                if (section.to_confirm_note or '').strip() == old_notes[xmlid].strip():
+                    vals['to_confirm_note'] = seed['to_confirm_note']
+                elif (section.to_confirm_note or '').strip() != seed['to_confirm_note'].strip():
+                    skipped.append("nota")
+            if vals:
+                section.sudo().with_context(sgi_miid_seed=True).write(vals)
+                section.sudo().message_post(body="%s: %s actualizado con lo que traía la revisión 02 del MIID." % (
+                    tag, " y ".join(("texto" if k == 'body' else "nota de «Por confirmar»") for k in vals)))
+            if skipped:
+                section.sudo().message_post(body=(
+                    "%s: la siembra trae %s nuevo para esta sección, pero no se aplicó porque ya se editó a "
+                    "mano. Compárelo con docs/sgi/transicion/miid-rev03-borrador.md.") % (tag, " y ".join(skipped)))
+                _logger.warning("%s: sección MIID %s editada a mano; no se toca (%s).", tag, xmlid,
+                                ", ".join(skipped))
+            result[xmlid] = ("actualizada" if vals else "sin cambio") + (
+                " (editada a mano: %s)" % ", ".join(skipped) if skipped else "")
+        return result
 
     def _sgi_heading(self):
         self.ensure_one()
