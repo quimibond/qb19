@@ -653,8 +653,9 @@ class QbCostoProducto(models.Model):
     rendimiento_fuente = fields.Char(
         string='Fuente del rendimiento',
         help='producto (clasificó al menos el umbral de metros), planta '
-             '(abajo del umbral o sin clasificación propia) o no_aplica '
-             '(importados, servicio, subproducto).')
+             '(abajo del umbral o sin clasificación propia), manual '
+             '(capturado en Pesos por producto) o no_aplica (importados, '
+             'servicio, subproducto).')
     costo_vendible = fields.Float(
         digits=(16, 4), string='Costo vendible $/u',
         help='Costo de la unidad VENDIBLE: producción ÷ rendimiento + su '
@@ -2561,7 +2562,20 @@ class QbCostoProducto(models.Model):
         planta = tot_v / tot_t if tot_t else 1.0
         for pid in chicos:
             mapa[pid] = (planta, 'planta')
+        # Lo capturado a mano manda: la historia de un arranque de
+        # desarrollo no es la producción normal del artículo.
+        for pid, rend in self._rendimiento_manual_map().items():
+            mapa[pid] = (rend, 'manual')
         return mapa, planta
+
+    @api.model
+    def _rendimiento_manual_map(self, product_ids=None):
+        """{product_id: rendimiento capturado} de `qb.producto.peso`."""
+        dominio = [('rendimiento_manual', '>', 0)]
+        if product_ids is not None:
+            dominio.append(('product_id', 'in', list(product_ids)))
+        return {r.product_id.id: r.rendimiento_manual
+                for r in self.env['qb.producto.peso'].search(dominio)}
 
     def action_recompute_period(self, period=None):
         """Recalcula factores + costo por producto para un período (mes).
@@ -3428,6 +3442,10 @@ class QbCostoProducto(models.Model):
         if bucket not in ('tela', 'entretela_tejida', 'entretela_carda'):
             return 1.0, 'no_aplica'
         if product:
+            # Lo capturado manda, aunque el período no se haya recalculado
+            manual = self._rendimiento_manual_map([product.id]).get(product.id)
+            if manual:
+                return manual, 'manual'
             fila = self.search([('period', '=', factores.period),
                                 ('product_id', '=', product.id),
                                 ('company_id', '=', self.env.company.id)],
@@ -4009,9 +4027,15 @@ class QbCostoProducto(models.Model):
         rend = q.get('rendimiento') or 1.0
         merma = ''
         if rend < 1.0:
+            fuente_rend = q.get('rend_fuente') or ''
+            if fuente_rend == 'manual':
+                peso = self.env['qb.producto.peso'].search(
+                    [('product_id', '=', product.id)], limit=1)
+                fuente_rend = 'capturado: %s' % html_escape(
+                    peso.rendimiento_motivo or 'sin motivo')
             merma = (' Todo ÷ rendimiento de primera <b>%.1f%%</b> (%s): el '
                      'metro que se vende paga también el que salió de '
-                     'segunda.' % (100.0 * rend, q.get('rend_fuente') or ''))
+                     'segunda.' % (100.0 * rend, fuente_rend))
         html += (
             '<h5>= Costo completo</h5>'
             '<p style="font-size:12px;"><b>Variable</b> (MP + energía%s) '

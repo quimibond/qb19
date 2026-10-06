@@ -421,3 +421,22 @@ class TestConversionAbsorbida(TransactionCase):
         conv, _v, fuente = self.Costo._conv_unit(tela, f)
         self.assertAlmostEqual(conv, 0.1376 * 11.25, places=6)
         self.assertEqual(fuente, 'centro')
+
+    def test_rendimiento_capturado_manda(self):
+        """NN040Q66JNT163 sacó 44% de FE en el arranque de desarrollo de
+        agosto de 2026: con él su rendimiento de 12 meses daba 55% contra
+        88% sin ese mes. El capturado manda en el costo y en el cotizador,
+        aunque el período no se haya recalculado."""
+        f = self._factores()
+        self.assertEqual(
+            self.Costo._rendimiento_cotizar(self.pesada, 'tela', f),
+            (1.0, 'no_aplica'))
+        self.env['qb.producto.peso'].create({
+            'product_id': self.pesada.id, 'kg_per_unit': 0.216,
+            'source': 'manual', 'rendimiento_manual': 0.88,
+            'rendimiento_motivo': 'Arranque de desarrollo ago-2026'})
+        self.assertEqual(
+            self.Costo._rendimiento_cotizar(self.pesada, 'tela', f),
+            (0.88, 'manual'))
+        mapa, _planta = self.Costo._rendimiento_map(self.period)
+        self.assertEqual(mapa.get(self.pesada.id), (0.88, 'manual'))

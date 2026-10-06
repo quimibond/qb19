@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Crudo nuevo reconocido por su código (1.69.4).
+"""Crudo nuevo reconocido por su código y rendimiento capturado (1.69.4).
 
 Un crudo que nunca se ha tejido (WJ080Q21HNT165, alta del 13-sep-2026) no
 tenía órdenes, ruta ni familia que lo marcaran como crudo, y la tela que lo
 consume salía con conversión $0. Ahora la etapa H de la nomenclatura lo
 reconoce si tiene receta activa, y toma el promedio del centro (estimado).
+
+Además, `qb.producto.peso.rendimiento_manual` deja capturar el rendimiento de
+primera de un producto cuando su historia no representa la producción normal
+(NN040Q66JNT163: 55% por el arranque de agosto de 2026, 88% sin ese mes).
 Se recalculan los períodos abiertos desde el corte; los cerrados no se tocan.
 """
 import logging
