@@ -69,6 +69,44 @@
                             <field name="sgi_dev_hours_mp"/>
                         </group>
                     </group>
+                    <group string="Análisis y factibilidad (una sola revisión de Ventas)">
+                        <group>
+                            <div class="mb-2" colspan="2">
+                                <button name="action_sgi_dev_find_similar" type="object" string="Buscar parecidos" class="btn-secondary" icon="fa-search"/>
+                                <button name="action_sgi_dev_request_lab_tests" type="object" string="Solicitar pruebas al laboratorio" class="btn-secondary" icon="fa-flask"/>
+                                <button name="action_sgi_dev_open_lab_requests" type="object" string="Ver solicitudes" class="btn-link" invisible="not sgi_dev_lab_request_count"/>
+                                <button name="action_sgi_dev_load_feasibility" type="object" string="Cargar checklist de factibilidad" class="btn-secondary" icon="fa-list-ul"/>
+                            </div>
+                            <field name="sgi_dev_line_key" widget="radio" options="{'horizontal': true}"/>
+                            <field name="sgi_dev_lab_request_count"/>
+                            <field name="sgi_dev_lab_open_count"/>
+                        </group>
+                        <group>
+                            <field name="sgi_dev_review_state" widget="badge"
+                                   decoration-success="sgi_dev_review_state == 'aprobado'"
+                                   decoration-danger="sgi_dev_review_state == 'regresado'"/>
+                            <field name="sgi_dev_reviewed_by_id"/>
+                            <field name="sgi_dev_review_date"/>
+                            <field name="sgi_dev_review_note"/>
+                            <div colspan="2">
+                                <button name="action_sgi_dev_review_approve" type="object" string="Aprobar análisis y factibilidad" class="btn-primary" icon="fa-check"
+                                        invisible="sgi_dev_review_state == 'aprobado'"/>
+                                <button name="action_sgi_dev_review_return" type="object" string="Regresar" class="btn-secondary"
+                                        invisible="sgi_dev_review_state == 'regresado'"/>
+                            </div>
+                        </group>
+                    </group>
+                    <field name="sgi_dev_feasibility_ids" invisible="not sgi_dev_feasibility_ids">
+                        <list editable="bottom" create="0" decoration-danger="answer == 'no'" decoration-muted="answer == 'na'">
+                            <field name="sequence" widget="handle"/>
+                            <field name="item_id" readonly="1"/>
+                            <field name="auto" optional="show"/>
+                            <field name="answer" widget="badge"
+                                   decoration-success="answer == 'si'" decoration-danger="answer == 'no'"/>
+                            <field name="observation"/>
+                            <field name="answered_by_id" optional="show"/>
+                        </list>
+                    </field>
                     <group string="Código del artículo (regla de codificación de tejido y acabado)">
                         <group>
                             <field name="sgi_dev_code_composicion_id" options="{'no_create': True}"/>

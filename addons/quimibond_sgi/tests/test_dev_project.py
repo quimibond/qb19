@@ -24,6 +24,11 @@ class TestDevProject(TransactionCase):
         return self.Project.create(dict({'name': 'x', 'sgi_is_ft': True, 'partner_id': self.partner.id,
                                          'sgi_dev_product_name': 'Jersey 53 g'}, **vals))
 
+    def _approve(self, dev):
+        """Revisión única de Ventas (57.120.0): sin ella no se pasa de Análisis a Cotización."""
+        dev.write({'sgi_dev_analysis_result': 'nuevo'})
+        dev.action_sgi_dev_review_approve()
+
     def test_01_flag_is_not_the_name(self):
         plain = self.Project.create({'name': 'FT-900-2026 algo'})
         self.assertFalse(plain.sgi_is_ft, "El nombre ya no marca el desarrollo.")
@@ -38,11 +43,15 @@ class TestDevProject(TransactionCase):
         dev = self._dev()
         dev.write({'stage_id': self._stage('analisis').id})
         self.assertFalse(dev.sgi_ft_folio, "Antes de la aprobación del cliente no hay folio.")
+        with self.assertRaises(UserError, msg="Sin la revisión de Ventas no se cotiza (57.120.0)."):
+            dev.write({'stage_id': self._stage('cotizacion').id})
+        self._approve(dev)
         dev.write({'stage_id': self._stage('muestra').id})
         year = fields.Date.context_today(dev).year
         self.assertRegex(dev.sgi_ft_folio, r'^FT-\d{3}-%d$' % year)
         self.assertTrue(dev.name.startswith(dev.sgi_ft_folio))
         other = self._dev()
+        self._approve(other)
         other.write({'stage_id': self._stage('pilotaje').id})
         self.assertEqual(int(other.sgi_ft_folio[3:6]), int(dev.sgi_ft_folio[3:6]) + 1, "Consecutivo del año.")
         dev.write({'sgi_dev_product_id': self.product.id})
@@ -52,6 +61,7 @@ class TestDevProject(TransactionCase):
         self.assertEqual(len(dev.sgi_dev_stage_log_ids.filtered(lambda l: not l.date_end)), 1)
         # Folio histórico a mano: se respeta.
         legacy = self._dev(sgi_ft_folio='FT-012-2019')
+        self._approve(legacy)
         legacy.write({'stage_id': self._stage('muestra').id})
         self.assertEqual(legacy.sgi_ft_folio, 'FT-012-2019')
 
@@ -77,6 +87,7 @@ class TestDevProject(TransactionCase):
         masa = dev.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'masa')
         masa.write({'spec_nominal': 53, 'spec_tol_minus': 3, 'spec_tol_plus': 3})
         self.assertFalse(dev.sgi_dev_revision_ids, "En la solicitud se captura sin bitácora.")
+        self._approve(dev)
         dev.write({'stage_id': self._stage('cotizacion').id})
         dev.action_sgi_dev_new_revision()
         masa.write({'spec_nominal': 55})

@@ -19,6 +19,12 @@ class ResConfigSettings(models.TransientModel):
              "genéricos «MUESTRA PILOTO TEJIDO / TINTORERÍA»: las muestras de desarrollo se piden desde el "
              "proyecto con su artículo generado. Vacío: sin bloqueo (hay órdenes abiertas con ellos; la "
              "fecha la decide Dirección de Finanzas).")
+    # 57.120.0 (C1, bloque 4): quién autoriza las pruebas de laboratorio de los desarrollos.
+    sgi_dev_lab_authorizer_job_id = fields.Many2one(
+        'hr.job', string="Puesto que autoriza pruebas de laboratorio de desarrollos",
+        config_parameter='quimibond_sgi.dev_lab_authorizer_job_id',
+        help="Puesto (Coordinador de Laboratorio y MP) cuyas personas autorizan las solicitudes de pruebas "
+             "de los proyectos de desarrollo. El Jefe MAST siempre puede. Vacío: solo el Jefe MAST.")
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',

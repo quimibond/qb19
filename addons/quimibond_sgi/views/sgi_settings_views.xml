@@ -36,6 +36,10 @@
                                  help="Fecha (AAAA-MM-DD) desde la que las órdenes de fabricación de muestra deben llevar el artículo generado por el proyecto y no «MUESTRA PILOTO». Vacío: sin bloqueo.">
                             <field name="sgi_dev_block_generic_sample_from"/>
                         </setting>
+                        <setting string="Puesto que autoriza pruebas de laboratorio"
+                                 help="Las solicitudes de pruebas de los desarrollos las autorizan las personas de este puesto (Coordinador de Laboratorio y MP) o el Jefe MAST.">
+                            <field name="sgi_dev_lab_authorizer_job_id"/>
+                        </setting>
                     </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"

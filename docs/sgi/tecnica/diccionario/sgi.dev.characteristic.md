@@ -8,13 +8,14 @@ Renglón de la tabla de características de un proyecto de desarrollo: lo que pi
 
 Orden: `sequence, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_analysis.py`.
 
-## Campos (14)
+## Campos (15)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `customer_approved` | Boolean | Aprobado por el cliente | El cliente aceptó este valor en la aprobación final. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:128` |
+| `lab_request_ids` | Many2many | Solicitudes de laboratorio |  |  | `sgi.dev.lab.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:220` |
 | `lab_requested` | Boolean | Medir en la muestra | Diseño de Producto pide al laboratorio medir este renglón en la muestra del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:100` |
 | `project_id` | Many2one |  | Proyecto de desarrollo al que pertenece el renglón. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:97` |
 | `run_1` | Float | Lectura 1 | Primera lectura de la corrida de muestra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:111` |

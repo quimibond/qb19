@@ -76,6 +76,8 @@ class TestDevProduct(TransactionCase):
             'order_line': [(0, 0, {'product_id': acabado.id, 'product_uom_qty': 10})]})
         with self.assertRaises(UserError):
             order.action_confirm()
+        self.dev.write({'sgi_dev_analysis_result': 'nuevo'})
+        self.dev.action_sgi_dev_review_approve()
         self.dev.write({'stage_id': self._stage('pilotaje').id})
         self.assertEqual(acabado.sgi_dev_state, 'pilotaje')
         self.assertTrue(acabado.sale_ok)

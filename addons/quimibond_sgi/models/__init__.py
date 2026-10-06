@@ -74,6 +74,7 @@ from . import sgi_dev_characteristic
 from . import sgi_dev_request
 from . import sgi_dev_project
 from . import sgi_dev_product
+from . import sgi_dev_analysis
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign

@@ -13,6 +13,47 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.120.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 4: parecidos, laboratorio y
+factibilidad** (brief 6.3 a 6.5). Sustituye a Experiencias previas, a la
+Solicitud de pruebas para laboratorio y al Checklist de factibilidad.
+
+### Agregado
+
+- **Artículos parecidos** («Buscar parecidos» en la pestaña Desarrollo):
+  asistente con los artículos de línea y de desarrollos anteriores
+  ordenados por cercanía en peso, ancho, composición, dibujo y galga (leídos
+  del código según el DAT P-D02-01; más de 60 % de diferencia no se
+  propone). «Dentro de tolerancia» = peso y ancho dentro de lo que pide el
+  cliente con la misma composición, dibujo y galga. «Usar como base» liga el
+  artículo al proyecto y propone producto de línea o producto nuevo; Diseño
+  de Producto confirma.
+- **Solicitud de pruebas a laboratorio** (`sgi.dev.lab.request`, menú SGI →
+  Sistema → Pruebas de laboratorio de desarrollos): «Solicitar pruebas al
+  laboratorio» toma los renglones marcados «Medir en la muestra» sin
+  resultado (muestra del cliente antes de la etapa Muestra; corrida después)
+  y crea la solicitud; la autoriza el puesto del parámetro
+  `quimibond_sgi.dev_lab_authorizer_job_id` (Ajustes → SGI → Desarrollo de
+  producto; vacío por omisión: solo el Jefe MAST; en producción va el
+  Coordinador de Laboratorio y MP, dato de la sección 7) con actividad
+  automática; el laboratorista captura el valor **en el mismo renglón** y la
+  solicitud se cierra sola cuando todos tienen valor, con las horas que
+  tardó. El laboratorio solo mide; el dictamen sigue siendo de Diseño.
+- **Checklist de factibilidad**: catálogo `sgi.dev.feasibility.item` por
+  línea (tejido circular, entretelas) en Configuración → Recursos del
+  checklist de factibilidad, **vacío** (la lista de recursos no está
+  definida, sección 8 del brief). «Cargar checklist de factibilidad» pone
+  los renglones de la línea del proyecto; Odoo contesta solo la existencia
+  de materia prima (lista de materiales del artículo del proyecto o del
+  artículo base contra existencias); la capacidad de máquina queda
+  pendiente hasta el cotizador nuevo.
+- **Una sola revisión de Ventas**: «Aprobar análisis y factibilidad» exige
+  el resultado del análisis y el checklist contestado; «Regresar» pide
+  motivo. Sin aprobación el proyecto no pasa de Análisis a Cotización.
+- Pruebas `tests/test_dev_analysis.py`; las de los bloques 2 y 3 aprueban la
+  revisión antes de avanzar de etapa.
+
 ## 19.0.57.119.0 — 2026-10-06
 
 **C1 Desarrollo y alta de producto, bloque 3: artículo en desarrollo y

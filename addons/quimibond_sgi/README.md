@@ -379,6 +379,18 @@ artículo genérico «MUESTRA PILOTO» se bloquea en órdenes nuevas desde la
 fecha del parámetro `quimibond_sgi.dev_block_generic_sample_from` (vacío
 mientras Jose no la fije).
 
+**Análisis, laboratorio y factibilidad (57.120.0).** «Buscar parecidos»
+lista artículos de línea y desarrollos anteriores por cercanía y, con «Usar
+como base», propone producto de línea o nuevo. «Solicitar pruebas al
+laboratorio» crea la solicitud con los renglones marcados; la autoriza el
+puesto del parámetro `quimibond_sgi.dev_lab_authorizer_job_id` o el Jefe
+MAST, y el laboratorio captura el valor en el renglón (SGI → Sistema →
+Pruebas de laboratorio de desarrollos). El checklist de factibilidad se
+carga del catálogo por línea (Configuración → Recursos del checklist de
+factibilidad, vacío hasta que Diseño de Procesos lo defina); Odoo contesta
+la existencia de materia prima. Ventas aprueba análisis y factibilidad en
+una sola revisión; sin ella el proyecto no pasa a Cotización.
+
 ## Menú
 
 Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las
