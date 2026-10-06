@@ -16,6 +16,14 @@ núcleo en 57.9.0 (auditoría A-014).
 - **Pruebas:** `tests/test_instruction_knowledge.py` (antes
   `quimibond_sgi/tests/test_pr6_external.py`, test_05).
 
+## 1.2.1 (2026-10-06): manual de MAST al día
+
+`data/manuales/mast.html` regenerado con `tools/sgi_knowledge_html.py` tras
+las secciones nuevas de `docs/sgi/usuarios/mast.md` (quimibond_sgi 57.111.0 a
+57.116.0: historial de estado, medición manual a propósito, categorías de
+Aprobaciones con asunto). La versión sube para que la siembra refresque el
+artículo al actualizar (solo si nadie lo editó).
+
 ## 1.2.0 (2026-10-06): el SGI en Conocimiento
 
 Plan: `docs/superpowers/plans/2026-10-06-sgi-conocimiento.md`. El CEO aceptó
