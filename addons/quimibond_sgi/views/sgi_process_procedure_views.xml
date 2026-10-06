@@ -247,6 +247,10 @@
                                            options="{'no_create': True, 'no_open': True}"
                                            invisible="not measure_model_id or measure_method not in (False, 'odoo', 'entregable')"
                                            readonly="measure_method == 'entregable'"/>
+                                    <field name="measure_history_field" invisible="1"/>
+                                    <field name="measure_user_history" groups="quimibond_sgi.group_sgi_manager"
+                                           invisible="not measure_history_field or measure_method not in (False, 'odoo', 'entregable')"
+                                           readonly="measure_method == 'entregable'"/>
                                     <field name="measure_date_field" invisible="1"/>
                                     <field name="measure_preview_html" groups="quimibond_sgi.group_sgi_manager"
                                            invisible="not measure_preview_html" readonly="1"/>

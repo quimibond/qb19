@@ -13,6 +13,58 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.111.0 — 2026-10-06
+
+**Quién hizo la actividad, según el historial de su estado.** «write_uid» dice
+quién editó el registro al último, no quién lo hizo: en las transferencias de
+producción de 4 semanas OdooBot es el último que edita 598 de 874 y el campo
+«Responsable» está vacío en 556; las transferencias y las órdenes de
+fabricación no tienen campo de «quién lo validó». El historial de Odoo sí lo
+guarda: el paso a «Hecho» es de Ana Silvia Colín, Cynthia Santana, José
+Gómez, José Luis Almazán, Carlos Vargas… y nunca de OdooBot. Pedido de Jose
+del 2026-10-06 (tanda 2 de «Medición por revisar», 109 avisos de atribución
+débil en 63 actividades).
+
+### Agregado
+
+- **«Quién lo hizo: quien lo pasó a su estado (historial)»** en el entregable
+  y en la actividad (`measure_user_history`, `models/sgi_measure_history.py`).
+  La medición atribuye cada registro a quien hizo el último cambio de su campo
+  de estado con seguimiento (`state`, `stage_id`, `request_status`,
+  `sgi_state`…); si un registro no tiene ese cambio, cuenta el campo de
+  usuario como antes. Clases, adherencia y avisos no cambian.
+- La casilla solo se ve cuando el modelo guarda historial de su estado; si se
+  marca en un modelo que no lo guarda, la actividad lo dice en «Atribución
+  débil».
+- La vista previa de la medición (57.109.0) dice a quién atribuye según el
+  historial.
+
+### Cambiado
+
+- `sgi_process_procedure`: el cálculo de quién ejecutó sale de dos ganchos
+  (`_sgi_executor_attributable`, `_sgi_executor_groups`); el read_group por
+  campo de usuario es el de siempre.
+- El aviso «Se atribuye con write_uid» no sale cuando la actividad usa el
+  historial (write_uid queda solo de respaldo).
+
+### Migración
+
+- `migrations/19.0.57.111.0/post-migrate.py`: los entregables y actividades
+  con «write_uid» cuyo modelo guarda historial de su estado pasan al
+  historial y recalculan sus faltantes. Los que no lo guardan (reglas de
+  inventario, listas de precios, contactos, líneas de banco…) siguen con su
+  aviso.
+
+### Datos de producción (MCP, 2026-10-06, antes de esta versión)
+
+- 15 actividades con la pantalla equivocada pasaron a la que abre su modelo
+  de medición (Proyecto/Tareas, PPAP, Aprobaciones/Mis solicitudes,
+  Flotilla/Servicios): «Pantalla que no va con su medición» bajó de 40 a 25.
+- 15 entregables con su «Está completo» (responsiva firmada, 8D con causa y
+  acción, incidente con causas, recorrido con acta…; «Parte interesada
+  revisada» cuenta por «Última revisión»): «Entregable sin criterio de
+  completo» bajó de 21 a 6.
+
 ## 19.0.57.110.0 — 2026-10-05
 
 **MIID: lo que traía la revisión 02 y le faltaba a la Rev. 03.** Se leyó
