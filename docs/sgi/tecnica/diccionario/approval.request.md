@@ -8,20 +8,23 @@ La solicitud de cambio del MIID es una solicitud de cambio documental de siempre
 
 Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py`.
 
-## Campos (32)
+## Campos (35)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_activity_id` | Many2one | Actividad del procedimiento | Actividad de «Mi procedimiento» a la que se propone el cambio. |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:67` |
 | `sgi_affected_process_ids` | Many2many | Procesos afectados | Procesos a los que afecta el cambio del documento. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:62` |
+| `sgi_alert_id` | Many2one | No conformidad | No conformidad del lote rechazado que esta desviación autoriza a usar (C5.22). |  | `quality.alert` |  |  | `addons/quimibond_sgi/models/sgi_links.py:160` |
 | `sgi_applied` | Boolean | Cambio aplicado al documento | Se marca cuando el cambio aprobado ya se aplicó al documento (nueva revisión). |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:64` |
 | `sgi_change_attachment_id` | Many2one | Archivo de la revisión nueva | El archivo que se mandó a firmar: es el que se publica al aprobarse. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:64` |
 | `sgi_change_kind` | Selection | Tipo de cambio | Alta de un documento nuevo, modificación de uno existente o baja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:38` |
 | `sgi_changes` | Text | Descripción de cambios |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:61` |
 | `sgi_current_revision` | Integer | Revisión vigente | Revisión vigente del documento antes del cambio. |  |  | related `sgi_document_id.sgi_revision`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change.py:49` |
 | `sgi_document_id` | Many2one | Documento afectado | Documento controlado que se modifica o se da de baja. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:36` |
+| `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) que pide esta compra (C1.08). |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:156` |
 | `sgi_is_doc_change` | Boolean |  | Se marca sola cuando la categoría es de cambio documental del SGI. |  |  | related `category_id.sgi_is_doc_change`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:27` |
 | `sgi_is_moc` | Boolean |  | Se marca sola cuando la categoría es de gestión del cambio. |  |  | related `category_id.sgi_is_moc`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:30` |
+| `sgi_maintenance_request_id` | Many2one | Solicitud de mantenimiento | Solicitud de mantenimiento que necesita la refacción que se pide (S5.03). |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_links.py:163` |
 | `sgi_miid_blocked_note` | Text | Último aviso de candados del MIID | Lo que detiene la aprobación del MIID aunque las firmas estén completas. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1107` |
 | `sgi_miid_generated` | Datetime | MIID generado el | Cuándo se generó el PDF del MIID que lleva esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1105` |
 | `sgi_miid_hash` | Char | Huella del MIID | Huella de los datos con que se generó el PDF del MIID de esta solicitud. |  |  |  |  | `addons/quimibond_sgi/models/sgi_miid.py:1101` |

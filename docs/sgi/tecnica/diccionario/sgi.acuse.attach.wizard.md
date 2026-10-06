@@ -12,10 +12,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_links.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `file` | Binary | Acuse firmado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_links.py:356` |
-| `file_name` | Char | Nombre del archivo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_links.py:357` |
-| `note` | Char | Nota |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_links.py:358` |
-| `picking_id` | Many2one |  | Entrega a la que se adjunta el acuse firmado. | sí | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_links.py:354` |
+| `file` | Binary | Acuse firmado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_links.py:392` |
+| `file_name` | Char | Nombre del archivo |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_links.py:393` |
+| `note` | Char | Nota |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_links.py:394` |
+| `picking_id` | Many2one |  | Entrega a la que se adjunta el acuse firmado. | sí | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_links.py:390` |
 
 ## Métodos públicos (1)
 

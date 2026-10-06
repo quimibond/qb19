@@ -6,20 +6,21 @@ Modelo de otra app que el SGI extiende.
 
 Archivos: `addons/quimibond_sgi/models/sgi_improvement.py`, `addons/quimibond_sgi/models/sgi_links.py`.
 
-## Campos (10)
+## Campos (11)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `sgi_area_id` | Many2one | Área SGI | Área del SGI a la que pertenece la mejora. |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:31` |
-| `sgi_bom_ids` | One2many | Listas de materiales |  |  | `mrp.bom` |  |  | `addons/quimibond_sgi/models/sgi_links.py:65` |
-| `sgi_control_plan_ids` | One2many | Planes de control |  |  | `sgi.control.plan` |  |  | `addons/quimibond_sgi/models/sgi_links.py:67` |
-| `sgi_dyd_link_count` | Integer | Ligas del desarrollo |  |  |  | compute `_compute_sgi_dyd_link_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_links.py:69` |
-| `sgi_fmea_ids` | One2many | AMEF |  |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_links.py:64` |
+| `sgi_bom_ids` | One2many | Listas de materiales |  |  | `mrp.bom` |  |  | `addons/quimibond_sgi/models/sgi_links.py:71` |
+| `sgi_control_plan_ids` | One2many | Planes de control |  |  | `sgi.control.plan` |  |  | `addons/quimibond_sgi/models/sgi_links.py:73` |
+| `sgi_dyd_link_count` | Integer | Ligas del desarrollo |  |  |  | compute `_compute_sgi_dyd_link_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_links.py:77` |
+| `sgi_dyd_picking_ids` | One2many | Envíos de muestra |  |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_links.py:76` |
+| `sgi_fmea_ids` | One2many | AMEF |  |  | `sgi.fmea` |  |  | `addons/quimibond_sgi/models/sgi_links.py:70` |
 | `sgi_improvement_type` | Selection | Tipo de mejora | Clasificación de la mejora: ambiental, de proceso, de recursos u otra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:24` |
 | `sgi_is_improvement` | Boolean |  | Se marca sola cuando la tarea pertenece al proyecto de mejora continua del SGI. |  |  | related `project_id.sgi_is_improvement`, guardado |  | `addons/quimibond_sgi/models/sgi_improvement.py:21` |
-| `sgi_ppap_ids` | One2many | PPAP |  |  | `sgi.ppap` |  |  | `addons/quimibond_sgi/models/sgi_links.py:68` |
+| `sgi_ppap_ids` | One2many | PPAP |  |  | `sgi.ppap` |  |  | `addons/quimibond_sgi/models/sgi_links.py:74` |
 | `sgi_process_id` | Many2one | Proceso SGI | Proceso del SGI al que aplica la mejora. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:33` |
-| `sgi_production_ids` | One2many | Órdenes de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_links.py:66` |
+| `sgi_production_ids` | One2many | Órdenes de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_links.py:72` |
 
 ## Métodos públicos (1)
 

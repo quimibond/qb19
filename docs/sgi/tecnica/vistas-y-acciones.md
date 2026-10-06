@@ -267,7 +267,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (385; 63 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (387; 65 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -275,6 +275,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `account.move` | `quimibond_sgi.sgi_account_move_view_form_links` | herencia | `account.view_move_form` | `addons/quimibond_sgi/views/sgi_links_views.xml` |
 | `approval.category` | `quimibond_sgi.sgi_approval_category_view_form` | herencia | `approvals.approval_category_view_form` | `addons/quimibond_sgi/views/sgi_doc_change_views.xml` |
 | `approval.request` | `quimibond_sgi.sgi_approval_request_view_form` | herencia | `approvals.approval_request_view_form` | `addons/quimibond_sgi/views/sgi_doc_change_views.xml` |
+| `approval.request` | `quimibond_sgi.sgi_approval_request_view_form_links` | herencia | `approvals.approval_request_view_form` | `addons/quimibond_sgi/views/sgi_links_views.xml` |
 | `approval.request` | `quimibond_sgi.sgi_approval_request_view_form_mp_change` | herencia | `approvals.approval_request_view_form` | `addons/quimibond_sgi/views/sgi_mp_change_views.xml` |
 | `approval.request` | `quimibond_sgi.sgi_doc_change_view_list` | list |  | `addons/quimibond_sgi/views/sgi_doc_change_views.xml` |
 | `approval.request` | `quimibond_sgi.sgi_doc_change_view_search` | search |  | `addons/quimibond_sgi/views/sgi_doc_change_views.xml` |
@@ -655,4 +656,5 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `stock.picking` | `quimibond_sgi.sgi_format_banner_stock_picking` | herencia | `stock.view_picking_form` | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
 | `stock.picking` | `quimibond_sgi.sgi_stock_picking_view_form` | herencia | `stock.view_picking_form` | `addons/quimibond_sgi/views/sgi_integration_views.xml` |
 | `stock.picking` | `quimibond_sgi.sgi_stock_picking_view_form_kpi` | herencia | `stock.view_picking_form` | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
+| `stock.picking` | `quimibond_sgi.sgi_stock_picking_view_form_links` | herencia | `stock.view_picking_form` | `addons/quimibond_sgi/views/sgi_links_views.xml` |
 | `survey.survey` | `quimibond_sgi.sgi_survey_skill_view_list` | list |  | `addons/quimibond_sgi/views/sgi_training_effectiveness_views.xml` |

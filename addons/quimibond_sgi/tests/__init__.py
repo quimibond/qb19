@@ -160,3 +160,4 @@ from . import test_riesgo_reportar
 from . import test_medicion_historial
 from . import test_medicion_manual_motivo
 from . import test_menus_capitulos
+from . import test_ligas_tanda5
