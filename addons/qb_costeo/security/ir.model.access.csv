@@ -1,0 +1,14 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_parametro_user,qb.parametro user,model_qb_parametro,mrp.group_mrp_user,1,0,0,0
+access_qb_parametro_manager,qb.parametro manager,model_qb_parametro,mrp.group_mrp_manager,1,1,1,1
+access_qb_centro_user,qb.centro user,model_qb_centro,mrp.group_mrp_user,1,0,0,0
+access_qb_centro_manager,qb.centro manager,model_qb_centro,mrp.group_mrp_manager,1,1,1,1
+access_qb_cuenta_clase_user,qb.cuenta.clase user,model_qb_cuenta_clase,mrp.group_mrp_user,1,0,0,0
+access_qb_cuenta_clase_manager,qb.cuenta.clase manager,model_qb_cuenta_clase,mrp.group_mrp_manager,1,1,1,1
+access_qb_cuenta_clase_account,qb.cuenta.clase contabilidad,model_qb_cuenta_clase,account.group_account_manager,1,1,1,1
+access_qb_periodo_user,qb.periodo user,model_qb_periodo,mrp.group_mrp_user,1,0,0,0
+access_qb_periodo_manager,qb.periodo manager,model_qb_periodo,mrp.group_mrp_manager,1,1,1,1
+access_qb_tarifa_user,qb.tarifa user,model_qb_tarifa,mrp.group_mrp_user,1,0,0,0
+access_qb_tarifa_manager,qb.tarifa manager,model_qb_tarifa,mrp.group_mrp_manager,1,1,1,1
+access_qb_producto_validacion_user,qb.producto.validacion user,model_qb_producto_validacion,mrp.group_mrp_user,1,0,0,0
+access_qb_producto_validacion_manager,qb.producto.validacion manager,model_qb_producto_validacion,mrp.group_mrp_manager,1,1,1,1

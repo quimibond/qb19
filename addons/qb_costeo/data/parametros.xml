@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="param_suavizado_fijo_meses" model="qb.parametro">
+        <field name="key">suavizado_fijo_meses</field>
+        <field name="name">Meses de suavizado del gasto fijo</field>
+        <field name="tipo">float</field>
+        <field name="value_float">12</field>
+        <field name="help">La renta, la nómina y el mantenimiento llegan al mayor a saltos. La tarifa fija de cada centro se calcula con el promedio mensual de estos meses para que un mes atípico no cambie el precio de todo.</field>
+    </record>
+    <record id="param_suavizado_operacion_meses" model="qb.parametro">
+        <field name="key">suavizado_operacion_meses</field>
+        <field name="name">Meses de suavizado de operación y ventas</field>
+        <field name="tipo">float</field>
+        <field name="value_float">12</field>
+        <field name="help">Administración y ventas ÷ ventas, promediados estos meses, dan el % de operación que paga cada unidad vendida.</field>
+    </record>
+    <record id="param_top_productos" model="qb.parametro">
+        <field name="key">top_productos</field>
+        <field name="name">Productos principales que vigila el cierre</field>
+        <field name="tipo">float</field>
+        <field name="value_float">20</field>
+        <field name="help">Los N productos de mayor venta del mes. Un período no cierra si alguno tiene validaciones abiertas.</field>
+    </record>
+    <record id="param_sin_clasificar_tolerancia" model="qb.parametro">
+        <field name="key">sin_clasificar_tolerancia</field>
+        <field name="name">Tolerancia de gasto sin clasificar ($)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">1000</field>
+        <field name="help">Arriba de este monto en cuentas de resultados sin clasificar, el período no cierra.</field>
+    </record>
+    <record id="param_refs_fuera_de_costeo" model="qb.parametro">
+        <field name="key">refs_fuera_de_costeo</field>
+        <field name="name">Asientos que no se reparten (por referencia)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">CIERRE ANUAL,ENAJENACI</field>
+        <field name="help">Asientos cuya referencia contenga alguno de estos textos (separados por coma) no entran a ningún pool: cierre anual, enajenación de activos.</field>
+    </record>
+    <record id="param_precio_banda_pct" model="qb.parametro">
+        <field name="key">precio_banda_pct</field>
+        <field name="name">Banda de precio de componentes (%)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">30</field>
+        <field name="help">Si el costo promedio de un componente se aleja más de este % de su última compra, se abre una validación.</field>
+    </record>
+    <record id="param_colorante_max_pct" model="qb.parametro">
+        <field name="key">colorante_max_pct</field>
+        <field name="name">Máximo de un colorante o auxiliar (% del peso)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">12</field>
+        <field name="help">Una línea de receta de la categoría de colorantes arriba de este % del peso de la tela se marca como receta implausible.</field>
+    </record>
+    <record id="param_colorante_total_max_pct" model="qb.parametro">
+        <field name="key">colorante_total_max_pct</field>
+        <field name="name">Máximo de colorantes y auxiliares juntos (% del peso)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">25</field>
+        <field name="help">La suma de todas las líneas de colorantes y auxiliares de una receta no debe pasar de este % del peso de la tela.</field>
+    </record>
+    <record id="param_validacion_categorias_colorante" model="qb.parametro">
+        <field name="key">validacion_categorias_colorante</field>
+        <field name="name">Categorías de producto que son colorantes y auxiliares</field>
+        <field name="tipo">text</field>
+        <field name="value_text">Cocina</field>
+        <field name="help">Texto que aparece en el nombre de la categoría (separado por coma). En Quimibond los colorantes y auxiliares de tintorería viven en «Producto en Proceso / Cocina».</field>
+    </record>
+    <record id="param_validacion_excluir_codigos" model="qb.parametro">
+        <field name="key">validacion_excluir_codigos</field>
+        <field name="name">Componentes que no se validan</field>
+        <field name="tipo">text</field>
+        <field name="value_text">AGUA</field>
+        <field name="help">Referencias (separadas por coma) que no disparan validaciones: el agua cuesta 0 a propósito.</field>
+    </record>
+</odoo>
