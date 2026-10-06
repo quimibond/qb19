@@ -165,3 +165,4 @@ from . import test_pantalla_produce
 from . import test_aprobaciones_asunto
 from . import test_dev_characteristics
 from . import test_dev_project
+from . import test_dev_product

@@ -30,6 +30,13 @@
                             <field name="sgi_mast_user_id"/>
                         </setting>
                     </block>
+                    <!-- 57.119.0 (C1, bloque 3) -->
+                    <block title="Desarrollo de producto" name="sgi_dev_product">
+                        <setting string="Bloquear el artículo genérico de muestra"
+                                 help="Fecha (AAAA-MM-DD) desde la que las órdenes de fabricación de muestra deben llevar el artículo generado por el proyecto y no «MUESTRA PILOTO». Vacío: sin bloqueo.">
+                            <field name="sgi_dev_block_generic_sample_from"/>
+                        </setting>
+                    </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"
                                  help="Indicador Requisiciones (CO-02): categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúrelo solo si hay varias.">

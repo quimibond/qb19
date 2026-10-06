@@ -368,6 +368,17 @@ y de materia prima), Comercial (listas en Configuración → Listas del
 desarrollo de producto) y Revisiones (bitácora). Las mediciones del SGI
 filtran por la bandera, ya no por `FT-%` en el nombre.
 
+**Artículo en desarrollo y generador de código (57.119.0).** Desde la
+pestaña Desarrollo se eligen las claves (composición, dibujo, hilo, color,
+acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
+crea crudo (H), teñido (I, si lleva) y acabado (J) con el código del DAT
+P-D02-01 en estado «En desarrollo» (no se vende). Al entrar a Pilotaje el
+artículo se vende con aviso; en Liberado queda de línea; si el proyecto
+cierra sin producto, el artículo y sus listas de materiales se archivan. El
+artículo genérico «MUESTRA PILOTO» se bloquea en órdenes nuevas desde la
+fecha del parámetro `quimibond_sgi.dev_block_generic_sample_from` (vacío
+mientras Jose no la fije).
+
 ## Menú
 
 Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las

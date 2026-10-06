@@ -4,9 +4,9 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
 
-## Campos (63)
+## Campos (78)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -14,6 +14,19 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimi
 | `sgi_dev_application_id` | Many2one | Aplicación | Para qué se va a usar el producto (lista). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:227` |
 | `sgi_dev_approved_by_id` | Many2one | Aprobó (Dirección de Operaciones) | Persona de Dirección de Operaciones que aprueba la solicitud de desarrollo. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:78` |
 | `sgi_dev_base_product_id` | Many2one | Artículo de línea o base | Artículo existente que cumple la solicitud (producto de línea) o que sirve de base al desarrollo nuevo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:271` |
+| `sgi_dev_code_acabado_code` | Char | Código acabado | Código propuesto del acabado (J). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:165` |
+| `sgi_dev_code_acabado_id` | Many2one | Acabado (15-16) | Posiciones 15 y 16, opcionales: el acabado especial. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:154` |
+| `sgi_dev_code_ancho` | Integer | Ancho acabado (12-14, cm) | Posiciones 12 a 14 del acabado: ancho de tela abierta en cm. Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:148` |
+| `sgi_dev_code_ancho_crudo` | Integer | Ancho crudo (cm) | Ancho de tela cruda en cm: posiciones 12 a 14 del crudo y del teñido. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:151` |
+| `sgi_dev_code_color_id` | Many2one | Color (10-11) | Posiciones 10 y 11: color del producto terminado. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:145` |
+| `sgi_dev_code_composicion_id` | Many2one | Composición (1) | Posición 1 del código: la composición de la tela. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:131` |
+| `sgi_dev_code_crudo` | Char | Código crudo | Código propuesto del crudo (H). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:161` |
+| `sgi_dev_code_dibujo_id` | Many2one | Dibujo (2) | Posición 2 del código: el dibujo o ligamento. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:134` |
+| `sgi_dev_code_galga` | Integer | Galga (7-8) | Galga de la máquina (14, 16, 18…); el código lleva su rango. Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:142` |
+| `sgi_dev_code_hilo_id` | Many2one | Tipo de hilo (6) | Posición 6: hilo natural, preteñido o reciclado. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:139` |
+| `sgi_dev_code_peso` | Integer | Peso (3-5, g/m²) | Posiciones 3 a 5: masa por unidad de área en g/m². Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:137` |
+| `sgi_dev_code_tenido` | Boolean | Lleva teñido | Si la ruta tiene teñido se crea también el artículo I. Se propone cuando el color no es natural. |  |  | compute `_compute_sgi_dev_code_tenido`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_product.py:157` |
+| `sgi_dev_code_tenido_code` | Char | Código teñido | Código propuesto del teñido (I). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:163` |
 | `sgi_dev_consumption_annual` | Float | Consumo anual | Consumo anual estimado, en la unidad elegida. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:232` |
 | `sgi_dev_consumption_annual_m` | Float | Consumo anual (m) | Consumo anual en metros (las yardas se convierten; en kg queda vacío). |  |  | compute `_compute_sgi_dev_consumption`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_project.py:239` |
 | `sgi_dev_consumption_annual_yd` | Float | Consumo anual (yd) | Consumo anual en yardas (los metros se convierten; en kg queda vacío). |  |  | compute `_compute_sgi_dev_consumption`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_project.py:242` |
@@ -44,8 +57,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimi
 | `sgi_dev_out_of_spec_count` | Integer | No conformes en corrida | Renglones cuya corrida quedó fuera de lo que pide el cliente. |  |  | compute `_compute_sgi_dev_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_request.py:66` |
 | `sgi_dev_packaging` | Text | Datos en la etiqueta y empaque |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:55` |
 | `sgi_dev_prepared_by_id` | Many2one | Elaboró (Diseño y Desarrollo) | Persona de Diseño y Desarrollo que elaboró la solicitud. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:76` |
+| `sgi_dev_product_crudo_id` | Many2one | Artículo crudo | Artículo crudo (H) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:167` |
 | `sgi_dev_product_id` | Many2one | Artículo en desarrollo | Artículo generado para el desarrollo (lo crea el generador de código). Su referencia interna forma parte del nombre del proyecto. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:202` |
 | `sgi_dev_product_name` | Char | Producto pedido | Cómo llama el cliente al producto mientras no hay código de artículo. Forma parte del nombre del proyecto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:199` |
+| `sgi_dev_product_tenido_id` | Many2one | Artículo teñido | Artículo teñido (I) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:169` |
 | `sgi_dev_program` | Char | Programa | Programa o plataforma del cliente para el que es el producto (nombre). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:225` |
 | `sgi_dev_program_years` | Float | Tiempo de programa (años) | Cuántos años durará el programa del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:230` |
 | `sgi_dev_requester` | Char | Nombre del solicitante |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:38` |
@@ -74,13 +89,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimi
 | `sgi_is_ft` | Boolean | Desarrollo de producto | El proyecto es un desarrollo de producto (procedimiento C1): habilita las pestañas de desarrollo, el folio FT, las etapas de avance y las mediciones del SGI. Las plantillas de Diseño y Desarrollo ya lo traen marcado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:27` |
 | `sgi_is_improvement` | Boolean | Proyecto de mejora SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:9` |
 
-## Métodos públicos (12)
+## Métodos públicos (14)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_sgi_dev_assign_folio` | Asigna el folio FT de la secuencia anual (FT-001-2027) si no lo tiene. |
 | `action_sgi_dev_close_as_line_product` | Un artículo existente cumple todo: se cotiza ese y el proyecto cierra sin FT. |
 | `action_sgi_dev_close_not_feasible` | — |
+| `action_sgi_dev_code_from_table` | Toma peso, galga y ancho de la tabla de características (nominal del cliente). |
+| `action_sgi_dev_generate_products` | Crea (o liga, si el código ya existe) los artículos de la ruta: crudo, teñido y acabado. |
 | `action_sgi_dev_load_lines` | Propone las características del tipo desde el catálogo (``sgi.dev.characteristic.template``); solo agrega las que faltan. |
 | `action_sgi_dev_mp_wait_start` | — |
 | `action_sgi_dev_mp_wait_stop` | — |

@@ -69,6 +69,33 @@
                             <field name="sgi_dev_hours_mp"/>
                         </group>
                     </group>
+                    <group string="Código del artículo (regla de codificación de tejido y acabado)">
+                        <group>
+                            <field name="sgi_dev_code_composicion_id" options="{'no_create': True}"/>
+                            <field name="sgi_dev_code_dibujo_id" options="{'no_create': True}"/>
+                            <field name="sgi_dev_code_peso"/>
+                            <field name="sgi_dev_code_hilo_id" options="{'no_create': True}"/>
+                            <field name="sgi_dev_code_galga"/>
+                            <field name="sgi_dev_code_color_id" options="{'no_create': True}"/>
+                            <field name="sgi_dev_code_ancho"/>
+                            <field name="sgi_dev_code_ancho_crudo"/>
+                            <field name="sgi_dev_code_acabado_id" options="{'no_create': True}"/>
+                            <field name="sgi_dev_code_tenido"/>
+                        </group>
+                        <group>
+                            <div class="mb-2" colspan="2">
+                                <button name="action_sgi_dev_code_from_table" type="object" string="Tomar peso, galga y ancho de la tabla" class="btn-secondary" icon="fa-table"/>
+                                <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-primary" icon="fa-cubes"
+                                        invisible="sgi_dev_product_id"
+                                        confirm="Se crean los artículos crudo, teñido (si lleva) y acabado con el código propuesto, en estado «En desarrollo». ¿Continuar?"/>
+                            </div>
+                            <field name="sgi_dev_code_crudo"/>
+                            <field name="sgi_dev_code_tenido_code" invisible="not sgi_dev_code_tenido"/>
+                            <field name="sgi_dev_code_acabado_code"/>
+                            <field name="sgi_dev_product_crudo_id" readonly="1"/>
+                            <field name="sgi_dev_product_tenido_id" readonly="1" invisible="not sgi_dev_code_tenido"/>
+                        </group>
+                    </group>
                     <separator string="Reloj por etapa"/>
                     <field name="sgi_dev_stage_log_ids" readonly="1">
                         <list create="0" delete="0">

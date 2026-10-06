@@ -13,6 +13,42 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.119.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 3: artículo en desarrollo y
+generador de código** (brief 6.6). Ningún código se arma a mano y lo no
+ganado desaparece de vista solo.
+
+### Agregado
+
+- **Estado de desarrollo del artículo** (`product.template.sgi_dev_state`):
+  en desarrollo (no se vende; confirmar un pedido con él da error) → en
+  pilotaje (se vende; el pedido recibe el aviso de que los tres primeros
+  lotes son el pilotaje) → liberado → archivado (artículo y listas de
+  materiales archivados). El proyecto lo mueve al entrar a Pilotaje,
+  Liberado o Cerrado sin producto; solo toca artículos nacidos de ese
+  proyecto. La ficha del producto lo muestra; filtros «En desarrollo»
+  y «En pilotaje».
+- **Generador de código** en la pestaña Desarrollo del proyecto: claves de
+  composición, dibujo, tipo de hilo, color y acabado del catálogo
+  (`ficha.tecnica.clave.codigo`), peso, galga y ancho tomados de la tabla
+  de características («Tomar peso, galga y ancho de la tabla»; el ancho
+  pasa de m a cm), ancho crudo y «lleva teñido» (propuesto cuando el color
+  no es natural). Vista previa de los tres códigos y botón **Generar
+  artículos**: crudo H (kg, Producto en Proceso / Tejido Circular), teñido I
+  (kg, Producto en Proceso / Teñido) y acabado J (m, Producto Terminado /
+  Tejido Circular / Industrial o Confección según el equipo de ventas),
+  almacenables, con nombre «DIBUJO DE nnn G/M2». El crudo y el teñido
+  llevan el ancho crudo; el crudo va en natural salvo hilo preteñido o
+  reciclado. Un código que ya existe se liga sin duplicar ni cambiar su
+  estado. El acabado queda como artículo del proyecto y entra al nombre.
+- **Bloqueo del artículo genérico «MUESTRA PILOTO»** en órdenes de
+  fabricación nuevas (crear y confirmar) a partir de la fecha del
+  parámetro `quimibond_sgi.dev_block_generic_sample_from` (Ajustes → SGI →
+  Desarrollo de producto). **Vacío por omisión**: hay órdenes abiertas con
+  esos artículos y la fecha la decide Jose.
+- Pruebas `tests/test_dev_product.py`.
+
 ## 19.0.57.118.0 — 2026-10-06
 
 **C1 Desarrollo y alta de producto, bloque 2: proyecto único con ciclo de

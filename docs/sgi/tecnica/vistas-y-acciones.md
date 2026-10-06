@@ -278,7 +278,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (405; 75 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (407; 77 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -356,6 +356,8 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `mrp.revision.log` | `quimibond_sgi_revisado.mrp_revision_log_view_search` | search |  | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 | `mrp.workcenter` | `quimibond_sgi.sgi_workcenter_view_form_machine_sheet` | herencia | `mrp.mrp_workcenter_view` | `addons/quimibond_sgi/views/sgi_machine_sheet_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_ppap_product_template_form` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_ppap_views.xml` |
+| `product.template` | `quimibond_sgi.sgi_product_template_form_dev` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_dev_product_views.xml` |
+| `product.template` | `quimibond_sgi.sgi_product_template_search_dev` | herencia | `product.product_template_search_view` | `addons/quimibond_sgi/views/sgi_dev_product_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_product_template_view_form_kpi` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_product_template_view_form_spec` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_integration_views.xml` |
 | `project.project` | `quimibond_sgi.sgi_project_view_form_dev_lifecycle` | herencia | `project.edit_project` | `addons/quimibond_sgi/views/sgi_dev_project_views.xml` |

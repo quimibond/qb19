@@ -11,6 +11,14 @@ class ResConfigSettings(models.TransientModel):
     """
     _inherit = 'res.config.settings'
 
+    # 57.119.0 (C1, bloque 3): bloqueo del artículo genérico de muestra.
+    sgi_dev_block_generic_sample_from = fields.Char(
+        string="Bloquear «MUESTRA PILOTO» en órdenes nuevas desde (AAAA-MM-DD)",
+        config_parameter='quimibond_sgi.dev_block_generic_sample_from',
+        help="A partir de esta fecha no se crean ni confirman órdenes de fabricación con los artículos "
+             "genéricos «MUESTRA PILOTO TEJIDO / TINTORERÍA»: las muestras de desarrollo se piden desde el "
+             "proyecto con su artículo generado. Vacío: sin bloqueo (hay órdenes abiertas con ellos; la "
+             "fecha la decide Dirección de Finanzas).")
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',
