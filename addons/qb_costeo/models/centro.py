@@ -47,12 +47,12 @@ class QbCentro(models.Model):
              'centro. Con órdenes de trabajo capturadas, el driver se vuelve '
              '«workorder» solo: el resto son estándares interinos.')
     workcenter_ids = fields.Many2many(
-        'mrp.workcenter', 'qb_centro_workcenter_rel', 'centro_id',
+        'mrp.workcenter', 'qb_costeo_centro_workcenter_rel', 'centro_id',
         'workcenter_id', string='Centros de trabajo de Odoo',
         help='Sus máquinas en Odoo. Las horas reales y la capacidad normal '
              'salen de aquí; la tarifa se publica aquí.')
     department_ids = fields.Many2many(
-        'hr.department', 'qb_centro_department_rel', 'centro_id',
+        'hr.department', 'qb_costeo_centro_department_rel', 'centro_id',
         'department_id', string='Departamentos de RH',
         help='La nómina de fábrica (bucket «nomina») se reparte entre '
              'centros por el sueldo mensual de los empleados activos de '
