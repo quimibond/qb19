@@ -398,3 +398,45 @@ class TestConversionAbsorbida(TransactionCase):
         conv, _v, fuente = self.Costo._conv_unit(tela, f)
         self.assertAlmostEqual(conv, 0.1166 * 4.0, places=6)
         self.assertEqual(fuente, 'op')
+
+    def test_crudo_nuevo_se_reconoce_por_su_codigo(self):
+        """WJ080Q21HNT165 se dio de alta el 13-sep-2026 y nunca se ha tejido:
+        sin órdenes, ruta ni familia, su receta bajaba hasta el hilo y la
+        tela se cotizaba con tejido $0. La etapa H del código lo delata como
+        crudo; sin historia ni hermanos toma el promedio del centro,
+        estimado. Si se compra (sin receta) no carga conversión."""
+        Product = self.env['product.product']
+        nuevo = Product.create({
+            'name': 'CRUDO 80 G TEST', 'default_code': 'WJ080Q21HNT165',
+            'is_storable': True, 'uom_id': self.uom_kg.id})
+        tela = Product.create({
+            'name': 'TELA 80 G TEST', 'default_code': 'WJ080Q21JNT165',
+            'is_storable': True, 'uom_id': self.uom_m.id, 'sale_ok': True})
+        self._bom(tela, self.uom_m, [(nuevo, 0.1376, self.uom_kg)])
+        f = self._factores(conv_tarifa_kg_centro=11.25)
+        # Comprado (sin receta): no es tejido nuestro
+        self.assertEqual(self.Costo._conv_unit(tela, f)[0], 0.0)
+        self._bom(nuevo, self.uom_kg, [(self.hilo, 1.0, self.uom_kg)])
+        self.Costo.invalidate_model()
+        conv, _v, fuente = self.Costo._conv_unit(tela, f)
+        self.assertAlmostEqual(conv, 0.1376 * 11.25, places=6)
+        self.assertEqual(fuente, 'centro')
+
+    def test_rendimiento_capturado_manda(self):
+        """NN040Q66JNT163 sacó 44% de FE en el arranque de desarrollo de
+        agosto de 2026: con él su rendimiento de 12 meses daba 55% contra
+        88% sin ese mes. El capturado manda en el costo y en el cotizador,
+        aunque el período no se haya recalculado."""
+        f = self._factores()
+        self.assertEqual(
+            self.Costo._rendimiento_cotizar(self.pesada, 'tela', f),
+            (1.0, 'no_aplica'))
+        self.env['qb.producto.peso'].create({
+            'product_id': self.pesada.id, 'kg_per_unit': 0.216,
+            'source': 'manual', 'rendimiento_manual': 0.88,
+            'rendimiento_motivo': 'Arranque de desarrollo ago-2026'})
+        self.assertEqual(
+            self.Costo._rendimiento_cotizar(self.pesada, 'tela', f),
+            (0.88, 'manual'))
+        mapa, _planta = self.Costo._rendimiento_map(self.period)
+        self.assertEqual(mapa.get(self.pesada.id), (0.88, 'manual'))

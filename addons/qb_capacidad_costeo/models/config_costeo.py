@@ -597,6 +597,23 @@ class QbProductoPeso(models.Model):
              'ref_gramaje > bom > odoo_weight.')
     active = fields.Boolean(default=True)
     notes = fields.Char()
+    rendimiento_manual = fields.Float(
+        string='Rendimiento capturado', digits=(6, 4),
+        help='Fracción de primera (0.88 = 88%) que manda sobre la calculada '
+             'de los movimientos de almacén. Para cuando la historia no '
+             'representa la producción normal: NN040Q66JNT163 sacó 44% de '
+             'FE en el arranque de desarrollo de agosto de 2026 y con él su '
+             'rendimiento de 12 meses daba 55% contra 88% sin ese mes. '
+             'Vacío o 0 = el calculado.')
+    rendimiento_motivo = fields.Char(
+        string='Motivo del rendimiento',
+        help='Por qué se capturó a mano. Sale en el desglose del costo.')
+
+    _rendimiento_rango = models.Constraint(
+        'CHECK(rendimiento_manual IS NULL OR (rendimiento_manual >= 0 '
+        'AND rendimiento_manual <= 1))',
+        'El rendimiento capturado es una fracción entre 0 y 1 (0.88 = 88%).',
+    )
 
     _product_uniq = models.Constraint(
         'unique(product_id)',
