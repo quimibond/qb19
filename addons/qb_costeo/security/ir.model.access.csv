@@ -14,3 +14,13 @@ access_qb_producto_validacion_user,qb.producto.validacion user,model_qb_producto
 access_qb_producto_validacion_manager,qb.producto.validacion manager,model_qb_producto_validacion,mrp.group_mrp_manager,1,1,1,1
 access_qb_producto_horas_user,qb.producto.horas user,model_qb_producto_horas,mrp.group_mrp_user,1,0,0,0
 access_qb_producto_horas_manager,qb.producto.horas manager,model_qb_producto_horas,mrp.group_mrp_manager,1,1,1,1
+access_qb_producto_mp_user,qb.producto.mp user,model_qb_producto_mp,mrp.group_mrp_user,1,0,0,0
+access_qb_producto_mp_manager,qb.producto.mp manager,model_qb_producto_mp,mrp.group_mrp_manager,1,1,1,1
+access_qb_producto_rendimiento_user,qb.producto.rendimiento user,model_qb_producto_rendimiento,mrp.group_mrp_user,1,0,0,0
+access_qb_producto_rendimiento_manager,qb.producto.rendimiento manager,model_qb_producto_rendimiento,mrp.group_mrp_manager,1,1,1,1
+access_qb_producto_peso_user,qb.producto.kg user,model_qb_producto_kg,mrp.group_mrp_user,1,0,0,0
+access_qb_producto_peso_manager,qb.producto.kg manager,model_qb_producto_kg,mrp.group_mrp_manager,1,1,1,1
+access_qb_costo_producto_user,qb.costo.unitario user,model_qb_costo_unitario,mrp.group_mrp_user,1,0,0,0
+access_qb_costo_producto_manager,qb.costo.unitario manager,model_qb_costo_unitario,mrp.group_mrp_manager,1,1,1,1
+access_qb_costo_producto_centro_user,qb.costo.unitario.centro user,model_qb_costo_unitario_centro,mrp.group_mrp_user,1,0,0,0
+access_qb_costo_producto_centro_manager,qb.costo.unitario.centro manager,model_qb_costo_unitario_centro,mrp.group_mrp_manager,1,1,1,1

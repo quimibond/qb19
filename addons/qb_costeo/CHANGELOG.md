@@ -3,6 +3,46 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.3.0 — 2026-10-06
+
+- `qb.costo.unitario` + `qb.costo.unitario.centro`: la fórmula única del
+  costeo v2 por producto y período: MP al corte + Σ horas × tarifa del
+  centro (fija + variable), variable, producción, vendible (÷ rendimiento),
+  operación (% de ventas), total, pisos con capacidad ociosa y lleno,
+  semáforo, márgenes de contribución / bruto / neto, calidad (la peor de
+  horas, MP, validaciones) y totales del mes (unitario × cantidad vendida).
+  Ventas del mes desde las facturas (dedup del triplete, divisa dominante
+  y TC efectivo), como el módulo anterior. Los nombres evitan los del
+  módulo anterior (`qb.costo.producto`, `qb.producto.peso`): dos módulos
+  no pueden definir el mismo modelo mientras convivan.
+- `qb.producto.kg`: kg por unidad con precedencia pesaje > manual > ficha
+  técnica de Consolti > legado > kg > nomenclatura (estimado). Importa los
+  pesos medidos del módulo anterior.
+- `qb.periodo`: botón «Calcular costos» (recalcula horas, MP, rendimiento
+  y peso y luego el costo por producto), resumen (ventas, costo, margen
+  neto, % de ventas con dato de calidad alta = CO-04) y pestaña con las
+  filas; la compuerta de cierre exige el costo calculado. El cron diario
+  también calcula los costos.
+- Menú Manufactura → Costos → Costo por producto (lista, pivote, ficha).
+
+## 19.0.1.2.0 — 2026-10-06
+
+- `qb.producto.mp`: materia prima por unidad explotando la receta vigente
+  hasta las hojas compradas; precio de hoja = última compra confirmada
+  conocida al corte del período (moneda de la compañía, unidad del
+  producto; sin compras antes del corte, la primera conocida; sin compras,
+  el costo promedio acotado a 0). Marca `dudosa` cuando una hoja o receta
+  de la explosión tiene una validación abierta. `mp_para(product, cutoff)`
+  para el costeo de períodos y el cotizador.
+- `qb.producto.rendimiento`: rendimiento vendible desde los movimientos de
+  almacén (reglas del módulo anterior: líneas de movimiento, PQ ÷ PQ +
+  merma, orígenes de producción, tipos excluidos, ventana de 12 meses,
+  umbral de unidades → tasa de planta), con captura manual con motivo y
+  vigencia. Importa los rendimientos capturados en `qb.producto.peso` del
+  módulo anterior.
+- Menús en Datos del producto; crons semanales; parámetros de ubicaciones
+  de calidad y umbral.
+
 ## 19.0.1.1.0 — 2026-10-06
 
 - `qb.producto.horas`: horas por unidad de cada producto fabricado en cada

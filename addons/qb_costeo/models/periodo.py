@@ -44,6 +44,23 @@ class QbPeriodo(models.Model):
     reaperturas = fields.Integer(readonly=True)
     motivo_reapertura = fields.Char()
     tarifa_ids = fields.One2many('qb.tarifa', 'periodo_id', string='Tarifas')
+    costo_ids = fields.One2many('qb.costo.unitario', 'periodo_id',
+                                string='Costo por producto')
+    costos_calculado_el = fields.Datetime(readonly=True)
+    costos_ventas = fields.Float(
+        string='Ventas costeadas', readonly=True, digits=(16, 2))
+    costos_total = fields.Float(
+        string='Costo total de lo vendido', readonly=True, digits=(16, 2))
+    costos_margen_neto = fields.Float(
+        string='Margen neto $', readonly=True, digits=(16, 2))
+    costos_margen_neto_pct = fields.Float(
+        string='Margen neto %', readonly=True, digits=(6, 2))
+    costos_calidad_pct = fields.Float(
+        string='Ventas con dato de calidad alta %', readonly=True,
+        digits=(6, 1),
+        help='Parte de las ventas del mes cuyo costo salió de horas medidas '
+             'o estándar, sin validaciones abiertas. Es el indicador CO-04.')
+    costos_n = fields.Integer(string='Productos costeados', readonly=True)
 
     suavizado_fijo_meses = fields.Integer(
         default=lambda self: int(self.env['qb.parametro'].get_float(
@@ -265,6 +282,44 @@ class QbPeriodo(models.Model):
         self.bloqueos = '\n'.join(self._bloqueos_cierre()) or False
         return True
 
+    def action_calcular_costos(self):
+        """Costo por producto del período con las tarifas ya calculadas.
+        Recalcula antes horas, MP, rendimiento y peso para que el costo
+        lea datos del día."""
+        for rec in self:
+            if rec.state == 'cerrado':
+                raise UserError(
+                    'El período %s está cerrado. Reábralo con motivo para '
+                    'recalcularlo.' % rec.period)
+            if not rec.calculado_el:
+                rec._calcular()
+            rec._calcular_costos()
+        return True
+
+    def _calcular_costos(self, refrescar=True):
+        self.ensure_one()
+        env = self.with_company(self.company_id).env
+        if refrescar:
+            env['qb.producto.horas'].recalcular()
+            env['qb.producto.rendimiento'].recalcular(hasta=self.date_to)
+            env['qb.producto.kg'].recalcular()
+        filas = env['qb.costo.unitario'].calcular_periodo(self)
+        vendidas = filas.filtered(lambda f: f.qty_vendida > 0 and f.precio_prom)
+        ventas = sum(vendidas.mapped('ventas_total'))
+        costo = sum(vendidas.mapped('costo_total_periodo'))
+        alta = sum(vendidas.filtered(lambda f: f.calidad == 'alta')
+                   .mapped('ventas_total'))
+        self.write({
+            'costos_calculado_el': fields.Datetime.now(),
+            'costos_ventas': ventas, 'costos_total': costo,
+            'costos_margen_neto': ventas - costo,
+            'costos_margen_neto_pct': 100 * (ventas - costo) / ventas if ventas else 0.0,
+            'costos_calidad_pct': 100 * alta / ventas if ventas else 0.0,
+            'costos_n': len(filas),
+        })
+        self.bloqueos = '\n'.join(self._bloqueos_cierre()) or False
+        return filas
+
     # ------------------------------------------------------------------
     # Compuerta de cierre
     # ------------------------------------------------------------------
@@ -277,6 +332,8 @@ class QbPeriodo(models.Model):
         if not self.calculado_el:
             out.append('No se ha calculado.')
             return out
+        if not self.costos_calculado_el:
+            out.append('No se ha calculado el costo por producto.')
         for t in self.tarifa_ids:
             if not t.horas_normales:
                 out.append('El centro %s no tiene horas normales (sin '
@@ -405,7 +462,9 @@ class QbPeriodo(models.Model):
                 if not rec:
                     rec = self.create({'period': p, 'company_id': company.id})
                 if rec.state == 'borrador':
-                    rec.with_company(company)._calcular()
+                    rec = rec.with_company(company)
+                    rec._calcular()
+                    rec._calcular_costos(refrescar=(meses == 1))
 
 
 class QbTarifa(models.Model):

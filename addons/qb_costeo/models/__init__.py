@@ -5,3 +5,7 @@ from . import cuenta_clase
 from . import periodo
 from . import validacion
 from . import horas
+from . import rendimiento
+from . import mp
+from . import peso
+from . import costo
