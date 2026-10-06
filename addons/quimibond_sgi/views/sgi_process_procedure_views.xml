@@ -221,6 +221,9 @@
                                     <field name="measure_justification"
                                            invisible="measure_method != 'no_aplica'"
                                            required="measure_method == 'no_aplica'"/>
+                                    <field name="manual_reason"
+                                           invisible="measure_method not in ('manual', 'correo')"
+                                           placeholder="Qué se revisa y dónde queda la decisión"/>
                                     <field name="measure_deliverable_id"
                                            invisible="measure_method != 'entregable'"
                                            required="measure_method == 'entregable'"
