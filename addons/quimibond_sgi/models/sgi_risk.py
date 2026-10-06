@@ -2,6 +2,9 @@
 from odoo import models, fields, api
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_control_hierarchy import CONTROL_HIERARCHY, CONTROL_HIERARCHY_HELP
+from .sgi_menu_paths import sgi_menu_path
+
 SCALE_1_5 = [('1', "1"), ('2', "2"), ('3', "3"), ('4', "4"), ('5', "5")]
 
 ATTENTION_LEVELS = [
@@ -23,7 +26,33 @@ ATTENTION_LEVELS = [
 SGI_HIGH_ATTENTION = ('inmediata', 'alto')
 
 
+def sgi_attention_color(level):
+    """57.101.0: semáforo de un nivel de atención (las dos escalas): rojo el
+    máximo de cada instrumento, amarillo los intermedios, verde el resto;
+    False sin nivel. Regla única del semáforo del riesgo y del mapa de calor."""
+    if not level:
+        return False
+    if level in SGI_HIGH_ATTENTION:
+        return 'rojo'
+    if level in ('media', 'medio', 'intermedia'):
+        return 'amarillo'
+    return 'verde'
+
+
+# 57.96.0 (N-07): «Aspecto ambiental» ya no se elige a mano en un riesgo. La
+# evaluación del aspecto vive en la matriz (sgi.env.aspect); el riesgo
+# ambiental solo nace desde ahí, como tratamiento («Tratar como riesgo») o con
+# el asistente de traspaso, que ponen este contexto. Es una guía de captura,
+# no un control de seguridad (un cliente RPC puede poner el contexto).
+SGI_ENV_ASPECT_CONTEXT = 'sgi_from_env_aspect'
+SGI_ENV_ASPECT_MSG = (
+    "Los aspectos ambientales se registran en %s (una sola matriz, ISO 14001 6.1.2); tampoco se "
+    "duplica un riesgo ambiental: registre el aspecto nuevo en la matriz. Si el aspecto necesita "
+    "acciones, use «Tratar como riesgo» desde el aspecto." % sgi_menu_path('aspectos_ambientales'))
+
+
 class SgiRiskCategory(models.Model):
+    """Categoría de riesgo u oportunidad."""
     _name = 'sgi.risk.category'
     _description = "Categoría de riesgo/oportunidad"
     _order = 'name'
@@ -33,12 +62,17 @@ class SgiRiskCategory(models.Model):
 
 
 class SgiRisk(models.Model):
+    """Riesgo u oportunidad con su instrumento (R&O, IPER, aspectos ambientales, patrimonial, FODA),
+    evaluación, nivel residual y acciones. Se reevalúa periódicamente."""
     _name = 'sgi.risk'
     _description = "Riesgo / Oportunidad SGI"
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.risk'
     _sgi_locked_states = ('cerrado',)
+    # D-009 (57.41.0): cerrar y reabrir es del Jefe MAST y del dueño del proceso.
+    _sgi_decision_states = ('cerrado',)
+    _sgi_decision_label = "Cerrar o reabrir un riesgo"
 
     _folio_uniq = models.Constraint(
         'unique(folio)',
@@ -53,82 +87,116 @@ class SgiRisk(models.Model):
         ('ambiental', "Aspecto ambiental"),
         ('patrimonial', "Patrimonial"),
         ('foda', "FODA"),
-    ], string="Instrumento", default='ryo', required=True, tracking=True)
+    ], string="Instrumento", default='ryo', required=True, tracking=True,
+        help="Con qué instrumento se evalúa: riesgos y oportunidades, IPER, aspecto ambiental, patrimonial o "
+             "FODA. «Aspecto ambiental» solo lo pone la matriz de aspectos (Tratar como riesgo).")
     kind = fields.Selection([
         ('riesgo', "Riesgo"),
         ('oportunidad', "Oportunidad"),
-    ], string="Tipo", default='riesgo', required=True)
-    category_id = fields.Many2one('sgi.risk.category', string="Categoría")
+    ], string="Tipo", default='riesgo', required=True,
+        help="Riesgo u oportunidad.")
+    category_id = fields.Many2one('sgi.risk.category', string="Categoría",
+                                  help="Categoría del riesgo u oportunidad.")
     source = fields.Selection([
         ('interno', "Interno"),
         ('externo', "Externo"),
-    ], string="Origen", default='interno')
-    process_id = fields.Many2one('sgi.process', string="Proceso")
+    ], string="Origen", default='interno',
+        help="Si el riesgo viene de dentro o de fuera de la empresa.")
+    process_id = fields.Many2one('sgi.process', string="Proceso", ondelete='restrict',
+                                 help="Proceso al que pertenece el riesgo. Su dueño recibe las revisiones.")
     # Estructura vigente = proceso activo. Guardado para poder filtrar los
     # «pendientes de proceso nuevo» (sin proceso o con el proceso archivado).
     sgi_process_active = fields.Boolean(
         related='process_id.active', store=True, string="Proceso vigente",
         help="El proceso al que pertenece está activo. Sin proceso o con el "
              "proceso archivado, queda pendiente de proceso nuevo.")
-    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI")
-    job_id = fields.Many2one('hr.job', string="Puesto")
+    sgi_area_id = fields.Many2one('sgi.area', string="Área SGI", ondelete='restrict',
+                                  help="Área del SGI del riesgo.")
+    job_id = fields.Many2one('hr.job', string="Puesto", help="Puesto expuesto al riesgo (IPER).")
     existing_controls = fields.Text(string="Controles existentes")
+    # 57.96.0 (N-06): jerarquía de controles (45001 8.1.2).
+    control_hierarchy = fields.Selection(
+        CONTROL_HIERARCHY, string="Control existente de mayor nivel", tracking=True,
+        help=CONTROL_HIERARCHY_HELP)
+    # 57.96.0 (N-07): el aspecto de la matriz cuyo tratamiento es este riesgo.
+    sgi_env_aspect_ids = fields.One2many(
+        'sgi.env.aspect', 'risk_id', string="Aspecto ambiental de la matriz",
+        help="Aspecto ambiental cuya evaluación vive en la matriz; este riesgo guarda sus "
+             "acciones de tratamiento.")
     operational_control_id = fields.Many2one('documents.document',
-                                             string="Control operacional (ambiental)")
+                                             string="Control operacional (ambiental)",
+                                             help="Documento de control operacional del aspecto ambiental.")
     condition = fields.Selection([
         ('rutinaria', "Rutinaria"),
         ('no_rutinaria', "No rutinaria"),
         ('emergencia', "Emergencia"),
-    ], string="Condición (IPER)")
+    ], string="Condición (IPER)",
+        help="En la matriz IPER, si la actividad es rutinaria, no rutinaria o de emergencia.")
     foda_type = fields.Selection([
         ('fortaleza', "Fortaleza"),
         ('oportunidad', "Oportunidad"),
         ('debilidad', "Debilidad"),
         ('amenaza', "Amenaza"),
-    ], string="Tipo FODA")
+    ], string="Tipo FODA",
+        help="En el análisis FODA: fortaleza, oportunidad, debilidad o amenaza.")
 
     action_line_ids = fields.One2many('sgi.action.line', 'risk_id', string="Acciones")
     # Ligas inversas (H7): NCs del SGI que apuntan a este riesgo.
     sgi_nc_ids = fields.Many2many(
         'quality.alert', 'sgi_alert_risk_rel', 'risk_id', 'alert_id',
-        string="NCs ligadas")
-    sgi_nc_count = fields.Integer(string="# NCs ligadas",
+        string="NC ligadas")
+    sgi_nc_count = fields.Integer(string="# NC ligadas",
                                   compute='_compute_sgi_nc_count')
-    next_review_date = fields.Date(string="Próxima revisión")
+    next_review_date = fields.Date(string="Próxima revisión",
+                                   help="Fecha de la próxima reevaluación. Al vencer, llega un aviso al "
+                                        "dueño del proceso.")
     state = fields.Selection([
         ('identificado', "Identificado"),
         ('en_tratamiento', "En tratamiento"),
         ('controlado', "Controlado"),
         ('cerrado', "Cerrado"),
-    ], string="Estado", default='identificado', required=True, tracking=True)
+    ], string="Estado", default='identificado', required=True, tracking=True,
+        help="Identificado, en tratamiento, controlado o cerrado.")
     active = fields.Boolean(default=True)
 
     # Evaluación inicial
-    eval_probability = fields.Selection(SCALE_1_5, string="Probabilidad")
-    eval_impact = fields.Selection(SCALE_1_5, string="Impacto / Severidad")
-    score = fields.Integer(string="Nivel de riesgo", compute='_compute_score', store=True)
+    eval_probability = fields.Selection(SCALE_1_5, string="Probabilidad",
+                                        help="Probabilidad de que ocurra, de 1 a 5.")
+    eval_impact = fields.Selection(SCALE_1_5, string="Impacto / Severidad",
+                                   help="Impacto o severidad, de 1 a 5.")
+    score = fields.Integer(string="Nivel de riesgo", compute='_compute_score', store=True,
+                           help="Probabilidad × impacto. Se calcula solo.")
     attention_level = fields.Selection(ATTENTION_LEVELS, string="Nivel de atención",
-                                       compute='_compute_score', store=True)
+                                       compute='_compute_score', store=True,
+                                       help="Nivel de atención según el puntaje y el instrumento. Se calcula "
+                                            "solo.")
 
     # Evaluación residual
-    residual_probability = fields.Selection(SCALE_1_5, string="Probabilidad residual")
-    residual_impact = fields.Selection(SCALE_1_5, string="Impacto residual")
-    residual_score = fields.Integer(string="Riesgo residual", compute='_compute_residual', store=True)
+    residual_probability = fields.Selection(SCALE_1_5, string="Probabilidad residual",
+                                            help="Probabilidad después de las acciones, de 1 a 5.")
+    residual_impact = fields.Selection(SCALE_1_5, string="Impacto residual",
+                                       help="Impacto después de las acciones, de 1 a 5.")
+    residual_score = fields.Integer(string="Riesgo residual", compute='_compute_residual', store=True,
+                                    help="Probabilidad residual × impacto residual. Se calcula solo.")
     residual_level = fields.Selection(ATTENTION_LEVELS, string="Nivel residual",
-                                      compute='_compute_residual', store=True)
+                                      compute='_compute_residual', store=True,
+                                      help="Nivel de atención después de las acciones. Se calcula solo.")
     residual_note = fields.Text(
         string="Justificación del riesgo residual",
         help="Obligatoria para controlar/cerrar un riesgo de atención máxima si "
              "el riesgo residual no baja respecto al inicial.")
     has_finished_actions = fields.Boolean(string="Acciones terminadas",
-                                          compute='_compute_has_finished_actions')
+                                          compute='_compute_has_finished_actions',
+                                          help="Indica que todas sus acciones ya terminaron.")
     # DIR-2 (52.0.0): evaluación periódica. Cada evaluación sella la fecha y
     # propone la siguiente (enero o julio); un riesgo alto sin acción abierta
     # queda marcado para el dueño del proceso y para Dirección.
-    last_eval_date = fields.Date(string="Última evaluación", readonly=True, copy=False)
+    last_eval_date = fields.Date(string="Última evaluación", readonly=True, copy=False,
+                                 help="Fecha de la última evaluación. La registra «Registrar evaluación».")
     semaphore = fields.Selection([
         ('verde', "Verde"), ('amarillo', "Amarillo"), ('rojo', "Rojo"),
-    ], string="Semáforo", compute='_compute_semaphore', store=True)
+    ], string="Semáforo", compute='_compute_semaphore', store=True,
+        help="Semáforo según el nivel de atención. Se calcula solo.")
     high_without_action = fields.Boolean(
         string="Alto sin acción abierta", compute='_compute_high_without_action', store=True,
         help="Riesgo de atención alta o inmediata, no cerrado, sin ninguna acción de "
@@ -209,14 +277,7 @@ class SgiRisk(models.Model):
     @api.depends('attention_level', 'instrument')
     def _compute_semaphore(self):
         for risk in self:
-            if not risk.attention_level:
-                risk.semaphore = False
-            elif risk.attention_level in SGI_HIGH_ATTENTION:
-                risk.semaphore = 'rojo'
-            elif risk.attention_level in ('media', 'medio', 'intermedia'):
-                risk.semaphore = 'amarillo'
-            else:
-                risk.semaphore = 'verde'
+            risk.semaphore = sgi_attention_color(risk.attention_level)
 
     @api.depends('attention_level', 'state', 'action_line_ids.date_done')
     def _compute_high_without_action(self):
@@ -237,7 +298,7 @@ class SgiRisk(models.Model):
         today = fields.Date.context_today(self)
         for risk in self:
             if risk.instrument != 'foda' and not (risk.eval_probability and risk.eval_impact):
-                raise UserError("Captura probabilidad e impacto antes de registrar la evaluación.")
+                raise UserError("Capture la probabilidad y el impacto antes de registrar la evaluación.")
             risk.write({'last_eval_date': today,
                         'next_review_date': self._sgi_next_semester(today)})
             risk.message_post(body="Evaluación registrada: %s × %s = %d (%s). Siguiente: %s." % (
@@ -267,7 +328,7 @@ class SgiRisk(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "NCs ligadas",
+            'name': "NC ligadas",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('id', 'in', self.sgi_nc_ids.ids)],
@@ -304,12 +365,58 @@ class SgiRisk(models.Model):
                     "%s:\n%s" % (level, risk.folio or risk.name,
                                  "\n".join(problems)))
 
+    def _sgi_check_control_hierarchy(self):
+        """57.96.0 (N-06, 45001 8.1.2): un IPER de riesgo alto no se controla
+        ni se cierra sin jerarquía de controles declarada, ni con EPP como
+        único control. Cuentan el control existente del riesgo y el de sus
+        acciones terminadas. Lo llama ``write`` solo en la transición (no es
+        retroactivo y no lo disparan las acciones). Sin excepción para el
+        superusuario, como H11: ningún proceso del sistema controla riesgos."""
+        labels = dict(CONTROL_HIERARCHY)
+        for risk in self:
+            if risk.instrument != 'iper' or risk.attention_level not in self._SGI_HIGH_ATTENTION:
+                continue
+            levels = {risk.control_hierarchy} | set(
+                risk.action_line_ids.filtered('date_done').mapped('control_hierarchy'))
+            levels.discard(False)
+            if not levels:
+                raise UserError(
+                    "No se puede controlar ni cerrar el IPER de riesgo alto %s: indique la "
+                    "jerarquía del control (eliminación, sustitución, ingeniería, administrativo o "
+                    "EPP) en el riesgo o en sus acciones terminadas (ISO 45001 8.1.2)."
+                    % (risk.folio or risk.name))
+            if levels == {'epp'}:
+                raise UserError(
+                    "No se puede controlar ni cerrar el IPER de riesgo alto %s con solo «%s»: el "
+                    "EPP es el último recurso. Registre y termine un control de mayor nivel "
+                    "(eliminación, sustitución, ingeniería o administrativo)."
+                    % (risk.folio or risk.name, labels['epp']))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        # 57.96.0 (N-07): el riesgo ambiental nace desde la matriz de aspectos.
+        if not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) and any(
+                vals.get('instrument', self.env.context.get('default_instrument')) == 'ambiental'
+                for vals in vals_list):
+            raise UserError(SGI_ENV_ASPECT_MSG)
+        return super().create(vals_list)
+
     def write(self, vals):
+        # 57.96.0 (N-07): un riesgo que ya es ambiental se sigue editando; lo
+        # que no se hace es reclasificar otro como «Aspecto ambiental».
+        if vals.get('instrument') == 'ambiental' and not self.env.context.get(SGI_ENV_ASPECT_CONTEXT) \
+                and self.filtered(lambda r: r.instrument != 'ambiental'):
+            raise UserError(SGI_ENV_ASPECT_MSG)
+        # 57.96.0 (N-06): la jerarquía se revisa solo en la transición a
+        # controlado o cerrado (registros cuyo estado de antes era otro).
+        closing = vals.get('state') in self._SGI_CLOSING_STATES
+        moving = self.filtered(lambda r: r.state != vals['state']) if closing else self.browse()
         res = super().write(vals)
-        if vals.get('state') in self._SGI_CLOSING_STATES:
+        if closing:
             self.filtered(
                 lambda r: r.state in self._SGI_CLOSING_STATES
             )._sgi_check_can_close()
+            moving._sgi_check_control_hierarchy()
         return res
 
     # Botones explícitos de transición (consistencia con el resto del SGI:

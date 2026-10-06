@@ -7,12 +7,19 @@
         <field name="arch" type="xml">
             <form string="Plan de control">
                 <header>
+                    <!-- D-009 (57.41.0): marcar obsoleto, o sacarlo de obsoleto, es del
+                         Jefe MAST y del dueño del proceso (el write() lo exige también por RPC). -->
                     <button name="action_set_vigente" type="object" string="Marcar vigente"
-                            class="btn-primary" invisible="state == 'vigente'"/>
-                    <button name="action_set_obsoleto" type="object" string="Marcar obsoleto"
+                            class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_set_obsoleto" confirm="El plan de control deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleto"
+                            invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
+                    <button name="action_set_borrador" confirm="El plan de control regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state != 'vigente'"/>
                     <button name="action_set_borrador" type="object" string="Regresar a borrador"
-                            invisible="state == 'borrador'"/>
+                            confirm="El plan de control sale de obsoleto y regresa a borrador. ¿Desea continuar?"
+                            invisible="state != 'obsoleto'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <button name="action_open_orphan_points" type="object"
                             string="Ligar puntos sueltos" icon="fa-link"
                             invisible="state == 'obsoleto'"
@@ -44,6 +51,7 @@
                         <group>
                             <field name="revision"/>
                             <field name="document_id"/>
+                            <field name="sgi_dyd_task_id"/>
                         </group>
                     </group>
                     <notebook>
@@ -83,7 +91,11 @@
                 <field name="phase"/>
                 <field name="revision"/>
                 <field name="point_count"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
+                <field name="state" widget="badge"
+                       decoration-success="state == 'vigente'"
+                       decoration-muted="state in ('borrador', 'obsoleto')"/>
             </list>
         </field>
     </record>
@@ -115,8 +127,8 @@
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_control_plan_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el primer plan de control</p>
-            <p>Las características a inspeccionar por producto, con criticidad F/R/S. Cada punto del plan genera las inspecciones de Calidad en piso y alimenta el CoA del lote; lo rechazado se va solo a cuarentena. Si ya hay puntos de calidad sin plan, úsalos con «Ligar puntos sueltos» dentro del plan.</p>
+            <p class="o_view_nocontent_smiling_face">Cree el primer plan de control</p>
+            <p>Las características a inspeccionar por producto, con criticidad F/R/S. Cada punto del plan genera las inspecciones de Calidad en piso y alimenta el CoA del lote; lo rechazado se va solo a cuarentena. Si ya hay puntos de calidad sin plan, úselos con «Ligar puntos sueltos» dentro del plan.</p>
         </field>
     </record>
 
@@ -135,7 +147,7 @@
                 </button>
             </xpath>
             <xpath expr="//sheet" position="inside">
-                <group string="SGI - Plan de control / Master Spec">
+                <group string="Plan de control">
                     <group>
                         <field name="sgi_control_plan_id"/>
                         <field name="sgi_characteristic"/>

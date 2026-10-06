@@ -8,22 +8,32 @@
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_sgi_ppap" type="object"
                         class="oe_stat_button" icon="fa-check-circle-o"
-                        invisible="not sgi_ppap_id">
+                        invisible="not sgi_ppap_count">
                     <div class="o_stat_info">
+                        <span class="o_stat_value"><field name="sgi_ppap_count"/></span>
                         <span class="o_stat_text">PPAP</span>
                     </div>
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="SGI - Control de cambios" name="sgi_change_control">
+                <page string="SGI" name="sgi_change_control">
+                    <!-- 3.2.0 (SGI 57.100.0, N-14): marca automática por los clientes del producto. -->
+                    <div class="alert alert-info" role="status" invisible="not sgi_ppap_auto">
+                        El SGI marcó «Requiere PPAP» porque el producto se vende a clientes que lo
+                        exigen ante cambios. Al aplicar el cambio se genera un PPAP por cliente.
+                    </div>
                     <group>
                         <group string="PPAP">
                             <field name="sgi_requires_ppap"/>
+                            <field name="sgi_ppap_auto" invisible="not sgi_ppap_auto"/>
+                            <field name="sgi_ppap_customer_ids" widget="many2many_tags" readonly="1"
+                                   invisible="not sgi_ppap_customer_ids"/>
                             <field name="sgi_customer_id"
                                    invisible="not sgi_requires_ppap"
-                                   required="sgi_requires_ppap"/>
-                            <field name="sgi_ppap_id" readonly="1"
-                                   invisible="not sgi_ppap_id"/>
+                                   required="sgi_requires_ppap and not sgi_ppap_customer_ids"/>
+                            <field name="sgi_ppap_id" invisible="1"/>
+                            <field name="sgi_ppap_ids" widget="many2many_tags" readonly="1"
+                                   invisible="not sgi_ppap_ids"/>
                         </group>
                         <group string="Cliente">
                             <field name="sgi_customer_notice"/>

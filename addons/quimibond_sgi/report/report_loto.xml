@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.52.0: registro de bloqueo y etiquetado en PDF. La clave del
+         formato sale del pie en vivo (sgi.format.map). -->
+    <record id="action_report_loto" model="ir.actions.report">
+        <field name="name">Bloqueo y etiquetado</field>
+        <field name="model">sgi.loto</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_loto_document</field>
+        <field name="report_file">quimibond_sgi.report_loto_document</field>
+        <field name="print_report_name">'Bloqueo y etiquetado - %s' % (object.folio or object.name)</field>
+        <field name="binding_model_id" ref="model_sgi_loto"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_loto_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
+                    <div class="page">
+                        <h2 class="text-center">Bloqueo y etiquetado de energías</h2>
+                        <p class="text-center text-muted"><span t-out="doc.folio or ''"/> · <span t-field="doc.state"/></p>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:30%"><strong>Equipo</strong></td><td><span t-out="doc.equipment_id.name"/></td></tr>
+                            <tr><td><strong>Trabajo</strong></td><td><span t-out="doc.name"/></td></tr>
+                            <tr><td><strong>Responsable</strong></td><td><span t-out="doc.responsible_id.name"/></td></tr>
+                            <tr><td><strong>Aviso a los afectados</strong></td><td><span t-out="'Sí' if doc.affected_notified else 'No'"/></td></tr>
+                            <tr><td><strong>Energía cero</strong></td><td><span t-out="'Comprobada' if doc.zero_energy_verified else 'Sin comprobar'"/>. <span t-out="doc.zero_energy_method or ''"/></td></tr>
+                            <tr><td><strong>Bloqueado / retirado</strong></td><td><span t-field="doc.date_applied"/> / <span t-field="doc.date_removed"/></td></tr>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Energía</th><th>Punto de bloqueo</th><th>Cómo se aísla</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.energy_ids" t-as="energy">
+                                    <td><span t-field="energy.energy_type"/></td>
+                                    <td><span t-out="energy.isolation_point or ''"/></td>
+                                    <td><span t-out="energy.method or ''"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Trabajador</th><th>Candado</th><th>Tarjeta</th><th>Puesto</th><th>Retirado</th><th>Retiró</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.lock_ids" t-as="lock">
+                                    <td><span t-out="lock.sudo().employee_id.name"/></td>
+                                    <td><span t-out="lock.lock_number or ''"/></td>
+                                    <td><span t-out="lock.tag_number or ''"/></td>
+                                    <td><span t-field="lock.date_placed"/></td>
+                                    <td><span t-field="lock.date_removed"/></td>
+                                    <td><span t-out="lock.removed_by_id.name or ''"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="doc.removal_note" style="font-size:10px;"><strong>Condiciones al retirar:</strong> <span t-out="doc.removal_note"/></p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

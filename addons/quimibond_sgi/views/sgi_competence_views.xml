@@ -55,11 +55,11 @@
     <record id="sgi_competence_gap_action" model="ir.actions.act_window">
         <field name="name">Brechas de competencia (DNC)</field>
         <field name="res_model">sgi.competence.gap</field>
-        <field name="view_mode">pivot,list</field>
+        <field name="view_mode">pivot,sgi_diagram,list</field>
         <field name="search_view_id" ref="sgi_competence_gap_view_search"/>
         <field name="context">{'search_default_group_department': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Sin brechas de competencia 🎉</p>
+            <p class="o_view_nocontent_smiling_face">Sin brechas de competencia</p>
             <p>La brecha se calcula sola: competencias que el <b>puesto</b> exige (Empleados → Puestos → Habilidades) vs las <b>vigentes</b> del empleado (las certificaciones caducadas cuentan como brecha). Se cierra registrando la competencia en la ficha del empleado tras la capacitación — el cron trimestral avisa a RH y la encuesta DNC (menú de abajo) levanta las necesidades percibidas.</p>
         </field>
     </record>
@@ -72,7 +72,8 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_skill_gaps" type="object" class="oe_stat_button"
-                        icon="fa-graduation-cap">
+                        icon="fa-graduation-cap"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_skill_gap_count" widget="statinfo" string="Brechas"/>
                 </button>
             </xpath>
@@ -90,7 +91,7 @@ survey = env.ref('quimibond_sgi.sgi_survey_dnc', raise_if_not_found=False)
 if survey:
     action = {
         'type': 'ir.actions.act_window',
-        'name': 'Encuesta DNC (F-P-A01-17)',
+        'name': 'Encuesta DNC',
         'res_model': 'survey.survey',
         'res_id': survey.id,
         'view_mode': 'form',

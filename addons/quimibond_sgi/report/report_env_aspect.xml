@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.50.0: matriz de aspectos e impactos ambientales en PDF. Se imprime
+         desde la lista (varios aspectos = una matriz); la clave del formato
+         sale del pie en vivo (sgi.format.map), nunca escrita a mano. -->
+    <record id="action_report_env_aspect" model="ir.actions.report">
+        <field name="name">Matriz de aspectos ambientales</field>
+        <field name="model">sgi.env.aspect</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_env_aspect_document</field>
+        <field name="report_file">quimibond_sgi.report_env_aspect_document</field>
+        <field name="print_report_name">'Matriz de aspectos ambientales'</field>
+        <field name="binding_model_id" ref="model_sgi_env_aspect"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_env_aspect_document">
+        <t t-call="web.html_container">
+            <t t-call="quimibond_sgi.sgi_report_layout">
+                <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                <t t-set="sgi_rec" t-value="docs[:1]"/>
+                <t t-set="sgi_fmt_ref" t-value="False"/>
+                <div class="page">
+                    <h2 class="text-center">Matriz de aspectos e impactos ambientales</h2>
+                    <p class="text-center text-muted" style="font-size:10px;">
+                        Significativo: nivel moderado o mayor (severidad × frecuencia) o con requisito legal aplicable.
+                    </p>
+                    <table class="table table-sm table-bordered" style="font-size:9px;">
+                        <thead>
+                            <tr>
+                                <th>Folio</th><th>Proceso</th><th>Actividad</th><th>Aspecto</th>
+                                <th>Impacto</th><th>Condición</th><th>S</th><th>F</th><th>Legal</th>
+                                <th>Nivel</th><th>Signif.</th><th>Control operacional</th><th>Próx. revisión</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="docs" t-as="doc">
+                                <td><span t-out="doc.folio or ''"/></td>
+                                <td><span t-out="doc.process_id.display_name or ''"/></td>
+                                <td><span t-out="doc.activity"/></td>
+                                <td><span t-out="doc.name"/></td>
+                                <td><span t-out="doc.impact"/></td>
+                                <td><span t-field="doc.condition"/></td>
+                                <td><span t-out="doc.severity or ''"/></td>
+                                <td><span t-out="doc.frequency or ''"/></td>
+                                <td><span t-out="'Sí' if doc.legal_requirement else 'No'"/></td>
+                                <td><span t-field="doc.level"/></td>
+                                <td><strong t-if="doc.significant">Sí</strong><span t-else="">No</span></td>
+                                <td>
+                                    <span t-out="doc.control_description or ''"/>
+                                    <span t-if="doc.operational_control_id" class="text-muted"> (<span t-out="doc.operational_control_id.sudo().name"/>)</span>
+                                </td>
+                                <td><span t-field="doc.next_review_date"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

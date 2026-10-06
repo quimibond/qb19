@@ -16,6 +16,23 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_objective_view_search" model="ir.ui.view">
+        <field name="name">sgi.objective.search</field>
+        <field name="model">sgi.objective</field>
+        <field name="arch" type="xml">
+            <search string="Objetivos">
+                <field name="name"/>
+                <field name="policy_id"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_policy_id" string="Política" context="{'group_by': 'policy_id'}"/>
+                    <filter name="group_target_year" string="Año meta" context="{'group_by': 'target_year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_objective_view_form" model="ir.ui.view">
         <field name="name">sgi.objective.form</field>
         <field name="model">sgi.objective</field>
@@ -50,18 +67,20 @@
                             <p class="text-muted">ISO 6.2.2: qué se hará para
                             lograr el objetivo, quién y para cuándo. Cada
                             acción genera su actividad espejo al responsable;
-                            la evaluación del resultado la dan los KPIs
+                            la evaluación del resultado la dan los indicadores
                             ligados.</p>
                             <field name="action_line_ids" context="{'default_objective_id': id}">
-                                <list editable="bottom"
-                                      decoration-danger="state == 'vencida'"
-                                      decoration-success="state == 'terminada'">
+                                <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                                <list editable="bottom" decoration-danger="state == 'vencida'"
+                                      decoration-muted="state == 'terminada'">
                                     <field name="name"/>
-                                    <field name="responsible_id"/>
-                                    <field name="date_commit"/>
+                                    <field name="evidence_note" optional="show"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>
                                     <field name="progress"/>
-                                    <field name="state"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                           decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                     <field name="action_type" column_invisible="1"/>
                                     <field name="alert_id" column_invisible="1"/>
                                 </list>
@@ -74,12 +93,30 @@
         </field>
     </record>
 
+    <!-- V-B18 (57.80.0): vista de actividades, como incidentes y auditorías. -->
+    <record id="sgi_objective_view_activity" model="ir.ui.view">
+        <field name="name">sgi.objective.activity</field>
+        <field name="model">sgi.objective</field>
+        <field name="arch" type="xml">
+            <activity string="Objetivos">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
     <record id="sgi_objective_action" model="ir.actions.act_window">
-        <field name="name">Objetivos Integrales</field>
+        <field name="name">Objetivos integrales</field>
         <field name="res_model">sgi.objective</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,sgi_diagram,form,activity</field>
+        <!-- 57.98.0 (I-04): agrupados por política. -->
+        <field name="search_view_id" ref="sgi_objective_view_search"/>
+        <field name="context">{'search_default_group_policy_id': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra los objetivos integrales</p>
+            <p class="o_view_nocontent_smiling_face">Registre los objetivos integrales</p>
             <p>Los del ANEXO 6 (Planeación Estratégica). Cada indicador del SGI se liga a uno de estos objetivos, y el semáforo del objetivo hereda el peor color de los procesos de sus indicadores — la Línea Dorada se lee de abajo hacia arriba.</p>
         </field>
     </record>

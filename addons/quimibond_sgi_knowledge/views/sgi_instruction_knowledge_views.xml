@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ DOC-5: instructivo en Knowledge ============ -->
+    <record id="sgi_process_activity_view_form_knowledge" model="ir.ui.view">
+        <field name="name">sgi.process.activity.form.knowledge</field>
+        <field name="model">sgi.process.activity</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_activity_view_form"/>
+        <field name="arch" type="xml">
+            <field name="instruction_id" position="after">
+                <field name="instruction_article_id" options="{'no_create': True}"/>
+                <field name="instruction_article_stale" invisible="not instruction_article_stale"
+                       decoration-warning="instruction_article_stale"/>
+                <button name="action_publish_instruction" type="object" string="Publicar como instructivo"
+                        icon="fa-upload" class="btn-link" invisible="not instruction_article_id"
+                        groups="quimibond_sgi.group_sgi_manager"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- 1.2.0: el mismo asistente publica instructivos, controles
+         operacionales, protocolos y reglamentos. -->
+    <record id="sgi_instruction_publish_view_form" model="ir.ui.view">
+        <field name="name">sgi.instruction.publish.form</field>
+        <field name="model">sgi.instruction.publish</field>
+        <field name="arch" type="xml">
+            <form string="Publicar desde Conocimiento">
+                <field name="activity_id" invisible="1"/>
+                <p class="text-muted">
+                    El artículo se congela como PDF, revisión nueva del documento con su clave, y queda
+                    ligado a las actividades que lo usan. La revisión vigente queda obsoleta y los puestos
+                    que aplican reciben acuse de lectura. Los puestos que usan este documento verán su
+                    Mi procedimiento desactualizado hasta que lo vuelvan a firmar.
+                </p>
+                <div class="alert alert-warning" role="alert" invisible="job_ids">
+                    Sin puestos: nadie recibirá acuse de lectura.
+                </div>
+                <group>
+                    <field name="article_id" required="1" options="{'no_create': True}"/>
+                    <field name="doc_type" required="1"/>
+                    <field name="code" required="1" placeholder="IT-C4-01"/>
+                    <field name="current_id" readonly="1" invisible="not current_id"/>
+                    <field name="job_ids" widget="many2many_tags"/>
+                </group>
+                <footer>
+                    <button name="action_publish" type="object" string="Publicar" class="btn-primary"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

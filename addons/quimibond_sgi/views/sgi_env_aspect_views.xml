@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.50.0: matriz de aspectos e impactos ambientales (ISO 14001 6.1.2,
+         E2.23). Ficha propia completa, sin herencias. -->
+    <record id="sgi_env_aspect_view_form" model="ir.ui.view">
+        <field name="name">sgi.env.aspect.form</field>
+        <field name="model">sgi.env.aspect</field>
+        <field name="arch" type="xml">
+            <form string="Aspecto ambiental">
+                <header>
+                    <button name="action_evaluate" type="object" string="Registrar evaluación"
+                            class="btn-primary" invisible="state == 'obsoleto'"/>
+                    <button name="action_create_risk" type="object" string="Tratar como riesgo"
+                            invisible="not significant or risk_id or state == 'obsoleto'"/>
+                    <button name="action_set_borrador" type="object" string="Regresar a evaluación"
+                            confirm="El aspecto regresa a evaluación y deja de contar como evaluado. ¿Desea continuar?"
+                            invisible="state == 'borrador'"/>
+                    <button name="action_set_obsoleto" type="object" string="Ya no aplica"
+                            confirm="El aspecto se archiva porque la actividad ya no se realiza. ¿Desea continuar?"
+                            invisible="state == 'obsoleto'"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,evaluado"/>
+                </header>
+                <div class="alert alert-info mb-0" role="alert" invisible="not sgi_format_banner">
+                    <i class="fa fa-file-text-o" title="Formato controlado"/> Formato controlado del SGI:
+                    <field name="sgi_format_banner" readonly="1" nolabel="1" class="fw-bold"/>
+                </div>
+                <sheet>
+                    <widget name="web_ribbon" title="Significativo" bg_color="text-bg-danger"
+                            invisible="not significant"/>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Ej. Generación de estopas impregnadas de aceite"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="Dónde ocurre">
+                            <field name="process_id"/>
+                            <field name="sgi_area_id"/>
+                            <field name="activity"/>
+                            <field name="responsible_id"/>
+                        </group>
+                        <group string="Aspecto e impacto">
+                            <field name="aspect_type"/>
+                            <field name="condition"/>
+                            <field name="life_cycle_stage"/>
+                            <field name="impact"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Criterios de significancia">
+                            <field name="severity" widget="radio" options="{'horizontal': true}"/>
+                            <field name="frequency" widget="radio" options="{'horizontal': true}"/>
+                            <field name="legal_requirement"/>
+                            <field name="legal_requirement_ids" widget="many2many_tags"/>
+                        </group>
+                        <group string="Resultado">
+                            <field name="score"/>
+                            <field name="level"/>
+                            <field name="significant"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Control operacional">
+                            <field name="control_description"/>
+                            <field name="operational_control_id"/>
+                            <field name="risk_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="Revisión periódica">
+                            <field name="review_frequency_months"/>
+                            <field name="last_review_date"/>
+                            <field name="next_review_date"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_env_aspect_view_list" model="ir.ui.view">
+        <field name="name">sgi.env.aspect.list</field>
+        <field name="model">sgi.env.aspect</field>
+        <field name="arch" type="xml">
+            <list string="Aspectos ambientales"
+                  decoration-danger="significant"
+                  decoration-muted="state == 'obsoleto'">
+                <field name="folio"/>
+                <field name="process_id" optional="show"/>
+                <field name="activity"/>
+                <field name="name"/>
+                <field name="impact" optional="hide"/>
+                <field name="aspect_type" optional="show"/>
+                <field name="condition"/>
+                <field name="life_cycle_stage" optional="show"/>
+                <field name="severity"/>
+                <field name="frequency"/>
+                <field name="legal_requirement"/>
+                <field name="score"/>
+                <field name="level" widget="badge"
+                       decoration-danger="level in ('severo', 'critico')"
+                       decoration-warning="level == 'moderado'"
+                       decoration-success="level == 'bajo'"/>
+                <field name="significant"/>
+                <field name="next_review_date" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'evaluado'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_env_aspect_view_search" model="ir.ui.view">
+        <field name="name">sgi.env.aspect.search</field>
+        <field name="model">sgi.env.aspect</field>
+        <field name="arch" type="xml">
+            <search string="Aspectos ambientales">
+                <field name="folio"/>
+                <field name="name"/>
+                <field name="activity"/>
+                <field name="process_id"/>
+                <field name="sgi_area_id"/>
+                <filter name="significant" string="Significativos" domain="[('significant', '=', True)]"/>
+                <filter name="without_control" string="Significativos sin control"
+                        domain="[('significant', '=', True), ('control_description', '=', False), ('operational_control_id', '=', False)]"/>
+                <filter name="review_due" string="Revisión vencida"
+                        domain="[('next_review_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="emergency" string="Condición de emergencia" domain="[('condition', '=', 'emergencia')]"/>
+                <filter name="legal" string="Con requisito legal" domain="[('legal_requirement', '=', True)]"/>
+                <separator/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_type" string="Tipo de aspecto" context="{'group_by': 'aspect_type'}"/>
+                    <filter name="group_life_cycle" string="Etapa del ciclo de vida"
+                            context="{'group_by': 'life_cycle_stage'}"/>
+                    <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_env_aspect_action" model="ir.actions.act_window">
+        <field name="name">Aspectos ambientales</field>
+        <field name="res_model">sgi.env.aspect</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_env_aspect_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los significativos. -->
+        <field name="context">{'search_default_significant': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre el primer aspecto ambiental</p>
+            <p>ISO 14001 6.1.2: por cada actividad, su aspecto, el impacto que causa y la condición
+               (normal, anormal o emergencia). La severidad por la frecuencia da el nivel; un
+               requisito legal lo vuelve significativo. Los significativos llevan su control
+               operacional.</p>
+        </field>
+    </record>
+</odoo>

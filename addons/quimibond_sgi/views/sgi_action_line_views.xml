@@ -7,7 +7,9 @@
         <field name="name">sgi.action.line.list.global</field>
         <field name="model">sgi.action.line</field>
         <field name="arch" type="xml">
-            <list string="Acciones" decoration-danger="state == 'vencida'"
+            <!-- V-B13 (57.80.0): multi_edit para reasignar responsable o compromiso
+                 de varias acciones a la vez. -->
+            <list string="Acciones" multi_edit="1" decoration-danger="state == 'vencida'"
                   decoration-muted="state == 'terminada'">
                 <field name="name"/>
                 <field name="origin_display" string="Origen"/>
@@ -17,8 +19,11 @@
                 <field name="incident_id" optional="hide"/>
                 <field name="drill_id" optional="hide"/>
                 <field name="responsible_id" widget="many2one_avatar_user"/>
-                <field name="date_commit"/>
-                <field name="progress" optional="show"/>
+                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
+                <!-- V-M05 (57.80.0): avance como pastilla (es selección 0/50/100 %). -->
+                <field name="progress" optional="show" widget="badge"
+                       decoration-success="progress == '100'"
+                       decoration-warning="progress == '50'"/>
                 <field name="date_done" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'terminada'"
@@ -29,7 +34,7 @@
                 <button name="action_mark_done" type="object"
                         string="Terminar" icon="fa-check"
                         invisible="date_done"
-                        confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
+                        confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. Si es una acción correctiva, capture antes la evidencia. ¿La acción está realmente terminada?"/>
             </list>
         </field>
     </record>
@@ -41,7 +46,7 @@
             <search>
                 <field name="name"/>
                 <field name="responsible_id"/>
-                <filter name="mine" string="Mis acciones"
+                <filter name="mine" string="Míos"
                         domain="[('responsible_id', '=', uid)]"/>
                 <filter name="open" string="Abiertas"
                         domain="[('state', '=', 'abierta')]"/>
@@ -49,24 +54,35 @@
                         domain="[('state', '=', 'vencida')]"/>
                 <filter name="done" string="Terminadas"
                         domain="[('state', '=', 'terminada')]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
                 <separator/>
-                <filter name="from_nc" string="De No Conformidades"
+                <filter name="filter_commit" string="Compromiso" date="date_commit"/>
+                <separator/>
+                <filter name="from_nc" string="De no conformidades"
                         domain="[('alert_id', '!=', False)]"/>
-                <filter name="from_risk" string="De Riesgos"
+                <filter name="from_risk" string="De riesgos"
                         domain="[('risk_id', '!=', False)]"/>
                 <filter name="from_fmea" string="De AMEF"
                         domain="[('fmea_line_id', '!=', False)]"/>
-                <filter name="from_incident" string="De Incidentes SST"
+                <filter name="from_incident" string="De incidentes y accidentes"
                         domain="[('incident_id', '!=', False)]"/>
-                <filter name="from_drill" string="De Simulacros"
+                <filter name="from_drill" string="De simulacros"
                         domain="[('drill_id', '!=', False)]"/>
-                <separator/>
-                <filter name="group_responsible" string="Agrupar por responsable"
-                        context="{'group_by': 'responsible_id'}"/>
-                <filter name="group_state" string="Agrupar por estado"
-                        context="{'group_by': 'state'}"/>
-                <filter name="group_commit" string="Agrupar por fecha compromiso"
-                        context="{'group_by': 'date_commit'}"/>
+                <filter name="from_objective" string="De objetivos"
+                        domain="[('objective_id', '!=', False)]"/>
+                <filter name="from_review" string="De la revisión por la dirección"
+                        domain="[('review_id', '!=', False)]"/>
+                <filter name="from_measure" string="De indicadores en rojo"
+                        domain="[('measure_id', '!=', False)]"/>
+                <!-- V-B17 (57.81.0): agrupaciones en <group>, con etiqueta corta. -->
+                <group>
+                    <filter name="group_responsible" string="Responsable"
+                            context="{'group_by': 'responsible_id'}"/>
+                    <filter name="group_state" string="Estado"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="group_commit" string="Fecha compromiso"
+                            context="{'group_by': 'date_commit'}"/>
+                </group>
             </search>
         </field>
     </record>
@@ -80,9 +96,9 @@
             <form string="Acción">
                 <header>
                     <button name="action_mark_done" type="object"
-                            string="Marcar terminada" class="btn-primary"
+                            string="Terminar" class="btn-primary"
                             invisible="date_done"
-                            confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. ¿La acción está realmente terminada?"/>
+                            confirm="Se sellará la fecha de hoy como terminación y el avance al 100%. Si es una acción correctiva, capture antes la evidencia. ¿La acción está realmente terminada?"/>
                     <button name="action_open_origin" type="object"
                             string="Abrir origen" icon="fa-external-link"/>
                     <field name="state" widget="statusbar"
@@ -91,7 +107,7 @@
                 <sheet>
                     <div class="oe_title">
                         <label for="name" string="Acción"/>
-                        <h2><field name="name" placeholder="¿Qué hay que hacer?"/></h2>
+                        <h1><field name="name" placeholder="¿Qué hay que hacer?"/></h1>
                         <div class="text-muted">
                             Origen: <field name="origin_display" readonly="1" nolabel="1" class="oe_inline"/>
                         </div>
@@ -99,13 +115,19 @@
                     <group>
                         <group string="Compromiso">
                             <field name="action_type"/>
+                            <field name="control_hierarchy" invisible="not risk_id and not incident_id"/>
                             <field name="responsible_id" widget="many2one_avatar_user"/>
                             <field name="date_commit"/>
                         </group>
                         <group string="Ejecución">
-                            <field name="progress"/>
+                            <field name="progress" widget="selection_badge"/>
                             <field name="date_done"/>
                         </group>
+                    </group>
+                    <group string="Evidencia">
+                        <field name="evidence_note"
+                               placeholder="Qué demuestra que se hizo: orden, documento, registro…"/>
+                        <field name="evidence_attachment_ids" widget="many2many_binary"/>
                     </group>
                     <group invisible="1">
                         <field name="alert_id"/>
@@ -115,19 +137,52 @@
                         <field name="fmea_line_id"/>
                     </group>
                 </sheet>
+                <chatter/>
             </form>
         </field>
     </record>
 
+    <!-- V-B12 (57.80.0): tablero por estado (abiertas, vencidas, terminadas)
+         para revisarlas desde el celular. El estado se calcula solo: no se
+         arrastran tarjetas entre columnas. -->
+    <record id="sgi_action_line_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.action.line.kanban</field>
+        <field name="model">sgi.action.line</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column"
+                    records_draggable="0" group_create="0" quick_create="0" sample="1">
+                <field name="date_done"/>
+                <templates>
+                    <t t-name="card">
+                        <field name="name" class="fw-bold"/>
+                        <field name="origin_display" class="text-muted"/>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            <field name="progress" widget="badge"
+                                   decoration-success="progress == '100'"
+                                   decoration-warning="progress == '50'"/>
+                            <field name="date_commit" widget="remaining_days" invisible="date_done"/>
+                        </div>
+                        <footer>
+                            <field name="action_type" class="text-muted small"/>
+                            <field name="responsible_id" widget="many2one_avatar_user" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_action_line_action_all" model="ir.actions.act_window">
-        <field name="name">Todas las acciones</field>
+        <field name="name">Acciones correctivas</field>
         <field name="res_model">sgi.action.line</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,kanban,form</field>
         <field name="search_view_id" ref="sgi_action_line_view_search"/>
         <field name="context">{'search_default_open': 1, 'search_default_overdue': 1, 'search_default_group_responsible': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin acciones registradas</p>
-            <p>Aquí se ven las acciones de todos los responsables — de NCs, riesgos, AMEF e incidentes — agrupadas por responsable.</p>
+            <p>Todas las acciones de todos los responsables: de NC, riesgos, AMEF, incidentes, simulacros,
+            objetivos, revisión por la dirección e indicadores en rojo, agrupadas por responsable.
+            Filtre por origen con «De …».</p>
         </field>
     </record>
 </odoo>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- DOC-5 (instructivo en Knowledge) se mudó a quimibond_sgi_knowledge
+         en 57.9.0 (A-014). -->
+
+    <!-- ============ REG-1 / REG-2 ============ -->
+    <record id="sgi_sign_request_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.sign.request.wizard.form</field>
+        <field name="model">sgi.sign.request.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Firmar desde el registro">
+                <field name="res_model" invisible="1"/>
+                <field name="res_id" invisible="1"/>
+                <group>
+                    <field name="template_id"/>
+                    <field name="partner_id"/>
+                    <field name="subject"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Enviar a firma" class="btn-primary"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_purchase_order_view_form_sign" model="ir.ui.view">
+        <field name="name">purchase.order.form.sgi.sign</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_stock_lot_view_form_sign" model="ir.ui.view">
+        <field name="name">stock.lot.form.sgi.sign</field>
+        <field name="model">stock.lot</field>
+        <field name="inherit_id" ref="stock.view_production_lot_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_sgi_view_sign_requests" type="object" class="oe_stat_button"
+                        icon="fa-pencil-square-o" invisible="sgi_sign_count == 0">
+                    <field name="sgi_sign_count" widget="statinfo" string="Firmas"/>
+                </button>
+                <field name="sgi_can_sign" invisible="1"/>
+                <button name="action_sgi_sign" type="object" class="oe_stat_button" icon="fa-pencil"
+                        groups="quimibond_sgi.group_sgi_user" invisible="not sgi_can_sign">
+                    <div class="o_stat_info"><span class="o_stat_text">Firmar</span></div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- DOC-4 en Mis pendientes: documentos del usuario por revisar. -->
+</odoo>

@@ -176,7 +176,7 @@ class SgiDiagramIso(models.AbstractModel):
                               'label': "Ejecuta" if role.role == 'ejecuta' else "Aprueba"})
         return {
             'title': "Roles, responsabilidades y autoridades (ISO 9001 5.3)",
-            'subtitle': "Dueño → proceso → puestos que ejecutan o aprueban · pasa el mouse por un proceso",
+            'subtitle': "Dueño → proceso → puestos que ejecutan o aprueban · pase el mouse por un proceso",
             'layout': 'columns',
             'lanes': [
                 {'key': 'owners', 'label': "Dueños de proceso", 'items': [
@@ -392,7 +392,7 @@ class SgiDiagramIso(models.AbstractModel):
                 level_of[t] = key
         counts = {}
         for doc in docs:
-            counts.setdefault(level_of.get(doc.sgi_doc_type, 'nivel4'), {}).setdefault(doc.sgi_process_id.id, []).append(doc)
+            counts.setdefault(level_of.get(doc.sgi_doc_type_id.code, 'nivel4'), {}).setdefault(doc.sgi_process_id.id, []).append(doc)
         lanes = []
         for key, label, types in DOC_LEVELS:
             items = []
@@ -485,10 +485,12 @@ class SgiDiagramIso(models.AbstractModel):
         inputs = [
             ('prev_agreements_summary', "Acuerdos previos"), ('nc_summary', "No conformidades"),
             ('complaints_summary', "Reclamaciones"), ('audit_summary', "Auditorías"),
-            ('supplier_summary', "Proveedores"), ('env_summary', "Ambiental y SST"),
+            ('supplier_summary', "Proveedores"), ('env_summary', "Desempeño ambiental (scrap)"),
             ('doc_changes_summary', "Cambios documentales"), ('legal_summary', "Requisitos legales"),
             ('participation_summary', "Participación"), ('objectives_summary', "Objetivos"),
             ('satisfaction_summary', "Satisfacción del cliente"), ('resources_note', "Recursos"),
+            ('incidents_summary', "Incidentes y SST"), ('context_summary', "Contexto y partes interesadas"),
+            ('env_aspects_summary', "Aspectos significativos"), ('improvement_summary', "Oportunidades de mejora"),
         ]
         open_action = {'type': 'ir.actions.act_window', 'res_model': 'sgi.management.review',
                        'res_id': review.id, 'views': [[False, 'form']], 'target': 'current'}

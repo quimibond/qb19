@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 57.96.0 (N-06): permisos de trabajo vencidos y todavía autorizados.
+         Registro nuevo en archivo nuevo (no edita un cron noupdate). -->
+    <record id="sgi_cron_work_permits" model="ir.cron">
+        <field name="name">SGI: Permisos de trabajo vencidos (cada hora)</field>
+        <field name="model_id" ref="model_sgi_cron"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_work_permits()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="nextcall" eval="(DateTime.now() + relativedelta(hours=1, minute=7, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

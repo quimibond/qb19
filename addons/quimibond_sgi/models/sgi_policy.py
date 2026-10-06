@@ -16,6 +16,8 @@ _logger = logging.getLogger(__name__)
 
 
 class SgiPolicy(models.Model):
+    """Política integral del SGI con sus objetivos. Solo una vigente; «Generar acuses» la difunde con
+    firma a los puestos del documento controlado donde se publica."""
     _name = 'sgi.policy'
     _description = "Política integral del SGI"
     _inherit = ['sgi.base.mixin']
@@ -25,12 +27,14 @@ class SgiPolicy(models.Model):
     name = fields.Char(string="Nombre", required=True, tracking=True)
     policy_text = fields.Html(string="Texto de la política")
     issue_date = fields.Date(string="Fecha de emisión",
-                             default=fields.Date.context_today)
+                             default=fields.Date.context_today,
+                             help="Fecha de emisión de la política.")
     state = fields.Selection([
         ('borrador', "Borrador"),
         ('vigente', "Vigente"),
         ('obsoleta', "Obsoleta"),
-    ], string="Estado", default='borrador', required=True, tracking=True)
+    ], string="Estado", default='borrador', required=True, tracking=True,
+        help="Borrador, vigente u obsoleta. Solo una política vigente.")
     document_id = fields.Many2one(
         'documents.document', string="Documento publicado (MIID)",
         domain=[('sgi_is_controlled', '=', True)],
@@ -116,14 +120,14 @@ class SgiPolicy(models.Model):
         self.ensure_one()
         if not self.document_id:
             raise UserError(
-                "Liga primero el documento controlado donde se publica la "
-                "política (campo «Documento publicado (MIID)») y vuelve a "
+                "Ligue primero el documento controlado donde se publica la "
+                "política (campo «Documento publicado (MIID)») y vuelva a "
                 "generar los acuses.")
         if not self.document_id.sgi_job_ids:
             raise UserError(
-                "El documento %s no tiene puestos asignados: asígnalos en su "
+                "El documento %s no tiene puestos asignados: asígnelos en su "
                 "pestaña «Puestos que aplican» (define quién debe firmar el "
-                "acuse) y vuelve a generar." % (
+                "acuse) y vuelva a generar." % (
                     self.document_id.sgi_code or self.document_id.name))
         self.document_id.action_generate_acks()
         return self.document_id.action_open_acks()

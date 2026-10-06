@@ -1,17 +1,28 @@
 # -*- coding: utf-8 -*-
 from dateutil.relativedelta import relativedelta
 
+from markupsafe import Markup
+
 from odoo import models, fields, api
+
+# «Sin datos» (56.14.0): sin recepciones con fecha compromiso el OTD valía 0
+# y la calificación quedaba en 30 → «Baja» (84 de 87 proveedores en
+# producción). No tener datos no es desempeño malo.
+SUPPLIER_CLASSES = [
+    ('acreditado', "Acreditado"),
+    ('condicionado', "Condicionado"),
+    ('baja', "Baja"),
+    ('sin_datos', "Sin datos"),
+]
 
 
 class ResPartner(models.Model):
     _inherit = 'res.partner'
 
-    sgi_supplier_class = fields.Selection([
-        ('acreditado', "Acreditado"),
-        ('condicionado', "Condicionado"),
-        ('baja', "Baja"),
-    ], string="Clasificación SGI", tracking=True)
+    sgi_supplier_class = fields.Selection(
+        SUPPLIER_CLASSES, string="Clasificación SGI", tracking=True,
+        help="Sin datos: en el periodo evaluado no hubo recepciones con fecha "
+             "compromiso ni NC; no hay con qué calificarlo (no es «Baja»).")
     # Aprobación inicial del proveedor (ISO 9001 8.4.1) — distinta de la
     # evaluación de desempeño. Sin valor = fuera del alcance del SGI (no se
     # bloquea nada); 'bloqueado' impide confirmar órdenes de compra.
@@ -19,17 +30,23 @@ class ResPartner(models.Model):
         ('nuevo', "Nuevo (sin aprobar)"),
         ('aprobado', "Aprobado"),
         ('bloqueado', "Bloqueado"),
-    ], string="Aprobación SGI (8.4.1)", tracking=True, copy=False)
+    ], string="Aprobación SGI (8.4.1)", tracking=True, copy=False,
+        help="Aprobación inicial del proveedor (9001 8.4.1). Vacío: fuera del SGI. Bloqueado: no se pueden "
+             "confirmar órdenes de compra.")
     sgi_supplier_approved_by = fields.Many2one('res.users', string="Aprobado por",
-                                               readonly=True, copy=False)
+                                               readonly=True, copy=False,
+                                               help="Quién aprobó al proveedor.")
     sgi_supplier_approved_date = fields.Date(string="Fecha de aprobación",
-                                             readonly=True, copy=False)
+                                             readonly=True, copy=False,
+                                             help="Fecha en que se aprobó al proveedor.")
     sgi_supplier_critical = fields.Boolean(
         string="Proveedor crítico",
         help="Materia prima o maquila: entra a la evaluación trimestral aunque en el "
              "periodo no haya comprado productos de las categorías críticas.")
-    sgi_supplier_score = fields.Float(string="Calificación SGI")
-    sgi_last_eval_date = fields.Date(string="Última evaluación")
+    sgi_supplier_score = fields.Float(string="Calificación SGI",
+                                      help="Calificación de la última evaluación trimestral del proveedor.")
+    sgi_last_eval_date = fields.Date(string="Última evaluación",
+                                     help="Fecha de la última evaluación de desempeño del proveedor.")
     sgi_eval_ids = fields.One2many('sgi.supplier.eval', 'partner_id', string="Evaluaciones SGI")
     sgi_eval_count = fields.Integer(string="# Evaluaciones", compute='_compute_sgi_eval_count')
 
@@ -48,7 +65,7 @@ class ResPartner(models.Model):
                 'sgi_supplier_approved_date': fields.Date.context_today(partner),
             })
             partner.message_post(
-                body="Proveedor <b>aprobado</b> para el SGI (8.4.1) por %s."
+                body=Markup("Proveedor <b>aprobado</b> para el SGI (8.4.1) por %s.")
                      % self.env.user.name)
         return True
 
@@ -56,8 +73,8 @@ class ResPartner(models.Model):
         for partner in self:
             partner.write({'sgi_supplier_status': 'bloqueado'})
             partner.message_post(
-                body="Proveedor <b>BLOQUEADO</b> por el SGI (8.4.1) por %s: no se "
-                     "podrán confirmar órdenes de compra." % self.env.user.name)
+                body=Markup("Proveedor <b>BLOQUEADO</b> por el SGI (8.4.1) por %s: no se "
+                            "podrán confirmar órdenes de compra.") % self.env.user.name)
         return True
 
     def action_sgi_open_evals(self):
@@ -73,8 +90,12 @@ class ResPartner(models.Model):
 
 
 class SgiSupplierEval(models.Model):
+    """Evaluación trimestral de un proveedor (8.4): entrega a tiempo, NC y clase. La crea el cron;
+    se puede recalcular y aplicar al contacto."""
     _name = 'sgi.supplier.eval'
     _description = "Evaluación de proveedor SGI (8.4)"
+    # V-M16 (57.80.0): recálculos y cambios de clase quedan en el chatter.
+    _inherit = ['mail.thread']
     _order = 'date_to desc, partner_id'
 
     @api.model
@@ -98,18 +119,23 @@ class SgiSupplierEval(models.Model):
         return set(Categ.search([('id', 'child_of', categs.ids)]).ids)
 
     partner_id = fields.Many2one('res.partner', string="Proveedor",
-                                 required=True, ondelete='cascade', index=True)
-    date_from = fields.Date(string="Desde", required=True)
-    date_to = fields.Date(string="Hasta", required=True)
-    otd_pct = fields.Float(string="OTD %", compute='_compute_metrics', store=True)
+                                 required=True, ondelete='cascade', index=True,
+                                 help="Proveedor evaluado.")
+    date_from = fields.Date(string="Desde", required=True, help="Inicio del periodo evaluado.")
+    date_to = fields.Date(string="Hasta", required=True, help="Fin del periodo evaluado.")
+    otd_pct = fields.Float(string="OTD %", compute='_compute_metrics', store=True,
+                           help="Porcentaje de recepciones a tiempo en el periodo. Se calcula solo.")
+    otd_has_data = fields.Boolean(
+        string="Con datos de entrega", compute='_compute_metrics', store=True,
+        help="Hubo recepciones con fecha compromiso en el periodo. Sin ellas el OTD "
+             "no se calcula (no cuenta como 0 %) y la calificación usa solo la calidad.")
     nc_count = fields.Integer(string="# NC", compute='_compute_metrics', store=True)
-    score = fields.Float(string="Calificación", compute='_compute_metrics', store=True)
-    supplier_class = fields.Selection([
-        ('acreditado', "Acreditado"),
-        ('condicionado', "Condicionado"),
-        ('baja', "Baja"),
-    ], string="Clasificación", compute='_compute_metrics', store=True)
-    notes = fields.Text(string="Notas")
+    score = fields.Float(string="Calificación", compute='_compute_metrics', store=True, tracking=True,
+                         help="Entrega a tiempo y calidad, con los pesos de Ajustes. Se calcula sola.")
+    supplier_class = fields.Selection(
+        SUPPLIER_CLASSES, string="Clasificación", compute='_compute_metrics', store=True, tracking=True,
+        help="Acreditado, condicionado, baja o sin datos, según la calificación. Se calcula sola.")
+    notes = fields.Text(string="Notas", tracking=True)
 
     _partner_period_uniq = models.Constraint(
         'unique(partner_id, date_from, date_to)',
@@ -125,14 +151,25 @@ class SgiSupplierEval(models.Model):
         for ev in self:
             if not ev.partner_id or not ev.date_from or not ev.date_to:
                 ev.otd_pct = ev.score = 0.0
+                ev.otd_has_data = False
                 ev.nc_count = 0
                 ev.supplier_class = False
                 continue
-            ev.otd_pct = ev._sgi_compute_otd()
+            otd = ev._sgi_compute_otd()
+            ev.otd_has_data = otd is not None
+            ev.otd_pct = otd or 0.0
             ev.nc_count = ev._sgi_count_ncs()
             quality_score = max(0.0, 100.0 - ev.nc_count * nc_penalty)
-            ev.score = round(ev.otd_pct * w_otd + quality_score * w_quality, 2)
-            ev.supplier_class = ev._sgi_class_from_score(ev.score)
+            if ev.otd_has_data:
+                ev.score = round(otd * w_otd + quality_score * w_quality, 2)
+                ev.supplier_class = ev._sgi_class_from_score(ev.score)
+            else:
+                # Sin entregas medibles la calificación es solo la calidad. Sin
+                # NC tampoco hay evidencia de nada: «Sin datos», no «Baja». Con
+                # NC en el periodo la calidad sí clasifica (una NC real pesa).
+                ev.score = round(quality_score, 2)
+                ev.supplier_class = (ev._sgi_class_from_score(ev.score)
+                                     if ev.nc_count else 'sin_datos')
 
     def _sgi_class_from_score(self, score):
         if score >= 85:
@@ -152,7 +189,8 @@ class SgiSupplierEval(models.Model):
         fecha compromiso + tolerancia en días (parámetro
         quimibond_sgi.supplier_otd_tolerance_days, default 1). Las recepciones
         sin ninguna fecha compromiso se excluyen del cálculo en vez de contar
-        como tarde."""
+        como tarde. Sin ninguna recepción contable devuelve None (sin datos),
+        no 0.0: el 0 mandaba al proveedor a «Baja» sin evidencia."""
         self.ensure_one()
         tolerance = int(self.env['ir.config_parameter'].sudo().get_param(
             'quimibond_sgi.supplier_otd_tolerance_days', 1))
@@ -175,7 +213,7 @@ class SgiSupplierEval(models.Model):
             if pick.date_done.date() <= limit:
                 on_time += 1
         if not counted:
-            return 0.0
+            return None
         return round(on_time / counted * 100.0, 2)
 
     def _sgi_count_ncs(self):

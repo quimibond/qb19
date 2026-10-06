@@ -9,23 +9,28 @@
                 <!-- Única herencia del button_box del partner (D.30): el orden
                      de los botones es determinista dentro de esta vista. -->
                 <button name="action_sgi_open_complaints" type="object" class="oe_stat_button"
-                        icon="fa-comments" invisible="sgi_complaint_count == 0">
+                        icon="fa-comments" invisible="sgi_complaint_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_complaint_count" widget="statinfo" string="Reclamaciones"/>
                 </button>
                 <button name="action_sgi_open_ncs" type="object" class="oe_stat_button"
-                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0">
+                        icon="fa-exclamation-triangle" invisible="sgi_nc_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_nc_count" widget="statinfo" string="NC"/>
                 </button>
                 <button name="action_sgi_open_evals" type="object" class="oe_stat_button"
-                        icon="fa-star" invisible="sgi_eval_count == 0">
+                        icon="fa-star" invisible="sgi_eval_count == 0"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_eval_count" widget="statinfo" string="Evaluaciones"/>
                 </button>
             </xpath>
             <xpath expr="//notebook" position="inside">
-                <page string="SGI Proveedor" name="sgi_supplier"
-                      invisible="not is_company and not supplier_rank">
+                <page string="SGI" name="sgi_supplier"
+                      invisible="not is_company and not supplier_rank"
+                      groups="quimibond_sgi.group_sgi_user">
                     <group>
                         <group string="Aprobación (8.4.1)">
+                            <field name="sgi_supplier_critical"/>
                             <field name="sgi_supplier_status" widget="badge"
                                    decoration-success="sgi_supplier_status == 'aprobado'"
                                    decoration-danger="sgi_supplier_status == 'bloqueado'"
@@ -35,15 +40,26 @@
                             <field name="sgi_supplier_approved_date"
                                    invisible="sgi_supplier_status != 'aprobado'"/>
                         </group>
-                        <group string="Clasificación SGI">
-                            <field name="sgi_supplier_class"/>
+                        <group string="Clasificación">
+                            <field name="sgi_supplier_class" widget="badge"
+                                   decoration-success="sgi_supplier_class == 'acreditado'"
+                                   decoration-warning="sgi_supplier_class == 'condicionado'"
+                                   decoration-danger="sgi_supplier_class == 'baja'"
+                                   decoration-muted="sgi_supplier_class == 'sin_datos'"/>
                             <field name="sgi_supplier_score"/>
                             <field name="sgi_last_eval_date"/>
                         </group>
                     </group>
+                    <!-- 57.96.0 (N-06): la registra el Jefe MAST (candado en write). -->
+                    <group string="Contratista (SST, ISO 45001 8.1.4)">
+                        <field name="sgi_user_can_eval_sst" invisible="1"/>
+                        <field name="sgi_sst_eval_valid_until" readonly="not sgi_user_can_eval_sst"/>
+                        <field name="sgi_sst_eval_note" readonly="not sgi_user_can_eval_sst"
+                               placeholder="REPSE, SUA, constancias DC-3, inducción de seguridad…"/>
+                    </group>
                     <div groups="quimibond_sgi.group_sgi_manager">
                         <button name="action_sgi_approve_supplier" type="object"
-                                string="Aprobar proveedor (SGI)" class="btn-primary"
+                                string="Aprobar proveedor" class="btn-primary"
                                 invisible="sgi_supplier_status == 'aprobado'"/>
                         <button name="action_sgi_block_supplier" type="object"
                                 string="Bloquear proveedor" class="btn-secondary"
@@ -53,13 +69,19 @@
                     <field name="sgi_eval_ids">
                         <list decoration-success="supplier_class == 'acreditado'"
                               decoration-warning="supplier_class == 'condicionado'"
-                              decoration-danger="supplier_class == 'baja'">
+                              decoration-danger="supplier_class == 'baja'"
+                              decoration-muted="supplier_class == 'sin_datos'">
                             <field name="date_from"/>
                             <field name="date_to"/>
-                            <field name="otd_pct"/>
+                            <field name="otd_has_data" column_invisible="1"/>
+                            <field name="otd_pct" invisible="not otd_has_data"/>
                             <field name="nc_count"/>
-                            <field name="score"/>
-                            <field name="supplier_class"/>
+                            <field name="score" widget="progressbar"/>
+                            <field name="supplier_class" widget="badge"
+                                   decoration-success="supplier_class == 'acreditado'"
+                                   decoration-warning="supplier_class == 'condicionado'"
+                                   decoration-danger="supplier_class == 'baja'"
+                                   decoration-muted="supplier_class == 'sin_datos'"/>
                         </list>
                     </field>
                 </page>

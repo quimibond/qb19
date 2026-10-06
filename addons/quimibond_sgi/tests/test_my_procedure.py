@@ -18,6 +18,12 @@ class TestMyProcedure(TransactionCase):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
         sgi_test_calendar(cls.env)
+        # 57.66.0: publicar sin firma en Sign (la firma se prueba en
+        # test_my_procedure_sign, con PDF de verdad). Si la base tiene
+        # «Mi procedimiento con firma» encendido, publicar arma la hoja de
+        # firmas con PyPDF2 y en modo prueba Odoo entrega HTML en vez de PDF
+        # («EOF marker not found»).
+        cls.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.mp_sign_required', 'False')
         Job = cls.env['hr.job']
         cls.job = Job.create({'name': 'PLANEADOR PRUEBA MP'})
         cls.job_boss = Job.create({'name': 'GERENTE PRUEBA MP'})
@@ -159,16 +165,21 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual(self._ack_state(), 'pendiente')
 
     def test_05_empleado_y_vista(self):
-        action = self.emp1.action_sgi_my_procedure_view()
+        # 57.8.0 (B-011): la vista de roles sin botón se retiró; se prueba
+        # el mismo universo de roles del puesto.
         Role = self.env['sgi.activity.role']
-        roles = Role.search(action['domain'])
+        roles = Role.search(self.emp1._sgi_require_job()._sgi_roles_domain()
+                            + [('activity_active', '=', True)])
         self.assertEqual(set(roles.activity_id),
                          {self.a_weekly_fri, self.a_weekly_mon, self.a_monthly,
                           self.a_quarterly, self.a_event, self.a_received},
                          "Todos los roles del puesto y de su familia, incluido el escalamiento.")
         self.assertEqual(roles.filtered(lambda r: r.activity_id == self.a_weekly_fri
                                         and r.role == 'ejecuta').activity_when, 'Cada viernes')
-        report = self.emp1.action_sgi_print_my_procedure()
+        # En una base nueva la compañía no tiene diseño de documento y, para
+        # un administrador, Odoo devuelve primero el asistente «Configurar el
+        # diseño» (sin report_name); en producción ya está configurado.
+        report = self.emp1.with_context(discard_logo_check=True).action_sgi_print_my_procedure()
         self.assertEqual(report['report_name'], 'quimibond_sgi.report_my_procedure_document')
         no_job = self.env['hr.employee'].create({'name': 'Sin puesto MP'})
         with self.assertRaises(UserError):
@@ -331,13 +342,13 @@ class TestMyProcedure(TransactionCase):
         self.assertEqual(ack.state, 'pendiente')
         self.assertEqual(wiz.pending_ack_count, 1)
         self.assertTrue(wiz.has_user)
-        self.assertIn(action, wiz.pending_action_ids)
+        # 57.8.0 (I-022): las acciones se ven en Mis pendientes.
+        self.assertIn(action, self.env['sgi.my.pending']._sgi_pending_records(self.user_emp)['accion'])
         self.assertEqual(action.state, 'vencida')
         self.assertIn(indicator, wiz.official_indicator_ids)
         # Sin usuario no hay pendientes que mostrar; los documentos del puesto sí.
         wiz2 = self.env['sgi.my.procedure'].with_user(self.manager).create({'employee_id': self.emp2.id})
         self.assertFalse(wiz2.has_user)
-        self.assertFalse(wiz2.pending_action_ids)
         self.assertIn(doc, wiz2.document_ids)
 
     def test_14_pdf_alineado_con_la_pantalla(self):
@@ -435,6 +446,21 @@ class TestMyProcedure(TransactionCase):
         opened = row.action_sgi_open_my_procedure()
         wiz = self.env['sgi.my.procedure'].browse(opened['res_id'])
         self.assertEqual(wiz.employee_id.id, self.emp1.id)
+        # 56.1.1: el puesto sale del empleado (el jefe no es de RH y
+        # hr.employee.public no le da job_id) y las listas son las mismas
+        # que calcula la ficha del empleado.
+        wiz = wiz.with_user(boss_user)
+        self.assertEqual(wiz.job_id, self.job, "Puesto vacío al abrir desde Mi equipo.")
+        self.assertEqual(wiz.role_ids, row.sgi_mp_role_ids)
+        self.assertEqual(wiz.activity_count, len(row.sgi_mp_role_ids))
+        self.assertTrue(wiz.activity_count)
+        self.assertEqual(wiz.process_ids, row.sgi_mp_process_ids)
+        self.assertEqual(wiz.document_ids, row.sgi_mp_document_ids)
+        self.assertEqual(wiz.epp_required or False, row.sgi_mp_epp_text or False)
+        # Un registro guardado sin puesto (como los anteriores a 56.1.1)
+        # sigue mostrando las actividades del empleado.
+        old = self.env['sgi.my.procedure'].create({'employee_id': self.emp1.id, 'job_id': False})
+        self.assertEqual(old.role_ids, row.sgi_mp_role_ids)
         with self.assertRaises(UserError):
             Public.with_user(boss_user).browse(self.emp2.id).action_sgi_open_my_procedure()
         # Desde la ficha del empleado y la del puesto (MAST ve a cualquiera).
@@ -452,14 +478,21 @@ class TestMyProcedure(TransactionCase):
         pantalla de Inicio, y la firma desde la ficha."""
         wiz = self.env['sgi.my.procedure'].with_user(self.user_emp).create(
             {'employee_id': self.emp1.id})
-        emp = self.emp1.with_user(self.manager)
-        self.assertEqual(emp.sgi_mp_role_ids.ids, wiz.role_ids.ids)
-        self.assertEqual(emp.sgi_mp_received_role_ids.ids, wiz.received_role_ids.ids)
-        self.assertEqual(emp.sgi_mp_short_role_ids.ids, wiz.short_role_ids.ids)
+        # 56.7.0: en el empleado las listas están guardadas (orden del
+        # modelo); la pantalla las reordena para leerlas.
+        # La ficha hr.employee es de RH: en Odoo 19 quien no es de RH (el Jefe
+        # MAST de la prueba) no lee hr.employee de otra persona, abre
+        # hr.employee.public (se prueba abajo). La lee un usuario de RH.
+        hr_user = new_test_user(self.env, login='mp_hr_ficha',
+                                groups='base.group_user,hr.group_hr_user,quimibond_sgi.group_sgi_user')
+        emp = self.emp1.with_user(hr_user)
+        self.assertEqual(set(emp.sgi_mp_role_ids.ids), set(wiz.role_ids.ids))
+        self.assertEqual(set(emp.sgi_mp_received_role_ids.ids), set(wiz.received_role_ids.ids))
+        self.assertEqual(set(emp.sgi_mp_short_role_ids.ids), set(wiz.short_role_ids.ids))
         self.assertEqual(set(emp.sgi_mp_process_ids.ids), set(wiz.process_ids.ids))
         # Empleado público (lo que ve cualquier usuario interno): lo mismo.
         public = self.env['hr.employee.public'].with_user(self.user_emp).browse(self.emp1.id)
-        self.assertEqual(public.sgi_mp_role_ids.ids, wiz.role_ids.ids)
+        self.assertEqual(set(public.sgi_mp_role_ids.ids), set(wiz.role_ids.ids))
         self.assertEqual(public.action_sgi_print_my_procedure()['type'], 'ir.actions.report')
         # Puesto: sus actividades, sin acuses ni responsivas.
         job = self.job.with_user(self.manager)

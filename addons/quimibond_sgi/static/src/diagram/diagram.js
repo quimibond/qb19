@@ -118,6 +118,10 @@ export class SgiDiagram extends Component {
 
     boxClass(item) {
         const classes = ["o_sgi_dg_box", "o_sgi_dg_color_" + (item.color || "muted")];
+        if (item.out) {
+            // No aplica a la línea de negocio elegida (selector «linea»).
+            classes.push("o_sgi_dg_box_out");
+        }
         if (this.state.selected === item.key) {
             classes.push("o_sgi_dg_box_selected");
         } else if (this.isRelated(item.key)) {
@@ -259,6 +263,7 @@ export class SgiDiagram extends Component {
   .o_sgi_dg_print .o_sgi_dg_body { overflow: visible !important; padding: 0 !important; }
   .o_sgi_dg_print .o_sgi_dg_box, .o_sgi_dg_print tr { break-inside: avoid; }
   .o_sgi_dg_print .o_sgi_dg_box { box-shadow: none !important; transform: none !important; opacity: 1 !important; }
+  .o_sgi_dg_print .o_sgi_dg_box.o_sgi_dg_box_out { opacity: .35 !important; }
   .o_sgi_dg_print .btn { display: none !important; }
   .o_sgi_dg_print .o_sgi_dg_columns { min-width: max-content; }
 </style></head><body>
@@ -288,6 +293,15 @@ export class SgiDiagram extends Component {
         win.document.open();
         win.document.write(html);
         win.document.close();
+    }
+
+    // 57.101.0 (C3): el mismo diagrama en PDF con el pie del formato
+    // controlado (página, clave y revisión), generado en el servidor. La
+    // impresión rápida de arriba se queda.
+    async printControlled() {
+        const action = await this.orm.call("sgi.diagram", "action_print_controlled",
+            [this.state.kind, this.state.resId || false, this.state.params || {}]);
+        await this.actionService.doAction(action);
     }
 
     // ---- flechas ----------------------------------------------------

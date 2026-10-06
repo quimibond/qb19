@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from odoo import api, fields, models
+from odoo import fields, models
 
 
 class FichaTecnicaTejido(models.Model):
@@ -16,22 +16,13 @@ class FichaTecnicaTejido(models.Model):
     revision = fields.Char(string='Revisión', default='0')
     active = fields.Boolean(default=True)
     fecha_elaboracion = fields.Date(string='Fecha de elaboración')
-    jefe_manufactura = fields.Many2one(
-        'hr.employee', string='Jefe de manufactura',
-        domain=[('job_id.name', '=ilike', 'JEFE DE MANUFACTURA')],
-        help='Empleado cuyo puesto (job_id) es "JEFE DE MANUFACTURA".')
-    auxiliar_procesos = fields.Many2one(
-        'hr.employee', string='Auxiliar de procesos',
-        domain=[('job_id.name', '=ilike', 'AUXILIAR DE PROCESOS')],
-        help='Empleado cuyo puesto (job_id) es "AUXILIAR DE PROCESOS".')
+    jefe_manufactura = fields.Char(string='Jefe de manufactura')
+    auxiliar_procesos = fields.Char(string='Auxiliar de procesos')
 
     # Vínculo con el producto semi-terminado (arquitectura de 2 productos)
     product_proceso_id = fields.Many2one(
         'product.product', string='Producto — Tela en Proceso (kg)',
         help='Producto semi-terminado que recorre Preparado/Devanado, Tintorería, Abridora y Rama.')
-    rendimiento_tela_tejida = fields.Float(
-        string='Rendimiento de la Tela Tejida (m/kg)', digits=(12, 4),
-        help='Rendimiento teórico de la tela tejida (Tela en Proceso), en metros por kilogramo.')
 
     # Fichas de acabado que usan esta ficha de tejido como base
     ficha_acabado_ids = fields.One2many(
@@ -49,11 +40,7 @@ class FichaTecnicaTejido(models.Model):
     # ------------------------------------------------------------------
     # Datos de máquina
     # ------------------------------------------------------------------
-    maquina_tejido = fields.Many2one(
-        'mrp.workcenter', string='Máquina (No.)', ondelete='restrict',
-        help='Centro de trabajo de la máquina de tejido. Se muestra el código (No. de máquina).')
-    maquina_nombre = fields.Char(
-        string='Nombre de máquina', related='maquina_tejido.name', readonly=True)
+    maquina_tejido = fields.Char(string='Máquina')
     marca_maquina = fields.Char(string='Marca de máquina')
     galga = fields.Float(string='Galga')
     diametro = fields.Char(string='Diámetro')
@@ -175,20 +162,6 @@ class FichaTecnicaTejido(models.Model):
                 'context': {'default_tejido_id': self.id},
             })
         return action
-
-
-class MrpWorkcenter(models.Model):
-    """Permite mostrar solo el código (No. de máquina) en el Many2one de la
-    ficha de tejido, sin alterar el nombre mostrado en el resto de Odoo."""
-    _inherit = 'mrp.workcenter'
-
-    @api.depends('name', 'code')
-    @api.depends_context('ficha_maquina_code')
-    def _compute_display_name(self):
-        super()._compute_display_name()
-        if self.env.context.get('ficha_maquina_code'):
-            for wc in self:
-                wc.display_name = wc.code or wc.name
 
 
 class FichaTecnicaTejidoHilo(models.Model):

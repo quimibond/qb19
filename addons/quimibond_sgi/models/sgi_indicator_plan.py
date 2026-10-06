@@ -26,7 +26,10 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
-from .sgi_calendar import sgi_nth_business_day
+from .sgi_calendar import sgi_nth_business_day, sgi_previous_business_day, sgi_today
+
+from .sgi_guard import sgi_require_system
+from .sgi_health_const import HEALTH_MODES
 
 _WINDOW_BY_MODE = {
     'desperdicio_kg': "3 meses móviles",
@@ -39,6 +42,17 @@ _WINDOW_BY_MODE = {
     'cartera_vencida': "Al cierre",
     'cartera_vencida_60': "Al cierre",
     'inventario_diferencia': "Mes (existencias al día del cálculo)",
+    # 57.99.0: salud del SGI.
+    'salud_procesos': "Al cierre",
+    'salud_personas': "30 días al cierre",
+    'salud_planta': "Al cierre",
+    'salud_acuses': "Al cierre",
+    'salud_validacion': "30 días al cierre",
+    'salud_rojos': "3 meses",
+    'salud_nc': "90 días al cierre",
+    'salud_avisos': "Al cierre",
+    'salud_auditoria': "Año a la fecha",
+    'salud_formatos': "90 días al cierre",
 }
 _PLAN_SUMMARY = "Causa y acción: %s (%s)"
 _ESCALATION_SUMMARY = "Sin causa ni acción (escalado a Dirección): %s (%s)"
@@ -56,8 +70,10 @@ class SgiIndicatorWindow(models.Model):
             base = "Semana" if indicator.frequency == 'weekly' else "Mes"
             if indicator.calc_mode == 'configurable':
                 num, den = indicator._sgi_terms()
-                labels = dict(num._fields['window'].selection) if num else {}
-                parts = [labels.get(t.window, t.window) for t in (num, den) if t]
+                terms = num | den
+                labels = dict(terms._fields['window'].selection) if terms else {}
+                # 55.0.0: varios términos por rol (se suman); ventanas únicas.
+                parts = [labels.get(w, w) for w in dict.fromkeys(terms.mapped('window')) if w]
                 if parts and parts[0] == 'El periodo':
                     parts[0] = base
                 indicator.window_label = " / ".join(dict.fromkeys(parts)) if parts else base
@@ -109,23 +125,33 @@ class SgiIndicatorMeasurePlan(models.Model):
     window_label = fields.Char(related='indicator_id.window_label', string="Ventana")
     cause = fields.Text(string="Causa", help="Por qué salió en rojo (I-4).")
     action_line_ids = fields.One2many('sgi.action.line', 'measure_id', string="Acciones")
-    plan_required = fields.Boolean(compute='_compute_plan', string="Requiere plan")
+    plan_required = fields.Boolean(compute='_compute_plan', string="Requiere plan",
+                                   help="Indica que la medición está en rojo y pide causa y plan de acción.")
     plan_due = fields.Date(compute='_compute_plan', string="Plan antes del",
-                           help="Día 10 del mes siguiente al periodo.")
-    plan_done = fields.Boolean(compute='_compute_plan', string="Plan capturado")
+                           help="Día 10 del mes siguiente al periodo (si es inhábil, el "
+                                "hábil anterior).")
+    plan_done = fields.Boolean(compute='_compute_plan', string="Plan capturado",
+                               help="Indica que la medición en rojo ya tiene causa y plan.")
 
     @api.depends('semaphore', 'state', 'small_sample', 'period_date', 'cause',
                  'action_line_ids', 'indicator_id.frequency')
     def _compute_plan(self):
         day = int(self.env['ir.config_parameter'].sudo().get_param(
             'quimibond_sgi.red_plan_due_day', 10) or 10)
+        adjusted = {}
         for measure in self:
             measure.plan_required = measure._sgi_red_with_data()
             measure.plan_done = bool(measure.cause and measure.action_line_ids)
             if measure.period_date and measure.indicator_id:
                 period_end = measure.indicator_id._sgi_period_bounds(measure.period_date)[1]
-                measure.plan_due = (period_end.replace(day=1)
-                                    + relativedelta(months=1)).replace(day=min(day, 28))
+                due = (period_end.replace(day=1)
+                       + relativedelta(months=1)).replace(day=min(day, 28))
+                # 57.15.0 (decisión 4 de la tanda 2): si el día 10 es
+                # inhábil, se adelanta al hábil anterior del mismo mes.
+                if due not in adjusted:
+                    adjusted[due] = sgi_previous_business_day(
+                        self.env, due, floor=due.replace(day=1))
+                measure.plan_due = adjusted[due]
             else:
                 measure.plan_due = False
 
@@ -205,23 +231,27 @@ class SgiIndicatorMeasurePlan(models.Model):
             self._sgi_plan_captured()
         return res
 
-    def action_open_plan(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window', 'res_model': 'sgi.indicator.measure',
-            'res_id': self.id, 'view_mode': 'form', 'target': 'current',
-        }
-
 
 class SgiCronCalendar(models.AbstractModel):
     _inherit = 'sgi.cron'
 
+    _SGI_MONTHLY_DONE_PARAM = 'quimibond_sgi.monthly_run_done'
+
     @api.model
     def _sgi_monthly_run_due(self, today):
         """Tercer día hábil del mes (parámetro), o después si el mes anterior
-        sigue sin mediciones (el cron no corrió ese día)."""
-        nth = int(self.env['ir.config_parameter'].sudo().get_param(
-            'quimibond_sgi.monthly_measure_business_day', 3) or 3)
+        sigue sin mediciones (el cron no corrió ese día).
+
+        57.15.0 (G-020): una sola corrida programada por mes. Si ya corrió
+        este mes (``quimibond_sgi.monthly_run_done`` = AAAA-MM) no vuelve a
+        correr aunque el mes anterior siga sin mediciones (todos los
+        indicadores con «medir desde» futuro, o el paso de mediciones
+        falló): antes repetía la foto, las trayectorias y el cierre de
+        presupuestos todos los días."""
+        Param = self.env['ir.config_parameter'].sudo()
+        if Param.get_param(self._SGI_MONTHLY_DONE_PARAM) == today.strftime('%Y-%m'):
+            return False
+        nth = int(Param.get_param('quimibond_sgi.monthly_measure_business_day', 3) or 3)
         run_day = sgi_nth_business_day(self.env, today.year, today.month, nth)
         if today < run_day:
             return False
@@ -245,16 +275,37 @@ class SgiCronCalendar(models.AbstractModel):
         """Diario desde I-6: escala los planes vencidos todos los días y mide
         solo el tercer día hábil (o cuando el mes anterior siga sin medir).
         Sin ``scheduled`` (a mano) mide siempre, como antes."""
-        today = fields.Date.context_today(self)
+        sgi_require_system(self.env)  # F-008
+        today = sgi_today(self.env)
         self._sgi_step("escalamiento de planes de mediciones rojas",
                        lambda: self.env['sgi.indicator.measure']._sgi_escalate_red_plans(today))
-        if scheduled and not self._sgi_monthly_run_due(today):
-            return True
-        return super().cron_indicators()
+        # 57.1.0: los indicadores con «Último cálculo» vacío toman el
+        # diagnóstico de su última medición (todos los días, no solo el día
+        # en que se mide).
+        self._sgi_step("último cálculo de los indicadores sin diagnóstico",
+                       lambda: self.env['sgi.indicator']._sgi_calc_status_backfill())
+        res = True
+        if not scheduled or self._sgi_monthly_run_due(today):
+            res = super().cron_indicators()
+            if scheduled:
+                self.env['ir.config_parameter'].sudo().set_param(
+                    self._SGI_MONTHLY_DONE_PARAM, today.strftime('%Y-%m'))
+        # 57.5.0 (D-12, A-006): re-mide las mediciones pendientes que ya
+        # tienen dato. Antes corría en cada actualización del módulo.
+        # 57.104.0 (B3): la corrida programada también re-mide las «sin dato»
+        # y las capturadas no validadas de los últimos meses, con tiempo
+        # tope (lo que falte sigue al día siguiente); una corrida a mano
+        # (pruebas, botón del cron) se queda en las pendientes. Va DESPUÉS de
+        # la medición mensual: primero se crean las del mes.
+        self._sgi_step("mediciones pendientes re-medidas",
+                       lambda: self.env['sgi.config'].recompute_pending_measures(
+                           recent=bool(scheduled)))
+        return res
 
     @api.model
     def cron_indicators_weekly(self, scheduled=False):
-        today = fields.Date.context_today(self)
+        sgi_require_system(self.env)  # F-008
+        today = sgi_today(self.env)
         if scheduled and not self._sgi_weekly_run_due(today):
             return True
         return super().cron_indicators_weekly()
@@ -270,17 +321,23 @@ class SgiManagementReviewValidate(models.Model):
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
             raise UserError("Solo el Jefe MAST y SGI valida las mediciones desde la revisión.")
         Measure = self.env['sgi.indicator.measure']
+        # 57.99.0: las de salud del SGI no se validan.
         captured = Measure.search([
-            ('state', '=', 'capturado'),
+            ('state', '=', 'capturado'), ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to)])
-        captured.action_validate()
+        # 57.104.0 (B5): las manuales sin valor capturado no se validan (el
+        # write las rechazaría y el botón reventaba por una sola); se listan.
+        empty = captured._sgi_without_value()
+        (captured - empty).action_validate()
         reds = Measure.search([
             ('semaphore', '=', 'rojo'), ('state', '=', 'validado'),
             ('period_date', '>=', self.period_from), ('period_date', '<=', self.period_to),
         ]).filtered(lambda m: m.plan_required and not m.plan_done)
         self.message_post(body=Markup(
-            "Revisión: %d mediciones validadas; %d rojas sin causa ni acción.") % (
-            len(captured), len(reds)))
+            "Revisión: %d mediciones validadas; %d manuales sin valor capturado (no se "
+            "validaron: %s); %d rojas sin causa ni acción.") % (
+            len(captured - empty), len(empty),
+            ", ".join(empty.mapped('display_name')) or "—", len(reds)))
         return {
             'type': 'ir.actions.act_window', 'name': "Rojos sin plan de acción",
             'res_model': 'sgi.indicator.measure', 'view_mode': 'list,form',

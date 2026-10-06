@@ -141,66 +141,20 @@
         </field>
     </record>
 
-    <!-- El diagrama como vista más de cada acción existente -->
-
-    <record id="sgi_risk_action" model="ir.actions.act_window">
-        <field name="view_mode">kanban,list,sgi_diagram,pivot,form,activity</field>
-    </record>
-
-    <record id="sgi_legal_requirement_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_interested_party_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_objective_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_indicator_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form,activity</field>
-    </record>
-
-    <record id="sgi_policy_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_management_review_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_audit_program_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_emergency_plan_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form,activity</field>
-    </record>
-
-    <record id="sgi_equipment_action_measuring" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_document_action" model="ir.actions.act_window">
-        <field name="view_mode">list,sgi_diagram,form</field>
-    </record>
-
-    <record id="sgi_competence_gap_action" model="ir.actions.act_window">
-        <field name="view_mode">pivot,sgi_diagram,list</field>
-    </record>
-
-    <record id="sgi_activity_exec_stat_action_who" model="ir.actions.act_window">
-        <field name="view_mode">pivot,sgi_diagram,list,graph</field>
-    </record>
+    <!-- El diagrama es una vista más de cada acción: «sgi_diagram» va en el
+         view_mode de la acción, en su propio archivo (B-015, entrega 4: antes
+         se redefinían aquí 13 acciones y la última definición ganaba). -->
 
     <!-- Puestos: quién ejecuta qué, desde Empleados → Puestos (SGI) -->
     <record id="sgi_hr_job_action_roles" model="ir.actions.act_window">
         <field name="name">Puestos y procesos</field>
         <field name="res_model">hr.job</field>
         <field name="view_mode">sgi_diagram,list,form</field>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin puestos</p></field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin puestos con actividades del SGI</p>
+            <p>Cada puesto muestra los procesos y actividades en los que participa (ejecuta, aprueba, revisa o recibe aviso).
+            Los puestos se dan de alta en Empleados → Puestos; las actividades se ligan al puesto desde la ficha de cada actividad.</p>
+        </field>
     </record>
 
 </odoo>

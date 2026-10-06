@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.107.0: revisión mensual de la medición por el dueño del proceso.
+         Los campos son de solo lectura: se contesta con los botones. -->
+    <record id="sgi_measure_review_view_form" model="ir.ui.view">
+        <field name="name">sgi.measure.review.form</field>
+        <field name="model">sgi.measure.review</field>
+        <field name="arch" type="xml">
+            <form string="Revisión de medición" create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_confirm" type="object" string="Sí, esto es lo que hago"
+                            class="btn-primary" invisible="not can_answer"/>
+                    <button name="action_not_matching" type="object" string="No corresponde"
+                            invisible="not can_answer"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pendiente,confirmada,no_corresponde"/>
+                </header>
+                <sheet>
+                    <field name="can_answer" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="state != 'pendiente'">
+                        Estos son tres registros tomados al azar de lo que la medición cuenta como evidencia de la
+                        actividad. Ábralos: si cada uno <b>es</b> la actividad hecha (y la fecha y la persona son las
+                        correctas), conteste «Sí, esto es lo que hago». Si alguno no lo es, conteste «No corresponde» y
+                        diga qué está mal.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="activity_id"/>
+                            <field name="process_id"/>
+                            <field name="month"/>
+                            <field name="user_id"/>
+                            <field name="date_due"/>
+                        </group>
+                        <group>
+                            <field name="measure_model"/>
+                            <field name="measure_domain"/>
+                            <field name="measure_user_field" invisible="not measure_user_field"/>
+                            <field name="reviewed_by_id" invisible="not reviewed_by_id"/>
+                            <field name="reviewed_on" invisible="not reviewed_on"/>
+                        </group>
+                    </group>
+                    <group string="Criterio de terminado" invisible="not done_criteria">
+                        <field name="done_criteria" nolabel="1" colspan="2"/>
+                    </group>
+                    <group string="Qué no corresponde" invisible="state != 'no_corresponde'">
+                        <field name="note" nolabel="1" colspan="2"/>
+                    </group>
+                    <field name="line_ids">
+                        <list create="0" edit="0" delete="0">
+                            <field name="name"/>
+                            <field name="record_date"/>
+                            <field name="record_user_id"/>
+                            <button name="action_open_record" type="object" string="Abrir" icon="fa-external-link"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_measure_review_view_list" model="ir.ui.view">
+        <field name="name">sgi.measure.review.list</field>
+        <field name="model">sgi.measure.review</field>
+        <field name="arch" type="xml">
+            <list string="Revisiones de medición" create="0" edit="0" delete="0"
+                  decoration-danger="state == 'no_corresponde'" decoration-muted="state == 'sin_respuesta'">
+                <field name="month"/>
+                <field name="process_id"/>
+                <field name="activity_id"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="date_due"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-success="state == 'confirmada'"
+                       decoration-danger="state == 'no_corresponde'"
+                       decoration-muted="state == 'sin_respuesta'"/>
+                <field name="note" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_measure_review_view_search" model="ir.ui.view">
+        <field name="name">sgi.measure.review.search</field>
+        <field name="model">sgi.measure.review</field>
+        <field name="arch" type="xml">
+            <search string="Revisiones de medición">
+                <field name="activity_id"/>
+                <field name="process_id"/>
+                <field name="user_id"/>
+                <filter name="mine" string="Míos" domain="[('user_id', '=', uid)]"/>
+                <separator/>
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pendiente')]"/>
+                <filter name="not_matching" string="No corresponde" domain="[('state', '=', 'no_corresponde')]"/>
+                <filter name="no_answer" string="Sin respuesta" domain="[('state', '=', 'sin_respuesta')]"/>
+                <separator/>
+                <filter name="month" string="Mes" date="month"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_user" string="Revisa" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_month" string="Mes" context="{'group_by': 'month:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_measure_review_action" model="ir.actions.act_window">
+        <field name="name">Revisiones de medición</field>
+        <field name="res_model">sgi.measure.review</field>
+        <field name="view_mode">list,form</field>
+        <field name="view_id" ref="sgi_measure_review_view_list"/>
+        <field name="search_view_id" ref="sgi_measure_review_view_search"/>
+        <field name="context">{'search_default_group_state': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Cada mes, el dueño del proceso confirma lo que se mide</p>
+            <p>Por cada actividad que se mide sola y tuvo evidencia en los últimos 60 días, el dueño del proceso recibe
+                en Mis pendientes tres registros al azar y contesta si de verdad son la actividad. Un «No corresponde»
+                aparece en Diagnóstico → Faltantes de especificación, filtro «Medición por revisar», hasta que una
+                revisión posterior la confirme.</p>
+        </field>
+    </record>
+
+    <record id="sgi_measure_review_reject_view_form" model="ir.ui.view">
+        <field name="name">sgi.measure.review.reject.form</field>
+        <field name="model">sgi.measure.review.reject</field>
+        <field name="arch" type="xml">
+            <form string="No corresponde">
+                <field name="review_id" invisible="1"/>
+                <group>
+                    <field name="note" placeholder="Qué está mal: el filtro, el modelo, la fecha o quién aparece"/>
+                </group>
+                <footer>
+                    <button name="action_confirm" type="object" string="Guardar" class="btn-primary"/>
+                    <button string="Descartar" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

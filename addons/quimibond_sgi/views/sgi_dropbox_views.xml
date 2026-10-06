@@ -1,0 +1,589 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ================================================================
+         «Del Dropbox a Odoo» (57.0.0; entrega 6, docs/audit/12-transicion.md
+         §3.4–§3.6). El buscador lo ve todo Usuario SGI (sin rutinas); rutinas,
+         procedimientos anteriores y avance, solo Auditor, Jefe MAST,
+         Dirección y Dueño de proceso (57.0.0, decisión de Jose); solo el Jefe
+         MAST edita rutinas e importa. La clave vieja solo se muestra aquí (decisión 11 de la
+         tanda 2). Ningún nombre de acción ni de vista lleva claves.
+         ================================================================ -->
+
+    <!-- ============ ASISTENTE «IMPORTAR RUTINAS» ============ -->
+    <record id="sgi_legacy_routine_import_view_form" model="ir.ui.view">
+        <field name="name">sgi.legacy.routine.import.form</field>
+        <field name="model">sgi.legacy.routine.import</field>
+        <field name="arch" type="xml">
+            <form string="Importar rutinas">
+                <field name="state" invisible="1"/>
+                <field name="dry_run_ok" invisible="1"/>
+                <field name="tested_hash" invisible="1"/>
+                <div class="alert alert-info" role="status" invisible="state != 'draft'">
+                    Suba el libro «Del Dropbox a Odoo — rutina por rutina» (XLSX) o su hoja
+                    «Rutina por rutina» en CSV UTF-8. <b>Probar</b> no escribe nada: dice
+                    qué rutinas se crearían o actualizarían y qué filas tienen error.
+                    <b>Cargar</b> solo se puede después de probar el mismo archivo, sin
+                    errores; se puede repetir sin duplicar. Antes, corra
+                    <code>validar_rutinas.py</code> (mismas reglas).
+                </div>
+                <div class="alert alert-success" role="status"
+                     invisible="state != 'tested' or not dry_run_ok">
+                    La prueba pasó sin errores. Revise los cambios y las advertencias antes de cargar.
+                </div>
+                <div class="alert alert-danger" role="alert"
+                     invisible="state == 'draft' or error_count == 0">
+                    Hay <field name="error_count" class="d-inline"/> error(es). Un procedimiento con
+                    una fila mala no se carga; corrija el libro y vuelva a probar.
+                </div>
+                <group invisible="state == 'loaded'">
+                    <field name="file" filename="filename"/>
+                    <field name="filename" invisible="1"/>
+                    <field name="archive_missing"/>
+                </group>
+                <group invisible="state == 'draft'">
+                    <field name="summary"/>
+                    <field name="warning_count"/>
+                    <field name="confirm" invisible="state != 'tested' or not dry_run_ok"/>
+                </group>
+                <field name="line_ids" invisible="state == 'draft' and not line_ids">
+                    <list decoration-danger="action == 'error'"
+                          decoration-warning="action == 'warning'"
+                          decoration-success="action == 'created'"
+                          decoration-muted="action == 'archived'">
+                        <field name="action" widget="badge"/>
+                        <field name="fila"/>
+                        <field name="clave"/>
+                        <field name="n"/>
+                        <field name="message"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_test" type="object" string="Probar (modo de prueba)"
+                            class="btn-primary" invisible="state == 'loaded'"/>
+                    <button name="action_load" type="object" string="Cargar"
+                            class="btn-secondary" invisible="state != 'tested' or not confirm or not dry_run_ok"
+                            confirm="Se escribirán las rutinas en la base. ¿Continuar?"/>
+                    <button string="Cerrar" special="cancel" class="btn-link"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_legacy_routine_import_action" model="ir.actions.act_window">
+        <field name="name">Importar rutinas</field>
+        <field name="res_model">sgi.legacy.routine.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ============ RUTINA POR RUTINA (submenú 40) ============ -->
+    <record id="sgi_legacy_routine_view_list" model="ir.ui.view">
+        <field name="name">sgi.legacy.routine.list</field>
+        <field name="model">sgi.legacy.routine</field>
+        <field name="arch" type="xml">
+            <list string="Rutina por rutina" decoration-danger="state == 'pendiente' and not decision"
+                  decoration-warning="state == 'pendiente' and decision"
+                  decoration-muted="state == 'eliminada'">
+                <header>
+                    <button name="%(sgi_legacy_routine_import_action)d" type="action"
+                            string="Importar rutinas" display="always"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                </header>
+                <field name="procedure_code"/>
+                <field name="n"/>
+                <field name="name"/>
+                <field name="frequency" optional="show"/>
+                <field name="previous_owner" optional="show"/>
+                <!-- 57.98.0 (I-06): pendiente en amarillo; el renglón «pendiente y
+                     sin decisión» y su fecha límite siguen en rojo. -->
+                <field name="state" widget="badge"
+                       decoration-success="state in ('cubierta', 'reemplazada')"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-muted="state == 'eliminada'"/>
+                <field name="activity_numbers"/>
+                <field name="reason" optional="hide"/>
+                <field name="decision" optional="show"/>
+                <field name="decision_owner_id" optional="show"/>
+                <field name="decision_deadline" optional="show"
+                       decoration-danger="state == 'pendiente'"/>
+                <field name="review_state" optional="hide"/>
+                <field name="process_id" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_legacy_routine_view_form" model="ir.ui.view">
+        <field name="name">sgi.legacy.routine.form</field>
+        <field name="model">sgi.legacy.routine</field>
+        <field name="arch" type="xml">
+            <form string="Rutina del procedimiento anterior">
+                <header>
+                    <button name="action_open_activities" type="object" string="Abrir en Odoo"
+                            icon="fa-external-link" class="btn-primary" invisible="not activity_ids"/>
+                    <button name="action_open_procedure" type="object" string="Ver el procedimiento anterior"
+                            icon="fa-file-pdf-o"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_title">
+                        <h3><field name="procedure_code" readonly="1"/> · <field name="n" class="oe_inline"/></h3>
+                        <h1><field name="name" placeholder="Qué se hacía en el Dropbox"/></h1>
+                    </div>
+                    <group>
+                        <group string="En el Dropbox">
+                            <field name="procedure_id" options="{'no_create': True}"/>
+                            <field name="procedure_migration_state"/>
+                            <field name="frequency"/>
+                            <field name="previous_owner"/>
+                        </group>
+                        <group string="En Odoo">
+                            <field name="state"/>
+                            <field name="process_id"/>
+                            <field name="activity_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   invisible="state != 'cubierta' and not activity_ids"/>
+                            <field name="activity_numbers" invisible="not activity_numbers"/>
+                            <field name="has_archived_activity" invisible="not has_archived_activity"/>
+                            <field name="reason"/>
+                        </group>
+                    </group>
+                    <group invisible="state != 'pendiente'">
+                        <group string="Pendiente: qué se decide">
+                            <field name="decision"/>
+                            <field name="decision_owner_id" options="{'no_create': True}"/>
+                            <field name="decision_deadline"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Revisión del dueño del proceso">
+                            <field name="review_state"/>
+                            <field name="review_note"/>
+                        </group>
+                        <group string="Resolución" invisible="not resolved_date">
+                            <field name="resolved_date"/>
+                            <field name="resolved_uid"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_legacy_routine_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.legacy.routine.pivot</field>
+        <field name="model">sgi.legacy.routine</field>
+        <field name="arch" type="xml">
+            <pivot string="Rutinas por proceso y estado">
+                <field name="process_id" type="row"/>
+                <field name="state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_legacy_routine_view_search" model="ir.ui.view">
+        <field name="name">sgi.legacy.routine.search</field>
+        <field name="model">sgi.legacy.routine</field>
+        <field name="arch" type="xml">
+            <search string="Rutina por rutina">
+                <field name="procedure_code" string="Clave o rutina"
+                       filter_domain="['|', ('procedure_code', 'ilike', self), ('name', 'ilike', self)]"/>
+                <field name="activity_numbers"/>
+                <field name="previous_owner"/>
+                <field name="process_id"/>
+                <field name="decision_owner_id"/>
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pendiente')]"/>
+                <filter name="pending_undecided" string="Pendientes sin decisión"
+                        domain="[('state', '=', 'pendiente'), ('decision', '=', False)]"/>
+                <filter name="replaced" string="La hace Odoo" domain="[('state', '=', 'reemplazada')]"/>
+                <filter name="covered" string="Cubiertas" domain="[('state', '=', 'cubierta')]"/>
+                <filter name="eliminated" string="Eliminadas" domain="[('state', '=', 'eliminada')]"/>
+                <separator/>
+                <filter name="archived_activity" string="Cubiertas por actividad archivada"
+                        domain="[('has_archived_activity', '=', True)]"/>
+                <filter name="review_fix" string="Marcadas «Corregir»"
+                        domain="[('review_state', '=', 'corregir')]"/>
+                <separator/>
+                <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_procedure" string="Procedimiento"
+                            context="{'group_by': 'procedure_code'}"/>
+                    <filter name="group_process" string="Proceso nuevo" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_routine_action" model="ir.actions.act_window">
+        <!-- 57.0.0: solo Auditor, Jefe MAST, Dirección y Dueño de proceso. -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_auditor'), ref('quimibond_sgi.group_sgi_manager'),
+            ref('quimibond_sgi.group_sgi_director'), ref('quimibond_sgi.group_sgi_process_owner')])]"/>
+        <field name="name">Rutina por rutina</field>
+        <field name="res_model">sgi.legacy.routine</field>
+        <field name="view_mode">list,form,pivot</field>
+        <field name="context">{'search_default_group_procedure': 1}</field>
+        <field name="search_view_id" ref="sgi_legacy_routine_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_legacy_routine_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_legacy_routine_view_form')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_legacy_routine_view_pivot')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay rutinas cargadas</p>
+            <p>Cada rutina de los procedimientos del Dropbox y qué pasó con ella en Odoo.
+            El Jefe MAST las carga con «Importar rutinas» (primero en modo de prueba).</p>
+        </field>
+    </record>
+
+    <!-- ============ BUSCADOR POR CLAVE ANTERIOR (submenú 10) ============ -->
+    <record id="sgi_dropbox_key_view_list" model="ir.ui.view">
+        <field name="name">sgi.dropbox.key.list</field>
+        <field name="model">sgi.dropbox.key</field>
+        <field name="arch" type="xml">
+            <list string="Buscador por clave anterior" create="0" edit="0" delete="0"
+                  decoration-muted="doc_state == 'obsoleto'">
+                <field name="key"/>
+                <field name="kind"/>
+                <field name="title"/>
+                <field name="process_id"/>
+                <field name="migration_state" optional="show"/>
+                <field name="routine_state" optional="show"
+                       groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+                <field name="doc_state" optional="hide"/>
+                <field name="destination"/>
+                <field name="odoo_menu_id" column_invisible="1"/>
+                <field name="point_id" column_invisible="1"/>
+                <button name="action_open_target" type="object" string="Abrir en Odoo"
+                        icon="fa-external-link" title="Abrir en Odoo"/>
+                <button name="action_open_previous" type="object" string="Ver el anterior"
+                        icon="fa-file-pdf-o" title="Ver el anterior"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_key_view_form" model="ir.ui.view">
+        <field name="name">sgi.dropbox.key.form</field>
+        <field name="model">sgi.dropbox.key</field>
+        <field name="arch" type="xml">
+            <form string="Clave anterior" create="0" edit="0" delete="0">
+                <header>
+                    <button name="action_open_target" type="object" string="Abrir en Odoo"
+                            icon="fa-external-link" class="btn-primary"/>
+                    <button name="action_open_previous" type="object" string="Ver el anterior"
+                            icon="fa-file-pdf-o"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="key"/></h1>
+                        <h3><field name="title"/></h3>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="kind"/>
+                            <field name="process_id"/>
+                            <field name="doc_state" invisible="not doc_state"/>
+                            <field name="migration_state" invisible="not migration_state"/>
+                            <field name="routine_state" invisible="not routine_state"
+                                   groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+                        </group>
+                        <group>
+                            <field name="destination"/>
+                            <field name="document_id" invisible="not document_id"/>
+                            <field name="routine_id" invisible="not routine_id"
+                                   groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+                            <field name="activity_id" invisible="not activity_id"/>
+                            <field name="odoo_menu_id" invisible="not odoo_menu_id"/>
+                            <field name="point_id" invisible="not point_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_key_view_search" model="ir.ui.view">
+        <field name="name">sgi.dropbox.key.search</field>
+        <field name="model">sgi.dropbox.key</field>
+        <field name="arch" type="xml">
+            <search string="Buscador por clave anterior">
+                <field name="key" string="Clave o título"
+                       filter_domain="['|', ('key', 'ilike', self), ('title', 'ilike', self)]"/>
+                <field name="process_id"/>
+                <filter name="procedures" string="Procedimientos" domain="[('kind', '=', 'procedimiento')]"/>
+                <filter name="formats" string="Formatos"
+                        domain="[('kind', 'in', ('formato', 'formato_it', 'formulario_odoo'))]"/>
+                <filter name="instructions" string="Instructivos y DAT"
+                        domain="[('kind', 'in', ('instructivo', 'dat'))]"/>
+                <filter name="routines" string="Rutinas" domain="[('kind', '=', 'rutina')]"
+                        groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+                <filter name="archived_numbers" string="Numerales archivados"
+                        domain="[('kind', '=', 'numeral_archivado')]"/>
+                <separator/>
+                <filter name="no_target" string="Sin destino"
+                        domain="[('kind', '!=', 'rutina'), ('odoo_menu_id', '=', False), ('point_id', '=', False)]"/>
+                <filter name="pending" string="Pendientes"
+                        domain="['|', ('migration_state', 'in', ('pendiente', 'en_curso')), ('routine_state', '=', 'pendiente')]"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_kind" string="Qué es" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_key_action" model="ir.actions.act_window">
+        <field name="name">Buscador por clave anterior</field>
+        <field name="res_model">sgi.dropbox.key</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_dropbox_key_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_dropbox_key_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_dropbox_key_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Escriba la clave del Dropbox</p>
+            <p>Un procedimiento, formato, instructivo, DAT o rutina del Dropbox: qué es hoy
+            y dónde vive en Odoo. «Abrir en Odoo» lleva a la pantalla que lo sustituye.</p>
+        </field>
+    </record>
+
+    <!-- ============ PROCEDIMIENTOS ANTERIORES (submenú 20) ============ -->
+    <record id="sgi_dropbox_procedure_view_list" model="ir.ui.view">
+        <field name="name">sgi.dropbox.procedure.list</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <list string="Procedimientos anteriores" create="0" edit="0" delete="0"
+                  decoration-muted="sgi_state == 'obsoleto'"
+                  decoration-danger="sgi_routine_pending_count > 0">
+                <field name="sgi_previous_code" string="Clave anterior"/>
+                <field name="sgi_title" string="Título"/>
+                <field name="sgi_process_id" string="Proceso actual" optional="show"/>
+                <field name="sgi_replaced_by_process_id" string="Lo sustituye"/>
+                <field name="sgi_state" optional="hide"/>
+                <field name="sgi_migration_state" widget="badge"
+                       decoration-success="sgi_migration_state == 'baja'"
+                       decoration-info="sgi_migration_state == 'en_curso'"
+                       decoration-muted="sgi_migration_state == 'na'"/>
+                <field name="sgi_routine_count" sum="Rutinas"/>
+                <field name="sgi_routine_covered_count" sum="Cubiertas"/>
+                <field name="sgi_routine_replaced_count" sum="La hace Odoo"/>
+                <field name="sgi_routine_eliminated_count" optional="hide" sum="Eliminadas"/>
+                <field name="sgi_routine_pending_count" sum="Pendientes"/>
+                <field name="sgi_routine_resolved_pct" widget="progressbar"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_procedure_view_form" model="ir.ui.view">
+        <field name="name">sgi.dropbox.procedure.form</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="Procedimiento anterior" create="0" delete="0" duplicate="0">
+                <header>
+                    <button name="action_sgi_view_file" type="object" string="Ver el PDF"
+                            icon="fa-file-pdf-o"/>
+                    <button name="action_sgi_open_routines" type="object" string="Rutina por rutina"
+                            icon="fa-list" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+                    <field name="sgi_migration_state" widget="statusbar"
+                           statusbar_visible="en_curso,baja,na"/>
+                </header>
+                <sheet>
+                    <field name="sgi_can_edit_transition" invisible="1"/>
+                    <div class="oe_title">
+                        <h1><field name="sgi_previous_code" readonly="1"/></h1>
+                        <h3><field name="sgi_title" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="El procedimiento">
+                            <field name="sgi_code" string="Clave actual" readonly="1"/>
+                            <field name="sgi_revision" readonly="1"/>
+                            <field name="sgi_state" readonly="1"/>
+                            <field name="sgi_process_id" string="Proceso actual" readonly="1"/>
+                            <field name="sgi_replaced_by_process_id" options="{'no_create': True}"
+                                   readonly="not sgi_can_edit_transition"/>
+                            <field name="sgi_migration_state" readonly="not sgi_can_edit_transition"/>
+                        </group>
+                        <group string="Rutinas">
+                            <field name="sgi_routine_count"/>
+                            <field name="sgi_routine_covered_count"/>
+                            <field name="sgi_routine_replaced_count"/>
+                            <field name="sgi_routine_eliminated_count"/>
+                            <field name="sgi_routine_pending_count"/>
+                            <field name="sgi_routine_resolved_pct" widget="progressbar"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Rutinas" name="rutinas"
+                              groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner">
+                            <field name="sgi_legacy_routine_ids" readonly="not sgi_can_edit_transition"
+                                   context="{'default_procedure_id': id}">
+                                <list decoration-warning="state == 'pendiente'">
+                                    <field name="n"/>
+                                    <field name="name"/>
+                                    <field name="frequency" optional="show"/>
+                                    <field name="previous_owner" optional="show"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="activity_numbers"/>
+                                    <field name="decision" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Documentos de la familia" name="familia">
+                            <field name="sgi_child_document_ids" readonly="1">
+                                <list>
+                                    <field name="sgi_previous_code" string="Clave anterior"/>
+                                    <field name="sgi_title"/>
+                                    <field name="sgi_doc_type"/>
+                                    <field name="sgi_state"/>
+                                    <field name="sgi_migration_state"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="PDF histórico" name="pdf">
+                            <field name="datas" widget="pdf_viewer" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_procedure_view_search" model="ir.ui.view">
+        <field name="name">sgi.dropbox.procedure.search</field>
+        <field name="model">documents.document</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <search string="Procedimientos anteriores">
+                <field name="sgi_previous_code" string="Clave o título"
+                       filter_domain="['|', '|', ('sgi_previous_code', 'ilike', self), ('sgi_code', 'ilike', self), ('sgi_title', 'ilike', self)]"/>
+                <field name="sgi_process_id"/>
+                <field name="sgi_replaced_by_process_id"/>
+                <filter name="replaced" string="Sustituidos"
+                        domain="[('sgi_replaced_by_process_id', '!=', False)]"/>
+                <filter name="with_pending" string="Con pendientes"
+                        domain="[('sgi_replaced_by_process_id', '=', False), ('sgi_migration_state', '=', 'en_curso')]"/>
+                <filter name="control" string="Control operacional"
+                        domain="[('sgi_migration_state', '=', 'na')]"/>
+                <filter name="no_routines" string="Sin rutinas" domain="[('sgi_routine_count', '=', 0)]"/>
+                <filter name="pending_routines" string="Con rutinas pendientes"
+                        domain="[('sgi_routine_pending_count', '>', 0)]"/>
+                <group>
+                    <filter name="group_state" string="Estado de migración"
+                            context="{'group_by': 'sgi_migration_state'}"/>
+                    <filter name="group_process" string="Proceso actual" context="{'group_by': 'sgi_process_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_procedure_action" model="ir.actions.act_window">
+        <!-- 57.0.0: solo Auditor, Jefe MAST, Dirección y Dueño de proceso. -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_auditor'), ref('quimibond_sgi.group_sgi_manager'),
+            ref('quimibond_sgi.group_sgi_director'), ref('quimibond_sgi.group_sgi_process_owner')])]"/>
+        <field name="name">Procedimientos anteriores</field>
+        <field name="res_model">documents.document</field>
+        <field name="view_mode">list,form</field>
+        <!-- P-I01 va aparte (L-001): no sale en la sección. -->
+        <field name="domain">[('sgi_is_controlled', '=', True), ('sgi_doc_type', '=', 'procedimiento'),
+            ('sgi_legacy_family', 'not in', ['P-I01'])]</field>
+        <field name="context">{'search_default_group_state': 1, 'active_test': True}</field>
+        <field name="search_view_id" ref="sgi_dropbox_procedure_view_search"/>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_dropbox_procedure_view_list')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('sgi_dropbox_procedure_view_form')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin procedimientos anteriores</p>
+            <p>Los procedimientos del Dropbox: qué proceso de Odoo los sustituye, en qué
+            estado van y cuántas de sus rutinas ya están resueltas.</p>
+        </field>
+    </record>
+
+    <!-- ============ AVANCE DE LA TRANSICIÓN (submenú 50) ============ -->
+    <record id="sgi_dropbox_progress_view_list" model="ir.ui.view">
+        <field name="name">sgi.dropbox.progress.list</field>
+        <field name="model">sgi.dropbox.progress</field>
+        <field name="arch" type="xml">
+            <list string="Avance de la transición" create="0" edit="0" delete="0"
+                  decoration-danger="routines_pending &gt; 0">
+                <field name="process_id"/>
+                <field name="procedures_replaced" sum="Sustituidos"/>
+                <field name="procedures_pending" sum="Con pendientes"/>
+                <field name="procedures_control" sum="Control operacional" optional="show"/>
+                <field name="routines_total" sum="Rutinas"/>
+                <field name="routines_covered" optional="hide" sum="Cubiertas"/>
+                <field name="routines_replaced" optional="hide" sum="La hace Odoo"/>
+                <field name="routines_eliminated" optional="hide" sum="Eliminadas"/>
+                <field name="routines_pending" sum="Pendientes"/>
+                <field name="routines_undecided" sum="Sin decisión"/>
+                <field name="routines_resolved_pct" widget="progressbar"/>
+                <field name="docs_total" sum="Documentos" optional="show"/>
+                <field name="docs_migrated" sum="Migrados" optional="show"/>
+                <field name="docs_paper" sum="Siguen como documento" optional="show"/>
+                <field name="docs_pending" sum="Documentos pendientes" optional="show"/>
+                <field name="docs_incomplete" sum="Incompletos" optional="show"/>
+                <field name="activities_new" sum="Actividades nuevas" optional="show"/>
+                <field name="progress_pct" widget="progressbar"/>
+                <button name="action_open_procedures" type="object" icon="fa-file-text-o"
+                        string="Procedimientos" title="Procedimientos"/>
+                <button name="action_open_routines" type="object" icon="fa-list"
+                        string="Rutinas" title="Rutinas"/>
+                <button name="action_open_pending_routines" type="object" icon="fa-exclamation-triangle"
+                        string="Pendientes" title="Rutinas pendientes"/>
+                <button name="action_open_documents" type="object" icon="fa-folder-open-o"
+                        string="Documentos" title="Documentos"/>
+                <button name="action_open_new_activities" type="object" icon="fa-plus-square-o"
+                        string="Actividades nuevas" title="Actividades nuevas"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_progress_view_graph" model="ir.ui.view">
+        <field name="name">sgi.dropbox.progress.graph</field>
+        <field name="model">sgi.dropbox.progress</field>
+        <field name="arch" type="xml">
+            <graph string="Avance de la transición" type="bar" stacked="1">
+                <field name="process_id"/>
+                <field name="routines_covered" type="measure"/>
+                <field name="routines_replaced" type="measure"/>
+                <field name="routines_eliminated" type="measure"/>
+                <field name="routines_pending" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_progress_view_pivot" model="ir.ui.view">
+        <field name="name">sgi.dropbox.progress.pivot</field>
+        <field name="model">sgi.dropbox.progress</field>
+        <field name="arch" type="xml">
+            <pivot string="Avance de la transición">
+                <field name="process_id" type="row"/>
+                <field name="routines_total" type="measure"/>
+                <field name="routines_pending" type="measure"/>
+                <field name="docs_total" type="measure"/>
+                <field name="docs_incomplete" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="sgi_dropbox_progress_action" model="ir.actions.act_window">
+        <!-- 57.0.0: solo Auditor, Jefe MAST, Dirección y Dueño de proceso. -->
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_auditor'), ref('quimibond_sgi.group_sgi_manager'),
+            ref('quimibond_sgi.group_sgi_director'), ref('quimibond_sgi.group_sgi_process_owner')])]"/>
+        <field name="name">Avance de la transición</field>
+        <field name="res_model">sgi.dropbox.progress</field>
+        <field name="view_mode">list,graph,pivot</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_dropbox_progress_view_list')}),
+            (0, 0, {'view_mode': 'graph', 'view_id': ref('sgi_dropbox_progress_view_graph')}),
+            (0, 0, {'view_mode': 'pivot', 'view_id': ref('sgi_dropbox_progress_view_pivot')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin procesos activos</p>
+            <p>Un renglón por proceso: procedimientos sustituidos y con pendientes,
+            rutinas resueltas y documentos que ya viven en Odoo o siguen en papel.</p>
+        </field>
+    </record>
+</odoo>

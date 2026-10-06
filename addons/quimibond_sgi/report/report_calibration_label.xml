@@ -8,7 +8,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_calibration_label_document</field>
         <field name="report_file">quimibond_sgi.report_calibration_label_document</field>
-        <field name="print_report_name">'Etiqueta calibrado - %s' % (object.equipment_id.name)</field>
+        <field name="print_report_name">'Etiqueta calibrado - %s' % (object.equipment_id.name or '')</field>
         <field name="binding_model_id" ref="model_sgi_calibration"/>
         <field name="binding_type">report</field>
     </record>
@@ -19,7 +19,7 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_out_of_service_label_document</field>
         <field name="report_file">quimibond_sgi.report_out_of_service_label_document</field>
-        <field name="print_report_name">'Etiqueta fuera de servicio - %s' % (object.equipment_id.name)</field>
+        <field name="print_report_name">'Etiqueta fuera de servicio - %s' % (object.equipment_id.name or '')</field>
         <field name="binding_model_id" ref="model_sgi_calibration"/>
         <field name="binding_type">report</field>
     </record>
@@ -54,7 +54,7 @@
                 <div class="page">
                     <t t-foreach="docs" t-as="cal">
                         <t t-call="quimibond_sgi.sgi_calibration_label_box">
-                            <t t-set="label_code" t-value="'F-P-C03-01'"/>
+                            <t t-set="label_code" t-value="cal.env['sgi.format.map'].sudo().sgi_ref_label('format_ref_calibration_label')"/>
                             <t t-set="label_title" t-value="'EQUIPO O INSTRUMENTO CALIBRADO'"/>
                             <t t-set="out_of_service" t-value="False"/>
                         </t>
@@ -70,7 +70,7 @@
                 <div class="page">
                     <t t-foreach="docs" t-as="cal">
                         <t t-call="quimibond_sgi.sgi_calibration_label_box">
-                            <t t-set="label_code" t-value="'F-P-C03-02'"/>
+                            <t t-set="label_code" t-value="cal.env['sgi.format.map'].sudo().sgi_ref_label('format_ref_out_of_service_label')"/>
                             <t t-set="label_title" t-value="'FUERA DE SERVICIO'"/>
                             <t t-set="out_of_service" t-value="True"/>
                         </t>

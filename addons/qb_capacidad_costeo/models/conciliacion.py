@@ -83,6 +83,13 @@ class QbCostoConciliacion(models.Model):
         string='Fabricación (modelo)', readonly=True)
     modelo_op = fields.Float(
         string='Operación (modelo)', readonly=True)
+    modelo_conv = fields.Float(
+        string='Conversión absorbida vendida (modelo)', readonly=True,
+        help='La conversión que Odoo capitalizó por workcenter (tejido) y '
+             'que llegó a ventas en el mes, siguiendo los lotes. Ya está '
+             'dentro del costo total del modelo: antes de la v1.69 no estaba '
+             'en ninguna capa y el resultado del modelo salía alto por ese '
+             'monto.')
     modelo_costo_total = fields.Float(
         string='Costo total (modelo)', readonly=True,
         help='Σ del costo absorbido de lo vendido. Es lo que el modelo le '
@@ -117,16 +124,19 @@ class QbCostoConciliacion(models.Model):
     gl_otros_costeo = fields.Float(
         string='Costeo en otras cuentas', readonly=True,
         help='Gasto que SÍ entra al costo del producto pero vive en cuentas '
-             'de tipo «otros ingresos». Hoy es el arrendamiento de '
-             'maquinaria (701.11), que el modelo le cobra al producto porque '
-             'son las máquinas con las que se produce. Sin esta línea el '
-             'mayor no lo contaba como gasto y la brecha salía baja por ese '
-             'lado: $13,907,465 entre 2025 y 2026.')
+             'de tipo «otros ingresos» u «otros gastos». Hoy es el '
+             'arrendamiento de maquinaria (701.11), que el modelo le cobra '
+             'al producto porque son las máquinas con las que se produce. '
+             'Sin esta línea el mayor no lo contaba como gasto y la brecha '
+             'salía baja por ese lado: $13,907,465 entre 2025 y 2026. El '
+             '2-sep-2026 la cuenta pasó a «otros gastos» y volvió a '
+             'desaparecer ($1.03M/mes) hasta la v1.67.')
     gl_resultado_integral = fields.Float(
         string='Resultado integral de financiamiento', readonly=True,
-        help='Lo demás que vive en «otros ingresos»: pérdida y utilidad '
-             'cambiaria, intereses, comisiones bancarias, utilidad en venta '
-             'de activo fijo, otros ingresos. NO es costo de producto ni '
+        help='Lo demás que vive en «otros ingresos» y «otros gastos»: '
+             'pérdida y utilidad cambiaria, intereses, comisiones bancarias, '
+             'utilidad en venta de activo fijo, otros ingresos. NO es costo '
+             'de producto ni '
              'debe serlo — pero SÍ es resultado de la empresa, y sin él el '
              'resultado del mayor no era el de la empresa. Positivo = gasto '
              'neto.')
@@ -154,7 +164,10 @@ class QbCostoConciliacion(models.Model):
     ociosidad_ias2 = fields.Float(
         string='Ociosidad no absorbida', readonly=True,
         help='Costo fijo de la capacidad ociosa: bajo IAS 2 va al resultado '
-             'del período y NO al costo del producto. Es una diferencia '
+             'del período y NO al costo del producto. Suma la de los centros '
+             'en capa (pool fijo que la producción no alcanza a absorber) y '
+             'la de los centros absorbidos por Odoo (horas normales × tarifa '
+             'menos lo que de verdad se capitalizó). Es una diferencia '
              'DELIBERADA entre el modelo y el gasto total — por eso se '
              'descuenta de la brecha para leer lo que de verdad falta '
              'explicar.')
@@ -221,24 +234,31 @@ class QbCostoConciliacion(models.Model):
                                 ELSE 0 END) AS gl_no_costeo,
                        SUM(CASE WHEN m.bucket IS NULL
                                      AND aa.account_type NOT IN
-                                         ('income', 'income_other')
+                                         ('income', 'income_other',
+                                          'expense_other')
                                 THEN aml.balance ELSE 0 END)
                            AS gl_sin_clasificar,
-                       -- `income_other` con bucket de COSTEO: hoy es el
-                       -- arrendamiento de maquinaria (701.11), que el modelo
-                       -- SÍ le cobra al producto. Sin esto el mayor no lo
-                       -- contaba y la brecha salía baja por ese lado.
-                       SUM(CASE WHEN aa.account_type = 'income_other'
+                       -- `income_other` / `expense_other` con bucket de
+                       -- COSTEO: hoy es el arrendamiento de maquinaria
+                       -- (701.11), que el modelo SÍ le cobra al producto.
+                       -- Sin esto el mayor no lo contaba y la brecha salía
+                       -- baja por ese lado. La cuenta vivió como «otros
+                       -- ingresos» y desde el 2-sep-2026 como «otros
+                       -- gastos»: los dos tipos cuentan igual.
+                       SUM(CASE WHEN aa.account_type IN ('income_other',
+                                                         'expense_other')
                                      AND m.bucket IS NOT NULL
                                      AND m.bucket NOT IN ('ventas',
                                                           'no_costeo')
                                 THEN aml.balance * m.allocation_pct / 100.0
                                 ELSE 0 END) AS gl_otros_costeo,
-                       -- El resto de `income_other`: resultado integral de
-                       -- financiamiento (cambiaria, intereses, comisiones) y
-                       -- otros ingresos. No es costo de producto ni debe
-                       -- serlo, pero SÍ es resultado de la empresa.
-                       SUM(CASE WHEN aa.account_type = 'income_other'
+                       -- El resto de `income_other` / `expense_other`:
+                       -- resultado integral de financiamiento (cambiaria,
+                       -- intereses, comisiones) y otros ingresos. No es
+                       -- costo de producto ni debe serlo, pero SÍ es
+                       -- resultado de la empresa.
+                       SUM(CASE WHEN aa.account_type IN ('income_other',
+                                                         'expense_other')
                                      AND m.bucket IS NULL
                                 THEN aml.balance ELSE 0 END)
                            AS gl_resultado_integral
@@ -250,13 +270,15 @@ class QbCostoConciliacion(models.Model):
                   AND aml.company_id = {company_id}
                   AND aa.account_type IN ('income', 'income_other',
                                           'expense_direct_cost',
-                                          'expense', 'expense_depreciation')
+                                          'expense', 'expense_depreciation',
+                                          'expense_other')
                   AND {excluir_refs_sql(self.env)}
                 GROUP BY 1, 2
             ),
             factores AS (
                 SELECT period, company_id,
-                       SUM(fab_ocioso_month) AS ociosidad
+                       SUM(fab_ocioso_month
+                           + COALESCE(ocioso_absorbido_month, 0)) AS ociosidad
                 FROM qb_costo_factores
                 WHERE company_id = {company_id}
                 GROUP BY 1, 2
@@ -268,6 +290,7 @@ class QbCostoConciliacion(models.Model):
                        SUM(energia_total) AS energia,
                        SUM(fab_total) AS fab,
                        SUM(op_total) AS op,
+                       SUM(COALESCE(conv_total, 0)) AS conv,
                        SUM(importacion_total) AS importacion,
                        SUM(costo_absorbido_total) AS costo,
                        SUM(margen_neto_total) AS resultado
@@ -293,6 +316,7 @@ class QbCostoConciliacion(models.Model):
                 COALESCE(mo.energia, 0) AS modelo_energia,
                 COALESCE(mo.fab, 0) AS modelo_fab,
                 COALESCE(mo.op, 0) AS modelo_op,
+                COALESCE(mo.conv, 0) AS modelo_conv,
                 COALESCE(mo.costo, 0) AS modelo_costo_total,
                 gl.gl_mp,
                 gl.gl_importacion,

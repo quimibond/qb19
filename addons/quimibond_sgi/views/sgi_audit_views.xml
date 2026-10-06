@@ -8,20 +8,39 @@
             <form string="Programa de auditorías">
                 <header>
                     <button name="action_approve" type="object" string="Aprobar"
-                            class="btn-primary" invisible="state != 'borrador'"/>
-                    <button name="action_close" type="object" string="Cerrar"
-                            invisible="state != 'aprobado'"/>
-                    <button name="action_draft" type="object" string="Volver a borrador"
-                            invisible="state == 'borrador'"/>
+                            class="btn-primary" invisible="state != 'borrador'"
+                            groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_close" confirm="Se cerrará el programa de auditorías y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state != 'aprobado'"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_suggest_lines" type="object" string="Programa sugerido"
+                            icon="fa-magic" invisible="state != 'borrador'"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
+                            help="Una línea por subproceso (en borrador, piloto o vigente), repartidos por trimestre; los procesos con NC abiertas o indicadores en rojo, dos veces al año."/>
+                    <button name="action_draft" confirm="El programa de auditorías regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
+                            invisible="state == 'borrador'"
+                            groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <!-- 57.101.0 (C5): PDF del programa contra lo realizado; también
+                         en borrador (los programas de producción lo están). -->
+                    <button name="action_print_execution" type="object"
+                            string="Programado contra realizado" icon="fa-file-pdf-o"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
-                        <h1><field name="year"/></h1>
+                        <h1>Programa de auditorías <field name="year" class="oe_inline"/></h1>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not coverage_gap_count or state != 'borrador'">
+                        <b>Cobertura de 3 años:</b>
+                        <field name="coverage_gap_count" class="oe_inline"/> subproceso(s) sin
+                        renglón en este programa ni en los dos anteriores registrados en Odoo (ISO 9.2.2). Agréguelos
+                        o deje el motivo en el historial:
+                        <field name="coverage_gap_ids" widget="many2many_tags" readonly="1" nolabel="1"/>
                     </div>
                     <field name="line_ids">
                         <list editable="bottom">
                             <field name="process_id"/>
+                            <field name="partner_id" optional="hide"/>
                             <field name="planned_month"/>
                             <field name="audit_type"/>
                             <field name="norm_ids" widget="many2many_tags"/>
@@ -31,7 +50,8 @@
                                    decoration-info="state == 'creada'"/>
                             <button name="action_create_audit" type="object"
                                     string="Crear auditoría" icon="fa-plus"
-                                    invisible="state != 'pendiente'"/>
+                                    invisible="state != 'pendiente'"
+                                    groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                             <field name="audit_id" readonly="1" optional="hide"/>
                         </list>
                     </field>
@@ -47,6 +67,10 @@
         <field name="arch" type="xml">
             <list string="Programas de auditoría" decoration-muted="state == 'borrador'" decoration-success="state == 'cerrado'">
                 <field name="year"/>
+                <!-- V-M14 (57.80.0): cuántas auditorías lleva y cuántas se hicieron. -->
+                <field name="line_count"/>
+                <field name="line_done_count"/>
+                <field name="progress_pct" widget="progressbar"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'cerrado'"
                        decoration-info="state == 'aprobado'"/>
@@ -54,12 +78,36 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_audit_program_view_search" model="ir.ui.view">
+        <field name="name">sgi.audit.program.search</field>
+        <field name="model">sgi.audit.program</field>
+        <field name="arch" type="xml">
+            <search string="Programas de auditoría">
+                <field name="name"/>
+                <field name="year"/>
+                <filter name="state_borrador" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="state_aprobado" string="Aprobado" domain="[('state', '=', 'aprobado')]"/>
+                <filter name="state_cerrado" string="Cerrado" domain="[('state', '=', 'cerrado')]"/>
+                <separator/>
+                <filter name="this_year" string="Este año" domain="[('year', '=', context_today().year)]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_year" string="Año" context="{'group_by': 'year'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_audit_program_action" model="ir.actions.act_window">
-        <field name="name">Programa de auditorías</field>
+        <field name="name">Programa</field>
         <field name="res_model">sgi.audit.program</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,sgi_diagram,form</field>
+        <!-- 57.98.0 (I-04): abre con el programa de este año. -->
+        <field name="search_view_id" ref="sgi_audit_program_view_search"/>
+        <field name="context">{'search_default_this_year': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el programa anual de auditorías</p>
+            <p class="o_view_nocontent_smiling_face">Cree el programa anual de auditorías</p>
             <p>El sistema avisa al auditor líder 15 días antes de cada auditoría programada.</p>
         </field>
     </record>
@@ -71,36 +119,36 @@
         <field name="arch" type="xml">
             <form string="Auditoría">
                 <header>
+                    <!-- V-M06 (57.42.0): el siguiente paso de cada estado es el único
+                         primario y va primero. -->
                     <button name="action_plan" type="object" string="Planificar"
-                            invisible="state != 'borrador'"/>
+                            class="btn-primary" invisible="state != 'borrador'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_start" type="object" string="Iniciar"
-                            class="btn-primary" invisible="state != 'planificada'"/>
+                            class="btn-primary" invisible="state != 'planificada'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_report" type="object" string="Elaborar informe"
+                            class="btn-primary" invisible="state != 'en_ejecucion'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_close" confirm="Se cerrará la auditoría y dejará de editarse. ¿Desea continuar?" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state != 'informe'" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <button name="action_generate_checklist" type="object"
                             string="Regenerar checklist" icon="fa-refresh"
-                            invisible="state not in ('planificada', 'en_ejecucion')"
-                            help="Agrega las actividades de los procesos auditados que falten en el checklist (no borra respuestas)."/>
-                    <button name="action_answer_checklist" type="object"
-                            string="Contestar checklist (encuesta)" icon="fa-list-ol"
-                            invisible="state != 'en_ejecucion' or not survey_id"/>
-                    <button name="action_generate_findings_from_checklist" type="object"
-                            string="Hallazgos de la encuesta" icon="fa-magic"
-                            invisible="state not in ('en_ejecucion', 'informe') or not survey_input_ids"/>
+                            invisible="state not in ('planificada', 'en_ejecucion')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"
+                            help="Trae al checklist las actividades de los procesos auditados que falten (no borra respuestas)."/>
                     <button name="action_open_report_document" type="object"
-                            string="Ver informe (F-P-G03-07)" icon="fa-file-pdf-o"
+                            string="Ver informe" icon="fa-file-pdf-o"
                             invisible="not report_document_id"/>
-                    <button name="action_report" type="object" string="Elaborar informe"
-                            invisible="state != 'en_ejecucion'"/>
-                    <button name="action_close" type="object" string="Cerrar"
-                            class="btn-primary" invisible="state != 'informe'"/>
                     <button name="action_evaluate_auditors" type="object"
                             string="Evaluar al auditor" icon="fa-star-o"
                             invisible="state not in ('informe', 'cerrada')"
-                            help="Abre la encuesta de evaluación del comportamiento del auditor (sustituye F-IT-P-G03-01-01); la contesta el auditado."/>
-                    <button name="action_draft" type="object" string="Volver a borrador"
-                            invisible="state in ('borrador','cerrada')"/>
+                            help="Abre la encuesta de evaluación del comportamiento del auditor (sustituye el formato anterior; ver Del Dropbox a Odoo); la contesta el auditado."/>
+                    <button name="action_draft" confirm="La auditoría regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
+                            invisible="state in ('borrador','cerrada')" groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Cerrada" bg_color="text-bg-secondary"
+                            invisible="state != 'cerrada'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_findings" type="object"
                                 class="oe_stat_button" icon="fa-search">
@@ -114,33 +162,38 @@
                         </button>
                     </div>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
+                        <h1><field name="sgi_heading" readonly="1"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group string="Alcance">
-                            <field name="audit_type"/>
-                            <field name="norm_ids" widget="many2many_tags"/>
-                            <field name="process_ids" widget="many2many_tags"/>
+                            <field name="audit_type" readonly="sgi_is_locked"/>
+                            <field name="partner_id" readonly="sgi_is_locked" invisible="audit_type not in ('cliente', 'proveedor')"
+                                   required="audit_type in ('cliente', 'proveedor')"/>
+                            <field name="external_report_ref" readonly="sgi_is_locked" invisible="audit_type != 'cliente'"/>
+                            <field name="norm_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="process_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
                             <field name="program_line_id" readonly="1"/>
                         </group>
                         <group string="Equipo y fechas">
-                            <field name="lead_auditor_id"/>
-                            <field name="auditor_ids" widget="many2many_tags"/>
-                            <field name="auditee_ids" widget="many2many_tags"/>
-                            <field name="date_planned"/>
-                            <field name="date_start"/>
-                            <field name="date_end"/>
+                            <field name="lead_auditor_id" readonly="sgi_is_locked"/>
+                            <field name="auditor_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="auditee_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                            <field name="date_planned" readonly="sgi_is_locked"/>
+                            <field name="date_start" readonly="sgi_is_locked"/>
+                            <field name="date_end" readonly="sgi_is_locked"/>
                         </group>
                     </group>
                     <field name="report_document_id" invisible="1"/>
                     <notebook>
                         <page string="Checklist" name="checklist">
                             <div class="text-muted mb-2">
-                                Una pregunta por actividad de cada proceso auditado (se genera al
-                                planificar). «Ver registros» abre la evidencia real del entregable;
+                                Una pregunta por actividad de cada proceso auditado, con los puntos
+                                de la norma que cumple, y una por cada punto de las normas de la
+                                auditoría sin actividad en el SGI (se genera al planificar). «Ver registros» abre la evidencia real del entregable;
                                 cada respuesta distinta de Conforme crea su hallazgo.
                             </div>
-                            <field name="checklist_line_ids" readonly="state in ('borrador', 'cerrada')">
+                            <field name="checklist_line_ids" readonly="(state in ('borrador', 'cerrada')) or sgi_is_locked">
                                 <list editable="bottom" create="0"
                                       decoration-danger="answer in ('nc_mayor', 'nc_menor')"
                                       decoration-warning="answer == 'observacion'"
@@ -148,6 +201,7 @@
                                     <field name="sequence" widget="handle"/>
                                     <field name="process_id" optional="show"/>
                                     <field name="question"/>
+                                    <field name="norm_clause_ids" widget="many2many_tags" optional="show"/>
                                     <field name="executor" optional="show"/>
                                     <field name="deliverables" optional="show"/>
                                     <field name="can_open_records" column_invisible="1"/>
@@ -160,7 +214,7 @@
                             </field>
                         </page>
                         <page string="Hallazgos">
-                            <field name="finding_ids" context="{'default_audit_id': id}">
+                            <field name="finding_ids" readonly="sgi_is_locked" context="{'default_audit_id': id}">
                                 <list editable="bottom">
                                     <field name="finding_type"/>
                                     <field name="norm_clause_id"/>
@@ -179,29 +233,18 @@
                         <page string="Reuniones">
                             <div class="text-muted mb-2">
                                 Los asistentes son los de «Equipo y fechas»;
-                                aquí quedan las actas. Sustituyen los formatos
-                                F-P-G03-05 (apertura) y F-P-G03-06 (cierre).
+                                aquí quedan las actas de apertura y de cierre. Sustituyen
+                                los formatos anteriores (ver Del Dropbox a Odoo).
                             </div>
                             <group>
-                                <field name="opening_minutes"
+                                <field name="opening_minutes" readonly="sgi_is_locked"
                                        placeholder="Apertura: alcance confirmado, agenda, criterios, acuerdos..."/>
-                                <field name="closing_minutes"
+                                <field name="closing_minutes" readonly="sgi_is_locked"
                                        placeholder="Cierre: hallazgos presentados, conclusión, plazos de respuesta..."/>
                             </group>
                         </page>
                         <page string="Conclusión">
-                            <field name="conclusion" nolabel="1"/>
-                        </page>
-                        <page string="Encuesta (legado)" name="survey" invisible="not survey_id and state != 'borrador'">
-                            <div class="text-muted mb-2">
-                                Checklist por encuesta de versiones anteriores. Desde 50.0.0 el checklist
-                                sale del proceso (pestaña Checklist); esta encuesta solo se conserva
-                                para auditorías ya contestadas.
-                            </div>
-                            <group>
-                                <field name="survey_id"/>
-                                <field name="survey_input_ids" widget="many2many_tags"/>
-                            </group>
+                            <field name="conclusion" readonly="sgi_is_locked" nolabel="1"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -215,12 +258,19 @@
         <field name="model">sgi.audit</field>
         <field name="arch" type="xml">
             <list string="Auditorías" decoration-muted="state == 'borrador'" decoration-info="state in ('planificada', 'en_ejecucion', 'informe')" decoration-success="state == 'cerrada'">
+                <!-- V-M14 (57.80.0): qué se auditó, a quién y cuándo terminó. -->
                 <field name="folio"/>
                 <field name="audit_type"/>
+                <field name="process_ids" widget="many2many_tags"/>
+                <field name="partner_id" optional="hide"/>
                 <field name="date_planned"/>
-                <field name="lead_auditor_id"/>
+                <field name="date_end" optional="show"/>
+                <field name="lead_auditor_id" widget="many2one_avatar_user"/>
                 <field name="finding_count"/>
-                <field name="state"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state == 'borrador'"
+                       decoration-info="state in ('planificada', 'en_ejecucion', 'informe')"
+                       decoration-success="state == 'cerrada'"/>
             </list>
         </field>
     </record>
@@ -235,6 +285,11 @@
                 <field name="process_ids"/>
                 <filter name="open" string="En curso"
                         domain="[('state','not in',('cerrada',))]"/>
+                <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
+                <separator/>
+                <filter name="mine" string="Míos"
+                        domain="['|', '|', ('lead_auditor_id', '=', uid), ('auditor_ids', 'in', uid), ('auditee_ids', 'in', uid)]"/>
+                <filter name="filter_date_planned" string="Fecha planificada" date="date_planned"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'audit_type'}"/>
                     <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
@@ -243,14 +298,31 @@
         </field>
     </record>
 
+    <!-- V-B12 (57.80.0): las auditorías en el calendario por fecha
+         planificada, con color por estado. -->
+    <record id="sgi_audit_view_calendar" model="ir.ui.view">
+        <field name="name">sgi.audit.calendar</field>
+        <field name="model">sgi.audit</field>
+        <field name="arch" type="xml">
+            <calendar string="Auditorías" date_start="date_planned" color="state"
+                      mode="month" quick_create="0" event_open_popup="0">
+                <field name="audit_type"/>
+                <field name="lead_auditor_id"/>
+                <field name="process_ids" widget="many2many_tags"/>
+                <field name="state"/>
+            </calendar>
+        </field>
+    </record>
+
     <record id="sgi_audit_action" model="ir.actions.act_window">
         <field name="name">Auditorías</field>
         <field name="res_model">sgi.audit</field>
-        <field name="view_mode">list,form,activity</field>
+        <field name="view_mode">list,calendar,form,activity</field>
+        <field name="context">{'search_default_open': 1}</field>
         <field name="search_view_id" ref="sgi_audit_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Programa la primera auditoría</p>
-            <p>Folio AUD- automático, checklist contestable en Encuestas y hallazgos convertibles en NC con un clic. Nadie puede auditar su propio proceso.</p>
+            <p class="o_view_nocontent_smiling_face">Programe la primera auditoría</p>
+            <p>Folio AUD- automático, checklist que sale de las actividades de los procesos auditados y hallazgos convertibles en NC con un clic. Nadie puede auditar su propio proceso.</p>
         </field>
     </record>
 

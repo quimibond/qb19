@@ -11,12 +11,17 @@
   si exige proceso, claves heredadas aceptadas). Nada de la nomenclatura queda
   cerrado en código.
 """
+import csv
+import io
 import logging
 import re
 import unicodedata
 
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
+from odoo.tools import SQL, sql
+
+from .sgi_guard import sgi_require_system
 
 _logger = logging.getLogger(__name__)
 
@@ -44,6 +49,10 @@ SGI_RELATIVE_ROLES = [
     ('area_responsable', "Área responsable"),
     ('dueno_proceso', "Dueño del proceso"),
 ]
+# 57.13.0: los relativos que dependen del registro que se pide, aprueba o
+# detecta. Sin registro no hay a quién (ver sgi_relative_roles).
+SGI_RECORD_RELATIVES = ('solicitante', 'jefe_del_solicitante', 'quien_detecta',
+                        'area_responsable')
 
 
 def sgi_normalize_name(name):
@@ -66,7 +75,8 @@ class SgiJobFamily(models.Model):
     name = fields.Char(string="Familia", required=True)
     job_ids = fields.Many2many(
         'hr.job', 'sgi_job_family_rel', 'family_id', 'job_id',
-        string="Puestos")
+        string="Puestos",
+        help="Puestos que forman la familia. Lo asignado a la familia les toca a todos.")
     company_id = fields.Many2one(
         'res.company', string="Empresa", required=True, index=True,
         default=lambda self: self.env.company)
@@ -96,10 +106,15 @@ class SgiJobFamily(models.Model):
 
     @api.constrains('job_ids', 'company_id', 'active')
     def _check_job_single_family(self):
-        """Un puesto pertenece a una sola familia por empresa."""
+        """Un puesto pertenece a una sola familia ACTIVA por empresa.
+
+        57.13.0: la carga por API busca con ``active_test=False`` y el
+        contexto llegaba hasta aquí: una familia archivada con el mismo puesto
+        impedía crear la nueva."""
         for family in self.filtered('active'):
             others = self.search([
                 ('id', '!=', family.id),
+                ('active', '=', True),
                 ('company_id', '=', family.company_id.id),
                 ('job_ids', 'in', family.job_ids.ids),
             ]) if family.job_ids else self.browse()
@@ -112,29 +127,41 @@ class SgiJobFamily(models.Model):
 
 
 class SgiActivityRole(models.Model):
+    """Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, aprueba,
+    participa, informa, escala). Es la fuente de Mi procedimiento, de Mis pendientes y de los
+    aprobadores nativos."""
     _name = 'sgi.activity.role'
     _description = "Rol de un puesto en una actividad SGI"
     _order = 'activity_id, sequence, id'
 
     activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad", required=True,
-        ondelete='cascade', index=True)
+        ondelete='cascade', index=True,
+        help="Actividad a la que se asigna el rol.")
     role = fields.Selection(
-        SGI_ROLE_SELECTION, string="Rol", required=True, default='ejecuta')
+        SGI_ROLE_SELECTION, string="Rol", required=True, default='ejecuta',
+        help="Ejecuta (la hace), aprueba, participa, se entera o escala (recibe el atraso).")
     # A quién toca: un puesto, una familia de puestos o un rol relativo
     # (el solicitante, quien detecta…). Exactamente uno según target_type.
     target_type = fields.Selection(
-        SGI_ROLE_TARGETS, string="Asignado a", required=True, default='job')
+        SGI_ROLE_TARGETS, string="Asignado a", required=True, default='job',
+        help="A quién toca: un puesto, una familia de puestos o un rol relativo (el solicitante, quien "
+             "detecta, el dueño del proceso…).")
     job_id = fields.Many2one(
-        'hr.job', string="Puesto", ondelete='restrict', index=True)
+        'hr.job', string="Puesto", ondelete='restrict', index=True,
+        help="Puesto al que se asigna el rol (cuando «Asignado a» es puesto).")
     family_id = fields.Many2one(
         'sgi.job.family', string="Familia de puestos", ondelete='restrict',
-        index=True)
+        index=True,
+        help="Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia).")
     relative_role = fields.Selection(
         SGI_RELATIVE_ROLES, string="Rol relativo",
-        help="Rol que no es de un puesto fijo. «Dueño del proceso» se resuelve "
-             "al dueño del proceso; los demás no se resuelven a un puesto (no "
-             "cuentan para «puesto sin persona» ni para adherencia).")
+        help="Rol que no es de un puesto fijo. «Dueño del proceso»: el dueño del "
+             "proceso del registro (o, si no tiene, el de la actividad). "
+             "Solicitante, jefe del que pide, quien detecta y área responsable "
+             "se resuelven con cada registro (quien lo pide o crea, su jefe, "
+             "el responsable del departamento). Quien aprueba o recibe el "
+             "escalamiento nunca es quien ejecuta o pide: sube a su jefe.")
     after_days = fields.Integer(
         string="Escala a los (días hábiles)",
         help="Solo para «Escala»: días hábiles después del plazo de la actividad "
@@ -147,7 +174,8 @@ class SgiActivityRole(models.Model):
     sequence = fields.Integer(string="Secuencia", default=10)
     process_id = fields.Many2one(
         related='activity_id.process_id', string="Proceso", store=True,
-        index=True)
+        index=True,
+        help="Proceso de la actividad.")
     company_id = fields.Many2one(
         related='activity_id.company_id', string="Empresa", store=True,
         index=True)
@@ -195,7 +223,7 @@ class SgiActivityRole(models.Model):
         for role in self:
             if role.role == 'escala' and role.after_days <= 0:
                 raise ValidationError(
-                    "«%s» escala: indica a los cuántos días hábiles (after_days)."
+                    "«%s» escala: indique a los cuántos días hábiles (after_days)."
                     % role.display_name)
             if role.role != 'escala' and role.after_days:
                 raise ValidationError(
@@ -275,30 +303,38 @@ class SgiActivityRole(models.Model):
             activities._sgi_check_roles()
         activities.process_id._sgi_flag_procedure_dirty()
 
+    def _sgi_mp_jobs(self):
+        """Puestos cuyo «Mi procedimiento» depende de estos roles (directos
+        y los de su familia)."""
+        return self.sudo().job_id | self.sudo().family_id.job_ids
+
     @api.model_create_multi
     def create(self, vals_list):
         roles = super().create(vals_list)
         roles._sgi_after_change(roles.activity_id)
+        self.env['hr.employee']._sgi_mp_touch_jobs(roles._sgi_mp_jobs())
         return roles
 
     def write(self, vals):
         before = self.activity_id
+        jobs = self._sgi_mp_jobs()
         res = super().write(vals)
         self._sgi_after_change(before | self.activity_id)
+        self.env['hr.employee']._sgi_mp_touch_jobs(jobs | self._sgi_mp_jobs())
         return res
 
     def unlink(self):
         activities = self.activity_id
+        jobs = self._sgi_mp_jobs()
         res = super().unlink()
         self._sgi_after_change(activities)
+        self.env['hr.employee']._sgi_mp_touch_jobs(jobs)
         return res
 
 
 class HrJob(models.Model):
     _inherit = 'hr.job'
 
-    sgi_role_ids = fields.One2many(
-        'sgi.activity.role', 'job_id', string="Roles en actividades SGI")
     sgi_family_ids = fields.Many2many(
         'sgi.job.family', 'sgi_job_family_rel', 'job_id', 'family_id',
         string="Familias SGI", readonly=True)
@@ -343,12 +379,20 @@ class HrJob(models.Model):
 
     def _sgi_roles_domain(self):
         """Roles del puesto: los suyos y los de su familia (el puesto hereda
-        las actividades de su familia)."""
+        las actividades de su familia), solo de actividades activas. Los
+        roles de actividades archivadas se quedan en la base (223 en
+        producción, 2026-09-28) pero no cuentan ni se muestran (56.15.0)."""
         families = self.sgi_family_id
         domain = [('job_id', 'in', self.ids)]
         if families:
             domain = ['|'] + domain + [('family_id', 'in', families.ids)]
-        return domain
+        # 56.16.0: con equipos de venta, solo las actividades generales y las
+        # de sus equipos (los de la persona si se calcula para ella).
+        teams = self._sgi_mp_teams()
+        if teams:
+            domain += ['|', ('activity_id.sale_team_ids', '=', False),
+                       ('activity_id.sale_team_ids', 'in', teams.ids)]
+        return [('activity_active', '=', True)] + domain
     sgi_execute_count = fields.Integer(
         string="Ejecuta", compute='_compute_sgi_role_counts')
     sgi_approve_count = fields.Integer(
@@ -361,7 +405,8 @@ class HrJob(models.Model):
         string="Actividades SGI", compute='_compute_sgi_role_counts')
     sgi_all_role_ids = fields.Many2many(
         'sgi.activity.role', string="Actividades SGI (propias y de su familia)",
-        compute='_compute_sgi_all_role_ids')
+        compute='_compute_sgi_all_role_ids',
+        help="Actividades del SGI del puesto: las propias y las de su familia de puestos.")
 
     def _compute_sgi_all_role_ids(self):
         Role = self.env['sgi.activity.role']
@@ -369,23 +414,31 @@ class HrJob(models.Model):
             job.sgi_all_role_ids = Role.search(job._sgi_roles_domain()) if job.id else Role
 
     def _compute_sgi_role_counts(self):
-        """Roles propios más los de su familia."""
-        jobs = self.filtered('id')
+        """Roles propios más los de su familia, de actividades activas."""
+        # Con equipos de venta el conteo va por puesto (56.16.0).
+        scoped = self.filtered(lambda j: j.id and j._sgi_mp_teams(for_employee=False))
+        jobs = self.filtered('id') - scoped
         by_job, by_family = {}, {}
+        for job in scoped:
+            for role, count in self.env['sgi.activity.role']._read_group(
+                    job._sgi_roles_domain(), ['role'], ['__count']):
+                by_job[(job.id, role)] = count
         if jobs:
             Role = self.env['sgi.activity.role']
             for job, role, count in Role._read_group(
-                    [('job_id', 'in', jobs.ids)], ['job_id', 'role'], ['__count']):
+                    [('job_id', 'in', jobs.ids), ('activity_active', '=', True)],
+                    ['job_id', 'role'], ['__count']):
                 by_job[(job.id, role)] = count
             if jobs.sgi_family_id:
                 for family, role, count in Role._read_group(
-                        [('family_id', 'in', jobs.sgi_family_id.ids)],
+                        [('family_id', 'in', jobs.sgi_family_id.ids), ('activity_active', '=', True)],
                         ['family_id', 'role'], ['__count']):
                     by_family[(family.id, role)] = count
         for job in self:
             def total(role, job=job):
-                return (by_job.get((job.id, role), 0)
-                        + by_family.get((job.sgi_family_id.id, role), 0))
+                # Con equipos, la familia ya viene en el conteo del puesto.
+                family = 0 if job in scoped else by_family.get((job.sgi_family_id.id, role), 0)
+                return by_job.get((job.id, role), 0) + family
             job.sgi_execute_count = total('ejecuta')
             job.sgi_approve_count = total('aprueba')
             job.sgi_participate_count = total('participa')
@@ -428,8 +481,8 @@ class HrJob(models.Model):
         if len(matches) > 1:
             return Job.browse(), (
                 "El puesto «%s» es ambiguo: hay %d con ese nombre (ids %s). "
-                "Fusiona los duplicados (hr.job.sgi_merge_duplicate_jobs) o "
-                "usa el id." % (ref, len(matches), matches.ids))
+                "Fusione los duplicados (hr.job.sgi_merge_duplicate_jobs) o "
+                "use el id." % (ref, len(matches), matches.ids))
         return matches, None
 
     # ------------------------------------------------------------------
@@ -448,6 +501,29 @@ class HrJob(models.Model):
                         and not field.compute and not field.related):
                     refs.append((model_name, name, field))
         return refs
+
+    @api.model
+    def _sgi_merge_recompute(self, keep, others):
+        """Tras mover por SQL las referencias de ``others`` a ``keep``: marca
+        para recalcular los campos guardados calculados o relacionados que
+        apuntan a hr.job (siguen con el valor viejo o dependen de uno que se
+        movió) y el procedimiento guardado de los empleados de ``keep``."""
+        for model_name in self.env.registry:
+            Model = self.env[model_name]
+            if Model._abstract or Model._transient or not Model._auto:
+                continue
+            for name, field in Model._fields.items():
+                if (field.type in ('many2one', 'many2many') and field.comodel_name == 'hr.job'
+                        and field.store and (field.compute or field.related)):
+                    records = Model.sudo().with_context(active_test=False).search(
+                        [(name, 'in', (keep | others).ids)])
+                    if records:
+                        self.env.add_to_compute(field, records)
+        # Primero el puesto guardado del empleado; con él ya al día, el
+        # «Mi procedimiento» guardado de quienes quedaron en ``keep``.
+        self.env.flush_all()
+        self.env['hr.employee']._sgi_mp_touch_jobs(keep | others)
+        self.env.flush_all()
 
     @api.model
     def sgi_merge_duplicate_jobs(self, dry_run=True, company_id=None):
@@ -475,6 +551,10 @@ class HrJob(models.Model):
         refs = self._sgi_job_references()
         cr = self.env.cr
         report = {'dry_run': bool(dry_run), 'merged': [], 'renamed': []}
+        if not dry_run:
+            # 57.17.0 (G-023): las escrituras pendientes del ORM van a la base
+            # ANTES del SQL; si no, se aplicaban después y pisaban la fusión.
+            self.env.flush_all()
         for dup_group in groups.values():
             if len(dup_group) < 2:
                 continue
@@ -513,6 +593,11 @@ class HrJob(models.Model):
             })
             if not dry_run:
                 self.env.invalidate_all()
+                # 57.17.0 (G-023): los campos guardados que se calculan a
+                # partir del puesto (p. ej. hr.employee.sgi_mp_job_id, que sale
+                # de la versión) y el «Mi procedimiento» guardado de quienes
+                # quedaron en el puesto que se conserva.
+                self._sgi_merge_recompute(keep, others)
                 others.write({'active': False})
                 for other in others:
                     other.message_post(
@@ -562,7 +647,7 @@ class SgiDocumentType(models.Model):
              "proceso (salvo que conserve una clave heredada).")
     code_required = fields.Boolean(
         string="Exige clave", default=True,
-        help="Apágalo para tipos sin clave propia (documentos externos, "
+        help="Apáguelo para tipos sin clave propia (documentos externos, "
              "formularios de Odoo).")
     legacy_code_regex = fields.Char(
         string="Claves heredadas aceptadas (regex)",
@@ -595,7 +680,7 @@ class SgiDocumentType(models.Model):
                 dtype._sgi_format_code('X', 1)
             except (KeyError, ValueError, IndexError, re.error) as exc:
                 raise ValidationError(
-                    "El patrón de clave «%s» no es válido (%s). Usa solo "
+                    "El patrón de clave «%s» no es válido (%s). Use solo "
                     "{process} y {seq} / {seq:02d}." % (dtype.prefix_pattern, exc))
 
     _TOKEN_RE = re.compile(r'\{(process|seq)(?::0?(\d+)d)?\}')
@@ -650,6 +735,18 @@ class SgiDocumentType(models.Model):
                 return True
         return self._sgi_legacy_match(code)
 
+    def _sgi_new_code_ok(self, code, process=None):
+        """¿La clave cumple la nomenclatura NUEVA del tipo (D-02)? A
+        diferencia de ``_sgi_code_ok``, la clave heredada del Dropbox no
+        cuenta: ``PR-C1`` es clave nueva de procedimiento, ``P-C01`` no (J-006)."""
+        self.ensure_one()
+        code = (code or '').strip()
+        if not code or not self.prefix_pattern:
+            return False
+        if '{process}' in self.prefix_pattern and not process:
+            return False
+        return bool(self._sgi_pattern_regex(process.code if process else None).match(code))
+
     @api.model
     def _sgi_any_match(self, code):
         """¿Alguna nomenclatura activa (nueva o heredada) acepta la clave?"""
@@ -687,21 +784,127 @@ class SgiConfigStudioCleanup(models.AbstractModel):
     _inherit = 'sgi.config'
 
     # Modelos de Studio que el SGI sustituye (actividades por empleado, NC,
-    # obligaciones). Se borran SOLO si siguen vacíos.
+    # obligaciones). D-11 (Jose, 2026-09-29): se borran SOLO si los cuatro
+    # siguen vacíos, archivados incluidos.
     _SGI_STUDIO_MODELS = (
         'x_emp_activity', 'x_no_conformidades', 'x_actividades_obligato',
         'x_calendario_de_obliga')
+    # D-11 ampliada (Jose, 2026-09-29; 57.12.0): sus acompañantes de Studio
+    # (``<modelo>_*``) se borran junto con su padre. Valor = filas que se
+    # esperan como máximo: las 3 etapas por omisión de Studio («Nuevo», «En
+    # progreso», «Listo», producción 2026-09-29) se respaldan en CSV antes de
+    # borrar; etiquetas y líneas deben estar vacías. Un acompañante que no
+    # esté aquí, con más filas o al que apunte un campo de fuera de la
+    # familia detiene todo. El menú 1643 «Calendario de obligaciones Stages»
+    # se va con la acción de su acompañante.
+    _SGI_STUDIO_COMPANIONS = {
+        'x_actividades_obligato_stage': 3,
+        'x_calendario_de_obliga_stage': 3,
+        'x_no_conformidades_stage': 3,
+        'x_no_conformidades_tag': 0,
+        'x_no_conformidades_line_0ff2d': 0,
+    }
+
+    def _sgi_studio_row_count(self, ir_model):
+        """Filas de la tabla del modelo contadas por SQL (sin reglas, sin
+        ``active``, sin ACL: ``x_emp_activity`` no tiene ningún permiso).
+        ``None`` si la tabla no existe."""
+        table = ir_model.model.replace('.', '_')
+        if not sql.table_exists(self.env.cr, table):
+            return None
+        self.env.cr.execute(SQL("SELECT count(*) FROM %s", SQL.identifier(table)))
+        return self.env.cr.fetchone()[0]
+
+    def _sgi_studio_log(self, message, level='INFO'):
+        """Deja constancia persistente (Ajustes → Técnico → Registros)."""
+        _logger.log(logging.getLevelName(level), message)
+        self.env['ir.logging'].sudo().create({
+            'name': 'quimibond_sgi.studio_cleanup', 'type': 'server', 'level': level,
+            'dbname': self.env.cr.dbname, 'message': message,
+            'path': 'quimibond_sgi/models/sgi_catalog.py',
+            'func': 'sgi_drop_empty_studio_models', 'line': '0'})
+
+    def _sgi_studio_backup_csv(self, ir_model):
+        """CSV con todas las filas de la tabla (SQL, archivados incluidos),
+        adjunto a la empresa del SGI: sobrevive al borrado del modelo."""
+        table = ir_model.model.replace('.', '_')
+        self.env.cr.execute(SQL("SELECT * FROM %s ORDER BY id", SQL.identifier(table)))
+        columns = [desc[0] for desc in self.env.cr.description]
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(columns)
+        rows = self.env.cr.fetchall()
+        for row in rows:
+            writer.writerow(['' if value is None else value for value in row])
+        company = self._sgi_company()
+        return self.env['ir.attachment'].sudo().create({
+            'name': 'respaldo_d11_%s_%s.csv' % (table, fields.Date.context_today(self)),
+            'res_model': 'res.company', 'res_id': company.id,
+            'description': "D-11: %d fila(s) de %s («%s») antes de borrar el modelo de Studio."
+                           % (len(rows), ir_model.model, ir_model.name),
+            'mimetype': 'text/csv', 'raw': buffer.getvalue().encode('utf-8')})
+
+    def _sgi_studio_drop_model(self, model):
+        """Borra un modelo de Studio con sus menús, acciones y vistas.
+        Devuelve el resumen para el log."""
+        name = model.model
+        actions = self.env['ir.actions.act_window'].sudo().search([('res_model', '=', name)])
+        menus = self.env['ir.ui.menu'].sudo().with_context(active_test=False).search(
+            [('action', 'in', ['ir.actions.act_window,%d' % a for a in actions.ids])])
+        views = self.env['ir.ui.view'].sudo().with_context(active_test=False).search(
+            [('model', '=', name)])
+        # Los one2many de Studio del propio modelo van primero: con ellos
+        # vivos Odoo no deja quitar el many2one inverso del acompañante.
+        model.field_id.filtered(
+            lambda f: f.state == 'manual' and f.ttype == 'one2many').unlink()
+        summary = "menús %s, acciones %s, vistas %s" % (menus.ids, actions.ids, views.ids)
+        menus.unlink()
+        actions.unlink()
+        views.unlink()
+        self.env['ir.model'].sudo().browse(model.id).unlink()
+        return summary
 
     @api.model
     def sgi_drop_empty_studio_models(self, dry_run=True):
-        """Borra los modelos de Studio vacíos que el SGI sustituye, con sus
-        vistas, acciones y menús. Un modelo con al menos un registro no se
-        toca. Con ``dry_run`` (por omisión) solo reporta. Se corre a mano
-        fuera de un update: borrar un modelo recarga el registro."""
-        if not (self.env.su or self.env.user.has_group('quimibond_sgi.group_sgi_admin')):
-            raise UserError("Solo un Administrador SGI puede borrar modelos de Studio.")
+        """D-11 (57.7.0, ampliada en 57.12.0): borra los modelos de Studio
+        vacíos que el SGI sustituye y sus acompañantes, con sus menús,
+        acciones y vistas. Se corre a mano en el shell de Odoo.sh, fuera de
+        un update (borrar un modelo recarga el registro)::
+
+            env['sgi.config'].sgi_drop_empty_studio_models()             # reporte
+            env['sgi.config'].sgi_drop_empty_studio_models(dry_run=False)
+            env.cr.commit()
+
+        Reglas:
+        - Cuenta las filas por SQL (archivados incluidos). Si UNO de los
+          cuatro tiene registros, **no borra ninguno** (``aborted``).
+        - Los acompañantes (``<modelo>_*``) se borran con su padre solo si
+          están en ``_SGI_STUDIO_COMPANIONS``, no tienen más filas de las
+          esperadas y ningún campo de fuera de la familia (los padres y sus
+          acompañantes) apunta a ellos. Si uno no cumple, **no borra nada**
+          y lo reporta en ``companion_problems``.
+        - Un acompañante con filas (las 3 etapas de Studio) se respalda en
+          un CSV adjunto a la empresa del SGI justo antes de borrarlo.
+        - Justo antes de borrar cada modelo vuelve a contar; si ya tiene más
+          filas de las esperadas, lanza ``UserError`` y la transacción se
+          revierte entera (respaldos incluidos).
+        - Solo modelos de Studio (``state = 'manual'``).
+        - Los campos de otros modelos que apuntan a un padre se reportan;
+          Odoo los quita al borrar el modelo.
+        - Cada borrado y cada respaldo quedan en el log y en ``ir.logging``.
+
+        Devuelve ``{'dry_run', 'counts', 'companions', 'companion_problems',
+        'inbound_fields', 'backups', 'dropped', 'kept', 'missing',
+        'aborted'}``; en ``backups``, los acompañantes que se respaldan (en la
+        prueba) o los ids de los adjuntos (al borrar)."""
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         IrModel = self.env['ir.model'].sudo()
-        report = {'dry_run': bool(dry_run), 'dropped': [], 'kept': [], 'missing': []}
+        IrFields = self.env['ir.model.fields'].sudo()
+        report = {'dry_run': bool(dry_run), 'counts': {}, 'companions': {},
+                  'companion_problems': [], 'inbound_fields': {}, 'backups': [],
+                  'dropped': [], 'kept': [], 'missing': [], 'aborted': False}
+        plan = IrModel.browse()
+        companions_of = {}
         for name in self._SGI_STUDIO_MODELS:
             model = IrModel.search([('model', '=', name)], limit=1)
             if not model:
@@ -710,22 +913,156 @@ class SgiConfigStudioCleanup(models.AbstractModel):
             if model.state != 'manual':
                 report['kept'].append({'model': name, 'reason': "no es de Studio"})
                 continue
-            count = self.env[name].sudo().with_context(active_test=False).search_count([]) \
-                if name in self.env else 0
+            report['counts'][name] = self._sgi_studio_row_count(model)
+            companions_of[model] = IrModel.search(
+                [('model', '=like', name.replace('_', '\\_') + '\\_%')])
+            for companion in companions_of[model]:
+                report['companions'][companion.model] = self._sgi_studio_row_count(companion)
+            report['inbound_fields'][name] = [
+                '%s.%s' % (f.model, f.name) for f in IrFields.search(
+                    [('relation', '=', name), ('model', '!=', name)])]
+            plan |= model
+        with_rows = sorted(n for n, c in report['counts'].items() if c)
+        if with_rows:
+            report['aborted'] = True
+            report['kept'] += [{'model': n, 'reason': "%d registro(s)" % report['counts'][n]}
+                               for n in with_rows]
+            self._sgi_studio_log(
+                "SGI D-11: NO se borra ningún modelo de Studio: %s tienen registros (%s)."
+                % (", ".join(with_rows), report['counts']), level='WARNING')
+            return report
+        all_companions = IrModel.browse()
+        for companions in companions_of.values():
+            all_companions |= companions
+        family = set(plan.mapped('model')) | set(all_companions.mapped('model'))
+        for companion in all_companions:
+            name = companion.model
+            count = report['companions'][name] or 0
+            expected = self._SGI_STUDIO_COMPANIONS.get(name)
+            if companion.state != 'manual':
+                report['companion_problems'].append("%s: no es de Studio" % name)
+            elif expected is None:
+                report['companion_problems'].append("%s: acompañante no esperado (%d fila(s))" % (name, count))
+            elif count > expected:
+                report['companion_problems'].append(
+                    "%s: %d fila(s), se esperaban a lo más %d" % (name, count, expected))
+            outside = IrFields.search([('relation', '=', name), ('model', 'not in', list(family))])
+            if outside:
+                report['companion_problems'].append("%s: le apuntan %s" % (
+                    name, ", ".join('%s.%s' % (f.model, f.name) for f in outside)))
+            if count and expected:
+                report['backups'].append(name)
+        if report['companion_problems']:
+            report['aborted'] = True
+            report['backups'] = []
+            self._sgi_studio_log(
+                "SGI D-11: NO se borra ningún modelo de Studio; acompañantes con problemas: %s."
+                % "; ".join(report['companion_problems']), level='WARNING')
+            return report
+        if dry_run:
+            report['dropped'] = plan.mapped('model') + [
+                c.model for m in plan for c in companions_of[m]]
+            _logger.info("SGI D-11 (prueba): se borrarían %s; se respaldarían en CSV %s; "
+                         "campos que Odoo quitaría: %s.", report['dropped'], report['backups'],
+                         report['inbound_fields'])
+            return report
+        report['backups'] = []
+        for model in plan:
+            name = model.model
+            count = self._sgi_studio_row_count(model)
             if count:
-                report['kept'].append({'model': name, 'reason': "%d registro(s)" % count})
-                continue
+                raise UserError(
+                    "El modelo %s ya tiene %d registro(s): no se borra nada (D-11)." % (name, count))
+            companions = companions_of[model]
+            summary = self._sgi_studio_drop_model(model)
             report['dropped'].append(name)
-            if dry_run:
-                continue
-            actions = self.env['ir.actions.act_window'].sudo().search([('res_model', '=', name)])
-            menus = self.env['ir.ui.menu'].sudo().with_context(active_test=False).search(
-                [('action', 'in', ['ir.actions.act_window,%d' % a for a in actions.ids])])
-            views = self.env['ir.ui.view'].sudo().with_context(active_test=False).search(
-                [('model', '=', name)])
-            menus.unlink()
-            actions.unlink()
-            views.unlink()
-            model.unlink()
-            _logger.info("SGI: modelo de Studio vacío %s eliminado.", name)
+            self._sgi_studio_log(
+                "SGI D-11: modelo de Studio vacío %s eliminado (0 filas verificadas por SQL "
+                "justo antes; %s)." % (name, summary))
+            for companion in companions:
+                cname = companion.model
+                count = self._sgi_studio_row_count(companion) or 0
+                if count > self._SGI_STUDIO_COMPANIONS.get(cname, 0):
+                    raise UserError(
+                        "El acompañante %s ya tiene %d registro(s): no se borra nada (D-11)."
+                        % (cname, count))
+                backup = ''
+                if count:
+                    attachment = self._sgi_studio_backup_csv(companion)
+                    report['backups'].append(attachment.id)
+                    backup = "; respaldo CSV ir.attachment %d" % attachment.id
+                summary = self._sgi_studio_drop_model(companion)
+                report['dropped'].append(cname)
+                self._sgi_studio_log(
+                    "SGI D-11: acompañante de Studio %s de %s eliminado (%d fila(s) verificadas "
+                    "por SQL justo antes%s; %s)." % (cname, name, count, backup, summary))
         return report
+
+
+class SgiConfigUnusedCatalogs(models.AbstractModel):
+    _inherit = 'sgi.config'
+
+    # D-15 (Jose, 2026-09-29; B-022, H-020): catálogos sin uso que se
+    # ARCHIVAN (nunca se borran).
+    _SGI_UNUSED_CATEGORIES = (
+        'quimibond_sgi.sgi_approval_category_purchase',  # «Solicitud de compra SGI» (13)
+        'quimibond_sgi.sgi_approval_category_moc',       # MOC (14)
+    )
+    _SGI_UNUSED_FAMILIES = ('OP-PTAR',)
+
+    @api.model
+    def _sgi_archive_unused_catalogs(self):
+        """Archiva las categorías de Aprobaciones y las familias de puesto
+        sin uso. Una categoría con alguna solicitud (de cualquier estado) o
+        una familia con algún rol de actividad NO se archiva: se reporta.
+        Antes de archivar deja un CSV de respaldo (ir.attachment) en el
+        propio registro. Idempotente. Devuelve ``{'archived': [...],
+        'kept': [...]}``."""
+        sgi_require_system(self.env)  # F-008
+        report = {'archived': [], 'kept': []}
+        Request = self.env['approval.request'].sudo().with_context(active_test=False)
+        for xmlid in self._SGI_UNUSED_CATEGORIES:
+            category = self.env.ref(xmlid, raise_if_not_found=False)
+            if not category or not category.active:
+                continue
+            used = Request.search_count([('category_id', '=', category.id)])
+            if used:
+                report['kept'].append("%s (%d solicitud(es))" % (category.name, used))
+                continue
+            self._sgi_backup_and_archive(category, ['id', 'name', 'active', 'company_id'])
+            report['archived'].append("approval.category %d %s" % (category.id, category.name))
+        company = self._sgi_company()
+        Family = self.env['sgi.job.family'].sudo()
+        Role = self.env['sgi.activity.role'].sudo().with_context(active_test=False)
+        for family in Family.search([('code', 'in', self._SGI_UNUSED_FAMILIES),
+                                     ('company_id', '=', company.id)]):
+            roles = Role.search_count([('family_id', '=', family.id)])
+            if roles:
+                report['kept'].append("%s (%d rol(es))" % (family.code, roles))
+                continue
+            self._sgi_backup_and_archive(family, ['id', 'code', 'name', 'active', 'company_id',
+                                                  'job_ids'])
+            report['archived'].append("sgi.job.family %d %s" % (family.id, family.code))
+        if report['kept']:
+            _logger.warning("SGI D-15: no se archivan porque tienen uso: %s", report['kept'])
+        _logger.info("SGI D-15: archivados %s", report['archived'])
+        return report
+
+    def _sgi_backup_and_archive(self, record, field_names):
+        """CSV de una fila con los valores actuales, adjunto al registro, y
+        luego ``active = False``."""
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(field_names)
+        row = []
+        for name in field_names:
+            value = record[name]
+            if isinstance(value, models.BaseModel):
+                value = ' '.join(str(i) for i in value.ids)
+            row.append(value)
+        writer.writerow(row)
+        self.env['ir.attachment'].sudo().create({
+            'name': 'respaldo_d15_%s_%d.csv' % (record._table, record.id),
+            'res_model': record._name, 'res_id': record.id,
+            'mimetype': 'text/csv', 'raw': buffer.getvalue().encode('utf-8')})
+        record.write({'active': False})

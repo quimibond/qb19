@@ -25,7 +25,7 @@
         <field name="target_objective">9</field>
         <field name="target_acceptable">8</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">margen_ventas</field>
+        <field name="calc_mode">margen_ebitda</field><!-- 57.6.0 (B-010): antes margen_ventas -->
     </record>
     <record id="sgi_ind_ex_compras_ventas" model="sgi.indicator">
         <field name="code">EX-02</field>
@@ -36,7 +36,7 @@
         <field name="target_objective">78</field>
         <field name="target_acceptable">80</field>
         <field name="frequency">monthly</field>
-        <field name="calc_mode">compras_vs_ventas</field>
+        <field name="calc_mode">compras_mp_vs_ventas</field><!-- 57.6.0 (B-010): antes compras_vs_ventas -->
     </record>
     <record id="sgi_ind_ex_clientes_nuevos" model="sgi.indicator">
         <field name="code">EX-03</field>

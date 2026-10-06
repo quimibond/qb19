@@ -23,12 +23,18 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install httpx flake8 lxml
+        run: pip install httpx flake8 lxml pytest openpyxl
 
       - name: Lint
         # La configuración vive en `.flake8` (raíz del repo) para que
         # correrlo en local dé exactamente lo mismo que aquí.
         run: flake8 addons/
+
+      - name: Pruebas puras (sin Odoo)
+        # Lógica de releases de quimibond_ventas_presupuesto: emparejamiento
+        # de partes, unidades y lectores. Viven fuera del addon para que
+        # pytest no importe el paquete (que necesita Odoo y Enterprise).
+        run: python -m pytest -q -p no:cacheprovider tests_puros/
 
       - name: Syntax check
         run: python -m py_compile addons/quimibond_intelligence/models/sync_push.py && python -m py_compile addons/quimibond_intelligence/models/sync_pull.py && python -m py_compile addons/quimibond_intelligence/models/supabase_client.py
@@ -37,6 +43,12 @@ jobs:
         run: |
           find . -name '__manifest__.py' -not -path './.git/*' -printf '%h\n' \
             | sort -u | xargs python -m compileall -q
+
+      - name: Manuales del SGI en Conocimiento
+        # quimibond_sgi_knowledge siembra en Conocimiento el HTML de
+        # data/manuales/, generado de docs/sgi/*.md. Si alguien cambia un
+        # manual y no regenera, Conocimiento se quedaría con el texto viejo.
+        run: python3 tools/sgi_knowledge_html.py --check
 
       - name: Vistas contra los RNG de Odoo 19 e imports de modelos
         # Lo que el update de Odoo.sh valida y aquí no se ve porque el SGI
@@ -146,8 +158,8 @@ jobs:
           odoo -d qbci \
             --db_host=db --db_user=odoo --db_password=odoo \
             --addons-path="$ODOO_ADDONS,$GITHUB_WORKSPACE/addons,$GITHUB_WORKSPACE" \
-            -i qb_capacidad_costeo,quimibond_sat,qb_obligation,qb_memoria,qb_build_limpio,quimibond_intelligence,mrp_caja_surtido,reporte_orden_fabricacion,reporte_plano_piso_tejido,reporte_produccion_diaria,stock_dymo_labels,quimibond_ficha_tecnica_tela,quimibond_tintoreria_rendimiento,mantenimiento_surtido_refacciones \
-            --test-enable --test-tags /qb_capacidad_costeo,/quimibond_sat,/qb_obligation,/qb_memoria,/qb_build_limpio,/quimibond_intelligence \
+            -i qb_capacidad_costeo,qb_costeo,quimibond_sat,qb_obligation,qb_memoria,qb_build_limpio,quimibond_intelligence,mrp_caja_surtido,reporte_orden_fabricacion,reporte_plano_piso_tejido,reporte_produccion_diaria,stock_dymo_labels,quimibond_ficha_tecnica_tela,quimibond_tintoreria_rendimiento,mantenimiento_surtido_refacciones \
+            --test-enable --test-tags /qb_capacidad_costeo,/qb_costeo,/quimibond_sat,/qb_obligation,/qb_memoria,/qb_build_limpio,/quimibond_intelligence,/quimibond_ficha_tecnica_tela \
             --stop-after-init --log-level=test \
             --data-dir=/tmp/odoo-data > /tmp/odoo-tests.log 2>&1 || rc=$?
           cat /tmp/odoo-tests.log

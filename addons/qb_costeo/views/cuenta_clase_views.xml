@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_cuenta_clase_list" model="ir.ui.view">
+        <field name="name">qb.cuenta.clase.list</field>
+        <field name="model">qb.cuenta.clase</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="account_id"/>
+                <field name="bucket"/>
+                <field name="centro_id"/>
+                <field name="pct"/>
+                <field name="nota"/>
+                <field name="company_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_cuenta_clase_search" model="ir.ui.view">
+        <field name="name">qb.cuenta.clase.search</field>
+        <field name="model">qb.cuenta.clase</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="account_id"/>
+                <field name="centro_id"/>
+                <filter name="por_bucket" string="Bucket" context="{'group_by': 'bucket'}"/>
+                <filter name="por_centro" string="Centro" context="{'group_by': 'centro_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_cuenta_clase" model="ir.actions.act_window">
+        <field name="name">Clasificación de cuentas</field>
+        <field name="res_model">qb.cuenta.clase</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_por_bucket': 1}</field>
+    </record>
+
+    <record id="action_qb_cuenta_sin_clasificar" model="ir.actions.server">
+        <field name="name">Cuentas sin clasificar</field>
+        <field name="model_id" ref="model_qb_cuenta_clase"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_sin_clasificar()</field>
+    </record>
+</odoo>

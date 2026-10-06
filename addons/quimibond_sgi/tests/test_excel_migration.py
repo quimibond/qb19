@@ -5,7 +5,7 @@ personal, EPP con renglones y Sign, etiquetas de calibración y lista
 maestra global."""
 from datetime import date
 
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -20,9 +20,20 @@ class TestExcelMigration(TransactionCase):
         cls.employee = cls.env['hr.employee'].create({'name': 'Operador ZK'})
 
     def test_01_proyecto_ft_solicitud_de_desarrollo(self):
-        project = self.env['project.project'].create({'name': 'FT-099-2046 WR135Q46JNT165', 'sgi_dev_type': 'carda'})
-        self.assertTrue(project.sgi_is_ft, "El nombre FT-… marca el proyecto como desarrollo.")
-        self.assertEqual(project.sgi_dev_format_code, 'F-P-D01-26')
+        project = self.env['project.project'].create({'name': 'FT-099-2046 WR135Q46JNT165', 'sgi_dev_type': 'carda',
+                                                      'sgi_is_ft': True, 'sgi_ft_folio': 'FT-099-2046',
+                                                      'sgi_dev_product_name': 'WR135Q46JNT165'})
+        self.assertTrue(project.sgi_is_ft, "La bandera la pone quien crea el proyecto, no el nombre (57.118.0).")
+        # La clave sale viva del documento ligado al mapeo: F-P-D01-26 en una
+        # base nueva; en una copia de producción con D-02 (57.84.0) es la
+        # clave nueva del documento cuya clave anterior es F-P-D01-26.
+        fmap = self.env.ref('quimibond_sgi.format_ref_dev_carda')
+        expected = fmap.sgi_live_parts()[0]
+        self.assertEqual(project.sgi_dev_format_code, expected)
+        if expected != 'F-P-D01-26':
+            renamed = self.env['documents.document']._sgi_find_by_code('F-P-D01-26', states=None)
+            self.assertEqual(renamed.sgi_code, expected,
+                             "La clave nueva es la del documento de la clave anterior F-P-D01-26.")
         project.action_sgi_dev_load_lines()
         names = project.sgi_dev_line_ids.mapped('name')
         self.assertIn("Tipo de fibra", names)
@@ -31,7 +42,7 @@ class TestExcelMigration(TransactionCase):
         self.assertEqual(len(project.sgi_dev_line_ids), n, "Volver a proponer no duplica renglones.")
         other = self.env['project.project'].create({'name': 'Mantenimiento ZK'})
         self.assertFalse(other.sgi_is_ft)
-        self.assertTrue(project.sgi_dev_format_info().startswith('F-P-D01-26'))
+        self.assertTrue(project.sgi_dev_format_info().startswith(expected))
         html = self.env['ir.actions.report']._render_qweb_html('quimibond_sgi.report_dev_request_document', project.ids)[0]
         self.assertIn(b'Solicitud de desarrollo', html)
 
@@ -80,8 +91,8 @@ class TestExcelMigration(TransactionCase):
         self.assertIn('2 par Guantes de nitrilo talla M', delivery.items)
         self.assertIn('1 pz Casco', delivery.items)
         self.env['ir.config_parameter'].sudo().set_param('quimibond_sgi.epp_sign_template_id', '')
-        with self.assertRaises(Exception):
-            delivery.action_send_sign_request()
+        with self.assertRaises(UserError):
+            delivery.action_send_sign_request()  # sin contacto con correo
         self.assertEqual(self.env['sgi.epp.delivery']._sgi_sync_from_sign(), 0)
         html = self.env['ir.actions.report']._render_qweb_html('quimibond_sgi.report_epp_delivery_document', delivery.ids)[0]
         self.assertIn(b'Responsiva de entrega', html)
@@ -98,11 +109,15 @@ class TestExcelMigration(TransactionCase):
         self.assertIn(b'FUERA DE SERVICIO', html)
 
     def test_06_lista_maestra_global(self):
+        # Un procedimiento lleva su proceso y la clave PR-{proceso} (56.32.0,
+        # D-02): «P-ZK99» sin proceso ya no cumple la nomenclatura.
+        process = self.env['sgi.process'].create({'code': 'ZK', 'name': 'Proceso ZK'})
         doc = self.env['documents.document'].create({
-            'name': 'P-ZK99 Procedimiento ZK', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-ZK99', 'sgi_state': 'vigente'})
+            'name': 'PR-ZK Procedimiento ZK', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'procedimiento', 'sgi_code': 'PR-ZK', 'sgi_state': 'vigente',
+            'sgi_process_id': process.id})
         action = self.env.ref('quimibond_sgi.sgi_document_master_list_action')
         self.assertIn('sgi_is_controlled', action.domain)
         self.assertEqual(action.res_model, 'documents.document')
         html = self.env['ir.actions.report']._render_qweb_html('quimibond_sgi.report_master_list_all_document', doc.ids)[0]
-        self.assertIn(b'P-ZK99', html)
+        self.assertIn(b'PR-ZK', html)

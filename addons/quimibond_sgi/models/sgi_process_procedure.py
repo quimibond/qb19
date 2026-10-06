@@ -21,6 +21,9 @@ from odoo import models, fields, api, Command, SUPERUSER_ID
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools.safe_eval import safe_eval
 
+from .sgi_calendar import sgi_today
+from .sgi_guard import sgi_require_system
+
 from .sgi_base import sgi_bypass_allowed
 
 SGI_AUTOMATION_LEVELS = [
@@ -96,7 +99,9 @@ class SgiProcessProcedure(models.Model):
         ('verde', "Todo con evidencia"),
         ('gris', "Hay actividades sin evidencia aún"),
         ('rojo', "Hay actividades en rojo"),
-    ], string="Estado de medición", compute='_compute_measure_status', store=True)
+    ], string="Estado de medición", compute='_compute_measure_status', store=True,
+        help="Resumen de la medición de sus actividades: todo con evidencia, alguna sin evidencia aún o "
+             "alguna en rojo. Se calcula solo.")
     chain_link_ids = fields.Many2many(
         'sgi.activity.link', string="Ligas entre actividades",
         compute='_compute_chain_link_ids')
@@ -107,9 +112,11 @@ class SgiProcessProcedure(models.Model):
         'res.users', string="Responsable del documento",
         help="Elabora / es dueño del procedimiento (bloque de firmas).")
     doc_approver_id = fields.Many2one(
-        'res.users', string="Aprueba")
+        'res.users', string="Aprueba",
+        help="Quien aprueba el procedimiento del proceso. Por omisión, el dueño del proceso.")
     doc_vobo_id = fields.Many2one(
-        'res.users', string="Vo.Bo.")
+        'res.users', string="Vo.Bo.",
+        help="Quien da el visto bueno al procedimiento del proceso.")
 
     # Campos del cuerpo del procedimiento cuya edición diverge del PDF
     # controlado. 'purpose' (sección 1, OBJETIVO) también se imprime en el
@@ -171,18 +178,6 @@ class SgiProcessProcedure(models.Model):
             act_ids = by_process.get(process.id, [])
             process.inbound_reference_ids = Activity.browse(act_ids)
             process.inbound_reference_count = len(act_ids)
-
-    def action_view_inbound_references(self):
-        """Quién me menciona: las actividades ajenas que citan mis
-        procedimientos o usan mis formatos."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Me referencian — %s" % self.name,
-            'res_model': 'sgi.process.activity',
-            'view_mode': 'list,form',
-            'domain': [('id', 'in', self.inbound_reference_ids.ids)],
-        }
 
     chain_stuck_count = fields.Integer(
         string="Eslabones atorados", compute='_compute_chain_link_count',
@@ -324,16 +319,13 @@ class SgiProcessProcedure(models.Model):
     def action_view_red_activities(self):
         return self.action_view_activities([('measure_state', '=', 'rojo')], "En rojo")
 
-    def action_view_no_method_activities(self):
-        return self.action_view_activities([('measure_method', '=', False)], "Sin método")
-
     def _sgi_measure_strict(self):
         """¿El procedimiento del proceso está en piloto o vigente? Entonces
         ninguna actividad puede quedar «sin medir»."""
         self.ensure_one()
         return bool(self.env['documents.document'].sudo().search_count([
             ('sgi_process_id', '=', self.id),
-            ('sgi_doc_type', '=', 'procedimiento'),
+            ('sgi_doc_type_id.code', '=', 'procedimiento'),
             ('sgi_is_controlled', '=', True),
             ('sgi_state', 'in', ('piloto', 'vigente')),
         ], limit=1))
@@ -346,7 +338,7 @@ class SgiProcessProcedure(models.Model):
         al dueño se agenda una vez por ciclo de revisión. Se omite durante la
         carga de módulo (semillas), cuando el registro aún no está listo, y
         cuando el contexto pide saltarlo (sgi_bypass_dirty): las capturas de
-        contenido que SON la revisión vigente (seed_procedure_ventas y similares)
+        contenido que SON la revisión vigente (semillas de un procedimiento)
         no son una divergencia y no deben disparar G14.
         """
         if not self.env.registry.ready or (
@@ -367,15 +359,14 @@ class SgiProcessProcedure(models.Model):
                      "vigente %s. Queda <b>pendiente de revisión documental</b>: "
                      "el PDF impreso ya no coincide con la revisión aprobada." % (
                          doc.sgi_revision_label or ''))
-            user_id = doc.sgi_owner_id.id or self.env['sgi.cron']._sgi_manager_user_id()
-            if user_id:
-                doc.activity_schedule(
-                    'mail.mail_activity_data_todo',
-                    summary="Procedimiento vivo cambió: revisar %s" % (
-                        doc.sgi_code or doc.name),
-                    note="Genere una nueva revisión controlada del procedimiento o "
-                         "confirme que el cambio no la amerita.",
-                    user_id=user_id)
+            Cron = self.env['sgi.cron']
+            user_id = doc.sgi_owner_id.id or Cron._sgi_manager_user_id()
+            # 6.5: sin duplicados (antes, 3 iguales por documento) y se cierra
+            # sola al revisar (ver sgi.cron._sgi_close_resolved_activities).
+            Cron._sgi_schedule(
+                doc, "Procedimiento vivo cambió: revisar %s" % (doc.sgi_code or doc.name),
+                "Genera una nueva revisión controlada del procedimiento o confirma que el "
+                "cambio no la amerita.", user_id, key='procedimiento_vivo')
 
     def write(self, vals):
         res = super().write(vals)
@@ -390,19 +381,14 @@ class SgiProcessProcedure(models.Model):
         VIVO de aquí (única fuente de verdad)."""
         self.ensure_one()
         docs = self.procedure_ids.filtered(
-            lambda d: d.sgi_doc_type == 'procedimiento' and d.sgi_state == 'vigente')
+            lambda d: d.sgi_doc_type_id.code == 'procedimiento' and d.sgi_state == 'vigente')
         return docs[:1]
 
-    def _sgi_format_revision(self, code):
-        """Revisión viva del documento controlado vigente con esa clave (para el
-        pie F-P-G01-02), o False."""
-        return self.env['sgi.format.map'].sudo()._revision_of(code)
-
-    def _sgi_document_by_code(self, code):
-        """Documento vigente con esa clave (ref. a F-P-S01-01, etc.)."""
-        return self.env['documents.document'].sudo().search([
-            ('sgi_code', '=', code), ('sgi_state', '=', 'vigente'),
-        ], limit=1)
+    def _sgi_format_parts(self, ref):
+        """(clave, revisión) vivas del formato por referencia del mapeo
+        (``format_ref_procedure_print`` para el pie; C-006: ya no por el texto
+        de la clave)."""
+        return self.env['sgi.format.map'].sudo().sgi_ref_parts(ref)
 
     def _sgi_env_risks(self):
         """Riesgos ambientales ligados al proceso (sección 5)."""
@@ -425,11 +411,6 @@ class SgiProcessProcedure(models.Model):
             docs |= proc.sgi_family_document_ids
             docs |= proc.sgi_reference_ids
         return docs.sorted(lambda d: (d.sgi_code or '￿', d.name or ''))
-
-    def action_print_procedure(self):
-        self.ensure_one()
-        return self.env.ref(
-            'quimibond_sgi.action_report_procedure').report_action(self)
 
 
 class SgiProcessResponsibility(models.Model):
@@ -485,7 +466,8 @@ class SgiProcessActivity(models.Model):
 
     process_id = fields.Many2one(
         'sgi.process', string="Proceso", required=True, ondelete='cascade',
-        index=True)
+        index=True,
+        help="Proceso al que pertenece la actividad.")
     company_id = fields.Many2one(
         related='process_id.company_id', string="Empresa", store=True,
         index=True)
@@ -512,7 +494,8 @@ class SgiProcessActivity(models.Model):
     # «sección» y un bloque fijo inicial/desarrollo/final.
     stage_id = fields.Many2one(
         'sgi.process.stage', string="Etapa", index=True, ondelete='set null',
-        domain="[('process_id', '=', process_id)]")
+        domain="[('process_id', '=', process_id)]",
+        help="Etapa del proceso a la que pertenece la actividad.")
     block = fields.Selection([
         ('inicial', "Actividades iniciales"),
         ('desarrollo', "Desarrollo"),
@@ -538,7 +521,7 @@ class SgiProcessActivity(models.Model):
         inverse='_inverse_responsible_job_ids', store=True)
     instruction_id = fields.Many2one(
         'documents.document', string="Instructivo",
-        domain=[('sgi_doc_type', '=', 'instructivo')],
+        domain=[('sgi_doc_type_id.code', '=', 'instructivo')],
         help="Instructivo (IT) que explica cómo se hace el paso. El "
              "«Procedimiento relacionado» es otra cosa: el procedimiento que "
              "rige la actividad.")
@@ -546,15 +529,19 @@ class SgiProcessActivity(models.Model):
         ('va', "Agrega valor"),
         ('nva_n', "No agrega valor, necesaria"),
         ('nva', "No agrega valor (desperdicio)"),
-    ], string="Clase de valor")
+    ], string="Clase de valor",
+        help="Si la actividad agrega valor al cliente, es necesaria sin agregarlo o es desperdicio.")
     # Nivel de automatización (fase 5 completa el resto: minutos, volumen,
     # horas liberables). El nivel actual se necesita ya: una actividad
     # automática no lleva rol «ejecuta».
     automation_level_current = fields.Selection(
         SGI_AUTOMATION_LEVELS, string="Automatización actual",
-        default='manual', required=True)
+        default='manual', required=True,
+        help="Qué tan automatizada está hoy la actividad. Una actividad automática no lleva quien la "
+             "ejecute.")
     automation_level_target = fields.Selection(
-        SGI_AUTOMATION_LEVELS, string="Automatización meta")
+        SGI_AUTOMATION_LEVELS, string="Automatización meta",
+        help="Nivel de automatización al que se quiere llevar la actividad.")
     automation_method = fields.Selection([
         ('estandar_odoo', "Estándar de Odoo"),
         ('accion_automatizada', "Acción automatizada"),
@@ -562,7 +549,8 @@ class SgiProcessActivity(models.Model):
         ('integracion', "Integración"),
         ('agente_ia', "Agente de IA"),
         ('otro', "Otro"),
-    ], string="Método de automatización")
+    ], string="Método de automatización",
+        help="Cómo se automatiza o se automatizaría la actividad.")
     responsible_role = fields.Char(
         string="Rol responsable",
         help="Nombre del rol en negritas del procedimiento (no siempre mapea a "
@@ -574,7 +562,7 @@ class SgiProcessActivity(models.Model):
         help="Claves de formato en rojo que la actividad genera o usa.")
     related_procedure_id = fields.Many2one(
         'documents.document', string="Procedimiento relacionado",
-        domain=[('sgi_doc_type', '=', 'procedimiento')],
+        domain=[('sgi_doc_type_id.code', '=', 'procedimiento')],
         help="Otro procedimiento que rige esta actividad (ej. marca P-A22).")
     odoo_ref = fields.Char(
         string="Dónde se ejecuta en Odoo",
@@ -593,7 +581,8 @@ class SgiProcessActivity(models.Model):
         'sgi.activity.link', 'to_activity_id', string="Recibe de")
     next_activity_ids = fields.Many2many(
         'sgi.process.activity', string="Siguientes pasos",
-        compute='_compute_chain')
+        compute='_compute_chain',
+        help="Actividades que reciben lo que esta entrega.")
     prev_activity_ids = fields.Many2many(
         'sgi.process.activity', string="Pasos anteriores",
         compute='_compute_chain')
@@ -623,11 +612,14 @@ class SgiProcessActivity(models.Model):
                 activity.write({'role_ids': commands})
 
     executor_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Ejecuta", compute='_compute_role_views')
+        'sgi.activity.role', string="Ejecuta", compute='_compute_role_views',
+        help="Roles que ejecutan la actividad.")
     approver_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Aprueba", compute='_compute_role_views')
+        'sgi.activity.role', string="Aprueba", compute='_compute_role_views',
+        help="Roles que aprueban la actividad.")
     informed_role_ids = fields.Many2many(
-        'sgi.activity.role', string="Se entera", compute='_compute_role_views')
+        'sgi.activity.role', string="Se entera", compute='_compute_role_views',
+        help="Roles que se enteran de la actividad.")
 
     @api.depends('role_ids.role')
     def _compute_role_views(self):
@@ -656,6 +648,16 @@ class SgiProcessActivity(models.Model):
             return None
         return executors._sgi_jobs()
 
+    def _sgi_executor_is_relative(self):
+        """57.13.0: el ejecutor es un relativo que depende del registro
+        (solicitante, quien detecta…), no un puesto."""
+        from .sgi_catalog import SGI_RECORD_RELATIVES   # sgi_catalog carga después
+        self.ensure_one()
+        executors = self.role_ids.filtered(lambda r: r.role == 'ejecuta')
+        return bool(executors) and all(
+            r.target_type == 'relative' and r.relative_role in SGI_RECORD_RELATIVES
+            for r in executors)
+
     def _sgi_check_roles(self):
         """Exactamente un «ejecuta» (cero si la actividad es automática) y a
         lo más un «aprueba» sin condición. Se puede saltar solo desde código
@@ -676,7 +678,7 @@ class SgiProcessActivity(models.Model):
                 raise ValidationError(
                     "La actividad %s debe tener exactamente un puesto que la "
                     "ejecuta (tiene %d). Si nadie la ejecuta porque es "
-                    "automática, márcala así en «Automatización actual»." % (
+                    "automática, márquela así en «Automatización actual»." % (
                         label, len(executors)))
             approvers = activity.role_ids.filtered(
                 lambda r: r.role == 'aprueba' and not (r.condition or '').strip())
@@ -876,14 +878,20 @@ class SgiProcessActivity(models.Model):
     ], string="Cadencia esperada", default='evento',
         help="Cada cuánto DEBE haber evidencia. «Por evento» solo cuenta, "
              "sin juzgar cumplimiento (actividades que dependen de demanda).")
-    measure_last_date = fields.Datetime("Última ejecución", readonly=True)
-    measure_count_30d = fields.Integer("Ejecuciones (30 días)", readonly=True)
+    measure_last_date = fields.Datetime("Última ejecución", readonly=True,
+                                        help="Fecha de la última ejecución registrada. Lo escribe la "
+                                             "medición diaria.")
+    measure_count_30d = fields.Integer("Ejecuciones (30 días)", readonly=True,
+                                       help="Ejecuciones registradas en los últimos 30 días. Lo escribe la "
+                                            "medición diaria.")
     measure_state = fields.Selection([
         ('verde', "En cumplimiento"),
         ('rojo', "Sin evidencia en su periodo"),
         ('pendiente', "Pendiente de conector/registro"),
         ('no_aplica', "No se mide"),
-    ], string="Cumplimiento", readonly=True)
+    ], string="Cumplimiento", readonly=True,
+        help="En cumplimiento, sin evidencia en su periodo, pendiente de conector o no se mide. Lo escribe "
+             "la medición diaria.")
 
     # --- Cómo se mide (toda actividad tiene un método) ---
     measure_method = fields.Selection([
@@ -912,7 +920,8 @@ class SgiProcessActivity(models.Model):
     sample_cadence = fields.Selection([
         ('semanal', "Semanal"),
         ('mensual', "Mensual"),
-    ], string="Cadencia de muestreo")
+    ], string="Cadencia de muestreo",
+        help="Cada cuánto se verifica una muestra, cuando la actividad se mide por muestreo.")
     measure_justification = fields.Text(
         string="Por qué no se mide",
         help="Obligatoria con «No aplica»: dónde se mide su resultado.")
@@ -928,11 +937,10 @@ class SgiProcessActivity(models.Model):
     # El detalle por semana, usuario y clase vive en sgi.activity.exec.stat
     # (filtrable, agrupable, graficable); aquí quedan los totales de las
     # últimas 4 semanas que escribe el cron desde ese detalle.
-    exec_stat_ids = fields.One2many(
-        'sgi.activity.exec.stat', 'activity_id', string="Ejecuciones por semana")
     recent_exec_stat_ids = fields.Many2many(
         'sgi.activity.exec.stat', string="Últimas 4 semanas",
-        compute='_compute_recent_exec_stat_ids')
+        compute='_compute_recent_exec_stat_ids',
+        help="Ejecuciones de las últimas 4 semanas por persona.")
     measure_adherence_pct = fields.Float(
         string="Adherencia (%)", readonly=True, digits=(5, 1),
         aggregator='avg',
@@ -1001,6 +1009,30 @@ class SgiProcessActivity(models.Model):
         except Exception:
             return []
 
+    def _sgi_measure_domain_strict(self):
+        """57.16.0 (G-003): el dominio de evidencia o el error. Un filtro que
+        no se puede leer ya no se toma como «todo el modelo» (salía verde)."""
+        self.ensure_one()
+        try:
+            domain = safe_eval(self.measure_domain or '[]')
+        except Exception as exc:  # noqa: BLE001 - lo capturó una persona
+            raise ValueError(str(exc) or exc.__class__.__name__) from exc
+        if not isinstance(domain, (list, tuple)):
+            raise ValueError("no es una lista")
+        return list(domain)
+
+    @api.model
+    def _sgi_measure_company_domain(self, Model):
+        """57.16.0 (H-006, G-019, D-03): la medición cuenta solo registros de
+        la empresa del SGI (o sin empresa) cuando el modelo tiene
+        ``company_id`` guardado. Los crons corren como superusuario y sin
+        esto contaban facturas de las empresas 2, 3 y 4."""
+        field = Model._fields.get('company_id')
+        if not field or not field.store or field.type != 'many2one':
+            return []
+        company = self.env['sgi.config']._sgi_company()
+        return [('company_id', 'in', [company.id, False])]
+
     _SGI_EXECUTOR_RESET = {
         'measure_adherence_pct': 0.0,
         'measure_top_users': False, 'measure_count_generic': 0,
@@ -1046,46 +1078,92 @@ class SgiProcessActivity(models.Model):
 
     def _sgi_measure_odoo(self):
         """Recalcula la evidencia de cada actividad medible. Una actividad con
-        dominio o modelo inválido queda sin semáforo, sin tumbar al resto."""
+        dominio o modelo inválido queda sin semáforo, sin tumbar al resto.
+
+        57.16.0 (G-002, G-003, H-005, H-006): cada actividad se mide y se
+        escribe en su propio savepoint; lo que truena queda en «Avisos de
+        medición» (``measure_warning``) y en el log, nunca en silencio. Un
+        filtro de evidencia inválido deja la actividad sin semáforo con el
+        aviso «Filtro de evidencia inválido» (antes contaba todo el modelo y
+        salía verde). Solo cuentan registros de la empresa del SGI."""
         now = fields.Datetime.now()
+        failures = 0
         for activity in self:
             vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
                         measure_count_30d=0, measure_state=False)
             try:
-                model_name = activity.measure_model_id.model
-                Model = self.env.get(model_name) if model_name else None
-                if Model is None or Model._transient or Model._abstract:
-                    activity.write(vals)
-                    continue
-                Model = Model.sudo()
-                date_field = activity.measure_date_field or 'create_date'
-                if date_field not in Model._fields:
-                    date_field = 'create_date'
-                domain = activity._sgi_measure_domain()
-                last = Model.search(
-                    domain, order='%s desc, id desc' % date_field, limit=1)
-                last_date = last and last[date_field] or False
-                if last_date and not isinstance(last_date, datetime):
-                    last_date = fields.Datetime.to_datetime(last_date)
-                vals['measure_last_date'] = last_date
-                window = domain + [(date_field, '>=', now - timedelta(days=30))]
-                vals['measure_count_30d'] = Model.search_count(window)
-                vals.update(activity._sgi_measure_executors(Model, domain, date_field))
-                days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
-                if days:
-                    in_window = Model.search_count(
-                        domain
-                        + [(date_field, '>=', now - timedelta(days=days))])
-                    vals['measure_state'] = 'verde' if in_window else 'rojo'
-                elif last_date:
-                    vals['measure_state'] = 'verde'
-            except Exception:
-                pass
+                # Un dominio que truena en SQL deja el cursor abortado: sin
+                # savepoint se perdía la medición de todas las demás.
+                with self.env.cr.savepoint():
+                    vals = activity._sgi_measure_odoo_vals(vals, now)
+            except Exception as exc:  # noqa: BLE001 - una actividad no tumba a las demás
+                failures += 1
+                _logger.exception("SGI: no se pudo medir la actividad %s (id %s).",
+                                  activity.display_name, activity.id)
+                vals = dict(self._SGI_EXECUTOR_RESET, measure_last_date=False,
+                            measure_count_30d=0, measure_state=False,
+                            measure_warning="No se pudo medir: %s" % (str(exc) or exc.__class__.__name__))
             # Solo se escribe lo que cambió: el cron diario re-mide TODO y la
             # mayoría de los valores no se mueven — escribir igual infla el
-            # write_date y el WAL sin aportar nada.
-            if any(activity[key] != value for key, value in vals.items()):
-                activity.write(vals)
+            # write_date y el WAL sin aportar nada. H-005: la escritura
+            # también va en su savepoint.
+            try:
+                with self.env.cr.savepoint():
+                    if any(activity[key] != value for key, value in vals.items()):
+                        activity.write(vals)
+            except Exception:  # noqa: BLE001
+                failures += 1
+                _logger.exception("SGI: no se pudo guardar la medición de %s (id %s).",
+                                  activity.display_name, activity.id)
+        return failures
+
+    def _sgi_measure_odoo_vals(self, vals, now):
+        """Los valores de medición de UNA actividad (sin escribir)."""
+        self.ensure_one()
+        activity = self
+        model_name = activity.measure_model_id.model
+        Model = self.env.get(model_name) if model_name else None
+        if Model is None or Model._transient or Model._abstract:
+            return vals
+        Model = Model.sudo()
+        date_field = activity.measure_date_field or 'create_date'
+        if date_field not in Model._fields:
+            date_field = 'create_date'
+        try:
+            domain = activity._sgi_measure_domain_strict()
+            # Se prueba el filtro antes de medir: un campo inexistente o no
+            # almacenado pasa el safe_eval y truena al convertirse a SQL.
+            Model.search_count(domain, limit=1)
+        except Exception as exc:  # noqa: BLE001 - dominio capturado por una persona
+            vals['measure_warning'] = "Filtro de evidencia inválido: %s" % (
+                str(exc) or exc.__class__.__name__)
+            _logger.warning("SGI: filtro de evidencia inválido en %s (id %s): %s",
+                            activity.display_name, activity.id, exc)
+            return vals
+        domain = domain + self._sgi_measure_company_domain(Model)
+        last = Model.search(domain, order='%s desc, id desc' % date_field, limit=1)
+        last_date = last and last[date_field] or False
+        if last_date and not isinstance(last_date, datetime):
+            last_date = fields.Datetime.to_datetime(last_date)
+        vals['measure_last_date'] = last_date
+        window = domain + [(date_field, '>=', now - timedelta(days=30))]
+        vals['measure_count_30d'] = Model.search_count(window)
+        vals.update(activity._sgi_measure_executors(Model, domain, date_field))
+        days = self._SGI_CADENCE_DAYS.get(activity.measure_cadence)
+        # G-017 (56.36.0): con vencimiento periódico, «a tiempo» es antes del
+        # vencimiento (decisión 5), no una ventana de días naturales. Vive en
+        # sgi_activity_spec.
+        periodic = activity._sgi_periodic_state(
+            Model, domain, date_field, sgi_today(activity.env)) \
+            if hasattr(activity, '_sgi_periodic_state') else None
+        if periodic:
+            vals['measure_state'] = periodic
+        elif days:
+            in_window = Model.search_count(domain + [(date_field, '>=', now - timedelta(days=days))])
+            vals['measure_state'] = 'verde' if in_window else 'rojo'
+        elif last_date:
+            vals['measure_state'] = 'verde'
+        return vals
 
     @api.model
     def _sgi_generic_user_ids(self):
@@ -1100,8 +1178,9 @@ class SgiProcessActivity(models.Model):
     @api.model
     def _sgi_exec_window_start(self):
         """Lunes de hace 3 semanas: la ventana de 4 semanas que el cron
-        recalcula y reemplaza en sgi.activity.exec.stat."""
-        today = fields.Date.context_today(self)
+        recalcula y reemplaza en sgi.activity.exec.stat. 57.15.0 (G-007):
+        la semana se corta en hora local (antes, a medianoche UTC)."""
+        today = sgi_today(self.env)
         monday = today - timedelta(days=today.weekday())
         return monday - timedelta(weeks=self._SGI_EXEC_WEEKS - 1)
 
@@ -1128,6 +1207,24 @@ class SgiProcessActivity(models.Model):
         if rows:
             Stat.create([dict(r, activity_id=self.id) for r in rows])
 
+    def _sgi_executor_attributable(self, Model):
+        """Si la medición puede decir quién ejecutó: un campo de usuario
+        (res.users) almacenado. 57.111.0 agrega el historial de estado."""
+        self.ensure_one()
+        user_field = (self.measure_user_field or '').strip()
+        field = Model._fields.get(user_field) if user_field else None
+        return bool(field and field.type == 'many2one' and field.comodel_name == 'res.users'
+                    and field.store)
+
+    def _sgi_executor_groups(self, Model, domain, date_field, since):
+        """(usuario, día, cuántos) de las ejecuciones desde «since»."""
+        self.ensure_one()
+        # Por día y no por «:week»: la semana de read_group depende del idioma
+        # (es_MX y en_US empiezan en domingo). La semana del SGI es ISO: lunes.
+        return Model._read_group(
+            domain + [(date_field, '>=', since)],
+            [(self.measure_user_field or '').strip(), '%s:day' % date_field], ['__count'])
+
     def _sgi_measure_executors(self, Model, domain, date_field):
         """Quién ejecutó la actividad en las últimas 4 semanas: un read_group
         por campo de usuario y semana (sin recorrer registros) y, por usuario,
@@ -1141,20 +1238,18 @@ class SgiProcessActivity(models.Model):
         clase ni adherencia: solo el conteo."""
         self.ensure_one()
         start = self._sgi_exec_window_start()
-        user_field = (self.measure_user_field or '').strip()
-        field = Model._fields.get(user_field) if user_field else None
-        if not field or field.type != 'many2one' or field.comodel_name != 'res.users' \
-                or not field.store:
+        if not self._sgi_executor_attributable(Model):
             self._sgi_replace_exec_stats(start, [])
             return {}
         since = start if Model._fields[date_field].type == 'date' \
             else datetime.combine(start, datetime.min.time())
-        # Por día y no por «:week»: la semana de read_group depende del idioma
-        # (es_MX y en_US empiezan en domingo). La semana del SGI es ISO: lunes.
-        groups = Model._read_group(
-            domain + [(date_field, '>=', since)],
-            [user_field, '%s:day' % date_field], ['__count'])
+        groups = self._sgi_executor_groups(Model, domain, date_field, since)
         expected = self._sgi_executor_jobs()
+        # 57.13.0: ejecutor relativo (solicitante, quien detecta…): lo hace
+        # quien pide o detecta en cada registro, así que cualquier empleado
+        # de la empresa cuenta como correcto; cuentas genéricas, sin empleado
+        # y sistema siguen sin contar.
+        anyone = expected is None and self._sgi_executor_is_relative()
         generic_ids = self._sgi_generic_user_ids()
         system_ids = {SUPERUSER_ID}
         root = self.env.ref('base.user_root', raise_if_not_found=False)
@@ -1175,7 +1270,7 @@ class SgiProcessActivity(models.Model):
                 klass = 'generico'
             elif not emp:
                 klass = 'sin_empleado'
-            elif expected is not None and job and job in expected:
+            elif anyone or (expected is not None and job and job in expected):
                 klass = 'correcto'
             else:
                 klass = 'otro_puesto'
@@ -1193,7 +1288,7 @@ class SgiProcessActivity(models.Model):
                 'family_id': job.sgi_family_id.id or False,
                 # Ejecutor relativo (solicitante, quien detecta…): no hay a
                 # quién comparar; solo se cuenta.
-                'exec_class': False if expected is None else klass,
+                'exec_class': False if expected is None and not anyone else klass,
                 'count': count,
                 '_class': klass,
             }
@@ -1212,7 +1307,7 @@ class SgiProcessActivity(models.Model):
         total = sum(counts.values())
         attributable = total - counts['sistema']
         adherence = round(counts['correcto'] * 100.0 / attributable, 1) \
-            if expected is not None and attributable else 0.0
+            if (expected is not None or anyone) and attributable else 0.0
         warnings = []
         if expected is not None and attributable and adherence < 80:
             warnings.append("Adherencia de %.0f%%: la hacen puestos que no la tienen "
@@ -1260,6 +1355,10 @@ class SgiProcessActivity(models.Model):
 
     @api.model
     def cron_measure_activities(self):
+        """Cron diario: resuelve menús pendientes, mide las actividades con entregable medible y
+        evalúa los eslabones de la cadena (la extensión de ``sgi_activity_spec`` suma las cifras
+        semanales y las de Mi procedimiento)."""
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         # Primero intenta resolver menús pendientes desde su texto; después
         # mide, y con la medición fresca evalúa el flujo de la cadena. Cada
         # paso es independiente: un tropiezo en uno no debe dejar sin medir
@@ -1268,12 +1367,9 @@ class SgiProcessActivity(models.Model):
             lambda: self.search([('odoo_menu_id', '=', False),
                                  ('odoo_ref', '!=', False)])._sgi_resolve_menu(),
             # Los «Formularios de Odoo» del control documental también
-            # resuelven su menú desde el texto del destino de migración.
-            lambda: self.env['documents.document'].search([
-                ('sgi_doc_type', '=', 'formulario_odoo'),
-                ('sgi_odoo_menu_id', '=', False),
-                ('sgi_migration_target', '!=', False),
-            ]).action_sgi_resolve_odoo_menu(),
+            # resuelven su menú desde el texto del destino de migración; desde
+            # 56.39.0 (L-011), también los de clase A o B.
+            lambda: self.env['documents.document']._sgi_cron_resolve_menus(),
             lambda: self.search(
                 ['|', ('measure_model_id', '!=', False),
                  ('measure_method', '!=', False)])._sgi_measure(),
@@ -1283,12 +1379,12 @@ class SgiProcessActivity(models.Model):
                 ('from_activity_id.active', '=', True),
                 ('to_activity_id.active', '=', True)])._sgi_evaluate_chain(),
         )
-        for step in steps:
-            try:
-                step()
-            except Exception:
-                _logger.exception(
-                    "SGI: falló un paso del cron de medición; continúo.")
+        # 57.16.0 (G-002): cada paso en su savepoint (``sgi.cron._sgi_step``):
+        # un error SQL en uno ya no deja la transacción abortada para los
+        # siguientes.
+        Cron = self.env['sgi.cron']
+        for number, step in enumerate(steps, 1):
+            Cron._sgi_step("medición de actividades, paso %d" % number, step)
         return True
 
     def _sgi_checked_measure_domain(self):
@@ -1305,7 +1401,7 @@ class SgiProcessActivity(models.Model):
         except Exception as exc:
             raise UserError(
                 "El «Filtro de evidencia» de la actividad %s es inválido para "
-                "el modelo %s:\n%s\n\nCorrige el dominio en la pestaña de "
+                "el modelo %s:\n%s\n\nCorrija el dominio en la pestaña de "
                 "medición (solo campos reales y almacenados del modelo)." % (
                     self.display_name, self.measure_model_id.model, exc))
         return domain
@@ -1316,7 +1412,9 @@ class SgiProcessActivity(models.Model):
         if not self.measure_model_id:
             raise UserError(
                 "Esta actividad no tiene modelo de medición ligado.")
-        domain = self._sgi_checked_measure_domain()
+        # 57.16.0 (H-006): los mismos registros que cuenta la medición.
+        domain = self._sgi_checked_measure_domain() + self._sgi_measure_company_domain(
+            self.env[self.measure_model_id.model])
         return {
             'type': 'ir.actions.act_window',
             'name': "%s — evidencia" % (
@@ -1348,6 +1446,7 @@ class SgiProcessActivity(models.Model):
         if not self.odoo_menu_id and self.odoo_ref:
             self._sgi_resolve_menu()
         action = self.odoo_menu_id.action if self.odoo_menu_id else False
+        action = action.exists() if action else action
         if action and action._name == 'ir.actions.act_window':
             return action.read()[0]
         if self.measure_model_id:
@@ -1379,17 +1478,25 @@ class SgiProcessActivity(models.Model):
     def write(self, vals):
         if 'number' in vals or 'section' in vals:
             if len(self.process_id) > 1:
-                raise UserError("Cambia el numeral o la sección de una actividad a la vez.")
+                raise UserError("Cambie el numeral o la sección de una actividad a la vez.")
             vals = self._sgi_structure_vals(vals, self.process_id)
         # Los roles que llegan por el one2many se validan juntos al final
         # (restricción de la actividad), no uno por uno a medio camino.
         records = self.with_context(sgi_roles_via_activity=True) \
             if 'role_ids' in vals or 'responsible_job_ids' in vals else self
         res = super(SgiProcessActivity, records).write(vals)
+        # 56.7.0: archivar, reactivar o mover una actividad cambia el «Mi
+        # procedimiento» guardado de quienes tienen rol en ella.
+        if {'active', 'process_id', 'measure_cadence'} & set(vals):
+            roles = self.sudo().with_context(active_test=False).role_ids
+            self.env['hr.employee']._sgi_mp_touch_jobs(roles._sgi_mp_jobs())
         # La medición (configuración o refresco del cron) no es un cambio al
         # cuerpo del procedimiento: no dispara revisión documental (G14).
         if set(vals) - self._SGI_MEASURE_FIELDS:
             self.process_id._sgi_flag_procedure_dirty()
+            # 57.17.0 (G-015): el texto de la actividad entra en la huella de
+            # «Mi procedimiento»: los puestos con rol en ella se recalculan.
+            self.sudo().with_context(active_test=False).role_ids._sgi_mp_jobs()._sgi_mp_mark_dirty()
         return res
 
     def unlink(self):
@@ -1410,25 +1517,30 @@ class SgiActivityLink(models.Model):
 
     from_activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad origen", required=True,
-        ondelete='cascade', index=True)
+        ondelete='cascade', index=True,
+        help="Actividad que entrega.")
     to_activity_id = fields.Many2one(
         'sgi.process.activity', string="Actividad destino", required=True,
-        ondelete='cascade', index=True)
+        ondelete='cascade', index=True,
+        help="Actividad que recibe.")
     name = fields.Char(
         string="Entregable / condición", required=True,
         help="Qué pasa de un paso al otro: el pedido confirmado, el programa "
              "semanal, el lote liberado…")
     from_process_id = fields.Many2one(
         related='from_activity_id.process_id', string="Proceso origen",
-        store=True)
+        store=True,
+        help="Proceso de la actividad que entrega.")
     to_process_id = fields.Many2one(
         related='to_activity_id.process_id', string="Proceso destino",
-        store=True)
+        store=True,
+        help="Proceso de la actividad que recibe.")
     company_id = fields.Many2one(
         related='from_activity_id.company_id', string="Empresa", store=True,
         index=True)
     is_cross_process = fields.Boolean(
-        string="Cruza procesos", compute='_compute_cross', store=True)
+        string="Cruza procesos", compute='_compute_cross', store=True,
+        help="Se marca sola cuando el entregable pasa de un proceso a otro.")
 
     # --- Flujo del eslabón (fase 3): ¿el paso siguiente sigue al anterior? ---
     chain_state = fields.Selection([
@@ -1445,7 +1557,8 @@ class SgiActivityLink(models.Model):
              "plazo, son días hábiles desde que se entregó.")
     atorado_since = fields.Datetime("Atorado desde", readonly=True)
     nc_alert_id = fields.Many2one(
-        'quality.alert', string="NC generada", readonly=True, copy=False)
+        'quality.alert', string="NC generada", readonly=True, copy=False,
+        help="No conformidad que se levantó por este eslabón atorado.")
 
     # Campos que escribe el cron: no son contenido del procedimiento.
     _SGI_MEASURE_FIELDS = {
@@ -1496,7 +1609,7 @@ class SgiActivityLink(models.Model):
                             to.display_name,
                             "dentro de su plazo de %d días hábiles" % link.max_days
                             if link.max_days else "en su periodo"),
-                        owner_user)
+                        owner_user, key='eslabon_atorado:%d' % link.id)
                 elif (now - link.atorado_since).days >= self._SGI_NC_AFTER_DAYS \
                         and not link._sgi_chain_nc_open():
                     # Sin NC ligada, o la ligada ya cerró/canceló: este

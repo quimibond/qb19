@@ -148,115 +148,6 @@ class TestProcedureReport(TransactionCase):
 
 
 @tagged('post_install', '-at_install')
-class TestProcedureVentasSeed(TransactionCase):
-    """Paso 3: el piloto P-A28 VENTAS Rev.15 cargado como datos."""
-
-    # Claves de formato del P-A28 (se crean como documentos vigentes para que la
-    # semilla los enlace y la sección 8 los liste).
-    FORMAT_CODES = [
-        'IT-P-A28-01', 'IT-P-A28-02', 'F-P-A28-21', 'F-P-A28-13', 'F-P-A31-01',
-        'F-P-A28-17', 'F-P-A31-02', 'F-P-A28-18', 'F-P-A28-12', 'F-P-A28-04',
-        'F-P-A28-16', 'F-P-A28-15', 'F-P-A28-20', 'F-P-D01-09', 'F-P-D01-11',
-        'F-P-A28-03', 'F-P-A28-19', 'F-P-A28-01', 'F-P-A28-11',
-    ]
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        sgi_hide_real_documents(cls.env)
-        # Actividades heredadas de prueba, sin puestos «ejecuta» (la regla de
-        # roles se prueba en test_catalog_fase1).
-        cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
-        cls.env.user.group_ids = [
-            (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
-        cls.process = cls.env.ref('quimibond_sgi.proc_ventas')
-        # En una copia de producción Ventas ya trae sus actividades reales
-        # (sin método de medición todavía): el P-A28 vigente no pasaría el
-        # candado de medición. Dentro de la transacción de la prueba se
-        # mueven a un proceso aparte, y Ventas queda como en una base limpia.
-        parking = cls.env['sgi.process'].create(
-            {'code': 'VEN-REAL-PRUEBA', 'name': 'Ventas real (prueba)'})
-        cls.env.flush_all()
-        for table in ('sgi_process_activity', 'sgi_process_responsibility'):
-            cls.env.cr.execute(
-                "UPDATE %s SET process_id = %%s WHERE process_id = %%s" % table,
-                (parking.id, cls.process.id))
-        cls.env.invalidate_all()
-        Doc = cls.env['documents.document']
-        # Procedimiento que encabeza (clave/fecha/rev en vivo).
-        cls.proc_doc = Doc.create({
-            'name': 'P-A28 Ventas.pdf', 'type': 'binary', 'sgi_is_controlled': True,
-            'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A28',
-            'sgi_revision': 15, 'sgi_state': 'vigente',
-            'sgi_process_id': cls.process.id})
-        # Formatos referenciados, vigentes.
-        for i, code in enumerate(cls.FORMAT_CODES):
-            doc_type = 'instructivo' if code.startswith('IT-') else 'formato'
-            Doc.create({
-                'name': 'Doc %s' % code, 'type': 'binary',
-                'sgi_is_controlled': True, 'sgi_doc_type': doc_type,
-                'sgi_code': code, 'sgi_state': 'vigente'})
-
-    def test_01_seed_loads_ventas(self):
-        self.env['sgi.config'].seed_procedure_ventas()
-        # Actividades ≥ 25 y 7 responsabilidades.
-        self.assertGreaterEqual(self.process.activity_count, 25)
-        self.assertEqual(len(self.process.job_responsibility_ids), 7)
-        self.assertTrue(self.process.scope)
-        self.assertEqual(len(self.process.norm_ids), 4)
-
-    def test_02_documented_info_has_15_plus(self):
-        self.env['sgi.config'].seed_procedure_ventas()
-        documented = self.process._sgi_documented_info()
-        codes = [c for c in documented.mapped('sgi_code') if c]
-        self.assertGreaterEqual(len(codes), 15,
-                                "La sección 8 debe listar ≥15 claves.")
-        self.assertEqual(len(codes), len(set(codes)), "Sin duplicados.")
-
-    def test_03_report_renders_for_ventas(self):
-        self.env['sgi.config'].seed_procedure_ventas()
-        report = self.env.ref('quimibond_sgi.action_report_procedure')
-        html, _ = report._render_qweb_html(
-            'quimibond_sgi.report_procedure_document', self.process.ids)
-        text = html.decode() if isinstance(html, bytes) else html
-        self.assertIn('4.2.3.1', text)
-        self.assertIn('F-P-A28-12', text)
-        self.assertIn('copia no controlada', text)
-
-    def test_04_seed_is_idempotent(self):
-        self.env['sgi.config'].seed_procedure_ventas()
-        first = self.process.activity_count
-        self.env['sgi.config'].seed_procedure_ventas()
-        self.assertEqual(self.process.activity_count, first,
-                         "Re-ejecutar la semilla no duplica actividades.")
-
-    def test_05_seed_maps_odoo_menus(self):
-        self.env['sgi.config'].seed_procedure_ventas()
-        menu = self.env.ref('sale.menu_sale_order', raise_if_not_found=False)
-        if not menu:
-            self.skipTest("El menú nativo de Ventas no está en esta base.")
-        act = self.process.procedure_activity_ids.filtered(
-            lambda a: a.legacy_number == '4.1.2')
-        self.assertEqual(act.odoo_menu_id, menu,
-                         "La actividad de pedidos apunta al menú de Ventas.")
-
-    def test_06_seed_does_not_flag_dirty(self):
-        # La semilla ES la Rev.15 vigente: no debe disparar la divergencia G14.
-        self.assertFalse(self.proc_doc.sgi_procedure_dirty)
-        self.env['sgi.config'].seed_procedure_ventas()
-        self.proc_doc.invalidate_recordset()
-        self.assertFalse(self.proc_doc.sgi_procedure_dirty,
-                         "La semilla no marca el procedimiento como divergente.")
-        dirty_acts = self.env['mail.activity'].search_count([
-            ('res_model', '=', 'documents.document'),
-            ('res_id', '=', self.proc_doc.id),
-            ('summary', 'ilike', 'Procedimiento vivo cambió'),
-        ])
-        self.assertEqual(dirty_acts, 0,
-                         "La semilla no agenda la actividad de revisión (G14).")
-
-
-@tagged('post_install', '-at_install')
 class TestProcedureOdooMenu(TransactionCase):
     """Un solo paso: liga la actividad a un menú real de Odoo."""
 
@@ -326,7 +217,14 @@ class TestProcedureActivityMenu(TransactionCase):
     def test_01_action_opens_grouped(self):
         action = self.env.ref('quimibond_sgi.sgi_process_activity_action').read()[0]
         self.assertEqual(action['res_model'], 'sgi.process.activity')
-        self.assertIn('search_default_group_process', action['context'])
+        # 45.0.0 (limpieza antes de producción): ya no abre agrupada por
+        # proceso; el proceso se elige en el panel lateral (searchpanel) de la
+        # vista de búsqueda.
+        self.assertNotIn('search_default_group_process', action['context'] or '')
+        arch = self.env['sgi.process.activity'].get_views(
+            [(action['search_view_id'][0], 'search')])['views']['search']['arch']
+        self.assertIn('<searchpanel', arch)
+        self.assertIn('name="process_id"', arch)
 
     def test_02_mine_filter_safe_without_employee(self):
         # Usuario SIN empleado: el filtro no debe truncar ni reventar.

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from odoo.exceptions import UserError
-from odoo.tests import TransactionCase, tagged
+from odoo.tests import TransactionCase, new_test_user, tagged
 
 
 @tagged('post_install', '-at_install')
@@ -18,23 +18,40 @@ class TestSignElearning(TransactionCase):
         })
         cls.employee.user_id = cls.user
 
-    def test_send_sign_requests_requires_template(self):
+    def test_send_sign_requests_without_pending(self):
+        """56.18.0: ya no hace falta plantilla hecha a mano; sin acuses
+        pendientes solo avisa. Enviar a firma es solo de MAST."""
         doc = self.env['documents.document'].create({
             'name': "Procedimiento de prueba Sign",
             'type': 'binary',
             'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento',
             'sgi_code': 'P-G99',
+            # Vigente: los acuses se mandan a firmar sobre la revisión vigente
+            # y un controlado vigente lo lee cualquier usuario interno
+            # (_sgi_share_controlled, 56.7.0). En Odoo 19 Documentos da el
+            # acceso por documento: en la corrida real (build 38916808) el
+            # Jefe MAST de la prueba no leía el borrador ajeno sin carpeta, así
+            # que tampoco habría podido abrirlo para apretar el botón.
+            'sgi_state': 'vigente',
         })
+        if 'access_internal' in doc._fields:
+            self.assertEqual(doc.access_internal, 'view')
+        # Lo llama el Jefe MAST (candado del método, 56.28.0): el env de la
+        # prueba es OdooBot, que no está en el grupo.
+        mast = new_test_user(self.env, login='zs_sign_mast',
+                             groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        result = doc.with_user(mast).action_sgi_send_sign_requests()
+        self.assertEqual(result['params']['type'], 'info')
         with self.assertRaises(UserError):
-            doc.action_sgi_send_sign_requests()
+            doc.with_user(self.user).action_sgi_send_sign_requests()
 
     def test_sync_crons_run_empty(self):
-        """Los crons de sincronización y el digest corren sin datos sin
-        tronar (el patrón _sgi_step aísla cada paso)."""
+        """El cron de sincronización corre sin datos sin tronar (el patrón
+        _sgi_step aísla cada paso). El digest viejo se retiró en 57.7.0
+        (D-14): ver test_weekly_overdue."""
         cron = self.env['sgi.cron']
         self.assertTrue(cron.cron_sign_elearning_sync())
-        self.assertTrue(cron.cron_weekly_digest())
 
     def test_employee_lookup_and_skill_grant(self):
         """El mapeo curso→competencia resuelve al empleado por su usuario y

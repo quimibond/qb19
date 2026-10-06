@@ -7,6 +7,8 @@ from odoo.exceptions import AccessError, ValidationError
 from odoo.tests import TransactionCase, tagged
 from odoo.tests.common import new_test_user
 
+from .common_calendar import sgi_test_calendar
+
 
 @tagged('post_install', '-at_install')
 class TestIndicatorFormula(TransactionCase):
@@ -139,10 +141,13 @@ class TestIndicatorFormula(TransactionCase):
         self.assertTrue(ind.with_user(admin).can_edit_formula)
 
     def test_07_formulas_sembradas(self):
+        # 56.35.0 (A-004): los términos ya no vienen en el núcleo sino en el
+        # mapa (quimibond_sgi_mapa). En una copia de producción siguen ahí y
+        # se revisan; en una base nueva el indicador no trae fórmula.
         for xmlid in ('sgi_ind_desperdicio', 'sgi_ind_reproceso', 'sgi_ind_diferencia_inventario',
                       'sgi_ind_consumo_energia', 'sgi_ind_ex_compras_ventas'):
             ind = self.env.ref('quimibond_sgi.%s' % xmlid, raise_if_not_found=False)
-            if not ind:
+            if not ind or not ind.term_ids:
                 continue
             self.assertTrue(ind.has_formula, "%s trae numerador y denominador." % xmlid)
             ind.term_ids._check_term()
@@ -167,18 +172,26 @@ class TestIndicatorFormula(TransactionCase):
         self.assertIn(num._sgi_describe(), ind.formula_text)
 
     def test_09_comparar_dos_fechas_del_registro(self):
-        Obl = self.env['sgi.employer.obligation']
-        model = self.env['ir.model']._get('sgi.employer.obligation')
-        rows = [(date(2046, 3, 1), date(2046, 3, 17), date(2046, 3, 15)),   # a tiempo, 2 días antes
-                (date(2046, 3, 1), date(2046, 3, 17), date(2046, 3, 20)),   # 3 días tarde
-                (date(2046, 3, 1), date(2046, 3, 17), False)]              # sin presentar
-        for period, due, filed in rows:
-            Obl.create({'name': 'ZF9 %s' % (filed or 'pendiente'), 'period_date': period,
-                        'due_date': due, 'filed_date': filed})
+        # 56.15.0: antes usaba sgi.employer.obligation (retirado); la bitácora
+        # de bloqueo contable tiene dos fechas: A = «antes», B = «después».
+        # 57.66.0: con la zona de producción (México). La fecha se trataba
+        # como medianoche UTC y caía en el día anterior: «del sábado 17 al
+        # martes 20» contaba 1 hábil en la copia de producción.
+        sgi_test_calendar(self.env, tz='America/Mexico_City')
         ind = self.Indicator.create({'code': 'ZF-09', 'name': 'Fechas', 'calc_mode': 'configurable'})
-        base = {'model_id': model.id, 'domain': "[('name', 'like', 'ZF9')]", 'date_field': 'due_date'}
-        num = self._term(ind, 'numerator', aggregation='count_delta', field_name='due_date',
-                         field_name_2='filed_date', delta_unit='days', delta_op='<=', delta_value=0, **base)
+        Log = self.env['sgi.lock.date.log']
+        model = self.env['ir.model']._get('sgi.lock.date.log')
+        company = ind._sgi_kpi_company()
+        rows = [(date(2046, 3, 17), date(2046, 3, 15)),   # a tiempo, 2 días antes
+                (date(2046, 3, 17), date(2046, 3, 20)),   # 3 días tarde
+                (date(2046, 3, 17), False)]              # sin fecha B
+        for due, filed in rows:
+            Log.create({'company_id': company.id, 'lock_field': 'tax_lock_date',
+                        'date_before': due, 'date_after': filed})
+        base = {'model_id': model.id, 'date_field': 'date_before',
+                'domain': "[('lock_field', '=', 'tax_lock_date'), ('date_before', '>', '2046-01-01')]"}
+        num = self._term(ind, 'numerator', aggregation='count_delta', field_name='date_before',
+                         field_name_2='date_after', delta_unit='days', delta_op='<=', delta_value=0, **base)
         den = self._term(ind, 'denominator', aggregation='count', **base)
         detail = ind._detail_configurable(*self.period)
         self.assertEqual((detail['numerator'], detail['denominator']), (1.0, 3.0), "Solo la presentada a tiempo.")
@@ -188,13 +201,13 @@ class TestIndicatorFormula(TransactionCase):
         num.write({'aggregation': 'avg_delta', 'delta_unit': 'days'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 0.5, "(−2 + 3) ÷ 2.")
         num.write({'aggregation': 'count_delta', 'delta_unit': 'next_month_day', 'delta_value': 5,
-                   'field_name': 'period_date', 'field_name_2': 'filed_date'})
+                   'field_name': 'date_before', 'field_name_2': 'date_after'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 2.0,
                          "Presentadas a más tardar el 5 de abril: las dos con fecha.")
-        num.write({'delta_unit': 'same_month', 'field_name': 'due_date'})
+        num.write({'delta_unit': 'same_month', 'field_name': 'date_before'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 2.0, "Mismo mes que el vencimiento.")
         num.write({'delta_unit': 'business_days', 'delta_op': '<=', 'delta_value': 2,
-                   'field_name': 'due_date'})
+                   'field_name': 'date_before'})
         self.assertEqual(ind._detail_configurable(*self.period)['numerator'], 2.0,
                          "Hábiles: del sábado 17 al martes 20 son 2 (lunes y martes); la del 15 da 0.")
         num.write({'delta_value': 1})

@@ -7,17 +7,20 @@
             <list string="Evaluaciones de proveedores"
                   decoration-success="supplier_class == 'acreditado'"
                   decoration-warning="supplier_class == 'condicionado'"
-                  decoration-danger="supplier_class == 'baja'">
+                  decoration-danger="supplier_class == 'baja'"
+                  decoration-muted="supplier_class == 'sin_datos'">
                 <field name="partner_id"/>
                 <field name="date_from"/>
                 <field name="date_to"/>
-                <field name="otd_pct"/>
+                <field name="otd_has_data" column_invisible="1"/>
+                <field name="otd_pct" invisible="not otd_has_data"/>
                 <field name="nc_count"/>
-                <field name="score"/>
+                <field name="score" widget="progressbar"/>
                 <field name="supplier_class" widget="badge"
                        decoration-success="supplier_class == 'acreditado'"
                        decoration-warning="supplier_class == 'condicionado'"
-                       decoration-danger="supplier_class == 'baja'"/>
+                       decoration-danger="supplier_class == 'baja'"
+                       decoration-muted="supplier_class == 'sin_datos'"/>
             </list>
         </field>
     </record>
@@ -44,16 +47,27 @@
                             <field name="date_to"/>
                         </group>
                         <group string="Resultado">
-                            <field name="otd_pct"/>
+                            <field name="otd_has_data" invisible="1"/>
+                            <field name="otd_pct" invisible="not otd_has_data"/>
+                            <div class="text-muted" colspan="2" invisible="otd_has_data">
+                                OTD sin datos: no hubo recepciones con fecha compromiso en el
+                                periodo. La calificación usa solo la calidad (NC).
+                            </div>
                             <field name="nc_count"/>
-                            <field name="score"/>
-                            <field name="supplier_class" widget="badge"/>
+                            <field name="score" widget="progressbar"/>
+                            <field name="supplier_class" widget="badge"
+                                   decoration-success="supplier_class == 'acreditado'"
+                                   decoration-warning="supplier_class == 'condicionado'"
+                                   decoration-danger="supplier_class == 'baja'"
+                                   decoration-muted="supplier_class == 'sin_datos'"/>
                         </group>
                     </group>
                     <group string="Notas">
                         <field name="notes" nolabel="1"/>
                     </group>
                 </sheet>
+                <!-- V-M16 (57.80.0): recálculos y cambios de clase. -->
+                <chatter/>
             </form>
         </field>
     </record>
@@ -67,6 +81,7 @@
                 <filter name="acreditado" string="Acreditados" domain="[('supplier_class','=','acreditado')]"/>
                 <filter name="condicionado" string="Condicionados" domain="[('supplier_class','=','condicionado')]"/>
                 <filter name="baja" string="Baja" domain="[('supplier_class','=','baja')]"/>
+                <filter name="sin_datos" string="Sin datos" domain="[('supplier_class','=','sin_datos')]"/>
                 <group>
                     <filter name="group_partner" string="Proveedor" context="{'group_by': 'partner_id'}"/>
                     <filter name="group_class" string="Clasificación" context="{'group_by': 'supplier_class'}"/>
@@ -76,20 +91,22 @@
     </record>
 
     <record id="sgi_supplier_eval_action" model="ir.actions.act_window">
-        <field name="name">Evaluaciones de proveedores</field>
+        <field name="name">Evaluación de proveedores</field>
         <field name="res_model">sgi.supplier.eval</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_supplier_eval_view_search"/>
+        <!-- 57.98.0 (I-04): agrupada por clasificación. -->
+        <field name="context">{'search_default_group_class': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Sin evaluaciones de proveedores aún</p>
-            <p>El cron trimestral evalúa solo a los proveedores con recepciones: entregas a tiempo + NCs dan la clase Acreditado / Condicionado / Baja. El OTD compara por <b>día calendario</b> con tolerancia configurable en Ajustes; si cambias la regla o la tolerancia, selecciona las evaluaciones y usa <b>Acción → Recalcular métricas (SGI)</b> y después «Aplicar al proveedor». La aprobación inicial (8.4.1) vive en la ficha del proveedor, pestaña SGI Proveedor.</p>
+            <p>El cron trimestral evalúa solo a los proveedores con recepciones: entregas a tiempo + NC dan la clase Acreditado / Condicionado / Baja; sin recepciones con fecha compromiso el OTD queda <b>sin datos</b> (no cuenta como 0 %) y, si tampoco hubo NC, la clase es <b>Sin datos</b>. El OTD compara por <b>día calendario</b> con tolerancia configurable en Ajustes; si cambia la regla o la tolerancia, seleccione las evaluaciones y use <b>Acción → Recalcular métricas</b> y después «Aplicar al proveedor». La aprobación inicial (8.4.1) vive en la ficha del proveedor, pestaña SGI.</p>
         </field>
     </record>
 
     <!-- Recálculo masivo (menú Acción de la lista): tras cambiar la regla de
          OTD o la tolerancia, selecciona las evaluaciones y recalcula. -->
     <record id="sgi_supplier_eval_recompute_action" model="ir.actions.server">
-        <field name="name">Recalcular métricas (SGI)</field>
+        <field name="name">Recalcular métricas</field>
         <field name="model_id" ref="model_sgi_supplier_eval"/>
         <field name="binding_model_id" ref="model_sgi_supplier_eval"/>
         <field name="binding_view_types">list</field>

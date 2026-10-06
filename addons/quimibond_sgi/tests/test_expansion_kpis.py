@@ -8,7 +8,7 @@ from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 
-from .common_accounts import sgi_test_payable
+from .common_accounts import sgi_test_payable, sgi_test_sales_accounts
 
 
 @tagged('post_install', '-at_install')
@@ -24,6 +24,7 @@ class TestExpansionKpis(TransactionCase):
             'name': 'No tejido EX', 'type': 'consu', 'uom_id': cls.uom.id})
         cls.income = cls.env['account.account'].search(
             [('account_type', '=', 'income')], limit=1)
+        sgi_test_sales_accounts(cls.env, cls.income)
         cls.expense = cls.env['account.account'].search(
             [('account_type', '=', 'expense')], limit=1)
         cls.customer_a = cls.env['res.partner'].create({'name': 'Cliente EX-A'})
@@ -53,16 +54,6 @@ class TestExpansionKpis(TransactionCase):
         move = self.env['account.move'].create(vals)
         move.action_post()
         return move
-
-    def test_01_compras_vs_ventas(self):
-        self._invoice('out_invoice', self.customer_a, 1000.0, self.period)
-        self._invoice('out_refund', self.customer_a, 100.0, self.period)
-        self._invoice('in_invoice', self.supplier, 720.0, self.period,
-                      account=self.expense)
-        ind = self._indicator('compras_vs_ventas')
-        value = ind._calc_compras_vs_ventas(self.period, self.period_end)
-        # 720 de compras sobre 900 netos de venta = 80%.
-        self.assertEqual(value, 80.0)
 
     def test_02_notas_credito(self):
         self._invoice('out_invoice', self.customer_a, 1000.0, self.period)
@@ -97,9 +88,9 @@ class TestExpansionKpis(TransactionCase):
         # Solo los modos acotados al periodo/ventana: los de saldo abierto
         # (cartera, DPO) sí ven datos preexistentes de la base y se prueban
         # aparte contra su propia línea base.
-        for mode in ('compras_vs_ventas', 'notas_credito', 'clientes_nuevos',
+        for mode in ('notas_credito', 'clientes_nuevos',
                      'concentracion_top3', 'facturacion_usd', 'dso_cartera',
-                     'margen_ventas', 'retencion_clientes',
+                     'retencion_clientes',
                      'clientes_reactivados', 'ventas_fuera_top10',
                      'concentracion_productos', 'pedidos_cancelados',
                      'entregas_completas'):
@@ -118,6 +109,16 @@ class TestExpansionKpis(TransactionCase):
         # línea base preexistente de la BD (copia de producción), como en
         # test_07. Lo cobrado DESPUÉS del cierre sigue contando en el periodo.
         ind = self._indicator('dso_cartera')
+        # Odoo 18+: un cobro en un diario sin cuenta de cobros pendientes no
+        # genera asiento hasta conciliarlo con el banco, y la cartera contable
+        # no baja (en una base nueva el diario de banco viene así). La prueba
+        # le pone la cuenta para que el cobro sí toque la cartera en su fecha.
+        journal = self.env['account.journal'].search(
+            [('type', '=', 'bank'), ('company_id', '=', self.company.id)], limit=1)
+        outstanding = self.env['account.account'].create({
+            'code': 'ZEX1101', 'name': 'Cobros pendientes EX',
+            'account_type': 'asset_current', 'reconcile': True})
+        journal.inbound_payment_method_line_ids.payment_account_id = outstanding
         base0 = ind._sgi_receivable_balance(self.period_end)
         self._invoice('out_invoice', self.customer_a, 600.0, self.period)
         self._invoice('out_invoice', self.customer_b, 300.0, self.period)
@@ -127,7 +128,7 @@ class TestExpansionKpis(TransactionCase):
             ('invoice_date', '=', self.period)])
         self.env['account.payment.register'].with_context(
             active_model='account.move', active_ids=moves.ids).create(
-            {'payment_date': self.period}).action_create_payments()
+            {'payment_date': self.period, 'journal_id': journal.id}).action_create_payments()
         value = ind._calc_dso_cartera(self.period, self.period_end)
         self.assertEqual(value, round((base0 + 300.0) / 900.0 * 90.0, 1))
         # Un cobro del mes siguiente no cambia la foto del cierre.
@@ -137,7 +138,7 @@ class TestExpansionKpis(TransactionCase):
             ('invoice_date', '=', self.period)])
         self.env['account.payment.register'].with_context(
             active_model='account.move', active_ids=late.ids).create(
-            {'payment_date': date(2041, 7, 15)}).action_create_payments()
+            {'payment_date': date(2041, 7, 15), 'journal_id': journal.id}).action_create_payments()
         self.assertEqual(ind._calc_dso_cartera(self.period, self.period_end), value)
 
     def test_07_cartera_vencida(self):
@@ -260,27 +261,8 @@ class TestExpansionKpis(TransactionCase):
         empty = self.env['sgi.indicator.measure'].create({
             'indicator_id': ind.id, 'period_date': date(2043, 5, 1),
             'value': 0.0, 'state': 'pendiente'})
-        self.env['sgi.config'].recompute_pending_measures()
+        result = self.env['sgi.config'].recompute_pending_measures()
+        self.assertGreaterEqual(result['capturadas'], 1)
         self.assertEqual(measure.state, 'capturado')
         self.assertEqual(measure.value, 1.5)
         self.assertEqual(empty.state, 'pendiente')
-
-    def test_16_fix_kpi_seeds_idempotente(self):
-        energia = self.env.ref('quimibond_sgi.sgi_ind_consumo_energia')
-        embarques = self.env.ref('quimibond_sgi.sgi_ind_embarques_sin_error')
-        energia.uom = 'kWh'
-        embarques.write({'target_objective': 100, 'target_acceptable': 98})
-        broken = self.env['sgi.indicator.measure'].create({
-            'indicator_id': energia.id, 'period_date': date(2042, 3, 1),
-            'value': 0.0, 'state': 'capturado',
-            'note': "Configure el proveedor de energía en Ajustes para medir "
-                    "este indicador automáticamente."})
-        self.env['sgi.config'].fix_kpi_seeds()
-        self.assertEqual(energia.uom, 'MXN')
-        self.assertEqual(embarques.target_objective, 99)
-        self.assertEqual(broken.state, 'pendiente')
-        # Segunda corrida: no vuelve a tocar nada (una meta ajustada por MAST
-        # a otro valor se respeta).
-        embarques.target_objective = 97
-        self.env['sgi.config'].fix_kpi_seeds()
-        self.assertEqual(embarques.target_objective, 97)

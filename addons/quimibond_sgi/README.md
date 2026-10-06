@@ -1,1924 +1,525 @@
-# quimibond_sgi — Sistema de Gestión Integral (Fases 1–8)
+# quimibond_sgi — Sistema de Gestión Integral de PNTQ
 
-Addon de Odoo 19 Enterprise que lleva el SGI documental de PNTQ (ISO 9001:2015 +
-14001:2015, 45001 en preparación) a Odoo **extendiendo apps nativas** (Documentos,
-Aprobaciones, Calidad, Helpdesk, Proyecto) y creando solo lo que Odoo no tiene
-(mapa de procesos, acuses de lectura, catálogos SGI). Toda la lógica vive en el
-módulo: **cero Studio, cero automation rules de UI**.
+Addon de Odoo 19 Enterprise con el SGI de Productora de No Tejidos Quimibond
+(empresa 1 de la instancia, decisión D-03). Convierte los procedimientos del
+Dropbox en **procesos y actividades** con responsable por puesto, vencimiento,
+entregable medible y escalamiento, y extiende las apps nativas (Documentos,
+Calidad, Aprobaciones, Helpdesk, Proyecto, Mantenimiento, Encuestas, Firmas)
+sin duplicarlas. Versión y cambios: `CHANGELOG.md` (una entrada por versión).
 
-## Qué instala/configura el módulo (automático)
+**Normas** (D-28; organismo SIDE Certificaciones, acreditado ante la ema):
 
-- **Grupos de seguridad** (privilegio "SGI"): Usuario SGI, Auditor SGI,
-  Jefe MAST y SGI, Dirección de Operaciones (SGI). Cada uno implica los grupos
-  base de las apps que toca (Calidad, Documentos, Helpdesk, Proyecto, Aprobaciones).
-- **Catálogos**: 10 áreas documentales (G, A, C, D, E, I, M, P, S, V); normas
-  ISO 9001/14001/45001 con cláusulas 4.1–10.3; secuencias anuales de folio de NC
-  (`NCI-AAAA-####` / `NCE-AAAA-####`).
-- **Mapa de procesos**: 5 macroprocesos + 16 procesos nivel 2 + la cadena de flujos
-  COP (Crédito y Cobranza → Ventas → Planeación → … → Facturación → CxC).
-- **No Conformidades** (sobre `quality.alert`): equipos "NC Internas" y "NC Externas"
-  con etapas Abierta → Seguimiento → Cerrada + Cancelada; folio anual; 5 porqués;
-  líneas de acción; **candados de cierre** (causa raíz + acciones terminadas +
-  verificación de eficacia) con cierre forzado exclusivo del Jefe MAST.
-- **Control documental** (sobre `documents.document`): clave validada con la
-  nomenclatura real, tipo, área, revisión, estado (Borrador/Piloto/Vigente/Obsoleto),
-  puestos aplicables, próxima revisión bienal, **acuses de lectura** con % de difusión.
-- **Cambios documentales** (sobre `approval.request`): categoría "Modificación de
-  documento SGI" (alta/modificación/baja, prueba piloto ≤90 días, procesos afectados);
-  al aprobarse versiona el documento y dispara acuses.
-- **Reclamaciones** (sobre `helpdesk.ticket`): equipo "Reclamaciones de clientes"
-  con etapas y política SLA de primera respuesta; botón "Generar NC".
-- **Mejora continua** (sobre `project.task`): proyecto "Mejora Continua SGI" con
-  candado de cierre (fecha límite + evidencia adjunta).
-- **Crons** (diario NC, diario documentos, mensual NEWS) y **reportes** QWeb
-  F-P-G05-01 (NC) y F-P-G01-16 (NEWS).
-- **Integraciones**: smart buttons de NC en picking/producción/contacto,
-  "Mis procedimientos"/"Acuses pendientes" en empleado, documentos aplicables en puesto.
-
-## Checklist de puesta en marcha (manual, en la instancia)
-
-1. **Usuarios en los grupos SGI** (Ajustes → Usuarios):
-   - Jefe de MAST y SGI → grupo **Jefe MAST y SGI**.
-   - Dirección de Operaciones → grupo **Dirección de Operaciones (SGI)**.
-   - Auditores → **Auditor SGI**; resto del personal operativo → **Usuario SGI**.
-2. **Aprobadores de la categoría** "Modificación de documento SGI"
-   (Aprobaciones → Configuración → Categorías): agregar los 2 aprobadores en
-   secuencia (Jefe MAST y SGI → Dirección de Operaciones) y marcar el mínimo.
-3. **Helpdesk**: activar/ajustar la **política SLA** del equipo "Reclamaciones de
-   clientes" y configurar el **alias de correo** del equipo si se usará entrada por email.
-4. **Documents**: crear (si no existe) el árbol de **carpetas** espejo de las
-   secciones 00–23 del SGI y asignar permisos por área. Los documentos controlados
-   se registran con su clave y revisión vigente.
-5. **Parámetro** `quimibond_sgi.nc_escalation_days` (Ajustes → Técnico → Parámetros
-   del sistema): días para escalar NC internas sin acción (por defecto 5; las
-   externas/reclamación escalan a 3 por regla de negocio).
-6. **Empleados** con su **puesto** (`hr.job`) correcto: los acuses y "Mis
-   procedimientos" filtran por puesto.
-7. En dev/staging los **crons están desactivados**: pruébalos con
-   Ajustes → Técnico → Acciones planificadas → "Ejecutar manualmente".
-
-## Fase 2 — Gestión y Medición (v19.0.2.0.0)
-
-Extiende el mismo addon (depende ahora también de `survey`, `purchase`,
-`approvals_purchase` y `maintenance`).
-
-### Qué instala/configura (automático)
-
-- **Objetivos e Indicadores** (`sgi.objective`, `sgi.indicator`,
-  `sgi.indicator.measure`, F-P-A10-03): catálogo de los 9 Objetivos Integrales
-  2026-2030 (ANEXO 6) y ~26 KPIs reales con metas Objetivo/Aceptable, semáforo
-  verde/amarillo/rojo (respeta `direction`), y **motor de cálculo automático** por
-  `calc_mode`. Cron mensual (día 1) que crea la medición del mes anterior
-  (idempotente): los KPIs automáticos se calculan y quedan "capturados"; los
-  manuales quedan "pendientes" con actividad al responsable (límite día 5).
-  Una medición **roja validada** de un indicador oficial con `nc_on_red=True`
-  genera **una** NC pre-llenada (equipo NC Internas, origen "indicador") y la
-  liga; desde 19.0.37.0.0 por persistencia (dos rojos seguidos, o uno si es
-  crítico), ver «Lógica de indicadores».
-- **Auditorías** (`sgi.audit.program`, `sgi.audit`, `sgi.audit.finding`, P-G03):
-  programa anual → auditoría con folio `AUD-AAAA-NN`, checklist en `survey`
-  (plantilla ISO 9001 secciones 4-10 incluida), hallazgos con disposición y botón
-  "Generar NC". **Candados**: el auditor no audita procesos de los que es dueño;
-  no se cierra con hallazgos sin disposición resuelta. Cron diario de avisos 15
-  días antes del mes planificado.
-- **Riesgos y oportunidades** (`sgi.risk` + `sgi.risk.category`): los 5 instrumentos
-  evaluables (R&O 5×5, IPER 3×3, ambiental, patrimonial 5×5, FODA sin score) con
-  nivel de atención computado, mapa de calor (pivot proceso × nivel) y kanban.
-  Umbrales R&O parametrizables. Acciones en `sgi.action.line` (constraint XOR
-  NC/Riesgo). Cron diario de revisión de riesgos vencidos → actividad al dueño.
-- **Proveedores** (`sgi.supplier.eval` + herencia `res.partner`, 8.4): evaluación
-  trimestral (OTD de recepciones + NCs → calificación ponderada → clase
-  acreditado/condicionado/baja), cron trimestral idempotente que actualiza el
-  contacto y avisa a Compras. Requisición interna vía categoría de Aprobaciones
-  "Solicitud de compra SGI" (`approval_type=purchase`, genera RFQ nativas).
-- **Revisión por la Dirección** (`sgi.management.review`, IT-P-A10-01): folio
-  `RD-AAAA-NN`, botón "Cargar entradas" que llena las 10 entradas 9.3.2 con el
-  snapshot del periodo, y salidas (acuerdos) que al marcar "Realizada" crean tareas
-  en el proyecto "Acuerdos RxD". **Candado**: no se realiza sin ≥1 acuerdo con
-  responsable y fecha.
-- **Voz del cliente/trabajador**: equipo Helpdesk "Quejas y Sugerencias" (alias
-  `quejas-sugerencias`, etiquetas Queja/Sugerencia/SST-Condición insegura) y
-  plantilla de Encuesta de Satisfacción del Cliente.
-- **Reportes** QWeb: Plan de auditoría (F-P-G03-03), Informe de auditoría y Acta
-  de Revisión por la Dirección (F-IT-P-A10-01-01).
-
-### `calc_mode` — cobertura del motor de cálculo
-
-| calc_mode | Fuente | Estado |
-|---|---|---|
-| `otif_ventas` | Pickings salida done vs `date_deadline`/`scheduled_date` | Implementado |
-| `otd_compras` | Recepciones done vs `date_planned` de la OC | Implementado |
-| `produccion_vs_programado` | `mrp.production` done: qty_produced/product_qty | Implementado |
-| `desperdicio` | `stock.scrap` / producción del periodo | Implementado |
-| `cierre_nc` | NCs cerradas/detectadas en el periodo | Implementado |
-| `reclamos_cliente` | Tickets del equipo Reclamaciones | Implementado |
-| `presupuesto_ventas` | Facturado (out_invoice posted) vs `monthly_budget` | Implementado |
-| `preventivo_cumplido` | `maintenance.request` preventivas en etapa "done" | Implementado (aprox.) |
-| `rotacion_rh` | Bajas (`departure_date`) / plantilla activa | Implementado (aprox.) |
-| `disponibilidad_mantto` | Requiere paros de centros de trabajo | Devuelve None → captura manual (MT-01 en manual desde 2026-09-24) |
-| `plantilla_rh` | Requiere plantilla presupuestada por puesto | Devuelve None → captura manual (RH-01 en manual desde 2026-09-24) |
-| `reproceso` | kg de órdenes de los tipos de reproceso ÷ kg de hilo y fibra consumidos | Implementado (P-21, 19.0.39.0.0) |
-| `inventario_diferencia` | valor de ajustes (`stock.move.value`) ÷ valor actual de existencias | Implementado (19.0.39.0.0; 40.0.1 sin capas) |
-
-Los que devuelven None caen a captura manual sin bloquear el cron.
-
-### Configuración de instancia pendiente (Fase 2)
-
-1. **Responsables y procesos de indicadores**: asignar `responsible_id` y
-   `process_id` en cada `sgi.indicator` (se dejaron vacíos-opcionales).
-2. **Presupuesto de ventas**: capturar `monthly_budget` en el indicador VE-02
-   (o el parámetro `quimibond_sgi.monthly_sales_budget`).
-3. **Dashboard ejecutivo**: armar con Spreadsheet/Dashboards sobre las mediciones
-   (graph/pivot mes × indicador ya disponibles en el menú Medición).
-4. **Formulario web del buzón QR**: apuntar el QR de planta al formulario web del
-   equipo "Quejas y Sugerencias" (Helpdesk → Configuración → Sitio web/alias).
-5. **Envío de encuestas**: configurar el envío automático post-entrega de la
-   "Encuesta de Satisfacción del Cliente" (Encuestas → Compartir / automatización
-   de instancia).
-6. **Aprobadores de "Solicitud de compra SGI"**: definir aprobadores y, si aplica,
-   el almacén/ubicación por defecto de las RFQ.
-7. **Umbrales**: `quimibond_sgi.risk_ryo_inmediata/media/intermedia` (16/9/4),
-   `quimibond_sgi.supplier_weight_otd/quality` (0.7/0.3) y
-   `quimibond_sgi.supplier_nc_penalty` (10 pts por NC) son parametrizables.
-8. **Indicadores semanales**: los KPIs con `frequency=weekly` (p.ej. OTIF LO-01)
-   los mide el cron semanal (lunes, semana previa); los mensuales, el cron mensual.
-   Ambos son idempotentes por (indicador, periodo).
-
-### Plan de activación gradual de `nc_on_red`
-
-`nc_on_red` arranca en **False** en todos los indicadores. Antes de activarlo en
-producción **por indicador**:
-
-1. Deja correr el cron mensual 1 mes y compara el valor calculado (KPIs
-   automáticos) contra el Excel **F-P-A10-03** del mes correspondiente en staging.
-2. Cuando el KPI coincida con el Excel, valida la medición ("Validar") y verifica
-   que el semáforo es correcto.
-3. Solo entonces activa `nc_on_red` en ese indicador. A partir de ahí, cada
-   medición roja **validada** generará su NC automática. Nunca actives todos a la
-   vez: valida uno, observa un ciclo, avanza al siguiente (esto elimina ~60% de las
-   NCs que hoy se levantan a mano por indicador incumplido).
-
-## Fase 3 — Herramientas automotrices (v19.0.3.0.0)
-
-Bloques (core tools que exigen clientes como Seiren y Continental):
-
-### Qué instala/configura (automático)
-
-- **Plan de control (P-C11)** — modelo `sgi.control.plan` (folio `PC-AAAA-NN`,
-  estados borrador/vigente/obsoleto). Extiende `quality.point` con característica,
-  criticidad **F/R/S** (tipo Continental), Cpk objetivo, aparece-en-CoA y plan de
-  reacción. Candado: no pasa a vigente sin ≥1 punto; al marcar obsoleto agenda
-  revisión al Jefe MAST (no desactiva los puntos). Botón **CoA (P-C07)** bilingüe
-  ES/EN en `stock.lot` con las inspecciones de puntos marcados para el certificado.
-- **Calibración (P-C03)** — modelo `sgi.calibration` + extensión de
-  `maintenance.equipment` (equipo de medición, magnitud/rango/resolución, intervalo,
-  próxima calibración y estado vigente/por vencer/vencido calculados). Regla IATF
-  7.1.5: resultado *fuera de tolerancia* bloquea el equipo (**No usar**), crea NC
-  interna de evaluación de impacto y agenda al Jefe MAST; una calibración conforme
-  libera el candado.
-- **AMEF (P-C10)** — `sgi.fmea` + `sgi.fmea.line` con **NPR = S×O×D** calculado; una
-  línea con NPR ≥ `quimibond_sgi.fmea_npr_action` (100) exige acción. Candado: no
-  pasa a vigente si hay líneas de NPR alto sin acción. Reporte PDF.
-- **PPAP (P-C15)** — `sgi.ppap` genera automáticamente los **18 elementos AIAG**
-  (idempotente), enlazándolos a registros reales (AMEF, plan de control, documento).
-  Candados: "enviado" sin elementos pendientes; "aprobado" requiere el elemento 18
-  (PSW) en listo/aprobado. Botones inteligentes en cliente y producto.
-- **Puente PLM** (módulo aparte `quimibond_sgi_plm`, `auto_install`) — al aplicar un
-  ECO marcado "Requiere PPAP" crea el expediente PPAP (motivo: cambio de ingeniería)
-  y, si requiere aviso al cliente, agenda actividad a Ventas.
-- **Competencias (P-A01)** — análisis de brechas nativo sobre `hr_skills`: vista SQL
-  `sgi.competence.gap` (pivote por departamento × tipo de competencia), botón de
-  brechas en el empleado y cron de vigencias de certificaciones/formación. Plantilla
-  de encuesta **DNC (F-P-A01-17)**.
-- **Incidentes SST (P-S02, SCAT)** — `sgi.incident` (folio `INC-AAAA-NN`, tipos y
-  severidad leve/moderado/grave/fatal). Candados: no cierra sin las 3 capas SCAT ni
-  con acciones abiertas; graves/fatales avisan de inmediato al Jefe MAST y Dirección.
-  Cualquier usuario SGI puede reportar. **EPP (P-S03)**: `maintenance.equipment`
-  marcado como EPP con fecha de vencimiento; el cron notifica próximos vencimientos.
-- **Pegamento PROT-05/D7** — al cerrar una NC **mayor** se agenda al Jefe MAST
-  actualizar el AMEF y el plan de control (lección aprendida).
-- **XOR de acciones extendido** — `sgi.action.line` acepta exactamente un origen:
-  NC, riesgo, línea de AMEF o incidente.
-- **Crons diarios** (idempotentes): calibraciones + EPP; competencias/certificaciones.
-
-### Configuración de instancia pendiente (Fase 3)
-
-1. **Matriz de habilidades por puesto**: cargar `hr.job.skill` (competencia + nivel
-   esperado) por puesto y las `hr.employee.skill` del personal; la brecha se calcula
-   sola (menú Medición → *Brechas de competencia (DNC)*).
-2. **Coordinador de RH**: fijar `quimibond_sgi.rh_user_id` (destinatario de los avisos
-   de certificaciones/formación por vencer).
-3. **Continental Master Specs**: capturar en cada `quality.point` la característica,
-   criticidad F/R/S y Cpk objetivo (1.33 F / 1.67 R·S) desde la Master Spec.
-4. **Firma del CoA**: si se requiere firma electrónica, enlazar el reporte CoA con la
-   app *Firma* (plantilla sobre el PDF).
-5. **Onboarding / Frontdesk / ESG**: pendientes de decisión de alcance (no incluidos).
-6. **Equipos de medición y EPP**: marcar los `maintenance.equipment` existentes como
-   *equipo de medición* / *EPP* y capturar intervalos y vencimientos.
-7. **Decisión PLM**: activar el flujo de ECO→PPAP requiere instalar *mrp_plm*; el
-   puente `quimibond_sgi_plm` se instala solo cuando ambos módulos coexisten.
-
-### Deuda técnica / mejoras futuras (Fase 4)
-
-- **Endurecer el candado de AMEF** (`sgi.fmea.action_set_vigente`): hoy una línea con
-  NPR alto se da por atendida con **una acción registrada**, aunque no esté terminada
-  (así lo pedía la spec de Fase 3). Para Fase 4, considerar exigir que la acción tenga
-  al menos responsable + fecha de compromiso, o incluso fecha de terminación, antes de
-  permitir el paso a *vigente*.
-- **Commits por bloque**: retomar un commit atómico por bloque funcional (en Fase 3
-  el grueso quedó en un solo commit).
-
-## Fase 4 — Conexión con el piso real y tableros (v19.0.4.0.0)
-
-Cierra el círculo dentro de Odoo: el SGI se alimenta de la operación real de piso
-(pesaje, revisado, subproducto de desperdicio) y los resultados llegan a dirección
-(tableros). **Sin Shop Floor y sin tocar `quimibond_intelligence`/Supabase.** No se
-modifica ningún módulo de piso: solo se agregan ganchos hacia el SGI.
-
-### Qué instala/configura (automático)
-
-- **Escalar a NC del SGI** (botón en `quality.alert`, grupo Auditor+, visible solo si
-  la alerta no tiene folio): mueve la alerta a NC Internas, le asigna folio y origen
-  'proceso' conservando producto/orden/picking. Las alertas rutinarias de los equipos
-  de piso siguen su flujo; solo lo sistémico se escala (el concentrado F-P-G05-02 no se
-  contamina).
-- **Planes de control que envuelven los puntos reales** (Recepción de MP F-P-P03-01 y
-  Tejido Circular — Revisado). El enlace de los `quality.point` se hace en el
-  `post_init_hook` por **búsqueda segura por equipo**: si el equipo no existe en la BD
-  (staging≠producción), registra en log y sigue sin romper el update.
-- **Puente de pesaje** (`quimibond_sgi_pesaje`, auto_install): al confirmar un rollo
-  fuera de la tolerancia ±3 kg, crea una alerta ligada a la orden/producto (una sola
-  por rollo).
-- **KPIs recalibrados a las fuentes reales del piso** (ver tabla abajo).
-- **Vistas pivot/graph** para tableros: Pareto de alertas de calidad (`quimibond_sgi`)
-  y Pareto de defectos del revisado por causa TEJIDO-* (`quimibond_sgi_revisado`,
-  auto_install).
-- **Mapa de procesos conectado a los objetos vivos** (4.6): cada flujo apunta a su
-  modelo de Odoo (`odoo_model_id`) con botón **«Ver registros»** (invisible si es un
-  entregable documental); 14 flujos operativos + 5 de soporte ligados.
-- **Smart button «NC del proveedor»** en `purchase.order` (alertas del proveedor).
-- **Botón «Levantar NC»** en solicitudes de mantenimiento correctivas (crea la NC en
-  NC Internas pre-llenada con el equipo y la falla; idempotente).
-- **CoA en el portal del cliente**: botón «Publicar CoA en portal» en el lote que
-  adjunta el PDF a la(s) entrega(s) (visible en el portal). Explícito, sin automatismo.
-
-### KPIs — fuente real y estado de validación (Fase 4.2)
-
-| KPI (`calc_mode`) | Fuente real | Estado |
-|---|---|---|
-| `desperdicio` | Kilos del subproducto **SALDO TEJIDO D** (categoría `SubProducto`, param `quimibond_sgi.waste_subproduct_category`) / kilos producidos | Validar contra Excel de producción del mes de referencia |
-| `desperdicio_scrap` | `stock.scrap` / kilos producidos (cálculo histórico, conservado) | OK |
-| `calidad_pq` | `mrp.revision.log`: rollos sin causa (defecto = etiqueta TEJIDO-*) / total | Validar con datos reales de revisado |
-| `cumplimiento_programa` | `mrp.production` producido vs planificado (inicio en el periodo) | **Aproxima el MPS** (usa MOs con inicio programado en el periodo, no el plan maestro literal). Validar contra el Excel de producción un mes **antes** de activar su `nc_on_red` |
-| `inventario_ciclico` | `|ajustes de inventario|` (movimientos `is_inventory`) / existencias en ubicaciones internas | **Requiere conteos cíclicos activos**; existencias «contadas» = proxy de on-hand actual |
-| (otros de Fase 2) | ventas/compras/mantto/RH nativos | Sin cambio |
-
-Todos degradan a `None` cuando faltan datos o configuración en la instancia.
-
-### Tableros (Fase 4.4 — configuración de instancia)
-
-Se arman con **Hojas de cálculo / Tableros nativos** (sin JS). Fuentes de datos:
-
-1. **Producción por circular y turno** — `mrp.workorder`/`mrp.production` (pivot nativo,
-   fila = centro de trabajo, medida = cantidad/tiempo).
-2. **Pareto de defectos del revisado** — menú *SGI → Tableros → Pareto de defectos
-   (revisado)* (pivot de `mrp.revision.log` por causa TEJIDO-*, filtro «Con defecto»).
-3. **Desperdicio (SALDO TEJIDO D) por tela y circular** — movimientos de subproducto de
-   la categoría `SubProducto` (pivot de `stock.move` byproduct).
-4. **Cumplimiento del programa semanal** — KPI `cumplimiento_programa` (menú Medición).
-5. **Panel SGI ejecutivo** — NCs (concentrado), KPIs (menú Medición), riesgos
-   (mapa de calor), calibraciones (metrología) y *SGI → Tableros → Pareto de alertas*.
-
-### Configuración de instancia pendiente (Fase 4)
-
-1. **Retro-vinculación**: se ejecuta sola al instalar si existen los equipos «CALIDAD
-   Materia Prima» y «Revisado de Tela». Si se agregan/renombran equipos después,
-   reinstalar el módulo o re-ejecutar `post_init_hook` desde el shell.
-2. **Categoría de desperdicio**: confirmar que el subproducto SALDO TEJIDO D vive en la
-   categoría `SubProducto` (o ajustar el parámetro `quimibond_sgi.waste_subproduct_category`).
-3. **Días festivos** en el calendario 24/7 3 Turnos (festivos MX): configurar en
-   *Empleados → Configuración → Tiempo libre → Festivos públicos* (config de instancia).
-4. **Rollout de las 186 telas**: correr el reporte de trabajo
-   `addons/quimibond_sgi/tools/reporte_telas_rollout.py`
-   (`odoo-bin shell --no-http < …`), que lista las telas sin operación TEJIDO/BoM
-   completa agrupadas por familia y exporta `/tmp/telas_rollout.csv`. **No** configura
-   telas: el criterio (capacidades, tiempos) es de Producción.
-5. **Báscula (IoT)**: verificar `iot_scale_common` + drivers del repo; el pesaje ya usa
-   el widget `peso_bascula`. Documentar en sitio qué básculas responden y cuáles faltan.
-6. **Usuarios por centro de trabajo**: asignar responsables/técnicos por circular
-   (config de instancia).
-7. **WhatsApp** (solo si contratan la integración Meta): plantillas para NC asignada,
-   equipo bloqueado y KPI rojo. Si no, actividades + correo ya cubren (no bloqueante).
-8. **Portal del auditor SIDE**: carpetas de Documentos en solo lectura con permiso de
-   fecha de expiración para la auditoría de vigilancia (config de Documentos).
-9. **Buzón QR**: publicar el formulario web del equipo «Quejas y Sugerencias» (si sigue
-   pendiente de Fase 2).
-
-### Configuración de instancia pendiente (Fase 4.6 — mapa de procesos)
-
-Ganchos que este bloque NO configura (los captura el equipo en la instancia):
-
-10. **Quality point «Verificación de embarque»** en salidas (checklist de empaque por
-    cliente) que alimente el KPI «embarques sin error».
-11. **Conteos cíclicos activados** (para que `inventario_ciclico` sea confiable).
-12. **Firma de pedido en portal** para exportación (aceptación en línea del cliente).
-13. **Aprobadores de la requisición de compra SGI** y niveles de seguimiento de cobranza.
-14. **Propiedades custom del lote** (ancho/gramaje/tono) y **motivos de pérdida en CRM**.
-15. **Resto de flujos de soporte** del mapa (además de los 5 ya cargados): ligarlos a su
-    modelo desde *SGI → Flujos* o el formulario del proceso.
-
-## Fases 5 y 6 — Política integral y Presupuesto/Pronóstico de ventas (v19.0.13.x)
-
-Documentadas a detalle en `docs/SGI_DIAGRAMA_FLUJOS.html` (flujos completos con
-cada botón y candado). Resumen:
-
-- **Política Integral** (`sgi.policy`, folio `POL-`): borrador → vigente →
-  obsoleta, con índice único de UNA política vigente (publicar obsoleta la
-  anterior). Objetivos Integrales del ANEXO 6 ligados a indicadores; la salud
-  del objetivo agrega la de los procesos de sus KPIs.
-- **Presupuesto de ventas P-A28** (`sgi.sales.budget`, folio `PPV-`): un mismo
-  par de modelos sirve el presupuesto mensual por mercado (F-P-A28-18, se
-  aprueba y congela; revisiones con `action_revise`) y el pronóstico semanal
-  por cliente (F-P-A28-13, documento vivo: solo borrador ⇄ revisado — mini-fase
-  5.5, migración 19.0.13.7.0). Captura por plantilla Excel + wizard de
-  importación, grid producto × mes, precarga desde pedidos/facturado; el precio
-  SIEMPRE sale de la lista de precios. Aprobación exclusiva de Dirección con
-  candado de cobertura de precios; envío de demanda neta al MPS; crons de
-  cierre de mes, cobertura semanal y revaluación S2 (junio); reporte QWeb con
-  ambas matrices. Menú espejado dentro de la app Ventas.
-- **Diagrama de flujos y deuda técnica**: `docs/SGI_DIAGRAMA_FLUJOS.html` y
-  `docs/SGI_DEUDA_TECNICA.md` en la raíz del repo.
-
-## Fase 7 — Cierre de bucles ISO (v19.0.15.0.0)
-
-Sale de la evaluación `docs/SGI_EVALUACION_ESTRUCTURA.md` (pasos 3–8):
-
-- **Satisfacción del cliente (9001 9.1.2)**: KPI CA-02 automático desde las
-  respuestas de la Encuesta de Satisfacción (promedio 1-5 → %), menú de
-  respuestas bajo Medición, y cron trimestral que recuerda al Admin de Ventas
-  distribuirla. El módulo NUNCA manda correos a clientes por sí solo.
-- **DNC (P-A01)**: cron trimestral que cuenta las brechas abiertas y agenda a
-  RH la distribución de la encuesta F-P-A01-17 (ahora con menú propio) y el
-  plan de capacitación.
-- **Alta documental ligada**: botón «Crear documento» en la solicitud de alta
-  aprobada; el documento nace ligado a la solicitud (trazabilidad completa).
-- **Emergencias (14001/45001 8.2)**: `sgi.emergency.plan` (PE-) con brigada,
-  frecuencia y riesgos IPER/ambientales ligados; `sgi.emergency.drill` (SIM-)
-  con candado: un simulacro con observaciones o no satisfactorio exige
-  hallazgos y al menos una acción CAPA (`sgi.action.line.drill_id`, quinto
-  origen del XOR). Cron diario de vencimientos. Menú: Riesgos y auditorías →
-  Emergencias.
-- **Alta de proveedores (8.4.1)**: estatus Nuevo/Aprobado/Bloqueado en el
-  partner (pestaña SGI Proveedor, botones solo Jefe MAST). Un proveedor
-  BLOQUEADO no puede recibir órdenes de compra confirmadas. Sin estatus =
-  fuera del alcance SGI (no se bloquea nada — compatibilidad total).
-- **MSA (IATF 7.1.5.1.1)**: `sgi.msa.study` (MSA-) por equipo de medición;
-  Gage R&R con veredicto AIAG automático (<10% aceptable / 10-30% marginal /
-  >30% inaceptable); inaceptable → actividad al Jefe MAST (el bloqueo del
-  equipo es decisión humana). Smart button MSA en el equipo.
-
-## Fase 8 — Señales operativas y checklist de auditoría (v19.0.15.1.0)
-
-Aprovecha lo que Odoo ya registra, sin captura adicional:
-
-- **Checklist → hallazgos**: el botón «Hallazgos del checklist» de la auditoría
-  convierte las respuestas de la encuesta en hallazgos (No conforme → NC
-  menor, Observación → observación), idempotente por respuesta. Se acabó la
-  doble captura del auditor.
-- **Devolución de cliente → NC automática**: validar una recepción que
-  devuelve una entrega a cliente levanta una NC de origen Reclamación con
-  cliente, producto y remisión ligados (fuente `devolucion_cliente`,
-  apagable). Una devolución a proveedor NO dispara nada.
-- **Señales operativas** (cron diario): ≥3 correctivas del mismo equipo en 90
-  días → actividad a MAST sugiriendo NC y revisión del preventivo;
-  reclamación abierta con SLA vencido → actividad de escalamiento.
-- **Lecciones aprendidas (7.1.6)**: menú bajo Mejora continua con las NC
-  cerradas con lección aplicada — causa raíz, eficacia y proceso. La memoria
-  del sistema, que ya existía pero no se podía consultar.
-
-## Ola «certificable» (v19.0.25.0.0, auditoría 2026-08)
-
-Cierra las brechas normativas detectadas por la segunda auditoría (reporte con
-adopción medida en producción):
-
-- **Requisitos legales y evaluación del cumplimiento** (14001/45001 §6.1.3 y
-  §9.1.2): `sgi.legal.requirement` con frecuencia de evaluación, botones
-  Cumple/Parcial/No cumple, NC mayor automática (fuente
-  `requisito_legal_incumplido`) y cron de evaluaciones vencidas y permisos por
-  vencer. Menú: Riesgos y auditorías → Requisitos legales.
-- **Partes interesadas** (§4.2): `sgi.interested.party` con necesidades y
-  expectativas, adopción como requisito, ligas a riesgos/legales y revisión
-  periódica vigilada por cron. Menú: Panel → Partes interesadas.
-- **Objetivos con plan de acción** (§6.2.2): el objetivo integral gana
-  chatter y líneas CAPA propias (sexta fuente del XOR); su salud ahora agrega
-  también el último semáforo de sus KPIs (deuda B.18).
-- **Retención de registros** (§7.5.3): años de retención + disposición final
-  por documento, filtro «Sin retención definida» y reporte imprimible «Tabla
-  de retención».
-- **Consulta y participación** (45001 §5.4): la encuesta F-P-A10-05 queda
-  cableada (cron semestral a RH) y la RxD gana las entradas 11 (cumplimiento
-  legal) y 12 (participación + quejas internas).
-- **Encuesta de satisfacción configurable**: CA-02 puede re-apuntarse desde
-  Ajustes a la encuesta histórica (575 respuestas viven en una encuesta
-  archivada distinta de la sembrada).
-- **MOC** (9001 §6.3 / 45001 §8.1.3): categoría de Aprobaciones «Cambio de
-  proceso / infraestructura» con gate duro (motivo + procesos afectados +
-  evaluación de riesgos).
-- **Diseño y desarrollo** (§8.3): proyecto semilla con etapas-gate
-  8.3.2–8.3.6 y candado de evidencia en la transferencia.
-- **Correo crítico**: incidente grave/fatal, NC mayor y bloqueo por
-  calibración avisan por correo (plantillas editables) además de la actividad.
-- **Deudas cerradas**: B.16 (recalcular medición), B.19 (línea del programa
-  con cierre real), C.25 (AMEF↔plan de control), D.28 (acuses de la
-  política), D.29 (constante de atención máxima), D.30 (button_box del
-  partner consolidado). 8D imprimible desde la NC; certificado de calibración
-  adjunto y obligatorio en externas; Diagnóstico con sección «Contexto y
-  cumplimiento».
-
-**Diferido a propósito** (requiere datos cargados, no código del addon):
-SPC/Cpk desde quality.check (necesita metrología cargada). La **carga de
-registros** (política, riesgos, acuses, validación de mediciones, programa de
-auditorías, metrología, competencias por puesto, 8.4.1, presupuesto) es la
-Ola 0 operativa: el Diagnóstico del SGI es su checklist.
-
-## Integraciones Sign / eLearning y digest semanal (v19.0.26.0.0)
-
-Cierra los diferidos de la ola certificable usando las apps **Firma (Sign)**
-y **eLearning**, ya instaladas en la instancia (ahora dependencias del addon):
-
-- **Acuses con firma electrónica**: en el documento controlado (pestaña
-  Acuses de lectura, solo Jefe MAST) se liga una **plantilla de Sign** hecha
-  con el PDF del documento y su campo de firma; el botón «Enviar acuses a
-  firma» crea una solicitud por empleado pendiente (idempotente, salta a
-  quien no tiene contacto/correo) y el cron diario **sella el acuse** cuando
-  la solicitud queda firmada (la firma electrónica es la evidencia; pasa el
-  candado A2 vía superusuario del cron). La columna «Firma electrónica» del
-  acuse muestra el avance sin exigir permisos de Sign al empleado (related
-  almacenado).
-- **eLearning → DNC**: menú Empleados → Competencias (SGI) → «Cursos y
-  competencias (eLearning)»: lista editable que mapea curso → competencia
-  (`hr.skill`) y nivel otorgado. El cron diario registra o **sube** (nunca
-  baja) la competencia de los asistentes con curso terminado, cerrando la
-  brecha en la DNC sin captura manual.
-- **Digest semanal**: correo-resumen a Jefe MAST + Dirección (mismos
-  destinatarios del correo crítico) con NC abiertas, acciones vencidas, KPIs
-  en rojo, evaluaciones legales vencidas/incumplidas, riesgos altos sin
-  tratamiento, acuses pendientes y contexto por revisar. Cada métrica corre
-  en su propio savepoint; si todo está en cero lo dice («sin pendientes»).
-
-Configuración manual restante: crear las plantillas de Sign por documento
-(una vez, colocando el campo de firma sobre el PDF) y mapear los cursos
-existentes a competencias.
-
-## Catálogo único — fase 1 del rediseño (v19.0.29.0.0, 2026-09)
-
-El SGI pasa a ser el **catálogo único de actividades** de la empresa: cada
-actividad existe una vez y de ella salen el procedimiento, la descripción de
-puesto, los indicadores y la lista de automatización. Fase 1 de 5 (las
-siguientes: evidencia y medición por ejecutor real, motor de reglas,
-revisiones y descripción de puesto, automatización/tableros/seguridad).
-
-- **Roles como filas** (`sgi.activity.role`): cada actividad dice qué puesto
-  la **ejecuta**, **aprueba**, **participa** o **se entera**, con condición
-  opcional. Exactamente un «ejecuta» (cero si `automation_level_current =
-  automatico`) y a lo más un «aprueba» sin condición. «Puestos responsables»
-  (`responsible_job_ids`) queda calculado desde los roles «ejecuta» sobre la
-  misma tabla de antes; escribirlo crea/quita roles. El puesto (`hr.job`)
-  muestra sus actividades y contadores por rol.
-- **Actividad**: `instruction_id` (instructivo IT), `value_class` (VA / NVA
-  necesaria / NVA), nivel de automatización actual/meta y método, `active`
-  (la carga archiva, nunca borra) y numeral único por proceso.
-- **Proceso**: ficha (`start_trigger`, `end_trigger`, `inputs`, `outputs`),
-  `replaced_document_ids`, `company_id` y clave única **por empresa**. Dueño
-  sin usuario o archivado → salud en rojo y aviso en la ficha. Aprobador por
-  omisión = usuario del dueño; Vo.Bo. por omisión = parámetro
-  `quimibond_sgi.vobo_user_id` (id del usuario Jefe de MAST y SGI; **hay que
-  capturarlo** en Parámetros del sistema).
-- **Tipos de documento como datos** (`sgi.document.type`, Configuración →
-  Tipos de documento): patrón de clave (`PR-{process}`,
-  `IT-{process}-{seq:02d}`, `F-{process}-{seq:02d}`, `CO-{seq:02d}`,
-  `MA-{process}-{seq:02d}`, `DP-{seq:02d}`), si exige proceso y la
-  nomenclatura heredada que se sigue aceptando mientras se migra (`P-A28`,
-  `F-P-A28-04`…). `sgi_doc_type` se conserva calculado desde el tipo.
-  `sgi.document.type.sgi_next_code(proceso)` propone la siguiente clave.
-- **Revisión entera** (`sgi_revision`; `sgi_revision_label` = «05» para
-  imprimir). Única por clave + revisión + empresa entre documentos activos;
-  una revisión nueva va por arriba de la última de su clave y no baja (salvo
-  `sgi_revision_correction` de un Jefe MAST); una clave, aun dada de baja, no
-  se reutiliza en otro tipo ni en otro proceso. Lo no numérico que había queda
-  en `sgi_revision_legacy`.
-- **Clave anterior** (`sgi_previous_code`): al cambiar la clave se guarda sola;
-  la búsqueda «Clave SGI» y `_sgi_find_by_code` la encuentran 12 meses.
-- **Multiempresa**: `company_id` y regla por empresa en proceso, actividad,
-  rol, liga, flujo, responsabilidad y tipo de documento.
-- **Grupo Administrador SGI** (implica Jefe MAST): el único que carga por API,
-  fusiona puestos y administra tipos de documento. Se asigna a mano.
-
-### Fase 1.1 — familias, roles relativos, vacantes y medición
-
-- **Familias de puestos** (`sgi.job.family`, Procesos → Familias de puestos):
-  el mismo rol en puestos que solo cambian por nivel o letra (OP-TEJ, OP-INS,
-  LAB…). Un puesto está en una sola familia por empresa; `hr.job.sgi_family_id`
-  se calcula desde la familia. Un rol se asigna a un **puesto**, una **familia**
-  o un **rol relativo** (`target_type`); la regla de un solo «ejecuta» cuenta
-  filas, así que una familia cuenta como una. `responsible_job_ids` expande las
-  familias. Una familia está vacía solo si todos sus puestos lo están.
-- **Roles relativos** (`relative_role`): solicitante, jefe del solicitante,
-  quien detecta, área responsable, dueño del proceso. Solo el dueño se
-  resuelve a un puesto; los demás no cuentan para «puesto sin persona» ni
-  para adherencia.
-- **Vacante aprobada** (`hr.job.sgi_vacancy_approved` / `sgi_vacancy_until`,
-  pestaña Actividades SGI del puesto): un puesto sin empleados con vacante
-  vigente se carga con advertencia; sin ella, es error.
-- **Método de medición obligatorio** (`measure_method`): Odoo, por
-  consecuencia (`measure_proxy_activity_id`: copia el conteo y el estado de la
-  actividad que la prueba; sin ciclos), correo y manual (grises «pendiente»
-  hasta la fase 2), muestreo (`sample_cadence`) y no aplica (exige
-  `measure_justification`). «Sin medir» solo con el procedimiento en borrador:
-  un procedimiento no pasa a piloto con actividades sin método, ni a vigente con
-  métodos incompletos (el error las lista). La ficha del proceso y
-  Procesos → Medición por método muestran cuánto se mide de verdad
-  (odoo + consecuencia entre el total).
-- **Quién ejecutó** (`measure_user_field`, p. ej. `create_uid`): el cron hace un
-  `read_group` por ese campo en la ventana de 30 días y clasifica cada
-  ejecución en `measure_executor_json`: **correcto**, **otro_puesto**,
-  **generico** (cuentas compartidas del parámetro
-  `quimibond_sgi.generic_user_ids`; la migración pone 92,184,80),
-  **sin_empleado** o **sistema** (OdooBot). Adherencia = correcto entre todo lo
-  que no es sistema. Avisos en la ficha (`measure_warning`): adherencia < 80 %,
-  ejecuciones genéricas o sin empleado, y actividad «manual» con más de la mitad
-  de ejecuciones del sistema. TODO fase 2: pasa a `sgi.activity.evidence`.
-- **El detalle vive en un modelo, no en JSON** (`sgi.activity.exec.stat`): una
-  fila por actividad, semana (lunes), usuario y clase, con empleado, puesto y
-  familia al momento de medir. Lo escribe el cron (reemplaza las 4 semanas que
-  recalcula; si nada cambió no escribe); nadie lo edita. La adherencia y los
-  contadores de la actividad salen de esas 4 semanas.
-
-### Pantallas (reorganizadas el 22-sep-2026; 5 entradas por perfil desde el 24-sep-2026)
-
-El menú del SGI tiene **cinco entradas ordenadas por perfil y máximo tres
-niveles**: cada perfil ve su nivel y el de abajo, y lo técnico vive en una
-sola entrada que solo ve MAST. Todo el árbol vive en `views/sgi_menus.xml`;
-los xmlids no cambiaron.
-
-| Menú | Quién lo ve | Qué hay |
-|---|---|---|
-| **Inicio** | Todos | Mi procedimiento (la pantalla de la persona) · Mi equipo (jefes, dueños de proceso, MAST, Dirección) |
-| **Procesos** | Todos | Mapa de procesos (entrada única) · Quién hace qué |
-| **Mejora** | Todos | No conformidades · Reclamaciones de cliente · Acciones · Quejas y sugerencias · Auditorías (auditorías y programa) · Seguridad y ambiente (incidentes, planes de emergencia, simulacros) |
-| **Dirección** | Dirección y MAST | Tablero de dirección · Revisión por la Dirección · Política integral · Objetivos integrales · Riesgos y oportunidades · Requisitos legales · Partes interesadas · Satisfacción del cliente |
-| **Administración SGI** | Solo MAST | Documentos (documentos, cambios, migración, tipos) · Indicadores (indicadores y fórmulas, mediciones, mediciones que me tocan) · Diagnóstico (diagnóstico, cobertura, cumplimiento, tendencia, concentrado de NC, mejoras, lecciones, faltantes de especificación, cumplimiento semanal) · Firmas de lectura (acuses, mis acuses) · Configuración · Datos técnicos (actividades, roles, entregables, cadena, flujos y las listas «mías» de antes) |
-
-Reordenado el 2026-09-24 según «Estructura del SGI en Odoo» (paso 2: 5
-entradas por perfil, solo reparentar y grupos; los xmlids no cambian). Lo
-que estaba en Inicio (Tablero, Mis actividades, Mis acciones, Mis
-mediciones, Mis procedimientos, Mis acuses) ahora son bloques de Mi
-procedimiento: las mediciones por capturar o validar entran a «Mis
-pendientes». Reclamaciones de cliente sigue como lista aparte de las NC
-porque son modelos distintos; unirlas con un filtro por tipo es trabajo de
-vistas, no de menú.
-
-Calidad preventiva (AMEF, PPAP, planes de control, metrología) y el Pareto de
-alertas viven en la app **Calidad**; evaluación de proveedores en Compras,
-presupuesto en Ventas y competencias en Empleados.
-
-**Ficha del proceso**: 3 botones (Actividades, En rojo, NC abiertas), botón
-«Imprimir procedimiento» arriba y 4 pestañas: *Ficha* (objetivo, disparadores,
-entradas y salidas, indicadores y riesgos), *Actividades* (lista con quién
-ejecuta y aprueba, método, estado y adherencia; abajo el texto del
-procedimiento y las firmas), *Conexiones* (flujos y ligas) y *Documentos*.
-
-**Ficha de la actividad**: arriba el número, el nombre, el proceso y el método
-(y los avisos en amarillo si los hay); 4 pestañas: *Qué y quién* (roles,
-descripción, instructivo, formatos, valor y automatización), *Cómo se mide*,
-*Quién la ejecutó* (últimas 4 semanas) y *Cadena*.
-
-### Carga por API: `sgi.process.load_payload(payload, dry_run=False)`
-
-Por JSON-RPC o por el conector MCP (`call_model_method` sobre `sgi.process`;
-la migración habilita el modelo en MCP con llamadas a métodos). Alta o
-actualización por llave natural (entregable `code`; proceso `code`; actividad
-proceso + paso; rol actividad + rol + puesto; «recibe» actividad + entregable;
-indicador `code`). Escribe solo lo que cambió: la segunda corrida del mismo
-JSON reporta cero cambios. `dry_run` corre todo en un savepoint que se deshace
-y reporta lo que se crearía, actualizaría o archivaría. Una transacción por
-proceso: si una actividad falla, el proceso entero se deshace y se reporta.
-Las actividades de un proceso cargado que no vienen en el JSON se **archivan**
-(`"archive_missing": false` lo evita); su texto original se queda en ellas.
-
-```json
-{
-  "dry_run": true,
-  "deliverables": [
-    {"code": "C2-PEDIDO", "name": "Pedido confirmado", "model": "sale.order",
-     "domain": "[('state', '=', 'sale')]", "date_field": "date_order",
-     "user_field": "user_id", "acceptance_criteria": "Precio y fecha confirmados"},
-    {"code": "C2-OC-CLIENTE", "name": "Orden de compra del cliente", "document": "F-C2-01"}
-  ],
-  "processes": [{"code": "C2", "name": "Ventas", "process_type": "cadena de valor",
-                 "owner_employee_id": 244,
-                 "replaced_documents": ["P-A28"], "replaces": ["P-VEN"]}],
-  "activities": [
-    {"process": "C2", "number": "C2.03", "stage": "A. Pedido",
-     "name": "Verificar número de parte y precio", "value_class": "nva_n",
-     "roles": [{"role": "ejecuta", "family": "PEDIDOS"},
-               {"role": "informa", "relative": "dueno_proceso"}],
-     "inputs": [{"code": "C2-OC-CLIENTE", "days": 1}],
-     "outputs": ["C2-PEDIDO"],
-     "measure": {"method": "entregable", "deliverable": "C2-PEDIDO"},
-     "cadence": "evento",
-     "automation": {"current": "manual", "target": "asistido"}}
-  ],
-  "indicators": [{"code": "C2-01", "name": "Entregas completas y a tiempo (OTIF)",
-                  "process": "C2", "frequency": "monthly",
-                  "formula": "Entregas completas en la fecha compromiso ÷ entregas del mes",
-                  "source": "Fecha compromiso del pedido contra fecha de la entrega",
-                  "responsible_employee_id": 244}]
-}
-```
-
-- **Llaves desconocidas = error**, con la ruta completa
-  (`processes[0].activities[5].origin_note`) y la lista de llaves válidas de
-  ese nivel. Si hay una, no se carga nada. Los indicadores van al nivel
-  principal con `process`, no dentro del proceso.
-- **`replaces`** (proceso): códigos de procesos que el nuevo sustituye. En la
-  carga real se archivan **con sus actividades** (que conservan su texto),
-  **sus ligas y sus flujos** (con el motivo «Proceso X sustituido por C2»), y
-  el proceso nuevo **adopta sus indicadores y riesgos activos**. Su chatter
-  dice «Sustituido por C2» y el reporte lista cada cosa archivada o movida;
-  con `dry_run` solo se reporta. Un código que no existe es error. Los
-  documentos del proceso viejo siguen vigentes: se vuelven obsoletos solo al
-  publicar el proceso nuevo (`replaced_documents` + `publish`).
-
-**Estructura vigente.** El SGI muestra por defecto solo lo de procesos
-activos: indicadores y riesgos con el filtro «De procesos vigentes», la
-cadena de actividades con «Estructura vigente» y los flujos con «Mapa
-vigente» (solo los calculados de entregables entre procesos activos; los
-flujos no se capturan a mano). Los indicadores y riesgos sin proceso o con su
-proceso archivado siguen activos y midiéndose, y se ven con el filtro
-«Pendientes de proceso nuevo». Los crons ignoran lo archivado: la cadena solo
-evalúa ligas entre actividades activas, el resumen semanal solo cuenta
-indicadores y riesgos de procesos vigentes, la NC automática de un indicador
-de proceso archivado nace sin proceso y la revisión de un riesgo así va al
-Jefe MAST.
-- **Indicadores**: `formula` y `source` (texto; salen en la ficha y en el
-  procedimiento impreso), `frequency` `monthly`/`weekly`, y el responsable
-  como `responsible_employee_id` (su usuario) o `responsible` (id o login).
-  **Modos genéricos (P-1):** `calc_mode` `actividad_a_tiempo` con
-  `activity` (`"C2.17"` o `"PROC:NUM"`) toma el % a tiempo del cumplimiento
-  semanal de esa actividad; `entregable_completo` con `deliverable` (código)
-  toma el % de lo entregado en el periodo que cumple `complete_domain` (sin
-  `deliverable`, usa el entregable con el que se mide `activity`). Sin
-  entregas o sin plazo medible en el periodo la medición queda pendiente. El
-  reporte avisa si falta la actividad, el entregable o su «completo».
-- **`number`**: `"C2.03"` (clave del proceso + paso) o el paso como entero
-  (`3`). Es un número, no texto: el numeral que se imprime se calcula y se
-  renumera solo si cambia la clave del proceso. Otro formato es error.
-- **`stage`**: la etapa del proceso («A. Pedido»); se crea la primera vez.
-- **`deliverables`** se procesan antes que los procesos. `model` + `domain` +
-  `date_field` (+ `user_field`) dicen **cuándo quedó entregado**: con ellos, la
-  actividad que lo entrega se mide con `"measure": {"method": "entregable"}`
-  y no lleva `evidence` (se captura una vez, en el entregable). Si la
-  actividad entrega un solo entregable con modelo, `deliverable` se puede
-  omitir. Sin `model`, el entregable es documental.
-- **`inputs`**: lo que la actividad recibe; `"C2-PEDIDO"` o
-  `{"code": "C2-PEDIDO", "days": 2}`. `days` es el **plazo en días hábiles**
-  (lunes a viernes) para que llegue a esta actividad; pasado el plazo sin que
-  ella ejecute, el eslabón está atorado. `0` o sin `days` = sin plazo.
-  **Vencimiento por campo (P-4):** `{"code": "C2-PROGRAMA", "due_field":
-  "scheduled_date", "offset_days": -2}` vence contra esa fecha del registro
-  de la entrada más el margen en días hábiles (negativo = antes), en lugar
-  de días desde que llegó; el campo debe existir y ser de fecha en el modelo
-  del entregable (si no, error). Con `match` cuando la salida es otro modelo.
-- **Relaciones para ligar entradas (P-3):** `budget.analytic` (app
-  Presupuestos) tiene `sgi_sales_budget_id` → presupuesto de ventas del SGI
-  (E1.02, `"match": "sgi_sales_budget_id"`); `documents.document` tiene
-  `sgi_doc_change_id` → última solicitud de cambio documental aprobada que
-  lo dejó así, la pone el propio cambio al aplicarse (E2.02, `"match":
-  "sgi_doc_change_id"`); `sgi.management.review` tiene `audit_ids` →
-  auditorías del periodo, las llena «Cargar entradas» y se ajustan a mano
-  (E2.14, `"match": "audit_ids"`). Cuando la salida apunta a varias entradas
-  manda la última: la salida no podía hacerse antes.
-- **`outputs`**: códigos de lo que la actividad entrega.
-- **Las ligas y los flujos no se cargan**: salen solos de `inputs`/`outputs`
-  (una liga por quien entrega × quien recibe; un flujo si cruzan proceso) y no
-  se editan a mano. Si una no aplica se desactiva con su motivo en la
-  actividad (pestaña Cadena). `links_to`, `links`, `flows` e `inputs`/`outputs`
-  como texto del proceso son **error**.
-- **Un ejecutor por actividad.** Si según el caso la ejecuta otro puesto, son
-  dos actividades. Una familia de puestos (`family`) solo cuando los puestos
-  son intercambiables (PEDIDOS). `condition` solo va en `aprueba` o `informa`
-  («arriba del monto que se fije»); en `ejecuta` o `participa` es error.
-- **Inicio y fin del proceso** no se capturan: inicia con lo que sus
-  actividades reciben y ninguna produce; termina con lo que entregan y ninguna
-  recibe. `start_trigger`/`end_trigger` se ignoran con aviso.
-- Puestos por id o por nombre normalizado (sin mayúsculas, espacios y saltos
-  de línea colapsados). **Nunca se crean**: si no existe o es ambiguo, error.
-- Dueño: `owner_employee_id`, o `owner_job` = el único empleado activo con
-  usuario en ese puesto (si hay 0 o varios, aviso y queda sin dueño).
-- `evidence` (método `odoo`): la primera fuente `odoo_model` va a los campos
-  de medición de la actividad; las demás llegan en la fase 2.
-
-Ejemplo por MCP: `call_model_method("sgi.process", "load_payload", [payload])`.
-
-### Actividades específicas (19.0.30.0.0)
-
-Cada actividad contesta siete preguntas; lo que falte queda en
-**Análisis → Faltantes de especificación** (pivot proceso × faltante) y en un
-aviso arriba de la ficha.
-
-| Pregunta | Campo | Llave de la carga |
-|---|---|---|
-| Qué | nombre + `check_against` | `name`, `check_against` |
-| Quién | rol `ejecuta` | `roles` |
-| Dónde | `exec_channel`, `odoo_menu_id`, `external_system`, `location_id`, `workcenter_id`, `place_note` | `where: {channel, menu (xml_id), external_system, location (nombre completo), workcenter (código), place}` |
-| Cómo | instructivo o `how_steps` | `instruction`, `how_steps` |
-| Cuándo | días en la entrada, o `due_weekday` / `due_business_day` | `inputs[].days`, `due: {weekday: 0-6}` o `{business_day: 1-23}` |
-| Terminado | `done_criteria` + `complete_domain` del entregable | `done_criteria`, `deliverables[].complete_domain` / `complete_criteria` |
-| Si falla | `on_fail` + rol `escala` con `after_days` | `on_fail`, `roles: [{role: "escala", relative: "dueno_proceso", after_days: 3}]` |
-
-- **Entrada condicionada:** `inputs[].applies_domain` (dominio sobre el
-  registro de entrada) y `applies_note`. Si no se cumple, la actividad no
-  aplica a ese registro: no vence ni cuenta como atrasada. `inputs[].match` es
-  el campo de la salida que apunta a la entrada cuando son modelos distintos
-  (ej. `sale_id`); con el mismo modelo no hace falta.
-- **Estado del proceso:** `state` (`borrador` o `piloto`) y `publish: true`.
-  Publicar (botón o carga) exige cero faltantes de tipo error en actividades
-  y que cada indicador tenga meta, fórmula, fuente, responsable y frecuencia.
-  En borrador y piloto todo se carga incompleto; la carga reporta los
-  faltantes como avisos, agrupados por código.
-- **Indicadores:** además `target` (meta), `unit`, `direction` (`up`/`down`),
-  `baseline_value`, `target_date`.
-- **Verbos:** `quimibond_sgi.vague_verbs` (error: «dar seguimiento»,
-  «gestionar»…) y `quimibond_sgi.compare_verbs` (piden `check_against`), en
-  Parámetros del sistema; cambiarlos recalcula los faltantes.
-- **Medición semanal** (**Análisis → Cumplimiento semanal**): por actividad y
-  semana, entradas aplicables, salidas hechas, completas, a tiempo (días
-  hábiles del calendario de la compañía, con festivos) y vencidas abiertas.
-  Va en su propio modelo (`sgi.activity.week.stat`), no en `exec.stat`, porque
-  aquel tiene un renglón por usuario y repetir los totales los multiplicaría.
-- **Por proceso:** % de actividades en Odoo, % en papel/correo/teléfono y %
-  de lo que se hace en Odoo que se mide solo.
-- Escalamiento automático (cron que crea actividades al vencer): fase 2. Los
-  campos y el rol `escala` ya existen.
-
-
-
-### Limpiezas a mano (con reporte previo)
-
-- **Puestos duplicados y nombres con saltos de línea**:
-  `hr.job.sgi_merge_duplicate_jobs(dry_run=True)` reporta; con `dry_run=False`
-  conserva el puesto con más empleados, mueve TODAS sus referencias (empleados,
-  roles, documentos, responsabilidades…) y archiva los demás. Hoy hay
-  duplicados por mayúsculas (Director de Ventas, Coordinador de Ventas
-  Industrial, Administrador de Ventas y Marketing…) que hacen ambigua la carga:
-  correrla **antes** de cargar los 14 procesos.
-- **Modelos de Studio vacíos** (`x_emp_activity`, `x_no_conformidades`,
-  `x_actividades_obligato`, `x_calendario_de_obliga`):
-  `sgi.config.sgi_drop_empty_studio_models(dry_run=True)`. Solo borra los que
-  siguen en cero, con sus vistas, acciones y menús. Fuera de un update (borrar
-  un modelo recarga el registro).
-
-### Migración (19.0.29.0.0)
-
-`pre-migrate`: revisión y nueva revisión de texto a entero; quita la
-unicidad global de la clave de proceso. `post-migrate`: `company_id = 1`, un
-rol «ejecuta» por cada puesto responsable (las actividades heredadas con 0 o
-varios ejecutores se listan en el log; la regla se les aplica al editar sus
-roles), tipo de documento como registro, aprobador = usuario del dueño y
-`sgi.process` habilitado en MCP. Nada se borra; los 25 procesos actuales se
-archivan después, desde datos, cuando sus actividades y documentos pasen a los
-14 nuevos.
-
-Verificar después de desplegar:
-
-```sql
-select count(*) from sgi_activity_role;                       -- ≈ roles migrados
-select data_type from information_schema.columns
- where table_name = 'documents_document' and column_name = 'sgi_revision';  -- integer
-select count(*) from documents_document where sgi_is_controlled and sgi_doc_type_id is null;
-```
-
-## Alcance multiempresa (decisión de arquitectura)
-
-La instancia tiene varias compañías. Desde la fase 1 del catálogo
-(v19.0.29.0.0) el **catálogo** (procesos, actividades, roles, ligas, flujos,
-responsabilidades, tipos de documento) lleva `company_id` y regla por empresa.
-El resto del SGI sigue siendo exclusivo de PRODUCTORA DE NO TEJIDOS QUIMIBOND
-(PNTQ) y sus modelos NO llevan `company_id` (salvo el
-presupuesto de ventas, que sí lo necesita para valuar). Es una decisión
-consciente: los registros SGI son globales de la planta. Si otra compañía
-adoptara el SGI, la Fase correspondiente deberá añadir `company_id` por etapas
-(evidencia primero: NC ya lo hereda de quality; luego riesgos, auditorías,
-documental) — no intentar hacerlo de golpe.
-
-## Herramientas de shell (`tools/`)
-
-Scripts de un solo uso, se corren con `odoo-bin shell --no-http < tools/<script>.py`:
-
-- **`reporte_telas_rollout.py`** — lista de trabajo de telas sin operación TEJIDO/BoM
-  completa (solo lectura, exporta `/tmp/telas_rollout.csv`).
-- **`carga_documental.py`** — carga masiva del SGI documental (ZIP con las carpetas
-  00-23) a la app Documentos. **`DRY_RUN=True` por defecto**: la primera corrida solo
-  imprime el plan y escribe `/tmp/carga_documental_reporte.csv`; para cargar de verdad
-  se pone `DRY_RUN=False` y se re-ejecuta. Crea el árbol de carpetas espejo (con
-  subcarpetas de departamento en 02), y por cada archivo con nombre que cumple la
-  nomenclatura de PNTQ crea el documento controlado (clave, tipo, área, revisión —
-  «Rev NN» o «00»—, vigente, emisión = fecha del archivo, próxima revisión +2 años).
-  Salta carpetas con «obsolet/baja/anterior»; los archivos sin clave van a **POR
-  CLASIFICAR** (no controlados). Idempotente (salta lo ya cargado), reporta duplicados
-  de clave dentro del ZIP, y **no** genera acuses ni asigna puestos (eso es manual).
-  **Correr primero en staging, validar el CSV, y solo con visto bueno en producción.**
-
-## Instalación / actualización (shell Odoo.sh)
-
-```bash
-odoo-update quimibond_sgi && odoosh-restart http
-```
-
-> **NO** cambiar la versión del manifest de `quimibond_intelligence` ni de otros
-> módulos del repo (un bump dispara `-u` global que falla por errores preexistentes
-> de Studio).
-
-## Tests
-
-```bash
-odoo-bin --test-tags /quimibond_sgi -u quimibond_sgi --stop-after-init --no-http
-```
-
-Cubren (Fase 1): secuencias de folio, candados de cierre de NC (+ cierre forzado),
-validación de clave documental, obsoletización de versión vigente previa, acuses
-idempotentes, piloto >90 días, aprobación que versiona el documento, reclamación → NC
-y validación del mapa de procesos.
-
-Cubren (Fase 2): semáforo higher/lower_better con los 2 umbrales; cron de
-indicadores idempotente + NC única con `nc_on_red` (y nada sin el flag); constraint
-auditor≠dueño de proceso, cierre bloqueado sin disposición y "Generar NC" con origen
-correcto; score/nivel por instrumento (R&O, IPER, patrimonial), FODA sin score y XOR
-de acciones NC/Riesgo; clase de proveedor por umbrales; y RxD (cargar entradas,
-candado sin acuerdos, acuerdos → tareas). **33 tests, 0 fallos.**
-
-Cubren (Fase 3): calibración fuera de tolerancia que bloquea el equipo + crea NC y su
-posterior liberación con calibración conforme; NPR de AMEF y candado de vigente sin
-acción; PPAP con 18 elementos y candados de enviado/aprobado (PSW); incidente SST que
-no cierra sin las 3 capas SCAT ni con acciones abiertas y aviso de graves; XOR de
-acciones entre NC/Riesgo/AMEF/Incidente; brechas de competencia (DNC) por puesto; y NC
-mayor cerrada → actividad de actualización de AMEF/plan de control. **15 tests, 0 fallos.**
-
-Cubren (Fase 4): escalar una alerta operativa a NC (folio + equipo NC Internas + ligas
-conservadas; bloqueo si ya es NC); `_calc_desperdicio` con el subproducto SALDO TEJIDO D
-(y degradado a None sin categoría); `_calc_calidad_pq` con `mrp.revision.log`;
-retro-vinculación segura (post_init sin equipos no truena; con equipo, liga el punto al
-plan); y el puente de pesaje (rollo fuera de tolerancia → una sola alerta por rollo, en
-`quimibond_sgi_pesaje`). **9 tests, 0 fallos.**
-
-Cubren (Fase 4.6): flujo con modelo → botón abre el act_window del modelo correcto;
-flujo documental → botón bloqueado; «Levantar NC» en mantenimiento correctivo crea la
-NC ligada (idempotente); y CoA publicado adjunta el PDF a la entrega. **4 tests.**
-
-Suite completa (quimibond_sgi + puentes): **64 tests, 0 fallos.**
-
-Cubren (catálogo, fase 1 — `test_catalog_fase1.py`): exactamente un ejecutor
-(cero si es automática) y un aprobador sin condición; cambio de ejecutor en
-una sola escritura; `responsible_job_ids` heredado crea roles; numeral único
-por proceso; carga idempotente (segunda corrida y su dry-run sin cambios),
-dry-run que no escribe, puesto inexistente = error sin crear nada y proceso
-deshecho, archivado de actividades que ya no vienen, puesto ambiguo; patrones
-de tipo de documento y siguiente clave; revisión única y creciente; clave no
-reutilizable en otra familia; clave anterior encontrada; dueño inválido = rojo.
-**No se han corrido todavía**: el SGI depende de Enterprise y no entra al CI;
-correrlas en la base de pruebas de Odoo.sh con el comando de arriba.
-
-## Lógica de indicadores: detalle y confiabilidad (I-1, I-2, 19.0.36.0.0)
-
-Spec: «Lógica de indicadores del SGI» (2026-09-24). Código en
-`models/sgi_indicator_detail.py`, pruebas en `tests/test_indicator_detail.py`.
-
-- **I-1, cada medición guarda su detalle.** `numerator`, `denominator`,
-  `sample_size` y los registros que la forman (`detail_model` + `detail_ids`);
-  «Ver registros» abre esa lista guardada, no una consulta nueva. Un modo lo
-  aporta con `_detail_<modo>(date_from, date_to)` → `{value, numerator,
-  denominator, model, ids}`; primera tanda: a tiempo, completo, OTIF, OTD,
-  entregas completas, embarques sin error, pedidos cancelados, cierre de NC,
-  calidad PQ, preventivo, DSO y cartera vencida. Los demás modos conservan su
-  `_calc_` y guardan al menos modelo, ids y casos cuando la tabla de
-  evidencia conoce su universo. `sgi.indicator._sgi_aggregate(mediciones)`
-  da el valor de varios periodos como suma de numeradores entre suma de
-  denominadores (nunca promedio de porcentajes); el pivote trae ambos.
-- **I-2, el cero no es «sin dato».** La medición automática sin registros
-  queda en `sin_dato` (gris, sin semáforo, no pide captura). Con menos casos
-  que `quimibond_sgi.indicator_min_sample` (5) se marca «muestra chica».
-  El indicador nace **en prueba** (`status`) y el Jefe MAST lo pasa a
-  **oficial** tras revisar una vez la lista de registros; solo un indicador
-  oficial, con dato y con muestra suficiente abre NC (el interruptor
-  `nc_on_red` sigue siendo necesario). «Medir desde» (`measure_from`) evita
-  crear mediciones de periodos anteriores al dato confiable. El último
-  valor y semáforo del indicador salen de la última medición **con dato**.
-  Los 93 indicadores existentes quedan en prueba al actualizar: es el freno
-  a las 20 NC de golpe que pedía la spec, sin tocar `nc_on_red`.
-- Carga JSON: llaves `status` y `measure_from` en `indicators`.
-- **I-3, fórmulas corregidas (19.0.38.0.0).** Tres modos nuevos con detalle
-  (`models/sgi_indicator_i3.py`), y la migración cambia MA-05, EX-01 y EX-02
-  a ellos si seguían en el modo viejo:
-  `desperdicio_kg` (kg que entran a las ubicaciones de desperdicio, órdenes y
-  ajustes, ÷ kg de hilo y fibra consumidos en órdenes, 3 meses móviles; solo
-  líneas en kg; parámetros `waste_location_ids` 39,43 y
-  `waste_input_categ_ids` 350,356), `margen_ebitda` ((ingresos − costo de
-  ventas − gastos de operación) ÷ ingresos por tipo de cuenta, 12 meses
-  móviles; fuera depreciación, otros ingresos y financieros 701) y
-  `compras_mp_vs_ventas` (facturas de proveedor de la categoría Materia Prima
-  menos notas de crédito ÷ ingresos, 3 meses móviles; parámetro
-  `raw_material_categ_id` 318). Las metas y el objetivo integral las ajusta
-  MAST: MA-05 arranca ≈ 16 % contra una meta de 0.8 %, EX-02 ≈ 35 % contra 78 %.
-  El margen sobre pedidos (`margen_ventas`) sigue disponible para un indicador
-  nuevo de C1/C2.
-- **P-21 y automáticos sin dato (19.0.39.0.0).** Diagnóstico del 24-sep-2026
-  de los 9 automáticos que siempre salían sin dato. Tres se miden desde Odoo
-  (`models/sgi_indicator_p21.py`): `reproceso` (MA-04: kg producidos por las
-  órdenes cuyo tipo de operación está en `quimibond_sgi.rework_picking_type_ids`,
-  sembrado 106 Re-proceso Tintorería y 107 Re-proceso Acabado, ÷ kg de hilo y
-  fibra consumidos; solo líneas en kg, así que una orden de reproceso en metros
-  no entra; «Acabado producto en proceso» se agrega al parámetro cuando
-  producción lo confirme), `inventario_diferencia` (AL-01: valor de los ajustes
-  de inventario del mes, `stock.move.value`, ÷ valor actual de las existencias
-  en ubicaciones internas; Odoo 19 ya no tiene capas de valuación, así que el
-  denominador es la foto del día del cálculo, no el cierre) y `consumo_energia` (TR-03: facturado por el proveedor de energía ÷
-  toneladas de hilo y fibra consumidas; pesos por tonelada, antes total en
-  pesos). El denominador en kg es uno solo (`_sgi_kg_consumed`, el de MA-05):
-  cada kg cuenta una vez aunque pase por tejido y tintorería. MT-01, MT-02,
-  RH-01 y RH-02 pasaron a manual en producción sin retirarse (nadie captura
-  paros, preventivos, plantilla autorizada ni habilidades por puesto); MA-02
-  sigue sin capacidad configurada y VE-02 sin presupuesto aprobado.
-- **I-5, NC por persistencia (19.0.37.0.0).** «NC automática» (`nc_on_red`)
-  ya no abre una NC por un solo rojo: hacen falta **dos periodos seguidos en
-  rojo** (semana o mes, según la frecuencia), o **uno** si el indicador está
-  marcado como **crítico** (`critical`; llave `critical` en el JSON). Nunca
-  con «sin dato» ni «muestra chica», y mientras la NC del periodo anterior
-  siga abierta la medición nueva se liga a esa misma NC en vez de abrir otra.
-  Sigue exigiendo indicador oficial y medición validada.
-
-## Meta con trayectoria y sentido «dentro de un rango» (I-7; 19.0.42.0.0)
-
-`models/sgi_indicator_trajectory.py`.
-
-- **Trayectoria.** Arranque (`baseline_value` desde `baseline_date`) y meta
-  final (`target_objective` el `target_date`, con su `target_acceptable`) se
-  interpolan linealmente en **escalones trimestrales** (`sgi.indicator.step`,
-  pestaña Trayectoria, botón «Generar trayectoria» del Jefe MAST): el
-  objetivo de cada trimestre es el valor de la recta al cierre del trimestre y
-  su aceptable guarda la misma distancia que el aceptable de la meta final.
-  Regenerar es idempotente.
-- **Corrección a mano.** Cambiar objetivo o aceptable de un escalón exige un
-  motivo; el escalón queda marcado «corregido a mano», el antes/después y el
-  motivo van al chatter del indicador, y «Generar trayectoria» lo respeta.
-- **Metas por periodo.** Objetivo y aceptable de la medición (`target_objective`
-  / `target_acceptable`, ahora calculados) son los del escalón cuyo trimestre
-  contiene el periodo; sin escalones, los del indicador; después del último
-  escalón, la meta final. El semáforo se evalúa contra esas metas.
-- **Dentro de un rango.** `direction = 'range'` con `range_min`, `range_max` y
-  `range_tolerance`: verde dentro del rango, amarillo fuera pero dentro de la
-  tolerancia, rojo más allá. La trayectoria no aplica a este sentido; «Le
-  falta» pide rango en vez de meta.
-- Carga JSON: llaves `baseline_date`, `range_min`, `range_max`,
-  `range_tolerance` y `direction: range`.
-
-Pruebas: `TestIndicatorTrajectory` 01–05.
-
-## Plan de acción en rojo, calendario y ventana (I-4, I-6, I-8, P-40; 19.0.41.0.0)
-
-`models/sgi_indicator_plan.py`.
-
-- **I-4, medición roja con plan.** Una medición en rojo con dato (no «sin
-  dato» ni muestra chica) pide **causa** y al menos una **acción**
-  (`sgi.action.line` con origen `measure_id`: descripción, responsable y fecha
-  compromiso). Si el indicador es **oficial**, al quedar roja agenda una
-  actividad al dueño del indicador (fallback Jefe MAST) que vence el **día 10
-  del mes siguiente** al periodo (`quimibond_sgi.red_plan_due_day`); con causa
-  y acción la actividad se da por hecha, y si el día pasa sin plan el cron
-  diario escala a Dirección (una actividad, idempotente). En prueba el rojo
-  pide el plan en la ficha, sin actividad ni escalamiento. Las acciones cuelgan su actividad espejo del
-  indicador y las vencidas escalan por `cron_overdue_actions` como las demás.
-- **I-6, calendario de cálculo.** Los crons «Mediciones de indicadores» y
-  «Mediciones semanales» corren **a diario** (migración 41.0.0) y miden solo
-  cuando toca: el tercer día hábil del mes
-  (`quimibond_sgi.monthly_measure_business_day`, calendario de la compañía)
-  y el lunes. Si ese día el cron no corrió, miden en la siguiente corrida
-  mientras el periodo anterior siga sin mediciones. A mano
-  (`cron_indicators()` sin `scheduled`) miden siempre, como antes.
-- **I-8, ventana visible.** `window_label` en el indicador (junto al modo) y
-  en la medición (junto al valor): «Mes», «Semana», «3 meses móviles», «12
-  meses móviles», «90 días al cierre», «Al cierre», o la ventana de cada
-  término en el modo configurable («Mes / Acumulado al cierre»).
-- **P-40, validación masiva.** Botón «Validar mediciones del periodo» en la
-  Revisión por la Dirección (Jefe MAST): valida las capturadas del periodo de
-  la revisión, deja el conteo en el chatter y abre la lista de rojos que aún
-  no tienen causa ni acción.
-
-Pruebas: `TestIndicatorPlan` 01–07.
-
-## PR 7 del plan: sustituir un proceso sin dejar nada colgado (19.0.53.1.0)
-
-**PR-1.** La carga por API con `replaces` ya archivaba el proceso viejo y le
-pasaba al nuevo sus indicadores y riesgos. Ahora también le pasa sus
-**documentos controlados** (clave por clave, con todas sus revisiones; lo
-que no pueda moverse queda como advertencia del reporte, nunca a medias) y
-deja escrito el sucesor en `sgi.process.replaced_by_id`. Al final de **cada
-carga** corre `_relink_dangling`: lo que siga apuntando a un proceso
-archivado (indicadores, riesgos abiertos, documentos vigentes o en piloto)
-se mueve al sucesor y aparece en el reporte como «movido (colgado)»; un
-proceso archivado sin sucesor con cosas colgadas sale como advertencia.
-Pruebas: `TestPr7Replaces` 01–02.
-
-## PR 6 del plan: proveedores, clientes y firmas (19.0.53.0.0)
-
-- **NC-6 · NC a proveedor por el portal.** `quality.alert` hereda
-  `portal.mixin`. «Enviar al proveedor» fija el proveedor, el plazo
-  (`nc_days_supplier_response`, 5 días hábiles) y manda el correo con el
-  enlace `/my/nc/<id>` (token del portal). El proveedor ve folio, producto,
-  lote, desviación y plazo, y contesta **causa y acción** en un formulario
-  (`sgi_supplier_answer`); la respuesta queda en la pestaña «Proveedor» y en
-  el chatter, cierra el aviso y agenda al comprador la revisión. El cron de
-  NC avisa el día que vence la respuesta y escala a MAST después. La NC
-  cuenta en la evaluación del proveedor por su `partner_id` (S1.08).
-- **NC-7 · Reporte 8D**: ya existía (`report_8d.xml`, D1–D8 con el NCR del
-  cliente en `sgi_external_ref`); sin cambios.
-- **AU-4 · Auditorías de cliente y a proveedor.** Tipos `cliente` y
-  `proveedor` en el programa y la auditoría, con `partner_id` (obligatorio)
-  y `external_report_ref` (número de reporte del cliente). Los hallazgos de
-  una auditoría de cliente generan NC externa con el cliente y su NCR; los de
-  una auditoría a proveedor nacen como **NC a proveedor** (NC-6).
-- **AU-5 · Programa anual sugerido.** Botón «Programa sugerido» en el
-  programa (borrador): una línea por subproceso vigente o en piloto, repartidos
-  por trimestre; los procesos con NC abiertas o indicadores en rojo, dos
-  veces al año. Idempotente; se ajusta a mano.
-- **DOC-4 · Aviso de próxima revisión**: el cron documental ya avisaba 60
-  días antes al dueño; ahora esos documentos también salen en **Mis
-  pendientes** (`pending_doc_review_ids`).
-- **DOC-5 · Instructivos en Knowledge.** `sgi.process.activity.instruction_article_id`
-  (artículo de Knowledge, dependencia nueva `knowledge`). «Publicar como
-  instructivo» (asistente `sgi.instruction.publish`, solo Jefe MAST): PDF del
-  artículo (`report_knowledge_instruction`) archivado como documento
-  controlado tipo instructivo con la clave IT, revisión siguiente, huella del
-  contenido, acuses para los puestos y `instruction_id` de la actividad
-  apuntando a él (la tarjeta de Mi procedimiento lo muestra). Si el artículo
-  cambia, `instruction_article_stale` lo marca; publicar sin cambios avisa.
-- **REG-1 · Firmas de Sign ligadas a su registro.** Mixin
-  `sgi.sign.record.mixin` en orden de compra, traslado/entrega, lote y
-  producto: botón «Firmar» (asistente con plantilla y firmante) que crea la
-  `sign.request` con `reference_doc` al registro, contador de firmas y campo
-  buscable `sgi_signed`. El entregable puede exigir «firmado»
-  (`require_signed`): en «entregable completo» solo cuentan los registros con
-  una firma ligada.
-- **REG-2 · Encuesta como entregable.** `sgi.deliverable.survey_id`: al
-  elegir la encuesta, el entregable apunta a `survey.user_input` terminadas
-  de esa encuesta (fecha `end_datetime`), así E2.12 se mide sola.
-
-Dependencias nuevas: `portal`, `knowledge`. Pruebas: `TestPr6External` 01–07.
-
-## PR 5 del plan: revisión por la dirección de diciembre (19.0.52.0.0)
-
-- **DIR-2 · Riesgos con evaluación periódica.** Semáforo (`semaphore`) a
-  partir del nivel de atención; botón «Registrar evaluación» que sella
-  `last_eval_date` y programa la siguiente al **1 de enero o 1 de julio**;
-  el cron de riesgos avisa al dueño del proceso al vencer y, además, marca y
-  avisa cada **riesgo alto sin acción abierta** (`high_without_action`,
-  almacenado, filtra y colorea la lista). La ficha del proceso muestra sus
-  riesgos con color, puntaje y fechas; botón «Matriz de riesgos (PDF)». La
-  migración 52.0.0 sella la fecha de los riesgos ya evaluados y les pone su
-  semestre.
-- **DIR-3 · Informe de revisión por la dirección.** Dos entradas nuevas
-  tomadas de Odoo: **13. Objetivos e indicadores** (objetivos integrales con
-  sus indicadores oficiales, último valor y semáforo, rojos sin plan) y **14.
-  Satisfacción del cliente** (CA-02 del periodo + reclamaciones). Los
-  **acuerdos son acciones** (`sgi.action.line.review_id`) con responsable y
-  compromiso: actividad nativa al responsable, escalamiento del cron de
-  acciones vencidas y estado en la lista y en el acta; la revisión siguiente
-  lee «acuerdos previos» desde ellas. Las tareas de proyecto de revisiones
-  anteriores se conservan. Modo de cálculo `acuerdos_rxd` para **E1-02**
-  (% de acuerdos con compromiso en el periodo terminados a tiempo).
-- **DIR-4 · Tablero de dirección (I-9).** `sgi.indicator.level`
-  (Dirección / Proceso / Actividad) y `last_six` (últimos 6 periodos con
-  valor y semáforo). El menú Dirección → Tablero de dirección abre un
-  formulario nativo (`sgi.direction.board`): indicadores oficiales de nivel
-  dirección (si no hay ninguno marcado, todos los oficiales), objetivos
-  integrales, rojos sin causa ni plan, acuerdos de la RxD vencidos y los 10
-  procesos con más actividades en rojo. La hoja de cálculo sigue en su botón.
-- **PER-3 · Matriz de competencias.** Reporte PDF por área (Imprimir en el
-  departamento): persona, puesto, estado de Mi procedimiento, instructivos
-  leídos de los asignados, cursos de eLearning terminados y competencias con
-  nivel (`hr.department._sgi_competence_matrix`).
-
-Pruebas: `TestPr5Direction` 01–04; `TestMgmtReview.test_04` pasa a acciones.
-
-## PR 4 del plan: documentos y matriz legal (19.0.51.0.0)
-
-- **DOC-1 · Publicación en un paso.** Al aprobarse un cambio documental de
-  modificación: si la solicitud trae el **archivo nuevo** adjunto, la revisión
-  nueva se publica como documento nuevo (misma clave, revisión de la
-  solicitud, metadatos del anterior: tipo, proceso, puestos, dueño, carpeta)
-  y la anterior queda **obsoleta**; si no trae archivo, se revisa en el mismo
-  registro y los acuses ya firmados **vuelven a pendiente**. En ambos casos
-  quedan pendientes los acuses de quienes deben leerla y el dueño del proceso
-  recibe la actividad «Revisión publicada: difundir». Si el documento no tenía
-  puestos, toma los que ejecutan o aprueban actividades de su proceso (queda
-  en el chatter). `approval.request.sgi_new_document_id` liga la revisión
-  publicada. DOC-2 ya estaba desde 45.0.0.
-- **DOC-3 · Lista maestra en PDF.** Botón «Lista maestra (PDF)» en la ficha
-  del proceso (y en Imprimir): clave, título, tipo, revisión, estado, vigente
-  desde, próxima revisión y dueño de los documentos vigentes o en piloto del
-  proceso (`sgi.process._sgi_master_list_documents`).
-- **DIR-1 · Requisitos legales con evaluación y vencimiento.** Responsable
-  **obligatorio** (por omisión quien captura; la migración 51.0.0 asigna al
-  Jefe MAST los que estaban vacíos y los deja en el log). Cada evaluación es
-  un registro `sgi.legal.evaluation` (fecha, resultado Cumple / Parcial / No
-  cumple / **No aplica**, evidencia, próxima fecha, quién evaluó) creado por
-  el asistente «Registrar evaluación» (evidencia y próxima fecha
-  obligatorias) o por los botones rápidos. Parcial y No cumple siguen
-  abriendo NC. El cron avisa **60 días antes** de la próxima evaluación al
-  responsable (además de las vencidas y los permisos por vencer) y esos
-  requisitos aparecen en **Mis pendientes** de Mi procedimiento con botón
-  «Registrar evaluación». PDF «Matriz de requisitos legales» desde la lista
-  (Imprimir).
-
-Pruebas: `TestPr4DocsLegal` 01–05.
-
-## PR 3 del plan: auditoría lista para octubre (19.0.50.0.0)
-
-- **AU-1 · Checklist generado del proceso.** Al pasar la auditoría a
-  «Planificada» (o con «Regenerar checklist») se crea una línea de
-  `sgi.audit.checklist.line` por actividad viva de cada proceso auditado:
-  pregunta «¿Se cumple C2.17 Nombre en plazo y con evidencia?», quién la
-  ejecuta, su entregable y el botón **«Ver registros»** (la medición de la
-  actividad o el modelo del entregable). Respuesta Conforme / Observación /
-  NC menor / NC mayor con evidencia; cada respuesta no conforme **crea y
-  mantiene su hallazgo** (`finding_id`, tipo según la respuesta); Conforme
-  lo retira si aún no tiene NC. No usa Encuestas: la encuesta anterior queda
-  en una pestaña «Encuesta (legado)» solo para auditorías ya contestadas.
-- **AU-2 · Independencia del auditor.** Además del dueño del proceso, nadie
-  del equipo auditor (líder o equipo) puede tener, por su puesto o la familia
-  de su puesto, un rol **ejecuta** o **aprueba** en una actividad del proceso
-  auditado. El mensaje dice quién, qué puesto y qué actividad.
-- **AU-3 · Informe F-P-G03-07.** El informe PDF trae alcance, equipo,
-  fechas, procesos, minutas de apertura y cierre, checklist con respuestas,
-  hallazgos por tipo con cláusula y evidencia, conclusión y firmas. Al pasar
-  a «Cerrada» se genera y se **archiva en Documentos** ligado a la auditoría
-  (`report_document_id`, botón «Ver informe») y al chatter; si wkhtmltopdf
-  falla, la auditoría cierra igual y avisa.
-
-Pruebas: `TestAuditPr3` 01–04.
-
-## PR 2 del plan: no conformidades que sí se cierran (19.0.49.0.0)
-
-Había 20 NC, ninguna cerrada y cero acciones: le faltaba que el tiempo
-corriera. Plan: `docs/SGI_PENDIENTES_PROGRAMACION.md` (NC-1 a NC-5).
-
-- **NC-1 · Plazos por etapa.** Al abrir una NC con folio se fijan tres fechas
-  en días hábiles desde su creación: contención (1), causa raíz (10) y plan
-  de acción (15); parámetros `quimibond_sgi.nc_days_*` en Ajustes. Cada plazo
-  se cumple con un **hecho**, no con una fecha capturada: contención =
-  acción de tipo Contención registrada; causa raíz = campo capturado; plan =
-  acción correctiva o preventiva con responsable y compromiso. El cron diario
-  de NC avisa el día que vence cada plazo al responsable a contestar (si no,
-  al responsable de la alerta, si no a MAST); vencido, escala al dueño del
-  proceso y, pasados `nc_escalation_mast_days` (3), a MAST. Idempotente por
-  resumen. Las NC abiertas de antes reciben sus plazos en la migración.
-- **NC-2 · Contención.** Tipo de acción «Contención» (antes: corrección,
-  correctiva, preventiva; la contención se registra antes de la causa raíz).
-  Una NC de reclamación de cliente **no sale de Abierta** sin al menos una
-  contención.
-- **NC-3 · Eficacia programada.** Al terminar la última acción correctiva se
-  fija `sgi_effectiveness_due` (+90 días, `nc_effectiveness_days`) y se
-  agenda «Verificar eficacia» al Jefe MAST con esa fecha límite. El candado de
-  cierre ya exigía nota y fecha de eficacia.
-- **NC-4 · Cancelar con motivo y aprobación.** Arrastrar a Cancelada ya no
-  se permite (ni al Jefe MAST). Botón «Cancelar NC» → asistente
-  `sgi.nc.cancel`: un usuario **solicita** (motivo al chatter, actividad al
-  Jefe MAST) y el Jefe MAST **aprueba** con el mismo asistente; el motivo queda
-  en la NC y en el historial.
-- **NC-5 · Solo las etapas del SGI.** Una NC con folio no se puede mover a
-  una etapa de otro equipo. La migración 49.0.0 mueve las NC con folio que
-  estuvieran en Nuevo / Confirmado / Acción propuesta / Resuelto a Abierta /
-  Abierta / Seguimiento / Cerrada y desliga esas etapas de los equipos del
-  SGI. Esas cuatro etapas **no se borran ni archivan**: `quality.alert.stage`
-  no tiene `active` y las usan los equipos de calidad de piso; en producción
-  (2026-09-25) ninguna NC con folio estaba en ellas.
-
-Pruebas: `TestNcDeadlines` 01–06.
-
-## «Mi procedimiento» dentro de la ficha del empleado y del puesto (19.0.48.1.0)
-
-CEO (2026-09-25): el procedimiento de la persona se ve donde vive la
-persona, con vistas nativas de Odoo. Pestaña **«Mi procedimiento»** en la
-ficha del empleado (`hr.employee`, app Empleados), en la ficha pública
-(`hr.employee.public`, la que abre cualquier usuario interno y las filas de
-Mi equipo) y en el puesto (`hr.job`), con lo mismo que la pantalla de
-Inicio: procesos donde participa, kanban de actividades (ejecuta / aprueba),
-escalamientos que recibe, participa o se entera, documentos que aplican,
-acuses de lectura (con «Marcar leído y entendido»), EPP del puesto y
-responsivas (con «Firmar: recibí el EPP»). Botones «Firmar leído y
-entendido» (solo el propio empleado, contra la revisión publicada), «Abrir
-en pantalla completa» e «Imprimir PDF».
-
-Cómo está hecho: mixin `sgi.my.procedure.mixin` (campos `sgi_mp_*`
-calculados) heredado por los tres modelos; `hr.job._sgi_mp_role_lists()`
-es la única fuente de las tres listas (la pantalla de Inicio también la usa);
-el kanban y las dos listas de `sgi.activity.role` son **vistas propias**
-(`sgi_activity_role_view_kanban_mp`, `…_list_mp_received`, `…_list_mp_short`)
-referidas con `kanban_view_ref` / `list_view_ref`, así que un cambio en la
-tarjeta se ve igual en los cuatro lugares. Prueba: `TestMyProcedure` 15.
-
-## PR 1 del plan de auditoría: auditor de solo lectura y EPP con responsiva (19.0.48.0.0)
-
-Plan completo (29 puntos, 7 PRs): `docs/SGI_PENDIENTES_PROGRAMACION.md`.
-Este PR cierra PERM-1, PERM-2 (aplicado en producción por MCP el
-2026-09-25: Jefe MAST solo Blanca Areli, Dirección de Operaciones Jorge
-Ortiz, los demás a Usuario SGI), PER-1 (ya en 46.1.0) y PER-2.
-
-**PERM-1 · Auditor SGI de solo lectura.** El grupo ya no implica Usuario
-SGI: implica solo `base.group_user` y lleva su propia línea de acceso de
-lectura sobre **todos** los modelos `sgi.*` no transitorios y sobre los
-registros de los procesos auditados (`quality.alert`, `quality.check`,
-`quality.point`, `documents.document`, `helpdesk.ticket/team`,
-`approval.request`, `project.task/project`, `maintenance.request/equipment`,
-`purchase.order(.line)`, `stock.picking/move/lot`, `mrp.production/workorder`,
-`sale.order(.line)`, `survey.user_input`, `sign.request`). Escribe solo
-hallazgos (`sgi.audit.finding`) y la auditoría misma (programa, minutas,
-checklist), que ya tenía. Jefe MAST implica ahora Usuario SGI y Auditor de
-forma explícita. El auditor ve el menú raíz del SGI y la entrada Dirección.
-Un auditor interno que además opera su puesto lleva los dos grupos: lo que
-escribe lo escribe como usuario. Prueba: `TestPermAuditor` 01–04.
-
-**PER-2 · EPP del puesto con responsiva.** `sgi.epp.delivery` (folio
-`EPP-AAAA-0001`): una responsiva por entrega, ligada al empleado, con el
-puesto al entregar, la fecha, quién entregó y el EPP entregado (se propone el
-`sgi_epp_required` del puesto). Estados Entregada → Firmada; **solo el propio
-empleado** (o el Jefe MAST) firma, con candado en `write()` como el acuse de
-lectura; una responsiva firmada no se edita (entrega nueva). En la ficha del
-empleado: pestaña «EPP (SGI)» con el EPP del puesto en solo lectura, botón
-«Entregar EPP» y sus responsivas; botón inteligente «Responsivas EPP». En
-**Mi procedimiento**: pestaña «Mi EPP» (EPP del puesto y responsivas con
-«Firmar: recibí el EPP») y una línea en Estado cuando hay responsiva por
-firmar. En el **PDF**: bloque «Equipo de protección personal (EPP)» con la
-lista del puesto y, al imprimir por empleado, su responsiva firmada; el EPP
-entra en la huella del contenido (cambiarlo obliga a releer y firmar).
-Lista general en Administración SGI → Firmas de lectura → Responsivas de
-EPP. Pruebas: `TestEpp` 01–03.
-
-## Diagnóstico del SGI como lista nativa (19.0.47.1.0)
-
-Cierra el inventario de 47.0.0: el Diagnóstico ya no es un wizard con un
-HTML armado a mano. Cada hallazgo es una fila de `sgi.diagnostic.line`
-(sección, nivel Falla / Aviso / Bien, hallazgo, dónde se arregla) colgada de
-la corrida (`sgi.diagnostic`: fecha, conteos y un `summary` en texto plano
-con lo mismo). El menú Administración SGI → Diagnóstico → Diagnóstico del SGI
-es una acción de servidor (`action_run`) que corre las verificaciones y abre
-la **lista** acotada a esa corrida, agrupada por sección, con búsqueda por
-texto y filtros Fallas / Avisos / En orden; volver a entrar por el menú es
-«Actualizar». Las verificaciones no cambian (`_sgi_build_report` devuelve
-dicts en vez de `Markup`). La acción de ventana y el formulario viejos se
-retiran en la migración 47.1.0 (y quedan en `SGI_REMOVED_XMLIDS`). Pruebas:
-`TestDiagnostic` 01 (corrida, acción del menú, actualizar), 02 y 02b sobre
-`summary` y filas.
-
-## Solo vistas nativas de Odoo (19.0.47.0.0)
-
-Regla del CEO (2026-09-25): **nada de HTML servido ni enlaces armados a
-mano**; todo con campos, vistas y acciones de Odoo, para que la actualización
-a la siguiente versión no rompa nada y la navegación (migas de pan, regresar)
-funcione sola. Inventario y resultado:
-
-| Pieza | Antes | Ahora |
-|---|---|---|
-| Mi procedimiento (`sgi.my.procedure`) | `content` Html con tarjetas `<details>` y enlaces `/odoo/…` (al dar «Ir a hacerlo» se perdían las migas) | Formulario con **kanban** de `sgi.activity.role` (piezas como campos: estado, cuándo, cómo, dónde, contra qué, terminada cuando, si no se puede, recibe, entrega, conforme a, escala) y botones de objeto «Ir a hacerlo», «Ver instructivo», «Ver actividad»; listas nativas para escalamientos, participa/se entera, Mis pendientes (acciones, NC, mediciones, indicadores; obligaciones con botón) y Mis documentos (acuses con «Marcar leído», documentos con «Ver archivo») |
-| Revisión previa (`sgi.my.procedure.check`) | `result` Html | Contador y cuatro listas (duplicados, sin puesto, en puesto sin roles, con roles sin personas); se abre en la misma pila de navegación |
-| Mi equipo | HTML (46.0.x) | Lista nativa (46.1.0) |
-| Tablero de dirección | Hoja de cálculo nativa | Sin cambio |
-| Avisos (`display_notification`) y chatter con `Markup` | Nativos | Sin cambio |
-| Diagnóstico del SGI (`sgi.diagnostic.result`) | Html generado por el análisis | Lista nativa de hallazgos (47.1.0, abajo) |
-
-`hr.job._sgi_mp_documents()` alimenta el PDF y la huella. Pruebas:
-`TestMyProcedure` 07, 10, 11, 12 reescritas sobre campos.
-
-## PDF de «Mi procedimiento» alineado con la pantalla (19.0.46.0.0)
-
-Para la gente de planta sin usuario de Odoo el PDF **es** su procedimiento,
-así que trae lo mismo que la pantalla, sin el estado del día (que es dato
-vivo, no documento controlado):
-
-- Cada actividad: además de dónde, cómo, contra qué, terminada cuando y si
-  no se puede, ahora **Recibe** (entregables con su plazo en días hábiles),
-  **Entrega**, **Conforme a** (procedimiento relacionado) e **Instructivo**
-  (clave del IT).
-- Sección nueva **Documentos que aplican a este puesto**: clave, documento,
-  tipo y revisión (los mismos de «Mis documentos»).
-- La huella del contenido incluye esas piezas y la lista de documentos con
-  su revisión: si cambian, «Publicar» genera revisión nueva y vuelve a pedir
-  la firma.
-
-Pruebas: `TestMyProcedure.test_14`.
-
-**46.0.1:** al desplegar, Inicio abría con «El registro no existe»: apuntaba
-al «Panel de procesos» retirado en 45.0.0 y Odoo no vacía `action` de un menú
-cuando el menuitem deja de traerla. Se vacía explícito en `sgi_menus.xml`, la
-migración limpia cualquier menú del SGI con acción borrada
-(`_sgi_menu_dangling_actions`) y `TestCleanup45.test_05` lo vigila.
-
-## Limpieza antes de producción (19.0.45.0.0)
-
-Regla del CEO (2026-09-24): **menús, acciones y vistas sin uso se borran;
-registros con datos se archivan o se religan.** `models/sgi_cleanup.py`,
-`migrations/19.0.45.0.2/post-migrate.py`, `tests/test_cleanup_45.py`. (La 45.0.0 falló en
-el build de `main`: al borrar un menú Odoo borra solo su xmlid y el log lo leía después.)
-
-- **Menús retirados (13):** «Datos técnicos» y sus 8 hijos (actividades,
-  roles, entregables, cadena, flujos y los tres «Mis…» en lista), «Mediciones
-  que me tocan», «Mis acuses de lectura», «Tendencia de ejecuciones» y
-  «Concentrado de NC» (ahora es el filtro **Concentrado (F-P-G05-02)** de la
-  lista de No conformidades). **Mejoras** y **Lecciones aprendidas** pasan
-  al menú Mejora: son registros, no análisis. Diagnóstico conserva
-  Diagnóstico del SGI, Cobertura de medición, Cumplimiento de
-  procedimientos, Faltantes de especificación y Cumplimiento semanal.
-- **Acciones y vistas retiradas (16):** las que solo colgaban de esos menús
-  más tres huérfanas (`sgi_process_action_panel`, `sgi_audit_finding_action`,
-  `sgi_sales_budget_line_action`) y las dos vistas que solo ellas usaban.
-  Las acciones con botón en «Acciones» y los reportes se quedan. La lista
-  completa es `SGI_REMOVED_XMLIDS`; la migración los borra por xmlid para
-  que producción quede igual que `main`.
-- **Studio:** la migración borra los dos menús «Tipo de Documento» creados
-  desde Studio bajo el raíz del SGI (y su acción), lista en el log las
-  vistas de Studio sobre modelos `sgi.*` (no las borra sin verlas) y borra
-  los dos campos «Máquina» de `approval.request` solo si siguen vacíos. Los
-  campos «Máquina» de Compras, Inventario y Aprobaciones con datos, y los de
-  Mantenimiento («requiere paro de máquina», insumo de MT-01), se quedan.
-- **Religado, no archivo:** los 488 documentos, 24 riesgos y el indicador
-  TR-03 de los procesos P-*/MP-* archivados pasan al proceso nuevo
-  (`_sgi_relink_from_archived`, mapa `SGI_RELINK_MAP`). Primera regla: un
-  documento que está en «Procedimientos que sustituye» de un proceso nuevo
-  va a ese proceso, con su familia, aunque el mapa diga otro. Segunda:
-  MP-ADM va a S3 por default y sus documentos se listan uno por uno en el
-  log (`grep "SGI 45: REVISAR"`) para revisarlos.
-- **Retiro por ola:** cuando un proceso pasa a **vigente**, sus documentos
-  sustituidos pasan solos a **obsoleto** (`_sgi_obsolete_replaced_documents`,
-  con nota en el chatter de ambos). Así los 50 procedimientos P-* se retiran
-  proceso por proceso y nunca conviven dos «vigentes» para la misma gente.
-  En piloto conviven a propósito.
-- **Prueba de guardia:** `TestCleanup45.test_01` falla si aparece bajo el
-  raíz del SGI un menú que no descienda de las cinco entradas (Inicio,
-  Procesos, Mejora, Dirección, Administración SGI; las dos de Calidad
-  cuelgan de esa app), y `test_02` si vuelve cualquier xmlid retirado.
-
-Pruebas: `TestCleanup45` 01–04. La suite completa (561) corrida en la copia
-de producción destapó cuatro pruebas viejas que dependían de datos de la
-copia, no del código: `TestFlows48` 04 y 05 usaban los procesos semilla
-P-TIN y P-VEN (archivados, sus flujos viven en C4 y C2) y ahora arman su
-propia cadena; `TestActivityMeasurement.test_12` y
-`TestAuditHardening.test_a4` prueban la NC automática del eslabón atorado
-con la fuente `eslabon_atorado` apagada en producción y ahora la encienden
-dentro de la prueba (45.0.5).
-
-## Estructura del SGI, pasos 3 y 4: ficha de proceso y ficha de actividad (19.0.44.1.0)
-
-`models/sgi_structure.py`, `views/sgi_structure_views.xml`. Solo presentación
-y navegación; el modelo de datos no cambia.
-
-- **Ficha de proceso (nivel 2):** arriba el semáforo y una línea de estado
-  (`structure_status`: dueño, estado, semáforo, actividades atrasadas,
-  indicadores en rojo, NC abiertas, acciones vencidas) y el propósito.
-  Pestañas: Ficha · Actividades · **Indicadores** · **Riesgos** · Con quién se
-  conecta · Documentos · **No conformidades** (`nc_open_ids`, las abiertas).
-  Botones en verbo: Imprimir procedimiento · **Pedir un cambio** (abre una
-  solicitud de cambio documental F-P-G01-06 apuntando al procedimiento
-  vigente del proceso, o alta si no hay) · **Ver en diagrama** (las flechas
-  del mapa que entran y salen del proceso).
-- **Ficha de actividad (nivel 3):** «Ir a hacerlo» (antes «Abrir en Odoo»),
-  «Ver instructivo» (archivo o enlace del IT) y «Ver registros recientes».
-
-- **Paso 6, auditor:** el grupo Auditor SGI ya existía con lectura sobre
-  todo el SGI. Se agrega **«Registrar hallazgo»** en la ficha del proceso y en
-  la de la actividad (auditor y MAST): abre una NC ya ligada al proceso, con
-  la actividad en el título. Los permisos de crear NC son los de la app
-  Calidad. Paso 5 (tablero de dirección, I-9) queda en pausa por decisión
-  del CEO hasta que haya indicadores oficiales.
-
-Pruebas: `TestStructureSgi` 01–04.
-
-## «Mi procedimiento» por puesto (19.0.43.0.0)
-
-Un solo documento por puesto (y por empleado, vía su puesto) con **todas sus
-actividades de todos los procesos**, tomadas de `hr.job.sgi_all_role_ids`
-(roles propios más los de su familia de puestos). `models/sgi_my_procedure.py`,
-`report/report_my_procedure.xml`, `views/sgi_my_procedure_views.xml`.
-
-- **Secciones por cadencia real**, sin agrupar y solo las que tengan
-  actividades, en este orden: Diario, Semanal, Quincenal, Mensual, Trimestral,
-  Semestral, Anual, Cuando ocurre (evento).
-- **Ejecuta y aprueba, completo:** cuándo (día de la semana o día hábil del
-  mes), rol, proceso y numeral, y todas las piezas de la frase del
-  procedimiento con la etiqueta en negritas (dónde, cómo, contra qué, criterio
-  de terminado, si no se puede, entradas, salidas, instructivo, conforme a) y
-  a quién escala si se atora. Dentro de cada sección: por cuándo, luego por
-  proceso y numeral.
-- **Participa y se entera:** lista corta al final (rol, proceso, numeral,
-  nombre), sin detalle.
-- **Escalamientos que recibe:** actividades de otros puestos que le escalan a
-  este puesto, con quién las ejecuta y a los cuántos días hábiles.
-- **Portada:** puesto y familia, área, jefe inmediato (responsable del
-  departamento), personas en el puesto, procesos donde participa y conteo por
-  rol. Tamaño carta (`paperformat_sgi_carta`), 11 px, caja de control en
-  cada página con clave, revisión y fecha de emisión.
-- **Leído y entendido al pie:** una línea por persona del puesto (o solo la
-  del empleado cuando se imprime desde su ficha) con el estado de su acuse.
-
-**Publicación (camino A, decisión CEO 2026-09-24):** «Publicar revisión» en la
-pestaña SGI del puesto (solo Jefe MAST) archiva el PDF como **documento
-controlado del puesto**, tipo «Mi procedimiento (MP)» (`sgi_doc_type_mi_procedimiento`,
-clave `MP-<id del puesto>`), estado vigente, `sgi_job_ids` = el puesto.
-Revisión nueva **solo cuando cambia el contenido**: `sgi_content_hash` es la
-huella de las piezas que la persona lee (roles, cuándo, numeral, nombre,
-frase, escalamientos), no del PDF. Cada revisión nueva obsoleta la anterior
-(mecánica de siempre de `documents.document`) y deja **pendiente el acuse de
-todos los empleados del puesto** con `action_generate_acks`: la firma queda
-contra la versión exacta que leyó. `hr.job.sgi_my_procedure_stale` avisa en
-el puesto cuando las actividades cambiaron después de la última revisión; al
-imprimir a mano en ese estado el encabezado dice «BORRADOR».
-
-**La pantalla (lo principal; 19.0.43.1.0):** Inicio → **Mi procedimiento**
-abre `sgi.my.procedure` (`models/sgi_my_procedure_screen.py`), un
-transitorio con el contenido como HTML calculado en el servidor, sin JS
-propio. Una sola pantalla: secciones por cadencia real; cada actividad es una
-**tarjeta expandible** (`<details>` nativo). Cerrada: estado, cuándo, nombre,
-rol, proceso y numeral. Abierta: cómo, dónde, contra qué se revisa, criterio
-de terminado, si no se puede, entradas con plazo, salidas, conforme a, a
-quién escala; botones **«Ir a hacerlo»** (`/odoo/action-<id>` de la acción del
-menú ligado; sin menú y con sistema externo, lo dice), **«Ver instructivo»**
-(archivo o URL del IT) y «Ver actividad». Arriba, el conteo de atrasadas /
-al día / sin medir. Al final, escalamientos que recibe y la lista corta de
-participa y se entera.
-
-**Estado por actividad** (`_sgi_mp_status`): *Atrasada* si la última semana
-medida trae entradas con plazo vencido sin salida (`sgi.activity.week.stat.late_open_count`)
-o el cumplimiento está en rojo (`measure_state`); *Al día* si está en verde
-(con la fecha de la última ejecución); *Sin medir* si no hay conector ni
-registro que la mida.
-
-**Firma:** botón «Firmar leído y entendido» solo para el propio empleado y
-solo cuando hay revisión publicada pendiente; sella el acuse de
-`sgi.document.ack` contra la revisión vigente del PDF (camino A). La barra
-de estado dice sin revisión publicada / pendiente / leído.
-
-**Quién ve a quién** (`hr.employee._sgi_mp_team_employees`): cada quien su
-puesto; un jefe (responsable directo o indirecto, o responsable de
-departamento) y un dueño de proceso (puestos con rol en sus procesos) eligen
-un empleado o puesto de su equipo; el Jefe MAST, el administrador del SGI y
-la Dirección de Operaciones (`group_sgi_director`), cualquiera; el Jefe MAST
-además publica desde ahí.
-
-Además: en el puesto (pestaña SGI): imprimir, publicar, ver revisión vigente;
-en la ficha del empleado: botón «Mi procedimiento» con el estado de su acuse.
-**«Mis actividades»** ahora trae todos los roles del puesto y de su familia,
-no solo «ejecuta». El PDF (`report_my_procedure.xml`) queda como versión
-para imprimir y firmar y para el personal sin usuario.
-
-**Correcciones del CEO (2026-09-24, 19.0.43.2.0):** en la vista por persona el
-jefe es el **jefe directo del empleado** (`parent_id`); el del departamento
-solo cuando se ve por puesto. «Sin medición automática» se muestra en estilo
-neutro, no como alarma, y no cuenta como atraso. El estado por actividad sale
-de **una sola consulta por puesto** (`_sgi_mp_status_map`). **Publicar todos
-los puestos** (botón para Jefe MAST en la pantalla; `hr.job.action_sgi_publish_all_my_procedures`)
-recorre los puestos con roles y personas y publica solo donde cambió el
-contenido; el **cron semanal** `cron_my_procedure_stale` agenda al Jefe MAST
-una actividad con los puestos sin publicar o desactualizados. **Revisión
-previa** (`sgi.my.procedure.check`): puestos duplicados por nombre
-normalizado, empleados sin puesto o en un puesto sin roles, y puestos con
-roles sin personas; eso se limpia antes de publicar.
-
-**Bloque 1, documentos del puesto:** documentos vigentes ligados al puesto
-(`sgi_job_ids`, sin el propio MP) con clave, revisión, estado del acuse del
-empleado (leído / pendiente con enlace para firmar / sin acuse) y enlace al
-archivo. **Bloque 2+6, «Mis pendientes»** (solo si el empleado tiene usuario):
-acciones abiertas o vencidas a su cargo con fecha compromiso, NC donde es
-responsable de contestar, obligaciones confirmadas de `qb_obligation` (si
-está instalado) con vencimiento, e indicadores **oficiales** donde es
-responsable con su semáforo. Pendientes para después: EPP, competencias y
-capacitación, riesgos IPER. Descartado: firma con Sign (basta el clic y el
-papel).
-
-**Estructura del SGI (doc del CEO 2026-09-24, nivel 4; 19.0.43.3.0):** la
-pantalla sigue el orden de la estructura: arriba quién soy, mi puesto, mi
-jefe y el estado en una línea (atrasadas, al día, firmas pendientes); en
-medio **Mis pendientes** primero (lo atrasado arriba), luego **mis
-actividades por cadencia** como tarjetas y al final **Mis documentos**.
-**Mi equipo** (Inicio → Mi equipo): desde 46.1.0 es una **lista nativa de
-Odoo** sobre `hr.employee.public` (buscar, filtrar, agrupar, exportar),
-acotada al equipo del usuario (reportes directos, departamentos que dirige y
-puestos de sus procesos; Jefe MAST, administrador y Dirección de Operaciones
-ven a todos). Columnas: persona, puesto, departamento, jefe, atrasadas, al
-día, sin medición, firmas pendientes, estado de Mi procedimiento; filtros
-«Con atrasadas», «Con firmas pendientes», «Mi procedimiento sin firmar / sin
-publicar», «Mi departamento»; agrupar por puesto, departamento o jefe. Las
-cifras se calculan por puesto una vez por lote y los filtros las buscan con
-métodos propios (`_search_sgi_mp_*`). Cada fila trae **«Ver su
-procedimiento»**; el mismo botón está en la ficha del empleado y en la del
-puesto (`action_sgi_open_my_procedure` → `sgi.my.procedure.action_open_for`,
-que respeta el alcance). En la pantalla de Mi procedimiento el selector se
-llama «Ver como: empleado / puesto» y solo lo pueden usar administrador,
-MAST, Dirección y jefes (estos, dentro de su equipo). El transitorio
-`sgi.my.team` (HTML servido) se retiró: no se podía buscar ni filtrar.
-
-Pruebas: `TestMyProcedure` 01–13.
-
-## PDF del procedimiento: etiquetas en negritas (19.0.42.1.0)
-
-En el F-P-G01-02 cada actividad se imprime como una frase armada de sus
-piezas. Desde esta versión las etiquetas («Ejecuta», «Aprueba», «Participa»,
-«Se entera», «Si se atora, escala a», «Recibe», «Entrega», «Conforme a»,
-«Instructivo», «Dónde», «Contra», «Cómo», «Terminada cuando», «Si no se
-puede») van en **negritas**. `_sgi_sentence_parts()` devuelve la lista de
-(etiqueta, texto); `_sgi_sentence()` sigue dando el texto plano (vistas,
-pruebas) y `_sgi_sentence_html()` la versión con `<b>` que usa el reporte.
-Prueba: `TestStructure.test_08`.
-
-## Pólizas de cierre anual fuera de las ventanas móviles (19.0.42.0.5)
-
-Las pólizas de cierre anual (mes 13, `account.move.l10n_mx_closing_move`)
-cancelan los ingresos y gastos del año el 31 de diciembre. En una ventana
-móvil que cruza diciembre (EX-01 a 12 meses, EX-02 a 3 meses en dic–feb) el
-saldo queda al revés y el indicador sale «sin dato» (visto en producción el
-2026-09-24: EX-01 con ingresos de −17 M). `_sgi_closing_move_domain` las
-excluye en `_sgi_balance_by_type` (EX-01, EX-02) y en todo término de fórmula
-configurable sobre `account.move` o `account.move.line`. Si `l10n_mx` no
-está instalado no hace nada. Prueba: `TestIndicatorI3.test_02`.
-
-## Fórmula configurable (19.0.40.0.0)
-
-Modo de cálculo `configurable` (`models/sgi_indicator_formula.py`): el
-indicador se calcula con dos **términos** capturados en la pestaña Fórmula
-(`sgi.indicator.term`), numerador y denominador. Cada término dice de qué
-modelo sale, con qué filtro (dominio de Odoo), sobre qué campo de fecha se
-recorta la ventana, cómo se agrega (contar, sumar un campo o sumar su valor
-absoluto), por qué factor se multiplica (−1 invierte el signo, 0.001 pasa kg
-a toneladas) y qué ventana usa (el periodo, 3 o 12 meses móviles, o acumulado
-hasta el cierre). Si el modelo tiene `company_id`, se filtra solo a la
-compañía del KPI. La medición guarda numerador, denominador y los registros
-del numerador, igual que los modos con detalle; el valor va ×100 cuando la
-unidad del indicador lleva `%`.
-
-- **Validación:** el dominio pasa por `safe_eval` (nunca `eval`) y por una
-  búsqueda de prueba al guardar; los campos de fecha y de suma tienen que
-  existir en el modelo con el tipo correcto; el factor no puede ser cero. Un
-  indicador tiene un solo numerador y un solo denominador.
-- **Quién edita:** solo el grupo Administrador del SGI (`group_sgi_admin`);
-  los demás la ven. La pestaña queda de solo lectura para quien no puede.
-- **Trazabilidad:** todo cambio de un término (crear, modificar, quitar) queda
-  en el chatter del indicador con el antes y el después, y **regresa el
-  indicador a «prueba»**: hay que volver a revisar la lista de registros.
-- **En paralelo:** un indicador que sigue en un modo de código pero ya tiene
-  términos corre la fórmula en cada medición nueva y guarda su resultado en
-  `parallel_value` / `parallel_numerator` / `parallel_denominator`
-  («Fórmula en paralelo» en la medición). La regla es migrar un indicador a
-  `configurable` solo después de un mes con el mismo número.
-- **Sembradas** (`data/sgi_indicator_formula_data.xml`, noupdate, con ids de
-  producción en los dominios): MA-05 desperdicio, MA-04 reproceso (solo
-  Re-proceso Tintorería), AL-01 diferencia de inventario (denominador
-  `stock.quant.value` sin campo de fecha: la ventana «acumulado al cierre»
-  admite término sin fecha y entonces toma todo lo que hay hoy), TR-03 energía
-  por tonelada y EX-02 compras de materia prima. Diferencias conocidas con el
-  modo de código: MA-04 por fórmula no excluye subproductos de la orden de
-  reproceso; EX-02 por fórmula usa la fecha contable de la línea en vez de
-  la fecha de factura. EX-01 (EBITDA) no cabe: son tres términos.
-- Fuera del modo: los ids de ubicaciones, categorías, tipos de operación y
-  proveedor viven en el texto del dominio, no en parámetros; en una copia con
-  ids distintos la fórmula apunta a otra cosa.
-
-Pruebas: `TestIndicatorFormula` 01–07.
-
-## No surtir lotes sin liberar (P-7, 19.0.35.0.0)
-
-Las requisiciones de producción (Requisición MP y Requisición PP y PT) no se
-validan con un lote que Calidad no ha liberado (C6.10). «Sin liberar» es un
-lote que sigue en una ubicación de espera (6 Entrada MP, cuarentenas,
-Inspección, Liberación) o cuyo último control de calidad falló. El bloqueo es
-duro y avisa qué lotes y por qué; lo que sigue es avisar a Control de
-producción y a Calidad. Parámetros: `quimibond_sgi.release_block_enabled`,
-`release_block_picking_type_ids` (113,210) y `unreleased_location_ids`
-(324,44,36,246,45); se siembran al actualizar y se ajustan en Parámetros del
-sistema. Código: `models/sgi_release.py`, pruebas `tests/test_release.py`.
-
-**EX-07 Días de cartera (P-11).** La medición de agosto marcaba 134 porque
-se calculó antes del filtro por compañía (sumaba la cartera del grupo). Al
-recalcular daba 35, también mal: la cartera se tomaba como el saldo pendiente
-*hoy* de las facturas de entonces (lo cobrado en septiembre ya no contaba) y
-llevaba IVA mientras las ventas no. Ahora la cartera es el saldo contable de
-las cuentas de clientes al cierre del periodo y las ventas de 90 días van con
-IVA: agosto 2026 ≈ 51 días. Las facturas viejas sin cobrar (2018–2020, ~3.3 M)
-pesan ~6 días; sacarlas es decisión de Finanzas, no del cálculo.
-
-**Traslado Embarcar → su entrega.** `stock.picking.sgi_delivery_picking_id`
-(«Entrega que surte») liga cada traslado interno con pedido a la orden de
-entrega del mismo pedido (la abierta más próxima; la última si todas están
-hechas; editable). Con él C2.21 y C2.26 se miden contra la fecha programada
-de la entrega (`"match": "sgi_delivery_picking_id"` + `due_field`). La
-migración liga los traslados de 2026.
-
-## COA ligado a la entrega y al pedido (fase 1, 19.0.32.0.0)
-
-- **Cliente** (`res.partner`, pestaña Ventas y compras): «Requiere COA en cada
-  embarque» (`sgi_requires_coa`, por compañía) y «Reciben el COA»
-  (`sgi_coa_recipient_ids`; vacío = el contacto de la entrega). Lo editan SGI y
-  Calidad. Se evalúa sobre la empresa comercial: las plantas heredan.
-- **Salida** (`stock.picking`, solo salidas): `sgi_coa_status`
-  `no_aplica` / `pendiente` / `adjunto` / `enviado`, los PDF
-  (`sgi_coa_attachment_ids`), quién y cuándo (`sgi_coa_date`, `sgi_coa_uid`) y
-  cuándo se mandó (`sgi_coa_sent_date`). Botón «Adjuntar COA»: sube los PDF
-  (con el nombre que ya usa el laboratorio), precarga destinatarios y, si se
-  envía, manda la plantilla «COA <cliente> – <entrega> – <pedido>».
-- **Validar sin COA** solo avisa. Con `quimibond_sgi.coa_block_validation =
-  True` se bloquea, y solo el puesto `quimibond_sgi.coa_exception_job_id`
-  (Jefe de Calidad, 204) valida dejando el motivo en el chatter.
-- **Pedido**: `sgi_coa_status` = el peor estado de sus salidas; botón «COA»
-  con los archivos; filtro «COA pendiente».
-- **Buzón `coa@`** (SGI > Calidad preventiva > COA recibidos): cada PDF
-  `<producto> <factura>.pdf` se liga solo (factura → `invoice_origin` → salida
-  hecha con ese producto, la más cercana a la factura) y queda `enviado`. Lo
-  que no se liga queda en «COA sin ligar» para asignarlo a mano.
-- Carga inicial (migración 19.0.32.0.0): los 12 clientes que lo requieren en la
-  compañía principal; las salidas ya validadas no se marcan.
-- Medición en el SGI (C2.24): entregable sobre `stock.picking` con
-  `complete_domain` `[("sgi_coa_status", "=", "enviado")]` y
-  `applies_domain` `[("sgi_requires_coa", "=", True)]`, al recargar el JSON de C2.
-
-## Diagramas en HTML (53.4.0)
-
-Menú **Procesos → Diagramas**. Un solo componente OWL (`static/src/diagram/`,
-acción cliente `sgi_diagram`) dibuja lo que le entrega
-`sgi.diagram.data(kind, res_id)` (`models/sgi_diagram.py`): bandas o
-carriles con cajas, flechas SVG con su etiqueta, resaltado al pasar el mouse
-o dar clic, doble clic abre el registro, impresión. Mismo patrón que el
-organigrama de Empleados (`hr_org_chart`).
-
-| Diagrama | `kind` | Qué dibuja |
-|---|---|---|
-| Mapa de procesos | `process_map` | Bandas estratégicos / cadena de valor / soporte; flechas = `sgi.process.flow` |
-| Flujo del proceso | `process_flow` | Una columna por etapa; flechas = eslabones `sgi.activity.link` con su entregable; carriles «Recibe de / Entrega a otros procesos» |
-| Tortuga (SIPOC) | `sipoc` | Proveedores → entradas → proceso → salidas → clientes, desde los flujos |
-| Árbol documental | `doc_tree` | Procedimientos → instructivos → formatos del proceso; flecha = `sgi_parent_document_id`; color = estado |
-| Árbol de indicadores | `kpi_tree` | Objetivo → indicador → proceso; color = último semáforo |
-| Quién hace qué | `who_does_what` | Matriz puestos × procesos; color = rol más fuerte; clic abre las actividades |
-
-### Catálogo ISO (53.6.0)
-
-`models/sgi_diagram_iso.py` agrega, sobre el mismo motor, un diagrama por
-cláusula de la norma (9001 / 14001 / 45001). Una caja o celda puede traer
-`action` (una lista filtrada) en vez de modelo + id; el componente la abre
-con doble clic o clic en la celda.
-
-| Cláusula | Diagrama | `kind` | Qué dibuja |
-|---|---|---|---|
-| 4.1 / 4.2 | Contexto y partes interesadas | `context_map` | Partes → procesos, riesgos y requisitos que tocan; rojo = revisión vencida |
-| 4.4 | Interacción de procesos | `interaction_matrix` | Matriz procesos × procesos; celda = entregables que cruzan (clic abre los flujos) |
-| 4.4 | PDCA del proceso | `pdca` | Planear (objetivos, riesgos) · Hacer (etapas, documentos) · Verificar (indicadores, auditorías, NC) · Actuar (acciones abiertas) |
-| 5.2 / 6.2 | Política → objetivos → indicadores | `kpi_tree` | El árbol de indicadores encabezado por la política vigente |
-| 5.3 | Roles y responsabilidades | `roles_map` | Dueño → proceso → puestos que ejecutan o aprueban |
-| 6.1 | Matriz de riesgos | `risk_matrix` | Probabilidad × impacto por instrumento (RyO 5×5, IPER 3×3, ambiental, patrimonial), global o por proceso |
-| 6.1.3 / 9.1 | Cumplimiento legal | `legal_matrix` | Sistema × estado de cumplimiento; clic abre los requisitos |
-| 7.1.5 | Calibración | `calibration_map` | Equipos de medición vencidos / por vencer / vigentes |
-| 7.2 | Competencias | `competence_matrix` | Puestos × tipo de competencia; celda = brechas (color = la mayor) |
-| 7.5 | Pirámide documental | `doc_pyramid` | Cuatro niveles (manual y política, procedimientos, instructivos, formatos) × proceso |
-| 45001 8.2 | Emergencias | `emergency_map` | Escenario → simulacros de 12 meses → acciones |
-| 9.2 | Programa de auditorías | `audit_program` | Una columna por mes del año elegido; color = estado de la línea |
-| 9.3 | Revisión por la dirección | `management_review` | Entradas de la norma → la revisión → acuerdos; selector de revisión |
-| 10.2 | No conformidades | `nc_flow` | Cada NC en la fase que le falta (contención, causa, plan, eficacia) + cerradas y canceladas de 90 días |
-
-**Tipo de trazado según la información (54.3.0).** El motor tiene cinco
-trazados y cada diagrama usa el que corresponde a lo que muestra:
-
-| Información | Trazado | Diagramas |
-|---|---|---|
-| Procesos por tipo con sus flujos | `bands` (mapa de procesos ISO) | mapa de procesos |
-| Niveles de una jerarquía | `bands` con `shape: pyramid` | pirámide documental |
-| Estado o categoría de cada registro (tablero) | `bands` (una banda por categoría, una tarjeta por registro) | requisitos legales por sistema |
-| Secuencia de un procedimiento por responsable | `swimlanes` (diagrama de flujo funcional: fila por puesto, columna por orden, flechas = eslabones) | flujo del proceso (`carriles=etapa` da columnas por etapa) |
-| Etapas, fases o meses en orden | `columns` | tortuga, NC por fase, programa de auditorías, programa de calibración por mes, contexto, roles, emergencias, revisión por la dirección, árboles documental y de indicadores |
-| Ciclo de mejora | `cycle` (cuatro cuadrantes en el sentido de las manecillas con flechas entre ellos) | PDCA |
-| Dos variables cruzadas con intensidad | `matrix` (mapa de calor) | riesgos (probabilidad × impacto), interacción de procesos, quién hace qué, competencias, resumen legal (`vista=resumen`) |
-
-Los diagramas que aceptan parámetro (`instrument`, `year`, `review`, `carriles`, `agrupar`, `vista`) declaran
-`param_options` y el componente pinta el selector. **Imprimir** abre una
-ventana con solo el diagrama (título, leyenda, fecha, todas las conexiones)
-escalado para caber a lo ancho de una hoja carta horizontal; desde ahí
-«Guardar como PDF». Los carriles reparten el ancho disponible y, con más de
-ocho (meses, fases), se angostan; las matrices llevan encabezados fijos al
-hacer scroll. Prueba: `tests/test_diagram_iso.py`.
-
-Los diagramas por proceso llevan selector de proceso y pestañas para saltar
-entre ellos; desde la ficha del proceso: «Ver en diagrama», «Ver en el mapa»,
-«Tortuga» y «Árbol documental». Para agregar un diagrama: un método
-`_data_<kind>` en `sgi.diagram` que devuelva carriles, cajas y flechas, y una
-acción cliente con `sgi_diagram_kind`. La vista nativa `hierarchy` (53.2.0)
-sigue disponible en «Mapa de procesos» y en las actividades.
-
-## Ficha del proceso: dos pestañas (54.1.0)
-
-Las actividades ya no se capturan en una pestaña: el botón **Actividades**
-abre la lista editable del proceso con kanban, diagrama y organigrama
-(`action_view_activities`, contexto `default_process_id`). Conexiones y
-ligas entre actividades también son botones (`action_open_flows`,
-`action_view_chain`). Quedan dos pestañas: **Ficha** (propósito, recibe /
-entrega, puestos, dónde se opera en Odoo, texto de la versión anterior,
-subprocesos) y **Procedimiento** (etapas, alcance, aspectos ambientales,
-normas, responsabilidades y firmas: lo que arma el PDF).
-
-## Migración de formatos Excel, bloque del programador (56.0.0)
-
-Los 15 formatos de Excel marcados `[Programador]` en Documentos ahora viven en
-pantallas nativas; cada uno imprime con su clave de formato vigente.
-
-| Formato | Dónde vive ahora |
+| Norma | Estado |
 |---|---|
-| F-P-D01-02 / 18 / 26 / 27 solicitud de desarrollo (general, Entretelas V10, Carda, Tramado) | Proyecto cuyo nombre empieza con `FT-`: pestaña **Solicitud de desarrollo** (`sgi_dev_type` elige la variante, renglones de características con `action_sgi_dev_load_lines`, PDF `action_report_dev_request`) |
-| F-IT-P-P01-08-05 ficha técnica de proceso por máquina | Procesos → **Fichas de máquina** (`sgi.machine.sheet`): una vigente por artículo y centro de trabajo, parámetros de máquina y de tela, hilos y poleas, revisión con obsoleta anterior; botón en el centro de trabajo |
-| F-P-C03-01 / 02 etiquetas de equipo calibrado y fuera de servicio | Dos reportes sobre la calibración (`action_report_calibration_label`, `action_report_out_of_service_label`) |
-| F-P-A01-34 / 32 eficiencias de personal | Empleados → **Eficiencias** (`sgi.staff.efficiency`): hoja mensual por área, porcentajes con tope, monto = salario diario × 30 × total %, propuesta de eficiencia desde `mrp.workcenter.productivity` |
-| DOC-3 lista maestra global | Documentos → **Lista maestra** (lista agrupada por área + PDF `action_report_master_list_all`) |
-| F-P-S03-02 responsiva de EPP | La entrega de EPP lleva renglones (`sgi.epp.delivery.line`), PDF y **firma en Sign** (plantilla en Ajustes → SGI → EPP; el cron de Sign la marca firmada) |
-| F-P-D01-08 / 24 ficha técnica de producto (D&D, acabado, tintorería, especificaciones bilingües) | `qb_capacidad_costeo` 1.66.0, ficha del producto |
+| ISO 9001:2015 | Certificada desde el 24-ago-2021; certificado 24070237A vigente al 22-ago-2027 |
+| ISO 14001:2015 | Certificada desde el 3-jul-2023; el certificado vigente lo confirma MAST |
+| ISO 45001:2018 | En certificación (auditoría del 22 al 24-sep-2026, resultado pendiente) |
+| IATF 16949 | No certificada. Lo que piden los clientes automotrices va en «Requisitos específicos de clientes» |
 
-Datos: los 15 documentos pasan a `migrado` con el menú final en
-`sgi_migration_target` una vez desplegado. Las hojas de calidad (clase b) se
-migraron a plantillas de `quality.point` directamente en producción.
+## Qué trae y qué no
 
-### Build sin amarillo (56.1.0)
+- **Se instala vacío** (decisión 6): trae estructura (modelos, vistas, menús,
+  grupos, secuencias, tipos de documento, áreas, normas ISO con sus cláusulas,
+  catálogo de indicadores automáticos, crons y parámetros), **no** el mapa de
+  procesos. El mapa de producción está en `quimibond_sgi_mapa` y solo se
+  instala en staging o en una recuperación; su carga es manual, con modo de
+  prueba primero.
+- **Estructura contra datos** (decisión 4): procesos, actividades, roles y
+  entregables son **dato** que se captura en pantalla o por carga
+  (`sgi.process.load_payload`), nunca XML del núcleo. La norma «Requisitos
+  específicos de clientes» y sus cláusulas CLI-01…CLI-10 existen solo en
+  producción, sin XML ID; no se agregan por XML sin una migración que cree
+  antes los XML IDs de los registros existentes (A-029). Las cláusulas de
+  tercer nivel de ISO 9001, 14001 y 45001 (57.97.0) sí traen XML ID
+  (`data/sgi_norms_tercer_nivel.xml`); las CLI siguen sin él.
+- **Claves:** en pantalla solo la clave nueva (`PR-{proceso}`, `F-{proceso}-{nn}`,
+  `IT-…`, `DA-…`; D-02). La clave del Dropbox solo aparece en «Del Dropbox a
+  Odoo» (decisión 1).
 
-El build de `main` con 56.0.0 salió amarillo por avisos que ya venían de
-versiones anteriores y uno nuevo. Todos se corrigen en código:
+## Glosario de pantallas
 
-- **Etiquetas duplicadas** (8): `sgi.process` (flujos vs texto de entradas /
-  salidas, conteo de subprocesos), `quality.alert` (estado del plazo de causa
-  raíz), `hr.employee` (EPP en Mi procedimiento), `sgi.activity.role`
-  (`mp_name`) y `sgi.process.stage` (conteo de actividades). Se renombra el
-  campo secundario; las vistas no cambian.
-- **`sgi.staff.efficiency.line`**: `wage_monthly` (no guardado) tenía el mismo
-  compute que `total_pct` y `amount` (guardados); ahora cada uno tiene el suyo.
-- **Kanban de Mi procedimiento**: el aviso «Se hace en …» era un `<span>` con
-  clase `btn`; ahora es un `<a role="button">`.
-- **`sgi.acuse.attach.wizard`** sin regla de acceso: se agrega (usuarios
-  internos, sin borrar).
-- **Vistas personalizadas de `product.product`**: la ficha de variante hereda
-  la de plantilla y traía los botones de firma sin sus métodos; `product.product`
-  ahora los delega a la plantilla (`sgi_sign_count` relacionado).
-- `quimibond_sgi_revisado` 4.1.1: el `TEJIDO-*` de la descripción rompía el RST.
+Así se escriben los términos del SGI en etiquetas, ayudas y avisos
+(revisión de vistas V-B04, 57.81.0). Todo el texto va en «usted».
 
-## Fórmulas para 28 indicadores más (55.0.0)
-
-**Corrección incluida (mapa de procesos como usuario).** Al abrir el mapa
-desde una acción sin proceso activo, la vista mandaba `resId: null` y
-`selected: null` al componente OWL y la validación de props reventaba
-(«'resId' is not a number or boolean»). Ahora lo que falta se manda como
-`false` (`static/src/diagram/diagram_view.js`).
-
-Tres mejoras al modo «fórmula configurable» (`models/sgi_indicator_formula.py`)
-y los campos que faltaban (`models/sgi_kpi_fields.py`), para que 28
-indicadores capturados a mano pasen a fórmula sin programar cada uno.
-
-**1. Fechas relativas en el filtro del término.** Dentro del dominio, entre
-comillas: `'{cierre}'` (fin del periodo medido), `'{inicio}'`, `'{hoy}'`,
-`'{bloqueo}'` (fecha de bloqueo contable de la compañía de los KPI: la mayor
-entre cierre fiscal y bloqueo duro; sin bloqueo, el cierre) y desplazamientos
-`{cierre-30d}` (días), `{cierre-2dh}` (días hábiles del calendario del SGI),
-`{cierre+48h}` (horas, da fecha-hora). Ejemplos: C3-04
-`[('state', 'not in', ('done', 'cancel')), ('create_date', '<', '{cierre-30d}')]`;
-S3-03 `[('is_reconciled', '=', False), ('date', '<=', '{bloqueo}')]`; E2-01
-`[('sgi_state', '=', 'vigente'), ('sgi_next_review_date', '<', '{cierre}')]`.
-
-**2. Comparar dos fechas del mismo registro.** Agregaciones «Contar donde
-B − A cumple» (`count_delta`: fecha A en «Campo a sumar / fecha A», fecha B
-en «Fecha B», unidad días / horas / días hábiles / «B a más tardar el día N
-del mes siguiente a A» / «B en el mismo mes que A», condición ≤ < ≥ > = y N) y
-«Promedio de B − A» (`avg_delta`, en días, horas o días hábiles). El registro
-sin alguna de las dos fechas no cuenta. Ejemplos: C4-01 `date_finished` →
-`date_done` ≤ 48 horas; S1-04 `invoice_date_due` → `sgi_payment_date` ≤ 0 días; E1-02 `deadline` → `done_date` ≤ 0 días;
-S2-01 `invoice_date` → fecha de timbre del complemento, día 5 del mes
-siguiente; E2-02 `date_planned` → `date_end` en el mismo mes; C1-01
-promedio de días de `date_start` del proyecto a la fecha de la tarea de
-aprobación.
-
-**3. Solo conteo.** Un indicador con numerador y sin denominador vale su
-numerador; sin registros vale 0 (estado «capturado»), no «sin dato». C6-01,
-S3-02 (factor 0.25 en el término), SST-01.
-
-**Varios términos con el mismo papel se suman**: EBITDA o S3-04 con un
-término de factor −1 que resta. El detalle de registros de la medición trae
-los del primer modelo del numerador.
-
-**Recalcular bajo demanda**: botón «Recalcular ahora» en la ficha (último
-periodo cerrado) o por MCP
-`call_model_method('sgi.indicator', 'sgi_recalculate', [ids], {'period_date': '2026-08-01', 'save': True})`;
-devuelve valor, numerador, denominador, estado, nota y detalle; con `save`
-escribe la medición (nunca una validada).
-
-**Trayectorias automáticas**: los escalones trimestrales se generan al
-guardar arranque, fecha de arranque y fecha de meta, y el cron mensual repone
-los que falten (`cron_missing_trajectories`).
-
-**Campos nuevos** (todos guardados; se filtran desde un término):
-
-| Indicador | Campo | Modelo |
+| Se escribe | No | Nota |
 |---|---|---|
-| C1-04 | `sgi_first_sale_date` (se fija al confirmar el pedido) | product.template |
-| C2-05 | `sgi_export_crossing_datetime`, `sgi_export_file_closed_date` (captura Logística, pestaña «Exportación y liberación (SGI)») | stock.picking |
-| C5-01 | `sgi_claimed_meters` (pestaña «Reclamación (SGI)») | quality.alert |
-| C5-03 | `sgi_quality_approved_at`, `sgi_release_hours` (creación del traslado → última aprobación de Calidad) | stock.picking |
-| S1-04 | `sgi_payment_date` (último pago que dejó la factura pagada) | account.move |
-| E1-02 | `done_date` (la de su acción al terminarse, o a mano) | sgi.management.review.agreement |
-| S1-05 | `sgi_po_price_diff` = (precio facturado − precio OC) × cantidad | account.move.line |
-| S3-01 | `sgi.lock.date.log`: compañía, fecha movida, antes/después, quién, `business_day` (Administración → Indicadores → Bitácora) | modelo nuevo |
-| S3-04 | `sgi.inventory.value`: valor de existencias internas al cierre de mes (cálculo de AL-01), foto en el cron mensual; `sgi_snapshot(date)` a mano | modelo nuevo |
-| S4-01 | `sgi_departure_reason_id` (el de la versión o el del empleado), `sgi_departure_registered_at` | hr.version |
-| S4-02 | `sgi_trial_date_end` (fin de prueba del contrato vigente) | hr.employee |
-| S4-03 | `sgi_recalculated`, `sgi_complement_paid`, `sgi_incident_note` (módulo `quimibond_nomina` 1.6.0) | hr.payslip.run |
-| S4-04 | `sgi.employer.obligation`: tipo, periodo, vence, presentada el, `on_time`, estado (Dirección → Obligaciones patronales) | modelo nuevo |
-| S6-02 | `sgi_deactivated_date` (se fija al desactivar) | res.users |
-| MT-01 | sin campo: `mrp.workcenter.productivity` con `loss_id.name = 'Mantenimiento'`, sumar `duration` con factor 1/60 | — |
+| no conformidad (NC); en plural, «no conformidades» o «NC» | No Conformidad, NCs | Mayúscula solo al inicio de un título o una oración |
+| certificado de calidad (CoA) | COA, certificado de análisis | |
+| indicador | KPI | También «indicadores en rojo», «indicadores automáticos» |
+| casi accidente | casi-accidente | |
+| Jefe MAST | Jefe de MAST | «MAST» solo, para el área |
+| Revisión por la dirección | Revisión por la Dirección | «Dirección» con mayúscula es el grupo que aprueba |
+| Sin sufijo «SGI» dentro de la app SGI | «Áreas SGI», «(SGI)» | En fichas de otras apps (contacto, empleado, equipo…), la pestaña se llama «SGI» |
+| Descartar | Volver, Cancelar | Botón para salir de un asistente sin hacer nada |
 
-E2-02 compara `date_planned` con `date_end` de la auditoría. Pruebas: `tests/test_indicator_formula.py`
-(08–12), `tests/test_indicator_trajectory.py` (06), `tests/test_kpi_fields.py`.
+## Colores
 
-## Mi equipo abre en organigrama (54.4.0)
+Un estado se pinta igual en todas las listas y pastillas del SGI
+(auditoría I-06, 57.98.0). `tests/test_interfaz.py` lo revisa en las vistas
+del módulo (las expresiones simples sobre campos de estado).
 
-Inicio → Mi equipo usa la vista nativa `hierarchy` de `hr.employee.public`
-(`sgi_my_team_view_hierarchy`): quién reporta a quién, y en cada tarjeta el
-estado SGI de la persona (atrasadas o al día, firmas pendientes, Mi
-procedimiento sin firmar o sin publicar). Lista y kanban siguen en el
-selector de vistas.
-
-## Pantalla «Mi procedimiento» rediseñada (54.1.0 / 54.2.0)
-
-Se lee como la ficha de una persona: arriba el empleado (con avatar) y el
-puesto; debajo jefe, área, familia, estado de la firma y del EPP en una
-línea; **sin pestañas**: cada lista es un botón inteligente con conteo que
-la abre (Actividades, Atrasadas, Al día, Sin medir, Escalamientos,
-Participa, Firmas pendientes, Documentos, Acciones, NC a contestar,
-Mediciones, Indicadores, Legales, Doc. por revisar, EPP, Obligaciones;
-`action_show_*`), una cinta «Firmado» / «Por firmar» y, si el puesto lo
-exige, el EPP requerido. Las tarjetas de actividad se agrupan por **cadencia** (diaria,
-semanal, mensual, por evento) y muestran de un vistazo estado, rol,
-numeral, qué, proceso, cuándo, cómo y dónde; el resto del procedimiento
-(contra qué se revisa, terminada cuando, si no se puede, recibe, entrega,
-conforme a, escala) se despliega con «Más detalle». «Ver como» solo lo ve
-quien puede elegir. Prueba: `tests/test_my_procedure_ui.py`.
-
-## El diagrama como vista y la ficha del proceso con botones (54.0.0)
-
-**Un menú por objeto, sin submenú «Diagramas».** El tipo de vista
-`sgi_diagram` (`models/sgi_diagram_view.py`, JS en
-`static/src/diagram/diagram_view.js`) entra al selector de vistas de la
-acción, junto a lista, kanban y formulario, como `hierarchy` en
-`web_hierarchy`. Arquitectura: `<sgi_diagram kind="risk_matrix"/>`; `kinds`
-(opcional) lista los diagramas que ofrece como pestañas. Dónde quedó cada
-uno (`views/sgi_diagram_views.xml`):
-
-| Menú | Vistas | Diagramas |
+| Color | `decoration-` | Estados |
 |---|---|---|
-| Procesos → Mapa de procesos | **mapa** · kanban · lista · organigrama · ficha | mapa, interacción (4.4), roles (5.3), pirámide documental (7.5) |
-| Procesos → Actividades | lista · kanban · diagrama · organigrama · ficha | flujo del proceso, tortuga, PDCA |
-| Procesos → Quién hace qué | pivote · diagrama · lista · gráfica | quién hace qué |
-| Procesos → Puestos y procesos | diagrama · lista · ficha | roles, quién hace qué |
-| Dirección → Riesgos / Requisitos legales / Partes interesadas / Objetivos / Política / Revisión | lista · diagrama · ficha | matriz de riesgos, cumplimiento legal, contexto, política → objetivos → indicadores, revisión por la dirección |
-| Mejora → No conformidades / Auditorías → Programa / Seguridad → Planes de emergencia | kanban · lista · diagrama · ficha | NC por fase, programa anual, emergencias |
-| Calidad preventiva → Metrología → Equipos de medición | lista · diagrama · ficha | calibración |
-| Administración → Documentos / Indicadores | lista · diagrama · ficha | árbol y pirámide documental, indicadores |
-| Empleados → Competencias (SGI) → Brechas | pivote · diagrama · lista | competencias |
+| Gris | `muted` | borrador, cancelado, obsoleto |
+| Azul | `info` | abierto, en curso |
+| Amarillo | `warning` | pendiente, por vencer |
+| Rojo | `danger` | vencido, rechazado |
+| Verde | `success` | cerrado, vigente, validado |
 
-Los diagramas por proceso toman el proceso del contexto (`default_process_id`,
-p. ej. al abrir las actividades desde la ficha del proceso) y, si no, el
-selector. Las etiquetas de las pestañas salen de `sgi.diagram.catalog()`.
+Excepciones (con su razón, en la prueba): la hoja de eficiencias «Cerrada,
+por recibir» es azul (espera a RH), la actividad sin método de medición es
+gris y, en «Rutina por rutina», el renglón pendiente sin decisión y su fecha
+límite siguen en rojo. Los estados intermedios propios de cada ficha
+(solicitado, capturado, adjunto…) van en azul.
 
-**Ficha del proceso.** Lo que eran pestañas (indicadores, riesgos,
-documentos, NC) son **botones inteligentes** con su conteo: Diagrama,
-Actividades, Sin evidencia, Indicadores, KPI en rojo, Riesgos, Riesgos
-altos, Documentos, Conexiones (`flow_count`), NC abiertas, Acciones
-vencidas, Faltantes. Quedan tres pestañas: Ficha, Procedimiento y
-Conexiones. El encabezado conserva el estado y los verbos (Pedir un cambio,
-Registrar hallazgo); los tres PDF (procedimiento, lista maestra, matriz de
-riesgos) viven en el menú **Imprimir** de la ficha. El botón «Diagrama» abre
-el flujo con pestañas para mapa, tortuga, PDCA, árbol documental,
-indicadores, riesgos y NC del proceso. Prueba: `tests/test_diagram_view.py`.
+## Impresos
 
-## Ligas entrada ↔ salida (53.5.0)
+Desde 57.98.0 los reportes propios del SGI llevan el pie del formato
+controlado en **cada hoja** (`quimibond_sgi.sgi_report_layout`: clave,
+revisión y emisión del documento vigente, y «Página x de y»); 57.101.0 lo
+agrega al 8D, la solicitud de desarrollo, la responsiva de EPP y las
+eficiencias, y a los PDF nuevos de esta tabla. Si el formato
+aún no tiene clave del SGI, el pie lleva solo la página y el Diagnóstico lo
+lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
+`format_ref_*` en `data/sgi_format_map_data.xml`).
 
-Una actividad se mide cuando su salida apunta a su entrada
-(`sgi.activity.input.match_path`, admite rutas con punto). Campos que
-faltaban (`models/sgi_links.py`): tarea del desarrollo (`sgi_dyd_task_id`)
-en AMEF, lista de materiales, orden de producción, plan de control y PPAP;
-`product.template.sgi_control_plan_id`; `quality.alert.sgi_maintenance_request_id`
-(lo llena «Levantar NC»); `purchase.order.sgi_approval_request_id` (lo llena
-la requisición al crear la orden); `account.move.sgi_picking_ids` (propuesto
-desde las líneas del pedido); `ir.attachment.sgi_picking_id` con el botón
-«Adjuntar acuse» de la entrega (nombre `ACUSE-…`); `stock.picking.sgi_production_id`
-(propuesto desde los movimientos o el origen). La migración 53.5.0 llena
-los `match_path` de C1.04, C1.09, C1.15, C1.16, C1.17, C2.34, C4.19, S1.09,
-S2.08 y S5.06, deja sin estado SGI los documentos que no son del SGI, borra
-los faltantes de procesos archivados y liga los acuses existentes. Reglas
-nuevas: objetivo sin indicador = «sin dato»; la evaluación trimestral solo
-toma proveedores críticos (contacto marcado o categorías de Ajustes →
-Categorías de proveedores críticos; vacío = materia prima + «maquila»).
+| PDF | Dónde se imprime | Pie |
+|---|---|---|
+| Ficha del indicador (cómo se mide, metas, gráfica de los últimos 12 periodos con medición, causa y acciones de los rojos) | Indicador: «Ficha en PDF» o Imprimir; todas las del proceso: Imprimir → «Fichas de indicadores del proceso» | Página (sin clave) |
+| Diagrama en formato controlado: mapa de procesos, interacción (4.4), tortuga, roles (5.3), contexto (4.1/4.2); las flechas van como tabla «Conexiones» | Barra del diagrama, botón PDF (junto a la impresora). Carriles y PDCA siguen con la impresión de pantalla | Página (sin clave) |
+| Programa de auditorías: programado contra realizado | Programa: «Programado contra realizado» o Imprimir | Página (sin clave) |
+| Mapa de calor de riesgos (R&O, IPER, ambiental; cuadrícula inicial y residual) | Lista de riesgos: Imprimir; diagrama de riesgos: botón PDF | IPER: F-P-S01-01; R&O y ambiental: página |
+| Reporte 8D | NC: Imprimir | Página (no comparte la clave del reporte de NC) |
+| Solicitud de desarrollo, responsiva de EPP, eficiencias del personal | Su ficha: Imprimir | La clave de su tipo |
+| Acta de revisión por la dirección | Revisión: Imprimir | Por el modelo |
+
+- **Nombre del archivo:** NC, 8D, plan e informe de auditoría, acta,
+  investigación de incidente y AMEF salen con su folio («Reporte de NC -
+  NCI-2026-001»).
+- **Copia guardada del acta:** al imprimir un acta **cerrada**, Odoo guarda
+  el PDF como adjunto de la revisión y lo vuelve a entregar igual. Reabrirla
+  (solo el Jefe MAST) renombra esa copia («… (reabierta el dd-mm-aaaa).pdf»),
+  no la borra; al cerrarla otra vez se guarda la nueva. El informe de
+  auditoría no lleva copia por este camino: se archiva en Documentos al
+  cerrar la auditoría (AU-3). El acta cerrada imprime la copia guardada;
+  para corregirla, reábrala (la copia anterior se renombra).
+- **Tendencia del indicador:** la gráfica **promedia** las mediciones del
+  periodo (antes las sumaba: las semanales daban 218 % de OTIF en un mes),
+  los indicadores semanales abren por semana y la tendencia abre con el
+  filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
+  riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
+
+## Manual del SGI (MIID) desde Odoo (57.105.0)
+
+**SGI → Sistema → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
+El MIID se arma con **texto fijo** (`sgi.miid.section`: una sección por
+título y subtítulo, sembradas `noupdate` con el texto [FIJO] del borrador
+Rev. 03, `docs/sgi/transicion/miid-rev03-borrador.md`; las edita el Jefe
+MAST) y **datos vivos** (un bloque por sección: identificación, procesos con
+mapa e interacción 4.4, política, objetivos e indicadores, tipos de
+documento y su clave, controles operacionales, plazos de NC, correspondencia
+por cláusula, procedimientos anteriores, anexos con su «Situación» como nota
+por renglón, `sgi.miid.row.note`, y control de cambios). La marca `[[datos]]`
+en un párrafo decide dónde va el bloque; «Texto solo si no hay datos» deja
+el texto como respaldo. Un bloque que ninguna sección lleva sale al final
+(«Datos del sistema sin sección»).
+
+- **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
+  «Borrador — no vigente». La revisión vigente es el documento controlado de
+  clave MIID.
+- **Huella** (`sgi.miid._sgi_hash`): textos de las secciones sin formato y
+  notas por renglón, procesos (nombre, tipo, dueño, estado, macroproceso),
+  flujos, política vigente, objetivos con sus indicadores, tipos de
+  documento y su patrón, controles operacionales y anexos vigentes,
+  procedimientos anteriores y su proceso, los seis plazos de NC y las normas
+  con sus numerales. No cubre qué procesos cumplen cada cláusula, la
+  revisión y emisión del propio MIID, el control de cambios ni «Por
+  confirmar».
+- **Candados:** ninguna revisión se envía ni se aprueba con secciones «Por
+  confirmar» o con procesos activos que no estén «Vigente». Por Sign la
+  aprobación espera (no se interrumpe la sincronización) y avisa al Jefe
+  MAST.
+- **Actualizar:** aviso diario «El MIID vigente ya no coincide con el
+  sistema» (paso «MIID al día» de «SGI: Vencimientos documentales», uno por
+  empresa, 3 días hábiles) → pantalla → **Solicitar cambio del MIID**
+  (solicitud de cambio documental de siempre con el PDF generado, la huella y
+  las diferencias) → Enviar (regenera el PDF si los datos cambiaron) →
+  firmas (Elaboró, Revisó el dueño de E2, Aprobó Dirección,
+  `quimibond_sgi.miid_approver_user_id`) → revisión nueva con la huella (DOC-1:
+  la anterior obsoleta con su archivo, acuses). Lo que se firma es lo que se
+  publica. Nada se aprueba solo.
+- **Sin línea base:** el MIID cargado del Dropbox (sin huella) no avisa; la
+  primera revisión desde Odoo es la 03.
+- **Una empresa:** la comparación diaria y el aviso son solo de la empresa
+  del SGI (`quimibond_sgi.sgi_company_id`, D-03).
+
+## Indicadores: sin dato y cálculos (57.104.0)
+
+- **«Sin dato» no es 0.** Un indicador sin ninguna medición con dato dice
+  «Sin dato» en la lista de indicadores, el Tablero, la pestaña Indicadores
+  del proceso, Mis indicadores (lista y celular), el texto de la revisión
+  por la dirección, los «Últimos 6 periodos» y el diagrama de indicadores
+  (campo `sgi_last_value_label`); un 0 real se muestra como 0. El valor de
+  una medición sin dato se sigue **guardando** en 0 (un `Float` no guarda
+  vacío): por eso las listas no lo muestran y «Mediciones» y «Tendencia»
+  abren con el filtro «Con dato».
+- **Capturar un 0 (manuales).** Una medición de indicador manual en 0, sin
+  numerador, sin denominador y **sin nota** no se marca capturada ni se
+  valida: si el valor de verdad es 0, el responsable lo dice en la nota
+  («0: sin caídas en el mes»). Solo aplica a personas (el sistema no se
+  revisa); «Validar mediciones» de la revisión (P-40) las salta y las lista.
+- **Recálculo diario.** El cron de indicadores re-mide las pendientes y,
+  desde 57.104.0, las «sin dato» y las capturadas no validadas de los
+  últimos `quimibond_sgi.indicator_recompute_months` meses (2 por omisión,
+  desde el día 1 del mes de hace 2 meses). Nunca toca validadas, indicadores
+  de foto ni de salud, mediciones con NC, con causa o acciones, ni las
+  **corregidas a mano** (quien cambia el valor de una medición automática la
+  marca «Valor corregido a mano»; «Recalcular valor» o «Recalcular ahora»
+  quitan la marca). Solo escribe si algo cambió y deja el antes y el después
+  en el chatter de la medición. El botón **Recalcular mediciones** de la
+  lista (Administrador SGI) con indicadores seleccionados re-mide todo lo no
+  validado de ellos, sin ventana de meses. La corrida del cron va después de
+  la medición mensual y tiene tiempo tope (240 s): lo que no alcanza sigue al
+  día siguiente. Una nota que escribió una persona no se borra al recalcular.
+- **«Medir desde».** Al cambiarla, las mediciones no validadas cuyo periodo
+  termina antes pasan a «Sin dato» con el valor anterior en la nota; las
+  validadas no se tocan y nada se borra.
+- **Registro vacío.** En una fórmula configurable «más bajo es mejor», un
+  numerador en 0 con algún término cuya fuente nunca ha tenido registros
+  (contar) o cuyo campo sumado nunca se ha capturado (sumar) da «Sin dato»
+  con la nota «Registro vacío…», no un verde falso (SST-01, C5-01). En «más
+  alto es mejor» el 0 rojo se deja.
+- **Fórmulas corregidas:** TR-01 = NC levantadas en el periodo (sin
+  canceladas) que ya están cerradas ÷ NC levantadas en el periodo; C5-02 =
+  reclamaciones cerradas en 30 días naturales ÷ reclamaciones del periodo;
+  C2-06 = salidas con sello de embarque ÷ salidas validadas de la semana (el
+  campo de Studio «Tipo de transporte» nunca se capturó); RH-02 = solo
+  empleados de la empresa del SGI, con numerador y denominador.
+
+## Salud del SGI
+
+Desde 57.99.0 (auditoría 2026-10, sección 8 y hallazgo D-01) Dirección ve
+cada semana si el SGI se está usando o solo lo operan el CEO, el Jefe MAST y
+los crons. Diez indicadores de nivel Dirección del proceso E2, semanales, en
+prueba y sin NC automática (`data/sgi_health_indicators.xml`, `noupdate`):
+
+| Clave | Qué mide |
+|---|---|
+| SG-01 | Procesos en «Vigente» ÷ procesos activos |
+| SG-02 | Personas (con usuario y empleado) que crearon, modificaron o comentaron algo del SGI en 30 días |
+| SG-03 | Empleados con puesto que tienen usuario |
+| SG-04 | Acuses leídos o pendientes dentro del plazo del aviso |
+| SG-05 | Mediciones validadas a tiempo (3 días hábiles desde la captura) |
+| SG-06 | Rojos de los últimos 3 meses con NC o con causa y acción |
+| SG-07 | NC cerradas en 90 días sin ninguna verificación «No eficaz»; la nota da las abiertas con más de 60 días |
+| SG-08 | Avisos del SGI vencidos; la nota da qué parte los tiene una sola persona |
+| SG-09 | Auditorías internas del programa del año hechas hasta el mes en curso |
+| SG-10 | Formatos «Migrado a Odoo» con destino activo y uso en 90 días |
+
+- **Dónde se ven:** SGI → Desempeño → Tablero → página «Salud del SGI»: los
+  diez con la medición de la semana pasada y, por el hallazgo D-01, una
+  tabla por dueño de proceso (avisos vencidos, validaciones atrasadas y días
+  sin movimiento en el SGI). No ocupan los 12 lugares de «Indicadores de
+  dirección».
+- **Correo de los lunes** (acción planificada «SGI: Salud del SGI (correo
+  semanal a Dirección)», 08:00 de México): lo mismo, a los miembros de
+  Dirección de Operaciones (SGI) y a los usuarios de
+  `quimibond_sgi.health_mail_user_ids` (ids separados por coma). Solo
+  conteos; sin datos de salud ni de nómina.
+- **Quién no cuenta en SG-02:** OdooBot, el administrador técnico, las
+  cuentas sin empleado de la empresa del SGI y los usuarios de
+  `quimibond_sgi.health_excluded_user_ids` (ids separados por coma).
+- **Sus mediciones no se validan** (no salen en «Validar medición»), no
+  piden causa y plan, no escalan y un «sin dato» no agenda «Indicador no
+  calculó»: su respuesta es la revisión semanal. Tampoco cuentan en SG-05 ni
+  en SG-06.
+
+## Metas congeladas (K-04)
+
+Desde 57.100.0, una medición validada guarda las metas con las que se juzgó:
+sentido, objetivo y aceptable del periodo (el escalón de la trayectoria si lo
+hay) y, en «dentro de un rango», mínimo, máximo y tolerancia
+(`models/sgi_indicator_integrity.py`). Su semáforo, el objetivo y el
+aceptable que muestra y el semáforo de su desglose salen de esas metas aunque
+después cambie la meta del indicador o se corrija un escalón. Al cambiar las
+metas de un indicador con validadas, su chatter dice cuántas las conservan.
+
+- **Reabrir:** solo el Jefe MAST («Regresar a pendiente»); las metas se
+  sueltan (nota en el chatter) y la medición se juzga con las actuales.
+  Validarla otra vez guarda las de ese momento.
+- **Corregir el valor sin reabrir** (Jefe MAST): el color se recalcula contra
+  las metas guardadas.
+- Nadie escribe las metas guardadas por RPC. El despliegue de 57.100.0
+  guardó las metas de las validadas que ya había (el color no cambió).
+
+## Competencias por examen o curso y eficacia (N-13)
+
+- **Ligar:** el Jefe MAST liga un examen de certificación (Empleados →
+  Competencias SGI → Exámenes y competencias (Encuestas)) o un curso de
+  eLearning (… → Cursos y competencias (eLearning)) con una competencia y un
+  nivel. Del curso se captura «Vigencia (meses)» (0 = no vence); la del examen
+  es la validez de la certificación (app Encuestas).
+- **Otorgar:** quien aprueba el examen o termina el curso recibe la
+  competencia (`hr.employee.skill`) con su vigencia en cuanto lo nativo
+  escribe la línea de currículum; el cron diario de cursos es el respaldo.
+  Sube de nivel (el renglón viejo se cierra el día anterior) o renueva; nunca
+  baja ni acorta. Solo empleados de la empresa del SGI. Quien aprueba sin
+  usuario se encuentra por su contacto de trabajo.
+- **Vencimientos:** el aviso «por vencer / vencida» (cron de competencias)
+  cubre toda competencia con vigencia, no solo las certificaciones.
+- **Eficacia (ISO 9001 7.2 c):** cada competencia nueva o subida de nivel abre
+  una evaluación (`sgi.training.effectiveness`) con aviso al jefe inmediato
+  (si no tiene usuario: responsable del departamento, RH, Jefe MAST) a los
+  `quimibond_sgi.training_effectiveness_days` días (90). «Eficaz» o «No
+  eficaz» (pide comentario y avisa a RH «Reprogramar capacitación»; la
+  competencia no se quita). Ya evaluada, solo el Jefe MAST cambia el
+  resultado; no se borra. La ven quien evalúa (las suyas), RH y el Jefe MAST;
+  el Auditor y Dirección no (datos de RH). Encuesta opcional al jefe:
+  `quimibond_sgi.training_effectiveness_survey_id` (0 = sin encuesta).
+- Colores de la eficacia: pendiente amarillo, eficaz verde, no eficaz rojo.
+
+## Cliente automotriz (N-14)
+
+- En el contacto del cliente, grupo «Cliente automotriz» (por compañía, solo
+  SGI o Calidad lo cambian): «Exige PPAP ante cambios» y «Exige plan de
+  contingencia». Salen vacías; las marca Calidad (pista de datos de Q12).
+- Con `quimibond_sgi_plm`, el ECO marca solo «Requiere PPAP» cuando el
+  producto se vendió en los últimos `quimibond_sgi.ppap_sales_window_months`
+  meses (12) o ya tiene PPAP con un cliente que lo exige, y al aplicarlo
+  genera un PPAP por cliente. Nunca desmarca.
+- **Salida sin CoA:** validar una salida a un cliente con «Requiere CoA en
+  cada embarque» sin el CoA adjunto deja nota en la salida y un aviso «Salida
+  sin CoA» al Jefe de Calidad (puesto `quimibond_sgi.coa_exception_job_id`) o,
+  si no hay, al Jefe MAST, que se cierra solo al adjuntar el CoA. Llega a Mis
+  pendientes y al correo semanal. El bloqueo (`coa_block_validation`) sigue
+  apagado.
+- El plan de contingencia es solo la casilla: qué documento se exige se
+  decide con Q12.
+
+## Sugerencia de IA en la NC
+
+Desde 57.100.0 (sección 7 del reporte de auditoría, puerta Q16;
+`models/sgi_ai.py`). **Sale apagada.**
+
+- **Encender** (solo con la autorización escrita de Jose, anotada en
+  `docs/audit/decisiones.md`): un administrador captura la llave de Anthropic
+  en `quimibond_sgi.ai_api_key` y pone `quimibond_sgi.ai_enabled = True`.
+  Otros parámetros: `ai_model` (`claude-opus-5-5`; `claude-sonnet-5-5` cuesta
+  la mitad), `ai_timeout` (segundos, 60), `ai_include_history` (manda la
+  desviación y la causa raíz de hasta 3 NC cerradas del mismo proceso),
+  `ai_backend` (solo `anthropic`).
+- **Qué hace:** en la NC con folio abierta, un Usuario SGI pulsa «Pedir
+  sugerencia a la IA» (pestaña «Desviación y análisis»): cláusula sugerida
+  (de las cargadas), clasificación, el porqué, borrador de 5 porqués e
+  Ishikawa 6M, en campos de sugerencia. «Usar cláusula y clasificación
+  sugeridas» y «Copiar el borrador de porqués» (solo los vacíos) los copian
+  con su nombre en el seguimiento. **Nunca escribe la causa raíz, nunca cambia
+  la etapa ni cierra.**
+- **Qué se manda:** título, desviación, descripción, origen, proceso,
+  producto, lote y la lista de cláusulas, con correos, teléfonos y RFC
+  tachados. Nunca cliente o proveedor, N° NCR del cliente, usuarios,
+  responsables ni adjuntos. Un nombre escrito a mano dentro de la desviación
+  no se puede tachar con certeza, y el nombre del producto puede llevar el de
+  un cliente.
+- **Fallas:** si la IA no responde, rechaza o contesta algo que no sirve,
+  aparece un aviso y nada cambia; en el log queda un `warning` sin el texto de
+  la NC.
+
+## Desarrollo de producto: la tabla de características (57.117.0)
+
+Primer bloque de la migración del procedimiento **C1 Desarrollo y alta de
+producto** (brief `docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`,
+plan `docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). La
+pestaña «Solicitud de desarrollo» del proyecto FT lleva **una sola tabla de
+características** (`sgi.dev.characteristic`) que sustituye la misma tabla
+recapturada en siete Excel: un renglón por característica y una columna por
+momento del proceso.
+
+| Columna | Quién | Qué guarda |
+|---|---|---|
+| Especificación del cliente | Ventas | Nominal, límite (nominal ± tolerancia, máximo o mínimo), tolerancias − / + en unidades o en %; texto solo en las cualitativas |
+| Control interno | Diseño de Producto | Margen más cerrado que el del cliente, sobre el mismo nominal. **Nunca se imprime al cliente** |
+| Muestra del cliente | Laboratorio | Lo medido en la muestra que mandó el cliente, y si cae dentro de lo que pide |
+| Corrida | Laboratorio | Tres lecturas y promedio; resultado: cumple (dentro del control interno), fuera del control interno (se embarca con aviso), no conforme (fuera del cliente) |
+| Dictamen y cliente | Diseño de Producto / Ventas | Cumple, con desviación o no cumple; aprobado por el cliente; si va a la especificación del cliente y al certificado |
+
+El catálogo de características (unidad, método o norma, tipo de dato), las
+claves de la regla de codificación de artículos (DAT P-D02-01) y el mixin con
+los dos juegos de límites viven en **`quimibond_ficha_tecnica_tela`** (menú
+Fichas Técnicas de Tela → Configuración): la ficha del artículo y el proyecto
+comparten catálogo y límites, y el SGI depende de ese módulo desde 57.117.0.
+En el SGI queda qué renglones carga cada tipo de desarrollo (general,
+entretelas V10, carda, tramado, con dirección largo / ancho y posición
+izquierda / centro / derecha): **SGI → Administración → Configuración →
+Características por tipo de desarrollo**. El rendimiento (m/kg) se calcula
+solo: 1000 / (masa × ancho). Los bloques siguientes (proyecto único,
+generador de código, laboratorio, fichas de proceso, pilotaje y liberación)
+están en el plan; la cotización va al plan de costeo v2.
+
+**Proyecto único con ciclo de vida (57.118.0).** La bandera «Desarrollo de
+producto» (`sgi_is_ft`) la pone el tipo de proyecto, no el nombre; el folio FT
+es un campo aparte con secuencia anual (FT-001-2027) que se asigna al pasar a
+«Muestra»; las etapas del proyecto son de avance (Solicitud → Análisis →
+Cotización → Aprobación del cliente → Muestra → Respuesta del cliente →
+Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
+campo Cliente. El nombre se arma solo (folio, código, revisión). Pestañas
+Desarrollo (origen, resultado del análisis, muestra física, relojes por etapa
+y de materia prima), Comercial (listas en Configuración → Listas del
+desarrollo de producto) y Revisiones (bitácora). Las mediciones del SGI
+filtran por la bandera, ya no por `FT-%` en el nombre.
+
+**Artículo en desarrollo y generador de código (57.119.0).** Desde la
+pestaña Desarrollo se eligen las claves (composición, dibujo, hilo, color,
+acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
+crea crudo (H), teñido (I, si lleva) y acabado (J) con el código del DAT
+P-D02-01 en estado «En desarrollo» (no se vende). Al entrar a Pilotaje el
+artículo se vende con aviso; en Liberado queda de línea; si el proyecto
+cierra sin producto, el artículo y sus listas de materiales se archivan. El
+artículo genérico «MUESTRA PILOTO» se bloquea en órdenes nuevas desde la
+fecha del parámetro `quimibond_sgi.dev_block_generic_sample_from` (vacío
+mientras Jose no la fije).
+
+**Análisis, laboratorio y factibilidad (57.120.0).** «Buscar parecidos»
+lista artículos de línea y desarrollos anteriores por cercanía y, con «Usar
+como base», propone producto de línea o nuevo. «Solicitar pruebas al
+laboratorio» crea la solicitud con los renglones marcados; la autoriza el
+puesto del parámetro `quimibond_sgi.dev_lab_authorizer_job_id` o el Jefe
+MAST, y el laboratorio captura el valor en el renglón (SGI → Sistema →
+Pruebas de laboratorio de desarrollos). El checklist de factibilidad se
+carga del catálogo por línea (Configuración → Recursos del checklist de
+factibilidad, vacío hasta que Diseño de Procesos lo defina); Odoo contesta
+la existencia de materia prima. Ventas aprueba análisis y factibilidad en
+una sola revisión; sin ella el proyecto no pasa a Cotización.
+
+## Menú
+
+Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las
+normas (57.113.0):
+
+- **Inicio**: Mis pendientes, Mi procedimiento, Mis indicadores, Mi equipo,
+  Checklists de hoy, Documentos vigentes.
+- **Reportar**: no conformidad, casi accidente o incidente, queja o
+  sugerencia, riesgo u oportunidad (cada una abre la ficha nueva).
+- **Sistema** (4 y 7.5; antes «Procesos»): mapa y actividades para todos;
+  entregables, flujos, matriz de responsabilidades, puestos y procesos y
+  fichas por máquina solo para dueño de proceso, Jefe MAST, Dirección y
+  Auditor; Documentos (Auditor, Jefe MAST y Dirección), el Manual del SGI
+  (MIID) y «Del Dropbox a Odoo».
+- **Planeación** (5 y 6; antes «Dirección»): política, objetivos, partes
+  interesadas, riesgos y oportunidades, aspectos ambientales, requisitos
+  legales y sus evaluaciones.
+- **Seguridad y ambiente** (8): incidentes, permisos de alto riesgo,
+  bloqueo y etiquetado, EPP, checklists, recorridos CSH, emergencias y
+  simulacros, estudios de higiene.
+- **Desempeño** (9): Tablero, Indicadores (con mediciones y revisiones de
+  medición), satisfacción del cliente, auditorías y revisión por la
+  dirección.
+- **Mejora** (10): NC, acciones correctivas, reclamaciones, mejora continua,
+  lecciones aprendidas, quejas y sugerencias del personal.
+- **Administración** (antes «Administración SGI»; Auditor, Jefe MAST y
+  Dirección): Diagnóstico (cuatro entradas) y Aprobaciones del SGI;
+  Publicar Mi procedimiento, Transición y Configuración solo Jefe MAST.
+
+Los xmlids no cambiaron; lo que salió del menú (Firmas de lectura, Cobertura
+de medición, Cumplimiento semanal, Medición por revisar) está archivado en su
+lugar, con su acción viva (`SGI_MENU_ARCHIVED`). Al tocar la app, Dirección
+abre en el Tablero y los demás en Mis pendientes (acción del menú raíz,
+`sgi_home_action`). El árbol completo con grupos está en
+`tools/sgi_menu_tree.txt`, y `tests/test_menu_tree.py` lo compara con la base.
+
+## Grupos
+
+| Grupo | Para quién |
+|---|---|
+| Usuario SGI | Todo el personal con usuario: sus pendientes, su procedimiento, levantar NC |
+| Dueño de proceso (SGI) | Jefes que son dueños de un proceso (implica Usuario) |
+| Captura de eficiencias | Jefe o supervisor de área |
+| Jefe MAST y SGI | Quien administra el SGI |
+| Administrador SGI | Carga del catálogo y cambios de estructura (implica Jefe MAST) |
+| Dirección de Operaciones (SGI) | Consulta y aprueba; **no** implica Jefe MAST |
+| Auditor SGI | Lectura para auditar (D-05); no ve salud ni salarios |
+| Salud ocupacional (SGI) | Solo el Coordinador de RH: exámenes y estudios de higiene |
+| Salarios de eficiencias (SGI) | Importes de eficiencias (RH y Nóminas) |
+| Comisión de Seguridad e Higiene (SGI) | Recorridos y hallazgos de la CSH |
+| Tableta de planta (SGI) | Cuenta compartida de una tableta: solo la app SGI en planta; firma a nombre de quien teclea su PIN |
+
+**Capturista de planta** = persona sin usuario que firma en la tableta (app
+SGI en planta) con su PIN de empleado; las cuentas de tableta se dan de alta
+en Configuración → Tabletas de planta. El PIN no tiene límite de intentos; se
+acepta en planta (F-018). **Apagado por ahora** (decisión de Dirección,
+2026-10-02): no hay tabletas dadas de alta; encenderlo pide antes contestar el
+límite de intentos (Q12).
+
+## Satélites
+
+| Módulo | Qué agrega | Se instala |
+|---|---|---|
+| `quimibond_sgi_mapa` | El mapa de procesos de producción (JSON) y el asistente de carga | A mano, solo staging o recuperación |
+| `quimibond_sgi_pesaje` | Rollo fuera de tolerancia → alerta de calidad; parámetro `pesaje_tolerance_kg` | `auto_install` con `pesaje_rollos_tejido` |
+| `quimibond_sgi_plm` | «Requiere PPAP» por los clientes del producto → un PPAP por cliente y aviso a ventas (pruebas propias desde 3.2.0) | `auto_install` con `mrp_plm` |
+| `quimibond_sgi_revisado` | Pareto de defectos del revisado e indicador MA-03 «Calidad PQ» | `auto_install` con `mrp_revisado_telas` |
+| `quimibond_sgi_knowledge` | Instructivo escrito en Conocimiento y publicado como IT | `auto_install` con `knowledge` |
+| `quimibond_sgi_studio` | Regla de aprobación de Studio para el rol «Aprueba» | `auto_install` con `web_studio` |
+
+**Lo que el núcleo garantiza a los satélites** (A-021; no cambiar sin revisar
+los satélites): `quality.alert.sgi_auto_create(source_code, vals)`,
+`sgi.cron._sgi_schedule(...)`, `sgi.cron._sgi_manager_user_id()`, los XML IDs
+de los equipos de calidad (`sgi_quality_team_internal`) y del indicador
+`sgi_ind_calidad_pq`. Fuera de los satélites, `quimibond_intelligence`
+(señales) lee modelos `sgi.*`; al renombrar o sacar un modelo, revisar
+`quimibond_intelligence/models/senales/` (K-020).
+
+## Instalar, actualizar y probar
+
+```bash
+# Odoo.sh, shell de la rama. Varios módulos se separan con COMAS, sin espacios.
+odoo-update quimibond_sgi,quimibond_sgi_pesaje && odoosh-restart http && odoosh-restart cron
+```
+
+- Verificaciones después del despliegue: `docs/RUNBOOK_DESPLIEGUE.md`, sección SGI.
+- **Pruebas:** el CI de GitHub no instala el SGI (depende de Enterprise). Se
+  corren en el build de desarrollo de Odoo.sh de la rama, **solo con
+  `--test-tags`**, porque el suite completo se detiene en las pruebas de
+  nómina:
+  `odoo-bin -u quimibond_sgi --test-tags /quimibond_sgi --stop-after-init --no-http`
+  (agregar `,/quimibond_sgi_pesaje`… para los satélites). Desde 57.100.0 el
+  build de la rama corre `--test-tags /quimibond_sgi,/quimibond_sgi_plm`
+  (`quimibond_sgi_plm` estrena pruebas; P19).
+- `post_init_hook` (`__init__.py`): al instalar, liga los puntos de control de
+  los equipos «CALIDAD Materia Prima» y «Revisado de Tela» a los planes de
+  control del módulo; busca por nombre y nunca detiene la instalación (A-030).
+
+## Reglas para programar aquí
+
+- **Versión y CHANGELOG:** todo cambio en `addons/quimibond_sgi/` sube la
+  versión y agrega su `## <versión>` en `CHANGELOG.md` en el mismo commit
+  (`tools/check_addons.py` lo exige).
+- **Sin herencias propias:** el SGI no hereda sus propias vistas (0 desde
+  57.30.0). La ficha propia va completa en un solo `<record>`; la herencia es
+  para vistas de otros módulos. Ver `CLAUDE.md` de la raíz.
+- Menús: todos en `views/sgi_menus.xml`, al final del manifest; si cambian,
+  cambia `tools/sgi_menu_tree.txt` en el mismo commit.
+- Crons en `noupdate`: cambiar uno en la base requiere migración.
+- **Nombres** (A-024, C-020; no renombrar lo existente): modelos y campos en
+  inglés, etiquetas en español; en lo nuevo, NC ligada = `alert_id`, área =
+  `area_id` (M2O a `sgi.area`), responsable = `responsible_id`, revisión
+  `Integer`, sin prefijo `sgi_` en campos de modelos propios.
+- Numerales de actividad (`number`): no se renumeran; son la llave natural de
+  la carga y la exportación. Los huecos son esperados (H-017).
+- Campos calculados sin `store`: ninguno se usa donde Odoo exige almacenarlo
+  (C-023). Si Mis pendientes se vuelve lento, el candidato es `store=True` en
+  `quality.alert.sgi_stage_is_closing/is_cancel`.
+- Adjuntos de salud (`sgi.health.record`): pendiente de verificar al capturar
+  el primero que el PDF quede ligado al registro (F-019).
+- `help` de campos en «usted» (D-29), para la persona que llena el campo.
+
+## Documentación
+
+| Qué | Dónde |
+|---|---|
+| Manuales por rol, administración y transición | `docs/sgi/` |
+| Técnica generada del código (modelos, campos, vistas, menús, crons) | `docs/sgi/tecnica/` (`python3 tools/sgi_docs.py`) |
+| Decisiones de Jose | `docs/audit/decisiones.md` |
+| Historia (README anterior, manuales viejos) | `docs/historico/sgi/` |
+
+Licencia: OPL-1 (D-31). Autor: Quimibond.

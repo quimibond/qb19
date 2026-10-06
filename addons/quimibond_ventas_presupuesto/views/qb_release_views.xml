@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Perfil de release -->
+    <record id="qb_release_profile_view_list" model="ir.ui.view">
+        <field name="name">qb.release.profile.list</field>
+        <field name="model">qb.release.profile</field>
+        <field name="arch" type="xml">
+            <list string="Perfiles de release">
+                <field name="partner_id"/>
+                <field name="ship_to_id"/>
+                <field name="supplier_code"/>
+                <field name="reader"/>
+                <field name="date_basis"/>
+                <field name="firm_rule"/>
+                <field name="sales_user_id"/>
+                <field name="team_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_release_profile_view_form" model="ir.ui.view">
+        <field name="name">qb.release.profile.form</field>
+        <field name="model">qb.release.profile</field>
+        <field name="arch" type="xml">
+            <form string="Perfil de release">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Cliente">
+                            <field name="partner_id"/>
+                            <field name="ship_to_id"/>
+                            <field name="supplier_code"/>
+                            <field name="team_id"/>
+                            <field name="sales_user_id"/>
+                            <field name="logistics_user_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="Cómo llega">
+                            <field name="reader"/>
+                            <field name="sender_domains"/>
+                            <field name="date_basis"/>
+                            <field name="transit_days" invisible="date_basis != 'entrega'"/>
+                        </group>
+                        <group string="Zona firme">
+                            <field name="firm_rule"/>
+                            <field name="firm_weeks" invisible="firm_rule != 'semanas'"/>
+                            <field name="so_weeks"/>
+                        </group>
+                        <group string="Acuse y acumulados">
+                            <field name="ack_required"/>
+                            <field name="ack_hours" invisible="not ack_required"/>
+                            <field name="cum_managed"/>
+                            <field name="cum_reset_date" invisible="not cum_managed"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <field name="release_ids" readonly="1">
+                        <list>
+                            <field name="name"/>
+                            <field name="version"/>
+                            <field name="state"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_release_profile_action" model="ir.actions.act_window">
+        <field name="name">Perfiles de release</field>
+        <field name="res_model">qb.release.profile</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre cómo manda su release cada cliente</p>
+            <p>Lector, fechas de embarque o entrega, zona firme, acuse y acumulados.</p>
+        </field>
+    </record>
+
+    <!-- Release -->
+    <record id="qb_release_view_list" model="ir.ui.view">
+        <field name="name">qb.release.list</field>
+        <field name="model">qb.release</field>
+        <field name="arch" type="xml">
+            <list string="Releases" decoration-danger="state == 'por_revisar'"
+                  decoration-muted="state in ('reemplazado', 'descartado')"
+                  decoration-success="state == 'aplicado'">
+                <field name="name"/>
+                <field name="profile_id"/>
+                <field name="release_date"/>
+                <field name="version"/>
+                <field name="unmapped_count" optional="show"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="qb_release_view_form" model="ir.ui.view">
+        <field name="name">qb.release.form</field>
+        <field name="model">qb.release</field>
+        <field name="arch" type="xml">
+            <form string="Release">
+                <header>
+                    <button name="action_read" type="object" string="Leer" class="btn-primary"
+                            invisible="state not in ('recibido', 'por_revisar')"/>
+                    <button name="action_read" type="object" string="Volver a leer"
+                            invisible="state != 'leido'"/>
+                    <button name="action_mark_reviewed" type="object" string="Marcar revisado"
+                            class="btn-primary" invisible="state != 'leido'"
+                            groups="sales_team.group_sale_manager"/>
+                    <button name="action_apply" type="object" string="Aplicar al pronóstico"
+                            class="btn-primary" invisible="state != 'revisado'"
+                            groups="sales_team.group_sale_manager"/>
+                    <button name="action_discard" type="object" string="Descartar"
+                            invisible="state in ('aplicado', 'reemplazado', 'descartado')"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="recibido,leido,revisado,aplicado"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="not error_reason">
+                        <field name="error_reason"/>
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="unmapped_count == 0">
+                        <field name="unmapped_count" class="oe_inline"/> parte(s) sin producto
+                        confirmado: confírmelas en «Partes del cliente» antes de aplicar.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="profile_id" readonly="state != 'recibido'"/>
+                            <field name="file" filename="filename" readonly="state != 'recibido' and state != 'por_revisar'"/>
+                            <field name="filename" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="release_ref" readonly="1"/>
+                            <field name="release_date" readonly="1"/>
+                            <field name="version"/>
+                            <field name="previous_id"/>
+                            <field name="applied_date" invisible="not applied_date"/>
+                            <field name="applied_by_id" invisible="not applied_by_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Partes" name="partes">
+                            <field name="part_ids" readonly="1">
+                                <list>
+                                    <field name="customer_part"/>
+                                    <field name="description"/>
+                                    <field name="customer_po"/>
+                                    <field name="customer_uom"/>
+                                    <field name="product_id"/>
+                                    <field name="mapping_state"/>
+                                    <field name="cum_received"/>
+                                    <field name="in_transit_qty" optional="hide"/>
+                                    <field name="fab_auth_qty" optional="show"/>
+                                    <field name="fab_auth_date" optional="show"/>
+                                    <field name="raw_auth_qty" optional="hide"/>
+                                    <field name="raw_auth_date" optional="hide"/>
+                                    <field name="vendor_auth_qty" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Semanas" name="semanas">
+                            <field name="line_ids" readonly="1">
+                                <list decoration-bf="zone == 'firme'" decoration-danger="not qty_ok">
+                                    <field name="release_part_id" string="Parte"/>
+                                    <field name="date_customer"/>
+                                    <field name="week"/>
+                                    <field name="zone"/>
+                                    <field name="qty_customer" sum="Total"/>
+                                    <field name="qty" sum="Total"/>
+                                    <field name="product_id"/>
+                                    <field name="qty_ok" optional="hide"/>
+                                    <field name="line_type" optional="hide"/>
+                                    <field name="cum_req" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Pronósticos" name="pronosticos" invisible="not forecast_ids">
+                            <field name="forecast_ids"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="qb_release_view_search" model="ir.ui.view">
+        <field name="name">qb.release.search</field>
+        <field name="model">qb.release</field>
+        <field name="arch" type="xml">
+            <search string="Releases">
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="profile_id"/>
+                <filter name="vigentes" string="Vigentes"
+                        domain="[('state', 'not in', ('reemplazado', 'descartado'))]"/>
+                <filter name="por_revisar" string="Por revisar"
+                        domain="[('state', 'in', ('recibido', 'por_revisar', 'leido'))]"/>
+                <group>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="qb_release_action" model="ir.actions.act_window">
+        <field name="name">Releases de clientes</field>
+        <field name="res_model">qb.release</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_vigentes': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Suba el release de un cliente</p>
+            <p>Elija el perfil, adjunte el archivo y oprima «Leer». Revise las partes y
+               semanas, márquelo revisado y aplíquelo al pronóstico.</p>
+        </field>
+    </record>
+</odoo>

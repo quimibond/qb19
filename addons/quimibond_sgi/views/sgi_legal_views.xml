@@ -4,7 +4,8 @@
         <field name="name">sgi.legal.requirement.list</field>
         <field name="model">sgi.legal.requirement</field>
         <field name="arch" type="xml">
-            <list string="Requisitos legales"
+            <!-- V-B13 (57.80.0): multi_edit para reasignar responsable o fechas de varios. -->
+            <list string="Requisitos legales" multi_edit="1"
                   decoration-danger="compliance_state == 'no_cumple'"
                   decoration-warning="compliance_state in ('parcial', 'pendiente')">
                 <field name="reference"/>
@@ -14,7 +15,8 @@
                 <field name="authority" optional="hide"/>
                 <field name="responsible_id" optional="show" widget="many2one_avatar_user"/>
                 <field name="last_eval_date" optional="show"/>
-                <field name="next_eval_date"/>
+                <field name="next_eval_date" widget="remaining_days"
+                       invisible="compliance_state == 'no_aplica'"/>
                 <field name="expiry_date" optional="hide"/>
                 <field name="compliance_state" widget="badge"
                        decoration-success="compliance_state == 'cumple'"
@@ -32,14 +34,24 @@
         <field name="arch" type="xml">
             <form string="Registrar evaluación de cumplimiento">
                 <field name="requirement_id" invisible="1"/>
+                <!-- 57.96.0 (N-07): que se sepa antes de registrar. -->
+                <div class="alert alert-warning mb-2" role="status"
+                     invisible="result not in ('parcial', 'no_cumple')">
+                    Al registrar «Cumple parcialmente» o «No cumple» se levanta una no conformidad
+                    por el incumplimiento.
+                </div>
                 <group>
                     <field name="result"/>
-                    <field name="evidence" placeholder="Qué se revisó (bitácora, dictamen, constancia…) y qué se encontró"/>
+                    <!-- 57.96.0 (N-07): «No aplica» también pide su motivo. -->
+                    <label for="evidence" string="Motivo por el que no aplica" invisible="result != 'no_aplica'"/>
+                    <label for="evidence" string="Evidencia revisada" invisible="result == 'no_aplica'"/>
+                    <field name="evidence" nolabel="1"
+                           placeholder="Qué se revisó (bitácora, dictamen, constancia…) y qué se encontró, o por qué no aplica"/>
                     <field name="next_date"/>
                 </group>
                 <footer>
                     <button name="action_confirm" type="object" string="Registrar" class="btn-primary"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
@@ -69,14 +81,14 @@
                     <button name="action_evaluate" type="object" string="Registrar evaluación"
                             class="btn-primary" icon="fa-check-square-o"/>
                     <button name="action_mark_cumple" type="object" string="Cumple"
-                            class="btn-success"/>
+                            class="btn-success" groups="quimibond_sgi.group_sgi_manager"/>
+                    <!-- 57.96.0 (N-07): los cuatro abren el asistente con la evidencia
+                         (o el motivo); la confirmación es el asistente. -->
                     <button name="action_mark_parcial" type="object" string="Cumple parcialmente"
-                            class="btn-warning"
-                            confirm="Un cumplimiento parcial levanta una No Conformidad. ¿Registrar la evaluación?"/>
+                            class="btn-warning" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_mark_no_cumple" type="object" string="No cumple"
-                            class="btn-danger"
-                            confirm="Un incumplimiento levanta una No Conformidad mayor. ¿Registrar la evaluación?"/>
-                    <button name="action_mark_no_aplica" type="object" string="No aplica"/>
+                            class="btn-danger" groups="quimibond_sgi.group_sgi_manager"/>
+                    <button name="action_mark_no_aplica" type="object" string="No aplica" groups="quimibond_sgi.group_sgi_manager"/>
                     <field name="compliance_state" widget="statusbar"/>
                 </header>
                 <sheet>
@@ -163,6 +175,12 @@
                 <filter name="ambiental" string="Ambiental (14001)" domain="[('system', '=', 'ambiental')]"/>
                 <filter name="sst" string="SST (45001)" domain="[('system', '=', 'sst')]"/>
                 <filter name="calidad" string="Calidad / cliente" domain="[('system', '=', 'calidad')]"/>
+                <separator/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
+                <separator/>
+                <filter name="mine" string="Míos" domain="[('responsible_id', '=', uid)]"/>
+                <filter name="filter_next_eval" string="Próxima evaluación" date="next_eval_date"/>
                 <group>
                     <filter name="group_system" string="Sistema" context="{'group_by': 'system'}"/>
                     <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
@@ -173,12 +191,28 @@
         </field>
     </record>
 
+    <!-- V-B18 (57.80.0): vista de actividades, como incidentes y auditorías. -->
+    <record id="sgi_legal_requirement_view_activity" model="ir.ui.view">
+        <field name="name">sgi.legal.requirement.activity</field>
+        <field name="model">sgi.legal.requirement</field>
+        <field name="arch" type="xml">
+            <activity string="Requisitos legales">
+                <templates>
+                    <div t-name="activity-box">
+                        <div><field name="display_name" display="full"/></div>
+                    </div>
+                </templates>
+            </activity>
+        </field>
+    </record>
+
     <record id="sgi_legal_requirement_action" model="ir.actions.act_window">
         <field name="name">Requisitos legales</field>
         <field name="res_model">sgi.legal.requirement</field>
-        <field name="view_mode">list,form</field>
+        <field name="view_mode">list,sgi_diagram,form,activity</field>
+        <field name="context">{'search_default_no_cumple': 1, 'search_default_pendiente': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Registra la matriz de requisitos legales</p>
+            <p class="o_view_nocontent_smiling_face">Registre la matriz de requisitos legales</p>
             <p>NOMs, permisos, licencias y requisitos de cliente (14001/45001
             §6.1.3). Cada requisito lleva su frecuencia de evaluación del
             cumplimiento (§9.1.2): el cron avisa cuando toca evaluar y un

@@ -1,13 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Pie "formato controlado" para PDFs. Recibe sgi_rec (el registro); la
-         clave y revisión salen del mapeo sgi.format.map + Documentos, en vivo. -->
+    <!-- Pie "formato controlado" DENTRO de la hoja (al final del contenido).
+         Recibe sgi_rec (el registro) y, opcional, sgi_fmt_ref (el mapeo por
+         referencia, format_ref_*, cuando el modelo imprime más de un formato);
+         la clave y revisión salen del mapeo sgi.format.map + Documentos, en
+         vivo. Sin mapeo no pinta nada.
+         57.44.0 (V-M08): sirve también para modelos sin el mixin de formato.
+         57.98.0 (I-01): agrega la fecha de emisión del documento vigente. Lo
+         usan los reportes nativos (su web.external_layout ya numera páginas),
+         las etiquetas y quimibond_ventas_presupuesto; los reportes propios
+         llevan el pie en cada hoja con quimibond_sgi.sgi_report_layout. -->
     <template id="sgi_format_footer">
-        <t t-set="sgi_fmt" t-value="sgi_rec and sgi_rec.sudo().sgi_format_info()"/>
+        <t t-set="sgi_fmt" t-value="sgi_rec and sgi_rec.env['sgi.format.map'].sgi_footer_info(sgi_rec, sgi_fmt_ref or False)"/>
         <div t-if="sgi_fmt" class="text-muted mt-3"
              style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
-            Formato controlado del SGI: <span class="fw-bold" t-out="sgi_fmt"/> · PNTQ
+            Formato controlado del SGI: <span class="fw-bold" t-out="sgi_fmt['label']"/> · PNTQ
+            <t t-if="sgi_fmt['issue_date']"> · Emisión:
+                <span t-out="sgi_fmt['issue_date']" t-options="{'widget': 'date'}"/></t>
         </div>
+    </template>
+
+    <!-- 57.98.0 (I-01): pie «formato controlado» en CADA hoja, con clave,
+         revisión, fecha de emisión y «Página x de y». Es el único div.footer
+         de su artículo: wkhtmltopdf muestra en cada hoja el pie número N
+         (índice del artículo, web.minimal_layout), así que NO va dentro de
+         web.external_layout (ese ya trae el suyo); solo lo llama
+         quimibond_sgi.sgi_report_layout. Recibe sgi_rec y, opcional,
+         sgi_fmt_ref. Sin mapeo pinta solo la página (un pie por artículo
+         siempre, para no desplazar los índices). -->
+    <!-- 57.105.0: el MIID pasa su pie ya armado en sgi_fmt_info (su propia
+         clave y revisión, no un formato del mapeo; con 'plain' sale sin
+         «Formato controlado del SGI:»). Los demás reportes no lo definen. -->
+    <template id="sgi_format_page_footer">
+        <t t-set="sgi_fmt" t-value="sgi_fmt_info or (sgi_rec and sgi_rec.env['sgi.format.map'].sgi_footer_info(sgi_rec, sgi_fmt_ref or False))"/>
+        <div class="footer">
+            <div style="border-top:1px solid #999; padding-top:2px; font-size:8px;">
+                <span class="float-start" t-if="sgi_fmt and sgi_fmt.get('plain')">
+                    <b t-out="sgi_fmt['label']"/> · PNTQ
+                </span>
+                <span class="float-start" t-elif="sgi_fmt">
+                    Formato controlado del SGI: <b t-out="sgi_fmt['label']"/> · PNTQ
+                    <t t-if="sgi_fmt['issue_date']"> · Emisión:
+                        <span t-out="sgi_fmt['issue_date']" t-options="{'widget': 'date'}"/></t>
+                </span>
+                <span class="float-end">Página <span class="page"/> de <span class="topage"/></span>
+            </div>
+        </div>
+    </template>
+
+    <!-- 57.98.0 (I-01): layout de los reportes propios con pie controlado:
+         por artículo, un encabezado (logo y razón social, sin clave: la clave
+         vive solo en el pie), el artículo y UN pie. No hereda nada: se llama
+         en lugar de web.external_layout. Variables: sgi_rec (registro del
+         mapeo; en los reportes de lista, docs[:1]), sgi_fmt_ref (opcional) y,
+         si sgi_rec viene vacío (NC sin folio), o/doc para data-oe-id. -->
+    <template id="sgi_report_layout">
+        <t t-set="sgi_o" t-value="sgi_rec[:1] if sgi_rec else (o or doc)"/>
+        <t t-set="sgi_company" t-value="(sgi_o and 'company_id' in sgi_o._fields and sgi_o.company_id) or res_company"/>
+        <div class="header">
+            <div style="border-bottom:1px solid #999; padding-bottom:3px; font-size:10px;">
+                <img t-if="sgi_company and sgi_company.logo" t-att-src="image_data_uri(sgi_company.logo)"
+                     style="max-height:40px;" alt="Logo"/>
+                <span class="float-end fw-bold" t-out="sgi_company and sgi_company.name or ''"/>
+            </div>
+        </div>
+        <div class="article o_sgi_report"
+             t-att-data-oe-model="sgi_o and sgi_o._name"
+             t-att-data-oe-id="sgi_o and sgi_o.id"
+             t-att-data-oe-lang="sgi_o and sgi_o.env.context.get('lang')">
+            <t t-out="0"/>
+        </div>
+        <t t-call="quimibond_sgi.sgi_format_page_footer"/>
     </template>
 
     <!-- Reportes nativos -->
@@ -38,27 +101,12 @@
         </xpath>
     </template>
 
-    <!-- Reportes propios del SGI -->
-    <template id="report_nc_document_sgi" inherit_id="quimibond_sgi.report_nc_document">
+    <!-- 57.60.0: la orden de producción imprime la clave del mapeo que le
+         aplica (tipo de operación, centro de trabajo…), no una sola por modelo. -->
+    <template id="report_mrporder_sgi" inherit_id="mrp.report_mrporder">
         <xpath expr="//div[hasclass('page')]" position="inside">
             <t t-call="quimibond_sgi.sgi_format_footer">
-                <t t-set="sgi_rec" t-value="doc"/>
-            </t>
-        </xpath>
-    </template>
-
-    <template id="report_coa_document_sgi" inherit_id="quimibond_sgi.report_coa_document">
-        <xpath expr="//div[hasclass('page')]" position="inside">
-            <t t-call="quimibond_sgi.sgi_format_footer">
-                <t t-set="sgi_rec" t-value="doc"/>
-            </t>
-        </xpath>
-    </template>
-
-    <template id="report_mgmt_review_document_sgi" inherit_id="quimibond_sgi.report_mgmt_review_document">
-        <xpath expr="//div[hasclass('page')]" position="inside">
-            <t t-call="quimibond_sgi.sgi_format_footer">
-                <t t-set="sgi_rec" t-value="doc"/>
+                <t t-set="sgi_rec" t-value="o"/>
             </t>
         </xpath>
     </template>

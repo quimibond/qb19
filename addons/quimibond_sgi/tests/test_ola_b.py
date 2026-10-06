@@ -82,6 +82,7 @@ class TestOlaBLessonLock(TransactionCase):
             'sgi_why_1': '1', 'sgi_why_2': '2', 'sgi_why_3': '3',
             'sgi_why_4': '4', 'sgi_why_5': '5',
             'sgi_root_cause': 'raíz',
+            'sgi_effective': 'eficaz',
             'sgi_effectiveness_note': 'eficaz',
             'sgi_effectiveness_date': date.today()})
         self.env['sgi.action.line'].create({
@@ -105,6 +106,7 @@ class TestOlaBLessonLock(TransactionCase):
             'title': 'NC menor OLA B', 'team_id': self.team.id,
             'sgi_classification': 'menor',
             'sgi_root_cause': 'raíz',
+            'sgi_effective': 'eficaz',
             'sgi_effectiveness_note': 'eficaz',
             'sgi_effectiveness_date': date.today()})
         self.env['sgi.action.line'].create({
@@ -131,6 +133,9 @@ class TestOlaBCascade(TransactionCase):
         policy = self.env['sgi.policy'].create({'name': 'Política salud'})
         obj = self.env['sgi.objective'].create(
             {'name': 'Obj salud', 'policy_id': policy.id})
-        # Sin indicadores/procesos en rojo, la salud agregada es verde.
-        self.assertEqual(obj.health, 'verde')
+        # 53.5.0 (regla de datos): un objetivo sin indicadores no tiene con
+        # qué juzgarse y queda «sin dato», no verde (test_links test_06). La
+        # política toma el peor color de sus objetivos; «sin dato» no la
+        # empeora, así que sigue verde.
+        self.assertEqual(obj.health, 'sin_dato')
         self.assertEqual(policy.health, 'verde')

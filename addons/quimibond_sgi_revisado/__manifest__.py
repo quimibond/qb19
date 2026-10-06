@@ -9,12 +9,17 @@ Aporta las vistas pivot/graph del registro de revisado (mrp.revision.log) para
 armar el Pareto de defectos por causa (etiquetas de calidad ``TEJIDO-*``), fuente
 del tablero de calidad del piso. No modifica mrp_revisado_telas. Se instala
 automáticamente cuando conviven ambos módulos.
+
+Desde 4.2.0 (quimibond_sgi 57.10.0, auditoría A-019) trae también el indicador
+MA-03 «Calidad PQ»: el modo de cálculo ``calidad_pq`` (rollos revisados sin
+defecto ÷ revisados), su detalle, su evidencia y los avisos del Diagnóstico.
+Antes vivía en el núcleo protegido con ``if 'mrp.revision.log' in env``.
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Manufacturing/SGI',
-    'version': '19.0.4.1.1',
-    'license': 'LGPL-3',
+    'version': '19.0.4.3.0',
+    'license': 'OPL-1',
     'depends': [
         'quimibond_sgi',
         'mrp_revisado_telas',
@@ -22,6 +27,7 @@ automáticamente cuando conviven ambos módulos.
     'data': [
         'views/mrp_revision_log_views.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'auto_install': True,
     'installable': True,
 }

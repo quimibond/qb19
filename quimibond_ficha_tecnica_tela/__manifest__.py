@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Quimibond - Ficha Técnica de Tela',
-    'version': '19.0.2.1.0',
+    'version': '19.0.2.1.1',
     'summary': 'Fichas técnicas de Tejido y de Acabado, e importación masiva desde Excel',
     'description': """
 Fichas Técnicas de Tela (Tejido y Acabado)
@@ -20,19 +20,34 @@ separadas en 2 modelos:
   acabado (varios colores/variantes).
 
 Incluye:
+
 - Importación masiva desde Excel (tabular, fila por fila, muchos
   artículos a la vez) para ambos modelos, con encabezados flexibles.
 - Validaciones de tolerancia (ej. encogimiento máximo 5%).
 - Botones inteligentes en la ficha de producto para acceder directo a la
   ficha de tejido y/o de acabado vinculada.
+- 2.1.0: catálogo de características (unidad, método o norma, tipo de dato),
+  claves de la regla de codificación de artículos (DAT P-D02-01) y renglones
+  de característica en las fichas de tejido y acabado con **dos juegos de
+  límites** (especificación del cliente y control interno) y la marca «va a
+  la especificación del cliente». El SGI (proyectos de desarrollo) usa el
+  mismo catálogo y los mismos límites.
+- 2.1.1: se retira el código del modelo viejo `ficha.tecnica.tela` y su
+  importador (sin uso; la tabla queda en la base hasta que se borre a
+  mano). Las columnas fijas de las fichas de tejido y acabado no se tocan:
+  los renglones de características conviven con ellas. Hay dos
+  rendimientos y los dos se conservan: el de tejido alimenta el cálculo de
+  tintorería; el de acabado valida los metros finales.
 """,
     'category': 'Manufacturing',
     'author': 'Jose Sacramento Consolti',
-    'depends': ['mrp', 'product', 'account', 'hr'],
+    'depends': ['mrp', 'product', 'account'],
     'data': [
         'security/ir.model.access.csv',
+        'data/ficha_tecnica_caracteristica_data.xml',
         'views/ficha_tecnica_tejido_views.xml',
         'views/ficha_tecnica_acabado_views.xml',
+        'views/ficha_tecnica_caracteristica_views.xml',  # 2.1.0: después del menú raíz que usa
         'views/product_template_views.xml',
         'wizard/ficha_tecnica_tejido_import_wizard_views.xml',
         'wizard/ficha_tecnica_acabado_import_wizard_views.xml',

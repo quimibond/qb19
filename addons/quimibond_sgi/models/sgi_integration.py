@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
-from odoo import models, fields, api
+from markupsafe import Markup
+
+from odoo import models, fields
 from odoo.exceptions import UserError
 
 
@@ -17,7 +19,7 @@ class StockPicking(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades",
+            'name': "No conformidades",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('picking_id', '=', self.id)],
@@ -38,24 +40,37 @@ class StockPicking(models.Model):
              "Sustituye F-IT-P-A07-01-07/08.")
 
     def _sgi_is_customer_return(self):
-        """Recepción validada cuyos movimientos devuelven una ENTREGA a
-        cliente (no una devolución a proveedor, que es un picking saliente)."""
+        """Recepción validada que trae material DESDE la ubicación de clientes.
+
+        57.93.0 (N-12): se decide por el origen físico del movimiento
+        (``location_id.usage == 'customer'``), no por el tipo del picking
+        devuelto: cubre la devolución capturada a mano (sin «Devolver») y
+        cualquier ruta de entrega. Las órdenes de PdV son salientes y no
+        cuentan; la devolución a proveedor tampoco (sale, no entra)."""
         self.ensure_one()
         if self.picking_type_id.code != 'incoming':
             return False
-        return any(
-            move.origin_returned_move_id.picking_id.picking_type_id.code == 'outgoing'
-            for move in self.move_ids if move.origin_returned_move_id)
+        return bool(self._sgi_customer_return_moves())
+
+    def _sgi_customer_return_moves(self):
+        """Movimientos hechos de este picking que vienen de clientes."""
+        self.ensure_one()
+        return self.move_ids.filtered(
+            lambda m: m.state == 'done' and m.location_id.usage == 'customer')
 
     def _sgi_create_return_alert(self):
         for picking in self:
             if picking.sgi_return_alert_id or not picking._sgi_is_customer_return():
                 continue
             partner = picking.partner_id.commercial_partner_id
-            returned = picking.move_ids.filtered('origin_returned_move_id')
+            returned = picking._sgi_customer_return_moves()
             product = returned[:1].product_id
             team = self.env.ref('quimibond_sgi.sgi_quality_team_internal',
                                 raise_if_not_found=False)
+            # 57.93.0 (N-12): la NC es del SGI de la compañía del equipo; una
+            # recepción de otra compañía no la levanta.
+            if team and team.company_id and picking.company_id != team.company_id:
+                continue
             vals = {
                 'title': "Devolución de cliente: %s" % (partner.display_name or ''),
                 'sgi_origin_type': 'reclamacion',
@@ -70,13 +85,15 @@ class StockPicking(models.Model):
             }
             if team:
                 vals['team_id'] = team.id
-            alert = self.env['quality.alert'].sgi_auto_create(
+            # Con sudo: quien valida en almacén no siempre crea NC, y la
+            # recepción no debe trabarse por eso (create_uid sigue siendo él).
+            alert = self.env['quality.alert'].sudo().sgi_auto_create(
                 'devolucion_cliente', vals)
             if alert:
                 picking.sgi_return_alert_id = alert.id
-                picking.message_post(
-                    body="Devolución de cliente: se levantó la NC <b>%s</b>."
-                         % (alert.sgi_folio or alert.title))
+                picking.message_post(body=Markup(
+                    "Devolución de cliente: se levantó la NC <b>%s</b>.")
+                    % (alert.sgi_folio or alert.title))
 
     def _action_done(self):
         res = super()._action_done()
@@ -98,7 +115,7 @@ class MrpProduction(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades",
+            'name': "No conformidades",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('production_id', '=', self.id)],
@@ -123,7 +140,7 @@ class PurchaseOrder(models.Model):
         partner = self.partner_id.commercial_partner_id
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades del proveedor",
+            'name': "No conformidades del proveedor",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('partner_id', '=', partner.id)],
@@ -138,7 +155,7 @@ class PurchaseOrder(models.Model):
             if partner.sgi_supplier_status == 'bloqueado':
                 raise UserError(
                     "El proveedor %s está BLOQUEADO por el SGI (8.4.1): no se "
-                    "pueden confirmar órdenes de compra. Pida al Jefe de MAST "
+                    "pueden confirmar órdenes de compra. Pida al Jefe MAST "
                     "revisar su aprobación." % partner.display_name)
         return super().button_confirm()
 
@@ -171,7 +188,7 @@ class MaintenanceRequest(models.Model):
         if not alert:  # fuente apagada en Configuración → Fuentes de NC
             return False
         self.sgi_alert_id = alert.id
-        self.message_post(body="Se levantó la NC <b>%s</b> por esta falla." % (
+        self.message_post(body=Markup("Se levantó la NC <b>%s</b> por esta falla.") % (
             alert.sgi_folio or alert.name))
         return self._sgi_open_alert()
 
@@ -179,7 +196,7 @@ class MaintenanceRequest(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidad",
+            'name': "No conformidad",
             'res_model': 'quality.alert',
             'view_mode': 'form',
             'res_id': self.sgi_alert_id.id,
@@ -190,7 +207,8 @@ class HrJob(models.Model):
     _inherit = 'hr.job'
 
     sgi_document_ids = fields.Many2many('documents.document', 'sgi_document_job_rel',
-                                        'job_id', 'document_id', string="Documentos aplicables")
+                                        'job_id', 'document_id', string="Documentos aplicables",
+                                        help="Documentos controlados que aplican a este puesto.")
     # Determinación del EPP por puesto (sustituye F-P-S03-01): la fuente
     # única vive en el puesto; la ficha del empleado la muestra en solo
     # lectura. La responsiva de entrega (S03-02) sigue documental.
@@ -223,7 +241,7 @@ class ProductTemplateSgiSpec(models.Model):
         if not self.sgi_spec_document_id:
             raise UserError(
                 "El producto no tiene ligada su especificación (C04-06). "
-                "Selecciónala en la pestaña SGI.")
+                "Selecciónela en la pestaña SGI.")
         return self.sgi_spec_document_id.action_sgi_view_file()
 
 
@@ -279,10 +297,10 @@ class HrEmployee(models.Model):
             ],
             'domain': [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.job_id.ids)],
             'help': "<p class='o_view_nocontent_smiling_face'>Sin procedimientos "
-                    "asignados a tu puesto</p><p>Aquí aparecen los documentos "
-                    "VIGENTES que aplican a tu puesto — tu referencia de cómo se "
+                    "asignados a su puesto</p><p>Aquí aparecen los documentos "
+                    "VIGENTES que aplican a su puesto — su referencia de cómo se "
                     "hace el trabajo (botón «Ver archivo»). Si está vacío y no "
-                    "debería, pide a RH que asigne tu puesto en tu ficha de "
+                    "debería, pida a RH que asigne su puesto en su ficha de "
                     "empleado y a MAST que ligue los puestos al documento.</p>",
         }
 
@@ -336,61 +354,9 @@ class ResPartner(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades",
+            'name': "No conformidades",
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('partner_id', '=', self.id)],
             'context': {'default_partner_id': self.id},
         }
-
-
-class IrUiMenu(models.Model):
-    _inherit = 'ir.ui.menu'
-
-    @api.model
-    def _sgi_attach_quality_menus(self):
-        """Cuelga 'Calidad preventiva' y 'Tableros (SGI)' del menú raíz de la
-        app Calidad. El módulo quality es Enterprise y su xmlid no es
-        verificable desde el repo: una referencia dura en el XML rompería
-        la carga completa del registro si no coincide. Aquí el raíz se
-        DESCUBRE en runtime: primero por los xmlids conocidos y, si no,
-        buscando en ir.model.data el menú de primer nivel que pertenezca
-        al módulo quality/quality_control. Si no hay app Calidad, los
-        menús se quedan bajo el SGI (el parent declarado en
-        sgi_menus.xml), que siempre existe."""
-        root = None
-        for xmlid in ('quality.menu_quality_root',
-                      'quality_control.menu_quality_root'):
-            root = self.env.ref(xmlid, raise_if_not_found=False)
-            if root:
-                break
-        if not root:
-            data = self.env['ir.model.data'].sudo().search([
-                ('model', '=', 'ir.ui.menu'),
-                ('module', 'in', ('quality', 'quality_control', 'quality_mrp')),
-            ])
-            candidates = self.sudo().browse(data.mapped('res_id')).exists()
-            root = candidates.filtered(lambda m: not m.parent_id)[:1]
-        if not root:
-            return False
-        # Acomodarlos ANTES del menú nativo de Configuración de la app
-        # Calidad: los menús conservaban la secuencia del SGI (80/85) y en
-        # Calidad eso los mandaba hasta después de Configuración. La
-        # secuencia del vecino también se descubre en runtime.
-        config = self.sudo().search([
-            ('parent_id', '=', root.id), ('name', 'ilike', 'onfig')], limit=1)
-        base_seq = max(config.sequence - 2, 0) if config else 50
-        for offset, xmlid in enumerate((
-                'quimibond_sgi.menu_sgi_automotive',
-                'quimibond_sgi.menu_sgi_dashboards')):
-            menu = self.env.ref(xmlid, raise_if_not_found=False)
-            if not menu:
-                continue
-            vals = {}
-            if menu.parent_id != root:
-                vals['parent_id'] = root.id
-            if menu.sequence != base_seq + offset:
-                vals['sequence'] = base_seq + offset
-            if vals:
-                menu.write(vals)
-        return True

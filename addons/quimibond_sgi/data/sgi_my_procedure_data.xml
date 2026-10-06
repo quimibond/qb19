@@ -22,6 +22,54 @@
         <field name="code">action = env['sgi.my.procedure'].action_open_mine()</field>
     </record>
 
+    <!-- Inicio → «Mis pendientes»: la lista con semáforo del usuario (la
+         misma del botón Pendientes de Mi procedimiento). -->
+    <record id="sgi_my_pending_action_mine" model="ir.actions.server">
+        <field name="name">Mis pendientes</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_open_mine()</field>
+    </record>
+
+    <!-- 57.98.0 (U-07, Q20): acción del menú raíz «SGI». Dirección abre en el
+         Tablero; los demás, en Mis pendientes. No toca res.users. -->
+    <record id="sgi_home_action" model="ir.actions.server">
+        <field name="name">SGI</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_open_home()</field>
+    </record>
+
+    <!-- 57.98.0 (U-07): SGI → Reportar (cada una abre la ficha nueva). -->
+    <record id="sgi_report_nc_action" model="ir.actions.server">
+        <field name="name">No conformidad</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_sgi_report('nc')</field>
+    </record>
+    <record id="sgi_report_incident_action" model="ir.actions.server">
+        <field name="name">Casi accidente o incidente</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_sgi_report('incident')</field>
+    </record>
+    <record id="sgi_report_voice_action" model="ir.actions.server">
+        <field name="name">Queja o sugerencia</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_pending"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.pending'].action_sgi_report('voice')</field>
+    </record>
+
+    <!-- 56.7.0: Administración → «Publicar Mi procedimiento» (57.113.0;
+         antes en Firmas de lectura) (revisión previa y «Publicar todos los puestos»; antes
+         vivían en el encabezado de la pantalla de cada empleado). -->
+    <record id="sgi_my_procedure_action_publish" model="ir.actions.server">
+        <field name="name">Publicar Mi procedimiento</field>
+        <field name="model_id" ref="quimibond_sgi.model_sgi_my_procedure_check"/>
+        <field name="state">code</field>
+        <field name="code">action = env['sgi.my.procedure.check'].action_open()</field>
+    </record>
+
     <!-- Mi equipo: lista nativa de empleados acotada al equipo del usuario. -->
     <record id="sgi_my_team_action_mine" model="ir.actions.server">
         <field name="name">Mi equipo</field>
@@ -30,13 +78,17 @@
         <field name="code">action = env['hr.employee.public'].action_open_my_team()</field>
     </record>
 
-    <record id="sgi_cron_my_procedure_stale" model="ir.cron">
-        <field name="name">SGI: Mi procedimiento por publicar (aviso semanal a MAST)</field>
-        <field name="model_id" ref="quimibond_sgi.model_sgi_cron"/>
-        <field name="state">code</field>
-        <field name="code">model.cron_my_procedure_stale()</field>
-        <field name="interval_number">1</field>
-        <field name="interval_type">weeks</field>
-        <field name="active" eval="True"/>
-    </record>
+    <!-- A-007 (57.5.0): noupdate como en la base (harden_noupdate lo dejó
+         así; el archivo ya no engaña). Un cambio de cron va en migración. -->
+    <data noupdate="1">
+        <record id="sgi_cron_my_procedure_stale" model="ir.cron">
+            <field name="name">SGI: Mi procedimiento por publicar (aviso semanal a MAST)</field>
+            <field name="model_id" ref="quimibond_sgi.model_sgi_cron"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_my_procedure_stale()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
 </odoo>

@@ -35,16 +35,24 @@ class SgiCompetenceGap(models.Model):
     _auto = False
     _order = 'department_id, employee_id'
 
-    employee_id = fields.Many2one('hr.employee', string="Empleado", readonly=True)
-    department_id = fields.Many2one('hr.department', string="Departamento", readonly=True)
-    job_id = fields.Many2one('hr.job', string="Puesto", readonly=True)
-    skill_id = fields.Many2one('hr.skill', string="Competencia", readonly=True)
-    skill_type_id = fields.Many2one('hr.skill.type', string="Tipo", readonly=True)
-    required_level_id = fields.Many2one('hr.skill.level', string="Nivel requerido", readonly=True)
-    current_level_id = fields.Many2one('hr.skill.level', string="Nivel actual", readonly=True)
+    employee_id = fields.Many2one('hr.employee', string="Empleado", readonly=True,
+                                  help="Empleado con la brecha.")
+    department_id = fields.Many2one('hr.department', string="Departamento", readonly=True,
+                                    help="Departamento del empleado.")
+    job_id = fields.Many2one('hr.job', string="Puesto", readonly=True,
+                             help="Puesto que requiere la competencia.")
+    skill_id = fields.Many2one('hr.skill', string="Competencia", readonly=True,
+                               help="Competencia con brecha.")
+    skill_type_id = fields.Many2one('hr.skill.type', string="Tipo", readonly=True,
+                                    help="Tipo de competencia.")
+    required_level_id = fields.Many2one('hr.skill.level', string="Nivel requerido", readonly=True,
+                                        help="Nivel que el puesto requiere.")
+    current_level_id = fields.Many2one('hr.skill.level', string="Nivel actual", readonly=True,
+                                       help="Nivel que hoy tiene el empleado en la competencia.")
     required_progress = fields.Integer(string="% requerido", readonly=True)
     current_progress = fields.Integer(string="% actual", readonly=True)
-    gap = fields.Integer(string="Brecha (%)", readonly=True)
+    gap = fields.Integer(string="Brecha (%)", readonly=True,
+                         help="Diferencia entre el nivel requerido y el actual, en porcentaje.")
 
     @property
     def _table_query(self):
@@ -90,7 +98,7 @@ class HrDepartmentCompetenceMatrix(models.Model):
         rows = []
         for emp in Employee.search([('department_id', 'child_of', self.id)], order='job_id, name'):
             acks = Ack.search([('employee_id', '=', emp.id),
-                               ('document_id.sgi_doc_type', 'in', ('instructivo', 'formato_it'))])
+                               ('document_id.sgi_doc_type_id.code', 'in', ('instructivo', 'formato_it'))])
             read = len(acks.filtered(lambda a: a.state == 'leido'))
             partners = (emp.user_id.partner_id | emp.work_contact_id) if 'work_contact_id' in emp._fields \
                 else emp.user_id.partner_id

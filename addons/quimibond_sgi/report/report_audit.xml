@@ -2,11 +2,12 @@
 <odoo>
     <!-- ================= PLAN DE AUDITORÍA (F-P-G03-03) ================= -->
     <record id="action_report_audit_plan" model="ir.actions.report">
-        <field name="name">Plan de auditoría (F-P-G03-03)</field>
+        <field name="name">Plan de auditoría</field>
         <field name="model">sgi.audit</field>
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_audit_plan_document</field>
         <field name="report_file">quimibond_sgi.report_audit_plan_document</field>
+        <field name="print_report_name">'Plan de auditoría - %s' % (object.folio or object.name)</field>
         <field name="binding_model_id" ref="model_sgi_audit"/>
         <field name="binding_type">report</field>
     </record>
@@ -14,9 +15,12 @@
     <template id="report_audit_plan_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_audit_plan'"/>
                     <div class="page">
-                        <h2 class="text-center">Plan de Auditoría — F-P-G03-03</h2>
+                        <h2 class="text-center">Plan de auditoría</h2>
                         <table class="table table-sm table-bordered mt-3">
                             <tr>
                                 <td><strong>Folio:</strong> <span t-field="doc.folio"/></td>
@@ -26,19 +30,17 @@
                             <tr>
                                 <td><strong>Auditor líder:</strong> <span t-field="doc.lead_auditor_id"/></td>
                                 <td colspan="2"><strong>Equipo:</strong>
-                                    <span t-esc="', '.join(doc.auditor_ids.mapped('name'))"/></td>
+                                    <span t-out="', '.join(doc.auditor_ids.mapped('name'))"/></td>
                             </tr>
                             <tr>
                                 <td><strong>Normas:</strong>
-                                    <span t-esc="', '.join(doc.norm_ids.mapped('code'))"/></td>
+                                    <span t-out="', '.join(doc.norm_ids.mapped('code'))"/></td>
                                 <td colspan="2"><strong>Procesos:</strong>
-                                    <span t-esc="', '.join(doc.process_ids.mapped('name'))"/></td>
+                                    <span t-out="', '.join(doc.process_ids.mapped('name'))"/></td>
                             </tr>
                         </table>
                         <h4>Auditados</h4>
-                        <p t-esc="', '.join(doc.auditee_ids.mapped('name'))"/>
-                        <h4>Checklist</h4>
-                        <p t-field="doc.survey_id"/>
+                        <p t-out="', '.join(doc.auditee_ids.mapped('name'))"/>
                     </div>
                 </t>
             </t>
@@ -52,6 +54,9 @@
         <field name="report_type">qweb-pdf</field>
         <field name="report_name">quimibond_sgi.report_audit_report_document</field>
         <field name="report_file">quimibond_sgi.report_audit_report_document</field>
+        <field name="print_report_name">'Informe de auditoría - %s' % (object.folio or object.name)</field>
+        <!-- 57.101.0: sin copia por «attachment»: sgi.audit._sgi_archive_report
+             ya archiva el informe al cerrar (AU-3) en Documentos y en el chatter. -->
         <field name="binding_model_id" ref="model_sgi_audit"/>
         <field name="binding_type">report</field>
     </record>
@@ -59,9 +64,12 @@
     <template id="report_audit_report_document">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
-                <t t-call="web.external_layout">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_audit_report'"/>
                     <div class="page">
-                        <h2 class="text-center">Informe de Auditoría — F-P-G03-07</h2>
+                        <h2 class="text-center">Informe de auditoría</h2>
                         <h4>1. Alcance</h4>
                         <table class="table table-sm table-bordered">
                             <tr>
@@ -93,8 +101,8 @@
                             </tr>
                         </table>
                         <h4>3. Reuniones</h4>
-                        <p><strong>Apertura (F-P-G03-05):</strong> <span t-field="doc.opening_minutes"/></p>
-                        <p><strong>Cierre (F-P-G03-06):</strong> <span t-field="doc.closing_minutes"/></p>
+                        <p><strong>Reunión de apertura:</strong> <span t-field="doc.opening_minutes"/></p>
+                        <p><strong>Reunión de cierre:</strong> <span t-field="doc.closing_minutes"/></p>
                         <h4>4. Checklist por actividad</h4>
                         <p t-if="not doc.checklist_line_ids" class="text-muted">Sin checklist generado.</p>
                         <t t-if="doc.checklist_line_ids">

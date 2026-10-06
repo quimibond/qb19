@@ -4,72 +4,118 @@
         <field name="name">sgi.incident.form</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <form string="Incidente SST">
+            <form string="Incidente o accidente">
                 <header>
+                    <!-- D-009: investigar, cerrar y reabrir es de MAST y Salud
+                         ocupacional (el write() lo exige también por RPC). -->
                     <button name="action_set_investigacion" type="object" string="Investigar"
-                            class="btn-primary" invisible="state != 'reportado'"/>
+                            class="btn-primary" invisible="state != 'reportado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
                     <button name="action_set_acciones" type="object" string="Definir acciones"
-                            class="btn-primary" invisible="state != 'investigacion'"/>
-                    <button name="action_set_cerrado" type="object" string="Cerrar"
-                            class="btn-primary" invisible="state not in ('investigacion', 'acciones')"/>
-                    <button name="action_set_reportado" type="object" string="Reabrir"
-                            invisible="state != 'cerrado'"/>
+                            class="btn-primary" invisible="state != 'investigacion'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
+                    <button name="action_set_cerrado" confirm="Se cerrará el incidente; quien lo reportó verá la causa y las acciones. ¿Desea continuar?" type="object" string="Cerrar"
+                            class="btn-primary" invisible="state not in ('investigacion', 'acciones')"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
+                    <button name="action_set_reportado" confirm="El incidente se reabre y regresa a «reportado». ¿Desea continuar?" type="object" string="Reabrir"
+                            invisible="state != 'cerrado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_health"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="reportado,investigacion,acciones,cerrado"/>
                 </header>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Cerrado" bg_color="text-bg-secondary"
+                            invisible="state != 'cerrado'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
-                        <h1><field name="name" placeholder="Título breve del evento"/></h1>
+                        <h1><field name="name" readonly="sgi_is_locked" placeholder="Título breve del evento"/></h1>
                         <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group>
-                            <field name="date"/>
-                            <field name="incident_type"/>
-                            <field name="severity" widget="badge"
+                            <field name="date" readonly="sgi_is_locked"/>
+                            <field name="incident_type" readonly="sgi_is_locked"/>
+                            <field name="severity" readonly="sgi_is_locked" widget="badge"
                                    decoration-danger="severity in ('grave', 'fatal')"
                                    decoration-warning="severity == 'moderado'"/>
-                            <field name="reporter_id"/>
+                            <field name="reporter_id" readonly="sgi_is_locked"/>
+                            <!-- 57.94.0 (U-01): quien reporta sin usuario (SGI en planta). -->
+                            <field name="sgi_user_can_investigate" invisible="1"/>
+                            <field name="reporter_employee_id" readonly="sgi_is_locked or not sgi_user_can_investigate"
+                                   options="{'no_create': True}"/>
+                            <field name="sgi_pin_signature" invisible="not sgi_pin_signature"/>
                         </group>
                         <group>
-                            <field name="location"/>
-                            <field name="process_id"/>
-                            <field name="sgi_area_id"/>
-                            <field name="days_lost"/>
+                            <field name="location" readonly="sgi_is_locked"/>
+                            <field name="process_id" readonly="sgi_is_locked"/>
+                            <field name="sgi_area_id" readonly="sgi_is_locked"/>
+                            <field name="days_lost" readonly="sgi_is_locked"/>
                         </group>
                     </group>
                     <group>
-                        <field name="employee_ids" widget="many2many_tags"/>
-                        <field name="description"/>
+                        <field name="employee_ids" readonly="sgi_is_locked" widget="many2many_tags"/>
+                        <field name="description" readonly="sgi_is_locked"/>
                     </group>
                     <notebook>
                         <page string="Análisis SCAT">
                             <group>
-                                <field name="immediate_causes"
+                                <field name="immediate_causes" readonly="sgi_is_locked"
                                        placeholder="Actos y condiciones subestándar..."/>
-                                <field name="basic_causes"
+                                <field name="basic_causes" readonly="sgi_is_locked"
                                        placeholder="Factores personales y factores de trabajo..."/>
-                                <field name="lack_of_control"
+                                <field name="lack_of_control" readonly="sgi_is_locked"
                                        placeholder="Deficiencias del sistema de gestión..."/>
-                                <field name="risk_id"/>
+                                <field name="risk_id" readonly="sgi_is_locked"/>
                                 <field name="sgi_alert_id" readonly="1"
                                        invisible="not sgi_alert_id"/>
                             </group>
                         </page>
                         <page string="Acciones">
-                            <field name="action_line_ids" context="{'default_incident_id': id}">
-                                <list editable="bottom"
-                                      decoration-danger="state == 'vencida'"
-                                      decoration-success="state == 'terminada'">
+                            <field name="action_line_ids" readonly="sgi_is_locked" context="{'default_incident_id': id}">
+                                <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                                <list editable="bottom" decoration-danger="state == 'vencida'"
+                                      decoration-muted="state == 'terminada'">
                                     <field name="action_type"/>
                                     <field name="name"/>
-                                    <field name="responsible_id"/>
-                                    <field name="date_commit"/>
+                                    <field name="control_hierarchy" optional="show"/>
+                                    <field name="evidence_note" optional="show"/>
+                                    <field name="responsible_id" widget="many2one_avatar_user"/>
+                                    <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                     <field name="date_done"/>
                                     <field name="progress"/>
-                                    <field name="state"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                           decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                 </list>
                             </field>
+                        </page>
+                        <!-- 57.96.0 (N-06): equipo de investigación (45001 5.4) y eficacia (10.2). -->
+                        <page string="Investigación y eficacia" name="investigation">
+                            <group>
+                                <field name="investigation_team_ids" readonly="sgi_is_locked"
+                                       widget="many2many_tags" options="{'no_create': True}"/>
+                            </group>
+                            <div class="text-muted mb-2">
+                                Al menos un trabajador sin personal a su cargo o un integrante de la
+                                Comisión de Seguridad e Higiene participa en la investigación
+                                (ISO 45001 5.4).
+                            </div>
+                            <group string="Verificación de eficacia">
+                                <field name="sgi_effective" widget="radio"
+                                       readonly="sgi_is_locked or not sgi_user_can_investigate"/>
+                                <field name="sgi_effectiveness_date"
+                                       readonly="sgi_is_locked or not sgi_user_can_investigate"/>
+                                <field name="sgi_effectiveness_note"
+                                       readonly="sgi_is_locked or not sgi_user_can_investigate"
+                                       placeholder="Qué se revisó para saber que no se repite"/>
+                                <field name="sgi_effectiveness_by" invisible="not sgi_effectiveness_by"/>
+                                <field name="sgi_ineffective_count" invisible="not sgi_ineffective_count"/>
+                            </group>
+                            <group string="Incapacidad por riesgo de trabajo" invisible="not sgi_from_leave">
+                                <field name="sgi_from_leave" invisible="1"/>
+                                <field name="sgi_leave_count"/>
+                                <field name="sgi_leave_days"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
@@ -82,7 +128,7 @@
         <field name="name">sgi.incident.list</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <list string="Incidentes SST"
+            <list string="Incidentes y accidentes"
                   decoration-danger="severity in ('grave', 'fatal')"
                   decoration-warning="severity == 'moderado'">
                 <field name="folio"/>
@@ -92,7 +138,11 @@
                 <field name="severity" widget="badge"/>
                 <field name="process_id"/>
                 <field name="days_lost"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'reportado'"
+                       decoration-info="state in ('investigacion', 'acciones')"
+                       decoration-success="state == 'cerrado'"/>
             </list>
         </field>
     </record>
@@ -101,7 +151,7 @@
         <field name="name">sgi.incident.search</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <search string="Incidentes SST">
+            <search string="Incidentes y accidentes">
                 <field name="folio"/>
                 <field name="name"/>
                 <field name="process_id"/>
@@ -112,6 +162,11 @@
                 <filter name="lesion" string="Lesiones" domain="[('incident_type','=','lesion')]"/>
                 <filter name="casi" string="Casi accidentes"
                         domain="[('incident_type','=','casi_accidente')]"/>
+                <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
+                <separator/>
+                <filter name="mine" string="Míos"
+                        domain="['|', '|', ('reporter_id', '=', uid), ('create_uid', '=', uid), ('action_line_ids.responsible_id', '=', uid)]"/>
+                <filter name="filter_date" string="Fecha" date="date"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'incident_type'}"/>
                     <filter name="group_severity" string="Severidad" context="{'group_by': 'severity'}"/>
@@ -126,21 +181,67 @@
         <field name="name">sgi.incident.pivot</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <pivot string="Incidentes SST">
+            <pivot string="Incidentes y accidentes">
                 <field name="incident_type" type="row"/>
                 <field name="severity" type="col"/>
             </pivot>
         </field>
     </record>
 
+    <!-- V-B12 (57.80.0): incidentes por mes y tipo. -->
+    <record id="sgi_incident_view_graph" model="ir.ui.view">
+        <field name="name">sgi.incident.graph</field>
+        <field name="model">sgi.incident</field>
+        <field name="arch" type="xml">
+            <graph string="Incidentes por mes" type="bar" stacked="1" sample="1">
+                <field name="date" interval="month"/>
+                <field name="incident_type"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- V-B12 (57.80.0): tablero por estado para reportar y seguir desde el
+         celular. Las etapas cambian con los botones de la ficha (y sus
+         reglas): no se arrastran tarjetas. -->
+    <record id="sgi_incident_view_kanban" model="ir.ui.view">
+        <field name="name">sgi.incident.kanban</field>
+        <field name="model">sgi.incident</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_small_column"
+                    records_draggable="0" group_create="0" quick_create="0" sample="1">
+                <templates>
+                    <t t-name="card">
+                        <div class="d-flex justify-content-between">
+                            <field name="folio" class="fw-bold"/>
+                            <field name="severity" widget="badge"
+                                   decoration-danger="severity in ('grave', 'fatal')"
+                                   decoration-warning="severity == 'moderado'"/>
+                        </div>
+                        <field name="name"/>
+                        <field name="incident_type" class="text-muted"/>
+                        <field name="process_id" class="text-muted"/>
+                        <footer>
+                            <field name="date" widget="date" class="text-muted small"/>
+                            <field name="activity_ids" widget="kanban_activity" class="ms-2"/>
+                            <field name="reporter_id" widget="many2one_avatar_user" class="ms-auto"/>
+                        </footer>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <record id="sgi_incident_action" model="ir.actions.act_window">
-        <field name="name">Incidentes SST</field>
+        <field name="name">Incidentes y accidentes</field>
         <field name="res_model">sgi.incident</field>
-        <field name="view_mode">list,form,pivot,activity</field>
+        <field name="view_mode">list,kanban,form,graph,pivot,activity</field>
+        <!-- 57.94.0 (I-05): kanban en el celular y la tableta. -->
+        <field name="mobile_view_mode">kanban</field>
+        <field name="context">{'search_default_abiertos': 1}</field>
         <field name="search_view_id" ref="sgi_incident_view_search"/>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Reporta un incidente SST — el casi-accidente también cuenta</p>
-            <p>Cualquier empleado puede reportar (lesión, casi-accidente, daño, ambiental, enfermedad). Reportar mucho es señal de cultura, no de mal desempeño. Un incidente <b>grave o fatal</b> genera la NC mayor y avisa a Dirección automáticamente; la investigación SCAT exige sus 3 capas de causas antes de cerrar.</p>
+            <p class="o_view_nocontent_smiling_face">Reporte un incidente SST — el casi accidente también cuenta</p>
+            <p>Cualquier empleado puede reportar (lesión, casi accidente, daño, ambiental, enfermedad). Reportar mucho es señal de cultura, no de mal desempeño. Un incidente <b>grave o fatal</b> genera la NC mayor y avisa a Dirección automáticamente; la investigación SCAT exige sus 3 capas de causas antes de cerrar.</p>
         </field>
     </record>
 
@@ -150,7 +251,7 @@
         <field name="name">sgi.incident.activity</field>
         <field name="model">sgi.incident</field>
         <field name="arch" type="xml">
-            <activity string="Incidentes SST">
+            <activity string="Incidentes y accidentes">
                 <templates>
                     <div t-name="activity-box">
                         <div><field name="display_name" display="full"/></div>

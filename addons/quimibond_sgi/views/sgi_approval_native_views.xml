@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 56.5.0: el rol «Aprueba» ligado a la aprobación nativa de Odoo. Una
+         sola lista para configurar las aprobaciones de todos los procesos.
+         57.9.0 (A-010): la regla de Studio del botón (otra regla en el botón,
+         «Adoptar regla», «Ver aprobaciones», filtros por regla) la agrega
+         quimibond_sgi_studio heredando estas dos vistas. -->
+    <record id="sgi_activity_role_view_list_approval" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.approval</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">60</field>
+        <field name="arch" type="xml">
+            <list string="Aprobaciones del SGI" editable="bottom" create="0" delete="0"
+                  default_order="process_id, activity_id"
+                  decoration-muted="approval_state == 'sin_configurar'"
+                  decoration-warning="approval_state in ('sin_aprobadores', 'por_sincronizar')">
+                <header>
+                    <button name="action_sgi_sync_approval" type="object" string="Sincronizar"
+                            icon="fa-refresh" groups="quimibond_sgi.group_sgi_manager"/>
+                    <!-- 57.109.0: las sugeridas como solicitud, en lote (no bloquean botones). -->
+                    <button name="action_sgi_activate_suggested" type="object"
+                            string="Activar las sugeridas como solicitud" icon="fa-check"
+                            groups="quimibond_sgi.group_sgi_manager"
+                            confirm="Las aprobaciones seleccionadas sin configurar cuya sugerencia es «Solicitud en Aprobaciones» se activan ahora: cada una tendrá su categoría en Aprobaciones con las personas del puesto. Las de botón se configuran una por una. ¿Continuar?"/>
+                </header>
+                <field name="process_id" readonly="1"/>
+                <field name="activity_id" readonly="1"/>
+                <field name="target_type" column_invisible="1"/>
+                <field name="job_id" readonly="1" string="Puesto que aprueba"/>
+                <field name="family_id" readonly="1" optional="hide"/>
+                <field name="relative_role" readonly="1" optional="hide"/>
+                <field name="condition" readonly="1" string="Condición (texto)" optional="show"/>
+                <field name="approval_kind"/>
+                <field name="approval_model_id" options="{'no_create': True}"
+                       readonly="approval_kind != 'boton'"/>
+                <field name="approval_method" optional="hide" readonly="approval_kind != 'boton'"/>
+                <field name="condition_field_id" options="{'no_create': True}" optional="hide"
+                       readonly="approval_kind != 'boton' or not approval_model_id"/>
+                <field name="condition_operator" optional="hide" readonly="not condition_field_id"/>
+                <field name="condition_value" optional="hide" readonly="not condition_field_id"/>
+                <field name="approval_category_id" options="{'no_create': True}" optional="show"
+                       readonly="approval_kind != 'solicitud'"/>
+                <field name="approval_sign_template_id" options="{'no_create': True}" optional="hide"
+                       readonly="approval_kind != 'firma'"/>
+                <field name="approval_user_ids" widget="many2many_tags" optional="show"/>
+                <field name="approval_state" widget="badge"
+                       decoration-success="approval_state == 'activa'"
+                       decoration-warning="approval_state in ('sin_aprobadores', 'por_sincronizar')"/>
+                <field name="approval_entry_count" optional="show"/>
+                <field name="approval_last_date" optional="hide"/>
+                <button name="action_sgi_sync_approval" type="object" string="Sincronizar" icon="fa-refresh"
+                        invisible="approval_state not in ('por_sincronizar', 'activa')" groups="quimibond_sgi.group_sgi_manager"/>
+                <!-- 57.109.0: el asistente de tres preguntas. -->
+                <field name="approval_suggestion" optional="show"/>
+                <button name="action_sgi_approval_wizard" type="object" string="Configurar" icon="fa-magic"
+                        class="btn-link" groups="quimibond_sgi.group_sgi_manager"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_search_approval" model="ir.ui.view">
+        <field name="name">sgi.activity.role.search.approval</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="priority">60</field>
+        <field name="arch" type="xml">
+            <search string="Aprobaciones del SGI">
+                <field name="activity_id"/>
+                <field name="process_id"/>
+                <field name="job_id"/>
+                <filter name="kind_button" string="Botón de Odoo" domain="[('approval_kind', '=', 'boton')]"/>
+                <filter name="kind_request" string="Solicitud" domain="[('approval_kind', '=', 'solicitud')]"/>
+                <filter name="kind_sign" string="Firma" domain="[('approval_kind', '=', 'firma')]"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
+                    <filter name="group_job" string="Puesto" context="{'group_by': 'job_id'}"/>
+                    <filter name="group_model" string="Documento" context="{'group_by': 'approval_model_id'}"/>
+                    <filter name="group_kind" string="Cómo se aprueba" context="{'group_by': 'approval_kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_action_approval" model="ir.actions.act_window">
+        <field name="name">Aprobaciones del SGI</field>
+        <field name="res_model">sgi.activity.role</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sgi_activity_role_view_list_approval"/>
+        <field name="search_view_id" ref="sgi_activity_role_view_search_approval"/>
+        <field name="domain">[('role', '=', 'aprueba'), ('activity_id.active', '=', True)]</field>
+        <field name="context">{'search_default_group_process': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin aprobaciones en los procedimientos</p>
+            <p>Cada renglón «Aprueba» de una actividad se liga aquí a cómo se aprueba en Odoo. Use
+               «Configurar» en cada renglón: tres preguntas y una vista previa de cómo funcionará.</p>
+        </field>
+    </record>
+
+    <!-- 57.109.0: configurar una aprobación con tres preguntas. -->
+    <record id="sgi_approval_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.approval.wizard.form</field>
+        <field name="model">sgi.approval.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Configurar aprobación">
+                <field name="step" invisible="1"/>
+                <field name="button_supported" invisible="1"/>
+                <group>
+                    <field name="activity_id" readonly="1" options="{'no_open': True}"/>
+                    <field name="approver_user_ids" widget="many2many_tags" readonly="1"/>
+                    <field name="suggestion" readonly="1"/>
+                </group>
+                <div invisible="step != 'what'">
+                    <group string="1. ¿Qué se aprueba?">
+                        <field name="q_what" nolabel="1" colspan="2" widget="radio"/>
+                        <field name="model_id" invisible="q_what != 'documento'" required="q_what == 'documento'"
+                               options="{'no_create': True, 'no_open': True}"/>
+                        <field name="category_name" invisible="q_what != 'decision'"/>
+                        <field name="sign_template_id" invisible="q_what != 'papel'"
+                               options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <div class="alert alert-warning" role="status"
+                         invisible="q_what != 'documento' or button_supported">
+                        Bloquear el botón de un documento necesita el módulo «Quimibond SGI - Aprobaciones de
+                        Studio», que no está instalado. Elija «Una decisión o petición sin documento».
+                    </div>
+                </div>
+                <div invisible="step != 'how'">
+                    <group string="2. ¿Al pulsar qué?" invisible="q_what != 'documento'">
+                        <field name="button_line_id" nolabel="1" colspan="2" widget="radio"
+                               options="{'no_create': True}"/>
+                    </group>
+                    <group string="3. ¿Siempre o solo a veces?" invisible="q_what != 'documento'">
+                        <field name="condition_on"/>
+                        <field name="condition_field_id" invisible="not condition_on"
+                               options="{'no_create': True, 'no_open': True}"/>
+                        <field name="condition_operator" invisible="not condition_on"/>
+                        <field name="condition_value" invisible="not condition_on"/>
+                    </group>
+                </div>
+                <div class="alert alert-info" role="status" invisible="not preview_html">
+                    <b>Así funcionará:</b>
+                    <field name="preview_html" nolabel="1"/>
+                </div>
+                <footer>
+                    <button name="action_next" type="object" string="Siguiente" class="btn-primary"
+                            invisible="step != 'what' or q_what != 'documento'"/>
+                    <button name="action_activate" type="object" string="Activar" class="btn-primary"
+                            invisible="step == 'what' and q_what == 'documento'"/>
+                    <button name="action_back" type="object" string="Atrás" class="btn-secondary"
+                            invisible="step != 'how'"/>
+                    <button string="Descartar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

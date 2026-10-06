@@ -17,9 +17,17 @@ class TestSgiFormatMap(TransactionCase):
         # Los mapeos son noupdate y MAST los edita en producción: la prueba
         # fija los de venta y compra que valida.
         cls.Map.search([('model_name', '=', 'sale.order')]).write(
-            {'sgi_code': 'F-P-A28-12', 'sgi_code_alt': 'F-P-A28-06'})
+            {'sgi_code': 'F-P-A28-12', 'sgi_code_alt': 'F-P-A28-06',
+             'document_id': False, 'document_alt_id': False})
         cls.Map.search([('model_name', '=', 'purchase.order')]).write(
-            {'sgi_code': 'F-P-A02-03'})
+            {'sgi_code': 'F-P-A02-03', 'document_id': False})
+        # Remisiones: los mapeos reales se archivan (se deshace al final) y la
+        # prueba siembra el suyo. D-02 (57.84.0) le pone la clave nueva al
+        # mapeo real ligado (F-P-A16-01 → F-…), y sgi_hide_real_documents lo
+        # desliga: el banner mostraba esa clave nueva y no la que se valida.
+        cls.Map.search([('model_name', '=', 'stock.picking')]).write({'active': False})
+        cls.Map.create({'model_id': cls.env['ir.model']._get('stock.picking').id,
+                        'sgi_code': 'F-P-A16-01', 'note': 'General prueba'})
         cls.partner = cls.env['res.partner'].create({'name': 'Cliente Formato'})
         cls.product = cls.env['product.product'].create({
             'name': 'Tela de prueba', 'type': 'consu', 'list_price': 10.0,
@@ -118,3 +126,14 @@ class TestSgiFormatMap(TransactionCase):
                       'quimibond_sgi.report_purchaseorder_document_sgi',
                       'quimibond_sgi.report_delivery_document_sgi'):
             self.assertTrue(self.env.ref(xmlid))
+
+    def test_09_clave_heredada_sin_tipos_que_exijan_clave(self):
+        """56.38.2: al actualizar desde 56.28, ningún tipo exige clave todavía
+        (la 56.32.0 lo enciende después de cargar los XML). La clave heredada
+        del Dropbox tiene que pasar igual, o el update revienta en
+        sgi_format_map_data.xml."""
+        self.env['sgi.document.type'].search([]).write({'code_required': False})
+        fmap = self.Map.create({'sgi_code': 'F-P-A01-32', 'note': 'Prueba 56.38.2'})
+        self.assertEqual(fmap.sgi_code, 'F-P-A01-32')
+        with self.assertRaises(ValidationError), mute_logger('odoo.sql_db'):
+            self.Map.create({'sgi_code': 'NO-ES-CLAVE', 'note': 'Prueba 56.38.2'})

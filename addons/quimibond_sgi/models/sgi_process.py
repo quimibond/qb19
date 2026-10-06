@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
+import logging
+
 from odoo import models, fields, api
 from odoo.exceptions import ValidationError, UserError
 
+from .sgi_health_const import HEALTH_MODES
 from .sgi_risk import SGI_HIGH_ATTENTION
+
+_logger = logging.getLogger(__name__)
 
 
 class SgiProcess(models.Model):
+    """Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores,
+    riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo."""
     _name = 'sgi.process'
     _description = "Proceso SGI"
     # mail.activity.mixin es indispensable: el aviso de «eslabón atorado» se
@@ -27,13 +34,18 @@ class SgiProcess(models.Model):
         ('estrategico', "Estratégico"),
         ('soporte', "Soporte"),
     ], string="Tipo", default='cop', required=True,
-        group_expand='_group_expand_process_type')
-    parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True)
+        group_expand='_group_expand_process_type',
+                                    help="Cadena de valor (COP), estratégico o de soporte.")
+    parent_id = fields.Many2one('sgi.process', string="Macroproceso", ondelete='restrict', index=True,
+                                help="Macroproceso al que pertenece este proceso.")
     parent_path = fields.Char(index=True)
     child_ids = fields.One2many('sgi.process', 'parent_id', string="Subprocesos")
-    owner_id = fields.Many2one('hr.employee', string="Dueño del proceso")
-    department_id = fields.Many2one('hr.department', string="Departamento")
-    job_ids = fields.Many2many('hr.job', string="Puestos")
+    owner_id = fields.Many2one('hr.employee', string="Dueño del proceso",
+                               help="Empleado dueño del proceso: recibe los escalamientos y aprueba los "
+                                    "cambios a sus actividades.")
+    department_id = fields.Many2one('hr.department', string="Departamento",
+                                    help="Departamento responsable del proceso.")
+    job_ids = fields.Many2many('hr.job', string="Puestos", help="Puestos que participan en el proceso.")
     active = fields.Boolean(default=True)
 
     purpose = fields.Text(
@@ -49,12 +61,18 @@ class SgiProcess(models.Model):
         help="Qué marca el fin del proceso (ej. la factura queda cobrada).")
     inputs = fields.Text(string="Entradas")
     outputs = fields.Text(string="Salidas")
-    replaced_document_ids = fields.Many2many(
-        'documents.document', 'sgi_process_replaced_doc_rel', 'process_id',
-        'document_id', string="Procedimientos que sustituye",
-        help="Documentos vigentes que este proceso reemplaza. Al poner en "
-             "vigor el procedimiento del proceso se ofrece marcarlos "
-             "obsoletos.")
+    # C-001 (19.0.56.31.0, decisión 3 de Jose): el DOCUMENTO manda
+    # (documents.document.sgi_replaced_by_process_id, ondelete restrict); aquí
+    # solo se lee su inverso. La tabla M2M vieja sgi_process_replaced_doc_rel
+    # quedó respaldada en un adjunto JSON por proceso (pre-migrate 56.31.0).
+    replaced_document_ids = fields.One2many(
+        'documents.document', 'sgi_replaced_by_process_id',
+        string="Procedimientos que sustituye", readonly=True,
+        help="Procedimientos del Dropbox que este proceso sustituye. Se captura "
+             "en la ficha de cada procedimiento («Lo sustituye el proceso»). "
+             "Siguen vigentes mientras el proceso esté en borrador o piloto; al "
+             "entrar en vigor el proceso pasan a obsoletos y a «Baja "
+             "tramitada».")
     # PR-1 (53.1.0): quién sustituyó a este proceso al archivarlo por «replaces».
     # Una carga futura mueve al sucesor lo que se quede colgado aquí.
     replaced_by_id = fields.Many2one(
@@ -63,7 +81,8 @@ class SgiProcess(models.Model):
         help="Proceso que tomó el lugar de este al archivarlo. La carga lo "
              "llena con «replaces»; en un proceso archivado sin sucesor se "
              "captura a mano y la siguiente carga mueve al sucesor lo que "
-             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).")
+             "quede colgado (indicadores, riesgos abiertos, documentos vigentes).",
+        ondelete='restrict')
     owner_valid = fields.Boolean(
         string="Dueño válido", compute='_compute_owner_valid',
         help="El dueño es un empleado activo con usuario de Odoo. Sin eso "
@@ -77,7 +96,7 @@ class SgiProcess(models.Model):
         'documents.document', 'sgi_process_id', string="Documentos del proceso")
     procedure_ids = fields.One2many(
         'documents.document', 'sgi_process_id', string="Procedimientos e instructivos",
-        domain=[('sgi_doc_type', 'in', ('procedimiento', 'instructivo')),
+        domain=[('sgi_doc_type_id.code', 'in', ('procedimiento', 'instructivo')),
                 ('sgi_state', '=', 'vigente')])
     indicator_ids = fields.One2many('sgi.indicator', 'process_id', string="Indicadores")
     risk_ids = fields.One2many('sgi.risk', 'process_id', string="Riesgos y oportunidades")
@@ -95,7 +114,9 @@ class SgiProcess(models.Model):
         ('verde', "Verde"),
         ('amarillo', "Amarillo"),
         ('rojo', "Rojo"),
-    ], string="Salud del proceso", compute='_compute_health')
+    ], string="Salud del proceso", compute='_compute_health',
+        help="Verde sin nada abierto; amarillo con algo abierto; rojo con un riesgo de atención máxima o con "
+             "NC abierta e indicador en rojo a la vez. Se calcula al mostrarlo.")
     document_count = fields.Integer(string="# Documentos", compute='_compute_counts')
     indicator_count = fields.Integer(string="# Indicadores", compute='_compute_counts')
     risk_count = fields.Integer(string="# Riesgos", compute='_compute_counts')
@@ -145,7 +166,131 @@ class SgiProcess(models.Model):
                     vals['doc_approver_id'] = user.id
             if not vals.get('doc_vobo_id') and vobo:
                 vals['doc_vobo_id'] = vobo.id
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        if any(vals.get('owner_id') for vals in vals_list):
+            self.sudo()._sgi_sync_process_owner_group()
+        return records
+
+    # --- Punto 5 (45.0.0) + L-005 (56.31.0): al poner vigente el proceso, lo
+    # que sustituye queda obsoleto y con la baja tramitada. Movido desde
+    # sgi_cleanup.py (B-004).
+    def write(self, vals):
+        res = super().write(vals)
+        if vals.get('state') == 'vigente':
+            self._sgi_obsolete_replaced_documents()
+        if {'owner_id', 'active', 'company_id'} & set(vals):
+            self.sudo()._sgi_sync_process_owner_group()
+        return res
+
+    # --- 57.0.0 (entrega 6, decisión de Jose): «Dueño de proceso (SGI)» ---
+    @api.model
+    def _sgi_sync_process_owner_group(self):
+        """Sincroniza ``quimibond_sgi.group_sgi_process_owner`` con los datos:
+        entran los usuarios activos de ``owner_id`` (es un ``hr.employee``: se
+        toma su ``user_id``) de los procesos activos de la empresa del SGI
+        (``sgi.config._sgi_company()``); salen los que ya no son dueños de
+        ningún proceso activo. Toca solo la membresía directa de ese grupo;
+        idempotente (sin cambios no escribe). Lo llaman ``create``/``write``
+        de ``sgi.process`` (``owner_id``, ``active``, ``company_id``), el
+        post-migrate de 19.0.57.0.0 y el cron diario de respaldo (que además
+        recoge los cambios de ``hr.employee.user_id``).
+
+        Verificado en producción por MCP (solo lectura, 2026-09-29, empresa
+        1): ``aggregate_records sgi.process groupby [owner_id] domain
+        [company_id = 1, active = True]`` → 14 procesos activos, todos con
+        dueño, 11 empleados distintos; 10 con usuario activo interno (ids 6,
+        15, 22, 33, 35, 68, 88, 128, 135, 152) y 1 sin usuario (Francisco
+        González, empleado 564, que no entra). Esperado la primera vez: 10
+        dueños en el grupo."""
+        group = self.env.ref('quimibond_sgi.group_sgi_process_owner', raise_if_not_found=False)
+        if not group:
+            return {'added': [], 'removed': []}
+        group = group.sudo()
+        company = self.env['sgi.config']._sgi_company()
+        processes = self.env['sgi.process'].sudo().with_context(active_test=True).search([
+            ('company_id', '=', company.id), ('owner_id', '!=', False)])
+        owners = processes.mapped('owner_id.user_id').filtered(lambda u: u.active and not u.share)
+        current = group.with_context(active_test=False).user_ids
+        to_add = owners - current
+        to_remove = current - owners
+        commands = [(4, user.id) for user in to_add] + [(3, user.id) for user in to_remove]
+        if commands:
+            group.write({'user_ids': commands})
+            _logger.info("SGI: grupo «Dueño de proceso» sincronizado: +%s −%s (quedan %d).",
+                         to_add.ids, to_remove.ids, len(owners))
+        return {'added': to_add.ids, 'removed': to_remove.ids}
+
+    def _sgi_obsolete_replaced_documents(self):
+        """Los procedimientos que sustituye un proceso vigente (los que tienen
+        a este proceso en «Lo sustituye el proceso») pasan a obsoletos, con
+        fecha y motivo, y su migración a «Baja tramitada». Idempotente: solo
+        toca los vigentes, y completa la baja de los ya obsoletos."""
+        for process in self.filtered(lambda p: p.state == 'vigente'):
+            replaced = process.replaced_document_ids
+            docs = replaced.filtered(lambda d: d.sgi_state == 'vigente')
+            reason = "Lo sustituye el proceso %s, que entró en vigor." % process.display_name
+            for doc in docs:
+                doc.sudo().write({'sgi_state': 'obsoleto', 'sgi_obsolete_reason': reason,
+                                  'sgi_migration_state': 'baja'})
+                doc.message_post(body=(
+                    "Obsoleto: lo sustituye el proceso %s, que entró en vigor." % process.display_name))
+            pending = replaced.filtered(
+                lambda d: d.sgi_state == 'obsoleto' and d.sgi_migration_state != 'baja')
+            if pending:
+                pending.sudo().write({'sgi_migration_state': 'baja'})
+            if not docs:
+                continue
+            process.message_post(body=(
+                "Al entrar en vigor quedaron obsoletos, con la baja tramitada, %d "
+                "documento(s) sustituido(s): %s." % (
+                    len(docs), ", ".join(docs.mapped(lambda d: d.sgi_code or d.name)))))
+            process._sgi_warn_foreign_procedure_refs(docs)
+            _logger.info("SGI: %s vigente → %d documento(s) sustituido(s) obsoleto(s) y en baja.",
+                         process.code, len(docs))
+        return True
+
+    def _sgi_warn_foreign_procedure_refs(self, docs):
+        """57.16.0 (H-016): actividades activas de OTRO proceso que citan como
+        «Procedimiento relacionado» un documento que este proceso acaba de
+        obsoletar. No se cambia nada (la fuente de verdad es el documento,
+        decisión 3): se avisa en el chatter de los dos procesos y al dueño del
+        otro proceso (o al Jefe MAST) para que liguen el procedimiento
+        vigente. Devuelve las actividades encontradas."""
+        self.ensure_one()
+        Activity = self.env['sgi.process.activity'].sudo()
+        refs = Activity.search([
+            ('related_procedure_id', 'in', docs.ids),
+            ('process_id', '!=', self.id), ('process_id', '!=', False)])
+        if not refs:
+            return refs
+        Cron = self.env['sgi.cron']
+        manager_id = Cron._sgi_manager_user_id()
+        lines = []
+        for other in refs.process_id:
+            acts = refs.filtered(lambda a, o=other: a.process_id == o)
+            items = ", ".join("%s (cita %s)" % (
+                a.number or a.name,
+                a.related_procedure_id.sgi_code or a.related_procedure_id.name) for a in acts)
+            state = dict(other._fields['state'].selection).get(other.state, other.state)
+            lines.append("%s [%s]: %s" % (other.display_name, state, items))
+            note = ("El proceso %s entró en vigor y obsoletó procedimientos que estas "
+                    "actividades de %s todavía citan: %s. Ligue el procedimiento vigente "
+                    "(o quítelo) en cada actividad." % (
+                        self.display_name, other.display_name, items))
+            other.sudo().message_post(body=note)
+            user_id = other.owner_id.user_id.id or manager_id
+            if user_id:
+                Cron._sgi_step(
+                    "aviso de procedimiento obsoleto citado en %s" % other.display_name,
+                    lambda o=other, n=note, u=user_id: Cron._sgi_schedule(
+                        o, "Actividades citan un procedimiento obsoleto (%s)" % self.code,
+                        n, u, key='procedimiento_obsoleto_citado:%d' % self.id))
+        self.message_post(body=(
+            "Aviso: actividades de otros procesos citan un procedimiento que quedó "
+            "obsoleto: %s." % "; ".join(lines)))
+        _logger.info("SGI: %s vigente → %d actividad(es) de otros procesos citan un "
+                     "procedimiento obsoleto.", self.code, len(refs))
+        return refs
 
     @api.constrains('parent_id')
     def _check_parent_recursion(self):
@@ -208,8 +353,10 @@ class SgiProcess(models.Model):
         indicators = processes.indicator_ids
         if indicators:
             seen = set()
+            # 57.99.0: los de salud del SGI no pintan al proceso.
             for measure in Measure.search(
                     [('indicator_id', 'in', indicators.ids),
+                     ('indicator_id.calc_mode', 'not in', HEALTH_MODES),
                      ('state', '=', 'validado')],
                     order='indicator_id, period_date desc, id desc'):
                 ind = measure.indicator_id
@@ -288,14 +435,6 @@ class SgiProcess(models.Model):
             'context': {'default_from_process_id': self.id},
         }
 
-    def action_print_risk_matrix(self):
-        """DIR-2 (52.0.0): matriz de riesgos del proceso en PDF."""
-        return self.env.ref('quimibond_sgi.action_report_risk_matrix').report_action(self)
-
-    def action_print_master_list(self):
-        """DOC-3 (51.0.0): lista maestra de documentos del proceso en PDF."""
-        return self.env.ref('quimibond_sgi.action_report_master_list').report_action(self)
-
     def _sgi_master_list_documents(self):
         """Documentos controlados del proceso para la lista maestra: vigentes
         y en piloto, por tipo y clave."""
@@ -352,7 +491,7 @@ class SgiProcess(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': "No Conformidades — %s" % self.name,
+            'name': "No conformidades — %s" % self.name,
             'res_model': 'quality.alert',
             'view_mode': 'list,form',
             'domain': [('sgi_process_id', '=', self.id)],
@@ -407,16 +546,23 @@ class SgiProcess(models.Model):
 
 
 class SgiProcessFlow(models.Model):
+    """Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué
+    modelo."""
     _name = 'sgi.process.flow'
     _description = "Flujo entre procesos SGI"
     _order = 'from_process_id, name'
 
     name = fields.Char(string="Entregable", required=True)
-    from_process_id = fields.Many2one('sgi.process', string="Proceso origen", required=True, ondelete='cascade')
-    to_process_id = fields.Many2one('sgi.process', string="Proceso destino", required=True, ondelete='cascade')
-    document_id = fields.Many2one('documents.document', string="Formato de entrega")
+    from_process_id = fields.Many2one('sgi.process', string="Proceso origen", required=True, ondelete='cascade',
+                                      help="Proceso que entrega.")
+    to_process_id = fields.Many2one('sgi.process', string="Proceso destino", required=True, ondelete='cascade',
+                                    help="Proceso que recibe.")
+    document_id = fields.Many2one('documents.document', string="Formato de entrega",
+                                  help="Formato con el que se entrega lo que pasa entre los procesos.")
     acceptance_criteria = fields.Text(string="Criterio de aceptación")
-    odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa")
+    odoo_model_id = fields.Many2one('ir.model', string="Modelo Odoo que lo materializa",
+                                    help="Modelo de Odoo donde queda el registro de lo que pasa entre "
+                                         "procesos.")
     odoo_model_name = fields.Char(related='odoo_model_id.model', string="Modelo técnico")
     company_id = fields.Many2one(
         related='from_process_id.company_id', string="Empresa", store=True,

@@ -8,31 +8,45 @@
                 <header>
                     <button name="action_mark_enviado" type="object" string="Marcar enviado"
                             class="btn-primary" invisible="state != 'preparacion'"/>
+                    <!-- D-009 (57.41.0): aprobar, interino, rechazar y regresar desde
+                         una decisión son del Jefe MAST y del dueño del proceso de sus
+                         AMEF (el write() lo exige también por RPC). -->
                     <button name="action_approve" type="object" string="Aprobar"
-                            class="btn-primary" invisible="state != 'enviado'"/>
+                            class="btn-primary" invisible="state != 'enviado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <button name="action_set_interino" type="object" string="Interino"
+                            invisible="state != 'enviado'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
+                    <button name="action_reject" confirm="Se rechazará el PPAP. ¿Desea continuar?" type="object" string="Rechazar"
+                            invisible="state not in ('enviado', 'interino')"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
+                    <button name="action_reset" confirm="El PPAP regresa a preparación. ¿Desea continuar?" type="object" string="Regresar a preparación"
                             invisible="state != 'enviado'"/>
-                    <button name="action_reject" type="object" string="Rechazar"
-                            invisible="state not in ('enviado', 'interino')"/>
-                    <button name="action_reset" type="object" string="Regresar a preparación"
-                            invisible="state == 'preparacion'"/>
+                    <button name="action_reset" confirm="El PPAP regresa a preparación y pierde su decisión. ¿Desea continuar?" type="object" string="Regresar a preparación"
+                            invisible="state not in ('aprobado', 'interino', 'rechazado')"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="preparacion,enviado,aprobado"/>
                 </header>
                 <sheet>
+                    <!-- V-A03 (57.41.0): cerrado es evidencia; solo el Jefe MAST lo edita. -->
+                    <widget name="web_ribbon" title="Aprobado" bg_color="text-bg-secondary"
+                            invisible="state != 'aprobado'"/>
+                    <field name="sgi_is_locked" invisible="1"/>
                     <div class="oe_title">
-                        <h1><field name="folio" readonly="1"/></h1>
+                        <h1><field name="product_tmpl_id" readonly="sgi_is_locked" placeholder="Producto"/></h1>
+                        <h3><field name="folio" readonly="1"/></h3>
                     </div>
                     <group>
                         <group>
-                            <field name="partner_id"/>
-                            <field name="product_tmpl_id"/>
-                            <field name="level"/>
+                            <field name="partner_id" readonly="sgi_is_locked"/>
+                            <field name="level" readonly="sgi_is_locked"/>
                         </group>
                         <group>
-                            <field name="reason"/>
-                            <field name="date_submitted"/>
-                            <field name="date_decision"/>
+                            <field name="reason" readonly="sgi_is_locked"/>
+                            <field name="date_submitted" readonly="sgi_is_locked"/>
+                            <field name="date_decision" readonly="sgi_is_locked"/>
+                            <field name="sgi_dyd_task_id" readonly="sgi_is_locked"/>
                         </group>
                     </group>
                     <notebook>
@@ -46,7 +60,7 @@
                                 se puede ajustar por elemento (p. ej. nivel 4,
                                 donde el cliente define qué pide).
                             </div>
-                            <field name="element_ids">
+                            <field name="element_ids" readonly="sgi_is_locked">
                                 <list editable="bottom" default_order="sequence">
                                     <field name="sequence"/>
                                     <field name="name"/>
@@ -63,7 +77,7 @@
                             </field>
                         </page>
                         <page string="Notas">
-                            <field name="notes"/>
+                            <field name="notes" readonly="sgi_is_locked"/>
                         </page>
                     </notebook>
                 </sheet>
@@ -86,7 +100,12 @@
                 <field name="level"/>
                 <field name="reason"/>
                 <field name="date_submitted"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-info="state in ('preparacion', 'enviado')"
+                       decoration-success="state == 'aprobado'"
+                       decoration-warning="state == 'interino'"
+                       decoration-danger="state == 'rechazado'"/>
             </list>
         </field>
     </record>
@@ -116,8 +135,10 @@
         <field name="res_model">sgi.ppap</field>
         <field name="view_mode">list,form</field>
         <field name="search_view_id" ref="sgi_ppap_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los expedientes en proceso. -->
+        <field name="context">{'search_default_en_proceso': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el primer PPAP</p>
+            <p class="o_view_nocontent_smiling_face">Cree el primer PPAP</p>
             <p>Los 18 elementos AIAG se generan solos, marcados Presentar (S) o Retener (R) según el nivel 1–5 del expediente. No se puede marcar Enviado con elementos S pendientes ni Aprobado sin el PSW.</p>
         </field>
     </record>
@@ -135,8 +156,20 @@
         </field>
     </record>
 
+    <!-- D-014 (57.21.0): búsqueda con filtros y archivados. -->
+    <record id="sgi_ppap_element_template_view_search" model="ir.ui.view">
+        <field name="name">sgi.ppap.element.template.search</field>
+        <field name="model">sgi.ppap.element.template</field>
+        <field name="arch" type="xml">
+            <search string="Elementos PPAP">
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
     <record id="sgi_ppap_element_template_action" model="ir.actions.act_window">
-        <field name="name">Catálogo de elementos PPAP</field>
+        <field name="name">Elementos PPAP</field>
         <field name="res_model">sgi.ppap.element.template</field>
         <field name="view_mode">list</field>
         <field name="help" type="html">
@@ -153,7 +186,8 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_sgi_ppap" type="object" class="oe_stat_button"
-                        icon="fa-check-circle-o" invisible="not is_company">
+                        icon="fa-check-circle-o" invisible="not is_company"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_ppap_count" widget="statinfo" string="PPAP"/>
                 </button>
             </xpath>
@@ -167,7 +201,8 @@
         <field name="arch" type="xml">
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_sgi_ppap" type="object" class="oe_stat_button"
-                        icon="fa-check-circle-o">
+                        icon="fa-check-circle-o"
+                        groups="quimibond_sgi.group_sgi_user">
                     <field name="sgi_ppap_count" widget="statinfo" string="PPAP"/>
                 </button>
             </xpath>

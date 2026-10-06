@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.96.0 (N-06): competencias que exige cada tipo de permiso. -->
+    <record id="sgi_work_permit_skill_view_list" model="ir.ui.view">
+        <field name="name">sgi.work.permit.skill.list</field>
+        <field name="model">sgi.work.permit.skill</field>
+        <field name="arch" type="xml">
+            <list string="Competencias por tipo de permiso" editable="bottom">
+                <field name="work_type"/>
+                <field name="skill_id"/>
+                <field name="skill_type_id"/>
+                <field name="note"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_work_permit_skill_view_search" model="ir.ui.view">
+        <field name="name">sgi.work.permit.skill.search</field>
+        <field name="model">sgi.work.permit.skill</field>
+        <field name="arch" type="xml">
+            <search string="Competencias por tipo de permiso">
+                <field name="skill_id"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_work_type" string="Tipo de trabajo" context="{'group_by': 'work_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_work_permit_skill_action" model="ir.actions.act_window">
+        <field name="name">Competencias por tipo de permiso</field>
+        <field name="res_model">sgi.work.permit.skill</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="sgi_work_permit_skill_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin competencias exigidas</p>
+            <p>Mientras esta lista esté vacía, el permiso de trabajo no revisa competencias. Agregue
+               las que exige cada tipo de trabajo (por ejemplo, NOM-009 para alturas): cada persona
+               que ejecuta debe tenerlas vigentes hasta el fin del permiso.</p>
+        </field>
+    </record>
+</odoo>

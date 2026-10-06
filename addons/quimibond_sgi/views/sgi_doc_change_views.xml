@@ -5,11 +5,17 @@
         <field name="model">approval.request</field>
         <field name="inherit_id" ref="approvals.approval_request_view_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_send_to_sign" type="object" string="Reenviar a firma"
+                        class="btn-primary" icon="fa-pencil"
+                        invisible="not sgi_sign_required or request_status != 'pending' or sgi_sign_state in ('sent', 'shared', 'signed')"/>
+            </xpath>
             <xpath expr="//sheet" position="inside">
                 <field name="sgi_is_doc_change" invisible="1"/>
+                <field name="sgi_sign_required" invisible="1"/>
                 <field name="sgi_is_moc" invisible="1"/>
                 <notebook invisible="not sgi_is_moc">
-                    <page string="Gestión del cambio SGI (MOC)">
+                    <page string="Gestión del cambio (MOC)">
                         <p class="text-muted">9001 §6.3 / 45001 §8.1.3: un
                         cambio de proceso, infraestructura o plantilla no se
                         aprueba sin motivo, procesos afectados y evaluación de
@@ -24,7 +30,41 @@
                 <field name="sgi_applied" invisible="1"/>
                 <field name="sgi_new_document_id" invisible="not sgi_new_document_id" readonly="1"/>
                 <notebook invisible="not sgi_is_doc_change">
-                    <page string="Cambio documental SGI">
+                    <page string="Cambio documental">
+                        <div class="alert alert-info mb-2" role="status"
+                             invisible="not sgi_sign_required or sgi_sign_request_id">
+                            Al enviar la solicitud se manda a firmar en Sign: <b>elaboró</b>
+                            (quien pide) → <b>revisó</b> (dueño del proceso) → <b>aprobó</b>
+                            (Jefe MAST). Cada firma aprueba su paso; con la última el cambio
+                            se aplica solo.
+                        </div>
+                        <!-- 57.105.0: solicitud del MIID (PDF generado por Odoo y candados). -->
+                        <field name="sgi_miid_hash" invisible="1"/>
+                        <div class="alert alert-info mb-2" role="status" invisible="not sgi_miid_hash">
+                            Solicitud del <b>MIID</b>: el PDF adjunto lo generó Odoo con los datos del sistema
+                            (<field name="sgi_miid_generated" readonly="1" class="oe_inline" nolabel="1"/>). Si los
+                            datos cambian antes de enviarla, al enviar se genera otra vez. Lo que se firma es lo que
+                            se publica. «Aprobó» lo firma Dirección. No se puede enviar ni aprobar mientras haya
+                            secciones por confirmar o procesos que no estén vigentes.
+                        </div>
+                        <div class="alert alert-danger mb-2" role="alert" invisible="not sgi_miid_blocked_note">
+                            <b>La aprobación del MIID está retenida hasta que:</b>
+                            <field name="sgi_miid_blocked_note" readonly="1" nolabel="1"/>
+                        </div>
+                        <group invisible="not sgi_sign_request_id">
+                            <group>
+                                <field name="sgi_sign_request_id" readonly="1"/>
+                                <field name="sgi_sign_state" readonly="1" widget="badge"
+                                       decoration-success="sgi_sign_state == 'signed'"
+                                       decoration-warning="sgi_sign_state == 'sent'"
+                                       decoration-danger="sgi_sign_state in ('canceled', 'expired')"/>
+                            </group>
+                            <group>
+                                <field name="sgi_sign_progress"/>
+                                <field name="sgi_change_attachment_id" readonly="1"
+                                       invisible="not sgi_change_attachment_id"/>
+                            </group>
+                        </group>
                         <div class="mb-2"
                              invisible="sgi_change_kind != 'alta' or request_status != 'approved' or sgi_document_id">
                             <button name="action_sgi_create_document" type="object"
@@ -59,6 +99,21 @@
                         </group>
                     </page>
                 </notebook>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_approval_category_view_form" model="ir.ui.view">
+        <field name="name">sgi.approval.category.form.inherit</field>
+        <field name="model">approval.category</field>
+        <field name="inherit_id" ref="approvals.approval_category_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="SGI" name="sgi">
+                    <field name="sgi_is_doc_change"/>
+                    <field name="sgi_sign_required" invisible="not sgi_is_doc_change"/>
+                    <field name="sgi_is_moc"/>
+                </group>
             </xpath>
         </field>
     </record>
@@ -107,6 +162,10 @@
                         domain="[('sgi_change_kind', '=', 'modificacion')]"/>
                 <filter name="bajas" string="Bajas"
                         domain="[('sgi_change_kind', '=', 'baja')]"/>
+                <!-- V-M03 (57.43.0): «Míos» y filtro de fecha nativo. -->
+                <separator/>
+                <filter name="mine" string="Míos" domain="[('request_owner_id', '=', uid)]"/>
+                <filter name="filter_create_date" string="Fecha de solicitud" date="create_date"/>
                 <group>
                     <filter name="group_kind" string="Tipo de cambio"
                             context="{'group_by': 'sgi_change_kind'}"/>
@@ -121,7 +180,7 @@
          una solicitud creada desde este menú nacía como aprobación genérica
          SIN la pestaña de cambio documental (mismo patrón que el Tablero NC). -->
     <record id="sgi_doc_change_board_action" model="ir.actions.server">
-        <field name="name">Cambios documentales</field>
+        <field name="name">Solicitudes de cambio</field>
         <field name="model_id" ref="approvals.model_approval_request"/>
         <field name="state">code</field>
         <field name="code">
@@ -130,15 +189,15 @@ list_view = env.ref('quimibond_sgi.sgi_doc_change_view_list', raise_if_not_found
 search_view = env.ref('quimibond_sgi.sgi_doc_change_view_search', raise_if_not_found=False)
 action = {
     'type': 'ir.actions.act_window',
-    'name': 'Cambios documentales',
+    'name': 'Solicitudes de cambio',
     'res_model': 'approval.request',
     'view_mode': 'list,form',
     'views': [(list_view.id if list_view else False, 'list'), (False, 'form')],
     'search_view_id': search_view and [search_view.id, 'search'] or False,
     'domain': [('sgi_is_doc_change', '=', True)],
     'context': {'default_category_id': category.id} if category else {},
-    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Solicita el primer cambio documental&lt;/p&gt;
-&lt;p&gt;Alta, modificación o baja de un documento controlado (F-P-G01-06). Al
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Solicite el primer cambio documental&lt;/p&gt;
+&lt;p&gt;Alta, modificación o baja de un documento controlado. Al
 aprobarse (2 aprobadores en secuencia) el documento se versiona SOLO: nueva
 revisión, obsolescencia de la anterior, acuses generados y salida en el NEWS
 del mes. La revisión nueva se sugiere automáticamente.&lt;/p&gt;""",

@@ -39,11 +39,11 @@
                         <b>¿Qué es un flujo?</b> Una <b>entrega entre dos procesos</b>.
                         Se calcula solo del <b>entregable</b>: sale de las actividades
                         que lo entregan y llega a las que lo reciben. Para cambiarlo,
-                        cambia el entregable o las actividades.
+                        cambie el entregable o las actividades.
                     </div>
                     <div class="oe_title">
                         <label for="name" string="Entregable"/>
-                        <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal F-P-A12-01)"/></h1>
+                        <h1><field name="name" placeholder="¿Qué se entrega? (ej. Programa semanal de producción)"/></h1>
                     </div>
                     <group>
                         <group string="La entrega">
@@ -84,7 +84,7 @@
                 <filter name="documentales" string="Documentales (sin modelo)"
                         domain="[('odoo_model_id', '=', False)]"/>
                 <separator/>
-                <filter name="manual" string="Capturados a mano (anteriores)"
+                <filter name="manual" string="Capturados a mano"
                         domain="[('deliverable_id', '=', False)]"/>
                 <filter name="inactive" string="Apagados o reemplazados"
                         domain="[('active', '=', False)]"/>
@@ -95,6 +95,22 @@
                             context="{'group_by': 'to_process_id'}"/>
                 </group>
             </search>
+        </field>
+    </record>
+
+    <!-- 57.64.0 (bloque 2 de formularios): menú propio de Flujos entre
+         procesos (se calculan de los entregables; la lista no crea). -->
+    <record id="sgi_process_flow_list_action" model="ir.actions.act_window">
+        <field name="name">Flujos entre procesos</field>
+        <field name="res_model">sgi.process.flow</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_process_flow_view_search"/>
+        <field name="context">{'search_default_vigentes': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún no hay flujos entre procesos</p>
+            <p>Cada flujo es una entrega de un proceso a otro y se calcula solo de
+               los entregables: sale de las actividades que lo entregan y llega a
+               las que lo reciben.</p>
         </field>
     </record>
 
@@ -149,7 +165,7 @@
                                 NC: <field name="nc_count"/>
                             </span>
                             <span class="text-danger" t-if="record.red_kpi_count.raw_value">
-                                KPI rojos: <field name="red_kpi_count"/>
+                                Indicadores en rojo: <field name="red_kpi_count"/>
                             </span>
                             <span class="text-danger" t-if="record.chain_stuck_count.raw_value">
                                 Atorados: <field name="chain_stuck_count"/>
@@ -167,8 +183,7 @@
         <field name="arch" type="xml">
             <list string="Procesos" sample="1" multi_edit="1" default_order="process_type, code"
                   decoration-danger="measure_status == 'rojo'"
-                  decoration-muted="measure_status == 'gris'"
-                  decoration-success="measure_status == 'verde'">
+                  decoration-muted="measure_status == 'gris'">
                 <field name="code"/>
                 <field name="name"/>
                 <field name="process_type"/>
@@ -203,10 +218,10 @@
                             class="btn-primary" invisible="state == 'vigente'"
                             groups="quimibond_sgi.group_sgi_manager"
                             confirm="Publicar exige que ninguna actividad ni indicador tenga faltantes que bloquean. ¿Continuar?"/>
-                    <button name="action_sgi_set_draft" type="object" string="Regresar a borrador"
+                    <button name="action_sgi_set_draft" confirm="El proceso deja de estar vigente y sus actividades salen de Mi procedimiento hasta que se vuelva a publicar. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'" groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_sgi_request_change" type="object"
-                            string="Pedir un cambio" icon="fa-pencil-square-o"/>
+                            string="Proponer cambio" icon="fa-lightbulb-o"/>
                     <button name="action_sgi_register_finding" type="object"
                             string="Registrar hallazgo" icon="fa-flag"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
@@ -223,47 +238,19 @@
                          lo que se captura aquí: la ficha y el texto del
                          procedimiento. -->
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_sgi_view_diagram" type="object" class="oe_stat_button"
-                                icon="fa-sitemap" invisible="not id">
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">Diagrama</span>
-                            </div>
-                        </button>
-                        <button name="action_view_activities" type="object" class="oe_stat_button"
-                                icon="fa-list-ol">
-                            <field name="activity_count" widget="statinfo" string="Actividades"/>
-                        </button>
+                        <!-- V-B09 (57.81.0): primero las alertas (solo aparecen con algo
+                             que atender), después los catálogos; así no quedan detrás de «Más». -->
                         <button name="action_view_red_activities" type="object" class="oe_stat_button"
                                 icon="fa-times-circle" invisible="activity_red_count == 0">
                             <field name="activity_red_count" widget="statinfo" string="Sin evidencia"/>
                         </button>
-                        <button name="action_open_indicators" type="object" class="oe_stat_button"
-                                icon="fa-tachometer">
-                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
-                        </button>
                         <button name="action_open_red_kpis" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-circle" invisible="red_kpi_count == 0">
-                            <field name="red_kpi_count" widget="statinfo" string="KPI en rojo"/>
-                        </button>
-                        <button name="action_open_risks" type="object" class="oe_stat_button"
-                                icon="fa-bolt">
-                            <field name="risk_count" widget="statinfo" string="Riesgos"/>
+                            <field name="red_kpi_count" widget="statinfo" string="Indicadores en rojo"/>
                         </button>
                         <button name="action_open_high_risks" type="object" class="oe_stat_button"
                                 icon="fa-fire" invisible="open_high_risk_count == 0">
                             <field name="open_high_risk_count" widget="statinfo" string="Riesgos altos"/>
-                        </button>
-                        <button name="action_open_documents" type="object" class="oe_stat_button"
-                                icon="fa-file-text-o">
-                            <field name="document_count" widget="statinfo" string="Documentos"/>
-                        </button>
-                        <button name="action_open_flows" type="object" class="oe_stat_button"
-                                icon="fa-exchange">
-                            <field name="flow_count" widget="statinfo" string="Conexiones"/>
-                        </button>
-                        <button name="action_view_chain" type="object" class="oe_stat_button"
-                                icon="fa-link" invisible="chain_link_count == 0">
-                            <field name="chain_link_count" widget="statinfo" string="Ligas"/>
                         </button>
                         <button name="action_open_ncs" type="object" class="oe_stat_button"
                                 icon="fa-exclamation-triangle" invisible="nc_count == 0">
@@ -276,6 +263,36 @@
                         <button name="action_view_spec_gaps" type="object" class="oe_stat_button"
                                 icon="fa-wrench" invisible="spec_error_count == 0 and spec_warning_count == 0">
                             <field name="spec_error_count" widget="statinfo" string="Faltantes"/>
+                        </button>
+                        <button name="action_sgi_view_diagram" type="object" class="oe_stat_button"
+                                icon="fa-sitemap" invisible="not id">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">Diagrama</span>
+                            </div>
+                        </button>
+                        <button name="action_view_activities" type="object" class="oe_stat_button"
+                                icon="fa-list-ol">
+                            <field name="activity_count" widget="statinfo" string="Actividades"/>
+                        </button>
+                        <button name="action_open_indicators" type="object" class="oe_stat_button"
+                                icon="fa-tachometer">
+                            <field name="indicator_count" widget="statinfo" string="Indicadores"/>
+                        </button>
+                        <button name="action_open_risks" type="object" class="oe_stat_button"
+                                icon="fa-bolt">
+                            <field name="risk_count" widget="statinfo" string="Riesgos"/>
+                        </button>
+                        <button name="action_open_documents" type="object" class="oe_stat_button"
+                                icon="fa-file-text-o">
+                            <field name="document_count" widget="statinfo" string="Documentos"/>
+                        </button>
+                        <button name="action_open_flows" type="object" class="oe_stat_button"
+                                icon="fa-exchange">
+                            <field name="flow_count" widget="statinfo" string="Conexiones"/>
+                        </button>
+                        <button name="action_view_chain" type="object" class="oe_stat_button"
+                                icon="fa-link" invisible="chain_link_count == 0">
+                            <field name="chain_link_count" widget="statinfo" string="Ligas"/>
                         </button>
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
@@ -331,13 +348,25 @@
                                            widget="many2many_tags" readonly="1"/>
                                 </group>
                                 <group>
-                                    <field name="replaced_document_ids" widget="many2many_tags"
-                                           options="{'no_create': True}"/>
+                                    <!-- D-017 (56.31.0): inverso de «Lo sustituye el
+                                         proceso» del documento; aquí solo se lee. -->
+                                    <field name="replaced_document_ids" readonly="1">
+                                        <list>
+                                            <field name="sgi_code"/>
+                                            <field name="name"/>
+                                            <field name="sgi_state"/>
+                                            <field name="sgi_migration_state"/>
+                                        </list>
+                                    </field>
+                                    <div class="text-muted" colspan="2">
+                                        Se captura en la ficha de cada procedimiento
+                                        («Lo sustituye el proceso»).
+                                    </div>
                                     <field name="channel_odoo_pct" widget="progressbar"/>
                                     <field name="channel_manual_pct" widget="progressbar"/>
                                 </group>
                             </group>
-                            <group string="Texto de la versión anterior"
+                            <group string="Texto de la versión anterior" groups="quimibond_sgi.group_sgi_manager"
                                    invisible="not inputs and not outputs and not start_trigger and not end_trigger">
                                 <field name="start_trigger" readonly="1" invisible="not start_trigger"/>
                                 <field name="end_trigger" readonly="1" invisible="not end_trigger"/>
@@ -409,6 +438,9 @@
                 <field name="code"/>
                 <field name="name"/>
                 <field name="owner_id"/>
+                <field name="activity_team_ids" string="Tiene actividades del equipo"/>
+                <filter name="mine" string="Míos" domain="[('owner_id.user_id', '=', uid)]"/>
+                <separator/>
                 <filter name="tipo_cop" string="Cadena de valor" domain="[('process_type', '=', 'cop')]"/>
                 <filter name="tipo_soporte" string="Soporte" domain="[('process_type', '=', 'soporte')]"/>
                 <separator/>
@@ -434,13 +466,13 @@
     </record>
 
     <record id="sgi_process_action" model="ir.actions.act_window">
-        <field name="name">Procesos</field>
+        <field name="name">Mapa de procesos</field>
         <field name="res_model">sgi.process</field>
-        <field name="view_mode">kanban,list,form</field>
+        <field name="view_mode">sgi_diagram,kanban,list,hierarchy,form</field>
         <field name="mobile_view_mode">kanban</field>
         <field name="search_view_id" ref="sgi_process_view_search"/>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Administración del mapa de procesos</p>
-            <p>Edite fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
+            <p>Edite las fichas de proceso: dueño, puestos, documentos y flujos.</p></field>
     </record>
 
 </odoo>

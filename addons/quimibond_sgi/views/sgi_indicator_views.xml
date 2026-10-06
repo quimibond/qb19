@@ -5,32 +5,43 @@
         <field name="name">sgi.indicator.list</field>
         <field name="model">sgi.indicator</field>
         <field name="arch" type="xml">
-            <list string="Indicadores"
-                  decoration-success="last_semaphore == 'verde'"
-                  decoration-warning="last_semaphore == 'amarillo'"
-                  decoration-danger="last_semaphore == 'rojo'">
+            <list string="Indicadores">
+                <!-- D-12 (57.5.0): solo el Administrador SGI; el método lo
+                     vuelve a revisar en el servidor. -->
+                <header>
+                    <button name="action_sgi_recompute_pending_measures" type="object"
+                            string="Recalcular mediciones" display="always"
+                            groups="quimibond_sgi.group_sgi_admin"/>
+                </header>
                 <field name="code"/>
                 <field name="name"/>
                 <field name="sgi_area_id"/>
                 <field name="process_id" optional="show"/>
                 <field name="responsible_id"/>
-                <field name="uom"/>
+                <field name="uom" optional="hide"/>
                 <field name="target_objective"/>
                 <field name="target_acceptable"/>
                 <field name="status" widget="badge" optional="show"
                        decoration-success="status == 'oficial'"
                        decoration-muted="status == 'prueba'"/>
-                <field name="last_value"/>
+                <!-- 57.104.0 (B1): «Sin dato» si ninguna medición tiene dato;
+                     el número queda para ordenar. -->
+                <field name="sgi_last_value_label" string="Último valor"/>
+                <field name="last_value" string="Último valor (número)" optional="hide"/>
                 <field name="last_semaphore" widget="badge"
                        decoration-success="last_semaphore == 'verde'"
                        decoration-warning="last_semaphore == 'amarillo'"
                        decoration-danger="last_semaphore == 'rojo'"/>
-                <field name="source_type" widget="badge"
+                <field name="source_type" widget="badge" optional="hide"
                        decoration-success="source_type == 'auto'"
                        decoration-warning="source_type == 'manual'"/>
-                <field name="source_info" optional="show"/>
+                <field name="source_info" optional="hide"/>
                 <field name="calc_mode" optional="hide"/>
-                <field name="nc_on_red" widget="boolean_toggle"/>
+                <field name="calc_status" widget="badge" optional="show"
+                       decoration-success="calc_status == 'ok'"
+                       decoration-danger="calc_status in ('error', 'sin_formula', 'sin_datos')"
+                       decoration-muted="calc_status in ('manual', 'antes')"/>
+                <field name="nc_on_red" readonly="1"/>
                 <field name="critical" widget="boolean_toggle" optional="hide"/>
             </list>
         </field>
@@ -46,11 +57,14 @@
                             class="btn-primary" invisible="status == 'oficial'"
                             groups="quimibond_sgi.group_sgi_manager"
                             confirm="Revisaste la lista de registros de una medición contra la realidad y el dato es confiable. Desde ahora sus rojos pueden abrir NC. ¿Continuar?"/>
-                    <button name="action_set_trial" type="object" string="Regresar a prueba"
+                    <button name="action_set_trial" confirm="El indicador regresa a «prueba». ¿Desea continuar?" type="object" string="Regresar a prueba"
                             invisible="status == 'prueba'"
                             groups="quimibond_sgi.group_sgi_manager"/>
                     <button name="action_view_trend" type="object"
                             string="Tendencia" icon="fa-line-chart"/>
+                    <!-- 57.101.0 (C1): ficha del indicador en PDF (también en Imprimir). -->
+                    <button name="action_print_sheet" type="object"
+                            string="Ficha en PDF" icon="fa-file-pdf-o"/>
                     <button name="action_recalculate_now" type="object"
                             string="Recalcular ahora" icon="fa-refresh"
                             invisible="calc_mode == 'manual'"
@@ -63,9 +77,9 @@
                          invisible="responsible_id and process_id">
                         <b>Configuración incompleta:</b> sin
                         <b>responsable</b> las capturas y validaciones caen en el
-                        Jefe MAST, y sin <b>proceso</b> los rojos de este KPI NO
+                        Jefe MAST, y sin <b>proceso</b> los rojos de este indicador NO
                         cuentan en la salud del Panel. Es la causa de que un
-                        proceso se vea «verde» con KPIs en rojo.
+                        proceso se vea «verde» con indicadores en rojo.
                     </div>
                     <widget name="web_ribbon" title="Archivado" bg_color="text-bg-danger"
                             invisible="active"/>
@@ -73,22 +87,39 @@
                         <h1><field name="name" placeholder="Nombre del indicador"/></h1>
                         <h3><field name="code" placeholder="VE-01"/></h3>
                     </div>
+                    <div class="alert alert-danger mb-3" role="alert"
+                         invisible="calc_status not in ('error', 'sin_formula', 'sin_datos')">
+                        <b>El último cálculo no dio valor:</b>
+                        <field name="calc_status" class="d-inline" readonly="1"/> —
+                        <field name="calc_message" class="d-inline" readonly="1"/>
+                        (<field name="calc_checked" class="d-inline" readonly="1"/>).
+                        Corríjalo y pulse «Recalcular ahora».
+                    </div>
                     <group>
                         <group string="Clasificación">
                             <field name="objective_id"/>
                             <field name="process_id"/>
                             <field name="sgi_area_id"/>
                             <field name="responsible_id"/>
+                            <field name="level"/>
                             <field name="frequency"/>
                             <field name="measure_from"/>
+                            <field name="snapshot" invisible="calc_mode == 'manual'"/>
                             <field name="active" invisible="1"/>
                         </group>
                         <group string="Meta y cálculo">
                             <field name="uom"/>
                             <field name="direction"/>
-                            <field name="target_objective"/>
-                            <field name="target_acceptable"/>
+                            <field name="target_objective" invisible="direction == 'range'" string="Meta final"/>
+                            <field name="target_acceptable" invisible="direction == 'range'"
+                                   string="Aceptable (meta final)"/>
+                            <field name="range_min" invisible="direction != 'range'"
+                                   required="direction == 'range'"/>
+                            <field name="range_max" invisible="direction != 'range'"
+                                   required="direction == 'range'"/>
+                            <field name="range_tolerance" invisible="direction != 'range'"/>
                             <field name="calc_mode"/>
+                            <field name="window_label"/>
                             <field name="monthly_budget"
                                    invisible="calc_mode != 'presupuesto_ventas'"/>
                             <field name="activity_id"
@@ -98,6 +129,13 @@
                                    invisible="calc_mode != 'entregable_completo'"/>
                             <field name="nc_on_red"/>
                             <field name="critical" invisible="not nc_on_red"/>
+                            <field name="measure_split" invisible="calc_mode != 'configurable'"/>
+                            <field name="measure_team_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="Los equipos de venta de la compañía"
+                                   invisible="measure_split != 'team'"/>
+                            <field name="split_support" invisible="calc_mode != 'configurable'"
+                                   class="text-muted"/>
                         </group>
                     </group>
                     <div class="alert alert-warning mb-2" role="alert" invisible="not spec_missing">
@@ -106,28 +144,79 @@
                     <group string="Cómo se calcula">
                         <field name="formula" placeholder="Qué se divide entre qué, en palabras"/>
                         <field name="source" placeholder="De qué registros o documentos sale"/>
+                        <field name="baseline_date"/>
                         <field name="baseline_value"/>
                         <field name="target_date"/>
                     </group>
                     <field name="source_type" invisible="1"/>
                     <div class="alert alert-success mb-0" role="alert"
                          invisible="source_type != 'auto'">
-                        ⚙️ <b>Automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                        <i class="fa fa-cogs" title="Automático"/> <b>Automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
                     </div>
                     <div class="alert alert-warning mb-0" role="alert"
                          invisible="source_type != 'manual'">
-                        ✍️ <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                        <i class="fa fa-pencil" title="Captura manual"/> <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
                     </div>
                     <notebook>
+                        <!-- Trayectoria (antes herencia propia en
+                             sgi_indicator_trajectory_views.xml; A-008, 57.24.0). -->
+                        <page string="Trayectoria" name="trajectory" invisible="direction == 'range'">
+                            <div class="alert alert-info mb-2" role="alert">
+                                Los escalones trimestrales se interpolan entre el arranque
+                                («Arranque desde» y «Valor de arranque») y la meta final
+                                («Llegar a la meta el»). El aceptable de cada escalón guarda la
+                                misma distancia que el de la meta final. Corregir un trimestre a
+                                mano exige motivo, queda en el chatter y se respeta al regenerar.
+                                Cada medición se evalúa contra el escalón de su trimestre.
+                            </div>
+                            <button name="action_generate_trajectory" type="object"
+                                    string="Generar trayectoria" class="btn-primary mb-2"
+                                    groups="quimibond_sgi.group_sgi_manager"/>
+                            <field name="has_trajectory" invisible="1"/>
+                            <field name="step_ids" context="{'default_indicator_id': id}">
+                                <list editable="bottom" decoration-info="manual">
+                                    <field name="name"/>
+                                    <field name="date_from" column_invisible="1"/>
+                                    <field name="objective"/>
+                                    <field name="acceptable"/>
+                                    <field name="manual"/>
+                                    <field name="reason"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- Modo «fórmula configurable» (antes herencia propia en
+                             sgi_indicator_formula_views.xml; A-008, 57.23.0). -->
+                        <page string="Fórmula" name="formula">
+                            <div class="alert alert-info mb-2" role="alert">
+                                Numerador y denominador salen de los registros de Odoo que
+                                indique cada término; varios términos con el mismo papel se
+                                suman (factor −1 resta) y sin denominador el indicador vale
+                                su numerador (sin registros = 0). En el filtro valen fechas
+                                relativas: '{cierre}', '{cierre-30d}', '{cierre-2dh}' (días
+                                hábiles), '{cierre-48h}', '{inicio}', '{hoy}' y '{bloqueo}'
+                                (bloqueo contable). «Contar donde B − A cumple» y «Promedio
+                                de B − A» comparan dos fechas del mismo registro. Solo el
+                                administrador del SGI edita los términos; cualquier cambio
+                                regresa el indicador a «prueba» y queda en el chatter.
+                                «Recalcular ahora» prueba la fórmula sin esperar al cron.
+                            </div>
+                            <field name="has_formula" invisible="1"/>
+                            <field name="can_edit_formula" invisible="1"/>
+                            <field name="term_ids" context="{'default_indicator_id': id}"
+                                   readonly="not can_edit_formula"/>
+                            <field name="formula_text" readonly="1" nolabel="1" invisible="not term_ids"/>
+                        </page>
                         <page string="Mediciones">
+                            <!-- V-B11 (57.80.0): de 12 en 12, la más reciente arriba. -->
                             <field name="measure_ids" context="{'default_indicator_id': id}">
-                                <list editable="bottom"
+                                <list editable="bottom" limit="12" default_order="period_date desc"
                                       decoration-success="semaphore == 'verde'"
                                       decoration-warning="semaphore == 'amarillo'"
                                       decoration-danger="semaphore == 'rojo'"
                                       decoration-muted="state == 'sin_dato'">
                                     <field name="period_date"/>
-                                    <field name="value"/>
+                                    <!-- 57.104.0 (B1): el 0 guardado de una sin dato no se muestra. -->
+                                    <field name="value" invisible="state == 'sin_dato'"/>
                                     <field name="numerator" optional="show"/>
                                     <field name="denominator" optional="show"/>
                                     <field name="sample_size" optional="show"/>
@@ -166,6 +255,11 @@
                 <field name="name"/>
                 <field name="sgi_area_id"/>
                 <field name="responsible_id"/>
+                <filter name="mine" string="Míos"
+                        domain="[('responsible_id', '=', uid)]"/>
+                <filter name="red" string="En rojo" domain="[('last_semaphore', '=', 'rojo')]"/>
+                <filter name="no_calc" string="No calcula" domain="[('calc_status', 'in', ('error', 'sin_formula', 'sin_datos'))]"/>
+                <separator/>
                 <filter name="vigentes" string="De procesos vigentes"
                         domain="[('sgi_process_active', '=', True)]"/>
                 <filter name="pendientes" string="Pendientes de proceso nuevo"
@@ -193,12 +287,12 @@
     <record id="sgi_indicator_action" model="ir.actions.act_window">
         <field name="name">Indicadores</field>
         <field name="res_model">sgi.indicator</field>
-        <field name="view_mode">list,form,activity</field>
+        <field name="view_mode">list,sgi_diagram,form,activity</field>
         <field name="search_view_id" ref="sgi_indicator_view_search"/>
         <field name="context">{'search_default_vigentes': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Da de alta un indicador</p>
-            <p>Los automáticos se calculan solos de los datos reales de Odoo; captura responsable, objetivo y aceptable, y el semáforo sale solo.</p>
+            <p class="o_view_nocontent_smiling_face">Dé de alta un indicador</p>
+            <p>Los automáticos se calculan solos de los datos reales de Odoo; capture responsable, objetivo y aceptable, y el semáforo sale solo.</p>
         </field>
     </record>
 
@@ -207,16 +301,21 @@
         <field name="name">sgi.indicator.measure.list</field>
         <field name="model">sgi.indicator.measure</field>
         <field name="arch" type="xml">
+            <!-- 57.98.0 (I-06): pendiente en amarillo y capturada en azul (tabla
+                 de colores del README); una medición pendiente aún no tiene
+                 semáforo, así que no se pisan. -->
             <list string="Mediciones"
                   decoration-success="semaphore == 'verde'"
-                  decoration-warning="semaphore == 'amarillo'"
+                  decoration-warning="semaphore == 'amarillo' or state == 'pendiente'"
                   decoration-danger="semaphore == 'rojo'"
-                  decoration-info="state == 'pendiente'"
+                  decoration-info="state == 'capturado'"
                   decoration-muted="state == 'sin_dato'">
                 <field name="period_date"/>
                 <field name="indicator_id"/>
                 <field name="indicator_status" optional="hide"/>
-                <field name="value"/>
+                <!-- 57.104.0 (B1): pendiente y sin dato no tienen valor que mostrar. -->
+                <field name="value" invisible="state in ('pendiente', 'sin_dato')"/>
+                <field name="window_label" optional="show"/>
                 <field name="numerator" optional="hide"/>
                 <field name="denominator" optional="hide"/>
                 <field name="sample_size" optional="show"/>
@@ -225,6 +324,9 @@
                 <button name="action_view_records" type="object" icon="fa-list"
                         title="Ver registros" invisible="not detail_count"/>
                 <field name="target_objective"/>
+                <!-- 57.101.0 (A1): las dos metas del periodo (respetan las
+                     guardadas al validar y los escalones). -->
+                <field name="target_acceptable" optional="show"/>
                 <field name="source_type" widget="badge"
                        decoration-success="source_type == 'auto'"
                        decoration-warning="source_type == 'manual'"/>
@@ -232,7 +334,15 @@
                        decoration-success="semaphore == 'verde'"
                        decoration-warning="semaphore == 'amarillo'"
                        decoration-danger="semaphore == 'rojo'"/>
-                <field name="state"/>
+                <field name="plan_required" column_invisible="1"/>
+                <field name="plan_done" optional="show" string="Plan"
+                       invisible="not plan_required"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-info="state == 'capturado'"
+                       decoration-success="state == 'validado'"
+                       decoration-muted="state == 'sin_dato'"/>
                 <button name="action_view_evidence" type="object" icon="fa-search-plus"
                         title="Ver evidencia" invisible="source_type == 'manual'"/>
                 <field name="alert_id" readonly="1"/>
@@ -248,10 +358,13 @@
         <field name="arch" type="xml">
             <form string="Medición">
                 <header>
+                    <!-- V-A06 (57.43.0): un solo primario por estado, en el orden del
+                         statusbar (capturar → validar). Valida el responsable del
+                         indicador o el Jefe MAST (I-006; el servidor lo revisa). -->
                     <button name="action_capture" type="object" string="Marcar capturado"
-                            invisible="state != 'pendiente'"/>
+                            class="btn-primary" invisible="state != 'pendiente'"/>
                     <button name="action_validate" type="object" string="Validar"
-                            class="btn-primary" invisible="state == 'validado'"/>
+                            class="btn-primary" invisible="state != 'capturado' or not sgi_can_validate"/>
                     <button name="action_view_records" type="object"
                             string="Ver registros" icon="fa-list"
                             invisible="not detail_count"/>
@@ -277,11 +390,12 @@
                     <field name="source_type" invisible="1"/>
                     <div class="alert alert-success mb-0" role="alert"
                          invisible="source_type != 'auto'">
-                        ⚙️ <b>Valor automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                        <i class="fa fa-cogs" title="Automático"/> <b>Valor automático</b> — <field name="source_info" readonly="1" nolabel="1"/>
                     </div>
                     <div class="alert alert-warning mb-0" role="alert"
                          invisible="source_type != 'manual'">
-                        ✍️ <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                        <i class="fa fa-pencil" title="Captura manual"/> <b>Captura manual</b> — <field name="source_info" readonly="1" nolabel="1"/>
+                        <div>Para un 0, escriba en la nota por qué es cero (sin nota, un 0 no se captura).</div>
                     </div>
                     <div class="alert alert-secondary mb-0" role="alert"
                          invisible="state != 'sin_dato'">
@@ -291,10 +405,20 @@
                          invisible="not small_sample">
                         <b>Muestra chica:</b> menos casos que el mínimo; se mide pero no abre NC.
                     </div>
+                    <!-- 57.100.0 (K-04): la validada conserva las metas con las que se juzgó. -->
+                    <field name="sgi_targets_frozen" invisible="1"/>
+                    <field name="sgi_frozen_direction" invisible="1"/>
+                    <div class="alert alert-info mb-0" role="status"
+                         invisible="not sgi_targets_frozen">
+                        <b>Validada con las metas de ese momento:</b> su objetivo, su aceptable y su
+                        color ya no cambian aunque cambie la meta del indicador. Para juzgarla con la
+                        meta nueva, el Jefe MAST la regresa a pendiente y se valida de nuevo.
+                    </div>
                     <group>
                         <group>
                             <field name="period_date"/>
-                            <field name="value"/>
+                            <field name="value" invisible="state == 'sin_dato'"/>
+                            <field name="window_label"/>
                             <field name="uom"/>
                             <field name="numerator"/>
                             <field name="denominator"/>
@@ -305,17 +429,91 @@
                             <field name="indicator_status" widget="badge"
                                    decoration-success="indicator_status == 'oficial'"
                                    decoration-muted="indicator_status == 'prueba'"/>
-                            <field name="target_objective"/>
-                            <field name="target_acceptable"/>
+                            <!-- 57.100.0 (K-04, I-10): congelada, manda el sentido con el que se validó. -->
+                            <field name="target_objective"
+                                   invisible="(sgi_targets_frozen and sgi_frozen_direction == 'range') or (not sgi_targets_frozen and direction == 'range')"/>
+                            <field name="target_acceptable"
+                                   invisible="(sgi_targets_frozen and sgi_frozen_direction == 'range') or (not sgi_targets_frozen and direction == 'range')"/>
+                            <field name="direction" invisible="1"/>
+                            <field name="range_min" invisible="sgi_targets_frozen or direction != 'range'"/>
+                            <field name="range_max" invisible="sgi_targets_frozen or direction != 'range'"/>
+                            <field name="sgi_frozen_range_min"
+                                   invisible="not sgi_targets_frozen or sgi_frozen_direction != 'range'"/>
+                            <field name="sgi_frozen_range_max"
+                                   invisible="not sgi_targets_frozen or sgi_frozen_direction != 'range'"/>
+                            <field name="sgi_frozen_range_tolerance"
+                                   invisible="not sgi_targets_frozen or sgi_frozen_direction != 'range'"/>
                             <field name="semaphore" widget="badge"/>
+                            <field name="sgi_frozen_date" invisible="not sgi_targets_frozen"/>
                             <field name="small_sample" invisible="not small_sample"/>
+                            <field name="sgi_value_by_hand" invisible="not sgi_value_by_hand"/>
                             <field name="alert_id" readonly="1"/>
                         </group>
+                    </group>
+                    <group string="Desglose (equipo de ventas o mercado)" name="split" invisible="not split_ids">
+                        <field name="split_ids" nolabel="1" colspan="2" readonly="1">
+                            <list create="0" delete="0"
+                                  decoration-danger="semaphore == 'rojo'"
+                                  decoration-warning="semaphore == 'amarillo'"
+                                  decoration-muted="state == 'sin_dato'">
+                                <field name="label"/>
+                                <field name="value" invisible="state == 'sin_dato'"/>
+                                <field name="uom"/>
+                                <field name="numerator" optional="show"/>
+                                <field name="denominator" optional="show"/>
+                                <field name="sample_size" optional="show"/>
+                                <field name="state" optional="hide" widget="badge"
+                                       decoration-muted="state == 'sin_dato'"/>
+                                <field name="semaphore" widget="badge"
+                                       decoration-success="semaphore == 'verde'"
+                                       decoration-warning="semaphore == 'amarillo'"
+                                       decoration-danger="semaphore == 'rojo'"/>
+                                <button name="action_view_evidence" type="object" string="Registros"
+                                        icon="fa-list" invisible="not detail_ids"/>
+                                <field name="detail_ids" column_invisible="1"/>
+                            </list>
+                        </field>
+                    </group>
+                    <group string="Fórmula en paralelo" invisible="not parallel_denominator">
+                        <field name="parallel_value"/>
+                        <field name="parallel_numerator"/>
+                        <field name="parallel_denominator"/>
+                    </group>
+                    <!-- Plan de acción de la medición roja (antes herencia propia en
+                         sgi_indicator_plan_views.xml; A-008, 57.25.0). -->
+                    <field name="plan_required" invisible="1"/>
+                    <field name="plan_done" invisible="1"/>
+                    <group string="Plan de acción (medición roja)" invisible="not plan_required">
+                        <div class="alert alert-danger mb-2" role="alert" colspan="2"
+                             invisible="plan_done">
+                            <b>Falta el plan:</b> causa y al menos una acción con responsable y
+                            fecha, antes del <field name="plan_due" readonly="1" nolabel="1" class="oe_inline"/>.
+                            Después de esa fecha se escala a Dirección.
+                        </div>
+                        <field name="cause" placeholder="Por qué salió en rojo"/>
+                        <field name="action_line_ids" context="{'default_measure_id': id}" nolabel="1" colspan="2">
+                            <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                            <list editable="bottom" decoration-danger="state == 'vencida'"
+                                  decoration-muted="state == 'terminada'">
+                                <field name="name"/>
+                                <field name="evidence_note" optional="show"/>
+                                <field name="responsible_id" widget="many2one_avatar_user"/>
+                                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
+                                <field name="date_done"/>
+                                <field name="progress"/>
+                                <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                       decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
+                                <field name="action_type" column_invisible="1"/>
+                                <field name="measure_id" column_invisible="1"/>
+                            </list>
+                        </field>
                     </group>
                     <group string="Nota" name="note">
                         <field name="note" nolabel="1"/>
                     </group>
                 </sheet>
+                <!-- V-M16 (57.80.0): quién capturó, corrigió o validó. -->
+                <chatter/>
             </form>
         </field>
     </record>
@@ -326,6 +524,22 @@
         <field name="arch" type="xml">
             <graph string="Mediciones" type="line">
                 <field name="period_date" interval="month"/>
+                <field name="indicator_id"/>
+                <field name="value" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <!-- 57.101.0 (A1): tendencia de los indicadores semanales (una medición
+         por semana; el lunes es el periodo). Prioridad 20: la gráfica por
+         omisión del modelo sigue siendo la mensual. -->
+    <record id="sgi_measure_view_graph_weekly" model="ir.ui.view">
+        <field name="name">sgi.indicator.measure.graph.weekly</field>
+        <field name="model">sgi.indicator.measure</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <graph string="Mediciones por semana" type="line">
+                <field name="period_date" interval="week"/>
                 <field name="indicator_id"/>
                 <field name="value" type="measure"/>
             </graph>
@@ -352,7 +566,7 @@
         <field name="arch" type="xml">
             <search string="Mediciones">
                 <field name="indicator_id"/>
-                <filter name="mine" string="Mis mediciones"
+                <filter name="mine" string="Míos"
                         domain="[('indicator_id.responsible_id', '=', uid)]"/>
                 <filter name="red" string="En rojo" domain="[('semaphore','=','rojo')]"/>
                 <filter name="pending" string="Pendientes" domain="[('state','=','pendiente')]"/>
@@ -362,6 +576,15 @@
                         domain="[('indicator_id.status','=','oficial')]"/>
                 <filter name="to_validate" string="Por validar"
                         domain="[('state','=','capturado')]"/>
+                <!-- 57.101.0 (A1): la tendencia abre con este filtro; un «sin
+                     dato» o un pendiente valen 0 y bajaban la línea. Aparte
+                     (separador): se combina con Y con los de arriba. -->
+                <separator/>
+                <filter name="con_dato" string="Con dato"
+                        domain="[('state', 'in', ('capturado', 'validado'))]"/>
+                <!-- V-M03 (57.43.0): Filtro de fecha nativo. -->
+                <separator/>
+                <filter name="filter_period" string="Periodo" date="period_date"/>
                 <group>
                     <filter name="group_indicator" string="Indicador" context="{'group_by': 'indicator_id'}"/>
                     <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
@@ -375,10 +598,14 @@
         <field name="name">Mediciones</field>
         <field name="res_model">sgi.indicator.measure</field>
         <field name="view_mode">list,graph,pivot,form</field>
+        <!-- 57.104.0 (B2): abre con «Con dato» (la gráfica no promedia ceros
+             falsos). «Pendientes» y «Con dato» juntos dan una lista vacía. -->
+        <field name="context">{'search_default_con_dato': 1, 'search_default_mine': 1}</field>
         <field name="search_view_id" ref="sgi_measure_view_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">Aún no hay mediciones</p>
             <p>El cron mensual las crea automáticamente; las manuales llegan como actividad a su responsable antes del día 5.</p>
+            <p>Abre con las mediciones con dato; quite el filtro para ver las pendientes y las sin dato.</p>
         </field>
     </record>
 

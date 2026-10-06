@@ -174,6 +174,8 @@
                 <field name="kg_per_unit"/>
                 <field name="m_per_kg"/>
                 <field name="source"/>
+                <field name="rendimiento_manual" optional="show"/>
+                <field name="rendimiento_motivo" optional="show"/>
                 <field name="notes"/>
             </list>
         </field>
@@ -354,6 +356,13 @@
                        decoration-warning="confiabilidad == 'parcial'"
                        decoration-danger="confiabilidad == 'mala'"/>
                 <field name="fab_ocioso_month" optional="show"/>
+                <field name="ocioso_absorbido_month" optional="show"/>
+                <field name="absorcion_vendida_month" optional="show" sum="Total"/>
+                <field name="absorcion_en_inventario" optional="hide"/>
+                <field name="absorcion_sin_lote_month" optional="hide"/>
+                <field name="costo_primo_gl_month" optional="hide" sum="Total"/>
+                <field name="mp_vendida_month" optional="hide" sum="Total"/>
+                <field name="capa_propuesta_month" optional="show" sum="Total"/>
                 <field name="factor_fab_kg"/>
                 <field name="factor_fab_m"/>
                 <field name="energia_por_kg"/>
@@ -428,6 +437,19 @@
                             <field name="confiabilidad_detalle" readonly="1"
                                    invisible="confiabilidad == 'ok'"/>
                             <field name="fab_ocioso_month"/>
+                            <field name="ocioso_absorbido_month"/>
+                            <field name="absorcion_vendida_month"/>
+                            <field name="absorcion_en_inventario"/>
+                            <field name="absorcion_sin_lote_month"/>
+                            <field name="conv_kg_month"/>
+                            <field name="conv_tarifa_kg_centro"/>
+                            <field name="conv_energia_month"/>
+                            <field name="conv_energia_share"/>
+                            <field name="conv_unitaria_vendida_month"/>
+                            <field name="conv_transicion_month"/>
+                            <field name="costo_primo_gl_month"/>
+                            <field name="mp_vendida_month"/>
+                            <field name="capa_propuesta_month"/>
                             <field name="entretela_m_denom_month"/>
                         </group>
                     </group>

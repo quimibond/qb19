@@ -2,15 +2,16 @@
 """PR 6 del plan (19.0.53.0.0): proveedores, clientes y firmas.
 NC-6 NC a proveedor por el portal, AU-4 auditorías de cliente y a proveedor,
 AU-5 programa sugerido, DOC-4 documentos por revisar en Mis pendientes,
-DOC-5 instructivo desde Knowledge, REG-1 firmas ligadas al registro,
+DOC-5 instructivo desde Knowledge (en quimibond_sgi_knowledge desde 57.9.0),
+REG-1 firmas ligadas al registro,
 REG-2 encuesta como entregable. (NC-7 8D y DOC-4 aviso ya existían.)"""
-import base64
 from datetime import date, timedelta
 
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
 from .common_documents import sgi_hide_real_documents
+from .common_users import sgi_set_mast
 
 
 @tagged('post_install', '-at_install')
@@ -20,6 +21,13 @@ class TestPr6External(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         sgi_hide_real_documents(cls.env)
+        # 57.95.0: los acuses pendientes reales de la copia de producción no
+        # cruzan el umbral en estas pruebas (sus avisos agrupados no deben
+        # fallar ni ensuciar cron_documents). Se deshace al final.
+        cls.env.flush_all()
+        cls.env.cr.execute("UPDATE sgi_document_ack SET create_date = now() "
+                           "WHERE state = 'pendiente'")
+        cls.env.invalidate_all()
         cls.env = cls.env(context=dict(cls.env.context, sgi_skip_role_check=True))
         cls.team_int = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.team_ext = cls.env.ref('quimibond_sgi.sgi_quality_team_external')
@@ -30,6 +38,8 @@ class TestPr6External(TransactionCase):
         cls.process = cls.env['sgi.process'].create({'code': 'XP6', 'name': 'Proceso PR6'})
         cls.buyer = new_test_user(cls.env, login='pr6_buyer',
                                   groups='base.group_user,quimibond_sgi.group_sgi_user')
+        # Base nueva: sin Jefe MAST activo la escalación «a MAST» no se agenda.
+        cls.mast = sgi_set_mast(cls.env)
 
     # ---- NC-6 -------------------------------------------------------
     def test_01_nc6_enviar_al_proveedor_y_respuesta_por_portal(self):
@@ -58,8 +68,8 @@ class TestPr6External(TransactionCase):
         self.assertTrue(any('escalada a MAST' in s for s in summaries))
         # El proveedor contesta por el portal (sin correo de por medio).
         with self.assertRaises(UserError):
-            nc.sgi_supplier_answer('', 'algo')
-        nc.sgi_supplier_answer('Lote de hilo de otro proveedor mezclado', 'Segregar y reponer el 30/09')
+            nc._sgi_supplier_answer('', 'algo')
+        nc._sgi_supplier_answer('Lote de hilo de otro proveedor mezclado', 'Segregar y reponer el 30/09')
         self.assertEqual(nc.sgi_supplier_state, 'contestada')
         self.assertTrue(nc.sgi_supplier_response_date)
         self.assertIn('Segregar', nc.sgi_supplier_action)
@@ -105,18 +115,25 @@ class TestPr6External(TransactionCase):
         macro = Process.create({'code': 'XP6M', 'name': 'Macro PR6'})
         p1 = Process.create({'code': 'XP6A', 'name': 'Sub A', 'parent_id': macro.id, 'state': 'vigente'})
         p2 = Process.create({'code': 'XP6B', 'name': 'Sub B', 'parent_id': macro.id, 'state': 'piloto'})
-        Process.create({'code': 'XP6C', 'name': 'Sub C borrador', 'parent_id': macro.id})
+        p3 = Process.create({'code': 'XP6C', 'name': 'Sub C borrador', 'parent_id': macro.id})
         self.env['quality.alert'].create({
             'title': 'NC abierta en A', 'team_id': self.team_int.id, 'sgi_process_id': p1.id})
         program = self.env['sgi.audit.program'].create({'year': 2099})
         program.action_suggest_lines()
         lines = program.line_ids
-        self.assertEqual(set(lines.mapped('process_id')), {p1, p2}, "Solo vigentes o en piloto.")
+        # 57.93.0 (N-03): también los borradores; el macroproceso no.
+        self.assertTrue({p1, p2, p3} <= set(lines.mapped('process_id')))
+        self.assertNotIn(macro, lines.mapped('process_id'))
         self.assertEqual(len(lines.filtered(lambda l: l.process_id == p1)), 2,
                          "Con NC abierta se audita dos veces al año.")
         self.assertEqual(len(lines.filtered(lambda l: l.process_id == p2)), 1)
+        count = len(program.line_ids)
         program.action_suggest_lines()
-        self.assertEqual(len(program.line_ids), 3, "Idempotente.")
+        self.assertEqual(len(program.line_ids), count, "Idempotente.")
+        # 4.4 (56.9.0): sin auditor líder no se aprueba.
+        with self.assertRaises(UserError):
+            program.action_approve()
+        program.line_ids.write({'lead_auditor_id': self.env.user.id})
         program.action_approve()
         with self.assertRaises(UserError):
             program.action_suggest_lines()
@@ -124,53 +141,21 @@ class TestPr6External(TransactionCase):
     # ---- DOC-4 / DOC-5 --------------------------------------------------
     def test_04_doc4_documentos_por_revisar_en_mis_pendientes(self):
         job = self.env['hr.job'].create({'name': 'DOC PR6'})
-        emp = self.env['hr.employee'].create({'name': 'Dueño doc PR6', 'job_id': job.id, 'user_id': self.buyer.id})
+        self.env['hr.employee'].create({'name': 'Dueño doc PR6', 'job_id': job.id, 'user_id': self.buyer.id})
         doc = self.env['documents.document'].create({
             'name': 'P-A84 Prueba.pdf', 'type': 'binary', 'sgi_is_controlled': True,
             'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A84', 'sgi_state': 'vigente',
             'sgi_owner_id': self.buyer.id, 'sgi_next_review_date': date.today() + timedelta(days=45)})
-        wiz = self.env['sgi.my.procedure'].with_user(self.buyer).create({'employee_id': emp.id})
-        self.assertIn(doc, wiz.pending_doc_review_ids)
+        # 57.8.0 (I-022): el pendiente se ve en Mis pendientes.
+        self.assertIn(doc, self.env['sgi.my.pending']._sgi_pending_records(self.buyer)['documento'])
         self.env['sgi.cron'].cron_documents()
         summaries = self.env['mail.activity'].search(
             [('res_model', '=', 'documents.document'), ('res_id', '=', doc.id),
              ('user_id', '=', self.buyer.id)]).mapped('summary')
         self.assertTrue(summaries, "El aviso de próxima revisión llega al dueño (60 días).")
 
-    def test_05_doc5_instructivo_desde_knowledge(self):
-        if 'knowledge.article' not in self.env:
-            self.skipTest("Knowledge no instalado")
-        manager = new_test_user(self.env, login='pr6_mast',
-                                groups='base.group_user,quimibond_sgi.group_sgi_manager')
-        article = self.env['knowledge.article'].create({
-            'name': 'Cómo enhebrar la urdidora', 'body': '<p>Paso 1: apagar. Paso 2: enhebrar.</p>'})
-        job = self.env['hr.job'].create({'name': 'URDIDOR PR6'})
-        self.env['hr.employee'].create({'name': 'Urdidor PR6', 'job_id': job.id})
-        activity = self.env['sgi.process.activity'].create({
-            'process_id': self.process.id, 'name': 'Enhebrar urdidora',
-            'role_ids': [(0, 0, {'role': 'ejecuta', 'job_id': job.id})],
-            'instruction_article_id': article.id})
-        wiz = self.env['sgi.instruction.publish'].with_user(manager).create({
-            'activity_id': activity.id, 'code': 'IT-P-C11-95'})
-        self.assertEqual(wiz.job_ids, job, "Propone los puestos que ejecutan.")
-        wiz.action_publish()
-        doc = activity.instruction_id
-        self.assertTrue(doc and doc.sgi_doc_type == 'instructivo')
-        self.assertEqual(doc.sgi_code, 'IT-P-C11-95')
-        self.assertEqual(doc.sgi_revision, 0)
-        self.assertEqual(doc.sgi_article_id, article)
-        self.assertTrue(base64.b64decode(doc.datas))
-        self.assertTrue(doc.sgi_ack_ids, "Acuses para el puesto.")
-        self.assertFalse(activity.instruction_article_stale)
-        with self.assertRaises(UserError):
-            self.env['sgi.instruction.publish'].with_user(manager).create({
-                'activity_id': activity.id, 'code': 'IT-P-C11-95'}).action_publish()
-        article.body = '<p>Paso 1: apagar. Paso 2: enhebrar. Paso 3: probar.</p>'
-        self.assertTrue(activity.instruction_article_stale)
-        self.env['sgi.instruction.publish'].with_user(manager).create({
-            'activity_id': activity.id, 'code': 'IT-P-C11-95'}).action_publish()
-        self.assertEqual(activity.instruction_id.sgi_revision, 1)
-        self.assertEqual(doc.sgi_state, 'obsoleto')
+    # test_05 (DOC-5, instructivo desde Knowledge) se mudó a
+    # quimibond_sgi_knowledge/tests/test_instruction_knowledge.py en 57.9.0 (A-014, J-018).
 
     # ---- REG-1 / REG-2 ----------------------------------------------------
     def test_06_reg1_firmas_ligadas_al_registro(self):
@@ -196,3 +181,38 @@ class TestPr6External(TransactionCase):
         self.assertEqual(deliverable.odoo_model_id.model, 'survey.user_input')
         self.assertIn("('survey_id', '=', %d)" % survey.id, deliverable.measure_domain)
         self.assertEqual(deliverable.measure_date_field, 'end_datetime')
+
+    # ---- 9.1 (56.14.0): sin datos no es «Baja» --------------------------
+    def test_08_evaluacion_sin_datos_no_es_baja(self):
+        supplier = self.env['res.partner'].create({
+            'name': 'Proveedor sin entregas PR6', 'is_company': True, 'supplier_rank': 1})
+        ev = self.env['sgi.supplier.eval'].create({
+            'partner_id': supplier.id, 'date_from': date.today() - timedelta(days=90),
+            'date_to': date.today() + timedelta(days=1)})
+        self.assertFalse(ev.otd_has_data, "Sin recepciones no hay OTD.")
+        self.assertIsNone(ev._sgi_compute_otd(), "Sin datos devuelve None, no 0.")
+        self.assertEqual(ev.supplier_class, 'sin_datos')
+        self.assertEqual(ev.score, 100.0, "Sin OTD la calificación es solo la calidad.")
+        # El recálculo (botón y cron trimestral) y aplicar al contacto dejan
+        # «Sin datos», no «Baja».
+        ev.action_recompute()
+        ev.action_apply_to_partner()
+        self.assertEqual(supplier.sgi_supplier_class, 'sin_datos')
+        self.assertNotEqual(supplier.sgi_supplier_class, 'baja')
+        # Un Usuario SGI (no admin) la lee como «Sin datos».
+        ev_user = ev.with_user(self.buyer)
+        self.assertEqual(ev_user.supplier_class, 'sin_datos')
+        self.assertFalse(ev_user.otd_has_data)
+        self.assertEqual(supplier.with_user(self.buyer).sgi_supplier_class, 'sin_datos')
+        self.assertIn(ev, self.env['sgi.supplier.eval'].with_user(self.buyer).search(
+            [('supplier_class', '=', 'sin_datos')]))
+        # Con NC en el periodo la calidad sí clasifica aunque no haya entregas.
+        self.env['quality.alert'].create({
+            'title': 'NC sin entregas', 'team_id': self.team_int.id, 'partner_id': supplier.id})
+        self.env['quality.alert'].create({
+            'title': 'NC sin entregas 2', 'team_id': self.team_int.id, 'partner_id': supplier.id})
+        ev.action_recompute()
+        self.assertFalse(ev.otd_has_data)
+        self.assertEqual(ev.nc_count, 2)
+        self.assertEqual(ev.supplier_class, ev._sgi_class_from_score(ev.score))
+        self.assertNotEqual(ev.supplier_class, 'sin_datos')

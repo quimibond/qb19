@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.100.0 (N-13, ISO 9001 7.2 c): eficacia de la capacitación. Nace sola
+         cuando un examen aprobado o un curso terminado otorga una competencia
+         (no se crea a mano); a los 90 días el jefe inmediato dice si fue eficaz.
+         Los nombres de las personas van por employee_name: quien evalúa sin
+         permisos de RH no lee la ficha del empleado. -->
+    <record id="sgi_training_effectiveness_view_list" model="ir.ui.view">
+        <field name="name">sgi.training.effectiveness.list</field>
+        <field name="model">sgi.training.effectiveness</field>
+        <field name="arch" type="xml">
+            <list string="Eficacia de la capacitación" create="false" delete="false"
+                  decoration-danger="state == 'pendiente' and due_date &lt; context_today().strftime('%Y-%m-%d')">
+                <field name="employee_name"/>
+                <field name="skill_id"/>
+                <field name="skill_level_id" optional="hide"/>
+                <field name="origin"/>
+                <field name="granted_date"/>
+                <field name="due_date"/>
+                <field name="evaluator_id" widget="many2one_avatar_user"/>
+                <field name="state" widget="badge"
+                       decoration-warning="state == 'pendiente'"
+                       decoration-success="state == 'eficaz'"
+                       decoration-danger="state == 'no_eficaz'"/>
+                <field name="company_id" optional="hide" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_training_effectiveness_view_form" model="ir.ui.view">
+        <field name="name">sgi.training.effectiveness.form</field>
+        <field name="model">sgi.training.effectiveness</field>
+        <field name="arch" type="xml">
+            <form string="Eficacia de la capacitación" create="false" delete="false">
+                <header>
+                    <button name="action_mark_effective" type="object" string="Eficaz"
+                            class="btn-primary" invisible="state != 'pendiente'"/>
+                    <button name="action_mark_ineffective" type="object" string="No eficaz"
+                            invisible="state != 'pendiente'"
+                            confirm="RH reprogramará la capacitación con su comentario. ¿Continuar?"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-info" role="status" invisible="state != 'pendiente'">
+                        Diga si la persona aplica en su trabajo lo que aprendió. Si no fue eficaz,
+                        escriba qué observó en «Comentario» antes de pulsar «No eficaz»: RH
+                        reprograma la capacitación. La competencia no se quita.
+                    </div>
+                    <div class="oe_title">
+                        <label for="employee_name" string="Persona"/>
+                        <h1><field name="employee_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="Competencia">
+                            <field name="skill_id"/>
+                            <field name="skill_level_id"/>
+                            <field name="origin"/>
+                            <field name="channel_id" invisible="not channel_id"/>
+                            <field name="survey_id" invisible="not survey_id"
+                                   groups="hr.group_hr_user,quimibond_sgi.group_sgi_manager"/>
+                            <field name="granted_date"/>
+                        </group>
+                        <group string="Evaluación">
+                            <field name="evaluator_id"/>
+                            <field name="due_date"/>
+                            <field name="evaluated_date" invisible="state == 'pendiente'"/>
+                            <field name="evaluated_by" invisible="state == 'pendiente'"/>
+                            <field name="survey_input_id" invisible="not survey_input_id"
+                                   groups="hr.group_hr_user,quimibond_sgi.group_sgi_manager"/>
+                            <field name="employee_id" groups="hr.group_hr_user"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Comentario">
+                        <field name="result_note" nolabel="1" colspan="2"
+                               placeholder="Qué se observó en el trabajo de la persona después de la capacitación."/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_training_effectiveness_view_search" model="ir.ui.view">
+        <field name="name">sgi.training.effectiveness.search</field>
+        <field name="model">sgi.training.effectiveness</field>
+        <field name="arch" type="xml">
+            <search string="Eficacia de la capacitación">
+                <field name="employee_id" groups="hr.group_hr_user"/>
+                <field name="skill_id"/>
+                <field name="evaluator_id"/>
+                <filter name="mine" string="Míos" domain="[('evaluator_id', '=', uid)]"/>
+                <separator/>
+                <filter name="pending" string="Pendientes" domain="[('state', '=', 'pendiente')]"/>
+                <filter name="overdue" string="Vencidas"
+                        domain="[('state', '=', 'pendiente'), ('due_date', '&lt;', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="ineffective" string="No eficaces" domain="[('state', '=', 'no_eficaz')]"/>
+                <group>
+                    <filter name="group_state" string="Resultado" context="{'group_by': 'state'}"/>
+                    <filter name="group_skill" string="Competencia" context="{'group_by': 'skill_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_training_effectiveness_action" model="ir.actions.act_window">
+        <field name="name">Eficacia de la capacitación</field>
+        <field name="res_model">sgi.training.effectiveness</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_training_effectiveness_view_search"/>
+        <field name="context">{'search_default_mine': 1, 'search_default_pending': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin evaluaciones de eficacia</p>
+            <p>Cada vez que alguien aprueba un examen o termina un curso que otorga una
+               competencia, el SGI abre aquí su evaluación de eficacia (ISO 9001 7.2 c). A los
+               90 días su jefe inmediato dice si fue eficaz; si no lo fue, RH reprograma la
+               capacitación. Quite el filtro «Míos» para ver todas las que usted puede ver.</p>
+        </field>
+    </record>
+
+    <!-- 57.100.0 (N-13): exámenes de certificación que otorgan competencia.
+         Lista propia (no se hereda la ficha nativa de Encuestas); la liga la
+         escribe el servidor para el Jefe MAST (I-7). -->
+    <record id="sgi_survey_skill_view_list" model="ir.ui.view">
+        <field name="name">survey.survey.sgi.skill.list</field>
+        <field name="model">survey.survey</field>
+        <!-- No le gana a la lista nativa de Encuestas (solo la usa su acción). -->
+        <field name="priority">99</field>
+        <field name="arch" type="xml">
+            <list string="Exámenes y competencias" editable="bottom" create="false" delete="false">
+                <field name="title" readonly="1"/>
+                <field name="certification_validity_months" readonly="1"/>
+                <field name="sgi_skill_id" options="{'no_create': True}"/>
+                <field name="sgi_skill_type_id" column_invisible="1"/>
+                <field name="sgi_skill_level_id" options="{'no_create': True}"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_survey_skill_action" model="ir.actions.act_window">
+        <field name="name">Exámenes y competencias (Encuestas)</field>
+        <field name="res_model">survey.survey</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sgi_survey_skill_view_list"/>
+        <field name="domain">[('certification', '=', True)]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ligue exámenes de certificación con competencias</p>
+            <p>Quien aprueba un examen ligado recibe la competencia al nivel indicado, con la
+               vigencia de la certificación, y a los 90 días su jefe evalúa la eficacia. Los
+               exámenes se crean y editan en la app Encuestas (como certificación); aquí solo
+               se ligan.</p>
+        </field>
+    </record>
+</odoo>

@@ -10,7 +10,10 @@ E1-02 se mide con el modo `acuerdos_rxd`: acuerdos cumplidos a tiempo.
 """
 from odoo import api, fields, models
 
+from .sgi_health_const import HEALTH_MODES
+
 _SEM = {'verde': 'V', 'amarillo': 'A', 'rojo': 'R'}
+_BOARD_LIMIT = 12
 
 
 class SgiIndicatorLevel(models.Model):
@@ -33,49 +36,117 @@ class SgiIndicatorLevel(models.Model):
         for indicator in self:
             measures = indicator.measure_ids.filtered(
                 lambda m: m.state != 'pendiente').sorted('period_date', reverse=True)[:6]
+            # 57.104.0 (B1): una medición sin dato dice «sin dato», no «0.0 -».
             indicator.last_six = " · ".join(
-                "%s: %s %s" % (m.period_date.strftime('%m/%y'), round(m.value, 2),
-                               _SEM.get(m.semaphore, '-'))
+                "%s: %s" % (m.period_date.strftime('%m/%y'), "sin dato" if m.state == 'sin_dato'
+                            else "%s %s" % (round(m.value, 2), _SEM.get(m.semaphore, '-')))
                 for m in reversed(measures)) or False
 
+    @api.model
+    def _sgi_activate_acuerdos_rxd(self, code='E1-02'):
+        """D-13 (57.6.0): E1-02 deja de ser manual y se mide con
+        ``acuerdos_rxd``. Respeta lo que MAST haya puesto: solo cambia el
+        indicador ACTIVO con esa clave que siga en «manual» y sin términos de
+        fórmula. El modo anterior queda en el chatter. Idempotente. Devuelve
+        los ids cambiados."""
+        indicators = self.search([('code', '=', code), ('calc_mode', '=', 'manual')])
+        done = []
+        for indicator in indicators.filtered(lambda i: not i.term_ids):
+            indicator.write({'calc_mode': 'acuerdos_rxd'})
+            indicator.message_post(body=(
+                "57.6.0 (D-13): el indicador pasa de «Captura manual» a «Acuerdos de la "
+                "RxD cumplidos a tiempo»: se mide solo con los acuerdos de la Revisión por "
+                "la Dirección. Para regresar: modo «Captura manual»."))
+            done.append(indicator.id)
+        return done
+
+    def _sgi_rxd_agreements(self, date_from, date_to):
+        """Acuerdos de la Revisión por la Dirección ya realizada (o cerrada)
+        con fecha límite dentro del periodo: el universo de E1-02."""
+        return self.env['sgi.management.review.agreement'].sudo().search([
+            ('review_id.state', 'in', ('realizada', 'cerrada')),
+            ('deadline', '>=', date_from), ('deadline', '<=', date_to)])
+
     def _calc_acuerdos_rxd(self, date_from, date_to):
-        """E1-02: % de acuerdos de la Revisión por la Dirección con compromiso
-        en el periodo que se terminaron a tiempo. Sin acuerdos → sin dato."""
-        lines = self.env['sgi.action.line'].sudo().search([
-            ('review_id', '!=', False),
-            ('date_commit', '>=', date_from), ('date_commit', '<=', date_to)])
-        if not lines:
+        """E1-02: % de acuerdos de la Revisión por la Dirección con fecha
+        límite en el periodo que se cumplieron a tiempo (``done_date`` ≤
+        ``deadline``). 57.6.0 (D-13): cuenta el acuerdo, no solo su acción;
+        el cumplimiento capturado a mano en un acuerdo sin acción también
+        cuenta. Sin acuerdos en el periodo → sin dato."""
+        agreements = self._sgi_rxd_agreements(date_from, date_to)
+        if not agreements:
             return None
-        on_time = len(lines.filtered(lambda l: l.date_done and l.date_done <= l.date_commit))
-        return round(on_time * 100.0 / len(lines), 2)
+        on_time = len(agreements.filtered(
+            lambda a: a.done_date and a.done_date <= a.deadline))
+        return round(on_time * 100.0 / len(agreements), 2)
+
+    def _note_acuerdos_rxd(self, date_from, date_to):
+        if not self._sgi_rxd_agreements(date_from, date_to):
+            return ("Sin acuerdos de la Revisión por la Dirección con fecha límite "
+                    "en el periodo.")
+        return ''
 
 
 class SgiDirectionBoard(models.TransientModel):
+    """Tablero de Dirección (I-9): indicadores en rojo, rojos sin plan, procesos atrasados y
+    acuerdos vencidos. Pantalla que se calcula al abrirla."""
     _name = 'sgi.direction.board'
     _description = "Tablero de dirección (I-9)"
 
-    date = fields.Date(default=fields.Date.context_today, readonly=True)
-    objective_ids = fields.Many2many('sgi.objective', string="Objetivos integrales", compute='_compute_board')
-    indicator_ids = fields.Many2many('sgi.indicator', string="Indicadores de dirección", compute='_compute_board')
+    date = fields.Date(string="Fecha", default=fields.Date.context_today, readonly=True,
+                       help="Fecha del tablero.")
+    objective_ids = fields.Many2many('sgi.objective', string="Objetivos integrales", compute='_compute_board',
+                                     help="Objetivos integrales del año.")
+    indicator_ids = fields.Many2many('sgi.indicator', string="Indicadores de dirección", compute='_compute_board',
+                                     help="Indicadores que sigue la Dirección.")
     red_no_plan_measure_ids = fields.Many2many(
-        'sgi.indicator.measure', string="Rojos sin causa ni plan", compute='_compute_board')
+        'sgi.indicator.measure', string="Rojos sin causa ni plan", compute='_compute_board',
+        help="Mediciones en rojo que todavía no tienen causa ni plan de acción.")
     overdue_agreement_ids = fields.Many2many(
-        'sgi.action.line', string="Acuerdos de la RxD vencidos", compute='_compute_board')
+        'sgi.action.line', string="Acuerdos de la RxD vencidos", compute='_compute_board',
+        help="Acuerdos de la revisión por la dirección que ya vencieron.")
     delayed_process_ids = fields.Many2many(
-        'sgi.process', string="Procesos con más atrasos", compute='_compute_board')
+        'sgi.process', string="Procesos con más atrasos", compute='_compute_board',
+        help="Procesos con más actividades atrasadas.")
     indicator_count = fields.Integer(compute='_compute_board')
+    indicator_note = fields.Char(string="Nota de indicadores", compute='_compute_board')
     red_count = fields.Integer(compute='_compute_board')
+
+    def _sgi_board_indicators(self, Indicator):
+        """Indicadores del tablero (máximo _BOARD_LIMIT) y nota para Dirección.
+
+        1. Los oficiales de nivel dirección.
+        2. Si no hay oficiales, los de nivel dirección en cualquier estado (en
+           prueba incluidos), con una nota que lo dice: antes se caía a TODOS
+           los oficiales y, sin oficiales, Dirección veía el tablero vacío.
+        3. Si tampoco hay de nivel dirección, nada, con una nota clara.
+        4. 57.99.0: los de salud del SGI tienen su página y no ocupan los 12
+           lugares."""
+        own = [('calc_mode', 'not in', HEALTH_MODES)]
+        indicators = Indicator.search(
+            [('status', '=', 'oficial'), ('level', '=', 'direccion')] + own,
+            order='code', limit=_BOARD_LIMIT)
+        if indicators:
+            return indicators, False
+        indicators = Indicator.search(
+            [('level', '=', 'direccion')] + own, order='code', limit=_BOARD_LIMIT)
+        if indicators:
+            return indicators, (
+                "Aún no hay indicadores oficiales de nivel dirección: se muestran los "
+                "de nivel dirección en cualquier estado (incluye los que están en prueba).")
+        return indicators, (
+            "No hay indicadores de nivel dirección. Marque el nivel «Dirección» en la "
+            "ficha de los indicadores que deba ver Dirección (máximo %d)." % _BOARD_LIMIT)
 
     @api.depends('date')
     def _compute_board(self):
         Indicator = self.env['sgi.indicator'].sudo()
         for board in self:
             board.objective_ids = self.env['sgi.objective'].sudo().search([]).ids
-            indicators = Indicator.search([('status', '=', 'oficial'), ('level', '=', 'direccion')], order='code')
-            if not indicators:
-                indicators = Indicator.search([('status', '=', 'oficial')], order='code')
+            indicators, note = board._sgi_board_indicators(Indicator)
             board.indicator_ids = indicators.ids
             board.indicator_count = len(indicators)
+            board.indicator_note = note
             reds = self.env['sgi.indicator.measure'].sudo().search(
                 [('semaphore', '=', 'rojo'), ('state', '!=', 'pendiente')], order='period_date desc')
             reds = reds.filtered(lambda m: m.plan_required and not m.plan_done)
@@ -91,10 +162,10 @@ class SgiDirectionBoard(models.TransientModel):
 
     @api.model
     def action_open(self):
-        """Menú Dirección → Tablero de dirección."""
+        """Menú Desempeño → Tablero (el título es el nombre del menú, D-005)."""
         board = self.create({})
         return {
-            'type': 'ir.actions.act_window', 'name': "Tablero de dirección",
+            'type': 'ir.actions.act_window', 'name': "Tablero",
             'res_model': 'sgi.direction.board', 'res_id': board.id,
             'view_mode': 'form', 'target': 'current',
         }

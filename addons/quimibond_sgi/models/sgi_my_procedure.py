@@ -29,12 +29,18 @@ import hashlib
 import json
 import logging
 
+from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
+
+from .sgi_calendar import sgi_today
 
 from .sgi_catalog import SGI_ROLE_SELECTION, sgi_normalize_name
+
+from .sgi_guard import sgi_require_system
+from .sgi_menu_paths import sgi_menu_path
 
 _logger = logging.getLogger(__name__)
 
@@ -59,7 +65,8 @@ class DocumentsDocumentMyProcedure(models.Model):
 
     sgi_doc_type = fields.Selection(
         selection_add=[('mi_procedimiento', "Mi procedimiento (MP)")],
-        ondelete={'mi_procedimiento': 'set null'})
+        ondelete={'mi_procedimiento': 'set null'},
+        help="Tipo de documento en forma de código (se calcula del tipo de documento).")
     # Huella del contenido con el que se generó el PDF: una revisión nueva
     # solo cuando cambia (no cada vez que alguien imprime).
     sgi_content_hash = fields.Char(
@@ -71,15 +78,17 @@ class SgiActivityRoleCadence(models.Model):
 
     # Para agrupar la vista «Mi procedimiento» por cadencia.
     cadence = fields.Selection(
-        related='activity_id.measure_cadence', string="Cadencia", store=True)
+        related='activity_id.measure_cadence', string="Cadencia", store=True,
+        help="Cada cuánto se espera la actividad.")
     activity_active = fields.Boolean(
         related='activity_id.active', string="Actividad activa", store=True)
     activity_menu_id = fields.Many2one(
-        related='activity_id.odoo_menu_id', string="Menú de Odoo")
+        related='activity_id.odoo_menu_id', string="Menú de Odoo",
+        help="Menú de Odoo donde se hace la actividad.")
     activity_when = fields.Char(string="Cuándo", compute='_compute_activity_when')
 
     @api.depends('activity_id.measure_cadence', 'activity_id.due_weekday',
-                 'activity_id.due_business_day')
+                 'activity_id.due_business_day', 'activity_id.due_month', 'activity_id.due_day')
     def _compute_activity_when(self):
         Job = self.env['hr.job']
         for role in self:
@@ -99,12 +108,30 @@ class HrJobMyProcedure(models.Model):
 
     sgi_my_procedure_doc_id = fields.Many2one(
         'documents.document', string="Mi procedimiento (vigente)",
-        compute='_compute_sgi_my_procedure_doc')
+        compute='_compute_sgi_my_procedure_doc',
+        help="Revisión vigente del Mi procedimiento del puesto, publicada por el Jefe MAST y SGI.")
     sgi_my_procedure_stale = fields.Boolean(
         string="Mi procedimiento desactualizado",
         compute='_compute_sgi_my_procedure_doc',
         help="Las actividades del puesto cambiaron desde la última revisión "
              "publicada de «Mi procedimiento».")
+    # 57.17.0 (G-015): huella y cifras de «Mi procedimiento» GUARDADAS en el
+    # puesto. Antes Mi equipo, sus filtros y la ficha del puesto armaban el
+    # procedimiento completo de cada puesto en cada clic (30-80 consultas por
+    # puesto, más de 100 puestos). Las recalcula el cron de medición (03:00,
+    # cuando cambia el semáforo), el aviso semanal y la publicación; un cambio
+    # de roles, actividades o publicación marca el puesto «por recalcular»
+    # (``sgi_mp_stats_at`` vacío) y, mientras, se calcula al vuelo sin guardar.
+    sgi_mp_hash_current = fields.Char(
+        string="Huella actual de Mi procedimiento", readonly=True, copy=False)
+    sgi_mp_job_late = fields.Integer(string="Actividades atrasadas", readonly=True, copy=False)
+    sgi_mp_job_ok = fields.Integer(string="Actividades al día", readonly=True, copy=False)
+    sgi_mp_job_unmeasured = fields.Integer(
+        string="Actividades sin medición automática", readonly=True, copy=False)
+    sgi_mp_job_total = fields.Integer(string="Actividades del puesto", readonly=True, copy=False)
+    sgi_mp_stats_at = fields.Datetime(
+        string="Cifras de Mi procedimiento al", readonly=True, copy=False,
+        help="Vacío: el puesto cambió y sus cifras se recalculan en la siguiente corrida.")
 
     # ------------------------------------------------------------------
     # Documento
@@ -126,8 +153,79 @@ class HrJobMyProcedure(models.Model):
         for job in self:
             doc = job._sgi_my_procedure_current_doc()
             job.sgi_my_procedure_doc_id = doc
+            # 57.17.0 (G-015): la huella guardada; sin ella, al vuelo.
             job.sgi_my_procedure_stale = bool(
-                doc and job.id and doc.sgi_content_hash != job._sgi_my_procedure_data()['hash'])
+                doc and job.id and doc.sgi_content_hash != job._sgi_mp_current_hash())
+
+    # ------------------------------------------------------------------
+    # 57.17.0 (G-015): huella y cifras guardadas
+    # ------------------------------------------------------------------
+    _SGI_MP_STAT_FIELDS = ('sgi_mp_hash_current', 'sgi_mp_job_late', 'sgi_mp_job_ok',
+                           'sgi_mp_job_unmeasured', 'sgi_mp_job_total')
+
+    def _sgi_mp_stats_compute(self):
+        """Huella y cifras del puesto, calculadas (sin guardar)."""
+        self.ensure_one()
+        data = self.sudo().with_context(sgi_mp_employee_id=False)._sgi_my_procedure_data()
+        counts = {'atrasada': 0, 'al_dia': 0, 'sin_medir': 0}
+        for section in data['sections']:
+            for entry in section['entries']:
+                counts[entry['status']] += 1
+        return {
+            'sgi_mp_hash_current': data['hash'],
+            'sgi_mp_job_late': counts['atrasada'],
+            'sgi_mp_job_ok': counts['al_dia'],
+            'sgi_mp_job_unmeasured': counts['sin_medir'],
+            'sgi_mp_job_total': sum(counts.values()),
+        }
+
+    def _sgi_mp_stats_map(self):
+        """{puesto.id: cifras}: las guardadas si están al día; si el puesto
+        está «por recalcular», al vuelo (no escribe: se puede llamar desde
+        una lectura)."""
+        out = {}
+        for job in self.sudo():
+            if not job.id:
+                continue
+            if job.sgi_mp_stats_at:
+                out[job.id] = {name: job[name] for name in self._SGI_MP_STAT_FIELDS}
+            else:
+                out[job.id] = job._sgi_mp_stats_compute()
+        return out
+
+    def _sgi_mp_current_hash(self):
+        self.ensure_one()
+        return self._sgi_mp_stats_map().get(self.id, {}).get('sgi_mp_hash_current')
+
+    def _sgi_mp_refresh_stats(self, force=False):
+        """Guarda huella y cifras. Sin ``force``, solo los puestos por
+        recalcular. Solo escribe lo que cambió. Devuelve los puestos
+        recalculados."""
+        jobs = self.sudo().with_context(active_test=False)
+        if not force:
+            jobs = jobs.filtered(lambda j: not j.sgi_mp_stats_at)
+        now = fields.Datetime.now()
+        for job in jobs:
+            vals = job._sgi_mp_stats_compute()
+            vals = {k: v for k, v in vals.items() if job[k] != v}
+            vals['sgi_mp_stats_at'] = now
+            job.with_context(tracking_disable=True, mail_notrack=True).write(vals)
+        return jobs
+
+    def _sgi_mp_mark_dirty(self):
+        """El puesto cambió (roles, actividades, publicación): sus cifras
+        guardadas ya no valen."""
+        jobs = self.sudo().with_context(active_test=False).filtered('sgi_mp_stats_at')
+        if jobs:
+            jobs.with_context(tracking_disable=True, mail_notrack=True).write(
+                {'sgi_mp_stats_at': False})
+        return jobs
+
+    @api.model
+    def _sgi_mp_refresh_all(self):
+        """Todos los puestos con roles y personas (lo llama el cron de
+        medición después de medir, porque cambia el semáforo)."""
+        return self._sgi_my_procedure_jobs()._sgi_mp_refresh_stats(force=True)
 
     # ------------------------------------------------------------------
     # Datos
@@ -143,10 +241,11 @@ class HrJobMyProcedure(models.Model):
                 and activity.due_business_day:
             return ((1, activity.due_business_day),
                     "Día hábil %d del mes" % activity.due_business_day)
+        # 56.20.0: trimestral, semestral y anual con mes y día.
+        months = activity._sgi_due_months() if activity.due_day else []
+        if months:
+            return ((2, months[0] * 100 + activity.due_day), "Cada %s" % activity._sgi_due_label())
         return ((9, 0), "")
-
-    def _sgi_mp_role_label(self, role):
-        return dict(SGI_ROLE_SELECTION).get(role, role)
 
     def _sgi_my_procedure_data(self):
         """Todo lo que imprime y lo que se compara: secciones por cadencia,
@@ -237,9 +336,14 @@ class HrJobMyProcedure(models.Model):
         cover = {
             'job': self,
             'department': self.department_id,
-            'manager': self.department_id.manager_id,
+            # 57.13.0: con sudo, como los empleados: el PDF lo imprime y lo
+            # publica el Jefe MAST, que no es de RH, y leer al responsable
+            # (hr.employee: puesto, perfil privado) daba AccessError.
+            'manager': self.sudo().department_id.manager_id,
             'employees': employees,
             'family': self.sgi_family_id,
+            # 56.16.0: equipos de venta que filtran este procedimiento.
+            'teams': self._sgi_mp_teams(),
             'processes': processes,
             'counts': [(role_labels[c], counts[c]) for c, _l in SGI_ROLE_SELECTION if counts[c]],
         }
@@ -261,14 +365,29 @@ class HrJobMyProcedure(models.Model):
         data['hash'] = self._sgi_my_procedure_hash(data)
         return data
 
+    def _sgi_mp_document_records(self):
+        """Documentos vigentes que aplican al puesto (56.2.0): los que usan
+        las actividades activas donde el puesto tiene rol, directo o por su
+        familia (instructivo, formatos referenciados y procedimiento
+        relacionado, que incluye el instructivo de cada tarjeta), más los
+        documentos que nombran al puesto. Antes solo contaban estos últimos y
+        en producción casi ninguno lo hace: la lista salía vacía."""
+        self.ensure_one()
+        Doc = self.env['documents.document'].sudo()
+        roles = self.env['sgi.activity.role'].sudo().search(self._sgi_roles_domain())
+        activities = roles.activity_id.filtered('active')
+        docs = activities.instruction_id | activities.format_document_ids | activities.related_procedure_id
+        docs |= Doc.search([('sgi_job_ids', 'in', self.ids), ('sgi_doc_type', '!=', 'mi_procedimiento')])
+        if not docs:
+            return Doc
+        return Doc.search([('id', 'in', docs.ids), ('sgi_state', '=', 'vigente')],
+                          order='sgi_doc_type, sgi_code, name')
+
     def _sgi_mp_documents(self):
         """Documentos vigentes que aplican al puesto (para el PDF y la huella;
         la pantalla los muestra con una lista nativa)."""
         self.ensure_one()
-        docs = self.env['documents.document'].sudo().search(
-            [('sgi_state', '=', 'vigente'), ('sgi_job_ids', 'in', self.ids),
-             ('sgi_doc_type', '!=', 'mi_procedimiento')],
-            order='sgi_doc_type, sgi_code, name')
+        docs = self._sgi_mp_document_records()
         return [{
             'doc': doc, 'code': doc.sgi_code or '', 'name': doc.name or '',
             'type': dict(doc._fields['sgi_doc_type'].selection).get(doc.sgi_doc_type, ''),
@@ -354,6 +473,9 @@ class HrJobMyProcedure(models.Model):
             'outputs': activity.output_deliverable_ids.mapped('name'),
             'related': (activity.related_procedure_id.sgi_code
                         or activity.related_procedure_id.name) if activity.related_procedure_id else '',
+            # 56.23.0: puntos de la norma que cumple. Referencia: no entra en
+            # la huella (ligar puntos no obliga a republicar ni a firmar).
+            'norms': activity._sgi_norm_labels(),
         }
 
     @api.model
@@ -419,7 +541,11 @@ class HrJobMyProcedure(models.Model):
             raise UserError("Solo el Jefe MAST publica «Mi procedimiento».")
         Doc = self.env['documents.document'].sudo()
         published, unchanged, empty = self.env['documents.document'], [], []
+        in_sign, not_sent = [], []
         today = fields.Date.context_today(self)
+        # 56.19.0: con firma en Sign, la revisión nace en borrador y entra en
+        # vigor cuando firman MAST y el jefe directo (sgi_my_procedure_sign).
+        sign = Doc._sgi_mp_sign_required()
         for job in self:
             data = job._sgi_my_procedure_data()
             if not data['total']:
@@ -430,12 +556,18 @@ class HrJobMyProcedure(models.Model):
             if current and current.sgi_content_hash == data['hash']:
                 unchanged.append(job.name)
                 continue
+            if sign and Doc._sgi_mp_pending_sign_doc(code, data['hash']):
+                in_sign.append(job.name)
+                continue
             previous = Doc.with_context(active_test=False).search([('sgi_code', '=', code)])
             revision = (max(previous.mapped('sgi_revision')) + 1) if previous else 0
             report = self.env.ref('quimibond_sgi.action_report_my_procedure')
             pdf, _ = self.env['ir.actions.report'].with_context(
                 sgi_mp_revision=revision, sgi_mp_issue_date=today,
             )._render_qweb_pdf(report.report_name, job.ids)
+            # Si no se puede mandar a firmar (sin correo, sin jefe), la
+            # revisión en borrador no se queda: se deshace y se reporta.
+            savepoint = self.env.cr.savepoint() if sign else None
             doc = Doc.create({
                 'name': "Mi procedimiento — %s (Rev. %02d).pdf" % (job.name, revision),
                 'type': 'binary',
@@ -444,7 +576,7 @@ class HrJobMyProcedure(models.Model):
                 'sgi_is_controlled': True,
                 'sgi_doc_type': 'mi_procedimiento',
                 'sgi_code': code,
-                'sgi_state': 'vigente',
+                'sgi_state': 'borrador' if sign else 'vigente',
                 'sgi_revision': revision,
                 'sgi_issue_date': today,
                 'sgi_job_ids': [(6, 0, [job.id])],
@@ -452,6 +584,17 @@ class HrJobMyProcedure(models.Model):
                 'sgi_owner_id': self.env.user.id,
                 'company_id': job.company_id.id or self.env.company.id,
             })
+            if sign:
+                try:
+                    doc._sgi_mp_send_to_sign(job)
+                except UserError as err:
+                    savepoint.close(rollback=True)
+                    self.env.invalidate_all()
+                    not_sent.append("%s (%s)" % (job.name, err.args[0] if err.args else err))
+                    continue
+                savepoint.close(rollback=False)
+                in_sign.append(job.name)
+                continue
             doc.action_generate_acks()
             doc.message_post(body=Markup(
                 "«Mi procedimiento» de <b>%s</b>, revisión %02d: %d actividades "
@@ -459,11 +602,16 @@ class HrJobMyProcedure(models.Model):
                 job.name, revision, data['total'], sum(len(s['entries']) for s in data['sections']),
                 len(doc.sgi_ack_ids)))
             published |= doc
+            self.env['hr.employee']._sgi_mp_touch_jobs(job)
             _logger.info("SGI Mi procedimiento: %s rev %02d publicado (%s).",
                          code, revision, job.name)
         parts = []
         if published:
             parts.append("%d publicado(s)" % len(published))
+        if in_sign:
+            parts.append("en firma (Sign): %s" % ", ".join(in_sign))
+        if not_sent:
+            parts.append("sin mandar a firma: %s" % "; ".join(not_sent))
         if unchanged:
             parts.append("sin cambios: %s" % ", ".join(unchanged))
         if empty:
@@ -477,7 +625,7 @@ class HrJobMyProcedure(models.Model):
             }
         return {
             'type': 'ir.actions.client', 'tag': 'display_notification',
-            'params': {'type': 'success' if published else 'warning',
+            'params': {'type': 'success' if published or in_sign else 'warning',
                        'message': "Mi procedimiento: %s." % "; ".join(parts)},
         }
 
@@ -486,13 +634,22 @@ class HrJobMyProcedure(models.Model):
         """Puestos que tienen «Mi procedimiento» que publicar: con roles
         (propios o de su familia) y con personas."""
         Role = self.env['sgi.activity.role'].sudo()
-        jobs = self.env['hr.job'].sudo().search([])
+        # 57.13.0 (D-03): solo puestos y personas de la empresa del SGI.
+        company_domain = self._sgi_mp_company_domain()
+        jobs = self.env['hr.job'].sudo().search(company_domain)
         families = jobs.sgi_family_id
         roles = Role.search(['|', ('job_id', 'in', jobs.ids), ('family_id', 'in', families.ids)])
         roles = roles.filtered(lambda r: r.activity_id.active)
-        with_roles = roles.job_id | roles.family_id.job_ids
-        staffed = self.env['hr.employee'].sudo().search([('job_id', 'in', with_roles.ids)]).job_id
+        with_roles = (roles.job_id | roles.family_id.job_ids) & jobs
+        staffed = self.env['hr.employee'].sudo().search(
+            [('job_id', 'in', with_roles.ids)] + company_domain).job_id
         return with_roles & staffed
+
+    @api.model
+    def _sgi_mp_company_domain(self):
+        """Puestos y empleados de la empresa del SGI (o sin empresa)."""
+        company = self.env['sgi.config']._sgi_company()
+        return [('company_id', 'in', [company.id, False])]
 
     @api.model
     def action_sgi_publish_all_my_procedures(self):
@@ -524,9 +681,139 @@ class HrJobMyProcedure(models.Model):
     def _sgi_my_procedure_stale_jobs(self):
         """Puestos con personas y roles cuya revisión publicada no existe o ya
         no coincide con sus actividades."""
-        return self._sgi_my_procedure_jobs().filtered(
+        jobs = self._sgi_my_procedure_jobs()
+        # 57.17.0 (G-015): la huella guardada (recalculada aquí si el puesto
+        # cambió) en vez de armar cada procedimiento dos veces.
+        jobs._sgi_mp_refresh_stats()
+        return jobs.filtered(
             lambda j: not j._sgi_my_procedure_current_doc()
-            or j._sgi_my_procedure_current_doc().sgi_content_hash != j._sgi_my_procedure_data()['hash'])
+            or j._sgi_my_procedure_current_doc().sgi_content_hash != j.sgi_mp_hash_current)
+
+    # ------------------------------------------------------------------
+    # 57.113.0 (Q8): re-sello cuando solo cambió la ruta del menú
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_mp_swap_menu_paths(self, data, old_paths, lang):
+        """Copia de ``data`` con la ruta vieja del menú en la parte «Dónde» de
+        cada actividad cuyo menú se movió. ``old_paths``: {ir.ui.menu: ruta
+        vieja con «/», como complete_name}. Devuelve (copia, cuántas partes
+        cambiaron)."""
+        old_by_id = {menu.id: path for menu, path in old_paths.items()}
+        swapped = 0
+        sections = []
+        for section in data['sections']:
+            entries = []
+            for entry in section['entries']:
+                menu = entry['activity'].odoo_menu_id
+                old = old_by_id.get(menu.id) if menu else None
+                new = menu.with_context(lang=lang).complete_name if old else None
+                if old and new and new != old:
+                    parts = []
+                    for label, text in entry['parts']:
+                        if label == "Dónde" and text and new in text:
+                            text = text.replace(new, old, 1)
+                            swapped += 1
+                        parts.append((label, text))
+                    entry = dict(entry, parts=parts)
+                entries.append(entry)
+            sections.append(dict(section, entries=entries))
+        return dict(data, sections=sections), swapped
+
+    @api.model
+    def _sgi_mp_reseal_menu_moves(self, old_paths, tag="57.113.0", jobs=None):
+        """57.113.0 (Q8): los menús del SGI cambiaron de carpeta y la ruta del
+        menú entra en la huella de «Mi procedimiento» (parte «Dónde»). Sin
+        esto, cada puesto con una de esas actividades saldría desactualizado
+        y la siguiente publicación pediría firmar otra vez lo mismo.
+
+        Por cada puesto con «Mi procedimiento» vigente (y su revisión en firma,
+        si la hay): si la huella de hoy, con la ruta VIEJA de los menús
+        movidos, reproduce EXACTAMENTE la huella guardada, el documento recibe
+        la huella nueva y una nota en su chatter. Si no la reproduce (cambió
+        otra cosa), no se toca: sigue desactualizado. Idempotente.
+
+        ``old_paths``: {ir.ui.menu: ruta vieja con «/»}; ``jobs``: los puestos
+        a revisar (por omisión, todos los que tienen «Mi procedimiento»
+        sellado). Solo superusuario (migración): la huella es de solo lectura
+        para todos los demás. Los puestos con alguna actividad en un menú
+        movido quedan con su huella actual recalculada.
+        Devuelve {'reselladas': [claves], 'sin_cambio': n,
+        'siguen_desactualizadas': [claves]}."""
+        if not self.env.su:
+            raise AccessError("Solo el sistema (migración) vuelve a sellar «Mi procedimiento».")
+        result = {'reselladas': [], 'sin_cambio': 0, 'siguen_desactualizadas': []}
+        old_paths = {menu: path for menu, path in (old_paths or {}).items() if menu and path}
+        if not old_paths:
+            return result
+        Doc = self.env['documents.document'].sudo()
+        moved_ids = {menu.id for menu in old_paths}
+        active_langs = set(self.env['res.lang'].sudo().search([]).mapped('code'))
+        note = Markup(
+            "%s: la huella se actualizó porque solo cambió la ruta del menú en «Dónde» (menús por "
+            "capítulos). Lo que la persona firmó no cambió; el PDF conserva la ruta anterior.") % tag
+        refresh = {}
+        if jobs is None:
+            # Solo los puestos con «Mi procedimiento» sellado (vigente o en firma).
+            jobs = Doc.search([('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_content_hash', '!=', False),
+                               ('sgi_state', 'in', ('vigente', 'borrador'))]).sgi_job_ids
+        for job in jobs.sudo().with_context(active_test=False):
+            code = job._sgi_my_procedure_code()
+            current = job._sgi_my_procedure_current_doc()
+            pending = Doc.search([('sgi_code', '=', code), ('sgi_state', '=', 'borrador'),
+                                  ('sgi_content_hash', '!=', False),
+                                  ('sgi_publish_sign_request_id.state', 'in', ('sent', 'shared'))])
+            remaining = (current | pending).filtered('sgi_content_hash')
+            if not remaining:
+                continue
+            # La huella se calculó al publicar, en el idioma de quien publicó.
+            langs = []
+            for lang in remaining.sgi_owner_id.mapped('lang') + remaining.create_uid.mapped('lang') \
+                    + [self.env.lang, 'es_MX', 'en_US']:
+                if lang and lang in active_langs and lang not in langs:
+                    langs.append(lang)
+            affected = resealed = False
+            for lang in langs:
+                data = job.with_context(lang=lang, sgi_mp_employee_id=False)._sgi_my_procedure_data()
+                if not affected:
+                    menus = {e['activity'].odoo_menu_id.id for s in data['sections'] for e in s['entries']}
+                    if not menus & moved_ids:
+                        break  # ninguna actividad del puesto usa un menú movido
+                    affected = True
+                # Al día en este idioma: no hay nada que re-sellar.
+                remaining = remaining.filtered(lambda d, h=data['hash']: d.sgi_content_hash != h)
+                if not remaining:
+                    break
+                swapped_data, swapped = self._sgi_mp_swap_menu_paths(data, old_paths, lang)
+                if not swapped:
+                    continue
+                old_hash = self._sgi_my_procedure_hash(swapped_data)
+                for doc in remaining.filtered(lambda d, h=old_hash: d.sgi_content_hash == h):
+                    doc.write({'sgi_content_hash': data['hash']})
+                    doc.message_post(body=note)
+                    result['reselladas'].append(doc.sgi_code + (
+                        " (en firma)" if doc.sgi_state == 'borrador' else ""))
+                    _logger.info("SGI %s: %s rev %s re-sellado (solo cambió la ruta del menú, %s).",
+                                 tag, doc.sgi_code, doc.sgi_revision, lang)
+                    remaining -= doc
+                    resealed = True
+                if not remaining:
+                    break
+            if affected:
+                refresh[job] = langs[0]
+            if affected and current and current in remaining:
+                result['siguen_desactualizadas'].append(code)
+            elif not resealed:
+                result['sin_cambio'] += 1
+        # La huella actual guardada de esos puestos traía la ruta vieja: se
+        # recalcula (en el idioma de quien publicó) para que «Desactualizado»
+        # diga la verdad desde ya.
+        for job, lang in refresh.items():
+            job._sgi_mp_mark_dirty()
+            job.with_context(lang=lang)._sgi_mp_refresh_stats(force=True)
+        _logger.info("SGI %s: re-sello de Mi procedimiento: %d documento(s) re-sellado(s), %d puesto(s) "
+                     "sin cambio, %d siguen desactualizados por otra razón.", tag, len(result['reselladas']),
+                     result['sin_cambio'], len(result['siguen_desactualizadas']))
+        return result
 
     @api.model
     def _sgi_my_procedure_precheck(self):
@@ -536,10 +823,13 @@ class HrJobMyProcedure(models.Model):
         Job = self.env['hr.job'].sudo()
         Employee = self.env['hr.employee'].sudo()
         Role = self.env['sgi.activity.role'].sudo()
-        jobs = Job.search([])
+        # 57.13.0 (D-03): solo la empresa del SGI; la revisión previa la abre
+        # el Jefe MAST y leer puestos o empleados de otra empresa tronaba.
+        company_domain = self._sgi_mp_company_domain()
+        jobs = Job.search(company_domain)
         roles = Role.search([('activity_id.active', '=', True)])
-        with_roles = roles.job_id | roles.family_id.job_ids
-        staffed_jobs = Employee.search([('job_id', '!=', False)]).job_id
+        with_roles = (roles.job_id | roles.family_id.job_ids) & jobs
+        staffed_jobs = Employee.search([('job_id', '!=', False)] + company_domain).job_id
 
         by_name = {}
         for job in jobs:
@@ -548,9 +838,10 @@ class HrJobMyProcedure(models.Model):
         duplicates = [group for group in by_name.values() if len(group) > 1]
         duplicates.sort(key=lambda g: sgi_normalize_name(g[0].name))
 
-        no_job = Employee.search([('job_id', '=', False)], order='name')
+        no_job = Employee.search([('job_id', '=', False)] + company_domain, order='name')
         job_without_roles = Employee.search(
-            [('job_id', '!=', False), ('job_id', 'not in', with_roles.ids)], order='job_id, name')
+            [('job_id', '!=', False), ('job_id', 'not in', with_roles.ids)] + company_domain,
+            order='job_id, name')
         roles_without_people = (with_roles - staffed_jobs).sorted('name')
         return {
             'duplicates': duplicates,
@@ -572,38 +863,31 @@ class HrJobMyProcedure(models.Model):
             'name': doc.name,
         }
 
-    def _sgi_my_procedure_view_action(self):
-        """La misma información como vista de Odoo: roles del puesto agrupados
-        por cadencia, con la actividad a un clic."""
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': "Mi procedimiento — %s" % self.display_name,
-            'res_model': 'sgi.activity.role',
-            'view_mode': 'list,form',
-            'views': [(self.env.ref('quimibond_sgi.sgi_activity_role_view_list_my_procedure').id, 'list'),
-                      (False, 'form')],
-            'domain': self._sgi_roles_domain() + [('activity_active', '=', True)],
-            'context': {'group_by': ['cadence', 'role'], 'create': False, 'edit': False},
-            'help': "<p class='o_view_nocontent_smiling_face'>Sin actividades para "
-                    "este puesto</p><p>Pide a MAST que capture los roles del "
-                    "puesto en las actividades de procedimiento.</p>",
-        }
-
 
 class HrEmployeeMyProcedure(models.Model):
     _inherit = 'hr.employee'
 
+    sgi_document_ack_ids = fields.One2many('sgi.document.ack', 'employee_id', string="Acuses de lectura")
+    # 56.7.0 (1.8): guardado para filtrar y agrupar (quién ya firmó).
     sgi_my_procedure_ack_state = fields.Selection([
         ('sin_publicar', "Sin publicar"),
         ('pendiente', "Acuse pendiente"),
         ('leido', "Leído y entendido"),
-    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack')
+    ], string="Mi procedimiento", compute='_compute_sgi_my_procedure_ack', store=True, index=True,
+        # 57.13.0: sin prefetch. hr.employee.public no lo tiene y Odoo 19 no
+        # deja leer a quien no es de RH campos fuera del perfil público: al
+        # leer cualquier campo de un empleado (el nombre del jefe, en el PDF)
+        # el prefetch lo arrastraba y todo tronaba.
+        prefetch=False,
+                                                  help="Si la persona ya firmó de leído su Mi procedimiento "
+                                                       "vigente. Se calcula solo.")
 
+    @api.depends('sgi_mp_job_id', 'sgi_document_ack_ids.state', 'sgi_document_ack_ids.document_id')
     def _compute_sgi_my_procedure_ack(self):
         Ack = self.env['sgi.document.ack'].sudo()
         for emp in self:
-            doc = emp.job_id._sgi_my_procedure_current_doc() if emp.job_id else False
+            job = emp.sudo().sgi_mp_job_id
+            doc = job._sgi_my_procedure_current_doc() if job else False
             if not doc:
                 emp.sgi_my_procedure_ack_state = 'sin_publicar'
                 continue
@@ -614,16 +898,13 @@ class HrEmployeeMyProcedure(models.Model):
         self.ensure_one()
         if not self.job_id:
             raise UserError(
-                "%s no tiene puesto asignado. Pide a RH que lo capture en la "
+                "%s no tiene puesto asignado. Pida a RH que lo capture en la "
                 "ficha del empleado." % self.name)
         return self.job_id
 
     def action_sgi_print_my_procedure(self):
         return self._sgi_require_job().with_context(
             sgi_mp_employee_id=self.id).action_sgi_print_my_procedure()
-
-    def action_sgi_my_procedure_view(self):
-        return self._sgi_require_job()._sgi_my_procedure_view_action()
 
 
 class SgiCronMyProcedure(models.AbstractModel):
@@ -636,14 +917,19 @@ class SgiCronMyProcedure(models.AbstractModel):
         sobre la revisión vigente del primer puesto desactualizado
         (documents.document lleva actividades); si nadie ha publicado nada,
         solo queda en el log."""
+        sgi_require_system(self.env)  # F-008
+        self = self._sgi_new_run()  # 56.37.0: cierre por episodio
         Job = self.env['hr.job']
         stale = Job._sgi_my_procedure_stale_jobs()
         if not stale:
+            # 56.37.0: todo publicado → el aviso abierto ya no aplica.
+            self._sgi_sweep(['mi_procedimiento_por_publicar'], "todos los puestos ya están publicados")
             return True
         summary = "Mi procedimiento: %d puesto(s) por publicar" % len(stale)
         note = "Puestos con personas cuya revisión no existe o ya no coincide con sus " \
-               "actividades: %s. Publícalos desde SGI → Inicio → Mi procedimiento " \
-               "(«Publicar todos los puestos»)." % ", ".join(stale.mapped('name'))
+               "actividades: %s. Publíquelos desde %s " \
+               "(«Publicar todos los puestos»)." % (", ".join(stale.mapped('name')),
+                                                  sgi_menu_path('publicar_mi_procedimiento'))
         # La actividad cuelga de la revisión vigente del primer puesto
         # desactualizado (ahí va a trabajar MAST); si ninguno tiene revisión,
         # de la más reciente publicada.
@@ -654,9 +940,13 @@ class SgiCronMyProcedure(models.AbstractModel):
                 break
         if not anchor:
             anchor = self.env['documents.document'].sudo().search(
-                [('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
+                [('sgi_doc_type_id.code', '=', 'mi_procedimiento'), ('sgi_state', '=', 'vigente')],
                 order='sgi_issue_date desc, id desc', limit=1)
         if anchor:
-            self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id())
+            # G-005 (b): el resumen lleva el número de puestos; la clave no. Un
+            # solo aviso aunque cambie el documento ancla.
+            self._sgi_schedule(anchor, summary, note, self._sgi_manager_user_id(),
+                               date_deadline=sgi_today(self.env) + relativedelta(days=7),
+                               key='mi_procedimiento_por_publicar', anywhere=True)
         _logger.info("SGI Mi procedimiento: %s", note)
         return True

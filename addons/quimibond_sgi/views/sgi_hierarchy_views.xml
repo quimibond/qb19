@@ -32,19 +32,8 @@
         </field>
     </record>
 
-    <record id="sgi_process_hierarchy_action" model="ir.actions.act_window">
-        <field name="name">Mapa de procesos</field>
-        <field name="res_model">sgi.process</field>
-        <field name="view_mode">hierarchy,kanban,list,form</field>
-        <field name="mobile_view_mode">kanban</field>
-        <field name="search_view_id" ref="sgi_process_view_search"/>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin procesos con macroproceso</p>
-            <p>El diagrama sale del campo «Macroproceso» de cada proceso.</p></field>
-    </record>
-
-    <record id="sgi_process_action" model="ir.actions.act_window">
-        <field name="view_mode">sgi_diagram,kanban,list,hierarchy,form</field>
-    </record>
+    <!-- 57.8.0 (B-014): se retiró sgi_process_hierarchy_action, sin menú ni
+         botón; el menú «Mapa de procesos» abre sgi_process_action. -->
 
     <!-- Diagramas en HTML: componente sgi_diagram (static/src/diagram). Desde
          54.0.0 son el tipo de vista «sgi_diagram» dentro de cada acción
@@ -81,10 +70,6 @@
                 </templates>
             </hierarchy>
         </field>
-    </record>
-
-    <record id="sgi_process_activity_action" model="ir.actions.act_window">
-        <field name="view_mode">list,kanban,sgi_diagram,hierarchy,form</field>
     </record>
 
 </odoo>

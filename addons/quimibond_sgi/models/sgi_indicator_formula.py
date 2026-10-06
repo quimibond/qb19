@@ -35,6 +35,7 @@ Reglas:
   la fórmula **en paralelo**: cada medición nueva guarda también el valor de
   la fórmula (``parallel_value``) para compararla un mes antes de migrar.
 """
+import logging
 import re
 from datetime import datetime, timedelta
 
@@ -46,6 +47,8 @@ from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 from .sgi_calendar import sgi_add_business_days, sgi_business_days
+
+_logger = logging.getLogger(__name__)
 
 WINDOWS = [
     ('period', "El periodo"),
@@ -71,18 +74,26 @@ DELTA_OPS = [('<=', "≤"), ('<', "<"), ('>=', "≥"), ('>', ">"), ('=', "=")]
 _TRACKED = ('model_id', 'domain', 'date_field', 'aggregation', 'field_name', 'field_name_2',
             'delta_unit', 'delta_op', 'delta_value', 'factor', 'window')
 # '{cierre}', '{cierre-30d}', '{cierre-2dh}', '{cierre+48h}', '{inicio}', '{hoy}', '{bloqueo}'
+# 57.104.0 (B6): «más bajo es mejor» en 0 con la fuente vacía no es un verde.
+EMPTY_SOURCE_NOTE = ("Registro vacío: %s no tiene ningún registro con el que medir "
+                     "(un 0 aquí no se distingue de «no se registra»). En cuanto se "
+                     "capture el primero, el indicador mide solo.")
 _PLACEHOLDER = re.compile(r"\{(cierre|inicio|hoy|bloqueo)(?:([+-]\d+)(dh|d|h))?\}")
 
 
 class SgiIndicatorTerm(models.Model):
+    """Término de la fórmula configurable de un indicador: modelo, dominio, campo, agregación y
+    papel (numerador o denominador)."""
     _name = 'sgi.indicator.term'
     _description = "Término de la fórmula de un indicador SGI"
     _order = 'indicator_id, role'
 
     indicator_id = fields.Many2one('sgi.indicator', required=True, ondelete='cascade', index=True)
     role = fields.Selection([('numerator', "Numerador"), ('denominator', "Denominador")],
-                            required=True, default='numerator')
-    model_id = fields.Many2one('ir.model', string="Modelo", required=True, ondelete='cascade')
+                            string="Parte de la fórmula", required=True, default='numerator',
+                            help="Si el término va en el numerador o en el denominador.")
+    model_id = fields.Many2one('ir.model', string="Modelo", required=True, ondelete='cascade',
+                               help="Modelo de Odoo del que se leen los registros.")
     model_name = fields.Char(related='model_id.model', string="Modelo técnico")
     domain = fields.Text(string="Filtro", default='[]', required=True,
                          help="Dominio de Odoo, p. ej. [('state', '=', 'done')].")
@@ -91,19 +102,26 @@ class SgiIndicatorTerm(models.Model):
                                   "recorta la ventana. Vacío solo con ventana «Acumulado al "
                                   "cierre»: entonces cuenta todo lo que hay hoy (p. ej. las "
                                   "existencias).")
-    aggregation = fields.Selection(AGGREGATIONS, string="Agregación", required=True, default='count')
+    aggregation = fields.Selection(AGGREGATIONS, string="Agregación", required=True, default='count',
+                                   help="Cómo se agrega: contar registros, sumar un campo, o contar y "
+                                        "promediar la diferencia entre dos fechas.")
     field_name = fields.Char(string="Campo a sumar / fecha A",
                              help="Campo numérico a sumar; en las agregaciones de fechas, la fecha A (inicio).")
     field_name_2 = fields.Char(string="Fecha B (fin)",
                                help="Segunda fecha del registro para las agregaciones «B − A».")
-    delta_unit = fields.Selection(DELTA_UNITS, string="Unidad", default='days')
-    delta_op = fields.Selection(DELTA_OPS, string="Condición", default='<=')
+    delta_unit = fields.Selection(DELTA_UNITS, string="Unidad", default='days',
+                                  help="Unidad de la diferencia entre fechas.")
+    delta_op = fields.Selection(DELTA_OPS, string="Condición", default='<=',
+                                help="Condición que debe cumplir la diferencia entre las dos fechas para "
+                                     "contar.")
     delta_value = fields.Float(string="N", digits=(16, 2),
                                help="Días, horas o el día del mes siguiente, según la unidad.")
     factor = fields.Float(string="Factor", default=1.0, digits=(16, 6),
                           help="Multiplica el resultado: −1 invierte el signo, 0.001 pasa "
                                "kg a toneladas.")
-    window = fields.Selection(WINDOWS, string="Ventana", required=True, default='period')
+    window = fields.Selection(WINDOWS, string="Ventana", required=True, default='period',
+                              help="Qué periodo se lee: el del indicador, 3 o 12 meses móviles, o acumulado "
+                                   "al cierre.")
 
     # 55.0.0: varios términos por papel se suman (antes: uno por papel).
 
@@ -227,12 +245,36 @@ class SgiIndicatorTerm(models.Model):
             domain += self.env['sgi.indicator']._sgi_closing_move_domain()
         return Model.search(domain)
 
+    def _sgi_source_empty(self):
+        """B6 (57.104.0): la fuente del término nunca ha tenido con qué medir.
+        «Contar» y «Contar donde B − A»: el modelo no tiene ningún registro (en
+        la compañía de los KPI si el modelo tiene compañía). «Sumar» y «Sumar
+        el valor absoluto»: ningún registro del filtro del término (sin
+        ventana de fechas) tiene el campo sumado distinto de 0. «Promedio de
+        B − A» ya da sin dato sin registros."""
+        self.ensure_one()
+        Model = self.env[self.model_id.model].sudo().with_context(active_test=False)
+        company_field = Model._fields.get('company_id')
+        company = ([('company_id', '=', self.indicator_id._sgi_kpi_company().id)]
+                   if company_field and company_field.store else [])
+        if self.aggregation in ('sum', 'sum_abs'):
+            field = Model._fields.get(self.field_name or '')
+            if not field or not field.store:
+                return False  # no se puede buscar por el campo: no se presume vacío
+            domain = self._sgi_domain() + company
+            return not Model.search_count(domain + [(self.field_name, '!=', 0)], limit=1)
+        if self.aggregation in ('count', 'count_delta'):
+            return not Model.search_count(company, limit=1)
+        return False
+
     def _sgi_delta(self, record):
         """B − A del registro en la unidad del término; None si falta una fecha.
         Para «día N del mes siguiente» y «mismo mes» devuelve True/False."""
         a, b = record[self.field_name], record[self.field_name_2]
         if not a or not b:
             return None
+        # 57.66.0: los valores tal como vienen, para los días hábiles (abajo).
+        raw_a, raw_b = a, b
         if isinstance(a, datetime) and not isinstance(b, datetime):
             b = datetime.combine(b, datetime.min.time())
         elif isinstance(b, datetime) and not isinstance(a, datetime):
@@ -245,9 +287,11 @@ class SgiIndicatorTerm(models.Model):
             limit = (a_date.replace(day=1) + relativedelta(months=1)) + timedelta(days=int(self.delta_value) - 1)
             return b_date <= limit
         if self.delta_unit == 'business_days':
-            a_dt = a if isinstance(a, datetime) else datetime.combine(a, datetime.min.time())
-            b_dt = b if isinstance(b, datetime) else datetime.combine(b, datetime.min.time())
-            return float(sgi_business_days(self.env, a_dt, b_dt)) if b_dt > a_dt else 0.0
+            # 57.66.0: una fecha (Date) ya es local y va tal cual; solo un
+            # datetime (UTC) se pasa a la zona del calendario. Antes la fecha
+            # se volvía medianoche UTC y, con el calendario de México, caía en
+            # el día anterior: del sábado 17 al martes 20 contaba 1 hábil.
+            return float(sgi_business_days(self.env, raw_a, raw_b)) if b > a else 0.0
         seconds = (b - a).total_seconds()
         return seconds / 3600.0 if self.delta_unit == 'hours' else seconds / 86400.0
 
@@ -339,11 +383,13 @@ class SgiIndicatorFormula(models.Model):
     _inherit = 'sgi.indicator'
 
     term_ids = fields.One2many('sgi.indicator.term', 'indicator_id', string="Términos de la fórmula")
-    has_formula = fields.Boolean(compute='_compute_has_formula')
+    has_formula = fields.Boolean(compute='_compute_has_formula',
+                                 help="Indica si el indicador tiene términos de fórmula.")
     formula_text = fields.Text(string="Fórmula configurada", compute='_compute_has_formula')
     # depends_context uid: la caché es una por transacción; sin esto el valor
     # calculado para un usuario se reutiliza para otro (with_user).
-    can_edit_formula = fields.Boolean(compute='_compute_can_edit_formula', depends_context=('uid',))
+    can_edit_formula = fields.Boolean(compute='_compute_can_edit_formula', depends_context=('uid',),
+                                      help="Indica si usted puede editar la fórmula.")
 
     def _compute_can_edit_formula(self):
         allowed = self.env.user.has_group('quimibond_sgi.group_sgi_admin')
@@ -378,6 +424,190 @@ class SgiIndicatorFormula(models.Model):
                 body += Markup("<br/>El indicador regresa a «prueba».")
             indicator.message_post(body=body)
 
+    # ---- TR-01: del modo «cierre_nc» a fórmula (57.1.0) --------------------
+    # Denominador: NC del SGI (con folio) levantadas en el periodo, por fecha
+    # de creación, SIN las canceladas. El modo de código contaba también las
+    # canceladas (agosto de 2026: 17 levantadas, 13 canceladas el 28-sep,
+    # ninguna cerrada) y dejaba el % en 0 aunque no hubiera nada que cerrar.
+    # 57.104.0 (B7): numerador = las MISMAS NC (levantadas en el periodo, sin
+    # canceladas) que ya tienen fecha de cierre. Antes contaba las cerradas en
+    # el periodo por fecha de cierre: otra población que la del denominador.
+    _CIERRE_NC_TERMS = [
+        {'role': 'numerator', 'date_field': 'create_date',
+         'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False), "
+                   "('date_close', '!=', False)]"},
+        {'role': 'denominator', 'date_field': 'create_date',
+         'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]"},
+    ]
+
+    @api.model
+    def _sgi_cierre_nc_formula(self, indicator_ids=None):
+        """Pasa a fórmula los indicadores que siguen en el modo retirado
+        ``cierre_nc`` (o, con ``indicator_ids``, esos indicadores: la
+        instalación limpia de TR-01). Respeta lo que MAST ya haya puesto:
+
+        - un indicador en otro modo no se toca (solo los que siguen en
+          ``cierre_nc``, activos o archivados, o los que se pasan por id);
+        - si ya tiene términos (fórmula en paralelo), se quedan los suyos;
+        - el modo anterior queda en el chatter (respaldo) y el indicador sigue
+          en prueba.
+
+        Devuelve los ids migrados."""
+        Indicator = self.with_context(active_test=False)
+        if indicator_ids is None:
+            # 57.13.0: lo escrito por el ORM en esta misma transacción baja
+            # antes del SQL; si no, una segunda llamada volvía a tomar los ya
+            # migrados (y repetía la nota del chatter).
+            self.env['sgi.indicator'].flush_model(['calc_mode'])
+            self.env.cr.execute("SELECT id FROM sgi_indicator WHERE calc_mode = 'cierre_nc'")
+            indicators = Indicator.browse([row[0] for row in self.env.cr.fetchall()])
+        else:
+            indicators = Indicator.browse(indicator_ids).exists()
+        model = self.env['ir.model']._get('quality.alert')
+        if not model:
+            return []
+        done = []
+        for indicator in indicators:
+            before = indicator.calc_mode
+            if not indicator.term_ids:
+                indicator.write({'term_ids': [
+                    (0, 0, dict(term, model_id=model.id, aggregation='count', window='period'))
+                    for term in self._CIERRE_NC_TERMS]})
+            if before != 'configurable':
+                indicator.write({'calc_mode': 'configurable'})
+                indicator.message_post(body=Markup(
+                    "57.1.0: el modo de cálculo «%s» se retiró del código; el indicador "
+                    "pasa a <b>fórmula configurable</b> (NC del SGI cerradas en el periodo "
+                    "÷ NC levantadas en el periodo sin las canceladas). Para regresar: "
+                    "modo anterior «%s».") % (before, before))
+            done.append(indicator.id)
+        return done
+
+    # ---- B7 (57.104.0): TR-01 y C5-02 con candado ---------------------------
+    # código: [(papel, filtro de hoy, campo de fecha de hoy, agregación de hoy,
+    # valores nuevos)]. Solo se corrige un término que siga EXACTAMENTE como
+    # estaba en producción el 2026-10-05.
+    _FIXES_57104 = {
+        'TR-01': [('numerator',
+                   "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False)]",
+                   'date_close', 'count',
+                   {'domain': "[('sgi_folio', '!=', False), ('stage_id.sgi_is_cancel_stage', '=', False), "
+                              "('date_close', '!=', False)]",
+                    'date_field': 'create_date'})],
+        'C5-02': [('numerator',
+                   "[('sgi_origin_type', '=', 'reclamacion'), ('sgi_stage_is_cancel', '=', False), "
+                   "('sgi_effectiveness_date', '!=', False)]",
+                   'create_date', 'count',
+                   {'domain': "[('sgi_origin_type', '=', 'reclamacion'), ('sgi_stage_is_cancel', '=', False), "
+                              "('date_close', '!=', False)]",
+                    'aggregation': 'count_delta', 'field_name': 'create_date',
+                    'field_name_2': 'date_close', 'delta_unit': 'days', 'delta_op': '<=',
+                    'delta_value': 30.0})],
+    }
+    # Fórmula y fuente en palabras que acompañan la corrección del término.
+    _FIXES_57104_TEXTS = {
+        'TR-01': {
+            'formula': "NC levantadas en el periodo (sin canceladas) que ya están cerradas "
+                       "÷ NC levantadas en el periodo (sin canceladas) × 100",
+            'source': "SGI: no conformidades con folio, por fecha de alta y fecha de cierre",
+        },
+        'C5-02': {
+            'formula': "Reclamaciones del periodo cerradas en 30 días naturales desde su alta "
+                       "÷ reclamaciones del periodo (sin canceladas) × 100",
+            'source': "No conformidades con origen Reclamación: fecha de apertura y de cierre",
+        },
+    }
+
+    @api.model
+    def _sgi_formula_fixes_57104(self, codes=None):
+        """B7 (57.104.0): corrige los términos de TR-01 y C5-02 SOLO si siguen
+        exactamente como estaban el 2026-10-05; si MAST ya los cambió, no los
+        toca y lo dice en el log. ``codes`` = {código: indicadores} (por
+        omisión, los indicadores con esa clave, activos o archivados). La
+        escritura del término valida el filtro y deja el antes y el después
+        en el chatter del indicador (que vuelve a «prueba»). Idempotente.
+        Devuelve {id del indicador: 'corregido'|'sin cambio'|'distinto'}."""
+        if codes is None:
+            Indicator = self.with_context(active_test=False)
+            codes = {code: Indicator.search([('code', '=', code)]) for code in self._FIXES_57104}
+        result = {}
+        for code, indicators in codes.items():
+            for indicator in indicators.sudo():
+                status = 'sin cambio'
+                for role, old_domain, old_date, old_agg, new in self._FIXES_57104[code]:
+                    terms = indicator.term_ids.filtered(lambda t: t.role == role)
+                    if len(terms) != 1:
+                        status = 'distinto'
+                        continue
+                    if all(terms[key] == value for key, value in new.items()):
+                        continue
+                    if ((terms.domain or '').strip(), terms.date_field, terms.aggregation) \
+                            != (old_domain, old_date, old_agg):
+                        status = 'distinto'
+                        continue
+                    terms.write(new)
+                    status = 'corregido'
+                    texts = self._FIXES_57104_TEXTS.get(code)
+                    if texts:
+                        before = "Fórmula: %s. Fuente: %s." % (indicator.formula or '—',
+                                                             indicator.source or '—')
+                        indicator.write(texts)
+                        indicator.message_post(body=Markup(
+                            "57.104.0: la fórmula en palabras cambia con el término.<br/>"
+                            "Antes: %s<br/>Ahora: Fórmula: %s. Fuente: %s.") % (
+                                before, texts['formula'], texts['source']))
+                result[indicator.id] = status
+        _logger.info("SGI 57.104.0: fórmulas TR-01/C5-02: %s", result)
+        return result
+
+    # ---- B7 (57.104.0): C2-06 deja el campo de Studio -----------------------
+    _C206_OLD_COMPLETE = ("[('x_studio_tipo_de_transporte', '!=', False), '|', "
+                          "('x_studio_tipo_de_transporte', '=', 'Transporte Interno'), "
+                          "('sgi_seal_number', '!=', False)]")
+    _C206_NEW = {
+        'complete_domain': "[('sgi_seal_number', '!=', False)]",
+        'complete_criteria': "Salida con sello de embarque capturado",
+    }
+    _C206_TEXTS = {
+        'formula': "Entregas validadas con sello de embarque ÷ entregas validadas de la semana",
+        'source': "Orden de entrega: Sello de embarque",
+    }
+
+    @api.model
+    def _sgi_deliverable_fix_57104(self, code='C2-06'):
+        """B7 (57.104.0): el entregable que mide C2-06 («Salida validada») deja
+        el campo de Studio «Tipo de transporte» (nunca capturado) y cuenta como
+        completa la salida con sello de embarque. Solo si su filtro «está
+        completo» sigue exactamente como el 2026-10-05. Reescribe también la
+        fórmula y la fuente del indicador; antes y después en su chatter.
+        Devuelve 'corregido', 'sin cambio' o 'distinto'."""
+        indicator = self.with_context(active_test=False).sudo().search(
+            [('code', '=', code), ('calc_mode', '=', 'entregable_completo')], limit=1)
+        deliverable = indicator._sgi_measured_deliverable() if indicator else None
+        if not deliverable:
+            result = 'distinto'
+        elif (deliverable.complete_domain or '').strip() == self._C206_NEW['complete_domain']:
+            result = 'sin cambio'
+        elif (deliverable.complete_domain or '').strip() != self._C206_OLD_COMPLETE:
+            result = 'distinto'
+        else:
+            before = "Filtro «está completo»: %s (%s). Fórmula: %s. Fuente: %s." % (
+                deliverable.complete_domain, deliverable.complete_criteria or '—',
+                indicator.formula or '—', indicator.source or '—')
+            deliverable.write(self._C206_NEW)
+            indicator.write(self._C206_TEXTS)
+            indicator.message_post(body=Markup(
+                "57.104.0: la salida completa ya no pide el campo de Studio «Tipo de "
+                "transporte» (nunca capturado); cuenta la salida con sello de embarque "
+                "(entregable «%s»).<br/>Antes: %s<br/>Ahora: Filtro «está completo»: %s (%s). "
+                "Fórmula: %s. Fuente: %s.") % (
+                    deliverable.name, before, self._C206_NEW['complete_domain'],
+                    self._C206_NEW['complete_criteria'], self._C206_TEXTS['formula'],
+                    self._C206_TEXTS['source']))
+            result = 'corregido'
+        _logger.info("SGI 57.104.0: entregable de %s: %s", code, result)
+        return result
+
     def _detail_configurable(self, date_from, date_to):
         nums, dens = self._sgi_terms()
         if not nums:
@@ -391,6 +621,15 @@ class SgiIndicatorFormula(models.Model):
             numerator += value
             if term.model_id.model == model:
                 ids += term._sgi_matching(records).ids
+        # B6 (57.104.0): un 0 «más bajo es mejor» con un término del numerador
+        # sin ningún registro en su fuente no es verde: es «sin dato» (también
+        # en solo conteo, SST-01). Un 0 con registros en la fuente es real.
+        if not numerator and self.direction == 'lower_better':
+            empty = nums.filtered(lambda t: t._sgi_source_empty())
+            if empty:
+                names = ", ".join(sorted({t.model_id.name or t.model_id.model for t in empty}))
+                return {'value': None, 'numerator': 0.0, 'denominator': None, 'model': model,
+                        'ids': [], 'note': EMPTY_SOURCE_NOTE % names}
         pct = '%' in (self.uom or '')
         if not dens:
             # Solo conteo: el valor es el numerador; sin registros, 0.
@@ -419,7 +658,7 @@ class SgiIndicatorFormula(models.Model):
         return ''
 
     # ---- recálculo bajo demanda (55.0.0) --------------------------------------
-    def sgi_recalculate(self, period_date=None, save=False):
+    def sgi_recalculate(self, period_date=None, save=False, with_details=True):
         """Calcula el indicador en un periodo con su modo actual, sin esperar al
         cron. Por MCP: ``call_model_method('sgi.indicator', 'sgi_recalculate',
         [ids], {'period_date': '2026-08-01', 'save': True})``.
@@ -428,6 +667,9 @@ class SgiIndicatorFormula(models.Model):
             el último periodo cerrado.
         :param save: True escribe la medición (la crea si no existe; nunca toca
             una validada, que es evidencia).
+        :param with_details: False omite ``detail_ids`` de la respuesta (con
+            decenas de indicadores pasaba de 60 mil caracteres por MCP); la
+            medición guardada sí los lleva. ``detail_count`` dice cuántos son.
         :return: por indicador, {code, period_date, value, state, numerator,
             denominator, sample_size, note, detail_model, detail_ids, measure_id}.
         """
@@ -437,14 +679,20 @@ class SgiIndicatorFormula(models.Model):
             period = fields.Date.to_date(period_date) if period_date else indicator._sgi_default_period()
             date_from, date_to = indicator._sgi_period_bounds(period)
             vals = indicator._sgi_measure_vals(date_from, date_to)
+            if save:
+                # 6.1: «Recalcular ahora» también deja el motivo si no calcula.
+                indicator._sgi_set_calc(*indicator._sgi_calc_diagnose(vals))
             result = {
                 'code': indicator.code, 'period_date': fields.Date.to_string(period),
                 'value': vals.get('value'), 'state': vals.get('state'),
                 'numerator': vals.get('numerator'), 'denominator': vals.get('denominator'),
                 'sample_size': vals.get('sample_size'), 'note': vals.get('note') or '',
                 'detail_model': vals.get('detail_model') or '', 'detail_ids': vals.get('detail_ids') or '',
+                'detail_count': len([i for i in (vals.get('detail_ids') or '').split(',') if i]),
                 'measure_id': False,
             }
+            if not with_details:
+                del result['detail_ids']
             if save:
                 measure = Measure.search([('indicator_id', '=', indicator.id),
                                           ('period_date', '=', period)], limit=1)
@@ -452,7 +700,10 @@ class SgiIndicatorFormula(models.Model):
                     result['note'] = "La medición ya está validada (evidencia): no se tocó."
                 else:
                     if measure:
-                        measure.write(vals)
+                        # 57.104.0 (B3): lo escribe el SGI; deja de estar
+                        # «corregida a mano».
+                        measure.with_context(sgi_calc_write=True).write(
+                            dict(vals, sgi_value_by_hand=False))
                     else:
                         measure = Measure.create(dict(vals, indicator_id=indicator.id, period_date=period))
                     indicator.message_post(body="Recalculado bajo demanda el periodo %s con el modo «%s»: %s." % (
@@ -479,7 +730,8 @@ class SgiIndicatorFormula(models.Model):
     def _sgi_measure_vals(self, date_from, date_to):
         """Además del modo del indicador, la fórmula en paralelo si existe."""
         vals = super()._sgi_measure_vals(date_from, date_to)
-        if self.calc_mode not in ('manual', 'configurable') and self.has_formula:
+        if self.calc_mode not in ('manual', 'configurable') and self.has_formula \
+                and not self._sgi_snapshot_blocked(date_from):
             detail = self._detail_configurable(date_from, date_to)
             vals.update({
                 'parallel_value': detail.get('value'),
@@ -497,5 +749,9 @@ class SgiIndicatorMeasureFormula(models.Model):
         help="Lo que daría la fórmula configurada del indicador en este "
              "periodo, mientras el indicador sigue en su modo de código. "
              "Cuando coincidan un mes, se migra.")
-    parallel_numerator = fields.Float(string="Numerador (fórmula)", digits=(16, 2))
-    parallel_denominator = fields.Float(string="Denominador (fórmula)", digits=(16, 2))
+    parallel_numerator = fields.Float(string="Numerador (fórmula)", digits=(16, 2),
+                                      help="Numerador calculado con la fórmula configurable, para compararlo "
+                                           "con el modo actual.")
+    parallel_denominator = fields.Float(string="Denominador (fórmula)", digits=(16, 2),
+                                        help="Denominador calculado con la fórmula configurable, para "
+                                             "compararlo con el modo actual.")

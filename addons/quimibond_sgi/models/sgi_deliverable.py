@@ -27,6 +27,7 @@ RE_STAGE = re.compile(r'^\s*([A-Za-z0-9]+(?:\.[0-9]+)*)[\.\)\-:]?\s+(.+?)\s*$')
 
 
 class SgiProcessStage(models.Model):
+    """Etapa de un proceso; agrupa sus actividades."""
     _name = 'sgi.process.stage'
     _description = "Etapa de un proceso SGI"
     _order = 'process_id, sequence, code, id'
@@ -80,6 +81,8 @@ class SgiProcessStage(models.Model):
 
 
 class SgiDeliverable(models.Model):
+    """Entregable: lo que una actividad produce y otra recibe. Si apunta a un modelo de Odoo con
+    dominio, la actividad se mide sola (``complete_domain`` y campos de fecha y usuario)."""
     _name = 'sgi.deliverable'
     _description = "Entregable SGI (lo que pasa de una actividad a otra)"
     _order = 'name'
@@ -119,24 +122,36 @@ class SgiDeliverable(models.Model):
 
     producer_activity_ids = fields.Many2many(
         'sgi.process.activity', 'sgi_activity_output_rel', 'deliverable_id', 'activity_id',
-        string="Lo entregan")
+        string="Lo entregan",
+        help="Actividades que producen este entregable.")
     input_line_ids = fields.One2many('sgi.activity.input', 'deliverable_id', string="Lo reciben")
     consumer_activity_ids = fields.Many2many(
         'sgi.process.activity', compute='_compute_consumers', string="Actividades que lo reciben")
     measured_activity_ids = fields.One2many(
         'sgi.process.activity', 'measure_deliverable_id', string="Se miden con él")
-    link_ids = fields.One2many('sgi.activity.link', 'deliverable_id', string="Ligas",
-                               context={'active_test': False})
     producer_process_ids = fields.Many2many(
-        'sgi.process', compute='_compute_processes', string="Procesos que lo entregan")
+        'sgi.process', compute='_compute_processes', string="Procesos que lo entregan",
+        help="Procesos cuyas actividades producen este entregable.")
     consumer_process_ids = fields.Many2many(
-        'sgi.process', compute='_compute_processes', string="Procesos que lo reciben")
+        'sgi.process', compute='_compute_processes', string="Procesos que lo reciben",
+        help="Procesos cuyas actividades reciben este entregable.")
     orphan = fields.Selection([
         ('sin_origen', "Nadie lo entrega"),
         ('sin_destino', "Nadie lo recibe"),
     ], compute='_compute_processes', string="Cabo suelto",
         help="Un entregable que alguien recibe pero nadie entrega (o al revés) es "
-             "un hueco en la cadena.")
+             "un hueco en la cadena, salvo que esté marcado como frontera.")
+    # H-010 (entrega 3): la frontera del mapa. Lo que llega de fuera (release
+    # del cliente, factura del SAT, falla de máquina) no tiene quien lo
+    # entregue, y una salida final no tiene quien la reciba; marcados así no
+    # cuentan como cadena rota.
+    boundary = fields.Selection([
+        ('entrada_externa', "Entrada externa"),
+        ('salida_final', "Salida final"),
+    ], string="Frontera del mapa",
+        help="Entrada externa: llega de fuera del mapa (cliente, SAT, proveedor, "
+             "una falla); nadie del mapa la entrega. Salida final: sale del mapa; "
+             "nadie del mapa la recibe. Marcado así, no es un cabo suelto.")
 
     _code_company_uniq = models.Constraint(
         'unique(code, company_id)',
@@ -151,16 +166,17 @@ class SgiDeliverable(models.Model):
         for deliverable in self:
             deliverable.consumer_activity_ids = deliverable.input_line_ids.activity_id
 
-    @api.depends('producer_activity_ids.process_id', 'input_line_ids.activity_id.process_id')
+    @api.depends('producer_activity_ids.process_id', 'input_line_ids.activity_id.process_id',
+                 'boundary')
     def _compute_processes(self):
         for deliverable in self:
             producers = deliverable.producer_activity_ids
             consumers = deliverable.input_line_ids.activity_id
             deliverable.producer_process_ids = producers.process_id
             deliverable.consumer_process_ids = consumers.process_id
-            if consumers and not producers:
+            if consumers and not producers and deliverable.boundary != 'entrada_externa':
                 deliverable.orphan = 'sin_origen'
-            elif producers and not consumers:
+            elif producers and not consumers and deliverable.boundary != 'salida_final':
                 deliverable.orphan = 'sin_destino'
             else:
                 deliverable.orphan = False
@@ -470,8 +486,8 @@ class _SgiCalculatedConnection(models.AbstractModel):
         if blocked and self.filtered('deliverable_id'):
             raise UserError(
                 "Las conexiones calculadas no se editan a mano: sale de lo que "
-                "entrega y recibe cada actividad. Cambia el entregable o las "
-                "actividades; si una no aplica, desactívala con su motivo.")
+                "entrega y recibe cada actividad. Cambie el entregable o las "
+                "actividades; si una no aplica, desactívela con su motivo.")
 
     def _sgi_retire_manual(self, deliverable):
         """Archiva la conexión capturada a mano que este entregable reemplaza."""
@@ -515,7 +531,9 @@ class SgiActivityLinkDeliverable(models.Model):
         'sgi.activity.input', string="Renglón «recibe»", index=True, ondelete='cascade',
         readonly=True)
     max_days = fields.Integer(
-        related='input_id.max_days', string="Plazo (días hábiles)")
+        related='input_id.max_days', string="Plazo (días hábiles)",
+        help="Días hábiles que tiene el entregable para llegar a la actividad que lo recibe. Pasado ese "
+             "plazo, el eslabón se ve atorado.")
 
     def _sgi_manual_twins(self):
         Link = self.env['sgi.activity.link'].with_context(active_test=False)
@@ -536,8 +554,8 @@ class SgiActivityLinkDeliverable(models.Model):
 
     def unlink(self):
         if not self.env.context.get('sgi_connection_sync') and self.filtered('deliverable_id'):
-            raise UserError("Una liga calculada no se borra: desactívala con su motivo "
-                            "o quita el entregable de las actividades.")
+            raise UserError("Una liga calculada no se borra: desactívela con su motivo "
+                            "o quite el entregable de las actividades.")
         return super().unlink()
 
     def _sgi_chain_verdict(self, now):
@@ -569,7 +587,8 @@ class SgiActivityDeliverables(models.Model):
         inverse='_inverse_input_deliverables', string="Entregables que recibe")
     output_deliverable_ids = fields.Many2many(
         'sgi.deliverable', 'sgi_activity_output_rel', 'activity_id', 'deliverable_id',
-        string="Entrega")
+        string="Entrega",
+        help="Entregables que produce la actividad.")
     measure_deliverable_id = fields.Many2one(
         'sgi.deliverable', string="Se mide con el entregable", ondelete='restrict', index=True,
         help="Con el método «Por su entregable», la actividad copia el modelo, "
@@ -688,13 +707,6 @@ class SgiActivityDeliverables(models.Model):
         if self.instruction_id:
             parts.append(("Instructivo", self.instruction_id.sgi_code or self.instruction_id.name))
         return parts
-
-    def _sgi_sentence(self):
-        """La actividad como una frase del procedimiento, armada de sus piezas
-        (en vez de un párrafo redactado a mano). Texto plano."""
-        return " ".join(
-            "%s: %s." % (label, text) if label else "%s." % text
-            for label, text in self._sgi_sentence_parts())
 
     def _sgi_sentence_html(self):
         """La misma frase para el PDF: cada etiqueta en negritas."""

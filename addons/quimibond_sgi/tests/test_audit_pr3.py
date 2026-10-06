@@ -5,6 +5,8 @@ puesto, AU-3 informe F-P-G03-07 archivado al cerrar."""
 from odoo.exceptions import UserError, ValidationError
 from odoo.tests import TransactionCase, tagged, new_test_user
 
+from .common_documents import sgi_hide_real_documents
+
 
 @tagged('post_install', '-at_install')
 class TestAuditPr3(TransactionCase):
@@ -12,6 +14,13 @@ class TestAuditPr3(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        # 57.66.0: el pie del informe sale del mapeo por referencia
+        # (noupdate, MAST lo edita y lo liga a su documento) y del documento
+        # vigente: en la copia de producción la prueba fija el suyo, como
+        # test_laboratorio y test_etiquetas_lote.
+        sgi_hide_real_documents(cls.env)
+        cls.env.ref('quimibond_sgi.format_ref_audit_report').write(
+            {'sgi_code': 'F-P-G03-07', 'document_id': False, 'active': True})
         cls.job_exec = cls.env['hr.job'].create({'name': 'PLANEADOR AUD PRUEBA'})
         cls.job_other = cls.env['hr.job'].create({'name': 'CONTADOR AUD PRUEBA'})
         cls.family = cls.env['sgi.job.family'].create({
@@ -139,3 +148,30 @@ class TestAuditPr3(TransactionCase):
         self.assertEqual(audit.report_document_id.mimetype, 'application/pdf')
         self.assertIn(audit.folio, audit.report_document_id.name)
         self.assertTrue(any('F-P-G03-07' in (m.body or '') for m in audit.message_ids))
+
+    def test_09_flujo_completo_con_el_proceso_real(self):
+        """4.5: programa → auditoría → checklist → hallazgo → NC con un proceso
+        real de la copia de producción (C2 «Pedido a entrega»). En una base
+        vacía se usa el proceso de prueba."""
+        process = self.env['sgi.process'].search([('code', '=', 'C2')], limit=1) or self.process
+        if not process.procedure_activity_ids.filtered('active'):
+            process = self.process
+        mast = new_test_user(self.env, login='au3_mast',
+                             groups='base.group_user,quimibond_sgi.group_sgi_manager')
+        program = self.env['sgi.audit.program'].create({'year': 2097, 'line_ids': [
+            (0, 0, {'process_id': process.id, 'planned_month': '10',
+                    'lead_auditor_id': self.auditor_user.id})]})
+        program.with_user(mast).action_approve()
+        program.line_ids.with_user(mast).action_create_audit()
+        audit = program.line_ids.audit_id
+        self.assertEqual(audit.process_ids, process)
+        audit.with_user(self.auditor_user).action_plan()
+        self.assertTrue(audit.checklist_count, "Una línea por actividad del proceso.")
+        audit.with_user(self.auditor_user).action_start()
+        line = audit.checklist_line_ids[:1].with_user(self.auditor_user)
+        line.write({'answer': 'nc_menor', 'evidence': 'Sin evidencia en el periodo auditado'})
+        finding = line.finding_id
+        self.assertEqual((finding.finding_type, finding.process_id), ('nc_menor', process))
+        finding.with_user(mast).action_generate_nc()
+        self.assertTrue(finding.alert_id.sgi_folio, "El hallazgo abre su NC con folio.")
+        self.assertEqual(finding.alert_id.sgi_process_id, process)

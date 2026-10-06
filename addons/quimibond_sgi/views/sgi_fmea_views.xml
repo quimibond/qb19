@@ -6,12 +6,19 @@
         <field name="arch" type="xml">
             <form string="AMEF">
                 <header>
+                    <!-- D-009 (57.41.0): marcar obsoleto, o sacarlo de obsoleto, es del
+                         Jefe MAST y del dueño del proceso (el write() lo exige también por RPC). -->
                     <button name="action_set_vigente" type="object" string="Marcar vigente"
-                            class="btn-primary" invisible="state == 'vigente'"/>
-                    <button name="action_set_obsoleto" type="object" string="Marcar obsoleto"
+                            class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_set_obsoleto" confirm="El AMEF deja de estar vigente. ¿Desea continuar?" type="object" string="Marcar obsoleto"
+                            invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
+                    <button name="action_set_borrador" confirm="El AMEF regresa a borrador y deja de estar vigente mientras se edita. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state != 'vigente'"/>
                     <button name="action_set_borrador" type="object" string="Regresar a borrador"
-                            invisible="state == 'borrador'"/>
+                            confirm="El AMEF sale de obsoleto y regresa a borrador. ¿Desea continuar?"
+                            invisible="state != 'obsoleto'"
+                            groups="quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="borrador,vigente,obsoleto"/>
                 </header>
@@ -21,7 +28,7 @@
                                 class="oe_stat_button" icon="fa-exclamation-triangle"
                                 invisible="sgi_nc_count == 0">
                             <field name="sgi_nc_count" widget="statinfo"
-                                   string="NCs ligadas"/>
+                                   string="NC ligadas"/>
                         </button>
                     </div>
                     <div class="oe_title">
@@ -34,6 +41,7 @@
                             <field name="product_tmpl_id"/>
                             <field name="process_id"/>
                             <field name="control_plan_id"/>
+                            <field name="sgi_dyd_task_id"/>
                         </group>
                         <group>
                             <field name="revision"/>
@@ -96,13 +104,18 @@
                                     <group string="Acciones">
                                         <field name="action_line_ids" nolabel="1"
                                                context="{'default_fmea_line_id': id}">
-                                            <list editable="bottom">
+                                            <!-- V-M04 (57.42.0): la misma lista de acciones en las 7 fichas. -->
+                                            <list editable="bottom" decoration-danger="state == 'vencida'"
+                                                  decoration-muted="state == 'terminada'">
                                                 <field name="action_type"/>
                                                 <field name="name"/>
-                                                <field name="responsible_id"/>
-                                                <field name="date_commit"/>
+                                                <field name="evidence_note" optional="show"/>
+                                                <field name="responsible_id" widget="many2one_avatar_user"/>
+                                                <field name="date_commit" widget="remaining_days" invisible="date_done"/>
                                                 <field name="date_done"/>
-                                                <field name="state"/>
+                                                <field name="progress"/>
+                                                <field name="state" widget="badge" decoration-success="state == 'terminada'"
+                                                       decoration-danger="state == 'vencida'" decoration-info="state == 'abierta'"/>
                                             </list>
                                         </field>
                                     </group>
@@ -129,7 +142,11 @@
                 <field name="process_id"/>
                 <field name="product_tmpl_id"/>
                 <field name="max_npr"/>
-                <field name="state"/>
+                <!-- V-M05 (57.80.0): estado como pastilla. -->
+                <!-- 57.98.0 (I-06): borrador en gris (tabla de colores del README). -->
+                <field name="state" widget="badge"
+                       decoration-success="state == 'vigente'"
+                       decoration-muted="state in ('borrador', 'obsoleto')"/>
             </list>
         </field>
     </record>
@@ -146,6 +163,9 @@
                 <filter name="vigente" string="Vigentes" domain="[('state','=','vigente')]"/>
                 <filter name="proceso" string="PFMEA" domain="[('fmea_type','=','proceso')]"/>
                 <filter name="diseno" string="DFMEA" domain="[('fmea_type','=','diseno')]"/>
+                <!-- V-M03 (57.43.0): «Míos». -->
+                <separator/>
+                <filter name="my_processes" string="De mis procesos" domain="[('process_id.owner_id.user_id', '=', uid)]"/>
                 <group>
                     <filter name="group_type" string="Tipo" context="{'group_by': 'fmea_type'}"/>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
@@ -160,8 +180,10 @@
         <field name="res_model">sgi.fmea</field>
         <field name="view_mode">list,form,activity</field>
         <field name="search_view_id" ref="sgi_fmea_view_search"/>
+        <!-- 57.98.0 (I-04): abre con los vigentes. -->
+        <field name="context">{'search_default_vigente': 1}</field>
         <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">Crea el primer AMEF</p>
+            <p class="o_view_nocontent_smiling_face">Cree el primer AMEF</p>
             <p>El NPR se calcula solo (S × O × D); un NPR ≥ 100 exige acción TERMINADA y re-evaluación con NPR post a la baja (o justificada) antes de que el AMEF pueda marcarse vigente.</p>
         </field>
     </record>

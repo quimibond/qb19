@@ -10,66 +10,61 @@
                      logo="/quimibond_sgi/static/description/icon.png">
                     <block title="Datos de arranque">
                         <setting string="Presupuesto mensual de ventas (MXN)"
-                                 help="Alimenta los KPIs de cumplimiento y eficiencia del presupuesto (mientras llega el presupuesto por segmento).">
+                                 help="Alimenta los indicadores de cumplimiento y eficiencia del presupuesto (mientras llega el presupuesto por segmento).">
                             <field name="sgi_monthly_sales_budget"/>
                         </setting>
                         <setting string="Usuario de RH"
                                  help="Recibe las actividades automáticas de RH: competencias por vencer, DNC.">
                             <field name="sgi_rh_user_id"/>
                         </setting>
+                        <setting string="Bloquear equipos con calibración vencida"
+                                 help="Apagado: solo avisa (resumen diario al Coordinador de Laboratorio y al Jefe de Calidad). Encendido: además marca «No usar».">
+                            <field name="sgi_calibration_block_expired"/>
+                        </setting>
+                        <setting string="PIN obligatorio para firmar checklists"
+                                 help="Apagado: quien no tiene PIN firma y la hoja dice «sin PIN registrado». Encendido: sin PIN no se firma. Encender cuando RH haya capturado los PIN.">
+                            <field name="sgi_checklist_pin_required"/>
+                        </setting>
+                        <setting string="Jefe MAST y SGI"
+                                 help="Recibe los avisos automáticos del SGI sin dueño. Vacío: mas@quimibond.com o el primer miembro directo del grupo.">
+                            <field name="sgi_mast_user_id"/>
+                        </setting>
                     </block>
-                    <block title="KPIs automáticos" name="sgi_auto_kpis">
+                    <!-- 57.119.0 (C1, bloque 3) -->
+                    <block title="Desarrollo de producto" name="sgi_dev_product">
+                        <setting string="Bloquear el artículo genérico de muestra"
+                                 help="Fecha (AAAA-MM-DD) desde la que las órdenes de fabricación de muestra deben llevar el artículo generado por el proyecto y no «MUESTRA PILOTO». Vacío: sin bloqueo.">
+                            <field name="sgi_dev_block_generic_sample_from"/>
+                        </setting>
+                        <setting string="Puesto que autoriza pruebas de laboratorio"
+                                 help="Las solicitudes de pruebas de los desarrollos las autorizan las personas de este puesto (Coordinador de Laboratorio y MP) o el Jefe MAST.">
+                            <field name="sgi_dev_lab_authorizer_job_id"/>
+                        </setting>
+                    </block>
+                    <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"
-                                 help="KPI CO-02: categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúralo solo si hay varias.">
+                                 help="Indicador Requisiciones (CO-02): categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúrelo solo si hay varias.">
                             <field name="sgi_purchase_approval_category_id"/>
                         </setting>
+                        <setting string="Categorías de proveedores críticos"
+                                 help="Materia prima y maquila: solo esos proveedores entran a la evaluación trimestral. Vacío = materia prima más las categorías «maquila».">
+                            <field name="sgi_supplier_critical_categ_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Capacidad instalada mensual de producción"
-                                 help="KPI MA-02: capacidad mensual en la misma unidad que la producción (kg). Para periodos no mensuales se prorratea por días. 0 = captura manual.">
+                                 help="Indicador Producido vs capacidad (MA-02): capacidad mensual en la misma unidad que la producción (kg). Para periodos no mensuales se prorratea por días. 0 = captura manual.">
                             <field name="sgi_production_monthly_capacity"/>
                         </setting>
                         <setting string="Proveedor de energía"
-                                 help="KPI TR-03: proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
+                                 help="Indicador Consumo de energía (TR-03): proveedor cuyas facturas del periodo suman el consumo. Sin configurar, la medición queda en 0 con nota.">
                             <field name="sgi_energy_partner_id"/>
                             <field name="sgi_satisfaction_survey_id"
                                    context="{'active_test': False}"/>
                         </setting>
-                        <setting string="Umbral de aviso de presupuesto de ventas (%)"
-                                 help="Al cierre de mes, un equipo con presupuesto aprobado por debajo de este % del acumulado del año avisa a su responsable.">
-                            <field name="sgi_sales_budget_alert_pct"/>
-                        </setting>
-                        <setting string="Tipo de cambio presupuestal USD→MXN"
-                                 help="Sugerencia de precio de listas en otra moneda al presupuestar. 0 = tipo de cambio del día de captura.">
-                            <field name="sgi_budget_planning_rate"/>
-                        </setting>
-                        <setting string="Lista de precios presupuestal"
-                                 help="Lista con que se valúan las líneas del presupuesto SIN cliente (global). Sin configurar, quedan sin precio (nunca una lista arbitraria).">
-                            <field name="sgi_budget_pricelist_id"/>
-                        </setting>
-                        <setting string="Precio de lista mínimo plausible"
-                                 help="Un precio de lista por debajo de este umbral (moneda compañía) se toma como placebo ($1) y la línea queda 'sin precio de lista', aunque haya regla.">
-                            <field name="sgi_price_min_plausible"/>
-                        </setting>
-                        <setting string="Tolerancia de desviación de precio (%)"
-                                 help="Control de precios: gap facturado vs lista dentro de este % = OK; entre este y el grave = leve.">
-                            <field name="sgi_price_gap_tolerance_pct"/>
-                        </setting>
-                        <setting string="Desviación de precio grave (%)">
-                            <field name="sgi_price_gap_grave_pct"/>
-                        </setting>
-                        <setting string="Cumplimiento mínimo del presupuesto (%)"
-                                 help="P-A28 4.3.6.1: un presupuesto aprobado por debajo de este % pide justificación (banner y actividad al Admin de ventas). No bloquea.">
-                            <field name="sgi_budget_fulfillment_min"/>
-                        </setting>
-                        <setting string="Tolerancia de pronóstico excedido (%)"
-                                 help="P-A28 4.2.2.7: comprometido por encima de 100% + este % = excedido.">
-                            <field name="sgi_forecast_over_tolerance_pct"/>
-                        </setting>
-                        <setting string="Horizonte de captura del pronóstico (semanas)"
-                                 help="Solo se evalúa la cobertura de las semanas dentro de este horizonte (actual + N-1).">
-                            <field name="sgi_forecast_capture_horizon_weeks"/>
-                        </setting>
+                        <!-- 57.11.0 (A-016): los ajustes del presupuesto y del
+                             pronóstico de ventas los agrega quimibond_ventas_presupuesto
+                             al final de este bloque. -->
                     </block>
-                    <block title="No Conformidades y AMEF">
+                    <block title="No conformidades y AMEF">
                         <setting string="Fuentes de NC automáticas"
                                  help="Enciende o apaga cada automatismo que levanta NC solo: rollo fuera de peso, equipo descalibrado, indicador en rojo, incidente SST…">
                             <div class="mt8">
@@ -78,12 +73,12 @@
                                         class="btn-link" icon="fa-arrow-right"/>
                             </div>
                         </setting>
-                        <setting string="Días para escalar una NC sin acciones"
-                                 help="NC interna sin acciones tras estos días → actividad al responsable y aviso a MAST.">
+                        <setting string="Días hábiles para escalar una NC sin acciones"
+                                 help="NC interna sin acciones tras estos días hábiles (sin fines de semana ni festivos del calendario del SGI) → actividad al responsable y aviso a MAST.">
                             <field name="sgi_nc_escalation_days"/>
                         </setting>
-                        <setting string="Días para escalar una NC externa/cliente"
-                                 help="Auditoría externa y reclamaciones de cliente escalan más rápido que las internas.">
+                        <setting string="Días hábiles para escalar una NC externa/cliente"
+                                 help="Auditoría externa y reclamaciones de cliente escalan más rápido que las internas (días hábiles).">
                             <field name="sgi_nc_escalation_days_external"/>
                         </setting>
                         <setting string="Plazos por etapa de una NC (días hábiles)"
@@ -101,12 +96,12 @@
                                 <field name="sgi_nc_days_plan"/>
                             </div>
                             <div class="row">
-                                <label for="sgi_nc_escalation_mast_days" class="col-lg-6 o_light_label">Días vencido antes de escalar a MAST</label>
+                                <label for="sgi_nc_escalation_mast_days" class="col-lg-6 o_light_label">Días hábiles vencido antes de escalar a MAST</label>
                                 <field name="sgi_nc_escalation_mast_days"/>
                             </div>
                         </setting>
                         <setting string="Días hábiles para que el proveedor conteste una NC"
-                                 help="NC a proveedor por el portal (NC-6): plazo de respuesta; vencido, aviso al comprador y escalamiento a MAST.">
+                                 help="NC a proveedor por el portal: plazo de respuesta; vencido, aviso al comprador y escalamiento a MAST.">
                             <field name="sgi_nc_days_supplier_response"/>
                         </setting>
                         <setting string="Días para verificar la eficacia de una NC"
@@ -117,12 +112,12 @@
                                  help="Una NC reincide si en estos meses hubo otra del mismo proceso (misma cláusula pesa doble). Al cerrarla se exige acción correctiva.">
                             <field name="sgi_nc_recurrence_months"/>
                         </setting>
-                        <setting string="Escalar acción vencida al jefe (días)"
-                                 help="Acción vencida más de estos días → además del responsable, se avisa a su jefe directo (fallback Jefe MAST).">
+                        <setting string="Escalar acción vencida al jefe (días hábiles)"
+                                 help="Acción vencida más de estos días hábiles → además del responsable, se avisa a su jefe directo (fallback Jefe MAST).">
                             <field name="sgi_action_escalation_manager_days"/>
                         </setting>
-                        <setting string="Escalar acción vencida a Dirección (días)"
-                                 help="Acción vencida más de estos días → además, se avisa a Dirección.">
+                        <setting string="Escalar acción vencida a Dirección (días hábiles)"
+                                 help="Acción vencida más de estos días hábiles → además, se avisa a Dirección.">
                             <field name="sgi_action_escalation_director_days"/>
                         </setting>
                         <setting string="NPR que exige acción en el AMEF"
@@ -168,24 +163,22 @@
                                  help="Días de anticipación del aviso de vencimiento de una prueba piloto.">
                             <field name="sgi_doc_pilot_notice_days"/>
                         </setting>
-                        <setting string="Días para reclamar un acuse pendiente"
-                                 help="Un acuse de lectura sin firmar tras estos días genera recordatorio.">
+                        <setting string="Días hábiles para reclamar un acuse pendiente"
+                                 help="Un acuse de lectura sin firmar tras estos días hábiles genera recordatorio.">
                             <field name="sgi_doc_ack_pending_days"/>
                         </setting>
                     </block>
-                    <block title="Piso">
-                        <setting string="Tolerancia de peso de rollo (kg)"
-                                 help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.">
-                            <field name="sgi_pesaje_tolerance_kg"/>
-                        </setting>
-                        <setting string="Categoría del byproduct de desperdicio"
-                                 help="Categoría del SALDO para el KPI automático de desperdicio.">
-                            <field name="sgi_waste_categ_id"/>
+                    <!-- 57.10.0 (A-020): el bloque «Piso» (tolerancia de peso de
+                         rollo) lo agrega quimibond_sgi_pesaje antes de «Firmas en Sign». -->
+                    <block title="Firmas en Sign" name="sgi_sign">
+                        <setting string="«Mi procedimiento» se firma en Sign"
+                             help="Publicar deja la revisión en borrador y la manda a firmar: MAST elabora, el jefe directo del puesto aprueba. Entra en vigor sola al firmarse.">
+                            <field name="sgi_mp_sign_required"/>
                         </setting>
                     </block>
                     <block title="EPP" name="sgi_epp">
                         <setting string="Plantilla de Sign de la responsiva de EPP"
-                             help="Plantilla de la app Firma hecha con el PDF «Responsiva de EPP» y un solo campo de firma (el empleado). Habilita «Enviar a firmar (Sign)» en cada entrega.">
+                             help="Opcional. Vacío: el SGI arma la plantilla sola (responsiva + hoja «Recibí el EPP»).">
                             <field name="sgi_epp_sign_template_id"/>
                         </setting>
                     </block>
@@ -195,7 +188,7 @@
     </record>
 
     <record id="sgi_config_settings_action" model="ir.actions.act_window">
-        <field name="name">Ajustes del SGI</field>
+        <field name="name">Ajustes</field>
         <field name="res_model">res.config.settings</field>
         <field name="view_mode">form</field>
         <field name="context">{'module': 'quimibond_sgi'}</field>

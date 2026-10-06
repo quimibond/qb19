@@ -15,23 +15,31 @@ AIAG_SUBMISSION_MAP = {
 
 
 class SgiPpapElementTemplate(models.Model):
+    """Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía."""
     _name = 'sgi.ppap.element.template'
     _description = "Elemento PPAP (catálogo AIAG)"
     _order = 'sequence, id'
 
     sequence = fields.Integer(string="N°", required=True)
     name = fields.Char(string="Elemento", required=True, translate=True)
-    is_psw = fields.Boolean(string="Es PSW (elemento 18)")
+    is_psw = fields.Boolean(string="Es PSW (elemento 18)",
+                            help="Marca el elemento que es la carta de garantía de partes (PSW).")
     active = fields.Boolean(default=True)
 
 
 class SgiPpap(models.Model):
+    """Expediente PPAP (P-C15) de un producto para un cliente, con sus elementos y la decisión del
+    cliente."""
     _name = 'sgi.ppap'
     _description = "PPAP - Proceso de Aprobación de Partes de Producción (P-C15)"
     _inherit = ['sgi.base.mixin']
     _order = 'folio desc'
     _sgi_sequence_code = 'sgi.ppap'
     _sgi_locked_states = ('aprobado',)
+    # D-009 (57.41.0): aprobar, dar interino o rechazar (y regresar desde esas
+    # decisiones) es del Jefe MAST y del dueño del proceso.
+    _sgi_decision_states = ('aprobado', 'interino', 'rechazado')
+    _sgi_decision_label = "Aprobar, dar interino o rechazar un PPAP (o regresarlo a preparación)"
 
     _folio_uniq = models.Constraint(
         'unique(folio)',
@@ -39,32 +47,39 @@ class SgiPpap(models.Model):
     )
 
     partner_id = fields.Many2one('res.partner', string="Cliente", required=True, tracking=True,
-                                 domain="[('is_company', '=', True)]")
+                                 domain="[('is_company', '=', True)]",
+                                 help="Cliente que aprueba el PPAP.")
     product_tmpl_id = fields.Many2one('product.template', string="Producto", required=True,
-                                      tracking=True)
+                                      tracking=True,
+                                      help="Producto que se somete a aprobación.")
     level = fields.Selection([
         ('1', "Nivel 1"),
         ('2', "Nivel 2"),
         ('3', "Nivel 3"),
         ('4', "Nivel 4"),
         ('5', "Nivel 5"),
-    ], string="Nivel", default='3', required=True)
+    ], string="Nivel", default='3', required=True,
+        help="Nivel de envío que pide el cliente (1 a 5); define qué elementos se entregan.")
     reason = fields.Selection([
         ('nuevo_producto', "Nuevo producto"),
         ('cambio_ingenieria', "Cambio de ingeniería"),
         ('cambio_proceso', "Cambio de proceso"),
         ('recertificacion', "Recertificación"),
         ('solicitud_cliente', "Solicitud del cliente"),
-    ], string="Motivo", default='nuevo_producto', required=True)
+    ], string="Motivo", default='nuevo_producto', required=True,
+        help="Por qué se hace el PPAP.")
     state = fields.Selection([
         ('preparacion', "Preparación"),
         ('enviado', "Enviado"),
         ('aprobado', "Aprobado"),
         ('interino', "Interino"),
         ('rechazado', "Rechazado"),
-    ], string="Estado", default='preparacion', required=True, tracking=True)
-    date_submitted = fields.Date(string="Fecha de envío", readonly=True)
-    date_decision = fields.Date(string="Fecha de decisión", readonly=True)
+    ], string="Estado", default='preparacion', required=True, tracking=True,
+        help="Preparación, enviado, aprobado, interino o rechazado.")
+    date_submitted = fields.Date(string="Fecha de envío", readonly=True,
+                                 help="Fecha en que se envió el PPAP al cliente.")
+    date_decision = fields.Date(string="Fecha de decisión", readonly=True,
+                                help="Fecha en que el cliente aprobó, rechazó o dio aprobación interina.")
     element_ids = fields.One2many('sgi.ppap.element', 'ppap_id', string="Elementos")
     notes = fields.Text(string="Notas")
 
@@ -102,6 +117,13 @@ class SgiPpap(models.Model):
                             tmpl.sequence, ppap.level),
                     })
         return True
+
+    def _sgi_decision_processes(self):
+        """El PPAP no tiene proceso propio: decide el dueño del proceso de sus
+        AMEF (directos o del plan de control de sus elementos)."""
+        self.ensure_one()
+        elements = self.sudo().element_ids
+        return elements.fmea_id.process_id | elements.control_plan_id.fmea_ids.process_id
 
     def write(self, vals):
         res = super().write(vals)
@@ -171,6 +193,28 @@ class ResPartnerPpap(models.Model):
     _inherit = 'res.partner'
 
     sgi_ppap_count = fields.Integer(string="PPAP", compute='_compute_sgi_ppap_count')
+    # 57.100.0 (N-14): requisitos del cliente automotriz, por compañía como
+    # «Requiere CoA en cada embarque». Vacíos hasta que Calidad los marque
+    # (pista de datos de Q12).
+    sgi_requires_ppap = fields.Boolean(
+        string="Exige PPAP ante cambios", company_dependent=True,
+        help="Todo cambio de ingeniería de un producto que se le vende pide PPAP: el SGI "
+             "marca «Requiere PPAP» en el ECO y genera un PPAP por cliente al aplicarlo.")
+    sgi_requires_contingency = fields.Boolean(
+        string="Exige plan de contingencia", company_dependent=True,
+        help="El cliente pide un plan de contingencia de suministro.")
+
+    _SGI_AUTOMOTIVE_FIELDS = ('sgi_requires_ppap', 'sgi_requires_contingency')
+
+    def write(self, vals):
+        # Solo SGI o Calidad deciden qué exige un cliente (la vista lo muestra
+        # de solo lectura a los demás; esta es la regla real), como el CoA.
+        if (set(vals) & set(self._SGI_AUTOMOTIVE_FIELDS) and not self.env.su
+                and not (self.env.user.has_group('quimibond_sgi.group_sgi_user')
+                         or self.env.user.has_group('quality.group_quality_user'))):
+            raise UserError("Solo SGI o Calidad pueden cambiar los requisitos de cliente "
+                            "automotriz (PPAP y plan de contingencia).")
+        return super().write(vals)
 
     def _compute_sgi_ppap_count(self):
         data = self.env['sgi.ppap']._read_group(
@@ -233,6 +277,7 @@ class ProductProductPpap(models.Model):
 
 
 class SgiPpapElement(models.Model):
+    """Elemento de un PPAP con su documento, AMEF o plan de control y su estado."""
     _name = 'sgi.ppap.element'
     _description = "Elemento de un PPAP"
     _order = 'ppap_id, sequence, id'
@@ -268,7 +313,7 @@ class SgiPpapElement(models.Model):
             if locked:
                 raise UserError(
                     "No se puede borrar un elemento de un PPAP aprobado (es "
-                    "evidencia presentada al cliente). Pide al Jefe de MAST "
+                    "evidencia presentada al cliente). Pida al Jefe MAST "
                     "reabrirlo.\n\nPPAP: %s" % ", ".join(
                         locked.mapped('ppap_id.display_name')))
         return super().unlink()

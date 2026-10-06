@@ -16,25 +16,32 @@ from dateutil.relativedelta import relativedelta
 
 from odoo import models, fields, api
 
+from .sgi_health_const import HEALTH_MODES
+from .sgi_menu_paths import sgi_menu_path
+
 LEVELS = [('bad', 'Falla'), ('warn', 'Aviso'), ('ok', 'Bien')]
 _LEVEL_ORDER = {'bad': 0, 'warn': 1, 'ok': 2}
 
 
 class SgiDiagnosticLine(models.TransientModel):
+    """Hallazgo de una corrida del diagnóstico, con cómo corregirlo."""
     _name = 'sgi.diagnostic.line'
     _description = "Hallazgo del diagnóstico del SGI"
     _order = 'sequence, id'
 
     diagnostic_id = fields.Many2one(
-        'sgi.diagnostic', string="Diagnóstico", required=True, ondelete='cascade', index=True)
+        'sgi.diagnostic', string="Diagnóstico", required=True, ondelete='cascade', index=True,
+        help="Corrida del diagnóstico a la que pertenece el hallazgo.")
     sequence = fields.Integer(default=10)
     section = fields.Char(string="Sección", required=True)
-    level = fields.Selection(LEVELS, string="Nivel", required=True)
+    level = fields.Selection(LEVELS, string="Nivel", required=True, help="Qué tan grave es el hallazgo.")
     text = fields.Text(string="Hallazgo", required=True)
     fix = fields.Char(string="Dónde se arregla")
 
 
 class SgiDiagnostic(models.TransientModel):
+    """Diagnóstico de configuración y adopción del SGI: una corrida con hallazgos por sección (bien,
+    aviso, mal). Pantalla, no historia."""
     _name = 'sgi.diagnostic'
     _description = "Diagnóstico de configuración y adopción del SGI"
 
@@ -81,7 +88,12 @@ class SgiDiagnostic(models.TransientModel):
         """Corre las verificaciones y deja una fila por hallazgo."""
         self.ensure_one()
         self.line_ids.unlink()
-        rows = self._sgi_build_report()
+        # D-18 (entrega 4): el Auditor y Dirección leen el Diagnóstico. Las
+        # verificaciones solo cuentan y nombran (no escriben nada); para quien
+        # no es Jefe MAST corren con sudo para no depender de las ACL de cada
+        # app. Las filas se crean con el usuario (son suyas).
+        builder = self if self.env.user.has_group('quimibond_sgi.group_sgi_manager') else self.sudo()
+        rows = builder._sgi_build_report()
         self.env['sgi.diagnostic.line'].create([
             dict(row, diagnostic_id=self.id, sequence=seq * 10)
             for seq, row in enumerate(rows, start=1)])
@@ -118,6 +130,55 @@ class SgiDiagnostic(models.TransientModel):
         return {'level': level, 'text': text, 'fix': fix or False}
 
     @api.model
+    def _sgi_key_settings_checks(self):
+        """[(clave de parámetro, aviso si vale 0)] de «Ajustes clave» que
+        agregan otros módulos (la lista presupuestal, quimibond_ventas_presupuesto)."""
+        return []
+
+    @api.model
+    def _sgi_floor_quality_lines(self, floor_alerts):
+        """Hallazgos de «Calidad preventiva y piso» que vienen de un satélite
+        (el revisado de tela, quimibond_sgi_revisado). ``floor_alerts``:
+        alertas de calidad de piso (sin folio de NC)."""
+        return []
+
+    @api.model
+    def _sgi_with_operating(self, lines, text):
+        """57.101.0: agrega la línea «… operando» si la sección no tiene
+        fallas ni avisos. Las líneas informativas de nivel ok (los reportes
+        «sin clave del SGI») no la quitan."""
+        if any(line['level'] != 'ok' for line in lines):
+            return lines
+        return [self._sgi_line('ok', text)] + lines
+
+    @api.model
+    def _sgi_unmapped_report_lines(self):
+        """57.98.0 (I-01): reportes del SGI que imprimen sin formato
+        controlado (sección Documental). En el papel no se avisa nada.
+
+        57.101.0: los que aún no tienen clave del SGI (su referencia no
+        existe en el código; hoy imprimen solo con la página, como se decidió)
+        van en una línea aparte, informativa: no se arreglan en «Formatos en
+        documentos de Odoo»."""
+        from .sgi_format_map import SGI_NO_KEY_SUFFIX
+        unmapped = self.env['sgi.format.map']._sgi_unmapped_reports()
+        no_key = [name for name in unmapped if name.endswith(SGI_NO_KEY_SUFFIX)]
+        missing = [name for name in unmapped if name not in no_key]
+        lines = []
+        if missing:
+            lines.append(self._sgi_line(
+                'warn', "%d reporte(s) del SGI imprimen sin formato controlado: %s."
+                % (len(missing), ", ".join(missing)),
+                sgi_menu_path('formatos_odoo')))
+        if no_key:
+            lines.append(self._sgi_line(
+                'ok', "%d reporte(s) del SGI imprimen el pie solo con la página porque su formato "
+                "aún no tiene clave del SGI: %s." % (
+                    len(no_key), ", ".join(name[:-len(SGI_NO_KEY_SUFFIX)] for name in no_key)),
+                "La clave se da de alta en el código del SGI cuando se decida el formato."))
+        return lines
+
+    @api.model
     def _sgi_build_report(self):
         """Lista de dicts (section, level, text, fix) en el orden del reporte."""
         env = self.env
@@ -136,7 +197,7 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line(
                 'bad', "%d proceso(s) sin dueño: %s" % (
                     len(no_owner), ", ".join(no_owner.mapped('code'))),
-                "SGI → Procesos → campo Dueño (el dueño recibe los avisos de riesgos y salud)"))
+                sgi_menu_path('mapa_procesos', "campo Dueño (el dueño recibe los avisos de riesgos y salud)")))
         else:
             lines.append(self._sgi_line('ok', "Todos los procesos tienen dueño."))
         no_activities = env['sgi.process'].search(
@@ -157,14 +218,16 @@ class SgiDiagnostic(models.TransientModel):
         if no_resp:
             lines.append(self._sgi_line(
                 'bad', "%d indicador(es) sin responsable: sus capturas y validaciones caen todas en MAST." % no_resp,
-                "SGI → Medición → Indicadores"))
+                sgi_menu_path('indicadores')))
         if no_proc:
             lines.append(self._sgi_line(
                 'bad', "%d indicador(es) sin proceso: sus rojos NO cuentan en la salud del Panel." % no_proc,
-                "SGI → Medición → Indicadores"))
+                sgi_menu_path('indicadores')))
         Measure = env['sgi.indicator.measure']
         pend = Measure.search_count([('state', '=', 'pendiente')])
-        capt = Measure.search_count([('state', '=', 'capturado')])
+        # 57.99.0: las de salud del SGI se quedan capturadas a propósito.
+        capt = Measure.search_count([('state', '=', 'capturado'),
+                                     ('indicator_id.calc_mode', 'not in', HEALTH_MODES)])
         valid = Measure.search_count([('state', '=', 'validado')])
         if capt and not valid:
             lines.append(self._sgi_line(
@@ -173,7 +236,7 @@ class SgiDiagnostic(models.TransientModel):
         if pend:
             lines.append(self._sgi_line(
                 'warn', "%d medición(es) pendientes de captura manual." % pend,
-                "SGI → Medición → Mediciones, filtro Pendientes"))
+                sgi_menu_path('mediciones', "filtro Pendientes")))
         groups = Measure._read_group(
             [('state', '=', 'pendiente')], ['indicator_id'], ['__count'])
         chronic = [ind.code for ind, count in groups if count >= 3]
@@ -210,9 +273,12 @@ class SgiDiagnostic(models.TransientModel):
         if not doc_changes:
             lines.append(self._sgi_line(
                 'warn', "Ninguna revisión documental ha pasado por el flujo de Aprobaciones (F-P-G01-06).",
-                "SGI → Documental → Cambios documentales"))
-        if not lines:
-            lines.append(self._sgi_line('ok', "Difusión documental operando."))
+                sgi_menu_path('solicitudes_cambio')))
+        # 57.105.0: el MIID vigente contra el sistema y lo que impide aprobar
+        # la siguiente revisión.
+        lines += env['sgi.miid']._sgi_diagnostic_lines()
+        lines += self._sgi_unmapped_report_lines()
+        lines = self._sgi_with_operating(lines, "Difusión documental operando.")
         section("Documental", lines)
 
         # ---- 4. Estrategia y planificación -------------------------------
@@ -220,19 +286,20 @@ class SgiDiagnostic(models.TransientModel):
         if not env['sgi.policy'].search_count([('state', '=', 'vigente')]):
             lines.append(self._sgi_line(
                 'bad', "No hay Política Integral vigente (la cascada Política → Objetivos → KPIs arranca ahí).",
-                "SGI → Panel → Política Integral"))
+                sgi_menu_path('politica')))
         if not env['sgi.risk'].search_count([]):
             lines.append(self._sgi_line(
                 'bad', "Cero riesgos/oportunidades registrados (6.1 sin evidencia operativa).",
-                "SGI → Riesgos y auditorías → Riesgos y oportunidades"))
+                sgi_menu_path('riesgos')))
         if 'sgi.emergency.plan' in env and not env['sgi.emergency.plan'].search_count(
                 [('state', '=', 'vigente')]):
             lines.append(self._sgi_line(
                 'warn', "No hay planes de emergencia vigentes (14001/45001 8.2).",
-                "SGI → Riesgos y auditorías → Emergencias"))
+                sgi_menu_path('planes_emergencia')))
+        # 57.11.0 (A-016): el presupuesto es de quimibond_ventas_presupuesto.
         budgets_draft = env['sgi.sales.budget'].search_count(
             [('kind', '=', 'presupuesto'), ('state', '=', 'borrador'),
-             ('year', '=', today.year)])
+             ('year', '=', today.year)]) if 'sgi.sales.budget' in env else 0
         if budgets_draft:
             lines.append(self._sgi_line(
                 'warn', "%d presupuesto(s) de ventas %d en borrador: el KPI VE-02 y el cierre de mes solo miden presupuestos APROBADOS." % (budgets_draft, today.year),
@@ -274,19 +341,8 @@ class SgiDiagnostic(models.TransientModel):
                 'warn', "%d de %d correctivas de los últimos 90 días sin equipo asignado: la señal de falla repetitiva no puede detectarlas." % (corr_no_eq, corr_total),
                 "capturar el equipo en la solicitud de mantenimiento"))
         floor_alerts = env['quality.alert'].search_count([('sgi_folio', '=', False)])
-        if 'mrp.revision.log' in env:
-            month_ago_dt = fields.Datetime.now() - relativedelta(days=30)
-            revision_logs = env['mrp.revision.log'].search_count(
-                [('create_date', '>=', month_ago_dt)])
-            if revision_logs and not floor_alerts:
-                lines.append(self._sgi_line(
-                    'warn', "El revisado registró %d defectos en 30 días pero hay CERO alertas de calidad de piso: el pareto de alertas está vacío (¿fuentes apagadas?)." % revision_logs))
-            ma03 = env['sgi.indicator'].search(
-                [('code', '=', 'MA-03'), ('calc_mode', '=', 'manual')], limit=1)
-            if ma03 and revision_logs:
-                lines.append(self._sgi_line(
-                    'warn', "MA-03 (Calidad PQ) sigue en captura manual con el revisado ya operando: puede automatizarse (calc_mode «calidad_pq») y validarse un mes contra el Excel.",
-                    "ficha del indicador MA-03"))
+        # 57.10.0 (A-019): lo del revisado de tela lo agrega quimibond_sgi_revisado.
+        lines += self._sgi_floor_quality_lines(floor_alerts)
         if not lines:
             lines.append(self._sgi_line('ok', "Calidad preventiva conectada al piso."))
         section("Calidad preventiva y piso", lines)
@@ -312,25 +368,26 @@ class SgiDiagnostic(models.TransientModel):
         if nc_old:
             lines.append(self._sgi_line(
                 'warn', "%d NC abiertas hace más de 30 días." % nc_old,
-                "SGI → Mejora continua → No Conformidades"))
+                sgi_menu_path('no_conformidades')))
         sources_off = env['sgi.alert.source'].search(
             [('enabled', '=', False), ('suppressed_count', '>', 0)])
         for source in sources_off:
             lines.append(self._sgi_line(
                 'warn', "Fuente «%s» apagada con %d NC omitidas: confirmar que sigue siendo intencional." % (
                     source.name, source.suppressed_count),
-                "SGI → Configuración → Fuentes de NC automáticas"))
-        team = env.ref('quimibond_sgi.sgi_helpdesk_team_complaints',
-                       raise_if_not_found=False)
-        if team:
-            Ticket = env['helpdesk.ticket']
-            sgi_tickets = Ticket.search_count([('team_id', '=', team.id)])
-            others = Ticket.search_count(
-                [('team_id', '!=', team.id), ('team_id.name', 'ilike', 'reclama')])
-            if not sgi_tickets and others:
-                lines.append(self._sgi_line(
-                    'bad', "El equipo SGI de reclamaciones tiene 0 tickets mientras otros equipos de reclamación acumulan %d: el embudo (SLA, Generar NC, KPI CA-01) está desviado." % others,
-                    "canalizar las reclamaciones al equipo del SGI"))
+                sgi_menu_path('fuentes_nc')))
+        # D-006: las reclamaciones son los tickets de los equipos marcados
+        # «Equipo de reclamaciones (SGI)», no los de un XML ID.
+        Ticket = env['helpdesk.ticket']
+        complaint_domain = env['helpdesk.team']._sgi_complaint_domain()
+        sgi_tickets = Ticket.search_count(complaint_domain)
+        others = Ticket.search_count(
+            [('team_id.sgi_is_complaint', '=', False),
+             ('team_id.name', 'ilike', 'reclama')])
+        if not sgi_tickets and others:
+            lines.append(self._sgi_line(
+                'bad', "Los equipos de reclamaciones del SGI tienen 0 tickets mientras otros equipos con «reclama» en el nombre acumulan %d: el embudo (SLA, Generar NC, KPI CA-01) está desviado." % others,
+                "marcar el equipo como «Equipo de reclamaciones (SGI)» en Servicio de asistencia"))
         if not lines:
             lines.append(self._sgi_line('ok', "Mejora continua fluyendo."))
         section("Mejora continua", lines)
@@ -340,13 +397,13 @@ class SgiDiagnostic(models.TransientModel):
         if not env['sgi.interested.party'].search_count([]):
             lines.append(self._sgi_line(
                 'bad', "Cero partes interesadas registradas (4.2 sin evidencia: es de lo primero que pregunta un auditor de certificación).",
-                "SGI → Panel → Partes interesadas"))
+                sgi_menu_path('partes_interesadas')))
         Legal = env['sgi.legal.requirement']
         legal_total = Legal.search_count([])
         if not legal_total:
             lines.append(self._sgi_line(
                 'bad', "Cero requisitos legales registrados (14001/45001 6.1.3): sin matriz legal no hay evaluación del cumplimiento.",
-                "SGI → Riesgos y auditorías → Requisitos legales"))
+                sgi_menu_path('requisitos_legales')))
         else:
             broken = Legal.search_count(
                 [('compliance_state', 'in', ('no_cumple', 'parcial'))])
@@ -368,7 +425,7 @@ class SgiDiagnostic(models.TransientModel):
         if suppliers_pending:
             lines.append(self._sgi_line(
                 'warn', "%d proveedor(es) sin aprobación 8.4.1 (el bloqueo de OC no aplica a nadie): arranque por los que reciben compras hoy." % suppliers_pending,
-                "ficha del proveedor → pestaña SGI Proveedor"))
+                "ficha del proveedor → pestaña SGI"))
         # Encuesta de satisfacción divergente: hay respuestas reales en OTRA
         # encuesta de satisfacción distinta de la que alimenta CA-02.
         survey = env['sgi.indicator']._sgi_satisfaction_survey()
@@ -384,7 +441,7 @@ class SgiDiagnostic(models.TransientModel):
             if other_count and not configured_count:
                 lines.append(self._sgi_line(
                     'warn', "El KPI CA-02 lee una encuesta con 0 respuestas mientras otra encuesta de satisfacción acumula %d: re-apunte la fuente en Ajustes o declare el corte." % other_count,
-                    "SGI → Configuración → Ajustes → Encuesta de satisfacción (CA-02)"))
+                    sgi_menu_path('ajustes', "Encuesta de satisfacción (CA-02)")))
         if not lines:
             lines.append(self._sgi_line('ok', "Contexto, matriz legal y competencias con base capturada."))
         section("Contexto y cumplimiento", lines)
@@ -399,16 +456,14 @@ class SgiDiagnostic(models.TransientModel):
              "Proveedor de energía sin configurar: el KPI TR-03 queda pendiente."),
             ('quimibond_sgi.production_monthly_capacity',
              "Capacidad instalada sin configurar: el KPI MA-02 queda pendiente."),
-            ('quimibond_sgi.budget_pricelist_id',
-             "Lista de precios presupuestal sin configurar: las líneas globales del presupuesto quedan sin precio."),
-        ]
+        ] + self._sgi_key_settings_checks()
         for key, msg in checks:
             try:
                 value = int(float(Param.get_param(key, 0) or 0))
             except (TypeError, ValueError):
                 value = 0
             if not value:
-                lines.append(self._sgi_line('warn', msg, "SGI → Configuración → Ajustes"))
+                lines.append(self._sgi_line('warn', msg, sgi_menu_path('ajustes')))
         if not lines:
             lines.append(self._sgi_line('ok', "Ajustes clave configurados."))
         section("Ajustes clave", lines)

@@ -10,7 +10,7 @@
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/notebook" position="inside">
-                <page string="Exportación y liberación (SGI)" name="sgi_kpi">
+                <page string="SGI" name="sgi_kpi">
                     <group>
                         <group string="Exportación (C2-05)">
                             <field name="sgi_export_crossing_datetime"/>
@@ -26,21 +26,9 @@
         </field>
     </record>
 
-    <!-- C5-01: metros reclamados -->
-    <record id="sgi_quality_alert_view_form_kpi" model="ir.ui.view">
-        <field name="name">quality.alert.form.sgi.kpi</field>
-        <field name="model">quality.alert</field>
-        <field name="inherit_id" ref="quality_control.quality_alert_view_form"/>
-        <field name="arch" type="xml">
-            <xpath expr="//sheet/notebook" position="inside">
-                <page string="Reclamación (SGI)" name="sgi_claim">
-                    <group>
-                        <field name="sgi_claimed_meters"/>
-                    </group>
-                </page>
-            </xpath>
-        </field>
-    </record>
+    <!-- C5-01: metros reclamados. Desde 57.40.0 (V-A01) van en la pestaña
+         «Cliente» de la NC (sgi_nonconformity_views.xml), ya no en una
+         pestaña «Reclamación (SGI)» en toda alerta. -->
 
     <!-- S1-05: diferencia contra la orden de compra en la línea de factura -->
     <record id="sgi_account_move_view_form_kpi" model="ir.ui.view">
@@ -49,7 +37,7 @@
         <field name="inherit_id" ref="account.view_move_form"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='invoice_line_ids']/list/field[@name='price_subtotal']" position="after">
-                <field name="sgi_po_price_diff" optional="hide"/>
+                <field name="sgi_po_price_diff" optional="hide" groups="account.group_account_readonly"/>
             </xpath>
             <xpath expr="//field[@name='invoice_date_due']" position="after">
                 <field name="sgi_payment_date" invisible="not sgi_payment_date"/>
@@ -114,86 +102,6 @@
         <field name="view_mode">list</field>
         <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin fotos del inventario</p>
             <p>El cron mensual de indicadores guarda el valor de las existencias en ubicaciones internas (mismo cálculo de AL-01) para compararlo contra las cuentas 115 (S3-04).</p></field>
-    </record>
-
-    <!-- S4-04: obligaciones patronales -->
-    <record id="sgi_employer_obligation_view_list" model="ir.ui.view">
-        <field name="name">sgi.employer.obligation.list</field>
-        <field name="model">sgi.employer.obligation</field>
-        <field name="arch" type="xml">
-            <list decoration-danger="state == 'vencida'" decoration-warning="state == 'tarde'"
-                  decoration-success="state == 'presentada'">
-                <field name="name"/>
-                <field name="kind"/>
-                <field name="period_date"/>
-                <field name="due_date"/>
-                <field name="filed_date"/>
-                <field name="state" widget="badge"/>
-                <field name="responsible_id" widget="many2one_avatar_user"/>
-                <field name="amount" optional="hide"/>
-                <field name="currency_id" column_invisible="1"/>
-                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
-            </list>
-        </field>
-    </record>
-    <record id="sgi_employer_obligation_view_form" model="ir.ui.view">
-        <field name="name">sgi.employer.obligation.form</field>
-        <field name="model">sgi.employer.obligation</field>
-        <field name="arch" type="xml">
-            <form string="Obligación patronal">
-                <header>
-                    <button name="action_mark_filed" type="object" string="Presentada hoy" class="btn-primary"
-                            invisible="filed_date"/>
-                    <field name="state" widget="statusbar"/>
-                </header>
-                <sheet>
-                    <div class="oe_title"><h1><field name="name" placeholder="IMSS mensual septiembre"/></h1></div>
-                    <group>
-                        <group>
-                            <field name="kind"/>
-                            <field name="period_date"/>
-                            <field name="due_date"/>
-                            <field name="filed_date"/>
-                        </group>
-                        <group>
-                            <field name="responsible_id" widget="many2one_avatar_user"/>
-                            <field name="amount"/>
-                            <field name="reference"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
-                            <field name="currency_id" invisible="1"/>
-                        </group>
-                    </group>
-                    <field name="notes" placeholder="Notas…"/>
-                </sheet>
-                <chatter/>
-            </form>
-        </field>
-    </record>
-    <record id="sgi_employer_obligation_view_search" model="ir.ui.view">
-        <field name="name">sgi.employer.obligation.search</field>
-        <field name="model">sgi.employer.obligation</field>
-        <field name="arch" type="xml">
-            <search string="Obligaciones patronales">
-                <field name="name"/>
-                <field name="responsible_id"/>
-                <filter name="pending" string="Pendientes" domain="[('filed_date', '=', False)]"/>
-                <filter name="overdue" string="Vencidas" domain="[('state', '=', 'vencida')]"/>
-                <filter name="late" string="Presentadas tarde" domain="[('state', '=', 'tarde')]"/>
-                <group>
-                    <filter name="group_kind" string="Tipo" context="{'group_by': 'kind'}"/>
-                    <filter name="group_period" string="Periodo" context="{'group_by': 'period_date:month'}"/>
-                </group>
-            </search>
-        </field>
-    </record>
-    <record id="sgi_employer_obligation_action" model="ir.actions.act_window">
-        <field name="name">Obligaciones patronales</field>
-        <field name="res_model">sgi.employer.obligation</field>
-        <field name="view_mode">list,form</field>
-        <field name="search_view_id" ref="sgi_employer_obligation_view_search"/>
-        <field name="context">{'search_default_pending': 1}</field>
-        <field name="help" type="html"><p class="o_view_nocontent_smiling_face">Sin obligaciones patronales</p>
-            <p>IMSS, INFONAVIT, ISR retenido, impuesto sobre nómina… con su vencimiento y la fecha en que se presentó (S4-04).</p></field>
     </record>
 
 </odoo>

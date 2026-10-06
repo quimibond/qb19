@@ -6,12 +6,10 @@ NC mayor (5 porqués + acción correctiva terminada, refinamiento H1).
 """
 from datetime import date
 
-from dateutil.relativedelta import relativedelta
-
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
-from .common_users import assert_locked, sgi_test_user
+from .common_users import assert_locked, sgi_set_director, sgi_set_mast, sgi_test_user
 
 
 @tagged('post_install', '-at_install')
@@ -71,7 +69,7 @@ class TestOla1RootCause(TransactionCase):
     # --- H1: cierre real de NC mayor --------------------------------------
     def _mayor_ready(self):
         alert = self._nc(sgi_classification='mayor', sgi_root_cause='Causa',
-                         sgi_effectiveness_note='Eficaz',
+                         sgi_effective='eficaz', sgi_effectiveness_note='Eficaz',
                          sgi_effectiveness_date=date.today(),
                          sgi_lesson_captured=True)
         return alert
@@ -110,6 +108,8 @@ class TestOla1Links(TransactionCase):
         super().setUpClass()
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        # Base nueva: el env es OdooBot (archivado) y no cuenta como Jefe MAST.
+        cls.mast = sgi_set_mast(cls.env)
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
 
@@ -118,7 +118,7 @@ class TestOla1Links(TransactionCase):
                 'sgi_classification': 'mayor', 'sgi_root_cause': 'c',
                 'sgi_why_1': '1', 'sgi_why_2': '2', 'sgi_why_3': '3',
                 'sgi_why_4': '4', 'sgi_why_5': '5',
-                'sgi_effectiveness_note': 'e',
+                'sgi_effective': 'eficaz', 'sgi_effectiveness_note': 'e',
                 'sgi_effectiveness_date': date.today(),
                 'sgi_lesson_captured': True}
         base.update(vals)
@@ -181,10 +181,14 @@ class TestOla1Recurrence(TransactionCase):
         super().setUpClass()
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        # Base nueva: el env es OdooBot (archivado) y no cuenta como Jefe MAST.
+        cls.mast = sgi_set_mast(cls.env)
         cls.team = cls.env.ref('quimibond_sgi.sgi_quality_team_internal')
         cls.stage_closed = cls.env.ref('quimibond_sgi.sgi_nc_int_stage_closed')
-        cls.proc = cls.env['sgi.process'].search([], limit=1)
-        cls.proc2 = cls.env['sgi.process'].search([('id', '!=', cls.proc.id)], limit=1)
+        # Procesos propios: el SGI se instala vacío (decisión 6, J-019).
+        Process = cls.env['sgi.process']
+        cls.proc = Process.create({'code': 'XPM-A', 'name': 'Proceso XPM A'})
+        cls.proc2 = Process.create({'code': 'XPM-B', 'name': 'Proceso XPM B'})
         cls.clause = cls.env['sgi.norm.clause'].search([], limit=1)
 
     def _nc(self, **vals):
@@ -226,7 +230,7 @@ class TestOla1Recurrence(TransactionCase):
 
     def test_05_recurrent_close_requires_corrective(self):
         self._nc()
-        nc2 = self._nc(sgi_root_cause='c', sgi_effectiveness_note='e',
+        nc2 = self._nc(sgi_root_cause='c', sgi_effective='eficaz', sgi_effectiveness_note='e',
                        sgi_effectiveness_date=date.today())
         self.env['sgi.action.line'].create({
             'alert_id': nc2.id, 'action_type': 'correccion', 'name': 'x',
@@ -247,7 +251,7 @@ class TestOla1Recurrence(TransactionCase):
         fmea_b = self.env['sgi.fmea'].create({
             'name': 'B', 'fmea_type': 'proceso', 'process_id': self.proc.id})
         self._nc()  # primera del proceso
-        nc2 = self._nc(sgi_root_cause='c', sgi_effectiveness_note='e',
+        nc2 = self._nc(sgi_root_cause='c', sgi_effective='eficaz', sgi_effectiveness_note='e',
                        sgi_effectiveness_date=date.today(), sgi_fmea_id=fmea_a.id)
         self.env['sgi.action.line'].create({
             'alert_id': nc2.id, 'action_type': 'correctiva', 'name': 'cap',
@@ -284,13 +288,19 @@ class TestOla1Escalation(TransactionCase):
             {'name': 'Resp', 'login': 'ola1_resp'})
         cls.env['hr.employee'].create(
             {'name': 'Resp emp', 'user_id': cls.resp.id, 'parent_id': boss_emp.id})
+        # Base nueva: el env es OdooBot (archivado); Jefe MAST y Dirección
+        # tienen que ser usuarios activos para recibir la escalación.
+        cls.mast = sgi_set_mast(cls.env)
+        cls.director = sgi_set_director(cls.env)
         cls.risk = cls.env['sgi.risk'].create({'name': 'R', 'instrument': 'ryo'})
 
     def _overdue_line(self, days):
+        # 57.15.0 (G-009): los umbrales (7 y 15) son días hábiles.
+        from ..models.sgi_calendar import sgi_add_business_days, sgi_today
         return self.env['sgi.action.line'].create({
             'risk_id': self.risk.id, 'name': 'Acción %d' % days,
             'responsible_id': self.resp.id,
-            'date_commit': date.today() - relativedelta(days=days)})
+            'date_commit': sgi_add_business_days(self.env, sgi_today(self.env), -days)})
 
     def _acts(self):
         return self.env['mail.activity'].search(
@@ -311,6 +321,7 @@ class TestOla1Escalation(TransactionCase):
         summ = self._acts().mapped('summary')
         self.assertTrue(any('escalada al jefe' in s for s in summ))
         self.assertTrue(any('Dirección' in s for s in summ))
+        self.assertEqual(self._acts().filtered(lambda a: 'Dirección' in a.summary).user_id, self.director)
 
     def test_03_idempotent(self):
         self._overdue_line(20)
@@ -335,7 +346,9 @@ class TestOla1AuditFinding(TransactionCase):
         super().setUpClass()
         cls.env.user.group_ids = [
             (4, cls.env.ref('quimibond_sgi.group_sgi_manager').id)]
-        cls.proc = cls.env['sgi.process'].search([], limit=1)
+        # Proceso propio: el SGI se instala vacío (decisión 6, J-019).
+        cls.proc = cls.env['sgi.process'].create(
+            {'code': 'XPM-A', 'name': 'Proceso XPM A'})
         cls.clause = cls.env['sgi.norm.clause'].search([], limit=1)
         cls.sgi_user = sgi_test_user(cls.env)
 

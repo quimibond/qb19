@@ -14,21 +14,11 @@ Módulo Odoo 19 con **2 modelos separados**:
 ## Instalación / actualización
 
 1. Copiar la carpeta `quimibond_ficha_tecnica_tela` a la carpeta de addons.
-2. Si ya tenías instalada una versión anterior de este módulo (con el
-   modelo único `ficha.tecnica.tela`), usa **Actualizar**, no
-   desinstalar — Odoo mantiene los datos ya cargados en las tablas que
-   siguen existiendo, pero el modelo antiguo `ficha.tecnica.tela` deja de
-   existir en esta versión. **Antes de actualizar en producción, exporta
-   o respalda los datos de fichas ya capturadas con el modelo anterior**,
-   ya que este cambio de esquema no migra automáticamente los datos del
-   modelo viejo al nuevo par tejido/acabado — hay que recapturarlos o
-   escribir un script de migración a la medida si ya tienes muchos
-   registros cargados.
-3. Requiere `mrp`, `hr` y `openpyxl` en el servidor.
-4. Versión 19.0.2.1.0: `jefe_manufactura` y `auxiliar_procesos` pasan de
-   Char a Many2one `hr.employee`, y `maquina_tejido` de Char a Many2one
-   `mrp.workcenter`. Los textos ya capturados en esas 3 columnas no se
-   convierten (Odoo respalda la columna vieja); hay que reseleccionarlos.
+2. El modelo único `ficha.tecnica.tela` de la primera versión ya no existe
+   en el código (2.1.1 retiró también su importador; Jose Sacramento
+   confirmó que no lo usa). Su tabla `ficha_tecnica_tela` sigue en la base
+   hasta que se borre a mano; no se migra al par tejido/acabado.
+3. Requiere `mrp` y `openpyxl` en el servidor.
 
 ## Uso
 
@@ -54,13 +44,7 @@ columnas extra sin que falle la importación.
 ### Columnas reconocidas — Importar Tejido
 
 `Artículo` (requerida), `Revisión`, `Producto Proceso` (referencia interna
-o nombre del producto "Tela en Proceso", opcional), `Rendimiento` (m/kg de
-la tela tejida; también acepta "Rendimiento Tela Tejida" / "Rendimiento
-m/kg"), `Jefe de Manufactura` y `Auxiliar de Procesos` (nombre exacto del
-empleado en `hr.employee` con puesto "JEFE DE MANUFACTURA" /
-"AUXILIAR DE PROCESOS"), `Máquina` (código —No. de máquina— del centro de
-trabajo `mrp.workcenter`; si no coincide por código se busca por nombre;
-también acepta "No Máquina", "Número Máquina", "Código Máquina"), `Marca
+o nombre del producto "Tela en Proceso", opcional), `Máquina`, `Marca
 Máquina`, `Galga`, `Diámetro`, `No Agujas`, `No Alimentadores`,
 `Velocidad`, `Vueltas por rollo`, `Notas`.
 
@@ -103,10 +87,52 @@ Si una fila referencia un artículo de tejido o producto que no existe
 todavía en Odoo, esa fila se omite y se reporta en el resumen de avisos
 al final de la importación — el resto de filas válidas sí se procesan.
 
-## Métodos disponibles para desarrollos futuros
+## Los dos rendimientos (regla de Jose, 2026-10-06)
 
-En `ficha.tecnica.acabado`, el campo `rendimiento_tela_acabada` es el que
-alimenta el cálculo de tamaño de orden / split de Tintorería descrito en
-el documento de Diseño Técnico general, junto con
-`tintoreria.capacidad.rendimiento` (módulo separado
-`quimibond_tintoreria_rendimiento`).
+Hay dos rendimientos en metros por kilogramo y **los dos se conservan como
+campo**:
+
+- **Tejido** (`rendimiento_tela_tejida` en `ficha.tecnica.tejido`, rama
+  `consolti`): rendimiento de la tela en proceso. **Es el que alimenta el
+  cálculo de tamaño de orden y split de Tintorería**, junto con
+  `tintoreria.capacidad.rendimiento` (módulo `quimibond_tintoreria_rendimiento`).
+- **Acabado** (`rendimiento_tela_acabada` en `ficha.tecnica.acabado`):
+  rendimiento teórico del producto terminado. **Valida los metros finales**
+  contra el rendimiento real del pesaje de cada rollo. No alimenta a
+  Tintorería.
+
+## Columnas fijas
+
+Las columnas fijas de `ficha.tecnica.tejido` y `ficha.tecnica.acabado`
+(máquina, hilos, poleas, tela acondicionada, peso, ancho, encogimiento,
+elongación, rendimientos…) **no se eliminan ni se renombran**: el código de
+Consolti las lee. Los renglones de características de 2.1.0 conviven con
+ellas.
+
+## Características con dos juegos de límites (2.1.0)
+
+Desde 2.1.0 el módulo es dueño del **catálogo de características** y de las
+**claves de codificación de artículos**, y cada ficha de tejido y de acabado
+lleva una pestaña «Características» con un renglón por característica:
+
+| Columna | Qué guarda |
+|---|---|
+| Característica | Del catálogo (`ficha.tecnica.caracteristica`: clave estable, nombre en español e inglés, tipo de dato numérico / cualitativo / sí-no, unidad, método o norma); un renglón sin catálogo se escribe libre |
+| Dirección y posición | Largo / ancho; izquierda / centro / derecha |
+| Especificación del cliente | Nominal y límite: nominal ± tolerancia (en unidades o en %), máximo o mínimo. Texto solo en las cualitativas |
+| Control interno | Margen más cerrado sobre el mismo nominal. **Nunca se imprime al cliente**; el certificado y las Especificaciones del producto salen de la especificación del cliente |
+| En especificación del cliente / En certificado | Qué renglones van a cada documento |
+
+Los límites viven en el mixin `ficha.tecnica.caracteristica.mixin`
+(`_result_for(valor)` devuelve `cumple`, `desviacion` o `no_conforme`;
+`_limit_vals()` copia un renglón de un documento a otro). El SGI de
+`quimibond_sgi` (tabla de características del proyecto de desarrollo, C1)
+usa el mismo catálogo y el mismo mixin, de modo que al liberar un artículo
+los renglones del proyecto pasan a su ficha sin recaptura.
+
+Las claves de codificación (`ficha.tecnica.clave.codigo`) transcriben el DAT
+P-D02-01 rev. 05: composición, dibujo, tipo de hilo, galga por rango
+(`gauge_code(18)` → `'21'`, `gauge_from_code('22')` → `18`), operación, color
+y acabado. Catálogo y claves se siembran con `noupdate` y se editan en
+**Fichas Técnicas de Tela → Configuración** (gerentes de Fabricación).
+Pruebas: `tests/test_caracteristicas.py` (corren en el CI).

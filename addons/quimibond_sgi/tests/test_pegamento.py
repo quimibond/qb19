@@ -3,6 +3,8 @@ from datetime import date
 
 from odoo.tests import TransactionCase, tagged
 
+from .common_users import sgi_set_mast
+
 
 @tagged('post_install', '-at_install')
 class TestPegamentoNcMayor(TransactionCase):
@@ -15,8 +17,10 @@ class TestPegamentoNcMayor(TransactionCase):
         cls.Alert = cls.env['quality.alert']
 
     def test_01_nc_mayor_closed_creates_activity(self):
-        # Garantiza destinatario (Jefe MAST).
-        self.env.user.group_ids = [(4, self.env.ref('quimibond_sgi.group_sgi_manager').id)]
+        # Garantiza destinatario (Jefe MAST). Antes se le daba el grupo al
+        # usuario del env, que es OdooBot (archivado): en una base nueva no
+        # contaba y el aviso no se agendaba.
+        sgi_set_mast(self.env)
         alert = self.Alert.create({
             'title': 'NC mayor de prueba',
             'team_id': self.team_int.id,
@@ -29,6 +33,7 @@ class TestPegamentoNcMayor(TransactionCase):
             'sgi_why_1': 'Porqué 1', 'sgi_why_2': 'Porqué 2',
             'sgi_why_3': 'Porqué 3', 'sgi_why_4': 'Porqué 4',
             'sgi_why_5': 'Porqué 5',
+            'sgi_effective': 'eficaz',
             'sgi_effectiveness_note': 'Eficaz',
             'sgi_effectiveness_date': date.today(),
             'sgi_lesson_captured': True,

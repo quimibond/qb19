@@ -316,6 +316,101 @@ ligados nombra además a los que no están en ningún centro.
 **Corte vigente:** TEJIDO desde 2026-09-01 (38 workcenters CIRCULAR, tarifa
 $99/h contra 504.01.0099, escrita el 1-sep a las 14:05 UTC).
 
+### La capa de valoración con absorción: solo se resta lo vendido (v1.68)
+
+Con el centro absorbido, el abono a costos fabriles aplicados NO está "en
+resultados" solo: su cargo fue al inventario y de ahí Odoo lo carga a
+501.01.01 conforme la mercancía se vende. La capa de valoración del mes
+(Dr puente 115.03.01 / Cr 501.01.01) es:
+
+    capa = costo primo del mayor SIN el diario CAPA − MP vendida del modelo
+           − conversión absorbida que YA llegó a ventas en el mes
+
+Restar el abono completo deja septiembre igual que el régimen viejo: expensa
+en el mes la conversión de tejido que sigue en el almacén y la absorción no
+cambia nada en resultados. Restar sólo la parte vendida es lo que deja los
+$852,755 de sep-2026 en inventario, que es donde está la tela.
+
+Esa parte vendida la mide `qb.costo.absorcion.traza` siguiendo los **lotes**,
+no los nombres: la salida terminada de cada orden absorbida reparte su
+conversión (duración × tarifa) entre sus lotes a prorrata; cada consumo del
+lote por otra orden le pasa la fracción consumida; la salida de ésa la vuelve
+a repartir; y cada lote carga a ventas la fracción entregada a cliente en el
+período. Se consideran TODAS las órdenes absorbidas desde el corte, porque
+un lote tejido en septiembre se vende en octubre. El período guarda:
+
+| Campo | Qué es |
+|---|---|
+| `absorcion_vendida_month` | conversión absorbida que llegó a entregas EN el mes |
+| `absorcion_en_inventario` | lo absorbido desde el corte que sigue en lotes u órdenes abiertas al cierre |
+| `absorcion_sin_lote_month` | órdenes absorbidas cuya salida no lleva lote: no se puede seguir (el panel avisa) |
+| `costo_primo_gl_month` | 501.01.01 del mes sin el diario CAPA (parámetros `capa_cuenta_costo_primo`, `capa_diario_code`) |
+| `mp_vendida_month` | Σ `mp_total` de los costos por producto del período |
+| `capa_propuesta_month` | la fórmula de arriba |
+
+Sep-2026, medido a mano antes de programarlo: abono $1,197,422; consumido
+por tintorería/acabado en el mes $798,267; en lotes de tintorería $40,212;
+en producto terminado sin entregar $413,388; **entregado a cliente
+$344,667 (28.8%)**. Capa registrada: $2,189,225.84 (asiento 847086). El
+detalle, con la revisión de enero a septiembre y el barrido de promedios,
+está en `docs/COSTEO_REVISION.md`.
+
+### La conversión absorbida en el costo unitario (v1.69)
+
+Con TEJIDO fuera del pool, el costo unitario explotaba la receta hasta el
+hilo y perdía el tejido: una tela de 40 g cargaba la misma fabricación que
+una de 135 g ($3.39/m parejo en sep-2026) y el resultado del modelo no traía
+los $585,531 de tejido que sí llegaron a ventas. La capa `conv_unit` lo
+regresa, aparte de la MP (que sigue auditable contra compras):
+
+```
+tarifa del crudo = horas REALES de sus órdenes de 12 meses × tarifa $/h de
+                   hoy ÷ lo producido (sin órdenes fuera de la banda de
+                   rendimiento: cronómetros desbocados)
+     sin historia → la de sus hermanos: mismo código salvo color o ancho
+                    (primeros 9 caracteres, WJ047Q21H…)
+     sin hermanos → promedio del centro, misma base (marcado «estimado»)
+conv_unit        = la receta baja la tarifa del crudo al teñido y al acabado
+conv_var_unit    = conv_unit × energía del centro absorbido ÷ abono bruto
+costo_variable   = MP + energía + conv_var_unit
+costo_produccion = MP + energía + fabricación + conv_unit
+```
+
+Doce meses y no el mes: antes del corte las circulares no tenían tarifa,
+pero la duración de cada orden de trabajo sí se registraba, y con un solo
+mes un crudo sin órdenes caía al promedio (WJ047Q21HNT112: $11.54/kg del
+centro contra $7.12/kg de sus 419 órdenes) o una orden lenta mandaba
+(NN053Q66HNT098: 3.6 kg/h en septiembre, 4.0 en el año). El total del
+período no cambia: sigue siendo lo que la traza encontró en las entregas.
+La familia de máquinas solo se usa para una especificación nueva, que no
+tiene código ni órdenes.
+
+Un producto es «crudo» si sale de órdenes en las máquinas absorbidas, si su
+receta tiene una operación en ellas, si una familia del centro lo declara o
+si su orden sigue el `mo_name_pattern` del centro. La capa existe solo en
+períodos con centro absorbido: hasta agosto de 2026 el tejido ya iba en
+`fab_unit`.
+
+**Totales del período ≠ unitario × qty.** `conv_total` es lo que la traza
+por lotes encontró en las entregas del mes con ese producto, que es lo que
+está en el costo de ventas del mayor; suma exactamente
+`absorcion_vendida_month`. En el mes del corte, unitario × qty es mayor
+porque parte de lo vendido se tejió antes y su tejido ya se fue a gasto: esa
+diferencia queda en `conv_transicion_month` y tiende a cero. La
+conciliación muestra la capa (`modelo_conv`) dentro del costo del modelo.
+
+El ajuste de MP deja fuera del costo primo la conversión vendida de cada
+mes: desde el corte el AVCO la lleva dentro y no es materia prima.
+
+**Cotizador.** Usa el último período CERRADO (el mes en curso tiene el pool
+a medio llenar; con uno en borrador avisa) y se puede fijar otro en «Período
+de factores». La conversión entra al piso a planta llena completa y al piso
+con capacidad ociosa solo su parte de energía. Los dos pisos y los márgenes
+son por unidad **vendible** (÷ rendimiento de primera). Energía en $0/kg con
+pool de energía es un error, no se cotiza. Una especificación nueva elige su
+familia de máquinas para la tarifa. `qb.cotizacion.recotizar_ahora(factores)`
+recotiza contra un período dado.
+
 ## Períodos cerrables
 
 `qb.costo.factores` tiene estado. **Cerrado** congela el período: ni el cron
@@ -357,6 +452,13 @@ propósito, así que la bruta la trae por construcción). El lado del mayor es e
 resultado de **operación**: con el arrendamiento de maquinaria (701.11, que el
 modelo sí cobra) y sin el resultado integral de financiamiento (que no). El
 mes en curso no entra al año del panel hasta que termina o se cierra.
+
+Desde que un centro capitaliza por workcenter (v1.67): el arrendamiento de
+maquinaria cuenta aunque viva en «otros gastos»; la energía del centro
+absorbido sale del pool (ya va en su tarifa) y la del resto se divide entre
+los kilos de toda la planta, con los absorbidos dentro; y la **subabsorción**
+del centro absorbido —horas normales × tarifa menos el abono real a
+504.01.0099— se suma a la ociosidad, no a la brecha.
 
 Tres caminos por los que el modelo se desvía, y los tres se ven ahí:
 

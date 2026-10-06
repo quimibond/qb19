@@ -7,8 +7,10 @@
   «Enviar acuses a firma» genera una solicitud por empleado pendiente y el
   cron diario sella el acuse cuando la solicitud queda firmada.
 - **eLearning**: un curso puede otorgar una competencia (hr.skill) a un nivel
-  dado. Al terminar el curso, el cron diario registra/sube la competencia del
-  empleado, cerrando la brecha en la DNC sin captura manual.
+  dado. Al terminar el curso, el empleado recibe la competencia con la
+  vigencia del curso (57.100.0, N-13: la línea de currículum nativa la otorga
+  al momento; el cron diario es el respaldo para quien terminó sin línea),
+  cerrando la brecha en la DNC sin captura manual.
 """
 import logging
 
@@ -23,8 +25,37 @@ class DocumentsDocumentSign(models.Model):
 
     sgi_sign_template_id = fields.Many2one(
         'sign.template', string="Plantilla de firma (Sign)", copy=False,
-        help="Plantilla de la app Firma hecha con el PDF de este documento y "
-             "su campo de firma colocado. Habilita «Enviar acuses a firma».")
+        help="Vacío: el SGI la arma sola (el PDF del documento más una hoja "
+             "«Leí y entendí» con la firma colocada). Solo si se quiere otra, "
+             "se elige aquí una plantilla hecha a mano en la app Firma.")
+    # 56.18.0: plantilla armada por el SGI y la revisión para la que se armó
+    # (si el documento cambia de revisión, se arma otra).
+    sgi_sign_template_auto = fields.Boolean(copy=False, readonly=True)
+    sgi_sign_template_rev = fields.Integer(copy=False, readonly=True)
+
+    def write(self, vals):
+        if 'sgi_sign_template_id' in vals and not self.env.context.get('sgi_sign_auto'):
+            vals = dict(vals, sgi_sign_template_auto=False)
+        return super().write(vals)
+
+    def _sgi_ack_sign_template(self):
+        """Plantilla para los acuses: la elegida a mano o, si no hay, la que
+        arma el SGI (PDF del documento + hoja «Leí y entendí»)."""
+        self.ensure_one()
+        doc = self.sudo()
+        if doc.sgi_sign_template_id and (not doc.sgi_sign_template_auto
+                                         or doc.sgi_sign_template_rev == doc.sgi_revision):
+            return doc.sgi_sign_template_id
+        builder = self.env['sgi.sign.builder']
+        sheet = builder._sgi_render_pdf('quimibond_sgi.action_report_ack_sign_sheet', doc)
+        pdf, page = builder._sgi_append([builder._sgi_attachment_pdf(doc)], sheet)
+        role = self.env.ref('quimibond_sgi.sgi_sign_role_empleado')
+        template = builder._sgi_template(
+            "Acuse %s rev. %02d" % (doc.sgi_code or doc.name, doc.sgi_revision or 0), pdf, page, [(0, role)])
+        doc.with_context(sgi_sign_auto=True).write({
+            'sgi_sign_template_id': template.id, 'sgi_sign_template_auto': True,
+            'sgi_sign_template_rev': doc.sgi_revision})
+        return template
 
     def action_sgi_send_sign_requests(self):
         """Crea una solicitud de firma por cada acuse pendiente sin solicitud
@@ -32,22 +63,22 @@ class DocumentsDocumentSign(models.Model):
         creación corre con sudo (el candado real es el grupo del botón)."""
         self.ensure_one()
         if not self.env.user.has_group('quimibond_sgi.group_sgi_manager'):
-            raise UserError("Solo el Jefe de MAST envía acuses a firma.")
-        template = self.sgi_sign_template_id.sudo()
-        if not template:
-            raise UserError(
-                "Primero liga la plantilla de firma: crea en la app Firma una "
-                "plantilla con el PDF de este documento y su campo de firma, "
-                "y selecciónala aquí.")
+            raise UserError("Solo el Jefe MAST envía acuses a firma.")
+        pending = self.sgi_ack_ids.filtered(
+            lambda a: a.state == 'pendiente' and (
+                not a.sign_request_id
+                or a.sign_request_id.state in ('canceled', 'expired')))
+        if not pending:
+            return {
+                'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'message': "No hay acuses pendientes sin firma en curso.", 'type': 'info'},
+            }
+        template = self._sgi_ack_sign_template().sudo()
         roles = template.sign_item_ids.mapped('responsible_id')
         if len(roles) != 1:
             raise UserError(
                 "La plantilla de firma debe tener campos de UN solo firmante "
                 "(el empleado que acusa). Esta tiene %d roles." % len(roles))
-        pending = self.sgi_ack_ids.filtered(
-            lambda a: a.state == 'pendiente' and (
-                not a.sign_request_id
-                or a.sign_request_id.state in ('canceled', 'expired')))
         sent, skipped = 0, []
         for ack in pending:
             partner = (ack.employee_id.user_id.partner_id
@@ -56,19 +87,22 @@ class DocumentsDocumentSign(models.Model):
                 skipped.append(ack.employee_id.name)
                 continue
             try:
-                request = self.env['sign.request'].sudo().create({
-                    'template_id': template.id,
-                    'reference': "Acuse %s — %s" % (
-                        self.sgi_code or self.name, ack.employee_id.name),
-                    'subject': "Firma de acuse de lectura: %s" % (
-                        self.sgi_code or self.name),
-                    'request_item_ids': [(0, 0, {
-                        'partner_id': partner.id,
-                        'role_id': roles.id,
-                    })],
-                })
-                ack.sudo().sign_request_id = request
-                sent += 1
+                # 57.16.0 (G-002): savepoint por solicitud; un error SQL al
+                # crear una ya no aborta la transacción para las demás.
+                with self.env.cr.savepoint():
+                    request = self.env['sign.request'].sudo().create({
+                        'template_id': template.id,
+                        'reference': "Acuse %s — %s" % (
+                            self.sgi_code or self.name, ack.employee_id.name),
+                        'subject': "Firma de acuse de lectura: %s" % (
+                            self.sgi_code or self.name),
+                        'request_item_ids': [(0, 0, {
+                            'partner_id': partner.id,
+                            'role_id': roles.id,
+                        })],
+                    })
+                    ack.sudo().sign_request_id = request
+                    sent += 1
             except Exception:
                 _logger.exception(
                     "SGI Sign: falló la solicitud de firma del acuse de %s "
@@ -124,10 +158,12 @@ class SlideChannelSgi(models.Model):
         help="Al terminar el curso, el empleado recibe esta competencia al "
              "nivel indicado (cierra la brecha en la DNC).")
     sgi_skill_type_id = fields.Many2one(
-        related='sgi_skill_id.skill_type_id', string="Tipo de competencia")
+        related='sgi_skill_id.skill_type_id', string="Tipo de competencia",
+        help="Tipo de la competencia que otorga el curso.")
     sgi_skill_level_id = fields.Many2one(
         'hr.skill.level', string="Nivel que otorga",
-        domain="[('skill_type_id', '=', sgi_skill_type_id)]")
+        domain="[('skill_type_id', '=', sgi_skill_type_id)]",
+        help="Nivel de competencia que obtiene quien termina el curso.")
 
     def _sgi_employee_for_partner(self, partner):
         Employee = self.env['hr.employee'].sudo()
@@ -141,9 +177,13 @@ class SlideChannelSgi(models.Model):
     @api.model
     def _sgi_sync_completions(self):
         """Asistentes con curso terminado → competencia del empleado creada o
-        subida de nivel (nunca bajada). Idempotente."""
+        subida de nivel (nunca bajada), con la vigencia del curso. Idempotente.
+
+        57.100.0 (N-13): usa la misma regla que la línea de currículum
+        (``hr.employee._sgi_grant_skill``) sin renovar: si el empleado ya tuvo
+        la competencia a ese nivel, el cron no la vuelve a dar (con vigencia,
+        «hoy + N meses» la renovaría cada noche)."""
         today = fields.Date.context_today(self)
-        Skill = self.env['hr.employee.skill'].sudo()
         channels = self.sudo().search([
             ('sgi_skill_id', '!=', False),
             ('sgi_skill_level_id', '!=', False),
@@ -158,22 +198,9 @@ class SlideChannelSgi(models.Model):
                 employee = channel._sgi_employee_for_partner(member.partner_id)
                 if not employee:
                     continue
-                current = Skill.search([
-                    ('employee_id', '=', employee.id),
-                    ('skill_id', '=', channel.sgi_skill_id.id),
-                    '|', ('valid_to', '=', False), ('valid_to', '>=', today),
-                ], limit=1)
-                target = channel.sgi_skill_level_id
-                if current:
-                    if current.skill_level_id.level_progress >= target.level_progress:
-                        continue
-                    current.write({'skill_level_id': target.id})
-                else:
-                    Skill.create({
-                        'employee_id': employee.id,
-                        'skill_id': channel.sgi_skill_id.id,
-                        'skill_type_id': channel.sgi_skill_id.skill_type_id.id,
-                        'skill_level_id': target.id,
-                    })
-                granted += 1
+                if employee._sgi_grant_skill(
+                        channel.sgi_skill_id, channel.sgi_skill_level_id, today,
+                        channel._sgi_skill_date_to(today), 'curso', channel=channel,
+                        renew=False):
+                    granted += 1
         return granted

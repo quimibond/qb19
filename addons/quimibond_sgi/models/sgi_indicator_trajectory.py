@@ -23,12 +23,16 @@ from markupsafe import Markup
 from odoo import api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
+from .sgi_guard import sgi_require_system
+
 
 def _quarter_start(day):
     return date(day.year, 3 * ((day.month - 1) // 3) + 1, 1)
 
 
 class SgiIndicatorStep(models.Model):
+    """Escalón trimestral de la meta de un indicador con trayectoria (meta y aceptable desde una
+    fecha)."""
     _name = 'sgi.indicator.step'
     _description = "Escalón trimestral de la meta de un indicador SGI"
     _order = 'indicator_id, date_from'
@@ -78,15 +82,20 @@ class SgiIndicatorTrajectory(models.Model):
 
     direction = fields.Selection(selection_add=[('range', "Dentro de un rango")],
                                  ondelete={'range': 'set default'})
-    range_min = fields.Float(string="Mínimo", digits=(16, 2))
-    range_max = fields.Float(string="Máximo", digits=(16, 2))
+    range_min = fields.Float(string="Mínimo", digits=(16, 2),
+                             help="Límite inferior del rango aceptable (cuando el sentido es «dentro de un "
+                                  "rango»).")
+    range_max = fields.Float(string="Máximo", digits=(16, 2),
+                             help="Límite superior del rango aceptable (cuando el sentido es «dentro de un "
+                                  "rango»).")
     range_tolerance = fields.Float(
         string="Tolerancia", digits=(16, 2),
         help="Fuera del rango pero dentro de esta distancia el semáforo es amarillo.")
     baseline_date = fields.Date(string="Arranque desde",
                                 help="Fecha del valor de arranque; inicio de la trayectoria.")
     step_ids = fields.One2many('sgi.indicator.step', 'indicator_id', string="Escalones")
-    has_trajectory = fields.Boolean(compute='_compute_has_trajectory')
+    has_trajectory = fields.Boolean(compute='_compute_has_trajectory',
+                                    help="Indica si la meta cambia por escalones trimestrales.")
 
     @api.depends('step_ids')
     def _compute_has_trajectory(self):
@@ -144,6 +153,7 @@ class SgiIndicatorTrajectory(models.Model):
     @api.model
     def cron_missing_trajectories(self):
         """Paso del cron de indicadores: escalones para los que ya tienen fechas."""
+        sgi_require_system(self.env)  # 57.91.0 (K-06)
         pending = self.search([('baseline_date', '!=', False), ('target_date', '!=', False),
                                ('direction', '!=', 'range'), ('step_ids', '=', False)])
         pending._sgi_auto_trajectory()
@@ -220,10 +230,15 @@ class SgiIndicatorMeasureTrajectory(models.Model):
 
     # Odoo hereda los atributos del campo base al redefinirlo: sin related=None
     # el campo seguiría siendo el related al indicador y el compute no correría.
-    target_objective = fields.Float(string="Objetivo", compute='_compute_targets', related=None)
-    target_acceptable = fields.Float(string="Aceptable", compute='_compute_targets', related=None)
-    range_min = fields.Float(related='indicator_id.range_min')
-    range_max = fields.Float(related='indicator_id.range_max')
+    target_objective = fields.Float(string="Objetivo", compute='_compute_targets', related=None,
+                                    help="Objetivo vigente en el periodo (con trayectoria, el del escalón).")
+    target_acceptable = fields.Float(string="Aceptable", compute='_compute_targets', related=None,
+                                     help="Aceptable vigente en el periodo (con trayectoria, el del "
+                                          "escalón).")
+    range_min = fields.Float(related='indicator_id.range_min',
+                             help="Límite inferior del rango del indicador.")
+    range_max = fields.Float(related='indicator_id.range_max',
+                             help="Límite superior del rango del indicador.")
 
     @api.depends('indicator_id.target_objective', 'indicator_id.target_acceptable',
                  'indicator_id.direction', 'period_date',

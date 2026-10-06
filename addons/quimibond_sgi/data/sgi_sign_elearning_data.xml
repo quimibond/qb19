@@ -12,14 +12,17 @@
         <field name="active" eval="True"/>
     </record>
 
-    <!-- Digest semanal del SGI a Jefe MAST + Dirección. -->
+    <!-- D-14 (57.7.0): el registro del resumen semanal viejo (B-017) ahora
+         manda a cada persona lo atrasado de su «Mis pendientes». Sale
+         APAGADO: Jose lo enciende a mano. En producción lo reescribe la
+         migración 19.0.57.7.0 (este archivo es noupdate). -->
     <record id="sgi_cron_weekly_digest" model="ir.cron">
-        <field name="name">SGI: Resumen semanal por correo</field>
+        <field name="name">SGI: Mis pendientes atrasados (correo semanal por persona)</field>
         <field name="model_id" ref="model_sgi_cron"/>
         <field name="state">code</field>
-        <field name="code">model.cron_weekly_digest()</field>
+        <field name="code">model.cron_weekly_overdue_mail()</field>
         <field name="interval_number">1</field>
         <field name="interval_type">weeks</field>
-        <field name="active" eval="True"/>
+        <field name="active" eval="False"/>
     </record>
 </odoo>

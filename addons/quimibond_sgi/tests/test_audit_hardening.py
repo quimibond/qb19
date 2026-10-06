@@ -108,7 +108,9 @@ class TestAuditHardening(TransactionCase):
     # A1 — «Generar NC» de reclamación es idempotente
     # ------------------------------------------------------------------
     def test_a1_complaint_nc_idempotent(self):
-        ticket = self.env['helpdesk.ticket'].create({'name': 'Reclamación A1'})
+        ticket = self.env['helpdesk.ticket'].create({
+            'name': 'Reclamación A1',
+            'team_id': self.env.ref('quimibond_sgi.sgi_helpdesk_team_complaints').id})
         action = ticket.action_sgi_generate_nc()
         alert_id = action['res_id']
         self.assertTrue(ticket.sgi_alert_id)
@@ -223,10 +225,14 @@ class TestAuditHardening(TransactionCase):
     # A6 — write directo de state no brinca el candado de cierre
     # ------------------------------------------------------------------
     def test_a6_incident_close_via_write(self):
+        # 56.34.0 (entrega 4, D-06 / D-009): investigar, cerrar y reabrir es
+        # del Jefe MAST y de Salud ocupacional; el candado de cierre (SCAT y
+        # acciones) se prueba con el Jefe MAST y el operador ya no cierra.
         incident = self.env['sgi.incident'].create(
             {'name': 'Incidente A6', 'incident_type': 'casi_accidente'})
         with self.assertRaises(UserError):
-            incident.with_user(self.sgi_user).write({'state': 'cerrado'})
+            incident.with_user(self.sgi_manager).write({'state': 'cerrado'})
+        self.assertEqual(incident.state, 'reportado', "Sin SCAT ni acciones no cierra.")
         incident.write({
             'immediate_causes': 'a', 'basic_causes': 'b',
             'lack_of_control': 'c'})
@@ -234,5 +240,13 @@ class TestAuditHardening(TransactionCase):
             'incident_id': incident.id, 'name': 'Acción',
             'responsible_id': self.sgi_user.id,
             'date_commit': date.today(), 'date_done': date.today()})
-        incident.with_user(self.sgi_user).write({'state': 'cerrado'})
+        # 57.96.0 (N-06): equipo con un trabajador y eficacia antes de cerrar
+        # (antes del intento del operador: a él solo lo detiene el permiso).
+        worker = self.env['hr.employee'].create({'name': 'A6 Trabajador'})
+        incident.with_user(self.sgi_manager).write({
+            'investigation_team_ids': [(6, 0, worker.ids)], 'sgi_effective': 'eficaz',
+            'sgi_effectiveness_date': date.today(), 'sgi_effectiveness_note': 'Sin repetición'})
+        with self.assertRaises(UserError):
+            incident.with_user(self.sgi_user).write({'state': 'cerrado'})
+        incident.with_user(self.sgi_manager).write({'state': 'cerrado'})
         self.assertEqual(incident.state, 'cerrado')

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.51.0: permiso de trabajo de alto riesgo en PDF, para tenerlo en
+         el lugar del trabajo. La clave del formato sale del pie en vivo. -->
+    <record id="action_report_work_permit" model="ir.actions.report">
+        <field name="name">Permiso de trabajo de alto riesgo</field>
+        <field name="model">sgi.work.permit</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_work_permit_document</field>
+        <field name="report_file">quimibond_sgi.report_work_permit_document</field>
+        <field name="print_report_name">'Permiso de trabajo - %s' % (object.folio or object.name)</field>
+        <field name="binding_model_id" ref="model_sgi_work_permit"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_work_permit_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
+                    <div class="page">
+                        <h2 class="text-center">Permiso de trabajo de alto riesgo</h2>
+                        <p class="text-center text-muted"><span t-out="doc.folio or ''"/> · <span t-field="doc.state"/></p>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:30%"><strong>Trabajo</strong></td><td><span t-out="doc.name"/></td></tr>
+                            <tr><td><strong>Tipo</strong></td><td><span t-field="doc.work_type"/></td></tr>
+                            <tr><td><strong>Lugar</strong></td><td><span t-out="doc.location"/><t t-if="doc.sgi_area_id"> (<span t-out="doc.sgi_area_id.name"/>)</t></td></tr>
+                            <tr t-if="doc.equipment_id"><td><strong>Equipo</strong></td><td><span t-out="doc.equipment_id.name"/></td></tr>
+                            <tr><td><strong>Solicitante</strong></td><td><span t-out="doc.requester_id.name"/></td></tr>
+                            <tr><td><strong>Personal que ejecuta</strong></td><td><span t-out="', '.join(doc.sudo().executor_ids.mapped('name'))"/><t t-if="doc.contractor_id"> · Contratista: <span t-out="doc.contractor_id.name"/></t></td></tr>
+                            <tr><td><strong>Vigencia</strong></td><td><span t-field="doc.date_start"/> a <span t-field="doc.date_end"/></td></tr>
+                        </table>
+                        <p style="font-size:11px;"><strong>Peligros identificados:</strong> <span t-out="doc.hazards or ''"/></p>
+                        <p t-if="doc.epp_notes" style="font-size:11px;"><strong>EPP adicional:</strong> <span t-out="doc.epp_notes"/></p>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Tipo</th><th>Punto a verificar</th><th>Respuesta</th><th>Observación</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.check_ids" t-as="check">
+                                    <td><span t-field="check.category"/></td>
+                                    <td><span t-out="check.name"/></td>
+                                    <td><span t-field="check.answer"/></td>
+                                    <td><span t-out="check.note or ''"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <tr>
+                                <td style="width:50%"><strong>Autorizó el área:</strong> <span t-out="doc.area_approved_by_id.name or 'Pendiente'"/><br/><span t-field="doc.area_approved_date"/></td>
+                                <td><strong>Autorizó Seguridad:</strong> <span t-out="doc.sst_approved_by_id.name or 'Pendiente'"/><br/><span t-field="doc.sst_approved_date"/></td>
+                            </tr>
+                            <tr t-if="doc.closed_by_id">
+                                <td colspan="2"><strong>Cierre:</strong> <span t-out="doc.closed_by_id.name"/>, <span t-field="doc.closed_date"/>. <span t-out="doc.close_note or ''"/></td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -37,6 +37,7 @@
     <record id="sgi_helpdesk_team_complaints" model="helpdesk.team">
         <field name="name">Reclamaciones de clientes</field>
         <field name="use_sla" eval="True"/>
+        <field name="sgi_is_complaint" eval="True"/>
     </record>
     <record id="sgi_hd_stage_new" model="helpdesk.stage">
         <field name="name">Nueva</field><field name="sequence">10</field>
@@ -90,7 +91,8 @@
         <field name="name">Modificación de documento SGI</field>
         <field name="sgi_is_doc_change" eval="True"/>
         <field name="approver_sequence" eval="True"/>
-        <field name="approval_minimum">2</field>
+        <field name="approval_minimum">1</field>
+        <field name="sgi_sign_required" eval="True"/>
         <field name="requirer_document">optional</field>
         <field name="description">Flujo F-P-G01-06: alta/modificación/baja de documentos controlados del SGI.</field>
     </record>

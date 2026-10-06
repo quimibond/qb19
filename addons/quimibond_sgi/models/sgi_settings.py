@@ -11,92 +11,121 @@ class ResConfigSettings(models.TransientModel):
     """
     _inherit = 'res.config.settings'
 
+    # 57.119.0 (C1, bloque 3): bloqueo del artículo genérico de muestra.
+    sgi_dev_block_generic_sample_from = fields.Char(
+        string="Bloquear «MUESTRA PILOTO» en órdenes nuevas desde (AAAA-MM-DD)",
+        config_parameter='quimibond_sgi.dev_block_generic_sample_from',
+        help="A partir de esta fecha no se crean ni confirman órdenes de fabricación con los artículos "
+             "genéricos «MUESTRA PILOTO TEJIDO / TINTORERÍA»: las muestras de desarrollo se piden desde el "
+             "proyecto con su artículo generado. Vacío: sin bloqueo (hay órdenes abiertas con ellos; la "
+             "fecha la decide Dirección de Finanzas).")
+    # 57.120.0 (C1, bloque 4): quién autoriza las pruebas de laboratorio de los desarrollos.
+    sgi_dev_lab_authorizer_job_id = fields.Many2one(
+        'hr.job', string="Puesto que autoriza pruebas de laboratorio de desarrollos",
+        config_parameter='quimibond_sgi.dev_lab_authorizer_job_id',
+        help="Puesto cuyas personas autorizan las solicitudes de pruebas de los proyectos de desarrollo. "
+             "Por omisión, el Coordinador de Laboratorio y MP (se busca por nombre si el parámetro está "
+             "vacío). El Jefe MAST siempre puede.")
     sgi_nc_escalation_days = fields.Integer(
-        string="Días para escalar una NC sin acciones",
+        string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',
         help="NC interna sin acciones tras estos días → actividad al responsable "
              "y aviso a MAST.")
     sgi_nc_escalation_days_external = fields.Integer(
-        string="Días para escalar una NC externa/cliente",
+        string="Días hábiles para escalar una NC externa/cliente",
         config_parameter='quimibond_sgi.nc_escalation_days_external',
         help="Las NC de auditoría externa y reclamaciones de cliente escalan más "
              "rápido que las internas.")
     sgi_nc_days_containment = fields.Integer(
         string="Plazo de contención de una NC (días hábiles)",
-        config_parameter='quimibond_sgi.nc_days_containment')
+        config_parameter='quimibond_sgi.nc_days_containment',
+        help="Días hábiles, desde que se abre una NC, para registrar la contención.")
     sgi_nc_days_root_cause = fields.Integer(
         string="Plazo de causa raíz de una NC (días hábiles)",
-        config_parameter='quimibond_sgi.nc_days_root_cause')
+        config_parameter='quimibond_sgi.nc_days_root_cause',
+        help="Días hábiles, desde que se abre una NC, para capturar la causa raíz.")
     sgi_nc_days_plan = fields.Integer(
         string="Plazo del plan de acción de una NC (días hábiles)",
-        config_parameter='quimibond_sgi.nc_days_plan')
+        config_parameter='quimibond_sgi.nc_days_plan',
+        help="Días hábiles, desde que se abre una NC, para registrar el plan de acción.")
     sgi_nc_escalation_mast_days = fields.Integer(
-        string="Días vencido un plazo de NC antes de escalar a MAST",
-        config_parameter='quimibond_sgi.nc_escalation_mast_days')
+        string="Días hábiles vencido un plazo de NC antes de escalar a MAST",
+        config_parameter='quimibond_sgi.nc_escalation_mast_days',
+        help="Días hábiles que puede estar vencido un plazo de NC antes de escalar al Jefe MAST y SGI.")
     sgi_nc_days_supplier_response = fields.Integer(
         string="Días hábiles para que el proveedor conteste una NC (portal)",
-        config_parameter='quimibond_sgi.nc_days_supplier_response')
+        config_parameter='quimibond_sgi.nc_days_supplier_response',
+        help="Días hábiles que tiene el proveedor para contestar una NC por el portal.")
     sgi_nc_effectiveness_days = fields.Integer(
         string="Días para verificar la eficacia tras la última correctiva",
-        config_parameter='quimibond_sgi.nc_effectiveness_days')
+        config_parameter='quimibond_sgi.nc_effectiveness_days',
+        help="Días después de terminar la última acción correctiva en que se pide verificar la eficacia.")
     sgi_doc_review_notice_days = fields.Integer(
         string="Primer aviso de revisión documental (días)",
-        config_parameter='quimibond_sgi.doc_review_notice_days')
+        config_parameter='quimibond_sgi.doc_review_notice_days',
+        help="Días antes de la próxima revisión de un documento en que llega el primer aviso.")
     sgi_doc_review_notice_days_final = fields.Integer(
         string="Segundo aviso de revisión documental (días)",
-        config_parameter='quimibond_sgi.doc_review_notice_days_final')
+        config_parameter='quimibond_sgi.doc_review_notice_days_final',
+        help="Días antes de la próxima revisión de un documento en que llega el segundo aviso.")
     sgi_doc_pilot_notice_days = fields.Integer(
         string="Aviso de piloto por vencer (días)",
-        config_parameter='quimibond_sgi.doc_pilot_notice_days')
+        config_parameter='quimibond_sgi.doc_pilot_notice_days',
+        help="Días antes del fin de una prueba piloto documental en que llega el aviso.")
     sgi_doc_ack_pending_days = fields.Integer(
-        string="Días para reclamar un acuse pendiente",
-        config_parameter='quimibond_sgi.doc_ack_pending_days')
+        string="Días hábiles para reclamar un acuse pendiente",
+        config_parameter='quimibond_sgi.doc_ack_pending_days',
+        help="Días hábiles que puede estar pendiente un acuse de lectura antes de avisar.")
     sgi_nc_recurrence_months = fields.Integer(
         string="Ventana de reincidencia de NC (meses)",
         config_parameter='quimibond_sgi.nc_recurrence_months',
         help="Una NC del SGI cuenta como reincidente si en este número de meses "
              "hubo otra NC del mismo proceso (misma cláusula pesa doble).")
     sgi_action_escalation_manager_days = fields.Integer(
-        string="Días para escalar una acción vencida al jefe",
+        string="Días hábiles para escalar una acción vencida al jefe",
         config_parameter='quimibond_sgi.action_escalation_manager_days',
         help="Acción vencida por más de estos días → además del responsable, "
              "se avisa a su jefe directo (fallback Jefe MAST).")
     sgi_action_escalation_director_days = fields.Integer(
-        string="Días para escalar una acción vencida a Dirección",
+        string="Días hábiles para escalar una acción vencida a Dirección",
         config_parameter='quimibond_sgi.action_escalation_director_days',
         help="Acción vencida por más de estos días → además, se avisa a "
              "Dirección.")
     sgi_fmea_npr_action = fields.Integer(
         string="NPR que exige acción en el AMEF",
-        config_parameter='quimibond_sgi.fmea_npr_action')
+        config_parameter='quimibond_sgi.fmea_npr_action',
+        help="Número de prioridad de riesgo a partir del cual un modo de falla del AMEF exige acción.")
     sgi_risk_ryo_inmediata = fields.Integer(
         string="RyO: puntaje para atención Inmediata",
-        config_parameter='quimibond_sgi.risk_ryo_inmediata')
+        config_parameter='quimibond_sgi.risk_ryo_inmediata',
+        help="Puntaje (probabilidad × impacto) desde el cual un riesgo es de atención inmediata.")
     sgi_risk_ryo_media = fields.Integer(
         string="RyO: puntaje para atención Media",
-        config_parameter='quimibond_sgi.risk_ryo_media')
+        config_parameter='quimibond_sgi.risk_ryo_media',
+        help="Puntaje (probabilidad × impacto) desde el cual un riesgo es de atención media.")
     sgi_risk_ryo_intermedia = fields.Integer(
         string="RyO: puntaje para atención Intermedia",
-        config_parameter='quimibond_sgi.risk_ryo_intermedia')
+        config_parameter='quimibond_sgi.risk_ryo_intermedia',
+        help="Puntaje (probabilidad × impacto) desde el cual un riesgo es de atención intermedia.")
     sgi_supplier_weight_otd = fields.Float(
         string="Peso de entregas a tiempo",
         config_parameter='quimibond_sgi.supplier_weight_otd',
         help="Peso (0-1) de la puntualidad en la calificación del proveedor.")
     sgi_supplier_weight_quality = fields.Float(
         string="Peso de calidad",
-        config_parameter='quimibond_sgi.supplier_weight_quality')
+        config_parameter='quimibond_sgi.supplier_weight_quality',
+        help="Peso de la calidad en la calificación del proveedor; el resto es la entrega a tiempo.")
     sgi_supplier_nc_penalty = fields.Float(
         string="Puntos que descuenta cada NC al proveedor",
-        config_parameter='quimibond_sgi.supplier_nc_penalty')
+        config_parameter='quimibond_sgi.supplier_nc_penalty',
+        help="Puntos que resta cada NC a la calificación de calidad del proveedor (sobre 100).")
     sgi_supplier_otd_tolerance_days = fields.Integer(
         string="Tolerancia OTD de proveedores (días)",
         config_parameter='quimibond_sgi.supplier_otd_tolerance_days',
         help="Días de gracia sobre la fecha compromiso para contar una "
              "recepción como a tiempo (comparación por día calendario).")
-    sgi_pesaje_tolerance_kg = fields.Float(
-        string="Tolerancia de peso de rollo (kg)",
-        config_parameter='quimibond_sgi.pesaje_tolerance_kg',
-        help="Rollo confirmado fuera de esta tolerancia → alerta de calidad automática.")
+    # 57.10.0 (A-020): la tolerancia de peso de rollo (sgi_pesaje_tolerance_kg)
+    # la declara quimibond_sgi_pesaje, dueño del parámetro.
     sgi_monthly_sales_budget = fields.Float(
         string="Presupuesto mensual de ventas (MXN)",
         config_parameter='quimibond_sgi.monthly_sales_budget',
@@ -104,14 +133,33 @@ class ResConfigSettings(models.TransientModel):
     sgi_rh_user_id = fields.Many2one(
         'res.users', string="Usuario de RH",
         help="Recibe las actividades automáticas de RH (competencias por vencer, DNC).")
-    sgi_waste_categ_id = fields.Many2one(
-        'product.category', string="Categoría del byproduct de desperdicio",
-        help="Categoría del SALDO (desperdicio) para el KPI automático.")
+    sgi_calibration_block_expired = fields.Boolean(
+        string="Bloquear equipos con calibración vencida",
+        config_parameter='quimibond_sgi.calibration_block_expired',
+        help="Apagado (default, decisión de la tanda 2): el cron solo avisa con un "
+             "resumen diario al Coordinador de Laboratorio y al Jefe de Calidad. "
+             "Encendido: además marca «No usar» cada equipo vencido y manda el "
+             "correo crítico. La inspección de calidad rechaza un equipo vencido "
+             "en cualquier caso.")
+    sgi_checklist_pin_required = fields.Boolean(
+        string="PIN obligatorio para firmar checklists",
+        config_parameter='quimibond_sgi.checklist_pin_required',
+        help="Apagado (default): quien no tiene PIN firma la hoja y queda «(sin PIN "
+             "registrado)». Encendido (D-08): sin PIN capturado en su ficha de "
+             "empleado no se firma. Encender solo cuando RH haya capturado los PIN "
+             "(el mismo del quiosco de asistencia).")
+    sgi_mast_user_id = fields.Many2one(
+        'res.users', string="Jefe MAST y SGI",
+        help="Recibe los avisos automáticos del SGI que no tienen dueño "
+             "(parámetro quimibond_sgi.mast_user_id). Vacío: el usuario "
+             "mas@quimibond.com o, si no existe, el primer miembro directo del "
+             "grupo Jefe MAST y SGI. Al cambiarlo, los avisos abiertos se "
+             "reasignan en la siguiente corrida de cada cron (no se duplican).")
     sgi_purchase_approval_category_id = fields.Many2one(
         'approval.category', string="Categoría de requisiciones de compra",
         help="KPI CO-02 (Requisiciones): categoría de aprobación que cuenta como "
-             "requisición de compra. Déjalo vacío para detectar automáticamente "
-             "la(s) categoría(s) de tipo compra; configúralo solo si hay varias.")
+             "requisición de compra. Déjelo vacío para detectar automáticamente "
+             "la(s) categoría(s) de tipo compra; configúrelo solo si hay varias.")
     sgi_supplier_critical_categ_ids = fields.Many2many(
         'product.category', string="Categorías de proveedores críticos",
         help="Materia prima y maquila: solo los proveedores que entregan productos de "
@@ -133,54 +181,10 @@ class ResConfigSettings(models.TransientModel):
         help="Encuesta cuyas respuestas alimentan el KPI CA-02. Sin configurar "
              "se usa la sembrada por el módulo. Útil para re-apuntar al "
              "histórico de respuestas (aunque esté archivado).")
-    sgi_sales_budget_alert_pct = fields.Integer(
-        string="Umbral de aviso de presupuesto de ventas (%)",
-        config_parameter='quimibond_sgi.sales_budget_alert_pct',
-        help="Al cierre de mes, si un equipo con presupuesto aprobado lleva "
-             "acumulado por debajo de este % del presupuesto del año, se avisa a "
-             "su responsable.")
-    sgi_budget_planning_rate = fields.Float(
-        string="Tipo de cambio presupuestal USD→MXN",
-        config_parameter='quimibond_sgi.budget_planning_rate',
-        help="Para sugerir precios de listas en otra moneda al presupuestar. "
-             "0 = usar el tipo de cambio vigente del día de captura.")
-    sgi_price_gap_tolerance_pct = fields.Float(
-        string="Tolerancia de desviación de precio (%)",
-        config_parameter='quimibond_sgi.price_gap_tolerance_pct',
-        help="Control de precios: gap facturado vs lista dentro de este % = OK.")
-    sgi_price_gap_grave_pct = fields.Float(
-        string="Desviación de precio grave (%)",
-        config_parameter='quimibond_sgi.price_gap_grave_pct',
-        help="Gap por encima de este % = grave (entre la tolerancia y este umbral "
-             "= leve).")
-    sgi_forecast_over_tolerance_pct = fields.Float(
-        string="Tolerancia de pronóstico excedido (%)",
-        config_parameter='quimibond_sgi.forecast_over_tolerance_pct',
-        help="Cobertura del pronóstico: comprometido por encima de 100% + este % "
-             "= 'excedido'.")
-    sgi_forecast_capture_horizon_weeks = fields.Integer(
-        string="Horizonte de captura del pronóstico (semanas)",
-        config_parameter='quimibond_sgi.forecast_capture_horizon_weeks',
-        help="Solo se evalúa la cobertura de las semanas dentro de este horizonte "
-             "(semana actual + N-1); las de fuera quedan 'fuera_horizonte'.")
-    sgi_budget_fulfillment_min = fields.Integer(
-        string="Cumplimiento mínimo del presupuesto (%)",
-        config_parameter='quimibond_sgi.budget_fulfillment_min',
-        help="P-A28 4.3.6.1: si un presupuesto aprobado va por debajo de este % de "
-             "cumplimiento, se pide justificación (banner rojo y actividad al Admin "
-             "de ventas). No bloquea nada.")
-    sgi_price_min_plausible = fields.Float(
-        string="Precio de lista mínimo plausible (moneda compañía)",
-        config_parameter='quimibond_sgi.price_min_plausible',
-        help="Un precio de lista resuelto por debajo de este umbral se toma como "
-             "placebo (placeholder $1) y la línea queda 'sin precio de lista', "
-             "aunque haya una regla. Cierra el hoyo de los precios placeholder.")
-    sgi_budget_pricelist_id = fields.Many2one(
-        'product.pricelist', string="Lista de precios presupuestal",
-        help="Lista con que se valúan las líneas del presupuesto SIN cliente "
-             "(global). Sin configurar, esas líneas quedan sin precio (NUNCA se "
-             "toma una lista arbitraria: eso valuaba el global con la tarifa de un "
-             "cliente).")
+    # 57.11.0 (A-016): los ajustes del presupuesto y del pronóstico de ventas
+    # (umbral de aviso, tipo de cambio, lista presupuestal, precio mínimo,
+    # desviación de precio, cumplimiento mínimo, cobertura del pronóstico) los
+    # declara quimibond_ventas_presupuesto. Las claves no cambian.
 
     @api.model
     def get_values(self):
@@ -188,9 +192,10 @@ class ResConfigSettings(models.TransientModel):
         Param = self.env['ir.config_parameter'].sudo()
         rh_id = int(Param.get_param('quimibond_sgi.rh_user_id', '0') or 0)
         res['sgi_rh_user_id'] = rh_id if rh_id and self.env['res.users'].browse(rh_id).exists() else False
-        categ_name = Param.get_param('quimibond_sgi.waste_subproduct_category', 'SubProducto')
-        categ = self.env['product.category'].search([('name', '=', categ_name)], limit=1)
-        res['sgi_waste_categ_id'] = categ.id or False
+        raw_mast = Param.get_param('quimibond_sgi.mast_user_id', '') or ''
+        mast_id = int(raw_mast) if raw_mast.isdigit() else 0
+        res['sgi_mast_user_id'] = (
+            mast_id if mast_id and self.env['res.users'].browse(mast_id).exists() else False)
         raw_critical = Param.get_param('quimibond_sgi.supplier_critical_categ_ids', '') or ''
         res['sgi_supplier_critical_categ_ids'] = [(6, 0, self.env['product.category'].browse(
             [int(x) for x in raw_critical.split(',') if x.strip().isdigit()]).exists().ids)]
@@ -207,19 +212,13 @@ class ResConfigSettings(models.TransientModel):
             survey_id if survey_id and self.env['survey.survey'].with_context(
                 active_test=False).browse(survey_id).exists()
             else False)
-        pl_id = int(Param.get_param('quimibond_sgi.budget_pricelist_id', '0') or 0)
-        res['sgi_budget_pricelist_id'] = (
-            pl_id if pl_id and self.env['product.pricelist'].browse(pl_id).exists()
-            else False)
         return res
 
     def set_values(self):
         super().set_values()
         Param = self.env['ir.config_parameter'].sudo()
         Param.set_param('quimibond_sgi.rh_user_id', self.sgi_rh_user_id.id or 0)
-        if self.sgi_waste_categ_id:
-            Param.set_param('quimibond_sgi.waste_subproduct_category',
-                            self.sgi_waste_categ_id.name)
+        Param.set_param('quimibond_sgi.mast_user_id', self.sgi_mast_user_id.id or 0)
         Param.set_param('quimibond_sgi.purchase_approval_category_id',
                         self.sgi_purchase_approval_category_id.id or 0)
         Param.set_param('quimibond_sgi.supplier_critical_categ_ids',
@@ -228,5 +227,3 @@ class ResConfigSettings(models.TransientModel):
                         self.sgi_energy_partner_id.id or 0)
         Param.set_param('quimibond_sgi.satisfaction_survey_id',
                         self.sgi_satisfaction_survey_id.id or 0)
-        Param.set_param('quimibond_sgi.budget_pricelist_id',
-                        self.sgi_budget_pricelist_id.id or 0)

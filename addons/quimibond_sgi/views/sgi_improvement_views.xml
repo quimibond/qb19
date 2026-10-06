@@ -7,7 +7,7 @@
         <field name="arch" type="xml">
             <xpath expr="//sheet" position="inside">
                 <field name="sgi_is_improvement" invisible="1"/>
-                <group string="Mejora continua (SGI)" invisible="not sgi_is_improvement">
+                <group string="Mejora continua" invisible="not sgi_is_improvement">
                     <group>
                         <field name="sgi_improvement_type"/>
                         <field name="sgi_area_id"/>
@@ -21,23 +21,23 @@
     </record>
 
     <record id="sgi_improvement_action" model="ir.actions.server">
-        <field name="name">Mejoras</field>
+        <field name="name">Mejora continua</field>
         <field name="model_id" ref="project.model_project_task"/>
         <field name="state">code</field>
         <field name="code">
 project = env.ref('quimibond_sgi.sgi_project_improvement', raise_if_not_found=False)
 action = {
     'type': 'ir.actions.act_window',
-    'name': 'Mejora Continua SGI',
+    'name': 'Mejora continua',
     'res_model': 'project.task',
     'view_mode': 'kanban,list,form',
     'domain': [('project_id', '=', project.id)] if project else [('sgi_is_improvement', '=', True)],
     'context': {'default_project_id': project.id} if project else {},
-    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Propón la primera mejora&lt;/p&gt;
+    'help': """&lt;p class="o_view_nocontent_smiling_face"&gt;Proponga la primera mejora&lt;/p&gt;
 &lt;p&gt;Una tarjeta por mejora: Propuesta → En ejecución → Terminada. Para
 cerrarla el sistema exige &lt;b&gt;fecha límite&lt;/b&gt; y &lt;b&gt;al menos un adjunto
 como evidencia&lt;/b&gt; (foto del antes/después, minuta, medición) — es el
-candado, no un error. Clasifícala en la pestaña Mejora continua (SGI):
+candado, no un error. Clasifíquela en el bloque «Mejora continua» de la tarea:
 ambiental, proceso o recurso.&lt;/p&gt;""",
 }
         </field>

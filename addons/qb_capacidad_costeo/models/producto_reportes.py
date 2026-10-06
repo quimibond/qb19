@@ -90,7 +90,10 @@ _BASE_SQL = """
     joined AS (
         SELECT q.partner_id, q.product_id, q.mes, q.qty, q.company_id,
                q.ultima, q.line_id, r.rev,
-               cp.costo_variable, cp.fab_unit,
+               cp.costo_variable,
+               -- Todo lo que no es variable (fabricación y la conversión
+               -- absorbida sin su energía): variable + esto = producción.
+               cp.costo_produccion - cp.costo_variable AS fab_unit,
                COALESCE(NULLIF(cp.rendimiento, 0), 1) AS rendimiento,
                COALESCE(f.op_pct, 0) AS op_pct,
                CASE WHEN cp.contrib_hora_maquina > 0

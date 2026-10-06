@@ -4,7 +4,7 @@ from datetime import date
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import UserError, ValidationError
 
-from .common_users import assert_locked, sgi_test_user
+from .common_users import assert_locked, sgi_set_mast, sgi_test_user
 
 
 @tagged('post_install', '-at_install')
@@ -88,6 +88,11 @@ class TestEmergency(TransactionCase):
 @tagged('post_install', '-at_install')
 class TestMsa(TransactionCase):
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.mast = sgi_set_mast(cls.env)  # base nueva: sin Jefe MAST no hay aviso
+
     def _equipment(self):
         return self.env['maintenance.equipment'].create({
             'name': 'Micrómetro MSA', 'sgi_is_measuring': True})
@@ -113,6 +118,7 @@ class TestMsa(TransactionCase):
             ('res_id', '=', study.id),
         ])
         self.assertTrue(acts, "MSA inaceptable debe agendar actividad al Jefe MAST.")
+        self.assertEqual(acts.user_id, self.mast)
 
 
 @tagged('post_install', '-at_install')

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- La regla de Studio en la lista «Aprobaciones del SGI» del núcleo
+         (quimibond_sgi 57.9.0, A-010). -->
+    <record id="sgi_activity_role_view_list_approval_studio" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.approval.studio</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_activity_role_view_list_approval"/>
+        <field name="arch" type="xml">
+            <xpath expr="//list" position="attributes">
+                <attribute name="decoration-danger">approval_state == 'conflicto'</attribute>
+            </xpath>
+            <field name="approval_user_ids" position="before">
+                <field name="approval_conflict_rule_ids" widget="many2many_tags" optional="hide"
+                       string="Otra regla en el botón"/>
+            </field>
+            <field name="approval_last_date" position="after">
+                <field name="approval_rule_id" column_invisible="1"/>
+                <button name="action_sgi_adopt_rule" type="object" string="Adoptar regla" icon="fa-link"
+                        invisible="approval_state != 'conflicto'" groups="quimibond_sgi.group_sgi_manager"
+                        confirm="La regla existente pasará a mantenerla el SGI: sus aprobadores serán las personas del puesto y su condición la de este renglón."/>
+                <button name="action_sgi_open_approval_entries" type="object" string="Ver aprobaciones"
+                        icon="fa-check-square-o" invisible="not approval_rule_id"/>
+            </field>
+            <field name="approval_state" position="attributes">
+                <attribute name="decoration-danger">approval_state == 'conflicto'</attribute>
+            </field>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_search_approval_studio" model="ir.ui.view">
+        <field name="name">sgi.activity.role.search.approval.studio</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_activity_role_view_search_approval"/>
+        <field name="arch" type="xml">
+            <filter name="kind_button" position="before">
+                <filter name="no_rule" string="Sin regla en Odoo" domain="[('approval_rule_id', '=', False)]"/>
+                <filter name="with_rule" string="Con regla en Odoo" domain="[('approval_rule_id', '!=', False)]"/>
+                <separator/>
+            </filter>
+        </field>
+    </record>
+</odoo>

@@ -8,6 +8,8 @@ respuesta en días hábiles (parámetro), aviso el día que vence y escalamiento
 al comprador y a MAST, como los plazos de NC-1. La NC ya cuenta en la
 evaluación del proveedor (S1.08) por su `partner_id`.
 """
+from markupsafe import Markup
+
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
@@ -20,18 +22,28 @@ class QualityAlertSupplierPortal(models.Model):
 
     sgi_supplier_id = fields.Many2one(
         'res.partner', string="Proveedor", compute='_compute_sgi_supplier_id', store=True,
-        readonly=False, domain=[('supplier_rank', '>', 0)])
+        readonly=False, domain=[('supplier_rank', '>', 0)],
+        help="Proveedor responsable de la NC. Se toma del contacto si es proveedor; se puede cambiar.")
     sgi_supplier_state = fields.Selection([
         ('no_enviada', "Sin enviar"),
         ('enviada', "Enviada al proveedor"),
         ('contestada', "Contestada por el proveedor"),
-    ], string="Respuesta del proveedor", default='no_enviada', tracking=True, copy=False)
-    sgi_supplier_sent_date = fields.Date(string="Enviada el", readonly=True, copy=False)
-    sgi_supplier_due_date = fields.Date(string="Respuesta antes del", readonly=True, copy=False)
-    sgi_supplier_response_date = fields.Datetime(string="Contestada el", readonly=True, copy=False)
+    ], string="Respuesta del proveedor", default='no_enviada', tracking=True, copy=False,
+        help="Situación de la respuesta del proveedor: sin enviar, enviada o contestada por el portal.")
+    sgi_supplier_sent_date = fields.Date(string="Enviada el", readonly=True, copy=False,
+                                         help="Fecha en que la NC se envió al proveedor.")
+    sgi_supplier_due_date = fields.Date(string="Respuesta antes del", readonly=True, copy=False,
+                                        help="Fecha límite para que el proveedor conteste por el portal "
+                                             "(días hábiles del parámetro "
+                                             "quimibond_sgi.nc_days_supplier_response).")
+    sgi_supplier_response_date = fields.Datetime(string="Contestada el", readonly=True, copy=False,
+                                                 help="Fecha y hora en que el proveedor contestó por el "
+                                                      "portal.")
     sgi_supplier_cause = fields.Text(string="Causa según el proveedor", readonly=True, copy=False)
     sgi_supplier_action = fields.Text(string="Acción según el proveedor", readonly=True, copy=False)
-    sgi_supplier_overdue = fields.Boolean(compute='_compute_sgi_supplier_overdue')
+    sgi_supplier_overdue = fields.Boolean(compute='_compute_sgi_supplier_overdue',
+                                          help="Indica que la NC se envió al proveedor y ya pasó su fecha de "
+                                               "respuesta.")
 
     @api.depends('partner_id')
     def _compute_sgi_supplier_id(self):
@@ -59,7 +71,7 @@ class QualityAlertSupplierPortal(models.Model):
             raise UserError("Solo una NC del SGI (con folio) se envía al proveedor.")
         supplier = self.sgi_supplier_id or self.partner_id
         if not supplier:
-            raise UserError("Captura el proveedor en la NC antes de enviarla.")
+            raise UserError("Capture el proveedor en la NC antes de enviarla.")
         if not supplier.email:
             raise UserError("El proveedor %s no tiene correo." % supplier.display_name)
         try:
@@ -84,9 +96,15 @@ class QualityAlertSupplierPortal(models.Model):
             supplier.display_name, self.sgi_supplier_due_date))
         return True
 
-    def sgi_supplier_answer(self, cause, action):
-        """Respuesta del proveedor desde el portal (con token válido)."""
+    def _sgi_supplier_answer(self, cause, action):
+        """Respuesta del proveedor desde el portal (con token válido).
+
+        F-006 (auditoría 2026-09): privado (con «_») para que no se pueda
+        llamar por RPC; solo lo llama el controlador del portal, que ya validó
+        el token. Solo acepta la respuesta de una NC enviada al proveedor."""
         self.ensure_one()
+        if self.sgi_supplier_state != 'enviada':
+            raise UserError("Esta NC no está esperando respuesta del proveedor.")
         cause = (cause or '').strip()
         action = (action or '').strip()
         if not cause or not action:
@@ -96,9 +114,10 @@ class QualityAlertSupplierPortal(models.Model):
             'sgi_supplier_state': 'contestada',
             'sgi_supplier_response_date': fields.Datetime.now(),
         })
-        self.sudo().message_post(
-            body="<b>Respuesta del proveedor</b> por el portal.<br/><b>Causa:</b> %s<br/><b>Acción:</b> %s" % (
-                cause, action))
+        # 57.91.0 (K-07): el texto del proveedor llega del portal; se escapa y se recorta.
+        self.sudo().message_post(body=Markup(
+            "<b>Respuesta del proveedor</b> por el portal.<br/><b>Causa:</b> %s<br/><b>Acción:</b> %s"
+        ) % (cause[:5000], action[:5000]))
         # Cierra el aviso de respuesta pendiente y avisa a quien la sigue.
         self.sudo().activity_ids.filtered(
             lambda a: (a.summary or '').startswith("Respuesta del proveedor")).action_feedback(
@@ -106,7 +125,7 @@ class QualityAlertSupplierPortal(models.Model):
         Cron = self.env['sgi.cron'].sudo()
         Cron._sgi_schedule(
             self.sudo(), "El proveedor contestó la NC %s: revisar causa y acción" % (self.sgi_folio,),
-            "Revisa la respuesta del proveedor y registra las acciones en la NC.",
+            "Revise la respuesta del proveedor y registre las acciones en la NC.",
             self.user_id.id or Cron._sgi_manager_user_id())
         return True
 
@@ -121,7 +140,7 @@ class QualityAlertSupplierPortal(models.Model):
         if today >= self.sgi_supplier_due_date:
             Cron._sgi_schedule(
                 self, "Respuesta del proveedor vence el %s: NC %s" % (self.sgi_supplier_due_date, folio),
-                "El proveedor %s no ha contestado la NC por el portal. Reenvía el enlace o llámale." % (
+                "El proveedor %s no ha contestado la NC por el portal. Reenvíe el enlace o llámele." % (
                     self.sgi_supplier_id.display_name), who)
         if today > self.sgi_supplier_due_date:
             Cron._sgi_schedule(

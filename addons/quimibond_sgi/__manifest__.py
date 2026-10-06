@@ -3,55 +3,53 @@
     'name': "Quimibond SGI",
     'summary': "Sistema de Gestión Integral (ISO 9001/14001/45001) sobre apps nativas de Odoo 19",
     'description': """
-Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ).
+Sistema de Gestión Integral de Productora de No Tejidos Quimibond (PNTQ):
+ISO 9001 y 14001 certificadas, 45001 en certificación.
 
-SGI completo de PNTQ: mapa de procesos con flujos navegables (el output de un
-proceso es el input del siguiente), control documental con familias y acuses,
-NC con candados, reclamaciones con SLA, mejoras, KPIs automáticos con NC en
-rojo, auditorías, riesgos (5 instrumentos), proveedores, Revisión por la
-Dirección, planes de control, CoA, calibraciones IATF, AMEF, PPAP, incidentes
-SCAT, competencias, claves de formato vivas en pantalla/PDF y migración de
-formatos rastreable.
+Procesos y actividades con responsable por puesto, vencimiento, entregable
+medible y escalamiento; Mis pendientes, Mi procedimiento con firma de
+lectura, control documental, no conformidades, indicadores, auditorías,
+riesgos, seguridad y ambiente, y revisión por la dirección, sobre las apps
+nativas de Odoo.
 
-Extiende apps nativas (Documentos, Aprobaciones, Calidad, Helpdesk, Proyecto,
-Mantenimiento, Encuestas) sin duplicarlas y agrega solo los modelos que Odoo
-no tiene. Toda la lógica vive en este módulo (cero Studio).
+Se instala vacío: el mapa de procesos va en quimibond_sgi_mapa y se carga a
+mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     """,
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.56.1.0',
-    'license': 'LGPL-3',
+    'version': '19.0.57.120.2',
+    'license': 'OPL-1',
     'application': True,
+    # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
+    # directas, cada una con lo que la usa. Las que ya traen otras (base,
+    # mail, hr, stock, purchase, approvals, quality_control) no se repiten.
+    # Salieron sale_management y hr_timesheet (sin uso), knowledge (DOC-5,
+    # ahora quimibond_sgi_knowledge) y web_studio (la regla de aprobación del
+    # botón, ahora quimibond_sgi_studio). En producción no se desinstala nada.
+    # 57.11.0 (A-016, A-013): web_grid y account_budget se van con el
+    # presupuesto de ventas a quimibond_ventas_presupuesto.
     'depends': [
-        'base',
-        'mail',
-        'hr',
-        'stock',
-        'purchase',
-        'documents',
-        'approvals',
-        'approvals_purchase',
-        'quality_control',
-        'quality_mrp',
+        'documents',  # control documental (documents.document)
+        'approvals_purchase',  # requisiciones (sgi_links); trae approvals y purchase
+        'quality_mrp',  # NC, alertas y puntos de control; trae quality_control
         'mrp',  # centro de trabajo de la actividad (sgi_activity_spec)
-        'helpdesk',
-        'project',
-        'hr_timesheet',  # allow_timesheets en data/sgi_dyd_data.xml (project.project)
-        'sale_management',
+        'helpdesk',  # reclamaciones y mesa interna
+        'project',  # mejoras y diseño y desarrollo (P-D01)
         'sale_stock',  # salidas del pedido (COA por entrega, OTIF)
-        'account_budget',  # presupuesto de gastos ligado al de ventas (P-3)
-        'maintenance',
+        'maintenance',  # calibraciones y equipos
         'stock_account',  # stock.move.value / stock.quant.value (AL-01)
-        'survey',
-        'hr_skills',
-        'web_grid',
-        'web_hierarchy',
-        'sign',
-        'portal',
-        'knowledge',
-        'website_slides',
+        'survey',  # evaluaciones, DNC y encuestas como entregable
+        'hr_skills',  # competencias por puesto; trae hr
+        'hr_holidays',  # 57.96.0: incapacidad por riesgo de trabajo → incidente (instalado en producción)
+        'web_hierarchy',  # organigrama de procesos y puestos
+        'sign',  # firmas de documentos, registros y aprobaciones
+        'portal',  # respuesta del proveedor a su NC (controllers/portal_nc.py)
+        'website_slides',  # cursos ligados a competencias
+        'hr_skills_survey',  # 57.100.0 (N-13): certificación aprobada → línea de currículum (instalado en producción)
+        'hr_skills_slides',  # 57.100.0 (N-13): curso terminado → línea de currículum (instalado en producción)
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
+        'quimibond_ficha_tecnica_tela',  # 57.117.0 (C1): catálogo de características y límites de la ficha del artículo
     ],
     'data': [
         # security
@@ -60,45 +58,69 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         # data
         'data/sgi_sequences.xml',
         'data/sgi_document_types.xml',
-        'data/sgi_sequences_fase2.xml',
+        'data/sgi_sequences_audit_risk.xml',
         'data/sgi_areas.xml',
         'data/sgi_norms.xml',
-        'data/sgi_process_data.xml',
+        'data/sgi_norms_tercer_nivel.xml',  # 57.97.0 (N-05): 13 cláusulas con xmlid
+        # 57.4.0 (A-002, decisión 6): el SGI se instala sin procesos. El mapa
+        # viejo (sgi_process_data.xml, sgi_process_flows_extra.xml) está en
+        # docs/historico/quimibond_sgi_data/; sus 58 XML IDs pasan a __export__.
         'data/sgi_stages.xml',
         'data/sgi_objectives.xml',
         'data/sgi_indicators_data.xml',
+        'data/sgi_health_indicators.xml',  # 57.99.0: salud del SGI (SG-01 a SG-10)
         'data/sgi_expansion_data.xml',
-        'data/sgi_indicator_formula_data.xml',
+        # 56.35.0 (A-004/D-01): sgi_indicator_formula_data.xml salió del núcleo
+        # (IDs de producción); los términos viajan en quimibond_sgi_mapa.
         'data/sgi_risk_data.xml',
-        'data/sgi_audit_data.xml',
+        # 57.6.0 (B-009, D-16): sgi_audit_data.xml (encuesta 151 «Checklist
+        # Auditoría Interna ISO 9001», legado) salió a docs/historico/; sus 36
+        # XML IDs pasan a __export__ y la encuesta se queda archivada.
         'data/sgi_helpdesk_interno.xml',
         'data/sgi_mgmt_review_data.xml',
         'data/sgi_cron.xml',
-        'data/sgi_cron_fase2.xml',
-        'data/sgi_sequences_fase3.xml',
-        'data/sgi_sequences_fase6.xml',
+        'data/sgi_cron_indicators_audit.xml',
+        'data/sgi_sequences_quality_sst.xml',
+        'data/sgi_sequences_policy_budget.xml',
         'data/sgi_ppap_elements.xml',
-        'data/sgi_cron_fase3.xml',
+        'data/sgi_cron_calibration_budget.xml',
         'data/sgi_dnc_survey.xml',
-        'data/sgi_control_plans_fase4.xml',
+        'data/sgi_control_plans.xml',
         'data/sgi_format_map_data.xml',
-        'data/sgi_process_flows_extra.xml',
         'data/sgi_parameters.xml',
         'data/sgi_alert_source_data.xml',
-        'data/sgi_fase7_data.xml',
-        'data/sgi_fase8_data.xml',
+        'data/sgi_emergency_satisfaction_data.xml',
+        'data/sgi_operational_signals_data.xml',
         'data/sgi_measure_cron.xml',
+        'data/sgi_approval_cron.xml',
         'data/sgi_cumplimiento_data.xml',
         'data/sgi_mail_templates.xml',
+        'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
+        'data/sgi_dev_characteristic_data.xml',  # 57.117.0 (C1): catálogos de características y codificación
+        'data/sgi_dev_project_data.xml',  # 57.118.0 (C1): secuencia FT y etapas de avance
         'data/sgi_sign_elearning_data.xml',
+        'data/sgi_doc_change_sign_data.xml',
+        'data/sgi_checklist_cron.xml',
+        # 57.94.0 (U-08): aviso semanal a RH.
+        'data/sgi_floor_cron.xml',
+        # 57.95.0 (K-08): respaldo nocturno de Mi procedimiento y Mi equipo.
+        'data/sgi_nightly_cron.xml',
+        # 57.96.0 (N-06): permisos de trabajo vencidos, cada hora.
+        'data/sgi_sst_cron.xml',
         'data/sgi_coa_data.xml',
         'data/sgi_my_procedure_data.xml',
+        'data/sgi_mp_change_category_data.xml',
         'data/sgi_epp_data.xml',
-        'data/sgi_pr6_data.xml',
+        'data/sgi_supplier_nc_data.xml',
+        'data/sgi_offboarding_plan_data.xml',
+        'data/sgi_sst_sequences.xml',
+        # 57.105.0: MIID, texto del borrador Rev. 03 (noupdate).
+        'data/sgi_miid_sections.xml',
         # views
         'views/sgi_area_views.xml',
+        'report/report_compliance_matrix.xml',
         'views/sgi_norm_views.xml',
         'views/sgi_process_views.xml',
         'views/sgi_process_procedure_views.xml',
@@ -113,8 +135,6 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_indicator_views.xml',
         'views/sgi_indicator_formula_views.xml',
         'views/sgi_management_review_views.xml',
-        'views/sgi_indicator_plan_views.xml',
-        'views/sgi_indicator_trajectory_views.xml',
         'views/sgi_audit_views.xml',
         'views/sgi_risk_views.xml',
         'views/sgi_legal_views.xml',
@@ -139,22 +159,26 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'views/sgi_format_map_views.xml',
         'views/sgi_alert_source_views.xml',
         'views/sgi_action_line_views.xml',
-        'views/sgi_sales_budget_views.xml',
-        'views/sgi_budget_analytic_views.xml',
         'views/sgi_settings_views.xml',
         'views/sgi_sign_elearning_views.xml',
         'views/sgi_catalog_views.xml',
+        'views/sgi_mp_change_views.xml',
         'views/sgi_my_procedure_views.xml',
-        'views/sgi_structure_views.xml',
+        'views/sgi_my_pending_views.xml',
+        'views/sgi_approval_native_views.xml',
         'views/sgi_coa_views.xml',
-        # Al final: hereda vistas de sgi_catalog_views y sgi_my_procedure_views (el
-        # padre debe cargarse antes; el build de producción reventó por esto).
-        'views/sgi_pr6_views.xml',
+        # Firmas (Sign) sobre vistas de otros módulos. Desde 57.28.0 ya no
+        # hereda vistas propias (A-008): sus herencias viven en su vista base.
+        'views/sgi_supplier_audit_sign_views.xml',
         'views/sgi_hierarchy_views.xml',
         'views/sgi_links_views.xml',
         'views/sgi_diagram_views.xml',
         'views/sgi_kpi_fields_views.xml',
+        'views/sgi_dev_characteristic_views.xml',  # 57.117.0: antes que la pestaña del proyecto que la usa
         'views/sgi_dev_request_views.xml',
+        'views/sgi_dev_project_views.xml',  # 57.118.0: ciclo de vida del desarrollo
+        'views/sgi_dev_product_views.xml',  # 57.119.0: estado del artículo en desarrollo
+        'views/sgi_dev_analysis_views.xml',  # 57.120.0: parecidos, laboratorio y factibilidad
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports
@@ -167,31 +191,80 @@ no tiene. Toda la lógica vive en este módulo (cero Studio).
         'report/report_fmea.xml',
         'report/report_incident.xml',
         'report/report_procedure.xml',
+        'report/report_doc_change.xml',
+        'report/report_sign_sheet.xml',
         'report/report_my_procedure.xml',
         'report/report_master_list.xml',
         'report/report_direction.xml',
-        'report/report_knowledge_instruction.xml',
-        'report/report_sales_budget.xml',
         'report/report_retention.xml',
         'report/sgi_format_footer.xml',
+        # 57.101.0: reportes y diagramas (usan paperformat_sgi_carta y
+        # _carta_horizontal, definidos arriba).
+        'report/report_indicator_sheet.xml',
+        'report/report_sgi_diagram.xml',
+        'report/report_audit_program.xml',
+        'report/report_risk_heatmap.xml',
+        # 57.105.0: MIID desde Odoo (usa paperformat_sgi_carta y report_sgi_diagram_body).
+        'report/report_miid.xml',
         'report/report_dev_request.xml',
+        'report/report_dev_sample_label.xml',  # 57.118.0: etiqueta de la muestra física
         'report/report_machine_sheet.xml',
         'report/report_calibration_label.xml',
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',
         'report/report_master_list_all.xml',
-        # menus
-        'views/sgi_menus.xml',
-        'views/sgi_menus_late.xml',
+        'report/report_env_aspect.xml',
+        'report/report_work_permit.xml',
+        'report/report_loto.xml',
+        # 57.63.0: etiquetas de material liberado, rechazado y detenido.
+        'report/report_lot_label.xml',
+        'views/sgi_business_line_views.xml',
+        'views/sgi_external_doc_views.xml',
+        'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
+        'data/sgi_indicator_sources.xml',
+        'views/sgi_activity_execution_views.xml',
+        'views/sgi_indicator_wizard_views.xml',
+        'views/sgi_measure_review_views.xml',
+        'views/sgi_current_documents_views.xml',
+        # 57.0.0 (entrega 6): «Del Dropbox a Odoo» (rutinas, buscador, avance).
+        'views/sgi_dropbox_views.xml',
+        # 57.14.0 (RH-01): «Plantilla autorizada» en las vistas nativas del puesto.
+        'views/sgi_hr_job_headcount_views.xml',
+        # 57.50.0 y siguientes (bloque 1 de formularios): seguridad, salud y
+        # ambiente. Cada ficha completa en su archivo, sin herencias.
+        'views/sgi_env_aspect_views.xml',
+        'views/sgi_work_permit_views.xml',
+        'views/sgi_loto_views.xml',
+        # 57.96.0 (N-06): competencias que exige cada tipo de permiso.
+        'views/sgi_work_permit_skill_views.xml',
+        'views/sgi_audit_finding_legal_eval_views.xml',
+        # 57.95.0 (D-06 de datos): empresa en documentos controlados.
+        'views/sgi_company_fix_views.xml',
+        # 57.96.0 (N-07): traspaso de riesgos ambientales a la matriz.
+        'views/sgi_env_aspect_transfer_views.xml',
+        # menus: TODOS en un archivo y al final (A-025, entrega 4): las
+        # acciones ya están cargadas y el padre va antes que el hijo.
+        # 57.94.0 «SGI en planta»: tabletas de planta.
+        'views/sgi_floor_views.xml',
+        'views/sgi_training_effectiveness_views.xml',  # 57.100.0 (N-13): eficacia y exámenes
+        # 57.105.0: pantalla del MIID (antes de los menús que la abren).
+        'views/sgi_miid_views.xml',
+        'views/sgi_menus.xml',
     ],
     'demo': [
-        'demo/sgi_demo_fase3.xml',
+        'demo/sgi_demo_quality.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'assets': {
         'web.assets_backend': [
             'quimibond_sgi/static/src/diagram/**/*',
+            'quimibond_sgi/static/src/my_procedure/**/*',
+            # 57.94.0 (U-01): pantalla «SGI en planta».
+            'quimibond_sgi/static/src/floor_kiosk/**/*',
+        ],
+        'web.assets_tests': [
+            'quimibond_sgi/static/tests/tours/**/*',
         ],
     },
     'installable': True,

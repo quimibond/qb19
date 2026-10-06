@@ -61,9 +61,20 @@ class TestPermAuditor(TransactionCase):
             env['quality.alert'].browse(self.alert.id).write({'name': 'Cambiada'})
         with self.assertRaises(AccessError):
             env['sgi.risk'].create({'name': 'Riesgo', 'process_id': self.process.id})
-        for model in ('sgi.action.line', 'documents.document', 'purchase.order', 'mrp.production'):
+        for model in ('sgi.action.line', 'purchase.order', 'mrp.production'):
             with self.assertRaises(AccessError):
                 env[model].check_access('write')
+        # documents.document: en Odoo 19 todo usuario interno tiene la ACL de
+        # escritura del modelo y el permiso va por documento (access_internal);
+        # el documento controlado lo lee y no lo edita (56.7.0). Se prueba
+        # sobre un documento, no sobre el modelo vacío.
+        doc = self.env['documents.document'].create({
+            'name': 'Evidencia auditada.pdf', 'type': 'binary', 'sgi_is_controlled': True,
+            'sgi_doc_type': 'formulario_odoo', 'sgi_state': 'vigente'})
+        if 'access_internal' in doc._fields:
+            self.assertEqual(doc.access_internal, 'view')
+        with self.assertRaises(AccessError):
+            env['documents.document'].browse(doc.id).write({'name': 'Cambiada.pdf'})
 
     def test_04_auditor_writes_findings(self):
         # with_user, no env(user=): en Odoo 19 env(user=) conserva el modo

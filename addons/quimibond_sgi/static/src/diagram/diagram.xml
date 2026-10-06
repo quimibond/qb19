@@ -44,6 +44,11 @@
                 <button class="btn btn-sm btn-outline-secondary" t-on-click="print" title="Imprimir o guardar como PDF">
                     <i class="fa fa-print"/>
                 </button>
+                <!-- 57.101.0 (C3): el mismo diagrama en PDF con el pie del SGI. -->
+                <button t-if="state.data and state.data.print_report" class="btn btn-sm btn-outline-secondary"
+                        t-on-click="printControlled" title="Imprimir en formato controlado (PDF con el pie del SGI)">
+                    <i class="fa fa-file-pdf-o"/>
+                </button>
             </div>
         </div>
 

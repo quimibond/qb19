@@ -20,6 +20,8 @@ _ACTIONS = [
 
 
 class SgiCatalogLoadWizard(models.TransientModel):
+    """Asistente «Cargar catálogo»: recibe el JSON de ``sgi.process.load_payload``, lo prueba sin
+    escribir y luego lo carga. Solo Administrador SGI."""
     _name = 'sgi.catalog.load.wizard'
     _description = "Cargar catálogo SGI"
 
@@ -30,8 +32,10 @@ class SgiCatalogLoadWizard(models.TransientModel):
         ('draft', "Captura"),
         ('tested', "Probado"),
         ('loaded', "Cargado"),
-    ], default='draft', readonly=True)
-    dry_run_ok = fields.Boolean(readonly=True)
+    ], string="Estado", default='draft', readonly=True,
+        help="En captura, probado (sin escribir nada) o cargado.")
+    dry_run_ok = fields.Boolean(readonly=True,
+                                help="Indica que la prueba salió sin errores y ya se puede cargar.")
     summary = fields.Text(string="Resumen", readonly=True)
     line_ids = fields.One2many(
         'sgi.catalog.load.wizard.line', 'wizard_id', string="Resultado", readonly=True)
@@ -52,7 +56,7 @@ class SgiCatalogLoadWizard(models.TransientModel):
         else:
             raw = self.payload_text or ''
         if not raw.strip():
-            raise UserError("Pega el JSON o sube el archivo.")
+            raise UserError("Pegue el JSON o suba el archivo.")
         try:
             return json.loads(raw)
         except ValueError as exc:
@@ -101,6 +105,7 @@ class SgiCatalogLoadWizard(models.TransientModel):
 
 
 class SgiCatalogLoadWizardLine(models.TransientModel):
+    """Renglón del resultado de la carga del catálogo (qué se crea, cambia, archiva o falla)."""
     _name = 'sgi.catalog.load.wizard.line'
     _description = "Resultado de la carga del catálogo SGI"
     _order = 'id'
