@@ -13,6 +13,48 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.110.0 — 2026-10-05
+
+**MIID: lo que traía la revisión 02 y le faltaba a la Rev. 03.** Se leyó
+completo el MIID Rev. 02 (junio 2026, documento 3495) y se comparó con las
+46 secciones sembradas en 57.105.0. Pedido de Jose del 2026-10-05.
+
+### Cambiado
+
+- **Secciones completadas** (`data/sgi_miid_sections.xml`):
+  - 4.1: cuestiones de seguridad y salud;
+  - 4.2: necesidades del personal en seguridad y salud;
+  - 6.1: para qué se abordan los riesgos y con qué entradas;
+  - 6.3: cuándo se termina un cambio y cómo se evalúa;
+  - 7.1: personas, infraestructura con S6, factores psicosociales, y qué hacer con lo ya liberado cuando un equipo sale fuera de calibración;
+  - 7.3: inducción al SGI con sus temas y plazo de tres meses;
+  - 7.4: tabla de qué, a quién, cómo, cuándo y quién comunica; coherencia de la información ambiental; consulta y participación completa;
+  - 8.1: errores humanos, contingencia por bienes del cliente, factores posteriores a la entrega y Anexo 13;
+  - 8.3: escenarios, recursos, prueba periódica, revisión y formación;
+  - 9.1: desempeño de seguridad y salud, y análisis y evaluación (9.1.3);
+  - 10.2: reacción y mitigación de impactos ambientales.
+- **Notas de «Por confirmar» corregidas:**
+  - 1.2: las dos redacciones de alcance de la revisión 02 y la de ISO 45001;
+  - 1.3: la revisión 02 sí justifica 8.4.1 b) y 8.5.1 f), con el mismo sentido;
+  - 12.1: Anexo 13, «Plan integral» en la revisión 02.
+  Ningún «Por confirmar» se quita: eso lo decide Dirección.
+- `docs/sgi/transicion/miid-rev03-borrador.md` al día con lo anterior.
+
+### Agregado
+
+- `sgi.miid.section._sgi_seed_update`: lleva el texto nuevo de la siembra a
+  una base existente sin pisar lo que corrigió el Jefe MAST. El texto se
+  cambia solo si la sección nunca se editó: no tiene el mensaje «Texto de la
+  sección editado.». La nota se cambia solo si sigue idéntica a la sembrada.
+  Lo que no se aplica queda avisado en el chatter de la sección y en el log.
+- Pruebas `test_miid.test_21` y `test_22`.
+
+### Migración
+
+- `post-migrate`: aplica lo anterior a 11 textos y 3 notas, y registra el
+  resultado por sección («actualizada», «sin cambio» o «editada a mano»).
+  No crea revisión del MIID ni toca el documento 3495.
+
 ## 19.0.57.109.1 — 2026-10-05
 
 **Corrección urgente: el `odoo-update` de producción de 57.101.0 a

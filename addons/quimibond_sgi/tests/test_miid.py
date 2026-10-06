@@ -450,3 +450,54 @@ class TestMiidCandados(_Case):
         self._control('CO-ZM1-09')
         html = self._html()
         self.assertNotIn('Respaldo ZM', html, "Con datos, el respaldo no se imprime.")
+
+
+@tagged('post_install', '-at_install')
+class TestMiidSiembraRev02(TransactionCase):
+    """57.110.0: el texto nuevo de la siembra llega solo a las secciones que
+    nadie editó, y la nota de «Por confirmar» solo si sigue como se sembró."""
+
+    def _forget_edits(self, section):
+        self.env['mail.message'].sudo().search([
+            ('model', '=', 'sgi.miid.section'), ('res_id', '=', section.id)]).unlink()
+
+    def test_21_siembra_respeta_lo_editado(self):
+        Section = self.env['sgi.miid.section']
+        emerg = self.env.ref('quimibond_sgi.sgi_miid_section_32_emergencias')
+        alcance = self.env.ref('quimibond_sgi.sgi_miid_section_05_alcance')
+        old_note = "Nota ZM sembrada"
+        # Como quedó en 57.105.0: texto corto, sin editar.
+        self.env.cr.execute("UPDATE sgi_miid_section SET body = %s WHERE id = %s",
+                            ('<p>Texto ZM viejo</p>', emerg.id))
+        self.env.cr.execute("UPDATE sgi_miid_section SET to_confirm_note = %s WHERE id = %s",
+                            ('Nota ZM corregida a mano', alcance.id))
+        (emerg | alcance).invalidate_recordset()
+        self._forget_edits(emerg)
+        res = Section._sgi_seed_update(('sgi_miid_section_32_emergencias',),
+                                       {'sgi_miid_section_05_alcance': old_note}, 'ZM')
+        self.assertTrue(res['sgi_miid_section_32_emergencias'].startswith('actualizada'))
+        self.assertIn('Escenarios', emerg.body)
+        self.assertIn('Prueba periódica', emerg.body)
+        self.assertEqual(alcance.to_confirm_note, 'Nota ZM corregida a mano',
+                         "La nota corregida a mano no se pisa.")
+        self.assertIn('editada a mano', res['sgi_miid_section_05_alcance'])
+        self.assertFalse(self.env['mail.message'].search_count([
+            ('model', '=', 'sgi.miid.section'), ('res_id', '=', emerg.id),
+            ('body', 'ilike', 'Texto de la sección editado')]),
+            "La siembra no deja la marca de edición a mano.")
+        # Editada a mano: el texto ya no se toca.
+        emerg.sudo().write({'body': '<p>Texto ZM del Jefe MAST</p>'})
+        Section._sgi_seed_update(('sgi_miid_section_32_emergencias',), {}, 'ZM')
+        self.assertIn('Texto ZM del Jefe MAST', emerg.body)
+
+    def test_22_marca_de_siembra_solo_para_superusuario(self):
+        section = self.env.ref('quimibond_sgi.sgi_miid_section_32_emergencias')
+        mast = sgi_set_mast(self.env, login='zm_miid_seed_mast')
+        mast.write({'company_ids': [(4, section.company_id.id)]})
+        self._forget_edits(section)
+        section.with_user(mast).with_company(section.company_id).with_context(
+            sgi_miid_seed=True).write({'body': '<p>ZM</p>'})
+        self.assertTrue(self.env['mail.message'].search_count([
+            ('model', '=', 'sgi.miid.section'), ('res_id', '=', section.id),
+            ('body', 'ilike', 'Texto de la sección editado')]),
+            "Fuera de una migración la edición siempre deja su marca.")
