@@ -132,37 +132,51 @@ class QbCuentaClase(models.Model):
     @api.model
     def importar_clasificacion_legada(self):
         """Copia la clasificación de `qb_capacidad_costeo` si la base la trae
-        (misma base, módulos en paralelo). Idempotente: no toca cuentas ya
-        clasificadas aquí."""
+        (misma base, módulos en paralelo). Lee las tablas base (la vista
+        `qb.costeo.cuenta.map` es un `_table_query` y no existe en la base):
+        por cuenta, la clase activa más específica (cuenta > patrón largo >
+        patrón corto), igual que el módulo anterior. Idempotente: no toca
+        cuentas ya clasificadas aquí. Devuelve cuántas importó."""
         self.env.cr.execute("""
             SELECT 1 FROM information_schema.tables
-            WHERE table_name = 'qb_costeo_cuenta_map'
+            WHERE table_name = 'qb_cuenta_class_account_rel'
         """)
         if not self.env.cr.fetchone():
             return 0
         self.env.cr.execute("""
-            SELECT m.account_id, m.bucket, m.allocation_pct, m.company_id,
-                   c.code AS centro_code
-            FROM qb_costeo_cuenta_map m
-            LEFT JOIN qb_costeo_centro c ON c.id = m.centro_id
+            SELECT DISTINCT ON (rel.account_id)
+                   rel.account_id, c.bucket,
+                   COALESCE(c.allocation_pct, 100.0), c.company_id,
+                   ce.code
+            FROM qb_cuenta_class_account_rel rel
+            JOIN qb_costeo_cuenta_class c ON c.id = rel.class_id
+            LEFT JOIN qb_costeo_centro ce ON ce.id = c.centro_id
+            WHERE c.active
+            ORDER BY rel.account_id,
+                     COALESCE(c.account_id = rel.account_id, FALSE) DESC,
+                     char_length(COALESCE(c.code_pattern, '')) DESC,
+                     c.id
         """)
+        filas = self.env.cr.fetchall()
         n = 0
         ya = {(r.account_id.id, r.company_id.id) for r in
               self.with_context(active_test=False).search([])}
         Centro = self.env['qb.centro']
-        for account_id, bucket, pct, company_id, centro_code in \
-                self.env.cr.fetchall():
+        for account_id, bucket, pct, company_id, centro_code in filas:
             if (account_id, company_id) in ya:
                 continue
             b = _LEGADO.get(bucket or '', 'no_costeo')
-            centro = Centro.search([('code', '=', centro_code),
-                                    ('company_id', '=', company_id)],
-                                   limit=1) if centro_code else Centro
+            centro = Centro
+            if centro_code and b in BUCKETS_CENTRO:
+                centro = Centro.search([('code', '=', centro_code),
+                                        ('company_id', '=', company_id)],
+                                       limit=1)
             self.create({
                 'account_id': account_id, 'bucket': b,
-                'centro_id': centro.id if b in BUCKETS_CENTRO else False,
-                'pct': pct or 100.0, 'company_id': company_id,
-                'nota': 'importada de qb_capacidad_costeo (%s)' % bucket,
+                'centro_id': centro.id if centro else False,
+                'pct': 100.0, 'company_id': company_id,
+                'nota': 'importada de qb_capacidad_costeo (%s%s)'
+                        % (bucket, ', %s' % centro_code if centro_code else ''),
             })
             ya.add((account_id, company_id))
             n += 1
