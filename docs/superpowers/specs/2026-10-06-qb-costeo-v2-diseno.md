@@ -167,14 +167,18 @@ este orden:
 |---|---|---|
 | `medido` | Órdenes de trabajo reales de 12 meses del producto, dentro de la banda de rendimiento del centro (hoy `rendimiento_min/max`) | alta |
 | `estandar` | `mrp.routing.workcenter.time_cycle` de la receta vigente (la de más cantidad en 90 días) | alta si la confirmó Ingeniería |
-| `hermano` | Mismo código salvo color o ancho (posiciones 10-13 de la nomenclatura) | media |
+| `hermano` | Mismo código salvo color o ancho (posiciones 11-15 de la nomenclatura) | media |
+| `galga` | Promedio de los crudos tejidos en las máquinas de la misma galga (posiciones 8-9 del código → etiqueta `GALGA nn` del centro de trabajo). En 2025-26 la galga 18 Ø30 teje 21.8 kg/h y la Ø32 13.3: el diámetro no va en el código, así que una especificación nueva lo pregunta | media |
 | `estimado` | Promedio del centro (horas reales ÷ unidades reales) | baja |
 | `manual` | Capturado con motivo y vigencia | la que diga quien lo capturó |
 
 Los semielaborados (crudo H, teñido I) heredan hacia el terminado J por la
 receta: `horas_J = Σ horas de sus componentes × cantidad + horas propias`.
 Esto sustituye `_conv_unit` / `_conv_rec` / `_conv_bom` y las familias de
-máquinas.
+máquinas. La nomenclatura oficial (DAT P-D02-01, rev. 05) está en
+`docs/costeo/nomenclatura-tejido-acabado.md`: el bloque que el módulo viejo
+llamaba «calidad» (`Q21`) es **tipo de hilo + rango de galga** (Q natural,
+21-30 = galga 18).
 
 Tintorería sin órdenes de trabajo (interino): `horas = (kg ÷ kg_por_carga) ×
 ciclo_h(familia_color)` con la tabla de ciclos por familia de color capturada
