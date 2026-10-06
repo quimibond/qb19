@@ -77,4 +77,53 @@
         <field name="value_text">AGUA</field>
         <field name="help">Referencias (separadas por coma) que no disparan validaciones: el agua cuesta 0 a propósito.</field>
     </record>
+    <record id="param_horas_historia_meses" model="qb.parametro">
+        <field name="key">horas_historia_meses</field>
+        <field name="name">Meses de historia para las horas medidas</field>
+        <field name="tipo">float</field>
+        <field name="value_float">12</field>
+        <field name="help">Ventana de órdenes de trabajo que se promedian para las horas por unidad de un producto, y para los promedios por galga y por centro.</field>
+    </record>
+    <record id="param_receta_ventana_dias" model="qb.parametro">
+        <field name="key">receta_ventana_dias</field>
+        <field name="name">Días para elegir la receta vigente</field>
+        <field name="tipo">float</field>
+        <field name="value_float">90</field>
+        <field name="help">La receta vigente de un producto es la que más cantidad produjo en estos días; sin producción, la activa más reciente.</field>
+    </record>
+    <record id="param_calidad_locs_vendible" model="qb.parametro">
+        <field name="key">calidad_locs_vendible</field>
+        <field name="name">Ubicaciones de primera calidad (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">40</field>
+        <field name="help">Ubicaciones de Odoo (ids separados por coma) a donde entra el producto terminado de primera. Lo que entra aquí es vendible.</field>
+    </record>
+    <record id="param_calidad_locs_merma" model="qb.parametro">
+        <field name="key">calidad_locs_merma</field>
+        <field name="name">Ubicaciones de merma (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">41,42,43</field>
+        <field name="help">FE, segundas y desperdicio. El FE cuenta como merma: no tiene canal de venta directo.</field>
+    </record>
+    <record id="param_calidad_locs_origen" model="qb.parametro">
+        <field name="key">calidad_locs_origen</field>
+        <field name="name">Ubicaciones de origen de la clasificación (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">15,36,246</field>
+        <field name="help">Producción, inspección y liberación: solo las entradas desde aquí cuentan; los reingresos ya se clasificaron antes.</field>
+    </record>
+    <record id="param_calidad_picking_excluir" model="qb.parametro">
+        <field name="key">calidad_picking_excluir</field>
+        <field name="name">Tipos de operación excluidos del rendimiento (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">77,147</field>
+        <field name="help">Conversión de unidades y cambio de artículo reetiquetan material ya clasificado.</field>
+    </record>
+    <record id="param_rendimiento_min_unidades" model="qb.parametro">
+        <field name="key">rendimiento_min_unidades</field>
+        <field name="name">Unidades mínimas para rendimiento propio</field>
+        <field name="tipo">float</field>
+        <field name="value_float">10000</field>
+        <field name="help">Un producto con menos unidades clasificadas en la ventana usa la tasa de planta: pocos metros dan porcentajes sin sentido.</field>
+    </record>
 </odoo>

@@ -1,0 +1,771 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 2.1.0: catálogo de características (anexo A del levantamiento C1 del
+     2026-10-06) y claves de la regla de codificación de artículos de tejido y
+     acabado (DAT P-D02-01 rev. 05, mayo 2025, cotejadas contra el PDF).
+     noupdate: se ajustan desde Fichas Técnicas de Tela → Configuración sin que
+     el update las revierta. -->
+<odoo noupdate="1">
+
+    <!-- ===== Características (catálogo) ===== -->
+    <record id="caracteristica_masa" model="ficha.tecnica.caracteristica">
+        <field name="sequence">10</field>
+        <field name="code">masa</field>
+        <field name="name">Masa por unidad de área</field>
+        <field name="name_en">Weight</field>
+        <field name="kind">num</field>
+        <field name="unit">g/m²</field>
+        <field name="method">MT001 · NMX-A-3801-INNTEX-2012</field>
+    </record>
+    <record id="caracteristica_ancho" model="ficha.tecnica.caracteristica">
+        <field name="sequence">20</field>
+        <field name="code">ancho</field>
+        <field name="name">Ancho de la tela</field>
+        <field name="name_en">Width on roll</field>
+        <field name="kind">num</field>
+        <field name="unit">m</field>
+        <field name="method">MT002 · NMX-A-22198-INNTEX-2012</field>
+    </record>
+    <record id="caracteristica_espesor" model="ficha.tecnica.caracteristica">
+        <field name="sequence">30</field>
+        <field name="code">espesor</field>
+        <field name="name">Espesor</field>
+        <field name="name_en">Thickness</field>
+        <field name="kind">num</field>
+        <field name="unit">mm</field>
+        <field name="method">MT003 · NMX-A-301/2-INNTEX-2013</field>
+    </record>
+    <record id="caracteristica_rendimiento" model="ficha.tecnica.caracteristica">
+        <field name="sequence">40</field>
+        <field name="code">rendimiento</field>
+        <field name="name">Rendimiento</field>
+        <field name="name_en">Yield</field>
+        <field name="kind">num</field>
+        <field name="unit">m/kg</field>
+        <field name="method">Calculado: 1000 / (masa × ancho)</field>
+        <field name="formula">rendimiento</field>
+    </record>
+    <record id="caracteristica_tipo_acabado" model="ficha.tecnica.caracteristica">
+        <field name="sequence">50</field>
+        <field name="code">tipo_acabado</field>
+        <field name="name">Tipo de acabado</field>
+        <field name="name_en">Finish type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_engomado_tipo_tacto" model="ficha.tecnica.caracteristica">
+        <field name="sequence">60</field>
+        <field name="code">engomado_tipo_tacto</field>
+        <field name="name">Tipo y tacto del engomado</field>
+        <field name="name_en">Edge gumming type and hand</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_elongacion_estatica" model="ficha.tecnica.caracteristica">
+        <field name="sequence">70</field>
+        <field name="code">elongacion_estatica</field>
+        <field name="name">Elongación estática</field>
+        <field name="name_en">Static elongation</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+        <field name="method">MT005 · DIN 53360 (5 × 20 cm, 2.5 kg, 3 min)</field>
+    </record>
+    <record id="caracteristica_densidad_mallas" model="ficha.tecnica.caracteristica">
+        <field name="sequence">80</field>
+        <field name="code">densidad_mallas</field>
+        <field name="name">Densidad del tejido: mallas</field>
+        <field name="name_en">Weave density: courses</field>
+        <field name="kind">num</field>
+        <field name="unit">/10 cm</field>
+        <field name="method">MT004 · NMX-A-134-INNTEX-2013</field>
+    </record>
+    <record id="caracteristica_densidad_columnas" model="ficha.tecnica.caracteristica">
+        <field name="sequence">90</field>
+        <field name="code">densidad_columnas</field>
+        <field name="name">Densidad del tejido: columnas</field>
+        <field name="name_en">Weave density: wales</field>
+        <field name="kind">num</field>
+        <field name="unit">/10 cm</field>
+        <field name="method">MT004 · NMX-A-134-INNTEX-2013</field>
+    </record>
+    <record id="caracteristica_cambio_dim_calor" model="ficha.tecnica.caracteristica">
+        <field name="sequence">100</field>
+        <field name="code">cambio_dim_calor</field>
+        <field name="name">Cambios dimensionales al calor</field>
+        <field name="name_en">Heat shrinkage</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+        <field name="method">MT006 · ISO 9866 (200 °C, 30 s)</field>
+    </record>
+    <record id="caracteristica_engomado_orillas" model="ficha.tecnica.caracteristica">
+        <field name="sequence">110</field>
+        <field name="code">engomado_orillas</field>
+        <field name="name">Engomado de orillas</field>
+        <field name="name_en">Edge gumming</field>
+        <field name="kind">bool</field>
+    </record>
+    <record id="caracteristica_rollo" model="ficha.tecnica.caracteristica">
+        <field name="sequence">120</field>
+        <field name="code">rollo</field>
+        <field name="name">Tamaño de los rollos</field>
+        <field name="name_en">Roll length</field>
+        <field name="kind">num</field>
+        <field name="unit">m</field>
+    </record>
+    <record id="caracteristica_tela_base" model="ficha.tecnica.caracteristica">
+        <field name="sequence">130</field>
+        <field name="code">tela_base</field>
+        <field name="name">Tela base</field>
+        <field name="name_en">Base fabric</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_resina_cantidad" model="ficha.tecnica.caracteristica">
+        <field name="sequence">140</field>
+        <field name="code">resina_cantidad</field>
+        <field name="name">Cantidad de resina</field>
+        <field name="name_en">Resin add-on</field>
+        <field name="kind">num</field>
+        <field name="unit">g/m²</field>
+    </record>
+    <record id="caracteristica_cambio_dim_lavado" model="ficha.tecnica.caracteristica">
+        <field name="sequence">150</field>
+        <field name="code">cambio_dim_lavado</field>
+        <field name="name">Cambios dimensionales al lavado ×2</field>
+        <field name="name_en">Shrinkage after two washes</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+    </record>
+    <record id="caracteristica_maquina_proceso" model="ficha.tecnica.caracteristica">
+        <field name="sequence">160</field>
+        <field name="code">maquina_proceso</field>
+        <field name="name">Máquina de proceso</field>
+        <field name="name_en">Process machine</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_fuerza_maxima" model="ficha.tecnica.caracteristica">
+        <field name="sequence">170</field>
+        <field name="code">fuerza_maxima</field>
+        <field name="name">Fuerza máxima (método de la tira)</field>
+        <field name="name_en">Maximum force (strip method)</field>
+        <field name="kind">num</field>
+        <field name="unit">N/5 cm</field>
+    </record>
+    <record id="caracteristica_tipo_resina" model="ficha.tecnica.caracteristica">
+        <field name="sequence">180</field>
+        <field name="code">tipo_resina</field>
+        <field name="name">Tipo de resina</field>
+        <field name="name_en">Resin type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_adhesion" model="ficha.tecnica.caracteristica">
+        <field name="sequence">190</field>
+        <field name="code">adhesion</field>
+        <field name="name">Adhesión por fusionado</field>
+        <field name="name_en">Bond strength</field>
+        <field name="kind">num</field>
+        <field name="unit">N/5 cm</field>
+    </record>
+    <record id="caracteristica_tipo_polvo" model="ficha.tecnica.caracteristica">
+        <field name="sequence">200</field>
+        <field name="code">tipo_polvo</field>
+        <field name="name">Tipo de polvo</field>
+        <field name="name_en">Powder type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_solidez_frote" model="ficha.tecnica.caracteristica">
+        <field name="sequence">210</field>
+        <field name="code">solidez_frote</field>
+        <field name="name">Solidez del color al frote</field>
+        <field name="name_en">Colour fastness to rubbing</field>
+        <field name="kind">num</field>
+        <field name="unit">grado</field>
+    </record>
+    <record id="caracteristica_mesh" model="ficha.tecnica.caracteristica">
+        <field name="sequence">220</field>
+        <field name="code">mesh</field>
+        <field name="name">Mesh</field>
+        <field name="name_en">Mesh</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="caracteristica_corte_orillas" model="ficha.tecnica.caracteristica">
+        <field name="sequence">230</field>
+        <field name="code">corte_orillas</field>
+        <field name="name">Corte de orillas</field>
+        <field name="name_en">Edge trimming</field>
+        <field name="kind">bool</field>
+    </record>
+    <record id="caracteristica_tipo_fibra" model="ficha.tecnica.caracteristica">
+        <field name="sequence">240</field>
+        <field name="code">tipo_fibra</field>
+        <field name="name">Tipo de fibra</field>
+        <field name="name_en">Fibre type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_titulo_fibra" model="ficha.tecnica.caracteristica">
+        <field name="sequence">250</field>
+        <field name="code">titulo_fibra</field>
+        <field name="name">Título de fibra</field>
+        <field name="name_en">Fibre count</field>
+        <field name="kind">num</field>
+        <field name="unit">dtex</field>
+    </record>
+    <record id="caracteristica_acabado" model="ficha.tecnica.caracteristica">
+        <field name="sequence">260</field>
+        <field name="code">acabado</field>
+        <field name="name">Acabado</field>
+        <field name="name_en">Finish</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_composicion" model="ficha.tecnica.caracteristica">
+        <field name="sequence">270</field>
+        <field name="code">composicion</field>
+        <field name="name">Composición</field>
+        <field name="name_en">Composition</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_hilos_pulgada" model="ficha.tecnica.caracteristica">
+        <field name="sequence">280</field>
+        <field name="code">hilos_pulgada</field>
+        <field name="name">Hilos por pulgada a lo ancho</field>
+        <field name="name_en">Picks per inch</field>
+        <field name="kind">num</field>
+        <field name="unit">/plg</field>
+    </record>
+    <record id="caracteristica_tipo_hilo" model="ficha.tecnica.caracteristica">
+        <field name="sequence">290</field>
+        <field name="code">tipo_hilo</field>
+        <field name="name">Tipo de hilo</field>
+        <field name="name_en">Yarn type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_titulo_hilo" model="ficha.tecnica.caracteristica">
+        <field name="sequence">300</field>
+        <field name="code">titulo_hilo</field>
+        <field name="name">Título de hilo</field>
+        <field name="name_en">Yarn count</field>
+        <field name="kind">num</field>
+        <field name="unit">dtex</field>
+    </record>
+    <record id="caracteristica_ligamento" model="ficha.tecnica.caracteristica">
+        <field name="sequence">310</field>
+        <field name="code">ligamento</field>
+        <field name="name">Ligamento</field>
+        <field name="name_en">Stitch / weave</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_agujas" model="ficha.tecnica.caracteristica">
+        <field name="sequence">320</field>
+        <field name="code">agujas</field>
+        <field name="name">Número de agujas</field>
+        <field name="name_en">Needle count</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="caracteristica_galga" model="ficha.tecnica.caracteristica">
+        <field name="sequence">330</field>
+        <field name="code">galga</field>
+        <field name="name">Galga</field>
+        <field name="name_en">Gauge</field>
+        <field name="kind">num</field>
+    </record>
+    <record id="caracteristica_construccion" model="ficha.tecnica.caracteristica">
+        <field name="sequence">340</field>
+        <field name="code">construccion</field>
+        <field name="name">Construcción</field>
+        <field name="name_en">Construction</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_elongacion_dinamica" model="ficha.tecnica.caracteristica">
+        <field name="sequence">350</field>
+        <field name="code">elongacion_dinamica</field>
+        <field name="name">Elongación dinámica</field>
+        <field name="name_en">Dynamic elongation</field>
+        <field name="kind">num</field>
+        <field name="unit">%</field>
+    </record>
+    <record id="caracteristica_tipo_goma" model="ficha.tecnica.caracteristica">
+        <field name="sequence">360</field>
+        <field name="code">tipo_goma</field>
+        <field name="name">Tipo de goma (continua o discontinua)</field>
+        <field name="name_en">Gum type</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_tacto" model="ficha.tecnica.caracteristica">
+        <field name="sequence">370</field>
+        <field name="code">tacto</field>
+        <field name="name">Tacto</field>
+        <field name="name_en">Hand</field>
+        <field name="kind">text</field>
+    </record>
+    <record id="caracteristica_color" model="ficha.tecnica.caracteristica">
+        <field name="sequence">380</field>
+        <field name="code">color</field>
+        <field name="name">Color</field>
+        <field name="name_en">Colour</field>
+        <field name="kind">text</field>
+    </record>
+
+    <!-- ===== Claves de codificación de artículos (DAT P-D02-01) ===== -->
+    <record id="clave_composicion_b" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">10</field>
+        <field name="code">B</field>
+        <field name="name">Poliéster brillante (BTE) / poliéster semiopaco (SO)</field>
+    </record>
+    <record id="clave_composicion_c" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">20</field>
+        <field name="code">C</field>
+        <field name="name">Algodón (cotton)</field>
+    </record>
+    <record id="clave_composicion_d" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">30</field>
+        <field name="code">D</field>
+        <field name="name">Polipropileno 100 % (PP)</field>
+    </record>
+    <record id="clave_composicion_l" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">40</field>
+        <field name="code">L</field>
+        <field name="name">Lyocell</field>
+    </record>
+    <record id="clave_composicion_n" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">50</field>
+        <field name="code">N</field>
+        <field name="name">Nylon 100 %</field>
+    </record>
+    <record id="clave_composicion_t" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">60</field>
+        <field name="code">T</field>
+        <field name="name">Poliéster 100 % fibra corta</field>
+    </record>
+    <record id="clave_composicion_v" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">70</field>
+        <field name="code">V</field>
+        <field name="name">Poliéster / carbón</field>
+    </record>
+    <record id="clave_composicion_w" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">80</field>
+        <field name="code">W</field>
+        <field name="name">Poliéster 100 %</field>
+    </record>
+    <record id="clave_composicion_x" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">90</field>
+        <field name="code">X</field>
+        <field name="name">Poliéster / algodón</field>
+    </record>
+    <record id="clave_composicion_y" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">100</field>
+        <field name="code">Y</field>
+        <field name="name">Poliéster / mezcla</field>
+    </record>
+    <record id="clave_composicion_z" model="ficha.tecnica.clave.codigo">
+        <field name="kind">composicion</field>
+        <field name="sequence">110</field>
+        <field name="code">Z</field>
+        <field name="name">Varios</field>
+    </record>
+    <record id="clave_dibujo_a" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">10</field>
+        <field name="code">A</field>
+        <field name="name">Cardigan</field>
+    </record>
+    <record id="clave_dibujo_b" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">20</field>
+        <field name="code">B</field>
+        <field name="name">Crepé anulado</field>
+    </record>
+    <record id="clave_dibujo_c" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">30</field>
+        <field name="code">C</field>
+        <field name="name">Crepé cargas</field>
+    </record>
+    <record id="clave_dibujo_d" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">40</field>
+        <field name="code">D</field>
+        <field name="name">Desagujado</field>
+    </record>
+    <record id="clave_dibujo_f" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">50</field>
+        <field name="code">F</field>
+        <field name="name">Flece</field>
+    </record>
+    <record id="clave_dibujo_j" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">60</field>
+        <field name="code">J</field>
+        <field name="name">Jersey</field>
+    </record>
+    <record id="clave_dibujo_k" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">70</field>
+        <field name="code">K</field>
+        <field name="name">Interlock</field>
+    </record>
+    <record id="clave_dibujo_l" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">80</field>
+        <field name="code">L</field>
+        <field name="name">Listado</field>
+    </record>
+    <record id="clave_dibujo_m" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">90</field>
+        <field name="code">M</field>
+        <field name="name">Punto de Roma</field>
+    </record>
+    <record id="clave_dibujo_n" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">100</field>
+        <field name="code">N</field>
+        <field name="name">Piqué anulado</field>
+    </record>
+    <record id="clave_dibujo_p" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">110</field>
+        <field name="code">P</field>
+        <field name="name">Piqué cargas</field>
+    </record>
+    <record id="clave_dibujo_q" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">120</field>
+        <field name="code">Q</field>
+        <field name="name">Jacquard</field>
+    </record>
+    <record id="clave_dibujo_r" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">130</field>
+        <field name="code">R</field>
+        <field name="name">Rib</field>
+    </record>
+    <record id="clave_dibujo_t" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">140</field>
+        <field name="code">T</field>
+        <field name="name">French terry</field>
+    </record>
+    <record id="clave_dibujo_v" model="ficha.tecnica.clave.codigo">
+        <field name="kind">dibujo</field>
+        <field name="sequence">150</field>
+        <field name="code">V</field>
+        <field name="name">Vanizado</field>
+    </record>
+    <record id="clave_hilo_q" model="ficha.tecnica.clave.codigo">
+        <field name="kind">hilo</field>
+        <field name="sequence">10</field>
+        <field name="code">Q</field>
+        <field name="name">Hilo natural</field>
+    </record>
+    <record id="clave_hilo_b" model="ficha.tecnica.clave.codigo">
+        <field name="kind">hilo</field>
+        <field name="sequence">20</field>
+        <field name="code">B</field>
+        <field name="name">Hilo preteñido</field>
+    </record>
+    <record id="clave_hilo_r" model="ficha.tecnica.clave.codigo">
+        <field name="kind">hilo</field>
+        <field name="sequence">30</field>
+        <field name="code">R</field>
+        <field name="name">Hilo reciclado</field>
+    </record>
+    <record id="clave_operacion_h" model="ficha.tecnica.clave.codigo">
+        <field name="kind">operacion</field>
+        <field name="sequence">10</field>
+        <field name="code">H</field>
+        <field name="name">Tejido (crudo)</field>
+    </record>
+    <record id="clave_operacion_i" model="ficha.tecnica.clave.codigo">
+        <field name="kind">operacion</field>
+        <field name="sequence">20</field>
+        <field name="code">I</field>
+        <field name="name">Teñido</field>
+    </record>
+    <record id="clave_operacion_j" model="ficha.tecnica.clave.codigo">
+        <field name="kind">operacion</field>
+        <field name="sequence">30</field>
+        <field name="code">J</field>
+        <field name="name">Acabado</field>
+    </record>
+    <record id="clave_color_ac" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">10</field>
+        <field name="code">AC</field>
+        <field name="name">Azul cielo</field>
+    </record>
+    <record id="clave_color_am" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">20</field>
+        <field name="code">AM</field>
+        <field name="name">Amarillo</field>
+    </record>
+    <record id="clave_color_az" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">30</field>
+        <field name="code">AZ</field>
+        <field name="name">Azul marino</field>
+    </record>
+    <record id="clave_color_bl" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">40</field>
+        <field name="code">BL</field>
+        <field name="name">Blanco</field>
+    </record>
+    <record id="clave_color_cf" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">50</field>
+        <field name="code">CF</field>
+        <field name="name">Café</field>
+    </record>
+    <record id="clave_color_go" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">60</field>
+        <field name="code">GO</field>
+        <field name="name">Gris Oxford</field>
+    </record>
+    <record id="clave_color_hu" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">70</field>
+        <field name="code">HU</field>
+        <field name="name">Hueso</field>
+    </record>
+    <record id="clave_color_na" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">80</field>
+        <field name="code">NA</field>
+        <field name="name">Naranja</field>
+    </record>
+    <record id="clave_color_ng" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">90</field>
+        <field name="code">NG</field>
+        <field name="name">Negro</field>
+    </record>
+    <record id="clave_color_nt" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">100</field>
+        <field name="code">NT</field>
+        <field name="name">Natural</field>
+    </record>
+    <record id="clave_color_ro" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">110</field>
+        <field name="code">RO</field>
+        <field name="name">Rojo</field>
+    </record>
+    <record id="clave_color_cj" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">120</field>
+        <field name="code">CJ</field>
+        <field name="name">Café jaspe</field>
+    </record>
+    <record id="clave_color_aj" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">130</field>
+        <field name="code">AJ</field>
+        <field name="name">Azul jaspe</field>
+    </record>
+    <record id="clave_color_gj" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">140</field>
+        <field name="code">GJ</field>
+        <field name="name">Gris jaspe</field>
+    </record>
+    <record id="clave_color_gr" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">150</field>
+        <field name="code">GR</field>
+        <field name="name">Gris rata</field>
+    </record>
+    <record id="clave_color_gc" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">160</field>
+        <field name="code">GC</field>
+        <field name="name">Gris claro</field>
+    </record>
+    <record id="clave_color_mo" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">170</field>
+        <field name="code">MO</field>
+        <field name="name">Morado</field>
+    </record>
+    <record id="clave_color_mz" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">180</field>
+        <field name="code">MZ</field>
+        <field name="name">Mostaza</field>
+    </record>
+    <record id="clave_color_an" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">190</field>
+        <field name="code">AN</field>
+        <field name="name">Amarillo neón</field>
+    </record>
+    <record id="clave_color_nn" model="ficha.tecnica.clave.codigo">
+        <field name="kind">color</field>
+        <field name="sequence">200</field>
+        <field name="code">NN</field>
+        <field name="name">Natural negro</field>
+    </record>
+    <record id="clave_acabado_in" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">10</field>
+        <field name="code">IN</field>
+        <field name="name">Ignífugo</field>
+    </record>
+    <record id="clave_acabado_ab" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">20</field>
+        <field name="code">AB</field>
+        <field name="name">Antibacterial</field>
+    </record>
+    <record id="clave_acabado_af" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">30</field>
+        <field name="code">AF</field>
+        <field name="name">Afelpado</field>
+    </record>
+    <record id="clave_acabado_es" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">40</field>
+        <field name="code">ES</field>
+        <field name="name">Esmerilado</field>
+    </record>
+    <record id="clave_acabado_su" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">50</field>
+        <field name="code">SU</field>
+        <field name="name">Tacto suave</field>
+    </record>
+    <record id="clave_acabado_ri" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">60</field>
+        <field name="code">RI</field>
+        <field name="name">Tacto rígido</field>
+    </record>
+    <record id="clave_acabado_ae" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">70</field>
+        <field name="code">AE</field>
+        <field name="name">Antiestático</field>
+    </record>
+    <record id="clave_acabado_re" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">80</field>
+        <field name="code">RE</field>
+        <field name="name">Repelente</field>
+    </record>
+    <record id="clave_acabado_di" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">90</field>
+        <field name="code">DI</field>
+        <field name="name">Dryfit</field>
+    </record>
+    <record id="clave_acabado_bi" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">100</field>
+        <field name="code">BI</field>
+        <field name="name">Biopulido</field>
+    </record>
+    <record id="clave_acabado_ra" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">110</field>
+        <field name="code">RA</field>
+        <field name="name">Resina acrílica</field>
+    </record>
+    <record id="clave_acabado_tf" model="ficha.tecnica.clave.codigo">
+        <field name="kind">acabado</field>
+        <field name="sequence">120</field>
+        <field name="code">TF</field>
+        <field name="name">Termofijado</field>
+    </record>
+    <record id="clave_galga_14" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">10</field>
+        <field name="code">01</field>
+        <field name="name">Galga 14</field>
+        <field name="gauge">14</field>
+        <field name="range_from">1</field>
+        <field name="range_to">10</field>
+    </record>
+    <record id="clave_galga_16" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">20</field>
+        <field name="code">11</field>
+        <field name="name">Galga 16</field>
+        <field name="gauge">16</field>
+        <field name="range_from">11</field>
+        <field name="range_to">20</field>
+    </record>
+    <record id="clave_galga_18" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">30</field>
+        <field name="code">21</field>
+        <field name="name">Galga 18</field>
+        <field name="gauge">18</field>
+        <field name="range_from">21</field>
+        <field name="range_to">30</field>
+    </record>
+    <record id="clave_galga_22" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">40</field>
+        <field name="code">31</field>
+        <field name="name">Galga 22</field>
+        <field name="gauge">22</field>
+        <field name="range_from">31</field>
+        <field name="range_to">45</field>
+    </record>
+    <record id="clave_galga_24" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">50</field>
+        <field name="code">46</field>
+        <field name="name">Galga 24</field>
+        <field name="gauge">24</field>
+        <field name="range_from">46</field>
+        <field name="range_to">55</field>
+    </record>
+    <record id="clave_galga_26" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">60</field>
+        <field name="code">56</field>
+        <field name="name">Galga 26</field>
+        <field name="gauge">26</field>
+        <field name="range_from">56</field>
+        <field name="range_to">65</field>
+    </record>
+    <record id="clave_galga_28" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">70</field>
+        <field name="code">66</field>
+        <field name="name">Galga 28</field>
+        <field name="gauge">28</field>
+        <field name="range_from">66</field>
+        <field name="range_to">75</field>
+    </record>
+    <record id="clave_galga_30" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">80</field>
+        <field name="code">76</field>
+        <field name="name">Galga 30</field>
+        <field name="gauge">30</field>
+        <field name="range_from">76</field>
+        <field name="range_to">85</field>
+    </record>
+    <record id="clave_galga_32" model="ficha.tecnica.clave.codigo">
+        <field name="kind">galga</field>
+        <field name="sequence">90</field>
+        <field name="code">86</field>
+        <field name="name">Galga 32</field>
+        <field name="gauge">32</field>
+        <field name="range_from">86</field>
+        <field name="range_to">95</field>
+    </record>
+
+</odoo>

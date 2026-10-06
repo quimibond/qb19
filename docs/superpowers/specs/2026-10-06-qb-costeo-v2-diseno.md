@@ -167,14 +167,19 @@ este orden:
 |---|---|---|
 | `medido` | Órdenes de trabajo reales de 12 meses del producto, dentro de la banda de rendimiento del centro (hoy `rendimiento_min/max`) | alta |
 | `estandar` | `mrp.routing.workcenter.time_cycle` de la receta vigente (la de más cantidad en 90 días) | alta si la confirmó Ingeniería |
-| `hermano` | Mismo código salvo color o ancho (posiciones 10-13 de la nomenclatura) | media |
+| `hermano` | Mismo código salvo color o ancho (posiciones 11-15 de la nomenclatura) | media |
+| `maquina` | Velocidad (kg/h) de la máquina propuesta por Desarrollo en la solicitud FT, en sus órdenes de doce meses. Solo especificaciones nuevas | media |
+| `galga` | Promedio de los crudos tejidos en las máquinas de la misma galga (posiciones 8-9 del código → etiqueta `GALGA nn` del centro de trabajo). Solo para productos que ya existen: en un desarrollo nuevo no se sabe en qué máquina ni a qué ancho saldrá el crudo, así que la cotización da el **rango** de la galga (máquina más lenta y más rápida: en 2025-26 la galga 18 va de 13.3 kg/h en Ø32 a 21.8 en Ø30) y queda **preliminar** hasta que el desarrollo teje la muestra | media |
 | `estimado` | Promedio del centro (horas reales ÷ unidades reales) | baja |
 | `manual` | Capturado con motivo y vigencia | la que diga quien lo capturó |
 
 Los semielaborados (crudo H, teñido I) heredan hacia el terminado J por la
 receta: `horas_J = Σ horas de sus componentes × cantidad + horas propias`.
 Esto sustituye `_conv_unit` / `_conv_rec` / `_conv_bom` y las familias de
-máquinas.
+máquinas. La nomenclatura oficial (DAT P-D02-01, rev. 05) está en
+`docs/costeo/nomenclatura-tejido-acabado.md`: el bloque que el módulo viejo
+llamaba «calidad» (`Q21`) es **tipo de hilo + rango de galga** (Q natural,
+21-30 = galga 18).
 
 Tintorería sin órdenes de trabajo (interino): `horas = (kg ÷ kg_por_carga) ×
 ciclo_h(familia_color)` con la tabla de ciclos por familia de color capturada
@@ -308,6 +313,67 @@ comercial. Agrega:
 Se va: envío por correo (0 uso), wizard por pedido, comparador, Win/Loss como
 menú (queda como filtro).
 
+### 6.1 Requisitos del procedimiento C1 (brief 2026-10-06, §6.8; decisión de Jose 2026-10-06)
+
+Jose decidió no tocar `qb_capacidad_costeo`: todo lo que el brief de C1
+pedía en `qb.cotizacion` se construye aquí, en `qb_cotizador` (la cotización)
+y en `qb_costeo_sgi` (lo que toca al proyecto FT y a los puestos del SGI).
+Son requisitos, no diseño; el bloque de C1 que los necesita (envío de
+cotización, aprobación del cliente, precio en tarifa) espera a la fase 2.
+
+- **Proyecto en la cotización** (`project_id`, solo proyectos de desarrollo
+  de producto) y cotizaciones visibles desde el proyecto. Toma de la tabla
+  de características del proyecto (`sgi.dev.characteristic`, renglones
+  `masa` y `ancho` del catálogo de `quimibond_ficha_tecnica_tela`) el
+  gramaje y el ancho, y de la solicitud el precio objetivo y el volumen;
+  sustituye la lectura de `sgi_dev_*` que decía §8.4.
+- **Estado «Por aprobar»** entre Borrador y Presentada. Solo el puesto 183
+  (Director de Finanzas y Administración) la libera; sin eso no se imprime
+  ni se envía. Botones: aprobar, o regresar a recotizar con motivo
+  obligatorio de lista (margen bajo, costo mal calculado, volumen dudoso,
+  otro). **Suplente** configurable para la aprobación (parámetro vacío: no
+  está definido quién). Aprobación por puesto, no por persona (`hr.job`).
+- **Margen mínimo** como parámetro vacío: mientras no tenga valor, no hay
+  aviso.
+- Casillas nuevas: hoja de seguridad, IMDS, certificación ISO (además de
+  CoA, PPAP y las que ya existan).
+- **Costo de la muestra visible** antes de aprobar (una muestra con teñido
+  cuesta el baño completo).
+- **Aprobación del cliente:** medio (correo, OC, WhatsApp, cotización
+  firmada), fecha y evidencia adjunta.
+- **Seguimiento:** actividad automática a Ventas (puesto 207) a los 5 días
+  hábiles de presentada y al vencer la vigencia. Al vencer pasa a «Vencida»
+  y obliga a decidir: renovar, ganada o perdida. Motivo de pérdida de lista
+  (precio, tiempo de entrega, especificación, el cliente canceló, sin
+  respuesta). Convive con el ganada / perdida automático de §6: el pedido
+  confirmado gana; la vencida sin pedido exige decisión.
+- Borradores con más de 30 días sin movimiento se archivan.
+- Al marcarse **Ganada** y aprobar el cliente la muestra: crear el precio
+  en la tarifa del cliente con precio, moneda y vigencia de la cotización.
+- **Recálculo por revisión:** al subir la revisión del proyecto de
+  desarrollo, recalcular el costo. Si cambia, el proyecto se detiene hasta
+  que el puesto 183 apruebe la cotización revisada; si no cambia, pasa.
+- **Plantilla PDF comercial** que sustituya al Word F-P-A28-12: bilingüe
+  español / inglés, con los nueve términos (CoA al 100 %, pruebas especiales
+  de laboratorio, LTA, PPAP, inspección total, CPK 3 sigma, APQP, PSCR,
+  evidencia C-TPAT) y la leyenda de muestra menor a 50 m sin costo. Jose
+  dijo que él la va a cambiar; confirmar con él antes de tocarla.
+- **Aprobación para iniciar un proyecto:** documento generado desde el
+  proyecto y la cotización (datos de proyecto del anexo A del brief de C1:
+  aplicación, fechas, número de especificación, tamaño de muestra, consumo,
+  empaque, precio, información requerida, capacidad por recurso). No se
+  arma a mano.
+- **Migración de las cotizaciones existentes:** las 71 de `qb.cotizacion`
+  (32 vigentes: 25 borrador, 6 presentadas vencidas, 1 ganada) se migran con
+  su estado, revisión y liga al proyecto FT cuando el nombre o el cliente lo
+  permitan; las 6 presentadas vencidas entran como «Vencida» para que
+  Jessica decida (no se cierran solas). Complementa la copia como histórico
+  de la fase 2.
+
+*Listo cuando:* ninguna cotización llega al cliente sin aprobación del
+puesto 183, y el primer pedido de un artículo nuevo siempre encuentra precio
+en tarifa.
+
 ## 7. Menús
 
 ```
@@ -399,10 +465,23 @@ mes; la vista SQL de 438 líneas no hace falta).
   `costeo_receta_implausible`, `costeo_desviacion_orden`,
   `costeo_cierre_bloqueado`.
 - **Diseño y desarrollo (proyectos)**: una cotización de especificación nueva
-  se liga al proyecto FT (`project.project.sgi_is_ft`): toma gramaje, ancho,
-  precio objetivo y volumen de la solicitud (`sgi_dev_*`), y al transferir a
-  producción (etapa 8.3.6) la cotización pasa a producto existente con las
-  horas estándar que capturó el desarrollo. Los lotes de desarrollo se marcan
+  se liga al proyecto FT (`project.project.sgi_is_ft`; desde el bloque 2 de
+  C1 la bandera significa «desarrollo de producto» y el folio FT es un campo
+  aparte): toma gramaje y ancho de la tabla de características del proyecto
+  (`sgi.dev.characteristic`, renglones `masa` y `ancho`) y precio objetivo
+  y volumen de la solicitud (`sgi_dev_*`). Los requisitos de C1 para la
+  cotización están en §6.1. Desarrollo
+  decide la **materia prima y la máquina antes de tejer** (etapa de
+  planificación), así que la solicitud FT gana dos campos: `qb_workcenter_id`
+  (máquina propuesta) y `qb_hilo_ids` (hilos). Con eso la cotización nace
+  **preliminar** pero acotada: el tejido se estima con la velocidad de **esa
+  máquina** en sus órdenes de doce meses (fuente `maquina`, entre `hermano`
+  y `galga`), y la MP con los hilos propuestos. Sin máquina propuesta, cae al
+  rango de la galga con la máquina más lenta. Cuando el desarrollo teje la
+  muestra (8.3.4-8.3.5) hay crudo y tiempo real: la cotización se vuelve
+  **firme** con fuente `medido` (el lote de desarrollo sirve para velocidad,
+  no para rendimiento). Al transferir a producción (8.3.6) pasa a producto
+  existente. Los lotes de desarrollo se marcan
   en la orden (`qb_es_desarrollo`) y **no entran** al rendimiento ni a las
   horas medidas; se acaba el caso NN040.
 - **Revisión por la dirección**: los cinco indicadores entran al paquete de
@@ -419,11 +498,25 @@ mes; la vista SQL de 438 líneas no hace falta).
 Ninguna propia. Se instala `quimibond_ficha_tecnica_tela` (Consolti; decisión
 del CEO 2026-10-06) y el peso y el rendimiento m/kg se leen de ahí
 (`ficha.tecnica.acabado.peso_acabado`, `rendimiento_tela_acabada`,
-`ficha.tecnica.tejido.velocidad` como velocidad de tejido). Orden de
+`ficha.tecnica.tejido.velocidad` como velocidad de tejido). Regla de Jose
+(2026-10-06): hay dos rendimientos y los dos se conservan: el de tejido
+(`ficha.tecnica.tejido.rendimiento_tela_tejida`, rama `consolti`) alimenta el
+cálculo de tintorería; el de acabado valida los metros finales. Orden de
 precedencia del peso: `pesaje` (rollos reales) > `manual` > `ficha` >
 `nomenclatura`. `qb.producto.ficha` y sus 1,839 registros se
 archivan en la migración; lo que valía (gramaje, ancho, rendimiento) se copia a
 `qb.producto.peso` con fuente `ficha_legada`.
+
+Desde `quimibond_ficha_tecnica_tela` 2.1.0 (PR de C1 bloque 1, 2026-10-06)
+ese módulo es dueño del **catálogo de características**
+(`ficha.tecnica.caracteristica`), de las **claves de codificación de
+artículos** (`ficha.tecnica.clave.codigo`, DAT P-D02-01) y de los renglones
+de característica de cada ficha con **dos juegos de límites** (cliente y
+control interno) y la marca «va a la especificación del cliente». Pendiente
+para este plan (fase 1 o 2): **derivar de su código las características de
+los artículos existentes** (composición, dibujo, peso, tipo de hilo, galga,
+color, ancho, acabado) y crear sus fichas, en lugar de la carga masiva de
+`qb.producto.ficha`; primero en qbtesting, con muestra a Jose.
 
 ## 9. Modelos
 
@@ -505,7 +598,12 @@ cumplirla. Todo en rama de desarrollo → `main` (staging) → `quimibond`.
   pedido con autorización, estados automáticos, pendiente comercial.
 - Migración: las 116 cotizaciones actuales se copian como *histórico* (solo
   lectura, con su revisión y factores de origen); las 14 vigentes se recotizan
-  en el nuevo y se comparan con las del viejo.
+  en el nuevo y se comparan con las del viejo. Las de desarrollo se ligan a su
+  proyecto FT y las presentadas vencidas quedan en «Vencida» (§6.1).
+- Requisitos de C1 (§6.1): estado «Por aprobar» del puesto 183 con suplente,
+  margen mínimo, costo de la muestra, aprobación del cliente, seguimiento y
+  vencimiento, precio en tarifa al ganar, recálculo por revisión, PDF
+  bilingüe, Aprobación para iniciar un proyecto generada.
 - **Compuerta:** Jessica y el CEO cotizan dos semanas solo en el nuevo; cero
   casos en que falte algo del viejo.
 

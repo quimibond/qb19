@@ -27,4 +27,31 @@
         <field name="interval_type">weeks</field>
         <field name="active">True</field>
     </record>
+    <record id="cron_horas_producto" model="ir.cron">
+        <field name="name">Costeo: recalcular horas por producto</field>
+        <field name="model_id" ref="model_qb_producto_horas"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_mp_producto" model="ir.cron">
+        <field name="name">Costeo: recalcular materia prima por producto</field>
+        <field name="model_id" ref="model_qb_producto_mp"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_rendimiento_producto" model="ir.cron">
+        <field name="name">Costeo: recalcular rendimiento vendible</field>
+        <field name="model_id" ref="model_qb_producto_rendimiento"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

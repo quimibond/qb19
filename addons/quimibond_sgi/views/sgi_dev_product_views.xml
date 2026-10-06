@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.119.0 (C1, bloque 3): estado de desarrollo del artículo en la ficha
+         y la lista de productos (vistas de otro módulo). -->
+    <record id="sgi_product_template_form_dev" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.sgi.dev</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='categ_id']" position="after">
+                <field name="sgi_dev_state" invisible="not sgi_dev_state" readonly="1" widget="badge"
+                       decoration-warning="sgi_dev_state == 'desarrollo'"
+                       decoration-info="sgi_dev_state == 'pilotaje'"
+                       decoration-success="sgi_dev_state == 'liberado'"
+                       decoration-muted="sgi_dev_state == 'archivado'"/>
+                <field name="sgi_dev_project_id" invisible="not sgi_dev_project_id" readonly="1"/>
+                <field name="sgi_dev_role" invisible="not sgi_dev_role" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_product_template_search_dev" model="ir.ui.view">
+        <field name="name">product.template.search.inherit.sgi.dev</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <separator/>
+                <filter name="sgi_dev_desarrollo" string="En desarrollo" domain="[('sgi_dev_state', '=', 'desarrollo')]"/>
+                <filter name="sgi_dev_pilotaje" string="En pilotaje" domain="[('sgi_dev_state', '=', 'pilotaje')]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

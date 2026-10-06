@@ -11,6 +11,21 @@ class ResConfigSettings(models.TransientModel):
     """
     _inherit = 'res.config.settings'
 
+    # 57.119.0 (C1, bloque 3): bloqueo del artículo genérico de muestra.
+    sgi_dev_block_generic_sample_from = fields.Char(
+        string="Bloquear «MUESTRA PILOTO» en órdenes nuevas desde (AAAA-MM-DD)",
+        config_parameter='quimibond_sgi.dev_block_generic_sample_from',
+        help="A partir de esta fecha no se crean ni confirman órdenes de fabricación con los artículos "
+             "genéricos «MUESTRA PILOTO TEJIDO / TINTORERÍA»: las muestras de desarrollo se piden desde el "
+             "proyecto con su artículo generado. Vacío: sin bloqueo (hay órdenes abiertas con ellos; la "
+             "fecha la decide Dirección de Finanzas).")
+    # 57.120.0 (C1, bloque 4): quién autoriza las pruebas de laboratorio de los desarrollos.
+    sgi_dev_lab_authorizer_job_id = fields.Many2one(
+        'hr.job', string="Puesto que autoriza pruebas de laboratorio de desarrollos",
+        config_parameter='quimibond_sgi.dev_lab_authorizer_job_id',
+        help="Puesto cuyas personas autorizan las solicitudes de pruebas de los proyectos de desarrollo. "
+             "Por omisión, el Coordinador de Laboratorio y MP (se busca por nombre si el parámetro está "
+             "vacío). El Jefe MAST siempre puede.")
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',

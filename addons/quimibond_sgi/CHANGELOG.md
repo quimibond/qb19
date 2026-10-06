@@ -13,6 +13,251 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.120.1 — 2026-10-06
+
+### Corregido
+
+- Aviso del build de `main` (Odoo.sh): dos campos de `project.project` con la
+  misma etiqueta «Solicitudes de laboratorio» (`sgi_dev_lab_request_ids` y
+  `sgi_dev_lab_request_count`). El contador pasa a «Número de solicitudes de
+  laboratorio».
+
+## 19.0.57.120.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 4: parecidos, laboratorio y
+factibilidad** (brief 6.3 a 6.5). Sustituye a Experiencias previas, a la
+Solicitud de pruebas para laboratorio y al Checklist de factibilidad.
+
+### Agregado
+
+- **Artículos parecidos** («Buscar parecidos» en la pestaña Desarrollo):
+  asistente con los artículos de línea y de desarrollos anteriores
+  ordenados por cercanía en peso, ancho, composición, dibujo y galga (leídos
+  del código según el DAT P-D02-01; más de 60 % de diferencia no se
+  propone). «Dentro de tolerancia» = peso y ancho dentro de lo que pide el
+  cliente con la misma composición, dibujo y galga. «Usar como base» liga el
+  artículo al proyecto y propone producto de línea o producto nuevo; Diseño
+  de Producto confirma.
+- **Solicitud de pruebas a laboratorio** (`sgi.dev.lab.request`, menú SGI →
+  Sistema → Pruebas de laboratorio de desarrollos): «Solicitar pruebas al
+  laboratorio» toma los renglones marcados «Medir en la muestra» sin
+  resultado (muestra del cliente antes de la etapa Muestra; corrida después)
+  y crea la solicitud; la autoriza el **Coordinador de Laboratorio y MP**
+  (puesto del parámetro `quimibond_sgi.dev_lab_authorizer_job_id`, Ajustes →
+  SGI → Desarrollo de producto; la migración lo llena con el puesto de ese
+  nombre, hr.job 188 en producción, y si está vacío se busca por nombre) o
+  el Jefe MAST, con actividad automática; el laboratorista captura el valor **en el mismo renglón** y la
+  solicitud se cierra sola cuando todos tienen valor, con las horas que
+  tardó. El laboratorio solo mide; el dictamen sigue siendo de Diseño.
+- **Checklist de factibilidad**: catálogo `sgi.dev.feasibility.item` por
+  línea (tejido circular, entretelas) en Configuración → Recursos del
+  checklist de factibilidad, **vacío** (la lista de recursos no está
+  definida, sección 8 del brief). «Cargar checklist de factibilidad» pone
+  los renglones de la línea del proyecto; Odoo contesta solo la existencia
+  de materia prima (lista de materiales del artículo del proyecto o del
+  artículo base contra existencias); la capacidad de máquina queda
+  pendiente hasta el cotizador nuevo.
+- **Una sola revisión de Ventas**: «Aprobar análisis y factibilidad» exige
+  el resultado del análisis y el checklist contestado; «Regresar» pide
+  motivo. Sin aprobación el proyecto no pasa de Análisis a Cotización.
+- Pruebas `tests/test_dev_analysis.py`; las de los bloques 2 y 3 aprueban la
+  revisión antes de avanzar de etapa.
+
+### Migración
+
+- `migrations/19.0.57.120.0/post-migrate.py`: escribe el puesto autorizador
+  por omisión en el parámetro si está vacío. La fecha de bloqueo del
+  artículo genérico se queda vacía (decisión de Jose).
+
+### Fuera de este PR (decisión de Jose, 2026-10-06)
+
+- La duplicidad entre `ficha.tecnica.tejido` (parámetros de máquina en
+  `quimibond_ficha_tecnica_tela`) y `sgi.machine.sheet` **no se tocó**: es
+  decisión del siguiente PR.
+- Los bloques 6.11 y 6.13 van en un PR nuevo; 6.7, 6.9, 6.10 y 6.12 esperan
+  a las sesiones con Planeación, Producción, Calidad y Compras.
+
+## 19.0.57.119.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 3: artículo en desarrollo y
+generador de código** (brief 6.6). Ningún código se arma a mano y lo no
+ganado desaparece de vista solo.
+
+### Agregado
+
+- **Estado de desarrollo del artículo** (`product.template.sgi_dev_state`):
+  en desarrollo (no se vende; confirmar un pedido con él da error) → en
+  pilotaje (se vende; el pedido recibe el aviso de que los tres primeros
+  lotes son el pilotaje) → liberado → archivado (artículo y listas de
+  materiales archivados). El proyecto lo mueve al entrar a Pilotaje,
+  Liberado o Cerrado sin producto; solo toca artículos nacidos de ese
+  proyecto. La ficha del producto lo muestra; filtros «En desarrollo»
+  y «En pilotaje».
+- **Generador de código** en la pestaña Desarrollo del proyecto: claves de
+  composición, dibujo, tipo de hilo, color y acabado del catálogo
+  (`ficha.tecnica.clave.codigo`), peso, galga y ancho tomados de la tabla
+  de características («Tomar peso, galga y ancho de la tabla»; el ancho
+  pasa de m a cm), ancho crudo y «lleva teñido» (propuesto cuando el color
+  no es natural). Vista previa de los tres códigos y botón **Generar
+  artículos**: crudo H (kg, Producto en Proceso / Tejido Circular), teñido I
+  (kg, Producto en Proceso / Teñido) y acabado J (m, Producto Terminado /
+  Tejido Circular / Industrial o Confección según el equipo de ventas),
+  almacenables, con nombre «DIBUJO DE nnn G/M2». El crudo y el teñido
+  llevan el ancho crudo; el crudo va en natural salvo hilo preteñido o
+  reciclado. Un código que ya existe se liga sin duplicar ni cambiar su
+  estado. El acabado queda como artículo del proyecto y entra al nombre.
+- **Bloqueo del artículo genérico «MUESTRA PILOTO»** en órdenes de
+  fabricación nuevas (crear y confirmar) a partir de la fecha del
+  parámetro `quimibond_sgi.dev_block_generic_sample_from` (Ajustes → SGI →
+  Desarrollo de producto). **Vacío por omisión**: hay órdenes abiertas con
+  esos artículos y la fecha la decide Jose.
+- Pruebas `tests/test_dev_product.py`.
+
+## 19.0.57.118.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 2: proyecto único con ciclo de
+vida** (brief 6.1 y decisión 3 de Jose del 2026-10-06; plan en
+`docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). Un solo
+proyecto nace como análisis y recibe folio FT cuando el cliente aprueba el
+inicio; nadie edita el título ni escribe el folio a mano.
+
+### Agregado
+
+- **Bandera «Desarrollo de producto»** (`sgi_is_ft`) que pone el tipo de
+  proyecto (plantilla o captura), ya no el nombre. Es el filtro de las
+  mediciones del SGI: los entregables C1 del mapa de procesos y de la base
+  dejan `name =like 'FT-%'` por `sgi_is_ft = True` (`quimibond_sgi_mapa`
+  1.1.4 y la migración).
+- **Folio FT aparte** (`sgi_ft_folio`): secuencia anual `sgi.dev.ft`
+  (FT-001-2027), asignada al pasar a «Muestra» o con el botón; admite folio
+  histórico a mano. El **nombre** se arma solo: folio (o «Análisis»), código
+  del artículo o producto pedido y «rev. N»; en la ficha queda en solo
+  lectura.
+- **Etapas de avance** (`project.project.stage`, datos): Solicitud, Análisis,
+  Cotización, Aprobación del cliente, Muestra, Respuesta del cliente,
+  Pilotaje, Liberado, Cerrado sin producto. El cliente vive solo en
+  `partner_id`.
+- **Origen** cliente (contacto del cliente) o interno (solicitante de
+  `hr.employee`).
+- **Revisión** entera con **bitácora** (`sgi.dev.revision`): desde la etapa
+  Cotización, cada cambio a la especificación de un renglón deja fecha,
+  quién, característica, valor anterior y nuevo; «Subir revisión» abre la
+  siguiente. La liga a la cotización es una referencia hasta el cotizador
+  nuevo.
+- **Correo propio por proyecto**: el alias nativo de Proyectos se nombra
+  `desarrollo-<id>` al crear y `ft-039-2026` al asignar el folio (sin dominio
+  de alias configurado queda inactivo, sin error).
+- **Pestaña Comercial** (sustituye al Análisis de mercado Industrial): equipo
+  de ventas, vendedor, cliente actual o prospecto (calculado de los pedidos
+  confirmados), programa, aplicación, tiempo de programa, consumo anual y
+  mensual con conversión yardas ↔ metros, tipo de laminado, requisitos
+  legales y reglamentarios, mercado, fecha requerida, número de
+  especificación. Las listas viven en `sgi.dev.option` (SGI → Administración
+  → Configuración → Listas del desarrollo de producto), **vacías**: nadie ha
+  definido sus renglones.
+- **Muestra física**: fecha de recepción, entrega a Diseño, ubicación en
+  carpeta y etiqueta imprimible (cliente, proyecto, folio, fechas).
+- **Resultado del análisis**: producto de línea (liga el artículo y cierra
+  en «Cerrado sin producto», sin folio), producto nuevo, no factible con
+  motivo de lista.
+- **Relojes en horas calendario**: `sgi.dev.stage.log` por etapa (se abre y
+  cierra solo al cambiar de etapa) y `sgi.dev.mp.wait` de materia prima
+  (botones «Materia prima pendiente» / «Llegó la materia prima»); las horas
+  de desarrollo de cada etapa descuentan la espera de materia prima.
+- Filtro «Desarrollo de producto» y columna Folio FT en la lista de
+  proyectos. Pruebas `tests/test_dev_project.py`.
+
+### Migración
+
+- `migrations/19.0.57.118.0/post-migrate.py`: marca los proyectos FT- (77 en
+  producción), las plantillas «PLANTILLA - Diseño y Desarrollo …» (480 y
+  481) y el proyecto «ANALISIS DE PROYECTO …» (490); separa folio (unificado
+  a guiones), producto pedido y revisión («REV3») del nombre viejo y vuelve
+  a armar el nombre; cuando faltaba el cliente lo toma de la etapa: el
+  cliente que más proyectos de esa etapa ya tienen («uso»: SHAWMUT →
+  SHAWMUT LLC, LA DIFERENCE → LA DIFFERENCE) o, si ninguno lo tiene, la
+  única empresa con ese nombre («nombre»: ENTEX → ENTEX DE MEXICO CR); la
+  etapa QUIMIBOND marca **origen interno**; Hecha, Cancelada y las demás que
+  no son clientes no se tocan (NENUCO y Avances modernos no existen como
+  clientes y quedan sin cliente). La tabla etapa → cliente se escribe en el
+  log del update (`_sgi_dev_migration_preview`); reescribe los filtros de
+  medición con `FT-%`. Idempotente. No borra las etapas por cliente (dato de
+  producción, sección 7 del brief).
+
+### Cambiado
+
+- `sgi_is_ft` deja de calcularse del nombre; `test_excel_migration` crea el
+  proyecto con la bandera.
+
+### Pendiente
+
+- Dirección de correo: el alias necesita un dominio de alias configurado en
+  la base. Las etapas de los proyectos FT- existentes siguen siendo las de
+  cliente hasta la limpieza de datos (sección 7).
+
+## 19.0.57.117.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 1: la tabla de características.**
+Primera entrega del levantamiento del 2026-10-06 con Jessica Francisco y Jose
+(`docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`, plan en
+`docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). La misma
+tabla de características se recapturaba en siete formatos de Excel; ahora es
+una sola tabla por proyecto FT con una columna por momento del proceso y con
+**números**, no texto: lo que pide el cliente (nominal, tolerancia o máximo /
+mínimo, en unidades o en %), lo medido en su muestra, el límite de control
+interno (más cerrado; nunca se imprime al cliente), las tres lecturas de la
+corrida con su promedio, el dictamen de Diseño de Producto y la aprobación del
+cliente. Odoo marca cada renglón con tres resultados: cumple (dentro del
+control interno), fuera del control interno (se embarca con aviso) o no
+conforme (fuera del cliente). El rendimiento (m/kg) se calcula solo:
+1000 / (masa × ancho), con su tolerancia a partir de los extremos de masa y
+ancho.
+
+**Dónde vive cada cosa (decisión de Jose, 2026-10-06):** la ficha técnica del
+artículo y el catálogo de características viven en
+`quimibond_ficha_tecnica_tela` (2.1.0, mismo PR), y el SGI pasa a depender de
+ese módulo. El proyecto de desarrollo y la ficha del artículo comparten el
+catálogo y el mixin de límites, así los renglones pasan del proyecto a la
+ficha sin recaptura (ese paso llega con la liberación del artículo, bloque 7).
+
+### Agregado
+
+- Dependencia nueva: `quimibond_ficha_tecnica_tela` (catálogo
+  `ficha.tecnica.caracteristica`, claves de codificación
+  `ficha.tecnica.clave.codigo`, mixin `ficha.tecnica.caracteristica.mixin`).
+- `sgi.dev.characteristic.template`: qué renglones carga cada tipo de
+  desarrollo (general 26, entretelas V10 23, carda 15, tramado 15), con
+  dirección (largo / ancho), **posición** (izquierda / centro / derecha: la
+  solidez al frote y la masa por orillas) y si se mide en la muestra del
+  cliente, va a la especificación del cliente o al certificado. Sustituye a
+  `DEV_DEFAULT_LINES` del código. Menú SGI → Administración → Configuración →
+  **Características por tipo de desarrollo**; el catálogo de características
+  y las claves de codificación se editan en Fichas Técnicas de Tela →
+  Configuración.
+- Ficha del renglón (se abre desde la tabla del proyecto) y contadores en la
+  pestaña Solicitud de desarrollo: características, pendientes de
+  laboratorio, fuera del control interno, no conformes.
+- Pruebas `tests/test_dev_characteristics.py`.
+
+### Cambiado
+
+- `sgi.dev.characteristic` hereda el mixin de límites: `value` y `tolerance`
+  (texto) se retiran; entran `caracteristica_id`, `kind`, `position`,
+  `spec_*`, `ctrl_*`, `in_customer_spec`, `in_coa` (del mixin) y, propios del
+  desarrollo, `lab_requested`, `sample_*`, `run_*`, `verdict`,
+  `customer_approved`. En producción no había ningún renglón, así que no hay
+  migración de datos.
+- El PDF de la Solicitud de desarrollo imprime la especificación como una sola
+  expresión («53 g/m² ± 3 g/m²», «≤ 1 %») y lo medido en la muestra.
+
+### Pendiente (bloques siguientes del plan)
+
+- Proyecto único con ciclo de vida, folio FT aparte y bandera por tipo de
+  proyecto con migración (6.1), generador de código (6.6), laboratorio y
+  factibilidad (6.3 a 6.5), fichas de proceso (6.7), orden de muestra
+  (6.10), pilotaje y liberación (6.12). La cotización (6.8) pasa como
+  requisitos al plan de costeo v2 (`qb_cotizador` / `qb_costeo_sgi`).
+
 ## 19.0.57.116.0 — 2026-10-06
 
 **Menos categorías en Aprobaciones.** Cada aprobación del SGI como solicitud

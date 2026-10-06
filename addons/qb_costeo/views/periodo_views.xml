@@ -68,7 +68,8 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_calcular" type="object" string="Calcular" class="btn-primary" invisible="state == 'cerrado'"/>
+                    <button name="action_calcular" type="object" string="Calcular tarifas" class="btn-primary" invisible="state == 'cerrado'"/>
+                    <button name="action_calcular_costos" type="object" string="Calcular costos" class="btn-primary" invisible="state == 'cerrado' or not calculado_el"/>
                     <button name="action_cerrar" type="object" string="Cerrar período" invisible="state == 'cerrado'" confirm="Al cerrar, las tarifas se congelan y se publican a los centros de trabajo de Odoo. ¿Continuar?"/>
                     <button name="action_publicar_tarifas" type="object" string="Publicar tarifas a Odoo" invisible="state != 'cerrado'"/>
                     <button name="action_reabrir" type="object" string="Reabrir" invisible="state != 'cerrado'"/>
@@ -114,6 +115,39 @@
                                     <field name="ociosidad"/>
                                     <field name="capacidad_superada"/>
                                     <field name="publicada"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Costo por producto">
+                            <group>
+                                <group>
+                                    <field name="costos_calculado_el"/>
+                                    <field name="costos_n"/>
+                                    <field name="costos_calidad_pct"/>
+                                </group>
+                                <group>
+                                    <field name="costos_ventas"/>
+                                    <field name="costos_total"/>
+                                    <field name="costos_margen_neto"/>
+                                    <field name="costos_margen_neto_pct"/>
+                                </group>
+                            </group>
+                            <field name="costo_ids" context="{'search_default_vendidos': 1}">
+                                <list decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar' or calidad == 'dudosa'" decoration-muted="semaforo == 'sin_precio'">
+                                    <field name="default_code"/>
+                                    <field name="product_id"/>
+                                    <field name="qty_vendida"/>
+                                    <field name="ventas_total" sum="Total"/>
+                                    <field name="precio_prom"/>
+                                    <field name="mp_unit"/>
+                                    <field name="fabricacion_unit"/>
+                                    <field name="costo_vendible"/>
+                                    <field name="costo_total"/>
+                                    <field name="piso_lleno"/>
+                                    <field name="margen_neto_pct"/>
+                                    <field name="margen_neto_total" sum="Total"/>
+                                    <field name="calidad"/>
+                                    <field name="semaforo"/>
                                 </list>
                             </field>
                         </page>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_producto_peso_list" model="ir.ui.view">
+        <field name="name">qb.producto.kg.list</field>
+        <field name="model">qb.producto.kg</field>
+        <field name="arch" type="xml">
+            <list create="false" editable="bottom" decoration-warning="fuente in ('nomenclatura', 'ninguna')">
+                <field name="default_code" readonly="1"/>
+                <field name="product_id" readonly="1"/>
+                <field name="kg_por_unidad" readonly="1"/>
+                <field name="fuente" readonly="1"/>
+                <field name="detalle" readonly="1"/>
+                <field name="kg_manual"/>
+                <field name="manual_motivo"/>
+                <field name="calculado_el" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_producto_peso_search" model="ir.ui.view">
+        <field name="name">qb.producto.kg.search</field>
+        <field name="model">qb.producto.kg</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <filter name="estimados" string="Estimados" domain="[('fuente', 'in', ('nomenclatura', 'ninguna'))]"/>
+                <filter name="por_fuente" string="Fuente" context="{'group_by': 'fuente'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_producto_peso" model="ir.actions.act_window">
+        <field name="name">Peso por unidad</field>
+        <field name="res_model">qb.producto.kg</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_qb_peso_recalcular" model="ir.actions.server">
+        <field name="name">Recalcular pesos</field>
+        <field name="model_id" ref="model_qb_producto_kg"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_recalcular_todo()</field>
+    </record>
+</odoo>

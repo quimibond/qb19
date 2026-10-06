@@ -39,6 +39,7 @@ SGI/Sistema/Flujos entre procesos | menu_sgi_process_flows | quimibond_sgi.group
 SGI/Sistema/Matriz de responsabilidades | menu_sgi_analysis_who | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Puestos y procesos | menu_sgi_jobs_roles | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
 SGI/Sistema/Fichas de proceso por máquina | menu_sgi_machine_sheets | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Pruebas de laboratorio de desarrollos | menu_sgi_dev_lab_requests | -
 SGI/Sistema/Documentos | menu_sgi_documental | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Sistema/Documentos/Documentos | menu_sgi_documents | -
 SGI/Sistema/Documentos/Lista maestra | menu_sgi_master_list | -
@@ -118,3 +119,6 @@ SGI/Administración/Configuración/Fuentes de NC automáticas | menu_sgi_config_
 SGI/Administración/Configuración/Elementos PPAP | menu_sgi_config_ppap_elements | -
 SGI/Administración/Configuración/Competencias por tipo de permiso | menu_sgi_config_work_permit_skills | -
 SGI/Administración/Configuración/Fuentes de indicadores | menu_sgi_config_indicator_sources | -
+SGI/Administración/Configuración/Características por tipo de desarrollo | menu_sgi_config_dev_char_templates | -
+SGI/Administración/Configuración/Listas del desarrollo de producto | menu_sgi_config_dev_options | -
+SGI/Administración/Configuración/Recursos del checklist de factibilidad | menu_sgi_config_dev_feasibility | -

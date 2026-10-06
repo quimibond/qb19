@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_costo_producto_list" model="ir.ui.view">
+        <field name="name">qb.costo.unitario.list</field>
+        <field name="model">qb.costo.unitario</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar' or calidad == 'dudosa'" decoration-muted="semaforo == 'sin_precio'">
+                <field name="period"/>
+                <field name="default_code"/>
+                <field name="product_id"/>
+                <field name="uom_name"/>
+                <field name="qty_vendida" sum="Total"/>
+                <field name="ventas_total" sum="Total"/>
+                <field name="precio_prom"/>
+                <field name="mp_unit"/>
+                <field name="energia_unit" optional="hide"/>
+                <field name="fabricacion_unit"/>
+                <field name="rendimiento" optional="hide"/>
+                <field name="costo_vendible"/>
+                <field name="op_unit" optional="hide"/>
+                <field name="costo_total"/>
+                <field name="piso_ocioso" optional="hide"/>
+                <field name="piso_lleno"/>
+                <field name="margen_neto_pct"/>
+                <field name="margen_neto_total" sum="Total"/>
+                <field name="costo_total_periodo" sum="Total" optional="hide"/>
+                <field name="calidad"/>
+                <field name="semaforo"/>
+                <field name="state" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_costo_producto_form" model="ir.ui.view">
+        <field name="name">qb.costo.unitario.form</field>
+        <field name="model">qb.costo.unitario</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group string="Qué se vendió">
+                            <field name="periodo_id"/>
+                            <field name="product_id"/>
+                            <field name="uom_name"/>
+                            <field name="qty_vendida"/>
+                            <field name="ventas_total"/>
+                            <field name="precio_prom"/>
+                            <field name="divisa_id" invisible="not divisa_id"/>
+                            <field name="precio_prom_divisa" invisible="not divisa_id"/>
+                            <field name="tc_prom" invisible="not divisa_id"/>
+                        </group>
+                        <group string="Costo por unidad">
+                            <field name="mp_unit"/>
+                            <field name="energia_unit"/>
+                            <field name="fabricacion_unit"/>
+                            <field name="costo_produccion"/>
+                            <field name="rendimiento"/>
+                            <field name="rendimiento_fuente"/>
+                            <field name="costo_vendible"/>
+                            <field name="op_pct"/>
+                            <field name="op_unit"/>
+                            <field name="costo_total"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Pisos y márgenes">
+                            <field name="piso_ocioso"/>
+                            <field name="piso_lleno"/>
+                            <field name="semaforo"/>
+                            <field name="margen_contribucion_pct"/>
+                            <field name="margen_bruto_pct"/>
+                            <field name="margen_neto_pct"/>
+                            <field name="margen_neto_total"/>
+                        </group>
+                        <group string="Calidad del dato">
+                            <field name="calidad"/>
+                            <field name="calidad_detalle"/>
+                            <field name="kg_por_unidad"/>
+                            <field name="peso_fuente"/>
+                        </group>
+                    </group>
+                    <group string="Horas y tarifa por centro">
+                        <field name="linea_ids" nolabel="1">
+                            <list>
+                                <field name="centro_id"/>
+                                <field name="horas_unidad"/>
+                                <field name="tarifa"/>
+                                <field name="tarifa_variable"/>
+                                <field name="costo_unit"/>
+                                <field name="fuente"/>
+                                <field name="calidad"/>
+                            </list>
+                        </field>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_costo_producto_search" model="ir.ui.view">
+        <field name="name">qb.costo.unitario.search</field>
+        <field name="model">qb.costo.unitario</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <filter name="vendidos" string="Con ventas" domain="[('qty_vendida', '>', 0)]"/>
+                <filter name="rojo" string="Bajo piso ocioso" domain="[('semaforo', '=', 'rojo')]"/>
+                <filter name="ambar" string="Entre pisos" domain="[('semaforo', '=', 'ambar')]"/>
+                <filter name="dudosos" string="Dato dudoso" domain="[('calidad', 'in', ('dudosa', 'baja'))]"/>
+                <filter name="por_periodo" string="Período" context="{'group_by': 'period'}"/>
+                <filter name="por_calidad" string="Calidad" context="{'group_by': 'calidad'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_qb_costo_producto_pivot" model="ir.ui.view">
+        <field name="name">qb.costo.unitario.pivot</field>
+        <field name="model">qb.costo.unitario</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="period" type="row"/>
+                <field name="ventas_total" type="measure"/>
+                <field name="costo_total_periodo" type="measure"/>
+                <field name="margen_neto_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_qb_costo_producto" model="ir.actions.act_window">
+        <field name="name">Costo por producto</field>
+        <field name="res_model">qb.costo.unitario</field>
+        <field name="view_mode">list,pivot,form</field>
+        <field name="context">{'search_default_vendidos': 1, 'search_default_por_periodo': 1}</field>
+    </record>
+</odoo>
