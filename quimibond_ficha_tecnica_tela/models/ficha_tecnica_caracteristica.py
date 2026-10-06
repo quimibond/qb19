@@ -160,8 +160,11 @@ class FichaTecnicaCaracteristicaMixin(models.AbstractModel):
     name = fields.Char(string="Característica", required=True, compute='_compute_from_caracteristica', store=True,
                        readonly=False, precompute=True,
                        help="Nombre de la característica (sale del catálogo; se puede ajustar).")
+    # Sin default: un valor por omisión entraría en los vals del create y el
+    # ORM dejaría de calcularlo desde el catálogo (CI 2026-10-06: «tacto» salía
+    # numérica). El cálculo pone «num» cuando no hay catálogo.
     kind = fields.Selection(KINDS, string="Tipo de dato", compute='_compute_from_caracteristica', store=True,
-                            readonly=False, precompute=True, required=True, default='num',
+                            readonly=False, precompute=True, required=True,
                             help="Numérica (valor y tolerancia), cualitativa (texto) o sí / no.")
     unit = fields.Char(string="Unidad", compute='_compute_from_caracteristica', store=True, readonly=False,
                        precompute=True, help="Unidad de medida del renglón.")
