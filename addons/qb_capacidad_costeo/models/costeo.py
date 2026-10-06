@@ -83,6 +83,13 @@ CONV_RANGO = {False: 0, 'op': 1, 'hermano': 2, 'familia': 3, 'centro': 4}
 # ancho (WJ047Q21HNT112 / WJ047Q21HNN112).
 CONV_RAIZ = 9
 
+# La nomenclatura marca la etapa en la posición 9: H crudo, I teñido,
+# J terminado (ver `ficha.py`). Un artículo nuevo que nunca se ha tejido
+# —WJ080Q21HNT165, dado de alta el 13-sep-2026— no tiene órdenes, ni ruta,
+# ni familia que lo delate como crudo; sin esto su receta bajaba hasta el
+# hilo y la tela se cotizaba con tejido $0.
+CRUDO_RE = re.compile(r'^[A-Z]{2}\d{3}[A-Z]\d{2}H[A-Z]{2}\d{3}$')
+
 # Categorías cuyo pedimento NO puede viajar al costo de un producto: un
 # activo fijo se deprecia, no se vende. Se quedan en la BASE del factor de
 # importación —su pedimento existe y lo diluye correctamente— pero nunca
@@ -3082,7 +3089,10 @@ class QbCostoProducto(models.Model):
             res = (0.0, False)
         elif product.id in cc['tarifas']:
             res = (cc['tarifas'][product.id], 'op')
-        elif product.id in cc['crudos']:
+        elif product.id in cc['crudos'] or (
+                # Por nomenclatura, solo si se fabrica (receta activa): un
+                # crudo comprado a maquila ya trae el tejido en su precio.
+                CRUDO_RE.match(ref) and self._applicable_boms(product)):
             # Crudo sin órdenes en doce meses: la de sus hermanos o la del
             # centro, en $/kg × sus kilos
             Peso = self.env['qb.producto.peso']
