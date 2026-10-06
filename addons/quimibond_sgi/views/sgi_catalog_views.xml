@@ -122,6 +122,8 @@
                                    placeholder="date_order"/>
                             <field name="measure_user_field" invisible="not odoo_model_id"
                                    placeholder="user_id"/>
+                            <field name="measure_user_history" invisible="not odoo_model_id"
+                                   groups="quimibond_sgi.group_sgi_manager"/>
                         </group>
                     </group>
                     <group>

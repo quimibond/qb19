@@ -157,3 +157,4 @@ from . import test_propuesta_sencilla
 from . import test_aprobaciones_asistente
 from . import test_indicador_asistente
 from . import test_riesgo_reportar
+from . import test_medicion_historial

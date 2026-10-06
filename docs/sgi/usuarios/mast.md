@@ -316,6 +316,11 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
   el filtro es visual, la fecha y quién la hizo se eligen por su nombre, y
   «Lo que cuenta hoy» muestra los registros de 30 días y a quién se le
   atribuyen.
+- **Quién la hizo, por el historial (57.111.0).** Cuando el modelo no tiene
+  un campo de «quién lo validó» (transferencias, órdenes de fabricación, NC,
+  solicitudes), marque **Quién lo hizo: quien lo pasó a su estado
+  (historial)**: cuenta a quien pasó el registro a su estado actual, no al
+  último que lo editó. Las que se medían con «write_uid» ya vienen marcadas.
 - **Riesgos reportados.** Cualquiera puede reportar un riesgo u oportunidad
   en SGI → Reportar; a usted le llega «Evaluar riesgo reportado» para
   confirmar probabilidad, impacto, proceso y categoría.

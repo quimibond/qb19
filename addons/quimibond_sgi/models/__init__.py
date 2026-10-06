@@ -140,3 +140,6 @@ from . import sgi_approval_wizard
 from . import sgi_indicator_wizard
 # 57.109.0: reportar un riesgo u oportunidad en lenguaje normal (crea sgi.risk).
 from . import sgi_risk_report
+# 57.111.0: quién hizo la actividad según el historial de su estado (hereda
+# entregable y actividad, y usa los ganchos de sgi_process_procedure).
+from . import sgi_measure_history
