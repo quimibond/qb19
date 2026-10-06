@@ -13,6 +13,15 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.120.1 — 2026-10-06
+
+### Corregido
+
+- Aviso del build de `main` (Odoo.sh): dos campos de `project.project` con la
+  misma etiqueta «Solicitudes de laboratorio» (`sgi_dev_lab_request_ids` y
+  `sgi_dev_lab_request_count`). El contador pasa a «Número de solicitudes de
+  laboratorio».
+
 ## 19.0.57.120.0 — 2026-10-06
 
 **C1 Desarrollo y alta de producto, bloque 4: parecidos, laboratorio y

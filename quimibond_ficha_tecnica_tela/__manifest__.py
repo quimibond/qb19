@@ -20,6 +20,7 @@ separadas en 2 modelos:
   acabado (varios colores/variantes).
 
 Incluye:
+
 - Importación masiva desde Excel (tabular, fila por fila, muchos
   artículos a la vez) para ambos modelos, con encabezados flexibles.
 - Validaciones de tolerancia (ej. encogimiento máximo 5%).

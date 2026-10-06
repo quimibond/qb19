@@ -45,9 +45,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_hours_dev` | Float | Horas de desarrollo | Horas calendario desde la solicitud sin contar las esperas de materia prima. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:287` |
 | `sgi_dev_hours_mp` | Float | Horas de materia prima | Horas calendario acumuladas esperando materia prima. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:289` |
 | `sgi_dev_hours_stage` | Float | Horas en la etapa actual | Horas de desarrollo en la etapa en la que está el proyecto. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:291` |
-| `sgi_dev_lab_open_count` | Integer | Laboratorio en curso | Solicitudes solicitadas o autorizadas sin medir. |  |  | compute `_compute_sgi_dev_lab`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:306` |
+| `sgi_dev_lab_open_count` | Integer | Laboratorio en curso | Solicitudes solicitadas o autorizadas sin medir. |  |  | compute `_compute_sgi_dev_lab`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:307` |
 | `sgi_dev_lab_pending_count` | Integer | Pendientes de laboratorio | Renglones marcados para medir en la muestra del cliente que aún no tienen resultado. |  |  | compute `_compute_sgi_dev_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_request.py:73` |
-| `sgi_dev_lab_request_count` | Integer | Solicitudes de laboratorio | Solicitudes de pruebas del proyecto. |  |  | compute `_compute_sgi_dev_lab`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:304` |
+| `sgi_dev_lab_request_count` | Integer | Número de solicitudes de laboratorio | Cuántas solicitudes de pruebas tiene el proyecto. |  |  | compute `_compute_sgi_dev_lab`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:304` |
 | `sgi_dev_lab_request_ids` | One2many | Solicitudes de laboratorio |  |  | `sgi.dev.lab.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:303` |
 | `sgi_dev_lamination_id` | Many2one | Tipo de laminado | Tipo de laminado que lleva el producto, si aplica (lista). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:250` |
 | `sgi_dev_legal_ids` | Many2many | Requisitos legales y reglamentarios | Requisitos legales y reglamentarios que aplican (lista, no texto). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:253` |
@@ -73,10 +73,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_requester` | Char | Nombre del solicitante |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:38` |
 | `sgi_dev_requester_employee_id` | Many2one | Solicitante interno | Quien pide el desarrollo cuando es interno. |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:220` |
 | `sgi_dev_required_date` | Date | Fecha requerida | Fecha en que el cliente necesita el producto o la muestra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:259` |
-| `sgi_dev_review_date` | Datetime | Revisado el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:313` |
-| `sgi_dev_review_note` | Char | Motivo del regreso | Qué falta cuando Ventas regresa el análisis. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:314` |
-| `sgi_dev_review_state` | Selection | Revisión de Ventas | Ventas aprueba juntos el análisis de Diseño de Producto y la factibilidad de Diseño de Procesos. Sin aprobación no se cotiza. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:308` |
-| `sgi_dev_reviewed_by_id` | Many2one | Revisó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:312` |
+| `sgi_dev_review_date` | Datetime | Revisado el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:314` |
+| `sgi_dev_review_note` | Char | Motivo del regreso | Qué falta cuando Ventas regresa el análisis. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:315` |
+| `sgi_dev_review_state` | Selection | Revisión de Ventas | Ventas aprueba juntos el análisis de Diseño de Producto y la factibilidad de Diseño de Procesos. Sin aprobación no se cotiza. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:309` |
+| `sgi_dev_reviewed_by_id` | Many2one | Revisó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:313` |
 | `sgi_dev_revision` | Integer | Revisión | Revisión del desarrollo. Sube con «Subir revisión» cuando el cliente ajusta lo que pidió; cada cambio queda en la bitácora. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:210` |
 | `sgi_dev_revision_ids` | One2many | Bitácora de revisiones |  |  | `sgi.dev.revision` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:213` |
 | `sgi_dev_salesperson_id` | Many2one | Vendedor | Vendedor que atiende al cliente en este desarrollo. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:225` |

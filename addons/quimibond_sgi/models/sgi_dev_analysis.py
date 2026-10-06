@@ -301,8 +301,9 @@ class ProjectProjectDevAnalysis(models.Model):
     sgi_dev_feasibility_no = fields.Integer(string="Factibilidad en «No»", compute='_compute_sgi_dev_feasibility',
                                             store=True, help="Renglones del checklist contestados con «No».")
     sgi_dev_lab_request_ids = fields.One2many('sgi.dev.lab.request', 'project_id', string="Solicitudes de laboratorio")
-    sgi_dev_lab_request_count = fields.Integer(string="Solicitudes de laboratorio", compute='_compute_sgi_dev_lab',
-                                               help="Solicitudes de pruebas del proyecto.")
+    sgi_dev_lab_request_count = fields.Integer(string="Número de solicitudes de laboratorio",
+                                               compute='_compute_sgi_dev_lab',
+                                               help="Cuántas solicitudes de pruebas tiene el proyecto.")
     sgi_dev_lab_open_count = fields.Integer(string="Laboratorio en curso", compute='_compute_sgi_dev_lab',
                                             help="Solicitudes solicitadas o autorizadas sin medir.")
     sgi_dev_review_state = fields.Selection(REVIEW_STATES, string="Revisión de Ventas", default='pendiente',
