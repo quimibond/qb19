@@ -162,3 +162,4 @@ from . import test_medicion_manual_motivo
 from . import test_menus_capitulos
 from . import test_ligas_tanda5
 from . import test_pantalla_produce
+from . import test_aprobaciones_asunto

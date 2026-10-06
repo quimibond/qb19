@@ -13,6 +13,37 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.116.0 — 2026-10-06
+
+**Menos categorías en Aprobaciones.** Cada aprobación del SGI como solicitud
+creaba su propia categoría: había 24 activas en producción (18 del SGI, sin
+solicitudes todavía). Jose pidió menos. Ahora varias aprobaciones comparten
+una categoría por área y quien pide elige el **asunto**.
+
+### Agregado
+
+- `sgi.approval.subject` (`models/sgi_approval_subject.py`): asunto de una
+  categoría de Aprobaciones, con su rol «Aprueba» del SGI.
+- En la solicitud, campo **Asunto**: aparece y es obligatorio cuando la
+  categoría tiene asuntos. Sin asunto no se envía. El asunto pone como
+  aprobadores a las personas del puesto de su rol, así una categoría
+  compartida manda cada asunto a quien le toca, y la medición de cada
+  actividad cuenta las solicitudes de su asunto.
+- En la categoría, lista editable de **Asuntos** (asunto, aprobación del SGI,
+  actividad).
+- Permisos: lectura para todos los usuarios; edición para gerentes del SGI y
+  de Aprobaciones.
+
+### Datos de producción (MCP, 2026-10-06)
+
+- Nombres cortos en las 18 categorías del SGI («Propuesta de pago semanal»,
+  «Finiquito», «Alta de proveedor»…).
+- Después del despliegue, por MCP:
+  - las aprobaciones se juntan en categorías por área, con un asunto cada una;
+  - las categorías que quedan vacías se archivan;
+  - cuatro pasan al botón de su documento: ajuste de inventario, anticipo a
+    proveedor, nómina y compras de TI.
+
 ## 19.0.57.115.0 — 2026-10-06
 
 **La pantalla que produce la evidencia no es un error.** De los 25 avisos

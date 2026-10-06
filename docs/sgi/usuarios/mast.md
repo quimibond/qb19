@@ -332,6 +332,10 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
   pero su evidencia es una revisión, un reporte o una junta, escriba **Por qué
   se mide a mano** (qué se revisa y dónde queda la decisión): se mide con el
   registro de cumplimiento y deja de salir «Se hace en Odoo, se mide a mano».
+- **Categorías con asunto (57.116.0).** Varias aprobaciones comparten una
+  categoría de Aprobaciones por área. En la categoría, la lista **Asuntos**
+  liga cada asunto con su aprobación del SGI. Quien pide elige el asunto, y
+  ese asunto define quién aprueba.
 - **Riesgos reportados.** Cualquiera puede reportar un riesgo u oportunidad
   en SGI → Reportar; a usted le llega «Evaluar riesgo reportado» para
   confirmar probabilidad, impacto, proceso y categoría.
