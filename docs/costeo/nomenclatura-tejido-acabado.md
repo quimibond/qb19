@@ -131,9 +131,12 @@ código de resina, no gramaje). Maquila: DAT P-D02-04. Hilo: DAT P-D02-05.
   la etiqueta `GALGA nn`: un crudo nuevo sin órdenes se estima con la
   historia de **las máquinas de su galga**, no con el promedio del centro
   (spec §5.2, fuente `galga`, entre `hermano` y `estimado`).
-- El **diámetro** no está en el código; cuando importa (galga 18: Ø30 teje
-  ~21.8 kg/h, Ø32 ~13.3 kg/h en 2025-26) la cotización de una especificación
-  nueva debe preguntarlo, o la ruta de la receta debe fijar las máquinas.
+- El **diámetro** no está en el código y en un desarrollo nuevo tampoco se
+  sabe a qué ancho saldrá el crudo ni en qué máquina. Por eso el código solo
+  sirve para costear productos que ya existen; una especificación nueva se
+  cotiza con el **rango de su galga** (galga 18: Ø30 ~21.8 kg/h, Ø32 ~13.3
+  kg/h en 2025-26), queda preliminar, y se vuelve firme cuando el desarrollo
+  teje la muestra y hay máquina y tiempo reales.
 - Las posiciones 2, 3 y 7 (composición, dibujo, hilo) permiten agrupar
   productos para rendimiento y velocidad de rama cuando no hay historia
   propia.

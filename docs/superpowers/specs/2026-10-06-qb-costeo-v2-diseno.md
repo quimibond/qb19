@@ -168,7 +168,7 @@ este orden:
 | `medido` | Órdenes de trabajo reales de 12 meses del producto, dentro de la banda de rendimiento del centro (hoy `rendimiento_min/max`) | alta |
 | `estandar` | `mrp.routing.workcenter.time_cycle` de la receta vigente (la de más cantidad en 90 días) | alta si la confirmó Ingeniería |
 | `hermano` | Mismo código salvo color o ancho (posiciones 11-15 de la nomenclatura) | media |
-| `galga` | Promedio de los crudos tejidos en las máquinas de la misma galga (posiciones 8-9 del código → etiqueta `GALGA nn` del centro de trabajo). En 2025-26 la galga 18 Ø30 teje 21.8 kg/h y la Ø32 13.3: el diámetro no va en el código, así que una especificación nueva lo pregunta | media |
+| `galga` | Promedio de los crudos tejidos en las máquinas de la misma galga (posiciones 8-9 del código → etiqueta `GALGA nn` del centro de trabajo). Solo para productos que ya existen: en un desarrollo nuevo no se sabe en qué máquina ni a qué ancho saldrá el crudo, así que la cotización da el **rango** de la galga (máquina más lenta y más rápida: en 2025-26 la galga 18 va de 13.3 kg/h en Ø32 a 21.8 en Ø30) y queda **preliminar** hasta que el desarrollo teje la muestra | media |
 | `estimado` | Promedio del centro (horas reales ÷ unidades reales) | baja |
 | `manual` | Capturado con motivo y vigencia | la que diga quien lo capturó |
 
@@ -404,9 +404,14 @@ mes; la vista SQL de 438 líneas no hace falta).
   `costeo_cierre_bloqueado`.
 - **Diseño y desarrollo (proyectos)**: una cotización de especificación nueva
   se liga al proyecto FT (`project.project.sgi_is_ft`): toma gramaje, ancho,
-  precio objetivo y volumen de la solicitud (`sgi_dev_*`), y al transferir a
-  producción (etapa 8.3.6) la cotización pasa a producto existente con las
-  horas estándar que capturó el desarrollo. Los lotes de desarrollo se marcan
+  precio objetivo y volumen de la solicitud (`sgi_dev_*`). Nace
+  **preliminar**: el código terminado no dice en qué máquina ni a qué ancho
+  saldrá el crudo, así que el tejido se cotiza con el rango de su galga y el
+  piso lleno se calcula con la máquina más lenta. Cuando el desarrollo teje la
+  muestra (etapa 8.3.4-8.3.5) ya hay crudo, máquina y tiempo real: la
+  cotización se vuelve **firme** con fuente `medido` (el lote de desarrollo
+  sí sirve para velocidad; no para rendimiento). Al transferir a producción
+  (8.3.6) pasa a producto existente. Los lotes de desarrollo se marcan
   en la orden (`qb_es_desarrollo`) y **no entran** al rendimiento ni a las
   horas medidas; se acaba el caso NN040.
 - **Revisión por la dirección**: los cinco indicadores entran al paquete de
