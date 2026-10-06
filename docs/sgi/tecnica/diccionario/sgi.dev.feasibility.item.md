@@ -14,9 +14,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  | Los recursos archivados no se cargan en proyectos nuevos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:247` |
-| `auto` | Selection | Lo contesta Odoo | Si Odoo puede contestar el renglón solo: existencia de materia prima (lista de materiales contra existencias) o capacidad de máquina (llega con el cotizador nuevo). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:244` |
-| `line` | Selection | Línea | Línea de producción cuyo checklist incluye el recurso. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:239` |
-| `name` | Char | Recurso o pregunta | Qué se verifica (máquina, materia prima, laboratorio, personal…). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:242` |
-| `sequence` | Integer |  | Orden en el checklist. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:241` |
+| `active` | Boolean |  | Los recursos archivados no se cargan en proyectos nuevos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:268` |
+| `auto` | Selection | Lo contesta Odoo | Si Odoo puede contestar el renglón solo: existencia de materia prima (lista de materiales contra existencias) o capacidad de máquina (llega con el cotizador nuevo). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:265` |
+| `line` | Selection | Línea | Línea de producción cuyo checklist incluye el recurso. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:260` |
+| `name` | Char | Recurso o pregunta | Qué se verifica (máquina, materia prima, laboratorio, personal…). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:263` |
+| `sequence` | Integer |  | Orden en el checklist. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:262` |
 

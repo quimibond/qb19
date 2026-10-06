@@ -23,8 +23,9 @@ class ResConfigSettings(models.TransientModel):
     sgi_dev_lab_authorizer_job_id = fields.Many2one(
         'hr.job', string="Puesto que autoriza pruebas de laboratorio de desarrollos",
         config_parameter='quimibond_sgi.dev_lab_authorizer_job_id',
-        help="Puesto (Coordinador de Laboratorio y MP) cuyas personas autorizan las solicitudes de pruebas "
-             "de los proyectos de desarrollo. El Jefe MAST siempre puede. Vacío: solo el Jefe MAST.")
+        help="Puesto cuyas personas autorizan las solicitudes de pruebas de los proyectos de desarrollo. "
+             "Por omisión, el Coordinador de Laboratorio y MP (se busca por nombre si el parámetro está "
+             "vacío). El Jefe MAST siempre puede.")
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',

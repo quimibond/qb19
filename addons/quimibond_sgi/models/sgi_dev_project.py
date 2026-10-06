@@ -71,6 +71,11 @@ OPTION_KINDS = [
     ('requisito_legal', "Requisito legal o reglamentario"),
     ('motivo_no_factible', "Motivo de no factibilidad"),
 ]
+# Etapas viejas que no son clientes: no se adivina cliente desde ellas.
+NON_CUSTOMER_STAGES = {'hecha', 'cancelada', 'odoo', 'nuevo', 'por hacer', 'analisis de proyectos',
+                       'análisis de proyectos'}
+# Etapa vieja que significa desarrollo interno (quien pide es Dirección).
+INTERNAL_STAGES = {'quimibond'}
 # Dominios de medición viejos → nuevos (migración y mapa de procesos).
 LEGACY_DOMAIN_REPLACEMENTS = (
     ("('project_id.name', '=like', 'FT-%')", "('project_id.sgi_is_ft', '=', True)"),
@@ -534,12 +539,67 @@ class ProjectProjectDev(models.Model):
         return folio, rest, revision
 
     @api.model
+    def _sgi_dev_stage_partner_map(self):
+        """{etapa vieja: (cliente, regla)} para los proyectos FT- sin cliente.
+
+        Regla «uso»: el cliente que más proyectos FT de esa etapa ya tienen
+        (así SHAWMUT da SHAWMUT LLC y LA DIFERENCE da LA DIFFERENCE, aunque el
+        nombre no coincida). Regla «nombre»: si ningún proyecto de la etapa
+        tiene cliente, la única empresa cuyo nombre contiene el de la etapa.
+        Las etapas que no son clientes (Hecha, Cancelada, Odoo…) y QUIMIBOND
+        (origen interno) no entran."""
+        Project = self.sudo().with_context(active_test=False)
+        Partner = self.env['res.partner'].sudo()
+        dev_stage_ids = set(self._sgi_dev_stage_keys())
+        projects = Project.search([('name', '=ilike', 'FT-%')])
+        out = {}
+        for stage in projects.mapped('stage_id'):
+            low = (stage.name or '').strip().lower()
+            if stage.id in dev_stage_ids or low in NON_CUSTOMER_STAGES or low in INTERNAL_STAGES:
+                continue
+            same = projects.filtered(lambda p: p.stage_id == stage and p.partner_id)
+            counts = {}
+            for p in same:
+                partner = p.partner_id.commercial_partner_id
+                counts[partner] = counts.get(partner, 0) + 1
+            if counts:
+                partner = max(counts, key=lambda k: (counts[k], -k.id))
+                out[stage] = (partner, 'uso (%d proyecto%s)' % (counts[partner], 's' if counts[partner] != 1 else ''))
+                continue
+            found = Partner.search([('is_company', '=', True), ('name', 'ilike', stage.name)])
+            if len(found) == 1:
+                out[stage] = (found, 'nombre')
+            else:
+                out[stage] = (Partner, 'sin cliente en Odoo' if not found else 'nombre ambiguo (%d)' % len(found))
+        return out
+
+    @api.model
+    def _sgi_dev_migration_preview(self):
+        """Tabla etapa → cliente que aplicaría la migración, con los proyectos sin cliente de cada etapa."""
+        Project = self.sudo().with_context(active_test=False)
+        projects = Project.search([('name', '=ilike', 'FT-%'), ('partner_id', '=', False)])
+        mapping = self._sgi_dev_stage_partner_map()
+        rows = []
+        for stage in projects.mapped('stage_id').sorted('sequence'):
+            low = (stage.name or '').strip().lower()
+            pending = projects.filtered(lambda p: p.stage_id == stage)
+            if low in INTERNAL_STAGES:
+                partner, rule = self.env['res.partner'], 'origen interno'
+            elif low in NON_CUSTOMER_STAGES or stage.id in set(self._sgi_dev_stage_keys()):
+                partner, rule = self.env['res.partner'], 'no es cliente'
+            else:
+                partner, rule = mapping.get(stage, (self.env['res.partner'], 'sin cliente en Odoo'))
+            rows.append({'stage': stage, 'partner': partner, 'rule': rule, 'projects': pending})
+        return rows
+
+    @api.model
     def _sgi_dev_migrate_legacy(self):
         """Marca como desarrollo los proyectos FT-, las plantillas de Diseño y Desarrollo y el
         proyecto de análisis; separa folio, producto y revisión del nombre; toma el cliente de
-        la etapa cuando faltaba. Idempotente."""
+        la etapa cuando faltaba (ver _sgi_dev_stage_partner_map) y marca origen interno a los
+        de la etapa QUIMIBOND. Idempotente."""
         Project = self.sudo().with_context(active_test=False)
-        Partner = self.env['res.partner'].sudo()
+        mapping = self._sgi_dev_stage_partner_map()
         touched = Project.browse()
         for project in Project.search([('name', '=ilike', 'FT-%')]):
             parsed = project._sgi_dev_parse_legacy_name(project.name)
@@ -549,11 +609,11 @@ class ProjectProjectDev(models.Model):
                 vals.update({'sgi_ft_folio': folio, 'sgi_dev_revision': revision})
                 if rest and not project.sgi_dev_product_name:
                     vals['sgi_dev_product_name'] = rest
-            if not project.partner_id and project.stage_id and project.stage_id.id not in self._sgi_dev_stage_keys():
-                partner = Partner.search([('is_company', '=', True), ('name', '=ilike', project.stage_id.name)],
-                                         limit=1)
-                if partner:
-                    vals['partner_id'] = partner.id
+            low = (project.stage_id.name or '').strip().lower()
+            if low in INTERNAL_STAGES:
+                vals['sgi_dev_origin'] = 'interno'
+            elif not project.partner_id and project.stage_id in mapping and mapping[project.stage_id][0]:
+                vals['partner_id'] = mapping[project.stage_id][0].id
             project.write(vals)
             touched |= project
         templates = Project.search(['|', ('name', '=ilike', 'PLANTILLA - Diseño y Desarrollo%'),

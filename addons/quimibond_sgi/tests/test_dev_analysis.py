@@ -64,7 +64,12 @@ class TestDevAnalysis(TransactionCase):
         lab_user = new_test_user(self.env, login='lab_coord', groups='base.group_user')
         self.env['hr.employee'].create({'name': 'Ariadna prueba', 'job_id': job.id, 'user_id': lab_user.id})
         other_user = new_test_user(self.env, login='otro_user', groups='base.group_user')
-        Param.set_param('quimibond_sgi.dev_lab_authorizer_job_id', str(job.id))
+        Request = self.env['sgi.dev.lab.request']
+        Param.set_param('quimibond_sgi.dev_lab_authorizer_job_id', '')
+        self.assertEqual(Request._authorizer_job(), job, "Sin parámetro, el puesto se busca por nombre.")
+        self.assertEqual(Request._sgi_dev_set_lab_job_default(), job)
+        self.assertEqual(Param.get_param('quimibond_sgi.dev_lab_authorizer_job_id'), str(job.id))
+        self.assertFalse(Request._sgi_dev_set_lab_job_default(), "No pisa un valor capturado.")
         self.dev.sgi_dev_line_ids.write({'lab_requested': False})
         masa = self.dev.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'masa')
         ancho = self.dev.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'ancho')

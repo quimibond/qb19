@@ -14,9 +14,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `date_end` | Datetime | Hasta | Cuándo llegó la materia prima; vacío mientras siga pendiente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:176` |
-| `date_start` | Datetime | Desde | Cuándo se detectó que faltaba materia prima. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:174` |
-| `hours` | Float | Horas | Horas calendario de espera (hasta ahora si sigue pendiente). |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:177` |
-| `note` | Char | Qué faltó | Materia prima que se esperaba (texto breve). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:179` |
-| `project_id` | Many2one |  | Proyecto de desarrollo. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:172` |
+| `date_end` | Datetime | Hasta | Cuándo llegó la materia prima; vacío mientras siga pendiente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:181` |
+| `date_start` | Datetime | Desde | Cuándo se detectó que faltaba materia prima. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:179` |
+| `hours` | Float | Horas | Horas calendario de espera (hasta ahora si sigue pendiente). |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:182` |
+| `note` | Char | Qué faltó | Materia prima que se esperaba (texto breve). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:184` |
+| `project_id` | Many2one |  | Proyecto de desarrollo. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:177` |
 

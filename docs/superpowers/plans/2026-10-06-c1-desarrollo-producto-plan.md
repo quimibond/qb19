@@ -36,9 +36,11 @@ pruebas y se prueba solo en el build de Odoo.sh de la rama con
 | 3 | Artículo en desarrollo y generador de código (crudo, teñido, acabado); bloqueo de 16292 / 16293 con fecha acordada con Jose | 6.6 | **Hecho, 57.119.0** (mismo PR #563). Pendiente: fecha del bloqueo del genérico (parámetro vacío) |
 | 4 | Búsqueda de parecidos, solicitud de pruebas a laboratorio, checklist de factibilidad (modelo y vista, catálogo vacío) | 6.3 a 6.5 | **Hecho, 57.120.0** (mismo PR #563). Pendientes de datos: puesto autorizador (188) en el parámetro; catálogo de recursos (Yet) |
 | 5 | Cotización | 6.8 | **Fuera de C1**: requisitos en el plan de costeo v2 (spec §6.1), sobre `qb_cotizador` / `qb_costeo_sgi` |
-| 6 | Solicitud de desarrollos (PDF con clave nueva, compuerta de Jorge, aviso a seis puestos, requisición ligada), orden de muestra, fichas de proceso de tintorería y acabado | 6.7, 6.9, 6.10 | — |
-| 7 | Envío de muestra, respuesta del cliente, pilotaje, habilidad, ficha interna, especificaciones al cliente, PPAP, liberación y cierre | 6.11, 6.12 | — |
-| 8 | Escalamiento configurable y correcciones de medición | 6.13, 7.2 | — |
+| — | Duplicidad `ficha.tecnica.tejido` (parámetros de máquina) ↔ `sgi.machine.sheet` | 6.7 | **No se tocó** en el PR #563; decisión del siguiente PR (Jose, 2026-10-06) |
+| 6 | Solicitud de desarrollos (PDF con clave nueva, compuerta de Jorge, aviso a seis puestos, requisición ligada), orden de muestra, fichas de proceso de tintorería y acabado | 6.7, 6.9, 6.10 | Esperan a las sesiones con Planeación, Producción, Calidad y Compras |
+| 7a | Envío de muestra y respuesta del cliente | 6.11 | **PR nuevo** (siguiente) |
+| 7b | Pilotaje, habilidad, ficha interna, especificaciones al cliente, PPAP, liberación y cierre | 6.12 | Espera a las sesiones con Calidad |
+| 8 | Escalamiento configurable y correcciones de medición | 6.13, 7.2 | **PR nuevo** (con 6.11) |
 | 9 | Datos por MCP (fichas C1.01 a C1.19, plantillas 480 / 481, folios, partes interesadas, formatos obsoletos), primero en qbtesting | 7 | Al final |
 
 ## 3. Decisiones de diseño del bloque 1

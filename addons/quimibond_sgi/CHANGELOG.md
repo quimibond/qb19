@@ -33,11 +33,11 @@ Solicitud de pruebas para laboratorio y al Checklist de factibilidad.
   Sistema → Pruebas de laboratorio de desarrollos): «Solicitar pruebas al
   laboratorio» toma los renglones marcados «Medir en la muestra» sin
   resultado (muestra del cliente antes de la etapa Muestra; corrida después)
-  y crea la solicitud; la autoriza el puesto del parámetro
-  `quimibond_sgi.dev_lab_authorizer_job_id` (Ajustes → SGI → Desarrollo de
-  producto; vacío por omisión: solo el Jefe MAST; en producción va el
-  Coordinador de Laboratorio y MP, dato de la sección 7) con actividad
-  automática; el laboratorista captura el valor **en el mismo renglón** y la
+  y crea la solicitud; la autoriza el **Coordinador de Laboratorio y MP**
+  (puesto del parámetro `quimibond_sgi.dev_lab_authorizer_job_id`, Ajustes →
+  SGI → Desarrollo de producto; la migración lo llena con el puesto de ese
+  nombre, hr.job 188 en producción, y si está vacío se busca por nombre) o
+  el Jefe MAST, con actividad automática; el laboratorista captura el valor **en el mismo renglón** y la
   solicitud se cierra sola cuando todos tienen valor, con las horas que
   tardó. El laboratorio solo mide; el dictamen sigue siendo de Diseño.
 - **Checklist de factibilidad**: catálogo `sgi.dev.feasibility.item` por
@@ -53,6 +53,20 @@ Solicitud de pruebas para laboratorio y al Checklist de factibilidad.
   motivo. Sin aprobación el proyecto no pasa de Análisis a Cotización.
 - Pruebas `tests/test_dev_analysis.py`; las de los bloques 2 y 3 aprueban la
   revisión antes de avanzar de etapa.
+
+### Migración
+
+- `migrations/19.0.57.120.0/post-migrate.py`: escribe el puesto autorizador
+  por omisión en el parámetro si está vacío. La fecha de bloqueo del
+  artículo genérico se queda vacía (decisión de Jose).
+
+### Fuera de este PR (decisión de Jose, 2026-10-06)
+
+- La duplicidad entre `ficha.tecnica.tejido` (parámetros de máquina en
+  `quimibond_ficha_tecnica_tela`) y `sgi.machine.sheet` **no se tocó**: es
+  decisión del siguiente PR.
+- Los bloques 6.11 y 6.13 van en un PR nuevo; 6.7, 6.9, 6.10 y 6.12 esperan
+  a las sesiones con Planeación, Producción, Calidad y Compras.
 
 ## 19.0.57.119.0 — 2026-10-06
 
@@ -150,9 +164,16 @@ inicio; nadie edita el título ni escribe el folio a mano.
   producción), las plantillas «PLANTILLA - Diseño y Desarrollo …» (480 y
   481) y el proyecto «ANALISIS DE PROYECTO …» (490); separa folio (unificado
   a guiones), producto pedido y revisión («REV3») del nombre viejo y vuelve
-  a armar el nombre; toma el cliente de la etapa cuyo nombre era el cliente
-  cuando faltaba; reescribe los filtros de medición con `FT-%`. Idempotente.
-  No borra las etapas por cliente (dato de producción, sección 7 del brief).
+  a armar el nombre; cuando faltaba el cliente lo toma de la etapa: el
+  cliente que más proyectos de esa etapa ya tienen («uso»: SHAWMUT →
+  SHAWMUT LLC, LA DIFERENCE → LA DIFFERENCE) o, si ninguno lo tiene, la
+  única empresa con ese nombre («nombre»: ENTEX → ENTEX DE MEXICO CR); la
+  etapa QUIMIBOND marca **origen interno**; Hecha, Cancelada y las demás que
+  no son clientes no se tocan (NENUCO y Avances modernos no existen como
+  clientes y quedan sin cliente). La tabla etapa → cliente se escribe en el
+  log del update (`_sgi_dev_migration_preview`); reescribe los filtros de
+  medición con `FT-%`. Idempotente. No borra las etapas por cliente (dato de
+  producción, sección 7 del brief).
 
 ### Cambiado
 

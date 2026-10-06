@@ -38,6 +38,9 @@ from odoo.exceptions import UserError
 CODE_RE = re.compile(r'^(?P<comp>[A-Z])(?P<dib>[A-Z])(?P<peso>\d{3})(?P<hilo>[A-Z])(?P<galga>\d{2})'
                      r'(?P<op>[HIJ])(?P<color>[A-Z]{2})(?P<ancho>\d{3})(?P<acab>[A-Z]{2})?$')
 PARAM_LAB_JOB = 'quimibond_sgi.dev_lab_authorizer_job_id'
+# Puesto por omisión (decisión de Jose, 2026-10-06): hr.job 188 en producción.
+LAB_JOB_DEFAULT_NAME = 'Coordinador de Laboratorio'
+
 DEV_LINES = [('tejido_circular', "Tejido circular"), ('entretelas', "Entretelas")]
 FEAS_AUTO = [('none', "La contesta una persona"), ('materia_prima', "Existencia de materia prima"),
              ('capacidad', "Capacidad de máquina")]
@@ -169,16 +172,34 @@ class SgiDevLabRequest(models.Model):
             req.hours_total = max(((req.date_measured or now) - start).total_seconds(), 0) / 3600.0 if start else 0.0
 
     @api.model
-    def _authorizer_users(self):
-        """Usuarios del puesto del parámetro; el Jefe MAST siempre puede."""
+    def _authorizer_job(self):
+        """El puesto del parámetro o, si está vacío, el Coordinador de Laboratorio y MP por nombre."""
+        Job = self.env['hr.job'].sudo()
         raw = self.env['ir.config_parameter'].sudo().get_param(PARAM_LAB_JOB, '') or ''
         try:
-            job_id = int(raw)
+            job = Job.browse(int(raw)).exists()
         except ValueError:
-            job_id = 0
-        if not job_id:
+            job = Job
+        return job or Job.search([('name', 'ilike', LAB_JOB_DEFAULT_NAME)], limit=1)
+
+    @api.model
+    def _sgi_dev_set_lab_job_default(self):
+        """Deja el puesto por omisión escrito en el parámetro (migración / instalación)."""
+        Param = self.env['ir.config_parameter'].sudo()
+        if not (Param.get_param(PARAM_LAB_JOB, '') or '').strip():
+            job = self.env['hr.job'].sudo().search([('name', 'ilike', LAB_JOB_DEFAULT_NAME)], limit=1)
+            if job:
+                Param.set_param(PARAM_LAB_JOB, str(job.id))
+            return job
+        return self.env['hr.job']
+
+    @api.model
+    def _authorizer_users(self):
+        """Usuarios del puesto autorizador; el Jefe MAST siempre puede."""
+        job = self._authorizer_job()
+        if not job:
             return self.env['res.users']
-        return self.env['hr.employee'].sudo().search([('job_id', '=', job_id)]).mapped('user_id')
+        return self.env['hr.employee'].sudo().search([('job_id', '=', job.id)]).mapped('user_id')
 
     def action_request(self):
         for req in self:
