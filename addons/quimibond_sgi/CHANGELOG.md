@@ -13,6 +13,51 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.114.0 — 2026-10-06
+
+**Campos de liga entrada ↔ salida que faltaban.** Una actividad que se mide
+por su entrada y su salida necesita un campo real en la salida que apunte a
+la entrada (`match_path`). En producción quedaban 23 avisos «Entrada que no se
+liga con la salida». 14 se ligaron por MCP con campos que ya existían. Para 7
+faltaba el campo. Tanda 5 de «Medición por revisar», pedido de Jose.
+
+### Agregado
+
+- `approval.request`:
+  - `sgi_dyd_task_id`, la tarea del desarrollo (C1.08);
+  - `sgi_alert_id`, la NC del lote en desviación (C5.22);
+  - `sgi_maintenance_request_id`, la solicitud de mantenimiento que pide la
+    refacción (S5.03).
+  - En la solicitud, grupo «Liga con el SGI».
+- `stock.picking`:
+  - `sgi_dyd_task_id`, el envío de la muestra (C1.12);
+  - `sgi_maintenance_request_id`, la descarga de refacciones (S5.04).
+  - En el traslado, pestaña «Liga con el SGI».
+- `project.task`: `sgi_dyd_picking_ids`, los envíos de muestra (C1.13), en la
+  pestaña SGI de la tarea.
+- `account.move`: `sgi_action_line_id`, la acción de la reclamación que pidió
+  la nota de crédito (C5.14), en la pestaña SGI de la nota de crédito.
+- El historial de estado (57.111.0) también lee `quality_state`: los controles
+  de calidad se atribuyen a quien los pasó o reprobó.
+
+### Migración
+
+- `migrations/19.0.57.114.0/post-migrate.py` escribe la liga en las 7
+  entradas que la esperaban (C1.08, C1.12, C1.13, C5.14, C5.22, S5.03, S5.04),
+  solo donde está vacía, y recalcula sus faltantes.
+
+### Datos de producción (MCP, 2026-10-06, antes de esta versión)
+
+- 52 entregables nuevos de salida final para las actividades «Sin salida»
+  (52 → 0).
+- 14 ligas con campos existentes: «Entrada que no se liga con la salida» bajó
+  de 23 a 9.
+- Aprobaciones:
+  - 20 solicitudes activas en Aprobaciones;
+  - 29 roles «Aprueba» pasaron a «Participa» o «Se entera»;
+  - E2.01 ligada a «Modificación de documento SGI».
+- 40 actividades con «Por qué se mide a mano».
+
 ## 19.0.57.113.0 — 2026-10-06
 
 **Menús por capítulos del MIID.** El menú del SGI sigue el orden de la

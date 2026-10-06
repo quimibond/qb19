@@ -13,6 +13,12 @@ Estos son los campos que faltaban:
 - S2.08: la factura guarda las entregas que factura.
 - C2.34: el acuse adjunto guarda su entrega (y la entrega, sus acuses).
 - C4.19: el traspaso a liberación guarda su orden de producción.
+
+57.114.0 (tanda 5 de «Medición por revisar»): la solicitud de aprobación
+guarda su tarea del desarrollo (C1.08), su NC (C5.22) y su solicitud de
+mantenimiento (S5.03); el traslado, su tarea del desarrollo (C1.12, y la tarea
+sus envíos para C1.13) y su solicitud de mantenimiento (S5.04); la factura, la
+acción de la reclamación (C5.14).
 """
 from odoo import Command, api, fields, models
 
@@ -66,14 +72,17 @@ class ProjectTaskLinks(models.Model):
     sgi_production_ids = fields.One2many('mrp.production', 'sgi_dyd_task_id', string="Órdenes de muestra")
     sgi_control_plan_ids = fields.One2many('sgi.control.plan', 'sgi_dyd_task_id', string="Planes de control")
     sgi_ppap_ids = fields.One2many('sgi.ppap', 'sgi_dyd_task_id', string="PPAP")
+    # 57.114.0: envíos de la muestra (C1.13 se liga por aquí).
+    sgi_dyd_picking_ids = fields.One2many('stock.picking', 'sgi_dyd_task_id', string="Envíos de muestra")
     sgi_dyd_link_count = fields.Integer(compute='_compute_sgi_dyd_link_count', string="Ligas del desarrollo")
 
-    @api.depends('sgi_fmea_ids', 'sgi_bom_ids', 'sgi_production_ids', 'sgi_control_plan_ids', 'sgi_ppap_ids')
+    @api.depends('sgi_fmea_ids', 'sgi_bom_ids', 'sgi_production_ids', 'sgi_control_plan_ids', 'sgi_ppap_ids',
+                 'sgi_dyd_picking_ids')
     def _compute_sgi_dyd_link_count(self):
         for task in self:
             task.sgi_dyd_link_count = (len(task.sgi_fmea_ids) + len(task.sgi_bom_ids)
                                        + len(task.sgi_production_ids) + len(task.sgi_control_plan_ids)
-                                       + len(task.sgi_ppap_ids))
+                                       + len(task.sgi_ppap_ids) + len(task.sgi_dyd_picking_ids))
 
 
 class ProductTemplateLink(models.Model):
@@ -143,6 +152,18 @@ class PurchaseOrderLink(models.Model):
 class ApprovalRequestLink(models.Model):
     _inherit = 'approval.request'
 
+    # 57.114.0: ligas que faltaban para medir C1.08, C5.22 y S5.03.
+    sgi_dyd_task_id = fields.Many2one(
+        'project.task', string="Tarea del desarrollo", index=True, ondelete='set null',
+        copy=False,
+        help="Tarea del proyecto de Diseño y Desarrollo (FT-…) que pide esta compra (C1.08).")
+    sgi_alert_id = fields.Many2one(
+        'quality.alert', string="No conformidad", index=True, ondelete='set null', copy=False,
+        help="No conformidad del lote rechazado que esta desviación autoriza a usar (C5.22).")
+    sgi_maintenance_request_id = fields.Many2one(
+        'maintenance.request', string="Solicitud de mantenimiento", index=True,
+        ondelete='set null', copy=False,
+        help="Solicitud de mantenimiento que necesita la refacción que se pide (S5.03).")
 
     def action_create_purchase_orders(self):
         """approvals_purchase crea las órdenes desde las líneas; aquí se les
@@ -169,6 +190,12 @@ class AccountMoveLink(models.Model):
     si hay ajuste; si no, lo propuesto."""
     _inherit = 'account.move'
 
+    # 57.114.0: la nota de crédito o reposición guarda la acción de la
+    # reclamación que la pidió (C5.14).
+    sgi_action_line_id = fields.Many2one(
+        'sgi.action.line', string="Acción de la reclamación", index=True, ondelete='set null',
+        copy=False,
+        help="Causa y acción correctiva de la reclamación que pidió esta nota de crédito (C5.14).")
     sgi_picking_ids = fields.Many2many(
         'stock.picking', 'sgi_move_picking_rel', 'move_id', 'picking_id',
         string="Entregas facturadas", compute='_compute_sgi_picking_ids', store=True,
@@ -311,6 +338,15 @@ class StockPickingLink(models.Model):
              "desde los movimientos o el documento origen; se puede fijar a mano.")
     sgi_acuse_attachment_ids = fields.One2many(
         'ir.attachment', 'sgi_picking_id', string="Acuses firmados")
+    # 57.114.0: ligas que faltaban para medir C1.12 y S5.04.
+    sgi_dyd_task_id = fields.Many2one(
+        'project.task', string="Tarea del desarrollo", index=True, ondelete='set null',
+        copy=False,
+        help="Tarea del proyecto de Diseño y Desarrollo (FT-…) de la muestra que se envía (C1.12).")
+    sgi_maintenance_request_id = fields.Many2one(
+        'maintenance.request', string="Solicitud de mantenimiento", index=True,
+        ondelete='set null', copy=False,
+        help="Solicitud de mantenimiento cuyas refacciones descarga este traslado (S5.04).")
     sgi_acuse_count = fields.Integer(compute='_compute_sgi_acuse_count', string="Acuses")
 
     @api.depends('move_ids.production_id', 'move_ids.raw_material_production_id', 'origin')
