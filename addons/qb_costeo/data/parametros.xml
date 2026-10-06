@@ -44,17 +44,17 @@
     </record>
     <record id="param_colorante_max_pct" model="qb.parametro">
         <field name="key">colorante_max_pct</field>
-        <field name="name">Máximo de un colorante o auxiliar (% del peso)</field>
+        <field name="name">Máximo de una preparación de color (% del peso de la tela)</field>
         <field name="tipo">float</field>
-        <field name="value_float">12</field>
-        <field name="help">Una línea de receta de la categoría de colorantes arriba de este % del peso de la tela se marca como receta implausible.</field>
+        <field name="value_float">30</field>
+        <field name="help">Una línea de receta de la categoría de colorantes (preparación de color de «Cocina») arriba de este % del peso de la tela se marca como receta implausible. Una preparación lleva ~40 % de colorante y el resto auxiliares; un negro normal pide 10-20 % de preparación por kg de tela.</field>
     </record>
     <record id="param_colorante_total_max_pct" model="qb.parametro">
         <field name="key">colorante_total_max_pct</field>
-        <field name="name">Máximo de colorantes y auxiliares juntos (% del peso)</field>
+        <field name="name">Máximo de preparaciones de color juntas (% del peso de la tela)</field>
         <field name="tipo">float</field>
-        <field name="value_float">25</field>
-        <field name="help">La suma de todas las líneas de colorantes y auxiliares de una receta no debe pasar de este % del peso de la tela.</field>
+        <field name="value_float">40</field>
+        <field name="help">La suma de todas las preparaciones de color de una receta no debe pasar de este % del peso de la tela.</field>
     </record>
     <record id="param_validacion_categorias_colorante" model="qb.parametro">
         <field name="key">validacion_categorias_colorante</field>
@@ -62,6 +62,13 @@
         <field name="tipo">text</field>
         <field name="value_text">Cocina</field>
         <field name="help">Texto que aparece en el nombre de la categoría (separado por coma). En Quimibond los colorantes y auxiliares de tintorería viven en «Producto en Proceso / Cocina».</field>
+    </record>
+    <record id="param_validacion_excluir_categorias" model="qb.parametro">
+        <field name="key">validacion_excluir_categorias</field>
+        <field name="name">Categorías de producto que no se validan</field>
+        <field name="tipo">text</field>
+        <field name="value_text">Maquila</field>
+        <field name="help">Texto que aparece en el nombre de la categoría (separado por coma). Los productos de maquila traen recetas de referencia que no se producen aquí.</field>
     </record>
     <record id="param_validacion_excluir_codigos" model="qb.parametro">
         <field name="key">validacion_excluir_codigos</field>
