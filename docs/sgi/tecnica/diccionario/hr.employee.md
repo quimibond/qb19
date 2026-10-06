@@ -12,7 +12,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_document_ack_ids` | One2many | Acuses de lectura |  |  | `sgi.document.ack` |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:744` |
+| `sgi_document_ack_ids` | One2many | Acuses de lectura |  |  | `sgi.document.ack` |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:870` |
 | `sgi_epp_delivery_count` | Integer |  |  |  |  | compute `_compute_sgi_epp_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:144` |
 | `sgi_epp_delivery_ids` | One2many | Responsivas de EPP |  |  | `sgi.epp.delivery` |  |  | `addons/quimibond_sgi/models/sgi_epp.py:143` |
 | `sgi_epp_pending_count` | Integer | Responsivas sin firmar |  |  |  | compute `_compute_sgi_epp_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_epp.py:145` |
@@ -24,7 +24,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_
 | `sgi_mp_received_role_ids` | Many2many | Escalamientos que recibe | Actividades cuyo atraso le escala a esta persona. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:241` |
 | `sgi_mp_role_ids` | Many2many | Mis actividades | Actividades que la persona ejecuta o aprueba por su puesto o su familia. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:237` |
 | `sgi_mp_short_role_ids` | Many2many | Participa o se entera | Actividades en las que la persona participa o solo se entera. Se calcula solo. |  | `sgi.activity.role` | compute `_compute_sgi_mp_roles_stored`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:245` |
-| `sgi_my_procedure_ack_state` | Selection | Mi procedimiento | Si la persona ya firmó de leído su Mi procedimiento vigente. Se calcula solo. |  |  | compute `_compute_sgi_my_procedure_ack`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:746` |
+| `sgi_my_procedure_ack_state` | Selection | Mi procedimiento | Si la persona ya firmó de leído su Mi procedimiento vigente. Se calcula solo. |  |  | compute `_compute_sgi_my_procedure_ack`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:872` |
 | `sgi_pending_ack_count` | Integer | # Acuses pendientes |  |  |  | compute `_compute_sgi_counts`, sin guardar |  | `addons/quimibond_sgi/models/sgi_integration.py:263` |
 | `sgi_pending_saved_late` | Integer | Pendientes atrasados (resumen guardado) |  |  |  |  | base.group_system | `addons/quimibond_sgi/models/sgi_my_pending.py:1056` |
 | `sgi_pending_saved_state` | Selection | Semáforo (resumen guardado) |  |  |  |  | base.group_system | `addons/quimibond_sgi/models/sgi_my_pending.py:1059` |

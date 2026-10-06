@@ -8,8 +8,8 @@ pendientes tres registros al azar de esa evidencia y contesta:
 - «Sí, esto es lo que hago»: la medición cuenta lo que debe.
 - «No corresponde», con nota: la evidencia no es la actividad (filtro,
   modelo, fecha o usuario mal). La actividad gana el faltante «Revisión del
-  dueño: no corresponde» en Diagnóstico → Medición por revisar hasta que una
-  revisión posterior la confirme.
+  dueño: no corresponde» en Diagnóstico → Faltantes de especificación (filtro
+  «Medición por revisar») hasta que una revisión posterior la confirme.
 
 La crea el cron de medición (diario, idempotente: una por actividad y mes).
 Al crear las del mes, las del mes anterior que nadie contestó quedan «Sin

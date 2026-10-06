@@ -12,11 +12,12 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 
 | Menú | Para qué |
 |---|---|
-| **SGI → Dirección → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
-| **SGI → Dirección → Revisión por la dirección** | La reunión de revisión: entradas, acuerdos y seguimiento |
-| **SGI → Dirección → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
-| **SGI → Dirección → Riesgos y oportunidades / Requisitos legales / Partes interesadas / Satisfacción del cliente** | Contexto, riesgos y cumplimiento |
-| **SGI → Administración SGI** | Consulta de documentos, indicadores, aprobaciones y diagnóstico |
+| **SGI → Desempeño → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
+| **SGI → Desempeño → Revisión por la dirección / Satisfacción del cliente / Indicadores** | La reunión de revisión (entradas, acuerdos y seguimiento), la satisfacción del cliente y las mediciones |
+| **SGI → Planeación → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
+| **SGI → Planeación → Partes interesadas / Riesgos y oportunidades / Aspectos ambientales / Requisitos legales** | Contexto, riesgos y cumplimiento |
+| **SGI → Sistema** | Mapa de procesos, documentos y el Manual del SGI (MIID) |
+| **SGI → Administración** | Consulta del diagnóstico y de las aprobaciones |
 | **SGI → Inicio** | Sus propios pendientes y su procedimiento |
 | **SGI → Reportar** | Una no conformidad, un casi accidente o incidente, o una queja o sugerencia (abre la ficha nueva) |
 
@@ -24,7 +25,7 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 
 ### 2.1 Revisar el tablero
 
-1. Toque la app **SGI** (o **SGI → Dirección → Tablero**). Se calcula al
+1. Toque la app **SGI** (o **SGI → Desempeño → Tablero**). Se calcula al
    abrirlo.
 2. Revise primero **Rojos sin causa ni plan** y **Acuerdos de la RxD
    vencidos**: son lo que está detenido.
@@ -92,7 +93,7 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
 
 ### 2.4.2 El Manual del SGI (MIID) (desde 57.105.0)
 
-**SGI → Dirección → Manual del SGI (MIID)** muestra el manual armado desde
+**SGI → Sistema → Manual del SGI (MIID)** muestra el manual armado desde
 Odoo (texto fijo más los datos vivos), marcado «Borrador — no vigente»; la
 revisión vigente es «PDF de la revisión vigente». Usted firma **«Aprobó»**
 del MIID en Sign (si nadie se configuró en

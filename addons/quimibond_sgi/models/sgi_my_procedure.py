@@ -33,7 +33,7 @@ from dateutil.relativedelta import relativedelta
 from markupsafe import Markup
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 from .sgi_calendar import sgi_today
 
@@ -688,6 +688,132 @@ class HrJobMyProcedure(models.Model):
         return jobs.filtered(
             lambda j: not j._sgi_my_procedure_current_doc()
             or j._sgi_my_procedure_current_doc().sgi_content_hash != j.sgi_mp_hash_current)
+
+    # ------------------------------------------------------------------
+    # 57.113.0 (Q8): re-sello cuando solo cambió la ruta del menú
+    # ------------------------------------------------------------------
+    @api.model
+    def _sgi_mp_swap_menu_paths(self, data, old_paths, lang):
+        """Copia de ``data`` con la ruta vieja del menú en la parte «Dónde» de
+        cada actividad cuyo menú se movió. ``old_paths``: {ir.ui.menu: ruta
+        vieja con «/», como complete_name}. Devuelve (copia, cuántas partes
+        cambiaron)."""
+        old_by_id = {menu.id: path for menu, path in old_paths.items()}
+        swapped = 0
+        sections = []
+        for section in data['sections']:
+            entries = []
+            for entry in section['entries']:
+                menu = entry['activity'].odoo_menu_id
+                old = old_by_id.get(menu.id) if menu else None
+                new = menu.with_context(lang=lang).complete_name if old else None
+                if old and new and new != old:
+                    parts = []
+                    for label, text in entry['parts']:
+                        if label == "Dónde" and text and new in text:
+                            text = text.replace(new, old, 1)
+                            swapped += 1
+                        parts.append((label, text))
+                    entry = dict(entry, parts=parts)
+                entries.append(entry)
+            sections.append(dict(section, entries=entries))
+        return dict(data, sections=sections), swapped
+
+    @api.model
+    def _sgi_mp_reseal_menu_moves(self, old_paths, tag="57.113.0", jobs=None):
+        """57.113.0 (Q8): los menús del SGI cambiaron de carpeta y la ruta del
+        menú entra en la huella de «Mi procedimiento» (parte «Dónde»). Sin
+        esto, cada puesto con una de esas actividades saldría desactualizado
+        y la siguiente publicación pediría firmar otra vez lo mismo.
+
+        Por cada puesto con «Mi procedimiento» vigente (y su revisión en firma,
+        si la hay): si la huella de hoy, con la ruta VIEJA de los menús
+        movidos, reproduce EXACTAMENTE la huella guardada, el documento recibe
+        la huella nueva y una nota en su chatter. Si no la reproduce (cambió
+        otra cosa), no se toca: sigue desactualizado. Idempotente.
+
+        ``old_paths``: {ir.ui.menu: ruta vieja con «/»}; ``jobs``: los puestos
+        a revisar (por omisión, todos los que tienen «Mi procedimiento»
+        sellado). Solo superusuario (migración): la huella es de solo lectura
+        para todos los demás. Los puestos con alguna actividad en un menú
+        movido quedan con su huella actual recalculada.
+        Devuelve {'reselladas': [claves], 'sin_cambio': n,
+        'siguen_desactualizadas': [claves]}."""
+        if not self.env.su:
+            raise AccessError("Solo el sistema (migración) vuelve a sellar «Mi procedimiento».")
+        result = {'reselladas': [], 'sin_cambio': 0, 'siguen_desactualizadas': []}
+        old_paths = {menu: path for menu, path in (old_paths or {}).items() if menu and path}
+        if not old_paths:
+            return result
+        Doc = self.env['documents.document'].sudo()
+        moved_ids = {menu.id for menu in old_paths}
+        active_langs = set(self.env['res.lang'].sudo().search([]).mapped('code'))
+        note = Markup(
+            "%s: la huella se actualizó porque solo cambió la ruta del menú en «Dónde» (menús por "
+            "capítulos). Lo que la persona firmó no cambió; el PDF conserva la ruta anterior.") % tag
+        refresh = {}
+        if jobs is None:
+            # Solo los puestos con «Mi procedimiento» sellado (vigente o en firma).
+            jobs = Doc.search([('sgi_doc_type', '=', 'mi_procedimiento'), ('sgi_content_hash', '!=', False),
+                               ('sgi_state', 'in', ('vigente', 'borrador'))]).sgi_job_ids
+        for job in jobs.sudo().with_context(active_test=False):
+            code = job._sgi_my_procedure_code()
+            current = job._sgi_my_procedure_current_doc()
+            pending = Doc.search([('sgi_code', '=', code), ('sgi_state', '=', 'borrador'),
+                                  ('sgi_content_hash', '!=', False),
+                                  ('sgi_publish_sign_request_id.state', 'in', ('sent', 'shared'))])
+            remaining = (current | pending).filtered('sgi_content_hash')
+            if not remaining:
+                continue
+            # La huella se calculó al publicar, en el idioma de quien publicó.
+            langs = []
+            for lang in remaining.sgi_owner_id.mapped('lang') + remaining.create_uid.mapped('lang') \
+                    + [self.env.lang, 'es_MX', 'en_US']:
+                if lang and lang in active_langs and lang not in langs:
+                    langs.append(lang)
+            affected = resealed = False
+            for lang in langs:
+                data = job.with_context(lang=lang, sgi_mp_employee_id=False)._sgi_my_procedure_data()
+                if not affected:
+                    menus = {e['activity'].odoo_menu_id.id for s in data['sections'] for e in s['entries']}
+                    if not menus & moved_ids:
+                        break  # ninguna actividad del puesto usa un menú movido
+                    affected = True
+                # Al día en este idioma: no hay nada que re-sellar.
+                remaining = remaining.filtered(lambda d, h=data['hash']: d.sgi_content_hash != h)
+                if not remaining:
+                    break
+                swapped_data, swapped = self._sgi_mp_swap_menu_paths(data, old_paths, lang)
+                if not swapped:
+                    continue
+                old_hash = self._sgi_my_procedure_hash(swapped_data)
+                for doc in remaining.filtered(lambda d, h=old_hash: d.sgi_content_hash == h):
+                    doc.write({'sgi_content_hash': data['hash']})
+                    doc.message_post(body=note)
+                    result['reselladas'].append(doc.sgi_code + (
+                        " (en firma)" if doc.sgi_state == 'borrador' else ""))
+                    _logger.info("SGI %s: %s rev %s re-sellado (solo cambió la ruta del menú, %s).",
+                                 tag, doc.sgi_code, doc.sgi_revision, lang)
+                    remaining -= doc
+                    resealed = True
+                if not remaining:
+                    break
+            if affected:
+                refresh[job] = langs[0]
+            if affected and current and current in remaining:
+                result['siguen_desactualizadas'].append(code)
+            elif not resealed:
+                result['sin_cambio'] += 1
+        # La huella actual guardada de esos puestos traía la ruta vieja: se
+        # recalcula (en el idioma de quien publicó) para que «Desactualizado»
+        # diga la verdad desde ya.
+        for job, lang in refresh.items():
+            job._sgi_mp_mark_dirty()
+            job.with_context(lang=lang)._sgi_mp_refresh_stats(force=True)
+        _logger.info("SGI %s: re-sello de Mi procedimiento: %d documento(s) re-sellado(s), %d puesto(s) "
+                     "sin cambio, %d siguen desactualizados por otra razón.", tag, len(result['reselladas']),
+                     result['sin_cambio'], len(result['siguen_desactualizadas']))
+        return result
 
     @api.model
     def _sgi_my_procedure_precheck(self):

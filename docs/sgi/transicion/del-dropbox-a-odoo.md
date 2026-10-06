@@ -42,7 +42,7 @@ revisión impresas en el PDF.
 
 ## 3. Cómo usar «Del Dropbox a Odoo»
 
-Menú **SGI → Procesos → Del Dropbox a Odoo**:
+Menú **SGI → Sistema → Del Dropbox a Odoo**:
 
 | Submenú | Quién lo ve | Para qué |
 |---|---|---|
@@ -102,7 +102,7 @@ desde **Procedimientos anteriores → Ver el PDF**.
    y la revisión vigente del formato.
 3. **Difusión:** cada procedimiento de puesto («Mi procedimiento») y cada
    documento vigente tiene sus **acuses de lectura** firmados
-   (Administración SGI → Firmas de lectura → Acuses de lectura).
+   (SGI → Sistema → Documentos → Acuses de lectura).
 4. **Control de cambios:** los cambios a actividades pasan por Aprobaciones
    (propuestas de cambio) y los cambios a documentos por la categoría de
    cambio documental; todo queda en el historial del registro.

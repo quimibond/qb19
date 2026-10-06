@@ -84,7 +84,7 @@
                     </div>
                     <!-- 57.96.0 (N-07): el aspecto ambiental vive en la matriz. -->
                     <div class="alert alert-info mb-2" role="status" invisible="instrument != 'ambiental'">
-                        La evaluación de este aspecto vive en SGI → Seguridad y ambiente → Aspectos
+                        La evaluación de este aspecto vive en SGI → Planeación → Aspectos
                         ambientales. Este riesgo guarda sus acciones de tratamiento. Los aspectos nuevos
                         se registran en la matriz, no aquí.
                     </div>

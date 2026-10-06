@@ -12,107 +12,109 @@
 # fijo quality_control.menu_quality_root desde 57.5.0, E-008) y no
 # entran aquí. Fuente del árbol: views/sgi_menus.xml («Del Dropbox a Odoo»
 # desde la entrega 6; «Reportar» y «Checklists de hoy» en Inicio desde
-# 57.98.0, plan docs/superpowers/plans/2026-10-02-sgi-57-98-0-interfaz.md).
+# 57.98.0, plan docs/superpowers/plans/2026-10-02-sgi-57-98-0-interfaz.md;
+# carpetas por capítulo (Sistema, Planeación, Desempeño) y Transición desde
+# 57.113.0, plan docs/superpowers/plans/2026-10-06-sgi-57-113-0-menus.md).
+# Los menús archivados (active=False) no aparecen aquí; los lista
+# SGI_MENU_ARCHIVED en models/sgi_cleanup.py.
 SGI | menu_sgi_root | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_user
 SGI/Inicio | menu_sgi_panel | -
 SGI/Inicio/Mis pendientes | menu_sgi_my_pending | -
 SGI/Inicio/Mi procedimiento | menu_sgi_my_procedure | -
-SGI/Inicio/Documentos vigentes | menu_sgi_current_documents | -
 SGI/Inicio/Mis indicadores | menu_sgi_my_indicators | -
 SGI/Inicio/Mi equipo | menu_sgi_my_team | -
 SGI/Inicio/Checklists de hoy | menu_sgi_home_checklist_today | -
+SGI/Inicio/Documentos vigentes | menu_sgi_current_documents | -
 SGI/Inicio/Eficiencias de mi área | menu_sgi_my_staff_efficiency | quimibond_sgi.group_sgi_efficiency_capture
 SGI/Reportar | menu_sgi_report | quimibond_sgi.group_sgi_user
 SGI/Reportar/No conformidad | menu_sgi_report_nc | -
 SGI/Reportar/Casi accidente o incidente | menu_sgi_report_incident | -
 SGI/Reportar/Queja o sugerencia | menu_sgi_report_voice | -
 SGI/Reportar/Riesgo u oportunidad | menu_sgi_report_risk | -
-SGI/Procesos | menu_sgi_processes | -
-SGI/Procesos/Mapa de procesos | menu_sgi_process_map | -
-SGI/Procesos/Actividades | menu_sgi_activities | -
-SGI/Procesos/Entregables | menu_sgi_deliverable_list | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Procesos/Flujos entre procesos | menu_sgi_process_flows | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Procesos/Matriz de responsabilidades | menu_sgi_analysis_who | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Procesos/Puestos y procesos | menu_sgi_jobs_roles | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Procesos/Fichas de proceso por máquina | menu_sgi_machine_sheets | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Procesos/Del Dropbox a Odoo | menu_sgi_dropbox | -
-SGI/Procesos/Del Dropbox a Odoo/Buscador por clave anterior | menu_sgi_dropbox_search | -
-SGI/Procesos/Del Dropbox a Odoo/Procedimientos anteriores | menu_sgi_dropbox_procedures | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Procesos/Del Dropbox a Odoo/Formatos y documentos anteriores | menu_sgi_migration | -
-SGI/Procesos/Del Dropbox a Odoo/Rutina por rutina | menu_sgi_dropbox_routines | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
-SGI/Procesos/Del Dropbox a Odoo/Avance de la transición | menu_sgi_dropbox_progress | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema | menu_sgi_processes | -
+SGI/Sistema/Mapa de procesos | menu_sgi_process_map | -
+SGI/Sistema/Actividades | menu_sgi_activities | -
+SGI/Sistema/Entregables | menu_sgi_deliverable_list | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Flujos entre procesos | menu_sgi_process_flows | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Matriz de responsabilidades | menu_sgi_analysis_who | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Puestos y procesos | menu_sgi_jobs_roles | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Fichas de proceso por máquina | menu_sgi_machine_sheets | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Documentos | menu_sgi_documental | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Sistema/Documentos/Documentos | menu_sgi_documents | -
+SGI/Sistema/Documentos/Lista maestra | menu_sgi_master_list | -
+SGI/Sistema/Documentos/Documentos externos | menu_sgi_external_docs | -
+SGI/Sistema/Documentos/Solicitudes de cambio | menu_sgi_doc_changes | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Sistema/Documentos/Acuses de lectura | menu_sgi_config_acks | -
+SGI/Sistema/Manual del SGI (MIID) | menu_sgi_miid | -
+SGI/Sistema/Del Dropbox a Odoo | menu_sgi_dropbox | -
+SGI/Sistema/Del Dropbox a Odoo/Buscador por clave anterior | menu_sgi_dropbox_search | -
+SGI/Sistema/Del Dropbox a Odoo/Procedimientos anteriores | menu_sgi_dropbox_procedures | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Del Dropbox a Odoo/Formatos y documentos anteriores | menu_sgi_migration | -
+SGI/Sistema/Del Dropbox a Odoo/Rutina por rutina | menu_sgi_dropbox_routines | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Sistema/Del Dropbox a Odoo/Avance de la transición | menu_sgi_dropbox_progress | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_process_owner
+SGI/Planeación | menu_sgi_direction | -
+SGI/Planeación/Política integral | menu_sgi_policy | -
+SGI/Planeación/Objetivos integrales | menu_sgi_objectives | -
+SGI/Planeación/Partes interesadas | menu_sgi_interested_parties | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Planeación/Riesgos y oportunidades | menu_sgi_risks | -
+SGI/Planeación/Aspectos ambientales | menu_sgi_env_aspects | -
+SGI/Planeación/Requisitos legales | menu_sgi_legal | -
+SGI/Planeación/Evaluaciones de cumplimiento legal | menu_sgi_legal_evaluations | -
+SGI/Seguridad y ambiente | menu_sgi_safety | -
+SGI/Seguridad y ambiente/Incidentes y accidentes | menu_sgi_incidents | -
+SGI/Seguridad y ambiente/Permisos de trabajo de alto riesgo | menu_sgi_work_permits | -
+SGI/Seguridad y ambiente/Bloqueo y etiquetado | menu_sgi_loto | -
+SGI/Seguridad y ambiente/Responsivas de EPP | menu_sgi_epp_deliveries | -
+SGI/Seguridad y ambiente/Hojas de checklist | menu_sgi_checklist_requests | -
+SGI/Seguridad y ambiente/Recorridos CSH | menu_sgi_csh_inspections | -
+SGI/Seguridad y ambiente/Planes de emergencia | menu_sgi_emergency_plans | -
+SGI/Seguridad y ambiente/Simulacros | menu_sgi_emergency_drills | -
+SGI/Seguridad y ambiente/Estudios de higiene y exámenes médicos | menu_sgi_health_records | quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager
+SGI/Desempeño | menu_sgi_performance | -
+SGI/Desempeño/Tablero | menu_sgi_dashboard_health | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Desempeño/Indicadores | menu_sgi_admin_indicators | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Desempeño/Indicadores/Indicadores | menu_sgi_indicators | -
+SGI/Desempeño/Indicadores/Nuevo indicador | menu_sgi_indicator_wizard | quimibond_sgi.group_sgi_manager
+SGI/Desempeño/Indicadores/Mediciones | menu_sgi_measures | -
+SGI/Desempeño/Indicadores/Mediciones por equipo o mercado | menu_sgi_measures_split | -
+SGI/Desempeño/Indicadores/Revisiones de medición | menu_sgi_measure_reviews | -
+SGI/Desempeño/Satisfacción del cliente | menu_sgi_satisfaction | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Desempeño/Auditorías | menu_sgi_audits | -
+SGI/Desempeño/Auditorías/Programa | menu_sgi_audit_programs | -
+SGI/Desempeño/Auditorías/Auditorías | menu_sgi_audit_list | -
+SGI/Desempeño/Auditorías/Hallazgos | menu_sgi_audit_findings | -
+SGI/Desempeño/Revisión por la dirección | menu_sgi_mgmt_review | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Mejora | menu_sgi_improvement_group | -
 SGI/Mejora/No conformidades | menu_sgi_nc | -
-SGI/Mejora/Reclamaciones de clientes | menu_sgi_complaints | -
 SGI/Mejora/Acciones correctivas | menu_sgi_nc_all_actions | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Mejora/Reclamaciones de clientes | menu_sgi_complaints | -
 SGI/Mejora/Mejora continua | menu_sgi_improvements | -
 SGI/Mejora/Lecciones aprendidas | menu_sgi_lessons | -
 SGI/Mejora/Quejas y sugerencias del personal | menu_sgi_internal_complaints | -
-SGI/Mejora/Auditorías | menu_sgi_audits | -
-SGI/Mejora/Auditorías/Programa | menu_sgi_audit_programs | -
-SGI/Mejora/Auditorías/Auditorías | menu_sgi_audit_list | -
-SGI/Mejora/Auditorías/Hallazgos | menu_sgi_audit_findings | -
-SGI/Seguridad y ambiente | menu_sgi_safety | -
-SGI/Seguridad y ambiente/Incidentes y accidentes | menu_sgi_incidents | -
-SGI/Seguridad y ambiente/Planes de emergencia | menu_sgi_emergency_plans | -
-SGI/Seguridad y ambiente/Simulacros | menu_sgi_emergency_drills | -
-SGI/Seguridad y ambiente/Recorridos CSH | menu_sgi_csh_inspections | -
-SGI/Seguridad y ambiente/Estudios de higiene y exámenes médicos | menu_sgi_health_records | quimibond_sgi.group_sgi_health,quimibond_sgi.group_sgi_manager
-SGI/Seguridad y ambiente/Responsivas de EPP | menu_sgi_epp_deliveries | -
-SGI/Seguridad y ambiente/Hojas de checklist | menu_sgi_checklist_requests | -
-SGI/Seguridad y ambiente/Aspectos ambientales | menu_sgi_env_aspects | -
-SGI/Seguridad y ambiente/Permisos de trabajo de alto riesgo | menu_sgi_work_permits | -
-SGI/Seguridad y ambiente/Bloqueo y etiquetado | menu_sgi_loto | -
-SGI/Dirección | menu_sgi_direction | -
-SGI/Dirección/Tablero | menu_sgi_dashboard_health | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Dirección/Revisión por la dirección | menu_sgi_mgmt_review | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Dirección/Manual del SGI (MIID) | menu_sgi_miid | -
-SGI/Dirección/Política integral | menu_sgi_policy | -
-SGI/Dirección/Objetivos integrales | menu_sgi_objectives | -
-SGI/Dirección/Riesgos y oportunidades | menu_sgi_risks | -
-SGI/Dirección/Requisitos legales | menu_sgi_legal | -
-SGI/Dirección/Evaluaciones de cumplimiento legal | menu_sgi_legal_evaluations | -
-SGI/Dirección/Partes interesadas | menu_sgi_interested_parties | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Dirección/Satisfacción del cliente | menu_sgi_satisfaction | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración SGI | menu_sgi_admin | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Documentos | menu_sgi_documental | -
-SGI/Administración SGI/Documentos/Documentos | menu_sgi_documents | -
-SGI/Administración SGI/Documentos/Lista maestra | menu_sgi_master_list | -
-SGI/Administración SGI/Documentos/Documentos externos | menu_sgi_external_docs | -
-SGI/Administración SGI/Documentos/Solicitudes de cambio | menu_sgi_doc_changes | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Documentos/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Indicadores | menu_sgi_admin_indicators | -
-SGI/Administración SGI/Indicadores/Indicadores | menu_sgi_indicators | -
-SGI/Administración SGI/Indicadores/Nuevo indicador | menu_sgi_indicator_wizard | quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Indicadores/Mediciones | menu_sgi_measures | -
-SGI/Administración SGI/Indicadores/Mediciones por equipo o mercado | menu_sgi_measures_split | -
-SGI/Administración SGI/Aprobaciones del SGI | menu_sgi_approvals_native | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Diagnóstico | menu_sgi_analysis | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Diagnóstico/Diagnóstico del SGI | menu_sgi_diagnostic | -
-SGI/Administración SGI/Diagnóstico/Cobertura de medición | menu_sgi_activity_methods | -
-SGI/Administración SGI/Diagnóstico/Cumplimiento de procedimientos | menu_sgi_compliance | -
-SGI/Administración SGI/Diagnóstico/Faltantes de especificación | menu_sgi_spec_gaps | -
-SGI/Administración SGI/Diagnóstico/Cumplimiento semanal | menu_sgi_week_stats | -
-SGI/Administración SGI/Diagnóstico/Registro de cumplimiento | menu_sgi_activity_executions | -
-SGI/Administración SGI/Diagnóstico/Medición por revisar | menu_sgi_menu_mismatch | -
-SGI/Administración SGI/Diagnóstico/Revisiones de medición | menu_sgi_measure_reviews | -
-SGI/Administración SGI/Firmas de lectura | menu_sgi_admin_signatures | -
-SGI/Administración SGI/Firmas de lectura/Publicar Mi procedimiento | menu_sgi_my_procedure_publish | quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Firmas de lectura/Acuses de lectura | menu_sgi_config_acks | -
-SGI/Administración SGI/Configuración | menu_sgi_config | quimibond_sgi.group_sgi_manager
-SGI/Administración SGI/Configuración/Cargar catálogo | menu_sgi_config_load | quimibond_sgi.group_sgi_admin
-SGI/Administración SGI/Configuración/Familias de puesto | menu_sgi_job_families | -
-SGI/Administración SGI/Configuración/Ajustes | menu_sgi_config_settings | base.group_system
-SGI/Administración SGI/Configuración/Áreas | menu_sgi_config_areas | -
-SGI/Administración SGI/Configuración/Normas | menu_sgi_config_norms | -
-SGI/Administración SGI/Configuración/Cláusulas | menu_sgi_config_clauses | -
-SGI/Administración SGI/Configuración/Categorías de riesgo | menu_sgi_config_risk_cat | -
-SGI/Administración SGI/Configuración/Checklists de planta y unidades | menu_sgi_checklist_templates | -
-SGI/Administración SGI/Configuración/Tabletas de planta | menu_sgi_floor_tablets | -
-SGI/Administración SGI/Configuración/Formatos en documentos de Odoo | menu_sgi_config_format_map | -
-SGI/Administración SGI/Configuración/Fuentes de NC automáticas | menu_sgi_config_alert_sources | -
-SGI/Administración SGI/Configuración/Elementos PPAP | menu_sgi_config_ppap_elements | -
-SGI/Administración SGI/Configuración/Empresa en documentos controlados | menu_sgi_config_company_fix | -
-SGI/Administración SGI/Configuración/Traspaso de riesgos ambientales | menu_sgi_config_env_aspect_transfer | -
-SGI/Administración SGI/Configuración/Competencias por tipo de permiso | menu_sgi_config_work_permit_skills | -
-SGI/Administración SGI/Configuración/Fuentes de indicadores | menu_sgi_config_indicator_sources | -
+SGI/Administración | menu_sgi_admin | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Administración/Diagnóstico | menu_sgi_analysis | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Administración/Diagnóstico/Diagnóstico del SGI | menu_sgi_diagnostic | -
+SGI/Administración/Diagnóstico/Cumplimiento de procedimientos | menu_sgi_compliance | -
+SGI/Administración/Diagnóstico/Registro de cumplimiento | menu_sgi_activity_executions | -
+SGI/Administración/Diagnóstico/Faltantes de especificación | menu_sgi_spec_gaps | -
+SGI/Administración/Aprobaciones del SGI | menu_sgi_approvals_native | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
+SGI/Administración/Publicar Mi procedimiento | menu_sgi_my_procedure_publish | quimibond_sgi.group_sgi_manager
+SGI/Administración/Transición | menu_sgi_transition | quimibond_sgi.group_sgi_manager
+SGI/Administración/Transición/Cargar catálogo | menu_sgi_config_load | quimibond_sgi.group_sgi_admin
+SGI/Administración/Transición/Empresa en documentos controlados | menu_sgi_config_company_fix | -
+SGI/Administración/Transición/Traspaso de riesgos ambientales | menu_sgi_config_env_aspect_transfer | -
+SGI/Administración/Configuración | menu_sgi_config | quimibond_sgi.group_sgi_manager
+SGI/Administración/Configuración/Familias de puesto | menu_sgi_job_families | -
+SGI/Administración/Configuración/Ajustes | menu_sgi_config_settings | base.group_system
+SGI/Administración/Configuración/Áreas | menu_sgi_config_areas | -
+SGI/Administración/Configuración/Normas | menu_sgi_config_norms | -
+SGI/Administración/Configuración/Cláusulas | menu_sgi_config_clauses | -
+SGI/Administración/Configuración/Categorías de riesgo | menu_sgi_config_risk_cat | -
+SGI/Administración/Configuración/Tipos de documento | menu_sgi_config_doc_types | quimibond_sgi.group_sgi_manager
+SGI/Administración/Configuración/Checklists de planta y unidades | menu_sgi_checklist_templates | -
+SGI/Administración/Configuración/Tabletas de planta | menu_sgi_floor_tablets | -
+SGI/Administración/Configuración/Formatos en documentos de Odoo | menu_sgi_config_format_map | -
+SGI/Administración/Configuración/Fuentes de NC automáticas | menu_sgi_config_alert_sources | -
+SGI/Administración/Configuración/Elementos PPAP | menu_sgi_config_ppap_elements | -
+SGI/Administración/Configuración/Competencias por tipo de permiso | menu_sgi_config_work_permit_skills | -
+SGI/Administración/Configuración/Fuentes de indicadores | menu_sgi_config_indicator_sources | -

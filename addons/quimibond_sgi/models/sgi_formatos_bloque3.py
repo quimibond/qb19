@@ -81,7 +81,8 @@ SGI_B3_RECODE = (
 )
 # Formatos citados que ya viven en Odoo y no tenían documento (propuesta §1).
 # El PDF de sgi.sales.budget ya imprime F-P-A28-13 como clave alterna; la
-# encuesta de satisfacción (F-P-A28-11) ya tiene menú en SGI → Dirección.
+# encuesta de satisfacción (F-P-A28-11) ya tiene menú en SGI → Desempeño
+# (antes Dirección, 57.113.0).
 SGI_B3_ODOO_FORMS = (
     {
         'code': 'F-P-A28-13',
@@ -100,11 +101,11 @@ SGI_B3_ODOO_FORMS = (
         'name': "F-P-A28-11 Encuesta de satisfacción del cliente",
         'process': 'E2',
         'menu': 'quimibond_sgi.menu_sgi_satisfaction',
-        'target': "SGI → Dirección → Satisfacción del cliente (encuesta anual)",
+        'target': "SGI → Desempeño → Satisfacción del cliente (encuesta anual)",
         'activity': 'E2.12',
         'map_model': None,
         'reason': "Alta del bloque 3 (propuesta de formatos §1 #1): la encuesta anual de "
-                  "satisfacción vive en Encuestas y en SGI → Dirección → Satisfacción del "
+                  "satisfacción vive en Encuestas y en SGI → Desempeño → Satisfacción del "
                   "cliente. Falta configurarla en Ajustes del SGI (hoy "
                   "quimibond_sgi.satisfaction_survey_id = 0).",
     },

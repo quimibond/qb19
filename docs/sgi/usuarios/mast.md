@@ -6,8 +6,14 @@ los días; la configuración (procesos, documentos, parámetros, crons) está en
 
 ## 1. Qué ve al entrar
 
-Todo el menú **SGI**, incluida **Administración SGI** (documentos,
-indicadores, aprobaciones, diagnóstico, firmas de lectura y configuración).
+Todo el menú **SGI**, ordenado por capítulos de la norma desde 57.113.0:
+**Inicio**, **Reportar**, **Sistema** (mapa, actividades, documentos, el MIID
+y «Del Dropbox a Odoo»), **Planeación** (política, objetivos, partes
+interesadas, riesgos, aspectos ambientales y requisitos legales),
+**Seguridad y ambiente**, **Desempeño** (Tablero, indicadores, satisfacción,
+auditorías y revisión por la dirección), **Mejora** y **Administración**
+(diagnóstico, aprobaciones, Publicar Mi procedimiento, Transición y
+Configuración).
 Usted también es Usuario SGI y Auditor: tiene su propio procedimiento y lee
 todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
@@ -48,7 +54,7 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 ### 2.3 Publicar Mi procedimiento
 
-1. **Administración SGI → Firmas de lectura → Publicar Mi procedimiento**.
+1. **SGI → Administración → Publicar Mi procedimiento**.
 2. Revise la pestaña de pendientes: puestos duplicados, empleados sin puesto,
    puestos sin roles y puestos con roles pero sin personas.
 3. Publique un puesto o **Publicar todos los puestos**. A cada persona le
@@ -66,7 +72,7 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 ### 2.4 Indicadores
 
-1. **Administración SGI → Indicadores → Mediciones**: filtre las pendientes
+1. **SGI → Desempeño → Indicadores → Mediciones**: filtre las pendientes
    de captura y de validación.
 2. Un indicador nuevo nace «En prueba»; su dueño lo pasa a oficial (**Pasar
    a oficial**) después de revisar una vez los registros de una medición
@@ -128,15 +134,16 @@ todo, salvo exámenes médicos (Salud ocupacional) y salarios (RH).
 
 ### 2.5 Revisar la salud del SGI
 
-**Administración SGI → Diagnóstico**: Diagnóstico del SGI, Cobertura de
-medición (qué actividades se miden de verdad), Cumplimiento de
-procedimientos, Faltantes de especificación (lo que impide publicar un
-proceso) y Cumplimiento semanal. Detalle de cómo leerlos en el manual de
-administración.
+**SGI → Administración → Diagnóstico**: Diagnóstico del SGI, Cumplimiento
+de procedimientos (sin el filtro «Medibles» y agrupado por método de
+medición: qué actividades se miden de verdad), Registro de cumplimiento (con
+el botón **Por semana**) y Faltantes de especificación (lo que impide
+publicar un proceso; filtro **Medición por revisar**). Detalle de cómo
+leerlos en el manual de administración.
 
 Desde 57.98.0 la sección **Documental** del Diagnóstico lista los reportes del
 SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
-**Administración SGI → Configuración → Formatos en documentos de Odoo**.
+**SGI → Administración → Configuración → Formatos en documentos de Odoo**.
 
 ### 2.5.1 Lo impreso y los colores (desde 57.98.0)
 
@@ -184,7 +191,7 @@ SGI que imprimen **sin formato controlado** (sin clave): dé de alta su mapeo en
 
 ### 2.5.3 El Manual del SGI (MIID) desde Odoo (desde 57.105.0)
 
-**SGI → Dirección → Manual del SGI (MIID)** junta el texto fijo del manual
+**SGI → Sistema → Manual del SGI (MIID)** junta el texto fijo del manual
 (una sección por título, «Textos del manual») y los datos vivos del SGI
 (procesos con su mapa e interacción, política, objetivos, tipos de documento,
 controles operacionales, plazos de NC, correspondencia por cláusula,
@@ -250,14 +257,14 @@ procedimientos anteriores, anexos y control de cambios).
 - **Requisitos legales:** los botones **Cumple**, **Cumple parcialmente**,
   **No cumple** y **No aplica** abren el registro de la evaluación con la
   evidencia (o el motivo por el que no aplica). Sin ella no se registra.
-- **Aspectos ambientales:** se registran en **SGI → Seguridad y ambiente →
+- **Aspectos ambientales:** se registran en **SGI → Planeación →
   Aspectos ambientales**, con su etapa del ciclo de vida. Un riesgo ya no se
   captura a mano como «Aspecto ambiental»; si el aspecto necesita acciones,
   use **Tratar como riesgo** desde el aspecto.
 
 ### 2.7 La transición
 
-**Procesos → Del Dropbox a Odoo → Avance de la transición**: por proceso,
+**SGI → Sistema → Del Dropbox a Odoo → Avance de la transición**: por proceso,
 procedimientos sustituidos, rutinas resueltas y documentos migrados. Usted
 importa las rutinas (**Importar rutinas**, primero **Probar (modo de
 prueba)**) y corrige clase y estado de los formatos.
@@ -284,7 +291,7 @@ procedimiento sin publicar o desactualizado.
   empleado tenga puesto y usuario, que el puesto tenga actividades y que esté
   publicado (pestaña de pendientes de Publicar Mi procedimiento).
 - **«Apagué una fuente de NC automática y quiero saber cuántas se
-  omitieron.»** En Configuración → Fuentes de NC automáticas, cada fuente
+  omitieron.»** En Administración → Configuración → Fuentes de NC automáticas, cada fuente
   cuenta las omisiones y guarda la última.
 - **«Un aviso sigue abierto aunque ya se resolvió.»** Los crons cierran solos
   los avisos cuya causa se resolvió en su siguiente corrida diaria.
@@ -301,14 +308,14 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
 
 ## Asistentes (57.109.0)
 
-- **Configurar una aprobación.** En Administración SGI → Aprobaciones del
+- **Configurar una aprobación.** En SGI → Administración → Aprobaciones del
   SGI, pulse **Configurar** en el renglón: diga qué se aprueba (la acción de
   un documento, una decisión que se pide en Aprobaciones o algo que se firma),
   si es siempre o solo a veces, y revise la vista previa antes de
   **Activar**. Las que solo necesitan una solicitud en Aprobaciones se activan
   en lote con **Activar las sugeridas como solicitud**. Las que faltan le
   llegan como aviso por proceso en Mis pendientes.
-- **Nuevo indicador.** En Administración SGI → Indicadores → Nuevo indicador:
+- **Nuevo indicador.** En SGI → Desempeño → Indicadores → Nuevo indicador:
   elija qué quiere saber, de qué registros y cuáles cuentan (filtro visual);
   la vista previa muestra cómo habrían salido los últimos tres periodos y
   qué registros cuenta. Se crea en «prueba».

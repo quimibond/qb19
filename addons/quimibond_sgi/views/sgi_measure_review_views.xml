@@ -118,7 +118,8 @@
             <p class="o_view_nocontent_smiling_face">Cada mes, el dueño del proceso confirma lo que se mide</p>
             <p>Por cada actividad que se mide sola y tuvo evidencia en los últimos 60 días, el dueño del proceso recibe
                 en Mis pendientes tres registros al azar y contesta si de verdad son la actividad. Un «No corresponde»
-                aparece en Medición por revisar hasta que una revisión posterior la confirme.</p>
+                aparece en Diagnóstico → Faltantes de especificación, filtro «Medición por revisar», hasta que una
+                revisión posterior la confirme.</p>
         </field>
     </record>
 
