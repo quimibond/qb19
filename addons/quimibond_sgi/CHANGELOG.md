@@ -31,25 +31,27 @@ conforme (fuera del cliente). El rendimiento (m/kg) se calcula solo:
 1000 / (masa × ancho), con su tolerancia a partir de los extremos de masa y
 ancho.
 
+**Dónde vive cada cosa (decisión de Jose, 2026-10-06):** la ficha técnica del
+artículo y el catálogo de características viven en
+`quimibond_ficha_tecnica_tela` (2.1.0, mismo PR), y el SGI pasa a depender de
+ese módulo. El proyecto de desarrollo y la ficha del artículo comparten el
+catálogo y el mixin de límites, así los renglones pasan del proyecto a la
+ficha sin recaptura (ese paso llega con la liberación del artículo, bloque 7).
+
 ### Agregado
 
-- `sgi.dev.characteristic.type`: catálogo de características (clave, nombre en
-  español e inglés, tipo de dato numérico / cualitativo / sí-no, unidad,
-  método o norma, cálculo). 38 renglones sembrados (anexo A del brief).
+- Dependencia nueva: `quimibond_ficha_tecnica_tela` (catálogo
+  `ficha.tecnica.caracteristica`, claves de codificación
+  `ficha.tecnica.clave.codigo`, mixin `ficha.tecnica.caracteristica.mixin`).
 - `sgi.dev.characteristic.template`: qué renglones carga cada tipo de
   desarrollo (general 26, entretelas V10 23, carda 15, tramado 15), con
   dirección (largo / ancho), **posición** (izquierda / centro / derecha: la
   solidez al frote y la masa por orillas) y si se mide en la muestra del
   cliente, va a la especificación del cliente o al certificado. Sustituye a
-  `DEV_DEFAULT_LINES` del código.
-- `sgi.dev.code.catalog`: claves de la regla de codificación de artículos de
-  tejido y acabado (DAT P-D02-01 rev. 05, cotejadas contra el PDF):
-  composición, dibujo, tipo de hilo, galga por rango, operación, color y
-  acabado; `gauge_code()` y `gauge_from_code()` para el generador de código
-  del bloque siguiente.
-- Menú SGI → Administración → Configuración → **Desarrollo de producto**
-  (Características, Características por tipo de desarrollo, Claves de
-  codificación de artículos). Lectura para todos; edición para el Jefe MAST.
+  `DEV_DEFAULT_LINES` del código. Menú SGI → Administración → Configuración →
+  **Características por tipo de desarrollo**; el catálogo de características
+  y las claves de codificación se editan en Fichas Técnicas de Tela →
+  Configuración.
 - Ficha del renglón (se abre desde la tabla del proyecto) y contadores en la
   pestaña Solicitud de desarrollo: características, pendientes de
   laboratorio, fuera del control interno, no conformes.
@@ -57,20 +59,22 @@ ancho.
 
 ### Cambiado
 
-- `sgi.dev.characteristic`: `value` y `tolerance` (texto) se retiran; entran
-  `type_id`, `kind`, `position`, `spec_*`, `ctrl_*`, `sample_*`, `run_*`,
-  `verdict`, `customer_approved`, `in_customer_spec`, `in_coa`. En producción
-  no había ningún renglón, así que no hay migración de datos.
+- `sgi.dev.characteristic` hereda el mixin de límites: `value` y `tolerance`
+  (texto) se retiran; entran `caracteristica_id`, `kind`, `position`,
+  `spec_*`, `ctrl_*`, `in_customer_spec`, `in_coa` (del mixin) y, propios del
+  desarrollo, `lab_requested`, `sample_*`, `run_*`, `verdict`,
+  `customer_approved`. En producción no había ningún renglón, así que no hay
+  migración de datos.
 - El PDF de la Solicitud de desarrollo imprime la especificación como una sola
   expresión («53 g/m² ± 3 g/m²», «≤ 1 %») y lo medido en la muestra.
 
 ### Pendiente (bloques siguientes del plan)
 
-- Proyecto único con ciclo de vida y folio por secuencia (6.1), generador de
-  código (6.6), cotización por aprobar (6.8), laboratorio (6.4), factibilidad
-  (6.5), fichas de proceso (6.7), orden de muestra (6.10), pilotaje y
-  liberación (6.12). El paso de los renglones a la ficha técnica del artículo
-  espera a que se decida dónde vive esa ficha (ver el plan, discrepancia 1).
+- Proyecto único con ciclo de vida, folio FT aparte y bandera por tipo de
+  proyecto con migración (6.1), generador de código (6.6), laboratorio y
+  factibilidad (6.3 a 6.5), fichas de proceso (6.7), orden de muestra
+  (6.10), pilotaje y liberación (6.12). La cotización (6.8) pasa como
+  requisitos al plan de costeo v2 (`qb_cotizador` / `qb_costeo_sgi`).
 
 ## 19.0.57.116.0 — 2026-10-06
 

@@ -11,29 +11,21 @@ class TestDevCharacteristics(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.Type = cls.env['sgi.dev.characteristic.type']
+        cls.Type = cls.env['ficha.tecnica.caracteristica']
         cls.Line = cls.env['sgi.dev.characteristic']
         cls.project = cls.env['project.project'].create({'name': 'FT-900-2026 Prueba', 'sgi_dev_type': 'general'})
 
     def _line(self, code, **vals):
-        return self.project.sgi_dev_line_ids.filtered(lambda l: l.type_code == code and all(
+        return self.project.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == code and all(
             l[k] == v for k, v in vals.items()))[:1]
 
     # ---- catálogos ----
-    def test_01_catalogs_seeded(self):
+    def test_01_catalog_comes_from_ficha_module(self):
         self.assertEqual(self.Type._by_code('masa').unit, "g/m²")
         self.assertEqual(self.Type._by_code('rendimiento').formula, 'rendimiento')
-        Code = self.env['sgi.dev.code.catalog']
-        counts = {k: Code.search_count([('kind', '=', k)]) for k in
-                  ('composicion', 'dibujo', 'hilo', 'galga', 'operacion', 'color', 'acabado')}
-        self.assertEqual(counts, {'composicion': 11, 'dibujo': 15, 'hilo': 3, 'galga': 9, 'operacion': 3,
-                                  'color': 20, 'acabado': 12})
-        self.assertEqual(Code.gauge_code(18), '21')
-        self.assertEqual(Code.gauge_from_code('22'), 18)
-        self.assertEqual(Code.gauge_from_code('xx'), 0)
-        self.assertIn("Dryfit", Code.search([('kind', '=', 'acabado'), ('code', '=', 'DI')]).name)
-        with self.assertRaises(ValidationError):
-            Code.create({'kind': 'galga', 'code': '96', 'name': 'Galga 34', 'gauge': 34, 'range_from': 96, 'range_to': 100})
+        Tpl = self.env['sgi.dev.characteristic.template']
+        counts = {t: Tpl.search_count([('dev_type', '=', t)]) for t in ('general', 'entretelas_v10', 'carda', 'tramado')}
+        self.assertEqual(counts, {'general': 26, 'entretelas_v10': 23, 'carda': 15, 'tramado': 15})
 
     def test_02_load_lines_from_templates(self):
         self.project.action_sgi_dev_load_lines()
@@ -42,7 +34,7 @@ class TestDevCharacteristics(TransactionCase):
         names = lines.mapped('name')
         self.assertIn("Masa por unidad de área", names)
         self.assertIn("Rendimiento", names)
-        elong = lines.filtered(lambda l: l.type_code == 'elongacion_estatica')
+        elong = lines.filtered(lambda l: l.caracteristica_code == 'elongacion_estatica')
         self.assertEqual(set(elong.mapped('direction')), {'largo', 'ancho'})
         masa = self._line('masa')
         self.assertEqual((masa.unit, masa.kind, masa.lab_requested, masa.in_coa), ("g/m²", 'num', True, True))
@@ -53,12 +45,12 @@ class TestDevCharacteristics(TransactionCase):
         # Entretelas trae la solidez al frote en tres posiciones.
         other = self.env['project.project'].create({'name': 'FT-901-2026 V10', 'sgi_dev_type': 'entretelas_v10'})
         other.action_sgi_dev_load_lines()
-        frote = other.sgi_dev_line_ids.filtered(lambda l: l.type_code == 'solidez_frote')
+        frote = other.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'solidez_frote')
         self.assertEqual(set(frote.mapped('position')), {'izquierda', 'centro', 'derecha'})
 
     # ---- límites y resultados ----
     def test_03_limits_absolute_and_percent(self):
-        line = self.Line.create({'project_id': self.project.id, 'type_id': self.Type._by_code('masa').id,
+        line = self.Line.create({'project_id': self.project.id, 'caracteristica_id': self.Type._by_code('masa').id,
                                  'spec_nominal': 53, 'spec_tol_minus': 3, 'spec_tol_plus': 3})
         self.assertEqual((line.spec_min, line.spec_max), (50, 56))
         self.assertEqual(line.spec_label, "53 g/m² ± 3 g/m²")
@@ -67,7 +59,7 @@ class TestDevCharacteristics(TransactionCase):
         self.assertAlmostEqual(line.spec_max, 55.65)
         self.assertEqual(line.spec_label, "53 g/m² ± 5%")
         # Porcentaje sobre un nominal negativo (encogimiento): el margen no se invierte.
-        shrink = self.Line.create({'project_id': self.project.id, 'type_id': self.Type._by_code('cambio_dim_calor').id,
+        shrink = self.Line.create({'project_id': self.project.id, 'caracteristica_id': self.Type._by_code('cambio_dim_calor').id,
                                    'direction': 'largo', 'spec_nominal': -2, 'spec_tol_pct': True,
                                    'spec_tol_minus': 50, 'spec_tol_plus': 50})
         self.assertAlmostEqual(shrink.spec_min, -3)
@@ -86,7 +78,7 @@ class TestDevCharacteristics(TransactionCase):
         self.assertEqual(mn._result_for(7.9), 'no_conforme')
 
     def test_05_three_results_and_internal_control(self):
-        line = self.Line.create({'project_id': self.project.id, 'type_id': self.Type._by_code('ancho').id,
+        line = self.Line.create({'project_id': self.project.id, 'caracteristica_id': self.Type._by_code('ancho').id,
                                  'spec_nominal': 1.60, 'spec_tol_minus': 0.05, 'spec_tol_plus': 0.05,
                                  'ctrl_tol_minus': 0.02, 'ctrl_tol_plus': 0.02})
         self.assertTrue(line.ctrl_defined)
@@ -112,12 +104,12 @@ class TestDevCharacteristics(TransactionCase):
             line.write({'spec_tol_minus': -1})
 
     def test_06_qualitative_lines_have_no_numeric_result(self):
-        line = self.Line.create({'project_id': self.project.id, 'type_id': self.Type._by_code('tacto').id,
+        line = self.Line.create({'project_id': self.project.id, 'caracteristica_id': self.Type._by_code('tacto').id,
                                  'spec_text': 'Suave', 'run_text': 'Suave', 'run_1': 5})
         self.assertEqual(line.kind, 'text')
         self.assertEqual(line.spec_label, 'Suave')
         self.assertFalse(line.run_result)
-        yes = self.Line.create({'project_id': self.project.id, 'type_id': self.Type._by_code('engomado_orillas').id,
+        yes = self.Line.create({'project_id': self.project.id, 'caracteristica_id': self.Type._by_code('engomado_orillas').id,
                                 'spec_bool': True})
         self.assertEqual(yes.spec_label, 'Sí')
 
@@ -139,10 +131,10 @@ class TestDevCharacteristics(TransactionCase):
         # Carda mide la masa en tres puntos: el rendimiento toma el centro.
         carda = self.env['project.project'].create({'name': 'FT-902-2026 Carda', 'sgi_dev_type': 'carda'})
         carda.action_sgi_dev_load_lines()
-        centro = carda.sgi_dev_line_ids.filtered(lambda l: l.type_code == 'masa' and l.position == 'centro')
+        centro = carda.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'masa' and l.position == 'centro')
         centro.write({'spec_nominal': 100})
-        carda.sgi_dev_line_ids.filtered(lambda l: l.type_code == 'ancho').write({'spec_nominal': 2})
-        self.assertAlmostEqual(carda.sgi_dev_line_ids.filtered(lambda l: l.type_code == 'rendimiento').spec_nominal, 5)
+        carda.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'ancho').write({'spec_nominal': 2})
+        self.assertAlmostEqual(carda.sgi_dev_line_ids.filtered(lambda l: l.caracteristica_code == 'rendimiento').spec_nominal, 5)
 
     def test_08_free_line_and_report(self):
         line = self.Line.create({'project_id': self.project.id, 'name': 'Brillo', 'unit': 'GU'})

@@ -103,10 +103,10 @@ class ProjectProjectDevRequest(models.Model):
         (``sgi.dev.characteristic.template``); solo agrega las que faltan."""
         Template = self.env['sgi.dev.characteristic.template']
         for project in self:
-            existing = {(l.type_id.id, l.direction, l.position) for l in project.sgi_dev_line_ids if l.type_id}
+            existing = {(l.caracteristica_id.id, l.direction, l.position) for l in project.sgi_dev_line_ids if l.caracteristica_id}
             templates = Template.search([('dev_type', '=', project.sgi_dev_type or 'general')])
             vals = [(0, 0, t._line_vals(sequence=i * 10)) for i, t in enumerate(templates)
-                    if (t.type_id.id, t.direction, t.position) not in existing]
+                    if (t.caracteristica_id.id, t.direction, t.position) not in existing]
             if vals:
                 project.write({'sgi_dev_line_ids': vals})
         return True

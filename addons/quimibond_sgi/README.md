@@ -343,15 +343,18 @@ momento del proceso.
 | Corrida | Laboratorio | Tres lecturas y promedio; resultado: cumple (dentro del control interno), fuera del control interno (se embarca con aviso), no conforme (fuera del cliente) |
 | Dictamen y cliente | Diseño de Producto / Ventas | Cumple, con desviación o no cumple; aprobado por el cliente; si va a la especificación del cliente y al certificado |
 
-Los renglones se cargan desde los catálogos de **SGI → Administración →
-Configuración → Desarrollo de producto**: características (unidad, método o
-norma, tipo de dato), características por tipo de desarrollo (general,
+El catálogo de características (unidad, método o norma, tipo de dato), las
+claves de la regla de codificación de artículos (DAT P-D02-01) y el mixin con
+los dos juegos de límites viven en **`quimibond_ficha_tecnica_tela`** (menú
+Fichas Técnicas de Tela → Configuración): la ficha del artículo y el proyecto
+comparten catálogo y límites, y el SGI depende de ese módulo desde 57.117.0.
+En el SGI queda qué renglones carga cada tipo de desarrollo (general,
 entretelas V10, carda, tramado, con dirección largo / ancho y posición
-izquierda / centro / derecha) y las claves de la regla de codificación de
-artículos (DAT P-D02-01). El rendimiento (m/kg) se calcula solo: 1000 / (masa
-× ancho). Los bloques siguientes (proyecto único, generador de código,
-cotización por aprobar, laboratorio, fichas de proceso, pilotaje y
-liberación) están en el plan.
+izquierda / centro / derecha): **SGI → Administración → Configuración →
+Características por tipo de desarrollo**. El rendimiento (m/kg) se calcula
+solo: 1000 / (masa × ancho). Los bloques siguientes (proyecto único,
+generador de código, laboratorio, fichas de proceso, pilotaje y liberación)
+están en el plan; la cotización va al plan de costeo v2.
 
 ## Menú
 

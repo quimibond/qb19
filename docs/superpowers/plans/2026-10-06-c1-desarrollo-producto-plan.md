@@ -5,17 +5,16 @@
 **Módulo:** `quimibond_sgi` (+ satélite para lo que toca al costeo) ·
 **Rama:** `claude/compassionate-dirac-9qstog` → `main` por bloques.
 
-## 1. Lo que cambia respecto al brief (leído el código)
+## 1. Lo que cambia respecto al brief (leído el código) y lo que decidió Jose
 
-El brief se levantó por MCP, no leyendo el módulo. Al leer el código salen
-cinco puntos que Jose debe conocer antes de los bloques 2 en adelante. El
-bloque 1 (tabla de características) no depende de ninguno.
+El brief se levantó por MCP, no leyendo el módulo. Al leer el código salieron
+cinco puntos; Jose los resolvió el mismo día (respuesta al PR #563).
 
-| # | Dice el brief | Lo que hay en el código | Propuesta |
+| # | Dice el brief | Lo que hay en el código | Decisión de Jose (2026-10-06) |
 |---|---|---|---|
-| 1 | «Mismo catálogo para `qb.producto.ficha.spec`, para que al liberar el artículo los renglones pasen a su ficha técnica» (5.1) | `qb.producto.ficha` vive en `qb_capacidad_costeo`, no en el SGI, y el SGI **no depende** de ese módulo. Además la spec `2026-10-06-qb-costeo-v2-diseno.md` (aprobada por el CEO el mismo día, §8.6 y decisión 3) **retira** `qb.producto.ficha` y sus 1,839 fichas: la ficha del producto pasa a `quimibond_ficha_tecnica_tela` (Consolti). | El catálogo nace en el SGI (hecho en el bloque 1, con `code` estable por característica). El paso «proyecto → ficha del artículo» se construye cuando quede decidido el módulo de la ficha; si es `quimibond_ficha_tecnica_tela`, va en un satélite `quimibond_sgi_ficha` (`auto_install`), como `_pesaje` o `_plm`. La derivación de fichas desde el código (5.2, uso 2) también espera a esa decisión. |
-| 2 | Cotización (`qb.cotizacion`) con proyecto, estado «Por aprobar», seguimiento, tarifa (6.8) | `qb.cotizacion` está en `qb_capacidad_costeo` y la spec de costeo v2 lo sustituye por `qb_cotizador` + puente `qb_costeo_sgi` que ya contempla ligar la cotización al proyecto FT, tomar gramaje, ancho, precio objetivo y volumen de `sgi_dev_*`, y los campos `qb_workcenter_id` / `qb_hilo_ids` en la solicitud. | No tocar `qb_capacidad_costeo`. El bloque 6.8 se hace sobre `qb_cotizador` cuando exista (o en `qb_costeo_sgi`), con el estado «Por aprobar» del puesto 183. Del lado del SGI se dejan listos los campos que la cotización va a leer: la tabla numérica (masa y ancho ya son renglones con `code`), máquina propuesta e hilos (bloque 2). **Confirmar con Jose el orden entre este plan y el de costeo v2.** |
-| 3 | La pestaña de desarrollo se ve solo si `sgi_is_ft` (3) | `sgi_is_ft` se calcula del nombre («FT-…») con `store=True, readonly=False`; los 77 proyectos viejos no se recalcularon porque el compute solo corre al cambiar el nombre. | En el bloque 2 (proyecto único) la bandera deja de depender del nombre: la pone el tipo de proyecto («Desarrollo de producto») y una migración la marca en los FT- existentes. |
+| 1 | «Mismo catálogo para `qb.producto.ficha.spec`, para que al liberar el artículo los renglones pasen a su ficha técnica» (5.1) | `qb.producto.ficha` vive en `qb_capacidad_costeo`, no en el SGI, y la spec de costeo v2 (aprobada el mismo día, §8.6 y decisión 3) la **retira**: la ficha del producto pasa a `quimibond_ficha_tecnica_tela` (Consolti, en la raíz del repo). | **La ficha y el catálogo de características viven en `quimibond_ficha_tecnica_tela`.** Hecho en el bloque 1: catálogo `ficha.tecnica.caracteristica`, claves `ficha.tecnica.clave.codigo`, mixin de límites y renglones `ficha.tecnica.spec` en las fichas de tejido y acabado con dos juegos de límites (cliente y control interno) y la marca «va a la especificación del cliente». El SGI depende de ese módulo. La derivación de fichas desde el código queda anotada en el plan de costeo v2 (§8.6). |
+| 2 | Cotización (`qb.cotizacion`) con proyecto, estado «Por aprobar», seguimiento, tarifa (6.8) | `qb.cotizacion` está en `qb_capacidad_costeo` y costeo v2 lo sustituye por `qb_cotizador` + puente `qb_costeo_sgi`. | **No tocar `qb_capacidad_costeo`.** Todo el 6.8 pasó como requisitos al plan de costeo v2 (spec §6.1), incluida la migración de las cotizaciones existentes. C1 sigue con 6.1, 6.6 y 6.3 a 6.5, que no dependen de costeo. |
+| 3 | La pestaña de desarrollo se ve solo si `sgi_is_ft` (3) | `sgi_is_ft` se calcula del nombre («FT-…») con `store=True, readonly=False`; los 77 proyectos viejos no se recalcularon. | **Bandera por tipo de proyecto** que signifique «desarrollo de producto», con el **folio FT como campo aparte**. La migración marca los 77 proyectos FT-, las plantillas 480 y 481 y el proyecto 490. En el mismo bloque se cambian los dominios de medición del SGI que filtran por `name =like 'FT-%'`. |
 | 4 | Tipo de desarrollo como catálogo (5.1 «por tipo de desarrollo») | `sgi_dev_type` es una `Selection` fija y `sgi.format.map` la usa para elegir el formato impreso (`format_ref_dev_<tipo>`). | Se conserva la selección (cuatro tipos estables) y los renglones por tipo son datos (`sgi.dev.characteristic.template`). Agregar un tipo sigue siendo cambio de código, igual que su formato impreso. |
 | 5 | «El módulo ya tiene» campos de muestra en m y kg, volumen, precio objetivo (3) | Correcto, pero `sgi_dev_requester` y `sgi_dev_norms` son texto y `sgi_dev_spec` es un texto largo para la especificación del cliente. | `sgi_dev_spec` queda como referencia a la hoja del cliente (el valor va en la tabla); el solicitante interno pasa a `hr.employee` y las normas a lista en el bloque 2. |
 
@@ -32,11 +31,11 @@ pruebas y se prueba solo en el build de Odoo.sh de la rama con
 
 | Bloque | Qué | Brief | Estado |
 |---|---|---|---|
-| 1 | Tabla numérica de características, catálogo por tipo, claves de codificación | 6.2, 5.1, 5.2 (modelos) | **Hecho, 57.117.0** |
-| 2 | Proyecto único con ciclo de vida: etapas de avance, folio FT por secuencia anual, origen, revisión y bitácora, alias de correo, pestaña comercial, muestra física, resultado del análisis, relojes por paso | 6.1 | Siguiente |
+| 1 | Tabla numérica de características en el proyecto; catálogo, claves de codificación y límites en `quimibond_ficha_tecnica_tela` 2.1.0; renglones por tipo en el SGI | 6.2, 5.1, 5.2 (modelos) | **Hecho, 57.117.0** (PR #563) |
+| 2 | Proyecto único con ciclo de vida: bandera «desarrollo de producto» por tipo de proyecto con migración (77 FT-, plantillas 480 / 481, proyecto 490) y dominios de medición corregidos; folio FT aparte por secuencia anual; etapas de avance, origen, revisión y bitácora, alias de correo, pestaña comercial, muestra física, resultado del análisis, relojes por paso | 6.1, decisión 3 | Siguiente |
 | 3 | Artículo en desarrollo y generador de código (crudo, teñido, acabado); bloqueo de 16292 / 16293 con fecha acordada con Jose | 6.6 | — |
 | 4 | Búsqueda de parecidos, solicitud de pruebas a laboratorio, checklist de factibilidad (modelo y vista, catálogo vacío) | 6.3 a 6.5 | — |
-| 5 | Cotización: según discrepancia 2 | 6.8 | Espera decisión |
+| 5 | Cotización | 6.8 | **Fuera de C1**: requisitos en el plan de costeo v2 (spec §6.1), sobre `qb_cotizador` / `qb_costeo_sgi` |
 | 6 | Solicitud de desarrollos (PDF con clave nueva, compuerta de Jorge, aviso a seis puestos, requisición ligada), orden de muestra, fichas de proceso de tintorería y acabado | 6.7, 6.9, 6.10 | — |
 | 7 | Envío de muestra, respuesta del cliente, pilotaje, habilidad, ficha interna, especificaciones al cliente, PPAP, liberación y cierre | 6.11, 6.12 | — |
 | 8 | Escalamiento configurable y correcciones de medición | 6.13, 7.2 | — |
@@ -64,12 +63,19 @@ pruebas y se prueba solo en el build de Odoo.sh de la rama con
   masa se mide en tres puntos y el rendimiento toma el centro.
 - **Posición** (izquierda / centro / derecha) además de dirección: solidez al
   frote y masa / espesor por orillas.
-- **Catálogo con `code` estable** por característica: es la llave con la que
-  los bloques siguientes reconocen masa, ancho, galga, composición al generar
-  el código del artículo y al pasar renglones a la ficha del producto.
-- **Claves de codificación como datos** (`sgi.dev.code.catalog`,
+- **Catálogo con `code` estable** por característica
+  (`ficha.tecnica.caracteristica`, en `quimibond_ficha_tecnica_tela`): es la
+  llave con la que los bloques siguientes reconocen masa, ancho, galga,
+  composición al generar el código del artículo y al pasar renglones a la
+  ficha del producto (`_limit_vals()` del mixin).
+- **Claves de codificación como datos** (`ficha.tecnica.clave.codigo`,
   `noupdate`), con `gauge_code()` / `gauge_from_code()` para la galga por
   rango.
+- **Un mixin, dos documentos.** `ficha.tecnica.caracteristica.mixin` lleva
+  los dos juegos de límites y las marcas de documentos; `ficha.tecnica.spec`
+  (fichas de tejido y acabado) y `sgi.dev.characteristic` (proyecto) lo
+  heredan. El SGI agrega solo lo del desarrollo: muestra del cliente,
+  corrida, dictamen, aprobación.
 
 ## 4. Pendientes que el brief deja sin definir (no se inventan)
 

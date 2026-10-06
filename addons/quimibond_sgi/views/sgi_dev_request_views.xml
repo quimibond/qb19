@@ -55,8 +55,8 @@
                               decoration-danger="run_result == 'no_conforme'"
                               decoration-warning="run_result == 'desviacion'">
                             <field name="sequence" widget="handle"/>
-                            <field name="type_id" optional="hide"/>
-                            <field name="type_code" column_invisible="1"/>
+                            <field name="caracteristica_id" optional="hide"/>
+                            <field name="caracteristica_code" column_invisible="1"/>
                             <field name="kind" column_invisible="1"/>
                             <field name="name"/>
                             <field name="direction"/>

@@ -49,6 +49,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'hr_skills_survey',  # 57.100.0 (N-13): certificación aprobada → línea de currículum (instalado en producción)
         'hr_skills_slides',  # 57.100.0 (N-13): curso terminado → línea de currículum (instalado en producción)
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
+        'quimibond_ficha_tecnica_tela',  # 57.117.0 (C1): catálogo de características y límites de la ficha del artículo
     ],
     'data': [
         # security

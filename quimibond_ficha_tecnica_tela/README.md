@@ -100,3 +100,31 @@ alimenta el cálculo de tamaño de orden / split de Tintorería descrito en
 el documento de Diseño Técnico general, junto con
 `tintoreria.capacidad.rendimiento` (módulo separado
 `quimibond_tintoreria_rendimiento`).
+
+## Características con dos juegos de límites (2.1.0)
+
+Desde 2.1.0 el módulo es dueño del **catálogo de características** y de las
+**claves de codificación de artículos**, y cada ficha de tejido y de acabado
+lleva una pestaña «Características» con un renglón por característica:
+
+| Columna | Qué guarda |
+|---|---|
+| Característica | Del catálogo (`ficha.tecnica.caracteristica`: clave estable, nombre en español e inglés, tipo de dato numérico / cualitativo / sí-no, unidad, método o norma); un renglón sin catálogo se escribe libre |
+| Dirección y posición | Largo / ancho; izquierda / centro / derecha |
+| Especificación del cliente | Nominal y límite: nominal ± tolerancia (en unidades o en %), máximo o mínimo. Texto solo en las cualitativas |
+| Control interno | Margen más cerrado sobre el mismo nominal. **Nunca se imprime al cliente**; el certificado y las Especificaciones del producto salen de la especificación del cliente |
+| En especificación del cliente / En certificado | Qué renglones van a cada documento |
+
+Los límites viven en el mixin `ficha.tecnica.caracteristica.mixin`
+(`_result_for(valor)` devuelve `cumple`, `desviacion` o `no_conforme`;
+`_limit_vals()` copia un renglón de un documento a otro). El SGI de
+`quimibond_sgi` (tabla de características del proyecto de desarrollo, C1)
+usa el mismo catálogo y el mismo mixin, de modo que al liberar un artículo
+los renglones del proyecto pasan a su ficha sin recaptura.
+
+Las claves de codificación (`ficha.tecnica.clave.codigo`) transcriben el DAT
+P-D02-01 rev. 05: composición, dibujo, tipo de hilo, galga por rango
+(`gauge_code(18)` → `'21'`, `gauge_from_code('22')` → `18`), operación, color
+y acabado. Catálogo y claves se siembran con `noupdate` y se editan en
+**Fichas Técnicas de Tela → Configuración** (gerentes de Fabricación).
+Pruebas: `tests/test_caracteristicas.py` (corren en el CI).

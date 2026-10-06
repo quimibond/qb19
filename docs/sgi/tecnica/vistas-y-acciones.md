@@ -141,15 +141,12 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
       - **Elementos PPAP** — `sgi.ppap.element.template`
       - **Competencias por tipo de permiso** — `sgi.work.permit.skill`
       - **Fuentes de indicadores** — `sgi.indicator.source`
-      - **Desarrollo de producto**
-        - **Características** — `sgi.dev.characteristic.type`
-        - **Características por tipo de desarrollo** — `sgi.dev.characteristic.template`
-        - **Claves de codificación de artículos** — `sgi.dev.code.catalog`
+      - **Características por tipo de desarrollo** — `sgi.dev.characteristic.template`
 - **Bitácora de bloqueo contable** — `sgi.lock.date.log`; bajo `account.menu_finance_reports`
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (127)
+## Acciones (125)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -184,8 +181,6 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_current_document_action` | act_window | Documentos vigentes | `documents.document` | list,kanban | sí | `addons/quimibond_sgi/views/sgi_current_documents_views.xml` |
 | `quimibond_sgi.sgi_deliverable_list_action` | act_window | Entregables | `sgi.deliverable` | list,form | sí | `addons/quimibond_sgi/views/sgi_catalog_views.xml` |
 | `quimibond_sgi.sgi_dev_characteristic_template_action` | act_window | Características por tipo de desarrollo | `sgi.dev.characteristic.template` | list | sí | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
-| `quimibond_sgi.sgi_dev_characteristic_type_action` | act_window | Características de desarrollo | `sgi.dev.characteristic.type` | list | sí | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
-| `quimibond_sgi.sgi_dev_code_catalog_action` | act_window | Claves de codificación de artículos | `sgi.dev.code.catalog` | list | sí | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
 | `quimibond_sgi.sgi_diagnostic_line_action` | act_window | Diagnóstico del SGI | `sgi.diagnostic.line` | list,form | sí | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `quimibond_sgi.sgi_diagnostic_run_action` | server | Diagnóstico del SGI | `sgi.diagnostic` |  |  | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `quimibond_sgi.sgi_direction_board_action_open` | server | Tablero | `sgi.direction.board` |  |  | `addons/quimibond_sgi/views/sgi_direction_board_views.xml` |
@@ -281,7 +276,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (404; 72 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (400; 72 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -478,10 +473,6 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.dev.characteristic` | `quimibond_sgi.sgi_dev_characteristic_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
 | `sgi.dev.characteristic.template` | `quimibond_sgi.sgi_dev_characteristic_template_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
 | `sgi.dev.characteristic.template` | `quimibond_sgi.sgi_dev_characteristic_template_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
-| `sgi.dev.characteristic.type` | `quimibond_sgi.sgi_dev_characteristic_type_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
-| `sgi.dev.characteristic.type` | `quimibond_sgi.sgi_dev_characteristic_type_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
-| `sgi.dev.code.catalog` | `quimibond_sgi.sgi_dev_code_catalog_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
-| `sgi.dev.code.catalog` | `quimibond_sgi.sgi_dev_code_catalog_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
 | `sgi.diagnostic.line` | `quimibond_sgi.sgi_diagnostic_line_view_form` | form |  | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `sgi.diagnostic.line` | `quimibond_sgi.sgi_diagnostic_line_view_list` | list |  | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `sgi.diagnostic.line` | `quimibond_sgi.sgi_diagnostic_line_view_search` | search |  | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
