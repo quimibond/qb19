@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_producto_horas_list" model="ir.ui.view">
+        <field name="name">qb.producto.horas.list</field>
+        <field name="model">qb.producto.horas</field>
+        <field name="arch" type="xml">
+            <list create="false" decoration-muted="calidad == 'ninguna'" decoration-warning="calidad == 'baja'">
+                <field name="default_code"/>
+                <field name="product_id"/>
+                <field name="centro_id"/>
+                <field name="horas_propias"/>
+                <field name="fuente"/>
+                <field name="unidades_hora"/>
+                <field name="horas_heredadas"/>
+                <field name="horas_unidad"/>
+                <field name="calidad"/>
+                <field name="n_ordenes"/>
+                <field name="detalle"/>
+                <field name="horas_manual" optional="hide"/>
+                <field name="manual_vigente_hasta" optional="hide"/>
+                <field name="calculado_el" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_producto_horas_form" model="ir.ui.view">
+        <field name="name">qb.producto.horas.form</field>
+        <field name="model">qb.producto.horas</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_recalcular" type="object" string="Recalcular este producto"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Dato vigente">
+                            <field name="product_id"/>
+                            <field name="centro_id"/>
+                            <field name="horas_propias"/>
+                            <field name="fuente"/>
+                            <field name="unidades_hora"/>
+                            <field name="n_ordenes"/>
+                            <field name="horas_heredadas"/>
+                            <field name="horas_unidad"/>
+                            <field name="calidad"/>
+                            <field name="detalle"/>
+                            <field name="calculado_el"/>
+                        </group>
+                        <group string="Captura manual (Ingeniería)">
+                            <field name="horas_manual"/>
+                            <field name="manual_motivo" required="horas_manual != 0"/>
+                            <field name="manual_vigente_hasta"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_producto_horas_search" model="ir.ui.view">
+        <field name="name">qb.producto.horas.search</field>
+        <field name="model">qb.producto.horas</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <field name="centro_id"/>
+                <filter name="estimados" string="Estimados" domain="[('calidad', 'in', ('baja', 'media'))]"/>
+                <filter name="manuales" string="Con captura manual" domain="[('horas_manual', '!=', 0)]"/>
+                <filter name="por_centro" string="Centro" context="{'group_by': 'centro_id'}"/>
+                <filter name="por_fuente" string="Fuente" context="{'group_by': 'fuente'}"/>
+                <filter name="por_calidad" string="Calidad" context="{'group_by': 'calidad'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_producto_horas" model="ir.actions.act_window">
+        <field name="name">Horas por centro</field>
+        <field name="res_model">qb.producto.horas</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_por_centro': 1}</field>
+    </record>
+
+    <record id="action_qb_horas_recalcular" model="ir.actions.server">
+        <field name="name">Recalcular horas por producto</field>
+        <field name="model_id" ref="model_qb_producto_horas"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_recalcular_todo()</field>
+    </record>
+</odoo>

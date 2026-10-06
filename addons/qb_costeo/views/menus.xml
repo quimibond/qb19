@@ -5,10 +5,13 @@
     <menuitem id="menu_qb_periodo" name="Períodos" parent="menu_qb_costeo_root" action="action_qb_periodo" sequence="10"/>
     <menuitem id="menu_qb_tarifa" name="Tarifas por centro" parent="menu_qb_costeo_root" action="action_qb_tarifa" sequence="20"/>
     <menuitem id="menu_qb_validacion" name="Validaciones" parent="menu_qb_costeo_root" action="action_qb_producto_validacion" sequence="30"/>
+    <menuitem id="menu_qb_datos_producto" name="Datos del producto" parent="menu_qb_costeo_root" sequence="40"/>
+    <menuitem id="menu_qb_horas" name="Horas por centro" parent="menu_qb_datos_producto" action="action_qb_producto_horas" sequence="10"/>
     <menuitem id="menu_qb_costeo_config" name="Configuración de costos" parent="menu_qb_costeo_root" sequence="90" groups="mrp.group_mrp_manager"/>
     <menuitem id="menu_qb_centro" name="Centros" parent="menu_qb_costeo_config" action="action_qb_centro" sequence="10"/>
     <menuitem id="menu_qb_cuenta_clase" name="Clasificación de cuentas" parent="menu_qb_costeo_config" action="action_qb_cuenta_clase" sequence="20"/>
     <menuitem id="menu_qb_cuenta_sin_clasificar" name="Cuentas sin clasificar" parent="menu_qb_costeo_config" action="action_qb_cuenta_sin_clasificar" sequence="30"/>
     <menuitem id="menu_qb_validar_todo" name="Validar recetas y precios ahora" parent="menu_qb_costeo_config" action="action_qb_validar_todo" sequence="40"/>
+    <menuitem id="menu_qb_horas_recalcular" name="Recalcular horas por producto" parent="menu_qb_costeo_config" action="action_qb_horas_recalcular" sequence="45"/>
     <menuitem id="menu_qb_parametro" name="Parámetros" parent="menu_qb_costeo_config" action="action_qb_parametro" sequence="50"/>
 </odoo>

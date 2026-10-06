@@ -12,3 +12,5 @@ access_qb_tarifa_user,qb.tarifa user,model_qb_tarifa,mrp.group_mrp_user,1,0,0,0
 access_qb_tarifa_manager,qb.tarifa manager,model_qb_tarifa,mrp.group_mrp_manager,1,1,1,1
 access_qb_producto_validacion_user,qb.producto.validacion user,model_qb_producto_validacion,mrp.group_mrp_user,1,0,0,0
 access_qb_producto_validacion_manager,qb.producto.validacion manager,model_qb_producto_validacion,mrp.group_mrp_manager,1,1,1,1
+access_qb_producto_horas_user,qb.producto.horas user,model_qb_producto_horas,mrp.group_mrp_user,1,0,0,0
+access_qb_producto_horas_manager,qb.producto.horas manager,model_qb_producto_horas,mrp.group_mrp_manager,1,1,1,1

@@ -18,7 +18,8 @@ def _habilitar_mcp(env):
         return
     Enabled = env['mcp.enabled.model'].sudo()
     for model in ('qb.centro', 'qb.cuenta.clase', 'qb.parametro',
-                  'qb.periodo', 'qb.tarifa', 'qb.producto.validacion'):
+                  'qb.periodo', 'qb.tarifa', 'qb.producto.validacion',
+                  'qb.producto.horas'):
         ir_model = env['ir.model']._get(model)
         if not ir_model or Enabled.with_context(active_test=False).search(
                 [('model_id', '=', ir_model.id)], limit=1):

@@ -4,3 +4,4 @@ from . import centro
 from . import cuenta_clase
 from . import periodo
 from . import validacion
+from . import horas

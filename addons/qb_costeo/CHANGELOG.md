@@ -3,6 +3,23 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.1.0 — 2026-10-06
+
+- `qb.producto.horas`: horas por unidad de cada producto fabricado en cada
+  centro directo, con fuente y calidad: `manual` (con motivo y vigencia),
+  `medido` (órdenes de trabajo de 12 meses dentro de la banda de velocidad
+  del centro), `estandar` (operación de la receta vigente: minutos por la
+  cantidad de la receta), `hermano` (misma raíz de 9 caracteres de la
+  nomenclatura DAT P-D02-01), `galga` (máquinas con la etiqueta `GALGA nn`
+  de la galga del código) y `estimado` (promedio del centro). Los
+  semielaborados heredan hacia arriba por la receta vigente (la de más
+  cantidad en 90 días). Menú Manufactura → Costos → Datos del producto →
+  Horas por centro; cron semanal; recálculo manual. Parámetros
+  `horas_historia_meses` y `receta_ventana_dias`.
+- `qb.centro`: banda de velocidad creíble (`velocidad_min` / `velocidad_max`,
+  unidades por hora) para descartar órdenes con horas mal capturadas.
+- Migración: habilita el modelo en MCP y corre el primer recálculo.
+
 ## 19.0.1.0.1 — 2026-10-06
 
 - La importación de la clasificación de `qb_capacidad_costeo` leía la vista
