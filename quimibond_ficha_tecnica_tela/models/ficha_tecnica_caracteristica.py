@@ -372,6 +372,14 @@ class FichaTecnicaSpec(models.Model):
             if bool(line.tejido_id) == bool(line.acabado_id):
                 raise ValidationError("Cada característica pertenece a una ficha de tejido o a una de acabado.")
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        # El constraint solo corre sobre los campos presentes en el create: un
+        # renglón sin ninguna ficha no lo dispararía (CI 2026-10-06).
+        lines = super().create(vals_list)
+        lines._check_parent()
+        return lines
+
 
 class FichaTecnicaTejidoSpecs(models.Model):
     _inherit = 'ficha.tecnica.tejido'
