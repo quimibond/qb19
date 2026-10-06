@@ -67,6 +67,16 @@ QTY_DEDUP_SQL = """
 """
 FAB_BUCKETS = ('mod', 'overhead_fab', 'depreciacion', 'arrend_maquinaria')
 
+# De dónde sale la tarifa de conversión de un crudo, de la mejor a la peor.
+# Un producto que la hereda por receta toma la PEOR de sus componentes: si
+# uno de ellos es estimado, el producto también lo es.
+CONV_FUENTES = [
+    ('op', 'Órdenes del período'),
+    ('familia', 'Tarifa de su familia de máquinas'),
+    ('centro', 'Promedio del centro (estimado)'),
+]
+CONV_RANGO = {False: 0, 'op': 1, 'familia': 2, 'centro': 3}
+
 # Categorías cuyo pedimento NO puede viajar al costo de un producto: un
 # activo fijo se deprecia, no se vende. Se quedan en la BASE del factor de
 # importación —su pedimento existe y lo diluye correctamente— pero nunca
@@ -320,6 +330,43 @@ class QbCostoFactores(models.Model):
         help='Conversión de órdenes absorbidas cuya salida terminada no '
              'lleva lote: no se puede seguir hasta la venta. Si crece, '
              'revisa el seguimiento por lote de esos productos.')
+    # Conversión absorbida en el COSTO UNITARIO (v1.69). Lo de arriba mide
+    # el dinero; esto lo baja al artículo: la tarifa del crudo sale de sus
+    # propias órdenes y la receta la lleva al teñido y al acabado.
+    conv_kg_month = fields.Float(
+        string='Kg con conversión absorbida/mes',
+        help='Kilos que terminaron en el período las órdenes que corrieron '
+             'en máquinas absorbidas (el crudo tejido).')
+    conv_tarifa_kg_centro = fields.Float(
+        string='Tarifa de conversión del centro $/kg', digits=(16, 4),
+        help='Conversión abonada por las órdenes del período ÷ sus kilos. Es '
+             'el último recurso para un crudo sin órdenes en el período ni '
+             'familia de máquinas con velocidad: su costo sale marcado como '
+             'estimado.')
+    conv_energia_month = fields.Float(
+        string='Energía de centros absorbidos/mes',
+        help='Luz/gas/agua etiquetados a los centros absorbidos, suavizados '
+             'como el pool de energía. La tarifa por hora los capitaliza; el '
+             'pool de energía ya no los trae.')
+    conv_energia_share = fields.Float(
+        string='Parte variable de la conversión', digits=(16, 4),
+        help='Energía de centros absorbidos ÷ conversión absorbida bruta. '
+             'Esa fracción de la conversión es VARIABLE (sale de la bolsa '
+             'por producir un kilo más) y entra al piso con capacidad '
+             'ociosa; el resto es mano de obra y fijos, y no entra.')
+    conv_unitaria_vendida_month = fields.Float(
+        string='Conversión a tarifa sobre lo vendido/mes',
+        help='Σ conversión unitaria × cantidad vendida: lo que cargaría lo '
+             'vendido si TODO se hubiera fabricado con el régimen de '
+             'absorción. Los totales del período usan en cambio lo que de '
+             'verdad llegó a ventas por lote.')
+    conv_transicion_month = fields.Float(
+        string='Efecto de transición de la absorción/mes',
+        help='Conversión a tarifa sobre lo vendido − conversión absorbida '
+             'ya en ventas. Es mercancía vendida que se fabricó antes del '
+             'corte: su conversión se fue a gasto con el régimen anterior y '
+             'no está en el costo de ventas. Tiende a cero conforme se '
+             'vende el inventario viejo.')
     costo_primo_gl_month = fields.Float(
         string='Costo primo del mayor/mes (sin capa)',
         help='Saldo del mes de la cuenta de costo primo (parámetro '
@@ -387,6 +434,41 @@ class QbCostoFactores(models.Model):
             ('company_id', '=', (company or self.env.company).id),
             ('state', '=', 'cerrado'),
         ]))
+
+    @api.model
+    def para_cotizar(self):
+        """Los factores con los que se cotiza: los del ÚLTIMO PERÍODO CERRADO.
+
+        El mes en curso se recalcula a diario con el pool a medio llenar:
+        tres cotizaciones contra septiembre de 2026 tomaron un pool de
+        $1.49M (13-sep), $3.20M (24-sep) y $3.99M (5-oct). Un piso de precio
+        no puede depender del día en que se cotizó.
+
+        Sin ningún período cerrado (base nueva) cae al más reciente, y lo
+        dice. Devuelve `(factores, aviso)`; `aviso` es False si el período
+        está cerrado.
+        """
+        company = self.env.company.id
+        cerrado = self.search([('company_id', '=', company),
+                               ('state', '=', 'cerrado')],
+                              order='period DESC', limit=1)
+        if cerrado:
+            return cerrado, False
+        ultimo = self.search([('company_id', '=', company)],
+                             order='period DESC', limit=1)
+        if not ultimo:
+            return ultimo, False
+        return ultimo, self.aviso_borrador(ultimo)
+
+    @api.model
+    def aviso_borrador(self, factores):
+        """Texto de aviso cuando se cotiza con un período abierto."""
+        if not factores or factores.state == 'cerrado':
+            return False
+        return ('Período %s en BORRADOR: sus factores cambian cada vez que '
+                'se recalcula (el pool del mes va a medio llenar). Ciérralo '
+                'antes de usar estos pisos para decidir.'
+                % factores.period.strftime('%m/%Y'))
 
     def action_cerrar(self):
         for rec in self:
@@ -524,10 +606,28 @@ class QbCostoProducto(models.Model):
         help='MP + energía: lo que sale de la bolsa por producir UNA unidad '
              'más. Base del margen de contribución.')
     fab_unit = fields.Float(string='Fabricación $/u', digits=(16, 4))
+    conv_unit = fields.Float(
+        string='Conversión absorbida $/u', digits=(16, 4),
+        help='Lo que Odoo capitaliza por workcenter en los centros absorbidos '
+             '(hoy tejido: horas × tarifa contra 504.01.0099), bajado al '
+             'artículo: tarifa del crudo ($ abonados en sus órdenes del '
+             'período ÷ lo que produjeron) × lo que la receta consume de ese '
+             'crudo. Va aparte de la MP para que la MP siga cuadrando contra '
+             'compras. Su parte de energía cuenta como costo variable.')
+    conv_var_unit = fields.Float(
+        string='de eso, energía $/u', digits=(16, 4),
+        help='La parte de la conversión que es energía del centro absorbido '
+             '(luz de tejido). Es variable: entra al costo variable y al '
+             'piso con capacidad ociosa.')
+    conv_fuente = fields.Selection(
+        CONV_FUENTES, string='Fuente de la conversión',
+        help='De dónde sale la tarifa del crudo. «Estimado» = sin órdenes en '
+             'el período ni familia de máquinas con velocidad: promedio del '
+             'centro.')
     costo_produccion = fields.Float(
         string='Costo de producción $/u', digits=(16, 4),
-        help='Variable + fabricación absorbida: lo que cuesta FABRICAR la '
-             'unidad. Base del margen bruto.')
+        help='Variable + fabricación absorbida + conversión absorbida: lo '
+             'que cuesta FABRICAR la unidad. Base del margen bruto.')
     op_unit = fields.Float(string='Operación $/u', digits=(16, 4))
     rendimiento = fields.Float(
         digits=(6, 4), string='Rendimiento vendible',
@@ -573,6 +673,14 @@ class QbCostoProducto(models.Model):
              '«MP $ (período)» — no se suma aparte.')
     energia_total = fields.Float(string='Energía $ (período)')
     fab_total = fields.Float(string='Fabricación $ (período)')
+    conv_total = fields.Float(
+        string='Conversión absorbida $ (período)',
+        help='La conversión absorbida que de verdad llegó a ventas en el mes '
+             'con este producto, siguiendo los lotes (no conversión unitaria '
+             '× qty): es lo que está en el costo de ventas del mayor. En el '
+             'mes del corte es menor que la tarifa × qty porque parte de lo '
+             'vendido se fabricó con el régimen anterior. Suma exactamente '
+             'la «conversión absorbida ya en costo de ventas» del período.')
     op_total = fields.Float(string='Operación $ (período)')
     costo_variable_total = fields.Float(
         string='Costo variable $ (período)',
@@ -1058,7 +1166,9 @@ class QbCostoProducto(models.Model):
     # Factores del período
     # ------------------------------------------------------------------
     @api.model
-    def _compute_factores(self, period):
+    def _compute_factores(self, period, out=None):
+        """Factores del período. `out` (dict, opcional) recibe la traza de la
+        conversión absorbida, que el recálculo reparte entre los productos."""
         Config = self.env['qb.costeo.factor.config']
         Centro = self.env['qb.costeo.centro']
         window = int(Config.get_param('smoothing_months', 12)) or 12
@@ -1392,11 +1502,35 @@ class QbCostoProducto(models.Model):
         # siguen los lotes desde la orden absorbida hasta la entrega. Es la
         # cifra que la capa de valoración NO debe restar (ya está en el
         # costo de ventas) — y el resto es inventario, no gasto del mes.
-        traza = {'vendida': 0.0, 'en_inventario': 0.0, 'sin_lote': 0.0}
+        traza = {'vendida': 0.0, 'en_inventario': 0.0, 'sin_lote': 0.0,
+                 'vendida_por_producto': {}}
+        conv_kg = conv_tarifa_centro = conv_energia = conv_share = 0.0
         if absorbidos:
-            traza = self.env['qb.costo.absorcion.traza'].trazar(
+            Traza = self.env['qb.costo.absorcion.traza']
+            traza = Traza.trazar(
                 absorbidos, min(absorbidos.mapped('fecha_absorcion')),
                 period, date_to)
+            # La tarifa promedio del centro: lo abonado por las órdenes del
+            # período ÷ sus kilos. Solo órdenes en kilos: un crudo en metros
+            # no se puede sumar con los demás.
+            conv_mes = 0.0
+            Product = self.env['product.product']
+            for pid, conv, qty in Traza.conversion_por_orden(
+                    absorbidos, period, date_to).values():
+                uom = (Product.browse(pid).uom_id.name or '').lower()
+                if uom in KG_UOM_NAMES and qty > 0:
+                    conv_mes += conv
+                    conv_kg += qty
+            conv_tarifa_centro = conv_mes / conv_kg if conv_kg else 0.0
+            # La parte variable de la tarifa: la energía de los centros
+            # absorbidos que el pool de energía ya no trae (arriba se excluye).
+            conv_energia = self._smooth(self._pool_by_month(
+                ('energia',), date_from, date_to,
+                incluir_centros=excluir), meses=meses)
+            conv_share = (min(max(conv_energia / absorcion_bruta, 0.0), 1.0)
+                          if absorcion_bruta else 0.0)
+        if out is not None:
+            out['traza'] = traza
         costo_primo_gl = self._costo_primo_gl_month(period, date_to)
 
         util_pond = ws * util_kg + (1 - ws) * util_m
@@ -1462,6 +1596,10 @@ class QbCostoProducto(models.Model):
             'absorcion_vendida_month': traza['vendida'],
             'absorcion_en_inventario': traza['en_inventario'],
             'absorcion_sin_lote_month': traza['sin_lote'],
+            'conv_kg_month': conv_kg,
+            'conv_tarifa_kg_centro': conv_tarifa_centro,
+            'conv_energia_month': conv_energia,
+            'conv_energia_share': conv_share,
             'costo_primo_gl_month': costo_primo_gl,
             'fab_pool_con_centro_pct': fab_con_centro_pct,
             'entretela_m_denom_month': entretela_m,
@@ -1564,6 +1702,16 @@ class QbCostoProducto(models.Model):
         gl_by_month = self._pool_by_month(('mp',), date_from, date_to)
         if not gl_by_month:
             return 0.0, 0.0, 1.0
+        # Desde el corte de absorción, el costo primo del mayor trae también
+        # la conversión capitalizada de lo vendido (el AVCO del producto la
+        # lleva adentro). No es materia prima: dejarla en el cociente
+        # inflaría la MP justo en lo que ya cobra la capa de conversión.
+        for f in self.env['qb.costo.factores'].search([
+                ('period', '>=', date_from), ('period', '<', date_to),
+                ('company_id', '=', self.env.company.id),
+                ('absorcion_vendida_month', '!=', 0)]):
+            if f.period in gl_by_month:
+                gl_by_month[f.period] -= f.absorcion_vendida_month
 
         if qty_by_month is None:
             qty_by_month = self._sales_qty_by_month(date_from, date_to)
@@ -2393,8 +2541,11 @@ class QbCostoProducto(models.Model):
             return False
         self = self.with_context(qb_periodo_verificado=True)
 
-        factores = self._compute_factores(period)
+        traza_out = {}
+        factores = self._compute_factores(period, out=traza_out)
         sales = self._sales_by_product(period)
+        conv_vendida = (traza_out.get('traza') or {}).get(
+            'vendida_por_producto') or {}
 
         Product = self.env['product.product']
         product_ids = set(sales.keys())
@@ -2404,10 +2555,14 @@ class QbCostoProducto(models.Model):
             products = (bom.product_id
                         or bom.product_tmpl_id.product_variant_ids)
             product_ids.update(products.filtered('sale_ok').ids)
+        # Todo producto entregado con conversión absorbida necesita su fila:
+        # si no, esa parte del costo de ventas no estaría en ninguna.
+        product_ids.update(pid for pid in conv_vendida if pid)
 
         Ruteo = self.env['qb.producto.ruteo']
         Peso = self.env['qb.producto.peso']
         ctx = self._engine_ctx(product_ids, factores)
+        ctx['conv_vendida'] = conv_vendida
 
         # El ajuste de MP necesita el caché de costos ya caliente, así que se
         # resuelve DESPUÉS del contexto y antes del loop. Compara la receta
@@ -2435,6 +2590,7 @@ class QbCostoProducto(models.Model):
             [('period', '=', period),
              ('company_id', '=', self.env.company.id)])}
         fab_absorbida_total = 0.0
+        conv_a_tarifa = 0.0
         to_create = []
         errores = 0
 
@@ -2454,6 +2610,8 @@ class QbCostoProducto(models.Model):
                     product.display_name)
                 continue
             fab_absorbida_total += fab_x_qty
+            if vals['precio_prom']:
+                conv_a_tarifa += vals['conv_unit'] * vals['qty_vendida']
             rec = existing.get(product.id)
             if rec:
                 rec.write(vals)
@@ -2475,6 +2633,11 @@ class QbCostoProducto(models.Model):
                          'para %s', len(stale), period)
             stale.unlink()
 
+        factores.write({
+            'conv_unitaria_vendida_month': conv_a_tarifa,
+            'conv_transicion_month':
+                conv_a_tarifa - factores.absorcion_vendida_month,
+        })
         if factores.fab_pool_month:
             factores.cobertura_fab_pct = (
                 100.0 * fab_absorbida_total
@@ -2553,6 +2716,7 @@ class QbCostoProducto(models.Model):
         (vals, fab_absorbida × qty) para el acumulado de cobertura."""
         bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab = \
             self._capas_produccion(product, factores, ctx, Ruteo, Peso)
+        conv, conv_var, conv_fuente = self._conv_unit(product, factores, ctx)
         peso_source = Peso.resolve_kg_source(product, ctx['peso_cache'])
         venta = sales.get(product.id) or {}
         qty = venta.get('qty', 0.0)
@@ -2579,8 +2743,11 @@ class QbCostoProducto(models.Model):
                     product, ctx.get('pol_map')))))
         importacion = (mp * f_imp / (1.0 + f_imp)
                        if f_imp and es_compra_importada else 0.0)
-        variable = mp + energia
-        produccion = variable + fab
+        # La conversión absorbida se parte en dos: su energía es variable
+        # (sale de la bolsa por tejer un kilo más) y el resto es mano de obra
+        # y fijos del centro, que van con la fabricación.
+        variable = mp + energia + conv_var
+        produccion = mp + energia + fab + conv
         # Operación sobre el costo de producción, no sobre el precio: si el
         # costo depende del precio, vender con descuento «abarata» el
         # producto y su margen se ve sano. Con op_rate en 0 (driver legacy
@@ -2613,6 +2780,21 @@ class QbCostoProducto(models.Model):
                    else op)
         costo_vendible = produccion_vend + op_vend
         margen_real_unit = precio - costo_vendible
+
+        # Totales del período. La conversión NO es unitario × qty: es lo
+        # que la traza por lotes encontró en las entregas del mes con este
+        # producto, que es lo que de verdad está en el costo de ventas. En
+        # el mes del corte parte de lo vendido se tejió con el régimen
+        # anterior y su tejido ya se fue a gasto; contarlo a tarifa lo
+        # cobraría dos veces contra el mayor.
+        conv_total = ((ctx or {}).get('conv_vendida') or {}).get(
+            product.id, 0.0)
+        share_var = conv_var / conv if conv else (
+            factores.conv_energia_share or 0.0)
+        variable_total = (mp + energia) * qty_efectiva \
+            + conv_total * share_var
+        produccion_total = (mp + energia + fab) * qty_efectiva + conv_total
+        absorbido_total = produccion_total + op * qty_efectiva
 
         peso_relevante = not is_kg and bucket in (
             'tela', 'entretela_tejida', 'entretela_carda')
@@ -2653,6 +2835,9 @@ class QbCostoProducto(models.Model):
             'energia_unit': energia,
             'costo_variable': variable,
             'fab_unit': fab,
+            'conv_unit': conv,
+            'conv_var_unit': conv_var,
+            'conv_fuente': conv_fuente,
             'costo_produccion': produccion,
             'op_unit': op,
             'costo_absorbido': absorbido,
@@ -2666,10 +2851,11 @@ class QbCostoProducto(models.Model):
             'importacion_total': importacion * qty_efectiva,
             'energia_total': energia * qty_efectiva,
             'fab_total': fab * qty_efectiva,
+            'conv_total': conv_total,
             'op_total': op * qty_efectiva,
-            'costo_variable_total': variable * qty_efectiva,
-            'costo_produccion_total': produccion * qty_efectiva,
-            'costo_absorbido_total': absorbido * qty_efectiva,
+            'costo_variable_total': variable_total,
+            'costo_produccion_total': produccion_total,
+            'costo_absorbido_total': absorbido_total,
             'margen_contribucion': contrib if precio else 0.0,
             'margen_contribucion_pct':
                 100.0 * contrib / precio if precio else 0.0,
@@ -2688,14 +2874,14 @@ class QbCostoProducto(models.Model):
             # conciliación entre enero y julio de 2026, sin causa real
             # detrás. Derivado del ingreso, la identidad se cumple por
             # construcción en toda fila.
-            'margen_bruto_total': revenue - produccion * qty_efectiva,
+            'margen_bruto_total': revenue - produccion_total,
             'margen_absorbido': precio - absorbido if precio else 0.0,
             'margen_absorbido_pct':
                 100.0 * (precio - absorbido) / precio if precio else 0.0,
-            'margen_neto_total': revenue - absorbido * qty_efectiva,
+            'margen_neto_total': revenue - absorbido_total,
             'contrib_hora_maquina':
                 contrib / hours_per_unit if hours_per_unit and precio else 0.0,
-            'contrib_total': revenue - variable * qty_efectiva,
+            'contrib_total': revenue - variable_total,
             'alerta': alerta,
             'centro_route': ', '.join(centros.mapped('code')),
             'factores_id': factores.id,
@@ -2728,6 +2914,172 @@ class QbCostoProducto(models.Model):
             else factores.energia_por_kg * kg
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
         return bucket, centros, kg, m_per_kg, is_kg, mp, energia, fab
+
+    # ------------------------------------------------------------------
+    # Conversión absorbida en el costo unitario
+    # ------------------------------------------------------------------
+    @api.model
+    def _conv_ctx(self, factores):
+        """Lo que hace falta para bajar la conversión absorbida al artículo,
+        resuelto UNA vez por corrida.
+
+        Solo existe si el período tiene centros absorbidos: en un período de
+        capa (hasta agosto de 2026) su conversión ya está en `fab_unit` y
+        agregarla aquí la cobraría dos veces. Por eso la capa sale siempre de
+        los MISMOS factores que el resto del costo.
+        """
+        vacio = {'activo': False, 'cache': {}}
+        if not factores or not factores.centros_absorbidos:
+            return vacio
+        centros = self.env['qb.costeo.centro'].absorbidos_en(factores.period)
+        if not centros:
+            return vacio
+        Traza = self.env['qb.costo.absorcion.traza']
+        desde = factores.period
+        hasta = desde + relativedelta(months=1)
+        acumulado = {}
+        for pid, conv, qty in Traza.conversion_por_orden(
+                centros, desde, hasta).values():
+            c, q = acumulado.get(pid, (0.0, 0.0))
+            acumulado[pid] = (c + conv, q + qty)
+        tarifas = {pid: c / q for pid, (c, q) in acumulado.items() if q > 0}
+
+        # Tarifa de familia: $/h de sus máquinas ÷ la velocidad del artículo
+        # en ellas (o la de la familia). Un artículo que corre en varias
+        # familias toma el promedio.
+        por_codigo = {}
+        familias = self.env['qb.costeo.familia'].search([
+            ('centro_id', 'in', centros.ids), ('active', '=', True)])
+        for fam in familias:
+            costo_h = self._tarifa_hora_familia(fam)
+            if not costo_h:
+                continue
+            for fp in fam.producto_ids:
+                vel = fp.std_output_per_hour or fam.std_output_per_hour
+                if vel > 0:
+                    por_codigo.setdefault(fp.product_code, []).append(
+                        costo_h / vel)
+        return {
+            'activo': True,
+            'tarifas': tarifas,
+            'crudos': Traza.productos_con_conversion(centros) | set(tarifas),
+            'familia_por_codigo': {k: sum(v) / len(v)
+                                   for k, v in por_codigo.items()},
+            'centro_kg': factores.conv_tarifa_kg_centro,
+            'share_var': factores.conv_energia_share,
+            'cache': {},
+        }
+
+    @api.model
+    def _tarifa_hora_familia(self, familia):
+        """$/h promedio de las máquinas de una familia con tarifa; sin
+        máquinas reconocidas, el de las máquinas con tarifa de su centro."""
+        wcs = familia.workcenters().filtered(lambda w: w.costs_hour > 0) \
+            or familia.centro_id.workcenter_ids.filtered(
+                lambda w: w.costs_hour > 0)
+        return sum(wcs.mapped('costs_hour')) / len(wcs) if wcs else 0.0
+
+    @api.model
+    def tarifa_conversion_familia(self, familia, factores):
+        """$/kg de conversión de una familia para una especificación nueva
+        (sin artículo): $/h de sus máquinas ÷ su velocidad. Sin velocidad,
+        el promedio del centro (estimado). Devuelve (tarifa, fuente)."""
+        if familia and familia.std_output_per_hour > 0:
+            costo_h = self._tarifa_hora_familia(familia)
+            if costo_h:
+                return costo_h / familia.std_output_per_hour, 'familia'
+        return factores.conv_tarifa_kg_centro or 0.0, 'centro'
+
+    @api.model
+    def _conv_unit(self, product, factores, ctx=None):
+        """Conversión absorbida por unidad: `(conv, conv_variable, fuente)`.
+
+        Por artículo crudo: lo abonado en sus órdenes del período ÷ lo que
+        produjeron. Sin órdenes en el período, la tarifa de su familia de
+        máquinas; sin familia, el promedio del centro (estimado). Los
+        productos que no se fabrican en máquinas absorbidas la heredan por
+        su receta, según cuánto crudo consume cada unidad — con la misma
+        receta que usa la MP.
+        """
+        if ctx is None:
+            ctx = {}
+        cc = ctx.get('conv')
+        if cc is None or cc.get('factores_id') != factores.id:
+            cc = self._conv_ctx(factores)
+            cc['factores_id'] = factores.id
+            ctx['conv'] = cc
+        if not cc['activo']:
+            return 0.0, 0.0, False
+        conv, fuente = self._conv_rec(product, cc, ctx, frozenset())
+        return conv, conv * cc['share_var'], fuente
+
+    @api.model
+    def _conv_rec(self, product, cc, ctx, seen):
+        cache = cc['cache']
+        if product.id in cache:
+            return cache[product.id]
+        if product.id in seen:
+            return 0.0, False
+        seen = seen | {product.id}
+        Ruteo = self.env['qb.producto.ruteo']
+        bucket, _centros = Ruteo.resolve(product, ctx.get('rules'))
+        ref = product.default_code or ''
+        res = (0.0, False)
+        if bucket in ('importado', 'subproducto', 'servicio') \
+                or ref.endswith(' I'):
+            res = (0.0, False)
+        elif product.id in cc['tarifas']:
+            res = (cc['tarifas'][product.id], 'op')
+        elif product.id in cc['crudos']:
+            # Crudo sin órdenes en el período: tarifa en $/kg × sus kilos
+            Peso = self.env['qb.producto.peso']
+            is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
+            kg = 1.0 if is_kg else Peso.resolve_kg_per_unit(
+                product, ctx.setdefault('peso_cache', {}))
+            tarifa = cc['familia_por_codigo'].get(ref)
+            if tarifa:
+                res = (tarifa * kg, 'familia')
+            else:
+                res = (cc['centro_kg'] * kg, 'centro')
+        else:
+            if self._has_multiple_boms(product, ctx):
+                boms = self._applicable_boms(product)
+                bom = self._bom_de_ultima_op(product, boms, ctx)
+                if bom:
+                    res = self._conv_bom(bom, product, cc, ctx, seen)
+                else:
+                    # Mismo criterio conservador que la MP: la más cara
+                    opciones = [self._conv_bom(b, product, cc, ctx, seen)
+                                for b in boms]
+                    res = max(opciones, key=lambda r: r[0]) \
+                        if opciones else res
+            else:
+                bom = self.env['mrp.bom']._bom_find(product).get(product)
+                if bom:
+                    res = self._conv_bom(bom, product, cc, ctx, seen)
+        cache[product.id] = res
+        return res
+
+    @api.model
+    def _conv_bom(self, bom, product, cc, ctx, seen):
+        total = 0.0
+        fuente = False
+        for line in bom.bom_line_ids:
+            if line._skip_bom_line(product):
+                continue
+            comp = line.product_id
+            qty = line.product_uom_id._compute_quantity(
+                line.product_qty, comp.uom_id, round=False,
+                raise_if_failure=False)
+            conv, f = self._conv_rec(comp, cc, ctx, seen)
+            if conv:
+                total += qty * conv
+                if CONV_RANGO[f] > CONV_RANGO[fuente]:
+                    fuente = f
+        bom_qty = bom.product_uom_id._compute_quantity(
+            bom.product_qty, product.uom_id, round=False,
+            raise_if_failure=False) or 1.0
+        return total / bom_qty, fuente
 
     @api.model
     def _op_rate(self, date_from, date_to, factores, ctx, Ruteo, Peso,
@@ -2773,7 +3125,11 @@ class QbCostoProducto(models.Model):
             if costo is None:
                 _b, _c, _kg, _mkg, _ik, mp, energia, fab = \
                     self._capas_produccion(product, factores, ctx, Ruteo, Peso)
-                costo = mp + energia + fab
+                # La conversión absorbida es costo de producción como la
+                # fabricación: antes del corte el tejido viajaba en `fab` y
+                # ya era parte de esta base.
+                conv = self._conv_unit(product, factores, ctx)[0]
+                costo = mp + energia + fab + conv
                 unitario[pid] = costo
             base += costo * qty
             meses.add(mes)
@@ -2893,19 +3249,23 @@ class QbCostoProducto(models.Model):
         """Costo por capa y precios de UN producto con los factores vigentes.
 
         Fórmulas (op% va SOBRE VENTA, por eso divide):
-          variable        = MP + energía
-          piso_ocioso     = variable
-          piso_lleno      = (variable + fab) / (1 − op)
+          variable        = MP + energía + energía de la conversión absorbida
+          producción      = MP + energía + fabricación + conversión absorbida
+          …ambas ÷ rendimiento de primera: el metro VENDIBLE paga la merma
+          piso_ocioso     = variable vendible
+          piso_lleno      = producción vendible / (1 − op)
           precio_mercado  = promedio real facturado 12m (todos los clientes)
 
-        Sin "margen meta": el ancla para cotizar no es una aspiración — son
-        los pisos (debajo de qué no bajar) y el mercado (qué se está
-        logrando de verdad).
+        `mp`, `energia`, `fab` y `conv` son por unidad PRODUCIDA (el
+        desglose); `variable` y `produccion` ya son por unidad vendible y
+        son las que mandan en pisos y márgenes.
+
+        Sin factores explícitos usa los del último período CERRADO
+        (`qb.costo.factores.para_cotizar`).
         """
         Peso = self.env['qb.producto.peso']
         if factores is None:
-            factores = self.env['qb.costo.factores'].search(
-                [], order='period DESC', limit=1)
+            factores = self.env['qb.costo.factores'].para_cotizar()[0]
         if not factores:
             return None
         bucket, centros = self.env['qb.producto.ruteo'].resolve(product)
@@ -2921,34 +3281,96 @@ class QbCostoProducto(models.Model):
         if not self._es_importado(product, bucket) \
                 and bucket not in ('subproducto', 'servicio'):
             mp *= factores.mp_ajuste or 1.0
-        energia = 0.0 if bucket in ('importado', 'subproducto', 'servicio') \
-            else factores.energia_por_kg * kg
+        fabricado = bucket not in ('importado', 'subproducto', 'servicio')
+        self._check_energia_cotizable(factores, fabricado and kg)
+        energia = factores.energia_por_kg * kg if fabricado else 0.0
         fab = self._fab_unit(bucket, is_kg, kg, m_per_kg, factores)
-        variable = mp + energia
-        op = factores.op_pct
-        piso_lleno = (variable + fab) / (1.0 - op) if op < 1 else 0.0
+        conv, conv_var, conv_fuente = self._conv_unit(product, factores)
+        rend, rend_fuente = self._rendimiento_cotizar(product, bucket,
+                                                      factores)
+        q = self._pisos(mp, energia, fab, conv, conv_var, rend,
+                        factores.op_pct, self.market_price(product))
         hours = self._hours_per_unit(centros, is_kg, kg, m_per_kg)
-        mercado = self.market_price(product)
         # ¿el peso es estimado (adivinanza) y relevante para el costo?
         peso_estimado = (not is_kg
                          and bucket in ('tela', 'entretela_tejida',
                                         'entretela_carda')
                          and peso_source in Peso.PESO_SOURCES_ESTIMADAS)
-        return {
+        q.update({
             'bucket': bucket, 'centros': centros, 'kg': kg,
             'peso_source': peso_source, 'peso_estimado': peso_estimado,
             'm_per_kg': m_per_kg, 'is_kg': is_kg,
-            'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
-            'op_pct': op,
-            'piso_ocioso': variable, 'piso_lleno': piso_lleno,
-            'precio_mercado': mercado,
-            'precio_sugerido': self._precio_sugerido(
-                variable, fab, op, piso_lleno, mercado),
+            'conv_fuente': conv_fuente, 'rend_fuente': rend_fuente,
             'target_margin': self.env['qb.costeo.factor.config'].get_param(
                 'target_margin', 0.0),
             'hours_per_unit': hours,
             'factores': factores,
+        })
+        return q
+
+    @api.model
+    def _pisos(self, mp, energia, fab, conv, conv_var, rend, op, mercado):
+        """Del costo por capa a los pisos — una sola aritmética para el
+        producto existente y para la especificación nueva.
+
+        La conversión absorbida entra al piso a planta llena completa y al
+        piso con capacidad ociosa solo su parte de energía: el resto es mano
+        de obra del centro, que no sale de la bolsa por producir un metro
+        más. El rendimiento divide los dos: el metro que se vende paga
+        también el que salió de segunda.
+        """
+        rend = min(max(rend or 1.0, 0.05), 1.0)
+        variable = (mp + energia + conv_var) / rend
+        produccion = (mp + energia + fab + conv) / rend
+        piso_lleno = produccion / (1.0 - op) if op < 1 else 0.0
+        return {
+            'mp': mp, 'energia': energia, 'fab': fab,
+            'conv': conv, 'conv_var': conv_var,
+            'rendimiento': rend,
+            'variable': variable, 'produccion': produccion,
+            'op_pct': op,
+            'piso_ocioso': variable, 'piso_lleno': piso_lleno,
+            'precio_mercado': mercado,
+            'precio_sugerido': self._precio_sugerido(
+                variable, produccion - variable, op, piso_lleno, mercado),
         }
+
+    @api.model
+    def _check_energia_cotizable(self, factores, usa_energia):
+        """Energía en $0/kg no es energía gratis: es un denominador de kilos
+        en cero. Las cotizaciones 89, 93 y 94 salieron así. Si el período
+        tiene energía en el pool y su $/kg es 0, no se cotiza."""
+        if usa_energia and not factores.energia_por_kg \
+                and factores.energia_pool_month:
+            raise UserError(
+                'Los factores de %s traen energía en $0/kg con un pool de '
+                '$%s/mes: el denominador de kilos salió en cero. No se '
+                'cotiza con energía en cero — recalcula el período o '
+                'captura el parámetro «energia_por_kg».'
+                % (factores.period.strftime('%m/%Y'),
+                   f'{factores.energia_pool_month:,.0f}'))
+
+    @api.model
+    def _rendimiento_cotizar(self, product, bucket, factores):
+        """Rendimiento de primera con el que se cotiza: el que el recálculo
+        del período ya guardó para el producto (o el de planta). Solo
+        fabricación propia: lo demás no tiene merma de proceso."""
+        if bucket not in ('tela', 'entretela_tejida', 'entretela_carda'):
+            return 1.0, 'no_aplica'
+        if product:
+            fila = self.search([('period', '=', factores.period),
+                                ('product_id', '=', product.id),
+                                ('company_id', '=', self.env.company.id)],
+                               limit=1)
+            if fila and fila.rendimiento:
+                return fila.rendimiento, fila.rendimiento_fuente
+        planta = self.search([('period', '=', factores.period),
+                              ('company_id', '=', self.env.company.id),
+                              ('rendimiento_fuente', '=', 'planta')],
+                             limit=1)
+        if planta and planta.rendimiento:
+            return planta.rendimiento, 'planta'
+        return 1.0, 'no_aplica'
 
     @api.model
     def _precio_sugerido(self, variable, fab, op, piso_lleno, mercado,
@@ -3158,8 +3580,7 @@ class QbCostoProducto(models.Model):
         ¿qué gano?". `partner` (commercial) resalta al cliente cotizado.
         """
         if factores is None:
-            factores = self.env['qb.costo.factores'].search(
-                [], order='period DESC', limit=1)
+            factores = self.env['qb.costo.factores'].para_cotizar()[0]
         if not factores:
             return False
         emoji = {'rojo': '🔴', 'ambar': '🟡', 'verde': '🟢', False: ''}
@@ -3169,7 +3590,7 @@ class QbCostoProducto(models.Model):
             if not precio:
                 return 0.0, 0.0, False
             contrib = 100.0 * (precio - q['variable']) / precio
-            neto = (100.0 * (precio - q['variable'] - q['fab']) / precio
+            neto = (100.0 * (precio - q['produccion']) / precio
                     - 100.0 * q['op_pct'])
             return contrib, neto, self.semaforo_for(
                 precio, q['piso_ocioso'], q['piso_lleno'])
@@ -3444,26 +3865,61 @@ class QbCostoProducto(models.Model):
             '<b>%.4f kg/u</b> (fuente: %s).</p>'
             % (q['energia'], factores.energia_por_kg, kg,
                f'{factores.energia_pool_month:,.0f}',
-               f'{factores.kg_denom_month:,.0f}', kg, peso_fuente))
+               # Los kilos con los que se dividió de verdad (planta
+               # completa, centros absorbidos incluidos), no el
+               # denominador de fabricación: con tejido absorbido ése es 0.
+               f'{factores.energia_pool_month / factores.energia_por_kg:,.0f}'
+               if factores.energia_por_kg else '0', kg, peso_fuente))
 
         # ---- 3. Fabricación ----
         ws = factores.fab_weight_share
+        meses = factores.fab_ventana_meses or factores.window_months
+        if factores.fab_ventana_desde and meses == 1:
+            ventana = 'solo el mes %s: el corte de absorción reinició la ' \
+                      'ventana' % factores.fab_ventana_desde.strftime('%m/%Y')
+        elif factores.fab_ventana_desde:
+            ventana = 'promedio de %s meses desde %s' % (
+                meses, factores.fab_ventana_desde.strftime('%m/%Y'))
+        else:
+            ventana = 'promedio de %s meses' % meses
         html += (
             '<h5>3. Fabricación absorbida — $%.2f/u</h5>'
             '<p style="font-size:12px;">Pool fijo de fábrica (MOD + '
-            'overhead + depreciación + arrendamiento de maquinaria) = '
-            '<b>$%s/mes</b> (GL suavizado %s meses, período %s). Se '
-            'reparte híbrido: %.0f%% por PESO (tejido+tintorería: '
-            '$%.2f/kg) y %.0f%% por LARGO (acabado: $%.2f/m). Este '
-            'producto: %.4f kg × $%.2f + $%.2f = <b>$%.2f</b>. '
-            'Familia: %s (importados cargan solo inspección/reempaque '
-            'por metro; subproductos nada).</p>'
-            % (q['fab'], f'{factores.fab_pool_month:,.0f}',
-               factores.window_months, factores.period,
+            'overhead + depreciación + arrendamiento de maquinaria) de los '
+            'centros en capa = <b>$%s/mes</b> (GL, %s; período %s). Se '
+            'reparte híbrido: %.0f%% por PESO ($%.2f/kg) y %.0f%% por LARGO '
+            '($%.2f/m). Este producto: %.4f kg × $%.2f + $%.2f = '
+            '<b>$%.2f</b>. Familia: %s (importados cargan solo '
+            'inspección/reempaque por metro; subproductos nada).%s</p>'
+            % (q['fab'], f'{factores.fab_pool_month:,.0f}', ventana,
+               factores.period,
                ws * 100, factores.factor_fab_kg,
                (1 - ws) * 100, factores.factor_fab_m,
                kg, factores.factor_fab_kg, factores.factor_fab_m,
-               q['fab'], q['bucket']))
+               q['fab'], q['bucket'],
+               (' Centros absorbidos por Odoo (fuera de este pool): %s.'
+                % factores.centros_absorbidos)
+               if factores.centros_absorbidos else ''))
+
+        # ---- 3b. Conversión absorbida ----
+        if factores.centros_absorbidos:
+            fuente = dict(CONV_FUENTES).get(q.get('conv_fuente'),
+                                            'sin conversión absorbida')
+            html += (
+                '<h5>3b. Conversión absorbida — $%.2f/u%s</h5>'
+                '<p style="font-size:12px;">Lo que Odoo capitaliza en %s por '
+                'horas × tarifa (abono a costos fabriles aplicados), bajado '
+                'al artículo: tarifa del crudo × el crudo que consume la '
+                'receta. Fuente de la tarifa: <b>%s</b>. Promedio del '
+                'centro en el período: $%.2f/kg sobre %s kg. De esta capa, '
+                '$%.2f/u es energía (%.1f%%) y entra al piso con capacidad '
+                'ociosa; el resto es mano de obra y fijos del centro.</p>'
+                % (q['conv'],
+                   ' ⚠️ ESTIMADO' if q.get('conv_fuente') == 'centro' else '',
+                   factores.centros_absorbidos, fuente,
+                   factores.conv_tarifa_kg_centro,
+                   f'{factores.conv_kg_month:,.0f}',
+                   q['conv_var'], 100.0 * factores.conv_energia_share))
 
         # ---- 4. Operación ----
         html += (
@@ -3477,16 +3933,28 @@ class QbCostoProducto(models.Model):
 
         # ---- Resumen ----
         mercado = q.get('precio_mercado', 0.0)
+        rend = q.get('rendimiento') or 1.0
+        merma = ''
+        if rend < 1.0:
+            merma = (' Todo ÷ rendimiento de primera <b>%.1f%%</b> (%s): el '
+                     'metro que se vende paga también el que salió de '
+                     'segunda.' % (100.0 * rend, q.get('rend_fuente') or ''))
         html += (
             '<h5>= Costo completo</h5>'
-            '<p style="font-size:12px;"><b>Variable</b> (MP + energía) = '
-            '$%.2f → piso absoluto. <b>+ Fabricación</b> = $%.2f. '
-            '<b>+ Operación</b> → piso a planta llena <b>$%.2f MXN</b> '
-            '(margen cero cubriendo todo).%s</p>'
-            % (q['variable'], q['variable'] + q['fab'], q['piso_lleno'],
+            '<p style="font-size:12px;"><b>Variable</b> (MP + energía%s) '
+            '= $%.2f → piso con capacidad ociosa. <b>+ Fabricación%s</b> '
+            '= $%.2f. <b>+ Operación</b> → piso a planta llena '
+            '<b>$%.2f MXN</b> (margen cero cubriendo todo).%s%s</p>'
+            % (' + energía de la conversión' if q.get('conv') else '',
+               q['variable'],
+               ' + conversión absorbida' if q.get('conv') else '',
+               q['produccion'], q['piso_lleno'], merma,
                (' Referencia de mercado: hoy se vende en promedio a '
                 '<b>$%.2f MXN</b> (12m, todos los clientes).' % mercado)
                if mercado else ''))
+        aviso = self.env['qb.costo.factores'].aviso_borrador(factores)
+        if aviso:
+            html = '<p class="text-warning"><b>⚠️ %s</b></p>' % aviso + html
         return html
 
     @api.model
