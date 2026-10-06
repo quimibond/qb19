@@ -1,6 +1,6 @@
 # qb_costeo v2 — Costeo y cotización rediseñados desde cero
 
-**Fecha:** 2026-10-06 · **Estado:** propuesta para decisión del CEO · **Sustituye a:** `qb_capacidad_costeo` (19.0.1.69.4)
+**Fecha:** 2026-10-06 · **Estado:** aprobado en lo esencial por el CEO el 2026-10-06 (decisiones en §13) · **Sustituye a:** `qb_capacidad_costeo` (19.0.1.69.4)
 
 ## 1. Qué cambia y por qué
 
@@ -300,8 +300,10 @@ comercial. Agrega:
   cliente aparecen en un pedido confirmado pasa a *ganada* y se liga al pedido;
   vencida sin pedido, a *vencida*. Sin botones.
 - **Pendiente comercial**: una cotización presentada sin respuesta en N días
-  crea un candidato en `qb.obligation` (`obligation_type = comercial.quote`) si
-  el módulo está instalado.
+  entra al mapa de situación de la empresa como señal
+  `cotizacion_sin_respuesta` (`@senal` en
+  `quimibond_intelligence/models/senales/comercial.py`, una fila por
+  cotización con modelo + id). `qb_obligation` está obsoleto y no se usa.
 
 Se va: envío por correo (0 uso), wizard por pedido, comparador, Win/Loss como
 menú (queda como filtro).
@@ -345,7 +347,13 @@ mes; la vista SQL de 438 líneas no hace falta).
 - Tarifas publicadas a `mrp.workcenter.costs_hour` al cerrar período.
 - Tiempos estándar como `mrp.routing.workcenter` de la receta; el módulo los
   lee, no los duplica.
-- Órdenes de trabajo reales → fuente `medido`.
+- Órdenes de trabajo reales → fuente `medido`. Planta ya trabaja en las
+  órdenes de trabajo de tintorería y acabado, y **desde noviembre de 2026
+  acabado pesa rollos en centros de trabajo** (`pesaje_rollos_tejido`,
+  `mrp.weigh.roll.wizard`: un lote por rollo con su peso). Eso da dos datos
+  medidos a la vez: horas por orden y **kg reales por rollo**, que alimentan
+  `qb.producto.peso` con fuente `pesaje` (manda sobre nomenclatura y ficha)
+  y el rendimiento vendible con kilos de verdad, no estimados.
 - `mrp.eco` (PLM): un ECO aplicado sobre una receta marca el producto para
   recálculo y, si cambia la MP más de 10 %, avisa a las cotizaciones vigentes.
 - `tintoreria.capacidad.rendimiento` (módulo de Consolti, raíz del repo): si
@@ -408,10 +416,12 @@ mes; la vista SQL de 438 líneas no hace falta).
 - Nómina por centro desde `hr.version` y departamentos, como hoy.
 
 ### 8.6 Fichas técnicas
-Ninguna propia. El peso y el rendimiento m/kg se leen de
-`quimibond_ficha_tecnica_tela` (`ficha.tecnica.acabado.peso_acabado`,
-`rendimiento_tela_acabada`) cuando exista la ficha, de la nomenclatura cuando
-no, y lo capturado a mano manda. `qb.producto.ficha` y sus 1,839 registros se
+Ninguna propia. Se instala `quimibond_ficha_tecnica_tela` (Consolti; decisión
+del CEO 2026-10-06) y el peso y el rendimiento m/kg se leen de ahí
+(`ficha.tecnica.acabado.peso_acabado`, `rendimiento_tela_acabada`,
+`ficha.tecnica.tejido.velocidad` como velocidad de tejido). Orden de
+precedencia del peso: `pesaje` (rollos reales) > `manual` > `ficha` >
+`nomenclatura`. `qb.producto.ficha` y sus 1,839 registros se
 archivan en la migración; lo que valía (gramaje, ancho, rendimiento) se copia a
 `qb.producto.peso` con fuente `ficha_legada`.
 
@@ -470,8 +480,13 @@ cumplirla. Todo en rama de desarrollo → `main` (staging) → `quimibond`.
 - Ingeniería corrige las recetas que ya sabemos mal (WK284R46ING166,
   WK300R50HNG165 sin precio) y Contabilidad el AVCO de WC090.
 - Se capturan como operaciones de receta en Odoo (tintorería y acabado) los
-  tiempos estándar de los 40 productos que más venden.
-- **Compuerta:** tabla de ciclos firmada por planta; recetas corregidas.
+  tiempos estándar de los 40 productos que más venden. Como planta ya está
+  implementando las órdenes de trabajo en esos dos centros, las operaciones
+  de la receta son las mismas que usarán las órdenes: no es trabajo doble.
+- Se instala `quimibond_ficha_tecnica_tela` en staging y se cargan las
+  fichas de esos 40 productos.
+- **Compuerta:** tabla de ciclos firmada por planta; recetas corregidas;
+  fichas de los 40 principales cargadas.
 
 ### Fase 1 — `qb_costeo` 1.0 en paralelo
 - Centros, cuentas, tarifas, horas por producto con sus cinco fuentes, MP con
@@ -512,9 +527,14 @@ cumplirla. Todo en rama de desarrollo → `main` (staging) → `quimibond`.
 - **Compuerta:** un cierre completo (período, indicadores, revisión por la
   dirección) sin tocar el módulo viejo.
 
-### Fase 5 — Órdenes de trabajo reales en tintorería y acabado
-- Es proyecto de planta, no de software: cuando capturen tiempos, la fuente
-  pasa sola de `estandar` a `medido` y el indicador CO-04 lo muestra.
+### Fase 5 — Órdenes de trabajo y pesaje en tintorería y acabado
+- Corre en paralelo con las fases 1 a 4, es proyecto de planta: acabado
+  arranca con pesaje de rollos en centros de trabajo en noviembre de 2026 y
+  tintorería está en implementación. Cuando lleguen tiempos y pesos, la
+  fuente pasa sola de `estandar` a `medido` y el indicador CO-04 lo muestra.
+- Condición de diseño para que esto funcione sin tocar código: las órdenes
+  de trabajo deben capturarse en los mismos workcenters que las operaciones
+  de la receta (§5.2), y el pesaje debe dejar el peso en el lote del rollo.
 
 ## 12. Pruebas y CI
 
@@ -530,25 +550,28 @@ cumplirla. Todo en rama de desarrollo → `main` (staging) → `quimibond`.
   del motor que los mueva más de 1 % tiene que actualizar el fixture a
   propósito.
 
-## 13. Decisiones del CEO antes de la Fase 1
+## 13. Decisiones del CEO (2026-10-06)
 
-1. **Tintorería y acabado con órdenes de trabajo en Odoo**: ¿se compromete
-   planta a capturarlas (Fase 5) o el estándar de la receta se queda como
-   régimen permanente? Cambia cuánto esfuerzo va a la tabla de ciclos.
-2. **Reportes que se quedan**: propongo quitar los diez de la tabla del §1.
-   ¿Alguno lo abre alguien cada semana?
-3. **Fichas técnicas**: instalar `quimibond_ficha_tecnica_tela` (hoy no está) y
-   dejar de generar fichas desde costeo, o seguir con la nomenclatura y la
-   captura manual.
-4. **Analítica por centro en contabilidad**: ¿Contabilidad acepta capturar el
-   centro como distribución analítica en 501/504? Quita la clasificación manual
-   de cuentas a mediano plazo.
-5. **Autorización de precio bajo piso**: ¿quién la tiene? Propongo Dirección y
-   Gerencia Comercial.
-6. **Meta de conciliación**: ±2 % mensual sobre lo no explicado y ±1 %
-   acumulado. ¿De acuerdo?
-7. **Nombre**: `qb_costeo` / `qb_cotizador`, o un nombre propio tipo
-   «Costos Quimibond».
+| # | Pregunta | Decisión | Efecto en el diseño |
+|---|---|---|---|
+| 1 | ¿Órdenes de trabajo en tintorería y acabado? | **Sí, ya se están implementando.** Acabado pesa rollos en centros de trabajo desde noviembre de 2026 | El estándar de la receta es interino y corto; la Fase 5 corre en paralelo; el pesaje alimenta pesos reales (§8.1) |
+| 2 | ¿Alguien abre los diez reportes? | **Nadie** | Se van los diez; no se migran sus tablas |
+| 3 | ¿Instalar `quimibond_ficha_tecnica_tela`? | **Sí** | §8.6; las fichas propias se archivan |
+| 4 | ¿Centro como distribución analítica en contabilidad? | Pendiente de explicar (ver abajo) | La Fase 1 arranca con la clasificación de cuentas por centro, como hoy; la analítica es mejora de la Fase 4 si Contabilidad la adopta |
+| 5 | ¿Quién autoriza precio bajo piso? | **Solo el CEO** | Grupo `qb_cotizador.group_autoriza_bajo_piso` con un solo miembro; la autorización queda en el chatter del pedido |
+| 6 | Meta de conciliación | **La recomendada** | ±2 % mensual sobre lo no explicado, ±1 % acumulado del año |
+| 7 | Nombre | Indistinto | `qb_costeo`, `qb_cotizador`, `qb_costeo_sgi`, `qb_costeo_presupuesto` |
+| — | `qb_obligation` | **Obsoleto** | Sin integración; el pendiente comercial va al mapa de situación (§6) |
+
+**Sobre la pregunta 4, en llano.** Hoy el módulo adivina a qué centro
+pertenece cada gasto con una tabla que se mantiene a mano: "la cuenta
+504.03 es 60 % tintorería y 40 % acabado". Odoo tiene *cuentas analíticas*:
+una etiqueta que Contabilidad pone en cada factura de gasto al capturarla
+("esta factura de luz es de tintorería"). Si Contabilidad etiqueta así los
+gastos de fábrica, la tabla desaparece y el centro lo dice el mayor. Es más
+trabajo de captura para Contabilidad y menos para quien mantiene el costeo.
+No bloquea nada: el diseño funciona con la tabla y mejora con la etiqueta.
+Decisión pendiente con Contabilidad, no con el CEO.
 
 ## 14. Riesgos
 
