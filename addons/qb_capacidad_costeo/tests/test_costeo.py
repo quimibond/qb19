@@ -273,6 +273,55 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 100.0,
                                places=4)
 
+    def test_receta_vigente_es_la_de_mas_cantidad_en_90_dias(self):
+        """No la de la última OP: WJ060Q21JNT165 tiene dos recetas activas y
+        su última OP de sep-2026 quedó con la vieja, aunque en 90 días la
+        nueva hizo casi el doble. Y no la de más cantidad en el año: las
+        resinas FORM32 cambiaron de receta en junio y la vieja sigue ganando
+        en doce meses."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        Product = self.env['product.product']
+        vieja = Product.create({'name': 'HILO RECETA VIEJA', 'is_storable':
+                                True, 'uom_id': uom_kg.id,
+                                'standard_price': 30.0})
+        nueva = Product.create({'name': 'HILO RECETA NUEVA', 'is_storable':
+                                True, 'uom_id': uom_kg.id,
+                                'standard_price': 20.0})
+        semi = Product.create({'name': 'TELA DOS RECETAS TEST',
+                               'is_storable': True, 'uom_id': uom_kg.id})
+        boms = {}
+        for key, comp in (('vieja', vieja), ('nueva', nueva)):
+            boms[key] = self.env['mrp.bom'].create({
+                'product_tmpl_id': semi.product_tmpl_id.id,
+                'product_id': semi.id, 'product_qty': 1.0,
+                'product_uom_id': uom_kg.id,
+                'bom_line_ids': [(0, 0, {
+                    'product_id': comp.id, 'product_qty': 1.0,
+                    'product_uom_id': uom_kg.id})]})
+        hoy = datetime(2028, 6, 30, 12)
+
+        def op(bom, qty, fin):
+            mo = self.env['mrp.production'].create({
+                'product_id': semi.id, 'product_qty': qty,
+                'product_uom_id': uom_kg.id, 'bom_id': boms[bom].id})
+            self.env.flush_all()
+            self.env.cr.execute(
+                "UPDATE mrp_production SET state = 'done', "
+                "date_finished = %s, qty_producing = %s WHERE id = %s",
+                (fin, qty, mo.id))
+            self.env.invalidate_all()
+
+        # Antes de la ventana la vieja hizo mucho más (caso resinas)
+        op('vieja', 5000.0, datetime(2028, 1, 10))
+        # En 90 días la nueva hizo más, pero la última OP fue con la vieja
+        op('nueva', 600.0, datetime(2028, 6, 20))
+        op('vieja', 300.0, datetime(2028, 6, 25))
+        mapa = self.Costo._last_mo_bom_map([semi.id], hoy)
+        self.assertEqual(mapa[semi.id], boms['nueva'].id)
+        # Sin órdenes en la ventana manda la última, no la de más cantidad
+        mapa = self.Costo._last_mo_bom_map([semi.id], datetime(2028, 5, 15))
+        self.assertEqual(mapa[semi.id], boms['vieja'].id)
+
     def test_avco_negativo_no_da_mp_negativa(self):
         """Un AVCO negativo (herida de valuación de inventario, caso
         PESFCHMO1.5X2.0 en -0.30/kg) no es un costo: la hoja se acota a 0
