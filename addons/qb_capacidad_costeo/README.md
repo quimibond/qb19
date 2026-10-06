@@ -364,14 +364,26 @@ los $585,531 de tejido que sí llegaron a ventas. La capa `conv_unit` lo
 regresa, aparte de la MP (que sigue auditable contra compras):
 
 ```
-tarifa del crudo = Σ horas × tarifa de sus órdenes del período ÷ lo producido
-     sin órdenes en el período → $/h de su familia ÷ su velocidad
-     sin familia               → promedio del centro (marcado «estimado»)
+tarifa del crudo = horas REALES de sus órdenes de 12 meses × tarifa $/h de
+                   hoy ÷ lo producido (sin órdenes fuera de la banda de
+                   rendimiento: cronómetros desbocados)
+     sin historia → la de sus hermanos: mismo código salvo color o ancho
+                    (primeros 9 caracteres, WJ047Q21H…)
+     sin hermanos → promedio del centro, misma base (marcado «estimado»)
 conv_unit        = la receta baja la tarifa del crudo al teñido y al acabado
 conv_var_unit    = conv_unit × energía del centro absorbido ÷ abono bruto
 costo_variable   = MP + energía + conv_var_unit
 costo_produccion = MP + energía + fabricación + conv_unit
 ```
+
+Doce meses y no el mes: antes del corte las circulares no tenían tarifa,
+pero la duración de cada orden de trabajo sí se registraba, y con un solo
+mes un crudo sin órdenes caía al promedio (WJ047Q21HNT112: $11.54/kg del
+centro contra $7.12/kg de sus 419 órdenes) o una orden lenta mandaba
+(NN053Q66HNT098: 3.6 kg/h en septiembre, 4.0 en el año). El total del
+período no cambia: sigue siendo lo que la traza encontró en las entregas.
+La familia de máquinas solo se usa para una especificación nueva, que no
+tiene código ni órdenes.
 
 Un producto es «crudo» si sale de órdenes en las máquinas absorbidas, si su
 receta tiene una operación en ellas, si una familia del centro lo declara o
