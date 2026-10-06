@@ -347,3 +347,28 @@ class TestConversionAbsorbida(TransactionCase):
         self.assertAlmostEqual(
             cot.piso_lleno, cot.costo_absorbido_sin_op / (1 - 0.15), places=4)
         self.assertIn('Conversión absorbida', cot.supuestos)
+
+    def test_receta_de_la_ultima_op_sin_crudo_usa_la_otra_receta(self):
+        """WJ060Q21JNT165 tiene dos recetas activas: la de su última OP baja
+        a un crudo de 2022 (órdenes OP-DES, sin máquina ni patrón) y la otra
+        al crudo tejido hoy. Un producto que se teje no puede salir con
+        conversión cero: si la receta de la última OP no llega a ningún
+        crudo, se toma la más cara de sus recetas."""
+        legado = self.env['product.product'].create({
+            'name': 'CRUDO 2022 TEST', 'default_code': 'CRCONV05',
+            'is_storable': True, 'uom_id': self.uom_kg.id})
+        self._bom(legado, self.uom_kg, [(self.hilo, 1.0, self.uom_kg)])
+        tela = self.env['product.product'].create({
+            'name': 'JERSEY DOS RECETAS TEST', 'default_code': 'WJ060CONV165',
+            'is_storable': True, 'uom_id': self.uom_m.id, 'sale_ok': True})
+        self._bom(tela, self.uom_m, [(self.crudo, 0.1166, self.uom_kg)])
+        bom_vieja = self._bom(tela, self.uom_m,
+                              [(legado, 0.1166, self.uom_kg)])
+        mo = self._mo(tela, 10.0, self.uom_m, datetime(2028, 3, 24, 12))
+        mo.bom_id = bom_vieja
+        self._mo(self.crudo, 100.0, self.uom_kg,
+                 datetime(2028, 3, 5, 12), minutos=200.0)
+        f = self._factores()
+        conv, _v, fuente = self.Costo._conv_unit(tela, f)
+        self.assertAlmostEqual(conv, 0.1166 * 2.0, places=6)
+        self.assertEqual(fuente, 'op')

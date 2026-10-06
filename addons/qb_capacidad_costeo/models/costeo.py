@@ -3047,8 +3047,14 @@ class QbCostoProducto(models.Model):
                 bom = self._bom_de_ultima_op(product, boms, ctx)
                 if bom:
                     res = self._conv_bom(bom, product, cc, ctx, seen)
-                else:
-                    # Mismo criterio conservador que la MP: la más cara
+                if not res[0]:
+                    # Sin última OP, o su receta no llega a ningún crudo
+                    # reconocible (caso WJ060Q21JNT165: la receta de su
+                    # última OP baja a un crudo de 2022 cuyas órdenes se
+                    # llaman OP-DES, mientras la otra receta activa sí llega
+                    # al crudo tejido hoy). Un producto que se teje no tiene
+                    # conversión cero: la más cara de sus recetas, mismo
+                    # criterio conservador que la MP.
                     opciones = [self._conv_bom(b, product, cc, ctx, seen)
                                 for b in boms]
                     res = max(opciones, key=lambda r: r[0]) \
