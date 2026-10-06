@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps que extienden (53). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (140) y modelos de otras apps que extienden (53). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -25,6 +25,7 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 | [`sgi.acuse.attach.wizard`](diccionario/sgi.acuse.attach.wizard.md) | Adjuntar acuse firmado a la entrega | Asistente para adjuntar a una entrega (``stock.picking``) el acuse firmado por el cliente. | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_links.py` |
 | [`sgi.ai.client`](diccionario/sgi.ai.client.md) | Cliente de IA del SGI (sugerencias) | — | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_ai.py` |
 | [`sgi.alert.source`](diccionario/sgi.alert.source.md) | Fuente de NC automática | Fuente de NC automática (pesaje, calibración, indicador en rojo…). MAST la enciende o apaga sin tocar código; ``quality.alert.sgi_auto_create`` la consulta y cuenta lo suprimido. | Model | 10 | `addons/quimibond_sgi/models/sgi_alert_source.py` |
+| [`sgi.approval.subject`](diccionario/sgi.approval.subject.md) | Asunto de una categoría de Aprobaciones | — | Model | 6 | `addons/quimibond_sgi/models/sgi_approval_subject.py` |
 | [`sgi.approval.wizard`](diccionario/sgi.approval.wizard.md) | Configurar una aprobación del procedimiento | Configurar la aprobación de un rol «Aprueba» con tres preguntas. | TransientModel | 18 | `addons/quimibond_sgi/models/sgi_approval_wizard.py` |
 | [`sgi.approval.wizard.button`](diccionario/sgi.approval.wizard.button.md) | Acción que se aprueba | Una acción del formulario del documento (para elegirla por su etiqueta). | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_approval_wizard.py` |
 | [`sgi.area`](diccionario/sgi.area.md) | Área documental SGI | Área documental del SGI (G, A, C, D…), ligada a un departamento. Catálogo que trae el módulo. | Model | 4 | `addons/quimibond_sgi/models/sgi_area.py` |
@@ -154,8 +155,8 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 |---|---:|---|
 | [`account.move`](diccionario/account.move.md) | 7 | `addons/quimibond_sgi/models/sgi_kpi_account.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`account.move.line`](diccionario/account.move.line.md) | 1 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
-| [`approval.category`](diccionario/approval.category.md) | 5 | `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
-| [`approval.request`](diccionario/approval.request.md) | 35 | `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py` |
+| [`approval.category`](diccionario/approval.category.md) | 6 | `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
+| [`approval.request`](diccionario/approval.request.md) | 37 | `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py` |
 | [`crm.team`](diccionario/crm.team.md) | 1 | `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py` |
 | [`crm.team.member`](diccionario/crm.team.member.md) | 0 | `addons/quimibond_sgi/models/sgi_business_line.py` |
 | [`documents.document`](diccionario/documents.document.md) | 61 | `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimibond_sgi/models/sgi_document.py`, `addons/quimibond_sgi/models/sgi_document_owner.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_formatos_bloque3.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_sign_elearning.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py` |
@@ -206,4 +207,4 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 7 de 139.
+Modelos propios sin docstring de clase: 8 de 140.
