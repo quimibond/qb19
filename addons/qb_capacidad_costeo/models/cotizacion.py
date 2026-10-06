@@ -7,6 +7,7 @@ denominadores) para trazabilidad y comparación antes/después.
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from .costeo import CONV_FUENTES
 from .glosario import GLOSARIO_HTML
 
 # Un centro sin throughput ni turnos configurados no se puede validar. Eso no
@@ -68,17 +69,41 @@ class QbCotizacion(models.Model):
         help='Parte del gasto FIJO de fábrica (sueldos de planta, renta, '
              'depreciación, arrendamiento de maquinaria) que absorbe cada '
              'unidad, repartida por peso y por metros.')
+    conv_unit = fields.Float(
+        string='Conversión absorbida $/u MXN', digits=(16, 4),
+        help='Lo que Odoo capitaliza por hora-máquina en tejido (horas × '
+             'tarifa), bajado al artículo: tarifa del crudo × el crudo que '
+             'consume la receta. Entra al costo de producción y al piso a '
+             'planta llena; al piso con capacidad ociosa solo su parte de '
+             'energía.')
+    conv_var_unit = fields.Float(
+        string='de eso, energía $/u MXN', digits=(16, 4),
+        help='La parte de la conversión absorbida que es energía de tejido. '
+             'Es variable: está dentro del costo variable y del piso con '
+             'capacidad ociosa.')
+    conv_fuente = fields.Selection(
+        CONV_FUENTES, string='Fuente de la conversión',
+        help='«Promedio del centro (estimado)» = el crudo no tuvo órdenes en '
+             'el período ni hay familia de máquinas con velocidad.')
+    rendimiento = fields.Float(
+        string='Rendimiento de primera', digits=(6, 4),
+        help='Fracción de lo producido que salió de primera. El costo '
+             'variable, el de producción y los pisos guardados son por '
+             'unidad VENDIBLE (÷ rendimiento). Vacío en cotizaciones '
+             'anteriores a la v1.69: ahí son por unidad producida.')
     op_pct = fields.Float(
         string='Operación % s/venta',
         help='Gastos de administración y ventas (6xx) como % de las ventas. '
              'Se cobra como % del precio.')
     costo_variable = fields.Float(
         string='Costo variable $/u MXN', digits=(16, 4),
-        help='MP + energía: lo que sale de la bolsa por producir UNA unidad '
-             'más. Piso absoluto de cualquier precio.')
+        help='MP + energía (+ la energía de la conversión absorbida), por '
+             'unidad vendible: lo que sale de la bolsa por producir UNA '
+             'unidad más. Piso absoluto de cualquier precio.')
     costo_absorbido_sin_op = fields.Float(
         string='Costo de producción $/u MXN', digits=(16, 4),
-        help='Costo variable + fabricación absorbida (aún sin operación).')
+        help='MP + energía + fabricación + conversión absorbida, por unidad '
+             'vendible (÷ rendimiento), aún sin operación.')
 
     # Precios (guardados SIEMPRE en MXN; el espejo en divisa usa el TC)
     precio_objetivo = fields.Float(
@@ -99,8 +124,8 @@ class QbCotizacion(models.Model):
              'Nunca vender debajo.')
     piso_lleno = fields.Float(
         string='Piso a planta llena $/u MXN',
-        help='= (variable + fab) ÷ (1 − op%): margen cero absorbiendo todo. '
-             'Con la planta llena no aceptar debajo de esto.')
+        help='= costo de producción ÷ (1 − op%): margen cero absorbiendo '
+             'todo. Con la planta llena no aceptar debajo de esto.')
     # Los márgenes y el semáforo se COMPUTAN del precio y del snapshot de
     # costos, no se guardan sueltos. Antes eran floats que el cotizador
     # escribía una vez: al editar después el precio objetivo sobre la
@@ -500,7 +525,7 @@ class QbCotizacion(models.Model):
             'context': ctx,
         }
 
-    def recotizar_ahora(self):
+    def recotizar_ahora(self, factores=None):
         """Recotiza sin pasar por la interfaz: corre el cotizador completo con
         los factores de hoy y devuelve las cotizaciones nuevas.
 
@@ -523,6 +548,9 @@ class QbCotizacion(models.Model):
         NO la MP estimada, la familia ni la ruta que se capturaron en la
         calculadora. Recalcularla desde aquí las tomaría en cero y saldría un
         costo bajísimo con toda la pinta de estar bien, así que mejor falla.
+
+        `factores` (un `qb.costo.factores`) fija el período; sin él se
+        cotiza con el último período cerrado, como en la calculadora.
         """
         Wizard = self.env['qb.cotizador.wizard']
         Costo = self.env['qb.costo.producto']
@@ -553,6 +581,7 @@ class QbCotizacion(models.Model):
                 'spec_galga': rec.spec_galga,
                 # La revisión sigue colgando del pedido que la originó.
                 'sale_order_id': rec.sale_order_id.id,
+                'periodo_id': factores.id if factores else False,
             }
             nuevas |= Wizard.create(vals)._save_cotizacion()
         return nuevas

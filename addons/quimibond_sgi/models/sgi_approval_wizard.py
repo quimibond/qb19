@@ -26,6 +26,7 @@ from odoo import api, fields, models
 from odoo.exceptions import AccessError, UserError
 
 from .sgi_approval_native import APPROVAL_METHOD_BY_MODEL, CONDITION_FIELD_TYPES, CONDITION_OPERATORS
+from .sgi_menu_paths import sgi_menu_path
 
 WHAT_CHOICES = [
     ('documento', "Que se confirme, valide o publique un documento de Odoo"),
@@ -140,8 +141,8 @@ class SgiActivityRoleApprovalWizard(models.Model):
             Cron._sgi_schedule(
                 process, "Aprobaciones sin activar en Odoo: %d" % len(pending),
                 "El procedimiento dice que se aprueban y Odoo no lo pide: %s. Configúrelas en "
-                "Administración SGI → Aprobaciones del SGI (botón «Configurar»)." % ", ".join(
-                    r.activity_id.number or r.activity_id.name or '' for r in pending),
+                "%s." % (", ".join(r.activity_id.number or r.activity_id.name or '' for r in pending),
+                         sgi_menu_path('aprobaciones', "botón «Configurar»")),
                 manager_id, key='aprobaciones_sin_activar:%d' % process.id)
         stale = self.env['mail.activity'].sudo().search([
             ('sgi_cron_kind', '=', 'aprobaciones_sin_activar'), ('sgi_episode_closed', '=', False),
@@ -167,8 +168,8 @@ class SgiActivityApprovalGap(models.Model):
             if role.approval_state in APPROVAL_NOT_ACTIVE:
                 who = role.job_id.name or role.family_id.name or "quien aprueba"
                 out.append("La aprobación de %s no está activa en Odoo (%s): configúrela en "
-                           "Administración SGI → Aprobaciones del SGI." % (
-                               who, labels.get(role.approval_state, role.approval_state).lower()))
+                           "%s." % (who, labels.get(role.approval_state, role.approval_state).lower(),
+                                    sgi_menu_path('aprobaciones')))
         return out
 
 

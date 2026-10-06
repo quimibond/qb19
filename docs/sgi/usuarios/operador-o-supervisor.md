@@ -19,12 +19,14 @@ En el menú **SGI → Inicio** tiene todo lo suyo:
 
 Para avisar de algo, **SGI → Reportar** abre la ficha nueva: **No
 conformidad**, **Casi accidente o incidente** o **Queja o sugerencia** (vea
-2.5). Además puede consultar **SGI → Mejora** (no conformidades,
-reclamaciones, mejoras, quejas y sugerencias) y **SGI → Seguridad y
-ambiente** (incidentes, planes de emergencia). En **SGI → Procesos** ve el
-mapa de procesos y las actividades; los demás catálogos (entregables, flujos,
-matriz, puestos y fichas por máquina) son para los dueños de proceso, el
-Jefe MAST, Dirección y Auditoría.
+2.5). Además puede consultar **SGI → Planeación** (política, objetivos,
+riesgos, aspectos ambientales, requisitos legales), **SGI → Mejora** (no
+conformidades, reclamaciones, mejoras, quejas y sugerencias), **SGI →
+Seguridad y ambiente** (incidentes, planes de emergencia), **SGI →
+Desempeño** (auditorías) y **SGI → Sistema** (mapa de procesos y
+actividades, el MIID y el buscador por clave anterior); los demás catálogos
+(entregables, flujos, matriz, puestos y fichas por máquina) son para los
+dueños de proceso, el Jefe MAST, Dirección y Auditoría.
 
 En todas las listas del SGI, el filtro **Míos** muestra lo suyo, y los
 colores dicen lo mismo en todas partes: gris = borrador o cancelado, azul =
@@ -157,7 +159,7 @@ calendario del SGI no hay hoja).
 ## 5. Dónde quedó lo que usaba en el Dropbox
 
 Busque la clave anterior (por ejemplo, la de un formato en Excel) en **SGI →
-Procesos → Del Dropbox a Odoo → Buscador por clave anterior**. Le dice qué es
+Sistema → Del Dropbox a Odoo → Buscador por clave anterior**. Le dice qué es
 hoy y **Abrir en Odoo** lo lleva a la pantalla que lo sustituye. Más detalle
 en [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
 

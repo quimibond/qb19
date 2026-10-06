@@ -366,7 +366,8 @@ class TestMiidPantalla(_Case):
         self.assertIn('Procesos ZM', screen.live_html)
         self.assertEqual(screen.state, 'sin_base')
         menu = self.env.ref('quimibond_sgi.menu_sgi_miid')
-        self.assertEqual(menu.parent_id, self.env.ref('quimibond_sgi.menu_sgi_direction'))
+        # 57.113.0: en Sistema (antes Dirección), el manual del sistema.
+        self.assertEqual(menu.parent_id, self.env.ref('quimibond_sgi.menu_sgi_processes'))
         self.assertFalse(menu.group_ids, "Todo Usuario SGI y Auditor (hereda la carpeta).")
 
 

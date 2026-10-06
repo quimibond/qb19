@@ -8,7 +8,7 @@ de control).
 
 - **No se instala en producción.** Solo en staging o en una recuperación.
   Instalarlo no crea registros.
-- **Carga:** SGI → Administración SGI → Configuración → «Cargar mapa de
+- **Carga:** SGI → Administración → Transición → «Cargar mapa de
   procesos» (menú `menu_sgi_mapa_load`), solo para Administrador SGI.
   Siempre **Probar** primero (modo de prueba, no escribe), leer el reporte y
   luego **Cargar**. Usa `sgi.process.load_payload`; todo va por llave

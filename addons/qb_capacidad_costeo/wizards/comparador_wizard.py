@@ -74,20 +74,26 @@ class QbComparadorWizard(models.TransientModel):
             # op_pct SIEMPRE de los factores, nunca del cociente
             # op_unit/precio: con el driver de producción la operación ya no
             # es un porcentaje del precio y ese cociente daría un piso falso.
-            factores = rec.factores_id or self.env['qb.costo.factores'].search(
-                [], order='period DESC', limit=1)
+            factores = rec.factores_id or \
+                self.env['qb.costo.factores'].para_cotizar()[0]
             op_pct = factores.op_pct if factores else 0.0
-            piso_lleno = ((rec.costo_variable + rec.fab_unit) / (1.0 - op_pct)
+            # Pisos por unidad VENDIBLE, como el cotizador: la producción
+            # (que ya trae la conversión absorbida) ÷ rendimiento.
+            rend = rec.rendimiento or 1.0
+            variable_v = rec.costo_variable / rend
+            produccion_v = rec.costo_produccion / rend
+            piso_lleno = (produccion_v / (1.0 - op_pct)
                           if op_pct < 1 else 0.0)
             sug, sug_neto = self._sugerido(
-                rec.costo_variable, rec.fab_unit, op_pct, piso_lleno)
+                variable_v, produccion_v - variable_v, op_pct, piso_lleno)
             return {
                 'ref': rec.default_code or product.name,
                 'uom': rec.uom_name or '',
                 'divisa': rec.divisa_venta or '',
                 'precio': rec.precio_prom,
                 'mp': rec.mp_unit, 'energia': rec.energia_unit,
-                'variable': rec.costo_variable, 'fab': rec.fab_unit,
+                'variable': rec.costo_variable,
+                'fab': rec.costo_produccion - rec.costo_variable,
                 'op': rec.op_unit, 'absorbido': rec.costo_absorbido,
                 'piso_lleno': piso_lleno, 'sugerido': sug, 'sug_neto': sug_neto,
                 'contrib': rec.margen_contribucion,
@@ -98,29 +104,29 @@ class QbComparadorWizard(models.TransientModel):
                 'alerta': rec.alerta,
             }
         # Sin fila del período: costo en vivo con el mismo motor
-        factores = self.env['qb.costo.factores'].search(
-            [], order='period DESC', limit=1)
+        factores = self.env['qb.costo.factores'].para_cotizar()[0]
         if not factores:
             return None
         q = Costo.quote_product(product, factores)
         precio = q.get('precio_mercado', 0.0)
         variable = q['variable']
-        absorbido = variable + q['fab'] + q['op_pct'] * precio
+        fab = q['produccion'] - variable
+        absorbido = q['produccion'] + q['op_pct'] * precio
         contrib = precio - variable if precio else 0.0
         sug, sug_neto = self._sugerido(
-            variable, q['fab'], q['op_pct'], q['piso_lleno'])
+            variable, fab, q['op_pct'], q['piso_lleno'])
         return {
             'ref': product.default_code or product.name,
             'uom': q.get('uom_name', product.uom_id.name or ''),
             'divisa': '',
             'precio': precio,
             'mp': q['mp'], 'energia': q['energia'],
-            'variable': variable, 'fab': q['fab'],
+            'variable': variable, 'fab': fab,
             'op': q['op_pct'] * precio, 'absorbido': absorbido,
             'piso_lleno': q['piso_lleno'], 'sugerido': sug, 'sug_neto': sug_neto,
             'contrib': contrib,
             'contrib_pct': 100.0 * contrib / precio if precio else 0.0,
-            'bruto_pct': (100.0 * (precio - variable - q['fab']) / precio
+            'bruto_pct': (100.0 * (precio - q['produccion']) / precio
                           if precio else 0.0),
             'abs_pct': 100.0 * (precio - absorbido) / precio if precio else 0.0,
             'vendido': False,

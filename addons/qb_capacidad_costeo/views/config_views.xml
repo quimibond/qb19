@@ -439,6 +439,12 @@
                             <field name="absorcion_vendida_month"/>
                             <field name="absorcion_en_inventario"/>
                             <field name="absorcion_sin_lote_month"/>
+                            <field name="conv_kg_month"/>
+                            <field name="conv_tarifa_kg_centro"/>
+                            <field name="conv_energia_month"/>
+                            <field name="conv_energia_share"/>
+                            <field name="conv_unitaria_vendida_month"/>
+                            <field name="conv_transicion_month"/>
                             <field name="costo_primo_gl_month"/>
                             <field name="mp_vendida_month"/>
                             <field name="capa_propuesta_month"/>

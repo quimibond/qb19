@@ -121,6 +121,9 @@
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="modelo_fab" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
+                            <field name="modelo_conv" widget="monetary"
+                                   options="{'currency_field': 'company_currency_id'}"
+                                   invisible="not modelo_conv"/>
                             <field name="modelo_op" widget="monetary"
                                    options="{'currency_field': 'company_currency_id'}"/>
                             <field name="modelo_costo_total" widget="monetary"

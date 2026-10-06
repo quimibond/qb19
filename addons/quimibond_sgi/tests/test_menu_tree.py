@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """J-023 (entrega 4): el árbol de menús del SGI en la base es el de
 tools/sgi_menu_tree.txt (entradas, orden, nombres y grupos), y las rutas que
-se le dicen al usuario (I-009) existen."""
+se le dicen al usuario (I-009) existen. 57.113.0: carpetas por capítulo
+(tests/test_menus_capitulos.py prueba los movimientos y lo archivado)."""
 from odoo.tests import TransactionCase, tagged
 from odoo.tools.misc import file_open
 
@@ -115,8 +116,10 @@ class TestMenuTree(TransactionCase):
                          "Menús del módulo declarados fuera de views/sgi_menus.xml.")
 
     def test_05_direction_open_to_every_sgi_user(self):
-        """Decisión 10 de la tanda 2: la carpeta Dirección la ven todos (sin
-        grupos propios); Tablero y Revisión solo Auditor, MAST y Dirección."""
+        """Decisión 10 de la tanda 2: Planeación (antes Dirección, mismo
+        xmlid) la ven todos (sin grupos propios); Tablero, Revisión y
+        Satisfacción (en Desempeño desde 57.113.0) y Partes interesadas, solo
+        Auditor, MAST y Dirección."""
         self.assertFalse(self.env.ref('quimibond_sgi.menu_sgi_direction').group_ids)
         restricted = (self.env.ref('quimibond_sgi.group_sgi_auditor')
                       | self.env.ref('quimibond_sgi.group_sgi_manager')

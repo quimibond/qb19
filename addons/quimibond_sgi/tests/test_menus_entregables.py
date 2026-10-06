@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""57.64.0 — menús de Entregables y Flujos entre procesos en SGI → Procesos,
+"""57.64.0 — menús de Entregables y Flujos entre procesos en SGI → Sistema,
 con sus vistas propias (sin herencias). 57.67.0: con xmlids nuevos; los que
 45.0.0 retiró (``SGI_REMOVED_XMLIDS``) no vuelven."""
 import importlib.util

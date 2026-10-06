@@ -316,7 +316,7 @@ class SgiActivityMeasureFriendly(models.Model):
                 activity.measure_user_field = name
 
     @api.depends('measure_model_id', 'measure_domain', 'measure_date_field', 'measure_user_field',
-                 'measure_method')
+                 'measure_method', 'measure_user_history')
     def _compute_measure_preview_html(self):
         for activity in self:
             activity.measure_preview_html = False
@@ -340,7 +340,15 @@ class SgiActivityMeasureFriendly(models.Model):
             parts = [Markup("<b>%d</b> registros en los últimos 30 días.") % count]
             user_field = activity.measure_user_field
             field = Model._fields.get(user_field or '')
-            if count and field and field.type == 'many2one' and field.comodel_name == 'res.users' and field.store:
+            # 57.111.0: «quien lo pasó a su estado» se lee del historial.
+            if count and hasattr(activity, '_sgi_uses_history') and activity._sgi_uses_history(Model):
+                per_user = {}
+                for user, _day, n in activity._sgi_history_groups(Model, domain, date_field, since):
+                    per_user[user] = per_user.get(user, 0) + n
+                top = sorted(per_user.items(), key=lambda kv: -kv[1])[:3]
+                who = ", ".join("%s (%d)" % (user.name or "sin usuario", n) for user, n in top)
+                parts.append(Markup(" Según el historial, los pasaron a su estado: %s.") % who)
+            elif count and field and field.type == 'many2one' and field.comodel_name == 'res.users' and field.store:
                 groups = Model._read_group(window, [user_field], ['__count'], order='__count desc', limit=3)
                 who = ", ".join("%s (%d)" % (user.name or "sin usuario", n) for user, n in groups)
                 parts.append(Markup(" Se le atribuyen a: %s.") % who)

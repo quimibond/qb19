@@ -4,8 +4,8 @@
 Regla: menús, acciones y vistas sin uso se borran; registros con datos se
 archivan o se religan. Aquí vive lo que la migración y las pruebas comparten:
 
-- El árbol de menús del SGI tiene SIETE entradas (más las dos que cuelgan de
-  la app Calidad). `_sgi_menu_tree_offenders()` devuelve lo que sobra; la
+- El árbol de menús del SGI tiene OCHO entradas desde 57.113.0 (más las dos
+  que cuelgan de la app Calidad). `_sgi_menu_tree_offenders()` devuelve lo que sobra; la
   prueba falla si reaparece un menú fuera de ellas.
 - Los documentos, riesgos e indicadores de los procesos P-*/MP-* viejos se
   religan al proceso nuevo (`_sgi_relink_from_archived`). Primera regla: un
@@ -24,15 +24,25 @@ from odoo.exceptions import ValidationError
 
 _logger = logging.getLogger(__name__)
 
-# Las siete entradas del SGI. Todo menú bajo el raíz debe descender de una.
+# Las ocho entradas del SGI, en el orden del menú (57.113.0: por capítulos
+# del MIID). Todo menú bajo el raíz debe descender de una.
 SGI_MENU_ENTRIES = (
     'quimibond_sgi.menu_sgi_panel',              # Inicio
     'quimibond_sgi.menu_sgi_report',             # Reportar (57.98.0, U-07)
-    'quimibond_sgi.menu_sgi_processes',          # Procesos
-    'quimibond_sgi.menu_sgi_improvement_group',  # Mejora
-    'quimibond_sgi.menu_sgi_safety',             # Seguridad y ambiente (56.21.0)
-    'quimibond_sgi.menu_sgi_direction',          # Dirección
-    'quimibond_sgi.menu_sgi_admin',              # Administración SGI
+    'quimibond_sgi.menu_sgi_processes',          # Sistema (4 y 7.5; antes Procesos)
+    'quimibond_sgi.menu_sgi_direction',          # Planeación (5 y 6; antes Dirección)
+    'quimibond_sgi.menu_sgi_safety',             # Seguridad y ambiente (8; 56.21.0)
+    'quimibond_sgi.menu_sgi_performance',        # Desempeño (9; 57.113.0)
+    'quimibond_sgi.menu_sgi_improvement_group',  # Mejora (10)
+    'quimibond_sgi.menu_sgi_admin',              # Administración (antes Administración SGI)
+)
+# 57.113.0: archivados en su lugar (active=False, mismo padre, acción viva);
+# no son retirados: no van en SGI_REMOVED_XMLIDS y no se borran.
+SGI_MENU_ARCHIVED = (
+    'quimibond_sgi.menu_sgi_admin_signatures',   # Firmas de lectura (quedó vacía)
+    'quimibond_sgi.menu_sgi_activity_methods',   # Cobertura de medición
+    'quimibond_sgi.menu_sgi_week_stats',         # Cumplimiento semanal
+    'quimibond_sgi.menu_sgi_menu_mismatch',      # Medición por revisar
 )
 # «Calidad preventiva» y «Paretos de calidad» cuelgan de la app Calidad con
 # padre fijo en views/sgi_menus.xml (E-008, 57.5.0): no están bajo el raíz.
@@ -107,7 +117,7 @@ class SgiMenuCleanup(models.Model):
     _inherit = 'ir.ui.menu'
 
     def _sgi_menu_tree_offenders(self):
-        """Menús bajo el raíz del SGI que no descienden de una de las siete
+        """Menús bajo el raíz del SGI que no descienden de una de las ocho
         entradas. Vacío = el árbol está limpio."""
         root = self.env.ref('quimibond_sgi.menu_sgi_root', raise_if_not_found=False)
         if not root:

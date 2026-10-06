@@ -15,9 +15,9 @@ Lo mismo que cualquier Usuario SGI, más:
 |---|---|
 | **SGI → Inicio → Mi equipo** | Su equipo en organigrama, con el estado SGI de cada persona (pendientes, atrasos, firma de su procedimiento) |
 | **SGI → Inicio → Eficiencias de mi área** | La hoja mensual de eficiencias (solo con el grupo Captura de eficiencias) |
-| **SGI → Procesos → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
-| **SGI → Procesos → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
-| **SGI → Dirección → Riesgos y oportunidades** | Los riesgos de sus procesos |
+| **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
+| **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
+| **SGI → Planeación → Riesgos y oportunidades** | Los riesgos de sus procesos |
 
 En las listas, el filtro **Míos** muestra lo suyo (acciones, NC, mediciones,
 actividades, procesos, permisos…) y, en AMEF y riesgos, **De mis procesos**
@@ -114,7 +114,7 @@ el jefe directo de quien propone y el dueño del proceso.
 
 ### 2.6 Revisar los riesgos de su proceso
 
-1. **SGI → Dirección → Riesgos y oportunidades**, filtre por su proceso.
+1. **SGI → Planeación → Riesgos y oportunidades**, filtre por su proceso.
 2. Cuando llega el aviso de revisión (enero y julio), actualice probabilidad e
    impacto y pulse **Registrar evaluación**.
 3. Un riesgo alto sin acción abierta le llega como aviso: registre al menos
@@ -170,7 +170,7 @@ en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 
 ## 5.1 El Manual del SGI (MIID)
 
-**SGI → Dirección → Manual del SGI (MIID)**: «PDF de la revisión vigente» es
+**SGI → Sistema → Manual del SGI (MIID)**: «PDF de la revisión vigente» es
 el manual aprobado (el que se firma de leído); la pestaña «Vista del sistema»
 es el manual con los datos de hoy y no está vigente. Si cambia el dueño, el
 estado o los flujos de su proceso, el Jefe MAST recibe el aviso para

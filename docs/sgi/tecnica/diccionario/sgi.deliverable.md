@@ -8,9 +8,9 @@ Entregable: lo que una actividad produce y otra recibe. Si apunta a un modelo de
 
 Orden: `name`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_deliverable_models.py`, `addons/quimibond_sgi/models/sgi_sign_record.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_deliverable_models.py`, `addons/quimibond_sgi/models/sgi_measure_history.py`, `addons/quimibond_sgi/models/sgi_sign_record.py`.
 
-## Campos (23)
+## Campos (24)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -28,6 +28,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_deliverable.py`, `addons/quimibond_sg
 | `measure_date_field` | Char | Campo de fecha | Cuándo quedó entregado: date_order, date_done, invoice_date… |  |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:110` |
 | `measure_domain` | Char | Filtro: ya está entregado | Qué registros cuentan como entregados, ej. [('state', '=', 'sale')]. |  |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:107` |
 | `measure_user_field` | Char | Campo de usuario | Quién lo entregó (create_uid, user_id…): mide si lo hizo el puesto que debía. |  |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:113` |
+| `measure_user_history` | Boolean | Quién lo hizo: quien lo pasó a su estado (historial) | HISTORY_HELP |  |  |  |  | `addons/quimibond_sgi/models/sgi_measure_history.py:47` |
 | `measured_activity_ids` | One2many | Se miden con él |  |  | `sgi.process.activity` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:130` |
 | `name` | Char | Entregable | Qué pasa de un paso al otro: «Pedido confirmado». | sí |  |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:93` |
 | `odoo_model_id` | Many2one | Modelo de Odoo | Dónde vive el entregable en Odoo (sale.order, stock.picking…). Con modelo, la actividad que lo entrega se puede medir con él. |  | `ir.model` |  |  | `addons/quimibond_sgi/models/sgi_deliverable.py:99` |
