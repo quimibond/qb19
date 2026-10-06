@@ -109,3 +109,17 @@ conservación de muestras, destino de los 152 lotes de la ubicación 57.
    No se construye hasta ver su rama.
 5. `ficha.tecnica.tela` (modelo viejo) se borra del código: hecho en 2.1.1
    (la tabla queda en la base).
+
+## 6. Incidente del despliegue a producción (2026-10-06 23:22 UTC) y reglas nuevas
+
+- Código 57.120.1 instalado, pero la migración de datos de 57.118.0 no quedó
+  en la base (bandera, folio, cliente y origen de los 77 FT-; nombres
+  «Análisis» solo en en_US en 480, 481 y 490). Causa y corrección en el
+  CHANGELOG 57.120.2. El cambio de cliente de 465/466/489 a SHAWMUT LLC fue
+  manual (Jessica, 19:54–20:02 UTC), no de la migración.
+- **Regla (Jose):** nada sube a `quimibond` sin pasar antes por `qbtesting`
+  y sin su confirmación explícita. El build de `main` (staging) no corre
+  pruebas; las del SGI corren en el build de desarrollo de la rama.
+- Los filtros de medición de C1 excluyen plantillas (`is_template`).
+- Los modelos `sgi.dev.*` y `ficha.tecnica.*` quedan expuestos al MCP (la
+  corrección final de datos de la sección 7 se hace por MCP).
