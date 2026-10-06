@@ -13,6 +13,15 @@ Una sección por versión del manifest, la más nueva arriba. El PR que sube
   corre; también se puede llamar por MCP (`importar_clasificacion_legada`).
 - Al instalar o actualizar, habilita sus seis modelos en el servidor MCP del
   repo si está instalado (lectura, alta, cambio, métodos).
+- Validador, tras la primera corrida en producción (972 hallazgos, casi todos
+  ruido): la última compra se convierte bien a moneda de la compañía
+  (`currency_rate` es compañía → divisa: se divide, no se multiplica) y a la
+  unidad del producto; los componentes con receta propia (teñidos, crudos,
+  preparaciones) no se validan por precio, su costo sale de su receta; la
+  regla de colorantes mide la preparación de color por kg de tela (30 % por
+  línea, 40 % en total, parámetros) y no se aplica a las preparaciones
+  mismas ni a productos de categorías excluidas (`Maquila`, parámetro
+  nuevo). La migración ajusta los umbrales y vuelve a correr el validador.
 
 ## 19.0.1.0.0 — 2026-10-06
 

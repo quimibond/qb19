@@ -65,7 +65,14 @@ class QbProductoValidacion(models.Model):
     def revisar(self, products=None):
         """Corre todas las reglas sobre `products` (default: todo producto
         con receta activa). Abre, actualiza o cierra filas; devuelve las
-        abiertas tras la corrida."""
+        abiertas tras la corrida.
+
+        Las recetas se explotan: un componente que a su vez tiene receta
+        (teñido, crudo, preparación de color) no se valida por su precio,
+        porque su costo sale de su receta; se validan las hojas compradas.
+        La regla de colorantes mide la preparación de color (categoría
+        «Cocina») por kg de tela terminada, que es lo que captura tintorería.
+        """
         P = self.env['qb.parametro']
         company = self.env.company
         Bom = self.env['mrp.bom']
@@ -76,15 +83,24 @@ class QbProductoValidacion(models.Model):
                         | boms.mapped('product_tmpl_id.product_variant_ids'))
         hallazgos = {}  # (product_id, regla, componente_id) → (valor, detalle)
         excluir = set(P.get_list('validacion_excluir_codigos', 'AGUA'))
+        cat_excluir = [t.upper() for t in
+                       P.get_list('validacion_excluir_categorias', 'Maquila')]
         banda = P.get_float('precio_banda_pct', 30.0)
         cat_tokens = [t.upper() for t in
                       P.get_list('validacion_categorias_colorante', 'Cocina')]
-        max_linea = P.get_float('colorante_max_pct', 12.0)
-        max_total = P.get_float('colorante_total_max_pct', 25.0)
-
+        max_linea = P.get_float('colorante_max_pct', 30.0)
+        max_total = P.get_float('colorante_total_max_pct', 40.0)
         ultimo_precio = self._ultimo_precio_compra()
 
+        def categoria(prod):
+            return (prod.categ_id.complete_name or '').upper()
+
+        def es(prod, tokens):
+            return any(t in categoria(prod) for t in tokens)
+
         for product in products:
+            if es(product, cat_excluir) or es(product, cat_tokens):
+                continue
             bom = Bom._bom_find(product, company_id=company.id).get(product)
             if not bom:
                 continue
@@ -95,8 +111,18 @@ class QbProductoValidacion(models.Model):
                 if comp.default_code in excluir or comp.type == 'service':
                     continue
                 kg = self._kg(line.product_qty, line.product_uom_id)
-                es_colorante = any(t in (comp.categ_id.complete_name or '').upper()
-                                   for t in cat_tokens)
+                tiene_receta = bool(Bom._bom_find(
+                    comp, company_id=company.id).get(comp))
+                # Preparación de color por kg de tela.
+                if es(comp, cat_tokens) and kg is not None and kg_bom:
+                    pct = 100.0 * kg / kg_bom
+                    total_colorante += pct
+                    if pct > max_linea:
+                        hallazgos[(product.id, 'receta_implausible', comp.id)] = (
+                            pct, '%s: %.1f %% del peso de la tela (máximo '
+                            '%.0f %%)' % (comp.display_name, pct, max_linea))
+                if tiene_receta:
+                    continue   # su costo sale de su receta, no de su precio
                 # precio_cero
                 if comp.standard_price == 0 and kg is not None:
                     hallazgos[(product.id, 'precio_cero', comp.id)] = (
@@ -111,18 +137,11 @@ class QbProductoValidacion(models.Model):
                             desv, '%s: costo promedio %.2f vs última compra '
                             '%.2f (%.0f %%)' % (comp.display_name,
                                                 comp.standard_price, ult, desv))
-                # receta_implausible por línea
-                if es_colorante and kg is not None and kg_bom:
-                    pct = 100.0 * kg / kg_bom
-                    total_colorante += pct
-                    if pct > max_linea:
-                        hallazgos[(product.id, 'receta_implausible', comp.id)] = (
-                            pct, '%s: %.1f %% del peso de la tela (máximo '
-                            '%.0f %%)' % (comp.display_name, pct, max_linea))
             if total_colorante > max_total:
                 hallazgos[(product.id, 'receta_implausible', False)] = (
-                    total_colorante, 'Colorantes y auxiliares suman %.1f %% '
-                    'del peso (máximo %.0f %%)' % (total_colorante, max_total))
+                    total_colorante, 'Preparaciones de color suman %.1f %% '
+                    'del peso de la tela (máximo %.0f %%)'
+                    % (total_colorante, max_total))
 
         return self._aplicar(products, hallazgos)
 
@@ -171,19 +190,37 @@ class QbProductoValidacion(models.Model):
 
     @api.model
     def _ultimo_precio_compra(self):
-        """{product_id: precio unitario de la última compra confirmada, en
-        moneda de la compañía}."""
+        """{product_id: precio de la última compra confirmada, en moneda de
+        la compañía y en la unidad del producto}. `currency_rate` del pedido
+        es compañía → divisa, así que se divide; la unidad de compra se
+        convierte a la del producto (un kilo comprado por litro o por caja
+        no es un kilo)."""
         self.env.flush_all()
         self.env.cr.execute("""
             SELECT DISTINCT ON (pol.product_id) pol.product_id,
-                   pol.price_unit * COALESCE(po.currency_rate, 1)
+                   pol.price_unit, COALESCE(NULLIF(po.currency_rate, 0), 1),
+                   pol.product_uom_id
             FROM purchase_order_line pol
             JOIN purchase_order po ON po.id = pol.order_id
             WHERE po.state IN ('purchase', 'done')
               AND po.company_id = %s AND pol.product_qty > 0
             ORDER BY pol.product_id, po.date_approve DESC NULLS LAST, pol.id DESC
         """, (self.env.company.id,))
-        return {pid: p for pid, p in self.env.cr.fetchall() if p}
+        filas = self.env.cr.fetchall()
+        Uom = self.env['uom.uom']
+        Prod = self.env['product.product']
+        out = {}
+        for pid, precio, rate, uom_id in filas:
+            if not precio:
+                continue
+            precio_mxn = precio / rate
+            prod = Prod.browse(pid)
+            uom = Uom.browse(uom_id) if uom_id else prod.uom_id
+            if uom and prod.uom_id and uom != prod.uom_id and \
+                    uom._has_common_reference(prod.uom_id):
+                precio_mxn = uom._compute_price(precio_mxn, prod.uom_id)
+            out[pid] = precio_mxn
+        return out
 
     @api.model
     def cron_revisar(self):

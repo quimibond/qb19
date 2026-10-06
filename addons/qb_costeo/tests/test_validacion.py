@@ -54,7 +54,7 @@ class TestValidacion(TransactionCase):
         abiertas = self.V.revisar(self.tenido)
         reglas = {(v.regla, v.componente_id.default_code or False)
                   for v in abiertas}
-        # 63 % en una línea y 68 % en total.
+        # 63 % de preparación en una línea (máx. 30) y 68 % en total (máx. 40).
         self.assertIn(('receta_implausible', 'NEGRO016'), reglas)
         self.assertIn(('receta_implausible', False), reglas)
         # El agua a 0 no dispara precio_cero.
@@ -116,6 +116,51 @@ class TestValidacion(TransactionCase):
         banda = abiertas.filtered(lambda v: v.regla == 'precio_fuera_banda')
         self.assertEqual(banda.componente_id, self.negro)
         self.assertGreater(banda.valor, 100)
+
+    def test_intermedio_con_receta_no_se_valida_por_precio(self):
+        """Un crudo con receta propia cuesta 0 hasta que se produce: su costo
+        sale de su receta, no de su precio."""
+        self.crudo.standard_price = 0
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': self.crudo.product_tmpl_id.id,
+            'product_qty': 1, 'product_uom_id': self.kg.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': self.aux.id, 'product_qty': 1,
+                'product_uom_id': self.kg.id})]})
+        abiertas = self.V.revisar(self.tenido)
+        self.assertFalse(abiertas.filtered(
+            lambda v: v.regla == 'precio_cero'
+            and v.componente_id == self.crudo))
+
+    def test_categoria_excluida_y_preparacion_no_se_validan(self):
+        maquila = self.env['product.category'].create({'name': 'Maquila'})
+        self.tenido.categ_id = maquila
+        self.assertFalse(self.V.revisar(self.tenido))
+        # La preparación de color (Cocina) tampoco: sus líneas suman 100 %.
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': self.negro.product_tmpl_id.id,
+            'product_qty': 1, 'product_uom_id': self.kg.id,
+            'bom_line_ids': [(0, 0, {
+                'product_id': self.aux.id, 'product_qty': 1,
+                'product_uom_id': self.kg.id})]})
+        self.assertFalse(self.V.revisar(self.negro))
+
+    def test_ultima_compra_en_otra_unidad(self):
+        """Comprado por gramo a 0.05 = 50/kg: dentro de la banda de 55.66."""
+        gramo = self.env.ref('uom.product_uom_gram')
+        partner = self.env['res.partner'].create({'name': 'Proveedor g'})
+        po = self.env['purchase.order'].create({
+            'partner_id': partner.id,
+            'order_line': [(0, 0, {
+                'product_id': self.negro.id, 'product_qty': 1000,
+                'price_unit': 0.05, 'product_uom_id': gramo.id,
+                'name': 'negro', 'date_planned': '2026-09-01'})]})
+        po.button_confirm()
+        precios = self.V._ultimo_precio_compra()
+        self.assertAlmostEqual(precios[self.negro.id], 50.0, 2)
+        abiertas = self.V.revisar(self.tenido)
+        self.assertFalse(abiertas.filtered(
+            lambda v: v.regla == 'precio_fuera_banda'))
 
     def test_revisar_todo_cubre_recetas_activas(self):
         abiertas = self.V.revisar()
