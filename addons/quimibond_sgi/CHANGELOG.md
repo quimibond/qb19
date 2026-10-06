@@ -13,6 +13,39 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.115.0 — 2026-10-06
+
+**La pantalla que produce la evidencia no es un error.** De los 25 avisos
+«Pantalla que no va con su medición» que quedaban en producción, 22 eran
+pantallas correctas. En ellas se trabaja en un registro y la evidencia es
+otro que nace de él:
+- la NC y sus acciones;
+- la revisión por la dirección y sus acuerdos;
+- el indicador y sus mediciones;
+- «Órdenes a facturar» y las facturas;
+- la conciliación y las líneas del banco;
+- el inventario físico y sus movimientos.
+
+Cambiar el menú habría empeorado el uso. Pedido de Jose.
+
+### Cambiado
+
+- `_sgi_menu_model_mismatch` no avisa cuando la pantalla alimenta la evidencia
+  (`_sgi_screen_feeds_evidence`). Basta con que un campo relacional de uno de
+  los dos modelos apunte al otro (sin `create_uid`/`write_uid`), o que el par
+  esté en `_SGI_SCREEN_PRODUCES`. Ese segundo caso es para las pantallas que
+  crean la evidencia sin campo que las ligue:
+  - inventario físico → movimientos;
+  - fechas de bloqueo → bitácora y excepciones;
+  - recalcular costeo → asiento;
+  - usuarios → chatter.
+
+### Migración
+
+- `migrations/19.0.57.115.0/post-migrate.py` recalcula las actividades que
+  tenían el aviso y deja en el log cuáles quedan. Deben quedar C1.06, C1.11,
+  C4.13 y S4.25, que esperan decisión.
+
 ## 19.0.57.114.0 — 2026-10-06
 
 **Campos de liga entrada ↔ salida que faltaban.** Una actividad que se mide
