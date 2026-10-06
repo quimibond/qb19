@@ -146,3 +146,6 @@ from . import sgi_measure_history
 # 57.112.0: medición manual a propósito (hereda la actividad y extiende los
 # campos de medición de sgi_measure_history).
 from . import sgi_measure_manual_reason
+# 57.116.0: asuntos de las categorías de Aprobaciones compartidas (hereda
+# approval.request y approval.category, y usa el rol «Aprueba»).
+from . import sgi_approval_subject

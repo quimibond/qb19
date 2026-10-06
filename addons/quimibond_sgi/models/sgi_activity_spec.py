@@ -486,6 +486,34 @@ class SgiActivitySpec(models.Model):
             return (menu.complete_name or menu_action.name or ''), menu_action.model_id.model
         return (menu.complete_name or ''), None
 
+    # 57.115.0: pantallas que producen la evidencia sin un campo que las ligue
+    # (el asistente o el ajuste crea el registro que se cuenta).
+    _SGI_SCREEN_PRODUCES = {
+        ('stock.quant', 'stock.move'),                      # aplicar el inventario crea movimientos
+        ('account.change.lock.date', 'sgi.lock.date.log'),  # bloquear el periodo deja su bitácora
+        ('account.change.lock.date', 'account.lock_exception'),
+        ('qb.costo.producto', 'account.move'),              # recalcular el costeo asienta la valoración
+        ('res.users', 'mail.message'),                      # la baja queda en el chatter del usuario
+    }
+
+    def _sgi_screen_feeds_evidence(self, screen_model, measured_model):
+        """57.115.0: la pantalla abre un registro del que nace o cuelga la
+        evidencia: un campo relacional de uno apunta al otro (la NC y sus
+        acciones, la revisión y sus acuerdos, el pedido y sus facturas, la
+        conciliación y las líneas del banco), o el par está en
+        _SGI_SCREEN_PRODUCES. Entonces la pantalla es la correcta y no hay
+        aviso."""
+        if (screen_model, measured_model) in self._SGI_SCREEN_PRODUCES:
+            return True
+        magic = {'create_uid', 'write_uid'}
+        for one, other in ((screen_model, measured_model), (measured_model, screen_model)):
+            if one not in self.env:
+                continue
+            for name, field in self.env[one]._fields.items():
+                if name not in magic and field.relational and field.comodel_name == other:
+                    return True
+        return False
+
     def _sgi_menu_model_mismatch(self):
         """57.103.0: (pantalla, modelo que abre, modelo de medición) si la
         actividad se mide sola con un modelo y su pantalla abre otro; None si
@@ -502,6 +530,8 @@ class SgiActivitySpec(models.Model):
             return None
         screen, model = self._sgi_screen_model()
         if not model or model == measured.model:
+            return None
+        if self._sgi_screen_feeds_evidence(model, measured.model):
             return None
         return screen, model, measured.model
 

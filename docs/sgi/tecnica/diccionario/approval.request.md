@@ -6,9 +6,9 @@ Modelo de otra app que el SGI extiende.
 
 La solicitud de cambio del MIID es una solicitud de cambio documental de siempre con la huella y la foto de los datos con que se generó su PDF.
 
-Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py`.
 
-## Campos (35)
+## Campos (37)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -22,6 +22,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi
 | `sgi_current_revision` | Integer | Revisión vigente | Revisión vigente del documento antes del cambio. |  |  | related `sgi_document_id.sgi_revision`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change.py:49` |
 | `sgi_document_id` | Many2one | Documento afectado | Documento controlado que se modifica o se da de baja. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:36` |
 | `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) que pide esta compra (C1.08). |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:156` |
+| `sgi_has_subjects` | Boolean |  |  |  |  | compute `_compute_sgi_has_subjects`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_subject.py:47` |
 | `sgi_is_doc_change` | Boolean |  | Se marca sola cuando la categoría es de cambio documental del SGI. |  |  | related `category_id.sgi_is_doc_change`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:27` |
 | `sgi_is_moc` | Boolean |  | Se marca sola cuando la categoría es de gestión del cambio. |  |  | related `category_id.sgi_is_moc`, guardado |  | `addons/quimibond_sgi/models/sgi_doc_change.py:30` |
 | `sgi_maintenance_request_id` | Many2one | Solicitud de mantenimiento | Solicitud de mantenimiento que necesita la refacción que se pide (S5.03). |  | `maintenance.request` |  |  | `addons/quimibond_sgi/models/sgi_links.py:163` |
@@ -46,6 +47,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi
 | `sgi_sign_request_id` | Many2one | Firma (Sign) | Solicitud de firma en Sign ligada a esta aprobación. |  | `sign.request` |  |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:56` |
 | `sgi_sign_required` | Boolean |  | Indica si la categoría exige firma en Sign para aprobar. |  |  | related `category_id.sgi_sign_required`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:54` |
 | `sgi_sign_state` | Selection | Estado de la firma | Estado de la firma en Sign. |  |  | related `sgi_sign_request_id.state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:59` |
+| `sgi_subject_id` | Many2one | Asunto | Qué se pide. Define quién lo aprueba. |  | `sgi.approval.subject` |  |  | `addons/quimibond_sgi/models/sgi_approval_subject.py:43` |
 | `sgi_what_changes` | Selection | ¿Qué se modifica? | Si cambia solo el formato (presentación) o el contenido del documento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:44` |
 
 ## Métodos públicos (8)
