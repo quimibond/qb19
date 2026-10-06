@@ -134,6 +134,18 @@ proceso. Cada rutina que nadie cubre necesita su decisión: crear una
 actividad, volverla regla o automatización, o eliminarla con motivo. La fecha límite la fija el
 parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 
+### 2.8 Instructivos en Conocimiento
+
+Los instructivos, controles operacionales y protocolos de su proceso se pasan
+a **Conocimiento → SGI → <su proceso>** como borradores que solo ven usted y
+el Jefe MAST.
+
+1. Abra **SGI → Sistema → Conocimiento del SGI** (filtro **Por publicar**).
+2. Abra el borrador, compare el texto con el PDF adjunto y corríjalo: el
+   texto se sacó del PDF y puede venir sin formato.
+3. Cuando esté listo, pulse **Pedir publicación**. El Jefe MAST lo revisa y lo
+   publica como revisión nueva del documento, con acuses para los puestos.
+
 ## 3. Lo que le llega solo
 
 - Escalamientos de actividades y acciones atrasadas de su gente.

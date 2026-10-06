@@ -16,7 +16,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_ack_ids` | One2many | Acuses de lectura |  |  | `sgi.document.ack` |  |  | `addons/quimibond_sgi/models/sgi_document.py:466` |
 | `sgi_ack_read_pct` | Float | % Difusión | Porcentaje de acuses de lectura ya firmados sobre los pedidos. Se calcula solo. |  |  | compute `_compute_sgi_ack_stats`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:469` |
 | `sgi_area_id` | Many2one | Área SGI | Área del SGI a la que pertenece el documento. |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_document.py:125` |
-| `sgi_article_id` | Many2one | Artículo de Knowledge | Artículo del que se congeló esta revisión (DOC-5). |  | `knowledge.article` |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:55` |
+| `sgi_article_id` | Many2one | Artículo de Knowledge | Artículo de Conocimiento del documento: borrador importado de su PDF o artículo del que se congeló esta revisión. |  | `knowledge.article` |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:88` |
 | `sgi_can_edit_transition` | Boolean |  |  |  |  | compute `_compute_sgi_can_edit_transition`, sin guardar |  | `addons/quimibond_sgi/models/sgi_document.py:263` |
 | `sgi_child_document_ids` | One2many | Documentos hijos |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:481` |
 | `sgi_code` | Char | Clave SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:69` |
@@ -74,13 +74,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_state` | Selection | Estado SGI | Solo los documentos controlados del SGI llevan estado; los demás archivos de Documentos quedan sin él (2026-09-25). |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:145` |
 | `sgi_title` | Char | Título | Nombre del documento sin la clave ni la extensión del archivo. El archivo conserva su nombre original. |  |  | compute `_compute_sgi_title`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:85` |
 
-## Métodos públicos (15)
+## Métodos públicos (17)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_generate_acks` | Crea acuses pendientes para los empleados de los puestos aplicables (idempotente). |
 | `action_open_acks` | — |
 | `action_sgi_assign_new_code` | Acción «Asignar clave nueva» (lista de documentos, Jefe MAST): a cada documento seleccionado le arma la siguiente clave del patrón de su tipo (D-02) con todas sus revisiones. Los que no aplican se re… |
+| `action_sgi_kb_open` | «Abrir en Conocimiento». |
+| `action_sgi_kb_publish` | «Publicar desde Conocimiento» (Jefe MAST). |
 | `action_sgi_mark_my_ack_read` | Firma MI acuse pendiente de este documento (Documentos vigentes). |
 | `action_sgi_open_in_documents` | Abre el documento en la app nativa de Documentos (visor completo con carpetas), para quien quiera el explorador en vez de la ficha SGI. |
 | `action_sgi_open_migration_point` | Del formato a su worksheet en un clic (y desde ahí, a sus checks). |

@@ -41,9 +41,13 @@ de menú salen del árbol vigente (`addons/quimibond_sgi/tools/sgi_menu_tree.txt
 Las capturas de pantalla están **pendientes**: se tomarán en staging con un
 usuario de prueba por perfil.
 
-**Publicación:** la fuente de los manuales es este repositorio. Su
-publicación en Conocimiento, ligada desde el menú del SGI (decisiones D-26 y
-D-27), está pendiente de definir el mecanismo.
+**Publicación:** la fuente de los manuales es este repositorio. Los manuales
+también están en Conocimiento → SGI → Cómo usar el sistema (SGI → Inicio →
+Ayuda abre el de su perfil), sembrados por `quimibond_sgi_knowledge` 1.2.0
+desde el HTML que genera `python3 tools/sgi_knowledge_html.py`; cada
+actualización del módulo los refresca, salvo los que alguien editó en
+Conocimiento. Para empezar: [primeros-pasos.md](primeros-pasos.md) y el
+[glosario](glosario.md).
 
 **¿Encontró un error en un manual?** Avise al Jefe MAST y SGI, que es quien
 mantiene los manuales de usuario. Los técnicos se regeneran con

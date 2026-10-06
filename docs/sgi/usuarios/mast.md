@@ -269,6 +269,38 @@ procedimientos sustituidos, rutinas resueltas y documentos migrados. Usted
 importa las rutinas (**Importar rutinas**, primero **Probar (modo de
 prueba)**) y corrige clase y estado de los formatos.
 
+### 2.8 Instructivos en Conocimiento (desde quimibond_sgi_knowledge 1.2.0)
+
+Los manuales del SGI, los instructivos (IT), controles operacionales (CO),
+protocolos y reglamentos también se leen en **Conocimiento → SGI**. Los
+manuales se actualizan solos con cada versión del sistema, salvo los que
+alguien editó en Conocimiento (a esos les queda un mensaje para comparar).
+
+1. **Importar:** **SGI → Administración → Transición → Importar documentos a
+   Conocimiento**. Empiece con **CO y C4** (los cinco controles operacionales
+   y los instructivos de C4); el asistente trabaja por lotes de 10 y dice qué
+   importó, qué ya estaba, qué no pudo leer (PDF escaneado) y qué actividades
+   ligó o sugiere. Los documentos de la familia P-I01 nunca se importan
+   (L-001) y los restringidos tampoco. El documento controlado no cambia.
+2. **Borradores:** cada documento queda como borrador bajo su proceso, con el
+   PDF vigente adjunto. Solo lo ven el dueño del proceso y usted.
+3. **Revisar:** **SGI → Sistema → Conocimiento del SGI** lista los borradores
+   («Por publicar»). El dueño corrige el texto comparándolo con el PDF y pide
+   la publicación con **Pedir publicación**: a usted le llega una actividad.
+4. **Publicar:** en la lista o en la ficha del documento, **Publicar**
+   congela el artículo como revisión nueva del documento (PDF, misma clave y
+   título, clave anterior y documento padre), obsoleta la anterior, pide
+   acuses a los puestos y re-apunta las actividades. El artículo queda
+   bloqueado y lo leen todos. Los puestos que usan el documento verán su Mi
+   procedimiento desactualizado: es la revisión nueva.
+5. **Cambios después de publicar:** si alguien desbloquea y cambia un
+   artículo publicado, sale como «Cambió desde la publicación» y le llega un
+   aviso diario para publicarlo otra vez.
+
+En Conocimiento no use **Mover a la papelera** con artículos del SGI: la
+papelera los borra a los días. El espacio de 2025 quedó como «SGI (estructura
+2025, sin uso)»; usted decide si lo archiva.
+
 ## 3. Lo que le llega solo
 
 Además de lo anterior: la NC mayor (correo crítico), incidentes graves, los

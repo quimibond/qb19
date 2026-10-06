@@ -2065,9 +2065,10 @@ class QbCostoProducto(models.Model):
             'rules': self.env['qb.producto.ruteo'].search([]),
             'pol_map': pol_map,
             'multi_bom_ids': multi_bom_ids,
-            # Receta ambigua → la BOM con la que se fabricó de verdad la
-            # última vez; el mapa se resuelve una vez por corrida.
-            'last_mo_bom': self._last_mo_bom_map(multi_bom_ids),
+            # Receta ambigua → la BOM con la que de verdad se fabrica hoy
+            # (más cantidad en 90 días); el mapa se resuelve una vez por
+            # corrida, acotado al período que se costea.
+            'last_mo_bom': self._last_mo_bom_map(multi_bom_ids, cutoff),
             # El caché de MP guarda el costo YA con aduana, así que el factor
             # tiene que vivir en el contexto de la corrida: mezclar dos
             # factores en el mismo caché daría costos incoherentes.
@@ -2230,38 +2231,61 @@ class QbCostoProducto(models.Model):
 
     @api.model
     def _bom_de_ultima_op(self, product, boms, ctx=None):
-        """La BOM de la última OP terminada del producto, si sigue entre las
-        activas aplicables. Vacío cuando el producto nunca se ha fabricado
-        (o su última receta ya no está activa): ahí decide el criterio
-        conservador de explotar todas."""
+        """La BOM con la que se fabrica HOY el producto, si sigue entre las
+        activas aplicables (ver `_last_mo_bom_map`). Vacío cuando el producto
+        nunca se ha fabricado (o esa receta ya no está activa): ahí decide
+        el criterio conservador de explotar todas."""
         if ctx is not None and 'last_mo_bom' in ctx:
             bom_id = ctx['last_mo_bom'].get(product.id)
-            if bom_id and bom_id in set(boms.ids):
-                return self.env['mrp.bom'].browse(bom_id)
-            return self.env['mrp.bom']
-        mo = self.env['mrp.production'].search(
-            [('product_id', '=', product.id), ('state', '=', 'done'),
-             ('bom_id', 'in', boms.ids)],
-            order='date_finished desc, id desc', limit=1)
-        return mo.bom_id
+        else:
+            bom_id = self._last_mo_bom_map([product.id]).get(product.id)
+        if bom_id and bom_id in set(boms.ids):
+            return self.env['mrp.bom'].browse(bom_id)
+        return self.env['mrp.bom']
 
     @api.model
-    def _last_mo_bom_map(self, product_ids):
-        """{product_id: bom_id} de la última OP terminada cuya BOM sigue
-        activa — un query para todo el motor (solo hace falta para las
-        recetas ambiguas)."""
+    def _last_mo_bom_map(self, product_ids, hasta=None):
+        """{product_id: bom_id} de la receta con la que se fabrica hoy: la
+        BOM activa con MÁS cantidad producida en las órdenes terminadas de
+        los últimos `receta_ventana_dias` (90) antes de `hasta` (hoy si no
+        se da); sin órdenes en esa ventana, la de la última orden.
+
+        No basta la última orden: WJ060Q21JNT165 tiene dos recetas activas y
+        su última OP de sep-2026 quedó con la vieja (crudo de 2022), aunque
+        en 90 días la nueva hizo 67,613 m contra 37,745 y hasta las órdenes
+        con la receta vieja consumieron el crudo de la nueva. Y no sirve
+        tampoco la de más cantidad en el año: las resinas FORM32BL/NG
+        cambiaron de receta en junio y la vieja sigue ganando en doce
+        meses. Medido sobre las 95 plantillas con varias recetas activas,
+        con 90 días solo cambia WJ060Q21JNT165.
+
+        Un query para todo el motor (solo hace falta para las recetas
+        ambiguas)."""
         if not product_ids:
             return {}
+        # Sin `hasta` (cotizar hoy) no hay tope: toda orden terminada cuenta.
+        tope = hasta
+        hasta = hasta or fields.Datetime.now()
+        dias = int(self.env['qb.costeo.factor.config'].get_param(
+            'receta_ventana_dias', 90)) or 90
+        desde = hasta - relativedelta(days=dias)
         self.env.flush_all()   # el SQL crudo no ve el buffer del ORM
         self.env.cr.execute("""
             SELECT DISTINCT ON (mp.product_id) mp.product_id, mp.bom_id
             FROM mrp_production mp
             JOIN mrp_bom b ON b.id = mp.bom_id AND b.active
             WHERE mp.state = 'done'
-              AND mp.product_id = ANY(%s)
+              AND mp.product_id = ANY(%%s)
+              AND (%%s IS NULL OR mp.date_finished IS NULL
+                   OR mp.date_finished < %%s)
+            GROUP BY mp.product_id, mp.bom_id
             ORDER BY mp.product_id,
-                     mp.date_finished DESC NULLS LAST, mp.id DESC
-        """, (list(product_ids),))
+                     SUM(CASE WHEN mp.date_finished >= %%s THEN %s
+                              ELSE 0 END) DESC,
+                     MAX(mp.date_finished) DESC NULLS LAST,
+                     MAX(mp.id) DESC
+        """ % mo_qty_sql(self.env, 'mp'),
+            (list(product_ids), tope, tope, desde))
         return dict(self.env.cr.fetchall())
 
     @api.model
@@ -3797,13 +3821,15 @@ class QbCostoProducto(models.Model):
                                 'incluye flete/aduana)')]
         if self._has_multiple_boms(product):
             # Receta ambigua (>1 BOM): mismo criterio que _mp_cost_unit —
-            # explota todas y sigue la MÁS CARA (nunca el AVCO de un
-            # fabricado: trae conversión de MOs, no solo materiales).
+            # la receta con la que se fabrica hoy y, sin órdenes, la MÁS
+            # CARA (nunca el AVCO de un fabricado: trae conversión de MOs,
+            # no solo materiales). Antes el desglose siempre tomaba la más
+            # cara y podía explicar una receta distinta a la del costo.
             boms = self._applicable_boms(product)
-            bom = max(
+            bom = self._bom_de_ultima_op(product, boms) or (max(
                 boms,
                 key=lambda b: self._explode_bom(b, product, {}, set(), None),
-            ) if boms else self.env['mrp.bom']
+            ) if boms else self.env['mrp.bom'])
         else:
             bom = self.env['mrp.bom']._bom_find(product).get(product)
         if bom:

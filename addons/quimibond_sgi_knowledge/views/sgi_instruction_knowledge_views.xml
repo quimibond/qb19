@@ -17,24 +17,33 @@
         </field>
     </record>
 
+    <!-- 1.2.0: el mismo asistente publica instructivos, controles
+         operacionales, protocolos y reglamentos. -->
     <record id="sgi_instruction_publish_view_form" model="ir.ui.view">
         <field name="name">sgi.instruction.publish.form</field>
         <field name="model">sgi.instruction.publish</field>
         <field name="arch" type="xml">
-            <form string="Publicar como instructivo">
+            <form string="Publicar desde Conocimiento">
                 <field name="activity_id" invisible="1"/>
                 <p class="text-muted">
-                    El artículo se congela como PDF, revisión nueva del instructivo con su clave IT,
-                    y queda ligado a la actividad. Los puestos que aplican reciben acuse de lectura.
+                    El artículo se congela como PDF, revisión nueva del documento con su clave, y queda
+                    ligado a las actividades que lo usan. La revisión vigente queda obsoleta y los puestos
+                    que aplican reciben acuse de lectura. Los puestos que usan este documento verán su
+                    Mi procedimiento desactualizado hasta que lo vuelvan a firmar.
                 </p>
+                <div class="alert alert-warning" role="alert" invisible="job_ids">
+                    Sin puestos: nadie recibirá acuse de lectura.
+                </div>
                 <group>
-                    <field name="article_id"/>
-                    <field name="code" placeholder="IT-C1-01"/>
+                    <field name="article_id" required="1" options="{'no_create': True}"/>
+                    <field name="doc_type" required="1"/>
+                    <field name="code" required="1" placeholder="IT-C4-01"/>
+                    <field name="current_id" readonly="1" invisible="not current_id"/>
                     <field name="job_ids" widget="many2many_tags"/>
                 </group>
                 <footer>
                     <button name="action_publish" type="object" string="Publicar" class="btn-primary"/>
-                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>

@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps que extienden (52). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (140) y modelos de otras apps que extienden (53). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -19,7 +19,7 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 | [`sgi.activity.execution.mark`](diccionario/sgi.activity.execution.mark.md) | Marcar avance de una actividad | Asistente de «En proceso», «Hecha» y «No aplica este periodo». | TransientModel | 11 | `addons/quimibond_sgi/models/sgi_activity_execution.py` |
 | [`sgi.activity.input`](diccionario/sgi.activity.input.md) | Entregable que recibe una actividad SGI | Un «recibe» de la actividad: qué entregable y en cuántos días hábiles debe llegar a ella. El plazo es de quien recibe (la misma salida puede urgirle a uno y no a otro) y de él sale el eslabón atorado. | Model | 11 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
 | [`sgi.activity.link`](diccionario/sgi.activity.link.md) | Encadenamiento entre actividades | Liga entre dos actividades de procedimiento: qué ENTREGABLE pasa de un paso al siguiente. Puede cruzar procesos (el pedido de Ventas alimenta el programa de Planeación): es el hilo conductor de la op… | Model | 13 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
-| [`sgi.activity.role`](diccionario/sgi.activity.role.md) | Rol de un puesto en una actividad SGI | Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, aprueba, participa, informa, escala). Es la fuente de Mi procedimiento, de Mis pendientes y de los aprobadores nativos. | Model | 48 | `addons/quimibond_sgi/models/sgi_catalog.py` |
+| [`sgi.activity.role`](diccionario/sgi.activity.role.md) | Rol de un puesto en una actividad SGI | Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, aprueba, participa, informa, escala). Es la fuente de Mi procedimiento, de Mis pendientes y de los aprobadores nativos. | Model | 49 | `addons/quimibond_sgi/models/sgi_catalog.py` |
 | [`sgi.activity.spec.gap`](diccionario/sgi.activity.spec.gap.md) | Faltante de especificación de una actividad SGI | Faltante de especificación de una actividad (sin ejecutor, sin entregable, verbo vago…). Se recalcula; alimenta Diagnóstico → Faltantes de especificación. | Model | 6 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`sgi.activity.week.stat`](diccionario/sgi.activity.week.stat.md) | Cumplimiento semanal de una actividad SGI | Aplicables, hechas, completas, a tiempo y vencidas abiertas, por actividad y semana. Va aparte de ``sgi.activity.exec.stat`` (que tiene un renglón por usuario): repetir estos totales en cada renglón … | Model | 13 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`sgi.acuse.attach.wizard`](diccionario/sgi.acuse.attach.wizard.md) | Adjuntar acuse firmado a la entrega | Asistente para adjuntar a una entrega (``stock.picking``) el acuse firmado por el cliente. | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_links.py` |
@@ -86,10 +86,11 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 | [`sgi.indicator.step`](diccionario/sgi.indicator.step.md) | Escalón trimestral de la meta de un indicador SGI | Escalón trimestral de la meta de un indicador con trayectoria (meta y aceptable desde una fecha). | Model | 7 | `addons/quimibond_sgi/models/sgi_indicator_trajectory.py` |
 | [`sgi.indicator.term`](diccionario/sgi.indicator.term.md) | Término de la fórmula de un indicador SGI | Término de la fórmula configurable de un indicador: modelo, dominio, campo, agregación y papel (numerador o denominador). | Model | 14 | `addons/quimibond_sgi/models/sgi_indicator_formula.py` |
 | [`sgi.indicator.wizard`](diccionario/sgi.indicator.wizard.md) | Nuevo indicador por fórmula | Nuevo indicador por fórmula, con preguntas y vista previa. | TransientModel | 16 | `addons/quimibond_sgi/models/sgi_indicator_wizard.py` |
-| [`sgi.instruction.publish`](diccionario/sgi.instruction.publish.md) | Publicar artículo de Knowledge como instructivo (IT) | Asistente que publica un artículo de Conocimiento como revisión del instructivo (IT) de una actividad, con acuses para los puestos. | TransientModel | 4 | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py` |
+| [`sgi.instruction.publish`](diccionario/sgi.instruction.publish.md) | Publicar artículo de Knowledge como documento controlado | Asistente que publica un artículo de Conocimiento como revisión nueva de un instructivo, control operacional, protocolo o reglamento, con acuses para los puestos. | TransientModel | 6 | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py` |
 | [`sgi.interested.party`](diccionario/sgi.interested.party.md) | Parte interesada (ISO 4.2) | Parte interesada (4.2) con sus necesidades, requisitos legales y riesgos ligados, y revisión periódica. | Model | 13 | `addons/quimibond_sgi/models/sgi_context.py` |
 | [`sgi.inventory.value`](diccionario/sgi.inventory.value.md) | Valor del inventario al cierre de mes (cálculo de AL-01) | Foto del valor del inventario al cierre de cada mes, base del indicador AL-01. | Model | 6 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
 | [`sgi.job.family`](diccionario/sgi.job.family.md) | Familia de puestos SGI | Familia de puestos: el mismo rol repartido en puestos que solo cambian por nivel o letra (Operador de tejido circular A…J). El nivel se queda en hr.job; el SGI asigna actividades a la familia. | Model | 6 | `addons/quimibond_sgi/models/sgi_catalog.py` |
+| [`sgi.knowledge.import`](diccionario/sgi.knowledge.import.md) | Importar documentos del SGI a Conocimiento | Importa a Conocimiento los instructivos, controles operacionales, protocolos y reglamentos vigentes, como borradores para que el dueño del proceso los corrija y el Jefe MAST los publique. | TransientModel | 4 | `addons/quimibond_sgi_knowledge/models/sgi_knowledge_import.py` |
 | [`sgi.legacy.routine`](diccionario/sgi.legacy.routine.md) | Rutina del procedimiento anterior | Rutina de un procedimiento del Dropbox y su destino en Odoo (cubierta, reemplazada o pendiente de decisión). Se importa desde el libro «rutina por rutina»; vive en «Del Dropbox a Odoo». | Model | 22 | `addons/quimibond_sgi/models/sgi_legacy_routine.py` |
 | [`sgi.legacy.routine.import`](diccionario/sgi.legacy.routine.import.md) | Importar rutinas del Dropbox | Asistente para importar el libro de rutinas: Probar, confirmar y Cargar. Si el conteo no cuadra, no carga. | TransientModel | 11 | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py` |
 | [`sgi.legacy.routine.import.line`](diccionario/sgi.legacy.routine.import.line.md) | Resultado de la importación de rutinas | Renglón del resultado de la importación de rutinas. | TransientModel | 6 | `addons/quimibond_sgi/models/sgi_legacy_routine_import.py` |
@@ -129,7 +130,7 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 | [`sgi.ppap`](diccionario/sgi.ppap.md) | PPAP - Proceso de Aprobación de Partes de Producción (P-C15) | Expediente PPAP (P-C15) de un producto para un cliente, con sus elementos y la decisión del cliente. | Model | 9 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.ppap.element`](diccionario/sgi.ppap.element.md) | Elemento de un PPAP | Elemento de un PPAP con su documento, AMEF o plan de control y su estado. | Model | 10 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.ppap.element.template`](diccionario/sgi.ppap.element.template.md) | Elemento PPAP (catálogo AIAG) | Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía. | Model | 4 | `addons/quimibond_sgi/models/sgi_ppap.py` |
-| [`sgi.process`](diccionario/sgi.process.md) | Proceso SGI | Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores, riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo. | Model | 77 | `addons/quimibond_sgi/models/sgi_process.py` |
+| [`sgi.process`](diccionario/sgi.process.md) | Proceso SGI | Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores, riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo. | Model | 78 | `addons/quimibond_sgi/models/sgi_process.py` |
 | [`sgi.process.activity`](diccionario/sgi.process.activity.md) | Actividad del procedimiento | Actividad (numeral) del Desarrollo del procedimiento (sección 4). | Model | 94 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.flow`](diccionario/sgi.process.flow.md) | Flujo entre procesos SGI | Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué modelo. | Model | 8 | `addons/quimibond_sgi/models/sgi_process.py` |
 | [`sgi.process.responsibility`](diccionario/sgi.process.responsibility.md) | Responsabilidad de área en el procedimiento | Responsabilidad de un rol/puesto dentro del procedimiento (sección 3). | Model | 6 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
@@ -173,6 +174,7 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 | [`ir.config_parameter`](diccionario/ir.config_parameter.md) | 0 | `addons/quimibond_sgi/models/sgi_activity_spec.py` |
 | [`ir.ui.menu`](diccionario/ir.ui.menu.md) | 0 | `addons/quimibond_sgi/models/sgi_cleanup.py` |
 | [`ir.ui.view`](diccionario/ir.ui.view.md) | 1 | `addons/quimibond_sgi/models/sgi_diagram_view.py` |
+| [`knowledge.article`](diccionario/knowledge.article.md) | 10 | `addons/quimibond_sgi_knowledge/models/sgi_knowledge_article.py` |
 | [`mail.activity`](diccionario/mail.activity.md) | 4 | `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_nonconformity.py` |
 | [`maintenance.equipment`](diccionario/maintenance.equipment.md) | 18 | `addons/quimibond_sgi/models/sgi_calibration.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_msa.py` |
 | [`maintenance.request`](diccionario/maintenance.request.md) | 7 | `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py` |
@@ -205,4 +207,4 @@ Modelos que definen el núcleo y sus satélites (139) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 8 de 139.
+Modelos propios sin docstring de clase: 8 de 140.
