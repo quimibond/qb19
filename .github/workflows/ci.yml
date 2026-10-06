@@ -44,6 +44,12 @@ jobs:
           find . -name '__manifest__.py' -not -path './.git/*' -printf '%h\n' \
             | sort -u | xargs python -m compileall -q
 
+      - name: Manuales del SGI en Conocimiento
+        # quimibond_sgi_knowledge siembra en Conocimiento el HTML de
+        # data/manuales/, generado de docs/sgi/*.md. Si alguien cambia un
+        # manual y no regenera, Conocimiento se quedaría con el texto viejo.
+        run: python3 tools/sgi_knowledge_html.py --check
+
       - name: Vistas contra los RNG de Odoo 19 e imports de modelos
         # Lo que el update de Odoo.sh valida y aquí no se ve porque el SGI
         # depende de Enterprise: search/graph/pivot/calendar/activity contra

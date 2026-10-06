@@ -256,7 +256,7 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
 
 - Etapas: Abierta, Seguimiento, Cerrada, Cancelada. Plazos por etapa
   (contención, causa raíz, plan) en días hábiles desde que se abre (Ajustes →
-  SGI → No Conformidades y AMEF).
+  SGI → No conformidades y AMEF).
 - Candados de cierre: causa raíz, acciones terminadas (las correctivas, con
   evidencia: una nota o un archivo) y verificación de eficacia con resultado
   **Eficaz**, registrada en la fecha programada o después; en NC mayor,

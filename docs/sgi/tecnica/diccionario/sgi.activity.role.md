@@ -8,9 +8,9 @@ Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, apr
 
 Orden: `activity_id, sequence, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_wizard.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`, `addons/quimibond_sgi/models/sgi_relative_roles.py`, `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_wizard.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`, `addons/quimibond_sgi/models/sgi_relative_roles.py`, `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py`, `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`.
 
-## Campos (48)
+## Campos (49)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -40,6 +40,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `condition_value` | Char | Valor | Número, texto o True/False. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:193` |
 | `family_id` | Many2one | Familia de puestos | Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia). |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:153` |
 | `job_id` | Many2one | Puesto | Puesto al que se asigna el rol (cuando «Asignado a» es puesto). |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:150` |
+| `mp_article_id` | Many2one | Instructivo en Conocimiento | El instructivo de la actividad para leerlo en Conocimiento, cuando ya está publicado. |  | `knowledge.article` | compute `_compute_mp_article_id`, sin guardar |  | `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py:31` |
 | `mp_can_go` | Boolean | Se puede ir a hacer | Indica si la actividad tiene un menú de Odoo al que se puede ir con «Ir a hacerlo». |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:366` |
 | `mp_check_against` | Char | Contra qué se revisa |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:354` |
 | `mp_done` | Text | Terminada cuando |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:355` |
@@ -63,10 +64,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `sequence` | Integer | Secuencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:174` |
 | `target_type` | Selection | Asignado a | A quién toca: un puesto, una familia de puestos o un rol relativo (el solicitante, quien detecta, el dueño del proceso…). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:146` |
 
-## Métodos públicos (14)
+## Métodos públicos (15)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `action_mp_article` | «Leer en Conocimiento». |
 | `action_mp_go` | «Ir a hacerlo»: el menú real de Odoo donde se ejecuta el paso. |
 | `action_mp_instruction` | «Ver instructivo»: el archivo del IT de la actividad. |
 | `action_mp_propose_change` | — |
