@@ -3,6 +3,24 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.2.0 — 2026-10-06
+
+- `qb.producto.mp`: materia prima por unidad explotando la receta vigente
+  hasta las hojas compradas; precio de hoja = última compra confirmada
+  conocida al corte del período (moneda de la compañía, unidad del
+  producto; sin compras antes del corte, la primera conocida; sin compras,
+  el costo promedio acotado a 0). Marca `dudosa` cuando una hoja o receta
+  de la explosión tiene una validación abierta. `mp_para(product, cutoff)`
+  para el costeo de períodos y el cotizador.
+- `qb.producto.rendimiento`: rendimiento vendible desde los movimientos de
+  almacén (reglas del módulo anterior: líneas de movimiento, PQ ÷ PQ +
+  merma, orígenes de producción, tipos excluidos, ventana de 12 meses,
+  umbral de unidades → tasa de planta), con captura manual con motivo y
+  vigencia. Importa los rendimientos capturados en `qb.producto.peso` del
+  módulo anterior.
+- Menús en Datos del producto; crons semanales; parámetros de ubicaciones
+  de calidad y umbral.
+
 ## 19.0.1.1.0 — 2026-10-06
 
 - `qb.producto.horas`: horas por unidad de cada producto fabricado en cada

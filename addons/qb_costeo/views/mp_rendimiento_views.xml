@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Materia prima -->
+    <record id="view_qb_producto_mp_list" model="ir.ui.view">
+        <field name="name">qb.producto.mp.list</field>
+        <field name="model">qb.producto.mp</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" decoration-warning="calidad == 'dudosa'">
+                <field name="default_code"/>
+                <field name="product_id"/>
+                <field name="mp_unit"/>
+                <field name="bom_id"/>
+                <field name="n_hojas"/>
+                <field name="hojas_dudosas"/>
+                <field name="calidad"/>
+                <field name="calculado_el" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_producto_mp_form" model="ir.ui.view">
+        <field name="name">qb.producto.mp.form</field>
+        <field name="model">qb.producto.mp</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="bom_id"/>
+                            <field name="mp_unit"/>
+                            <field name="calidad"/>
+                        </group>
+                        <group>
+                            <field name="n_hojas"/>
+                            <field name="hojas_dudosas"/>
+                            <field name="calculado_el"/>
+                        </group>
+                    </group>
+                    <group string="Hojas que más pesan">
+                        <field name="detalle" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_producto_mp_search" model="ir.ui.view">
+        <field name="name">qb.producto.mp.search</field>
+        <field name="model">qb.producto.mp</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <filter name="dudosas" string="Dudosas" domain="[('calidad', '=', 'dudosa')]"/>
+                <filter name="por_calidad" string="Calidad" context="{'group_by': 'calidad'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_producto_mp" model="ir.actions.act_window">
+        <field name="name">Materia prima por producto</field>
+        <field name="res_model">qb.producto.mp</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_qb_mp_recalcular" model="ir.actions.server">
+        <field name="name">Recalcular materia prima</field>
+        <field name="model_id" ref="model_qb_producto_mp"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_recalcular_todo()</field>
+    </record>
+
+    <!-- Rendimiento -->
+    <record id="view_qb_producto_rendimiento_list" model="ir.ui.view">
+        <field name="name">qb.producto.rendimiento.list</field>
+        <field name="model">qb.producto.rendimiento</field>
+        <field name="arch" type="xml">
+            <list create="false" editable="bottom" decoration-info="fuente == 'manual'" decoration-muted="fuente == 'planta'">
+                <field name="default_code" readonly="1"/>
+                <field name="product_id" readonly="1"/>
+                <field name="rendimiento" readonly="1"/>
+                <field name="fuente" readonly="1"/>
+                <field name="rendimiento_calculado" readonly="1"/>
+                <field name="unidades_clasificadas" readonly="1"/>
+                <field name="rendimiento_manual"/>
+                <field name="manual_motivo"/>
+                <field name="manual_vigente_hasta"/>
+                <field name="calculado_el" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_producto_rendimiento_search" model="ir.ui.view">
+        <field name="name">qb.producto.rendimiento.search</field>
+        <field name="model">qb.producto.rendimiento</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="default_code"/>
+                <filter name="manuales" string="Capturados" domain="[('fuente', '=', 'manual')]"/>
+                <filter name="planta" string="Con tasa de planta" domain="[('fuente', '=', 'planta')]"/>
+                <filter name="por_fuente" string="Fuente" context="{'group_by': 'fuente'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_producto_rendimiento" model="ir.actions.act_window">
+        <field name="name">Rendimiento vendible</field>
+        <field name="res_model">qb.producto.rendimiento</field>
+        <field name="view_mode">list</field>
+    </record>
+
+    <record id="action_qb_rendimiento_recalcular" model="ir.actions.server">
+        <field name="name">Recalcular rendimiento</field>
+        <field name="model_id" ref="model_qb_producto_rendimiento"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_recalcular_todo()</field>
+    </record>
+</odoo>
