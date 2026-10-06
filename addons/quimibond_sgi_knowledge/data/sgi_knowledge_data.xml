@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1.2.0: «Ayuda» en SGI → Inicio abre el manual del rol de quien entra. -->
+    <record id="sgi_kb_help_action" model="ir.actions.server">
+        <field name="name">Ayuda</field>
+        <field name="model_id" ref="knowledge.model_knowledge_article"/>
+        <field name="state">code</field>
+        <field name="code">action = env['knowledge.article']._sgi_kb_help_action()</field>
+    </record>
+
+    <!-- Diario 03:40 (UTC): miembros del espacio «SGI» (Jefe MAST, dueños de
+         proceso) y aviso al Jefe MAST de los artículos publicados que
+         cambiaron. -->
+    <record id="ir_cron_sgi_kb_members" model="ir.cron">
+        <field name="name">SGI: Conocimiento (miembros y artículos que cambiaron)</field>
+        <field name="model_id" ref="knowledge.model_knowledge_article"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_sgi_kb_daily()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="nextcall" eval="(DateTime.today() + relativedelta(days=1, hour=3, minute=40, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Siembra del espacio «SGI» y de los manuales en cada instalación y
+         cada actualización (sin noupdate). Idempotente; respeta lo editado. -->
+    <function model="knowledge.article" name="_sgi_kb_seed"/>
+</odoo>
