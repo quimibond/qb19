@@ -39,10 +39,13 @@ de Diseño y Desarrollo y el proyecto de análisis, separa folio, código y
 revisión del nombre viejo, toma el cliente de la etapa cuando faltaba y
 reescribe los filtros de medición que decían ``name =like 'FT-%'``.
 """
+import logging
 import re
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
+
+_logger = logging.getLogger(__name__)
 
 FT_FOLIO_RE = re.compile(r'^\s*FT[-\s]?(\d{1,4})\s*[-/]\s*(\d{4})\s*(.*)$', re.IGNORECASE)
 REV_RE = re.compile(r'\bREV\.?\s*(\d+)\s*$', re.IGNORECASE)
@@ -76,11 +79,32 @@ NON_CUSTOMER_STAGES = {'hecha', 'cancelada', 'odoo', 'nuevo', 'por hacer', 'anal
                        'análisis de proyectos'}
 # Etapa vieja que significa desarrollo interno (quien pide es Dirección).
 INTERNAL_STAGES = {'quimibond'}
-# Dominios de medición viejos → nuevos (migración y mapa de procesos).
+# Etapas viejas → etapa de avance (57.120.2). Un proyecto con folio FT ya pasó
+# la aprobación del cliente: lo que no esté cancelado ni hecho va a «Muestra».
+LEGACY_STAGE_MAP = {'cancelada': 'cerrado_sin_producto', 'hecha': 'liberado',
+                    'analisis de proyectos': 'analisis', 'análisis de proyectos': 'analisis'}
+LEGACY_STAGE_DEFAULT = 'muestra'
+# Dominios de medición viejos → nuevos (migración y mapa de procesos). Las
+# plantillas no cuentan (Jose, 2026-10-06).
 LEGACY_DOMAIN_REPLACEMENTS = (
-    ("('project_id.name', '=like', 'FT-%')", "('project_id.sgi_is_ft', '=', True)"),
-    ("('name', '=like', 'FT-%')", "('sgi_is_ft', '=', True)"),
+    ("('project_id.name', '=like', 'FT-%')",
+     "('project_id.sgi_is_ft', '=', True), ('project_id.is_template', '=', False)"),
+    ("('name', '=like', 'FT-%')", "('sgi_is_ft', '=', True), ('is_template', '=', False)"),
+    ("('project_id.sgi_is_ft', '=', True)]",
+     "('project_id.sgi_is_ft', '=', True), ('project_id.is_template', '=', False)]"),
+    ("('project_id.sgi_is_ft', '=', True),",
+     "('project_id.sgi_is_ft', '=', True), ('project_id.is_template', '=', False),"),
+    ("[('sgi_is_ft', '=', True)]", "[('sgi_is_ft', '=', True), ('is_template', '=', False)]"),
 )
+# Modelos nuevos que el MCP debe poder leer (y los catálogos, escribir) para
+# la corrección final de datos del brief (sección 7). Jose, 2026-10-06.
+MCP_MODELS = {
+    'sgi.dev.characteristic': True, 'sgi.dev.characteristic.template': True, 'sgi.dev.option': True,
+    'sgi.dev.revision': True, 'sgi.dev.stage.log': False, 'sgi.dev.mp.wait': True,
+    'sgi.dev.lab.request': True, 'sgi.dev.feasibility.item': True, 'sgi.dev.feasibility': True,
+    'ficha.tecnica.caracteristica': True, 'ficha.tecnica.clave.codigo': True, 'ficha.tecnica.spec': True,
+    'ficha.tecnica.tejido': True, 'ficha.tecnica.acabado': True, 'project.project.stage': False,
+}
 
 
 class SgiDevOption(models.Model):
@@ -369,11 +393,35 @@ class ProjectProjectDev(models.Model):
             parts.append("rev. %d" % self.sgi_dev_revision)
         return " ".join(parts)
 
-    def _sgi_dev_sync_name(self):
-        for project in self.filtered('sgi_is_ft'):
-            name = project._sgi_dev_name()
-            if project.name != name:
+    def _sgi_dev_names_to_sync(self):
+        """Proyectos cuyo nombre arma Odoo: desarrollos con folio o con producto.
+        Las plantillas y los análisis sin producto conservan el nombre que
+        escribió la persona (57.120.2: la migración renombró «Análisis» las
+        plantillas 480 y 481 y el proyecto 490)."""
+        return self.filtered(lambda p: p.sgi_is_ft and not p.is_template
+                             and (p.sgi_ft_folio or p.sgi_dev_product_id or p.sgi_dev_product_name))
+
+    @api.model
+    def _sgi_dev_langs(self):
+        return [code for code, _name in self.env['res.lang'].get_installed()]
+
+    def _sgi_dev_write_name_all_langs(self, name):
+        """Escribe el nombre en todos los idiomas instalados. ``name`` es
+        traducible: un write sin ``lang`` solo cambia en_US y los usuarios en
+        es_MX siguen viendo el nombre viejo (57.120.2)."""
+        for project in self:
+            langs = self._sgi_dev_langs()
+            if len(langs) > 1:
+                project.update_field_translations('name', {lang: name for lang in langs})
+            else:
                 super(ProjectProjectDev, project).write({'name': name})
+
+    def _sgi_dev_sync_name(self):
+        for project in self._sgi_dev_names_to_sync():
+            name = project._sgi_dev_name()
+            langs = self._sgi_dev_langs()
+            if any(project.with_context(lang=lang).name != name for lang in langs):
+                project._sgi_dev_write_name_all_langs(name)
 
     def action_sgi_dev_assign_folio(self):
         """Asigna el folio FT de la secuencia anual (FT-001-2027) si no lo tiene."""
@@ -392,16 +440,25 @@ class ProjectProjectDev(models.Model):
 
     def _sgi_dev_sync_alias(self):
         """Nombra el alias nativo del proyecto (desarrollo-<id> o ft-039-2026) para que los
-        correos del cliente queden pegados. Sin dominio de alias configurado el alias sigue
-        inactivo, sin error."""
+        correos del cliente queden pegados. Solo si la base tiene dominio de alias; el
+        savepoint cubre únicamente la escritura del alias (``flush=False``): en 57.118.0 el
+        savepoint con flush previo tragó en silencio la escritura de los proyectos
+        (57.120.2)."""
+        if not self.env['mail.alias.domain'].sudo().search_count([]):
+            return
         for project in self.filtered('sgi_is_ft'):
             wanted = project._sgi_dev_alias_name()
-            if project.alias_id and project.alias_name != wanted:
-                try:
-                    with self.env.cr.savepoint():
-                        project.alias_name = wanted
-                except Exception:  # noqa: BLE001 — un alias en uso no detiene el desarrollo
-                    continue
+            alias = project.alias_id.sudo()
+            if not alias or alias.alias_name == wanted:
+                continue
+            try:
+                with self.env.cr.savepoint(flush=False):
+                    alias.write({'alias_name': wanted})
+                    alias.flush_recordset(['alias_name'])
+            except Exception as exc:  # noqa: BLE001 — un alias en uso no detiene el desarrollo
+                alias.invalidate_recordset(['alias_name'])
+                _logger.warning("SGI desarrollo: no se pudo nombrar el alias %s del proyecto %s: %s",
+                                wanted, project.id, exc)
 
     # ------------------------------------------------------------------------
     # Revisión y bitácora
@@ -489,7 +546,7 @@ class ProjectProjectDev(models.Model):
     def create(self, vals_list):
         projects = super().create(vals_list)
         dev = projects.filtered('sgi_is_ft')
-        if dev:
+        if dev and not self.env.context.get('sgi_dev_migration'):
             solicitud = self._sgi_dev_stage('solicitud')
             for project in dev:
                 if solicitud and project.stage_id.id not in self._sgi_dev_stage_keys():
@@ -502,7 +559,7 @@ class ProjectProjectDev(models.Model):
     def write(self, vals):
         res = super().write(vals)
         dev = self.filtered('sgi_is_ft')
-        if not dev:
+        if not dev or self.env.context.get('sgi_dev_migration'):
             return res
         if 'stage_id' in vals:
             seq = self._sgi_dev_stage_order(FOLIO_FROM_STAGE)
@@ -589,7 +646,8 @@ class ProjectProjectDev(models.Model):
                 partner, rule = self.env['res.partner'], 'no es cliente'
             else:
                 partner, rule = mapping.get(stage, (self.env['res.partner'], 'sin cliente en Odoo'))
-            rows.append({'stage': stage, 'partner': partner, 'rule': rule, 'projects': pending})
+            rows.append({'stage': stage, 'partner': partner, 'rule': rule, 'projects': pending,
+                         'target': self._sgi_dev_legacy_stage_target(stage)})
         return rows
 
     @api.model
@@ -597,8 +655,12 @@ class ProjectProjectDev(models.Model):
         """Marca como desarrollo los proyectos FT-, las plantillas de Diseño y Desarrollo y el
         proyecto de análisis; separa folio, producto y revisión del nombre; toma el cliente de
         la etapa cuando faltaba (ver _sgi_dev_stage_partner_map) y marca origen interno a los
-        de la etapa QUIMIBOND. Idempotente."""
-        Project = self.sudo().with_context(active_test=False)
+        de la etapa QUIMIBOND. Idempotente.
+
+        57.120.2: corre con ``sgi_dev_migration`` (los ganchos de write no hacen nada), escribe
+        el nombre en todos los idiomas y hace ``flush`` al final para que un error se vea en el
+        update en lugar de perderse."""
+        Project = self.sudo().with_context(active_test=False, sgi_dev_migration=True)
         mapping = self._sgi_dev_stage_partner_map()
         touched = Project.browse()
         for project in Project.search([('name', '=ilike', 'FT-%')]):
@@ -619,23 +681,121 @@ class ProjectProjectDev(models.Model):
         templates = Project.search(['|', ('name', '=ilike', 'PLANTILLA - Diseño y Desarrollo%'),
                                     ('name', '=ilike', 'ANALISIS DE PROYECTO%'), ('sgi_is_ft', '=', False)])
         templates.write({'sgi_is_ft': True})
-        return touched | templates
+        touched |= templates
+        touched._sgi_dev_unify_names()
+        Project.flush_model()
+        return touched
+
+    def _sgi_dev_unify_names(self):
+        """Un solo nombre en todos los idiomas. Desarrollos con folio o producto: el nombre que
+        arma Odoo. Plantillas y análisis sin producto: el nombre que ve la empresa (es_MX en
+        Quimibond), que es el que escribió la persona; así se deshace el «Análisis» que 57.118.0
+        dejó en en_US en las plantillas 480 y 481 y en el proyecto 490."""
+        langs = self._sgi_dev_langs()
+        if len(langs) <= 1:
+            self._sgi_dev_names_to_sync()._sgi_dev_sync_name()
+            return
+        company_lang = self.env.company.partner_id.lang or 'en_US'
+        placeholder = "Análisis"
+        for project in self.filtered('sgi_is_ft'):
+            if project in project._sgi_dev_names_to_sync():
+                name = project._sgi_dev_name()
+            else:
+                values = {lang: project.with_context(lang=lang).name or '' for lang in langs}
+                good = [v for v in values.values() if v and v != placeholder and not v.startswith(placeholder + ' ')]
+                name = values.get(company_lang) if values.get(company_lang) in good else (good[0] if good else '')
+            if name and any(project.with_context(lang=lang).name != name for lang in langs):
+                project._sgi_dev_write_name_all_langs(name)
+
+    @api.model
+    def _sgi_dev_legacy_stage_target(self, stage):
+        """Clave de la etapa de avance a la que pasa un proyecto FT que está en una etapa vieja."""
+        low = (stage.name or '').strip().lower()
+        return LEGACY_STAGE_MAP.get(low, LEGACY_STAGE_DEFAULT)
+
+    @api.model
+    def _sgi_dev_migrate_stages(self):
+        """Pasa los desarrollos de las etapas con nombre de cliente a las etapas de avance
+        (Cancelada → Cerrado sin producto, Hecha → Liberado, ANALISIS DE PROYECTOS → Análisis,
+        lo demás → Muestra), abre su reloj de etapa y archiva las etapas viejas que quedan sin
+        proyectos. Las plantillas no se mueven. Idempotente."""
+        Project = self.sudo().with_context(active_test=False, sgi_dev_migration=True)
+        Stage = self.env['project.project.stage'].sudo().with_context(active_test=False)
+        dev_stage_ids = set(self._sgi_dev_stage_keys())
+        moved = Project.browse()
+        old_stages = Stage.browse()
+        for project in Project.search([('sgi_is_ft', '=', True), ('is_template', '=', False)]):
+            if not project.stage_id or project.stage_id.id in dev_stage_ids:
+                continue
+            target = self._sgi_dev_stage(self._sgi_dev_legacy_stage_target(project.stage_id))
+            if not target:
+                continue
+            old_stages |= project.stage_id
+            project.write({'stage_id': target.id})
+            moved |= project
+        moved.with_context(sgi_dev_migration=False)._sgi_dev_open_stage_log()
+        archived = Stage.browse()
+        if 'active' in Stage._fields:
+            for stage in old_stages:
+                low = (stage.name or '').strip().lower()
+                if low in NON_CUSTOMER_STAGES or low in INTERNAL_STAGES:
+                    if low not in ('analisis de proyectos', 'análisis de proyectos', 'quimibond'):
+                        continue
+                if not Project.search_count([('stage_id', '=', stage.id)]):
+                    stage.write({'active': False})
+                    archived |= stage
+        Project.flush_model()
+        return moved, archived
+
+    @api.model
+    def _sgi_dev_enable_mcp_models(self):
+        """Expone al MCP los modelos nuevos del desarrollo y de las fichas (lectura; escritura en
+        los catálogos y renglones). Solo si mcp_server está instalado. Idempotente."""
+        if 'mcp.enabled.model' not in self.env:
+            return self.env['ir.model']
+        Enabled = self.env['mcp.enabled.model'].sudo().with_context(active_test=False)
+        IrModel = self.env['ir.model'].sudo()
+        done = IrModel
+        for model_name, writable in MCP_MODELS.items():
+            if model_name not in self.env:
+                continue
+            model = IrModel.search([('model', '=', model_name)], limit=1)
+            if not model or Enabled.search_count([('model_id', '=', model.id)]):
+                continue
+            Enabled.create({'model_id': model.id, 'active': True, 'allow_read': True,
+                            'allow_create': writable, 'allow_write': writable, 'allow_unlink': False,
+                            'notes': "quimibond_sgi 57.120.2: modelo del desarrollo de producto (C1)."})
+            done |= model
+        return done
 
     @api.model
     def _sgi_dev_migrate_measure_domains(self):
-        """Los filtros de medición que decían «nombre empieza con FT-» pasan a la bandera."""
+        """Los filtros de medición que decían «nombre empieza con FT-» pasan a la bandera y
+        excluyen las plantillas (57.120.2). Idempotente: no duplica la cláusula."""
         changed = 0
         for model, field in (('sgi.deliverable', 'measure_domain'), ('sgi.process.activity', 'measure_domain'),
                              ('sgi.process.activity', 'applies_domain')):
             if model not in self.env or field not in self.env[model]._fields:
                 continue
-            records = self.env[model].sudo().with_context(active_test=False).search([(field, 'ilike', 'FT-%')])
+            records = self.env[model].sudo().with_context(active_test=False).search(
+                ['|', (field, 'ilike', 'FT-%'), (field, 'ilike', 'sgi_is_ft')])
             for rec in records:
                 text = rec[field] or ''
-                new = text
-                for old, repl in LEGACY_DOMAIN_REPLACEMENTS:
-                    new = new.replace(old, repl)
+                new = self._sgi_dev_rewrite_domain(text)
                 if new != text:
                     rec.write({field: new})
                     changed += 1
         return changed
+
+    @api.model
+    def _sgi_dev_rewrite_domain(self, text):
+        """Texto de un dominio viejo → nuevo (bandera + sin plantillas), sin duplicar."""
+        new = text
+        for old, repl in LEGACY_DOMAIN_REPLACEMENTS[:2]:
+            new = new.replace(old, repl)
+        if 'is_template' not in new:
+            for old, repl in LEGACY_DOMAIN_REPLACEMENTS[2:]:
+                if old in new:
+                    new = new.replace(old, repl, 1)
+                    break
+        return new

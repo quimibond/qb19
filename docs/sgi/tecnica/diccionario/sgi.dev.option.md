@@ -14,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  | Las opciones archivadas no se proponen en proyectos nuevos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:97` |
-| `kind` | Selection | Lista | A qué lista pertenece la opción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:93` |
-| `name` | Char | Opción | Texto de la opción tal como se elige. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:96` |
-| `sequence` | Integer |  | Orden dentro de su lista. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:95` |
+| `active` | Boolean |  | Las opciones archivadas no se proponen en proyectos nuevos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:121` |
+| `kind` | Selection | Lista | A qué lista pertenece la opción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:117` |
+| `name` | Char | Opción | Texto de la opción tal como se elige. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:120` |
+| `sequence` | Integer |  | Orden dentro de su lista. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:119` |
 
