@@ -143,3 +143,6 @@ from . import sgi_risk_report
 # 57.111.0: quién hizo la actividad según el historial de su estado (hereda
 # entregable y actividad, y usa los ganchos de sgi_process_procedure).
 from . import sgi_measure_history
+# 57.112.0: medición manual a propósito (hereda la actividad y extiende los
+# campos de medición de sgi_measure_history).
+from . import sgi_measure_manual_reason

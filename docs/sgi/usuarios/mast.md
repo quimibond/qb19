@@ -321,6 +321,10 @@ solicitud**: el antes → después de la solicitud ya incluye lo que agregó.
   solicitudes), marque **Quién lo hizo: quien lo pasó a su estado
   (historial)**: cuenta a quien pasó el registro a su estado actual, no al
   último que lo editó. Las que se medían con «write_uid» ya vienen marcadas.
+- **Medición manual a propósito (57.112.0).** Si la actividad se hace en Odoo
+  pero su evidencia es una revisión, un reporte o una junta, escriba **Por qué
+  se mide a mano** (qué se revisa y dónde queda la decisión): se mide con el
+  registro de cumplimiento y deja de salir «Se hace en Odoo, se mide a mano».
 - **Riesgos reportados.** Cualquiera puede reportar un riesgo u oportunidad
   en SGI → Reportar; a usted le llega «Evaluar riesgo reportado» para
   confirmar probabilidad, impacto, proceso y categoría.

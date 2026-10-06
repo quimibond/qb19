@@ -13,6 +13,36 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.112.0 — 2026-10-06
+
+**Medición manual a propósito.** De las 84 actividades con «Se hace en Odoo,
+se mide a mano» (producción, 2026-10-06), unas 45 son revisiones, reportes o
+juntas: lo que se revisa vive en Odoo pero la evidencia es la revisión hecha,
+y se mide bien con el registro de cumplimiento (57.103.0). El aviso pedía un
+entregable que no existe. Tanda 3 de «Medición por revisar», pedido de Jose.
+
+### Agregado
+
+- **«Por qué se mide a mano»** (`manual_reason`, `models/sgi_measure_manual_reason.py`)
+  en la pestaña de medición de la actividad, visible con «Registro manual» o
+  «Por correo». Escrito, el aviso «Se hace en Odoo, se mide a mano» no sale.
+  No cambia el procedimiento (campo de medición).
+
+### Datos de producción (MCP, 2026-10-06)
+
+- Canal corregido en 6 actividades que no se hacen en Odoo: C2.37, C2.38,
+  C4.02 y C6.28 a «Trabajo físico»; C5.20 y S1.17 a «Correo». Se les quitó
+  el aviso «Se hace en Odoo, se mide a mano».
+- Después del despliegue se llena «Por qué se mide a mano» en las revisiones
+  y reportes por MCP.
+- Quedan para los dueños de proceso las que dicen Odoo y no dejan registro:
+  - faltan puntos de control de laboratorio, tono, auditoría por turno y
+    liberación de tejedora;
+  - faltan las categorías de aprobación de anticipo, propuesta de pago y
+    compras de TI;
+  - no hay permisos ni vacaciones en Odoo;
+  - ninguna orden de compra sale del reabastecimiento.
+
 ## 19.0.57.111.0 — 2026-10-06
 
 **Quién hizo la actividad, según el historial de su estado.** «write_uid» dice
