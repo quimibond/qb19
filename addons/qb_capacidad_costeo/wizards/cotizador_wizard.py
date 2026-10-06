@@ -14,6 +14,7 @@ from dateutil.relativedelta import relativedelta
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 
+from ..models.costeo import CONV_FUENTES
 from ..models.cotizacion import CAPACITY_STATUS
 from ..models.glosario import GLOSARIO_HTML
 
@@ -51,6 +52,17 @@ class QbCotizadorWizard(models.TransientModel):
     spec_centro_ids = fields.Many2many(
         'qb.costeo.centro', string='Ruta (centros)',
         help='Centros por los que pasaría. Vacío = según familia.')
+    spec_familia_id = fields.Many2one(
+        'qb.costeo.familia', string='Familia de máquinas (tejido)',
+        domain="[('centro_id.modo_costeo', '=', 'absorcion_odoo')]",
+        help='En qué máquinas se tejería. Su $/h ÷ su velocidad da la '
+             'conversión absorbida por kilo. Vacío = promedio del centro, '
+             'marcado como estimado.')
+    periodo_id = fields.Many2one(
+        'qb.costo.factores', string='Período de factores',
+        help='Con qué período se cotiza. Vacío = el ÚLTIMO PERÍODO CERRADO: '
+             'el mes en curso se recalcula a diario y sus pisos cambian '
+             'según el día. Elegir uno en borrador muestra un aviso.')
     volumen = fields.Float(string='Volumen (unidades/mes)')
     currency_id = fields.Many2one(
         'res.currency', string='Moneda de la cotización',
@@ -142,6 +154,26 @@ class QbCotizadorWizard(models.TransientModel):
         compute='_compute_cotizacion', string='Energía $/u', digits=(16, 4))
     fab_unit = fields.Float(
         compute='_compute_cotizacion', string='Fabricación $/u', digits=(16, 4))
+    conv_unit = fields.Float(
+        compute='_compute_cotizacion', string='Conversión absorbida $/u',
+        digits=(16, 4),
+        help='Lo que Odoo capitaliza por hora-máquina en tejido, bajado al '
+             'artículo por la receta. Va al costo de producción y al piso a '
+             'planta llena; al piso con capacidad ociosa solo su parte de '
+             'energía.')
+    conv_info = fields.Char(compute='_compute_cotizacion',
+                            string='Fuente de la conversión')
+    rendimiento = fields.Float(
+        compute='_compute_cotizacion', string='Rendimiento de primera',
+        digits=(6, 4),
+        help='Fracción de lo producido que sale de primera. Los pisos y los '
+             'márgenes son del metro VENDIBLE: costo de producción ÷ '
+             'rendimiento.')
+    costo_produccion = fields.Float(
+        compute='_compute_cotizacion', string='Costo de producción vendible $/u',
+        digits=(16, 4))
+    factores_aviso = fields.Char(compute='_compute_cotizacion',
+                                 string='Aviso del período')
     costo_variable = fields.Float(
         compute='_compute_cotizacion', string='Costo variable $/u', digits=(16, 4))
     op_pct_display = fields.Float(
@@ -172,12 +204,15 @@ class QbCotizadorWizard(models.TransientModel):
     piso_ocioso = fields.Float(
         compute='_compute_cotizacion', string='Piso con capacidad ociosa $/u',
         digits=(16, 4),
-        help='= costo variable. Con capacidad ociosa, todo precio arriba de '
-             'esto APORTA a fijos.')
+        help='= costo variable de la unidad vendible (MP + energía + la '
+             'energía de la conversión absorbida, ÷ rendimiento). Con '
+             'capacidad ociosa, todo precio arriba de esto APORTA a fijos.')
     piso_lleno = fields.Float(
         compute='_compute_cotizacion', string='Piso a planta llena $/u',
         digits=(16, 4),
-        help='= (variable + fab) ÷ (1 − op%): margen cero absorbiendo todo.')
+        help='= costo de producción vendible ÷ (1 − op%): margen cero '
+             'absorbiendo todo (fabricación y conversión absorbida '
+             'incluidas).')
     margen_contribucion = fields.Float(
         compute='_compute_cotizacion', string='Contribución $/u', digits=(16, 4))
     margen_contribucion_pct = fields.Float(
@@ -201,7 +236,14 @@ class QbCotizadorWizard(models.TransientModel):
              '(¿USD tecleado con moneda MXN?) o sospechosamente grande '
              '(¿MXN tecleado con moneda USD?).')
 
-    @api.depends('product_id', 'spec_mode')
+    def _factores(self):
+        """El período con el que se cotiza: el elegido o el último
+        cerrado."""
+        self.ensure_one()
+        return self.periodo_id or \
+            self.env['qb.costo.factores'].para_cotizar()[0]
+
+    @api.depends('product_id', 'spec_mode', 'periodo_id')
     def _compute_explicacion(self):
         """El desglose completo con fuentes: BOM hoja por hoja con su última
         compra, peso con su fuente, factores con la fórmula y los números
@@ -212,8 +254,7 @@ class QbCotizadorWizard(models.TransientModel):
             if not wiz.product_id or wiz.spec_mode:
                 wiz.explicacion_html = False
                 continue
-            factores = self.env['qb.costo.factores'].search(
-                [], order='period DESC', limit=1)
+            factores = wiz._factores()
             if not factores:
                 wiz.explicacion_html = False
                 continue
@@ -243,15 +284,14 @@ class QbCotizadorWizard(models.TransientModel):
         for wiz in self:
             wiz.glosario_html = GLOSARIO_HTML
 
-    @api.depends('product_id', 'partner_id', 'spec_mode')
+    @api.depends('product_id', 'partner_id', 'spec_mode', 'periodo_id')
     def _compute_comparativa(self):
         Costo = self.env['qb.costo.producto']
         for wiz in self:
             if not wiz.product_id or wiz.spec_mode:
                 wiz.comparativa_html = False
                 continue
-            factores = self.env['qb.costo.factores'].search(
-                [], order='period DESC', limit=1)
+            factores = wiz._factores()
             if not factores:
                 wiz.comparativa_html = False
                 continue
@@ -402,8 +442,7 @@ class QbCotizadorWizard(models.TransientModel):
             return None
         Costo = self.env['qb.costo.producto']
         Config = self.env['qb.costeo.factor.config']
-        factores = self.env['qb.costo.factores'].search(
-            [], order='period DESC', limit=1)
+        factores = self._factores()
         if not factores:
             return {'error': 'Aún no hay factores calculados: corre '
                              '"Recalcular costeo (mes anterior)" en '
@@ -421,27 +460,32 @@ class QbCotizadorWizard(models.TransientModel):
             kg = (self.spec_gramaje / 1000.0) * (self.spec_ancho or 1.5)
             m_per_kg = 1.0 / kg if kg else Config.get_param('m_per_kg_default', 8.0)
             mp = self.spec_mp_unit
-            energia = 0.0 \
-                if bucket in ('importado', 'subproducto', 'servicio') \
-                else factores.energia_por_kg * kg
+            fabricado = bucket not in ('importado', 'subproducto', 'servicio')
+            Costo._check_energia_cotizable(factores, fabricado and kg)
+            energia = factores.energia_por_kg * kg if fabricado else 0.0
             fab = Costo._fab_unit(bucket, False, kg, m_per_kg, factores)
-            variable = mp + energia
-            op = factores.op_pct
+            # Sin artículo no hay órdenes: la conversión sale de la familia
+            # de máquinas elegida (o del promedio del centro, estimado).
+            conv = conv_var = 0.0
+            conv_fuente = False
+            if factores.centros_absorbidos \
+                    and bucket in ('tela', 'entretela_tejida'):
+                tarifa, conv_fuente = Costo.tarifa_conversion_familia(
+                    self.spec_familia_id, factores)
+                conv = tarifa * kg
+                conv_var = conv * factores.conv_energia_share
+            rend, rend_fuente = Costo._rendimiento_cotizar(
+                None, bucket, factores)
+            q = Costo._pisos(mp, energia, fab, conv, conv_var, rend,
+                             factores.op_pct, 0.0)
             centros = self.spec_centro_ids
-            q = {
+            q.update({
                 'bucket': bucket, 'centros': centros, 'kg': kg,
                 'm_per_kg': m_per_kg, 'is_kg': False,
-                'mp': mp, 'energia': energia, 'fab': fab, 'variable': variable,
-                'op_pct': op,
-                'piso_ocioso': variable,
-                'piso_lleno': (variable + fab) / (1.0 - op) if op < 1 else 0.0,
-                'precio_mercado': 0.0,
-                'precio_sugerido': Costo._precio_sugerido(
-                    variable, fab, op,
-                    (variable + fab) / (1.0 - op) if op < 1 else 0.0, 0.0),
+                'conv_fuente': conv_fuente, 'rend_fuente': rend_fuente,
                 'hours_per_unit': 0.0,
                 'factores': factores,
-            }
+            })
             uom_name = 'm'
             name = 'COT %s' % (self.spec_descripcion or 'especificación nueva')
         centros = q['centros'] or self._default_centros(q['bucket'])
@@ -453,8 +497,9 @@ class QbCotizadorWizard(models.TransientModel):
         # (en vez del margen meta global), respetando pisos y mercado.
         if self.margen_objetivo:
             q['precio_sugerido'] = Costo._precio_sugerido(
-                q['variable'], q['fab'], q['op_pct'], q['piso_lleno'],
-                q['precio_mercado'], target=self.margen_objetivo / 100.0)
+                q['variable'], q['produccion'] - q['variable'], q['op_pct'],
+                q['piso_lleno'], q['precio_mercado'],
+                target=self.margen_objetivo / 100.0)
 
         # El precio objetivo viene EN LA MONEDA elegida → a MXN para comparar.
         # Prioridad: precio objetivo capturado > precio para margen objetivo >
@@ -490,6 +535,11 @@ class QbCotizadorWizard(models.TransientModel):
             'peso_source': q.get('peso_source', ''),
             'uom_name': uom_name, 'mp': q['mp'], 'energia': q['energia'],
             'fab': q['fab'], 'variable': q['variable'],
+            'conv': q['conv'], 'conv_var': q['conv_var'],
+            'conv_fuente': q.get('conv_fuente'),
+            'produccion': q['produccion'], 'rendimiento': q['rendimiento'],
+            'rend_fuente': q.get('rend_fuente'),
+            'aviso': self.env['qb.costo.factores'].aviso_borrador(factores),
             'op_pct': q['op_pct'],
             'precio_mercado': q['precio_mercado'],
             'precio_sugerido': q.get('precio_sugerido', 0.0),
@@ -529,7 +579,7 @@ class QbCotizadorWizard(models.TransientModel):
         base = res['precio_ref']
         piso = min(res['piso_lleno'], base) if base else res['piso_lleno']
         variable = res['variable']
-        fab = res['fab']
+        produccion = res['produccion']
         op = res['op_pct']
         fx = res['fx'] if res['fx'] and res['fx'] != 1.0 else 0.0
         tramos = []
@@ -549,7 +599,7 @@ class QbCotizadorWizard(models.TransientModel):
             precio = round(precio, 2)
             contrib_total = (precio - variable) * volumen
             prev_total = contrib_total
-            neto = (100.0 * (precio - variable - fab) / precio
+            neto = (100.0 * (precio - produccion) / precio
                     - 100.0 * op) if precio else 0.0
             capacity_ok, _detail, capacity_status = self._check_capacity(
                 res['centros'], res['is_kg'], res['kg'], res['m_per_kg'],
@@ -638,11 +688,13 @@ class QbCotizadorWizard(models.TransientModel):
 
     @api.depends('product_id', 'spec_mode', 'spec_gramaje', 'spec_ancho',
                  'spec_bucket', 'spec_mp_unit', 'spec_centro_ids',
+                 'spec_familia_id', 'periodo_id',
                  'volumen', 'precio_objetivo', 'margen_objetivo', 'currency_id')
     def _compute_cotizacion(self):
         for wiz in self:
             zero = dict.fromkeys([
                 'kg_per_unit', 'mp_unit', 'energia_unit', 'fab_unit',
+                'conv_unit', 'rendimiento', 'costo_produccion',
                 'costo_variable', 'op_pct_display', 'precio_mercado',
                 'precio_sugerido',
                 'piso_ocioso', 'piso_lleno', 'margen_contribucion',
@@ -657,6 +709,8 @@ class QbCotizadorWizard(models.TransientModel):
             zero['escalera_html'] = False
             zero['peso_estimado'] = False
             zero['peso_alerta'] = False
+            zero['conv_info'] = False
+            zero['factores_aviso'] = False
             try:
                 res = wiz._calc()
             except Exception as exc:  # un dato roto no debe romper el form
@@ -678,8 +732,7 @@ class QbCotizadorWizard(models.TransientModel):
             precio_ref = res['precio_ref']
             if precio_ref:
                 # bruto = tras costo de producción; neto = bruto − op%
-                bruto = 100.0 * (precio_ref - res['variable']
-                                 - res['fab']) / precio_ref
+                bruto = 100.0 * (precio_ref - res['produccion']) / precio_ref
                 neto = bruto - 100.0 * res['op_pct']
             else:
                 bruto = neto = 0.0
@@ -714,13 +767,12 @@ class QbCotizadorWizard(models.TransientModel):
                     wiz.precio_objetivo * res['fx']
                     if wiz.precio_objetivo else 0.0,
                 'factores_id': factores.id,
-                'factores_info': 'Factores %s (ventana %sm) · fab $%.2f/kg + '
-                                 '$%.2f/m · energía $%.2f/kg · op %.1f%%' % (
-                                     factores.period, factores.window_months,
-                                     factores.factor_fab_kg,
-                                     factores.factor_fab_m,
-                                     factores.energia_por_kg,
-                                     res['op_pct'] * 100.0),
+                'factores_info': wiz._factores_info(factores, res),
+                'factores_aviso': res.get('aviso') or False,
+                'conv_unit': res['conv'],
+                'conv_info': wiz._conv_info(res),
+                'rendimiento': res['rendimiento'],
+                'costo_produccion': res['produccion'],
                 'product_bucket': res['bucket'],
                 'kg_per_unit': res['kg'],
                 'peso_estimado': res.get('peso_estimado', False),
@@ -774,17 +826,23 @@ class QbCotizadorWizard(models.TransientModel):
 
         factores = res['factores']
         supuestos = (
-            'Factores del período %s (ventana %s meses).\n'
+            'Factores del período %s (%s; pool fabril: %s).\n'
             'Pool fabricación $%s/mes; denominadores: %s kg/mes, %s m/mes.\n'
             'Factor peso $%.2f/kg; factor largo $%.2f/m; energía $%.2f/kg; '
             'operación %.1f%% sobre venta.\n'
+            'Conversión absorbida $%.4f/u (%s). Rendimiento de primera '
+            '%.1f%% (%s): pisos y márgenes por unidad vendible.\n'
             'Peso usado: %.4f kg/u (%s). FX supuesto: %s.'
-        ) % (factores.period, factores.window_months,
+        ) % (factores.period,
+             'cerrado' if factores.state == 'cerrado' else 'BORRADOR',
+             self._ventana_txt(factores),
              f'{factores.fab_pool_month:,.0f}',
              f'{factores.kg_denom_month:,.0f}',
              f'{factores.m_denom_month:,.0f}',
              factores.factor_fab_kg, factores.factor_fab_m,
              factores.energia_por_kg, res['op_pct'] * 100.0,
+             res['conv'], self._conv_info(res) or 'no aplica',
+             100.0 * res['rendimiento'], res.get('rend_fuente') or '',
              res['kg'], res['bucket'], self.fx_rate or 'FX de cada compra')
 
         cotizacion = self.env['qb.cotizacion'].create({
@@ -802,9 +860,13 @@ class QbCotizadorWizard(models.TransientModel):
             'mp_unit': res['mp'],
             'energia_unit': res['energia'],
             'fab_unit': res['fab'],
+            'conv_unit': res['conv'],
+            'conv_var_unit': res['conv_var'],
+            'conv_fuente': res.get('conv_fuente') or False,
+            'rendimiento': res['rendimiento'],
             'op_pct': res['op_pct'] * 100.0,
             'costo_variable': res['variable'],
-            'costo_absorbido_sin_op': res['variable'] + res['fab'],
+            'costo_absorbido_sin_op': res['produccion'],
             # Todo lo guardado es MXN (consistencia histórica); el TC y la
             # moneda capturada quedan en fx_rate/supuestos. Si se cotizó por
             # MARGEN objetivo (sin precio), se guarda el precio que da ese
@@ -881,6 +943,33 @@ class QbCotizadorWizard(models.TransientModel):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    @api.model
+    def _ventana_txt(self, factores):
+        """La ventana REAL del pool fabril. Tras un corte de absorción es de
+        un mes, no los doce del suavizado general."""
+        meses = factores.fab_ventana_meses or factores.window_months
+        if factores.fab_ventana_desde:
+            return '%s mes%s desde %s' % (
+                meses, '' if meses == 1 else 'es',
+                factores.fab_ventana_desde.strftime('%m/%Y'))
+        return '%s meses' % meses
+
+    def _factores_info(self, factores, res):
+        return ('Factores %s (%s; pool fabril %s) · fab $%.2f/kg + $%.2f/m · '
+                'energía $%.2f/kg · op %.1f%%' % (
+                    factores.period,
+                    'cerrado' if factores.state == 'cerrado' else 'BORRADOR',
+                    self._ventana_txt(factores),
+                    factores.factor_fab_kg, factores.factor_fab_m,
+                    factores.energia_por_kg, res['op_pct'] * 100.0))
+
+    @api.model
+    def _conv_info(self, res):
+        if not res.get('conv'):
+            return False
+        return '%s%s' % (dict(CONV_FUENTES).get(res.get('conv_fuente'), ''),
+                         ' ⚠️' if res.get('conv_fuente') == 'centro' else '')
+
     def _default_centros(self, bucket):
         Centro = self.env['qb.costeo.centro']
         if bucket in ('importado', 'subproducto', 'servicio'):

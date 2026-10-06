@@ -83,6 +83,13 @@ class QbCostoConciliacion(models.Model):
         string='Fabricación (modelo)', readonly=True)
     modelo_op = fields.Float(
         string='Operación (modelo)', readonly=True)
+    modelo_conv = fields.Float(
+        string='Conversión absorbida vendida (modelo)', readonly=True,
+        help='La conversión que Odoo capitalizó por workcenter (tejido) y '
+             'que llegó a ventas en el mes, siguiendo los lotes. Ya está '
+             'dentro del costo total del modelo: antes de la v1.69 no estaba '
+             'en ninguna capa y el resultado del modelo salía alto por ese '
+             'monto.')
     modelo_costo_total = fields.Float(
         string='Costo total (modelo)', readonly=True,
         help='Σ del costo absorbido de lo vendido. Es lo que el modelo le '
@@ -283,6 +290,7 @@ class QbCostoConciliacion(models.Model):
                        SUM(energia_total) AS energia,
                        SUM(fab_total) AS fab,
                        SUM(op_total) AS op,
+                       SUM(COALESCE(conv_total, 0)) AS conv,
                        SUM(importacion_total) AS importacion,
                        SUM(costo_absorbido_total) AS costo,
                        SUM(margen_neto_total) AS resultado
@@ -308,6 +316,7 @@ class QbCostoConciliacion(models.Model):
                 COALESCE(mo.energia, 0) AS modelo_energia,
                 COALESCE(mo.fab, 0) AS modelo_fab,
                 COALESCE(mo.op, 0) AS modelo_op,
+                COALESCE(mo.conv, 0) AS modelo_conv,
                 COALESCE(mo.costo, 0) AS modelo_costo_total,
                 gl.gl_mp,
                 gl.gl_importacion,

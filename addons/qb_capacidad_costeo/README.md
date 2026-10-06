@@ -355,6 +355,50 @@ $344,667 (28.8%)**. Capa registrada: $2,189,225.84 (asiento 847086). El
 detalle, con la revisión de enero a septiembre y el barrido de promedios,
 está en `docs/COSTEO_REVISION.md`.
 
+### La conversión absorbida en el costo unitario (v1.69)
+
+Con TEJIDO fuera del pool, el costo unitario explotaba la receta hasta el
+hilo y perdía el tejido: una tela de 40 g cargaba la misma fabricación que
+una de 135 g ($3.39/m parejo en sep-2026) y el resultado del modelo no traía
+los $585,531 de tejido que sí llegaron a ventas. La capa `conv_unit` lo
+regresa, aparte de la MP (que sigue auditable contra compras):
+
+```
+tarifa del crudo = Σ horas × tarifa de sus órdenes del período ÷ lo producido
+     sin órdenes en el período → $/h de su familia ÷ su velocidad
+     sin familia               → promedio del centro (marcado «estimado»)
+conv_unit        = la receta baja la tarifa del crudo al teñido y al acabado
+conv_var_unit    = conv_unit × energía del centro absorbido ÷ abono bruto
+costo_variable   = MP + energía + conv_var_unit
+costo_produccion = MP + energía + fabricación + conv_unit
+```
+
+Un producto es «crudo» si sale de órdenes en las máquinas absorbidas, si su
+receta tiene una operación en ellas, si una familia del centro lo declara o
+si su orden sigue el `mo_name_pattern` del centro. La capa existe solo en
+períodos con centro absorbido: hasta agosto de 2026 el tejido ya iba en
+`fab_unit`.
+
+**Totales del período ≠ unitario × qty.** `conv_total` es lo que la traza
+por lotes encontró en las entregas del mes con ese producto, que es lo que
+está en el costo de ventas del mayor; suma exactamente
+`absorcion_vendida_month`. En el mes del corte, unitario × qty es mayor
+porque parte de lo vendido se tejió antes y su tejido ya se fue a gasto: esa
+diferencia queda en `conv_transicion_month` y tiende a cero. La
+conciliación muestra la capa (`modelo_conv`) dentro del costo del modelo.
+
+El ajuste de MP deja fuera del costo primo la conversión vendida de cada
+mes: desde el corte el AVCO la lleva dentro y no es materia prima.
+
+**Cotizador.** Usa el último período CERRADO (el mes en curso tiene el pool
+a medio llenar; con uno en borrador avisa) y se puede fijar otro en «Período
+de factores». La conversión entra al piso a planta llena completa y al piso
+con capacidad ociosa solo su parte de energía. Los dos pisos y los márgenes
+son por unidad **vendible** (÷ rendimiento de primera). Energía en $0/kg con
+pool de energía es un error, no se cotiza. Una especificación nueva elige su
+familia de máquinas para la tarifa. `qb.cotizacion.recotizar_ahora(factores)`
+recotiza contra un período dado.
+
 ## Períodos cerrables
 
 `qb.costo.factores` tiene estado. **Cerrado** congela el período: ni el cron
