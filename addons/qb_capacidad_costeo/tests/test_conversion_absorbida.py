@@ -78,7 +78,7 @@ class TestConversionAbsorbida(TransactionCase):
         con lote si se pide, y una orden de trabajo en la máquina absorbida
         si lleva minutos."""
         mo = self.env['mrp.production'].create({
-            'name': 'CONV/%s' % producto.default_code,
+            'name': 'CONV/%s/%s' % (producto.default_code, fin),
             'product_id': producto.id,
             'product_qty': qty, 'product_uom_id': uom.id})
         if minutos:
@@ -142,17 +142,17 @@ class TestConversionAbsorbida(TransactionCase):
 
     # ------------------------------------------------------------------
     def test_la_conversion_sube_con_el_gramaje(self):
-        """Tarifa del crudo = lo abonado en sus órdenes ÷ sus kilos: 200 min
-        × $60/h = $200 sobre 100 kg = $2/kg. La tela pesada consume 0.216 kg
-        por metro y la ligera 0.064: cargan $0.432 y $0.128. Antes las dos
-        cargaban la misma fabricación por metro."""
+        """Tarifa del crudo = horas reales de sus órdenes × tarifa ÷ kilos:
+        400 min × $60/h = $400 sobre 100 kg = $4/kg. La tela pesada consume
+        0.216 kg por metro y la ligera 0.064: cargan $0.864 y $0.256. Antes
+        las dos cargaban la misma fabricación por metro."""
         self._mo(self.crudo, 100.0, self.uom_kg,
-                 datetime(2028, 3, 5, 12), minutos=200.0)
+                 datetime(2028, 3, 5, 12), minutos=400.0)
         f = self._factores()
         conv_p, var_p, fuente_p = self.Costo._conv_unit(self.pesada, f)
         conv_l, _var_l, fuente_l = self.Costo._conv_unit(self.ligera, f)
-        self.assertAlmostEqual(conv_p, 0.216 * 2.0, places=6)
-        self.assertAlmostEqual(conv_l, 0.064 * 2.0, places=6)
+        self.assertAlmostEqual(conv_p, 0.216 * 4.0, places=6)
+        self.assertAlmostEqual(conv_l, 0.064 * 4.0, places=6)
         self.assertAlmostEqual(var_p, conv_p * 0.25, places=6,
                                msg='la parte de energía es variable')
         self.assertEqual((fuente_p, fuente_l), ('op', 'op'))
@@ -164,42 +164,68 @@ class TestConversionAbsorbida(TransactionCase):
         """En un período de capa (hasta agosto de 2026) el tejido ya viaja en
         `fab_unit`: agregarle conversión lo cobraría dos veces."""
         self._mo(self.crudo, 100.0, self.uom_kg,
-                 datetime(2028, 3, 5, 12), minutos=200.0)
+                 datetime(2028, 3, 5, 12), minutos=400.0)
         f = self._factores(centros_absorbidos=False)
         self.assertEqual(self.Costo._conv_unit(self.pesada, f),
                          (0.0, 0.0, False))
 
-    def test_crudo_sin_ordenes_toma_su_familia_y_luego_el_centro(self):
-        """Producto sin historial en el período: la familia de máquinas da
-        $/h ÷ su velocidad; sin familia, el promedio del centro marcado como
-        estimado. El crudo se reconoce por haber corrido alguna vez en las
-        máquinas absorbidas."""
-        nuevo = self.env['product.product'].create({
-            'name': 'CRUDO NUEVO TEST', 'default_code': 'CRCONV02',
+    def test_crudo_sin_historia_toma_su_hermano_y_luego_el_centro(self):
+        """Crudo sin órdenes en doce meses: la tarifa de sus hermanos (mismo
+        código salvo color o ancho); sin hermanos, el promedio del centro
+        marcado como estimado. Se reconoce como crudo por haber corrido
+        alguna vez en las máquinas absorbidas."""
+        Product = self.env['product.product']
+        nuevo = Product.create({
+            'name': 'CRUDO NUEVO TEST', 'default_code': 'WJ047Q21HNN112',
             'is_storable': True, 'uom_id': self.uom_kg.id})
-        # Corrió hace un año: es crudo, pero no tiene órdenes en el período
+        # Corrió hace más de un año: es crudo, pero sin historia en ventana
         self._mo(nuevo, 10.0, self.uom_kg, datetime(2027, 3, 5, 12),
-                 minutos=30.0)
+                 minutos=60.0)
         f = self._factores(conv_tarifa_kg_centro=1.7)
         self.assertEqual(self.Costo._conv_unit(nuevo, f)[0::2],
                          (1.7, 'centro'))
+        hermano = Product.create({
+            'name': 'CRUDO HERMANO TEST', 'default_code': 'WJ047Q21HNT112',
+            'is_storable': True, 'uom_id': self.uom_kg.id})
+        # 60 kg en 3 h × $60 = $180 → $3/kg (20 kg/h, dentro de banda)
+        self._mo(hermano, 60.0, self.uom_kg, datetime(2027, 11, 5, 12),
+                 minutos=180.0)
+        self.assertEqual(self.Costo._conv_unit(hermano, f)[0::2],
+                         (3.0, 'op'))
+        self.assertEqual(self.Costo._conv_unit(nuevo, f)[0::2],
+                         (3.0, 'hermano'))
+        # Una especificación nueva (sin código) sí usa la familia
         familia = self.env['qb.costeo.familia'].create({
             'code': 'TEST_CONV_F', 'name': 'Galga 24 test',
             'centro_id': self.centro.id,
             'machine_names': 'CIRCULAR CONV TEST', 'machine_count': 1,
             'hours_per_week': 144.0, 'std_output_per_hour': 12.0})
-        self.env['qb.familia.producto'].create({
-            'familia_id': familia.id, 'product_code': 'CRCONV02',
-            'std_output_per_hour': 15.0})
-        # $60/h ÷ 15 kg/h del artículo en esa familia = $4/kg
-        self.assertEqual(self.Costo._conv_unit(nuevo, f)[0::2],
-                         (4.0, 'familia'))
-        # Una especificación nueva usa la velocidad de la familia: 60 ÷ 12
         self.assertEqual(
             self.Costo.tarifa_conversion_familia(familia, f), (5.0, 'familia'))
         self.assertEqual(
             self.Costo.tarifa_conversion_familia(
                 self.env['qb.costeo.familia'], f), (1.7, 'centro'))
+
+    def test_la_tarifa_usa_doce_meses_sin_cronometros_desbocados(self):
+        """Doce meses de órdenes, no las del mes: una orden lenta no manda.
+        Y una orden fuera de la banda de rendimiento (cronómetro desbocado)
+        se descarta entera, horas y kilos."""
+        # Hace seis meses: 100 kg en 400 min ($400, 15 kg/h)
+        self._mo(self.crudo, 100.0, self.uom_kg, datetime(2027, 9, 5, 12),
+                 minutos=400.0)
+        # Este mes: 100 kg en 600 min ($600, 10 kg/h)
+        self._mo(self.crudo, 100.0, self.uom_kg, datetime(2028, 3, 5, 12),
+                 minutos=600.0)
+        # Cronómetro desbocado: 50 kg en 100 h (0.5 kg/h) → fuera
+        self._mo(self.crudo, 50.0, self.uom_kg, datetime(2028, 2, 5, 12),
+                 minutos=6000.0)
+        # Fuera de la ventana: no cuenta
+        self._mo(self.crudo, 100.0, self.uom_kg, datetime(2027, 3, 5, 12),
+                 minutos=100.0)
+        f = self._factores()
+        conv, _v, fuente = self.Costo._conv_unit(self.crudo, f)
+        self.assertAlmostEqual(conv, (400.0 + 600.0) / 200.0, places=6)
+        self.assertEqual(fuente, 'op')
 
     def test_crudo_sin_workorder_se_reconoce_por_el_nombre_de_su_orden(self):
         """El crudo del WK135B66JNG165 solo tiene dos órdenes de 2025 sin
@@ -222,17 +248,17 @@ class TestConversionAbsorbida(TransactionCase):
             'name': 'CRUDO EST TEST', 'default_code': 'CRCONV03',
             'is_storable': True, 'uom_id': self.uom_kg.id})
         self._mo(nuevo, 10.0, self.uom_kg, datetime(2027, 3, 5, 12),
-                 minutos=30.0)
+                 minutos=60.0)
         tela = self.env['product.product'].create({
             'name': 'TELA EST TEST', 'default_code': 'WJ050CONV160',
             'is_storable': True, 'uom_id': self.uom_m.id, 'sale_ok': True})
         self._bom(tela, self.uom_m, [(nuevo, 0.1, self.uom_kg),
                                      (self.crudo, 0.1, self.uom_kg)])
         self._mo(self.crudo, 100.0, self.uom_kg,
-                 datetime(2028, 3, 5, 12), minutos=200.0)
+                 datetime(2028, 3, 5, 12), minutos=400.0)
         f = self._factores(conv_tarifa_kg_centro=1.0)
         conv, _v, fuente = self.Costo._conv_unit(tela, f)
-        self.assertAlmostEqual(conv, 0.1 * 1.0 + 0.1 * 2.0, places=6)
+        self.assertAlmostEqual(conv, 0.1 * 1.0 + 0.1 * 4.0, places=6)
         self.assertEqual(fuente, 'centro')
 
     def test_los_totales_cargan_lo_que_de_verdad_llego_a_ventas(self):
@@ -245,28 +271,28 @@ class TestConversionAbsorbida(TransactionCase):
         lot_c = Lot.create({'name': 'CR-CONV-1', 'product_id': self.crudo.id})
         lot_t = Lot.create({'name': 'TL-CONV-1',
                             'product_id': self.pesada.id})
-        # 100 kg tejidos con $200 de conversión; 21.6 kg hacen 100 m
+        # 100 kg tejidos con $400 de conversión; 21.6 kg hacen 100 m
         self._mo(self.crudo, 100.0, self.uom_kg, datetime(2028, 3, 5, 12),
-                 lot=lot_c, minutos=200.0)
+                 lot=lot_c, minutos=400.0)
         mo_t = self._mo(self.pesada, 100.0, self.uom_m,
                         datetime(2028, 3, 10, 12), lot=lot_t)
         self._linea(self.crudo, 21.6, self.uom_kg, lot_c, self.loc,
                     self.loc_prod, datetime(2028, 3, 10, 12), raw_mo=mo_t)
-        # Se entregan 50 de los 100 m: $43.20 × 50/100 = $21.60
+        # Se entregan 50 de los 100 m: $86.40 × 50/100 = $43.20
         self._linea(self.pesada, 50.0, self.uom_m, lot_t, self.loc,
                     self.cliente, datetime(2028, 3, 20, 12))
         self.Costo.action_recompute_period(self.period)
         f = self.env['qb.costo.factores'].search(
             [('period', '=', self.period)], limit=1)
-        self.assertAlmostEqual(f.absorcion_vendida_month, 21.6, places=4)
-        self.assertAlmostEqual(f.conv_tarifa_kg_centro, 2.0, places=6)
+        self.assertAlmostEqual(f.absorcion_vendida_month, 43.2, places=4)
+        self.assertAlmostEqual(f.conv_tarifa_kg_centro, 4.0, places=6)
         self.assertAlmostEqual(f.conv_kg_month, 100.0, places=4)
         filas = self.Costo.search([('period', '=', self.period)])
-        self.assertAlmostEqual(sum(filas.mapped('conv_total')), 21.6,
+        self.assertAlmostEqual(sum(filas.mapped('conv_total')), 43.2,
                                places=4)
         fila = filas.filtered(lambda r: r.product_id == self.pesada)
-        self.assertAlmostEqual(fila.conv_total, 21.6, places=4)
-        self.assertAlmostEqual(fila.conv_unit, 0.432, places=6)
+        self.assertAlmostEqual(fila.conv_total, 43.2, places=4)
+        self.assertAlmostEqual(fila.conv_unit, 0.864, places=6)
         self.assertAlmostEqual(
             fila.costo_produccion,
             fila.mp_unit + fila.energia_unit + fila.fab_unit + fila.conv_unit,
@@ -276,7 +302,7 @@ class TestConversionAbsorbida(TransactionCase):
             fila.mp_unit + fila.energia_unit + fila.conv_var_unit, places=6)
         # Sin factura no hay qty vendida: todo el cargo es transición negativa
         self.assertAlmostEqual(f.conv_transicion_month,
-                               f.conv_unitaria_vendida_month - 21.6, places=4)
+                               f.conv_unitaria_vendida_month - 43.2, places=4)
         # Identidad ventas − costo = margen, con la conversión dentro
         self.assertAlmostEqual(
             fila.margen_neto_total,
@@ -331,15 +357,15 @@ class TestConversionAbsorbida(TransactionCase):
         """La calculadora suma la capa al costo de producción y al piso, la
         muestra como renglón propio y la guarda en la cotización."""
         self._mo(self.crudo, 100.0, self.uom_kg,
-                 datetime(2028, 3, 5, 12), minutos=200.0)
+                 datetime(2028, 3, 5, 12), minutos=400.0)
         f = self._factores(state='cerrado')
         wiz = self.env['qb.cotizador.wizard'].create({
             'product_id': self.pesada.id, 'volumen': 1000.0})
         self.assertEqual(wiz.factores_id, f)
-        self.assertAlmostEqual(wiz.conv_unit, 0.432, places=6)
+        self.assertAlmostEqual(wiz.conv_unit, 0.864, places=6)
         self.assertFalse(wiz.factores_aviso)
         cot = wiz._save_cotizacion()
-        self.assertAlmostEqual(cot.conv_unit, 0.432, places=6)
+        self.assertAlmostEqual(cot.conv_unit, 0.864, places=6)
         self.assertAlmostEqual(
             cot.costo_absorbido_sin_op,
             cot.mp_unit + cot.energia_unit + cot.fab_unit + cot.conv_unit,
@@ -367,8 +393,8 @@ class TestConversionAbsorbida(TransactionCase):
         mo = self._mo(tela, 10.0, self.uom_m, datetime(2028, 3, 24, 12))
         mo.bom_id = bom_vieja
         self._mo(self.crudo, 100.0, self.uom_kg,
-                 datetime(2028, 3, 5, 12), minutos=200.0)
+                 datetime(2028, 3, 5, 12), minutos=400.0)
         f = self._factores()
         conv, _v, fuente = self.Costo._conv_unit(tela, f)
-        self.assertAlmostEqual(conv, 0.1166 * 2.0, places=6)
+        self.assertAlmostEqual(conv, 0.1166 * 4.0, places=6)
         self.assertEqual(fuente, 'op')

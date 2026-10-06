@@ -84,7 +84,7 @@ class QbCotizacion(models.Model):
     conv_fuente = fields.Selection(
         CONV_FUENTES, string='Fuente de la conversión',
         help='«Promedio del centro (estimado)» = el crudo no tuvo órdenes en '
-             'el período ni hay familia de máquinas con velocidad.')
+             'doce meses ni hay un crudo hermano con historia.')
     rendimiento = fields.Float(
         string='Rendimiento de primera', digits=(6, 4),
         help='Fracción de lo producido que salió de primera. El costo '

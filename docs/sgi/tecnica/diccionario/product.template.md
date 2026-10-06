@@ -10,7 +10,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sg
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_control_plan_id` | Many2one | Plan de control | Plan de control vigente del artículo (C1.17). Se propone el último plan que lo incluye; se puede cambiar a mano. |  | `sgi.control.plan` | compute `_compute_sgi_control_plan_id`, guardado |  | `addons/quimibond_sgi/models/sgi_links.py:82` |
+| `sgi_control_plan_id` | Many2one | Plan de control | Plan de control vigente del artículo (C1.17). Se propone el último plan que lo incluye; se puede cambiar a mano. |  | `sgi.control.plan` | compute `_compute_sgi_control_plan_id`, guardado |  | `addons/quimibond_sgi/models/sgi_links.py:91` |
 | `sgi_first_sale_date` | Date | Primer pedido confirmado | Fecha del primer pedido de venta confirmado con este producto (C1-04). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_sales.py:28` |
 | `sgi_packaging_notes` | Text | Manejo y empaque (C14-02) | Indicaciones de manejo y empaque del producto (sustituye F-P-C14-02). Visible para inspección y almacén. |  |  |  |  | `addons/quimibond_sgi/models/sgi_integration.py:234` |
 | `sgi_ppap_count` | Integer | PPAP |  |  |  | compute `_compute_sgi_ppap_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_ppap.py:241` |

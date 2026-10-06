@@ -18,7 +18,7 @@ from .sgi_process_procedure import SgiProcessActivity as _BaseActivity
 
 # Campos de estado en el orden en que se buscan; el primero que exista en el
 # modelo y lleve seguimiento es el que se lee del historial.
-HISTORY_STATE_FIELDS = ('state', 'stage_id', 'request_status', 'sgi_state',
+HISTORY_STATE_FIELDS = ('state', 'stage_id', 'request_status', 'quality_state', 'sgi_state',
                         'sgi_supplier_state', 'sgi_ext_state')
 
 HISTORY_HELP = (

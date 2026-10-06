@@ -243,6 +243,67 @@ class QbCostoAbsorcionTraza(models.AbstractModel):
         return out
 
     @api.model
+    def conversion_historica(self, centros, desde, hasta, rmin=0.0,
+                             rmax=0.0):
+        """{product_id: (conversión, cantidad, órdenes)} de las órdenes
+        terminadas en `[desde, hasta)` que corrieron en las máquinas de
+        `centros`, con las horas REALES de cada orden de trabajo a la tarifa
+        $/h ACTUAL de su máquina.
+
+        Antes del corte las circulares no tenían tarifa, pero la duración de
+        cada orden de trabajo sí se registraba: horas reales × tarifa de hoy
+        da lo que ese artículo absorbería hoy, con doce meses de órdenes en
+        vez de las de un solo mes (NN053Q66HNT098 se costeaba con una sola
+        OP de septiembre a 3.6 kg/h; sus 13 OPs del año dan 4.0).
+
+        Una máquina del centro sin tarifa toma la tarifa promedio del
+        centro. Una orden con rendimiento (cantidad ÷ horas) fuera de
+        `[rmin, rmax]` se descarta entera: es un cronómetro desbocado o sin
+        registrar, la misma banda de `qb.workorder.excepcion`."""
+        wcs = centros.mapped('workcenter_ids')
+        if not wcs:
+            return {}
+        con_tarifa = wcs.filtered(lambda w: w.costs_hour > 0)
+        tarifa_prom = (sum(con_tarifa.mapped('costs_hour')) / len(con_tarifa)
+                       if con_tarifa else 0.0)
+        cr = self.env.cr
+        self.env.flush_all()
+        cr.execute("""
+            SELECT mp.id, mp.product_id, mp.product_uom_id, %s,
+                   SUM(wo.duration / 60.0),
+                   SUM(wo.duration / 60.0
+                       * COALESCE(NULLIF(wc.costs_hour, 0), %%s))
+            FROM mrp_workorder wo
+            JOIN mrp_workcenter wc ON wc.id = wo.workcenter_id
+            JOIN mrp_production mp ON mp.id = wo.production_id
+            WHERE wo.workcenter_id = ANY(%%s)
+              AND wo.duration > 0
+              AND mp.state = 'done' AND mp.company_id = %%s
+              AND mp.date_finished >= %%s AND mp.date_finished < %%s
+            GROUP BY mp.id
+        """ % mo_qty_sql(self.env, 'mp'),
+            (tarifa_prom, list(wcs.ids), self.env.company.id, desde, hasta))
+        Product = self.env['product.product']
+        Uom = self.env['uom.uom']
+        out = {}
+        for _mo, pid, uom_id, qty, horas, conv in cr.fetchall():
+            product = Product.browse(pid)
+            qty = float(qty or 0.0)
+            if uom_id and uom_id != product.uom_id.id:
+                qty = Uom.browse(uom_id)._compute_quantity(
+                    qty, product.uom_id, round=False,
+                    raise_if_failure=False)
+            horas = float(horas or 0.0)
+            if qty <= 0 or horas <= 0:
+                continue
+            rend = qty / horas
+            if (rmin and rend < rmin) or (rmax and rend > rmax):
+                continue
+            c, q, n = out.get(pid, (0.0, 0.0, 0))
+            out[pid] = (c + float(conv or 0.0), q + qty, n + 1)
+        return out
+
+    @api.model
     def productos_con_conversion(self, centros):
         """Productos que SE FABRICAN en las máquinas de `centros` aunque no
         tengan órdenes en el período: alguna vez corrieron ahí, su receta

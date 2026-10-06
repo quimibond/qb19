@@ -71,11 +71,17 @@ FAB_BUCKETS = ('mod', 'overhead_fab', 'depreciacion', 'arrend_maquinaria')
 # Un producto que la hereda por receta toma la PEOR de sus componentes: si
 # uno de ellos es estimado, el producto también lo es.
 CONV_FUENTES = [
-    ('op', 'Órdenes del período'),
-    ('familia', 'Tarifa de su familia de máquinas'),
+    ('op', 'Sus órdenes de 12 meses'),
+    ('hermano', 'Crudo hermano (otro color o ancho)'),
+    ('familia', 'Familia de máquinas (especificación nueva)'),
     ('centro', 'Promedio del centro (estimado)'),
 ]
-CONV_RANGO = {False: 0, 'op': 1, 'familia': 2, 'centro': 3}
+CONV_RANGO = {False: 0, 'op': 1, 'hermano': 2, 'familia': 3, 'centro': 4}
+
+# Un crudo «hermano» comparte construcción, gramaje, hilo y etapa —los
+# primeros nueve caracteres del código: WJ047Q21H— y solo cambia color o
+# ancho (WJ047Q21HNT112 / WJ047Q21HNN112).
+CONV_RAIZ = 9
 
 # Categorías cuyo pedimento NO puede viajar al costo de un producto: un
 # activo fijo se deprecia, no se vende. Se quedan en la BASE del factor de
@@ -339,10 +345,10 @@ class QbCostoFactores(models.Model):
              'en máquinas absorbidas (el crudo tejido).')
     conv_tarifa_kg_centro = fields.Float(
         string='Tarifa de conversión del centro $/kg', digits=(16, 4),
-        help='Conversión abonada por las órdenes del período ÷ sus kilos. Es '
-             'el último recurso para un crudo sin órdenes en el período ni '
-             'familia de máquinas con velocidad: su costo sale marcado como '
-             'estimado.')
+        help='Doce meses de horas reales de los crudos en kilos, a la tarifa '
+             '$/h de hoy, ÷ sus kilos. Es el último recurso para un crudo sin '
+             'órdenes en doce meses ni hermanos con historia: su costo sale '
+             'marcado como estimado.')
     conv_energia_month = fields.Float(
         string='Energía de centros absorbidos/mes',
         help='Luz/gas/agua etiquetados a los centros absorbidos, suavizados '
@@ -610,9 +616,9 @@ class QbCostoProducto(models.Model):
         string='Conversión absorbida $/u', digits=(16, 4),
         help='Lo que Odoo capitaliza por workcenter en los centros absorbidos '
              '(hoy tejido: horas × tarifa contra 504.01.0099), bajado al '
-             'artículo: tarifa del crudo ($ abonados en sus órdenes del '
-             'período ÷ lo que produjeron) × lo que la receta consume de ese '
-             'crudo. Va aparte de la MP para que la MP siga cuadrando contra '
+             'artículo: tarifa del crudo (horas reales de sus órdenes de doce '
+             'meses × tarifa $/h de hoy ÷ lo que produjeron) × lo que la '
+             'receta consume de ese crudo. Va aparte de la MP para que la MP siga cuadrando contra '
              'compras. Su parte de energía cuenta como costo variable.')
     conv_var_unit = fields.Float(
         string='de eso, energía $/u', digits=(16, 4),
@@ -621,9 +627,9 @@ class QbCostoProducto(models.Model):
              'piso con capacidad ociosa.')
     conv_fuente = fields.Selection(
         CONV_FUENTES, string='Fuente de la conversión',
-        help='De dónde sale la tarifa del crudo. «Estimado» = sin órdenes en '
-             'el período ni familia de máquinas con velocidad: promedio del '
-             'centro.')
+        help='De dónde sale la tarifa del crudo: sus órdenes de doce meses, '
+             'las de un crudo hermano (mismo código salvo color o ancho) o, '
+             'sin ninguna, el promedio del centro («estimado»).')
     costo_produccion = fields.Float(
         string='Costo de producción $/u', digits=(16, 4),
         help='Variable + fabricación absorbida + conversión absorbida: lo '
@@ -1510,18 +1516,25 @@ class QbCostoProducto(models.Model):
             traza = Traza.trazar(
                 absorbidos, min(absorbidos.mapped('fecha_absorcion')),
                 period, date_to)
-            # La tarifa promedio del centro: lo abonado por las órdenes del
-            # período ÷ sus kilos. Solo órdenes en kilos: un crudo en metros
-            # no se puede sumar con los demás.
-            conv_mes = 0.0
+            # Kilos tejidos en el período (informativo) y la tarifa promedio
+            # del centro, con la MISMA base que la tarifa de cada crudo: doce
+            # meses de horas reales a la tarifa de hoy. Solo crudos en kilos:
+            # uno en metros no se puede sumar con los demás.
             Product = self.env['product.product']
-            for pid, conv, qty in Traza.conversion_por_orden(
-                    absorbidos, period, date_to).values():
-                uom = (Product.browse(pid).uom_id.name or '').lower()
-                if uom in KG_UOM_NAMES and qty > 0:
-                    conv_mes += conv
-                    conv_kg += qty
-            conv_tarifa_centro = conv_mes / conv_kg if conv_kg else 0.0
+
+            def en_kg(pid):
+                return (Product.browse(pid).uom_id.name or '').lower() \
+                    in KG_UOM_NAMES
+
+            conv_kg = sum(qty for pid, _c, qty in Traza.conversion_por_orden(
+                absorbidos, period, date_to).values() if en_kg(pid))
+            hist_c = hist_q = 0.0
+            for pid, (c, q, _n) in self._conv_historia(
+                    absorbidos, period).items():
+                if en_kg(pid):
+                    hist_c += c
+                    hist_q += q
+            conv_tarifa_centro = hist_c / hist_q if hist_q else 0.0
             # La parte variable de la tarifa: la energía de los centros
             # absorbidos que el pool de energía ya no trae (arriba se excluye).
             conv_energia = self._smooth(self._pool_by_month(
@@ -2919,6 +2932,26 @@ class QbCostoProducto(models.Model):
     # Conversión absorbida en el costo unitario
     # ------------------------------------------------------------------
     @api.model
+    def _conv_ventana(self, period):
+        """Ventana de la historia de conversión: los `conv_historia_meses`
+        (12) que terminan con el período."""
+        meses = int(self.env['qb.costeo.factor.config'].get_param(
+            'conv_historia_meses', 12)) or 12
+        hasta = period + relativedelta(months=1)
+        return hasta - relativedelta(months=meses), hasta
+
+    @api.model
+    def _conv_historia(self, centros, period):
+        """Conversión histórica de los centros absorbidos en la ventana del
+        período, sin las órdenes con rendimiento fuera de banda."""
+        Config = self.env['qb.costeo.factor.config']
+        desde, hasta = self._conv_ventana(period)
+        return self.env['qb.costo.absorcion.traza'].conversion_historica(
+            centros, desde, hasta,
+            rmin=Config.get_param('rendimiento_min', 2.0),
+            rmax=Config.get_param('rendimiento_max', 25.0))
+
+    @api.model
     def _conv_ctx(self, factores):
         """Lo que hace falta para bajar la conversión absorbida al artículo,
         resuelto UNA vez por corrida.
@@ -2927,6 +2960,11 @@ class QbCostoProducto(models.Model):
         capa (hasta agosto de 2026) su conversión ya está en `fab_unit` y
         agregarla aquí la cobraría dos veces. Por eso la capa sale siempre de
         los MISMOS factores que el resto del costo.
+
+        La tarifa de cada crudo sale de SUS órdenes de doce meses: horas
+        reales de máquina × tarifa $/h de hoy ÷ lo producido. Sin historia,
+        la de sus hermanos (mismo código salvo color o ancho); sin hermanos,
+        el promedio del centro, marcado como estimado.
         """
         vacio = {'activo': False, 'cache': {}}
         if not factores or not factores.centros_absorbidos:
@@ -2934,37 +2972,27 @@ class QbCostoProducto(models.Model):
         centros = self.env['qb.costeo.centro'].absorbidos_en(factores.period)
         if not centros:
             return vacio
-        Traza = self.env['qb.costo.absorcion.traza']
-        desde = factores.period
-        hasta = desde + relativedelta(months=1)
-        acumulado = {}
-        for pid, conv, qty in Traza.conversion_por_orden(
-                centros, desde, hasta).values():
-            c, q = acumulado.get(pid, (0.0, 0.0))
-            acumulado[pid] = (c + conv, q + qty)
-        tarifas = {pid: c / q for pid, (c, q) in acumulado.items() if q > 0}
-
-        # Tarifa de familia: $/h de sus máquinas ÷ la velocidad del artículo
-        # en ellas (o la de la familia). Un artículo que corre en varias
-        # familias toma el promedio.
-        por_codigo = {}
-        familias = self.env['qb.costeo.familia'].search([
-            ('centro_id', 'in', centros.ids), ('active', '=', True)])
-        for fam in familias:
-            costo_h = self._tarifa_hora_familia(fam)
-            if not costo_h:
+        historia = self._conv_historia(centros, factores.period)
+        tarifas = {pid: c / q for pid, (c, q, _n) in historia.items()
+                   if q > 0}
+        # Hermanos: por raíz del código, solo crudos en kilos ($/kg)
+        Product = self.env['product.product']
+        por_raiz = {}
+        for p in Product.browse(list(historia)):
+            ref = p.default_code or ''
+            if len(ref) <= CONV_RAIZ \
+                    or (p.uom_id.name or '').lower() not in KG_UOM_NAMES:
                 continue
-            for fp in fam.producto_ids:
-                vel = fp.std_output_per_hour or fam.std_output_per_hour
-                if vel > 0:
-                    por_codigo.setdefault(fp.product_code, []).append(
-                        costo_h / vel)
+            c, q, _n = historia[p.id]
+            rc, rq = por_raiz.get(ref[:CONV_RAIZ], (0.0, 0.0))
+            por_raiz[ref[:CONV_RAIZ]] = (rc + c, rq + q)
         return {
             'activo': True,
             'tarifas': tarifas,
-            'crudos': Traza.productos_con_conversion(centros) | set(tarifas),
-            'familia_por_codigo': {k: sum(v) / len(v)
-                                   for k, v in por_codigo.items()},
+            'crudos': self.env['qb.costo.absorcion.traza']
+            .productos_con_conversion(centros) | set(tarifas),
+            'hermano_por_raiz': {k: c / q for k, (c, q) in por_raiz.items()
+                                 if q > 0},
             'centro_kg': factores.conv_tarifa_kg_centro,
             'share_var': factores.conv_energia_share,
             'cache': {},
@@ -2994,9 +3022,9 @@ class QbCostoProducto(models.Model):
     def _conv_unit(self, product, factores, ctx=None):
         """Conversión absorbida por unidad: `(conv, conv_variable, fuente)`.
 
-        Por artículo crudo: lo abonado en sus órdenes del período ÷ lo que
-        produjeron. Sin órdenes en el período, la tarifa de su familia de
-        máquinas; sin familia, el promedio del centro (estimado). Los
+        Por artículo crudo: horas reales de sus órdenes de doce meses ×
+        tarifa $/h de hoy ÷ lo que produjeron. Sin historia, la de sus
+        hermanos; sin hermanos, el promedio del centro (estimado). Los
         productos que no se fabrican en máquinas absorbidas la heredan por
         su receta, según cuánto crudo consume cada unidad — con la misma
         receta que usa la MP.
@@ -3031,14 +3059,16 @@ class QbCostoProducto(models.Model):
         elif product.id in cc['tarifas']:
             res = (cc['tarifas'][product.id], 'op')
         elif product.id in cc['crudos']:
-            # Crudo sin órdenes en el período: tarifa en $/kg × sus kilos
+            # Crudo sin órdenes en doce meses: la de sus hermanos o la del
+            # centro, en $/kg × sus kilos
             Peso = self.env['qb.producto.peso']
             is_kg = (product.uom_id.name or '').lower() in KG_UOM_NAMES
             kg = 1.0 if is_kg else Peso.resolve_kg_per_unit(
                 product, ctx.setdefault('peso_cache', {}))
-            tarifa = cc['familia_por_codigo'].get(ref)
+            tarifa = cc['hermano_por_raiz'].get(ref[:CONV_RAIZ]) \
+                if len(ref) > CONV_RAIZ else None
             if tarifa:
-                res = (tarifa * kg, 'familia')
+                res = (tarifa * kg, 'hermano')
             else:
                 res = (cc['centro_kg'] * kg, 'centro')
         else:
@@ -3915,9 +3945,10 @@ class QbCostoProducto(models.Model):
                 '<h5>3b. Conversión absorbida — $%.2f/u%s</h5>'
                 '<p style="font-size:12px;">Lo que Odoo capitaliza en %s por '
                 'horas × tarifa (abono a costos fabriles aplicados), bajado '
-                'al artículo: tarifa del crudo × el crudo que consume la '
-                'receta. Fuente de la tarifa: <b>%s</b>. Promedio del '
-                'centro en el período: $%.2f/kg sobre %s kg. De esta capa, '
+                'al artículo: tarifa del crudo (horas reales de doce meses '
+                '× tarifa $/h de hoy) × el crudo que consume la receta. '
+                'Fuente de la tarifa: <b>%s</b>. Promedio del centro: '
+                '$%.2f/kg (%s kg tejidos en el período). De esta capa, '
                 '$%.2f/u es energía (%.1f%%) y entra al piso con capacidad '
                 'ociosa; el resto es mano de obra y fijos del centro.</p>'
                 % (q['conv'],
