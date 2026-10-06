@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_parametro_list" model="ir.ui.view">
+        <field name="name">qb.parametro.list</field>
+        <field name="model">qb.parametro</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="false" delete="false">
+                <field name="key" readonly="1"/>
+                <field name="name" readonly="1"/>
+                <field name="tipo" column_invisible="1"/>
+                <field name="value_float" invisible="tipo != 'float'"/>
+                <field name="value_text" invisible="tipo != 'text'"/>
+                <field name="help" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="action_qb_parametro" model="ir.actions.act_window">
+        <field name="name">Parámetros</field>
+        <field name="res_model">qb.parametro</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>
