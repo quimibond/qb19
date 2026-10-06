@@ -20,8 +20,10 @@ class TestExcelMigration(TransactionCase):
         cls.employee = cls.env['hr.employee'].create({'name': 'Operador ZK'})
 
     def test_01_proyecto_ft_solicitud_de_desarrollo(self):
-        project = self.env['project.project'].create({'name': 'FT-099-2046 WR135Q46JNT165', 'sgi_dev_type': 'carda'})
-        self.assertTrue(project.sgi_is_ft, "El nombre FT-… marca el proyecto como desarrollo.")
+        project = self.env['project.project'].create({'name': 'FT-099-2046 WR135Q46JNT165', 'sgi_dev_type': 'carda',
+                                                      'sgi_is_ft': True, 'sgi_ft_folio': 'FT-099-2046',
+                                                      'sgi_dev_product_name': 'WR135Q46JNT165'})
+        self.assertTrue(project.sgi_is_ft, "La bandera la pone quien crea el proyecto, no el nombre (57.118.0).")
         # La clave sale viva del documento ligado al mapeo: F-P-D01-26 en una
         # base nueva; en una copia de producción con D-02 (57.84.0) es la
         # clave nueva del documento cuya clave anterior es F-P-D01-26.

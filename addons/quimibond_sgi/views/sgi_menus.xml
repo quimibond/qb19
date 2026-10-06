@@ -130,6 +130,9 @@
     <menuitem id="menu_sgi_machine_sheets" name="Fichas de proceso por máquina"
               parent="menu_sgi_processes" action="sgi_machine_sheet_action" sequence="50"
               groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_process_owner"/>
+    <!-- 57.120.0 (C1, bloque 4): pruebas de laboratorio de los desarrollos. -->
+    <menuitem id="menu_sgi_dev_lab_requests" name="Pruebas de laboratorio de desarrollos"
+              parent="menu_sgi_processes" action="sgi_dev_lab_request_action" sequence="51"/>
 
     <!-- 2.1 Documentos (7.5). 57.113.0: viene de Administración SGI y recibe
          los grupos que heredaba de ella (Auditor, Jefe MAST, Dirección): nadie
@@ -433,6 +436,17 @@
     <!-- 57.109.0: fuentes con nombre de negocio para «Nuevo indicador». -->
     <menuitem id="menu_sgi_config_indicator_sources" name="Fuentes de indicadores"
               parent="menu_sgi_config" action="sgi_indicator_source_action" sequence="97"/>
+    <!-- 57.117.0 (C1, bloque 1): qué renglones carga cada tipo de desarrollo
+         en la tabla de características del proyecto. El catálogo de
+         características vive en Fichas Técnicas de Tela → Configuración. -->
+    <menuitem id="menu_sgi_config_dev_char_templates" name="Características por tipo de desarrollo"
+              parent="menu_sgi_config" action="sgi_dev_characteristic_template_action" sequence="98"/>
+    <!-- 57.118.0 (C1, bloque 2): listas de la pestaña Comercial y del análisis. -->
+    <menuitem id="menu_sgi_config_dev_options" name="Listas del desarrollo de producto"
+              parent="menu_sgi_config" action="sgi_dev_option_action" sequence="99"/>
+    <!-- 57.120.0 (C1, bloque 4): recursos del checklist de factibilidad (vacío hasta que Diseño de Procesos lo defina). -->
+    <menuitem id="menu_sgi_config_dev_feasibility" name="Recursos del checklist de factibilidad"
+              parent="menu_sgi_config" action="sgi_dev_feasibility_item_action" sequence="100"/>
 
     <!-- 5.6 (retirado en 19.0.45.0.0): «Datos técnicos» y los «Mis…» viejos.
          Ver models/sgi_cleanup.py (SGI_REMOVED_XMLIDS): la prueba falla si

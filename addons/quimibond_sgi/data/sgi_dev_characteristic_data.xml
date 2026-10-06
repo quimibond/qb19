@@ -1,0 +1,510 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.117.0 (C1, bloque 1): renglones que carga cada tipo de desarrollo en la
+     tabla de características del proyecto (sustituyen DEV_DEFAULT_LINES de
+     sgi_dev_request.py y recogen el anexo A del levantamiento del 2026-10-06).
+     El catálogo de características vive en quimibond_ficha_tecnica_tela.
+     noupdate: Diseño y Desarrollo los ajusta en Configuración sin que el update
+     los revierta. -->
+<odoo noupdate="1">
+
+    <!-- general -->
+    <record id="sgi_dev_tpl_general_masa" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">10</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">20</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_espesor" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">30</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_espesor"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">40</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_general_tipo_acabado" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">50</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tipo_acabado"/>
+    </record>
+    <record id="sgi_dev_tpl_general_engomado_tipo_tacto" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">60</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_engomado_tipo_tacto"/>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_estatica_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">70</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_elongacion_estatica"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_estatica_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">80</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_elongacion_estatica"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_densidad_mallas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">90</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_densidad_mallas"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_densidad_columnas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">100</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_densidad_columnas"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_cambio_dim_calor_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">110</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_cambio_dim_calor"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_cambio_dim_calor_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">120</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_cambio_dim_calor"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_engomado_orillas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">130</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_engomado_orillas"/>
+    </record>
+    <record id="sgi_dev_tpl_general_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">140</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_general_composicion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">150</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_composicion"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_titulo_hilo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">160</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_titulo_hilo"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_tipo_hilo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">170</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tipo_hilo"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_ligamento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">180</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_ligamento"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_agujas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">190</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_agujas"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_galga" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">200</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_galga"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_construccion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">210</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_construccion"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_dinamica_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">220</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_elongacion_dinamica"/>
+        <field name="direction">largo</field>
+    </record>
+    <record id="sgi_dev_tpl_general_elongacion_dinamica_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">230</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_elongacion_dinamica"/>
+        <field name="direction">ancho</field>
+    </record>
+    <record id="sgi_dev_tpl_general_tipo_goma" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">240</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tipo_goma"/>
+    </record>
+    <record id="sgi_dev_tpl_general_tacto" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">250</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tacto"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_general_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">general</field>
+        <field name="sequence">260</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <!-- entretelas_v10 -->
+    <record id="sgi_dev_tpl_entretelas_v10_tela_base" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">10</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tela_base"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_masa" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">20</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_resina_cantidad" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">30</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_resina_cantidad"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">40</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_cambio_dim_lavado_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">50</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_cambio_dim_lavado"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_cambio_dim_lavado_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">60</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_cambio_dim_lavado"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_maquina_proceso" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">70</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_maquina_proceso"/>
+        <field name="in_customer_spec" eval="False"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_fuerza_maxima_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">80</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_fuerza_maxima"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_fuerza_maxima_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">90</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_fuerza_maxima"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_tipo_resina" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">100</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tipo_resina"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_adhesion_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">110</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_adhesion"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_adhesion_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">120</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_adhesion"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_tipo_polvo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">130</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tipo_polvo"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_solidez_frote_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">140</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_solidez_frote"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_solidez_frote_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">150</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_solidez_frote"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_solidez_frote_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">160</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_solidez_frote"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_mesh" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">170</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_mesh"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">180</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_corte_orillas" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">190</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_corte_orillas"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">200</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_composicion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">210</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_composicion"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">220</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_entretelas_v10_tacto" model="sgi.dev.characteristic.template">
+        <field name="dev_type">entretelas_v10</field>
+        <field name="sequence">230</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tacto"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <!-- carda -->
+    <record id="sgi_dev_tpl_carda_tipo_fibra" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">10</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tipo_fibra"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_titulo_fibra" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">20</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_titulo_fibra"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_acabado" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">30</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_acabado"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_masa_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">40</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_masa_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">50</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_masa_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">60</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">70</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_espesor_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">80</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_espesor"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_espesor_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">90</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_espesor"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_espesor_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">100</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_espesor"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_fuerza_maxima_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">110</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_fuerza_maxima"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_fuerza_maxima_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">120</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_fuerza_maxima"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">130</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">140</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_carda_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">carda</field>
+        <field name="sequence">150</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <!-- tramado -->
+    <record id="sgi_dev_tpl_tramado_composicion" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">10</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_composicion"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_masa_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">20</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_masa_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">30</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_masa_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">40</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_masa"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">50</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_ancho"/>
+        <field name="lab_default" eval="True"/>
+        <field name="in_coa" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_espesor_izquierda" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">60</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_espesor"/>
+        <field name="position">izquierda</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_espesor_centro" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">70</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_espesor"/>
+        <field name="position">centro</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_espesor_derecha" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">80</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_espesor"/>
+        <field name="position">derecha</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_fuerza_maxima_largo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">90</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_fuerza_maxima"/>
+        <field name="direction">largo</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_fuerza_maxima_ancho" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">100</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_fuerza_maxima"/>
+        <field name="direction">ancho</field>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_hilos_pulgada" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">110</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_hilos_pulgada"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_tipo_hilo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">120</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_tipo_hilo"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_rendimiento" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">130</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rendimiento"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_rollo" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">140</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_rollo"/>
+    </record>
+    <record id="sgi_dev_tpl_tramado_color" model="sgi.dev.characteristic.template">
+        <field name="dev_type">tramado</field>
+        <field name="sequence">150</field>
+        <field name="caracteristica_id" ref="quimibond_ficha_tecnica_tela.caracteristica_color"/>
+        <field name="lab_default" eval="True"/>
+    </record>
+
+</odoo>

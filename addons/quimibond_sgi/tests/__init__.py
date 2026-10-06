@@ -163,3 +163,7 @@ from . import test_menus_capitulos
 from . import test_ligas_tanda5
 from . import test_pantalla_produce
 from . import test_aprobaciones_asunto
+from . import test_dev_characteristics
+from . import test_dev_project
+from . import test_dev_product
+from . import test_dev_analysis

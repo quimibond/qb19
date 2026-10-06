@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 2.1.0: catálogo de características, claves de codificación y ficha del
+         renglón de característica (se abre desde la tabla de la ficha de tejido
+         o de acabado, y desde el proyecto de desarrollo del SGI). -->
+
+    <!-- ===== Catálogo de características ===== -->
+    <record id="view_ficha_tecnica_caracteristica_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.caracteristica.list</field>
+        <field name="model">ficha.tecnica.caracteristica</field>
+        <field name="arch" type="xml">
+            <list string="Características" editable="bottom" default_order="sequence, name">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="name_en" optional="show"/>
+                <field name="kind"/>
+                <field name="unit"/>
+                <field name="method" optional="show"/>
+                <field name="formula" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_caracteristica_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.caracteristica.search</field>
+        <field name="model">ficha.tecnica.caracteristica</field>
+        <field name="arch" type="xml">
+            <search string="Características">
+                <field name="name"/>
+                <field name="code"/>
+                <filter name="num" string="Numéricas" domain="[('kind', '=', 'num')]"/>
+                <filter name="text" string="Cualitativas" domain="[('kind', '=', 'text')]"/>
+                <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_kind" string="Tipo de dato" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_caracteristica" model="ir.actions.act_window">
+        <field name="name">Características</field>
+        <field name="res_model">ficha.tecnica.caracteristica</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Catálogo de características</p>
+            <p>Cada característica que una ficha técnica o un cliente puede pedir, con su unidad, su método o norma y si es numérica o cualitativa. Las fichas de tejido y acabado y los proyectos de desarrollo del SGI arman sus tablas con estos renglones.</p>
+        </field>
+    </record>
+
+    <!-- ===== Claves de codificación de artículos ===== -->
+    <record id="view_ficha_tecnica_clave_codigo_list" model="ir.ui.view">
+        <field name="name">ficha.tecnica.clave.codigo.list</field>
+        <field name="model">ficha.tecnica.clave.codigo</field>
+        <field name="arch" type="xml">
+            <list string="Claves de codificación de artículos" editable="bottom" default_order="kind, sequence, code">
+                <field name="sequence" widget="handle"/>
+                <field name="kind"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="gauge" invisible="kind != 'galga'" optional="show"/>
+                <field name="range_from" invisible="kind != 'galga'" optional="show"/>
+                <field name="range_to" invisible="kind != 'galga'" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_ficha_tecnica_clave_codigo_search" model="ir.ui.view">
+        <field name="name">ficha.tecnica.clave.codigo.search</field>
+        <field name="model">ficha.tecnica.clave.codigo</field>
+        <field name="arch" type="xml">
+            <search string="Claves de codificación">
+                <field name="code"/>
+                <field name="name"/>
+                <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_kind" string="Parte del código" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_ficha_tecnica_clave_codigo" model="ir.actions.act_window">
+        <field name="name">Claves de codificación de artículos</field>
+        <field name="res_model">ficha.tecnica.clave.codigo</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_kind': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Regla de codificación de artículos de tejido y acabado</p>
+            <p>Las claves de cada posición del código de 16 caracteres (composición, dibujo, tipo de hilo, galga, operación, color y acabado). El peso y el ancho van en cifras.</p>
+        </field>
+    </record>
+
+    <!-- ===== Ficha del renglón de característica ===== -->
+    <record id="view_ficha_tecnica_spec_form" model="ir.ui.view">
+        <field name="name">ficha.tecnica.spec.form</field>
+        <field name="model">ficha.tecnica.spec</field>
+        <field name="arch" type="xml">
+            <form string="Característica">
+                <sheet>
+                    <group>
+                        <group string="Característica">
+                            <field name="caracteristica_id"/>
+                            <field name="name"/>
+                            <field name="kind"/>
+                            <field name="direction"/>
+                            <field name="position"/>
+                            <field name="unit"/>
+                            <field name="method"/>
+                        </group>
+                        <group string="Especificación del cliente">
+                            <field name="spec_text" invisible="kind != 'text'"/>
+                            <field name="spec_bool" invisible="kind != 'bool'"/>
+                            <field name="spec_limit" invisible="kind != 'num'"/>
+                            <field name="spec_nominal" invisible="kind != 'num'"/>
+                            <label for="spec_tol_minus" string="Tolerancia − / +" invisible="kind != 'num' or spec_limit != 'tol'"/>
+                            <div class="o_row" invisible="kind != 'num' or spec_limit != 'tol'">
+                                <field name="spec_tol_minus"/>
+                                <field name="spec_tol_plus"/>
+                                <field name="spec_tol_pct"/>
+                                <span>%</span>
+                            </div>
+                            <field name="spec_label" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Control interno (no va al cliente)" invisible="kind != 'num'">
+                            <label for="ctrl_tol_minus" string="Margen − / +"/>
+                            <div class="o_row">
+                                <field name="ctrl_tol_minus"/>
+                                <field name="ctrl_tol_plus"/>
+                            </div>
+                            <field name="ctrl_label" readonly="1"/>
+                        </group>
+                        <group string="Documentos">
+                            <field name="in_customer_spec"/>
+                            <field name="in_coa"/>
+                            <field name="note"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===== Menú ===== -->
+    <menuitem id="menu_ficha_tecnica_config" name="Configuración"
+              parent="menu_ficha_tecnica_tela_root" sequence="90" groups="mrp.group_mrp_manager"/>
+    <menuitem id="menu_ficha_tecnica_caracteristica" name="Características"
+              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_caracteristica" sequence="10"/>
+    <menuitem id="menu_ficha_tecnica_clave_codigo" name="Claves de codificación de artículos"
+              parent="menu_ficha_tecnica_config" action="action_ficha_tecnica_clave_codigo" sequence="20"/>
+</odoo>

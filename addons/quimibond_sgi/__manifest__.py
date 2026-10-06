@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.116.0',
+    'version': '19.0.57.120.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -49,6 +49,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'hr_skills_survey',  # 57.100.0 (N-13): certificación aprobada → línea de currículum (instalado en producción)
         'hr_skills_slides',  # 57.100.0 (N-13): curso terminado → línea de currículum (instalado en producción)
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
+        'quimibond_ficha_tecnica_tela',  # 57.117.0 (C1): catálogo de características y límites de la ficha del artículo
     ],
     'data': [
         # security
@@ -97,6 +98,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
+        'data/sgi_dev_characteristic_data.xml',  # 57.117.0 (C1): catálogos de características y codificación
+        'data/sgi_dev_project_data.xml',  # 57.118.0 (C1): secuencia FT y etapas de avance
         'data/sgi_sign_elearning_data.xml',
         'data/sgi_doc_change_sign_data.xml',
         'data/sgi_checklist_cron.xml',
@@ -171,7 +174,11 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_links_views.xml',
         'views/sgi_diagram_views.xml',
         'views/sgi_kpi_fields_views.xml',
+        'views/sgi_dev_characteristic_views.xml',  # 57.117.0: antes que la pestaña del proyecto que la usa
         'views/sgi_dev_request_views.xml',
+        'views/sgi_dev_project_views.xml',  # 57.118.0: ciclo de vida del desarrollo
+        'views/sgi_dev_product_views.xml',  # 57.119.0: estado del artículo en desarrollo
+        'views/sgi_dev_analysis_views.xml',  # 57.120.0: parecidos, laboratorio y factibilidad
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports
@@ -200,6 +207,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # 57.105.0: MIID desde Odoo (usa paperformat_sgi_carta y report_sgi_diagram_body).
         'report/report_miid.xml',
         'report/report_dev_request.xml',
+        'report/report_dev_sample_label.xml',  # 57.118.0: etiqueta de la muestra física
         'report/report_machine_sheet.xml',
         'report/report_calibration_label.xml',
         'report/report_staff_efficiency.xml',

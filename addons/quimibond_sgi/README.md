@@ -325,6 +325,72 @@ Desde 57.100.0 (sección 7 del reporte de auditoría, puerta Q16;
   aparece un aviso y nada cambia; en el log queda un `warning` sin el texto de
   la NC.
 
+## Desarrollo de producto: la tabla de características (57.117.0)
+
+Primer bloque de la migración del procedimiento **C1 Desarrollo y alta de
+producto** (brief `docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`,
+plan `docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). La
+pestaña «Solicitud de desarrollo» del proyecto FT lleva **una sola tabla de
+características** (`sgi.dev.characteristic`) que sustituye la misma tabla
+recapturada en siete Excel: un renglón por característica y una columna por
+momento del proceso.
+
+| Columna | Quién | Qué guarda |
+|---|---|---|
+| Especificación del cliente | Ventas | Nominal, límite (nominal ± tolerancia, máximo o mínimo), tolerancias − / + en unidades o en %; texto solo en las cualitativas |
+| Control interno | Diseño de Producto | Margen más cerrado que el del cliente, sobre el mismo nominal. **Nunca se imprime al cliente** |
+| Muestra del cliente | Laboratorio | Lo medido en la muestra que mandó el cliente, y si cae dentro de lo que pide |
+| Corrida | Laboratorio | Tres lecturas y promedio; resultado: cumple (dentro del control interno), fuera del control interno (se embarca con aviso), no conforme (fuera del cliente) |
+| Dictamen y cliente | Diseño de Producto / Ventas | Cumple, con desviación o no cumple; aprobado por el cliente; si va a la especificación del cliente y al certificado |
+
+El catálogo de características (unidad, método o norma, tipo de dato), las
+claves de la regla de codificación de artículos (DAT P-D02-01) y el mixin con
+los dos juegos de límites viven en **`quimibond_ficha_tecnica_tela`** (menú
+Fichas Técnicas de Tela → Configuración): la ficha del artículo y el proyecto
+comparten catálogo y límites, y el SGI depende de ese módulo desde 57.117.0.
+En el SGI queda qué renglones carga cada tipo de desarrollo (general,
+entretelas V10, carda, tramado, con dirección largo / ancho y posición
+izquierda / centro / derecha): **SGI → Administración → Configuración →
+Características por tipo de desarrollo**. El rendimiento (m/kg) se calcula
+solo: 1000 / (masa × ancho). Los bloques siguientes (proyecto único,
+generador de código, laboratorio, fichas de proceso, pilotaje y liberación)
+están en el plan; la cotización va al plan de costeo v2.
+
+**Proyecto único con ciclo de vida (57.118.0).** La bandera «Desarrollo de
+producto» (`sgi_is_ft`) la pone el tipo de proyecto, no el nombre; el folio FT
+es un campo aparte con secuencia anual (FT-001-2027) que se asigna al pasar a
+«Muestra»; las etapas del proyecto son de avance (Solicitud → Análisis →
+Cotización → Aprobación del cliente → Muestra → Respuesta del cliente →
+Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
+campo Cliente. El nombre se arma solo (folio, código, revisión). Pestañas
+Desarrollo (origen, resultado del análisis, muestra física, relojes por etapa
+y de materia prima), Comercial (listas en Configuración → Listas del
+desarrollo de producto) y Revisiones (bitácora). Las mediciones del SGI
+filtran por la bandera, ya no por `FT-%` en el nombre.
+
+**Artículo en desarrollo y generador de código (57.119.0).** Desde la
+pestaña Desarrollo se eligen las claves (composición, dibujo, hilo, color,
+acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
+crea crudo (H), teñido (I, si lleva) y acabado (J) con el código del DAT
+P-D02-01 en estado «En desarrollo» (no se vende). Al entrar a Pilotaje el
+artículo se vende con aviso; en Liberado queda de línea; si el proyecto
+cierra sin producto, el artículo y sus listas de materiales se archivan. El
+artículo genérico «MUESTRA PILOTO» se bloquea en órdenes nuevas desde la
+fecha del parámetro `quimibond_sgi.dev_block_generic_sample_from` (vacío
+mientras Jose no la fije).
+
+**Análisis, laboratorio y factibilidad (57.120.0).** «Buscar parecidos»
+lista artículos de línea y desarrollos anteriores por cercanía y, con «Usar
+como base», propone producto de línea o nuevo. «Solicitar pruebas al
+laboratorio» crea la solicitud con los renglones marcados; la autoriza el
+puesto del parámetro `quimibond_sgi.dev_lab_authorizer_job_id` o el Jefe
+MAST, y el laboratorio captura el valor en el renglón (SGI → Sistema →
+Pruebas de laboratorio de desarrollos). El checklist de factibilidad se
+carga del catálogo por línea (Configuración → Recursos del checklist de
+factibilidad, vacío hasta que Diseño de Procesos lo defina); Odoo contesta
+la existencia de materia prima. Ventas aprueba análisis y factibilidad en
+una sola revisión; sin ella el proyecto no pasa a Cotización.
+
 ## Menú
 
 Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las

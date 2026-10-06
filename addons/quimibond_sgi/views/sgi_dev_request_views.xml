@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- Solicitud de desarrollo en el proyecto FT (56.0.0): hereda la ficha de
-         Proyecto (módulo ajeno), nunca una vista propia. -->
+         Proyecto (módulo ajeno), nunca una vista propia. 57.117.0: la tabla de
+         características es numérica, con una columna por momento del proceso
+         (cliente, muestra, control interno, corrida, dictamen); el renglón
+         completo se abre con la flecha de la fila. -->
     <record id="sgi_project_view_form_dev_request" model="ir.ui.view">
         <field name="name">project.project.form.inherit.sgi.dev.request</field>
         <field name="model">project.project</field>
@@ -39,18 +42,58 @@
                     </group>
                     <group>
                         <field name="sgi_dev_use" placeholder="Qué es el producto y para qué lo va a usar el cliente"/>
-                        <field name="sgi_dev_spec" placeholder="Especificación que entregó el cliente (o referencia a su hoja técnica)"/>
+                        <field name="sgi_dev_spec" placeholder="Referencia a la hoja técnica del cliente; los valores van en la tabla de abajo"/>
                     </group>
-                    <field name="sgi_dev_line_ids">
-                        <list editable="bottom">
+                    <div class="d-flex gap-3 mb-1" invisible="not sgi_dev_line_count">
+                        <span><field name="sgi_dev_line_count" readonly="1" class="oe_inline fw-bold"/> características</span>
+                        <span class="text-warning" invisible="not sgi_dev_lab_pending_count"><field name="sgi_dev_lab_pending_count" readonly="1" class="oe_inline fw-bold"/> pendientes de laboratorio</span>
+                        <span class="text-warning" invisible="not sgi_dev_deviation_count"><field name="sgi_dev_deviation_count" readonly="1" class="oe_inline fw-bold"/> fuera del control interno</span>
+                        <span class="text-danger" invisible="not sgi_dev_out_of_spec_count"><field name="sgi_dev_out_of_spec_count" readonly="1" class="oe_inline fw-bold"/> no conformes</span>
+                    </div>
+                    <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                        <list editable="bottom" open_form_view="1"
+                              decoration-danger="run_result == 'no_conforme'"
+                              decoration-warning="run_result == 'desviacion'">
                             <field name="sequence" widget="handle"/>
+                            <field name="caracteristica_id" optional="hide"/>
+                            <field name="caracteristica_code" column_invisible="1"/>
+                            <field name="kind" column_invisible="1"/>
                             <field name="name"/>
                             <field name="direction"/>
+                            <field name="position" optional="show"/>
                             <field name="unit"/>
-                            <field name="value"/>
-                            <field name="tolerance"/>
-                            <field name="method"/>
-                            <field name="note"/>
+                            <field name="spec_limit" optional="show" readonly="kind != 'num'"/>
+                            <field name="spec_nominal" readonly="kind != 'num'"/>
+                            <field name="spec_tol_minus" string="Tol. −" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                            <field name="spec_tol_plus" string="Tol. +" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                            <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                            <field name="spec_text" optional="show" readonly="kind != 'text'"/>
+                            <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>
+                            <field name="spec_label" optional="hide"/>
+                            <field name="ctrl_tol_minus" optional="hide" readonly="kind != 'num'"/>
+                            <field name="ctrl_tol_plus" optional="hide" readonly="kind != 'num'"/>
+                            <field name="method" optional="hide"/>
+                            <field name="lab_requested" optional="show"/>
+                            <field name="sample_value" optional="show" readonly="kind != 'num'"/>
+                            <field name="sample_text" optional="hide" readonly="kind == 'num'"/>
+                            <field name="sample_result" optional="hide" widget="badge"
+                                   decoration-success="sample_result == 'cumple'"
+                                   decoration-warning="sample_result == 'desviacion'"
+                                   decoration-danger="sample_result == 'no_conforme'"/>
+                            <field name="run_1" optional="hide" readonly="kind != 'num'"/>
+                            <field name="run_2" optional="hide" readonly="kind != 'num'"/>
+                            <field name="run_3" optional="hide" readonly="kind != 'num'"/>
+                            <field name="run_avg" optional="show"/>
+                            <field name="run_text" optional="hide" readonly="kind == 'num'"/>
+                            <field name="run_result" optional="show" widget="badge"
+                                   decoration-success="run_result == 'cumple'"
+                                   decoration-warning="run_result == 'desviacion'"
+                                   decoration-danger="run_result == 'no_conforme'"/>
+                            <field name="verdict" optional="show"/>
+                            <field name="customer_approved" optional="hide"/>
+                            <field name="in_customer_spec" optional="hide"/>
+                            <field name="in_coa" optional="hide"/>
+                            <field name="note" optional="show"/>
                         </list>
                     </field>
                     <group>
