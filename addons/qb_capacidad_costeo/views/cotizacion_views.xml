@@ -463,11 +463,11 @@
                         <group string="Qué se cotizó">
                             <field name="partner_id"/>
                             <field name="sale_order_id" invisible="not sale_order_id"/>
-                            <field name="product_id"/>
-                            <field name="spec_descripcion"/>
-                            <field name="spec_gramaje"/>
-                            <field name="spec_ancho"/>
-                            <field name="spec_galga"/>
+                            <field name="product_id" invisible="not product_id"/>
+                            <field name="spec_descripcion" invisible="product_id"/>
+                            <field name="spec_gramaje" invisible="product_id"/>
+                            <field name="spec_ancho" invisible="product_id"/>
+                            <field name="spec_galga" invisible="product_id"/>
                             <field name="volumen"/>
                             <field name="uom_name"/>
                             <field name="currency_id"/>
