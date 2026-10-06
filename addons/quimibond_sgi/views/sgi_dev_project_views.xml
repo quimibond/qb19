@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.118.0 (C1, bloque 2): ciclo de vida del proyecto de desarrollo de
+         producto. Hereda la ficha de Proyecto (módulo ajeno), nunca una vista
+         propia; la pestaña «Solicitud de desarrollo» sigue en
+         sgi_dev_request_views.xml. -->
+    <record id="sgi_project_view_form_dev_lifecycle" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.sgi.dev.lifecycle</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="attributes">
+                <attribute name="readonly">sgi_is_ft</attribute>
+            </xpath>
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="sgi_ft_folio" invisible="not sgi_is_ft" readonly="sgi_ft_folio"/>
+                <field name="sgi_dev_stage_key" invisible="1"/>
+                <field name="sgi_dev_analysis_result" invisible="1"/>
+                <field name="sgi_dev_mp_pending" invisible="1"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="Desarrollo" name="sgi_dev_lifecycle" invisible="not sgi_is_ft">
+                    <div class="d-flex flex-wrap gap-1 mb-2">
+                        <button name="action_sgi_dev_assign_folio" type="object" string="Asignar folio FT" class="btn-primary"
+                                invisible="sgi_ft_folio or sgi_dev_analysis_result == 'linea'"/>
+                        <button name="action_sgi_dev_new_revision" type="object" string="Subir revisión" class="btn-secondary"
+                                confirm="Se abre la revisión siguiente del desarrollo. Los cambios a la especificación quedarán en la bitácora. ¿Continuar?"/>
+                        <button name="action_sgi_dev_mp_wait_start" type="object" string="Materia prima pendiente" class="btn-secondary"
+                                invisible="sgi_dev_mp_pending"/>
+                        <button name="action_sgi_dev_mp_wait_stop" type="object" string="Llegó la materia prima" class="btn-warning"
+                                invisible="not sgi_dev_mp_pending"/>
+                        <button name="action_sgi_dev_close_as_line_product" type="object" string="Cerrar: producto de línea" class="btn-secondary"
+                                invisible="sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto')"
+                                confirm="Un artículo existente cumple la solicitud: se cotiza ese y el proyecto cierra sin folio FT. ¿Continuar?"/>
+                        <button name="action_sgi_dev_close_not_feasible" type="object" string="Cerrar: no factible" class="btn-secondary"
+                                invisible="sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto')"
+                                confirm="El desarrollo no es factible: el proyecto cierra sin producto. ¿Continuar?"/>
+                        <button name="action_sgi_dev_print_sample_label" type="object" string="Etiqueta de la muestra" class="btn-secondary" icon="fa-tag"
+                                invisible="not sgi_dev_sample_received"/>
+                
+                    </div>
+                    <group>
+                        <group string="Identidad">
+                            <field name="sgi_dev_product_name"/>
+                            <field name="sgi_dev_product_id"/>
+                            <field name="sgi_dev_revision" readonly="1"/>
+                            <field name="sgi_dev_origin" widget="radio" options="{'horizontal': true}"/>
+                            <field name="sgi_dev_contact_id" invisible="sgi_dev_origin != 'cliente'"
+                                   domain="[('commercial_partner_id', '=?', partner_id)]"/>
+                            <field name="sgi_dev_requester_employee_id" invisible="sgi_dev_origin != 'interno'"
+                                   required="sgi_is_ft and sgi_dev_origin == 'interno'"/>
+                            <field name="alias_id" readonly="1"/>
+                        </group>
+                        <group string="Resultado del análisis">
+                            <field name="sgi_dev_analysis_result" widget="radio"/>
+                            <field name="sgi_dev_base_product_id" invisible="sgi_dev_analysis_result == 'no_factible'"/>
+                            <field name="sgi_dev_not_feasible_reason_id" invisible="sgi_dev_analysis_result != 'no_factible'"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Muestra física del cliente">
+                            <field name="sgi_dev_sample_received"/>
+                            <field name="sgi_dev_sample_handed"/>
+                            <field name="sgi_dev_sample_folder"/>
+                        </group>
+                        <group string="Tiempos (horas calendario)">
+                            <field name="sgi_dev_hours_stage"/>
+                            <field name="sgi_dev_hours_dev"/>
+                            <field name="sgi_dev_hours_mp"/>
+                        </group>
+                    </group>
+                    <separator string="Reloj por etapa"/>
+                    <field name="sgi_dev_stage_log_ids" readonly="1">
+                        <list create="0" delete="0">
+                            <field name="stage_id"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="hours_total" sum="Total"/>
+                            <field name="hours_mp" sum="Total"/>
+                            <field name="hours_dev" sum="Total"/>
+                        </list>
+                    </field>
+                    <separator string="Esperas de materia prima"/>
+                    <field name="sgi_dev_mp_wait_ids">
+                        <list editable="bottom">
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="hours"/>
+                            <field name="note"/>
+                        </list>
+                    </field>
+                </page>
+                <page string="Comercial" name="sgi_dev_commercial" invisible="not sgi_is_ft">
+                    <group>
+                        <group string="Cliente">
+                            <field name="sgi_dev_team_id"/>
+                            <field name="sgi_dev_salesperson_id"/>
+                            <field name="sgi_dev_customer_status"/>
+                            <field name="sgi_dev_market_id"/>
+                            <field name="sgi_dev_spec_number"/>
+                            <field name="sgi_dev_required_date"/>
+                        </group>
+                        <group string="Programa y consumo">
+                            <field name="sgi_dev_program"/>
+                            <field name="sgi_dev_application_id"/>
+                            <field name="sgi_dev_program_years"/>
+                            <label for="sgi_dev_consumption_annual"/>
+                            <div class="o_row">
+                                <field name="sgi_dev_consumption_annual"/>
+                                <field name="sgi_dev_consumption_uom"/>
+                            </div>
+                            <field name="sgi_dev_consumption_monthly"/>
+                            <field name="sgi_dev_consumption_annual_m" invisible="sgi_dev_consumption_uom != 'yd'"/>
+                            <field name="sgi_dev_consumption_annual_yd" invisible="sgi_dev_consumption_uom != 'm'"/>
+                            <field name="sgi_dev_lamination_id"/>
+                            <field name="sgi_dev_legal_ids" widget="many2many_tags"/>
+                        </group>
+                    </group>
+                </page>
+                <page string="Revisiones" name="sgi_dev_revisions" invisible="not sgi_is_ft">
+                    <field name="sgi_dev_revision_ids">
+                        <list editable="bottom">
+                            <field name="date"/>
+                            <field name="revision"/>
+                            <field name="requested_by"/>
+                            <field name="characteristic_id" domain="[('project_id', '=', parent.id)]"/>
+                            <field name="characteristic_name" column_invisible="1"/>
+                            <field name="old_value"/>
+                            <field name="new_value"/>
+                            <field name="quotation_ref"/>
+                            <field name="user_id" optional="show"/>
+                            <field name="note" optional="show"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Filtro y columna en la lista de proyectos -->
+    <record id="sgi_project_view_search_dev" model="ir.ui.view">
+        <field name="name">project.project.search.inherit.sgi.dev</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_project_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+                <field name="sgi_ft_folio"/>
+                <separator/>
+                <filter name="sgi_dev" string="Desarrollo de producto" domain="[('sgi_is_ft', '=', True)]"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="sgi_project_view_list_dev" model="ir.ui.view">
+        <field name="name">project.project.list.inherit.sgi.dev</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="sgi_ft_folio" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ===== Listas del desarrollo (Configuración) ===== -->
+    <record id="sgi_dev_option_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.option.list</field>
+        <field name="model">sgi.dev.option</field>
+        <field name="arch" type="xml">
+            <list string="Listas del desarrollo de producto" editable="bottom" default_order="kind, sequence, name">
+                <field name="sequence" widget="handle"/>
+                <field name="kind"/>
+                <field name="name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_option_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.option.search</field>
+        <field name="model">sgi.dev.option</field>
+        <field name="arch" type="xml">
+            <search string="Listas del desarrollo">
+                <field name="name"/>
+                <filter name="inactive" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_kind" string="Lista" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_option_action" model="ir.actions.act_window">
+        <field name="name">Listas del desarrollo de producto</field>
+        <field name="res_model">sgi.dev.option</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_kind': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Listas de la pestaña Comercial y del resultado del análisis</p>
+            <p>Aplicación, mercado, tipo de laminado, requisitos legales y reglamentarios y motivos de no factibilidad. Se capturan aquí para que en el proyecto sean una elección y no texto libre.</p>
+        </field>
+    </record>
+</odoo>

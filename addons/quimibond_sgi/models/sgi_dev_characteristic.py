@@ -154,8 +154,19 @@ class SgiDevCharacteristic(models.Model):
             lines.mapped('project_id')._sgi_dev_refresh_formulas()
         return lines
 
+    _SPEC_FIELDS = ('spec_nominal', 'spec_limit', 'spec_tol_minus', 'spec_tol_plus', 'spec_tol_pct',
+                    'spec_text', 'spec_bool')
+
     def write(self, vals):
+        # 57.118.0: después del análisis, cada cambio a la especificación del
+        # cliente queda en la bitácora de revisiones del proyecto.
+        before = {}
+        if not self.env.context.get('sgi_dev_formula') and set(vals) & set(self._SPEC_FIELDS):
+            before = {line.id: line.spec_label for line in self if line.project_id._sgi_dev_logs_revisions()}
         res = super().write(vals)
+        for line in self:
+            if line.id in before and before[line.id] != line.spec_label:
+                line.project_id._sgi_dev_log_revision(line, before[line.id], line.spec_label)
         if not self.env.context.get('sgi_dev_formula') and set(vals) & (
                 set(self._COMPUTED_COLUMNS) | {'caracteristica_id', 'spec_limit', 'spec_tol_minus',
                                                'spec_tol_plus', 'spec_tol_pct'}):

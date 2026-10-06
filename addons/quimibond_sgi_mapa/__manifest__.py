@@ -29,7 +29,7 @@ el que se armó el primero desde lecturas de producción por MCP.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.1.1.3',
+    'version': '19.0.1.1.4',
     'license': 'OPL-1',
     'depends': ['quimibond_sgi'],
     'data': [

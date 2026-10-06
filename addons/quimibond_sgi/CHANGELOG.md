@@ -13,6 +13,81 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.118.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 2: proyecto único con ciclo de
+vida** (brief 6.1 y decisión 3 de Jose del 2026-10-06; plan en
+`docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). Un solo
+proyecto nace como análisis y recibe folio FT cuando el cliente aprueba el
+inicio; nadie edita el título ni escribe el folio a mano.
+
+### Agregado
+
+- **Bandera «Desarrollo de producto»** (`sgi_is_ft`) que pone el tipo de
+  proyecto (plantilla o captura), ya no el nombre. Es el filtro de las
+  mediciones del SGI: los entregables C1 del mapa de procesos y de la base
+  dejan `name =like 'FT-%'` por `sgi_is_ft = True` (`quimibond_sgi_mapa`
+  1.1.4 y la migración).
+- **Folio FT aparte** (`sgi_ft_folio`): secuencia anual `sgi.dev.ft`
+  (FT-001-2027), asignada al pasar a «Muestra» o con el botón; admite folio
+  histórico a mano. El **nombre** se arma solo: folio (o «Análisis»), código
+  del artículo o producto pedido y «rev. N»; en la ficha queda en solo
+  lectura.
+- **Etapas de avance** (`project.project.stage`, datos): Solicitud, Análisis,
+  Cotización, Aprobación del cliente, Muestra, Respuesta del cliente,
+  Pilotaje, Liberado, Cerrado sin producto. El cliente vive solo en
+  `partner_id`.
+- **Origen** cliente (contacto del cliente) o interno (solicitante de
+  `hr.employee`).
+- **Revisión** entera con **bitácora** (`sgi.dev.revision`): desde la etapa
+  Cotización, cada cambio a la especificación de un renglón deja fecha,
+  quién, característica, valor anterior y nuevo; «Subir revisión» abre la
+  siguiente. La liga a la cotización es una referencia hasta el cotizador
+  nuevo.
+- **Correo propio por proyecto**: el alias nativo de Proyectos se nombra
+  `desarrollo-<id>` al crear y `ft-039-2026` al asignar el folio (sin dominio
+  de alias configurado queda inactivo, sin error).
+- **Pestaña Comercial** (sustituye al Análisis de mercado Industrial): equipo
+  de ventas, vendedor, cliente actual o prospecto (calculado de los pedidos
+  confirmados), programa, aplicación, tiempo de programa, consumo anual y
+  mensual con conversión yardas ↔ metros, tipo de laminado, requisitos
+  legales y reglamentarios, mercado, fecha requerida, número de
+  especificación. Las listas viven en `sgi.dev.option` (SGI → Administración
+  → Configuración → Listas del desarrollo de producto), **vacías**: nadie ha
+  definido sus renglones.
+- **Muestra física**: fecha de recepción, entrega a Diseño, ubicación en
+  carpeta y etiqueta imprimible (cliente, proyecto, folio, fechas).
+- **Resultado del análisis**: producto de línea (liga el artículo y cierra
+  en «Cerrado sin producto», sin folio), producto nuevo, no factible con
+  motivo de lista.
+- **Relojes en horas calendario**: `sgi.dev.stage.log` por etapa (se abre y
+  cierra solo al cambiar de etapa) y `sgi.dev.mp.wait` de materia prima
+  (botones «Materia prima pendiente» / «Llegó la materia prima»); las horas
+  de desarrollo de cada etapa descuentan la espera de materia prima.
+- Filtro «Desarrollo de producto» y columna Folio FT en la lista de
+  proyectos. Pruebas `tests/test_dev_project.py`.
+
+### Migración
+
+- `migrations/19.0.57.118.0/post-migrate.py`: marca los proyectos FT- (77 en
+  producción), las plantillas «PLANTILLA - Diseño y Desarrollo …» (480 y
+  481) y el proyecto «ANALISIS DE PROYECTO …» (490); separa folio (unificado
+  a guiones), producto pedido y revisión («REV3») del nombre viejo y vuelve
+  a armar el nombre; toma el cliente de la etapa cuyo nombre era el cliente
+  cuando faltaba; reescribe los filtros de medición con `FT-%`. Idempotente.
+  No borra las etapas por cliente (dato de producción, sección 7 del brief).
+
+### Cambiado
+
+- `sgi_is_ft` deja de calcularse del nombre; `test_excel_migration` crea el
+  proyecto con la bandera.
+
+### Pendiente
+
+- Dirección de correo: el alias necesita un dominio de alias configurado en
+  la base. Las etapas de los proyectos FT- existentes siguen siendo las de
+  cliente hasta la limpieza de datos (sección 7).
+
 ## 19.0.57.117.0 — 2026-10-06
 
 **C1 Desarrollo y alta de producto, bloque 1: la tabla de características.**

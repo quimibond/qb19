@@ -356,6 +356,18 @@ solo: 1000 / (masa × ancho). Los bloques siguientes (proyecto único,
 generador de código, laboratorio, fichas de proceso, pilotaje y liberación)
 están en el plan; la cotización va al plan de costeo v2.
 
+**Proyecto único con ciclo de vida (57.118.0).** La bandera «Desarrollo de
+producto» (`sgi_is_ft`) la pone el tipo de proyecto, no el nombre; el folio FT
+es un campo aparte con secuencia anual (FT-001-2027) que se asigna al pasar a
+«Muestra»; las etapas del proyecto son de avance (Solicitud → Análisis →
+Cotización → Aprobación del cliente → Muestra → Respuesta del cliente →
+Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
+campo Cliente. El nombre se arma solo (folio, código, revisión). Pestañas
+Desarrollo (origen, resultado del análisis, muestra física, relojes por etapa
+y de materia prima), Comercial (listas en Configuración → Listas del
+desarrollo de producto) y Revisiones (bitácora). Las mediciones del SGI
+filtran por la bandera, ya no por `FT-%` en el nombre.
+
 ## Menú
 
 Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las

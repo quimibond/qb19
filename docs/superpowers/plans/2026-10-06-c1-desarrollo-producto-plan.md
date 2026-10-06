@@ -32,8 +32,8 @@ pruebas y se prueba solo en el build de Odoo.sh de la rama con
 | Bloque | Qué | Brief | Estado |
 |---|---|---|---|
 | 1 | Tabla numérica de características en el proyecto; catálogo, claves de codificación y límites en `quimibond_ficha_tecnica_tela` 2.1.0; renglones por tipo en el SGI | 6.2, 5.1, 5.2 (modelos) | **Hecho, 57.117.0** (PR #563) |
-| 2 | Proyecto único con ciclo de vida: bandera «desarrollo de producto» por tipo de proyecto con migración (77 FT-, plantillas 480 / 481, proyecto 490) y dominios de medición corregidos; folio FT aparte por secuencia anual; etapas de avance, origen, revisión y bitácora, alias de correo, pestaña comercial, muestra física, resultado del análisis, relojes por paso | 6.1, decisión 3 | Siguiente |
-| 3 | Artículo en desarrollo y generador de código (crudo, teñido, acabado); bloqueo de 16292 / 16293 con fecha acordada con Jose | 6.6 | — |
+| 2 | Proyecto único con ciclo de vida: bandera «desarrollo de producto» por tipo de proyecto con migración (77 FT-, plantillas 480 / 481, proyecto 490) y dominios de medición corregidos; folio FT aparte por secuencia anual; etapas de avance, origen, revisión y bitácora, alias de correo, pestaña comercial, muestra física, resultado del análisis, relojes por paso | 6.1, decisión 3 | **Hecho, 57.118.0** (mismo PR #563, commit aparte). Pendiente: dominio de alias en la base; limpieza de etapas por cliente (sección 7) |
+| 3 | Artículo en desarrollo y generador de código (crudo, teñido, acabado); bloqueo de 16292 / 16293 con fecha acordada con Jose | 6.6 | Siguiente |
 | 4 | Búsqueda de parecidos, solicitud de pruebas a laboratorio, checklist de factibilidad (modelo y vista, catálogo vacío) | 6.3 a 6.5 | — |
 | 5 | Cotización | 6.8 | **Fuera de C1**: requisitos en el plan de costeo v2 (spec §6.1), sobre `qb_cotizador` / `qb_costeo_sgi` |
 | 6 | Solicitud de desarrollos (PDF con clave nueva, compuerta de Jorge, aviso a seis puestos, requisición ligada), orden de muestra, fichas de proceso de tintorería y acabado | 6.7, 6.9, 6.10 | — |

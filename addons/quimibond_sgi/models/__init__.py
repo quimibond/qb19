@@ -72,6 +72,7 @@ from . import sgi_kpi_review
 from . import sgi_kpi_hr
 from . import sgi_dev_characteristic
 from . import sgi_dev_request
+from . import sgi_dev_project
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign

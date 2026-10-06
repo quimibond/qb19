@@ -226,6 +226,14 @@ access_sgi_inventory_value_user,sgi.inventory.value.user,model_sgi_inventory_val
 access_sgi_inventory_value_manager,sgi.inventory.value.manager,model_sgi_inventory_value,group_sgi_manager,1,1,1,1
 access_sgi_inventory_value_auditor,sgi.inventory.value.auditor,model_sgi_inventory_value,group_sgi_auditor,1,0,0,0
 access_sgi_dev_characteristic_user,sgi.dev.characteristic.user,model_sgi_dev_characteristic,base.group_user,1,1,1,0
+access_sgi_dev_option_user,sgi.dev.option.user,model_sgi_dev_option,base.group_user,1,0,0,0
+access_sgi_dev_option_manager,sgi.dev.option.manager,model_sgi_dev_option,group_sgi_manager,1,1,1,1
+access_sgi_dev_revision_user,sgi.dev.revision.user,model_sgi_dev_revision,base.group_user,1,1,1,0
+access_sgi_dev_revision_manager,sgi.dev.revision.manager,model_sgi_dev_revision,group_sgi_manager,1,1,1,1
+access_sgi_dev_stage_log_user,sgi.dev.stage.log.user,model_sgi_dev_stage_log,base.group_user,1,0,0,0
+access_sgi_dev_stage_log_manager,sgi.dev.stage.log.manager,model_sgi_dev_stage_log,group_sgi_manager,1,1,1,1
+access_sgi_dev_mp_wait_user,sgi.dev.mp.wait.user,model_sgi_dev_mp_wait,base.group_user,1,1,1,0
+access_sgi_dev_mp_wait_manager,sgi.dev.mp.wait.manager,model_sgi_dev_mp_wait,group_sgi_manager,1,1,1,1
 access_sgi_dev_characteristic_template_user,sgi.dev.characteristic.template.user,model_sgi_dev_characteristic_template,base.group_user,1,0,0,0
 access_sgi_dev_characteristic_template_manager,sgi.dev.characteristic.template.manager,model_sgi_dev_characteristic_template,group_sgi_manager,1,1,1,1
 access_sgi_machine_sheet_user,sgi.machine.sheet.user,model_sgi_machine_sheet,base.group_user,1,0,0,0

@@ -119,3 +119,4 @@ SGI/Administración/Configuración/Elementos PPAP | menu_sgi_config_ppap_element
 SGI/Administración/Configuración/Competencias por tipo de permiso | menu_sgi_config_work_permit_skills | -
 SGI/Administración/Configuración/Fuentes de indicadores | menu_sgi_config_indicator_sources | -
 SGI/Administración/Configuración/Características por tipo de desarrollo | menu_sgi_config_dev_char_templates | -
+SGI/Administración/Configuración/Listas del desarrollo de producto | menu_sgi_config_dev_options | -

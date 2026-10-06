@@ -21,9 +21,14 @@ DEV_FORMAT_REF = 'format_ref_dev_%s'
 class ProjectProjectDevRequest(models.Model):
     _inherit = 'project.project'
 
+    # 57.118.0 (decisión 3 de Jose): bandera «desarrollo de producto» que pone el
+    # tipo de proyecto (plantilla o captura), no el nombre. El folio FT es un
+    # campo aparte (sgi_ft_folio, models/sgi_dev_project.py).
     sgi_is_ft = fields.Boolean(
-        string="Proyecto FT (desarrollo)", compute='_compute_sgi_is_ft', store=True, readonly=False,
-        help="Se marca solo cuando el nombre empieza con «FT-». Habilita la pestaña Solicitud de desarrollo.")
+        string="Desarrollo de producto", tracking=True,
+        help="El proyecto es un desarrollo de producto (procedimiento C1): habilita las pestañas de "
+             "desarrollo, el folio FT, las etapas de avance y las mediciones del SGI. Las plantillas de "
+             "Diseño y Desarrollo ya lo traen marcado.")
     sgi_dev_type = fields.Selection(DEV_TYPES, string="Tipo de desarrollo", default='general',
                                     help="Tipo de desarrollo que se solicita; define qué datos pide la "
                                          "solicitud.")
@@ -73,14 +78,6 @@ class ProjectProjectDevRequest(models.Model):
     sgi_dev_approved_by_id = fields.Many2one('res.users', string="Aprobó (Dirección de Operaciones)",
                                              help="Persona de Dirección de Operaciones que aprueba la "
                                                   "solicitud de desarrollo.")
-
-    @api.depends('name')
-    def _compute_sgi_is_ft(self):
-        for project in self:
-            if (project.name or '').strip().upper().startswith('FT-'):
-                project.sgi_is_ft = True
-            elif not project.sgi_is_ft:
-                project.sgi_is_ft = False
 
     def _sgi_dev_format_map(self):
         self.ensure_one()
