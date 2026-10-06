@@ -77,4 +77,18 @@
         <field name="value_text">AGUA</field>
         <field name="help">Referencias (separadas por coma) que no disparan validaciones: el agua cuesta 0 a propósito.</field>
     </record>
+    <record id="param_horas_historia_meses" model="qb.parametro">
+        <field name="key">horas_historia_meses</field>
+        <field name="name">Meses de historia para las horas medidas</field>
+        <field name="tipo">float</field>
+        <field name="value_float">12</field>
+        <field name="help">Ventana de órdenes de trabajo que se promedian para las horas por unidad de un producto, y para los promedios por galga y por centro.</field>
+    </record>
+    <record id="param_receta_ventana_dias" model="qb.parametro">
+        <field name="key">receta_ventana_dias</field>
+        <field name="name">Días para elegir la receta vigente</field>
+        <field name="tipo">float</field>
+        <field name="value_float">90</field>
+        <field name="help">La receta vigente de un producto es la que más cantidad produjo en estos días; sin producción, la activa más reciente.</field>
+    </record>
 </odoo>

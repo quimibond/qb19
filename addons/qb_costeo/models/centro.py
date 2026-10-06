@@ -73,6 +73,16 @@ class QbCentro(models.Model):
              'solo si el calendario no refleja la capacidad real, y diga '
              'por qué en el motivo.')
     capacidad_motivo = fields.Char(string='Motivo de la capacidad capturada')
+    velocidad_min = fields.Float(
+        string='Velocidad mínima creíble (u/h)', digits=(16, 2),
+        help='Banda para las horas medidas: una orden cuya velocidad '
+             '(unidades producidas ÷ horas de sus órdenes de trabajo) quede '
+             'abajo de este valor se descarta como dato malo (máquina parada '
+             'con la orden abierta). 0 = sin límite.')
+    velocidad_max = fields.Float(
+        string='Velocidad máxima creíble (u/h)', digits=(16, 2),
+        help='Banda para las horas medidas: una orden más rápida que esto se '
+             'descarta (horas sin capturar). 0 = sin límite.')
     kg_por_carga = fields.Float(
         string='Kg por carga', digits=(16, 2),
         help='Driver «kg_ciclo»: kilos que entran a una carga de tintorería.')
