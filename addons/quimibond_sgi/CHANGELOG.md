@@ -13,6 +13,51 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.122.0 — 2026-10-07
+
+**Uso diario del proyecto de desarrollo** (contexto de Jose tras el
+despliegue, punto 4).
+
+### Agregado
+
+- **La tarjeta de un desarrollo abre su ficha.** `action_view_tasks` devuelve
+  el formulario cuando el proyecto es desarrollo (no plantilla); el botón de
+  tareas de la ficha y los enlaces «Tareas» de la tarjeta pasan por
+  `action_sgi_dev_view_tasks` y siguen abriendo las tareas. Nadie encontraba
+  «⋮ → Ajustes».
+- **Tarjeta del tablero:** folio FT (o «Sin folio FT»), etapa con horas en la
+  etapa actual y aviso «Falta el cliente». El cliente ya se mostraba.
+- **Características del tipo, solas:** al crear un desarrollo y al elegir el
+  tipo con la tabla vacía se proponen las del catálogo
+  (`_sgi_dev_autoload_lines`). Con la tabla llena, cambiar el tipo no agrega
+  nada; `sgi_dev_no_autoload` en el contexto lo apaga. El 491 llevaba un día
+  en Análisis con 0 renglones.
+- **Lista «Desarrollos de producto»** (SGI → Sistema): folio, nombre,
+  cliente y etapa editables en la lista, origen, horas en la etapa,
+  características, responsable, actividades y última modificación; renglón
+  rojo cuando falta el cliente. Para que Jessica ubique los 74 que la
+  migración dejó en Muestra. Nada se mueve por código.
+- **Asistente «Marcar desarrollos existentes»** (SGI → Sistema, jefes de
+  proyecto): propone los proyectos activos con nombre de código de artículo
+  en cualquier idioma o en la columna «Por revisar» (39 + 14 en producción);
+  la persona quita los que no sean y marca varios a la vez. No mueve de
+  etapa; casilla opcional para proponer las características del tipo general.
+- **Aviso en la ficha** cuando el origen es cliente y falta el cliente
+  (`sgi_dev_missing_partner`, también en la tarjeta y la lista).
+- MCP: `sgi.dev.similar` y sus renglones, lectura. Los demás modelos nuevos
+  ya estaban expuestos desde 57.120.2.
+
+### Migración
+
+`migrations/19.0.57.122.0/post-migrate.py`: solo expone los dos modelos al
+MCP. Sin cambios de datos.
+
+### Pruebas
+
+`tests/test_dev_board.py`: tarjeta → ficha y tareas alcanzables, carga de
+características al crear y al elegir tipo, candidatos y marcado del
+asistente, bandera de cliente faltante y carga de las vistas.
+
 ## 19.0.57.121.0 — 2026-10-07
 
 **Las fichas de C1 se miden con el proyecto de desarrollo** (contexto de Jose
