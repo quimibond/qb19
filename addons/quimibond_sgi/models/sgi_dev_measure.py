@@ -56,6 +56,16 @@ C1_MEASURES = {
         'complete_domain': "[('sgi_dev_prepared_by_id', '!=', False)]",
         'complete_criteria': "Folio FT asignado, «Elaboró» y «Aprobó» firmados en la solicitud.",
     },
+    'C1-RUTA': {
+        'name': "Ruta preliminar del artículo de desarrollo (operaciones de la lista de materiales)",
+        'model': 'mrp.bom',
+        'domain': "[('product_tmpl_id.sgi_dev_project_id', '!=', False), ('operation_ids', '!=', False)]",
+        'date_field': 'write_date',
+        'user_field': 'write_uid',
+        'complete_domain': "[('operation_ids.workcenter_id', '!=', False)]",
+        'complete_criteria': "Cada operación de la lista de materiales tiene centro de trabajo.",
+        'activity_number': 'C1.04b',
+    },
     'C1-MP-ESPERA': {
         'name': "Espera de materia prima del desarrollo registrada",
         'model': 'sgi.dev.mp.wait',

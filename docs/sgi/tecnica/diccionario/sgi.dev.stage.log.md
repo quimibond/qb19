@@ -21,5 +21,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sg
 | `hours_total` | Float | Horas en la etapa | Horas calendario entre la entrada y la salida (o ahora). |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:171` |
 | `project_id` | Many2one |  | Proyecto de desarrollo. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:164` |
 | `stage_id` | Many2one | Etapa | Etapa en la que estuvo el proyecto. | sí | `project.project.stage` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:166` |
-| `stage_key` | Char | Clave de la etapa | Clave de la etapa de avance (solicitud, analisis, …, liberado); vacía si la etapa no es de desarrollo. Sirve para medir sin depender de ids. |  |  | compute `_compute_stage_key`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:102` |
+| `stage_key` | Char | Clave de la etapa | Clave de la etapa de avance (solicitud, analisis, …, liberado); vacía si la etapa no es de desarrollo. Sirve para medir sin depender de ids. |  |  | compute `_compute_stage_key`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:112` |
 
