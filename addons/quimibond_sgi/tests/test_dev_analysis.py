@@ -60,7 +60,12 @@ class TestDevAnalysis(TransactionCase):
 
     def test_02_lab_request_flow(self):
         Param = self.env['ir.config_parameter'].sudo()
-        job = self.env['hr.job'].create({'name': 'Coordinador de Laboratorio y MP (prueba)'})
+        # Como producción: el nombre que contiene «Coordinador de Laboratorio» vive en es_MX.
+        self.env['res.lang']._activate_lang('es_MX')
+        job = self.env['hr.job'].create({'name': 'Lab Coordinator (prueba)'})
+        job.with_context(lang='es_MX').name = 'Coordinador de Laboratorio y MP (prueba)'
+        self.assertFalse(self.env['hr.job'].search([('name', 'ilike', 'Coordinador de Laboratorio'), ('id', '=', job.id)]),
+                         "Sin idioma en el contexto no se encuentra: así quedó vacío el parámetro en producción.")
         lab_user = new_test_user(self.env, login='lab_coord', groups='base.group_user')
         self.env['hr.employee'].create({'name': 'Ariadna prueba', 'job_id': job.id, 'user_id': lab_user.id})
         other_user = new_test_user(self.env, login='otro_user', groups='base.group_user')

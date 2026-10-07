@@ -130,7 +130,14 @@ class TestDevProject(TransactionCase):
         self.env.company.partner_id.lang = 'es_MX'
         Stage = self.env['project.project.stage']
         stage = Stage.create({'name': 'SHAWMUT PRUEBA', 'sequence': 999})
-        legacy = self.Project.create({'name': 'FT-050/2025 WK300B46JNG165 REV2', 'stage_id': stage.id})
+        # Como producción: creado «Análisis de proyecto …» (queda en en_US) y renombrado «FT-…» en es_MX.
+        legacy = self.Project.create({'name': 'Análisis de proyecto WK300B46JNG165', 'stage_id': stage.id})
+        legacy.with_context(lang='es_MX').name = 'FT-050/2025 WK300B46JNG165 REV2'
+        self.assertEqual(legacy.with_context(lang='en_US').name, 'Análisis de proyecto WK300B46JNG165')
+        self.assertFalse(self.Project.search([('name', '=ilike', 'FT-%'), ('id', '=', legacy.id)]),
+                         "Sin idioma en el contexto la búsqueda mira en_US: así fallaron 57.118.0 y 57.120.2.")
+        self.assertIn(legacy, self.Project._sgi_dev_legacy_ft_projects())
+        self.assertEqual(self.Project._sgi_dev_legacy_ft_name(legacy), 'FT-050/2025 WK300B46JNG165 REV2')
         tpl = self.Project.create({'name': 'PLANTILLA - Diseño y Desarrollo Prueba', 'is_template': True})
         # Como quedó producción tras 57.118.0: la plantilla renombrada «Análisis» solo en en_US.
         tpl.with_context(lang='en_US').name = 'Análisis'
@@ -149,8 +156,17 @@ class TestDevProject(TransactionCase):
         # QUIMIBOND es origen interno; Cancelada no es cliente.
         quimibond_stage = Stage.create({'name': 'QUIMIBOND', 'sequence': 997})
         internal = self.Project.create({'name': 'FT-005-2024 E', 'stage_id': quimibond_stage.id})
-        cancel_stage = Stage.create({'name': 'Cancelada', 'sequence': 996})
+        cancel_stage = Stage.create({'name': 'Cancelled', 'sequence': 996})
+        cancel_stage.with_context(lang='es_MX').name = 'Cancelada'
         cancelled = self.Project.create({'name': 'FT-006-2024 F', 'stage_id': cancel_stage.id})
+        # Un análisis (sin folio ni nombre FT-) arrastrado a la columna de un cliente (el 491 de
+        # producción) y otro que una migración anterior dejó en Muestra sin folio.
+        dragged = self.Project.with_context(sgi_dev_migration=True).create(
+            {'name': 'Análisis de proyecto ARRASTRADO PRUEBA', 'sgi_is_ft': True, 'stage_id': bowen_stage.id})
+        stuck = self.Project.with_context(sgi_dev_migration=True).create(
+            {'name': 'Análisis de proyecto ATORADO PRUEBA', 'sgi_is_ft': True, 'stage_id': self._stage('muestra').id})
+        self.env['sgi.dev.stage.log'].create({'project_id': stuck.id, 'stage_id': self._stage('muestra').id,
+                                              'date_start': fields.Datetime.now()})
         preview = {row['stage']: row for row in self.Project._sgi_dev_migration_preview()}
         self.assertEqual(preview[bowen_stage]['partner'], bowen)
         self.assertIn('uso', preview[bowen_stage]['rule'])
@@ -185,6 +201,11 @@ class TestDevProject(TransactionCase):
         self.assertEqual(cancelled.sgi_dev_stage_key, 'cerrado_sin_producto')
         self.assertEqual(analysis.sgi_dev_stage_key, 'analisis')
         self.assertEqual(internal.sgi_dev_stage_key, 'muestra')
+        self.assertEqual(dragged.sgi_dev_stage_key, 'analisis', "Sin folio ni nombre FT- no va a Muestra.")
+        self.assertEqual(stuck.sgi_dev_stage_key, 'analisis', "Lo que quedó en Muestra sin folio regresa a Análisis.")
+        self.assertEqual(stuck.sgi_dev_stage_log_ids.mapped('stage_id'), self._stage('analisis'))
+        self.assertFalse(stuck.sgi_ft_folio)
+        self.assertIn(stuck, moved)
         self.assertEqual(tpl.stage_id.id, tpl.stage_id.id)
         self.assertNotIn(tpl, moved, "Las plantillas no se mueven.")
         self.assertEqual(len(legacy.sgi_dev_stage_log_ids), 1, "El reloj arranca en la etapa nueva.")
