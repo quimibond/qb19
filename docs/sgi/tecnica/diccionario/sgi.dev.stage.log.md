@@ -8,9 +8,9 @@ Paso de un desarrollo por una etapa: hora de inicio y fin, horas totales y horas
 
 Orden: `date_start desc, id desc`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`.
 
-## Campos (7)
+## Campos (8)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -21,4 +21,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`.
 | `hours_total` | Float | Horas en la etapa | Horas calendario entre la entrada y la salida (o ahora). |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:170` |
 | `project_id` | Many2one |  | Proyecto de desarrollo. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:163` |
 | `stage_id` | Many2one | Etapa | Etapa en la que estuvo el proyecto. | sí | `project.project.stage` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:165` |
+| `stage_key` | Char | Clave de la etapa | Clave de la etapa de avance (solicitud, analisis, …, liberado); vacía si la etapa no es de desarrollo. Sirve para medir sin depender de ids. |  |  | compute `_compute_stage_key`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:102` |
 
