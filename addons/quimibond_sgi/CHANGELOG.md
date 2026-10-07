@@ -13,6 +13,56 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.120.3 — 2026-10-07
+
+**La migración de C1 por fin encuentra los proyectos: busca en todos los
+idiomas.** 57.120.2 sí corrió en producción (2026-10-07 00:08 UTC: movió a
+Muestra los 3 proyectos que ya tenían bandera y abrió sus relojes), pero
+marcó 0 proyectos FT-, no escribió el puesto de laboratorio y dejó activas
+las etapas viejas. La causa real no era el savepoint del alias (esa
+corrección se queda, pero no explicaba el síntoma): los 75 proyectos y todos
+los demás tenían `write_date` 23:22:46 por el recálculo de campos nuevos,
+no por escrituras perdidas.
+
+### Corregido
+
+- **Causa:** `project.name`, `project.project.stage.name` y `hr.job.name`
+  son traducibles y la migración corría sin idioma en el contexto, es decir,
+  sobre en_US. Los proyectos se crearon como «Análisis de proyecto …» y se
+  renombraron «FT-…» en es_MX, el idioma de los usuarios; en en_US conservan
+  el nombre original. `search([('name', '=ilike', 'FT-%')])` encontraba 0;
+  «Cancelada» y «ANALISIS DE PROYECTOS» no coincidían con el mapa de etapas;
+  «COORDINADOR DE LABORATORIO Y MP» no coincidía con el puesto por defecto.
+- Helpers `_sgi_dev_lang_names` / `_sgi_dev_lang_keys` (valores de un campo
+  traducible en todos los idiomas instalados, el de la compañía primero) y
+  `_sgi_dev_search_langs` (búsqueda unida por idioma). Los usan la
+  migración de datos, la tabla etapa → cliente, el mapa de etapas viejas, el
+  archivado de etapas y el puesto autorizador de laboratorio.
+- `_sgi_dev_legacy_stage_target(stage, project)`: un proyecto **sin folio
+  FT ni nombre FT-** en una etapa de cliente va a «Análisis», no a «Muestra»
+  (el folio nace al llegar a Muestra). Repara el 491 («Análisis de proyecto
+  MENCHACA INNOVACIÓN», que Jessica había arrastrado a una columna nueva
+  «MENCHACA INNOVACIÓN» y 57.120.2 dejó en Muestra sin folio): lo que esté en
+  Muestra sin folio, sin nombre FT- y sin resultado de análisis «línea» o
+  «no factible» regresa a Análisis y su reloj de etapa se corrige.
+
+### Migración
+
+`migrations/19.0.57.120.3/post-migrate.py`: corre con el idioma de la
+compañía en el contexto y repite los seis pasos de 57.120.2 (ahora con las
+búsquedas por idioma). Primera línea del log: idioma, idiomas instalados y
+cuántos proyectos FT- encontró; si dice 0, el problema sigue siendo otro.
+Prefijo `SGI 57.120.3`. Idempotente.
+
+### Pruebas
+
+`test_06`: el proyecto FT- se crea con nombre «Análisis de proyecto …» en
+en_US y «FT-050/2025 …» en es_MX, como producción; la etapa «Cancelada» se
+llama «Cancelled» en en_US; un análisis arrastrado a la columna de un
+cliente va a Análisis; lo que quedó en Muestra sin folio regresa a Análisis.
+`test_dev_analysis.test_02`: el puesto se encuentra aunque solo en es_MX
+contenga «Coordinador de Laboratorio».
+
 ## 19.0.57.120.2 — 2026-10-07
 
 **Corrección urgente del despliegue de C1 en producción (2026-10-06 23:22

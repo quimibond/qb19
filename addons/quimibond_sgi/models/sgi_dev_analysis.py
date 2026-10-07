@@ -180,14 +180,19 @@ class SgiDevLabRequest(models.Model):
             job = Job.browse(int(raw)).exists()
         except ValueError:
             job = Job
-        return job or Job.search([('name', 'ilike', LAB_JOB_DEFAULT_NAME)], limit=1)
+        if job:
+            return job
+        jobs = self.env['project.project']._sgi_dev_search_langs('hr.job', [('name', 'ilike', LAB_JOB_DEFAULT_NAME)])
+        return (jobs.filtered('active') or jobs)[:1]
 
     @api.model
     def _sgi_dev_set_lab_job_default(self):
         """Deja el puesto por omisión escrito en el parámetro (migración / instalación)."""
         Param = self.env['ir.config_parameter'].sudo()
         if not (Param.get_param(PARAM_LAB_JOB, '') or '').strip():
-            job = self.env['hr.job'].sudo().search([('name', 'ilike', LAB_JOB_DEFAULT_NAME)], limit=1)
+            # 57.120.3: el nombre del puesto es traducible; en producción vive en es_MX.
+            jobs = self.env['project.project']._sgi_dev_search_langs('hr.job', [('name', 'ilike', LAB_JOB_DEFAULT_NAME)])
+            job = (jobs.filtered('active') or jobs)[:1]
             if job:
                 Param.set_param(PARAM_LAB_JOB, str(job.id))
             return job

@@ -113,10 +113,24 @@ conservación de muestras, destino de los 152 lotes de la ubicación 57.
 ## 6. Incidente del despliegue a producción (2026-10-06 23:22 UTC) y reglas nuevas
 
 - Código 57.120.1 instalado, pero la migración de datos de 57.118.0 no quedó
-  en la base (bandera, folio, cliente y origen de los 77 FT-; nombres
-  «Análisis» solo en en_US en 480, 481 y 490). Causa y corrección en el
-  CHANGELOG 57.120.2. El cambio de cliente de 465/466/489 a SHAWMUT LLC fue
-  manual (Jessica, 19:54–20:02 UTC), no de la migración.
+  en la base (bandera, folio, cliente y origen de los 77 FT-). 57.120.2
+  (desplegado 2026-10-07 00:08 UTC) tampoco los marcó. **Causa real
+  (57.120.3):** los nombres de proyecto, etapa y puesto son traducibles; la
+  migración corría sin idioma (en_US) y la gente escribió los «FT-…», las
+  etapas y el puesto en es_MX. En en_US los proyectos siguen llamándose
+  «Análisis de proyecto …» (así se crearon): por eso «aparecieron» nombres
+  «Análisis» y el 490 «no existía». La hipótesis del savepoint del alias
+  (57.120.2) no era la causa: todos los proyectos, FT o no, tienen
+  `write_date` 23:22:46 por el recálculo de campos nuevos. El cambio de
+  cliente de 465/466/489 a SHAWMUT LLC fue manual (Jessica, 19:54–20:02
+  UTC), no de la migración.
+- **Regla nueva (código):** toda búsqueda o comparación por nombre en una
+  migración se hace en todos los idiomas instalados
+  (`_sgi_dev_search_langs`, `_sgi_dev_lang_keys`) y el script corre con el
+  idioma de la compañía en el contexto. La primera línea del log de la
+  migración dice cuántos encontró; «0» significa que el problema es otro.
+- Un proyecto sin folio FT ni nombre FT- en una columna de cliente es un
+  análisis: va a «Análisis», no a «Muestra» (el 491 de producción).
 - **Regla (Jose):** nada sube a `quimibond` sin pasar antes por `qbtesting`
   y sin su confirmación explícita. El build de `main` (staging) no corre
   pruebas; las del SGI corren en el build de desarrollo de la rama.
