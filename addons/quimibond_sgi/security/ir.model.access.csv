@@ -362,3 +362,4 @@ access_sgi_risk_report_user,sgi.risk.report.user,model_sgi_risk_report,group_sgi
 access_sgi_approval_subject_user,sgi.approval.subject.user,model_sgi_approval_subject,base.group_user,1,0,0,0
 access_sgi_approval_subject_manager,sgi.approval.subject.manager,model_sgi_approval_subject,group_sgi_manager,1,1,1,1
 access_sgi_approval_subject_approvals,sgi.approval.subject.approvals,model_sgi_approval_subject,approvals.group_approval_manager,1,1,1,1
+access_sgi_dev_mark_wizard_manager,sgi.dev.mark.wizard.manager,model_sgi_dev_mark_wizard,project.group_project_manager,1,1,1,1

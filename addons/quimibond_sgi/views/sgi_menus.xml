@@ -133,6 +133,12 @@
     <!-- 57.120.0 (C1, bloque 4): pruebas de laboratorio de los desarrollos. -->
     <menuitem id="menu_sgi_dev_lab_requests" name="Pruebas de laboratorio de desarrollos"
               parent="menu_sgi_processes" action="sgi_dev_lab_request_action" sequence="51"/>
+    <!-- 57.122.0 (C1, uso diario): lista de desarrollos y asistente para marcar los viejos. -->
+    <menuitem id="menu_sgi_dev_projects" name="Desarrollos de producto"
+              parent="menu_sgi_processes" action="sgi_dev_project_board_action" sequence="52"/>
+    <menuitem id="menu_sgi_dev_mark" name="Marcar desarrollos existentes"
+              parent="menu_sgi_processes" action="sgi_dev_mark_wizard_action" sequence="53"
+              groups="project.group_project_manager"/>
 
     <!-- 2.1 Documentos (7.5). 57.113.0: viene de Administración SGI y recibe
          los grupos que heredaba de ella (Auditor, Jefe MAST, Dirección): nadie

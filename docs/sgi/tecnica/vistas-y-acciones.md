@@ -56,6 +56,8 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Puestos y procesos** — `hr.job`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Fichas de proceso por máquina** — `sgi.machine.sheet`; grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director, quimibond_sgi.group_sgi_process_owner
     - **Pruebas de laboratorio de desarrollos** — `sgi.dev.lab.request`
+    - **Desarrollos de producto** — `project.project`
+    - **Marcar desarrollos existentes** — `sgi.dev.mark.wizard`; grupos: project.group_project_manager
     - **Documentos** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
       - **Documentos** — `documents.document`
       - **Lista maestra** — `documents.document`
@@ -149,7 +151,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (128)
+## Acciones (130)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -186,7 +188,9 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_dev_characteristic_template_action` | act_window | Características por tipo de desarrollo | `sgi.dev.characteristic.template` | list | sí | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
 | `quimibond_sgi.sgi_dev_feasibility_item_action` | act_window | Recursos del checklist de factibilidad | `sgi.dev.feasibility.item` | list | sí | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
 | `quimibond_sgi.sgi_dev_lab_request_action` | act_window | Pruebas de laboratorio de desarrollos | `sgi.dev.lab.request` | list,form | sí | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
+| `quimibond_sgi.sgi_dev_mark_wizard_action` | act_window | Marcar desarrollos existentes | `sgi.dev.mark.wizard` | form |  | `addons/quimibond_sgi/views/sgi_dev_board_views.xml` |
 | `quimibond_sgi.sgi_dev_option_action` | act_window | Listas del desarrollo de producto | `sgi.dev.option` | list | sí | `addons/quimibond_sgi/views/sgi_dev_project_views.xml` |
+| `quimibond_sgi.sgi_dev_project_board_action` | act_window | Desarrollos de producto | `project.project` | list,kanban,form | sí | `addons/quimibond_sgi/views/sgi_dev_board_views.xml` |
 | `quimibond_sgi.sgi_diagnostic_line_action` | act_window | Diagnóstico del SGI | `sgi.diagnostic.line` | list,form | sí | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `quimibond_sgi.sgi_diagnostic_run_action` | server | Diagnóstico del SGI | `sgi.diagnostic` |  |  | `addons/quimibond_sgi/views/sgi_diagnostic_views.xml` |
 | `quimibond_sgi.sgi_direction_board_action_open` | server | Tablero | `sgi.direction.board` |  |  | `addons/quimibond_sgi/views/sgi_direction_board_views.xml` |
@@ -282,7 +286,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (413; 77 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (417; 79 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -364,8 +368,11 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `product.template` | `quimibond_sgi.sgi_product_template_search_dev` | herencia | `product.product_template_search_view` | `addons/quimibond_sgi/views/sgi_dev_product_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_product_template_view_form_kpi` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_kpi_fields_views.xml` |
 | `product.template` | `quimibond_sgi.sgi_product_template_view_form_spec` | herencia | `product.product_template_form_view` | `addons/quimibond_sgi/views/sgi_integration_views.xml` |
+| `project.project` | `quimibond_sgi.sgi_dev_project_view_list_board` | list |  | `addons/quimibond_sgi/views/sgi_dev_board_views.xml` |
+| `project.project` | `quimibond_sgi.sgi_project_view_form_dev_board` | herencia | `project.edit_project` | `addons/quimibond_sgi/views/sgi_dev_board_views.xml` |
 | `project.project` | `quimibond_sgi.sgi_project_view_form_dev_lifecycle` | herencia | `project.edit_project` | `addons/quimibond_sgi/views/sgi_dev_project_views.xml` |
 | `project.project` | `quimibond_sgi.sgi_project_view_form_dev_request` | herencia | `project.edit_project` | `addons/quimibond_sgi/views/sgi_dev_request_views.xml` |
+| `project.project` | `quimibond_sgi.sgi_project_view_kanban_dev` | herencia | `project.view_project_kanban` | `addons/quimibond_sgi/views/sgi_dev_board_views.xml` |
 | `project.project` | `quimibond_sgi.sgi_project_view_list_dev` | herencia | `project.view_project` | `addons/quimibond_sgi/views/sgi_dev_project_views.xml` |
 | `project.project` | `quimibond_sgi.sgi_project_view_search_dev` | herencia | `project.view_project_project_filter` | `addons/quimibond_sgi/views/sgi_dev_project_views.xml` |
 | `project.task` | `quimibond_sgi.sgi_project_task_view_form` | herencia | `project.view_task_form2` | `addons/quimibond_sgi/views/sgi_improvement_views.xml` |
@@ -489,6 +496,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.dev.lab.request` | `quimibond_sgi.sgi_dev_lab_request_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
 | `sgi.dev.lab.request` | `quimibond_sgi.sgi_dev_lab_request_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
 | `sgi.dev.lab.request` | `quimibond_sgi.sgi_dev_lab_request_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
+| `sgi.dev.mark.wizard` | `quimibond_sgi.sgi_dev_mark_wizard_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_board_views.xml` |
 | `sgi.dev.option` | `quimibond_sgi.sgi_dev_option_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_project_views.xml` |
 | `sgi.dev.option` | `quimibond_sgi.sgi_dev_option_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_project_views.xml` |
 | `sgi.dev.similar` | `quimibond_sgi.sgi_dev_similar_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
