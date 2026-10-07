@@ -6,9 +6,9 @@ Modelo de otra app que el SGI extiende.
 
 Panel de Ajustes del SGI: la cara amigable de los parámetros.
 
-Archivos: `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py`.
 
-## Campos (38)
+## Campos (39)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -17,6 +17,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/m
 | `sgi_calibration_block_expired` | Boolean | Bloquear equipos con calibración vencida | Apagado (default, decisión de la tanda 2): el cron solo avisa con un resumen diario al Coordinador de Laboratorio y al Jefe de Calidad. Encendido: además marca «No usar» cada equipo vencido y manda el correo crítico. La inspección de calidad rechaza un equipo vencido en cualquier caso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:136` |
 | `sgi_checklist_pin_required` | Boolean | PIN obligatorio para firmar checklists | Apagado (default): quien no tiene PIN firma la hoja y queda «(sin PIN registrado)». Encendido (D-08): sin PIN capturado en su ficha de empleado no se firma. Encender solo cuando RH haya capturado los PIN (el mismo del quiosco de asistencia). |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:144` |
 | `sgi_dev_block_generic_sample_from` | Char | Bloquear «MUESTRA PILOTO» en órdenes nuevas desde (AAAA-MM-DD) | A partir de esta fecha no se crean ni confirman órdenes de fabricación con los artículos genéricos «MUESTRA PILOTO TEJIDO / TINTORERÍA»: las muestras de desarrollo se piden desde el proyecto con su artículo generado. Vacío: sin bloqueo (hay órdenes abiertas con ellos; la fecha la decide Dirección d… |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:15` |
+| `sgi_dev_escalation_director_days` | Integer | Días hábiles para escalar a Dirección de Operaciones (C1) | Segundo nivel de escalamiento de las actividades de C1 que ejecutan Diseño y Desarrollo de Producto o de Procesos. Vacío o 0: todavía no se crea el segundo nivel. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:230` |
 | `sgi_dev_lab_authorizer_job_id` | Many2one | Puesto que autoriza pruebas de laboratorio de desarrollos | Puesto cuyas personas autorizan las solicitudes de pruebas de los proyectos de desarrollo. Por omisión, el Coordinador de Laboratorio y MP (se busca por nombre si el parámetro está vacío). El Jefe MAST siempre puede. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_settings.py:23` |
 | `sgi_doc_ack_pending_days` | Integer | Días hábiles para reclamar un acuse pendiente | Días hábiles que puede estar pendiente un acuse de lectura antes de avisar. |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:75` |
 | `sgi_doc_pilot_notice_days` | Integer | Aviso de piloto por vencer (días) | Días antes del fin de una prueba piloto documental en que llega el aviso. |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:71` |

@@ -103,7 +103,13 @@
                         </group>
                         <group string="Firmas">
                             <field name="sgi_dev_prepared_by_id"/>
-                            <field name="sgi_dev_approved_by_id"/>
+                            <field name="sgi_dev_approved_by_id" readonly="1"/>
+                            <field name="sgi_dev_approved_date" readonly="1" invisible="not sgi_dev_approved_by_id"/>
+                            <div colspan="2">
+                                <button name="action_sgi_dev_approve_request" type="object" string="Aprobar solicitud (Dirección de Operaciones)"
+                                        class="btn-primary" icon="fa-check" invisible="sgi_dev_approved_by_id"
+                                        confirm="Firma «Aprobó» la solicitud de desarrollo con su usuario y la fecha de hoy. ¿Continuar?"/>
+                            </div>
                         </group>
                     </group>
                 </page>
