@@ -13,6 +13,53 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.123.0 — 2026-10-07
+
+**Ajustes al modelo del SGI para C1** (contexto de Jose tras el despliegue,
+punto 3).
+
+### Agregado
+
+- `sgi.process.activity.number_label`: numeral propio para intercalar un
+  sub-paso (C1.04b) sin renumerar el proceso; el paso sigue siendo único y
+  el orden lo da la secuencia.
+- **C1.04 partida en dos.** C1.04 «Dar de alta el artículo de desarrollo con
+  su lista de materiales» (ejecuta Diseño y Desarrollo de Producto) y C1.04b
+  «Asignar la ruta preliminar y los centros de trabajo» (ejecuta Diseño y
+  Desarrollo de Procesos, participa Producto, escala como C1.04). C1.04b
+  recibe la lista de materiales (plazo vacío), entrega y se mide con el
+  entregable nuevo `C1-RUTA` (`mrp.bom` con operaciones de artículos en
+  desarrollo); C1.05 recibe también la ruta con el plazo de la lista de
+  materiales. De C1.04 solo se recorta el texto que se va a C1.04b; `on_fail`
+  y «contra qué» de C1.04b quedan vacíos (los define Jose).
+- **Aprobaciones ligadas a su botón real:** C1.02 y C1.03 → «Aprobar análisis
+  y factibilidad» del proyecto; C1.07 → botón nuevo «Aprobar solicitud
+  (Dirección de Operaciones)», que firma «Aprobó» (el campo ya no se captura a
+  mano) y sella `sgi_dev_approved_date`; C1.11 → botón nuevo «Dictamen de
+  Diseño» en la solicitud de laboratorio (`verdict_by_id`, `date_verdict`,
+  solo con la solicitud medida y sin renglones pendientes). Se sincronizan con
+  el satélite de Studio si está; si no, quedan «Por sincronizar». C1.10 (Jefe
+  de Manufactura) y C1.15 no se tocan.
+- **Escalamiento de segundo nivel:** Ajustes → SGI → «Días hábiles para
+  escalar a Dirección de Operaciones (C1)» (`quimibond_sgi.dev_escalation_director_days`).
+  Vacío o 0: no se crea nada. Con días, en las actividades de C1 que ejecuta
+  Diseño y Desarrollo de Producto o de Procesos se crea o actualiza el renglón
+  «Escala» a Dirección de Operaciones; el primer nivel (dueño del proceso) se
+  conserva. Guardar Ajustes vuelve a sincronizar.
+
+### Migración
+
+`migrations/19.0.57.123.0/post-migrate.py`: parte C1.04, liga las
+aprobaciones y sincroniza el escalamiento (hoy sin días: no crea nada).
+Prefijo `SGI 57.123.0` en el log con el paso y secuencia de C1.04b, cada
+aprobación ligada con su estado y los escalamientos tocados.
+
+### Pruebas
+
+`tests/test_dev_process.py`: partición idempotente sin renumerar, ligas de
+aprobación, escalamiento según parámetro y desde Ajustes, botones de firma y
+dictamen.
+
 ## 19.0.57.122.0 — 2026-10-07
 
 **Uso diario del proyecto de desarrollo** (contexto de Jose tras el

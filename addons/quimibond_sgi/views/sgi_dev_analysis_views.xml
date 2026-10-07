@@ -63,6 +63,9 @@
                 <header>
                     <button name="action_request" type="object" string="Solicitar" class="btn-primary" invisible="state != 'borrador'"/>
                     <button name="action_authorize" type="object" string="Autorizar" class="btn-primary" invisible="state != 'solicitada'"/>
+                    <button name="action_verdict" type="object" string="Dictamen de Diseño" class="btn-primary"
+                            invisible="state != 'medida' or verdict_by_id"
+                            confirm="Diseño de Producto dictamina los resultados de laboratorio de esta solicitud. ¿Continuar?"/>
                     <button name="action_cancel" type="object" string="Cancelar" invisible="state in ('medida', 'cancelada')"/>
                     <field name="state" widget="statusbar" statusbar_visible="borrador,solicitada,autorizada,medida"/>
                 </header>
@@ -79,6 +82,8 @@
                             <field name="authorized_by_id"/>
                             <field name="date_authorized"/>
                             <field name="date_measured"/>
+                            <field name="verdict_by_id"/>
+                            <field name="date_verdict"/>
                             <field name="pending_count"/>
                             <field name="hours_total"/>
                         </group>

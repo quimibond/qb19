@@ -169,3 +169,4 @@ from . import test_dev_product
 from . import test_dev_analysis
 from . import test_dev_measure
 from . import test_dev_board
+from . import test_dev_process
