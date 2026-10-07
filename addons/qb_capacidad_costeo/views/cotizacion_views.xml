@@ -25,6 +25,8 @@
                         <field name="volumen"
                                help="Si el cliente compra este producto de forma regular, se precarga solo con su promedio mensual histórico."/>
                         <field name="regularidad_info" readonly="1" nolabel="0"/>
+                        <field name="con_escalera"
+                               help="Marcada: el cliente recibe la escalera de precios por volumen (½×, 1×, 2×, 4×). Desmarcada: un solo precio. Se puede cambiar después en la cotización, antes de imprimir o enviar."/>
                         <field name="currency_id" options="{'no_create': True}"
                                help="La moneda en la que capturas el precio objetivo y en la que se muestran los precios al cliente. Los COSTOS del modelo siempre se calculan en MXN."/>
                         <field name="precio_objetivo" widget="monetary"
@@ -370,6 +372,7 @@
                 <field name="partner_id"/>
                 <field name="sale_order_id" optional="show"/>
                 <field name="volumen"/>
+                <field name="con_escalera" optional="hide"/>
                 <field name="costo_variable"/>
                 <field name="precio_evaluado"/>
                 <field name="precio_mercado" optional="show"/>
@@ -472,6 +475,8 @@
                             <field name="uom_name"/>
                             <field name="currency_id"/>
                             <field name="fx_rate"/>
+                            <field name="con_escalera"
+                                   readonly="state not in ('draft', 'done')"/>
                         </group>
                         <group string="1 · Costo de producirlo ($/u, todo MXN)">
                             <field name="mp_unit" string="Materia prima $/u MXN"/>
@@ -522,6 +527,13 @@
                     </group>
                     <group string="📶 Escalera de volumen (foto al cotizar)"
                            invisible="not tramo_ids">
+                        <div class="alert alert-info" role="status" colspan="2"
+                             invisible="con_escalera" style="font-size:12px;">
+                            Esta cotización se presenta con <b>un solo precio</b>: la
+                            escalera es solo para uso interno y no sale en el PDF ni
+                            en el correo al cliente. Marque «Ofrecer precios por
+                            volumen al cliente» para incluirla.
+                        </div>
                         <field name="tramo_ids" nolabel="1" readonly="1" colspan="2">
                             <list decoration-success="es_base"
                                   decoration-muted="not capacity_ok">

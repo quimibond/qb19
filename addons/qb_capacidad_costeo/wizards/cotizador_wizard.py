@@ -64,6 +64,15 @@ class QbCotizadorWizard(models.TransientModel):
              'el mes en curso se recalcula a diario y sus pisos cambian '
              'según el día. Elegir uno en borrador muestra un aviso.')
     volumen = fields.Float(string='Volumen (unidades/mes)')
+    con_escalera = fields.Boolean(
+        string='Ofrecer precios por volumen',
+        default=lambda self: bool(self.env['qb.costeo.factor.config']
+                                  .get_param('escalera_default', 1.0)),
+        help='Marcada: la cotización al cliente lleva la escalera de precios '
+             'por volumen (½×, 1×, 2×, 4× del cotizado). Desmarcada: un solo '
+             'precio para el volumen capturado. La escalera se calcula de '
+             'todos modos para uso interno. El valor por defecto es el '
+             'parámetro «escalera_default».')
     currency_id = fields.Many2one(
         'res.currency', string='Moneda de la cotización',
         default=lambda self: self.env.company.currency_id,
@@ -890,6 +899,7 @@ class QbCotizadorWizard(models.TransientModel):
             'desglose_html': self.explicacion_html or False,
             'comparativa_html': self.comparativa_html or False,
             'tramo_ids': [(0, 0, t) for t in self._escalera_tramos(res)],
+            'con_escalera': self.con_escalera,
             'validez_hasta': fields.Date.today() + relativedelta(
                 days=int(self.env['qb.costeo.factor.config'].get_param(
                     'quote_validity_days', 15))),

@@ -530,6 +530,45 @@ class TestQbCosteo(TransactionCase):
         cot.action_reabrir()
         self.assertEqual(cot.state, 'draft')
 
+    def test_cotizacion_escalera_opcional(self):
+        """La escalera de volumen se calcula siempre, pero el cliente solo
+        la ve si la cotización lo pide (`con_escalera`); el flag se elige en
+        la calculadora, se puede cambiar en la cotización y se hereda al
+        recotizar."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2027, 3, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        Report = self.env['ir.actions.report']
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'precio_objetivo': 100.0, 'con_escalera': False})
+        cot = self.env['qb.cotizacion'].browse(
+            wiz.action_cotizar()['res_id'])
+        self.assertFalse(cot.con_escalera)
+        self.assertTrue(cot.tramo_ids, 'la escalera se calcula igual')
+        html = Report._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion_cliente', cot.ids)[0]
+        self.assertNotIn(b'Volume pricing', html)
+        # Se puede cambiar de opinión antes de imprimir.
+        cot.con_escalera = True
+        html = Report._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion_cliente', cot.ids)[0]
+        ofrecibles = cot.tramo_ids.filtered(lambda t: t.capacity_ok)
+        if len(ofrecibles) > 1:
+            self.assertIn(b'Volume pricing', html)
+        # La hoja interna siempre la muestra y dice qué recibe el cliente.
+        interna = Report._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion', cot.ids)[0]
+        self.assertIn('SÍ lleva esta escalera'.encode(), interna)
+        # Recotizar hereda la decisión.
+        cot.con_escalera = False
+        nueva = cot.recotizar_ahora()
+        self.assertFalse(nueva.con_escalera)
+        # La calculadora arranca con el parámetro.
+        self.assertTrue(self.env['qb.cotizador.wizard'].create({
+            'product_id': self.tela.id, 'volumen': 1000}).con_escalera)
+
     def test_subproducto_mp_cero(self):
         """SALDO*: MP $0 — su materia ya está en la receta del principal."""
         bucket, _ = self.Ruteo.resolve(self.saldo)
