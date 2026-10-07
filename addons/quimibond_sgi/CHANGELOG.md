@@ -13,6 +13,56 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.121.0 — 2026-10-07
+
+**Las fichas de C1 se miden con el proyecto de desarrollo** (contexto de Jose
+tras el despliegue, punto 2). Varias actividades seguían midiéndose con las
+tareas de la plantilla vieja o con el AMEF: salían en verde sin medir el
+proceso nuevo. La medición cuelga del entregable (`measure_method =
+entregable`), así que se re-apuntan los entregables por código y las
+actividades vuelven a copiar modelo, filtro, fecha y usuario.
+
+### Agregado
+
+- `project.project.sgi_dev_analysis_date` y `sgi_dev_analysis_by_id` (se
+  sellan al capturar el resultado del análisis) y `sgi_dev_approved_date` (al
+  firmar «Aprobó» en la solicitud). Con el contexto `sgi_dev_migration` no se
+  sella nada.
+- `sgi.dev.stage.log.stage_key`: clave de la etapa de avance guardada en el
+  reloj (filtrar «pasó por Respuesta del cliente» sin ids).
+- Entregable nuevo `C1-MP-ESPERA` (`sgi.dev.mp.wait`), que C1.08 entrega y
+  con el que se mide; `S1-NECESIDAD` sigue como lo que recibe Compras.
+- `_sgi_dev_apply_c1_measures()` (idempotente) y `_sgi_dev_backfill_measure_dates()`.
+
+### Cambiado
+
+| Ficha | Antes | Ahora |
+|---|---|---|
+| C1.02 | `project.task` en etapa «ELEMENTOS DE ENTRADA» | proyectos con `sgi_dev_analysis_result`; fecha y usuario de captura |
+| C1.03 | `sgi.fmea` | proyectos con `sgi_dev_review_state = aprobado`; `sgi_dev_review_date` / `sgi_dev_reviewed_by_id` |
+| C1.07 | cualquier tarea de cualquier desarrollo | proyectos con folio FT y `sgi_dev_approved_by_id`; `sgi_dev_approved_date` |
+| C1.08 | `approval.request` de dos categorías de toda la empresa | esperas de materia prima del desarrollo (`sgi.dev.mp.wait`) |
+| C1.11 | `project.task` en etapa «VERIFICACI» | `sgi.dev.lab.request` en estado «medida»; `date_measured` |
+| C1.13 | `project.task` en etapa «RETROALIMENTACI» | paso del proyecto por «Respuesta del cliente» (`sgi.dev.stage.log`) |
+| C1.14 | `project.task` en etapa «APROBACI» | paso del proyecto por «Pilotaje» (`sgi.dev.stage.log`) |
+
+C1.05 sigue manual hasta que exista la aprobación de la cotización (costeo
+v2). Los nombres de los entregables describen la fuente nueva; nombre, pasos,
+criterios, menú, formatos y roles de las fichas no se tocan (son los que Jose
+capturó en la base). `quimibond_sgi_mapa` 1.2.0 trae los mismos entregables.
+
+### Migración
+
+`migrations/19.0.57.121.0/post-migrate.py`: fechas de análisis y aprobación
+desde el seguimiento del chatter (sin rastro queda vacío, no se inventa);
+entregables re-apuntados y `C1-MP-ESPERA` creado y ligado a C1.08. Prefijo
+`SGI 57.121.0` en el log, con el modelo y filtro final de cada entregable.
+
+### Pruebas
+
+`tests/test_dev_measure.py`: sellos de fecha y usuario, clave de etapa en el
+reloj, re-apuntado idempotente de los entregables y que lo medido existe.
+
 ## 19.0.57.120.3 — 2026-10-07
 
 **La migración de C1 por fin encuentra los proyectos: busca en todos los
