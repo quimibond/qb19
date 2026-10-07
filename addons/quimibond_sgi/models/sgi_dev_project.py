@@ -405,6 +405,53 @@ class ProjectProjectDev(models.Model):
     def _sgi_dev_langs(self):
         return [code for code, _name in self.env['res.lang'].get_installed()]
 
+    @api.model
+    def _sgi_dev_lang_names(self, record, field='name'):
+        """Valores de un campo traducible en todos los idiomas instalados, sin repetir y con el
+        de la compañía primero. 57.120.3: la migración corría sin idioma (en_US) y los nombres
+        que la gente escribió («FT-012-2025 …», «Cancelada», «Coordinador de Laboratorio y MP»)
+        viven en es_MX; en en_US quedó el nombre con el que se creó el registro."""
+        if not record:
+            return []
+        langs = self._sgi_dev_langs()
+        company_lang = self.env.company.partner_id.lang
+        if company_lang in langs:
+            langs = [company_lang] + [lang for lang in langs if lang != company_lang]
+        out = []
+        for lang in langs:
+            value = record.with_context(lang=lang)[field]
+            if value and value not in out:
+                out.append(value)
+        return out
+
+    @api.model
+    def _sgi_dev_lang_keys(self, record, field='name'):
+        """Los mismos valores, en minúsculas y sin espacios, para comparar con las etapas viejas."""
+        return {value.strip().lower() for value in self._sgi_dev_lang_names(record, field)}
+
+    @api.model
+    def _sgi_dev_search_langs(self, model, domain):
+        """``search(domain)`` en cada idioma instalado, unidos: un dominio sobre un campo
+        traducible solo mira el idioma del contexto (sin idioma, en_US)."""
+        Model = self.env[model].sudo().with_context(active_test=False)
+        found = Model.browse()
+        for lang in self._sgi_dev_langs():
+            found |= Model.with_context(lang=lang).search(domain)
+        return found
+
+    @api.model
+    def _sgi_dev_legacy_ft_projects(self):
+        """Proyectos cuyo nombre empieza con FT- en cualquier idioma."""
+        return self._sgi_dev_search_langs('project.project', [('name', '=ilike', 'FT-%')])
+
+    @api.model
+    def _sgi_dev_legacy_ft_name(self, project):
+        """El nombre «FT-…» del proyecto (en el idioma donde lo tenga); '' si no lo tiene."""
+        for name in self._sgi_dev_lang_names(project):
+            if FT_FOLIO_RE.match(name):
+                return name
+        return ''
+
     def _sgi_dev_write_name_all_langs(self, name):
         """Escribe el nombre en todos los idiomas instalados. ``name`` es
         traducible: un write sin ``lang`` solo cambia en_US y los usuarios en
@@ -608,11 +655,11 @@ class ProjectProjectDev(models.Model):
         Project = self.sudo().with_context(active_test=False)
         Partner = self.env['res.partner'].sudo()
         dev_stage_ids = set(self._sgi_dev_stage_keys())
-        projects = Project.search([('name', '=ilike', 'FT-%')])
+        projects = Project.browse(self._sgi_dev_legacy_ft_projects().ids)
         out = {}
         for stage in projects.mapped('stage_id'):
-            low = (stage.name or '').strip().lower()
-            if stage.id in dev_stage_ids or low in NON_CUSTOMER_STAGES or low in INTERNAL_STAGES:
+            keys = self._sgi_dev_lang_keys(stage)
+            if stage.id in dev_stage_ids or keys & NON_CUSTOMER_STAGES or keys & INTERNAL_STAGES:
                 continue
             same = projects.filtered(lambda p: p.stage_id == stage and p.partner_id)
             counts = {}
@@ -623,7 +670,11 @@ class ProjectProjectDev(models.Model):
                 partner = max(counts, key=lambda k: (counts[k], -k.id))
                 out[stage] = (partner, 'uso (%d proyecto%s)' % (counts[partner], 's' if counts[partner] != 1 else ''))
                 continue
-            found = Partner.search([('is_company', '=', True), ('name', 'ilike', stage.name)])
+            found = Partner
+            for stage_name in self._sgi_dev_lang_names(stage):
+                found = Partner.search([('is_company', '=', True), ('name', 'ilike', stage_name)])
+                if found:
+                    break
             if len(found) == 1:
                 out[stage] = (found, 'nombre')
             else:
@@ -634,15 +685,15 @@ class ProjectProjectDev(models.Model):
     def _sgi_dev_migration_preview(self):
         """Tabla etapa → cliente que aplicaría la migración, con los proyectos sin cliente de cada etapa."""
         Project = self.sudo().with_context(active_test=False)
-        projects = Project.search([('name', '=ilike', 'FT-%'), ('partner_id', '=', False)])
+        projects = Project.browse(self._sgi_dev_legacy_ft_projects().ids).filtered(lambda p: not p.partner_id)
         mapping = self._sgi_dev_stage_partner_map()
         rows = []
         for stage in projects.mapped('stage_id').sorted('sequence'):
-            low = (stage.name or '').strip().lower()
+            keys = self._sgi_dev_lang_keys(stage)
             pending = projects.filtered(lambda p: p.stage_id == stage)
-            if low in INTERNAL_STAGES:
+            if keys & INTERNAL_STAGES:
                 partner, rule = self.env['res.partner'], 'origen interno'
-            elif low in NON_CUSTOMER_STAGES or stage.id in set(self._sgi_dev_stage_keys()):
+            elif keys & NON_CUSTOMER_STAGES or stage.id in set(self._sgi_dev_stage_keys()):
                 partner, rule = self.env['res.partner'], 'no es cliente'
             else:
                 partner, rule = mapping.get(stage, (self.env['res.partner'], 'sin cliente en Odoo'))
@@ -659,27 +710,32 @@ class ProjectProjectDev(models.Model):
 
         57.120.2: corre con ``sgi_dev_migration`` (los ganchos de write no hacen nada), escribe
         el nombre en todos los idiomas y hace ``flush`` al final para que un error se vea en el
-        update en lugar de perderse."""
+        update en lugar de perderse.
+
+        57.120.3: busca los nombres en todos los idiomas instalados. Los proyectos se crearon
+        como «Análisis de proyecto …» y se renombraron «FT-…» en es_MX; en en_US (el idioma de
+        una migración sin contexto) siguen con el nombre original, así que 57.118.0 y 57.120.2
+        no encontraron ninguno."""
         Project = self.sudo().with_context(active_test=False, sgi_dev_migration=True)
         mapping = self._sgi_dev_stage_partner_map()
         touched = Project.browse()
-        for project in Project.search([('name', '=ilike', 'FT-%')]):
-            parsed = project._sgi_dev_parse_legacy_name(project.name)
+        for project in Project.browse(self._sgi_dev_legacy_ft_projects().ids):
+            parsed = project._sgi_dev_parse_legacy_name(self._sgi_dev_legacy_ft_name(project))
             vals = {'sgi_is_ft': True}
             if parsed and not project.sgi_ft_folio:
                 folio, rest, revision = parsed
                 vals.update({'sgi_ft_folio': folio, 'sgi_dev_revision': revision})
                 if rest and not project.sgi_dev_product_name:
                     vals['sgi_dev_product_name'] = rest
-            low = (project.stage_id.name or '').strip().lower()
-            if low in INTERNAL_STAGES:
+            if self._sgi_dev_lang_keys(project.stage_id) & INTERNAL_STAGES:
                 vals['sgi_dev_origin'] = 'interno'
             elif not project.partner_id and project.stage_id in mapping and mapping[project.stage_id][0]:
                 vals['partner_id'] = mapping[project.stage_id][0].id
             project.write(vals)
             touched |= project
-        templates = Project.search(['|', ('name', '=ilike', 'PLANTILLA - Diseño y Desarrollo%'),
-                                    ('name', '=ilike', 'ANALISIS DE PROYECTO%'), ('sgi_is_ft', '=', False)])
+        templates = Project.browse(self._sgi_dev_search_langs('project.project', [
+            '|', ('name', '=ilike', 'PLANTILLA - Diseño y Desarrollo%'),
+            ('name', '=ilike', 'ANALISIS DE PROYECTO%'), ('sgi_is_ft', '=', False)]).ids)
         templates.write({'sgi_is_ft': True})
         touched |= templates
         touched._sgi_dev_unify_names()
@@ -708,10 +764,18 @@ class ProjectProjectDev(models.Model):
                 project._sgi_dev_write_name_all_langs(name)
 
     @api.model
-    def _sgi_dev_legacy_stage_target(self, stage):
-        """Clave de la etapa de avance a la que pasa un proyecto FT que está en una etapa vieja."""
-        low = (stage.name or '').strip().lower()
-        return LEGACY_STAGE_MAP.get(low, LEGACY_STAGE_DEFAULT)
+    def _sgi_dev_legacy_stage_target(self, stage, project=None):
+        """Clave de la etapa de avance a la que pasa un proyecto FT que está en una etapa vieja.
+        El nombre de la etapa se compara en todos los idiomas. Un proyecto sin folio FT en una
+        etapa de cliente (un «Análisis de proyecto …» que alguien arrastró a la columna del
+        cliente, como el 491 en producción) va a «Análisis», no a «Muestra»: el folio nace al
+        llegar a Muestra y ese proyecto nunca lo tuvo."""
+        for key in self._sgi_dev_lang_keys(stage):
+            if key in LEGACY_STAGE_MAP:
+                return LEGACY_STAGE_MAP[key]
+        if project is not None and not project.sgi_ft_folio and not self._sgi_dev_legacy_ft_name(project):
+            return 'analisis'
+        return LEGACY_STAGE_DEFAULT
 
     @api.model
     def _sgi_dev_migrate_stages(self):
@@ -727,19 +791,33 @@ class ProjectProjectDev(models.Model):
         for project in Project.search([('sgi_is_ft', '=', True), ('is_template', '=', False)]):
             if not project.stage_id or project.stage_id.id in dev_stage_ids:
                 continue
-            target = self._sgi_dev_stage(self._sgi_dev_legacy_stage_target(project.stage_id))
+            target = self._sgi_dev_stage(self._sgi_dev_legacy_stage_target(project.stage_id, project))
             if not target:
                 continue
             old_stages |= project.stage_id
             project.write({'stage_id': target.id})
             moved |= project
+        # 57.120.3: lo que 57.120.2 dejó en «Muestra» sin folio ni nombre FT- (un análisis que
+        # estaba en la columna de un cliente) regresa a «Análisis». Un desarrollo real recibe su
+        # folio al entrar a Muestra, salvo que el resultado del análisis sea línea o no factible.
+        muestra, analisis = self._sgi_dev_stage('muestra'), self._sgi_dev_stage('analisis')
+        if muestra and analisis:
+            for project in Project.search([('sgi_is_ft', '=', True), ('is_template', '=', False),
+                                           ('stage_id', '=', muestra.id), ('sgi_ft_folio', '=', False),
+                                           ('sgi_dev_analysis_result', 'not in', ('linea', 'no_factible'))]):
+                if self._sgi_dev_legacy_ft_name(project):
+                    continue
+                project.write({'stage_id': analisis.id})
+                project.sgi_dev_stage_log_ids.filtered(
+                    lambda l: not l.date_end and l.stage_id == muestra).write({'stage_id': analisis.id})
+                moved |= project
         moved.with_context(sgi_dev_migration=False)._sgi_dev_open_stage_log()
         archived = Stage.browse()
         if 'active' in Stage._fields:
             for stage in old_stages:
-                low = (stage.name or '').strip().lower()
-                if low in NON_CUSTOMER_STAGES or low in INTERNAL_STAGES:
-                    if low not in ('analisis de proyectos', 'análisis de proyectos', 'quimibond'):
+                keys = self._sgi_dev_lang_keys(stage)
+                if keys & NON_CUSTOMER_STAGES or keys & INTERNAL_STAGES:
+                    if not keys & {'analisis de proyectos', 'análisis de proyectos', 'quimibond'}:
                         continue
                 if not Project.search_count([('stage_id', '=', stage.id)]):
                     stage.write({'active': False})
