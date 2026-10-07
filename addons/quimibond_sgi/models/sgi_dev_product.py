@@ -327,6 +327,6 @@ class ProjectProjectDevCode(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if 'stage_id' in vals:
+        if 'stage_id' in vals and not self.env.context.get('sgi_dev_migration'):
             self._sgi_dev_sync_product_states()
         return res

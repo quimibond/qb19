@@ -495,7 +495,7 @@ class ProjectProjectDevAnalysis(models.Model):
         return True
 
     def write(self, vals):
-        if 'stage_id' in vals:
+        if 'stage_id' in vals and not self.env.context.get('sgi_dev_migration'):
             keys = self._sgi_dev_stage_keys()
             key, seq = keys.get(vals['stage_id'], ('', 0))
             gate = self._sgi_dev_stage_order('cotizacion')

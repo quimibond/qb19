@@ -13,6 +13,55 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.120.2 — 2026-10-07
+
+**Corrección urgente del despliegue de C1 en producción (2026-10-06 23:22
+UTC).** El código subió de 57.116.0 a 57.120.1 pero la migración de datos de
+57.118.0 no quedó en la base: los 77 proyectos FT- siguieron sin bandera,
+folio, cliente ni origen; las plantillas 480 y 481 y el proyecto 490 quedaron
+renombrados «Análisis» en en_US (los usuarios en es_MX siguieron viendo el
+nombre viejo, por eso «desaparecieron» del filtro y del buscador).
+
+### Corregido
+
+- **Causa:** el gancho de `write` que nombra el alias de correo envolvía la
+  escritura en `cr.savepoint()` con flush previo y un `except` mudo; cuando el
+  flush de los proyectos falló dentro de ese bloque, las escrituras pendientes
+  se perdieron sin aviso. Las plantillas (sin folio) sí pasaron. Además el
+  nombre es traducible: un `write` sin idioma solo cambia en_US.
+- Los ganchos de `write`/`create` del desarrollo no hacen nada con el
+  contexto `sgi_dev_migration`; la migración escribe los datos y los nombres
+  en **todos los idiomas** y hace `flush` al final de cada paso para que un
+  error detenga el update y se vea.
+- El alias se escribe en un savepoint sin flush, solo si la base tiene dominio
+  de alias, y un fallo deja aviso en el log en vez de tragarse datos.
+- El nombre lo arma Odoo solo en desarrollos con folio o producto; las
+  plantillas y los análisis sin producto conservan el nombre capturado.
+- Filtros de medición de C1: además de la bandera, **excluyen plantillas**
+  (`is_template = False`), en la base y en `quimibond_sgi_mapa` 1.1.5.
+
+### Migración
+
+- `migrations/19.0.57.120.2/post-migrate.py` (idempotente; log con prefijo
+  «SGI 57.120.2»): tabla etapa → cliente → etapa destino; marca los FT-,
+  plantillas y análisis con folio, producto, revisión, cliente por «uso» o
+  «nombre», origen interno para QUIMIBOND; restaura los nombres de plantillas
+  y análisis y unifica los demás en todos los idiomas; reescribe los filtros
+  de medición; **pasa los desarrollos a las etapas de avance** (Cancelada →
+  Cerrado sin producto, Hecha → Liberado, ANALISIS DE PROYECTOS → Análisis, lo
+  demás → Muestra, porque un folio FT implica aprobación del cliente) y
+  archiva las etapas viejas que quedan sin proyectos; puesto autorizador de
+  laboratorio; y **expone al MCP** los modelos `sgi.dev.*` y
+  `ficha.tecnica.*` (lectura, y escritura en catálogos y renglones; sin
+  borrado) también en la instalación limpia (`post_init_hook`).
+
+### Verificado
+
+- El cambio de cliente SHAWMUT CORPORATION → SHAWMUT LLC en los proyectos
+  465, 466 y 489 lo hizo Jessica Francisco a mano el 2026-10-06 entre 19:54 y
+  20:02 UTC, antes del despliegue; la migración nunca cambia un cliente ya
+  capturado.
+
 ## 19.0.57.120.1 — 2026-10-06
 
 ### Corregido
