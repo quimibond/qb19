@@ -76,6 +76,7 @@ from . import sgi_dev_project
 from . import sgi_dev_product
 from . import sgi_dev_analysis
 from . import sgi_dev_measure
+from . import sgi_dev_board
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign

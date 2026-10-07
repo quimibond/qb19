@@ -104,6 +104,7 @@ MCP_MODELS = {
     'sgi.dev.lab.request': True, 'sgi.dev.feasibility.item': True, 'sgi.dev.feasibility': True,
     'ficha.tecnica.caracteristica': True, 'ficha.tecnica.clave.codigo': True, 'ficha.tecnica.spec': True,
     'ficha.tecnica.tejido': True, 'ficha.tecnica.acabado': True, 'project.project.stage': False,
+    'sgi.dev.similar': False, 'sgi.dev.similar.line': False,  # 57.122.0: asistente, solo lectura
 }
 
 
