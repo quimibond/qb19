@@ -13,6 +13,13 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.131.1 — 2026-10-08
+
+- Corrección del build de `main` (07:17 UTC): el filtro «Con no conformes» de
+  los reportes de conformidad buscaba por `nonconforming_count`, un cálculo
+  no almacenado. Los contadores del certificado (renglones, sin resultado,
+  no conformes) pasan a almacenados. Sin migración.
+
 ## 19.0.57.131.0 — 2026-10-08
 
 Correcciones de Jose (2026-10-08, puntos 3, 4 y 5.1).
