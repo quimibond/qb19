@@ -8,12 +8,13 @@ Renglón de la tabla de características de un proyecto de desarrollo: lo que pi
 
 Orden: `sequence, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_analysis.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_pilot.py`.
 
-## Campos (15)
+## Campos (16)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
+| `critical` | Boolean | Crítica (estudio de habilidad) | Entra al estudio de habilidad del pilotaje con las lecturas por lote. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_pilot.py:87` |
 | `customer_approved` | Boolean | Aprobado por el cliente | El cliente aceptó este valor en la aprobación final. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:128` |
 | `lab_request_ids` | Many2many | Solicitudes de laboratorio |  |  | `sgi.dev.lab.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:246` |
 | `lab_requested` | Boolean | Medir en la muestra | Diseño de Producto pide al laboratorio medir este renglón en la muestra del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_characteristic.py:100` |

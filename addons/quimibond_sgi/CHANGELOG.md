@@ -13,6 +13,63 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.134.0 — 2026-10-08
+
+Jose 2026-10-08: la ficha del desarrollo con las pestañas separadas de las
+nativas, los botones en su lugar y el orden del proceso.
+
+- **Cambiado** ficha del proyecto de desarrollo: dos secciones de pestañas,
+  «Desarrollo de producto» (notebook propio) antes de «Proyecto» (las
+  nativas de Odoo: Descripción, Ajustes…). En proyectos que no son
+  desarrollo no cambia nada.
+- **Cambiado** pestañas del desarrollo en el orden del proceso: **Solicitud**
+  (datos, tabla, firmas, muestra física y su etiqueta), **Análisis y
+  factibilidad** (identidad, resultado, parecidos y pruebas, revisión de
+  Ventas, checklist), **Aprobación del cliente** (evidencia y registro),
+  **Muestra** (código del artículo y «Generar artículos», materia prima,
+  requisición y reloj de materia prima), **Producto y documentos** (ficha
+  interna, especificaciones, reporte de conformidad, diagrama de flujo,
+  artículos del desarrollo con su estado), Comercial, Revisiones y
+  **Tiempos** (horas, reloj por etapa, esperas de materia prima).
+- **Cambiado** botones: la acción que mueve la etapa va en el **encabezado**
+  junto a la barra de etapas y solo aparece en su etapa («Aprobar
+  solicitud», «Aprobar análisis y factibilidad», «Registrar aprobación del
+  cliente», «Asignar folio FT» si falta, «Pedir corrida de muestra»,
+  «Registrar envío de muestra», «Registrar respuesta del cliente», «Subir
+  revisión», «Cerrar: producto de línea», «Cerrar: no factible»). Los
+  contadores («N orden(es)…») pasan a **botones inteligentes** (laboratorio
+  abiertas/total, requisiciones, órdenes de muestra, envíos, certificados,
+  pilotajes, fichas internas, especificaciones). Lo contextual queda junto
+  a sus datos. Mismos campos y métodos: ningún botón se quitó ni se agregó
+  (`alias_id` sale de la pestaña: ya está en Ajustes).
+- **Cambiado** el aviso «falta el cliente» va arriba de la hoja, como el de
+  costo, no entre las dos secciones.
+- La pestaña «Solicitud de desarrollo» se movió de `sgi_dev_request_views.xml`
+  a `sgi_dev_project_views.xml` (una sola herencia arma la sección).
+- Sin migración.
+
+## 19.0.57.133.0 — 2026-10-08
+
+Jose 2026-10-08, 5.4: pilotaje y estudio de habilidad (brief §6.12 y §8).
+
+- **Agregado** `sgi.dev.pilot` (SGI → Sistema → Pilotajes de desarrollos y
+  desde el proyecto): cuando el artículo está «En pilotaje», cada orden de
+  producción terminada (no las de muestra) suma su lote hasta completar los
+  del parámetro «Lotes del pilotaje» (vacío: tres). **Un lote no conforme no
+  cuenta**: libera su lugar.
+- **Lecturas por lote**: el laboratorio captura N lecturas por lote de cada
+  característica marcada **«Crítica (estudio de habilidad)»** en la tabla
+  del proyecto (marca nueva en el catálogo y en los renglones, apagada). El
+  dictamen del lote compara la media de cada crítica con la especificación
+  del cliente.
+- **Estudio de habilidad**: Cp y Cpk por característica crítica con las
+  lecturas de los lotes conformes, contra la especificación del cliente,
+  sigma muestral; PDF al cerrar el pilotaje.
+- **Parámetros vacíos** (el brief no los define): lecturas por lote (sin
+  valor no se exigen) y Cpk mínimo (sin valor el estudio informa y no
+  dictamina).
+- **Migración** `19.0.57.133.0`: solo MCP.
+
 ## 19.0.57.132.0 — 2026-10-08
 
 Jose 2026-10-08, 5.3: ficha técnica interna y especificaciones del producto

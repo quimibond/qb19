@@ -21,6 +21,7 @@
                 <field name="lab_default"/>
                 <field name="in_customer_spec" optional="show"/>
                 <field name="in_coa" optional="show"/>
+                <field name="critical" optional="show"/>
             </list>
         </field>
     </record>
@@ -132,6 +133,7 @@
                             <field name="customer_approved"/>
                             <field name="in_customer_spec"/>
                             <field name="in_coa"/>
+                            <field name="critical"/>
                             <field name="note"/>
                         </group>
                     </group>

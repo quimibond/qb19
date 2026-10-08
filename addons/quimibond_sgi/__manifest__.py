@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.132.0',
+    'version': '19.0.57.134.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -186,6 +186,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_dev_shipment_views.xml',  # 57.129.0: envío de muestra y respuesta del cliente
         'views/sgi_dev_coa_views.xml',  # 57.130.0: reporte de conformidad desde la tabla
         'views/sgi_dev_tech_sheet_views.xml',  # 57.132.0: ficha técnica interna y especificaciones del producto
+        'views/sgi_dev_pilot_views.xml',  # 57.133.0: pilotaje y estudio de habilidad
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports
@@ -220,6 +221,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_dev_coa.xml',  # 57.130.0: reporte de conformidad (F-P-C07-01) desde la tabla
         'report/report_dev_tech_sheet.xml',  # 57.132.0: ficha técnica interna (F-P-D01-24)
         'report/report_dev_customer_spec.xml',  # 57.132.0: especificaciones del producto (F-P-D01-08)
+        'report/report_dev_pilot.xml',  # 57.133.0: estudio de habilidad del pilotaje
         'report/report_calibration_label.xml',
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',
