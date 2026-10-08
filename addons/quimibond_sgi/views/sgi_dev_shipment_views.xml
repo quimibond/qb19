@@ -42,6 +42,9 @@
                             invisible="state == 'borrador' or notified_date"/>
                     <button name="action_open_mail" type="object" string="Reenviar correo" class="btn-secondary" icon="fa-envelope-o"
                             invisible="state == 'borrador' or not notified_date"/>
+                    <!-- 57.130.0 (Jose 3.4): certificado del lote desde la tabla; el PDF se adjunta al envío. -->
+                    <button name="action_sgi_dev_coa" type="object" string="Reporte de conformidad" class="btn-secondary" icon="fa-certificate"
+                            invisible="state == 'respondida'"/>
                     <button name="action_register_response" type="object" string="Registrar respuesta del cliente" class="btn-primary"
                             invisible="state != 'enviada'"
                             confirm="Registra la respuesta del cliente con su evidencia. Si aprueba, el desarrollo pasa a pilotaje; si pide cambios, sube revisión; si rechaza, cierra sin producto. ¿Continuar?"/>
@@ -56,6 +59,7 @@
                             <field name="production_id" readonly="state != 'borrador'"/>
                             <field name="product_id" readonly="state != 'borrador'"/>
                             <field name="attachment_ids" widget="many2many_binary"/>
+                            <field name="coa_count" invisible="not coa_count"/>
                         </group>
                         <group string="Envío">
                             <field name="date_shipped" readonly="state != 'borrador'"/>

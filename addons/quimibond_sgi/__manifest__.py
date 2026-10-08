@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.129.0',
+    'version': '19.0.57.130.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -184,6 +184,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_dev_board_views.xml',  # 57.122.0: tarjeta, lista de desarrollos y asistente para marcar
         'views/sgi_dev_sample_views.xml',  # 57.125.0: orden de muestra desde el proyecto
         'views/sgi_dev_shipment_views.xml',  # 57.129.0: envío de muestra y respuesta del cliente
+        'views/sgi_dev_coa_views.xml',  # 57.130.0: reporte de conformidad desde la tabla
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports
@@ -215,6 +216,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_dev_sample_label.xml',  # 57.118.0: etiqueta de la muestra física
         'report/report_machine_sheet.xml',
         'report/report_dev_flow.xml',  # 57.126.0: diagrama de flujo desde la ruta
+        'report/report_dev_coa.xml',  # 57.130.0: reporte de conformidad (F-P-C07-01) desde la tabla
         'report/report_calibration_label.xml',
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',

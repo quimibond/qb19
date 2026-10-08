@@ -220,3 +220,18 @@ envío hasta que el bloque 3.4 lo imprima desde la tabla. Listas nuevas sin
 renglones: «Paquetería» y «Motivo de rechazo del cliente»; parámetro vacío:
 días de seguimiento.
 
+## 12. Bloque 3.4 — Reporte de conformidad desde la tabla (2026-10-08)
+
+`quimibond_sgi` 57.130.0 (`models/sgi_dev_coa.py`, `report/report_dev_coa.xml`):
+`sgi.dev.coa` por lote con los renglones «En certificado» de la tabla del
+proyecto, valor obtenido en el lote (precargado con el promedio de la
+corrida; en pilotaje lo captura el laboratorio por lote, bloque 3.6) y
+resultado contra la especificación del cliente; el control interno no se
+imprime. «Emitir» genera el PDF (F-P-C07-01, pie del mapeo del lote) y lo
+adjunta al envío de la muestra (3.3) y como CoA de la baja de almacén
+(`sgi_coa.py`). Decisiones tomadas sin preguntar: (1) el certificado es un
+registro propio con los valores congelados, no una impresión en vivo de la
+tabla, para que el lote conserve lo que se certificó; (2) las cualitativas
+imprimen el texto obtenido sin «cumple / no cumple» automático; (3) quien
+emite no se restringe por puesto: queda sellado quién lo hizo.
+

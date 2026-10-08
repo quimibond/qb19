@@ -85,6 +85,7 @@ from . import sgi_dev_sample
 # 57.128.0 (Jose 3.1): aprobación del cliente para iniciar.
 from . import sgi_dev_customer
 from . import sgi_dev_shipment  # 57.129.0 (Jose 3.3): envío de muestra y respuesta del cliente
+from . import sgi_dev_coa  # 57.130.0 (Jose 3.4): reporte de conformidad desde la tabla (hereda sgi.dev.shipment)
 from . import sgi_machine_sheet
 # 57.126.0 (C1, bloque G): ruta y ficha de tejido. Hereda sgi.machine.sheet: va después de él
 # (57.128.1: el build de main cayó con «Model 'sgi.machine.sheet' does not exist in registry»).

@@ -368,3 +368,5 @@ access_sgi_dev_sample_wizard_user,sgi.dev.sample.wizard.user,model_sgi_dev_sampl
 access_sgi_dev_shipment_user,sgi.dev.shipment.user,model_sgi_dev_shipment,base.group_user,1,1,1,0
 access_sgi_dev_shipment_manager,sgi.dev.shipment.manager,model_sgi_dev_shipment,group_sgi_manager,1,1,1,1
 access_sgi_dev_shipment_roll_user,sgi.dev.shipment.roll.user,model_sgi_dev_shipment_roll,base.group_user,1,1,1,1
+access_sgi_dev_coa_user,sgi.dev.coa.user,model_sgi_dev_coa,base.group_user,1,1,1,1
+access_sgi_dev_coa_line_user,sgi.dev.coa.line.user,model_sgi_dev_coa_line,base.group_user,1,1,1,1
