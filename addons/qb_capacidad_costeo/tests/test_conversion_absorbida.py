@@ -359,7 +359,7 @@ class TestConversionAbsorbida(TransactionCase):
         self._mo(self.crudo, 100.0, self.uom_kg,
                  datetime(2028, 3, 5, 12), minutos=400.0)
         f = self._factores(state='cerrado')
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.pesada.id, 'volumen': 1000.0})
         self.assertEqual(wiz.factores_id, f)
         self.assertAlmostEqual(wiz.conv_unit, 0.864, places=6)
@@ -373,6 +373,29 @@ class TestConversionAbsorbida(TransactionCase):
         self.assertAlmostEqual(
             cot.piso_lleno, cot.costo_absorbido_sin_op / (1 - 0.15), places=4)
         self.assertIn('Conversión absorbida', cot.supuestos)
+
+    def test_el_cotizador_guarda_en_el_cotizador_nuevo(self):
+        """1.70.0 (Jose 2026-10-08, punto 3): con qb_cotizador instalado la
+        calculadora guarda en qb.cotizador.cotizacion (borrador que aprueba el
+        puesto), nunca en qb.cotizacion."""
+        if 'qb.cotizador.cotizacion' not in self.env:
+            self.skipTest('qb_cotizador no está instalado')
+        self._mo(self.crudo, 100.0, self.uom_kg,
+                 datetime(2028, 3, 5, 12), minutos=400.0)
+        self._factores(state='cerrado')
+        antes = self.env['qb.cotizacion'].search_count([])
+        wiz = self.env['qb.cotizador.wizard'].create({
+            'product_id': self.pesada.id, 'volumen': 1000.0})
+        action = wiz.action_cotizar()
+        self.assertEqual(action['res_model'], 'qb.cotizador.cotizacion')
+        cot = self.env['qb.cotizador.cotizacion'].browse(action['res_id'])
+        self.assertEqual(cot.state, 'borrador')
+        self.assertEqual(cot.costo_fuente, 'legado')
+        self.assertEqual(cot.product_id, self.pesada)
+        self.assertTrue(cot.folio)
+        self.assertAlmostEqual(cot.rendimiento, wiz.rendimiento or 1.0, places=6)
+        self.assertEqual(self.env['qb.cotizacion'].search_count([]), antes,
+                         'Nada nuevo en el modelo viejo')
 
     def test_receta_de_la_ultima_op_sin_crudo_usa_la_otra_receta(self):
         """WJ060Q21JNT165 tiene dos recetas activas: la de su última OP baja

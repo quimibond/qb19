@@ -3,7 +3,7 @@ from datetime import date
 
 from odoo.tests import TransactionCase
 
-from ..models.settings import PARAM_APROBADOR, PARAM_VENTAS
+from ..models.settings import PARAM_APROBADOR, PARAM_SEGUIMIENTO_DIAS, PARAM_VENTAS
 
 
 class CotizadorCase(TransactionCase):
@@ -35,6 +35,7 @@ class CotizadorCase(TransactionCase):
         Param = cls.env['ir.config_parameter'].sudo()
         Param.set_param(PARAM_APROBADOR, str(cls.job_finanzas.id))
         Param.set_param(PARAM_VENTAS, str(cls.job_ventas.id))
+        Param.set_param(PARAM_SEGUIMIENTO_DIAS, '5')  # 1.1.0: sin el parámetro no hay seguimiento (test_06)
 
         cls.partner = cls.env['res.partner'].create({'name': 'CLIENTE COTIZADOR PRUEBA', 'is_company': True})
         m = cls.env.ref('uom.product_uom_meter')

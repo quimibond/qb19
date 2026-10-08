@@ -16,18 +16,29 @@ from odoo.exceptions import UserError
 _logger = logging.getLogger(__name__)
 
 CODE_GAUGE = 'galga'
-# Ligas decididas a mano (Jose, 2026-10-07): cotización vieja → (proyecto, galga).
-LEGACY_PROJECT_LINKS = {121: (491, '21')}
+# Ligas decididas a mano (Jose, 2026-10-07): cotización vieja → proyecto.
+# 1.2.0 (Jose 2026-10-08, punto 1): la liga nunca cambia valores de origen
+# (la galga «21» que ponía 1.0.0 se regresó a «18» por MCP).
+LEGACY_PROJECT_LINKS = {121: 491}
 C1_COT_DELIVERABLES = {
     'C1-COSTO': {
         'measure_domain': "[('project_id', '!=', False), ('approved_date', '!=', False)]",
         'measure_date_field': 'approved_date', 'measure_user_field': 'approved_by_id',
+        'complete_domain': "[('precio_objetivo', '>', 0)]",
+        'complete_criteria': "Cotización del desarrollo aprobada por el puesto con precio al cliente.",
     },
+    # 1.2.0 (Jose 2026-10-08, punto 3): C1.06 se mide con la cotización
+    # presentada (y lo que fue presentada: vencida, ganada, perdida).
     'C1-COTIZACION': {
-        'measure_domain': "[('project_id', '!=', False), ('presented_date', '!=', False)]",
+        'measure_domain': "[('project_id', '!=', False), ('presented_date', '!=', False), "
+                          "('state', 'in', ('presentada', 'vencida', 'ganada', 'perdida'))]",
         'measure_date_field': 'presented_date', 'measure_user_field': 'presented_by_id',
+        'complete_domain': "[('validez_hasta', '!=', False)]",
+        'complete_criteria': "Presentada al cliente con precio, vigencia, mínimo, tiempo de entrega y rollo.",
     },
 }
+# Modelo del cotizador anterior: las fichas que aún se medían con él pasan al entregable.
+LEGACY_MODEL = 'qb.cotizacion'
 
 
 class QbCotizadorCotizacionSgi(models.Model):
@@ -194,11 +205,16 @@ class QbCotizadorCotizacionSgi(models.Model):
             return
         Deliverable = self.env['sgi.deliverable'].sudo()
         ir_model = self.env['ir.model'].sudo()._get(self._name)
+        legacy = self.env['ir.model'].sudo()._get(LEGACY_MODEL) if LEGACY_MODEL in self.env else None
         for code, vals in C1_COT_DELIVERABLES.items():
             for deliverable in Deliverable.with_context(active_test=False).search([('code', '=', code)]):
-                deliverable.write(dict(vals, odoo_model_id=ir_model.id))
-                activities = self.env['sgi.process.activity'].sudo().search(
-                    [('output_deliverable_ids', 'in', deliverable.id), ('measure_method', '=', 'manual')])
+                dvals = {k: v for k, v in vals.items() if k in deliverable._fields}
+                deliverable.write(dict(dvals, odoo_model_id=ir_model.id))
+                # Manual o, desde 1.2.0, «Registro en Odoo» sobre el cotizador anterior: al entregable.
+                domain = [('output_deliverable_ids', 'in', deliverable.id), ('measure_method', 'in', ('manual', 'odoo'))]
+                activities = self.env['sgi.process.activity'].sudo().search(domain).filtered(
+                    lambda a: a.measure_method == 'manual'
+                    or not a.measure_model_id or (legacy and a.measure_model_id == legacy))
                 for activity in activities.filtered(lambda a: a.output_deliverable_ids == deliverable):
                     try:
                         with self.env.cr.savepoint():
@@ -222,10 +238,8 @@ class QbCotizadorCotizacionSgi(models.Model):
         for cot in self.sudo().with_context(active_test=False).search(
                 [('legacy_id', '!=', 0), ('project_id', '=', False)]):
             project = Project.browse()
-            galga = None
             if cot.legacy_id in LEGACY_PROJECT_LINKS:
-                pid, galga = LEGACY_PROJECT_LINKS[cot.legacy_id]
-                project = Project.browse(pid).filtered('sgi_is_ft')
+                project = Project.browse(LEGACY_PROJECT_LINKS[cot.legacy_id]).filtered('sgi_is_ft')
             if not project and cot.product_id:
                 project = cot.product_id.product_tmpl_id.sgi_dev_project_id
                 if not project:
@@ -237,12 +251,9 @@ class QbCotizadorCotizacionSgi(models.Model):
                                              limit=1)
             if not project:
                 continue
-            vals = {'project_id': project.id}
-            if galga:
-                vals['spec_galga'] = galga
-            cot.with_context(qb_sgi_no_fill=True).write(vals)
-            cot.message_post(body='Ligada al proyecto de desarrollo %s%s.' % (
-                project.display_name, (' (galga %s por regla del proyecto)' % galga) if galga else ''))
+            # qb_sgi_no_fill: la liga no recaptura nada del proyecto (los valores de origen se respetan).
+            cot.with_context(qb_sgi_no_fill=True).write({'project_id': project.id})
+            cot.message_post(body='Ligada al proyecto de desarrollo %s.' % project.display_name)
             n += 1
         if n:
             _logger.info('qb_costeo_sgi: %d cotizaciones ligadas a su proyecto FT', n)

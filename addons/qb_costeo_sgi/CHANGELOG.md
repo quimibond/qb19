@@ -1,5 +1,19 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.2.0 — 2026-10-08
+
+Jose 2026-10-08, puntos 1 y 3.
+
+- **La liga de cotizaciones importadas no cambia valores de origen**: la
+  regla a mano 121 → proyecto 491 ya no escribe la galga (1.0.0 puso «21»
+  sobre el «18» de origen; se regresó a «18» por MCP el mismo día).
+- **C1.06 se mide con la cotización nueva presentada** (`presented_date`,
+  `presented_by_id`; estados presentada, vencida, ganada y perdida): la ficha
+  que aún se medía con «Registro en Odoo» sobre `qb.cotizacion` pasa al
+  entregable C1-COTIZACION. C1-COSTO y C1-COTIZACION dicen cuándo están
+  completos (precio al cliente; vigencia).
+- **Migración** `19.0.1.2.0`: vuelve a apuntar los entregables.
+
 ## 19.0.1.1.0 — 2026-10-08
 
 - **El candado del puesto 183 es una aprobación de Odoo** (Jose 2026-10-08,

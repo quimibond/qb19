@@ -45,11 +45,12 @@ class ResConfigSettingsCotizador(models.TransientModel):
         string='Días de validez de una cotización', config_parameter=PARAM_VALIDEZ_DIAS, default=15,
         help='«Válida hasta» = fecha de presentación + estos días naturales.')
     qb_cotizador_seguimiento_dias_habiles = fields.Integer(
-        string='Días hábiles para el seguimiento', config_parameter=PARAM_SEGUIMIENTO_DIAS, default=5,
-        help='A los N días hábiles de presentada sin respuesta, actividad a Ventas.')
+        string='Días hábiles para el seguimiento', config_parameter=PARAM_SEGUIMIENTO_DIAS,
+        help='A los N días hábiles de presentada sin respuesta, actividad a Ventas. Vacío o 0: sin '
+             'seguimiento automático (Jose 2026-10-08: el plazo no está definido).')
     qb_cotizador_borrador_archivar_dias = fields.Integer(
-        string='Días para archivar un borrador sin movimiento',
-        config_parameter=PARAM_ARCHIVAR_DIAS, default=30)
+        string='Días para archivar un borrador sin movimiento', config_parameter=PARAM_ARCHIVAR_DIAS,
+        help='Vacío o 0: los borradores no se archivan solos (Jose 2026-10-08: el plazo no está definido).')
     qb_cotizador_escalera_descuento_pct = fields.Float(
         string='Descuento por duplicar el volumen (%)', config_parameter=PARAM_ESCALERA_PCT,
         help='Escalera de volumen (½×, 1×, 2×, 4×): descuento por cada duplicación, nunca '

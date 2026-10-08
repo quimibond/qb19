@@ -21,6 +21,6 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sg
 | `hours_total` | Float | Horas en la etapa | Horas calendario entre la entrada y la salida (o ahora). |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:180` |
 | `project_id` | Many2one |  | Proyecto de desarrollo. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:170` |
 | `stage_id` | Many2one | Etapa | Etapa en la que estuvo el proyecto. | sí | `project.project.stage` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:172` |
-| `stage_key` | Char | Clave de la etapa | Clave de la etapa de avance (solicitud, analisis, …, liberado); vacía si la etapa no es de desarrollo. Sirve para medir sin depender de ids. |  |  | compute `_compute_stage_key`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:147` |
+| `stage_key` | Char | Clave de la etapa | Clave de la etapa de avance (solicitud, analisis, …, liberado); vacía si la etapa no es de desarrollo. Sirve para medir sin depender de ids. |  |  | compute `_compute_stage_key`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:149` |
 | `user_id` | Many2one | Lo pasó a la etapa | Usuario que movió el proyecto a esta etapa. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:178` |
 

@@ -137,6 +137,10 @@ class TestDevShipment(TransactionCase):
 
     def test_04_respuesta_aprueba(self):
         dev = self._dev()
+        masa = self.env['ficha.tecnica.caracteristica'].search([('code', '=', 'masa')], limit=1)
+        line = self.env['sgi.dev.characteristic'].create({'project_id': dev.id, 'caracteristica_id': masa.id,
+                                                          'spec_nominal': 150.0, 'in_customer_spec': True})
+        self.assertFalse(line.customer_approved)
         self._verdict(dev)
         ship = self._shipment(dev)
         with self.assertRaises(UserError, msg="Antes del envío no hay respuesta"):
@@ -150,6 +154,7 @@ class TestDevShipment(TransactionCase):
         self.assertEqual(ship.state, 'respondida')
         self.assertEqual(ship.response_registered_by_id, self.env.user)
         self.assertEqual(dev.sgi_dev_stage_key, 'pilotaje', "Aprueba: el desarrollo pasa a pilotaje")
+        self.assertTrue(line.customer_approved, "Y las características de la especificación quedan aprobadas por él")
         self.assertEqual(self.tela.sgi_dev_state, 'pilotaje', "Y el artículo se vende con aviso")
 
     def test_05_respuesta_cambios_y_rechazo(self):

@@ -14,8 +14,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_wizard.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `method` | Char |  |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:406` |
-| `name` | Char | Acción |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:407` |
-| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:405` |
-| `wizard_id` | Many2one |  |  | sí | `sgi.approval.wizard` |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:404` |
+| `method` | Char |  |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:416` |
+| `name` | Char | Acción |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:417` |
+| `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:415` |
+| `wizard_id` | Many2one |  |  | sí | `sgi.approval.wizard` |  |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:414` |
 

@@ -6,32 +6,32 @@ Modelo de otra app que el SGI extiende.
 
 Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`, `addons/quimibond_sgi/models/sgi_dev_customer.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_process_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_sample.py`, `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
 
-## Campos (111)
+## Campos (112)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_dev_analysis_by_id` | Many2one | Análisis capturado por | Quién capturó el resultado del análisis (se llena solo). |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:163` |
-| `sgi_dev_analysis_date` | Datetime | Análisis capturado el | Cuándo se capturó el resultado del análisis (se llena solo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:161` |
+| `sgi_dev_analysis_by_id` | Many2one | Análisis capturado por | Quién capturó el resultado del análisis (se llena solo). |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:165` |
+| `sgi_dev_analysis_date` | Datetime | Análisis capturado el | Cuándo se capturó el resultado del análisis (se llena solo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:163` |
 | `sgi_dev_analysis_result` | Selection | Resultado del análisis | Producto de línea: un artículo existente cumple todo, se cotiza ese y el proyecto cierra sin FT. Producto nuevo: sigue el desarrollo. No factible: cierra con motivo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:305` |
 | `sgi_dev_application_id` | Many2one | Aplicación | Para qué se va a usar el producto (lista). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:266` |
 | `sgi_dev_approved_by_id` | Many2one | Aprobó (Dirección de Operaciones) | Persona de Dirección de Operaciones que aprueba la solicitud de desarrollo. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:78` |
-| `sgi_dev_approved_date` | Datetime | Aprobada el | Cuándo se firmó «Aprobó» en la solicitud de desarrollo (se llena solo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:165` |
+| `sgi_dev_approved_date` | Datetime | Aprobada el | Cuándo se firmó «Aprobó» en la solicitud de desarrollo (se llena solo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_measure.py:167` |
 | `sgi_dev_base_product_id` | Many2one | Artículo de línea o base | Artículo existente que cumple la solicitud (producto de línea) o que sirve de base al desarrollo nuevo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:310` |
 | `sgi_dev_coa_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_coa_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:222` |
 | `sgi_dev_coa_ids` | One2many | Reportes de conformidad |  |  | `sgi.dev.coa` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:221` |
-| `sgi_dev_code_acabado_code` | Char | Código acabado | Código propuesto del acabado (J). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:165` |
-| `sgi_dev_code_acabado_id` | Many2one | Acabado (15-16) | Posiciones 15 y 16, opcionales: el acabado especial. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:154` |
-| `sgi_dev_code_ancho` | Integer | Ancho acabado (12-14, cm) | Posiciones 12 a 14 del acabado: ancho de tela abierta en cm. Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:148` |
-| `sgi_dev_code_ancho_crudo` | Integer | Ancho crudo (cm) | Ancho de tela cruda en cm: posiciones 12 a 14 del crudo y del teñido. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:151` |
-| `sgi_dev_code_color_id` | Many2one | Color (10-11) | Posiciones 10 y 11: color del producto terminado. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:145` |
-| `sgi_dev_code_composicion_id` | Many2one | Composición (1) | Posición 1 del código: la composición de la tela. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:131` |
-| `sgi_dev_code_crudo` | Char | Código crudo | Código propuesto del crudo (H). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:161` |
-| `sgi_dev_code_dibujo_id` | Many2one | Dibujo (2) | Posición 2 del código: el dibujo o ligamento. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:134` |
-| `sgi_dev_code_galga` | Integer | Galga (7-8) | Galga de la máquina (14, 16, 18…); el código lleva su rango. Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:142` |
-| `sgi_dev_code_hilo_id` | Many2one | Tipo de hilo (6) | Posición 6: hilo natural, preteñido o reciclado. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:139` |
-| `sgi_dev_code_peso` | Integer | Peso (3-5, g/m²) | Posiciones 3 a 5: masa por unidad de área en g/m². Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:137` |
-| `sgi_dev_code_tenido` | Boolean | Lleva teñido | Si la ruta tiene teñido se crea también el artículo I. Se propone cuando el color no es natural. |  |  | compute `_compute_sgi_dev_code_tenido`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_product.py:157` |
-| `sgi_dev_code_tenido_code` | Char | Código teñido | Código propuesto del teñido (I). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:163` |
+| `sgi_dev_code_acabado_code` | Char | Código acabado | Código propuesto del acabado (J). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:170` |
+| `sgi_dev_code_acabado_id` | Many2one | Acabado (15-16) | Posiciones 15 y 16, opcionales: el acabado especial. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:159` |
+| `sgi_dev_code_ancho` | Integer | Ancho acabado (12-14, cm) | Posiciones 12 a 14 del acabado: ancho de tela abierta en cm. Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:153` |
+| `sgi_dev_code_ancho_crudo` | Integer | Ancho crudo (cm) | Ancho de tela cruda en cm: posiciones 12 a 14 del crudo y del teñido. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:156` |
+| `sgi_dev_code_color_id` | Many2one | Color (10-11) | Posiciones 10 y 11: color del producto terminado. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:150` |
+| `sgi_dev_code_composicion_id` | Many2one | Composición (1) | Posición 1 del código: la composición de la tela. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:136` |
+| `sgi_dev_code_crudo` | Char | Código crudo | Código propuesto del crudo (H). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:166` |
+| `sgi_dev_code_dibujo_id` | Many2one | Dibujo (2) | Posición 2 del código: el dibujo o ligamento. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:139` |
+| `sgi_dev_code_galga` | Integer | Galga (7-8) | Galga de la máquina (14, 16, 18…); el código lleva su rango. Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:147` |
+| `sgi_dev_code_hilo_id` | Many2one | Tipo de hilo (6) | Posición 6: hilo natural, preteñido o reciclado. |  | `ficha.tecnica.clave.codigo` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:144` |
+| `sgi_dev_code_peso` | Integer | Peso (3-5, g/m²) | Posiciones 3 a 5: masa por unidad de área en g/m². Se toma de la tabla. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:142` |
+| `sgi_dev_code_tenido` | Boolean | Lleva teñido | Si la ruta tiene teñido se crea también el artículo I. Se propone cuando el color no es natural. |  |  | compute `_compute_sgi_dev_code_tenido`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_product.py:162` |
+| `sgi_dev_code_tenido_code` | Char | Código teñido | Código propuesto del teñido (I). |  |  | compute `_compute_sgi_dev_codes`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_product.py:168` |
 | `sgi_dev_consumption_annual` | Float | Consumo anual | Consumo anual estimado, en la unidad elegida. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:271` |
 | `sgi_dev_consumption_annual_m` | Float | Consumo anual (m) | Consumo anual en metros (las yardas se convierten; en kg queda vacío). |  |  | compute `_compute_sgi_dev_consumption`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_project.py:278` |
 | `sgi_dev_consumption_annual_yd` | Float | Consumo anual (yd) | Consumo anual en yardas (los metros se convierten; en kg queda vacío). |  |  | compute `_compute_sgi_dev_consumption`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_project.py:281` |
@@ -82,10 +82,11 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_out_of_spec_count` | Integer | No conformes en corrida | Renglones cuya corrida quedó fuera de lo que pide el cliente. |  |  | compute `_compute_sgi_dev_counts`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_request.py:66` |
 | `sgi_dev_packaging` | Text | Datos en la etiqueta y empaque |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:55` |
 | `sgi_dev_prepared_by_id` | Many2one | Elaboró (Diseño y Desarrollo) | Persona de Diseño y Desarrollo que elaboró la solicitud. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:76` |
-| `sgi_dev_product_crudo_id` | Many2one | Artículo crudo | Artículo crudo (H) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:167` |
+| `sgi_dev_product_crudo_id` | Many2one | Artículo crudo | Artículo crudo (H) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:172` |
 | `sgi_dev_product_id` | Many2one | Artículo en desarrollo | Artículo generado para el desarrollo (lo crea el generador de código). Su referencia interna forma parte del nombre del proyecto. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:241` |
 | `sgi_dev_product_name` | Char | Producto pedido | Cómo llama el cliente al producto mientras no hay código de artículo. Forma parte del nombre del proyecto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:238` |
-| `sgi_dev_product_tenido_id` | Many2one | Artículo teñido | Artículo teñido (I) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:169` |
+| `sgi_dev_product_tenido_id` | Many2one | Artículo teñido | Artículo teñido (I) del desarrollo. |  | `product.product` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:174` |
+| `sgi_dev_product_tmpl_ids` | One2many | Artículos del desarrollo |  |  | `product.template` |  |  | `addons/quimibond_sgi/models/sgi_dev_product.py:134` |
 | `sgi_dev_program` | Char | Programa | Programa o plataforma del cliente para el que es el producto (nombre). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:264` |
 | `sgi_dev_program_years` | Float | Tiempo de programa (años) | Cuántos años durará el programa del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:269` |
 | `sgi_dev_requester` | Char | Nombre del solicitante |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:38` |
@@ -105,8 +106,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_sample_kg` | Float | Cantidad de la muestra (kg) | Cantidad de muestra pedida, en kilogramos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:43` |
 | `sgi_dev_sample_m` | Float | Cantidad de la muestra (m) | Cantidad de muestra pedida, en metros. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:41` |
 | `sgi_dev_sample_received` | Date | Muestra recibida | Fecha en que llegó la muestra física del cliente (a nombre de Ventas). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:298` |
-| `sgi_dev_shipment_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_shipment_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:436` |
-| `sgi_dev_shipment_ids` | One2many | Envíos de muestra |  |  | `sgi.dev.shipment` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:435` |
+| `sgi_dev_shipment_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_shipment_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:442` |
+| `sgi_dev_shipment_ids` | One2many | Envíos de muestra |  |  | `sgi.dev.shipment` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:441` |
 | `sgi_dev_spec` | Text | Especificación del cliente |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:40` |
 | `sgi_dev_spec_number` | Char | Número de especificación | Número o clave de la especificación del cliente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:295` |
 | `sgi_dev_stage_key` | Char | Clave de la etapa | Clave interna de la etapa de avance del desarrollo (solicitud, analisis…). |  |  | compute `_compute_sgi_dev_stage_key`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:234` |

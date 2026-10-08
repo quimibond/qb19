@@ -128,6 +128,11 @@ class MrpProductionDev(models.Model):
 class ProjectProjectDevCode(models.Model):
     _inherit = 'project.project'
 
+    # 57.131.0 (Jose 2026-10-08, punto 3): los artículos del desarrollo desde el
+    # proyecto; la entrada «Lista de materiales» de C1.05 se liga con la
+    # cotización por «project_id.sgi_dev_product_tmpl_ids.bom_ids».
+    sgi_dev_product_tmpl_ids = fields.One2many('product.template', 'sgi_dev_project_id',
+                                               string="Artículos del desarrollo")
     sgi_dev_code_composicion_id = fields.Many2one('ficha.tecnica.clave.codigo', string="Composición (1)",
                                                   domain=[('kind', '=', 'composicion')], ondelete='restrict',
                                                   help="Posición 1 del código: la composición de la tela.")

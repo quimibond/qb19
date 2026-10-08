@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.131.0 — 2026-10-08
+
+Correcciones de Jose (2026-10-08, puntos 3, 4 y 5.1).
+
+- **C1.11** se atribuye a quien dio el dictamen (`verdict_by_id`,
+  `date_verdict`), no a `write_uid`.
+- **Aprobaciones que «se caían» al actualizar**: las migraciones del SGI
+  corren antes de que `quimibond_sgi_studio` entre al registro; sin el
+  satélite todo botón se lee «por sincronizar» y así quedaban grabados los
+  faltantes de C1.02 y C1.11 (06:31 UTC) y fallaba el intento de sincronizar
+  C1.10 en 57.127.0. Con el satélite instalado pero sin cargar, los faltantes
+  de aprobación por botón no se dictaminan; el satélite (1.0.4) sincroniza y
+  refresca al cargar. Los roles 1202 y 1203 de C1.10 se sincronizaron por MCP
+  el mismo día (reglas 74 y 75).
+- **C1.05**: las entradas «Lista de materiales» y «Ruta preliminar»
+  (mrp.bom) se ligan con la cotización por el artículo del proyecto
+  (`sgi_dev_product_tmpl_ids` nuevo en el proyecto).
+- **Envío de muestra**: cuando el cliente aprueba, las características que
+  van a su especificación quedan marcadas «Aprobado por el cliente».
+- **Migración** `19.0.57.131.0`: mediciones y «match» de las entradas de C1.05.
+
 ## 19.0.57.130.0 — 2026-10-08
 
 Jose 2026-10-08, bloque 3.4: reporte de conformidad impreso desde la tabla.
