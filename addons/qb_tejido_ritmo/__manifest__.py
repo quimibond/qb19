@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Ritmo de tejido desde el pesaje',
-    'version': '19.0.1.0.0',
+    'version': '19.0.1.0.1',
     'category': 'Manufacturing',
     'summary': 'Cuánto teje cada circular, cuánto corre, cuánto para y cuánto '
                'pierde en cambios, medido rollo por rollo desde el pesaje.',
