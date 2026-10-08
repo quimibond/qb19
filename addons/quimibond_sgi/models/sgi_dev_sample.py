@@ -263,6 +263,36 @@ class MrpProductionDevSample(models.Model):
                                          ondelete='set null', copy=False,
                                          help="Desarrollo cuya muestra fabrica esta orden; el sobrante queda ligado a él.")
     sgi_dev_task_id = fields.Many2one('project.task', string="Tarea de la corrida", ondelete='set null', copy=False)
+    # 57.127.0 (Jose, 1c y 3.2): C1.09 se mide por quien emite (confirma) la orden y C1.10 por quien
+    # valida la corrida. El botón «Validar corrida» es el enganche de las aprobaciones de C1.10 y de
+    # las fichas de proceso de tintorería y acabado (Sacramento).
+    sgi_dev_issued_by_id = fields.Many2one('res.users', string="Orden emitida por (Planeación)", readonly=True, copy=False)
+    sgi_dev_issued_date = fields.Datetime(string="Orden emitida el", readonly=True, copy=False)
+    sgi_dev_run_validated_by_id = fields.Many2one('res.users', string="Corrida validada por", readonly=True, copy=False)
+    sgi_dev_run_validated_date = fields.Datetime(string="Corrida validada el", readonly=True, copy=False)
+
+    def action_confirm(self):
+        res = super().action_confirm()
+        stamp = {'sgi_dev_issued_by_id': self.env.uid, 'sgi_dev_issued_date': fields.Datetime.now()}
+        for mo in self.filtered(lambda m: m.sgi_dev_project_id and not m.sgi_dev_issued_by_id
+                                and m.state not in ('draft', 'cancel')):
+            mo.write(stamp)
+        return res
+
+    def action_sgi_dev_validate_run(self):
+        """Validación de la corrida de muestra por el supervisor del área (C1.10). La aprobación por
+        puesto la pone la regla de Studio del SGI sobre este botón."""
+        for mo in self:
+            if not mo.sgi_dev_project_id:
+                raise UserError("Solo se valida la corrida de una orden de muestra de un desarrollo.")
+            if mo.state != 'done':
+                raise UserError("La corrida se valida con la orden terminada.")
+            if mo.sgi_dev_run_validated_by_id:
+                raise UserError("La corrida ya fue validada por %s." % mo.sgi_dev_run_validated_by_id.name)
+            mo.write({'sgi_dev_run_validated_by_id': self.env.uid, 'sgi_dev_run_validated_date': fields.Datetime.now()})
+            mo.message_post(body="Corrida de muestra validada por %s." % self.env.user.name)
+            mo.sgi_dev_project_id.message_post(body="Corrida %s validada por %s." % (mo.name, self.env.user.name))
+        return True
 
     def write(self, vals):
         res = super().write(vals)

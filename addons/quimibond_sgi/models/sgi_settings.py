@@ -67,20 +67,10 @@ class ResConfigSettings(models.TransientModel):
         help="Si el artículo lleva teñido, la muestra no baja de esta carga. Vacío: no entra al cálculo (el "
              "brief lo deja por máquina y sin valor).")
 
-    # 57.126.0 (C1, bloque G): quién valida los parámetros reales de cada área y quién recibe el aviso del tercer pase.
+    # 57.126.0 (C1, bloque G): quién valida los parámetros reales de la ficha de tejido.
     sgi_dev_validator_job_tejido_id = fields.Many2one(
-        'hr.job', string="Valida la ficha de tejido", config_parameter='quimibond_sgi.dev_validator_job_tejido_id',
+        'hr.job', string="Valida la ficha de proceso de tejido", config_parameter='quimibond_sgi.dev_validator_job_tejido_id',
         help="Tejido no tiene supervisor: valida el Jefe de Manufactura.")
-    sgi_dev_validator_job_tintoreria_id = fields.Many2one(
-        'hr.job', string="Valida la ficha de tintorería", config_parameter='quimibond_sgi.dev_validator_job_tintoreria_id',
-        help="Supervisor de Tintorería.")
-    sgi_dev_validator_job_acabado_id = fields.Many2one(
-        'hr.job', string="Valida la ficha de acabado", config_parameter='quimibond_sgi.dev_validator_job_acabado_id',
-        help="Supervisor de Acabado (TAC).")
-    sgi_dev_product_design_job_id = fields.Many2one(
-        'hr.job', string="Diseño de Producto (aviso del tercer pase de rama)",
-        config_parameter='quimibond_sgi.dev_product_design_job_id',
-        help="Recibe el aviso cuando el tercer pase de rama no cumple.")
 
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",

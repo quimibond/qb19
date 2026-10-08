@@ -36,7 +36,6 @@ NOTIFY_JOB_NAMES = (
     'DISEÑO Y DESARROLLO DE PROCESOS', 'JEFE DE MANUFACTURA', 'COORDINADOR DE LABORATORIO Y MP',
     'JEFE DE INVENTARIOS Y ALMACENES', 'INGENIERO DE CALIDAD',
 )
-RUN_FROM_STAGE = 'muestra'
 MAX_BOM_DEPTH = 8
 
 
@@ -108,16 +107,10 @@ class ProjectProjectDevStart(models.Model):
                     % project.display_name)
         return True
 
-    def write(self, vals):
-        if 'stage_id' in vals and not self.env.context.get('sgi_dev_migration'):
-            keys = self._sgi_dev_stage_keys()
-            new_key, new_seq = keys.get(vals['stage_id'], ('', 0))
-            run_seq = self._sgi_dev_stage_order(RUN_FROM_STAGE)
-            if new_seq >= run_seq and new_key != 'cerrado_sin_producto':
-                self.filtered(lambda p: p.sgi_is_ft and not p.is_template and p.sgi_dev_stage_seq < run_seq
-                              and p.sgi_dev_analysis_result not in ('linea', 'no_factible')
-                              )._sgi_dev_check_run_allowed()
-        return super().write(vals)
+    # 57.128.0: la compuerta de Dirección de Operaciones aplica a la corrida (asistente y orden de
+    # fabricación), no al cambio de etapa: el folio FT se asigna al entrar a «Muestra», antes de que
+    # Selena elabore la solicitud que Jorge aprueba. La etapa «Muestra» la abre la aprobación del
+    # cliente (sgi_dev_customer.py).
 
     # ------------------------------------------------------------------------
     # Al aprobar: aviso con PDF y revisión de existencias
@@ -352,10 +345,23 @@ class ApprovalRequestDevStart(models.Model):
         return all(o.state == 'cancel' or getattr(o, 'receipt_status', 'full') in ('full', False)
                    for o in orders)
 
-    def write(self, vals):
-        res = super().write(vals)
-        if vals.get('request_status') in ('refused', 'cancel', 'approved'):
-            self.mapped('sgi_dev_project_id')._sgi_dev_mp_wait_autoclose()
+    # request_status es calculado y almacenado: no pasa por write(). Los botones sí.
+    def _sgi_dev_after_decision(self):
+        self.mapped('sgi_dev_project_id')._sgi_dev_mp_wait_autoclose()
+
+    def action_approve(self, approver=None):
+        res = super().action_approve(approver=approver)
+        self._sgi_dev_after_decision()
+        return res
+
+    def action_refuse(self, approver=None):
+        res = super().action_refuse(approver=approver)
+        self._sgi_dev_after_decision()
+        return res
+
+    def action_cancel(self):
+        res = super().action_cancel()
+        self._sgi_dev_after_decision()
         return res
 
 

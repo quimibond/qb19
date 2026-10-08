@@ -54,6 +54,7 @@ C1_04B_VALS = {
                      "antes de costear.",
     'on_fail': False,
     'check_against': False,
+    'exec_channel': 'odoo',  # 57.127.0 (Jose, 1a): se hace en Odoo; el plazo se queda vacío a propósito.
 }
 
 

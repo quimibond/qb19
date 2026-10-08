@@ -62,3 +62,34 @@ class TestBridge(CotizadorCase):
             d = self.env['sgi.deliverable'].search([('code', '=', code)], limit=1)
             if d:
                 self.assertEqual(d.odoo_model_id.model, 'qb.cotizador.cotizacion')
+
+    def test_04_aprobacion_en_aprobaciones(self):
+        Cot = self.env['qb.cotizador.cotizacion']
+        category, subject = Cot._qb_sgi_approval_subject()
+        cot = self._cot(project_id=self.project.id)
+        cot.action_calcular()
+        cot.action_enviar_aprobacion()
+        if not category:
+            self.assertFalse(cot.approval_request_id, "Sin rol de C1.05 como solicitud aprueba el puesto")
+            return
+        req = cot.approval_request_id
+        self.assertTrue(req)
+        self.assertEqual(req.category_id, category)
+        self.assertEqual(req.sgi_subject_id, subject)
+        self.assertEqual(req.request_status, 'pending')
+        self.assertFalse(cot.with_user(self.finanzas).puede_aprobar, "Mientras la solicitud vive no se aprueba aquí")
+        with self.assertRaises(UserError):
+            cot.with_user(self.finanzas).action_aprobar()
+        approver = req.approver_ids[:1]
+        if not approver:
+            return
+        req.sudo().action_approve(approver=approver)
+        if req.request_status == 'approved':
+            self.assertEqual(cot.state, 'presentada', "Aprobar en Aprobaciones presenta la cotización")
+            self.assertTrue(cot.approved_by_id)
+        otra = self._cot(project_id=self.project.id)
+        otra.action_calcular()
+        otra.action_enviar_aprobacion()
+        otra.approval_request_id.sudo().action_cancel()
+        self.assertEqual(otra.state, 'borrador', "Cancelar la solicitud regresa la cotización")
+        self.assertEqual(otra.regreso_motivo_id, self.env.ref('qb_cotizador.motivo_regreso_otro'))
