@@ -73,6 +73,7 @@ OPTION_KINDS = [
     ('laminado', "Tipo de laminado"),
     ('requisito_legal', "Requisito legal o reglamentario"),
     ('motivo_no_factible', "Motivo de no factibilidad"),
+    ('motivo_ajuste', "Motivo de ajuste de parámetro de proceso"),  # 57.126.0 (C1, bloque G)
 ]
 # Etapas viejas que no son clientes: no se adivina cliente desde ellas.
 NON_CUSTOMER_STAGES = {'hecha', 'cancelada', 'odoo', 'nuevo', 'por hacer', 'analisis de proyectos',
@@ -105,6 +106,8 @@ MCP_MODELS = {
     'ficha.tecnica.caracteristica': True, 'ficha.tecnica.clave.codigo': True, 'ficha.tecnica.spec': True,
     'ficha.tecnica.tejido': True, 'ficha.tecnica.acabado': True, 'project.project.stage': False,
     'sgi.dev.similar': False, 'sgi.dev.similar.line': False,  # 57.122.0: asistente, solo lectura
+    'sgi.dev.process.sheet': True, 'sgi.dev.process.param': True, 'sgi.dev.dye.step': True,  # 57.126.0
+    'sgi.dev.finish.route': True, 'sgi.machine.sheet': True,
 }
 
 

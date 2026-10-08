@@ -82,6 +82,19 @@
                                  help="Solo si el artículo lleva teñido. Vacío: no entra al cálculo.">
                             <field name="sgi_dev_sample_min_bath_kg"/>
                         </setting>
+                        <!-- 57.126.0 (C1, bloque G) -->
+                        <setting string="Quién valida la ficha de tejido" help="Tejido no tiene supervisor: el Jefe de Manufactura.">
+                            <field name="sgi_dev_validator_job_tejido_id"/>
+                        </setting>
+                        <setting string="Quién valida la ficha de tintorería" help="Supervisor de Tintorería.">
+                            <field name="sgi_dev_validator_job_tintoreria_id"/>
+                        </setting>
+                        <setting string="Quién valida la ficha de acabado" help="Supervisor de Acabado (TAC).">
+                            <field name="sgi_dev_validator_job_acabado_id"/>
+                        </setting>
+                        <setting string="Diseño de Producto (aviso del tercer pase de rama)" help="Recibe el aviso cuando el tercer pase de rama no cumple.">
+                            <field name="sgi_dev_product_design_job_id"/>
+                        </setting>
                     </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"

@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.126.0 (C1, bloque G): fichas de proceso de tintorería (F-P-D01-33) y acabado (F-P-D01-05). -->
+    <record id="action_report_dev_process_sheet" model="ir.actions.report">
+        <field name="name">Ficha de proceso</field>
+        <field name="model">sgi.dev.process.sheet</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_process_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_process_sheet_document</field>
+        <field name="print_report_name">'Ficha de proceso - %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="model_sgi_dev_process_sheet"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dev_process_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_dye_sheet' if doc.area == 'tintoreria' else 'format_ref_finish_sheet'"/>
+                    <div class="page">
+                        <h2 class="text-center">Ficha de proceso de <span t-out="dict(doc._fields['area'].selection).get(doc.area)"/></h2>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td><strong>Artículo</strong></td><td><span t-out="doc.product_id.display_name"/></td>
+                                <td><strong>Máquina</strong></td><td><span t-out="doc.workcenter_id.name"/></td></tr>
+                            <tr><td><strong>Proyecto</strong></td><td><span t-out="doc.project_id.display_name or '—'"/></td>
+                                <td><strong>Orden de la corrida</strong></td><td><span t-out="doc.production_id.name or '—'"/></td></tr>
+                            <tr><td><strong>Fecha</strong></td><td><span t-field="doc.date"/></td>
+                                <td><strong>Estado</strong></td><td><span t-field="doc.state"/> · Rev. <span t-out="doc.revision"/></td></tr>
+                            <tr><td><strong>Número de fórmula</strong></td><td colspan="3"><span t-out="doc.formula_code or '—'"/> <span style="color:#888;">(los químicos viven en el modelo de fórmulas)</span></td></tr>
+                        </table>
+                        <t t-if="doc.area == 'acabado'">
+                            <h5>Ruta de proceso</h5>
+                            <p style="font-size:10px;"><t t-foreach="doc.route_line_ids" t-as="r"><span t-out="r_index + 1"/>. <span t-out="r.name"/><t t-if="r.workcenter_id"> (<span t-out="r.workcenter_id.name"/>)</t><t t-if="not r_last"> → </t></t></p>
+                            <p style="font-size:10px;"><strong>Teñido:</strong> <span t-out="doc.dye_machine or '—'"/> · <span t-out="doc.dye_brand or ''"/> <span t-out="doc.dye_model or ''"/></p>
+                        </t>
+                        <t t-set="passes" t-value="sorted(set(doc.param_line_ids.mapped('pass_number'))) or [0]"/>
+                        <t t-foreach="passes" t-as="pn">
+                            <h5><t t-if="doc.area == 'acabado'">Pase de rama <span t-out="pn"/>
+                                <t t-set="res" t-value="{1: doc.pass_result_1, 2: doc.pass_result_2, 3: doc.pass_result_3}.get(pn)"/>
+                                <span t-if="res" class="badge text-bg-secondary" t-out="dict(doc._fields['pass_result_1'].selection).get(res)"/></t>
+                                <t t-else="">Parámetros</t></h5>
+                            <table class="table table-sm table-bordered" style="font-size:10px;">
+                                <thead><tr><th>Sección</th><th>Parámetro</th><th>Propuesto</th><th>Real</th><th>Ajustes</th><th>Motivo</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="doc.param_line_ids.filtered(lambda p: p.pass_number == pn)" t-as="p">
+                                        <td><span t-field="p.section"/></td><td><span t-out="p.name"/></td>
+                                        <td><span t-out="p.proposed_label or ''"/></td><td><span t-out="p.real_label or ''"/></td>
+                                        <td class="text-center"><span t-out="p.adjustment or ''"/></td><td><span t-out="p.reason_id.name or ''"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                        <t t-if="doc.area == 'tintoreria' and doc.dye_step_ids">
+                            <h5>Gráfica de proceso (<span t-out="'%g' % doc.dye_total_min"/> min)</h5>
+                            <table class="table table-sm table-bordered" style="font-size:10px; width:70%;">
+                                <thead><tr><th>Tramo</th><th>De (°C)</th><th>A (°C)</th><th>Gradiente (°C/min)</th><th>Sostener (min)</th><th>Minutos</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="doc.dye_step_ids" t-as="s">
+                                        <td><span t-out="s.name"/></td><td><span t-out="'%g' % s.temp_start"/></td><td><span t-out="'%g' % s.temp_end"/></td>
+                                        <td><span t-out="'%g' % s.gradient"/></td><td><span t-out="'%g' % s.hold_min"/></td><td><span t-out="'%.1f' % s.minutes"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div t-out="doc.dye_chart_svg"/>
+                        </t>
+                        <p t-if="doc.note" style="font-size:10px;"><strong>Observaciones:</strong> <span t-out="doc.note"/></p>
+                        <table class="table table-sm mt-4" style="font-size:10px;">
+                            <tr>
+                                <td class="text-center" style="border-top:1px solid #000;">Propuso (Diseño y Desarrollo de Procesos)<br/><span t-out="doc.proposed_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Validó (supervisor del área)<br/><span t-out="doc.validated_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Midió (Laboratorio)<br/><span t-out="doc.lab_user_id.name or ''"/></td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Diagrama de flujo de proceso (F-P-D01-32): se imprime desde la ruta, no se dibuja. -->
+    <record id="action_report_dev_flow" model="ir.actions.report">
+        <field name="name">Diagrama de flujo de proceso</field>
+        <field name="model">project.project</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_flow_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_flow_document</field>
+        <field name="print_report_name">'Diagrama de flujo - %s' % (object.sgi_ft_folio or object.name or '')</field>
+    </record>
+
+    <template id="report_dev_flow_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_dev_flow'"/>
+                    <div class="page">
+                        <h2 class="text-center">Diagrama de flujo de proceso</h2>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:25%"><strong>Proyecto</strong></td><td><span t-out="doc.display_name"/></td>
+                                <td style="width:20%"><strong>Cliente</strong></td><td><span t-out="doc.partner_id.display_name or '—'"/></td></tr>
+                            <tr><td><strong>Folio FT</strong></td><td><span t-out="doc.sgi_ft_folio or '—'"/></td>
+                                <td><strong>Revisión</strong></td><td><span t-out="doc.sgi_dev_revision"/></td></tr>
+                        </table>
+                        <t t-set="ops" t-value="doc._sgi_dev_route_operations()"/>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>#</th><th>Artículo</th><th>Operación</th><th>Centro de trabajo</th><th>Tiempo estándar (min)</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="ops" t-as="row">
+                                    <td><span t-out="row_index + 1"/></td>
+                                    <td><span t-out="row[0].display_name"/></td>
+                                    <td><span t-out="row[1].name"/></td>
+                                    <td><span t-out="row[1].workcenter_id.name"/></td>
+                                    <td class="text-end"><span t-out="'%g' % (row[1].time_cycle_manual or 0.0)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="font-size:10px;" class="text-center">
+                            <t t-foreach="ops" t-as="row"><span class="badge text-bg-light border" t-out="row[1].name"/><t t-if="not row_last"> → </t></t>
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

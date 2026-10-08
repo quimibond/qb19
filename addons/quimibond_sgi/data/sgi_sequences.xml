@@ -24,4 +24,12 @@
         <field name="padding">4</field>
         <field name="number_increment">1</field>
     </record>
+    <!-- 57.126.0 (C1, bloque G) -->
+    <record id="sgi_seq_dev_process_sheet" model="ir.sequence">
+        <field name="name">Ficha de proceso de tintorería y acabado (SGI)</field>
+        <field name="code">sgi.dev.process.sheet</field>
+        <field name="prefix">FPR-</field>
+        <field name="padding">4</field>
+        <field name="number_increment">1</field>
+    </record>
 </odoo>

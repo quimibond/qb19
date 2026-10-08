@@ -44,6 +44,11 @@
                                 invisible="not sgi_dev_mo_count">
                             <field name="sgi_dev_mo_count" readonly="1" class="oe_inline"/> orden(es) de muestra
                         </button>
+                        <!-- 57.126.0 (C1, bloque G): ruta y fichas de proceso. -->
+                        <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"/>
+                        <button name="action_sgi_dev_view_process_sheets" type="object" string="Fichas de proceso" class="btn-secondary" icon="fa-sliders">
+                            <field name="sgi_dev_process_sheet_count" readonly="1" class="oe_inline" invisible="not sgi_dev_process_sheet_count"/>
+                        </button>
                 
                     </div>
                     <group>
