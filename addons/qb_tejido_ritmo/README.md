@@ -43,7 +43,9 @@ Las circulares usan en Odoo «Jornada 24/7 3 Turnos» con arranque el sábado a
 las 19:00, pero desde el 25-sep-2026 tejido para de viernes 18:00 a domingo
 19:00. El descanso se captura aquí con **vigencia** (Manufactura → Costos →
 Ritmo de tejido → Descansos), así las semanas viejas se miden con su
-descanso de entonces. Los festivos salen de las ausencias globales de los
+descanso de entonces; la regla que aplica a un fin de semana es la vigente
+el día en que empieza su ventana (el cambio del viernes 25-sep aplica ese
+mismo fin de semana). Los festivos salen de las ausencias globales de los
 calendarios de las máquinas. Todo el cálculo es en hora de planta
 (`America/Mexico_City`).
 
