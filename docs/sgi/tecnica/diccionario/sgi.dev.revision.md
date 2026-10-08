@@ -14,15 +14,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `characteristic_id` | Many2one | Característica | Renglón de la tabla de características que cambió. |  | `sgi.dev.characteristic` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:157` |
-| `characteristic_name` | Char | Característica (texto) | Nombre de la característica, por si el renglón se borra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:159` |
-| `date` | Datetime | Fecha | Cuándo se registró el cambio. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:151` |
-| `new_value` | Char | Valor nuevo | Especificación después del cambio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:162` |
-| `note` | Char | Observaciones | Texto libre; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:166` |
-| `old_value` | Char | Valor anterior | Especificación antes del cambio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:161` |
-| `project_id` | Many2one |  | Proyecto de desarrollo al que pertenece la revisión. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:148` |
-| `quotation_ref` | Char | Cotización asociada | Referencia de la cotización que recoge el cambio (la liga directa llega con el cotizador nuevo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:163` |
-| `requested_by` | Selection | Lo pidió | Quién pidió el cambio: el cliente o alguien de Quimibond. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:155` |
-| `revision` | Integer | Revisión | Número de revisión del proyecto al que corresponde el cambio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:150` |
-| `user_id` | Many2one | Registró | Usuario que registró el cambio en Odoo. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:153` |
+| `characteristic_id` | Many2one | Característica | Renglón de la tabla de características que cambió. |  | `sgi.dev.characteristic` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:158` |
+| `characteristic_name` | Char | Característica (texto) | Nombre de la característica, por si el renglón se borra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:160` |
+| `date` | Datetime | Fecha | Cuándo se registró el cambio. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:152` |
+| `new_value` | Char | Valor nuevo | Especificación después del cambio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:163` |
+| `note` | Char | Observaciones | Texto libre; no capture aquí valores. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:167` |
+| `old_value` | Char | Valor anterior | Especificación antes del cambio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:162` |
+| `project_id` | Many2one |  | Proyecto de desarrollo al que pertenece la revisión. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:149` |
+| `quotation_ref` | Char | Cotización asociada | Referencia de la cotización que recoge el cambio (la liga directa llega con el cotizador nuevo). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:164` |
+| `requested_by` | Selection | Lo pidió | Quién pidió el cambio: el cliente o alguien de Quimibond. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:156` |
+| `revision` | Integer | Revisión | Número de revisión del proyecto al que corresponde el cambio. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:151` |
+| `user_id` | Many2one | Registró | Usuario que registró el cambio en Odoo. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:154` |
 

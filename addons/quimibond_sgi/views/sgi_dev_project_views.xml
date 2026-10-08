@@ -35,7 +35,7 @@
                         invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente')"
                         confirm="Registra la aprobación del cliente con la evidencia de la pestaña «Aprobación del cliente» y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
                 <button name="action_sgi_dev_assign_folio" type="object" string="Asignar folio FT" class="btn-primary" icon="fa-hashtag"
-                        invisible="not sgi_is_ft or sgi_ft_folio or sgi_dev_analysis_result == 'linea' or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
+                        invisible="not sgi_is_ft or sgi_ft_folio or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('cotizacion', 'aprobacion_cliente', 'muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
                 <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-primary" icon="fa-cogs"
                         invisible="not sgi_is_ft or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente') or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
                 <button name="action_sgi_dev_new_shipment" type="object" string="Registrar envío de muestra" class="btn-primary" icon="fa-truck"
@@ -117,6 +117,14 @@
                     <div class="o_stat_info">
                         <span class="o_stat_value"><field name="sgi_dev_escalation_count"/></span>
                         <span class="o_stat_text">Avisos por tiempo</span>
+                    </div>
+                </button>
+                <!-- 57.137.0 (Jessica 9): solicitudes de modificación del proyecto. -->
+                <button name="action_sgi_dev_change_requests" type="object" class="oe_stat_button" icon="fa-exchange"
+                        invisible="not sgi_is_ft or not sgi_dev_change_request_count">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value"><field name="sgi_dev_change_request_count"/></span>
+                        <span class="o_stat_text">Modificaciones</span>
                     </div>
                 </button>
             </xpath>
@@ -317,16 +325,50 @@
                                         <field name="sgi_dev_product_id" readonly="1"/>
                                     </group>
                                 </group>
+                            <!-- 57.137.0 (Jessica 3): la ruta se ve aquí como cadena de operaciones con su centro de
+                                 trabajo; se captura en la lista de materiales («Editar ruta», Yet) y de ahí sale el diagrama. -->
+                            <separator string="Ruta y centros de trabajo"/>
                             <div class="d-flex flex-wrap gap-1 mb-2">
-                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"
+                                <button name="action_sgi_dev_open_route" type="object" string="Editar ruta" class="btn-secondary" icon="fa-random"
                                         invisible="not sgi_dev_product_id"/>
-                                <span class="text-muted align-self-center">Ruta y centros de trabajo (Yet): en la lista de materiales del artículo acabado; el diagrama sale de ahí.</span>
+                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"
+                                        invisible="not sgi_dev_route_count"/>
+                                <span class="text-muted align-self-center" invisible="not sgi_dev_product_id">Operaciones: <field name="sgi_dev_route_count" class="oe_inline"/></span>
                             </div>
+                            <field name="sgi_dev_route_html" nolabel="1" readonly="1"/>
                             <div name="sgi_dev_quotes" class="mt-3"/>
                         </page>
                         <!-- 4. Aprobación del cliente para iniciar (Jessica): al registrarla el proyecto pasa a «Muestra» y recibe su folio FT. -->
                         <page string="Aprobación del cliente" name="sgi_dev_customer_approval"
                                   invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
+                                <!-- 57.137.0 (Jessica 4; brief §6.8): la aprobación para iniciar es un documento que se
+                                     genera desde el proyecto y la cotización, con el folio FT ya asignado; Ventas lo manda
+                                     y la respuesta del cliente se registra abajo como evidencia. -->
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    <button name="action_sgi_dev_start_approval" type="object" string="Generar aprobación para iniciar" class="btn-primary" icon="fa-file-pdf-o"
+                                            invisible="sgi_dev_start_approval_attachment_id"
+                                            confirm="Se genera el PDF «Aprobación para iniciar el proyecto» con las características marcadas para el cliente y la cotización; si el proyecto no tiene folio FT se le asigna ahora. ¿Continuar?"/>
+                                    <button name="action_sgi_dev_start_approval" type="object" string="Volver a generar" class="btn-secondary" icon="fa-refresh"
+                                            invisible="not sgi_dev_start_approval_attachment_id or sgi_dev_customer_approved_at"
+                                            confirm="Se genera de nuevo el PDF con los datos actuales del proyecto y la cotización. ¿Continuar?"/>
+                                    <button name="action_sgi_dev_start_approval_mail" type="object" string="Enviar al cliente" class="btn-secondary" icon="fa-envelope-o"
+                                            invisible="not sgi_dev_start_approval_attachment_id or sgi_dev_customer_approved_at"/>
+                                    <button name="action_sgi_dev_print_start_approval" type="object" string="Imprimir" class="btn-secondary" icon="fa-print"
+                                            invisible="not sgi_dev_start_approval_attachment_id"/>
+                                </div>
+                                <group>
+                                    <group string="Documento enviado al cliente">
+                                        <field name="sgi_dev_start_approval_attachment_id"/>
+                                        <field name="sgi_dev_start_approval_date"/>
+                                        <field name="sgi_dev_start_approval_by_id"/>
+                                        <field name="sgi_dev_start_approval_sent_at"/>
+                                        <field name="sgi_dev_start_approval_sent_by_id"/>
+                                    </group>
+                                    <group>
+                                        <span colspan="2" class="text-muted" invisible="sgi_dev_start_approval_attachment_id">El documento se genera desde el proyecto (características para el cliente) y la cotización; no se llena a mano. Al generarlo el proyecto recibe su folio FT.</span>
+                                    </group>
+                                </group>
+                                <separator string="Respuesta del cliente"/>
                                 <group>
                                     <group string="Evidencia">
                                         <field name="sgi_dev_customer_approval_medium" readonly="sgi_dev_customer_approved_at"/>
@@ -536,7 +578,27 @@
                                     <field name="sgi_dev_revision" readonly="1"/>
                                 </group>
                             </group>
-                            <p class="text-muted">Cada cambio que pide el cliente o que no dio el resultado esperado abre una revisión («Subir revisión» en el encabezado) y queda aquí con su causa; después se vuelve a la muestra.</p>
+                            <!-- 57.137.0 (Jessica 9): la solicitud de modificación (qué cambia, causa, 5 porqués, solución,
+                                 fases afectadas) la llena Selena y la firma Dirección de Operaciones; firmada, abre la
+                                 revisión y el proyecto vuelve a «Muestra». La respuesta «pide cambios» la deja en borrador. -->
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <button name="action_sgi_dev_new_change_request" type="object" string="Nueva solicitud de modificación" class="btn-primary" icon="fa-exchange"
+                                        invisible="sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto', 'liberado')"/>
+                            </div>
+                            <p class="text-muted">Cada cambio que pide el cliente o que no dio el resultado esperado se registra como solicitud de modificación (causa, 5 porqués, solución y fases afectadas); al firmarla Dirección de Operaciones se abre la revisión siguiente y se vuelve a la muestra. Los cambios a la especificación quedan en la bitácora.</p>
+                            <separator string="Solicitudes de modificación"/>
+                            <field name="sgi_dev_change_request_ids" readonly="1">
+                                <list create="0" delete="0" decoration-info="state == 'borrador'" decoration-muted="state == 'aplicada'">
+                                    <field name="date"/>
+                                    <field name="name"/>
+                                    <field name="origin"/>
+                                    <field name="revision"/>
+                                    <field name="stage_ids" widget="many2many_tags"/>
+                                    <field name="requested_by_id" widget="many2one_avatar_user" optional="show"/>
+                                    <field name="approved_by_id" widget="many2one_avatar_user" optional="show"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'aplicada'" decoration-warning="state == 'firmada'"/>
+                                </list>
+                            </field>
                             <separator string="Bitácora de revisiones"/>
                             <field name="sgi_dev_revision_ids">
                                     <list editable="bottom">
@@ -649,6 +711,16 @@
                                         <field name="state" widget="badge" decoration-success="state == 'cerrado'" decoration-info="state == 'abierto'"/>
                                     </list>
                                 </field>
+                        </page>
+                        <!-- 12. Expediente (57.137.0, Jessica): ISO 9001:2015 8.3 y fases del APQP con la evidencia que ya
+                             existe en el proyecto; se imprime como «Expediente de diseño y desarrollo». -->
+                        <page string="Expediente 8.3 / APQP" name="sgi_dev_dossier">
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <button name="action_sgi_dev_print_dossier" type="object" string="Imprimir expediente" class="btn-secondary" icon="fa-print"/>
+                                <span class="align-self-center">Requisitos cubiertos: <field name="sgi_dev_dossier_done" class="oe_inline"/> de <field name="sgi_dev_dossier_total" class="oe_inline"/></span>
+                            </div>
+                            <p class="text-muted">Cada renglón es un requisito del punto 8.3 (planificación, entradas, controles de revisión / verificación / validación, salidas y cambios) con la evidencia que el proyecto ya tiene; nada se captura aquí. Las fases del APQP se cubren con las pestañas: 1 planeación (análisis de mercado y de proyecto), 2 diseño del producto (cotización, aprobación del cliente, solicitud de desarrollo), 3 diseño del proceso (ruta y fichas), 4 validación (muestra, envío, retroalimentación, pilotaje), 5 retroalimentación y mejora (cambios, liberación, tarifa).</p>
+                            <field name="sgi_dev_dossier_html" nolabel="1" readonly="1"/>
                         </page>
                     </notebook>
                     <h4 class="mt-3 mb-1 text-uppercase text-muted" style="font-size:12px; letter-spacing:.05em;">Proyecto</h4>

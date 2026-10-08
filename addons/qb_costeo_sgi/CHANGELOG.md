@@ -24,6 +24,11 @@ C1.17 medida con eso.
   cotizaciones del proyecto con estado, precio, revisión cotizada y estado de
   la aprobación del puesto 183, y «Nueva cotización» que nace con lo que el
   proyecto ya tiene (va en el `div` «sgi_dev_quotes» del SGI 57.136.0).
+- **Documentos del desarrollo** (SGI 57.137.0): la cotización ganada (o la
+  presentada) más reciente va en la «Aprobación para iniciar el proyecto»
+  (folio, precio, moneda, unidad, vigencia, revisión cotizada) y el
+  expediente 8.3 / APQP suma dos renglones: cotización aprobada y precio en
+  la tarifa del cliente (C1.17).
 - **Migración** `19.0.1.3.0`: vuelve a apuntar los entregables (C1-ARTICULO).
 
 ## 19.0.1.2.0 — 2026-10-08

@@ -117,6 +117,7 @@ MCP_MODELS = {
     'sgi.dev.pilot': True, 'sgi.dev.pilot.lot': True, 'sgi.dev.pilot.reading': True,  # 57.133.0
     'sgi.dev.pilot.study': False,  # 57.133.0: lo calcula el pilotaje
     'sgi.dev.escalation': False,  # 57.135.0: lo escribe el cron de avisos por tiempo
+    'sgi.dev.change.request': True,  # 57.137.0: solicitud de modificación del proyecto
 }
 
 
