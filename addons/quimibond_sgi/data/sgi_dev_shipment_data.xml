@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.129.0 (C1, Jose 3.3): correo del envío de la muestra y seguimiento si el cliente no contesta. -->
+<odoo>
+    <data noupdate="1">
+        <record id="mail_template_sgi_dev_shipment" model="mail.template">
+            <field name="name">SGI: Envío de muestra de desarrollo al cliente</field>
+            <field name="model_id" ref="quimibond_sgi.model_sgi_dev_shipment"/>
+            <field name="subject">Muestra {{ object.project_id.sgi_ft_folio or object.project_id.name }} – {{ object.product_id.display_name or object.project_id.sgi_dev_product_name or '' }}</field>
+            <field name="body_html" type="html">
+<div>
+    <p>Buen día,</p>
+    <p>Le avisamos el envío de la muestra del desarrollo
+        <strong t-out="object.project_id.sgi_ft_folio or object.project_id.name"/>
+        <t t-if="object.product_id"> (<t t-out="object.product_id.display_name"/>)</t>
+        con fecha <strong t-out="object.date_shipped"/>.</p>
+    <p>
+        Medio de entrega: <strong t-out="object.medium_label"/>
+        <t t-if="object.carrier_id"> · Paquetería: <strong t-out="object.carrier_id.name"/></t>
+        <t t-if="object.tracking_ref"> · Guía: <strong t-out="object.tracking_ref"/></t>
+    </p>
+    <table style="border-collapse: collapse; min-width: 420px;">
+        <thead>
+            <tr>
+                <th style="border: 1px solid #ccc; padding: 4px 8px; text-align: left;">Rollo</th>
+                <th style="border: 1px solid #ccc; padding: 4px 8px; text-align: left;">Lote</th>
+                <th style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;">Metros</th>
+                <th style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;">Ancho (m)</th>
+                <th style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;">Kilos</th>
+            </tr>
+        </thead>
+        <tbody>
+            <t t-foreach="object.roll_ids" t-as="roll">
+                <tr>
+                    <td style="border: 1px solid #ccc; padding: 4px 8px;"><t t-out="roll_index + 1"/></td>
+                    <td style="border: 1px solid #ccc; padding: 4px 8px;"><t t-out="roll.lot_id.name or ''"/></td>
+                    <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;"><t t-out="'%.2f' % roll.length_m"/></td>
+                    <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;"><t t-out="('%.3f' % roll.width_m) if roll.width_m else ''"/></td>
+                    <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;"><t t-out="('%.2f' % roll.weight_kg) if roll.weight_kg else ''"/></td>
+                </tr>
+            </t>
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2" style="border: 1px solid #ccc; padding: 4px 8px;"><strong>Total: <t t-out="object.roll_count"/> rollo(s)</strong></td>
+                <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;"><strong t-out="'%.2f' % object.total_m"/></td>
+                <td style="border: 1px solid #ccc; padding: 4px 8px;"/>
+                <td style="border: 1px solid #ccc; padding: 4px 8px; text-align: right;"><strong t-out="('%.2f' % object.total_kg) if object.total_kg else ''"/></td>
+            </tr>
+        </tfoot>
+    </table>
+    <p t-if="object.attachment_ids">Adjuntamos la documentación que acompaña a la muestra.</p>
+    <p>Quedamos atentos a sus comentarios.</p>
+    <p>Saludos,<br/><t t-out="user.name"/><br/><t t-out="object.company_id.name"/></p>
+</div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+
+        <record id="sgi_cron_dev_shipment_followup" model="ir.cron">
+            <field name="name">SGI: Desarrollo, seguimiento de muestras sin respuesta del cliente</field>
+            <field name="model_id" ref="quimibond_sgi.model_sgi_dev_shipment"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_sgi_dev_shipment_followup()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="nextcall" eval="(DateTime.today() + relativedelta(days=1, hour=13, minute=10, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

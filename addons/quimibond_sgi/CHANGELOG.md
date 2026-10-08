@@ -13,6 +13,87 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.131.1 — 2026-10-08
+
+- Corrección del build de `main` (07:17 UTC): el filtro «Con no conformes» de
+  los reportes de conformidad buscaba por `nonconforming_count`, un cálculo
+  no almacenado. Los contadores del certificado (renglones, sin resultado,
+  no conformes) pasan a almacenados. Sin migración.
+
+## 19.0.57.131.0 — 2026-10-08
+
+Correcciones de Jose (2026-10-08, puntos 3, 4 y 5.1).
+
+- **C1.11** se atribuye a quien dio el dictamen (`verdict_by_id`,
+  `date_verdict`), no a `write_uid`.
+- **Aprobaciones que «se caían» al actualizar**: las migraciones del SGI
+  corren antes de que `quimibond_sgi_studio` entre al registro; sin el
+  satélite todo botón se lee «por sincronizar» y así quedaban grabados los
+  faltantes de C1.02 y C1.11 (06:31 UTC) y fallaba el intento de sincronizar
+  C1.10 en 57.127.0. Con el satélite instalado pero sin cargar, los faltantes
+  de aprobación por botón no se dictaminan; el satélite (1.0.4) sincroniza y
+  refresca al cargar. Los roles 1202 y 1203 de C1.10 se sincronizaron por MCP
+  el mismo día (reglas 74 y 75).
+- **C1.05**: las entradas «Lista de materiales» y «Ruta preliminar»
+  (mrp.bom) se ligan con la cotización por el artículo del proyecto
+  (`sgi_dev_product_tmpl_ids` nuevo en el proyecto).
+- **Envío de muestra**: cuando el cliente aprueba, las características que
+  van a su especificación quedan marcadas «Aprobado por el cliente».
+- **Migración** `19.0.57.131.0`: mediciones y «match» de las entradas de C1.05.
+
+## 19.0.57.130.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.4: reporte de conformidad impreso desde la tabla.
+
+- **Agregado** `sgi.dev.coa` (SGI → Sistema → Reportes de conformidad de
+  desarrollos; botón «Reporte de conformidad» en el proyecto y en el envío de
+  muestra): un certificado por lote con los renglones de la tabla marcados
+  **«En certificado»**, el valor obtenido en el lote (precargado con el
+  promedio de la corrida) y si cumple **la especificación del cliente**; el
+  control interno nunca se imprime (brief §5.1). PDF bilingüe con la clave
+  del formato del lote (F-P-C07-01).
+- **Emitir** sella quién y cuándo, genera el PDF y lo adjunta al certificado,
+  al envío (viaja en el correo al cliente) y, si el envío tiene baja de
+  almacén, como CoA de esa salida (circuito de CoA de las entregas). Sin valor
+  obtenido en algún renglón no se emite; emitido no se borra.
+- Desde el envío: un certificado por lote de los rollos avisados, con sus
+  metros y rollos; no se repite.
+- **Migración** `19.0.57.130.0`: solo expone los modelos nuevos al MCP.
+
+## 19.0.57.129.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.3: envío de la muestra y respuesta del cliente
+como registro propio (brief §6.11).
+
+- **Agregado** `sgi.dev.shipment` (SGI → Sistema → Envíos de muestra de
+  desarrollos; también desde la pestaña Desarrollo del proyecto, en las
+  etapas Muestra y Respuesta del cliente): fecha, medio de entrega
+  (paquetería, recoge el cliente, entrega directa), paquetería de la lista
+  «Paquetería» y guía, **rollos avisados** con lote, metros, ancho y kilos,
+  documentos que acompañan (CoA del lote cuando el bloque 3.4 lo imprima).
+- **Candado**: sin el dictamen de Diseño de Producto sobre la corrida (C1.11)
+  no hay baja ni envío. «Crear baja de muestras» hace la salida con el tipo
+  de operación del parámetro (producción: 267 «Baja de Muestras»), el
+  artículo y los metros de los rollos; al validarse la baja el envío queda
+  registrado y el proyecto pasa a «Respuesta del cliente». Sin baja en Odoo,
+  «Registrar envío» exige lo mismo.
+- **Correo listo** para Administración de Ventas (plantilla con rollos,
+  medio y guía; actividad al puesto del parámetro): al mandarlo quedan fecha
+  y quién.
+- **Respuesta del cliente** como selección con medio, fecha, quién, referencia
+  y **evidencia adjunta obligatoria**: aprueba (proyecto a Pilotaje, artículo
+  «En pilotaje»), pide cambios (sube revisión con lo que pide y vuelve a
+  Muestra) o rechaza (motivo de la lista «Motivo de rechazo del cliente» y
+  cierre sin producto).
+- **Seguimiento** si el cliente no contesta: cron diario, días en parámetro
+  (vacío: apagado, el brief no lo define).
+- **Medición**: C1.12 por el envío registrado (entregable nuevo C1-ENVIO);
+  C1.13 por la respuesta registrada (C1-RESPUESTA deja el paso por la etapa).
+- Listas nuevas sin renglones: «Paquetería» y «Motivo de rechazo del cliente».
+- **Migración** `19.0.57.129.0`: parámetros por nombre (baja «Baja de
+  Muestras», aviso «Administrador de Ventas») si están vacíos; mediciones;
+  MCP.
+
 ## 19.0.57.128.2 — 2026-10-08
 
 - Corrección del build de `main` (06:08 UTC): en la vista heredada de la

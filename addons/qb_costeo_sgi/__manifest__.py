@@ -20,7 +20,7 @@ Puente entre el cotizador (`qb_cotizador`) y el SGI (`quimibond_sgi`), spec
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Sales',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'license': 'LGPL-3',
     'auto_install': True,
     'depends': ['qb_costeo', 'qb_cotizador', 'quimibond_sgi'],

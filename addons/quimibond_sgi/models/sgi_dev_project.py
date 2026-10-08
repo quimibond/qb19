@@ -74,6 +74,8 @@ OPTION_KINDS = [
     ('requisito_legal', "Requisito legal o reglamentario"),
     ('motivo_no_factible', "Motivo de no factibilidad"),
     ('motivo_ajuste', "Motivo de ajuste de parámetro de proceso"),  # 57.126.0 (C1, bloque G)
+    ('paqueteria', "Paquetería"),  # 57.129.0 (Jose 3.3): medio de envío de la muestra
+    ('motivo_rechazo_cliente', "Motivo de rechazo del cliente"),  # 57.129.0 (Jose 3.3)
 ]
 # Etapas viejas que no son clientes: no se adivina cliente desde ellas.
 NON_CUSTOMER_STAGES = {'hecha', 'cancelada', 'odoo', 'nuevo', 'por hacer', 'analisis de proyectos',
@@ -107,6 +109,8 @@ MCP_MODELS = {
     'ficha.tecnica.tejido': True, 'ficha.tecnica.acabado': True, 'project.project.stage': False,
     'sgi.dev.similar': False, 'sgi.dev.similar.line': False,  # 57.122.0: asistente, solo lectura
     'sgi.machine.sheet': True, 'sgi.machine.sheet.param': True,  # 57.126.0: ficha de tejido con real / ajuste
+    'sgi.dev.shipment': True, 'sgi.dev.shipment.roll': True,  # 57.129.0: envío de muestra y respuesta del cliente
+    'sgi.dev.coa': True, 'sgi.dev.coa.line': True,  # 57.130.0: reporte de conformidad desde la tabla
 }
 
 

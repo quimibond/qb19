@@ -126,8 +126,9 @@ class QbTejidoRitmo(models.Model):
         la ventana. Devuelve (intervalos escritos, ritmos escritos)."""
         company = self.env.company
         P = self.env['qb.parametro']
-        hasta = hasta or (date.today() + timedelta(days=1))
-        desde = desde or (hasta - timedelta(days=15))
+        # Por MCP las fechas llegan como texto.
+        hasta = fields.Date.to_date(hasta) or (date.today() + timedelta(days=1))
+        desde = fields.Date.to_date(desde) or (hasta - timedelta(days=15))
         params = self._params()
         centros = self._centros_tejido()
         wcs = centros.mapped('workcenter_ids')
