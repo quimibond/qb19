@@ -175,3 +175,4 @@ from . import test_dev_sample
 from . import test_dev_process_sheet
 from . import test_dev_corrections
 from . import test_dev_customer
+from . import test_dev_shipment

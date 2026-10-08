@@ -67,6 +67,23 @@ class ResConfigSettings(models.TransientModel):
         help="Si el artículo lleva teñido, la muestra no baja de esta carga. Vacío: no entra al cálculo (el "
              "brief lo deja por máquina y sin valor).")
 
+    # 57.129.0 (C1, Jose 3.3): envío de la muestra y respuesta del cliente.
+    sgi_dev_sample_out_picking_type_id = fields.Many2one(
+        'stock.picking.type', string="Tipo de operación de la baja de muestras",
+        config_parameter='quimibond_sgi.dev_sample_out_picking_type_id', domain="[('code', '=', 'outgoing')]",
+        help="Con el que sale la muestra al cliente desde el envío registrado en el proyecto (producción: «Baja de "
+             "Muestras»).")
+    sgi_dev_shipment_notify_job_id = fields.Many2one(
+        'hr.job', string="Puesto que avisa al cliente el envío de la muestra",
+        config_parameter='quimibond_sgi.dev_shipment_notify_job_id',
+        help="Recibe la actividad «Avisar al cliente el envío de la muestra» con el correo listo (por omisión, "
+             "Administrador de Ventas).")
+    sgi_dev_shipment_followup_days = fields.Integer(
+        string="Días sin respuesta del cliente para dar seguimiento",
+        config_parameter='quimibond_sgi.dev_shipment_followup_days',
+        help="Tras el aviso al cliente, cada estos días sin respuesta se abre una actividad de seguimiento a quien "
+             "mandó el aviso. Vacío o 0: sin seguimiento automático (el brief no define el plazo).")
+
     # 57.126.0 (C1, bloque G): quién valida los parámetros reales de la ficha de tejido.
     sgi_dev_validator_job_tejido_id = fields.Many2one(
         'hr.job', string="Valida la ficha de proceso de tejido", config_parameter='quimibond_sgi.dev_validator_job_tejido_id',

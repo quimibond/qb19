@@ -199,3 +199,24 @@ Manufactura, mide Laboratorio) y real / ajuste / motivo por parámetro.
 **Las fichas de tintorería y acabado las construye Jose Sacramento en
 `quimibond_ficha_tecnica_tela`** (Jose, 2026-10-08): el SGI solo deja el
 enganche en la orden de muestra. Catálogo «Motivo de ajuste» sin renglones.
+
+## 11. Bloque 3.3 — 6.11 Envío de muestra y respuesta del cliente (2026-10-08)
+
+`quimibond_sgi` 57.129.0 (`models/sgi_dev_shipment.py`): registro propio
+`sgi.dev.shipment` por muestra enviada (fecha, medio, paquetería de lista,
+guía, rollos con lote / metros / ancho / kilos, documentos que acompañan),
+candado del dictamen de Diseño sobre la corrida (C1.11) antes de la baja,
+baja de almacén creada desde el envío (tipo de operación en parámetro;
+producción 267 «Baja de Muestras»), correo listo para Administración de
+Ventas (plantilla + actividad), respuesta del cliente (aprueba → Pilotaje y
+artículo «En pilotaje»; pide cambios → revisión y vuelve a Muestra; rechaza →
+motivo de lista y cierre sin producto) con evidencia obligatoria, y
+seguimiento por cron con días en parámetro vacío. C1.12 se mide por el envío
+(C1-ENVIO) y C1.13 por la respuesta (C1-RESPUESTA deja la etapa).
+Decisiones tomadas sin preguntar: (1) la respuesta vive en el envío (una
+respuesta por muestra enviada); (2) «pide cambios» regresa el proyecto a
+Muestra porque habrá otra corrida; (3) el CoA del lote se adjunta a mano al
+envío hasta que el bloque 3.4 lo imprima desde la tabla. Listas nuevas sin
+renglones: «Paquetería» y «Motivo de rechazo del cliente»; parámetro vacío:
+días de seguimiento.
+

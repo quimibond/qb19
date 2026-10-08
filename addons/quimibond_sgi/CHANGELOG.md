@@ -13,6 +13,40 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.129.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.3: envío de la muestra y respuesta del cliente
+como registro propio (brief §6.11).
+
+- **Agregado** `sgi.dev.shipment` (SGI → Sistema → Envíos de muestra de
+  desarrollos; también desde la pestaña Desarrollo del proyecto, en las
+  etapas Muestra y Respuesta del cliente): fecha, medio de entrega
+  (paquetería, recoge el cliente, entrega directa), paquetería de la lista
+  «Paquetería» y guía, **rollos avisados** con lote, metros, ancho y kilos,
+  documentos que acompañan (CoA del lote cuando el bloque 3.4 lo imprima).
+- **Candado**: sin el dictamen de Diseño de Producto sobre la corrida (C1.11)
+  no hay baja ni envío. «Crear baja de muestras» hace la salida con el tipo
+  de operación del parámetro (producción: 267 «Baja de Muestras»), el
+  artículo y los metros de los rollos; al validarse la baja el envío queda
+  registrado y el proyecto pasa a «Respuesta del cliente». Sin baja en Odoo,
+  «Registrar envío» exige lo mismo.
+- **Correo listo** para Administración de Ventas (plantilla con rollos,
+  medio y guía; actividad al puesto del parámetro): al mandarlo quedan fecha
+  y quién.
+- **Respuesta del cliente** como selección con medio, fecha, quién, referencia
+  y **evidencia adjunta obligatoria**: aprueba (proyecto a Pilotaje, artículo
+  «En pilotaje»), pide cambios (sube revisión con lo que pide y vuelve a
+  Muestra) o rechaza (motivo de la lista «Motivo de rechazo del cliente» y
+  cierre sin producto).
+- **Seguimiento** si el cliente no contesta: cron diario, días en parámetro
+  (vacío: apagado, el brief no lo define).
+- **Medición**: C1.12 por el envío registrado (entregable nuevo C1-ENVIO);
+  C1.13 por la respuesta registrada (C1-RESPUESTA deja el paso por la etapa).
+- Listas nuevas sin renglones: «Paquetería» y «Motivo de rechazo del cliente».
+- **Migración** `19.0.57.129.0`: parámetros por nombre (baja «Baja de
+  Muestras», aviso «Administrador de Ventas») si están vacíos; mediciones;
+  MCP.
+
 ## 19.0.57.128.2 — 2026-10-08
 
 - Corrección del build de `main` (06:08 UTC): en la vista heredada de la
