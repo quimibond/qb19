@@ -14,7 +14,7 @@
                     </div>
                 </button>
             </xpath>
-            <!-- 1.3.0 (Jessica 2026-10-08): las cotizaciones del desarrollo en la pestaña «Cotización» del SGI. -->
+            <!-- 1.3.0 (Administración de Ventas 2026-10-08): las cotizaciones del desarrollo en la pestaña «Cotización» del SGI. -->
             <xpath expr="//div[@name='sgi_dev_quotes']" position="inside">
                 <div class="d-flex justify-content-between align-items-center mb-1">
                     <span class="o_horizontal_separator text-uppercase fw-bolder small">Cotizaciones del desarrollo</span>

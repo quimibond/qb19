@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""57.137.0 (Jessica 2026-10-08, punto 9): **solicitud de modificación del proyecto**.
+"""57.137.0 (revisión de Administración de Ventas 2026-10-08, punto 9): **solicitud de modificación del proyecto**.
 
-Cuando la muestra no dio el resultado o el cliente pide cambios, Selena llena la solicitud de
+Cuando la muestra no dio el resultado o el cliente pide cambios, Diseño de Producto llena la solicitud de
 modificación: qué cambia, la causa, los **5 porqués**, la solución y las **fases afectadas**; la
 firma Dirección de Operaciones. Firmada, abre la revisión siguiente del desarrollo (si la respuesta
 del cliente no la abrió ya) y el proyecto vuelve a «Muestra». El brief (C1.13) había sustituido el
 formato «Modificación de proyectos» (3966) por la bitácora de revisiones; la bitácora sigue (cada
 cambio de especificación queda ahí) y la solicitud es el registro formal del cambio (ISO 9001:2015
-8.3.6). La respuesta «pide cambios» del envío deja una solicitud en borrador para que Selena la
+8.3.6). La respuesta «pide cambios» del envío deja una solicitud en borrador para que Diseño de Producto la
 complete.
 """
 import base64
@@ -194,7 +194,7 @@ class SgiDevShipmentChange(models.Model):
 
     def action_register_response(self):
         """La respuesta «pide cambios» deja una solicitud de modificación en borrador con la revisión
-        que acaba de abrir, para que Selena la complete y Dirección la firme."""
+        que acaba de abrir, para que Diseño de Producto la complete y Dirección la firme."""
         res = super().action_register_response()
         Request = self.env['sgi.dev.change.request']
         for ship in self.filtered(lambda s: s.response == 'cambios' and s.project_id):

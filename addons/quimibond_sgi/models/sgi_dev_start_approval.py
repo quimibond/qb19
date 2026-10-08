@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""57.137.0 (Jessica 2026-10-08, punto 4; brief §6.8 «Aprobación para iniciar un proyecto»).
+"""57.137.0 (revisión de Administración de Ventas 2026-10-08, punto 4; brief §6.8 «Aprobación para iniciar un proyecto»).
 
 La **aprobación para iniciar el proyecto** es un documento que se genera desde el proyecto (y
-la cotización, cuando ``qb_costeo_sgi`` está instalado), nunca a mano: lo llena Selena con lo que
-el cliente compartió, Jessica lo manda al cliente y el cliente lo firma, manda una orden de compra
+la cotización, cuando ``qb_costeo_sgi`` está instalado), nunca a mano: lo llena Diseño de Producto con lo que
+el cliente compartió, Administración de Ventas lo manda al cliente y el cliente lo firma, manda una orden de compra
 o aprueba por WhatsApp. El documento ya lleva el **folio FT**: al generarlo se asigna si no lo
 tenía (antes el folio llegaba al pasar a «Muestra»; esa asignación sigue como respaldo). La
 evidencia de la respuesta del cliente se sigue registrando con «Registrar aprobación del cliente».

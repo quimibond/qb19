@@ -364,7 +364,7 @@ Cotización → Aprobación del cliente → Muestra → Respuesta del cliente �
 Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
 campo Cliente. El nombre se arma solo (folio, código, revisión). Desde
 57.134.0 la ficha tiene dos secciones de pestañas: «Desarrollo de producto»
-(desde 57.136.0 una por etapa de C1 con los nombres de Jessica: Análisis de
+(desde 57.136.0 una por etapa de C1 con los nombres del proceso que da Administración de Ventas: Análisis de
 mercado industrial, Análisis de proyecto, Cotización, Aprobación del
 cliente, Solicitud de desarrollo, Muestra, Envío de muestra,
 Retroalimentación del cliente, Cambios al proyecto, Pilotaje y liberación,
@@ -377,7 +377,7 @@ encabezado y solo aparece en su etapa; lo que cuelga del desarrollo
 (laboratorio, requisiciones, órdenes de muestra, envíos, certificados,
 pilotajes, fichas, especificaciones, cotizaciones) se abre en los botones
 inteligentes. Las mediciones del SGI filtran por la bandera, ya no por
-`FT-%` en el nombre. Desde 57.137.0 (Jessica): la **aprobación para iniciar
+`FT-%` en el nombre. Desde 57.137.0 (Administración de Ventas): la **aprobación para iniciar
 el proyecto** es un PDF generado desde «Aprobación del cliente» que ya lleva
 el folio FT (se asigna al generarlo) y se manda por correo; la **solicitud
 de modificación** (`sgi.dev.change.request`: causa, 5 porqués, solución,

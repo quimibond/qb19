@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 57.137.0 (C1, Jessica punto 9): solicitud de modificación del proyecto de desarrollo
+    <!-- 57.137.0 (C1, revisión de Administración de Ventas, punto 9): solicitud de modificación del proyecto de desarrollo
          (qué cambia, causa, 5 porqués, solución, fases afectadas; firma Dirección de Operaciones). -->
     <record id="sgi_dev_change_request_view_form" model="ir.ui.view">
         <field name="name">sgi.dev.change.request.form</field>

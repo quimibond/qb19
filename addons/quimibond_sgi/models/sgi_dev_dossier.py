@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""57.137.0 (Jessica 2026-10-08, puntos 3 y final): la **ruta a la vista** y el **expediente de
+"""57.137.0 (revisión de Administración de Ventas 2026-10-08, puntos 3 y final): la **ruta a la vista** y el **expediente de
 diseño y desarrollo** (ISO 9001:2015 8.3 / APQP).
 
-- **Ruta.** La ruta son las operaciones de la lista de materiales del artículo (C1.04b, Yet). Aquí
+- **Ruta.** La ruta son las operaciones de la lista de materiales del artículo (C1.04b, Diseño de Procesos). Aquí
   se ve dentro del proyecto como una cadena de cajas (artículo · operación · centro de trabajo) y
   se edita en la lista de materiales con «Editar ruta». El diagrama de flujo se imprime de ahí.
 - **Expediente.** Un semáforo por requisito del punto 8.3 (planificación, entradas, controles:

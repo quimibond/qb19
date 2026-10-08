@@ -109,7 +109,7 @@ class ProjectProjectDevStart(models.Model):
 
     # 57.128.0: la compuerta de Dirección de Operaciones aplica a la corrida (asistente y orden de
     # fabricación), no al cambio de etapa: el folio FT se asigna al entrar a «Muestra», antes de que
-    # Selena elabore la solicitud que Jorge aprueba. La etapa «Muestra» la abre la aprobación del
+    # Diseño de Producto elabore la solicitud que Dirección de Operaciones aprueba. La etapa «Muestra» la abre la aprobación del
     # cliente (sgi_dev_customer.py).
 
     # ------------------------------------------------------------------------
