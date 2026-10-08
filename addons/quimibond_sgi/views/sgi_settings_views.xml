@@ -95,6 +95,11 @@
                                  help="Recibe la actividad con el correo listo (rollos, medio y guía). Por omisión, Administrador de Ventas.">
                             <field name="sgi_dev_shipment_notify_job_id"/>
                         </setting>
+                        <!-- 57.132.0 (C1, Jose 5.3) -->
+                        <setting string="Puestos que firman la ficha técnica interna"
+                                 help="Seis puestos del brief: Manufactura, Calidad, Inspección y empaque, Diseño de Producto, Dirección de Operaciones y Ventas. Vacío: la ficha nace sin renglones de firma.">
+                            <field name="sgi_dev_tech_sheet_sign_job_ids" widget="many2many_tags"/>
+                        </setting>
                         <setting string="Seguimiento si el cliente no responde (días)"
                                  help="Vacío o 0: sin seguimiento automático. El brief no define el plazo.">
                             <field name="sgi_dev_shipment_followup_days"/>

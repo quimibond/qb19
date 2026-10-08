@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.132.0 (C1, Jose 5.3): ficha técnica interna (F-P-D01-24) con los dos juegos de límites.
+         Documento interno: nunca se entrega al cliente. -->
+    <record id="action_report_dev_tech_sheet" model="ir.actions.report">
+        <field name="name">Ficha técnica interna</field>
+        <field name="model">sgi.dev.tech.sheet</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_tech_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_tech_sheet_document</field>
+        <field name="print_report_name">'Ficha tecnica interna - %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="model_sgi_dev_tech_sheet"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dev_tech_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_dev_tech_sheet'"/>
+                    <div class="page">
+                        <h2 class="text-center">Ficha técnica interna</h2>
+                        <p class="text-center text-muted" style="font-size:10px;">Control interno · uso interno, no se entrega al cliente</p>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:22%"><strong>Artículo</strong></td><td><span t-out="doc.product_id.display_name or doc.project_id.sgi_dev_product_name or '—'"/></td>
+                                <td style="width:18%"><strong>Fecha</strong></td><td><span t-field="doc.date"/></td></tr>
+                            <tr><td><strong>Desarrollo</strong></td><td><span t-out="doc.project_id.sgi_ft_folio or doc.project_id.name"/></td>
+                                <td><strong>Revisión</strong></td><td><span t-out="doc.revision"/></td></tr>
+                            <tr><td><strong>Cliente</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td>
+                                <td><strong>Normas</strong></td><td><span t-out="doc.project_id.sgi_dev_norms or '—'"/></td></tr>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr>
+                                <th>Característica</th><th>Dirección</th><th>Unidad</th>
+                                <th>Especificación del cliente</th><th>Control interno</th><th>Método / norma</th>
+                                <th>Al cliente</th><th>En certificado</th>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="l">
+                                    <td><span t-out="l.name"/></td>
+                                    <td><span t-out="dict(l._fields['direction'].selection).get(l.direction) if l.direction != 'na' else ''"/><t t-if="l.position != 'na'"> <span t-out="dict(l._fields['position'].selection).get(l.position)"/></t></td>
+                                    <td><span t-out="l.unit or ''"/></td>
+                                    <td><span t-out="l.spec_label or ''"/></td>
+                                    <td><span t-out="l.ctrl_label or '—'"/></td>
+                                    <td><span t-out="l.method or ''"/></td>
+                                    <td><t t-if="l.in_customer_spec">Sí</t></td>
+                                    <td><t t-if="l.in_coa">Sí</t></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <h5>Firmas</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Puesto</th><th>Nombre</th><th>Fecha</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.sign_ids" t-as="s">
+                                    <td><span t-out="s.job_id.name"/></td>
+                                    <td><span t-out="s.user_id.name or ''"/></td>
+                                    <td><span t-field="s.date"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table class="table table-sm mt-3" style="font-size:10px; width:50%;">
+                            <tr><td class="text-center" style="border-top:1px solid #000;">Aprobó · Administración de Ventas (C1.15)<br/><span t-out="doc.approved_by_id.name or ''"/><br/><span t-field="doc.approved_at"/></td></tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
