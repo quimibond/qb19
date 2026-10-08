@@ -17,8 +17,10 @@ class TestDevProcessSheet(TransactionCase):
         cls.wc_rama = cls.env['mrp.workcenter'].create({'name': 'RAMA 9 prueba'})
         Users = cls.env['res.users'].with_context(no_reset_password=True)
         grp = cls.env.ref('base.group_user')
-        cls.yet = Users.create({'name': 'Procesos prueba', 'login': 'sgi_ps_yet', 'group_ids': [(6, 0, [grp.id])]})
-        cls.sup = Users.create({'name': 'Supervisor tintorería prueba', 'login': 'sgi_ps_sup', 'group_ids': [(6, 0, [grp.id])]})
+        # La ficha de tejido la escriben los usuarios de Manufactura (acceso existente).
+        mrp = cls.env.ref('mrp.group_mrp_user')
+        cls.yet = Users.create({'name': 'Procesos prueba', 'login': 'sgi_ps_yet', 'group_ids': [(6, 0, [grp.id, mrp.id])]})
+        cls.sup = Users.create({'name': 'Supervisor tintorería prueba', 'login': 'sgi_ps_sup', 'group_ids': [(6, 0, [grp.id, mrp.id])]})
         cls.selena = Users.create({'name': 'Diseño de producto prueba', 'login': 'sgi_ps_selena', 'group_ids': [(6, 0, [grp.id])]})
         Job = cls.env['hr.job']
         cls.job_sup = Job.create({'name': 'SUPERVISOR TINTORERIA (prueba)'})
