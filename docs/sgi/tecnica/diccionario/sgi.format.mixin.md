@@ -12,7 +12,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_format_map.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_format_banner` | Char | Formato SGI |  |  |  | compute `_compute_sgi_format_banner`, sin guardar |  | `addons/quimibond_sgi/models/sgi_format_map.py:913` |
+| `sgi_format_banner` | Char | Formato SGI |  |  |  | compute `_compute_sgi_format_banner`, sin guardar |  | `addons/quimibond_sgi/models/sgi_format_map.py:914` |
 
 ## Métodos públicos (1)
 

@@ -9,6 +9,10 @@
                 <field name="project_id" readonly="state != 'borrador'"/>
                 <field name="project_revision" invisible="not project_id"/>
             </xpath>
+            <xpath expr="//field[@name='solicitada_el']" position="after">
+                <field name="approval_request_id"/>
+                <field name="approval_request_status" invisible="not approval_request_id"/>
+            </xpath>
             <xpath expr="//button[@name='action_calcular']" position="after">
                 <button name="action_tomar_del_proyecto" type="object" string="Tomar datos del proyecto"
                         invisible="not project_id or state != 'borrador'"/>

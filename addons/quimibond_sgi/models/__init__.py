@@ -78,7 +78,16 @@ from . import sgi_dev_analysis
 from . import sgi_dev_measure
 from . import sgi_dev_board
 from . import sgi_dev_process
+# 57.124.0 (C1, bloque E): arranque del desarrollo (compuerta, aviso, existencias, requisición).
+from . import sgi_dev_start
+# 57.125.0 (C1, bloque F): orden de muestra desde el proyecto.
+from . import sgi_dev_sample
+# 57.128.0 (Jose 3.1): aprobación del cliente para iniciar.
+from . import sgi_dev_customer
 from . import sgi_machine_sheet
+# 57.126.0 (C1, bloque G): ruta y ficha de tejido. Hereda sgi.machine.sheet: va después de él
+# (57.128.1: el build de main cayó con «Model 'sgi.machine.sheet' does not exist in registry»).
+from . import sgi_dev_process_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign
 from . import sgi_mp_change

@@ -13,6 +13,144 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.128.2 — 2026-10-08
+
+- Corrección del build de `main` (06:08 UTC): en la vista heredada de la
+  orden de fabricación (57.125.0) el ancla `//field[@name='origin']` caía
+  dentro de la sub-vista de `stock.move` («El campo sgi_dev_project_id no
+  existe en el modelo stock.move»). Los campos del desarrollo van ahora en una
+  pestaña «Desarrollo» del cuaderno de la orden. Sin migración.
+
+## 19.0.57.128.1 — 2026-10-08
+
+- Corrección del build de `main` (05:56 UTC): `sgi_dev_process_sheet` hereda
+  `sgi.machine.sheet` y se importaba antes que él en `models/__init__.py`
+  («Model 'sgi.machine.sheet' does not exist in registry»). El import va
+  después. Sin migración.
+
+## 19.0.57.128.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.1: aprobación del cliente para iniciar.
+
+- **Registro de cómo aprobó el cliente** en la pestaña Desarrollo: medio de
+  lista (correo, orden de compra, WhatsApp, cotización firmada; «Dirección»
+  para los internos), fecha, quién aprobó (contacto del cliente), referencia
+  y **evidencia adjunta**. «Registrar aprobación del cliente» sella quién y
+  cuándo y pasa el proyecto a «Muestra», donde recibe su folio FT.
+- **Compuerta de la etapa «Muestra»:** sin ese registro el proyecto no entra
+  a «Muestra» ni más adelante (los 74 que ya están ahí no se tocan; cerrar
+  sin producto no la pide). La compuerta de Dirección de Operaciones del
+  bloque E deja de aplicar al cambio de etapa (el folio se asigna antes de
+  que Selena elabore la solicitud que Jorge aprueba) y se queda donde
+  corresponde: la corrida de muestra (asistente y orden de fabricación).
+- La requisición de materia prima también cierra la espera cuando se
+  aprueba o rechaza desde Aprobaciones (los botones, no solo cancelar).
+- Sin migración.
+
+## 19.0.57.127.0 — 2026-10-08
+
+Correcciones de Jose a C1 tras revisar producción en 57.123.2 (punto 1).
+
+- **C1.04b:** canal «Odoo»; la ruta se atribuye a quien la asigna: la lista
+  de materiales gana «Ruta asignada por» y «Ruta asignada el», que se sellan
+  al guardar las operaciones, y C1-RUTA mide con ellos (ya no `write_uid`).
+  El plazo se queda vacío a propósito.
+- **C1.13 y C1.14:** el reloj por etapa (`sgi.dev.stage.log`) guarda quién
+  movió el proyecto a la etapa (`user_id`); C1-RESPUESTA y C1-APROBADO miden
+  con ese campo y se apaga «quién lo pasó a su estado (historial)».
+- **C1.09 y C1.10 por proyecto:** C1-OP-MUESTRA cuenta las órdenes de
+  muestra nacidas del proyecto y emitidas (confirmadas) por Planeación
+  (`sgi_dev_issued_by_id`); C1-MUESTRA, las corridas validadas con el botón
+  nuevo **«Validar corrida»** de la orden terminada (`sgi_dev_run_validated_by_id`).
+  Las órdenes de julio del tipo 86 sin proyecto dejan de contar.
+- **Aprobaciones de C1.10** (supervisores de producción y Jefe de
+  Manufactura) apuntan al botón «Validar corrida»; la migración intenta
+  sincronizarlas y anota el estado. Ese botón es también el enganche de las
+  fichas de proceso de tintorería y acabado que construye Jose Sacramento.
+- **Migración:** lo anterior; no toca nombres, pasos, roles ni el menú de
+  C1.08 que Jose cambió a mano.
+
+## 19.0.57.126.0 — 2026-10-08
+
+C1, bloque G (brief §6.7: Ruta y fichas de proceso), acotado a lo que es del
+SGI. **Las fichas de tintorería y acabado no van aquí:** las construye Jose
+Sacramento en `quimibond_ficha_tecnica_tela` (decisión de Jose 2026-10-08);
+el punto de enganche es la orden de muestra (`mrp.production.sgi_dev_project_id`,
+sus órdenes de trabajo y el botón «Validar corrida» de 57.127.0).
+
+- **Diagrama de flujo de proceso (F-P-D01-32) impreso desde la ruta:** botón
+  en la pestaña Desarrollo; lista las operaciones de la lista de materiales
+  de crudo → teñido → acabado con su centro de trabajo y tiempo estándar. No
+  se dibuja.
+- **Ficha de tejido (`sgi.machine.sheet`):** firmas corregidas a puestos
+  vigentes (Propuso: Diseño y Desarrollo de Procesos; Validó: Jefe de
+  Manufactura, parámetro sembrado por nombre; Midió: Laboratorio; el
+  mecánico participa), botones «Proponer» / «Validar», proyecto y orden de
+  la corrida, y por parámetro el valor real, número de ajuste y motivo de
+  lista (catálogo «Motivo de ajuste de parámetro» de `sgi.dev.option`, sin
+  renglones hasta que Diseño de Procesos los defina). Las columnas no
+  cambian de nombre (producción tiene 0 fichas).
+- **Migración:** siembra el puesto que valida la ficha de tejido si está
+  vacío y expone la ficha al MCP.
+
+## 19.0.57.125.0 — 2026-10-08
+
+C1, bloque F (brief §6.10: Orden de muestra).
+
+- **«Pedir corrida de muestra»** en la pestaña Desarrollo del proyecto
+  (`sgi.dev.sample.wizard`): artículo del proyecto (crudo por omisión, o
+  teñido / acabado), cantidad, fecha deseada de máquina, tipo de operación y
+  ubicación del sobrante. Exige la Solicitud de desarrollo aprobada (bloque
+  E) y la lista de materiales del artículo.
+- **Cantidad sugerida con motivo:** la mayor entre lo que pide el cliente
+  (cantidad de la muestra de la solicitud), los metros PQ del parámetro
+  (50 m) entre el rendimiento de primera esperado (parámetro vacío: 100 %) y
+  el mínimo de baño de tintorería si lleva teñido (parámetro vacío: no
+  entra). Se pasa a kg con el rendimiento m/kg de la tabla de
+  características (1000 / (masa × ancho)). Diseño de Procesos la puede
+  ajustar.
+- **La orden le llega armada a Planeación:** artículo, folio FT en origen,
+  tipo de operación «Tejido Desarrollo» (parámetro, sembrado por nombre),
+  lista de materiales y ruta, sobrante a 31 Desarrollos (parámetro,
+  sembrado por nombre), `sgi_dev_project_id` en la orden; actividad al
+  Planeador de Producción (parámetro, sembrado por nombre).
+- **Fecha de máquina en el proyecto:** una tarea «Corrida de muestra …» con
+  la fecha deseada; al cambiar `date_start` de la orden, la tarea se mueve
+  sola. Al terminar la orden, el proyecto lo anota.
+- Botón «n orden(es) de muestra» en el proyecto; campos en la orden de
+  fabricación. Ajustes → SGI → Desarrollo de producto: seis parámetros.
+- **Migración:** siembra tipo de operación, ubicación y puesto de Planeación
+  por nombre y los 50 m PQ si están vacíos.
+
+## 19.0.57.124.0 — 2026-10-08
+
+C1, bloque E (brief §6.9: Solicitud de desarrollos y arranque).
+
+- **Compuerta de Dirección de Operaciones.** Sin la aprobación de la
+  solicitud (botón de C1.07) el proyecto no pasa a «Muestra» ni se confirma
+  una orden de fabricación de un artículo en desarrollo. Los proyectos que
+  ya estaban en Muestra o después no se tocan.
+- **Aviso a las partes interesadas** al aprobar, con el PDF de la solicitud
+  adjunto (la clave nueva F-C1-01 / 11 / 15 / 16 ya salía por
+  `sgi.format.map`): puestos del parámetro
+  `quimibond_sgi.dev_request_notify_job_ids` (la migración siembra Diseño de
+  Procesos, Jefe de Manufactura, Coordinador de Laboratorio y MP, Jefe de
+  Inventarios y Almacenes e Ingeniero de Calidad por nombre) más las personas
+  de `dev_request_notify_user_ids` (vacío: Inspección no tiene puesto, lo
+  decide Jose). Ajustes → SGI → Desarrollo de producto.
+- **Existencias de la materia prima de la muestra** (`sgi.dev.mp.line`): al
+  aprobar, y con el botón «Revisar existencias», se explota la lista de
+  materiales del artículo hasta las hojas compradas con la cantidad de la
+  muestra (kg o m según el artículo) y se compara contra la existencia libre.
+- **Requisición a Compras ligada al proyecto** (`approval.request` de la
+  categoría de compras, `sgi_dev_project_id`; sustituye al Word F-P-D01-16)
+  con lo que falta; arranca el reloj de materia prima y lo detiene cuando las
+  compras se recibieron o la requisición se rechazó (al cambiar de estado y
+  cron diario `cron_sgi_dev_mp_wait`). La requisición cuenta en S1-NECESIDAD
+  como las demás.
+- Sin cambios en las fichas de C1 ni en los datos de Jose.
+- **Migración:** siembra el parámetro de puestos si está vacío.
+
 ## 19.0.57.123.2 — 2026-10-08
 
 - Corrección de producción: la tarjeta de un desarrollo tronaba con

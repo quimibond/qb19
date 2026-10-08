@@ -37,8 +37,39 @@
                                 confirm="El desarrollo no es factible: el proyecto cierra sin producto. ¿Continuar?"/>
                         <button name="action_sgi_dev_print_sample_label" type="object" string="Etiqueta de la muestra" class="btn-secondary" icon="fa-tag"
                                 invisible="not sgi_dev_sample_received"/>
+                        <!-- 57.125.0 (C1, bloque F): la corrida de muestra se pide desde el proyecto. -->
+                        <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-primary" icon="fa-cogs"
+                                invisible="sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto') or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
+                        <button name="action_sgi_dev_view_mos" type="object" class="btn-link" icon="fa-industry"
+                                invisible="not sgi_dev_mo_count">
+                            <field name="sgi_dev_mo_count" readonly="1" class="oe_inline"/> orden(es) de muestra
+                        </button>
+                        <!-- 57.126.0 (C1, bloque G): ruta y fichas de proceso. -->
+                        <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"/>
                 
                     </div>
+                    <!-- 57.128.0 (Jose 3.1): aprobación del cliente para iniciar; abre la etapa «Muestra». -->
+                    <group string="Aprobación del cliente para iniciar" name="sgi_dev_customer_approval"
+                           invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
+                        <group>
+                            <field name="sgi_dev_customer_approval_medium" readonly="sgi_dev_customer_approved_at"/>
+                            <field name="sgi_dev_customer_approval_date" readonly="sgi_dev_customer_approved_at"/>
+                            <field name="sgi_dev_customer_approval_contact_id" readonly="sgi_dev_customer_approved_at"
+                                   domain="[('commercial_partner_id', '=', partner_id)]" context="{'default_parent_id': partner_id}"/>
+                            <field name="sgi_dev_customer_approval_ref" readonly="sgi_dev_customer_approved_at"/>
+                        </group>
+                        <group>
+                            <field name="sgi_dev_customer_approval_file" filename="sgi_dev_customer_approval_filename" readonly="sgi_dev_customer_approved_at"/>
+                            <field name="sgi_dev_customer_approval_filename" invisible="1"/>
+                            <field name="sgi_dev_customer_approved_at"/>
+                            <field name="sgi_dev_customer_approved_by_id"/>
+                            <div colspan="2">
+                                <button name="action_sgi_dev_register_customer_approval" type="object" string="Registrar aprobación del cliente"
+                                        class="btn-primary" icon="fa-check" invisible="sgi_dev_customer_approved_at"
+                                        confirm="Registra la aprobación del cliente con la evidencia adjunta y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
+                            </div>
+                        </group>
+                    </group>
                     <group>
                         <group string="Identidad">
                             <field name="sgi_dev_product_name"/>

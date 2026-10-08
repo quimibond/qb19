@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_tejido_intervalo_list" model="ir.ui.view">
+        <field name="name">qb.tejido.intervalo.list</field>
+        <field name="model">qb.tejido.intervalo</field>
+        <field name="arch" type="xml">
+            <list create="false" editable="bottom" decoration-danger="clase == 'paro'" decoration-warning="clase == 'cambio'" decoration-muted="clase in ('captura_atrasada', 'sin_referencia', 'primer_rollo')">
+                <field name="workcenter_id" readonly="1"/>
+                <field name="fecha_local" readonly="1"/>
+                <field name="turno" readonly="1" optional="hide"/>
+                <field name="roll_number" readonly="1"/>
+                <field name="default_code" readonly="1"/>
+                <field name="kg" readonly="1" sum="kg"/>
+                <field name="horas_netas" readonly="1"/>
+                <field name="horas_referencia" readonly="1" optional="hide"/>
+                <field name="clase" readonly="1"/>
+                <field name="horas_corrida" readonly="1" sum="Corrida"/>
+                <field name="horas_paro" readonly="1" sum="Paro"/>
+                <field name="horas_cambio" readonly="1" sum="Cambio"/>
+                <field name="horas_sin_medir" readonly="1" sum="Sin medir" optional="hide"/>
+                <field name="motivo_paro" readonly="clase != 'paro'"/>
+                <field name="semana" readonly="1" optional="hide"/>
+                <field name="mes" readonly="1" optional="hide"/>
+                <field name="production_id" readonly="1" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_qb_tejido_intervalo_pivot" model="ir.ui.view">
+        <field name="name">qb.tejido.intervalo.pivot</field>
+        <field name="model">qb.tejido.intervalo</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="workcenter_id" type="row"/>
+                <field name="semana" type="col"/>
+                <field name="horas_corrida" type="measure"/>
+                <field name="horas_paro" type="measure"/>
+                <field name="horas_cambio" type="measure"/>
+                <field name="horas_sin_medir" type="measure"/>
+                <field name="kg_corrida" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_qb_tejido_intervalo_graph" model="ir.ui.view">
+        <field name="name">qb.tejido.intervalo.graph</field>
+        <field name="model">qb.tejido.intervalo</field>
+        <field name="arch" type="xml">
+            <graph type="bar" stacked="True">
+                <field name="semana"/>
+                <field name="clase"/>
+                <field name="horas_netas" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_qb_tejido_intervalo_search" model="ir.ui.view">
+        <field name="name">qb.tejido.intervalo.search</field>
+        <field name="model">qb.tejido.intervalo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="workcenter_id"/>
+                <field name="default_code"/>
+                <field name="roll_number"/>
+                <filter name="paros" string="Paros" domain="[('clase', '=', 'paro')]"/>
+                <filter name="paros_sin_motivo" string="Paros sin motivo" domain="[('clase', '=', 'paro'), ('motivo_paro', '=', False)]"/>
+                <filter name="cambios" string="Cambios de artículo" domain="[('clase', '=', 'cambio')]"/>
+                <filter name="corrida" string="Corrida" domain="[('clase', 'in', ('corrida', 'pesado_junto'))]"/>
+                <filter name="dia" string="Turno de día" domain="[('turno', '=', 'dia')]"/>
+                <filter name="noche" string="Turno de noche" domain="[('turno', '=', 'noche')]"/>
+                <group>
+                    <filter name="por_maquina" string="Máquina" context="{'group_by': 'workcenter_id'}"/>
+                    <filter name="por_semana" string="Semana" context="{'group_by': 'semana'}"/>
+                    <filter name="por_clase" string="Clase" context="{'group_by': 'clase'}"/>
+                    <filter name="por_turno" string="Turno" context="{'group_by': 'turno'}"/>
+                    <filter name="por_articulo" string="Artículo" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_qb_tejido_intervalo" model="ir.actions.act_window">
+        <field name="name">Intervalos de tejido</field>
+        <field name="res_model">qb.tejido.intervalo</field>
+        <field name="view_mode">pivot,graph,list</field>
+        <field name="context">{'search_default_por_maquina': 1}</field>
+    </record>
+    <record id="action_qb_tejido_paros_motivo" model="ir.actions.act_window">
+        <field name="name">Paros por motivo</field>
+        <field name="res_model">qb.tejido.intervalo</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="domain">[('clase', '=', 'paro')]</field>
+        <field name="context">{'search_default_paros_sin_motivo': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin paros en el periodo</p>
+            <p>Cada paro de máquina detectado por el pesaje. El supervisor de tejido captura el motivo.</p>
+        </field>
+    </record>
+</odoo>

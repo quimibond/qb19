@@ -162,3 +162,40 @@ Parámetros que quedan **vacíos** porque el brief no los define: suplente,
 margen mínimo, descuento de la escalera. Pendiente de Jose: la plantilla del
 PDF comercial (dijo que él la cambia) y el documento «Aprobación para iniciar
 un proyecto» (anexo A), que no entra en este bloque.
+
+## 8. Bloque E — 6.9 Solicitud de desarrollos y arranque (2026-10-08)
+
+`quimibond_sgi` 57.124.0 (`models/sgi_dev_start.py`): compuerta de Dirección
+de Operaciones (sin solicitud aprobada no hay «Muestra» ni orden de
+fabricación del artículo en desarrollo), aviso con PDF a las partes
+interesadas (puestos por parámetro, sembrados por nombre; personas sin
+puesto en otro parámetro, vacío), existencias de la materia prima de la
+muestra (`sgi.dev.mp.line`, explosión de la lista de materiales hasta las
+hojas) y requisición a Compras ligada al proyecto (`approval.request`,
+`sgi_dev_project_id`) que mueve el reloj de materia prima. El PDF con clave
+nueva ya salía desde el bloque 1.
+
+Queda para Jose: a quién avisar por Inspección (José Luis Almazán no tiene
+puesto) y si la aprobación de la requisición la firma solo Dirección de
+Operaciones (hoy la categoría de Aprobaciones tiene su propio aprobador).
+
+## 9. Bloque F — 6.10 Orden de muestra (2026-10-08)
+
+`quimibond_sgi` 57.125.0 (`models/sgi_dev_sample.py`): «Pedir corrida de
+muestra» desde el proyecto con cantidad sugerida y motivo (cliente / 50 m PQ
+entre rendimiento esperado / mínimo de baño), orden de fabricación armada
+para Planeación (artículo, folio en origen, Tejido Desarrollo, lista de
+materiales y ruta, sobrante a 31 Desarrollos, `sgi_dev_project_id`), tarea
+del proyecto con la fecha de máquina que sigue a `date_start`, actividad al
+Planeador. Parámetros vacíos a propósito: rendimiento de primera esperado y
+mínimo de baño (el brief los deja por definir con Yet y Tintorería).
+
+## 10. Bloque G — 6.7 Ruta y fichas de proceso (2026-10-08)
+
+`quimibond_sgi` 57.126.0 (`models/sgi_dev_process_sheet.py`): diagrama de
+flujo impreso desde las operaciones de la lista de materiales; ficha de
+tejido con firmas vigentes (propone Diseño de Procesos, valida el Jefe de
+Manufactura, mide Laboratorio) y real / ajuste / motivo por parámetro.
+**Las fichas de tintorería y acabado las construye Jose Sacramento en
+`quimibond_ficha_tecnica_tela`** (Jose, 2026-10-08): el SGI solo deja el
+enganche en la orden de muestra. Catálogo «Motivo de ajuste» sin renglones.

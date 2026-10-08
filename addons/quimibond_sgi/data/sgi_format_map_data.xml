@@ -89,6 +89,12 @@
         <field name="note">Ficha de proceso por máquina</field>
     </record>
 
+    <!-- 57.126.0 (C1, bloque G): diagrama de flujo desde la ruta. -->
+    <record id="format_ref_dev_flow" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-32</field>
+        <field name="note">Diagrama de flujo de proceso</field>
+    </record>
+
     <record id="format_ref_dev_general" model="sgi.format.map">
         <field name="sgi_code">F-P-D01-02</field>
         <field name="note">Solicitud de desarrollo: general</field>

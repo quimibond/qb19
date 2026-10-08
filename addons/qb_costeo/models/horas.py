@@ -5,6 +5,9 @@ Para cada producto fabricado y cada centro directo de su ruta: cuántas horas
 de ese centro consume UNA unidad del producto, y de dónde salió el número.
 En orden de preferencia:
 
+    pesaje    ritmo medido rollo por rollo desde el pesaje (módulo
+              `qb_tejido_ritmo`, si está instalado): manda sobre las órdenes
+              de trabajo porque el cronómetro de las órdenes se queda abierto
     medido    órdenes de trabajo reales del producto en la ventana (12 meses),
               dentro de la banda de velocidad del centro
     estandar  operación de la receta vigente (tiempo estándar que capturó
@@ -38,6 +41,7 @@ _logger = logging.getLogger(__name__)
 
 FUENTES = [
     ('manual', 'Capturado con motivo'),
+    ('pesaje', 'Pesaje de rollos'),
     ('medido', 'Órdenes de trabajo'),
     ('estandar', 'Estándar de la receta'),
     ('hermano', 'Crudo hermano'),
@@ -47,8 +51,8 @@ FUENTES = [
     ('ninguna', 'Sin dato'),
 ]
 # Orden de calidad: menor = mejor.
-RANGO = {'manual': 0, 'medido': 1, 'estandar': 1, 'hermano': 2, 'galga': 2,
-         'estimado': 3, 'driver': 3, 'ninguna': 4}
+RANGO = {'manual': 0, 'pesaje': 1, 'medido': 1, 'estandar': 1, 'hermano': 2,
+         'galga': 2, 'estimado': 3, 'driver': 3, 'ninguna': 4}
 CALIDAD = {0: 'alta', 1: 'alta', 2: 'media', 3: 'baja', 4: 'ninguna'}
 
 # Nomenclatura DAT P-D02-01: 14 caracteres sin el prefijo de unidad.
@@ -105,7 +109,7 @@ class QbProductoHoras(models.Model):
     horas_unidad = fields.Float(
         digits=(16, 6), string='Horas / u', help='Propias + heredadas.')
     calidad = fields.Selection([
-        ('alta', 'Alta: medido o estándar'),
+        ('alta', 'Alta: pesaje, medido o estándar'),
         ('media', 'Media: hermano o galga'),
         ('baja', 'Baja: promedio o configuración del centro'),
         ('ninguna', 'Sin dato')], default='ninguna',
@@ -235,6 +239,14 @@ class QbProductoHoras(models.Model):
             for pid, (h, qty, n) in acum.items():
                 out[(pid, centro.id)] = (h / qty, n, qty)
         return out
+
+    @api.model
+    def _fuentes_externas(self, products, centros, desde, hasta):
+        """{(product_id, centro_id): (horas_por_unidad, fuente, detalle, n)}
+        que otro módulo mide mejor que las órdenes de trabajo (el pesaje de
+        rollos, `qb_tejido_ritmo`). Aquí vacío; quien lo extienda manda
+        sobre `medido` y por debajo de `manual`."""
+        return {}
 
     @api.model
     def _driver(self, product, centro):
@@ -420,6 +432,7 @@ class QbProductoHoras(models.Model):
             products = self._productos_a_calcular()
         desde, hasta = self._ventana()
         medido = self._medido(centros, desde, hasta)
+        externas = self._fuentes_externas(products, centros, desde, hasta)
         prom, prom_galga = self._promedios_centro(centros, desde, hasta)
         hoy = fields.Date.today()
 
@@ -447,6 +460,10 @@ class QbProductoHoras(models.Model):
                     propias[(p.id, c.id)] = (
                         rec.horas_manual, 'manual',
                         'Manual: %s' % (rec.manual_motivo or ''), 0)
+                    continue
+                ext = externas.get((p.id, c.id))
+                if ext:
+                    propias[(p.id, c.id)] = ext
                     continue
                 m = medido.get((p.id, c.id))
                 if m:

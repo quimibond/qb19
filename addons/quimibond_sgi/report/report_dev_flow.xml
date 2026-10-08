@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Diagrama de flujo de proceso (F-P-D01-32): se imprime desde la ruta, no se dibuja. -->
+    <record id="action_report_dev_flow" model="ir.actions.report">
+        <field name="name">Diagrama de flujo de proceso</field>
+        <field name="model">project.project</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_flow_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_flow_document</field>
+        <field name="print_report_name">'Diagrama de flujo - %s' % (object.sgi_ft_folio or object.name or '')</field>
+    </record>
+
+    <template id="report_dev_flow_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_dev_flow'"/>
+                    <div class="page">
+                        <h2 class="text-center">Diagrama de flujo de proceso</h2>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:25%"><strong>Proyecto</strong></td><td><span t-out="doc.display_name"/></td>
+                                <td style="width:20%"><strong>Cliente</strong></td><td><span t-out="doc.partner_id.display_name or '—'"/></td></tr>
+                            <tr><td><strong>Folio FT</strong></td><td><span t-out="doc.sgi_ft_folio or '—'"/></td>
+                                <td><strong>Revisión</strong></td><td><span t-out="doc.sgi_dev_revision"/></td></tr>
+                        </table>
+                        <t t-set="ops" t-value="doc._sgi_dev_route_operations()"/>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>#</th><th>Artículo</th><th>Operación</th><th>Centro de trabajo</th><th>Tiempo estándar (min)</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="ops" t-as="row">
+                                    <td><span t-out="row_index + 1"/></td>
+                                    <td><span t-out="row[0].display_name"/></td>
+                                    <td><span t-out="row[1].name"/></td>
+                                    <td><span t-out="row[1].workcenter_id.name"/></td>
+                                    <td class="text-end"><span t-out="'%g' % (row[1].time_cycle_manual or 0.0)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="font-size:10px;" class="text-center">
+                            <t t-foreach="ops" t-as="row"><span class="badge text-bg-light border" t-out="row[1].name"/><t t-if="not row_last"> → </t></t>
+                        </p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
