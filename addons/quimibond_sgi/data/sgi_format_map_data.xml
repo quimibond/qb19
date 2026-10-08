@@ -89,15 +89,7 @@
         <field name="note">Ficha de proceso por máquina</field>
     </record>
 
-    <!-- 57.126.0 (C1, bloque G): fichas de proceso y diagrama de flujo. -->
-    <record id="format_ref_dye_sheet" model="sgi.format.map">
-        <field name="sgi_code">F-P-D01-33</field>
-        <field name="note">Ficha de proceso de tintorería</field>
-    </record>
-    <record id="format_ref_finish_sheet" model="sgi.format.map">
-        <field name="sgi_code">F-P-D01-05</field>
-        <field name="note">Ficha de proceso de acabado</field>
-    </record>
+    <!-- 57.126.0 (C1, bloque G): diagrama de flujo desde la ruta. -->
     <record id="format_ref_dev_flow" model="sgi.format.map">
         <field name="sgi_code">F-P-D01-32</field>
         <field name="note">Diagrama de flujo de proceso</field>

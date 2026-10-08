@@ -43,6 +43,15 @@
             <xpath expr="//field[@name='origin']" position="after">
                 <field name="sgi_dev_project_id" invisible="not sgi_dev_project_id" readonly="1"/>
                 <field name="sgi_dev_task_id" invisible="not sgi_dev_task_id" readonly="1"/>
+                <field name="sgi_dev_issued_by_id" invisible="not sgi_dev_issued_by_id" readonly="1"/>
+                <field name="sgi_dev_run_validated_by_id" invisible="not sgi_dev_run_validated_by_id" readonly="1"/>
+                <field name="sgi_dev_run_validated_date" invisible="not sgi_dev_run_validated_by_id" readonly="1"/>
+            </xpath>
+            <!-- 57.127.0: validación de la corrida (C1.10); enganche de las fichas de tintorería y acabado. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_dev_validate_run" type="object" string="Validar corrida" class="btn-primary"
+                        invisible="not sgi_dev_project_id or state != 'done' or sgi_dev_run_validated_by_id"
+                        confirm="Firma la validación de la corrida de muestra con su usuario y la fecha de hoy. ¿Continuar?"/>
             </xpath>
         </field>
     </record>

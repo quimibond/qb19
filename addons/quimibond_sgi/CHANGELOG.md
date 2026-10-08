@@ -13,41 +13,51 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.127.0 — 2026-10-08
+
+Correcciones de Jose a C1 tras revisar producción en 57.123.2 (punto 1).
+
+- **C1.04b:** canal «Odoo»; la ruta se atribuye a quien la asigna: la lista
+  de materiales gana «Ruta asignada por» y «Ruta asignada el», que se sellan
+  al guardar las operaciones, y C1-RUTA mide con ellos (ya no `write_uid`).
+  El plazo se queda vacío a propósito.
+- **C1.13 y C1.14:** el reloj por etapa (`sgi.dev.stage.log`) guarda quién
+  movió el proyecto a la etapa (`user_id`); C1-RESPUESTA y C1-APROBADO miden
+  con ese campo y se apaga «quién lo pasó a su estado (historial)».
+- **C1.09 y C1.10 por proyecto:** C1-OP-MUESTRA cuenta las órdenes de
+  muestra nacidas del proyecto y emitidas (confirmadas) por Planeación
+  (`sgi_dev_issued_by_id`); C1-MUESTRA, las corridas validadas con el botón
+  nuevo **«Validar corrida»** de la orden terminada (`sgi_dev_run_validated_by_id`).
+  Las órdenes de julio del tipo 86 sin proyecto dejan de contar.
+- **Aprobaciones de C1.10** (supervisores de producción y Jefe de
+  Manufactura) apuntan al botón «Validar corrida»; la migración intenta
+  sincronizarlas y anota el estado. Ese botón es también el enganche de las
+  fichas de proceso de tintorería y acabado que construye Jose Sacramento.
+- **Migración:** lo anterior; no toca nombres, pasos, roles ni el menú de
+  C1.08 que Jose cambió a mano.
+
 ## 19.0.57.126.0 — 2026-10-08
 
-C1, bloque G (brief §6.7: Ruta y fichas de proceso).
+C1, bloque G (brief §6.7: Ruta y fichas de proceso), acotado a lo que es del
+SGI. **Las fichas de tintorería y acabado no van aquí:** las construye Jose
+Sacramento en `quimibond_ficha_tecnica_tela` (decisión de Jose 2026-10-08);
+el punto de enganche es la orden de muestra (`mrp.production.sgi_dev_project_id`,
+sus órdenes de trabajo y el botón «Validar corrida» de 57.127.0).
 
 - **Diagrama de flujo de proceso (F-P-D01-32) impreso desde la ruta:** botón
   en la pestaña Desarrollo; lista las operaciones de la lista de materiales
   de crudo → teñido → acabado con su centro de trabajo y tiempo estándar. No
   se dibuja.
-- **Fichas de proceso de tintorería (F-P-D01-33) y acabado (F-P-D01-05)**
-  (`sgi.dev.process.sheet`, menú SGI → Sistema → Fichas de proceso de
-  tintorería y acabado): misma estructura que la de tejido. Cada parámetro
-  (anexo B del brief) lleva **propuesto** (Diseño de Procesos) y **real**
-  (supervisor), número de ajuste y motivo de lista (catálogo «Motivo de
-  ajuste de parámetro» de `sgi.dev.option`, sin renglones hasta que Diseño de
-  Procesos los defina). Firmas iguales en las tres áreas: propone Diseño de
-  Procesos, valida el supervisor del área (parámetros sembrados por nombre:
-  Jefe de Manufactura, Supervisor Tintorería, Supervisor TAC), el laboratorio
-  mide. **Poner en vigor** convierte la ficha validada de la corrida en la
-  ficha vigente del artículo sin recaptura (una vigente por artículo y área).
-- **Tintorería:** tramos de gradiente / temperatura / sostenimiento generan
-  la **gráfica de proceso** (SVG en pantalla y en el PDF) y el tiempo total.
-  **Acabado:** ruta de hasta 10 pasos, teñido (máquina, marca, modelo), hasta
-  **tres pases de rama** (botón «Agregar pase»); al tercero sin cumplir,
-  actividad a Diseño de Producto.
-- **Químicos fuera (decisión de Jose 2026-10-06):** la ficha de tintorería y
-  la receta de rama llevan solo el número de fórmula; apuntarán al modelo de
-  fórmulas en g/L de Jose Sacramento cuando exista su rama.
 - **Ficha de tejido (`sgi.machine.sheet`):** firmas corregidas a puestos
   vigentes (Propuso: Diseño y Desarrollo de Procesos; Validó: Jefe de
-  Manufactura; Midió: Laboratorio; el mecánico participa), botones
-  «Proponer» / «Validar», proyecto y orden de la corrida, y por parámetro el
-  valor real, número de ajuste y motivo. Las columnas no cambian de nombre
-  (producción tiene 0 fichas).
-- **Migración:** siembra los cuatro puestos por nombre si están vacíos y
-  expone los modelos al MCP.
+  Manufactura, parámetro sembrado por nombre; Midió: Laboratorio; el
+  mecánico participa), botones «Proponer» / «Validar», proyecto y orden de
+  la corrida, y por parámetro el valor real, número de ajuste y motivo de
+  lista (catálogo «Motivo de ajuste de parámetro» de `sgi.dev.option`, sin
+  renglones hasta que Diseño de Procesos los defina). Las columnas no
+  cambian de nombre (producción tiene 0 fichas).
+- **Migración:** siembra el puesto que valida la ficha de tejido si está
+  vacío y expone la ficha al MCP.
 
 ## 19.0.57.125.0 — 2026-10-08
 

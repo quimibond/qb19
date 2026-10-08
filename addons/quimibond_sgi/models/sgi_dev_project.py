@@ -106,8 +106,7 @@ MCP_MODELS = {
     'ficha.tecnica.caracteristica': True, 'ficha.tecnica.clave.codigo': True, 'ficha.tecnica.spec': True,
     'ficha.tecnica.tejido': True, 'ficha.tecnica.acabado': True, 'project.project.stage': False,
     'sgi.dev.similar': False, 'sgi.dev.similar.line': False,  # 57.122.0: asistente, solo lectura
-    'sgi.dev.process.sheet': True, 'sgi.dev.process.param': True, 'sgi.dev.dye.step': True,  # 57.126.0
-    'sgi.dev.finish.route': True, 'sgi.machine.sheet': True,
+    'sgi.machine.sheet': True, 'sgi.machine.sheet.param': True,  # 57.126.0: ficha de tejido con real / ajuste
 }
 
 
@@ -171,6 +170,9 @@ class SgiDevStageLog(models.Model):
     date_start = fields.Datetime(string="Inicio", required=True, default=fields.Datetime.now,
                                  help="Cuándo entró el proyecto a la etapa.")
     date_end = fields.Datetime(string="Fin", help="Cuándo salió de la etapa; vacío mientras siga ahí.")
+    # 57.127.0 (Jose, 1b): quién movió el proyecto a la etapa; con esto se miden C1.13 y C1.14.
+    user_id = fields.Many2one('res.users', string="Lo pasó a la etapa", readonly=True, index=True,
+                              help="Usuario que movió el proyecto a esta etapa.")
     hours_total = fields.Float(string="Horas en la etapa", compute='_compute_hours', digits=(16, 1),
                                help="Horas calendario entre la entrada y la salida (o ahora).")
     hours_mp = fields.Float(string="Horas con materia prima pendiente", compute='_compute_hours', digits=(16, 1),
@@ -548,7 +550,8 @@ class ProjectProjectDev(models.Model):
             if open_logs and open_logs[:1].stage_id == project.stage_id and len(open_logs) == 1:
                 continue
             open_logs.write({'date_end': when})
-            Log.create({'project_id': project.id, 'stage_id': project.stage_id.id, 'date_start': when})
+            Log.create({'project_id': project.id, 'stage_id': project.stage_id.id, 'date_start': when,
+                        'user_id': self.env.uid})
 
     def action_sgi_dev_mp_wait_start(self):
         for project in self.filtered(lambda p: p.sgi_is_ft and not p.sgi_dev_mp_pending):

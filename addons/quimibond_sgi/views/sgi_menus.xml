@@ -139,9 +139,6 @@
     <menuitem id="menu_sgi_dev_mark" name="Marcar desarrollos existentes"
               parent="menu_sgi_processes" action="sgi_dev_mark_wizard_action" sequence="53"
               groups="project.group_project_manager"/>
-    <!-- 57.126.0 (C1, bloque G): fichas de proceso de tintorería y acabado. -->
-    <menuitem id="menu_sgi_dev_process_sheets" name="Fichas de proceso de tintorería y acabado"
-              parent="menu_sgi_processes" action="sgi_dev_process_sheet_action" sequence="54"/>
 
     <!-- 2.1 Documentos (7.5). 57.113.0: viene de Administración SGI y recibe
          los grupos que heredaba de ella (Auditor, Jefe MAST, Dirección): nadie

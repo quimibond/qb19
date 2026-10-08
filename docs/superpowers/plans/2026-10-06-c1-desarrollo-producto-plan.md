@@ -193,13 +193,9 @@ mínimo de baño (el brief los deja por definir con Yet y Tintorería).
 ## 10. Bloque G — 6.7 Ruta y fichas de proceso (2026-10-08)
 
 `quimibond_sgi` 57.126.0 (`models/sgi_dev_process_sheet.py`): diagrama de
-flujo impreso desde las operaciones de la lista de materiales; fichas de
-proceso de tintorería y acabado (`sgi.dev.process.sheet`) con propuesto /
-real / ajuste / motivo por parámetro, gráfica de tintorería desde los tramos,
-hasta tres pases de rama con aviso a Diseño de Producto, firmas por puesto
-(propone Diseño de Procesos, valida el supervisor del área, mide
-Laboratorio) y «poner en vigor» que convierte la ficha de la corrida en la
-del artículo; ficha de tejido con firmas vigentes y real / ajuste / motivo.
-Sin químicos: número de fórmula hasta que exista la rama de Sacramento
-(`consolti` sigue en su commit del 2026-10-01). Catálogo «Motivo de ajuste»
-sin renglones (los define Diseño de Procesos).
+flujo impreso desde las operaciones de la lista de materiales; ficha de
+tejido con firmas vigentes (propone Diseño de Procesos, valida el Jefe de
+Manufactura, mide Laboratorio) y real / ajuste / motivo por parámetro.
+**Las fichas de tintorería y acabado las construye Jose Sacramento en
+`quimibond_ficha_tecnica_tela`** (Jose, 2026-10-08): el SGI solo deja el
+enganche en la orden de muestra. Catálogo «Motivo de ajuste» sin renglones.

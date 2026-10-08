@@ -19,7 +19,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `date_authorized` | Datetime | Autorizada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:142` |
 | `date_measured` | Datetime | Medida el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:143` |
 | `date_requested` | Datetime | Solicitada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:140` |
-| `date_verdict` | Datetime | Dictaminada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:227` |
+| `date_verdict` | Datetime | Dictaminada el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:228` |
 | `hours_total` | Float | Horas del laboratorio | Horas calendario de la solicitud a la última medición. |  |  | compute `_compute_hours`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:146` |
 | `kind` | Selection | Qué se mide | La muestra que mandó el cliente (análisis) o la corrida propia (paso 12). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:131` |
 | `line_ids` | Many2many | Renglones a medir | Renglones de la tabla del proyecto que mide el laboratorio. |  | `sgi.dev.characteristic` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:137` |
@@ -29,7 +29,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `project_id` | Many2one | Proyecto | Proyecto de desarrollo cuyos renglones se miden. | sí | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:129` |
 | `requested_by_id` | Many2one | Solicitó |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:139` |
 | `state` | Selection | Estado |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:134` |
-| `verdict_by_id` | Many2one | Dictaminó (Diseño de Producto) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:226` |
+| `verdict_by_id` | Many2one | Dictaminó (Diseño de Producto) |  |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:227` |
 
 ## Métodos públicos (4)
 
