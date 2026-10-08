@@ -178,3 +178,36 @@ class TestHoras(CosteoCase):
         self.H.recalcular(self.tenido)
         f = self._fila(self.tenido, self.c_tin)
         self.assertAlmostEqual(f.horas_propias, 2.0, 6)
+
+    def test_driver_del_centro_y_diagnostico(self):
+        """Sin órdenes ni receta en el centro, las horas salen de su
+        configuración: velocidad de rama (m), horas por carga (kg), horas
+        fijas. Calidad baja, fuente «driver»."""
+        self.c_aca.velocidad_m_h = 1500
+        self.c_tin.write({'kg_por_carga': 400, 'horas_por_carga': 8})
+        tela = self.env['product.product'].create({
+            'name': 'WJ090Q21JBL160', 'default_code': 'WJ090Q21JBL160',
+            'type': 'consu', 'is_storable': True, 'uom_id': self.m.id})
+        tenido = self.env['product.product'].create({
+            'name': 'WJ090Q21IBL160', 'default_code': 'WJ090Q21IBL160',
+            'type': 'consu', 'is_storable': True, 'uom_id': self.kg.id})
+        self.H.recalcular(tela | tenido)
+        fa = self._fila(tela, self.c_aca)
+        self.assertEqual(fa.fuente, 'driver')
+        self.assertAlmostEqual(fa.horas_propias, 1 / 1500.0, 6)
+        self.assertEqual(fa.calidad, 'baja')
+        self.assertIn('Velocidad', fa.detalle)
+        ft = self._fila(tenido, self.c_tin)
+        self.assertEqual(ft.fuente, 'driver')
+        self.assertAlmostEqual(ft.horas_propias, 8 / 400.0, 6)
+        # Con velocidad en 0 el centro no inventa horas.
+        self.c_aca.velocidad_m_h = 0
+        self.H.recalcular(tela)
+        self.assertFalse(self._fila(tela, self.c_aca))
+        # Diagnóstico por MCP: qué ve _medido.
+        self._mo_tejido(self.crudo, 100, 10)
+        d = self.H.diagnostico_medido(self.crudo.id, self.c_tej.id)
+        self.assertEqual(d['producto']['ordenes_trabajo'], 1)
+        self.assertAlmostEqual(d['producto']['qty_terminada'], 100, 2)
+        self.assertAlmostEqual(d['producto']['TEJ'][0], 0.1, 6)
+        self.assertEqual(d['centros'][0]['productos_medidos'], 1)

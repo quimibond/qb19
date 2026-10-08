@@ -3,6 +3,40 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.3.1 — 2026-10-08
+
+- **Corrige: ninguna orden de trabajo contaba como «medido».** En
+  `_medido` (y en `_promedios_centro`) los campos del centro
+  (`velocidad_min/max`) se leían **entre** `cr.execute()` y `fetchall()`;
+  cuando el centro no está en caché (en producción llega de un `search`),
+  ese acceso dispara un SELECT del ORM en el mismo cursor y se pierde el
+  resultado de la consulta. Por eso tejido tenía 66,863 h de órdenes en 12
+  meses y 0 productos medidos: todo salía «estándar» o «galga». Las pruebas
+  no lo veían porque sus centros ya estaban en caché. Ahora los campos se
+  leen antes de la consulta, y los demás `execute` del módulo recogen su
+  resultado de inmediato. Tras la migración, los crudos con órdenes salen
+  «medido» con su velocidad real.
+- **Horas por configuración del centro** (fuente `driver`, calidad baja):
+  cuando un centro directo no tiene órdenes de trabajo ni operación en la
+  receta, las horas salen de lo que dice el centro: `m_velocidad` = 1 ÷
+  velocidad de rama (productos en metros), `kg_ciclo` = horas por carga ÷
+  kg por carga (productos en kg; campo nuevo `horas_por_carga`),
+  `fijo_unidad` = horas fijas por unidad. Hasta ahora esos campos existían
+  pero no se usaban, y tintorería, acabado, entretelas e inspección no
+  cargaban nada al producto: septiembre salió con 39 % de margen neto
+  porque ~$3.9 M/mes de esos centros no llegaban a ningún producto.
+- **Calidad honesta**: un producto cuya receta pasa por un centro sin horas
+  (por la etapa de su código y la de sus componentes: H tejido, I
+  tintorería, J acabado; los importados no aportan etapa) sale con calidad
+  **baja** y `calidad_detalle` dice «sin horas en Acabado, …», aunque el
+  tejido esté medido. Antes decía «alta» con el costo incompleto. El
+  detalle también distingue «heredadas» de «ninguna».
+- `qb.producto.horas.diagnostico_medido(product_id, centro_id)` (MCP):
+  ventana, máquinas, banda y lo que ve la consulta de órdenes para un
+  producto. Para revisar por qué en producción ningún producto sale
+  «medido» aunque tejido tenga 414 órdenes en 12 meses.
+- Migración: recalcula horas y los costos de los períodos en borrador.
+
 ## 19.0.1.3.0 — 2026-10-06
 
 - `qb.costo.unitario` + `qb.costo.unitario.centro`: la fórmula única del

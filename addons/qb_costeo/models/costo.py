@@ -205,17 +205,19 @@ class QbCostoProducto(models.Model):
             [('product_id', 'in', products.ids), ('company_id', '=', company.id)])}
         planta = Rend.planta(periodo.date_to)
         mp_ctx = {'memo': {}, 'precios': {}, 'pila': set(), 'dudosos': set()}
+        cutoff = periodo.date_to
         self.env.cr.execute(
             'SELECT DISTINCT product_id FROM mrp_bom_line WHERE product_id IS NOT NULL')
-        cutoff = periodo.date_to
-        mp_ctx['precios'] = Mp.precios_compra(
-            [r[0] for r in self.env.cr.fetchall()], cutoff)
+        hojas_ids = [r[0] for r in self.env.cr.fetchall()]
+        mp_ctx['precios'] = Mp.precios_compra(hojas_ids, cutoff)
         dudosos = set(self.env['qb.producto.validacion'].search(
             [('estado', '=', 'abierta'), ('company_id', '=', company.id)])
             .mapped('product_id').ids)
         existentes = {r.product_id.id: r for r in self.search(
             [('periodo_id', '=', periodo.id)])}
         Linea = self.env['qb.costo.unitario.centro']
+        centros_directos = self.env['qb.centro'].search(
+            [('company_id', '=', company.id), ('nature', '=', 'directo')])
         filas = self.browse()
         for p in products:
             mp, hojas = Mp.explotar(p, cutoff, mp_ctx)
@@ -261,6 +263,13 @@ class QbCostoProducto(models.Model):
             piso_ocioso = variable / rend
             piso_lleno = vendible / (1 - op_pct) if op_pct < 1 else vendible
             dud = p.id in dudosos or any(lid in dudosos for lid in hojas)
+            # Centros por los que pasa el producto según su código y que no
+            # tienen horas: el costo está incompleto, aunque lo que sí hay
+            # sea medido.
+            faltan = [c.name for c in Horas.centros_esperados(p, centros_directos, cutoff)
+                      if not (hs.get(c.id) and hs[c.id].horas_unidad)] if hs else []
+            if faltan:
+                rango = max(rango, 3)
             if dud:
                 calidad = 'dudosa'
             elif rango >= 4 and not hs:
@@ -269,7 +278,11 @@ class QbCostoProducto(models.Model):
                 calidad = {1: 'alta', 2: 'media', 3: 'baja', 4: 'ninguna'}[rango or 1]
             det = []
             if hs:
-                det.append('horas: ' + ', '.join(sorted({h.fuente for h in hs.values()})))
+                det.append('horas: ' + ', '.join(sorted({
+                    h.fuente if h.horas_propias else 'heredadas'
+                    for h in hs.values()})))
+            if faltan:
+                det.append('sin horas en ' + ', '.join(faltan))
             det.append('rendimiento: %s' % rend_fuente)
             det.append('peso: %s' % peso_fuente)
             if dud:
