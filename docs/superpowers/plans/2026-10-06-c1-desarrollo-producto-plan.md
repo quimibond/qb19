@@ -264,3 +264,21 @@ emite no se restringe por puesto: queda sellado quién lo hizo.
   sin cargar. Los roles 1202 y 1203 se sincronizaron por MCP (reglas 74 y 75).
   C1.11 se atribuye a `verdict_by_id`.
 
+## 14. Bloque 5.3 — Ficha técnica interna y especificaciones del producto (2026-10-08)
+
+`quimibond_sgi` 57.132.0 (`models/sgi_dev_tech_sheet.py`, dos reportes): dos
+documentos distintos desde la tabla del proyecto, guardados con revisión.
+**Ficha técnica interna** (F-P-D01-24): los dos juegos de límites, firmas de
+los seis puestos del brief (parámetro por nombre; «Supervisor de inspección y
+empaque» no existe en RH, queda fuera hasta que Jose decida) y «Aprobar ficha
+(C1.15)», el botón al que apunta el rol 1928 (Ventas) vía la regla nativa de
+Studio (la crea el satélite 1.0.5). **Especificaciones del producto**
+(F-P-D01-08): al cliente, bilingüe, solo renglones «En especificación del
+cliente» con su tolerancia (el control interno no se copia), uso principal
+del proyecto e instrucciones de cuidado de la lista «Instrucción de cuidado»
+(vacía). Decisiones sin preguntar: (1) las firmas que falten se imprimen en
+blanco y la aprobación de Ventas no las exige (el brief no dice que la ficha
+espere a las seis); (2) la medición de C1.15 no se tocó (Jose pidió solo la
+aprobación); (3) emitido no cambia ni se borra: la revisión siguiente lo
+sustituye.
+

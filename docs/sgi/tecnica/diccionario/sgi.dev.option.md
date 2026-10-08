@@ -8,14 +8,15 @@ Opción de lista para el proyecto de desarrollo (aplicación, mercado, laminado,
 
 Orden: `kind, sequence, name, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`.
 
-## Campos (4)
+## Campos (5)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `active` | Boolean |  | Las opciones archivadas no se proponen en proyectos nuevos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:128` |
-| `kind` | Selection | Lista | A qué lista pertenece la opción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:124` |
-| `name` | Char | Opción | Texto de la opción tal como se elige. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:127` |
-| `sequence` | Integer |  | Orden dentro de su lista. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:126` |
+| `active` | Boolean |  | Las opciones archivadas no se proponen en proyectos nuevos. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:131` |
+| `kind` | Selection | Lista | A qué lista pertenece la opción. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:127` |
+| `name` | Char | Opción | Texto de la opción tal como se elige. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:130` |
+| `name_en` | Char | Opción en inglés | Para los documentos bilingües al cliente (instrucciones de cuidado). |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py:45` |
+| `sequence` | Integer |  | Orden dentro de su lista. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:129` |
 

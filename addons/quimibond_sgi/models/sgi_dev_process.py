@@ -38,6 +38,7 @@ C1_APPROVAL_BUTTONS = {
     'C1.03': ('project.project', 'action_sgi_dev_review_approve'),
     'C1.07': ('project.project', 'action_sgi_dev_approve_request'),
     'C1.11': ('sgi.dev.lab.request', 'action_verdict'),
+    'C1.15': ('sgi.dev.tech.sheet', 'action_approve'),  # 57.132.0 (Jose 5.3): rol 1928, Ventas aprueba la ficha interna
 }
 C1_04_TEXTS = {
     'name': ("Dar de alta el artículo de desarrollo con su lista de materiales y ruta preliminar",

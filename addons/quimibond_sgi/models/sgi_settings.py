@@ -84,6 +84,13 @@ class ResConfigSettings(models.TransientModel):
         help="Tras el aviso al cliente, cada estos días sin respuesta se abre una actividad de seguimiento a quien "
              "mandó el aviso. Vacío o 0: sin seguimiento automático (el brief no define el plazo).")
 
+    # 57.132.0 (C1, Jose 5.3): puestos que firman la ficha técnica interna.
+    sgi_dev_tech_sheet_sign_job_ids = fields.Many2many(
+        'hr.job', 'sgi_settings_dev_tech_sheet_sign_job_rel', string="Puestos que firman la ficha técnica interna",
+        help="Seis puestos del brief §6.12: Jefe de Manufactura, Jefe de Calidad, Supervisor de inspección y "
+             "empaque, Diseño de Producto, Dirección de Operaciones y Administrador de Ventas. Cada ficha nace con "
+             "un renglón de firma por puesto.")
+
     # 57.126.0 (C1, bloque G): quién valida los parámetros reales de la ficha de tejido.
     sgi_dev_validator_job_tejido_id = fields.Many2one(
         'hr.job', string="Valida la ficha de proceso de tejido", config_parameter='quimibond_sgi.dev_validator_job_tejido_id',
@@ -251,7 +258,8 @@ class ResConfigSettings(models.TransientModel):
 
     # 57.124.0: listas de puestos y personas en un parámetro (ids separados por coma).
     _SGI_DEV_LIST_PARAMS = (('sgi_dev_request_notify_job_ids', 'quimibond_sgi.dev_request_notify_job_ids', 'hr.job'),
-                            ('sgi_dev_request_notify_user_ids', 'quimibond_sgi.dev_request_notify_user_ids', 'res.users'))
+                            ('sgi_dev_request_notify_user_ids', 'quimibond_sgi.dev_request_notify_user_ids', 'res.users'),
+                            ('sgi_dev_tech_sheet_sign_job_ids', 'quimibond_sgi.dev_tech_sheet_sign_job_ids', 'hr.job'))
 
     @api.model
     def get_values(self):
