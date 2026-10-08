@@ -13,7 +13,7 @@ diseño y desarrollo** (ISO 9001:2015 8.3 / APQP).
 """
 from markupsafe import Markup, escape
 
-from odoo import api, fields, models
+from odoo import fields, models
 from odoo.exceptions import UserError
 
 
