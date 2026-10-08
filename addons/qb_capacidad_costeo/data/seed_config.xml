@@ -141,6 +141,11 @@
             <field name="value">0.03</field>
             <field name="descripcion">Escalera de volumen: descuento (fracción) por cada DUPLICACIÓN del volumen. 0.03 = 3% por doblar. El precio nunca baja del piso a planta llena y la contribución total nunca baja.</field>
         </record>
+        <record id="factor_escalera_default" model="qb.costeo.factor.config">
+            <field name="key">escalera_default</field>
+            <field name="value">1</field>
+            <field name="descripcion">Escalera de volumen: 1 = la calculadora propone ofrecerla al cliente; 0 = propone un solo precio. En cada cotización se puede cambiar antes de imprimir o enviar.</field>
+        </record>
         <record id="factor_escalera_multiplos" model="qb.costeo.factor.config">
             <field name="key">escalera_multiplos</field>
             <field name="value_text">0.5,1,2,4</field>

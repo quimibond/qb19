@@ -186,28 +186,51 @@ class ProjectProjectDevMeasure(models.Model):
         return filled
 
     @api.model
+    def _sgi_dev_c1_deliverable_vals(self, code):
+        """Valores de medición del entregable de C1 ``code`` (None si su modelo no está instalado)."""
+        spec = C1_MEASURES[code]
+        if spec['model'] not in self.env:
+            return None
+        Deliverable = self.env['sgi.deliverable']
+        vals = {
+            'name': spec['name'],
+            'odoo_model_id': self.env['ir.model'].sudo()._get(spec['model']).id,
+            'measure_domain': spec['domain'],
+            'measure_date_field': spec['date_field'],
+            'measure_user_field': spec['user_field'] or False,
+        }
+        if 'complete_domain' in Deliverable._fields:
+            vals.update({'complete_domain': spec.get('complete_domain') or False,
+                         'complete_criteria': spec.get('complete_criteria') or False})
+        return vals
+
+    @api.model
+    def _sgi_dev_ensure_c1_deliverable(self, code, company=None):
+        """El entregable de C1 ``code``, creado si no existe (57.123.1: antes que la actividad que
+        lo entrega, porque un procedimiento vigente no admite una actividad «por su entregable»
+        sin entregable con modelo). Vacío si su modelo no está instalado."""
+        Deliverable = self.env['sgi.deliverable'].sudo().with_context(active_test=False)
+        deliverable = Deliverable.search([('code', '=', code)], limit=1)
+        if deliverable:
+            return deliverable
+        vals = self._sgi_dev_c1_deliverable_vals(code)
+        if vals is None:
+            return Deliverable.browse()
+        return Deliverable.create(dict(vals, code=code, company_id=(company or self.env.company).id))
+
+    @api.model
     def _sgi_dev_apply_c1_measures(self):
         """Re-apunta los entregables de C1 (por código) a los modelos nuevos y crea los que faltan.
         Idempotente. Devuelve {'updated': [códigos], 'created': [códigos], 'missing': [códigos]}."""
         Deliverable = self.env['sgi.deliverable'].sudo().with_context(active_test=False)
         Activity = self.env['sgi.process.activity'].sudo().with_context(active_test=False)
-        IrModel = self.env['ir.model'].sudo()
         report = {'updated': [], 'created': [], 'missing': []}
         touched = Deliverable.browse()
         for code, spec in C1_MEASURES.items():
-            if spec['model'] not in self.env:
+            vals = self._sgi_dev_c1_deliverable_vals(code)
+            if vals is None:
                 report['missing'].append(code)
                 continue
-            vals = {
-                'name': spec['name'],
-                'odoo_model_id': IrModel._get(spec['model']).id,
-                'measure_domain': spec['domain'],
-                'measure_date_field': spec['date_field'],
-                'measure_user_field': spec['user_field'] or False,
-            }
-            if 'complete_domain' in Deliverable._fields:
-                vals.update({'complete_domain': spec.get('complete_domain') or False,
-                             'complete_criteria': spec.get('complete_criteria') or False})
             deliverable = Deliverable.search([('code', '=', code)], limit=1)
             if deliverable:
                 changed = {k: v for k, v in vals.items()

@@ -185,6 +185,8 @@
                                 nunca baja del piso a planta llena y la contribución
                                 $/mes nunca baja al crecer el tramo. Al cliente solo se
                                 le ofrecen tramos que caben en capacidad.
+                                <t t-if="o.con_escalera"><b>El PDF al cliente SÍ lleva esta escalera.</b></t>
+                                <t t-else=""><b>El PDF al cliente NO lleva escalera: un solo precio al volumen cotizado.</b></t>
                             </p>
                         </t>
 
@@ -361,7 +363,7 @@
                             </tbody>
                         </table>
 
-                        <t t-set="tramos_ok" t-value="o.tramo_ids.filtered(lambda t: t.capacity_ok)"/>
+                        <t t-set="tramos_ok" t-value="o.tramo_ids.filtered(lambda t: t.capacity_ok) if o.con_escalera else o.tramo_ids.browse()"/>
                         <t t-if="len(tramos_ok) &gt; 1">
                             <h5>Precios por volumen <span style="font-size:12px; color:#888; font-weight:normal;">/ Volume pricing</span></h5>
                             <p style="font-size:12px;">A mayor volumen mensual

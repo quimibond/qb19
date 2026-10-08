@@ -13,6 +13,20 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.123.1 — 2026-10-08
+
+### Corregido
+
+- **El build de producción de 57.123.0 falló** (2026-10-08 03:21 UTC) en la
+  migración que crea C1.04b: la actividad nacía «por su entregable» sin
+  entregable y, como el procedimiento C1 está vigente, la validación estricta
+  la rechazó (`_sgi_check_measure_strict`) y el update se revirtió completo;
+  producción siguió en 57.120.3. Ahora `C1-RUTA` se crea antes
+  (`_sgi_dev_ensure_c1_deliverable`) y C1.04b nace ya ligada a él; si el
+  modelo del entregable no existiera, la actividad nace «manual». Sin cambios
+  de datos nuevos: las migraciones 57.121.0 a 57.123.0 vuelven a correr
+  completas en el siguiente build.
+
 ## 19.0.57.123.0 — 2026-10-07
 
 **Ajustes al modelo del SGI para C1** (contexto de Jose tras el despliegue,
