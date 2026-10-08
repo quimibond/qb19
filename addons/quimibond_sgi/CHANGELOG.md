@@ -15,32 +15,36 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 ## 19.0.57.136.0 — 2026-10-08
 
-Jessica 2026-10-08 (revisión de la ficha 57.135): las pestañas del desarrollo
-siguen el orden del proceso C1, una por etapa, y la firma de Dirección va
-después de la aprobación del cliente.
+Jessica 2026-10-08 (revisión de la ficha 57.135 y su descripción del proceso):
+las pestañas del desarrollo siguen el orden del proceso C1, una por etapa con
+el nombre con que ella lo trabaja, y la firma de Dirección va después de la
+aprobación del cliente.
 
 - **Cambiado** pestañas de la ficha del desarrollo, en el orden en que se
-  trabaja: **Solicitud del cliente** (lo comercial, tipo, producto pedido,
-  origen y contacto, uso, especificación, muestra física y la tabla con lo
-  que pide el cliente; «Proponer características del tipo») · **Análisis y
-  factibilidad** (medición en la muestra, pruebas, parecidos, resultado,
-  línea, checklist, revisión de Ventas) · **Cotización** (código del artículo,
-  «Generar artículos», artículos y, con `qb_costeo_sgi`, las cotizaciones y
-  «Nueva cotización») · **Aprobación del cliente** · **Solicitud de
-  desarrollo** (control interno, muestra en m y kg, volumen, precio, normas,
-  empaque, firmas, «Imprimir solicitud», materia prima) · **Muestra**
-  (órdenes de muestra, lecturas de la corrida, promedio, resultado, dictamen,
-  «En certificado», envíos) · **Respuesta del cliente** (respuestas con su
-  evidencia, aprobado por el cliente, en especificación, bitácora de
-  revisiones) · **Pilotaje y liberación** (pilotajes, fichas, especificaciones,
-  certificados, diagrama de flujo, artículos) · **Tiempos**. Desaparecen como
-  pestañas «Comercial», «Producto y documentos» y «Revisiones»: su contenido
-  se reparte. Las pestañas de etapas pasadas quedan visibles para consulta.
+  trabaja: **Análisis de mercado industrial** (Jessica: lo comercial, tipo,
+  producto pedido, origen y contacto, uso, especificación, muestra física y
+  la tabla con lo que pide el cliente; «Proponer características del tipo») ·
+  **Análisis de proyecto** (Selena: análisis de la muestra del cliente y
+  pruebas al laboratorio; Yet: diagrama de proceso, que vive en la ruta del
+  artículo; resultado, línea, checklist y la revisión que firma Jessica) ·
+  **Cotización** (código del artículo, «Generar artículos», ruta y «Diagrama
+  de flujo», y con `qb_costeo_sgi` las cotizaciones y «Nueva cotización») ·
+  **Aprobación del cliente** · **Solicitud de desarrollo** (control interno,
+  muestra en m y kg, volumen, precio, normas, empaque, firmas, «Imprimir
+  solicitud», materia prima) · **Muestra** (órdenes de muestra, lecturas de la
+  corrida, promedio, resultado, dictamen, «En certificado») · **Envío de
+  muestra** (envíos y reportes de conformidad) · **Retroalimentación del
+  cliente** (respuestas con su evidencia, aprobado por el cliente, en
+  especificación) · **Cambios al proyecto** (revisión vigente y bitácora de
+  revisiones) · **Pilotaje y liberación** (pilotajes, fichas,
+  especificaciones, diagrama de flujo, artículos) · **Tiempos**. Desaparecen
+  como pestañas «Comercial», «Producto y documentos» y «Revisiones»: su
+  contenido se reparte. Las pestañas de etapas pasadas quedan visibles.
 - **Cambiado** la tabla de características es una sola (`sgi_dev_line_ids`)
   y cada pestaña la muestra con las columnas de su momento (cliente → muestra
   → control interno → corrida → aprobación del cliente); Odoo 19 funde las
   columnas de todas las apariciones en el mismo registro. Los renglones se
-  agregan y ordenan solo en «Solicitud del cliente».
+  agregan y ordenan solo en «Análisis de mercado industrial».
 - **Cambiado** «Aprobar solicitud de desarrollo» (C1.07) aparece solo con la
   aprobación del cliente registrada y folio FT, y no en Liberado ni Cerrado:
   Selena llena la solicitud después de que el cliente aprueba y Dirección de
@@ -48,6 +52,10 @@ después de la aprobación del cliente.
   firma.
 - Sin campos ni datos nuevos; sin migración. Las listas de órdenes, envíos,
   pilotajes, fichas, especificaciones y certificados son de solo lectura.
+  Lo que Jessica describe y todavía no existe (aprobación para iniciar el
+  proyecto como documento con folio antes de la aprobación, solicitud de
+  modificación con 5 porqués, ruta como selección de centros de trabajo con
+  imagen, mapa ISO 9001 8.3 / APQP) queda como decisión de Jose en el plan.
 
 ## 19.0.57.135.0 — 2026-10-08
 
