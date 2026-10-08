@@ -3,6 +3,21 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.2.0 — 2026-10-08
+
+Jose 2026-10-08, 5.6: precio en tarifa automático al ganar.
+
+- **Agregado** `tarifa_fecha` / `tarifa_user_id`: cuándo y quién puso el
+  precio en la tarifa (se ve en «Resultado»); con eso el SGI mide C1.17.
+- **Agregado** gancho `_producto_para_tarifa()`: el puente con el SGI
+  (`qb_costeo_sgi`) pone el artículo generado por el desarrollo cuando la
+  cotización se hizo antes de que existiera; aquí sigue siendo
+  `product_id`.
+- **Cambiado** medio de aprobación del cliente: se agrega «Dirección
+  (desarrollo interno)», el mismo catálogo que la aprobación del SGI.
+- **Migración** `19.0.1.2.0`: rellena `tarifa_fecha` de las cotizaciones que
+  ya tenían precio en tarifa con la fecha de alta del renglón de la tarifa.
+
 ## 19.0.1.1.1 — 2026-10-08
 
 - **Corregido** la hoja interna de costo (PDF) tronaba con «incomplete
