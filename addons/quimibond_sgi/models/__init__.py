@@ -82,6 +82,8 @@ from . import sgi_dev_process
 from . import sgi_dev_start
 # 57.125.0 (C1, bloque F): orden de muestra desde el proyecto.
 from . import sgi_dev_sample
+# 57.126.0 (C1, bloque G): ruta y fichas de proceso de tintorería y acabado.
+from . import sgi_dev_process_sheet
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign

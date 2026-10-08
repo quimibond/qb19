@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.126.0 (C1, bloque G): fichas de proceso de tintorería y acabado. -->
+    <record id="sgi_dev_process_sheet_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.process.sheet.form</field>
+        <field name="model">sgi.dev.process.sheet</field>
+        <field name="arch" type="xml">
+            <form string="Ficha de proceso">
+                <header>
+                    <button name="action_propose" type="object" string="Proponer parámetros (Diseño de Procesos)" class="btn-primary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_validate" type="object" string="Validar parámetros reales (supervisor)" class="btn-primary"
+                            invisible="state != 'propuesta'"/>
+                    <button name="action_set_current" type="object" string="Poner en vigor para el artículo" class="btn-primary"
+                            invisible="state != 'validada'"
+                            confirm="Los parámetros de esta corrida pasan a ser la ficha de proceso vigente del artículo (la anterior queda obsoleta). ¿Continuar?"/>
+                    <button name="action_set_current" type="object" string="Poner en vigor sin corrida"
+                            invisible="state not in ('borrador', 'propuesta')" groups="quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager"/>
+                    <button name="action_add_pass" type="object" string="Agregar pase de rama"
+                            invisible="area != 'acabado' or state in ('vigente', 'obsoleta') or pass_count >= 3"/>
+                    <button name="action_new_revision" type="object" string="Nueva revisión" invisible="state != 'vigente'"/>
+                    <button name="action_back_to_draft" type="object" string="Volver a borrador" invisible="state not in ('propuesta', 'validada')"/>
+                    <button name="action_set_obsolete" type="object" string="Marcar obsoleta" invisible="state != 'vigente'"
+                            groups="quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager"
+                            confirm="La ficha deja de estar vigente para este artículo. ¿Continuar?"/>
+                    <button name="action_print" type="object" string="Imprimir" icon="fa-print"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,propuesta,validada,vigente"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Obsoleta" bg_color="text-bg-secondary" invisible="state != 'obsoleta'"/>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="area" readonly="state != 'borrador'"/>
+                            <field name="product_id" readonly="state != 'borrador'"/>
+                            <field name="workcenter_id" readonly="state != 'borrador'"/>
+                            <field name="project_id" readonly="state != 'borrador'"/>
+                            <field name="production_id" readonly="state != 'borrador'"/>
+                            <field name="workorder_id" readonly="state != 'borrador'" invisible="not production_id"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'borrador'"/>
+                            <field name="revision"/>
+                            <field name="pass_count" invisible="area != 'acabado'"/>
+                            <field name="formula_code"/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Parámetros" name="params">
+                            <field name="param_line_ids" readonly="state in ('vigente', 'obsoleta')">
+                                <list editable="bottom" default_group_by="pass_number">
+                                    <field name="pass_number" column_invisible="parent.area != 'acabado'"/>
+                                    <field name="section"/>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="kind" optional="hide"/>
+                                    <field name="unit" optional="show"/>
+                                    <field name="proposed_num" invisible="kind != 'num'"/>
+                                    <field name="proposed_text" invisible="kind != 'text'"/>
+                                    <field name="proposed_bool" invisible="kind != 'bool'"/>
+                                    <field name="real_num" invisible="kind != 'num'"/>
+                                    <field name="real_text" invisible="kind != 'text'"/>
+                                    <field name="real_bool" invisible="kind != 'bool'"/>
+                                    <field name="adjustment"/>
+                                    <field name="reason_id"/>
+                                </list>
+                            </field>
+                            <field name="note" placeholder="Observaciones de la corrida" readonly="state in ('vigente', 'obsoleta')"/>
+                        </page>
+                        <page string="Gráfica de proceso" name="dye" invisible="area != 'tintoreria'">
+                            <field name="dye_step_ids" readonly="state in ('vigente', 'obsoleta')">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="temp_start"/>
+                                    <field name="temp_end"/>
+                                    <field name="gradient"/>
+                                    <field name="hold_min"/>
+                                    <field name="minutes"/>
+                                </list>
+                            </field>
+                            <group><field name="dye_total_min"/></group>
+                            <field name="dye_chart_svg" nolabel="1" readonly="1"/>
+                        </page>
+                        <page string="Ruta y teñido" name="finish" invisible="area != 'acabado'">
+                            <group>
+                                <group string="Teñido">
+                                    <field name="dye_machine"/>
+                                    <field name="dye_brand"/>
+                                    <field name="dye_model"/>
+                                </group>
+                                <group string="Resultado por pase">
+                                    <field name="pass_result_1"/>
+                                    <field name="pass_result_2" invisible="pass_count &lt; 2"/>
+                                    <field name="pass_result_3" invisible="pass_count &lt; 3"/>
+                                </group>
+                            </group>
+                            <field name="route_line_ids" readonly="state in ('vigente', 'obsoleta')">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="workcenter_id"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Firmas" name="signatures">
+                            <group>
+                                <group>
+                                    <field name="proposed_by_id"/>
+                                    <field name="proposed_date"/>
+                                    <field name="validated_by_id"/>
+                                    <field name="validated_date"/>
+                                </group>
+                                <group>
+                                    <field name="lab_user_id"/>
+                                    <field name="lab_date"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_process_sheet_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.process.sheet.list</field>
+        <field name="model">sgi.dev.process.sheet</field>
+        <field name="arch" type="xml">
+            <list string="Fichas de proceso" decoration-muted="state in ('obsoleta', 'borrador')">
+                <field name="name"/>
+                <field name="area"/>
+                <field name="product_id"/>
+                <field name="workcenter_id"/>
+                <field name="project_id" optional="show"/>
+                <field name="production_id" optional="hide"/>
+                <field name="date"/>
+                <field name="revision"/>
+                <field name="state" widget="badge" decoration-success="state == 'vigente'" decoration-info="state in ('propuesta', 'validada')"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_process_sheet_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.process.sheet.search</field>
+        <field name="model">sgi.dev.process.sheet</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="product_id"/>
+                <field name="workcenter_id"/>
+                <field name="project_id"/>
+                <filter name="tintoreria" string="Tintorería" domain="[('area', '=', 'tintoreria')]"/>
+                <filter name="acabado" string="Acabado" domain="[('area', '=', 'acabado')]"/>
+                <separator/>
+                <filter name="current" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
+                <filter name="pending" string="Por validar" domain="[('state', '=', 'propuesta')]"/>
+                <group>
+                    <filter name="group_product" string="Artículo" context="{'group_by': 'product_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_process_sheet_action" model="ir.actions.act_window">
+        <field name="name">Fichas de proceso de tintorería y acabado</field>
+        <field name="res_model">sgi.dev.process.sheet</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_dev_process_sheet_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin fichas de proceso</p>
+            <p>Diseño de Procesos propone los parámetros, el supervisor del área valida los reales y la ficha de la corrida aprobada queda vigente para el artículo.</p>
+        </field>
+    </record>
+</odoo>

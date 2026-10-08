@@ -65,6 +65,8 @@ SGI_FORMAT_REPORTS = (
     ('quimibond_sgi.action_report_retention', None),
     ('quimibond_sgi.action_report_work_permit', None),
     ('quimibond_sgi.action_report_machine_sheet', 'format_ref_machine_sheet'),
+    ('quimibond_sgi.action_report_dev_process_sheet', 'format_ref_dye_sheet'),  # 57.126.0: la ficha elige por área
+    ('quimibond_sgi.action_report_dev_flow', 'format_ref_dev_flow'),
     # 57.101.0: reportes y diagramas. Las referencias que no existen en
     # sgi_format_map_data.xml (format_ref_8d, _indicator_sheet, _diagrams,
     # _audit_program, _ryo_matrix) dejan el pie solo con la página y el
