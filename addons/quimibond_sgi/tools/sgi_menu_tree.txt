@@ -46,6 +46,7 @@ SGI/Sistema/Envíos de muestra de desarrollos | menu_sgi_dev_shipments | -
 SGI/Sistema/Reportes de conformidad de desarrollos | menu_sgi_dev_coas | -
 SGI/Sistema/Fichas técnicas internas de desarrollos | menu_sgi_dev_tech_sheets | -
 SGI/Sistema/Especificaciones del producto (cliente) | menu_sgi_dev_customer_specs | -
+SGI/Sistema/Pilotajes de desarrollos | menu_sgi_dev_pilots | -
 SGI/Sistema/Documentos | menu_sgi_documental | quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_director,quimibond_sgi.group_sgi_manager
 SGI/Sistema/Documentos/Documentos | menu_sgi_documents | -
 SGI/Sistema/Documentos/Lista maestra | menu_sgi_master_list | -

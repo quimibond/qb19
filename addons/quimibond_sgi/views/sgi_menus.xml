@@ -144,6 +144,8 @@
               parent="menu_sgi_processes" action="sgi_dev_tech_sheet_action" sequence="56"/>
     <menuitem id="menu_sgi_dev_customer_specs" name="Especificaciones del producto (cliente)"
               parent="menu_sgi_processes" action="sgi_dev_customer_spec_action" sequence="57"/>
+    <menuitem id="menu_sgi_dev_pilots" name="Pilotajes de desarrollos"
+              parent="menu_sgi_processes" action="sgi_dev_pilot_action" sequence="58"/>
     <menuitem id="menu_sgi_dev_mark" name="Marcar desarrollos existentes"
               parent="menu_sgi_processes" action="sgi_dev_mark_wizard_action" sequence="53"
               groups="project.group_project_manager"/>

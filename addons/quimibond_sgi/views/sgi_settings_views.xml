@@ -95,6 +95,16 @@
                                  help="Recibe la actividad con el correo listo (rollos, medio y guía). Por omisión, Administrador de Ventas.">
                             <field name="sgi_dev_shipment_notify_job_id"/>
                         </setting>
+                        <!-- 57.133.0 (C1, Jose 5.4) -->
+                        <setting string="Lotes del pilotaje" help="Primeros lotes de producción del artículo en pilotaje. Vacío: tres.">
+                            <field name="sgi_dev_pilot_lots"/>
+                        </setting>
+                        <setting string="Lecturas por lote (estudio de habilidad)" help="Vacío o 0: no se exige; Ingeniería de Calidad no lo ha definido.">
+                            <field name="sgi_dev_pilot_readings_per_lot"/>
+                        </setting>
+                        <setting string="Cpk mínimo" help="Vacío o 0: el estudio informa y no dictamina.">
+                            <field name="sgi_dev_pilot_cpk_min"/>
+                        </setting>
                         <!-- 57.132.0 (C1, Jose 5.3) -->
                         <setting string="Puestos que firman la ficha técnica interna"
                                  help="Seis puestos del brief: Manufactura, Calidad, Inspección y empaque, Diseño de Producto, Dirección de Operaciones y Ventas. Vacío: la ficha nace sin renglones de firma.">
