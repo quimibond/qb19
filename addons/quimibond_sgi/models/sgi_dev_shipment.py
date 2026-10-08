@@ -365,10 +365,16 @@ class SgiDevShipment(models.Model):
                 (", %s" % ship.response_contact_id.name) if ship.response_contact_id else '',
                 (", ref. %s" % ship.response_ref) if ship.response_ref else '')
             if ship.response == 'aprueba':
+                # 57.131.0 (Jose 2026-10-08, 5.1): las características que van a la especificación
+                # del cliente quedan marcadas como aprobadas por él (paso 19 del brief).
+                lines = project.sgi_dev_line_ids.filtered(lambda l: l.in_customer_spec and not l.customer_approved)
+                if lines:
+                    lines.write({'customer_approved': True})
                 stage = Project._sgi_dev_stage(STAGE_APPROVED)
                 if stage and project.sgi_dev_stage_seq < Project._sgi_dev_stage_order(STAGE_APPROVED):
                     project.write({'stage_id': stage.id})
-                project.message_post(body="El cliente aprobó la muestra (%s). El desarrollo pasa a pilotaje." % detail)
+                project.message_post(body="El cliente aprobó la muestra (%s): %d característica(s) aprobadas. "
+                                          "El desarrollo pasa a pilotaje." % (detail, len(lines)))
             elif ship.response == 'cambios':
                 project.action_sgi_dev_new_revision()
                 if ship.response_note:

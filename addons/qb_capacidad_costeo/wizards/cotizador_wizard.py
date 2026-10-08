@@ -854,7 +854,7 @@ class QbCotizadorWizard(models.TransientModel):
              100.0 * res['rendimiento'], res.get('rend_fuente') or '',
              res['kg'], res['bucket'], self.fx_rate or 'FX de cada compra')
 
-        cotizacion = self.env['qb.cotizacion'].create({
+        vals = {
             'name': res['name'],
             'partner_id': self.partner_id.id,
             'product_id': self.product_id.id,
@@ -903,14 +903,21 @@ class QbCotizadorWizard(models.TransientModel):
             'validez_hasta': fields.Date.today() + relativedelta(
                 days=int(self.env['qb.costeo.factor.config'].get_param(
                     'quote_validity_days', 15))),
-        })
-        return cotizacion
+        }
+        # 1.70.0 (Jose 2026-10-08, punto 3): con el cotizador nuevo instalado
+        # la calculadora guarda ahí (borrador que aprueba el puesto), nunca en
+        # qb.cotizacion. `qb_guardar_legado` lo usan solo las pruebas del
+        # motor viejo.
+        if 'qb.cotizador.cotizacion' in self.env and not self.env.context.get('qb_guardar_legado'):
+            return self.env['qb.cotizador.cotizacion'].crear_desde_calculadora(
+                dict(vals, tramo_ids=[t[2] for t in vals['tramo_ids']]))
+        return self.env['qb.cotizacion'].create(vals)
 
     def action_cotizar(self):
         cotizacion = self._save_cotizacion()
         return {
             'type': 'ir.actions.act_window',
-            'res_model': 'qb.cotizacion',
+            'res_model': cotizacion._name,
             'res_id': cotizacion.id,
             'view_mode': 'form',
             'target': 'current',
@@ -928,8 +935,13 @@ class QbCotizadorWizard(models.TransientModel):
         # precio_objetivo está en la moneda de la cotización → a MXN → a la
         # moneda del pedido (normalmente son la misma y esto es identidad)
         fx_wiz = Costo.to_mxn_rate(self.currency_id)
-        precio_mxn = (self.precio_objetivo * fx_wiz) if self.precio_objetivo \
-            else cotizacion.precio_evaluado
+        # 1.70.0: la cotización nueva no tiene «precio evaluado»; se usa el de
+        # mercado y, si no hay, el piso a planta llena (misma regla del viejo).
+        if 'precio_evaluado' in cotizacion._fields:
+            evaluado = cotizacion.precio_evaluado
+        else:
+            evaluado = cotizacion.precio_mercado or cotizacion.piso_lleno
+        precio_mxn = (self.precio_objetivo * fx_wiz) if self.precio_objetivo else evaluado
         rate = Costo.to_mxn_rate(self.sale_order_id.currency_id)
         precio_divisa = precio_mxn / rate if rate else precio_mxn
         self.sale_line_id.price_unit = precio_divisa

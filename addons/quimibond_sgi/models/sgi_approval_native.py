@@ -368,6 +368,14 @@ class SgiActivityRoleApproval(models.Model):
         """¿Hay quien mantenga la regla nativa del botón? Solo con el satélite."""
         return False
 
+    @api.model
+    def _sgi_studio_installed(self):
+        """57.131.0: el satélite quimibond_sgi_studio está instalado (o por
+        instalar / actualizar) aunque todavía no esté en el registro: pasa en
+        las migraciones del SGI, que corren antes de cargarlo."""
+        return bool(self.env['ir.module.module'].sudo().search_count(
+            [('name', '=', 'quimibond_sgi_studio'), ('state', 'in', ('installed', 'to upgrade', 'to install'))]))
+
     def _sgi_button_state(self):
         """Estado de un rol «Botón de Odoo» ya configurado y con personas."""
         self.ensure_one()

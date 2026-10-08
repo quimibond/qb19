@@ -13,12 +13,18 @@
               parent="menu_qb_costeo_root" action="panel_action" sequence="5"/>
 
     <!-- 2. Cotizar: el flujo diario del vendedor -->
+    <!-- 1.70.0 (Jose 2026-10-08, punto 3): el cotizador viejo queda solo para
+         administradores; las cotizaciones viven en qb_cotizador (Ventas →
+         Cotizaciones de costo) y pasan por la aprobación del puesto. Los
+         modelos y los datos no se tocan. -->
     <menuitem id="menu_qb_cotizar_group" name="Cotizar"
-              parent="menu_qb_costeo_root" sequence="10"/>
+              parent="menu_qb_costeo_root" sequence="10" groups="base.group_system"/>
     <menuitem id="menu_qb_cotizador" name="Nueva cotización"
-              parent="menu_qb_cotizar_group" action="cotizador_wizard_action" sequence="10"/>
+              parent="menu_qb_cotizar_group" action="cotizador_wizard_action" sequence="10"
+              groups="base.group_system"/>
     <menuitem id="menu_qb_cotizaciones" name="Cotizaciones guardadas"
-              parent="menu_qb_cotizar_group" action="cotizacion_action" sequence="20"/>
+              parent="menu_qb_cotizar_group" action="cotizacion_action" sequence="20"
+              groups="base.group_system"/>
     <menuitem id="menu_qb_winloss" name="Win/Loss"
               parent="menu_qb_cotizar_group" action="winloss_action" sequence="30"/>
 
@@ -92,14 +98,15 @@
     <!-- ============ Integración con la app de VENTAS ============
          Los vendedores cotizan desde su app, sin ir al módulo de costeo:
          Ventas → Cotizador de costos. Mismas acciones, otro punto de entrada. -->
+    <!-- 1.70.0: solo administradores (ver arriba). -->
     <menuitem id="menu_sale_qb_cotizador_root" name="Cotizador de costos"
-              parent="sale.sale_menu_root" sequence="15"/>
+              parent="sale.sale_menu_root" sequence="15" groups="base.group_system"/>
     <menuitem id="menu_sale_qb_cotizador" name="Cotizar (capacidad y costo)"
               parent="menu_sale_qb_cotizador_root" action="cotizador_wizard_action"
-              sequence="10"/>
+              sequence="10" groups="base.group_system"/>
     <menuitem id="menu_sale_qb_cotizaciones" name="Cotizaciones guardadas"
               parent="menu_sale_qb_cotizador_root" action="cotizacion_action"
-              sequence="20"/>
+              sequence="20" groups="base.group_system"/>
     <menuitem id="menu_sale_qb_costo_producto" name="Costo por producto"
               parent="menu_sale_qb_cotizador_root" action="costo_producto_action"
               sequence="30"/>

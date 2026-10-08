@@ -5,7 +5,7 @@ from odoo import fields
 from odoo.exceptions import UserError
 from odoo.tests import tagged
 
-from ..models.settings import PARAM_ESCALERA_PCT, PARAM_MARGEN_MINIMO
+from ..models.settings import PARAM_ARCHIVAR_DIAS, PARAM_ESCALERA_PCT, PARAM_MARGEN_MINIMO, PARAM_SEGUIMIENTO_DIAS
 from .common import CotizadorCase
 
 
@@ -154,3 +154,43 @@ class TestFlujo(CotizadorCase):
         cot.write({'volumen': 100})
         with self.assertRaises(UserError, msg='Sin cálculo del costo no se pide aprobación'):
             cot.action_enviar_aprobacion()
+
+    def test_10_sin_parametros_no_hay_seguimiento_ni_archivo(self):
+        """1.1.0 (Jose 2026-10-08, punto 2): seguimiento y archivo de borradores vacíos = apagados."""
+        Param = self.env['ir.config_parameter'].sudo()
+        Param.set_param(PARAM_SEGUIMIENTO_DIAS, False)
+        Param.set_param(PARAM_ARCHIVAR_DIAS, False)
+        cot = self._presentada()
+        self.assertFalse(cot.seguimiento_fecha, 'Sin días no hay fecha de seguimiento')
+        self.assertTrue(cot.seguimiento_hecho, 'Y el cron no lo busca')
+        borrador = self._cot()
+        self.env.cr.execute('UPDATE qb_cotizador_cotizacion SET write_date = %s WHERE id = %s',
+                            (fields.Datetime.now() - timedelta(days=400), borrador.id))
+        borrador.invalidate_recordset(['write_date'])
+        self.env['qb.cotizador.cotizacion']._cron_diario()
+        self.assertTrue(borrador.active, 'Sin días no se archivan borradores')
+        self.assertFalse(cot.activity_ids.filtered(lambda a: 'Seguimiento' in (a.summary or '')))
+
+    def test_11_calculadora_guarda_en_el_cotizador_nuevo(self):
+        """1.1.0 (Jose 2026-10-08, punto 3): la calculadora viva entra aquí como borrador."""
+        d = {'name': 'CALC-1', 'partner_id': self.partner.id, 'product_id': self.tela.id,
+             'spec_galga': '18', 'volumen': 1000.0, 'uom_name': 'm', 'currency_id': False, 'fx_rate': 1.0,
+             'mp_unit': 6.0, 'energia_unit': 1.0, 'fab_unit': 2.0, 'conv_unit': 0.5, 'conv_var_unit': 0.2,
+             'rendimiento': 0.9, 'op_pct': 10.0, 'costo_variable': 7.0, 'costo_absorbido_sin_op': 8.0,
+             'precio_objetivo': 15.0, 'precio_mercado': 14.0, 'supuestos': 'prueba',
+             'tramo_ids': [{'multiplo': 1.0, 'volumen': 1000.0, 'es_base': True, 'precio_mxn': 15.0,
+                            'precio_divisa': 15.0, 'margen_neto_pct': 0.2, 'contrib_total_mes': 8000.0,
+                            'semaforo': 'verde'}]}
+        cot = self.env['qb.cotizador.cotizacion'].with_user(self.vendedor).crear_desde_calculadora(d)
+        self.assertEqual(cot.state, 'borrador', 'Entra sin aprobar: la aprueba el puesto')
+        self.assertTrue(cot.folio)
+        self.assertEqual(cot.costo_fuente, 'legado')
+        self.assertEqual(cot.spec_galga, '18')
+        self.assertEqual(cot.currency_id, self.company.currency_id)
+        self.assertAlmostEqual(cot.energia_unit, 1.2)
+        self.assertAlmostEqual(cot.fabricacion_unit, 3.5)
+        self.assertAlmostEqual(cot.costo_variable, 6.3)
+        self.assertAlmostEqual(cot.op_pct, 0.10)
+        self.assertAlmostEqual(cot.precio_objetivo, 15.0)
+        self.assertEqual(len(cot.tramo_ids), 1)
+        self.assertEqual(cot.user_id, self.vendedor)

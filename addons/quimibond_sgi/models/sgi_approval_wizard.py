@@ -164,7 +164,17 @@ class SgiActivityApprovalGap(models.Model):
         out = []
         labels = dict(self.env['sgi.activity.role']._fields['approval_state']._description_selection(
             self.env))
+        # 57.131.0 (Jose 2026-10-08, punto 4): durante una actualización las
+        # migraciones del SGI corren antes de que quimibond_sgi_studio entre al
+        # registro; sin el satélite todo botón se lee «por sincronizar» y el
+        # faltante quedaba grabado aunque la regla estuviera activa (C1.02 y
+        # C1.11, 2026-10-08 06:31 UTC). Con el satélite instalado pero sin
+        # cargar, los botones no se dictaminan; el satélite refresca al cargar.
+        Role = self.env['sgi.activity.role']
+        studio_pending = not Role._sgi_button_supported() and Role._sgi_studio_installed()
         for role in self.role_ids.filtered(lambda r: r.role == 'aprueba'):
+            if studio_pending and role.approval_kind == 'boton':
+                continue
             if role.approval_state in APPROVAL_NOT_ACTIVE:
                 who = role.job_id.name or role.family_id.name or "quien aprueba"
                 out.append("La aprobación de %s no está activa en Odoo (%s): configúrela en "
