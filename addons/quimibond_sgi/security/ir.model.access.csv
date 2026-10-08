@@ -363,3 +363,4 @@ access_sgi_approval_subject_user,sgi.approval.subject.user,model_sgi_approval_su
 access_sgi_approval_subject_manager,sgi.approval.subject.manager,model_sgi_approval_subject,group_sgi_manager,1,1,1,1
 access_sgi_approval_subject_approvals,sgi.approval.subject.approvals,model_sgi_approval_subject,approvals.group_approval_manager,1,1,1,1
 access_sgi_dev_mark_wizard_manager,sgi.dev.mark.wizard.manager,model_sgi_dev_mark_wizard,project.group_project_manager,1,1,1,1
+access_sgi_dev_mp_line_user,sgi.dev.mp.line.user,model_sgi_dev_mp_line,base.group_user,1,1,1,1

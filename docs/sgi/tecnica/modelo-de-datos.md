@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (151) y modelos de otras apps que extienden (53). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (152) y modelos de otras apps que extienden (53). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -60,6 +60,7 @@ Modelos que definen el núcleo y sus satélites (151) y modelos de otras apps qu
 | [`sgi.dev.feasibility.item`](diccionario/sgi.dev.feasibility.item.md) | Recurso del checklist de factibilidad | Recurso o pregunta del checklist de factibilidad, por línea (catálogo; nace vacío). | Model | 5 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
 | [`sgi.dev.lab.request`](diccionario/sgi.dev.lab.request.md) | Solicitud de pruebas a laboratorio (desarrollo) | Solicitud de pruebas de laboratorio sobre renglones de la tabla de características. | Model | 16 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
 | [`sgi.dev.mark.wizard`](diccionario/sgi.dev.mark.wizard.md) | Marcar proyectos existentes como desarrollo de producto | Marca como desarrollo de producto varios proyectos existentes de una vez. La lista se llena con los candidatos (nombre de código de artículo o columna «Por revisar»); quite los que no sean desarrollo… | TransientModel | 3 | `addons/quimibond_sgi/models/sgi_dev_board.py` |
+| [`sgi.dev.mp.line`](diccionario/sgi.dev.mp.line.md) | Materia prima de la muestra del desarrollo | Materia prima que pide la muestra: lo que necesita la lista de materiales contra lo que hay. | Model | 8 | `addons/quimibond_sgi/models/sgi_dev_start.py` |
 | [`sgi.dev.mp.wait`](diccionario/sgi.dev.mp.wait.md) | Espera de materia prima del desarrollo | Periodo en que un desarrollo esperó materia prima: detiene el reloj de desarrollo. | Model | 5 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
 | [`sgi.dev.option`](diccionario/sgi.dev.option.md) | Opción de lista del desarrollo de producto | Opción de lista para el proyecto de desarrollo (aplicación, mercado, laminado, requisito legal, motivo de no factibilidad). | Model | 4 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
 | [`sgi.dev.revision`](diccionario/sgi.dev.revision.md) | Revisión del desarrollo de producto | Renglón de la bitácora de revisiones de un desarrollo: qué cambió, cuándo y quién lo pidió. | Model | 11 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
@@ -167,7 +168,7 @@ Modelos que definen el núcleo y sus satélites (151) y modelos de otras apps qu
 | [`account.move`](diccionario/account.move.md) | 7 | `addons/quimibond_sgi/models/sgi_kpi_account.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`account.move.line`](diccionario/account.move.line.md) | 1 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
 | [`approval.category`](diccionario/approval.category.md) | 6 | `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_mp_change.py` |
-| [`approval.request`](diccionario/approval.request.md) | 37 | `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py` |
+| [`approval.request`](diccionario/approval.request.md) | 38 | `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py` |
 | [`crm.team`](diccionario/crm.team.md) | 1 | `addons/quimibond_sgi/models/sgi_business_line.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py` |
 | [`crm.team.member`](diccionario/crm.team.member.md) | 0 | `addons/quimibond_sgi/models/sgi_business_line.py` |
 | [`documents.document`](diccionario/documents.document.md) | 61 | `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimibond_sgi/models/sgi_document.py`, `addons/quimibond_sgi/models/sgi_document_owner.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_formatos_bloque3.py`, `addons/quimibond_sgi/models/sgi_legacy_routine.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_sign_elearning.py`, `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py` |
@@ -191,11 +192,11 @@ Modelos que definen el núcleo y sus satélites (151) y modelos de otras apps qu
 | [`maintenance.request`](diccionario/maintenance.request.md) | 7 | `addons/quimibond_sgi/models/sgi_checklist.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py` |
 | [`mrp.bom`](diccionario/mrp.bom.md) | 0 | `addons/quimibond_sgi/models/sgi_links.py` |
 | [`mrp.eco`](diccionario/mrp.eco.md) | 10 | `addons/quimibond_sgi_plm/models/mrp_eco.py` |
-| [`mrp.production`](diccionario/mrp.production.md) | 2 | `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py` |
+| [`mrp.production`](diccionario/mrp.production.md) | 2 | `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`mrp.weigh.roll.wizard`](diccionario/mrp.weigh.roll.wizard.md) | 0 | `addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py` |
 | [`product.product`](diccionario/product.product.md) | 3 | `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`product.template`](diccionario/product.template.md) | 8 | `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
-| [`project.project`](diccionario/project.project.md) | 93 | `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_improvement.py` |
+| [`project.project`](diccionario/project.project.md) | 97 | `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_improvement.py` |
 | [`project.task`](diccionario/project.task.md) | 11 | `addons/quimibond_sgi/models/sgi_improvement.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`project.task.type`](diccionario/project.task.type.md) | 1 | `addons/quimibond_sgi/models/sgi_improvement.py` |
 | [`purchase.order`](diccionario/purchase.order.md) | 2 | `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
@@ -205,7 +206,7 @@ Modelos que definen el núcleo y sus satélites (151) y modelos de otras apps qu
 | [`quality.check`](diccionario/quality.check.md) | 1 | `addons/quimibond_sgi/models/sgi_calibration.py` |
 | [`quality.point`](diccionario/quality.point.md) | 9 | `addons/quimibond_sgi/models/sgi_control_plan.py` |
 | [`res.company`](diccionario/res.company.md) | 0 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
-| [`res.config.settings`](diccionario/res.config.settings.md) | 39 | `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py` |
+| [`res.config.settings`](diccionario/res.config.settings.md) | 42 | `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py` |
 | [`res.partner`](diccionario/res.partner.md) | 19 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_supplier_eval.py`, `addons/quimibond_sgi/models/sgi_work_permit.py` |
 | [`res.users`](diccionario/res.users.md) | 2 | `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py` |
 | [`sale.order`](diccionario/sale.order.md) | 5 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_sale_commitment.py` |
@@ -218,4 +219,4 @@ Modelos que definen el núcleo y sus satélites (151) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 8 de 151.
+Modelos propios sin docstring de clase: 8 de 152.

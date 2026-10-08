@@ -2,7 +2,7 @@
 
 # Acciones planificadas (crons) del SGI
 
-30 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
+31 crons. Viven en archivos `noupdate`: lo que diga la base puede no coincidir con el código (activo, siguiente corrida) y cambiarlos requiere migración. Horas de la siguiente corrida: en la base (Ajustes → Técnico → Acciones planificadas).
 
 | Nombre | Modelo | Código | Cada | Activo | Qué hace (docstring del método) | Archivo |
 |---|---|---|---|---|---|---|
@@ -13,6 +13,7 @@
 | SGI: Consulta y participación de trabajadores (45001 5.4) | `sgi.cron` | `model.cron_worker_participation()` | 6 months | True | Cron semestral: recuerda distribuir la encuesta de consulta y participación de los trabajadores (45001 §5.4). Las respuestas y las quejas del canal interno alimentan la entrada 12 de la RxD. Idempote… | `addons/quimibond_sgi/data/sgi_cumplimiento_data.xml` |
 | SGI: Cumplimiento legal (evaluaciones y permisos) | `sgi.cron` | `model.cron_legal_requirements()` | 1 days | True | Cron diario: evaluaciones de cumplimiento vencidas y permisos por vencer (≤60 días) o vencidos. Idempotente por resumen. | `addons/quimibond_sgi/data/sgi_cumplimiento_data.xml` |
 | SGI: DNC y plan de capacitación (P-A01) | `sgi.cron` | `model.cron_dnc()` | 3 months | True | Cron trimestral: cierra el ciclo de la DNC (P-A01). Cuenta las brechas de competencia abiertas y agenda al coordinador de RH la distribución de la encuesta DNC (F-P-A01-17) y el plan de capacitación.… | `addons/quimibond_sgi/data/sgi_emergency_satisfaction_data.xml` |
+| SGI: Desarrollo, cierra la espera de materia prima recibida | `project.project` | `model.cron_sgi_dev_mp_wait()` | 1 days | True | — | `addons/quimibond_sgi/data/sgi_dev_start_data.xml` |
 | SGI: Empleados sin puesto o sin correo (aviso a RH) | `sgi.cron` | `model.cron_hr_employee_gaps()` | 1 weeks | True | 57.94.0 (U-08), cada lunes: un aviso por departamento con empleados sin puesto o sin correo, a RH. Sale en Mis pendientes como «Aviso». Si la persona lo marcó «Hecho» y siguen faltando datos, el lune… | `addons/quimibond_sgi/data/sgi_floor_cron.xml` |
 | SGI: Encuesta de satisfacción del cliente (9.1.2) | `sgi.cron` | `model.cron_satisfaction_survey()` | 3 months | True | Cron trimestral: recuerda al Admin de Ventas distribuir la Encuesta de Satisfacción del Cliente (9001 9.1.2). Las respuestas alimentan el KPI CA-02 automáticamente. No envía correos a clientes por sí… | `addons/quimibond_sgi/data/sgi_emergency_satisfaction_data.xml` |
 | SGI: Escalamiento de acciones vencidas | `sgi.cron` | `model.cron_overdue_actions()` | 1 days | True | Escalamiento en 3 niveles de acciones vencidas: - nivel 1 (responsable): ya lo recuerda la actividad espejo (Ola 0); - > N días: además su jefe directo (employee_id.parent_id.user_id, fallback Jefe M… | `addons/quimibond_sgi/data/sgi_cron.xml` |

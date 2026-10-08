@@ -94,3 +94,36 @@ class TestCosto(CosteoCase):
         self.workorder_done(self.wc_aca, 1)
         self.periodo.action_calcular()
         self.assertIn('costo por producto', self.periodo.bloqueos)
+
+    def test_calidad_baja_si_falta_un_centro_de_la_ruta(self):
+        """Un terminado cuya receta no mide el acabado (ni órdenes, ni
+        operación, ni velocidad del centro) sale con calidad baja y lo
+        dice, aunque el tejido esté medido."""
+        m = self.env.ref('uom.product_uom_meter')
+        tela2 = self.env['product.product'].create({
+            'name': 'tela2', 'default_code': 'WJ081Q21JNT165', 'type': 'consu',
+            'is_storable': True, 'uom_id': m.id})
+        self.env['mrp.bom'].create({
+            'product_tmpl_id': tela2.product_tmpl_id.id, 'product_qty': 100,
+            'product_uom_id': m.id,
+            'bom_line_ids': [(0, 0, {'product_id': self.crudo.id, 'product_qty': 10,
+                                     'product_uom_id': self.crudo.uom_id.id})]})
+        self.gasto(self.acc_renta, 100000)
+        self.workorder_done(self.wc_tin, 90)
+        self.workorder_done(self.wc_aca, 44)
+        self.periodo.action_calcular()
+        self.periodo.action_calcular_costos()
+        f = self.periodo.costo_ids.filtered(lambda r: r.product_id == tela2)
+        self.assertEqual(f.calidad, 'baja')
+        self.assertIn('sin horas en Acabado', f.calidad_detalle)
+        self.assertIn('horas: heredadas', f.calidad_detalle)
+        # La tela con operación de rama no se ve afectada.
+        f1 = self.periodo.costo_ids.filtered(lambda r: r.product_id == self.tela)
+        self.assertNotIn('sin horas', f1.calidad_detalle)
+        # Con la velocidad del centro capturada, el acabado ya entra al costo.
+        self.c_aca.velocidad_m_h = 1500
+        self.periodo.action_calcular_costos()
+        f = self.periodo.costo_ids.filtered(lambda r: r.product_id == tela2)
+        self.assertNotIn('sin horas', f.calidad_detalle)
+        self.assertIn('driver', f.calidad_detalle)
+        self.assertTrue(f.linea_ids.filtered(lambda l: l.centro_id == self.c_aca))

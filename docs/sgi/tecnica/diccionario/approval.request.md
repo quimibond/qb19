@@ -6,9 +6,9 @@ Modelo de otra app que el SGI extiende.
 
 La solicitud de cambio del MIID es una solicitud de cambio documental de siempre con la huella y la foto de los datos con que se generó su PDF.
 
-Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_mp_change_simple.py`.
 
-## Campos (37)
+## Campos (38)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -20,6 +20,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibo
 | `sgi_change_kind` | Selection | Tipo de cambio | Alta de un documento nuevo, modificación de uno existente o baja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:38` |
 | `sgi_changes` | Text | Descripción de cambios |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:61` |
 | `sgi_current_revision` | Integer | Revisión vigente | Revisión vigente del documento antes del cambio. |  |  | related `sgi_document_id.sgi_revision`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change.py:49` |
+| `sgi_dev_project_id` | Many2one | Proyecto de desarrollo | Desarrollo cuya muestra pide esta materia prima (C1.08). |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:333` |
 | `sgi_document_id` | Many2one | Documento afectado | Documento controlado que se modifica o se da de baja. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:36` |
 | `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) que pide esta compra (C1.08). |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:156` |
 | `sgi_has_subjects` | Boolean |  |  |  |  | compute `_compute_sgi_has_subjects`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_subject.py:47` |

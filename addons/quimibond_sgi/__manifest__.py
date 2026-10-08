@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.123.2',
+    'version': '19.0.57.124.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -100,6 +100,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_dyd_data.xml',
         'data/sgi_dev_characteristic_data.xml',  # 57.117.0 (C1): catálogos de características y codificación
         'data/sgi_dev_project_data.xml',  # 57.118.0 (C1): secuencia FT y etapas de avance
+        'data/sgi_dev_start_data.xml',  # 57.124.0 (C1): cron del reloj de materia prima
         'data/sgi_sign_elearning_data.xml',
         'data/sgi_doc_change_sign_data.xml',
         'data/sgi_checklist_cron.xml',
