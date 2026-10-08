@@ -296,3 +296,31 @@ Decisiones sin preguntar: (1) la medición de C1.14 no se tocó; (2) cerrar el
 pilotaje no mueve el proyecto a Liberado (la liberación es 6.12 y queda para
 el bloque que la pida); (3) sin Cpk mínimo el estudio no dictamina.
 
+## 16. Bloque 5.5 — Escalamiento por tiempo (2026-10-08)
+
+Jose: «primer nivel dueño del proceso, segundo puesto 230, días vacíos». El
+brief (§6.13) propone 2 h al responsable, 4 h a Jessica y Jorge «solo si se
+venció el día», sin confirmar.
+
+- **Paso pendiente** (`project._sgi_dev_pending_step`): solo lectura, por
+  etapa de avance y datos capturados; devuelve numeral de C1, nombre (el de
+  la actividad del SGI si existe) y «desde cuándo». Fuera de «Muestra» el
+  paso sale de la etapa; dentro, de la cadena solicitud aprobada → artículo →
+  materia prima → orden → corrida validada → envío.
+- **Reloj sin materia prima**: horas calendario menos las esperas de
+  `sgi.dev.mp.wait` que caen en el paso; Dirección se mide en días hábiles
+  sobre el inicio corrido por esa espera.
+- **Niveles y destinatarios**: ejecutor = rol «Ejecuta» de la actividad de
+  C1 (puestos → empleados con usuario); dueño = `sgi.process.owner_id` de
+  C1; Dirección = puesto cuyo nombre contiene «director de operaciones» (230
+  en producción). Un nivel sin persona no avisa.
+- **Idempotencia**: una fila `sgi.dev.escalation` por (proyecto, paso,
+  desde, nivel, usuario); la actividad «Por hacer» va con clave
+  `dev_esc:…` del `sgi.cron`; al cambiar el paso se cierran con nota «el
+  paso avanzó». Nunca mueve etapa ni datos.
+- **Parámetros vacíos**; el de días ya existía y sigue creando el rol
+  «Escala» de segundo nivel en las fichas de C1 cuando tiene valor.
+- Fuera: C1.05/C1.06 no distinguen cotización presentada (eso vive en
+  `qb_costeo_sgi`; hook posible en `_sgi_dev_pending_step`), pilotaje sin
+  sub-pasos.
+

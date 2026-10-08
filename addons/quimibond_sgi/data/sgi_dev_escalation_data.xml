@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- 57.135.0 (C1, Jose 5.5): avisos y escalamientos por tiempo de los pasos del desarrollo. -->
+        <record id="sgi_cron_dev_escalation" model="ir.cron">
+            <field name="name">SGI: Desarrollo, avisos por tiempo del paso pendiente</field>
+            <field name="model_id" ref="quimibond_sgi.model_sgi_dev_escalation"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_sgi_dev_escalation()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">hours</field>
+            <field name="nextcall" eval="(DateTime.now() + relativedelta(hours=1, minute=20, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="active" eval="True"/>
+        </record>
+    </data>
+</odoo>

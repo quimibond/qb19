@@ -13,6 +13,33 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.135.0 — 2026-10-08
+
+Jose 2026-10-08, 5.5: escalamiento por tiempo de los pasos del desarrollo (brief §6.13).
+
+- **Agregado** paso pendiente del desarrollo (`_sgi_dev_pending_step`, pestaña
+  Tiempos → «Paso pendiente» y «Horas de desarrollo en el paso»): sale de la
+  etapa de avance y de lo capturado (C1.02 sin resultado del análisis, C1.03
+  sin revisión de Ventas, C1.05, C1.06, y en «Muestra» C1.07 → C1.04 → C1.08 →
+  C1.09 → C1.10 → C1.11 → C1.12; «Respuesta del cliente» C1.12; «Pilotaje»
+  C1.14), con la fecha desde la que está pendiente. Las horas se cuentan **sin
+  la espera de materia prima**.
+- **Agregado** `sgi.dev.escalation` y cron cada hora «Desarrollo, avisos por
+  tiempo del paso pendiente»: un aviso («Por hacer» sobre el proyecto, clave
+  del SGI, sin repetir) por paso, nivel y persona; al avanzar el paso los
+  avisos se cierran solos con nota. Tres niveles: **responsable del paso**
+  (quien ejecuta la actividad de C1), **dueño del proceso** (primer nivel) y
+  **Dirección de Operaciones** (segundo nivel, puesto por nombre; en
+  producción el 230), que no recibe nada antes de su plazo. SGI → Sistema →
+  Avisos por tiempo de desarrollos; botón inteligente «Avisos por tiempo» en
+  el proyecto.
+- **Parámetros vacíos** (el brief propone 2 h, 4 h y «si se venció el día»,
+  sin confirmar): `dev_notice_executor_hours`, `dev_notice_owner_hours` y el
+  existente `dev_escalation_director_days` (días hábiles; también crea el rol
+  «Escala» de segundo nivel en las fichas de C1). Sin parámetros el cron no
+  avisa.
+- **Migración** `19.0.57.135.0`: solo MCP.
+
 ## 19.0.57.134.0 — 2026-10-08
 
 Jose 2026-10-08: la ficha del desarrollo con las pestañas separadas de las
