@@ -67,14 +67,19 @@ class Descansos:
         lunes = (a - timedelta(days=a.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
         semana = lunes - timedelta(days=7)
         while semana <= b:
-            regla = self._regla_en(semana.date() + timedelta(days=3))
-            if regla:
+            # La regla vigente es la del día en que empieza su propia
+            # ventana (un cambio que entra el viernes 25 aplica ese mismo
+            # fin de semana, no a partir de la semana siguiente).
+            for regla in self.reglas:
                 _d, _h_, dow_from, hour_from, dow_to, hour_to = regla
                 ini = semana + timedelta(days=dow_from, hours=hour_from)
+                if self._regla_en(ini.date()) is not regla:
+                    continue
                 fin = semana + timedelta(days=dow_to, hours=hour_to)
                 if fin <= ini:
                     fin += timedelta(days=7)
                 out.append((ini, fin))
+                break
             semana += timedelta(days=7)
         return out
 
