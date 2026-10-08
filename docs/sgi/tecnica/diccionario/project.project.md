@@ -4,9 +4,9 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_sample.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
 
-## Campos (97)
+## Campos (99)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -59,6 +59,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_line_key` | Selection | Línea | Línea de producción del desarrollo; define el checklist de factibilidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:301` |
 | `sgi_dev_market_id` | Many2one | Mercado | Mercado al que va el producto (lista). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:282` |
 | `sgi_dev_missing_partner` | Boolean | Falta el cliente | Desarrollo de origen cliente sin cliente capturado. |  |  | compute `_compute_sgi_dev_missing_partner`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_board.py:23` |
+| `sgi_dev_mo_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_mo_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:59` |
+| `sgi_dev_mo_ids` | One2many | Órdenes de muestra |  |  | `mrp.production` |  |  | `addons/quimibond_sgi/models/sgi_dev_sample.py:58` |
 | `sgi_dev_mp_line_ids` | One2many | Materia prima de la muestra |  |  | `sgi.dev.mp.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:81` |
 | `sgi_dev_mp_missing_count` | Integer | Materias primas que faltan |  |  |  | compute `_compute_sgi_dev_mp_missing_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:82` |
 | `sgi_dev_mp_pending` | Boolean | Materia prima pendiente | Hay una espera de materia prima abierta: el reloj de desarrollo está detenido. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:310` |
@@ -108,7 +110,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_is_ft` | Boolean | Desarrollo de producto | El proyecto es un desarrollo de producto (procedimiento C1): habilita las pestañas de desarrollo, el folio FT, las etapas de avance y las mediciones del SGI. Las plantillas de Diseño y Desarrollo ya lo traen marcado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:27` |
 | `sgi_is_improvement` | Boolean | Proyecto de mejora SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:9` |
 
-## Métodos públicos (27)
+## Métodos públicos (29)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -130,8 +132,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `action_sgi_dev_print` | — |
 | `action_sgi_dev_print_sample_label` | — |
 | `action_sgi_dev_request_lab_tests` | — |
+| `action_sgi_dev_request_sample` | — |
 | `action_sgi_dev_review_approve` | — |
 | `action_sgi_dev_review_return` | — |
+| `action_sgi_dev_view_mos` | — |
 | `action_sgi_dev_view_requisitions` | — |
 | `action_sgi_dev_view_tasks` | — |
 | `action_view_tasks` | La tarjeta de un desarrollo abre su ficha. Con ``sgi_dev_force_tasks`` (botón de la ficha, enlaces «Tareas») se abren las tareas como siempre. |

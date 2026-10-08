@@ -80,6 +80,8 @@ from . import sgi_dev_board
 from . import sgi_dev_process
 # 57.124.0 (C1, bloque E): arranque del desarrollo (compuerta, aviso, existencias, requisición).
 from . import sgi_dev_start
+# 57.125.0 (C1, bloque F): orden de muestra desde el proyecto.
+from . import sgi_dev_sample
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign

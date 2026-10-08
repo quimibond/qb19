@@ -57,6 +57,31 @@
                                  help="Categoría de Aprobaciones con la que el desarrollo pide a Compras lo que falta para la muestra. Vacío: la de tipo compra.">
                             <field name="sgi_dev_requisition_category_id"/>
                         </setting>
+                        <!-- 57.125.0 (C1, bloque F) -->
+                        <setting string="Tipo de operación de la orden de muestra"
+                                 help="Con el que nace la orden pedida desde el proyecto (producción: Tejido Desarrollo).">
+                            <field name="sgi_dev_sample_picking_type_id"/>
+                        </setting>
+                        <setting string="Ubicación del sobrante de la muestra"
+                                 help="A dónde entra lo fabricado en la corrida (producción: 31 Desarrollos Toluca).">
+                            <field name="sgi_dev_sample_location_id"/>
+                        </setting>
+                        <setting string="Puesto de Planeación que emite la orden"
+                                 help="Recibe la actividad «Emitir la orden de muestra».">
+                            <field name="sgi_dev_planning_job_id"/>
+                        </setting>
+                        <setting string="Metros PQ de la muestra"
+                                 help="La cantidad sugerida cubre al menos estos metros de primera (brief: 50 m).">
+                            <field name="sgi_dev_sample_pq_m"/>
+                        </setting>
+                        <setting string="Rendimiento de primera esperado en la muestra (%)"
+                                 help="Vacío: se asume 100 %. El brief no lo define.">
+                            <field name="sgi_dev_sample_expected_yield_pct"/>
+                        </setting>
+                        <setting string="Mínimo de baño de tintorería (kg)"
+                                 help="Solo si el artículo lleva teñido. Vacío: no entra al cálculo.">
+                            <field name="sgi_dev_sample_min_bath_kg"/>
+                        </setting>
                     </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"

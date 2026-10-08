@@ -13,6 +13,35 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.125.0 — 2026-10-08
+
+C1, bloque F (brief §6.10: Orden de muestra).
+
+- **«Pedir corrida de muestra»** en la pestaña Desarrollo del proyecto
+  (`sgi.dev.sample.wizard`): artículo del proyecto (crudo por omisión, o
+  teñido / acabado), cantidad, fecha deseada de máquina, tipo de operación y
+  ubicación del sobrante. Exige la Solicitud de desarrollo aprobada (bloque
+  E) y la lista de materiales del artículo.
+- **Cantidad sugerida con motivo:** la mayor entre lo que pide el cliente
+  (cantidad de la muestra de la solicitud), los metros PQ del parámetro
+  (50 m) entre el rendimiento de primera esperado (parámetro vacío: 100 %) y
+  el mínimo de baño de tintorería si lleva teñido (parámetro vacío: no
+  entra). Se pasa a kg con el rendimiento m/kg de la tabla de
+  características (1000 / (masa × ancho)). Diseño de Procesos la puede
+  ajustar.
+- **La orden le llega armada a Planeación:** artículo, folio FT en origen,
+  tipo de operación «Tejido Desarrollo» (parámetro, sembrado por nombre),
+  lista de materiales y ruta, sobrante a 31 Desarrollos (parámetro,
+  sembrado por nombre), `sgi_dev_project_id` en la orden; actividad al
+  Planeador de Producción (parámetro, sembrado por nombre).
+- **Fecha de máquina en el proyecto:** una tarea «Corrida de muestra …» con
+  la fecha deseada; al cambiar `date_start` de la orden, la tarea se mueve
+  sola. Al terminar la orden, el proyecto lo anota.
+- Botón «n orden(es) de muestra» en el proyecto; campos en la orden de
+  fabricación. Ajustes → SGI → Desarrollo de producto: seis parámetros.
+- **Migración:** siembra tipo de operación, ubicación y puesto de Planeación
+  por nombre y los 50 m PQ si están vacíos.
+
 ## 19.0.57.124.0 — 2026-10-08
 
 C1, bloque E (brief §6.9: Solicitud de desarrollos y arranque).
