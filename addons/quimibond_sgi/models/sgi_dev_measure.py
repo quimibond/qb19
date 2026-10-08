@@ -108,14 +108,26 @@ C1_MEASURES = {
         'complete_domain': "[('pending_count', '=', 0)]",
         'complete_criteria': "Todos los renglones pedidos tienen resultado.",
     },
+    # 57.129.0 (Jose, 3.3): el envío y la respuesta del cliente son registros propios; C1.12 y C1.13
+    # se miden por ellos (antes C1.13 por el paso del proyecto por la etapa).
+    'C1-ENVIO': {
+        'name': "Muestra enviada al cliente (registro del envío)",
+        'model': 'sgi.dev.shipment',
+        'domain': "[%s, ('state', 'in', ('enviada', 'respondida'))]" % DEV_RELATED_DOMAIN,
+        'date_field': 'shipped_at',
+        'user_field': 'shipped_by_id',
+        'complete_domain': "[('roll_ids', '!=', False), ('notified_date', '!=', False)]",
+        'complete_criteria': "Rollos con sus dimensiones registrados y aviso al cliente enviado.",
+        'activity_number': 'C1.12',
+    },
     'C1-RESPUESTA': {
-        'name': "Respuesta del cliente a la muestra (paso por la etapa)",
-        'model': 'sgi.dev.stage.log',
-        'domain': "[%s, ('stage_key', '=', 'respuesta_cliente')]" % DEV_RELATED_DOMAIN,
-        'date_field': 'date_start',
-        'user_field': 'user_id',  # 57.127.0 (Jose, 1b): quién lo pasó a la etapa
-        'complete_domain': "[('date_end', '!=', False)]",
-        'complete_criteria': "El proyecto salió de «Respuesta del cliente» hacia la etapa siguiente.",
+        'name': "Respuesta del cliente a la muestra (registro con evidencia)",
+        'model': 'sgi.dev.shipment',
+        'domain': "[%s, ('state', '=', 'respondida')]" % DEV_RELATED_DOMAIN,
+        'date_field': 'response_registered_at',
+        'user_field': 'response_registered_by_id',
+        'complete_domain': "[('response_medium', '!=', False), ('response_date', '!=', False)]",
+        'complete_criteria': "Respuesta (aprueba, pide cambios o rechaza) con medio, fecha y evidencia adjunta.",
     },
     'C1-APROBADO': {
         'name': "Producto y proceso en pilotaje (paso por la etapa)",

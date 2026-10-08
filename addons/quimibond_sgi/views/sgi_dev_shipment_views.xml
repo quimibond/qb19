@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.129.0 (C1, Jose 3.3): envío de la muestra y respuesta del cliente como registro propio. -->
+    <record id="sgi_dev_shipment_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.shipment.list</field>
+        <field name="model">sgi.dev.shipment</field>
+        <field name="arch" type="xml">
+            <list string="Envíos de muestra" decoration-muted="state == 'respondida'" decoration-info="state == 'enviada'">
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="product_id" optional="show"/>
+                <field name="date_shipped"/>
+                <field name="medium"/>
+                <field name="carrier_id" optional="show"/>
+                <field name="tracking_ref" optional="show"/>
+                <field name="roll_count"/>
+                <field name="total_m" sum="Metros"/>
+                <field name="notified_date" optional="show"/>
+                <field name="response" widget="badge" decoration-success="response == 'aprueba'"
+                       decoration-warning="response == 'cambios'" decoration-danger="response == 'rechaza'"/>
+                <field name="response_date" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'enviada'" decoration-success="state == 'respondida'"/>
+                <field name="activity_ids" widget="list_activity" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_shipment_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.shipment.form</field>
+        <field name="model">sgi.dev.shipment</field>
+        <field name="arch" type="xml">
+            <form string="Envío de muestra">
+                <header>
+                    <button name="action_create_picking" type="object" string="Crear baja de muestras" class="btn-primary"
+                            invisible="state != 'borrador' or picking_id"/>
+                    <button name="action_open_picking" type="object" string="Ver la baja" class="btn-secondary"
+                            invisible="not picking_id"/>
+                    <button name="action_ship" type="object" string="Registrar envío" class="btn-primary"
+                            invisible="state != 'borrador' or (picking_id and picking_state not in ('done', 'cancel'))"
+                            confirm="Registra el envío de la muestra con su usuario y la fecha indicada. ¿Continuar?"/>
+                    <button name="action_open_mail" type="object" string="Correo al cliente" class="btn-primary" icon="fa-envelope-o"
+                            invisible="state == 'borrador' or notified_date"/>
+                    <button name="action_open_mail" type="object" string="Reenviar correo" class="btn-secondary" icon="fa-envelope-o"
+                            invisible="state == 'borrador' or not notified_date"/>
+                    <button name="action_register_response" type="object" string="Registrar respuesta del cliente" class="btn-primary"
+                            invisible="state != 'enviada'"
+                            confirm="Registra la respuesta del cliente con su evidencia. Si aprueba, el desarrollo pasa a pilotaje; si pide cambios, sube revisión; si rechaza, cierra sin producto. ¿Continuar?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,enviada,respondida"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group string="Qué se envía">
+                            <field name="project_id" readonly="state != 'borrador'"/>
+                            <field name="partner_id"/>
+                            <field name="production_id" readonly="state != 'borrador'"/>
+                            <field name="product_id" readonly="state != 'borrador'"/>
+                            <field name="attachment_ids" widget="many2many_binary"/>
+                        </group>
+                        <group string="Envío">
+                            <field name="date_shipped" readonly="state != 'borrador'"/>
+                            <field name="medium" readonly="state != 'borrador'"/>
+                            <field name="carrier_id" invisible="medium != 'paqueteria'" required="medium == 'paqueteria'"
+                                   readonly="state != 'borrador'"/>
+                            <field name="tracking_ref" invisible="medium != 'paqueteria'" required="medium == 'paqueteria'"
+                                   readonly="state != 'borrador'"/>
+                            <field name="picking_id" invisible="not picking_id"/>
+                            <field name="picking_state" invisible="not picking_id"/>
+                            <field name="shipped_at" invisible="not shipped_at"/>
+                            <field name="shipped_by_id" invisible="not shipped_at"/>
+                            <field name="notified_date" invisible="not notified_date"/>
+                            <field name="notified_by_id" invisible="not notified_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Rollos avisados" name="rolls">
+                            <field name="roll_ids" readonly="state != 'borrador'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="product_id" column_invisible="1"/>
+                                    <field name="lot_id"/>
+                                    <field name="length_m" sum="Metros"/>
+                                    <field name="width_m"/>
+                                    <field name="weight_kg" sum="Kilos"/>
+                                </list>
+                            </field>
+                            <group class="oe_subtotal_footer">
+                                <field name="roll_count"/>
+                                <field name="total_m"/>
+                                <field name="total_kg"/>
+                            </group>
+                        </page>
+                        <page string="Respuesta del cliente" name="response" invisible="state == 'borrador'">
+                            <group>
+                                <group>
+                                    <field name="response" widget="radio" readonly="state == 'respondida'"/>
+                                    <field name="response_date" readonly="state == 'respondida'"/>
+                                    <field name="response_medium" readonly="state == 'respondida'"/>
+                                    <field name="response_contact_id" readonly="state == 'respondida'"
+                                           domain="[('commercial_partner_id', '=', partner_id)]"/>
+                                    <field name="response_ref" readonly="state == 'respondida'"/>
+                                </group>
+                                <group>
+                                    <field name="response_file" filename="response_filename" readonly="state == 'respondida'"/>
+                                    <field name="response_filename" invisible="1"/>
+                                    <field name="reject_reason_id" invisible="response != 'rechaza'" required="response == 'rechaza'"
+                                           readonly="state == 'respondida'"/>
+                                    <field name="response_registered_at" invisible="not response_registered_at"/>
+                                    <field name="response_registered_by_id" invisible="not response_registered_at"/>
+                                    <field name="followup_date" invisible="not followup_date"/>
+                                </group>
+                            </group>
+                            <field name="response_note" invisible="response != 'cambios'" readonly="state == 'respondida'"
+                                   placeholder="Qué pide cambiar el cliente; la especificación se corrige en la tabla del proyecto."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_shipment_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.shipment.search</field>
+        <field name="model">sgi.dev.shipment</field>
+        <field name="arch" type="xml">
+            <search string="Envíos de muestra">
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="tracking_ref"/>
+                <filter name="to_ship" string="Por enviar" domain="[('state', '=', 'borrador')]"/>
+                <filter name="waiting" string="Esperando respuesta" domain="[('state', '=', 'enviada')]"/>
+                <filter name="not_notified" string="Sin aviso al cliente" domain="[('state', '=', 'enviada'), ('notified_date', '=', False)]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_response" string="Respuesta" context="{'group_by': 'response'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_shipment_action" model="ir.actions.act_window">
+        <field name="name">Envíos de muestra</field>
+        <field name="res_model">sgi.dev.shipment</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_dev_shipment_view_search"/>
+        <field name="context">{'search_default_waiting': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Registre aquí cada muestra que sale al cliente</p>
+            <p>Rollos con sus dimensiones, medio de entrega y guía; el correo al cliente sale listo y la respuesta
+               (aprueba, pide cambios o rechaza) queda con su evidencia.</p>
+        </field>
+    </record>
+
+    <record id="stock_picking_form_view_sgi_dev_shipment" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.sgi.dev.shipment</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//notebook" position="inside">
+                <page string="Desarrollo" name="sgi_dev" invisible="not sgi_dev_shipment_id">
+                    <group>
+                        <field name="sgi_dev_shipment_id" readonly="1"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>
