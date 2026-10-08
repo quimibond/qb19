@@ -3,6 +3,14 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.4.0 — 2026-10-08
+
+- Fuente de horas `pesaje` (calidad alta) y gancho `_fuentes_externas` en
+  `qb.producto.horas.recalcular`: un módulo que mida mejor que las órdenes
+  de trabajo (el pesaje rollo por rollo de `qb_tejido_ritmo`) entrega horas
+  por unidad que mandan sobre `medido` y por debajo de `manual`. Sin ese
+  módulo no cambia nada.
+
 ## 19.0.1.3.1 — 2026-10-08
 
 - **Corrige: ninguna orden de trabajo contaba como «medido».** En

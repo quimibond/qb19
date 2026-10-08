@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_tejido_ritmo_recalcular_form" model="ir.ui.view">
+        <field name="name">qb.tejido.ritmo.recalcular.form</field>
+        <field name="model">qb.tejido.ritmo.recalcular</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="desde"/>
+                    <field name="hasta"/>
+                </group>
+                <footer>
+                    <button name="action_recalcular" type="object" string="Recalcular" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    <record id="action_qb_tejido_ritmo_recalcular" model="ir.actions.act_window">
+        <field name="name">Recalcular ritmo de tejido</field>
+        <field name="res_model">qb.tejido.ritmo.recalcular</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

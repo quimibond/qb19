@@ -13,6 +13,13 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.128.1 — 2026-10-08
+
+- Corrección del build de `main` (05:56 UTC): `sgi_dev_process_sheet` hereda
+  `sgi.machine.sheet` y se importaba antes que él en `models/__init__.py`
+  («Model 'sgi.machine.sheet' does not exist in registry»). El import va
+  después. Sin migración.
+
 ## 19.0.57.128.0 — 2026-10-08
 
 Jose 2026-10-08, bloque 3.1: aprobación del cliente para iniciar.

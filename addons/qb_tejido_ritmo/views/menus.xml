@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_qb_tejido_ritmo_root" name="Ritmo de tejido" parent="qb_costeo.menu_qb_costeo_root" sequence="35"/>
+    <menuitem id="menu_qb_tejido_ritmo" name="Ritmo por máquina y artículo" parent="menu_qb_tejido_ritmo_root" action="action_qb_tejido_ritmo" sequence="10"/>
+    <menuitem id="menu_qb_tejido_intervalo" name="Intervalos (horas por clase)" parent="menu_qb_tejido_ritmo_root" action="action_qb_tejido_intervalo" sequence="20"/>
+    <menuitem id="menu_qb_tejido_paros_motivo" name="Paros por motivo" parent="menu_qb_tejido_ritmo_root" action="action_qb_tejido_paros_motivo" sequence="30"/>
+    <menuitem id="menu_qb_tejido_paro_general" name="Paros generales de planta" parent="menu_qb_tejido_ritmo_root" action="action_qb_tejido_paro_general" sequence="40"/>
+    <menuitem id="menu_qb_tejido_descanso" name="Descansos de tejido" parent="menu_qb_tejido_ritmo_root" action="action_qb_tejido_descanso" sequence="50" groups="mrp.group_mrp_manager"/>
+    <menuitem id="menu_qb_tejido_recalcular" name="Recalcular ritmo de tejido" parent="menu_qb_tejido_ritmo_root" action="action_qb_tejido_ritmo_recalcular" sequence="60" groups="mrp.group_mrp_manager"/>
+</odoo>
