@@ -364,3 +364,34 @@ aprobación del cliente registrada y folio FT. El paso pendiente del
 escalamiento (5.5) no cambió: en «Muestra» sigue C1.07 → C1.04 → …; si Jose
 quiere que C1.04 se exija antes de cotizar, se ajusta el resolutor.
 
+### 18.1 Descripción del proceso de Jessica (2026-10-08) y lo que queda por decidir
+
+Nombres finales de las pestañas según su descripción: Análisis de mercado
+industrial · Análisis de proyecto · Cotización · Aprobación del cliente ·
+Solicitud de desarrollo · Muestra · Envío de muestra · Retroalimentación del
+cliente · Cambios al proyecto · Pilotaje y liberación · Tiempos. Lo que ya
+cubre el código: análisis de la muestra con pruebas al laboratorio (F-P-C05-02
+= `sgi.dev.lab.request`), revisión que firma Jessica (revisión de Ventas),
+código y artículos por Selena, ruta y centros de trabajo por Yet en la lista
+de materiales (C1.04b) con «Diagrama de flujo», aprobación del cliente por
+correo, OC o WhatsApp con evidencia, solicitud de desarrollo firmada por
+Selena y Jorge con aviso por correo a las áreas, corrida, envío,
+retroalimentación, revisiones, pilotajes con estudio de habilidad, fichas de
+proceso y producto. **Decisiones de Jose, no construidas:**
+
+1. **Aprobación para iniciar un proyecto** como documento generado desde el
+   proyecto (lo llena Selena, lo manda Jessica, el cliente firma o manda OC)
+   y **folio FT antes de esa aprobación** (hoy el folio se asigna al pasar a
+   «Muestra», después de registrarla). El brief §6.8 ya lo pedía como
+   documento generado; cambiar el momento del folio es decisión de proceso.
+2. **Solicitud de modificación del proyecto** (causas, 5 porqués, fases
+   afectadas, firma de Jorge) en «Cambios al proyecto». El brief (C1.13)
+   la sustituyó por la bitácora de revisiones; Jessica la quiere formal.
+3. **Ruta como selección de centros de trabajo con imagen** en lugar del
+   diagrama de proceso en papel: hoy la ruta vive en la lista de materiales
+   y el diagrama se imprime; falta la vista gráfica dentro del proyecto.
+4. **Mapa ISO 9001:2015 8.3 y APQP**: cruzar cada pestaña con 8.3.2 a 8.3.6
+   (planificación, entradas, controles: revisión / verificación / validación,
+   salidas, cambios) y decidir qué evidencia falta para armar el APQP por
+   proyecto.
+

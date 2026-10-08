@@ -364,10 +364,12 @@ Cotización → Aprobación del cliente → Muestra → Respuesta del cliente �
 Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
 campo Cliente. El nombre se arma solo (folio, código, revisión). Desde
 57.134.0 la ficha tiene dos secciones de pestañas: «Desarrollo de producto»
-(desde 57.136.0 una por etapa de C1: Solicitud del cliente, Análisis y
-factibilidad, Cotización, Aprobación del cliente, Solicitud de desarrollo,
-Muestra, Respuesta del cliente, Pilotaje y liberación, Tiempos; la tabla de
-características aparece en cada una con las columnas de su momento) y
+(desde 57.136.0 una por etapa de C1 con los nombres de Jessica: Análisis de
+mercado industrial, Análisis de proyecto, Cotización, Aprobación del
+cliente, Solicitud de desarrollo, Muestra, Envío de muestra,
+Retroalimentación del cliente, Cambios al proyecto, Pilotaje y liberación,
+Tiempos; la tabla de características aparece en cada una con las columnas
+de su momento) y
 «Proyecto» (las nativas de Odoo). La acción que mueve la etapa
 (aprobar solicitud, aprobar análisis, registrar aprobación del cliente, pedir
 corrida, registrar envío, respuesta del cliente, cerrar) está en el
