@@ -40,8 +40,17 @@
                                  help="Las solicitudes de pruebas de los desarrollos las autorizan las personas de este puesto (Coordinador de Laboratorio y MP) o el Jefe MAST.">
                             <field name="sgi_dev_lab_authorizer_job_id"/>
                         </setting>
-                        <setting string="Escalar a Dirección de Operaciones los pasos de Diseño y Desarrollo"
-                                 help="Días hábiles de atraso tras los que, además del dueño del proceso, se avisa a Dirección de Operaciones en las actividades de C1 que ejecutan Diseño y Desarrollo de Producto o de Procesos. Vacío o 0: todavía no se escala al segundo nivel.">
+                        <!-- 57.135.0 (Jose 5.5): avisos por tiempo del paso pendiente; los tres vacíos hasta que se definan. -->
+                        <setting string="Avisar al responsable del paso pendiente"
+                                 help="Horas de desarrollo (sin materia prima pendiente) que un paso de C1 puede llevar pendiente antes de avisar a quien lo ejecuta. El brief propone 2 horas, no confirmadas. Vacío o 0: no se avisa.">
+                            <field name="sgi_dev_notice_executor_hours"/>
+                        </setting>
+                        <setting string="Primer nivel: escalar al dueño del proceso"
+                                 help="Horas de desarrollo tras las que el dueño del proceso C1 recibe el aviso del paso pendiente. El brief propone 4 horas, no confirmadas. Vacío o 0: no se escala.">
+                            <field name="sgi_dev_notice_owner_hours"/>
+                        </setting>
+                        <setting string="Segundo nivel: escalar a Dirección de Operaciones"
+                                 help="Días hábiles (sin materia prima pendiente) tras los que Dirección de Operaciones recibe el aviso del paso pendiente; antes no recibe nada. También pone a Dirección como «Escala» de segundo nivel en las actividades de C1 que ejecutan Diseño y Desarrollo. Vacío o 0: todavía no se escala al segundo nivel.">
                             <field name="sgi_dev_escalation_director_days"/>
                         </setting>
                         <!-- 57.124.0 (C1, bloque E) -->

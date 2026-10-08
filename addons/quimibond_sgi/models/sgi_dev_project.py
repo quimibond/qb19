@@ -116,6 +116,7 @@ MCP_MODELS = {
     'sgi.dev.customer.spec': True, 'sgi.dev.customer.spec.line': True,  # 57.132.0
     'sgi.dev.pilot': True, 'sgi.dev.pilot.lot': True, 'sgi.dev.pilot.reading': True,  # 57.133.0
     'sgi.dev.pilot.study': False,  # 57.133.0: lo calcula el pilotaje
+    'sgi.dev.escalation': False,  # 57.135.0: lo escribe el cron de avisos por tiempo
 }
 
 
