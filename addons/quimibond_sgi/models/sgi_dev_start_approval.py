@@ -11,7 +11,7 @@ evidencia de la respuesta del cliente se sigue registrando con «Registrar aprob
 import base64
 import logging
 
-from odoo import api, fields, models
+from odoo import fields, models
 from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
