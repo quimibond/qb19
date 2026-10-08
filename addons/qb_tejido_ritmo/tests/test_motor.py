@@ -32,6 +32,9 @@ class TestMotor(TransactionCase):
         self.assertAlmostEqual(self.desc.horas_programadas(datetime(2026, 9, 28), datetime(2026, 10, 5)), 119.0)
         # Semana del 14-sep (regla vieja): viernes 18:00 → sábado 19:00 = 25 h.
         self.assertAlmostEqual(self.desc.horas(datetime(2026, 9, 14), datetime(2026, 9, 21)), 25.0)
+        # Semana del cambio (21 al 27-sep): la regla nueva entra el viernes
+        # 25, así que ese fin de semana ya descansa hasta el domingo (49 h).
+        self.assertAlmostEqual(self.desc.horas(datetime(2026, 9, 21), datetime(2026, 9, 28)), 49.0)
         # Un intervalo que cruza el descanso lo descuenta.
         self.assertAlmostEqual(self.desc.horas(datetime(2026, 10, 2, 17), datetime(2026, 10, 4, 20)), 49.0)
         # Festivo: se une al descanso sin doble conteo.
