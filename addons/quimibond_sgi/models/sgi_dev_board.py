@@ -46,6 +46,11 @@ class ProjectProjectDevBoard(models.Model):
         return self.with_context(sgi_dev_force_tasks=True).action_view_tasks()
 
     def _sgi_dev_form_action(self):
+        # 57.123.2: con ``context`` y ``domain``. Los módulos que extienden
+        # ``action_view_tasks`` y cargan después del SGI (sale_project, que no
+        # es dependencia) reciben esta acción de ``super()`` y le escriben
+        # ``action['context'][...]``: sin la llave tronaba con KeyError al
+        # abrir la tarjeta de un desarrollo en producción (2026-10-08).
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
@@ -55,6 +60,8 @@ class ProjectProjectDevBoard(models.Model):
             'view_mode': 'form',
             'views': [(self.env.ref('project.edit_project').id, 'form')],
             'target': 'current',
+            'context': dict(self.env.context),
+            'domain': [],
         }
 
     # ------------------------------------------------------------------

@@ -12,9 +12,9 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_board.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `candidate_count` | Integer | Candidatos |  |  |  | compute `_compute_candidate_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_board.py:122` |
-| `load_lines` | Boolean | Proponer las características del tipo general | Al marcar, llena la tabla de características con la plantilla del tipo general. Si no, la tabla se llena al elegir el tipo de desarrollo en cada proyecto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_board.py:118` |
-| `project_ids` | Many2many | Proyectos a marcar | Se proponen los proyectos con nombre de código de artículo y los de la columna «Por revisar». Quite los que no sean desarrollos y agregue los que falten. |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_board.py:113` |
+| `candidate_count` | Integer | Candidatos |  |  |  | compute `_compute_candidate_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_board.py:129` |
+| `load_lines` | Boolean | Proponer las características del tipo general | Al marcar, llena la tabla de características con la plantilla del tipo general. Si no, la tabla se llena al elegir el tipo de desarrollo en cada proyecto. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_board.py:125` |
+| `project_ids` | Many2many | Proyectos a marcar | Se proponen los proyectos con nombre de código de artículo y los de la columna «Por revisar». Quite los que no sean desarrollos y agregue los que falten. |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_board.py:120` |
 
 ## Métodos públicos (2)
 
