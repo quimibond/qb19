@@ -192,6 +192,8 @@
                                     <field name="ganada_date"/>
                                     <field name="sale_order_id"/>
                                     <field name="pricelist_item_id"/>
+                                    <field name="tarifa_fecha" invisible="not pricelist_item_id"/>
+                                    <field name="tarifa_user_id" invisible="not pricelist_item_id"/>
                                     <field name="perdida_motivo_id"/>
                                     <field name="perdida_nota"/>
                                     <field name="revision_anterior_id"/>

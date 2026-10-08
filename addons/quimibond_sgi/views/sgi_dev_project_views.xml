@@ -23,8 +23,11 @@
                  solo aparece en la etapa que la pide. Lo contextual (buscar parecidos, código del artículo,
                  materia prima, documentos) se queda junto a sus datos, en su pestaña. -->
             <xpath expr="//header" position="inside">
-                <button name="action_sgi_dev_approve_request" type="object" string="Aprobar solicitud" class="btn-primary" icon="fa-check"
-                        invisible="not sgi_is_ft or sgi_dev_approved_by_id or sgi_dev_stage_key not in ('solicitud', 'analisis')"
+                <!-- 57.136.0 (Administración de Ventas): la Solicitud de desarrollo se llena después de la aprobación del cliente;
+                     Dirección de Operaciones la firma después, así que el botón aparece solo con esa aprobación
+                     registrada y folio FT. La corrida de muestra sigue exigiendo la firma. -->
+                <button name="action_sgi_dev_approve_request" type="object" string="Aprobar solicitud de desarrollo" class="btn-primary" icon="fa-check"
+                        invisible="not sgi_is_ft or sgi_dev_approved_by_id or not sgi_dev_customer_approved_at or not sgi_ft_folio or sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto')"
                         confirm="Firma «Aprobó» la solicitud de desarrollo (Dirección de Operaciones) con su usuario y la fecha de hoy. Al aprobar se avisa a las partes interesadas con el PDF y se revisan existencias de la materia prima. ¿Continuar?"/>
                 <button name="action_sgi_dev_review_approve" type="object" string="Aprobar análisis y factibilidad" class="btn-primary" icon="fa-check"
                         invisible="not sgi_is_ft or sgi_dev_review_state == 'aprobado' or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion')"/>
@@ -32,7 +35,7 @@
                         invisible="not sgi_is_ft or sgi_dev_customer_approved_at or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('solicitud', 'analisis', 'cotizacion', 'aprobacion_cliente')"
                         confirm="Registra la aprobación del cliente con la evidencia de la pestaña «Aprobación del cliente» y pasa el proyecto a «Muestra» (recibe su folio FT). ¿Continuar?"/>
                 <button name="action_sgi_dev_assign_folio" type="object" string="Asignar folio FT" class="btn-primary" icon="fa-hashtag"
-                        invisible="not sgi_is_ft or sgi_ft_folio or sgi_dev_analysis_result == 'linea' or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
+                        invisible="not sgi_is_ft or sgi_ft_folio or sgi_dev_analysis_result in ('linea', 'no_factible') or sgi_dev_stage_key not in ('cotizacion', 'aprobacion_cliente', 'muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
                 <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-primary" icon="fa-cogs"
                         invisible="not sgi_is_ft or sgi_dev_stage_key not in ('muestra', 'respuesta_cliente') or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
                 <button name="action_sgi_dev_new_shipment" type="object" string="Registrar envío de muestra" class="btn-primary" icon="fa-truck"
@@ -116,6 +119,14 @@
                         <span class="o_stat_text">Avisos por tiempo</span>
                     </div>
                 </button>
+                <!-- 57.137.0 (revisión de Administración de Ventas, punto 9): solicitudes de modificación del proyecto. -->
+                <button name="action_sgi_dev_change_requests" type="object" class="oe_stat_button" icon="fa-exchange"
+                        invisible="not sgi_is_ft or not sgi_dev_change_request_count">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value"><field name="sgi_dev_change_request_count"/></span>
+                        <span class="o_stat_text">Modificaciones</span>
+                    </div>
+                </button>
             </xpath>
             <!-- 57.134.0: las pestañas del desarrollo, en el orden del proceso, en su propia sección antes
                  de las nativas de Odoo (Descripción, Ajustes…), que se quedan en el notebook original. -->
@@ -123,106 +134,52 @@
                 <div name="sgi_dev_section" invisible="not sgi_is_ft">
                     <h4 class="mt-3 mb-1 text-uppercase text-muted" style="font-size:12px; letter-spacing:.05em;">Desarrollo de producto</h4>
                     <notebook name="sgi_dev_notebook">
-                        <!-- 1. Lo que pidió el cliente (C1.01). -->
-                        <page string="Solicitud" name="sgi_dev_request">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="text-muted">Formato <field name="sgi_dev_format_code" readonly="1" class="oe_inline fw-bold"/></span>
-                                <div>
-                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"/>
-                                    <button name="action_sgi_dev_print" type="object" string="Imprimir solicitud" class="btn-secondary" icon="fa-print"/>
-                                </div>
-                            </div>
+                        <!-- 57.136.0 (Administración de Ventas, 2026-10-08): una pestaña por etapa, en el orden en que se trabaja C1.
+                             La tabla de características es una sola (sgi_dev_line_ids): cada pestaña la muestra con
+                             las columnas de su etapa (Odoo 19 funde las columnas de todas las apariciones). Los
+                             renglones se agregan solo en «Solicitud del cliente». -->
+                        <!-- 1. Análisis de mercado industrial (Administración de Ventas, etapa Solicitud): lo que el cliente comparte por
+                             muestra, correo o WhatsApp; de aquí parten Diseño de Producto (análisis de la muestra) y Diseño de Procesos (ruta). -->
+                        <page string="Análisis de mercado industrial" name="sgi_dev_request">
                             <group>
-                                <group string="Datos generales">
+                                <group string="Qué pide">
                                     <field name="sgi_dev_type"/>
-                                    <field name="sgi_dev_date"/>
-                                    <field name="sgi_dev_requester"/>
-                                    <field name="partner_id" string="Cliente"/>
-                                    <field name="sgi_dev_customer_property"/>
+                                    <field name="sgi_dev_product_name"/>
+                                    <field name="sgi_dev_origin" widget="radio" options="{'horizontal': true}"/>
+                                    <field name="sgi_dev_contact_id" invisible="sgi_dev_origin != 'cliente'"
+                                           domain="[('commercial_partner_id', '=?', partner_id)]"/>
+                                    <field name="sgi_dev_requester_employee_id" invisible="sgi_dev_origin != 'interno'"
+                                           required="sgi_is_ft and sgi_dev_origin == 'interno'"/>
+                                    <field name="sgi_dev_use" placeholder="Qué es el producto y para qué lo va a usar el cliente"/>
+                                    <field name="sgi_dev_spec" placeholder="Referencia a la hoja técnica del cliente; los valores van en la tabla de abajo"/>
                                 </group>
-                                <group string="Volumen y precio">
-                                    <field name="sgi_dev_sample_m"/>
-                                    <field name="sgi_dev_sample_kg"/>
-                                    <label for="sgi_dev_volume"/>
+                                <group string="Cliente y mercado">
+                                    <field name="sgi_dev_team_id"/>
+                                    <field name="sgi_dev_salesperson_id"/>
+                                    <field name="sgi_dev_customer_status"/>
+                                    <field name="sgi_dev_market_id"/>
+                                    <field name="sgi_dev_spec_number"/>
+                                    <field name="sgi_dev_required_date"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Programa y consumo">
+                                    <field name="sgi_dev_program"/>
+                                    <field name="sgi_dev_application_id"/>
+                                    <field name="sgi_dev_program_years"/>
+                                    <label for="sgi_dev_consumption_annual"/>
                                     <div class="o_row">
-                                        <field name="sgi_dev_volume"/>
-                                        <field name="sgi_dev_volume_uom"/>
+                                        <field name="sgi_dev_consumption_annual"/>
+                                        <field name="sgi_dev_consumption_uom"/>
                                     </div>
-                                    <field name="sgi_dev_target_price"/>
-                                    <field name="sgi_dev_currency_id" invisible="1"/>
-                                    <field name="sgi_dev_norms"/>
+                                    <field name="sgi_dev_consumption_monthly"/>
+                                    <field name="sgi_dev_consumption_annual_m" invisible="sgi_dev_consumption_uom != 'yd'"/>
+                                    <field name="sgi_dev_consumption_annual_yd" invisible="sgi_dev_consumption_uom != 'm'"/>
+                                    <field name="sgi_dev_lamination_id"/>
+                                    <field name="sgi_dev_legal_ids" widget="many2many_tags"/>
                                 </group>
-                            </group>
-                            <group>
-                                <field name="sgi_dev_use" placeholder="Qué es el producto y para qué lo va a usar el cliente"/>
-                                <field name="sgi_dev_spec" placeholder="Referencia a la hoja técnica del cliente; los valores van en la tabla de abajo"/>
-                            </group>
-                            <div class="d-flex gap-3 mb-1" invisible="not sgi_dev_line_count">
-                                <span><field name="sgi_dev_line_count" readonly="1" class="oe_inline fw-bold"/> características</span>
-                                <span class="text-warning" invisible="not sgi_dev_lab_pending_count"><field name="sgi_dev_lab_pending_count" readonly="1" class="oe_inline fw-bold"/> pendientes de laboratorio</span>
-                                <span class="text-warning" invisible="not sgi_dev_deviation_count"><field name="sgi_dev_deviation_count" readonly="1" class="oe_inline fw-bold"/> fuera del control interno</span>
-                                <span class="text-danger" invisible="not sgi_dev_out_of_spec_count"><field name="sgi_dev_out_of_spec_count" readonly="1" class="oe_inline fw-bold"/> no conformes</span>
-                            </div>
-                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
-                                    <list editable="bottom" open_form_view="1"
-                                          decoration-danger="run_result == 'no_conforme'"
-                                          decoration-warning="run_result == 'desviacion'">
-                                        <field name="sequence" widget="handle"/>
-                                        <field name="caracteristica_id" optional="hide"/>
-                                        <field name="caracteristica_code" column_invisible="1"/>
-                                        <field name="kind" column_invisible="1"/>
-                                        <field name="name"/>
-                                        <field name="direction"/>
-                                        <field name="position" optional="show"/>
-                                        <field name="unit"/>
-                                        <field name="spec_limit" optional="show" readonly="kind != 'num'"/>
-                                        <field name="spec_nominal" readonly="kind != 'num'"/>
-                                        <field name="spec_tol_minus" string="Tol. −" readonly="kind != 'num' or spec_limit != 'tol'"/>
-                                        <field name="spec_tol_plus" string="Tol. +" readonly="kind != 'num' or spec_limit != 'tol'"/>
-                                        <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
-                                        <field name="spec_text" optional="show" readonly="kind != 'text'"/>
-                                        <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>
-                                        <field name="spec_label" optional="hide"/>
-                                        <field name="ctrl_tol_minus" optional="hide" readonly="kind != 'num'"/>
-                                        <field name="ctrl_tol_plus" optional="hide" readonly="kind != 'num'"/>
-                                        <field name="method" optional="hide"/>
-                                        <field name="lab_requested" optional="show"/>
-                                        <field name="sample_value" optional="show" readonly="kind != 'num'"/>
-                                        <field name="sample_text" optional="hide" readonly="kind == 'num'"/>
-                                        <field name="sample_result" optional="hide" widget="badge"
-                                               decoration-success="sample_result == 'cumple'"
-                                               decoration-warning="sample_result == 'desviacion'"
-                                               decoration-danger="sample_result == 'no_conforme'"/>
-                                        <field name="run_1" optional="hide" readonly="kind != 'num'"/>
-                                        <field name="run_2" optional="hide" readonly="kind != 'num'"/>
-                                        <field name="run_3" optional="hide" readonly="kind != 'num'"/>
-                                        <field name="run_avg" optional="show"/>
-                                        <field name="run_text" optional="hide" readonly="kind == 'num'"/>
-                                        <field name="run_result" optional="show" widget="badge"
-                                               decoration-success="run_result == 'cumple'"
-                                               decoration-warning="run_result == 'desviacion'"
-                                               decoration-danger="run_result == 'no_conforme'"/>
-                                        <field name="verdict" optional="show"/>
-                                        <field name="customer_approved" optional="hide"/>
-                                        <field name="in_customer_spec" optional="hide"/>
-                                        <field name="in_coa" optional="hide"/>
-                                        <field name="note" optional="show"/>
-                                    </list>
-                                </field>
-                            <group>
-                                <group string="Empaque y otros">
-                                    <field name="sgi_dev_packaging"/>
-                                    <field name="sgi_dev_other"/>
-                                </group>
-                                <group string="Firmas">
-                                    <field name="sgi_dev_prepared_by_id"/>
-                                    <field name="sgi_dev_approved_by_id" readonly="1"/>
-                                    <field name="sgi_dev_approved_date" readonly="1" invisible="not sgi_dev_approved_by_id"/>
-                                    <span colspan="2" class="text-muted" invisible="sgi_dev_approved_by_id">Pendiente de «Aprobar solicitud» (Dirección de Operaciones, botón del encabezado). Sin esa firma no se pide la corrida de muestra.</span>
-                                </group>
-                            </group>
-                            <group>
                                 <group string="Muestra física del cliente">
+                                    <field name="sgi_dev_customer_property"/>
                                     <field name="sgi_dev_sample_received"/>
                                     <field name="sgi_dev_sample_handed"/>
                                     <field name="sgi_dev_sample_folder"/>
@@ -232,39 +189,58 @@
                                     </div>
                                 </group>
                             </group>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Características que pide el cliente</span>
+                                <div>
+                                    <span class="text-muted me-2" invisible="not sgi_dev_line_count"><field name="sgi_dev_line_count" readonly="1" class="oe_inline fw-bold"/> características</span>
+                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"/>
+                                </div>
+                            </div>
+                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                                <list editable="bottom" open_form_view="1"
+                                      decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="caracteristica_code" column_invisible="1"/>
+                                    <field name="run_result" column_invisible="1"/>
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="caracteristica_id" optional="hide"/>
+                                    <field name="name"/>
+                                    <field name="direction"/>
+                                    <field name="position" optional="show"/>
+                                    <field name="unit"/>
+                                    <field name="spec_limit" optional="show" readonly="kind != 'num'"/>
+                                    <field name="spec_nominal" readonly="kind != 'num'"/>
+                                    <field name="spec_tol_minus" string="Tol. −" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_tol_plus" string="Tol. +" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_text" optional="show" readonly="kind != 'text'"/>
+                                    <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>
+                                    <field name="spec_label" optional="hide"/>
+                                    <field name="method" optional="hide"/>
+                                    <field name="note" optional="show"/>
+                                </list>
+                            </field>
                         </page>
-                        <!-- 2. Análisis y factibilidad (C1.05, C1.06) con la revisión de Ventas. -->
-                        <page string="Análisis y factibilidad" name="sgi_dev_analysis">
+                        <!-- 2. Análisis de proyecto (Diseño de Producto: análisis de la muestra del cliente y pruebas de laboratorio;
+                             Diseño de Procesos: diagrama de proceso, que vive en la ruta del artículo; Administración de Ventas firma la revisión). -->
+                        <page string="Análisis de proyecto" name="sgi_dev_analysis">
                             <group>
-                                <group string="Identidad del desarrollo">
-                                    <field name="sgi_dev_product_name"/>
-                                    <field name="sgi_dev_revision" readonly="1"/>
-                                    <field name="sgi_dev_origin" widget="radio" options="{'horizontal': true}"/>
-                                    <field name="sgi_dev_contact_id" invisible="sgi_dev_origin != 'cliente'"
-                                           domain="[('commercial_partner_id', '=?', partner_id)]"/>
-                                    <field name="sgi_dev_requester_employee_id" invisible="sgi_dev_origin != 'interno'"
-                                           required="sgi_is_ft and sgi_dev_origin == 'interno'"/>
-                                    <field name="sgi_dev_line_key" widget="radio" options="{'horizontal': true}"/>
-                                </group>
                                 <group string="Resultado del análisis">
                                     <field name="sgi_dev_analysis_result" widget="radio"/>
                                     <field name="sgi_dev_base_product_id" invisible="sgi_dev_analysis_result == 'no_factible'"/>
                                     <field name="sgi_dev_not_feasible_reason_id" invisible="sgi_dev_analysis_result != 'no_factible'"/>
+                                    <field name="sgi_dev_line_key" widget="radio" options="{'horizontal': true}"/>
                                     <div colspan="2" class="d-flex flex-wrap gap-1">
                                         <button name="action_sgi_dev_find_similar" type="object" string="Buscar parecidos" class="btn-secondary" icon="fa-search"/>
                                         <button name="action_sgi_dev_request_lab_tests" type="object" string="Solicitar pruebas al laboratorio" class="btn-secondary" icon="fa-flask"/>
                                     </div>
                                 </group>
-                            </group>
-                            <group string="Revisión de Ventas (una sola)">
-                                <group>
+                                <group string="Revisión de Ventas (una sola)">
                                     <field name="sgi_dev_review_state" widget="badge"
                                            decoration-success="sgi_dev_review_state == 'aprobado'"
                                            decoration-danger="sgi_dev_review_state == 'regresado'"/>
                                     <field name="sgi_dev_reviewed_by_id"/>
                                     <field name="sgi_dev_review_date"/>
-                                </group>
-                                <group>
                                     <field name="sgi_dev_review_note" placeholder="Motivo del regreso (obligatorio para regresar)"/>
                                     <div colspan="2">
                                         <button name="action_sgi_dev_review_return" type="object" string="Regresar a Diseño" class="btn-secondary" icon="fa-undo"
@@ -274,6 +250,30 @@
                                 </group>
                             </group>
                             <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Análisis de la muestra del cliente (Diseño de Producto; pruebas al laboratorio con F-P-C05-02)</span>
+                                <span class="text-warning" invisible="not sgi_dev_lab_pending_count"><field name="sgi_dev_lab_pending_count" readonly="1" class="oe_inline fw-bold"/> pendientes de laboratorio</span>
+                            </div>
+                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                                <list editable="bottom" open_form_view="1" create="0" delete="0"
+                                      decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="caracteristica_code" column_invisible="1"/>
+                                    <field name="run_result" column_invisible="1"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="direction" readonly="1"/>
+                                    <field name="position" optional="hide" readonly="1"/>
+                                    <field name="unit"/>
+                                    <field name="spec_label" string="Pide el cliente"/>
+                                    <field name="lab_requested"/>
+                                    <field name="sample_value" readonly="kind != 'num'"/>
+                                    <field name="sample_text" readonly="kind == 'num'"/>
+                                    <field name="sample_result" widget="badge" decoration-success="sample_result == 'cumple'" decoration-warning="sample_result == 'desviacion'" decoration-danger="sample_result == 'no_conforme'"/>
+                                    <field name="method" optional="show"/>
+                                    <field name="note" optional="hide"/>
+                                </list>
+                            </field>
+                            <p class="text-muted mt-2">Diagrama de proceso (Diseño de Procesos): la ruta y los centros de trabajo se capturan en la lista de materiales del artículo, en la pestaña «Cotización», y se imprimen con «Diagrama de flujo».</p>
+                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3">
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Checklist de factibilidad</span>
                                 <div>
                                     <field name="sgi_dev_feasibility_pending" invisible="1"/>
@@ -294,56 +294,150 @@
                                 </field>
                             <p class="text-muted" invisible="sgi_dev_feasibility_ids">Sin checklist cargado.</p>
                         </page>
-                        <!-- 3. Aprobación del cliente para iniciar (Jose 3.1): abre la etapa «Muestra». -->
-                        <page string="Aprobación del cliente" name="sgi_dev_customer_approval"
-                              invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
-                            <group>
-                                <group string="Evidencia">
-                                    <field name="sgi_dev_customer_approval_medium" readonly="sgi_dev_customer_approved_at"/>
-                                    <field name="sgi_dev_customer_approval_date" readonly="sgi_dev_customer_approved_at"/>
-                                    <field name="sgi_dev_customer_approval_contact_id" readonly="sgi_dev_customer_approved_at"
-                                           domain="[('commercial_partner_id', '=', partner_id)]" context="{'default_parent_id': partner_id}"/>
-                                    <field name="sgi_dev_customer_approval_ref" readonly="sgi_dev_customer_approved_at"/>
-                                    <field name="sgi_dev_customer_approval_file" filename="sgi_dev_customer_approval_filename" readonly="sgi_dev_customer_approved_at"/>
-                                    <field name="sgi_dev_customer_approval_filename" invisible="1"/>
-                                </group>
-                                <group string="Registro">
-                                    <field name="sgi_dev_customer_approved_at"/>
-                                    <field name="sgi_dev_customer_approved_by_id"/>
-                                    <span colspan="2" class="text-muted" invisible="sgi_dev_customer_approved_at">Con la evidencia capturada, «Registrar aprobación del cliente» (encabezado) pasa el proyecto a «Muestra» y le asigna su folio FT.</span>
-                                </group>
-                            </group>
-                        </page>
-                        <!-- 4. Muestra: código y artículos, materia prima; la corrida y el envío se piden desde el encabezado. -->
-                        <page string="Muestra" name="sgi_dev_sample">
+                        <!-- 3. Cotización (Diseño de Producto, Administración de Ventas, Dirección General): el código y los artículos se crean antes de cotizar;
+                             las cotizaciones las agrega qb_costeo_sgi en el div «sgi_dev_quotes». -->
+                        <page string="Cotización" name="sgi_dev_quote">
                             <group string="Código del artículo (regla de codificación de tejido y acabado)">
-                                <group>
-                                    <field name="sgi_dev_code_composicion_id" options="{'no_create': True}"/>
-                                    <field name="sgi_dev_code_dibujo_id" options="{'no_create': True}"/>
-                                    <field name="sgi_dev_code_peso"/>
-                                    <field name="sgi_dev_code_hilo_id" options="{'no_create': True}"/>
-                                    <field name="sgi_dev_code_galga"/>
-                                    <field name="sgi_dev_code_color_id" options="{'no_create': True}"/>
-                                    <field name="sgi_dev_code_ancho"/>
-                                    <field name="sgi_dev_code_ancho_crudo"/>
-                                    <field name="sgi_dev_code_acabado_id" options="{'no_create': True}"/>
-                                    <field name="sgi_dev_code_tenido"/>
+                                    <group>
+                                        <field name="sgi_dev_code_composicion_id" options="{'no_create': True}"/>
+                                        <field name="sgi_dev_code_dibujo_id" options="{'no_create': True}"/>
+                                        <field name="sgi_dev_code_peso"/>
+                                        <field name="sgi_dev_code_hilo_id" options="{'no_create': True}"/>
+                                        <field name="sgi_dev_code_galga"/>
+                                        <field name="sgi_dev_code_color_id" options="{'no_create': True}"/>
+                                        <field name="sgi_dev_code_ancho"/>
+                                        <field name="sgi_dev_code_ancho_crudo"/>
+                                        <field name="sgi_dev_code_acabado_id" options="{'no_create': True}"/>
+                                        <field name="sgi_dev_code_tenido"/>
+                                    </group>
+                                    <group>
+                                        <div class="mb-2 d-flex flex-wrap gap-1" colspan="2">
+                                            <button name="action_sgi_dev_code_from_table" type="object" string="Tomar peso, galga y ancho de la tabla" class="btn-secondary" icon="fa-table"/>
+                                            <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-primary" icon="fa-cubes"
+                                                    invisible="sgi_dev_product_id"
+                                                    confirm="Se crean los artículos crudo, teñido (si lleva) y acabado con el código propuesto, en estado «En desarrollo». ¿Continuar?"/>
+                                        </div>
+                                        <field name="sgi_dev_code_crudo"/>
+                                        <field name="sgi_dev_code_tenido_code" invisible="not sgi_dev_code_tenido"/>
+                                        <field name="sgi_dev_code_acabado_code"/>
+                                        <field name="sgi_dev_product_crudo_id" readonly="1"/>
+                                        <field name="sgi_dev_product_tenido_id" readonly="1" invisible="not sgi_dev_code_tenido"/>
+                                        <field name="sgi_dev_product_id" readonly="1"/>
+                                    </group>
                                 </group>
+                            <!-- 57.137.0 (revisión de Administración de Ventas, punto 3): la ruta se ve aquí como cadena de operaciones con su centro de
+                                 trabajo; se captura en la lista de materiales («Editar ruta», Diseño de Procesos) y de ahí sale el diagrama. -->
+                            <separator string="Ruta y centros de trabajo"/>
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <button name="action_sgi_dev_open_route" type="object" string="Editar ruta" class="btn-secondary" icon="fa-random"
+                                        invisible="not sgi_dev_product_id"/>
+                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"
+                                        invisible="not sgi_dev_route_count"/>
+                                <span class="text-muted align-self-center" invisible="not sgi_dev_product_id">Operaciones: <field name="sgi_dev_route_count" class="oe_inline"/></span>
+                            </div>
+                            <field name="sgi_dev_route_html" nolabel="1" readonly="1"/>
+                            <div name="sgi_dev_quotes" class="mt-3"/>
+                        </page>
+                        <!-- 4. Aprobación del cliente para iniciar (Administración de Ventas): al registrarla el proyecto pasa a «Muestra» y recibe su folio FT. -->
+                        <page string="Aprobación del cliente" name="sgi_dev_customer_approval"
+                                  invisible="sgi_dev_analysis_result in ('linea', 'no_factible')">
+                                <!-- 57.137.0 (revisión de Administración de Ventas, punto 4; brief §6.8): la aprobación para iniciar es un documento que se
+                                     genera desde el proyecto y la cotización, con el folio FT ya asignado; Ventas lo manda
+                                     y la respuesta del cliente se registra abajo como evidencia. -->
+                                <div class="d-flex flex-wrap gap-1 mb-2">
+                                    <button name="action_sgi_dev_start_approval" type="object" string="Generar aprobación para iniciar" class="btn-primary" icon="fa-file-pdf-o"
+                                            invisible="sgi_dev_start_approval_attachment_id"
+                                            confirm="Se genera el PDF «Aprobación para iniciar el proyecto» con las características marcadas para el cliente y la cotización; si el proyecto no tiene folio FT se le asigna ahora. ¿Continuar?"/>
+                                    <button name="action_sgi_dev_start_approval" type="object" string="Volver a generar" class="btn-secondary" icon="fa-refresh"
+                                            invisible="not sgi_dev_start_approval_attachment_id or sgi_dev_customer_approved_at"
+                                            confirm="Se genera de nuevo el PDF con los datos actuales del proyecto y la cotización. ¿Continuar?"/>
+                                    <button name="action_sgi_dev_start_approval_mail" type="object" string="Enviar al cliente" class="btn-secondary" icon="fa-envelope-o"
+                                            invisible="not sgi_dev_start_approval_attachment_id or sgi_dev_customer_approved_at"/>
+                                    <button name="action_sgi_dev_print_start_approval" type="object" string="Imprimir" class="btn-secondary" icon="fa-print"
+                                            invisible="not sgi_dev_start_approval_attachment_id"/>
+                                </div>
                                 <group>
-                                    <div class="mb-2 d-flex flex-wrap gap-1" colspan="2">
-                                        <button name="action_sgi_dev_code_from_table" type="object" string="Tomar peso, galga y ancho de la tabla" class="btn-secondary" icon="fa-table"/>
-                                        <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-primary" icon="fa-cubes"
-                                                invisible="sgi_dev_product_id"
-                                                confirm="Se crean los artículos crudo, teñido (si lleva) y acabado con el código propuesto, en estado «En desarrollo». ¿Continuar?"/>
+                                    <group string="Documento enviado al cliente">
+                                        <field name="sgi_dev_start_approval_attachment_id"/>
+                                        <field name="sgi_dev_start_approval_date"/>
+                                        <field name="sgi_dev_start_approval_by_id"/>
+                                        <field name="sgi_dev_start_approval_sent_at"/>
+                                        <field name="sgi_dev_start_approval_sent_by_id"/>
+                                    </group>
+                                    <group>
+                                        <span colspan="2" class="text-muted" invisible="sgi_dev_start_approval_attachment_id">El documento se genera desde el proyecto (características para el cliente) y la cotización; no se llena a mano. Al generarlo el proyecto recibe su folio FT.</span>
+                                    </group>
+                                </group>
+                                <separator string="Respuesta del cliente"/>
+                                <group>
+                                    <group string="Evidencia">
+                                        <field name="sgi_dev_customer_approval_medium" readonly="sgi_dev_customer_approved_at"/>
+                                        <field name="sgi_dev_customer_approval_date" readonly="sgi_dev_customer_approved_at"/>
+                                        <field name="sgi_dev_customer_approval_contact_id" readonly="sgi_dev_customer_approved_at"
+                                               domain="[('commercial_partner_id', '=', partner_id)]" context="{'default_parent_id': partner_id}"/>
+                                        <field name="sgi_dev_customer_approval_ref" readonly="sgi_dev_customer_approved_at"/>
+                                        <field name="sgi_dev_customer_approval_file" filename="sgi_dev_customer_approval_filename" readonly="sgi_dev_customer_approved_at"/>
+                                        <field name="sgi_dev_customer_approval_filename" invisible="1"/>
+                                    </group>
+                                    <group string="Registro">
+                                        <field name="sgi_dev_customer_approved_at"/>
+                                        <field name="sgi_dev_customer_approved_by_id"/>
+                                        <span colspan="2" class="text-muted" invisible="sgi_dev_customer_approved_at">Con la evidencia capturada, «Registrar aprobación del cliente» (encabezado) pasa el proyecto a «Muestra» y le asigna su folio FT.</span>
+                                    </group>
+                                </group>
+                            </page>
+                        <!-- 5. Solicitud de desarrollo (Diseño de Producto; la firma Dirección de Operaciones desde el encabezado). -->
+                        <page string="Solicitud de desarrollo" name="sgi_dev_development_request">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-muted">Formato <field name="sgi_dev_format_code" readonly="1" class="oe_inline fw-bold"/>. Se llena con la aprobación del cliente registrada y el folio FT; la firma «Aprobó» la da Dirección de Operaciones con «Aprobar solicitud de desarrollo» en el encabezado.</span>
+                                <button name="action_sgi_dev_print" type="object" string="Imprimir solicitud" class="btn-secondary" icon="fa-print"/>
+                            </div>
+                            <group>
+                                <group string="Solicitud">
+                                    <field name="sgi_dev_date"/>
+                                    <field name="sgi_dev_requester"/>
+                                    <field name="sgi_dev_sample_m"/>
+                                    <field name="sgi_dev_sample_kg"/>
+                                    <label for="sgi_dev_volume"/>
+                                    <div class="o_row">
+                                        <field name="sgi_dev_volume"/>
+                                        <field name="sgi_dev_volume_uom"/>
                                     </div>
-                                    <field name="sgi_dev_code_crudo"/>
-                                    <field name="sgi_dev_code_tenido_code" invisible="not sgi_dev_code_tenido"/>
-                                    <field name="sgi_dev_code_acabado_code"/>
-                                    <field name="sgi_dev_product_crudo_id" readonly="1"/>
-                                    <field name="sgi_dev_product_tenido_id" readonly="1" invisible="not sgi_dev_code_tenido"/>
-                                    <field name="sgi_dev_product_id" readonly="1"/>
+                                    <field name="sgi_dev_target_price"/>
+                                    <field name="sgi_dev_currency_id" invisible="1"/>
+                                    <field name="sgi_dev_norms"/>
+                                </group>
+                                <group string="Firmas">
+                                    <field name="sgi_dev_prepared_by_id"/>
+                                    <field name="sgi_dev_approved_by_id" readonly="1"/>
+                                    <field name="sgi_dev_approved_date" readonly="1" invisible="not sgi_dev_approved_by_id"/>
+                                    <span colspan="2" class="text-muted" invisible="sgi_dev_approved_by_id">Pendiente de la firma de Dirección de Operaciones. Sin esa firma no se pide la corrida de muestra.</span>
                                 </group>
                             </group>
+                            <group>
+                                <group string="Empaque y otros">
+                                    <field name="sgi_dev_packaging"/>
+                                    <field name="sgi_dev_other"/>
+                                </group>
+                            </group>
+                            <separator string="Control interno por característica"/>
+                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                                <list editable="bottom" open_form_view="1" create="0" delete="0"
+                                      decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="caracteristica_code" column_invisible="1"/>
+                                    <field name="run_result" column_invisible="1"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="direction" readonly="1"/>
+                                    <field name="unit"/>
+                                    <field name="spec_label" string="Pide el cliente"/>
+                                    <field name="ctrl_tol_minus" readonly="kind != 'num'"/>
+                                    <field name="ctrl_tol_plus" readonly="kind != 'num'"/>
+                                    <field name="ctrl_label" optional="show"/>
+                                    <field name="critical" optional="show"/>
+                                    <field name="note" optional="hide"/>
+                                </list>
+                            </field>
                             <!-- 57.124.0 (C1, bloque E): materia prima de la muestra y requisición a Compras. -->
                             <group string="Materia prima para la muestra" name="sgi_dev_mp">
                                 <div colspan="2" class="d-flex flex-wrap gap-1 mb-2">
@@ -369,57 +463,143 @@
                                         </list>
                                     </field>
                             </group>
-                            <p class="text-muted">La corrida de muestra se pide con «Pedir corrida de muestra» (encabezado; requiere la solicitud aprobada) y sus órdenes se abren en «Órdenes de muestra». Los resultados de la corrida se capturan en la tabla de la pestaña «Solicitud»; el envío al cliente, con «Registrar envío de muestra».</p>
                         </page>
-                        <!-- 5. Documentos del producto (Jose 3.4, 5.3, 5.4) y artículos del desarrollo. -->
-                        <page string="Producto y documentos" name="sgi_dev_product_docs">
-                            <div class="d-flex flex-wrap gap-1 mb-3">
-                                <button name="action_sgi_dev_new_tech_sheet" type="object" string="Nueva ficha técnica interna" class="btn-secondary" icon="fa-file-text-o"
-                                        invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
-                                <button name="action_sgi_dev_new_customer_spec" type="object" string="Nuevas especificaciones del producto" class="btn-secondary" icon="fa-file-text"
-                                        invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
-                                <button name="action_sgi_dev_new_coa" type="object" string="Nuevo reporte de conformidad" class="btn-secondary" icon="fa-certificate"
-                                        invisible="sgi_dev_stage_key not in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
-                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"/>
-                            </div>
-                            <p class="text-muted" invisible="sgi_dev_stage_key in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')">Los documentos del producto se emiten a partir de la etapa «Muestra» (el reporte de conformidad) y «Respuesta del cliente» (ficha interna y especificaciones). Los ya emitidos se abren en los botones de arriba de la ficha.</p>
-                            <separator string="Artículos del desarrollo"/>
-                            <field name="sgi_dev_product_tmpl_ids" readonly="1">
+                        <!-- 6. Muestra (Diseño de Procesos, Laboratorio, Diseño de Producto, Almacén): la corrida se pide y el envío se registra desde el encabezado. -->
+                        <page string="Muestra" name="sgi_dev_sample">
+                            <separator string="Órdenes de muestra"/>
+                            <!-- Solo quien tiene acceso a Fabricación carga la lista; los demás ven el botón inteligente. -->
+                            <field name="sgi_dev_mo_ids" readonly="1" groups="mrp.group_mrp_user">
                                 <list create="0" delete="0">
-                                    <field name="default_code"/>
                                     <field name="name"/>
-                                    <field name="sgi_dev_state" widget="badge"/>
+                                    <field name="product_id"/>
+                                    <field name="product_qty"/>
+                                    <field name="product_uom_id"/>
+                                    <field name="lot_producing_id" optional="show"/>
+                                    <field name="date_finished" optional="show"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'done'" decoration-info="state in ('confirmed', 'progress')"/>
+                                </list>
+                            </field>
+                            <div class="d-flex justify-content-between align-items-center mb-1 mt-3">
+                                <span class="o_horizontal_separator text-uppercase fw-bolder small">Resultados de la corrida</span>
+                                <div>
+                                    <span class="text-warning me-2" invisible="not sgi_dev_deviation_count"><field name="sgi_dev_deviation_count" readonly="1" class="oe_inline fw-bold"/> fuera del control interno</span>
+                                    <span class="text-danger" invisible="not sgi_dev_out_of_spec_count"><field name="sgi_dev_out_of_spec_count" readonly="1" class="oe_inline fw-bold"/> no conformes</span>
+                                </div>
+                            </div>
+                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                                <list editable="bottom" open_form_view="1" create="0" delete="0"
+                                      decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="caracteristica_code" column_invisible="1"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="direction" readonly="1"/>
+                                    <field name="unit"/>
+                                    <field name="spec_label" string="Pide el cliente"/>
+                                    <field name="ctrl_label" optional="hide"/>
+                                    <field name="run_1" readonly="kind != 'num'"/>
+                                    <field name="run_2" readonly="kind != 'num'"/>
+                                    <field name="run_3" readonly="kind != 'num'"/>
+                                    <field name="run_avg"/>
+                                    <field name="run_text" readonly="kind == 'num'"/>
+                                    <field name="run_result" widget="badge" decoration-success="run_result == 'cumple'" decoration-warning="run_result == 'desviacion'" decoration-danger="run_result == 'no_conforme'"/>
+                                    <field name="verdict"/>
+                                    <field name="in_coa"/>
+                                    <field name="note" optional="hide"/>
                                 </list>
                             </field>
                         </page>
-                        <page string="Comercial" name="sgi_dev_commercial">
-                                <group>
-                                    <group string="Cliente">
-                                        <field name="sgi_dev_team_id"/>
-                                        <field name="sgi_dev_salesperson_id"/>
-                                        <field name="sgi_dev_customer_status"/>
-                                        <field name="sgi_dev_market_id"/>
-                                        <field name="sgi_dev_spec_number"/>
-                                        <field name="sgi_dev_required_date"/>
-                                    </group>
-                                    <group string="Programa y consumo">
-                                        <field name="sgi_dev_program"/>
-                                        <field name="sgi_dev_application_id"/>
-                                        <field name="sgi_dev_program_years"/>
-                                        <label for="sgi_dev_consumption_annual"/>
-                                        <div class="o_row">
-                                            <field name="sgi_dev_consumption_annual"/>
-                                            <field name="sgi_dev_consumption_uom"/>
-                                        </div>
-                                        <field name="sgi_dev_consumption_monthly"/>
-                                        <field name="sgi_dev_consumption_annual_m" invisible="sgi_dev_consumption_uom != 'yd'"/>
-                                        <field name="sgi_dev_consumption_annual_yd" invisible="sgi_dev_consumption_uom != 'm'"/>
-                                        <field name="sgi_dev_lamination_id"/>
-                                        <field name="sgi_dev_legal_ids" widget="many2many_tags"/>
-                                    </group>
+                        <!-- 7. Envío de muestra al cliente (Ventas y Almacén): envíos y sus certificados. -->
+                        <page string="Envío de muestra" name="sgi_dev_shipping">
+                            <separator string="Envíos de muestra"/>
+                            <field name="sgi_dev_shipment_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="date_shipped"/>
+                                    <field name="medium"/>
+                                    <field name="carrier_id" optional="show"/>
+                                    <field name="tracking_ref" optional="show"/>
+                                    <field name="roll_count"/>
+                                    <field name="total_m"/>
+                                    <field name="picking_state" optional="show"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'respondida'" decoration-info="state == 'enviada'"/>
+                                </list>
+                            </field>
+                            <separator string="Reportes de conformidad"/>
+                            <field name="sgi_dev_coa_ids" readonly="1">
+                                <list create="0" delete="0" decoration-danger="nonconforming_count">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="lot_id"/>
+                                    <field name="quantity_m"/>
+                                    <field name="nonconforming_count"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'emitido'"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 8. Retroalimentación del cliente (Administración de Ventas la recibe y la comparte con Diseño de Producto y Diseño de Procesos). -->
+                        <page string="Retroalimentación del cliente" name="sgi_dev_customer_response">
+                            <separator string="Respuestas registradas"/>
+                            <field name="sgi_dev_shipment_ids" readonly="1">
+                                <list create="0" delete="0" decoration-success="response == 'aprueba'" decoration-danger="response == 'rechaza'" decoration-warning="response == 'cambios'">
+                                    <field name="name"/>
+                                    <field name="date_shipped"/>
+                                    <field name="response" widget="badge"/>
+                                    <field name="response_date"/>
+                                    <field name="response_medium"/>
+                                    <field name="response_contact_id" optional="show"/>
+                                    <field name="response_ref" optional="show"/>
+                                    <field name="response_filename" string="Evidencia" optional="show"/>
+                                    <field name="reject_reason_id" optional="show"/>
+                                    <field name="response_registered_by_id" optional="hide"/>
+                                </list>
+                            </field>
+                            <separator string="Características aprobadas por el cliente"/>
+                            <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
+                                <list editable="bottom" open_form_view="1" create="0" delete="0"
+                                      decoration-danger="run_result == 'no_conforme'" decoration-warning="run_result == 'desviacion'">
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="caracteristica_code" column_invisible="1"/>
+                                    <field name="run_result" column_invisible="1"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="direction" readonly="1"/>
+                                    <field name="unit"/>
+                                    <field name="spec_label" string="Pide el cliente"/>
+                                    <field name="run_avg"/>
+                                    <field name="run_text" readonly="1"/>
+                                    <field name="customer_approved"/>
+                                    <field name="in_customer_spec"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 9. Cambios al proyecto (Diseño de Producto; firma Dirección): hoy la bitácora de revisiones. -->
+                        <page string="Cambios al proyecto" name="sgi_dev_changes">
+                            <group>
+                                <group string="Revisión vigente del desarrollo">
+                                    <field name="sgi_dev_revision" readonly="1"/>
                                 </group>
-                            </page>
-                        <page string="Revisiones" name="sgi_dev_revisions">
+                            </group>
+                            <!-- 57.137.0 (revisión de Administración de Ventas, punto 9): la solicitud de modificación (qué cambia, causa, 5 porqués, solución,
+                                 fases afectadas) la llena Diseño de Producto y la firma Dirección de Operaciones; firmada, abre la
+                                 revisión y el proyecto vuelve a «Muestra». La respuesta «pide cambios» la deja en borrador. -->
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <button name="action_sgi_dev_new_change_request" type="object" string="Nueva solicitud de modificación" class="btn-primary" icon="fa-exchange"
+                                        invisible="sgi_dev_stage_key in ('solicitud', 'analisis', 'cerrado_sin_producto', 'liberado')"/>
+                            </div>
+                            <p class="text-muted">Cada cambio que pide el cliente o que no dio el resultado esperado se registra como solicitud de modificación (causa, 5 porqués, solución y fases afectadas); al firmarla Dirección de Operaciones se abre la revisión siguiente y se vuelve a la muestra. Los cambios a la especificación quedan en la bitácora.</p>
+                            <separator string="Solicitudes de modificación"/>
+                            <field name="sgi_dev_change_request_ids" readonly="1">
+                                <list create="0" delete="0" decoration-info="state == 'borrador'" decoration-muted="state == 'aplicada'">
+                                    <field name="date"/>
+                                    <field name="name"/>
+                                    <field name="origin"/>
+                                    <field name="revision"/>
+                                    <field name="stage_ids" widget="many2many_tags"/>
+                                    <field name="requested_by_id" widget="many2one_avatar_user" optional="show"/>
+                                    <field name="approved_by_id" widget="many2one_avatar_user" optional="show"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'aplicada'" decoration-warning="state == 'firmada'"/>
+                                </list>
+                            </field>
+                            <separator string="Bitácora de revisiones"/>
                             <field name="sgi_dev_revision_ids">
                                     <list editable="bottom">
                                         <field name="date"/>
@@ -435,6 +615,58 @@
                                     </list>
                                 </field>
                         </page>
+                        <!-- 10. Pilotaje y liberación (Diseño de Procesos en planta, Calidad con el estudio de habilidad). -->
+                        <page string="Pilotaje y liberación" name="sgi_dev_release">
+                            <div class="d-flex flex-wrap gap-1 mb-3">
+                                <button name="action_sgi_dev_new_tech_sheet" type="object" string="Nueva ficha técnica interna" class="btn-secondary" icon="fa-file-text-o"
+                                        invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
+                                <button name="action_sgi_dev_new_customer_spec" type="object" string="Nuevas especificaciones del producto" class="btn-secondary" icon="fa-file-text"
+                                        invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
+                                <button name="action_sgi_dev_new_coa" type="object" string="Nuevo reporte de conformidad" class="btn-secondary" icon="fa-certificate"
+                                        invisible="sgi_dev_stage_key not in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')"/>
+                                <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"/>
+                            </div>
+                            <p class="text-muted" invisible="sgi_dev_stage_key in ('muestra', 'respuesta_cliente', 'pilotaje', 'liberado')">Los documentos del producto se emiten a partir de la etapa «Muestra» (el reporte de conformidad) y «Respuesta del cliente» (ficha interna y especificaciones).</p>
+                            <separator string="Pilotajes y estudio de habilidad"/>
+                            <field name="sgi_dev_pilot_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="product_id"/>
+                                    <field name="lot_count"/>
+                                    <field name="conforming_count"/>
+                                    <field name="lots_required"/>
+                                    <field name="closed_at" optional="show"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'cerrado'"/>
+                                </list>
+                            </field>
+                            <separator string="Fichas técnicas internas"/>
+                            <field name="sgi_dev_tech_sheet_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="revision"/>
+                                    <field name="date"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'vigente'"/>
+                                </list>
+                            </field>
+                            <separator string="Especificaciones del producto (cliente)"/>
+                            <field name="sgi_dev_customer_spec_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="name"/>
+                                    <field name="revision"/>
+                                    <field name="date"/>
+                                    <field name="state" widget="badge" decoration-success="state == 'vigente'"/>
+                                </list>
+                            </field>
+                            <separator string="Artículos del desarrollo"/>
+                            <field name="sgi_dev_product_tmpl_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="default_code"/>
+                                    <field name="name"/>
+                                    <field name="sgi_dev_state" widget="badge"/>
+                                </list>
+                            </field>
+                        </page>
+                        <!-- 11. Tiempos. -->
                         <page string="Tiempos" name="sgi_dev_times">
                             <group>
                                 <group string="Horas calendario">
@@ -442,24 +674,11 @@
                                     <field name="sgi_dev_hours_dev"/>
                                     <field name="sgi_dev_hours_mp"/>
                                 </group>
-                                <!-- 57.135.0 (Jose 5.5): el paso que está pendiente y su reloj. -->
                                 <group string="Paso pendiente">
                                     <field name="sgi_dev_pending_step"/>
                                     <field name="sgi_dev_pending_hours"/>
                                 </group>
                             </group>
-                            <separator string="Avisos y escalamientos por tiempo"/>
-                            <field name="sgi_dev_escalation_ids" readonly="1">
-                                <list create="0" delete="0" decoration-muted="state == 'cerrado'">
-                                    <field name="sent_at"/>
-                                    <field name="step_code"/>
-                                    <field name="step_name"/>
-                                    <field name="hours"/>
-                                    <field name="level" widget="badge"/>
-                                    <field name="user_id" widget="many2one_avatar_user"/>
-                                    <field name="state" widget="badge" decoration-success="state == 'cerrado'" decoration-info="state == 'abierto'"/>
-                                </list>
-                            </field>
                             <separator string="Reloj por etapa"/>
                             <field name="sgi_dev_stage_log_ids" readonly="1">
                                     <list create="0" delete="0">
@@ -480,6 +699,28 @@
                                         <field name="note"/>
                                     </list>
                                 </field>
+                            <separator string="Avisos y escalamientos por tiempo"/>
+                            <field name="sgi_dev_escalation_ids" readonly="1">
+                                    <list create="0" delete="0" decoration-muted="state == 'cerrado'">
+                                        <field name="sent_at"/>
+                                        <field name="step_code"/>
+                                        <field name="step_name"/>
+                                        <field name="hours"/>
+                                        <field name="level" widget="badge"/>
+                                        <field name="user_id" widget="many2one_avatar_user"/>
+                                        <field name="state" widget="badge" decoration-success="state == 'cerrado'" decoration-info="state == 'abierto'"/>
+                                    </list>
+                                </field>
+                        </page>
+                        <!-- 12. Expediente (57.137.0, Administración de Ventas): ISO 9001:2015 8.3 y fases del APQP con la evidencia que ya
+                             existe en el proyecto; se imprime como «Expediente de diseño y desarrollo». -->
+                        <page string="Expediente 8.3 / APQP" name="sgi_dev_dossier">
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <button name="action_sgi_dev_print_dossier" type="object" string="Imprimir expediente" class="btn-secondary" icon="fa-print"/>
+                                <span class="align-self-center">Requisitos cubiertos: <field name="sgi_dev_dossier_done" class="oe_inline"/> de <field name="sgi_dev_dossier_total" class="oe_inline"/></span>
+                            </div>
+                            <p class="text-muted">Cada renglón es un requisito del punto 8.3 (planificación, entradas, controles de revisión / verificación / validación, salidas y cambios) con la evidencia que el proyecto ya tiene; nada se captura aquí. Las fases del APQP se cubren con las pestañas: 1 planeación (análisis de mercado y de proyecto), 2 diseño del producto (cotización, aprobación del cliente, solicitud de desarrollo), 3 diseño del proceso (ruta y fichas), 4 validación (muestra, envío, retroalimentación, pilotaje), 5 retroalimentación y mejora (cambios, liberación, tarifa).</p>
+                            <field name="sgi_dev_dossier_html" nolabel="1" readonly="1"/>
                         </page>
                     </notebook>
                     <h4 class="mt-3 mb-1 text-uppercase text-muted" style="font-size:12px; letter-spacing:.05em;">Proyecto</h4>

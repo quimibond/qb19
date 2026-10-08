@@ -364,19 +364,31 @@ Cotización → Aprobación del cliente → Muestra → Respuesta del cliente �
 Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
 campo Cliente. El nombre se arma solo (folio, código, revisión). Desde
 57.134.0 la ficha tiene dos secciones de pestañas: «Desarrollo de producto»
-(Solicitud, Análisis y factibilidad, Aprobación del cliente, Muestra,
-Producto y documentos, Comercial, Revisiones, Tiempos, en el orden del
-proceso) y «Proyecto» (las nativas de Odoo). La acción que mueve la etapa
+(desde 57.136.0 una por etapa de C1 con los nombres del proceso que da Administración de Ventas: Análisis de
+mercado industrial, Análisis de proyecto, Cotización, Aprobación del
+cliente, Solicitud de desarrollo, Muestra, Envío de muestra,
+Retroalimentación del cliente, Cambios al proyecto, Pilotaje y liberación,
+Tiempos y, desde 57.137.0, Expediente 8.3 / APQP; la tabla de
+características aparece en cada una con las columnas de su momento) y
+«Proyecto» (las nativas de Odoo). La acción que mueve la etapa
 (aprobar solicitud, aprobar análisis, registrar aprobación del cliente, pedir
 corrida, registrar envío, respuesta del cliente, cerrar) está en el
 encabezado y solo aparece en su etapa; lo que cuelga del desarrollo
 (laboratorio, requisiciones, órdenes de muestra, envíos, certificados,
 pilotajes, fichas, especificaciones, cotizaciones) se abre en los botones
 inteligentes. Las mediciones del SGI filtran por la bandera, ya no por
-`FT-%` en el nombre.
+`FT-%` en el nombre. Desde 57.137.0 (Administración de Ventas): la **aprobación para iniciar
+el proyecto** es un PDF generado desde «Aprobación del cliente» que ya lleva
+el folio FT (se asigna al generarlo) y se manda por correo; la **solicitud
+de modificación** (`sgi.dev.change.request`: causa, 5 porqués, solución,
+fases afectadas, firma de Dirección de Operaciones) abre la revisión y
+regresa a «Muestra»; la **ruta** se ve en «Cotización» como cadena de
+operaciones con su centro de trabajo y se edita en la lista de materiales;
+el **expediente 8.3 / APQP** cruza cada requisito de ISO 9001:2015 8.3 con
+la evidencia del proyecto y se imprime.
 
 **Artículo en desarrollo y generador de código (57.119.0).** Desde la
-pestaña Muestra se eligen las claves (composición, dibujo, hilo, color,
+pestaña Cotización se eligen las claves (composición, dibujo, hilo, color,
 acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
 crea crudo (H), teñido (I, si lleva) y acabado (J) con el código del DAT
 P-D02-01 en estado «En desarrollo» (no se vende). Al entrar a Pilotaje el

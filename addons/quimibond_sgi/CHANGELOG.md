@@ -13,6 +13,101 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.137.0 — 2026-10-08
+
+Revisión de Administración de Ventas, 2026-10-08 (su descripción del proceso, puntos 3, 4, 9 e ISO 9001 8.3
+/ APQP), construido por orden de Jose («Has todos»).
+
+- **Agregado** **aprobación para iniciar el proyecto** (brief §6.8) como
+  documento generado, nunca a mano: pestaña «Aprobación del cliente» →
+  «Generar aprobación para iniciar» arma el PDF con el cliente, el contacto,
+  el producto, el uso, las características marcadas «En especificación del
+  cliente» y, con `qb_costeo_sgi`, la cotización (folio, precio, moneda,
+  vigencia). **El documento lleva el folio FT**: al generarlo se asigna si
+  falta (la asignación al pasar a «Muestra» sigue como respaldo, y «Asignar
+  folio FT» aparece desde «Cotización»). «Enviar al cliente» abre el correo
+  con el PDF (plantilla `mail_template_sgi_dev_start_approval`) y deja
+  quién y cuándo lo mandó; la respuesta del cliente se sigue registrando
+  abajo con su evidencia. Campos `sgi_dev_start_approval_*`; reporte
+  `action_report_dev_start_approval`.
+- **Agregado** modelo `sgi.dev.change.request`, **solicitud de modificación
+  del proyecto**: qué se modifica, motivo (cambio que pide el cliente / no se
+  obtuvo el resultado / mejora interna), por qué no se obtuvo el resultado,
+  **5 porqués** y causa raíz, solución y **fases afectadas** (etapas del
+  desarrollo); la elabora Diseño de Producto y la **firma Dirección de
+  Operaciones** (C1.13 en `C1_APPROVAL_BUTTONS`). Firmada abre la revisión
+  siguiente (si la respuesta del cliente no la abrió ya), lo anota en la
+  bitácora, regresa el proyecto a «Muestra» y guarda el PDF; después se marca
+  «aplicada». Sin descripción, causa y al menos un porqué (salvo cambio del
+  cliente), solución y fases no se firma; firmada no se borra. La respuesta
+  «pide cambios» del envío deja una en borrador. Pestaña «Cambios al
+  proyecto» (lista + «Nueva solicitud de modificación»), botón inteligente
+  «Modificaciones», menú SGI → Sistema → Solicitudes de modificación de
+  desarrollos, reporte `action_report_dev_change_request`, MCP.
+- **Agregado** **la ruta a la vista** en «Cotización»: cadena de cajas
+  artículo · operación · centro de trabajo (`sgi_dev_route_html`, de las
+  operaciones de las listas de materiales crudo → teñido → acabado), «Editar
+  ruta» abre la lista de materiales del artículo (o una nueva) y «Diagrama de
+  flujo» se imprime de ahí. La ruta sigue viviendo en la lista de materiales
+  (C1.04b, Diseño de Procesos); sin imagen por centro de trabajo (no hay catálogo de
+  imágenes: va vacío, no se inventa).
+- **Agregado** pestaña **«Expediente 8.3 / APQP»**: un renglón por requisito
+  de ISO 9001:2015 8.3.2 a 8.3.6 (planificación, entradas, controles de
+  revisión / verificación / validación, salidas, cambios) con la evidencia
+  que el proyecto ya tiene (✔ / ✘ / no aplica todavía), «Requisitos
+  cubiertos N de M», las cinco fases del APQP y en qué pestaña viven, y
+  «Imprimir expediente» (`action_report_dev_dossier`, incluye la ruta).
+  `_sgi_dev_dossier_extra` es el gancho con que `qb_costeo_sgi` agrega la
+  cotización aprobada y el precio en tarifa (C1.17). Nada se captura ahí.
+- **Migración** `19.0.57.137.0`: el rol «Aprueba» de C1.13 sin botón apunta
+  a «Firmar» de la solicitud de modificación y expone `sgi.dev.change.request`
+  al MCP; no crea documentos ni toca proyectos.
+- Pruebas: `tests/test_dev_change.py`.
+
+## 19.0.57.136.0 — 2026-10-08
+
+Revisión de Administración de Ventas, 2026-10-08 (revisión de la ficha 57.135 y su descripción del proceso):
+las pestañas del desarrollo siguen el orden del proceso C1, una por etapa con
+el nombre con que lo trabaja Administración de Ventas, y la firma de Dirección va después de la
+aprobación del cliente.
+
+- **Cambiado** pestañas de la ficha del desarrollo, en el orden en que se
+  trabaja: **Análisis de mercado industrial** (Administración de Ventas: lo comercial, tipo,
+  producto pedido, origen y contacto, uso, especificación, muestra física y
+  la tabla con lo que pide el cliente; «Proponer características del tipo») ·
+  **Análisis de proyecto** (Diseño de Producto: análisis de la muestra del cliente y
+  pruebas al laboratorio; Diseño de Procesos: diagrama de proceso, que vive en la ruta del
+  artículo; resultado, línea, checklist y la revisión que firma Administración de Ventas) ·
+  **Cotización** (código del artículo, «Generar artículos», ruta y «Diagrama
+  de flujo», y con `qb_costeo_sgi` las cotizaciones y «Nueva cotización») ·
+  **Aprobación del cliente** · **Solicitud de desarrollo** (control interno,
+  muestra en m y kg, volumen, precio, normas, empaque, firmas, «Imprimir
+  solicitud», materia prima) · **Muestra** (órdenes de muestra, lecturas de la
+  corrida, promedio, resultado, dictamen, «En certificado») · **Envío de
+  muestra** (envíos y reportes de conformidad) · **Retroalimentación del
+  cliente** (respuestas con su evidencia, aprobado por el cliente, en
+  especificación) · **Cambios al proyecto** (revisión vigente y bitácora de
+  revisiones) · **Pilotaje y liberación** (pilotajes, fichas,
+  especificaciones, diagrama de flujo, artículos) · **Tiempos**. Desaparecen
+  como pestañas «Comercial», «Producto y documentos» y «Revisiones»: su
+  contenido se reparte. Las pestañas de etapas pasadas quedan visibles.
+- **Cambiado** la tabla de características es una sola (`sgi_dev_line_ids`)
+  y cada pestaña la muestra con las columnas de su momento (cliente → muestra
+  → control interno → corrida → aprobación del cliente); Odoo 19 funde las
+  columnas de todas las apariciones en el mismo registro. Los renglones se
+  agregan y ordenan solo en «Análisis de mercado industrial».
+- **Cambiado** «Aprobar solicitud de desarrollo» (C1.07) aparece solo con la
+  aprobación del cliente registrada y folio FT, y no en Liberado ni Cerrado:
+  Diseño de Producto llena la solicitud después de que el cliente aprueba y Dirección de
+  Operaciones la firma después. La corrida de muestra sigue exigiendo la
+  firma.
+- Sin campos ni datos nuevos; sin migración. Las listas de órdenes, envíos,
+  pilotajes, fichas, especificaciones y certificados son de solo lectura.
+  Lo que Administración de Ventas describe y todavía no existe (aprobación para iniciar el
+  proyecto como documento con folio antes de la aprobación, solicitud de
+  modificación con 5 porqués, ruta como selección de centros de trabajo con
+  imagen, mapa ISO 9001 8.3 / APQP) queda como decisión de Jose en el plan.
+
 ## 19.0.57.135.0 — 2026-10-08
 
 Jose 2026-10-08, 5.5: escalamiento por tiempo de los pasos del desarrollo (brief §6.13).

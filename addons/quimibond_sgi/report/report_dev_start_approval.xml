@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.137.0 (C1, Jessica punto 4; brief §6.8): aprobación para iniciar el proyecto. Se genera desde
+         el proyecto con el folio FT ya asignado; la cotización la agrega qb_costeo_sgi por el gancho
+         _sgi_dev_start_approval_quote_vals (folio, precio, moneda, unidad, vigencia, condiciones). -->
+    <record id="action_report_dev_start_approval" model="ir.actions.report">
+        <field name="name">Aprobación para iniciar el proyecto</field>
+        <field name="model">project.project</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_start_approval_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_start_approval_document</field>
+        <field name="print_report_name">'Aprobación para iniciar - %s' % (object.sgi_ft_folio or object.name or '')</field>
+    </record>
+
+    <template id="report_dev_start_approval_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
+                    <t t-set="quote" t-value="doc._sgi_dev_start_approval_quote_vals()"/>
+                    <t t-set="lines" t-value="doc._sgi_dev_start_approval_lines()"/>
+                    <div class="page">
+                        <h2 class="text-center">Aprobación para iniciar el proyecto</h2>
+                        <h4 class="text-center text-muted"><span t-out="doc.sgi_ft_folio or ''"/></h4>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:22%"><strong>Cliente</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td>
+                                <td style="width:18%"><strong>Fecha</strong></td><td><span t-if="doc.sgi_dev_start_approval_date" t-field="doc.sgi_dev_start_approval_date" t-options="{'widget': 'date'}"/><span t-else="" t-field="doc.create_date" t-options="{'widget': 'date'}"/></td></tr>
+                            <tr><td><strong>Contacto</strong></td><td><span t-out="doc.sgi_dev_contact_id.display_name or doc.sgi_dev_requester or '—'"/></td>
+                                <td><strong>Folio FT</strong></td><td><strong t-out="doc.sgi_ft_folio or '—'"/></td></tr>
+                            <tr><td><strong>Producto</strong></td><td><span t-out="doc.sgi_dev_product_id.display_name or doc.sgi_dev_product_name or doc.name"/></td>
+                                <td><strong>Revisión</strong></td><td><span t-out="doc.sgi_dev_revision"/></td></tr>
+                            <tr><td><strong>Uso del producto</strong></td><td colspan="3"><span t-out="doc.sgi_dev_use or '—'"/></td></tr>
+                            <tr t-if="doc.sgi_dev_volume"><td><strong>Volumen estimado</strong></td><td colspan="3"><span t-out="'%.0f' % doc.sgi_dev_volume"/> <span t-out="dict(doc._fields['sgi_dev_volume_uom'].selection).get(doc.sgi_dev_volume_uom) or ''"/></td></tr>
+                        </table>
+                        <h5>Características del producto a desarrollar</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Característica</th><th>Dirección</th><th>Unidad</th><th>Especificación</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="lines" t-as="l">
+                                    <td><span t-out="l.caracteristica_id.name"/></td>
+                                    <td><span t-out="dict(l._fields['direction'].selection).get(l.direction) if l.direction != 'na' else ''"/><t t-if="l.position != 'na'"> <span t-out="dict(l._fields['position'].selection).get(l.position)"/></t></td>
+                                    <td><span t-out="l.unit or ''"/></td>
+                                    <td><span t-out="l.spec_label or ''"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not lines" class="text-muted" style="font-size:10px;">Sin características marcadas «En especificación del cliente».</p>
+                        <t t-if="quote">
+                            <h5>Cotización</h5>
+                            <table class="table table-sm table-bordered" style="font-size:11px;">
+                                <tr><td style="width:22%"><strong>Cotización</strong></td><td><span t-out="quote.get('folio') or '—'"/></td>
+                                    <td style="width:18%"><strong>Vigencia</strong></td><td><span t-out="quote.get('vigencia') or '—'"/></td></tr>
+                                <tr><td><strong>Precio</strong></td><td><span t-out="quote.get('precio') or '—'"/> <span t-out="quote.get('moneda') or ''"/><t t-if="quote.get('unidad')"> / <span t-out="quote.get('unidad')"/></t></td>
+                                    <td><strong>Condiciones</strong></td><td><span t-out="quote.get('condiciones') or '—'"/></td></tr>
+                            </table>
+                        </t>
+                        <p style="font-size:11px;" class="mt-3">Con su aprobación iniciamos el desarrollo con las características y condiciones de este documento. Cualquier cambio posterior queda registrado como modificación del proyecto con su revisión.</p>
+                        <table class="table table-sm mt-5" style="font-size:10px;">
+                            <tr>
+                                <td class="text-center" style="border-top:1px solid #000; width:33%;">Elaboró · Diseño de Producto<br/><span t-out="doc.sgi_dev_start_approval_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000; width:33%;">Envió · Administración de Ventas<br/><span t-out="doc.sgi_dev_start_approval_sent_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000; width:33%;">Aprobó · Cliente<br/>Nombre, firma y fecha</td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

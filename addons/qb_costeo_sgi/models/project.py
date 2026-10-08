@@ -34,6 +34,16 @@ class ProjectProjectCotizador(models.Model):
                              'search_default_vivas': 1}
         return action
 
+    def action_qb_cotizacion_nueva(self):
+        """1.3.0: cotización nueva desde la pestaña «Cotización» del desarrollo; nace con lo que el
+        proyecto ya tiene (cliente, artículo o descripción, gramaje, ancho, galga, volumen, precio)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': 'Cotización del desarrollo',
+            'res_model': 'qb.cotizador.cotizacion', 'view_mode': 'form', 'target': 'current',
+            'context': {'default_project_id': self.id, 'default_partner_id': self.partner_id.id},
+        }
+
     def _qb_cotizaciones_vivas(self):
         return self.qb_cotizacion_ids.filtered(lambda c: c.state in ('borrador', 'por_aprobar', 'presentada'))
 
@@ -86,4 +96,114 @@ class ProjectProjectCotizador(models.Model):
             if detenidos:
                 nota = detenidos[0].qb_costo_bloqueo_nota or 'la cotización revisada espera aprobación.'
                 raise UserError('%s está detenido por costo: %s' % (detenidos[0].display_name, nota))
-        return super().write(vals)
+        res = super().write(vals)
+        if 'stage_id' in vals and not self.env.context.get('sgi_dev_migration'):
+            self.filtered(lambda p: p.sgi_is_ft and p.sgi_dev_stage_key == 'liberado')._qb_sgi_avisar_sin_tarifa()
+        return res
+
+    # ------------------------------------------------------------------
+    # 1.3.0 (Jose 2026-10-08, 5.6): precio en tarifa automático al ganar
+    # ------------------------------------------------------------------
+    def action_sgi_dev_generate_products(self):
+        res = super().action_sgi_dev_generate_products()
+        self._qb_sgi_ligar_articulo()
+        return res
+
+    def _qb_sgi_ligar_articulo(self):
+        """El artículo acabado que generó el proyecto entra a sus cotizaciones vivas que no lo
+        tenían; si alguna ya estaba ganada con el cliente aprobando, su precio va a la tarifa."""
+        for project in self.filtered(lambda p: p.sgi_is_ft and p.sgi_dev_product_id):
+            cots = project.qb_cotizacion_ids._qb_sgi_vivas_para_tarifa().filtered(lambda c: not c.product_id)
+            if not cots:
+                continue
+            cots.write({'product_id': project.sgi_dev_product_id.id})
+            for cot in cots:
+                cot.message_post(body='Artículo %s ligado desde el desarrollo %s.' % (
+                    project.sgi_dev_product_id.display_name, project.sgi_ft_folio or project.name))
+            cots._sincronizar_tarifa()
+        return True
+
+    def _qb_sgi_cliente_aprobo(self, medium, date, contact=None, ref=None, evidence=None, filename=None):
+        """La aprobación de la muestra registrada en el envío (SGI) es la aprobación del cliente de
+        la cotización: se copia a las cotizaciones vivas del proyecto que no la tenían. Si alguna ya
+        está ganada, el precio va a la tarifa (qb_cotizador); si no, irá al ganarla."""
+        for project in self.filtered('sgi_is_ft'):
+            cots = project.qb_cotizacion_ids._qb_sgi_vivas_para_tarifa().filtered(lambda c: not c.cliente_aprobo)
+            if not cots:
+                continue
+            if not (medium and date):
+                project.message_post(body='La aprobación del cliente no se copió a la cotización: falta medio o fecha.')
+                continue
+            vals = {'cliente_aprobo': True, 'cliente_medio': medium, 'cliente_fecha': date}
+            if evidence:
+                vals.update({'cliente_evidencia': evidence, 'cliente_evidencia_nombre': filename or 'evidencia'})
+            cots.write(vals)
+            for cot in cots:
+                cot.message_post(body='El cliente aprobó la muestra del desarrollo %s (%s, %s%s%s).' % (
+                    project.sgi_ft_folio or project.name, medium or '—', date or '—',
+                    (', %s' % contact.name) if contact else '', (', ref. %s' % ref) if ref else ''))
+        return True
+
+    def _qb_sgi_avisar_sin_tarifa(self):
+        """Al liberar: si ninguna cotización ganada del desarrollo puso su precio en la tarifa,
+        queda dicho en el chatter (C1.17 no cierra sola)."""
+        for project in self:
+            cots = project.qb_cotizacion_ids
+            if cots.filtered('pricelist_item_id'):
+                continue
+            ganadas = cots.filtered(lambda c: c.state == 'ganada')
+            if ganadas:
+                motivo = ('falta la aprobación del cliente en la cotización' if not ganadas.filtered('cliente_aprobo')
+                          else 'la cotización ganada no tiene artículo')
+            elif cots.filtered(lambda c: c.state in ('presentada', 'vencida')):
+                motivo = 'ninguna cotización se ha marcado ganada'
+            else:
+                motivo = 'el desarrollo no tiene cotización'
+            project.message_post(body='Liberado sin precio en la tarifa del cliente: %s. C1.17 queda abierta hasta '
+                                      'que una cotización ganada ponga su precio en la tarifa.' % motivo)
+        return True
+
+    # ------------------------------------------------------------------
+    # 57.137.0 (SGI, Administración de Ventas 2026-10-08): la cotización en la aprobación para iniciar y en el expediente 8.3.
+    # ------------------------------------------------------------------
+    def _qb_sgi_cotizacion_para_documento(self):
+        """La cotización que va a los documentos del desarrollo: la ganada más reciente; si no hay,
+        la presentada más reciente."""
+        self.ensure_one()
+        cots = self.qb_cotizacion_ids
+        for state in ('ganada', 'presentada'):
+            cot = cots.filtered(lambda c: c.state == state).sorted(lambda c: (c.id,), reverse=True)[:1]
+            if cot:
+                return cot
+        return cots.browse()
+
+    def _sgi_dev_start_approval_quote_vals(self):
+        vals = super()._sgi_dev_start_approval_quote_vals()
+        cot = self._qb_sgi_cotizacion_para_documento()
+        if not cot:
+            return vals
+        uom = dict(cot._fields['volumen_uom'].selection).get(cot.volumen_uom) or ''
+        vals.update({
+            'folio': cot.folio or cot.name or '',
+            'precio': ('%.4f' % cot.precio_objetivo) if cot.precio_objetivo else '',
+            'moneda': cot.currency_id.name or '',
+            'unidad': uom.split('/')[0].strip() if uom else '',
+            'vigencia': cot.validez_hasta.strftime('%d/%m/%Y') if cot.validez_hasta else '',
+            'condiciones': ('Revisión %d del desarrollo' % cot.project_revision) if cot.project_revision else '',
+        })
+        return vals
+
+    def _sgi_dev_dossier_extra(self):
+        rows = super()._sgi_dev_dossier_extra()
+        cots = self.qb_cotizacion_ids
+        ganadas = cots.filtered(lambda c: c.state == 'ganada')
+        con_tarifa = cots.filtered('pricelist_item_id')
+        rows += [
+            ('8.3.4', "Controles: cotización del desarrollo aprobada por el puesto que aprueba",
+             bool(cots.filtered(lambda c: c.state in ('presentada', 'vencida', 'ganada'))) if cots else None,
+             "%d cotización(es), %d ganada(s)" % (len(cots), len(ganadas))),
+            ('8.3.5', "Salidas: precio del desarrollo en la tarifa del cliente (C1.17)",
+             bool(con_tarifa) if (ganadas or self.sgi_dev_stage_key == 'liberado') else None,
+             (con_tarifa[:1].pricelist_item_id.display_name if con_tarifa else "sin precio en tarifa")),
+        ]
+        return rows

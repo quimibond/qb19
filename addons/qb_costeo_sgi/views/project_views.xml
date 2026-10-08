@@ -14,6 +14,30 @@
                     </div>
                 </button>
             </xpath>
+            <!-- 1.3.0 (Administración de Ventas 2026-10-08): las cotizaciones del desarrollo en la pestaña «Cotización» del SGI. -->
+            <xpath expr="//div[@name='sgi_dev_quotes']" position="inside">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="o_horizontal_separator text-uppercase fw-bolder small">Cotizaciones del desarrollo</span>
+                    <button name="action_qb_cotizacion_nueva" type="object" string="Nueva cotización" class="btn-primary" icon="fa-calculator"
+                            invisible="not sgi_is_ft or is_template"/>
+                </div>
+                <field name="qb_cotizacion_ids" readonly="1">
+                    <list create="0" delete="0" decoration-success="state == 'ganada'" decoration-muted="state in ('perdida', 'reemplazada')"
+                          decoration-warning="state == 'por_aprobar'">
+                        <field name="folio"/>
+                        <field name="revision"/>
+                        <field name="state" widget="badge"/>
+                        <field name="currency_id" column_invisible="1"/>
+                        <field name="precio_objetivo"/>
+                        <field name="project_revision"/>
+                        <field name="approval_request_status" widget="badge" optional="show"/>
+                        <field name="approved_by_id" optional="show"/>
+                        <field name="validez_hasta" optional="show"/>
+                        <field name="pricelist_item_id" optional="hide"/>
+                        <field name="user_id" optional="hide"/>
+                    </list>
+                </field>
+            </xpath>
             <xpath expr="//sheet" position="before">
                 <div class="alert alert-warning" role="alert" invisible="not qb_costo_bloqueado">
                     <strong>Detenido por costo.</strong> <field name="qb_costo_bloqueo_nota" readonly="1" class="oe_inline"/>

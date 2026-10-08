@@ -63,6 +63,7 @@ SEMAFOROS = [
 CLIENTE_MEDIOS = [
     ('correo', 'Correo'), ('oc', 'Orden de compra'), ('whatsapp', 'WhatsApp'),
     ('cotizacion_firmada', 'Cotización firmada'),
+    ('direccion', 'Dirección (desarrollo interno)'),  # 1.2.0: mismo catálogo que la aprobación del SGI
 ]
 VOLUMEN_UOMS = [('m', 'm / mes'), ('kg', 'kg / mes')]
 ESCALERA_MULTIPLOS = (0.5, 1.0, 2.0, 4.0)
@@ -206,6 +207,9 @@ class QbCotizadorCotizacion(models.Model):
     sale_order_id = fields.Many2one('sale.order', string='Pedido', readonly=True, copy=False)
     pricelist_item_id = fields.Many2one('product.pricelist.item', string='Precio en tarifa',
                                         readonly=True, copy=False)
+    # 1.2.0 (Jose 2026-10-08, 5.6): cuándo y quién puso el precio en la tarifa; con esto se mide C1.17.
+    tarifa_fecha = fields.Datetime(string='Precio en tarifa el', readonly=True, copy=False)
+    tarifa_user_id = fields.Many2one('res.users', string='Puso el precio en tarifa', readonly=True, copy=False)
     perdida_motivo_id = fields.Many2one('qb.cotizador.motivo', string='Motivo de pérdida',
                                         readonly=True, copy=False)
     perdida_nota = fields.Char(readonly=True, copy=False)
@@ -802,27 +806,39 @@ class QbCotizadorCotizacion(models.Model):
         self.message_post(body='Tarifa %s creada y asignada al cliente.' % tarifa.name)
         return tarifa
 
+    def _producto_para_tarifa(self):
+        """Artículo cuyo precio va a la tarifa. Gancho: el puente con el SGI
+        pone el artículo generado por el desarrollo cuando la cotización se
+        hizo antes de que existiera."""
+        self.ensure_one()
+        return self.product_id
+
     def _sincronizar_tarifa(self):
         """Ganada + cliente aprobó la muestra ⇒ precio en la tarifa del
-        cliente con precio, moneda y vigencia de la cotización."""
+        cliente con precio, moneda y vigencia de la cotización. 1.2.0: sella
+        ``tarifa_fecha`` / ``tarifa_user_id`` (medición de C1.17)."""
         for rec in self:
             if rec.state != 'ganada' or not rec.cliente_aprobo or rec.pricelist_item_id:
                 continue
-            if not rec.product_id:
+            product = rec._producto_para_tarifa()
+            if not product:
                 rec.message_post(body='Sin artículo ligado: el precio no se puede poner en la '
                                       'tarifa. Liga el artículo y vuelve a marcar la aprobación.')
                 continue
+            if rec.product_id != product:
+                rec.write({'product_id': product.id})
             tarifa = rec._tarifa_del_cliente()
             item = self.env['product.pricelist.item'].sudo().create({
                 'pricelist_id': tarifa.id, 'applied_on': '1_product',
-                'product_tmpl_id': rec.product_id.product_tmpl_id.id,
+                'product_tmpl_id': product.product_tmpl_id.id,
                 'compute_price': 'fixed', 'fixed_price': rec.precio_objetivo,
                 'min_quantity': 0,
                 'date_start': rec.ganada_date or fields.Datetime.now(),
                 'date_end': fields.Datetime.to_datetime(rec.validez_hasta) if rec.validez_hasta
                 and rec.validez_hasta > fields.Date.context_today(rec) else False,
             })
-            rec.write({'pricelist_item_id': item.id})
+            rec.write({'pricelist_item_id': item.id, 'tarifa_fecha': fields.Datetime.now(),
+                       'tarifa_user_id': self.env.uid})
             rec.message_post(body='Precio %s %s puesto en la tarifa %s (vigencia %s).' % (
                 rec.precio_objetivo, rec.currency_id.name, tarifa.name,
                 rec.validez_hasta or 'sin fin'))

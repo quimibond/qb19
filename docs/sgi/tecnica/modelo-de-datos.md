@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (168) y modelos de otras apps que extienden (54). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (169) y modelos de otras apps que extienden (54). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -54,6 +54,7 @@ Modelos que definen el núcleo y sus satélites (168) y modelos de otras apps qu
 | [`sgi.csh.finding`](diccionario/sgi.csh.finding.md) | Hallazgo del recorrido de la Comisión de Seguridad e Higiene | Hallazgo de un recorrido de la Comisión de Seguridad e Higiene, con severidad y responsable; puede generar NC. | Model | 9 | `addons/quimibond_sgi/models/sgi_hse_records.py` |
 | [`sgi.csh.inspection`](diccionario/sgi.csh.inspection.md) | Recorrido de la Comisión de Seguridad e Higiene | Recorrido de la Comisión de Seguridad e Higiene: fecha, áreas, participantes y hallazgos. Se cierra y se puede reabrir. | Model | 12 | `addons/quimibond_sgi/models/sgi_hse_records.py` |
 | [`sgi.deliverable`](diccionario/sgi.deliverable.md) | Entregable SGI (lo que pasa de una actividad a otra) | Entregable: lo que una actividad produce y otra recibe. Si apunta a un modelo de Odoo con dominio, la actividad se mide sola (``complete_domain`` y campos de fecha y usuario). | Model | 24 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
+| [`sgi.dev.change.request`](diccionario/sgi.dev.change.request.md) | Solicitud de modificación del proyecto de desarrollo | — | Model | 27 | `addons/quimibond_sgi/models/sgi_dev_change.py` |
 | [`sgi.dev.characteristic`](diccionario/sgi.dev.characteristic.md) | Característica del desarrollo de producto | Renglón de la tabla de características de un proyecto de desarrollo: lo que pide el cliente, lo medido en su muestra, el control interno, lo obtenido en la corrida y lo que aprobó. | Model | 16 | `addons/quimibond_sgi/models/sgi_dev_characteristic.py` |
 | [`sgi.dev.characteristic.template`](diccionario/sgi.dev.characteristic.template.md) | Característica por tipo de desarrollo | Renglón que carga un tipo de desarrollo en la tabla de características del proyecto. | Model | 12 | `addons/quimibond_sgi/models/sgi_dev_characteristic.py` |
 | [`sgi.dev.coa`](diccionario/sgi.dev.coa.md) | Reporte de conformidad (CoA) del desarrollo | — | Model | 19 | `addons/quimibond_sgi/models/sgi_dev_coa.py` |
@@ -213,7 +214,7 @@ Modelos que definen el núcleo y sus satélites (168) y modelos de otras apps qu
 | [`mrp.weigh.roll.wizard`](diccionario/mrp.weigh.roll.wizard.md) | 0 | `addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py` |
 | [`product.product`](diccionario/product.product.md) | 3 | `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`product.template`](diccionario/product.template.md) | 8 | `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
-| [`project.project`](diccionario/project.project.md) | 122 | `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`, `addons/quimibond_sgi/models/sgi_dev_customer.py`, `addons/quimibond_sgi/models/sgi_dev_escalation.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_pilot.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_process_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_sample.py`, `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`, `addons/quimibond_sgi/models/sgi_improvement.py` |
+| [`project.project`](diccionario/project.project.md) | 134 | `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_change.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`, `addons/quimibond_sgi/models/sgi_dev_customer.py`, `addons/quimibond_sgi/models/sgi_dev_dossier.py`, `addons/quimibond_sgi/models/sgi_dev_escalation.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_pilot.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_process_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_sample.py`, `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_dev_start_approval.py`, `addons/quimibond_sgi/models/sgi_dev_tech_sheet.py`, `addons/quimibond_sgi/models/sgi_improvement.py` |
 | [`project.task`](diccionario/project.task.md) | 11 | `addons/quimibond_sgi/models/sgi_improvement.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`project.task.type`](diccionario/project.task.type.md) | 1 | `addons/quimibond_sgi/models/sgi_improvement.py` |
 | [`purchase.order`](diccionario/purchase.order.md) | 2 | `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
@@ -236,4 +237,4 @@ Modelos que definen el núcleo y sus satélites (168) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 23 de 168.
+Modelos propios sin docstring de clase: 24 de 169.

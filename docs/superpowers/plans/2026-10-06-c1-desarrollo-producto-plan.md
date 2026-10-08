@@ -324,3 +324,89 @@ venció el día», sin confirmar.
   `qb_costeo_sgi`; hook posible en `_sgi_dev_pending_step`), pilotaje sin
   sub-pasos.
 
+## 17. Bloque 5.6 — Precio en tarifa automático al ganar (2026-10-08)
+
+Jose: «precio en tarifa automático al ganar la cotización, con C1.17
+midiendo eso». Lo que ya existía en `qb_cotizador` (ganada + cliente aprobó
+⇒ renglón en la tarifa propia del cliente) dependía de dos capturas a mano:
+la aprobación del cliente en la cotización y el artículo. Las dos llegan
+solas ahora:
+
+- **Artículo**: al «Generar artículos» el acabado entra a las cotizaciones
+  vivas del proyecto sin artículo (`_qb_sgi_ligar_articulo`); el gancho
+  `_producto_para_tarifa` toma el del proyecto si la cotización no lo tiene.
+- **Aprobación del cliente**: la respuesta «aprueba» del envío de muestra se
+  copia a las cotizaciones vivas (medio, fecha, evidencia). Catálogo de
+  medios igualado (se agrega «Dirección»).
+- **Medición de C1.17**: entregable C1-ARTICULO sobre la cotización con
+  `pricelist_item_id`, fecha `tarifa_fecha`, usuario `tarifa_user_id`;
+  completo con artículo liberado y lista de materiales. Antes se medía con
+  «producto vendible por categoría» (cualquier producto de la empresa).
+- **Al liberar sin tarifa** el proyecto lo dice en el chatter con el motivo.
+- Datos por MCP pendientes: la ficha C1.17 (580) dice «poner el precio de la
+  cotización aceptada en la tarifa del cliente» como paso a mano; con 1.3.0
+  es automático (ajustar texto cuando Jose lo pida).
+
+## 18. Revisión de Administración de Ventas — pestañas por etapa (2026-10-08, SGI 57.136.0)
+
+Una pestaña por etapa de C1 en el orden en que se trabaja (Solicitud del
+cliente · Análisis y factibilidad · Cotización · Aprobación del cliente ·
+Solicitud de desarrollo · Muestra · Respuesta del cliente · Pilotaje y
+liberación · Tiempos). La tabla de características va en cada pestaña con las
+columnas de su momento: se verificó en el código de Odoo 19
+(`web/static/src/model/relational_model/utils.js`, `patchActiveFields`) que
+el mismo x2many puede aparecer varias veces en un formulario y el cliente
+funde sus columnas; por eso no hizo falta la pestaña «Características»
+aparte. El código del artículo y «Generar artículos» pasan a «Cotización»
+(se crean antes de cotizar); las cotizaciones las agrega `qb_costeo_sgi` en
+el `div` «sgi_dev_quotes». «Aprobar solicitud de desarrollo» solo con la
+aprobación del cliente registrada y folio FT. El paso pendiente del
+escalamiento (5.5) no cambió: en «Muestra» sigue C1.07 → C1.04 → …; si Jose
+quiere que C1.04 se exija antes de cotizar, se ajusta el resolutor.
+
+### 18.1 Descripción del proceso según Administración de Ventas (2026-10-08) y lo que queda por decidir
+
+Nombres finales de las pestañas según su descripción: Análisis de mercado
+industrial · Análisis de proyecto · Cotización · Aprobación del cliente ·
+Solicitud de desarrollo · Muestra · Envío de muestra · Retroalimentación del
+cliente · Cambios al proyecto · Pilotaje y liberación · Tiempos. Lo que ya
+cubre el código: análisis de la muestra con pruebas al laboratorio (F-P-C05-02
+= `sgi.dev.lab.request`), revisión que firma Administración de Ventas (revisión de Ventas),
+código y artículos por Diseño de Producto, ruta y centros de trabajo por Diseño de Procesos en la lista
+de materiales (C1.04b) con «Diagrama de flujo», aprobación del cliente por
+correo, OC o WhatsApp con evidencia, solicitud de desarrollo firmada por
+Diseño de Producto y Dirección de Operaciones con aviso por correo a las áreas, corrida, envío,
+retroalimentación, revisiones, pilotajes con estudio de habilidad, fichas de
+proceso y producto. **Decisiones de Dirección General, no construidas:**
+
+1. **Aprobación para iniciar un proyecto** como documento generado desde el
+   proyecto (lo llena Diseño de Producto, lo manda Administración de Ventas, el cliente firma o manda OC)
+   y **folio FT antes de esa aprobación** (hoy el folio se asigna al pasar a
+   «Muestra», después de registrarla). El brief §6.8 ya lo pedía como
+   documento generado; cambiar el momento del folio es decisión de proceso.
+2. **Solicitud de modificación del proyecto** (causas, 5 porqués, fases
+   afectadas, firma de Dirección de Operaciones) en «Cambios al proyecto». El brief (C1.13)
+   la sustituyó por la bitácora de revisiones; Administración de Ventas la quiere formal.
+3. **Ruta como selección de centros de trabajo con imagen** en lugar del
+   diagrama de proceso en papel: hoy la ruta vive en la lista de materiales
+   y el diagrama se imprime; falta la vista gráfica dentro del proyecto.
+4. **Mapa ISO 9001:2015 8.3 y APQP**: cruzar cada pestaña con 8.3.2 a 8.3.6
+   (planificación, entradas, controles: revisión / verificación / validación,
+   salidas, cambios) y decidir qué evidencia falta para armar el APQP por
+   proyecto.
+
+### 18.2 Los cuatro puntos, construidos (2026-10-08, SGI 57.137.0; Jose: «Has todos»)
+
+| Punto | Cómo quedó | Dónde |
+|---|---|---|
+| 1. Aprobación para iniciar con folio antes | PDF generado desde el proyecto (cliente, contacto, producto, uso, características «en especificación del cliente», cotización vía `qb_costeo_sgi`). Al generarlo se asigna el folio FT si falta; «Asignar folio FT» aparece desde «Cotización». «Enviar al cliente» abre el correo con el PDF y registra quién y cuándo. La evidencia de la respuesta se sigue capturando en la misma pestaña y «Registrar aprobación del cliente» mueve a «Muestra». | `models/sgi_dev_start_approval.py`, `report/report_dev_start_approval.xml`, `data/sgi_dev_start_approval_data.xml` |
+| 2. Solicitud de modificación | `sgi.dev.change.request`: motivo, qué se modifica, por qué no se obtuvo el resultado, 5 porqués, causa raíz, solución, fases afectadas; elabora Diseño de Producto, firma Dirección de Operaciones (C1.13). Firmada: abre revisión (si la respuesta del cliente no la abrió), bitácora, vuelve a «Muestra», PDF. «Pide cambios» en el envío deja una en borrador. | `models/sgi_dev_change.py`, `views/sgi_dev_change_views.xml`, `report/report_dev_change_request.xml` |
+| 3. Ruta con imagen | Cadena de cajas artículo · operación · centro de trabajo dentro de «Cotización», «Editar ruta» abre la lista de materiales. **Sin imagen por centro de trabajo**: no existe catálogo de imágenes y no se inventa (si Jose la quiere, es un campo imagen en `mrp.workcenter` y una fila por centro). | `models/sgi_dev_dossier.py` |
+| 4. ISO 9001 8.3 / APQP | Pestaña «Expediente 8.3 / APQP»: 21 requisitos (8.3.2 a 8.3.6) + 2 de `qb_costeo_sgi` (cotización aprobada, precio en tarifa) con evidencia ✔/✘/n.a., fases del APQP ↔ pestañas, impresión. | `models/sgi_dev_dossier.py`, `report/report_dev_dossier.xml` |
+
+Lo que sigue siendo de Jose: los textos definitivos del documento de
+aprobación (hoy un párrafo genérico), si la aprobación para iniciar debe
+ser obligatoria antes de «Registrar aprobación del cliente» (hoy no lo es),
+y la imagen por centro de trabajo.
+
+

@@ -6,7 +6,7 @@
 
 Orden: `id desc`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_change.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`.
 
 ## Campos (37)
 
@@ -57,7 +57,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_s
 | `action_create_picking` | Crea la baja (salida) con el artículo y la cantidad de los rollos; se valida en Inventario. |
 | `action_open_mail` | Correo listo con rollos, medio y guía; lo manda Administración de Ventas. |
 | `action_open_picking` | — |
-| `action_register_response` | — |
+| `action_register_response` | La respuesta «pide cambios» deja una solicitud de modificación en borrador con la revisión que acaba de abrir, para que Diseño de Producto la complete y Dirección la firme. |
 | `action_sgi_dev_coa` | Un certificado por lote de los rollos avisados (uno solo si no llevan lote), con los metros y rollos de ese lote; abre el que falta por emitir o la lista. |
 | `action_ship` | Registra el envío. Si hay baja ligada, se registra al validarla; aquí solo si ya está hecha. |
 | `cron_sgi_dev_shipment_followup` | — |

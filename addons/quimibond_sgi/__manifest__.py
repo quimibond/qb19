@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.135.0',
+    'version': '19.0.57.137.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -103,6 +103,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_dev_start_data.xml',  # 57.124.0 (C1): cron del reloj de materia prima
         'data/sgi_dev_shipment_data.xml',  # 57.129.0 (C1): correo del envío de muestra y cron de seguimiento
         'data/sgi_dev_escalation_data.xml',  # 57.135.0 (C1): cron de avisos por tiempo del paso pendiente
+        'data/sgi_dev_start_approval_data.xml',  # 57.137.0 (C1): correo de la aprobación para iniciar el proyecto
         'data/sgi_sign_elearning_data.xml',
         'data/sgi_doc_change_sign_data.xml',
         'data/sgi_checklist_cron.xml',
@@ -189,6 +190,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_dev_tech_sheet_views.xml',  # 57.132.0: ficha técnica interna y especificaciones del producto
         'views/sgi_dev_pilot_views.xml',  # 57.133.0: pilotaje y estudio de habilidad
         'views/sgi_dev_escalation_views.xml',  # 57.135.0: avisos por tiempo de los desarrollos
+        'views/sgi_dev_change_views.xml',  # 57.137.0: solicitud de modificación del proyecto
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports
@@ -224,6 +226,9 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_dev_tech_sheet.xml',  # 57.132.0: ficha técnica interna (F-P-D01-24)
         'report/report_dev_customer_spec.xml',  # 57.132.0: especificaciones del producto (F-P-D01-08)
         'report/report_dev_pilot.xml',  # 57.133.0: estudio de habilidad del pilotaje
+        'report/report_dev_start_approval.xml',  # 57.137.0: aprobación para iniciar el proyecto (con folio FT)
+        'report/report_dev_change_request.xml',  # 57.137.0: solicitud de modificación del proyecto
+        'report/report_dev_dossier.xml',  # 57.137.0: expediente de diseño y desarrollo (ISO 9001 8.3 / APQP)
         'report/report_calibration_label.xml',
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',
