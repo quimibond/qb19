@@ -5,8 +5,12 @@
          Odoo (project), nunca una vista propia. -->
 
     <!-- Tarjeta del tablero: folio, cliente (ya estaba), etapa y horas en la etapa.
-         Los enlaces «Tareas» siguen abriendo las tareas; el clic en la tarjeta
-         de un desarrollo abre la ficha (action_view_tasks en Python). -->
+         El clic en la tarjeta de un desarrollo abre la ficha (action_view_tasks en
+         Python). 57.123.2: ya no se renombran los enlaces «Tareas» de la tarjeta:
+         industry_fsm (instalado en producción) los apunta a su propia acción con
+         el mismo xpath, y según el orden de carga fallaba su herencia o la nuestra
+         («no puede ser localizado en la vista padre»). Las tareas de un desarrollo
+         se abren desde el botón de la ficha. -->
     <record id="sgi_project_view_kanban_dev" model="ir.ui.view">
         <field name="name">project.project.kanban.inherit.sgi.dev</field>
         <field name="model">project.project</field>
@@ -32,12 +36,6 @@
                     <span class="fa fa-exclamation-triangle me-2" aria-label="Falta el cliente" title="Falta el cliente"/>
                     <span>Falta el cliente</span>
                 </div>
-            </xpath>
-            <xpath expr="//t[@t-name='menu']//a[@name='action_view_tasks']" position="attributes">
-                <attribute name="name">action_sgi_dev_view_tasks</attribute>
-            </xpath>
-            <xpath expr="//footer//a[@name='action_view_tasks']" position="attributes">
-                <attribute name="name">action_sgi_dev_view_tasks</attribute>
             </xpath>
         </field>
     </record>
