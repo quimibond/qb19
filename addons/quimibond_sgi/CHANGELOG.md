@@ -13,6 +13,14 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.128.2 — 2026-10-08
+
+- Corrección del build de `main` (06:08 UTC): en la vista heredada de la
+  orden de fabricación (57.125.0) el ancla `//field[@name='origin']` caía
+  dentro de la sub-vista de `stock.move` («El campo sgi_dev_project_id no
+  existe en el modelo stock.move»). Los campos del desarrollo van ahora en una
+  pestaña «Desarrollo» del cuaderno de la orden. Sin migración.
+
 ## 19.0.57.128.1 — 2026-10-08
 
 - Corrección del build de `main` (05:56 UTC): `sgi_dev_process_sheet` hereda

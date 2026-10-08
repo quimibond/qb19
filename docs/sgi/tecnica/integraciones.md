@@ -6,7 +6,7 @@ Archivos fuera del SGI y sus satélites que nombran modelos `sgi.*`. Al renombra
 
 | Archivo | Modelos |
 |---|---|
-| `addons/qb_costeo_sgi/models/cotizacion.py` | `sgi.deliverable`, `sgi.process.activity` |
+| `addons/qb_costeo_sgi/models/cotizacion.py` | `sgi.activity.role`, `sgi.approval.subject`, `sgi.deliverable`, `sgi.process.activity` |
 | `addons/qb_obligation/models/qb_obligation.py` | `sgi.record` |
 | `addons/quimibond_intelligence/models/senales/calidad_sgi.py` | `sgi.action.line`, `sgi.alert.source`, `sgi.audit.program.line`, `sgi.legal.requirement`, `sgi.ppap`, `sgi.risk` |
 | `addons/quimibond_intelligence/models/senales/compras.py` | `sgi.supplier.eval` |

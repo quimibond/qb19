@@ -40,12 +40,24 @@
         <field name="model">mrp.production</field>
         <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='origin']" position="after">
-                <field name="sgi_dev_project_id" invisible="not sgi_dev_project_id" readonly="1"/>
-                <field name="sgi_dev_task_id" invisible="not sgi_dev_task_id" readonly="1"/>
-                <field name="sgi_dev_issued_by_id" invisible="not sgi_dev_issued_by_id" readonly="1"/>
-                <field name="sgi_dev_run_validated_by_id" invisible="not sgi_dev_run_validated_by_id" readonly="1"/>
-                <field name="sgi_dev_run_validated_date" invisible="not sgi_dev_run_validated_by_id" readonly="1"/>
+            <!-- 57.128.2: pestaña propia. El ancla «//field[@name='origin']» caía en la sub-vista de
+                 stock.move de la orden («El campo sgi_dev_project_id no existe en el modelo stock.move»,
+                 build de main 2026-10-08 06:08 UTC). El primer <notebook> del documento es el de la orden. -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Desarrollo" name="sgi_dev" invisible="not sgi_dev_project_id">
+                    <group>
+                        <group>
+                            <field name="sgi_dev_project_id" readonly="1"/>
+                            <field name="sgi_dev_task_id" invisible="not sgi_dev_task_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="sgi_dev_issued_by_id" readonly="1"/>
+                            <field name="sgi_dev_issued_date" readonly="1"/>
+                            <field name="sgi_dev_run_validated_by_id" readonly="1"/>
+                            <field name="sgi_dev_run_validated_date" readonly="1"/>
+                        </group>
+                    </group>
+                </page>
             </xpath>
             <!-- 57.127.0: validación de la corrida (C1.10); enganche de las fichas de tintorería y acabado. -->
             <xpath expr="//header" position="inside">
