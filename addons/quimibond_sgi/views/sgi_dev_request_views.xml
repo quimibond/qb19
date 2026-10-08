@@ -108,14 +108,52 @@
                             <div colspan="2">
                                 <button name="action_sgi_dev_approve_request" type="object" string="Aprobar solicitud (Dirección de Operaciones)"
                                         class="btn-primary" icon="fa-check" invisible="sgi_dev_approved_by_id"
-                                        confirm="Firma «Aprobó» la solicitud de desarrollo con su usuario y la fecha de hoy. ¿Continuar?"/>
+                                        confirm="Firma «Aprobó» la solicitud de desarrollo con su usuario y la fecha de hoy. Al aprobar se avisa a las partes interesadas con el PDF y se revisan existencias de la materia prima. ¿Continuar?"/>
+                                <span class="text-muted" invisible="sgi_dev_approved_by_id">Sin esta aprobación no se pide la corrida de muestra.</span>
                             </div>
                         </group>
+                    </group>
+                    <!-- 57.124.0 (C1, bloque E): materia prima de la muestra y requisición a Compras. -->
+                    <group string="Materia prima para la muestra" name="sgi_dev_mp">
+                        <div colspan="2" class="d-flex gap-2 mb-2">
+                            <button name="action_sgi_dev_mp_check" type="object" string="Revisar existencias" class="btn-secondary" icon="fa-cubes"/>
+                            <button name="action_sgi_dev_mp_requisition" type="object" string="Requisición a Compras" class="btn-primary" icon="fa-shopping-cart"
+                                    invisible="not sgi_dev_mp_missing_count"
+                                    confirm="Crea una requisición a Compras ligada al proyecto con la materia prima que falta y deja corriendo el reloj de materia prima. ¿Continuar?"/>
+                            <button name="action_sgi_dev_view_requisitions" type="object" class="btn-link" icon="fa-external-link"
+                                    invisible="not sgi_dev_requisition_count">
+                                <field name="sgi_dev_requisition_count" readonly="1" class="oe_inline"/> requisición(es)
+                            </button>
+                            <field name="sgi_dev_mp_missing_count" invisible="1"/>
+                        </div>
+                        <field name="sgi_dev_mp_line_ids" nolabel="1" colspan="2" readonly="1">
+                            <list decoration-danger="qty_missing > 0" decoration-muted="requisition_id">
+                                <field name="product_id"/>
+                                <field name="qty_needed"/>
+                                <field name="qty_available"/>
+                                <field name="qty_missing"/>
+                                <field name="uom_id"/>
+                                <field name="requisition_id"/>
+                                <field name="checked_at" optional="hide"/>
+                            </list>
+                        </field>
                     </group>
                 </page>
             </xpath>
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="sgi_is_ft"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 57.124.0: la requisición de Compras conoce su desarrollo. -->
+    <record id="approval_request_view_form_sgi_dev" model="ir.ui.view">
+        <field name="name">approval.request.form.inherit.sgi.dev</field>
+        <field name="model">approval.request</field>
+        <field name="inherit_id" ref="approvals.approval_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="sgi_dev_project_id" invisible="not sgi_dev_project_id" readonly="1"/>
             </xpath>
         </field>
     </record>

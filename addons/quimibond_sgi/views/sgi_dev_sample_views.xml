@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.125.0 (C1, bloque F): la corrida de muestra se pide desde el proyecto. -->
+    <record id="sgi_dev_sample_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.sample.wizard.form</field>
+        <field name="model">sgi.dev.sample.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Pedir corrida de muestra">
+                <group>
+                    <group>
+                        <field name="project_id" readonly="1"/>
+                        <field name="product_ids" invisible="1"/>
+                        <field name="product_id"/>
+                        <field name="bom_id"/>
+                        <label for="product_qty"/>
+                        <div class="d-flex gap-2 align-items-baseline">
+                            <field name="product_qty" class="oe_inline"/>
+                            <field name="product_uom_id" class="oe_inline"/>
+                        </div>
+                        <field name="suggested_qty"/>
+                        <field name="date_planned"/>
+                    </group>
+                    <group>
+                        <field name="picking_type_id"/>
+                        <field name="location_dest_id"/>
+                        <field name="note"/>
+                    </group>
+                </group>
+                <field name="suggestion_note" readonly="1" nolabel="1"/>
+                <footer>
+                    <button name="action_confirm" type="object" string="Crear la orden de muestra" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="mrp_production_form_view_sgi_dev" model="ir.ui.view">
+        <field name="name">mrp.production.form.inherit.sgi.dev</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='origin']" position="after">
+                <field name="sgi_dev_project_id" invisible="not sgi_dev_project_id" readonly="1"/>
+                <field name="sgi_dev_task_id" invisible="not sgi_dev_task_id" readonly="1"/>
+                <field name="sgi_dev_issued_by_id" invisible="not sgi_dev_issued_by_id" readonly="1"/>
+                <field name="sgi_dev_run_validated_by_id" invisible="not sgi_dev_run_validated_by_id" readonly="1"/>
+                <field name="sgi_dev_run_validated_date" invisible="not sgi_dev_run_validated_by_id" readonly="1"/>
+            </xpath>
+            <!-- 57.127.0: validación de la corrida (C1.10); enganche de las fichas de tintorería y acabado. -->
+            <xpath expr="//header" position="inside">
+                <button name="action_sgi_dev_validate_run" type="object" string="Validar corrida" class="btn-primary"
+                        invisible="not sgi_dev_project_id or state != 'done' or sgi_dev_run_validated_by_id"
+                        confirm="Firma la validación de la corrida de muestra con su usuario y la fecha de hoy. ¿Continuar?"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

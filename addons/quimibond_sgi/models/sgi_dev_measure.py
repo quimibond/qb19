@@ -59,12 +59,35 @@ C1_MEASURES = {
     'C1-RUTA': {
         'name': "Ruta preliminar del artículo de desarrollo (operaciones de la lista de materiales)",
         'model': 'mrp.bom',
-        'domain': "[('product_tmpl_id.sgi_dev_project_id', '!=', False), ('operation_ids', '!=', False)]",
-        'date_field': 'write_date',
-        'user_field': 'write_uid',
+        # 57.127.0 (Jose, 1a): atribuida a quien asignó la ruta, no al último que editó la lista.
+        'domain': "[('product_tmpl_id.sgi_dev_project_id', '!=', False), ('operation_ids', '!=', False), "
+                  "('sgi_route_assigned_by_id', '!=', False)]",
+        'date_field': 'sgi_route_assigned_date',
+        'user_field': 'sgi_route_assigned_by_id',
         'complete_domain': "[('operation_ids.workcenter_id', '!=', False)]",
         'complete_criteria': "Cada operación de la lista de materiales tiene centro de trabajo.",
         'activity_number': 'C1.04b',
+    },
+    # 57.127.0 (Jose, 1c y 3.2): la orden de muestra nace del proyecto; se mide por proyecto, no por tipo 86.
+    'C1-OP-MUESTRA': {
+        'name': "Orden de muestra en Tejido Desarrollo",
+        'model': 'mrp.production',
+        'domain': "[('sgi_dev_project_id', '!=', False), ('sgi_dev_issued_by_id', '!=', False), ('state', '!=', 'cancel')]",
+        'date_field': 'sgi_dev_issued_date',
+        'user_field': 'sgi_dev_issued_by_id',
+        'complete_domain': "[('bom_id', '!=', False), ('origin', '!=', False)]",
+        'complete_criteria': "Orden confirmada por Planeación con el artículo del proyecto, su lista de materiales y el folio FT en el origen.",
+        'activity_number': 'C1.09',
+    },
+    'C1-MUESTRA': {
+        'name': "Muestra corrida con sus parámetros por área",
+        'model': 'mrp.production',
+        'domain': "[('sgi_dev_project_id', '!=', False), ('sgi_dev_run_validated_by_id', '!=', False)]",
+        'date_field': 'sgi_dev_run_validated_date',
+        'user_field': 'sgi_dev_run_validated_by_id',
+        'complete_domain': "[('state', '=', 'done')]",
+        'complete_criteria': "Orden terminada y corrida validada por el supervisor del área.",
+        'activity_number': 'C1.10',
     },
     'C1-MP-ESPERA': {
         'name': "Espera de materia prima del desarrollo registrada",
@@ -90,7 +113,7 @@ C1_MEASURES = {
         'model': 'sgi.dev.stage.log',
         'domain': "[%s, ('stage_key', '=', 'respuesta_cliente')]" % DEV_RELATED_DOMAIN,
         'date_field': 'date_start',
-        'user_field': 'create_uid',
+        'user_field': 'user_id',  # 57.127.0 (Jose, 1b): quién lo pasó a la etapa
         'complete_domain': "[('date_end', '!=', False)]",
         'complete_criteria': "El proyecto salió de «Respuesta del cliente» hacia la etapa siguiente.",
     },
@@ -99,7 +122,7 @@ C1_MEASURES = {
         'model': 'sgi.dev.stage.log',
         'domain': "[%s, ('stage_key', '=', 'pilotaje')]" % DEV_RELATED_DOMAIN,
         'date_field': 'date_start',
-        'user_field': 'create_uid',
+        'user_field': 'user_id',  # 57.127.0 (Jose, 1b): quién lo pasó a la etapa
         'complete_domain': "[('date_end', '!=', False)]",
         'complete_criteria': "El proyecto salió de «Pilotaje» hacia Liberado.",
     },
@@ -202,6 +225,9 @@ class ProjectProjectDevMeasure(models.Model):
         if 'complete_domain' in Deliverable._fields:
             vals.update({'complete_domain': spec.get('complete_domain') or False,
                          'complete_criteria': spec.get('complete_criteria') or False})
+        if 'measure_user_history' in Deliverable._fields:
+            # 57.127.0 (Jose, 1b): el usuario sale de un campo, no del historial de estado.
+            vals['measure_user_history'] = False
         return vals
 
     @api.model

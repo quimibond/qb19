@@ -26,6 +26,52 @@ class ResConfigSettings(models.TransientModel):
         help="Puesto cuyas personas autorizan las solicitudes de pruebas de los proyectos de desarrollo. "
              "Por omisión, el Coordinador de Laboratorio y MP (se busca por nombre si el parámetro está "
              "vacío). El Jefe MAST siempre puede.")
+    # 57.124.0 (C1, bloque E): arranque del desarrollo.
+    sgi_dev_request_notify_job_ids = fields.Many2many(
+        'hr.job', 'sgi_settings_dev_notify_job_rel', string="Puestos que reciben la solicitud aprobada",
+        help="Partes interesadas que reciben el aviso con el PDF cuando Dirección de Operaciones aprueba una "
+             "Solicitud de desarrollo. Por omisión: Diseño de Procesos, Jefe de Manufactura, Coordinador de "
+             "Laboratorio y MP, Jefe de Inventarios y Almacenes e Ingeniero de Calidad.")
+    sgi_dev_request_notify_user_ids = fields.Many2many(
+        'res.users', 'sgi_settings_dev_notify_user_rel', string="Personas sin puesto que también lo reciben",
+        help="Para quien no tiene puesto en RH (Inspección: José Luis Almazán, pendiente de Jose). Vacío: nadie "
+             "más.")
+    sgi_dev_requisition_category_id = fields.Many2one(
+        'approval.category', string="Categoría de la requisición de materia prima del desarrollo",
+        config_parameter='quimibond_sgi.dev_requisition_category_id',
+        help="Categoría de Aprobaciones con la que se pide a Compras la materia prima que falta para la muestra. "
+             "Vacío: la primera de tipo compra de la compañía.")
+
+    # 57.125.0 (C1, bloque F): orden de muestra.
+    sgi_dev_sample_picking_type_id = fields.Many2one(
+        'stock.picking.type', string="Tipo de operación de la orden de muestra",
+        config_parameter='quimibond_sgi.dev_sample_picking_type_id', domain="[('code', '=', 'mrp_operation')]",
+        help="Con el que nace la orden de muestra pedida desde el proyecto (producción: «Tejido Desarrollo»).")
+    sgi_dev_sample_location_id = fields.Many2one(
+        'stock.location', string="Ubicación del sobrante de la muestra",
+        config_parameter='quimibond_sgi.dev_sample_location_id', domain="[('usage', '=', 'internal')]",
+        help="A dónde entra lo fabricado en la corrida de muestra (producción: 31 Desarrollos Toluca).")
+    sgi_dev_planning_job_id = fields.Many2one(
+        'hr.job', string="Puesto de Planeación que emite la orden de muestra",
+        config_parameter='quimibond_sgi.dev_planning_job_id',
+        help="Recibe la actividad «Emitir la orden de muestra» (por omisión, Planeador de Producción).")
+    sgi_dev_sample_pq_m = fields.Float(
+        string="Metros PQ que debe entregar la muestra", config_parameter='quimibond_sgi.dev_sample_pq_m',
+        help="La cantidad sugerida cubre al menos estos metros de primera (brief: 50 m).")
+    sgi_dev_sample_expected_yield_pct = fields.Float(
+        string="Rendimiento de primera esperado en la muestra (%)",
+        config_parameter='quimibond_sgi.dev_sample_expected_yield_pct',
+        help="Para saber cuánto fabricar y entregar los metros PQ. Vacío: se asume 100 % (el brief no lo define).")
+    sgi_dev_sample_min_bath_kg = fields.Float(
+        string="Mínimo de baño de tintorería (kg)", config_parameter='quimibond_sgi.dev_sample_min_bath_kg',
+        help="Si el artículo lleva teñido, la muestra no baja de esta carga. Vacío: no entra al cálculo (el "
+             "brief lo deja por máquina y sin valor).")
+
+    # 57.126.0 (C1, bloque G): quién valida los parámetros reales de la ficha de tejido.
+    sgi_dev_validator_job_tejido_id = fields.Many2one(
+        'hr.job', string="Valida la ficha de proceso de tejido", config_parameter='quimibond_sgi.dev_validator_job_tejido_id',
+        help="Tejido no tiene supervisor: valida el Jefe de Manufactura.")
+
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',
@@ -186,6 +232,10 @@ class ResConfigSettings(models.TransientModel):
     # desviación de precio, cumplimiento mínimo, cobertura del pronóstico) los
     # declara quimibond_ventas_presupuesto. Las claves no cambian.
 
+    # 57.124.0: listas de puestos y personas en un parámetro (ids separados por coma).
+    _SGI_DEV_LIST_PARAMS = (('sgi_dev_request_notify_job_ids', 'quimibond_sgi.dev_request_notify_job_ids', 'hr.job'),
+                            ('sgi_dev_request_notify_user_ids', 'quimibond_sgi.dev_request_notify_user_ids', 'res.users'))
+
     @api.model
     def get_values(self):
         res = super().get_values()
@@ -212,6 +262,10 @@ class ResConfigSettings(models.TransientModel):
             survey_id if survey_id and self.env['survey.survey'].with_context(
                 active_test=False).browse(survey_id).exists()
             else False)
+        # 57.124.0: listas de puestos y personas (ids separados por coma).
+        for field, key, model in self._SGI_DEV_LIST_PARAMS:
+            ids = [int(t) for t in (Param.get_param(key, '') or '').split(',') if t.strip().isdigit()]
+            res[field] = [(6, 0, self.env[model].sudo().browse(ids).exists().ids)]
         return res
 
     def set_values(self):
@@ -227,3 +281,5 @@ class ResConfigSettings(models.TransientModel):
                         self.sgi_energy_partner_id.id or 0)
         Param.set_param('quimibond_sgi.satisfaction_survey_id',
                         self.sgi_satisfaction_survey_id.id or 0)
+        for field, key, _model in self._SGI_DEV_LIST_PARAMS:
+            Param.set_param(key, ",".join(str(i) for i in self[field].ids))

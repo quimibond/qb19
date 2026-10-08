@@ -6,6 +6,11 @@
         <field name="arch" type="xml">
             <form string="Ficha técnica de proceso por máquina">
                 <header>
+                    <!-- 57.126.0 (C1, bloque G): propone Diseño de Procesos, valida el Jefe de Manufactura. -->
+                    <button name="action_propose" type="object" string="Proponer parámetros (Diseño de Procesos)" class="btn-primary"
+                            invisible="state != 'borrador' or engineering_by_id"/>
+                    <button name="action_validate" type="object" string="Validar parámetros reales (Jefe de Manufactura)" class="btn-primary"
+                            invisible="state != 'borrador' or not engineering_by_id or approved_by_id"/>
                     <button name="action_set_current" type="object" string="Poner en vigor" class="btn-primary"
                             invisible="state != 'borrador'" groups="quimibond_sgi.group_sgi_manager,mrp.group_mrp_manager"/>
                     <button name="action_new_revision" type="object" string="Nueva revisión" invisible="state != 'vigente'"/>
@@ -23,6 +28,8 @@
                             <field name="product_id" readonly="state != 'borrador'"/>
                             <field name="workcenter_id" readonly="state != 'borrador'"/>
                             <field name="area" readonly="state != 'borrador'"/>
+                            <field name="project_id" readonly="state != 'borrador'"/>
+                            <field name="production_id" readonly="state != 'borrador'"/>
                         </group>
                         <group>
                             <field name="date" readonly="state != 'borrador'"/>
@@ -65,6 +72,9 @@
                                     <field name="spec"/>
                                     <field name="tolerance"/>
                                     <field name="unit"/>
+                                    <field name="real"/>
+                                    <field name="adjustment"/>
+                                    <field name="reason_id"/>
                                 </list>
                             </field>
                             <group>
@@ -75,12 +85,15 @@
                         <page string="Firmas" name="signatures">
                             <group>
                                 <group>
-                                    <field name="lab_user_id"/>
-                                    <field name="mechanic_user_id"/>
+                                    <field name="engineering_by_id"/>
+                                    <field name="proposed_date"/>
+                                    <field name="approved_by_id"/>
+                                    <field name="validated_date"/>
                                 </group>
                                 <group>
-                                    <field name="approved_by_id"/>
-                                    <field name="engineering_by_id"/>
+                                    <field name="lab_user_id"/>
+                                    <field name="lab_date"/>
+                                    <field name="mechanic_user_id"/>
                                 </group>
                             </group>
                         </page>

@@ -46,11 +46,12 @@
                         <t t-foreach="[('maquina', 'Datos de máquina', doc.machine_note), ('tela', 'Datos de tela acondicionada', doc.fabric_note)]" t-as="section">
                             <h5><span t-out="section[1]"/></h5>
                             <table class="table table-sm table-bordered" style="font-size:10px;">
-                                <thead><tr><th>Condición</th><th>Especificación</th><th>Tolerancia (±)</th><th>Unidad</th></tr></thead>
+                                <thead><tr><th>Condición</th><th>Especificación</th><th>Tolerancia (±)</th><th>Unidad</th><th>Real</th><th>Ajustes</th><th>Motivo</th></tr></thead>
                                 <tbody>
                                     <tr t-foreach="doc.param_line_ids.filtered(lambda p: p.section == section[0])" t-as="p">
                                         <td><span t-out="p.name"/></td><td><span t-out="p.spec or ''"/></td>
                                         <td><span t-out="p.tolerance or ''"/></td><td><span t-out="p.unit or ''"/></td>
+                                        <td><span t-out="p.real or ''"/></td><td class="text-center"><span t-out="p.adjustment or ''"/></td><td><span t-out="p.reason_id.name or ''"/></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -58,10 +59,11 @@
                         </t>
                         <table class="table table-sm mt-4" style="font-size:10px;">
                             <tr>
-                                <td class="text-center" style="border-top:1px solid #000;">Laboratorista de tejido<br/><span t-out="doc.lab_user_id.name or ''"/></td>
+                                <!-- 57.126.0: firmas por puestos vigentes (brief C1 §6.7). -->
+                                <td class="text-center" style="border-top:1px solid #000;">Propuso (Diseño y Desarrollo de Procesos)<br/><span t-out="doc.engineering_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Validó (Jefe de Manufactura)<br/><span t-out="doc.approved_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Midió (Laboratorio)<br/><span t-out="doc.lab_user_id.name or ''"/></td>
                                 <td class="text-center" style="border-top:1px solid #000;">Mecánico de tejido<br/><span t-out="doc.mechanic_user_id.name or ''"/></td>
-                                <td class="text-center" style="border-top:1px solid #000;">Jefe técnico de tejido y acabado<br/><span t-out="doc.approved_by_id.name or ''"/></td>
-                                <td class="text-center" style="border-top:1px solid #000;">Jefe de ingeniería de procesos<br/><span t-out="doc.engineering_by_id.name or ''"/></td>
                             </tr>
                         </table>
                     </div>
