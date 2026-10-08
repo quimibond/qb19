@@ -20,6 +20,10 @@ C1.17 medida con eso.
   está liberado con lista de materiales.
 - **Al liberar sin precio en tarifa** el proyecto lo dice en el chatter con
   el motivo (sin cotización ganada, sin aprobación del cliente, sin artículo).
+- **Pestaña «Cotización» del desarrollo** (Jessica 2026-10-08): las
+  cotizaciones del proyecto con estado, precio, revisión cotizada y estado de
+  la aprobación del puesto 183, y «Nueva cotización» que nace con lo que el
+  proyecto ya tiene (va en el `div` «sgi_dev_quotes» del SGI 57.136.0).
 - **Migración** `19.0.1.3.0`: vuelve a apuntar los entregables (C1-ARTICULO).
 
 ## 19.0.1.2.0 — 2026-10-08
