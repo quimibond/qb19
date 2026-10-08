@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.133.0 (C1, Jose 5.4): pilotaje (primeros lotes) y estudio de habilidad. -->
+    <record id="sgi_dev_pilot_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.pilot.list</field>
+        <field name="model">sgi.dev.pilot</field>
+        <field name="arch" type="xml">
+            <list string="Pilotajes" decoration-success="state == 'cerrado'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="partner_id" optional="show"/>
+                <field name="product_id"/>
+                <field name="lot_count"/>
+                <field name="conforming_count"/>
+                <field name="lots_required"/>
+                <field name="critical_count"/>
+                <field name="closed_at" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'cerrado'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_pilot_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.pilot.form</field>
+        <field name="model">sgi.dev.pilot</field>
+        <field name="arch" type="xml">
+            <form string="Pilotaje">
+                <header>
+                    <button name="action_compute_study" type="object" string="Calcular habilidad" class="btn-secondary" icon="fa-calculator"
+                            invisible="state != 'abierto'"/>
+                    <button name="action_close" type="object" string="Cerrar pilotaje" class="btn-primary"
+                            invisible="state != 'abierto'"
+                            confirm="Cierra el pilotaje con los lotes conformes, calcula el estudio de habilidad y guarda el PDF. ¿Continuar?"/>
+                    <button name="action_print" type="object" string="Imprimir estudio" class="btn-secondary" icon="fa-print"/>
+                    <field name="state" widget="statusbar" statusbar_visible="abierto,cerrado"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="project_id" readonly="state != 'abierto'"/>
+                            <field name="partner_id"/>
+                            <field name="product_id" readonly="state != 'abierto'"/>
+                            <field name="critical_count"/>
+                        </group>
+                        <group>
+                            <field name="lots_required" readonly="state != 'abierto'"/>
+                            <field name="readings_required" readonly="state != 'abierto'"/>
+                            <field name="cpk_min"/>
+                            <field name="conforming_count"/>
+                            <field name="closed_by_id" invisible="not closed_at"/>
+                            <field name="closed_at" invisible="not closed_at"/>
+                            <field name="attachment_id" invisible="not attachment_id"/>
+                        </group>
+                    </group>
+                    <p class="text-muted" invisible="critical_count">Ningún renglón de la tabla del proyecto está marcado «Crítica (estudio de habilidad)»:
+                        márquelos en la tabla para capturar lecturas. El brief deja por definir cuáles entran.</p>
+                    <notebook>
+                        <page string="Lotes" name="lots">
+                            <field name="lot_ids" readonly="state != 'abierto'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="production_id"/>
+                                    <field name="lot_id"/>
+                                    <field name="date"/>
+                                    <field name="qty_produced"/>
+                                    <field name="reading_count"/>
+                                    <field name="verdict" widget="badge" decoration-success="verdict == 'conforme'" decoration-danger="verdict == 'no_conforme'"/>
+                                    <button name="action_evaluate" type="object" string="Evaluar" icon="fa-check-square-o" title="Dictamen con las lecturas"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Lecturas" name="readings">
+                            <field name="reading_ids" readonly="state != 'abierto'" context="{'default_pilot_id': id}">
+                                <list editable="bottom">
+                                    <field name="lot_id"/>
+                                    <field name="characteristic_id"/>
+                                    <field name="unit"/>
+                                    <field name="spec_label"/>
+                                    <field name="sequence"/>
+                                    <field name="value"/>
+                                    <field name="within_spec" widget="boolean_toggle" readonly="1"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Estudio de habilidad" name="study">
+                            <field name="study_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="characteristic_id"/>
+                                    <field name="spec_label"/>
+                                    <field name="lots"/>
+                                    <field name="n"/>
+                                    <field name="mean"/>
+                                    <field name="sigma"/>
+                                    <field name="cp_defined" column_invisible="1"/>
+                                    <field name="cpk_defined" column_invisible="1"/>
+                                    <field name="cp"/>
+                                    <field name="cpk"/>
+                                    <field name="verdict" widget="badge" decoration-success="verdict == 'cumple'" decoration-danger="verdict == 'no_cumple'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_pilot_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.pilot.search</field>
+        <field name="model">sgi.dev.pilot</field>
+        <field name="arch" type="xml">
+            <search string="Pilotajes">
+                <field name="project_id"/>
+                <field name="product_id"/>
+                <field name="partner_id"/>
+                <filter name="open" string="Abiertos" domain="[('state', '=', 'abierto')]"/>
+                <group>
+                    <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_pilot_action" model="ir.actions.act_window">
+        <field name="name">Pilotajes</field>
+        <field name="res_model">sgi.dev.pilot</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_dev_pilot_view_search"/>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Los primeros lotes de producción del artículo entran solos</p>
+            <p>Cuando el artículo está «En pilotaje», cada orden de producción terminada suma su lote hasta completar los
+               del parámetro. El laboratorio captura las lecturas de las características críticas y el estudio de habilidad
+               (Cp y Cpk) se calcula contra la especificación del cliente.</p>
+        </field>
+    </record>
+</odoo>

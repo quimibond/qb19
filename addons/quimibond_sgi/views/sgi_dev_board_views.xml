@@ -49,9 +49,10 @@
             <xpath expr="//button[@name='action_view_tasks']" position="attributes">
                 <attribute name="name">action_sgi_dev_view_tasks</attribute>
             </xpath>
-            <xpath expr="//notebook" position="before">
+            <!-- 57.134.0: el aviso va arriba de la hoja (como el de costo), no entre las dos secciones de pestañas. -->
+            <xpath expr="//sheet" position="before">
                 <field name="sgi_dev_missing_partner" invisible="1"/>
-                <div class="alert alert-warning mb-2" role="alert" invisible="not sgi_dev_missing_partner">
+                <div class="alert alert-warning" role="alert" invisible="not sgi_dev_missing_partner">
                     Este desarrollo es de origen cliente y no tiene cliente capturado. Elija el cliente en el campo «Cliente» antes de seguir.
                 </div>
             </xpath>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.133.0 (C1, Jose 5.4): estudio de habilidad del pilotaje (sin clave de formato del SGI:
+         el brief no la define; el pie sale sin clave). -->
+    <record id="action_report_dev_pilot" model="ir.actions.report">
+        <field name="name">Estudio de habilidad</field>
+        <field name="model">sgi.dev.pilot</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_pilot_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_pilot_document</field>
+        <field name="print_report_name">'Estudio de habilidad - %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="model_sgi_dev_pilot"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dev_pilot_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
+                    <div class="page">
+                        <h2 class="text-center">Pilotaje y estudio de habilidad</h2>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:22%"><strong>Artículo</strong></td><td><span t-out="doc.product_id.display_name"/></td>
+                                <td style="width:18%"><strong>Cliente</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td></tr>
+                            <tr><td><strong>Desarrollo</strong></td><td><span t-out="doc.project_id.sgi_ft_folio or doc.project_id.name"/></td>
+                                <td><strong>Lotes</strong></td><td><span t-out="doc.conforming_count"/> conforme(s) de <span t-out="doc.lots_required"/></td></tr>
+                            <tr><td><strong>Lecturas por lote</strong></td><td><span t-out="doc.readings_required or 'sin definir'"/></td>
+                                <td><strong>Cpk mínimo</strong></td><td><span t-out="('%.2f' % doc.cpk_min) if doc.cpk_min else 'sin definir'"/></td></tr>
+                        </table>
+                        <h5>Lotes del pilotaje</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>#</th><th>Orden</th><th>Lote</th><th>Terminado</th><th class="text-end">Cantidad</th><th>Lecturas</th><th>Dictamen</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.lot_ids" t-as="l">
+                                    <td><span t-out="l_index + 1"/></td>
+                                    <td><span t-out="l.production_id.name or ''"/></td>
+                                    <td><span t-out="l.lot_id.name or ''"/></td>
+                                    <td><span t-field="l.date"/></td>
+                                    <td class="text-end"><span t-out="'%.2f' % l.qty_produced"/></td>
+                                    <td><span t-out="l.reading_count"/></td>
+                                    <td><span t-out="dict(l._fields['verdict'].selection).get(l.verdict)"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <h5>Estudio de habilidad (contra la especificación del cliente)</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th>Característica</th><th>Especificación</th><th>Lotes</th><th>n</th><th class="text-end">Media</th><th class="text-end">Sigma</th><th class="text-end">Cp</th><th class="text-end">Cpk</th><th>Dictamen</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.study_ids" t-as="s">
+                                    <td><span t-out="s.characteristic_id.name"/></td>
+                                    <td><span t-out="s.spec_label or ''"/></td>
+                                    <td><span t-out="s.lots"/></td>
+                                    <td><span t-out="s.n"/></td>
+                                    <td class="text-end"><span t-out="'%.3f' % s.mean"/></td>
+                                    <td class="text-end"><span t-out="'%.4f' % s.sigma"/></td>
+                                    <td class="text-end"><span t-out="('%.2f' % s.cp) if s.cp_defined else '—'"/></td>
+                                    <td class="text-end"><span t-out="('%.2f' % s.cpk) if s.cpk_defined else '—'"/></td>
+                                    <td><span t-out="dict(s._fields['verdict'].selection).get(s.verdict) or '—'"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not doc.study_ids" class="text-muted" style="font-size:10px;">Sin características críticas marcadas o sin lecturas: no hay estudio.</p>
+                        <table class="table table-sm mt-4" style="font-size:10px; width:50%;">
+                            <tr><td class="text-center" style="border-top:1px solid #000;">Cerró<br/><span t-out="doc.closed_by_id.name or ''"/><br/><span t-field="doc.closed_at"/></td></tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

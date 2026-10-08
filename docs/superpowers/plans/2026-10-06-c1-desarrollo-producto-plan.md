@@ -282,3 +282,17 @@ espere a las seis); (2) la medición de C1.15 no se tocó (Jose pidió solo la
 aprobación); (3) emitido no cambia ni se borra: la revisión siguiente lo
 sustituye.
 
+## 15. Bloque 5.4 — Pilotaje y estudio de habilidad (2026-10-08)
+
+`quimibond_sgi` 57.133.0 (`models/sgi_dev_pilot.py`): los primeros lotes de
+producción del artículo «En pilotaje» entran solos al pilotaje al terminar su
+orden (las órdenes de muestra no cuentan); un lote no conforme libera su
+lugar. Lecturas por lote de las características marcadas «Crítica» (marca
+nueva, apagada en catálogo y renglones); dictamen del lote por la media
+contra la especificación del cliente; Cp y Cpk con sigma muestral contra la
+especificación del cliente; PDF al cerrar. Parámetros vacíos: lecturas por
+lote y Cpk mínimo; «Lotes del pilotaje» vacío = tres (sí lo define el brief).
+Decisiones sin preguntar: (1) la medición de C1.14 no se tocó; (2) cerrar el
+pilotaje no mueve el proyecto a Liberado (la liberación es 6.12 y queda para
+el bloque que la pida); (3) sin Cpk mínimo el estudio no dictamina.
+

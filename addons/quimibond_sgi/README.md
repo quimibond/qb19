@@ -362,14 +362,21 @@ es un campo aparte con secuencia anual (FT-001-2027) que se asigna al pasar a
 «Muestra»; las etapas del proyecto son de avance (Solicitud → Análisis →
 Cotización → Aprobación del cliente → Muestra → Respuesta del cliente →
 Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
-campo Cliente. El nombre se arma solo (folio, código, revisión). Pestañas
-Desarrollo (origen, resultado del análisis, muestra física, relojes por etapa
-y de materia prima), Comercial (listas en Configuración → Listas del
-desarrollo de producto) y Revisiones (bitácora). Las mediciones del SGI
-filtran por la bandera, ya no por `FT-%` en el nombre.
+campo Cliente. El nombre se arma solo (folio, código, revisión). Desde
+57.134.0 la ficha tiene dos secciones de pestañas: «Desarrollo de producto»
+(Solicitud, Análisis y factibilidad, Aprobación del cliente, Muestra,
+Producto y documentos, Comercial, Revisiones, Tiempos, en el orden del
+proceso) y «Proyecto» (las nativas de Odoo). La acción que mueve la etapa
+(aprobar solicitud, aprobar análisis, registrar aprobación del cliente, pedir
+corrida, registrar envío, respuesta del cliente, cerrar) está en el
+encabezado y solo aparece en su etapa; lo que cuelga del desarrollo
+(laboratorio, requisiciones, órdenes de muestra, envíos, certificados,
+pilotajes, fichas, especificaciones, cotizaciones) se abre en los botones
+inteligentes. Las mediciones del SGI filtran por la bandera, ya no por
+`FT-%` en el nombre.
 
 **Artículo en desarrollo y generador de código (57.119.0).** Desde la
-pestaña Desarrollo se eligen las claves (composición, dibujo, hilo, color,
+pestaña Muestra se eligen las claves (composición, dibujo, hilo, color,
 acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
 crea crudo (H), teñido (I, si lleva) y acabado (J) con el código del DAT
 P-D02-01 en estado «En desarrollo» (no se vende). Al entrar a Pilotaje el

@@ -114,6 +114,8 @@ MCP_MODELS = {
     'sgi.dev.coa': True, 'sgi.dev.coa.line': True,  # 57.130.0: reporte de conformidad desde la tabla
     'sgi.dev.tech.sheet': True, 'sgi.dev.tech.sheet.line': True, 'sgi.dev.tech.sheet.sign': False,  # 57.132.0
     'sgi.dev.customer.spec': True, 'sgi.dev.customer.spec.line': True,  # 57.132.0
+    'sgi.dev.pilot': True, 'sgi.dev.pilot.lot': True, 'sgi.dev.pilot.reading': True,  # 57.133.0
+    'sgi.dev.pilot.study': False,  # 57.133.0: lo calcula el pilotaje
 }
 
 
