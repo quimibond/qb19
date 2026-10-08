@@ -58,6 +58,19 @@
                                 invisible="not sgi_dev_coa_count">
                             <field name="sgi_dev_coa_count" readonly="1" class="oe_inline"/> certificado(s)
                         </button>
+                        <!-- 57.132.0 (Jose 5.3): ficha técnica interna y especificaciones del producto. -->
+                        <button name="action_sgi_dev_new_tech_sheet" type="object" string="Ficha técnica interna" class="btn-secondary" icon="fa-file-text-o"
+                                invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
+                        <button name="action_sgi_dev_tech_sheets" type="object" class="btn-link" icon="fa-file-text-o"
+                                invisible="not sgi_dev_tech_sheet_count">
+                            <field name="sgi_dev_tech_sheet_count" readonly="1" class="oe_inline"/> ficha(s) interna(s)
+                        </button>
+                        <button name="action_sgi_dev_new_customer_spec" type="object" string="Especificaciones del producto" class="btn-secondary" icon="fa-file-text"
+                                invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>
+                        <button name="action_sgi_dev_customer_specs" type="object" class="btn-link" icon="fa-file-text"
+                                invisible="not sgi_dev_customer_spec_count">
+                            <field name="sgi_dev_customer_spec_count" readonly="1" class="oe_inline"/> especificación(es)
+                        </button>
                         <!-- 57.126.0 (C1, bloque G): ruta y fichas de proceso. -->
                         <button name="action_sgi_dev_print_flow" type="object" string="Diagrama de flujo" class="btn-secondary" icon="fa-sitemap"/>
                 
@@ -281,6 +294,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="kind"/>
                 <field name="name"/>
+                <field name="name_en" optional="show"/>
             </list>
         </field>
     </record>

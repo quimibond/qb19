@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.132.0 (C1, Jose 5.3): ficha técnica interna y especificaciones del producto desde la tabla. -->
+
+    <!-- Ficha técnica interna -->
+    <record id="sgi_dev_tech_sheet_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.tech.sheet.list</field>
+        <field name="model">sgi.dev.tech.sheet</field>
+        <field name="arch" type="xml">
+            <list string="Fichas técnicas internas" decoration-muted="state == 'sustituida'" decoration-success="state == 'vigente'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="partner_id" optional="show"/>
+                <field name="product_id" optional="show"/>
+                <field name="revision"/>
+                <field name="date"/>
+                <field name="signed_count"/>
+                <field name="approved_by_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'vigente'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_tech_sheet_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.tech.sheet.form</field>
+        <field name="model">sgi.dev.tech.sheet</field>
+        <field name="arch" type="xml">
+            <form string="Ficha técnica interna">
+                <header>
+                    <button name="action_load_lines" type="object" string="Tomar la tabla del proyecto" class="btn-secondary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_sign" type="object" string="Firmar" class="btn-secondary" icon="fa-pencil"
+                            invisible="not can_sign"/>
+                    <button name="action_approve" type="object" string="Aprobar ficha (C1.15)" class="btn-primary"
+                            invisible="state != 'borrador'"
+                            confirm="Aprueba la ficha técnica interna: queda vigente con su PDF y sustituye a la anterior. ¿Continuar?"/>
+                    <button name="action_print" type="object" string="Imprimir" class="btn-secondary" icon="fa-print"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,vigente"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="project_id" readonly="state != 'borrador'"/>
+                            <field name="partner_id"/>
+                            <field name="product_id" readonly="state != 'borrador'"/>
+                            <field name="revision"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'borrador'"/>
+                            <field name="approved_by_id" invisible="not approved_at"/>
+                            <field name="approved_at" invisible="not approved_at"/>
+                            <field name="attachment_id" invisible="not attachment_id"/>
+                            <field name="can_sign" invisible="1"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">Documento interno: lleva la especificación del cliente y el control interno. No se entrega al cliente;
+                        para él están las Especificaciones del producto.</p>
+                    <notebook>
+                        <page string="Características" name="lines">
+                            <field name="line_ids" readonly="state != 'borrador'">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="caracteristica_id"/>
+                                    <field name="name" readonly="1"/>
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="direction" optional="show"/>
+                                    <field name="position" optional="hide"/>
+                                    <field name="unit" readonly="1"/>
+                                    <field name="spec_label" readonly="1"/>
+                                    <field name="ctrl_label" readonly="1"/>
+                                    <field name="method" readonly="1" optional="show"/>
+                                    <field name="in_customer_spec" optional="show"/>
+                                    <field name="in_coa" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Firmas" name="signs">
+                            <field name="sign_ids" readonly="1">
+                                <list create="0" delete="0">
+                                    <field name="sequence" column_invisible="1"/>
+                                    <field name="job_id"/>
+                                    <field name="user_id"/>
+                                    <field name="date"/>
+                                </list>
+                            </field>
+                            <group>
+                                <field name="signed_count"/>
+                                <field name="pending_sign_count"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_tech_sheet_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.tech.sheet.search</field>
+        <field name="model">sgi.dev.tech.sheet</field>
+        <field name="arch" type="xml">
+            <search string="Fichas técnicas internas">
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <filter name="draft" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="current" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
+                <group>
+                    <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_tech_sheet_action" model="ir.actions.act_window">
+        <field name="name">Fichas técnicas internas</field>
+        <field name="res_model">sgi.dev.tech.sheet</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_dev_tech_sheet_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">La ficha técnica interna sale de la tabla del proyecto</p>
+            <p>Especificación del cliente y control interno, firmas por puesto y aprobación de Ventas (C1.15).</p>
+        </field>
+    </record>
+
+    <!-- Especificaciones del producto -->
+    <record id="sgi_dev_customer_spec_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.customer.spec.list</field>
+        <field name="model">sgi.dev.customer.spec</field>
+        <field name="arch" type="xml">
+            <list string="Especificaciones del producto" decoration-muted="state == 'sustituida'" decoration-success="state == 'vigente'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="partner_id" optional="show"/>
+                <field name="product_id" optional="show"/>
+                <field name="revision"/>
+                <field name="date"/>
+                <field name="emitted_by_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'vigente'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_customer_spec_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.customer.spec.form</field>
+        <field name="model">sgi.dev.customer.spec</field>
+        <field name="arch" type="xml">
+            <form string="Especificaciones del producto">
+                <header>
+                    <button name="action_load_lines" type="object" string="Tomar la tabla del proyecto" class="btn-secondary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_emit" type="object" string="Emitir" class="btn-primary" invisible="state != 'borrador'"
+                            confirm="Emite las especificaciones del producto para el cliente: quedan vigentes con su PDF. ¿Continuar?"/>
+                    <button name="action_print" type="object" string="Imprimir" class="btn-secondary" icon="fa-print"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,vigente"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="project_id" readonly="state != 'borrador'"/>
+                            <field name="partner_id"/>
+                            <field name="product_id" readonly="state != 'borrador'"/>
+                            <field name="revision"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'borrador'"/>
+                            <field name="care_ids" widget="many2many_tags" readonly="state != 'borrador'"/>
+                            <field name="emitted_by_id" invisible="not emitted_at"/>
+                            <field name="emitted_at" invisible="not emitted_at"/>
+                            <field name="attachment_id" invisible="not attachment_id"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">Documento al cliente: solo los renglones «En especificación del cliente» con su tolerancia.
+                        El control interno no se copia ni se imprime.</p>
+                    <field name="main_use" readonly="1"/>
+                    <field name="line_ids" readonly="state != 'borrador'">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="caracteristica_id"/>
+                            <field name="name" readonly="1"/>
+                            <field name="name_en" readonly="1" optional="show"/>
+                            <field name="kind" column_invisible="1"/>
+                            <field name="direction" optional="show"/>
+                            <field name="position" optional="hide"/>
+                            <field name="unit" readonly="1"/>
+                            <field name="spec_label" readonly="1"/>
+                            <field name="method" readonly="1" optional="show"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_customer_spec_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.customer.spec.search</field>
+        <field name="model">sgi.dev.customer.spec</field>
+        <field name="arch" type="xml">
+            <search string="Especificaciones del producto">
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <filter name="draft" string="Borrador" domain="[('state', '=', 'borrador')]"/>
+                <filter name="current" string="Vigentes" domain="[('state', '=', 'vigente')]"/>
+                <group>
+                    <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_customer_spec_action" model="ir.actions.act_window">
+        <field name="name">Especificaciones del producto</field>
+        <field name="res_model">sgi.dev.customer.spec</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_dev_customer_spec_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Las especificaciones para el cliente salen de la tabla del proyecto</p>
+            <p>Solo los renglones marcados para el cliente, con su tolerancia; bilingüe, con uso principal e instrucciones de cuidado.</p>
+        </field>
+    </record>
+</odoo>
