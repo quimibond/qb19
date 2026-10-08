@@ -86,6 +86,10 @@ class QbCentro(models.Model):
     kg_por_carga = fields.Float(
         string='Kg por carga', digits=(16, 2),
         help='Driver «kg_ciclo»: kilos que entran a una carga de tintorería.')
+    horas_por_carga = fields.Float(
+        string='Horas por carga', digits=(16, 2),
+        help='Driver «kg_ciclo»: horas que dura una carga (ciclo de color '
+             'promedio) mientras no haya órdenes de trabajo en tintorería.')
     velocidad_m_h = fields.Float(
         string='Velocidad (m/h)', digits=(16, 2),
         help='Driver «m_velocidad»: velocidad de rama por default cuando el '

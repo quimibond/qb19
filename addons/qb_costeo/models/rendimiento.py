@@ -214,9 +214,10 @@ class QbProductoRendimiento(models.Model):
             FROM qb_producto_peso
             WHERE COALESCE(rendimiento_manual, 0) > 0
         """)
+        filas = self.env.cr.fetchall()
         n = 0
         company = self.env.company
-        for pid, rend, motivo in self.env.cr.fetchall():
+        for pid, rend, motivo in filas:
             rec = self.search([('product_id', '=', pid),
                                ('company_id', '=', company.id)], limit=1)
             if rec and rec.rendimiento_manual:

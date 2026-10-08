@@ -36,6 +36,7 @@
                             <field name="capacidad_h_mes"/>
                             <field name="capacidad_motivo" required="capacidad_h_mes != 0"/>
                             <field name="kg_por_carga" invisible="driver != 'kg_ciclo'"/>
+                            <field name="horas_por_carga" invisible="driver != 'kg_ciclo'"/>
                             <field name="velocidad_m_h" invisible="driver != 'm_velocidad'"/>
                             <field name="horas_por_unidad" invisible="driver != 'fijo_unidad'"/>
                         </group>

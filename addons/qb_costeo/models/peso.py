@@ -188,9 +188,10 @@ class QbProductoPeso(models.Model):
             WHERE COALESCE(kg_per_unit, 0) > 0 AND active
               AND source IN ('manual', 'cvu', 'op_consumo', 'bom')
         """)
+        filas = self.env.cr.fetchall()
         company = self.env.company
         n = 0
-        for pid, kg, source, notes in self.env.cr.fetchall():
+        for pid, kg, source, notes in filas:
             rec = self.search([('product_id', '=', pid),
                                ('company_id', '=', company.id)], limit=1)
             if rec and rec.fuente in ('pesaje', 'manual'):
