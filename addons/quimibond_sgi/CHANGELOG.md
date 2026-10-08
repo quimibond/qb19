@@ -13,6 +13,19 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.134.0 — 2026-10-08
+
+Jose 2026-10-08: las pestañas del desarrollo separadas de las nativas del proyecto.
+
+- **Cambiado** ficha del proyecto de desarrollo: las pestañas «Solicitud de
+  desarrollo», «Desarrollo», «Comercial» y «Revisiones» van en un notebook
+  propio bajo el título «Desarrollo de producto», antes de las pestañas
+  nativas de Odoo («Descripción», «Ajustes»…), que quedan bajo el título
+  «Proyecto». En proyectos que no son desarrollo no cambia nada. La pestaña
+  «Solicitud de desarrollo» se movió de `sgi_dev_request_views.xml` a
+  `sgi_dev_project_views.xml` (una sola herencia arma la sección).
+- Sin migración.
+
 ## 19.0.57.133.0 — 2026-10-08
 
 Jose 2026-10-08, 5.4: pilotaje y estudio de habilidad (brief §6.12 y §8).
