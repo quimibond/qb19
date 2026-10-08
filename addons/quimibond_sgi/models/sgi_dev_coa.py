@@ -53,10 +53,12 @@ class SgiDevCoa(models.Model):
     state = fields.Selection([('borrador', "Borrador"), ('emitido', "Emitido")], string="Estado", default='borrador',
                              required=True, tracking=True, copy=False)
     line_ids = fields.One2many('sgi.dev.coa.line', 'coa_id', string="Renglones")
-    line_count = fields.Integer(compute='_compute_counts')
-    pending_count = fields.Integer(string="Sin resultado", compute='_compute_counts',
+    # 57.131.1: almacenados, para filtrar y ordenar por ellos en la lista (el
+    # filtro «Con no conformes» tumbó el build de main, 2026-10-08 07:17 UTC).
+    line_count = fields.Integer(compute='_compute_counts', store=True)
+    pending_count = fields.Integer(string="Sin resultado", compute='_compute_counts', store=True,
                                    help="Renglones del certificado sin valor obtenido.")
-    nonconforming_count = fields.Integer(string="No conformes", compute='_compute_counts')
+    nonconforming_count = fields.Integer(string="No conformes", compute='_compute_counts', store=True)
     issued_by_id = fields.Many2one('res.users', string="Emitió (Calidad)", readonly=True, copy=False)
     issued_at = fields.Datetime(string="Emitido el", readonly=True, copy=False)
     attachment_id = fields.Many2one('ir.attachment', string="PDF emitido", readonly=True, copy=False)
@@ -73,7 +75,7 @@ class SgiDevCoa(models.Model):
             coa.product_id = (coa.lot_id.product_id or coa.production_id.product_id or coa.shipment_id.product_id
                               or coa.project_id.sgi_dev_product_id)
 
-    @api.depends('line_ids.value', 'line_ids.text', 'line_ids.result', 'line_ids.kind')
+    @api.depends('line_ids', 'line_ids.has_value', 'line_ids.result')
     def _compute_counts(self):
         for coa in self:
             coa.line_count = len(coa.line_ids)
