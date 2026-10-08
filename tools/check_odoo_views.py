@@ -153,8 +153,21 @@ def check_model_imports(module_dir):
         if not os.path.exists(path):
             continue
         sources[name] = open(path, encoding='utf-8').read()
-        for model in _MODEL_NAME.findall(sources[name]):
-            defined_at.setdefault(model, index[name])
+        # Solo cuenta como definición una clase con `_name` que no está en su
+        # propio `_inherit` (una extensión que repite `_name` no define nada).
+        for _cls, _kind, model, inherits, _line in _model_classes(path):
+            if model and model not in (inherits or []):
+                defined_at.setdefault(model, index[name])
+    # 2026-10-08: el caso directo, sin `from .b import`: `a` hereda un modelo
+    # que se define en un módulo que va después en __init__ (el build de main
+    # cayó con «Model 'sgi.machine.sheet' does not exist in registry»).
+    for name, source in sources.items():
+        late = sorted(m for m in _inherited_models(source) if defined_at.get(m, -1) > index[name])
+        if late:
+            errors.append(
+                "%s: hereda %s, que se define después en models/__init__.py y aún no existe en el "
+                "registro al cargarlo. Muévelo después de ese módulo en __init__." % (
+                    os.path.relpath(os.path.join(module_dir, 'models', name + '.py'), ROOT), ", ".join(late)))
     for name, source in sources.items():
         for target in _LOCAL_IMPORT.findall(source):
             if target not in sources or index[target] <= index[name]:
