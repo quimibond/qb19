@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.130.0 (C1, Jose 3.4): reporte de conformidad desde la tabla («En certificado»). -->
+    <record id="sgi_dev_coa_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.coa.list</field>
+        <field name="model">sgi.dev.coa</field>
+        <field name="arch" type="xml">
+            <list string="Reportes de conformidad" decoration-muted="state == 'emitido'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="product_id" optional="show"/>
+                <field name="lot_id"/>
+                <field name="date"/>
+                <field name="quantity_m" optional="show"/>
+                <field name="pending_count"/>
+                <field name="nonconforming_count" decoration-danger="nonconforming_count"/>
+                <field name="issued_by_id" optional="show"/>
+                <field name="state" widget="badge" decoration-success="state == 'emitido'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_coa_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.coa.form</field>
+        <field name="model">sgi.dev.coa</field>
+        <field name="arch" type="xml">
+            <form string="Reporte de conformidad">
+                <header>
+                    <button name="action_load_lines" type="object" string="Cargar renglones «En certificado»" class="btn-secondary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_emit" type="object" string="Emitir" class="btn-primary" invisible="state != 'borrador'"
+                            confirm="Emite el certificado con su usuario y la fecha de hoy, genera el PDF y lo adjunta al envío y a la baja. ¿Continuar?"/>
+                    <button name="action_print" type="object" string="Imprimir" class="btn-secondary" icon="fa-print"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,emitido"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="project_id" readonly="state != 'borrador'"/>
+                            <field name="partner_id"/>
+                            <field name="product_id" readonly="state != 'borrador'"/>
+                            <field name="lot_id" readonly="state != 'borrador'"/>
+                            <field name="production_id" readonly="state != 'borrador'"/>
+                            <field name="shipment_id" readonly="state != 'borrador'"/>
+                        </group>
+                        <group>
+                            <field name="date" readonly="state != 'borrador'"/>
+                            <field name="quantity_m" readonly="state != 'borrador'"/>
+                            <field name="roll_count" readonly="state != 'borrador'"/>
+                            <field name="pending_count"/>
+                            <field name="nonconforming_count"/>
+                            <field name="issued_by_id" invisible="not issued_at"/>
+                            <field name="issued_at" invisible="not issued_at"/>
+                            <field name="attachment_id" invisible="not attachment_id"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">Los renglones salen de la tabla del proyecto marcados «En certificado» y se comparan
+                        contra la especificación del cliente. El control interno no se imprime.</p>
+                    <field name="line_ids" readonly="state != 'borrador'">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="characteristic_id"/>
+                            <field name="kind" column_invisible="1"/>
+                            <field name="direction" readonly="1" optional="show"/>
+                            <field name="position" readonly="1" optional="hide"/>
+                            <field name="unit" readonly="1"/>
+                            <field name="spec_label" readonly="1"/>
+                            <field name="method" readonly="1" optional="hide"/>
+                            <field name="value" readonly="kind != 'num'"/>
+                            <field name="text" readonly="kind == 'num'" optional="show"/>
+                            <field name="result" widget="badge" decoration-success="result == 'cumple'" decoration-danger="result == 'no_conforme'"/>
+                        </list>
+                    </field>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_coa_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.coa.search</field>
+        <field name="model">sgi.dev.coa</field>
+        <field name="arch" type="xml">
+            <search string="Reportes de conformidad">
+                <field name="project_id"/>
+                <field name="partner_id"/>
+                <field name="lot_id"/>
+                <filter name="draft" string="Por emitir" domain="[('state', '=', 'borrador')]"/>
+                <filter name="nonconforming" string="Con no conformes" domain="[('nonconforming_count', '>', 0)]"/>
+                <group>
+                    <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_coa_action" model="ir.actions.act_window">
+        <field name="name">Reportes de conformidad</field>
+        <field name="res_model">sgi.dev.coa</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="sgi_dev_coa_view_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">El certificado del lote sale de la tabla del proyecto</p>
+            <p>Marque «En certificado» en los renglones de la tabla, cargue el valor obtenido en el lote y emita:
+               el PDF se adjunta al envío de la muestra y a su baja.</p>
+        </field>
+    </record>
+
+    <record id="sgi_dev_coa_line_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.coa.line.list</field>
+        <field name="model">sgi.dev.coa.line</field>
+        <field name="arch" type="xml">
+            <list string="Renglones del certificado" create="0">
+                <field name="coa_id"/>
+                <field name="name"/>
+                <field name="unit"/>
+                <field name="spec_label"/>
+                <field name="value"/>
+                <field name="text"/>
+                <field name="result" widget="badge"/>
+            </list>
+        </field>
+    </record>
+</odoo>

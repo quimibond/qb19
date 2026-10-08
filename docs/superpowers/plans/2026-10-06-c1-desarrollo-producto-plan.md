@@ -220,3 +220,47 @@ envío hasta que el bloque 3.4 lo imprima desde la tabla. Listas nuevas sin
 renglones: «Paquetería» y «Motivo de rechazo del cliente»; parámetro vacío:
 días de seguimiento.
 
+## 12. Bloque 3.4 — Reporte de conformidad desde la tabla (2026-10-08)
+
+`quimibond_sgi` 57.130.0 (`models/sgi_dev_coa.py`, `report/report_dev_coa.xml`):
+`sgi.dev.coa` por lote con los renglones «En certificado» de la tabla del
+proyecto, valor obtenido en el lote (precargado con el promedio de la
+corrida; en pilotaje lo captura el laboratorio por lote, bloque 3.6) y
+resultado contra la especificación del cliente; el control interno no se
+imprime. «Emitir» genera el PDF (F-P-C07-01, pie del mapeo del lote) y lo
+adjunta al envío de la muestra (3.3) y como CoA de la baja de almacén
+(`sgi_coa.py`). Decisiones tomadas sin preguntar: (1) el certificado es un
+registro propio con los valores congelados, no una impresión en vivo de la
+tabla, para que el lote conserve lo que se certificó; (2) las cualitativas
+imprimen el texto obtenido sin «cumple / no cumple» automático; (3) quien
+emite no se restringe por puesto: queda sellado quién lo hizo.
+
+## 13. Revisión de Jose del 2026-10-08 06:47 UTC: correcciones 1 a 4
+
+- **Datos de la migración (punto 1).** La única diferencia de origen fue la
+  galga de la cotización legado 121 (`18` → `21`, puesta por la liga a mano
+  del puente 1.0.0); se regresó a `18` por MCP y el puente 1.2.0 ya no escribe
+  galga. Lo demás que difiere entre `qb.cotizacion` y `qb.cotizador.cotizacion`
+  es conversión por diseño, reportada sin corregir: precio objetivo de MXN a
+  la moneda de la cotización (el viejo lo guardaba en MXN), `op_pct` de % a
+  fracción, precio de mercado a 4 decimales, moneda vacía → MXN en 4 legados
+  (1, 2, 3 y 6; en 3 y 6 el TC no era 1, así que su precio objetivo quedó
+  dividido en MXN: 1.68 → 0.10 y 10.02 → 0.58, pendiente de que Jose decida).
+- **Parámetros (punto 2).** `seguimiento_dias_habiles` y
+  `borrador_archivar_dias` vacíos (cotizador 1.1.0): sin seguimiento ni
+  archivo automático; `validez_dias` = 15 se queda.
+- **Un solo cotizador (punto 3).** Menús del cotizador viejo solo para
+  administradores (`qb_capacidad_costeo` 1.70.0); la calculadora viva guarda
+  en `qb.cotizador.cotizacion` (`crear_desde_calculadora`); C1.05 al menú
+  2684 (MCP); C1.06 medida con la cotización presentada (puente 1.2.0); las
+  entradas mrp.bom de C1.05 se ligan por
+  `project_id.sgi_dev_product_tmpl_ids.bom_ids` (SGI 57.131.0).
+- **Aprobaciones (punto 4).** Causa: las migraciones de `quimibond_sgi` corren
+  antes de que `quimibond_sgi_studio` entre al registro; sin el satélite todo
+  botón se lee «por sincronizar», así quedaron grabados los faltantes de
+  C1.02 y C1.11 y falló la sincronización de C1.10 en 57.127.0. Regla nueva:
+  **las aprobaciones por botón se sincronizan desde el satélite** (migración
+  1.0.4) y el núcleo no dictamina botones mientras el satélite esté instalado
+  sin cargar. Los roles 1202 y 1203 se sincronizaron por MCP (reglas 74 y 75).
+  C1.11 se atribuye a `verdict_by_id`.
+

@@ -99,14 +99,16 @@ C1_MEASURES = {
         'complete_criteria': "La espera tiene fecha de llegada de la materia prima.",
         'activity_number': 'C1.08',
     },
+    # 57.131.0 (Jose 2026-10-08, punto 4): C1.11 se atribuye a quien dio el dictamen
+    # (Diseño de Producto), no al último que editó la solicitud.
     'C1-PRUEBAS': {
-        'name': "Resultados de laboratorio de la muestra (solicitud medida)",
+        'name': "Resultados de laboratorio de la muestra dictaminados por Diseño de Producto",
         'model': 'sgi.dev.lab.request',
-        'domain': "[%s, ('state', '=', 'medida')]" % DEV_RELATED_DOMAIN,
-        'date_field': 'date_measured',
-        'user_field': 'write_uid',
+        'domain': "[%s, ('state', '=', 'medida'), ('verdict_by_id', '!=', False)]" % DEV_RELATED_DOMAIN,
+        'date_field': 'date_verdict',
+        'user_field': 'verdict_by_id',
         'complete_domain': "[('pending_count', '=', 0)]",
-        'complete_criteria': "Todos los renglones pedidos tienen resultado.",
+        'complete_criteria': "Todos los renglones pedidos tienen resultado y Diseño de Producto dictaminó.",
     },
     # 57.129.0 (Jose, 3.3): el envío y la respuesta del cliente son registros propios; C1.12 y C1.13
     # se miden por ellos (antes C1.13 por el paso del proyecto por la etapa).

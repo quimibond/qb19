@@ -6,14 +6,16 @@
 
 Orden: `id desc`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`, `addons/quimibond_sgi/models/sgi_dev_coa.py`.
 
-## Campos (35)
+## Campos (37)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
 | `attachment_ids` | Many2many | Documentos que acompañan | CoA del lote y lo demás que viaja con la muestra; se adjuntan al correo. |  | `ir.attachment` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:104` |
 | `carrier_id` | Many2one | Paquetería | De la lista «Paquetería» (Ajustes → SGI → Listas del desarrollo de producto). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:93` |
+| `coa_count` | Integer |  |  |  |  | compute `_compute_coa_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:249` |
+| `coa_ids` | One2many | Reportes de conformidad |  |  | `sgi.dev.coa` |  |  | `addons/quimibond_sgi/models/sgi_dev_coa.py:248` |
 | `company_id` | Many2one |  |  | sí | `res.company` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:81` |
 | `date_shipped` | Date | Fecha de envío |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:96` |
 | `followup_date` | Datetime | Último seguimiento |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:111` |
@@ -48,7 +50,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`.
 | `total_m` | Float | Metros |  |  |  | compute `_compute_totals`, guardado |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:102` |
 | `tracking_ref` | Char | Guía | Número de guía de la paquetería. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:95` |
 
-## Métodos públicos (7)
+## Métodos públicos (8)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -56,6 +58,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_shipment.py`.
 | `action_open_mail` | Correo listo con rollos, medio y guía; lo manda Administración de Ventas. |
 | `action_open_picking` | — |
 | `action_register_response` | — |
+| `action_sgi_dev_coa` | Un certificado por lote de los rollos avisados (uno solo si no llevan lote), con los metros y rollos de ese lote; abre el que falta por emitir o la lista. |
 | `action_ship` | Registra el envío. Si hay baja ligada, se registra al validarla; aquí solo si ya está hecha. |
 | `cron_sgi_dev_shipment_followup` | — |
 | `message_post` | — |

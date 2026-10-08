@@ -18,7 +18,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models
 | `sgi_coa_status` | Selection | Estado del CoA | No aplica, pendiente, adjunto o enviado. Se calcula solo. |  |  | compute `_compute_sgi_coa_status`, guardado |  | `addons/quimibond_sgi/models/sgi_coa.py:126` |
 | `sgi_coa_uid` | Many2one | CoA adjuntado por | Quién adjuntó el CoA. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_coa.py:120` |
 | `sgi_delivery_picking_id` | Many2one | Entrega que surte | Orden de entrega del mismo pedido que este traslado interno surte: la abierta con la fecha programada más próxima, o la última si todas están hechas. Se puede corregir a mano. |  | `stock.picking` | compute `_compute_sgi_delivery_picking`, guardado |  | `addons/quimibond_sgi/models/sgi_release.py:49` |
-| `sgi_dev_shipment_id` | Many2one | Envío de muestra |  |  | `sgi.dev.shipment` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:467` |
+| `sgi_dev_shipment_id` | Many2one | Envío de muestra |  |  | `sgi.dev.shipment` |  |  | `addons/quimibond_sgi/models/sgi_dev_shipment.py:473` |
 | `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) de la muestra que se envía (C1.12). |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:342` |
 | `sgi_export_crossing_datetime` | Datetime | Cruce (exportación) | Fecha y hora en que la mercancía cruzó la frontera (C2-05). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_sales.py:51` |
 | `sgi_export_file_closed_date` | Date | Expediente cerrado | Fecha en que quedó completo el expediente de exportación (C2-05). |  |  |  |  | `addons/quimibond_sgi/models/sgi_kpi_sales.py:54` |

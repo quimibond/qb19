@@ -110,6 +110,7 @@ MCP_MODELS = {
     'sgi.dev.similar': False, 'sgi.dev.similar.line': False,  # 57.122.0: asistente, solo lectura
     'sgi.machine.sheet': True, 'sgi.machine.sheet.param': True,  # 57.126.0: ficha de tejido con real / ajuste
     'sgi.dev.shipment': True, 'sgi.dev.shipment.roll': True,  # 57.129.0: envío de muestra y respuesta del cliente
+    'sgi.dev.coa': True, 'sgi.dev.coa.line': True,  # 57.130.0: reporte de conformidad desde la tabla
 }
 
 

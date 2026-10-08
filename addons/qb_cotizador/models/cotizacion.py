@@ -377,10 +377,9 @@ class QbCotizadorCotizacion(models.Model):
                 Param.set_param(key, str(job.id))
         if not Param.get_param(PARAM_VALIDEZ_DIAS):
             Param.set_param(PARAM_VALIDEZ_DIAS, '15')
-        if not Param.get_param(PARAM_SEGUIMIENTO_DIAS):
-            Param.set_param(PARAM_SEGUIMIENTO_DIAS, '5')
-        if not Param.get_param(PARAM_ARCHIVAR_DIAS):
-            Param.set_param(PARAM_ARCHIVAR_DIAS, '30')
+        # 1.1.0 (Jose 2026-10-08, punto 2): los días de seguimiento y de
+        # archivo de borradores no están definidos: se quedan vacíos y sin
+        # valor no hay seguimiento automático ni se archivan borradores.
 
     def _puede_aprobar(self, user):
         self.ensure_one()
@@ -651,16 +650,18 @@ class QbCotizadorCotizacion(models.Model):
         hoy = fields.Date.context_today(self)
         for rec in self:
             validez = self._param_int(PARAM_VALIDEZ_DIAS, 15)
+            # 1.1.0: sin días de seguimiento en el parámetro no hay seguimiento automático.
+            dias_seg = self._param_int(PARAM_SEGUIMIENTO_DIAS, 0)
             vals = {'state': 'presentada', 'presented_by_id': self.env.uid,
-                    'presented_date': fields.Datetime.now(), 'seguimiento_hecho': False,
-                    'seguimiento_fecha': rec._fecha_habil(
-                        self._param_int(PARAM_SEGUIMIENTO_DIAS, 5))}
+                    'presented_date': fields.Datetime.now(), 'seguimiento_hecho': dias_seg <= 0,
+                    'seguimiento_fecha': rec._fecha_habil(dias_seg) if dias_seg > 0 else False}
             if not rec.validez_hasta or rec.validez_hasta < hoy:
                 vals['validez_hasta'] = hoy + timedelta(days=validez)
             rec.write(vals)
-            rec.message_post(body='Aprobada por %s y presentada. Válida hasta %s; seguimiento '
-                                  'el %s.' % (self.env.user.name, vals.get('validez_hasta')
-                                              or rec.validez_hasta, vals['seguimiento_fecha']))
+            rec.message_post(body='Aprobada por %s y presentada. Válida hasta %s%s.' % (
+                self.env.user.name, vals.get('validez_hasta') or rec.validez_hasta,
+                ('; seguimiento el %s' % vals['seguimiento_fecha']) if vals['seguimiento_fecha']
+                else '; sin seguimiento automático (días no definidos)'))
         return True
 
     def _vencer(self):
@@ -691,7 +692,7 @@ class QbCotizadorCotizacion(models.Model):
         self.search([('state', '=', 'presentada'), ('validez_hasta', '<', hoy)])._vencer()
         self.search([('state', '=', 'presentada'), ('seguimiento_hecho', '=', False),
                      ('seguimiento_fecha', '<=', hoy)])._seguimiento()
-        dias = self._param_int(PARAM_ARCHIVAR_DIAS, 30)
+        dias = self._param_int(PARAM_ARCHIVAR_DIAS, 0)  # 1.1.0: vacío = no se archivan borradores
         if dias > 0:
             limite = fields.Datetime.now() - timedelta(days=dias)
             viejas = self.search([('state', '=', 'borrador'), ('write_date', '<', limite)])
@@ -859,6 +860,73 @@ class QbCotizadorCotizacion(models.Model):
     # Importación del cotizador anterior (solo lectura de qb.cotizacion)
     # ==================================================================
     @api.model
+    @api.model
+    def _vals_desde_legado(self, d, hoy=None):
+        """Valores de una cotización nueva a partir de un diccionario con la
+        forma de `qb.cotizacion` (campos del cotizador anterior; many2one como
+        id). Lo usan la importación y la calculadora viva (1.1.0, Jose 3):
+        la misma conversión en los dos caminos. `tramo_ids` viene como lista
+        de diccionarios de `qb.cotizacion.tramo`."""
+        hoy = hoy or fields.Date.context_today(self)
+        fx = d.get('fx_rate') if d.get('fx_rate') and d.get('fx_rate') != 1.0 else 1.0
+        rendimiento = d.get('rendimiento') or 1.0
+        state = LEGACY_STATE.get(d.get('state') or 'draft', 'borrador')
+        validez = d.get('validez_hasta')
+        if state == 'presentada' and validez and validez < hoy:
+            state = 'vencida'
+        company_id = d.get('company_id') or self.env.company.id
+        currency_id = d.get('currency_id') or self.env['res.company'].browse(company_id).currency_id.id
+        energia = d.get('energia_unit') or 0.0
+        vals = {
+            'company_id': company_id, 'partner_id': d.get('partner_id'), 'atencion_a': d.get('atencion_a'),
+            'product_id': d.get('product_id'), 'spec_descripcion': d.get('spec_descripcion'),
+            'spec_gramaje': d.get('spec_gramaje'), 'spec_ancho': d.get('spec_ancho'),
+            'spec_galga': d.get('spec_galga'), 'volumen': d.get('volumen'),
+            'volumen_uom': 'kg' if (d.get('uom_name') or '').lower().startswith('k') else 'm',
+            'currency_id': currency_id, 'fx_rate': fx, 'costo_fuente': 'legado',
+            # En v2 «fabricación» = horas × tarifa (fija + variable), con la
+            # energía adentro; la conversión absorbida del viejo entra ahí.
+            'mp_unit': d.get('mp_unit') or 0.0, 'energia_unit': energia + (d.get('conv_var_unit') or 0.0),
+            'fabricacion_unit': energia + (d.get('fab_unit') or 0.0) + (d.get('conv_unit') or 0.0),
+            # El viejo guardaba variable y producción ya por unidad vendible.
+            'costo_variable': (d.get('costo_variable') or 0.0) * rendimiento,
+            'costo_produccion': (d.get('costo_absorbido_sin_op') or 0.0) * rendimiento,
+            'rendimiento': rendimiento, 'op_pct': (d.get('op_pct') or 0.0) / 100.0,
+            'calidad': 'ninguna', 'precio_mercado': d.get('precio_mercado') or 0.0,
+            # El viejo guardaba el precio objetivo en MXN; aquí va en la moneda de la cotización.
+            'precio_objetivo': ((d.get('precio_objetivo') or 0.0) / fx) if d.get('precio_objetivo') else 0.0,
+            'con_escalera': d.get('con_escalera') or False, 'state': state,
+            'validez_hasta': validez, 'supuestos': d.get('supuestos'),
+            'revision': d.get('revision') or 1, 'sale_order_id': d.get('sale_order_id'),
+            'lote_minimo': d.get('lote_minimo'), 'presentacion_rollos': d.get('presentacion_rollos'),
+            'lugar_entrega': d.get('lugar_entrega'), 'tiempo_entrega': d.get('tiempo_entrega'),
+            'muestra_leyenda': d.get('muestra_leyenda'),
+            'tramo_ids': [(0, 0, {
+                'multiplo': t.get('multiplo'), 'volumen': t.get('volumen'), 'es_base': t.get('es_base'),
+                'precio_mxn': t.get('precio_mxn'), 'precio_divisa': t.get('precio_divisa'),
+                'margen_neto_pct': t.get('margen_neto_pct'),
+                'contrib_total_mes': t.get('contrib_total_mes'), 'semaforo': t.get('semaforo'),
+            }) for t in (d.get('tramo_ids') or [])],
+        }
+        for tc in ('tc_coa', 'tc_ppap', 'tc_inspeccion_total', 'tc_cpk', 'tc_pscr',
+                   'tc_pruebas_lab', 'tc_apqp', 'tc_ctpat', 'tc_lta'):
+            if tc in d:
+                vals[tc] = d[tc]
+        return vals
+
+    @api.model
+    def crear_desde_calculadora(self, d):
+        """1.1.0 (Jose 2026-10-08, punto 3): la calculadora viva de capacidad y
+        costo (`qb.cotizador.wizard`) guarda aquí, no en `qb.cotizacion`, para
+        que toda cotización pase por la aprobación del puesto. Entra como
+        borrador con el costo que calculó la calculadora (fuente «cotizador
+        anterior») y su folio propio."""
+        vals = self._vals_desde_legado(dict(d, state='draft', validez_hasta=False))
+        vals.update({'state': 'borrador', 'user_id': self.env.uid, 'calculado_el': fields.Datetime.now(),
+                     'calidad_detalle': 'calculado en la calculadora de capacidad y costo (%s)'
+                                        % (d.get('name') or '')})
+        return self.create(vals)
+
     def importar_legadas(self):
         """Copia las cotizaciones de `qb.cotizacion` que aún no están aquí
         (por `legacy_id`), con su estado, revisión, foto de costo y escalera.
@@ -871,54 +939,33 @@ class QbCotizadorCotizacion(models.Model):
         hechas = {r.legacy_id: r for r in self.sudo().with_context(active_test=False).search(
             [('legacy_id', '!=', 0)])}
         n = 0
+        simple = ('atencion_a', 'spec_descripcion', 'spec_gramaje', 'spec_ancho', 'spec_galga', 'volumen',
+                  'uom_name', 'fx_rate', 'mp_unit', 'energia_unit', 'conv_var_unit', 'fab_unit', 'conv_unit',
+                  'costo_variable', 'costo_absorbido_sin_op', 'rendimiento', 'op_pct', 'precio_mercado',
+                  'precio_objetivo', 'con_escalera', 'state', 'validez_hasta', 'supuestos', 'revision',
+                  'lote_minimo', 'presentacion_rollos', 'lugar_entrega', 'tiempo_entrega', 'muestra_leyenda',
+                  'tc_coa', 'tc_ppap', 'tc_inspeccion_total', 'tc_cpk', 'tc_pscr', 'tc_pruebas_lab',
+                  'tc_apqp', 'tc_ctpat', 'tc_lta')
         for old in Old.search([], order='id asc'):
             if old.id in hechas:
                 continue
-            fx = old.fx_rate if old.fx_rate and old.fx_rate != 1.0 else 1.0
-            state = LEGACY_STATE.get(old.state, 'borrador')
-            if state == 'presentada' and old.validez_hasta and old.validez_hasta < hoy:
-                state = 'vencida'
             anterior = hechas.get(old.revision_anterior_id.id) if old.revision_anterior_id else None
-            vals = {
-                'legacy_id': old.id, 'folio': old.folio, 'company_id': old.company_id.id,
-                'user_id': old.create_uid.id, 'partner_id': old.partner_id.id,
-                'atencion_a': old.atencion_a, 'product_id': old.product_id.id,
-                'spec_descripcion': old.spec_descripcion, 'spec_gramaje': old.spec_gramaje,
-                'spec_ancho': old.spec_ancho, 'spec_galga': old.spec_galga,
-                'volumen': old.volumen,
-                'volumen_uom': 'kg' if (old.uom_name or '').lower().startswith('k') else 'm',
-                'currency_id': (old.currency_id or old.company_id.currency_id).id,
-                'fx_rate': fx, 'costo_fuente': 'legado', 'calculado_el': old.create_date,
-                # En v2 «fabricación» = horas × tarifa (fija + variable), con la
-                # energía adentro; la conversión absorbida del viejo entra ahí.
-                'mp_unit': old.mp_unit, 'energia_unit': old.energia_unit + old.conv_var_unit,
-                'fabricacion_unit': old.energia_unit + old.fab_unit + old.conv_unit,
-                # El viejo guardaba variable y producción ya por unidad vendible.
-                'costo_variable': old.costo_variable * (old.rendimiento or 1.0),
-                'costo_produccion': old.costo_absorbido_sin_op * (old.rendimiento or 1.0),
-                'rendimiento': old.rendimiento or 1.0, 'op_pct': (old.op_pct or 0.0) / 100.0,
-                'calidad': 'ninguna',
+            d = {k: old[k] for k in simple}
+            d.update({'company_id': old.company_id.id, 'partner_id': old.partner_id.id,
+                      'product_id': old.product_id.id, 'currency_id': old.currency_id.id,
+                      'sale_order_id': old.sale_order_id.id,
+                      'tramo_ids': [{k: t[k] for k in ('multiplo', 'volumen', 'es_base', 'precio_mxn',
+                                                       'precio_divisa', 'margen_neto_pct',
+                                                       'contrib_total_mes', 'semaforo')}
+                                    for t in old.tramo_ids]})
+            vals = self._vals_desde_legado(d, hoy)
+            state = vals['state']
+            vals.update({
+                'legacy_id': old.id, 'folio': old.folio, 'user_id': old.create_uid.id,
+                'calculado_el': old.create_date,
                 'calidad_detalle': 'importada de qb.cotizacion #%d (%s)' % (old.id, old.folio),
-                'precio_mercado': old.precio_mercado,
-                'precio_objetivo': (old.precio_objetivo / fx) if old.precio_objetivo else 0.0,
-                'con_escalera': old.con_escalera, 'state': state,
-                'validez_hasta': old.validez_hasta, 'supuestos': old.supuestos,
-                'revision': old.revision or 1,
                 'revision_anterior_id': anterior.id if anterior else False,
-                'sale_order_id': old.sale_order_id.id,
-                'lote_minimo': old.lote_minimo, 'presentacion_rollos': old.presentacion_rollos,
-                'lugar_entrega': old.lugar_entrega, 'tiempo_entrega': old.tiempo_entrega,
-                'muestra_leyenda': old.muestra_leyenda,
-                'tramo_ids': [(0, 0, {
-                    'multiplo': t.multiplo, 'volumen': t.volumen, 'es_base': t.es_base,
-                    'precio_mxn': t.precio_mxn, 'precio_divisa': t.precio_divisa,
-                    'margen_neto_pct': t.margen_neto_pct,
-                    'contrib_total_mes': t.contrib_total_mes, 'semaforo': t.semaforo,
-                }) for t in old.tramo_ids],
-            }
-            for tc in ('tc_coa', 'tc_ppap', 'tc_inspeccion_total', 'tc_cpk', 'tc_pscr',
-                       'tc_pruebas_lab', 'tc_apqp', 'tc_ctpat', 'tc_lta'):
-                vals[tc] = old[tc]
+            })
             if state in ('presentada', 'vencida', 'ganada', 'perdida'):
                 vals.update({'presented_date': old.create_date, 'presented_by_id': old.create_uid.id,
                              'approved_date': old.create_date, 'approved_by_id': old.create_uid.id,

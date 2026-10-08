@@ -3,6 +3,23 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.1.0 — 2026-10-08
+
+Jose 2026-10-08, puntos 2 y 3.
+
+- **Parámetros sin definir, vacíos**: `seguimiento_dias_habiles` y
+  `borrador_archivar_dias` ya no los pone el instalador; sin valor no hay
+  seguimiento automático (la cotización se presenta sin fecha de seguimiento)
+  ni se archivan borradores. `validez_dias` = 15 se queda.
+- **La calculadora viva guarda aquí**: `crear_desde_calculadora(d)` recibe la
+  cotización con la forma del cotizador anterior y la crea como borrador con
+  folio propio y fuente «cotizador anterior», para que pase por la aprobación
+  del puesto. La conversión (energía, fabricación, costo por unidad vendible,
+  precio objetivo MXN → moneda) es la misma de la importación
+  (`_vals_desde_legado`).
+- **Migración** `19.0.1.1.0`: vacía los dos parámetros solo si siguen con el
+  valor que puso el instalador (5 y 30).
+
 ## 19.0.1.0.0 — 2026-10-08
 
 - Primera versión (spec §6 y §6.1; brief C1 §6.8). `qb.cotizador.cotizacion`

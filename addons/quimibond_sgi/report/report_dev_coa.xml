@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.130.0 (C1, Jose 3.4): Reporte de conformidad F-P-C07-01 impreso desde la tabla
+         («En certificado»), siempre contra la especificación del cliente. -->
+    <record id="action_report_dev_coa" model="ir.actions.report">
+        <field name="name">Reporte de conformidad (CoA)</field>
+        <field name="model">sgi.dev.coa</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_coa_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_coa_document</field>
+        <field name="print_report_name">'CoA - %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="model_sgi_dev_coa"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dev_coa_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_map_stock_lot'"/>
+                    <div class="page">
+                        <h2 class="text-center">Reporte de conformidad</h2>
+                        <h4 class="text-center text-muted">Certificate of Analysis</h4>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:22%"><strong>Cliente / Customer</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td>
+                                <td style="width:18%"><strong>Fecha / Date</strong></td><td><span t-field="doc.date"/></td></tr>
+                            <tr><td><strong>Artículo / Product</strong></td><td><span t-out="doc.product_id.display_name or doc.project_id.sgi_dev_product_name or '—'"/></td>
+                                <td><strong>Lote / Lot</strong></td><td><span t-out="doc.lot_id.name or '—'"/></td></tr>
+                            <tr><td><strong>Desarrollo / Project</strong></td><td><span t-out="doc.project_id.sgi_ft_folio or doc.project_id.name"/><t t-if="doc.project_id.sgi_dev_revision"> · Rev. <span t-out="doc.project_id.sgi_dev_revision"/></t></td>
+                                <td><strong>Cantidad / Quantity</strong></td><td><t t-if="doc.quantity_m"><span t-out="'%.2f m' % doc.quantity_m"/><t t-if="doc.roll_count"> · <span t-out="doc.roll_count"/> rollo(s) / roll(s)</t></t><t t-else="">—</t></td></tr>
+                            <tr t-if="doc.production_id or doc.shipment_id"><td><strong>Orden / Order</strong></td><td><span t-out="doc.production_id.name or '—'"/></td>
+                                <td><strong>Envío / Shipment</strong></td><td><span t-out="doc.shipment_id.date_shipped or '—'"/></td></tr>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr>
+                                <th>Característica / Characteristic</th><th>Dirección</th><th>Unidad / Units</th>
+                                <th>Especificación / Specification</th><th>Método / Method</th>
+                                <th class="text-end">Obtenido / Result</th><th>Cumple / Pass</th>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="l">
+                                    <td><span t-out="l.name"/><t t-if="l.name_en and l.name_en != l.name"><br/><span class="text-muted" t-out="l.name_en"/></t></td>
+                                    <td><span t-out="dict(l.characteristic_id._fields['direction'].selection).get(l.direction) if l.direction != 'na' else ''"/><t t-if="l.position != 'na'"> <span t-out="dict(l.characteristic_id._fields['position'].selection).get(l.position)"/></t></td>
+                                    <td><span t-out="l.unit or ''"/></td>
+                                    <td><span t-out="l.spec_label or ''"/></td>
+                                    <td><span t-out="l.method or ''"/></td>
+                                    <td class="text-end"><span t-out="l._value_label()"/></td>
+                                    <td><t t-if="l.result == 'cumple'">Sí / Yes</t><t t-elif="l.result == 'no_conforme'"><strong>No</strong></t><t t-else="">—</t></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p style="font-size:10px;" class="text-muted">Resultados contra la especificación del cliente. / Results against the customer specification.</p>
+                        <table class="table table-sm mt-4" style="font-size:10px; width:50%;">
+                            <tr><td class="text-center" style="border-top:1px solid #000;">Emitió · Calidad / Issued by · Quality<br/><span t-out="doc.issued_by_id.name or ''"/><br/><span t-field="doc.issued_at"/></td></tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

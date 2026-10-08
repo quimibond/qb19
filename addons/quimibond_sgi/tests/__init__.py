@@ -176,3 +176,4 @@ from . import test_dev_process_sheet
 from . import test_dev_corrections
 from . import test_dev_customer
 from . import test_dev_shipment
+from . import test_dev_coa
