@@ -42,6 +42,31 @@ class ResConfigSettings(models.TransientModel):
         help="Categoría de Aprobaciones con la que se pide a Compras la materia prima que falta para la muestra. "
              "Vacío: la primera de tipo compra de la compañía.")
 
+    # 57.125.0 (C1, bloque F): orden de muestra.
+    sgi_dev_sample_picking_type_id = fields.Many2one(
+        'stock.picking.type', string="Tipo de operación de la orden de muestra",
+        config_parameter='quimibond_sgi.dev_sample_picking_type_id', domain="[('code', '=', 'mrp_operation')]",
+        help="Con el que nace la orden de muestra pedida desde el proyecto (producción: «Tejido Desarrollo»).")
+    sgi_dev_sample_location_id = fields.Many2one(
+        'stock.location', string="Ubicación del sobrante de la muestra",
+        config_parameter='quimibond_sgi.dev_sample_location_id', domain="[('usage', '=', 'internal')]",
+        help="A dónde entra lo fabricado en la corrida de muestra (producción: 31 Desarrollos Toluca).")
+    sgi_dev_planning_job_id = fields.Many2one(
+        'hr.job', string="Puesto de Planeación que emite la orden de muestra",
+        config_parameter='quimibond_sgi.dev_planning_job_id',
+        help="Recibe la actividad «Emitir la orden de muestra» (por omisión, Planeador de Producción).")
+    sgi_dev_sample_pq_m = fields.Float(
+        string="Metros PQ que debe entregar la muestra", config_parameter='quimibond_sgi.dev_sample_pq_m',
+        help="La cantidad sugerida cubre al menos estos metros de primera (brief: 50 m).")
+    sgi_dev_sample_expected_yield_pct = fields.Float(
+        string="Rendimiento de primera esperado en la muestra (%)",
+        config_parameter='quimibond_sgi.dev_sample_expected_yield_pct',
+        help="Para saber cuánto fabricar y entregar los metros PQ. Vacío: se asume 100 % (el brief no lo define).")
+    sgi_dev_sample_min_bath_kg = fields.Float(
+        string="Mínimo de baño de tintorería (kg)", config_parameter='quimibond_sgi.dev_sample_min_bath_kg',
+        help="Si el artículo lleva teñido, la muestra no baja de esta carga. Vacío: no entra al cálculo (el "
+             "brief lo deja por máquina y sin valor).")
+
     sgi_nc_escalation_days = fields.Integer(
         string="Días hábiles para escalar una NC sin acciones",
         config_parameter='quimibond_sgi.nc_escalation_days',

@@ -37,6 +37,13 @@
                                 confirm="El desarrollo no es factible: el proyecto cierra sin producto. ¿Continuar?"/>
                         <button name="action_sgi_dev_print_sample_label" type="object" string="Etiqueta de la muestra" class="btn-secondary" icon="fa-tag"
                                 invisible="not sgi_dev_sample_received"/>
+                        <!-- 57.125.0 (C1, bloque F): la corrida de muestra se pide desde el proyecto. -->
+                        <button name="action_sgi_dev_request_sample" type="object" string="Pedir corrida de muestra" class="btn-primary" icon="fa-cogs"
+                                invisible="sgi_dev_stage_key in ('liberado', 'cerrado_sin_producto') or sgi_dev_analysis_result in ('linea', 'no_factible')"/>
+                        <button name="action_sgi_dev_view_mos" type="object" class="btn-link" icon="fa-industry"
+                                invisible="not sgi_dev_mo_count">
+                            <field name="sgi_dev_mo_count" readonly="1" class="oe_inline"/> orden(es) de muestra
+                        </button>
                 
                     </div>
                     <group>

@@ -178,3 +178,14 @@ nueva ya salía desde el bloque 1.
 Queda para Jose: a quién avisar por Inspección (José Luis Almazán no tiene
 puesto) y si la aprobación de la requisición la firma solo Dirección de
 Operaciones (hoy la categoría de Aprobaciones tiene su propio aprobador).
+
+## 9. Bloque F — 6.10 Orden de muestra (2026-10-08)
+
+`quimibond_sgi` 57.125.0 (`models/sgi_dev_sample.py`): «Pedir corrida de
+muestra» desde el proyecto con cantidad sugerida y motivo (cliente / 50 m PQ
+entre rendimiento esperado / mínimo de baño), orden de fabricación armada
+para Planeación (artículo, folio en origen, Tejido Desarrollo, lista de
+materiales y ruta, sobrante a 31 Desarrollos, `sgi_dev_project_id`), tarea
+del proyecto con la fecha de máquina que sigue a `date_start`, actividad al
+Planeador. Parámetros vacíos a propósito: rendimiento de primera esperado y
+mínimo de baño (el brief los deja por definir con Yet y Tintorería).
