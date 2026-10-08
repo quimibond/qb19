@@ -120,6 +120,17 @@ del cliente (`precio_cliente_*`: objetivo → mercado → piso lleno)
 y condiciones (IVA, vigencia). **Cero datos internos** — sin costos, sin
 márgenes, sin pisos.
 
+**Con o sin escalera de volumen (1.69.6).** La casilla «Ofrecer precios por
+volumen» de la calculadora (y de la cotización, editable hasta que se gana o
+pierde) decide si el PDF y el correo al cliente llevan la tabla «Precios por
+volumen» o un solo precio al volumen cotizado. La escalera se calcula de
+todos modos y se ve en la cotización y en la hoja interna, que dice qué
+recibe el cliente. El valor con el que arranca la calculadora es el
+parámetro `escalera_default` (1 = con escalera). «Recalcular ya» hereda la
+decisión de la revisión anterior. Para imprimir: menú Imprimir → «Cotización
+Quimibond» es la del cliente; «Hoja interna de costo y precio» nunca se
+envía.
+
 El botón **«✉ Enviar al cliente»** usa la plantilla
 `mail_template_cotizacion_cliente`, que adjunta SOLO el PDF comercial. La
 plantilla vieja (que adjuntaba la hoja interna) quedó marcada obsoleta y el

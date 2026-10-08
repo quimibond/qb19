@@ -13,6 +13,148 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.123.0 — 2026-10-07
+
+**Ajustes al modelo del SGI para C1** (contexto de Jose tras el despliegue,
+punto 3).
+
+### Agregado
+
+- `sgi.process.activity.number_label`: numeral propio para intercalar un
+  sub-paso (C1.04b) sin renumerar el proceso; el paso sigue siendo único y
+  el orden lo da la secuencia.
+- **C1.04 partida en dos.** C1.04 «Dar de alta el artículo de desarrollo con
+  su lista de materiales» (ejecuta Diseño y Desarrollo de Producto) y C1.04b
+  «Asignar la ruta preliminar y los centros de trabajo» (ejecuta Diseño y
+  Desarrollo de Procesos, participa Producto, escala como C1.04). C1.04b
+  recibe la lista de materiales (plazo vacío), entrega y se mide con el
+  entregable nuevo `C1-RUTA` (`mrp.bom` con operaciones de artículos en
+  desarrollo); C1.05 recibe también la ruta con el plazo de la lista de
+  materiales. De C1.04 solo se recorta el texto que se va a C1.04b; `on_fail`
+  y «contra qué» de C1.04b quedan vacíos (los define Jose).
+- **Aprobaciones ligadas a su botón real:** C1.02 y C1.03 → «Aprobar análisis
+  y factibilidad» del proyecto; C1.07 → botón nuevo «Aprobar solicitud
+  (Dirección de Operaciones)», que firma «Aprobó» (el campo ya no se captura a
+  mano) y sella `sgi_dev_approved_date`; C1.11 → botón nuevo «Dictamen de
+  Diseño» en la solicitud de laboratorio (`verdict_by_id`, `date_verdict`,
+  solo con la solicitud medida y sin renglones pendientes). Se sincronizan con
+  el satélite de Studio si está; si no, quedan «Por sincronizar». C1.10 (Jefe
+  de Manufactura) y C1.15 no se tocan.
+- **Escalamiento de segundo nivel:** Ajustes → SGI → «Días hábiles para
+  escalar a Dirección de Operaciones (C1)» (`quimibond_sgi.dev_escalation_director_days`).
+  Vacío o 0: no se crea nada. Con días, en las actividades de C1 que ejecuta
+  Diseño y Desarrollo de Producto o de Procesos se crea o actualiza el renglón
+  «Escala» a Dirección de Operaciones; el primer nivel (dueño del proceso) se
+  conserva. Guardar Ajustes vuelve a sincronizar.
+
+### Migración
+
+`migrations/19.0.57.123.0/post-migrate.py`: parte C1.04, liga las
+aprobaciones y sincroniza el escalamiento (hoy sin días: no crea nada).
+Prefijo `SGI 57.123.0` en el log con el paso y secuencia de C1.04b, cada
+aprobación ligada con su estado y los escalamientos tocados.
+
+### Pruebas
+
+`tests/test_dev_process.py`: partición idempotente sin renumerar, ligas de
+aprobación, escalamiento según parámetro y desde Ajustes, botones de firma y
+dictamen.
+
+## 19.0.57.122.0 — 2026-10-07
+
+**Uso diario del proyecto de desarrollo** (contexto de Jose tras el
+despliegue, punto 4).
+
+### Agregado
+
+- **La tarjeta de un desarrollo abre su ficha.** `action_view_tasks` devuelve
+  el formulario cuando el proyecto es desarrollo (no plantilla); el botón de
+  tareas de la ficha y los enlaces «Tareas» de la tarjeta pasan por
+  `action_sgi_dev_view_tasks` y siguen abriendo las tareas. Nadie encontraba
+  «⋮ → Ajustes».
+- **Tarjeta del tablero:** folio FT (o «Sin folio FT»), etapa con horas en la
+  etapa actual y aviso «Falta el cliente». El cliente ya se mostraba.
+- **Características del tipo, solas:** al crear un desarrollo y al elegir el
+  tipo con la tabla vacía se proponen las del catálogo
+  (`_sgi_dev_autoload_lines`). Con la tabla llena, cambiar el tipo no agrega
+  nada; `sgi_dev_no_autoload` en el contexto lo apaga. El 491 llevaba un día
+  en Análisis con 0 renglones.
+- **Lista «Desarrollos de producto»** (SGI → Sistema): folio, nombre,
+  cliente y etapa editables en la lista, origen, horas en la etapa,
+  características, responsable, actividades y última modificación; renglón
+  rojo cuando falta el cliente. Para que Jessica ubique los 74 que la
+  migración dejó en Muestra. Nada se mueve por código.
+- **Asistente «Marcar desarrollos existentes»** (SGI → Sistema, jefes de
+  proyecto): propone los proyectos activos con nombre de código de artículo
+  en cualquier idioma o en la columna «Por revisar» (39 + 14 en producción);
+  la persona quita los que no sean y marca varios a la vez. No mueve de
+  etapa; casilla opcional para proponer las características del tipo general.
+- **Aviso en la ficha** cuando el origen es cliente y falta el cliente
+  (`sgi_dev_missing_partner`, también en la tarjeta y la lista).
+- MCP: `sgi.dev.similar` y sus renglones, lectura. Los demás modelos nuevos
+  ya estaban expuestos desde 57.120.2.
+
+### Migración
+
+`migrations/19.0.57.122.0/post-migrate.py`: solo expone los dos modelos al
+MCP. Sin cambios de datos.
+
+### Pruebas
+
+`tests/test_dev_board.py`: tarjeta → ficha y tareas alcanzables, carga de
+características al crear y al elegir tipo, candidatos y marcado del
+asistente, bandera de cliente faltante y carga de las vistas.
+
+## 19.0.57.121.0 — 2026-10-07
+
+**Las fichas de C1 se miden con el proyecto de desarrollo** (contexto de Jose
+tras el despliegue, punto 2). Varias actividades seguían midiéndose con las
+tareas de la plantilla vieja o con el AMEF: salían en verde sin medir el
+proceso nuevo. La medición cuelga del entregable (`measure_method =
+entregable`), así que se re-apuntan los entregables por código y las
+actividades vuelven a copiar modelo, filtro, fecha y usuario.
+
+### Agregado
+
+- `project.project.sgi_dev_analysis_date` y `sgi_dev_analysis_by_id` (se
+  sellan al capturar el resultado del análisis) y `sgi_dev_approved_date` (al
+  firmar «Aprobó» en la solicitud). Con el contexto `sgi_dev_migration` no se
+  sella nada.
+- `sgi.dev.stage.log.stage_key`: clave de la etapa de avance guardada en el
+  reloj (filtrar «pasó por Respuesta del cliente» sin ids).
+- Entregable nuevo `C1-MP-ESPERA` (`sgi.dev.mp.wait`), que C1.08 entrega y
+  con el que se mide; `S1-NECESIDAD` sigue como lo que recibe Compras.
+- `_sgi_dev_apply_c1_measures()` (idempotente) y `_sgi_dev_backfill_measure_dates()`.
+
+### Cambiado
+
+| Ficha | Antes | Ahora |
+|---|---|---|
+| C1.02 | `project.task` en etapa «ELEMENTOS DE ENTRADA» | proyectos con `sgi_dev_analysis_result`; fecha y usuario de captura |
+| C1.03 | `sgi.fmea` | proyectos con `sgi_dev_review_state = aprobado`; `sgi_dev_review_date` / `sgi_dev_reviewed_by_id` |
+| C1.07 | cualquier tarea de cualquier desarrollo | proyectos con folio FT y `sgi_dev_approved_by_id`; `sgi_dev_approved_date` |
+| C1.08 | `approval.request` de dos categorías de toda la empresa | esperas de materia prima del desarrollo (`sgi.dev.mp.wait`) |
+| C1.11 | `project.task` en etapa «VERIFICACI» | `sgi.dev.lab.request` en estado «medida»; `date_measured` |
+| C1.13 | `project.task` en etapa «RETROALIMENTACI» | paso del proyecto por «Respuesta del cliente» (`sgi.dev.stage.log`) |
+| C1.14 | `project.task` en etapa «APROBACI» | paso del proyecto por «Pilotaje» (`sgi.dev.stage.log`) |
+
+C1.05 sigue manual hasta que exista la aprobación de la cotización (costeo
+v2). Los nombres de los entregables describen la fuente nueva; nombre, pasos,
+criterios, menú, formatos y roles de las fichas no se tocan (son los que Jose
+capturó en la base). `quimibond_sgi_mapa` 1.2.0 trae los mismos entregables.
+
+### Migración
+
+`migrations/19.0.57.121.0/post-migrate.py`: fechas de análisis y aprobación
+desde el seguimiento del chatter (sin rastro queda vacío, no se inventa);
+entregables re-apuntados y `C1-MP-ESPERA` creado y ligado a C1.08. Prefijo
+`SGI 57.121.0` en el log, con el modelo y filtro final de cada entregable.
+
+### Pruebas
+
+`tests/test_dev_measure.py`: sellos de fecha y usuario, clave de etapa en el
+reloj, re-apuntado idempotente de los entregables y que lo medido existe.
+
 ## 19.0.57.120.3 — 2026-10-07
 
 **La migración de C1 por fin encuentra los proyectos: busca en todos los

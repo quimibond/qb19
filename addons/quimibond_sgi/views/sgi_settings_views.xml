@@ -40,6 +40,10 @@
                                  help="Las solicitudes de pruebas de los desarrollos las autorizan las personas de este puesto (Coordinador de Laboratorio y MP) o el Jefe MAST.">
                             <field name="sgi_dev_lab_authorizer_job_id"/>
                         </setting>
+                        <setting string="Escalar a Dirección de Operaciones los pasos de Diseño y Desarrollo"
+                                 help="Días hábiles de atraso tras los que, además del dueño del proceso, se avisa a Dirección de Operaciones en las actividades de C1 que ejecutan Diseño y Desarrollo de Producto o de Procesos. Vacío o 0: todavía no se escala al segundo nivel.">
+                            <field name="sgi_dev_escalation_director_days"/>
+                        </setting>
                     </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"

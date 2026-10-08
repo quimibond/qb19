@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.120.3',
+    'version': '19.0.57.123.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -179,6 +179,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_dev_project_views.xml',  # 57.118.0: ciclo de vida del desarrollo
         'views/sgi_dev_product_views.xml',  # 57.119.0: estado del artículo en desarrollo
         'views/sgi_dev_analysis_views.xml',  # 57.120.0: parecidos, laboratorio y factibilidad
+        'views/sgi_dev_board_views.xml',  # 57.122.0: tarjeta, lista de desarrollos y asistente para marcar
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports

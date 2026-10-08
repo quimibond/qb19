@@ -487,6 +487,12 @@ class SgiProcessActivity(models.Model):
     number = fields.Char(
         string="Numeral", compute='_compute_number', store=True, index=True,
         help="Clave del proceso + paso, ej. C6.22. Se calcula.")
+    # 57.123.0: un sub-paso (C1.04b) se intercala sin renumerar el proceso: el
+    # paso sigue siendo único y el numeral que se muestra es este.
+    number_label = fields.Char(
+        string="Numeral propio", copy=False,
+        help="Numeral que se muestra en lugar de clave + paso, para un sub-paso intercalado "
+             "(ej. C1.04b). Vacío: se calcula.")
     legacy_number = fields.Char(
         string="Numeral anterior", readonly=True, copy=False, index=True,
         help="Numeral en texto de la versión anterior del procedimiento.")
@@ -766,9 +772,12 @@ class SgiProcessActivity(models.Model):
         "El paso ya existe en el proceso: cada actividad tiene su propio número.",
     )
 
-    @api.depends('process_id.code', 'step')
+    @api.depends('process_id.code', 'step', 'number_label')
     def _compute_number(self):
         for activity in self:
+            if (activity.number_label or '').strip():
+                activity.number = activity.number_label.strip()
+                continue
             activity.number = "%s.%02d" % (activity.process_id.code, activity.step) \
                 if activity.process_id.code and activity.step else False
 

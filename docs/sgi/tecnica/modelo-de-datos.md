@@ -2,7 +2,7 @@
 
 # Modelo de datos del SGI
 
-Modelos que definen el núcleo y sus satélites (150) y modelos de otras apps que extienden (53). El detalle de cada uno está en `diccionario/`.
+Modelos que definen el núcleo y sus satélites (151) y modelos de otras apps que extienden (53). El detalle de cada uno está en `diccionario/`.
 
 ## Modelos propios
 
@@ -58,13 +58,14 @@ Modelos que definen el núcleo y sus satélites (150) y modelos de otras apps qu
 | [`sgi.dev.characteristic.template`](diccionario/sgi.dev.characteristic.template.md) | Característica por tipo de desarrollo | Renglón que carga un tipo de desarrollo en la tabla de características del proyecto. | Model | 11 | `addons/quimibond_sgi/models/sgi_dev_characteristic.py` |
 | [`sgi.dev.feasibility`](diccionario/sgi.dev.feasibility.md) | Checklist de factibilidad del desarrollo | Renglón del checklist de factibilidad de un proyecto: sí, no o no aplica, con observación. | Model | 7 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
 | [`sgi.dev.feasibility.item`](diccionario/sgi.dev.feasibility.item.md) | Recurso del checklist de factibilidad | Recurso o pregunta del checklist de factibilidad, por línea (catálogo; nace vacío). | Model | 5 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
-| [`sgi.dev.lab.request`](diccionario/sgi.dev.lab.request.md) | Solicitud de pruebas a laboratorio (desarrollo) | Solicitud de pruebas de laboratorio sobre renglones de la tabla de características. | Model | 14 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
+| [`sgi.dev.lab.request`](diccionario/sgi.dev.lab.request.md) | Solicitud de pruebas a laboratorio (desarrollo) | Solicitud de pruebas de laboratorio sobre renglones de la tabla de características. | Model | 16 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
+| [`sgi.dev.mark.wizard`](diccionario/sgi.dev.mark.wizard.md) | Marcar proyectos existentes como desarrollo de producto | Marca como desarrollo de producto varios proyectos existentes de una vez. La lista se llena con los candidatos (nombre de código de artículo o columna «Por revisar»); quite los que no sean desarrollo… | TransientModel | 3 | `addons/quimibond_sgi/models/sgi_dev_board.py` |
 | [`sgi.dev.mp.wait`](diccionario/sgi.dev.mp.wait.md) | Espera de materia prima del desarrollo | Periodo en que un desarrollo esperó materia prima: detiene el reloj de desarrollo. | Model | 5 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
 | [`sgi.dev.option`](diccionario/sgi.dev.option.md) | Opción de lista del desarrollo de producto | Opción de lista para el proyecto de desarrollo (aplicación, mercado, laminado, requisito legal, motivo de no factibilidad). | Model | 4 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
 | [`sgi.dev.revision`](diccionario/sgi.dev.revision.md) | Revisión del desarrollo de producto | Renglón de la bitácora de revisiones de un desarrollo: qué cambió, cuándo y quién lo pidió. | Model | 11 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
 | [`sgi.dev.similar`](diccionario/sgi.dev.similar.md) | Artículos parecidos al desarrollo | Asistente: artículos de línea y desarrollos anteriores parecidos a lo que pide el cliente. | TransientModel | 4 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
 | [`sgi.dev.similar.line`](diccionario/sgi.dev.similar.line.md) | Artículo parecido | Un artículo parecido con su distancia y si cumple la tolerancia del cliente. | TransientModel | 9 | `addons/quimibond_sgi/models/sgi_dev_analysis.py` |
-| [`sgi.dev.stage.log`](diccionario/sgi.dev.stage.log.md) | Reloj por etapa del desarrollo de producto | Paso de un desarrollo por una etapa: hora de inicio y fin, horas totales y horas de desarrollo (sin el tiempo con materia prima pendiente). | Model | 7 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
+| [`sgi.dev.stage.log`](diccionario/sgi.dev.stage.log.md) | Reloj por etapa del desarrollo de producto | Paso de un desarrollo por una etapa: hora de inicio y fin, horas totales y horas de desarrollo (sin el tiempo con materia prima pendiente). | Model | 8 | `addons/quimibond_sgi/models/sgi_dev_project.py` |
 | [`sgi.diagnostic`](diccionario/sgi.diagnostic.md) | Diagnóstico de configuración y adopción del SGI | Diagnóstico de configuración y adopción del SGI: una corrida con hallazgos por sección (bien, aviso, mal). Pantalla, no historia. | TransientModel | 6 | `addons/quimibond_sgi/models/sgi_diagnostic.py` |
 | [`sgi.diagnostic.line`](diccionario/sgi.diagnostic.line.md) | Hallazgo del diagnóstico del SGI | Hallazgo de una corrida del diagnóstico, con cómo corregirlo. | TransientModel | 6 | `addons/quimibond_sgi/models/sgi_diagnostic.py` |
 | [`sgi.diagram`](diccionario/sgi.diagram.md) | Diagramas del SGI (datos para el componente sgi_diagram) | Datos para el componente de diagramas (``static/src/diagram``): flujos de procesos, cadenas de actividades, riesgos y cumplimiento. No guarda registros. | AbstractModel | 0 | `addons/quimibond_sgi/models/sgi_diagram.py` |
@@ -141,7 +142,7 @@ Modelos que definen el núcleo y sus satélites (150) y modelos de otras apps qu
 | [`sgi.ppap.element`](diccionario/sgi.ppap.element.md) | Elemento de un PPAP | Elemento de un PPAP con su documento, AMEF o plan de control y su estado. | Model | 10 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.ppap.element.template`](diccionario/sgi.ppap.element.template.md) | Elemento PPAP (catálogo AIAG) | Catálogo de elementos PPAP (AIAG); ``is_psw`` marca la carta de garantía. | Model | 4 | `addons/quimibond_sgi/models/sgi_ppap.py` |
 | [`sgi.process`](diccionario/sgi.process.md) | Proceso SGI | Proceso del SGI: dueño, etapas, actividades, entradas y salidas, documentos, indicadores, riesgos y semáforo. Es dato: se captura o se carga, no viene en el módulo. | Model | 78 | `addons/quimibond_sgi/models/sgi_process.py` |
-| [`sgi.process.activity`](diccionario/sgi.process.activity.md) | Actividad del procedimiento | Actividad (numeral) del Desarrollo del procedimiento (sección 4). | Model | 94 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
+| [`sgi.process.activity`](diccionario/sgi.process.activity.md) | Actividad del procedimiento | Actividad (numeral) del Desarrollo del procedimiento (sección 4). | Model | 95 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.flow`](diccionario/sgi.process.flow.md) | Flujo entre procesos SGI | Flujo entre dos procesos: qué pasa de uno a otro y, si es un documento de Odoo, de qué modelo. | Model | 8 | `addons/quimibond_sgi/models/sgi_process.py` |
 | [`sgi.process.responsibility`](diccionario/sgi.process.responsibility.md) | Responsabilidad de área en el procedimiento | Responsabilidad de un rol/puesto dentro del procedimiento (sección 3). | Model | 6 | `addons/quimibond_sgi/models/sgi_process_procedure.py` |
 | [`sgi.process.stage`](diccionario/sgi.process.stage.md) | Etapa de un proceso SGI | Etapa de un proceso; agrupa sus actividades. | Model | 7 | `addons/quimibond_sgi/models/sgi_deliverable.py` |
@@ -194,7 +195,7 @@ Modelos que definen el núcleo y sus satélites (150) y modelos de otras apps qu
 | [`mrp.weigh.roll.wizard`](diccionario/mrp.weigh.roll.wizard.md) | 0 | `addons/quimibond_sgi_pesaje/models/mrp_weigh_wizard.py` |
 | [`product.product`](diccionario/product.product.md) | 3 | `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
 | [`product.template`](diccionario/product.template.md) | 8 | `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
-| [`project.project`](diccionario/project.project.md) | 89 | `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_improvement.py` |
+| [`project.project`](diccionario/project.project.md) | 93 | `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_improvement.py` |
 | [`project.task`](diccionario/project.task.md) | 11 | `addons/quimibond_sgi/models/sgi_improvement.py`, `addons/quimibond_sgi/models/sgi_links.py` |
 | [`project.task.type`](diccionario/project.task.type.md) | 1 | `addons/quimibond_sgi/models/sgi_improvement.py` |
 | [`purchase.order`](diccionario/purchase.order.md) | 2 | `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_links.py`, `addons/quimibond_sgi/models/sgi_sign_record.py` |
@@ -204,7 +205,7 @@ Modelos que definen el núcleo y sus satélites (150) y modelos de otras apps qu
 | [`quality.check`](diccionario/quality.check.md) | 1 | `addons/quimibond_sgi/models/sgi_calibration.py` |
 | [`quality.point`](diccionario/quality.point.md) | 9 | `addons/quimibond_sgi/models/sgi_control_plan.py` |
 | [`res.company`](diccionario/res.company.md) | 0 | `addons/quimibond_sgi/models/sgi_kpi_account.py` |
-| [`res.config.settings`](diccionario/res.config.settings.md) | 38 | `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py` |
+| [`res.config.settings`](diccionario/res.config.settings.md) | 39 | `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py` |
 | [`res.partner`](diccionario/res.partner.md) | 19 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_integration.py`, `addons/quimibond_sgi/models/sgi_ppap.py`, `addons/quimibond_sgi/models/sgi_supplier_eval.py`, `addons/quimibond_sgi/models/sgi_work_permit.py` |
 | [`res.users`](diccionario/res.users.md) | 2 | `addons/quimibond_sgi/models/sgi_kpi_hr.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py` |
 | [`sale.order`](diccionario/sale.order.md) | 5 | `addons/quimibond_sgi/models/sgi_coa.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_format_map.py`, `addons/quimibond_sgi/models/sgi_kpi_sales.py`, `addons/quimibond_sgi/models/sgi_sale_commitment.py` |
@@ -217,4 +218,4 @@ Modelos que definen el núcleo y sus satélites (150) y modelos de otras apps qu
 | [`survey.survey`](diccionario/survey.survey.md) | 3 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 | [`survey.user_input`](diccionario/survey.user_input.md) | 0 | `addons/quimibond_sgi/models/sgi_competence_grant.py` |
 
-Modelos propios sin docstring de clase: 8 de 150.
+Modelos propios sin docstring de clase: 8 de 151.

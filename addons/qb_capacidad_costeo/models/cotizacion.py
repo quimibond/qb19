@@ -278,6 +278,13 @@ class QbCotizacion(models.Model):
         help='Precios estandarizados por tramo de volumen: descuento fijo '
              'por cada duplicación, nunca debajo del piso a planta llena y '
              'con contribución total que nunca baja.')
+    con_escalera = fields.Boolean(
+        string='Ofrecer precios por volumen al cliente', default=True,
+        help='Si está marcada, el PDF y el correo al cliente llevan la '
+             'escalera de precios por volumen (½×, 1×, 2×, 4×). Si no, el '
+             'cliente recibe UN solo precio para el volumen cotizado. La '
+             'escalera se calcula igual y queda visible aquí y en la hoja '
+             'interna; se puede cambiar antes de imprimir o enviar.')
     comparativa_html = fields.Html(
         string='Comparativa de precios', sanitize=False,
         help='Foto al cotizar: a cuánto se vendía este producto a otros '
@@ -582,6 +589,7 @@ class QbCotizacion(models.Model):
                 # La revisión sigue colgando del pedido que la originó.
                 'sale_order_id': rec.sale_order_id.id,
                 'periodo_id': factores.id if factores else False,
+                'con_escalera': rec.con_escalera,
             }
             nuevas |= Wizard.create(vals)._save_cotizacion()
         return nuevas
