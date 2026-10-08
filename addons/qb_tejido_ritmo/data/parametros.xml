@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="param_ritmo_kg_max_rollo" model="qb.parametro">
+        <field name="key">ritmo_kg_max_rollo</field>
+        <field name="name">Ritmo: peso máximo de un rollo real (kg)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">150</field>
+        <field name="help">Un pesaje de más kilos es una carga en bloque, no un rollo: no mide tiempo.</field>
+    </record>
+    <record id="param_ritmo_usuarios_atrasados" model="qb.parametro">
+        <field name="key">ritmo_usuarios_atrasados</field>
+        <field name="name">Ritmo: usuarios que capturan atrasado (ids)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">129</field>
+        <field name="help">Ids de res.users separados por coma. Sus pesajes no miden tiempo (cargan información después del hecho).</field>
+    </record>
+    <record id="param_ritmo_articulos_excluidos" model="qb.parametro">
+        <field name="key">ritmo_articulos_excluidos</field>
+        <field name="name">Ritmo: artículos que no miden (códigos)</field>
+        <field name="tipo">text</field>
+        <field name="value_text">MUESTRA PILOTO TEJIDO,CALCETÍN,CALCETÍN 2</field>
+        <field name="help">Muestras y pruebas, por referencia interna, separadas por coma.</field>
+    </record>
+    <record id="param_ritmo_prefijos_excluidos" model="qb.parametro">
+        <field name="key">ritmo_prefijos_excluidos</field>
+        <field name="name">Ritmo: prefijos de código excluidos</field>
+        <field name="tipo">text</field>
+        <field name="value_text">ZJ</field>
+        <field name="help">Referencias que empiecen así no miden (pruebas ZJ).</field>
+    </record>
+    <record id="param_ritmo_centros_excluidos" model="qb.parametro">
+        <field name="key">ritmo_centros_excluidos</field>
+        <field name="name">Ritmo: centros de trabajo excluidos</field>
+        <field name="tipo">text</field>
+        <field name="value_text">MAQUILA</field>
+        <field name="help">Nombres de centros de trabajo cuyos pesajes no miden (maquila externa).</field>
+    </record>
+    <record id="param_ritmo_min_minutos" model="qb.parametro">
+        <field name="key">ritmo_min_minutos</field>
+        <field name="name">Ritmo: minutos mínimos entre rollos</field>
+        <field name="tipo">float</field>
+        <field name="value_float">10</field>
+        <field name="help">Menos de esto entre dos rollos = pesados juntos (o captura atrasada si son varios).</field>
+    </record>
+    <record id="param_ritmo_rollos_atrasados" model="qb.parametro">
+        <field name="key">ritmo_rollos_atrasados</field>
+        <field name="name">Ritmo: rollos juntos que son captura atrasada</field>
+        <field name="tipo">float</field>
+        <field name="value_float">3</field>
+        <field name="help">Un grupo de este número o más de rollos de la misma máquina pesados con menos de los minutos mínimos entre sí es captura atrasada y no mide.</field>
+    </record>
+    <record id="param_ritmo_factor_paro" model="qb.parametro">
+        <field name="key">ritmo_factor_paro</field>
+        <field name="name">Ritmo: veces la referencia que hacen un paro</field>
+        <field name="tipo">float</field>
+        <field name="value_float">3</field>
+        <field name="help">Un intervalo mayor a este múltiplo del tiempo de referencia del artículo en la máquina es un paro: la referencia va a corrida y el resto a paro.</field>
+    </record>
+    <record id="param_ritmo_paro_general_h" model="qb.parametro">
+        <field name="key">ritmo_paro_general_h</field>
+        <field name="name">Ritmo: horas sin pesajes que son paro general</field>
+        <field name="tipo">float</field>
+        <field name="value_float">5</field>
+        <field name="help">Si en toda la planta no se pesa un rollo por más de estas horas dentro del calendario, es un paro general (luz, festivo no cargado) y se resta a todas las máquinas.</field>
+    </record>
+    <record id="param_ritmo_min_intervalos_ref" model="qb.parametro">
+        <field name="key">ritmo_min_intervalos_ref</field>
+        <field name="name">Ritmo: intervalos mínimos para la referencia por máquina</field>
+        <field name="tipo">float</field>
+        <field name="value_float">8</field>
+        <field name="help">Con menos intervalos limpios del artículo en la máquina, la referencia es la mediana del artículo en todas las máquinas.</field>
+    </record>
+    <record id="param_ritmo_min_rollos" model="qb.parametro">
+        <field name="key">ritmo_min_rollos</field>
+        <field name="name">Ritmo: rollos mínimos en corrida para publicar un ritmo</field>
+        <field name="tipo">float</field>
+        <field name="value_float">5</field>
+        <field name="help">Un artículo en una máquina con menos rollos en corrida en el periodo queda «sin dato suficiente».</field>
+    </record>
+    <record id="param_ritmo_meses_capacidad" model="qb.parametro">
+        <field name="key">ritmo_meses_capacidad</field>
+        <field name="name">Ritmo: meses de historia para la capacidad medida</field>
+        <field name="tipo">float</field>
+        <field name="value_float">3</field>
+        <field name="help">Meses completos que promedia la capacidad medida del centro (% en corrida y kg/h).</field>
+    </record>
+    <record id="param_ritmo_referencia_cuenta_corrida" model="qb.parametro">
+        <field name="key">ritmo_referencia_cuenta_corrida</field>
+        <field name="name">Ritmo: la referencia de paros y cambios cuenta como corrida (1/0)</field>
+        <field name="tipo">float</field>
+        <field name="value_float">1</field>
+        <field name="help">1 = en un paro o cambio, el tiempo de referencia y los kilos del rollo cuentan como corrida (el rollo sí se tejió). 0 = solo el exceso se clasifica y la referencia no cuenta (modo de la prueba de aceptación).</field>
+    </record>
+</odoo>

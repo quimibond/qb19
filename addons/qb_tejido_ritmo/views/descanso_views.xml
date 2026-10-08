@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_tejido_descanso_list" model="ir.ui.view">
+        <field name="name">qb.tejido.descanso.list</field>
+        <field name="model">qb.tejido.descanso</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="name"/>
+                <field name="vigente_desde"/>
+                <field name="vigente_hasta"/>
+                <field name="dia_desde"/>
+                <field name="hora_desde" widget="float_time"/>
+                <field name="dia_hasta"/>
+                <field name="hora_hasta" widget="float_time"/>
+                <field name="horas_semana"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_qb_tejido_descanso" model="ir.actions.act_window">
+        <field name="name">Descansos de tejido</field>
+        <field name="res_model">qb.tejido.descanso</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Capture el descanso semanal de tejido</p>
+            <p>Con fecha de vigencia: las semanas anteriores se siguen midiendo con su descanso de entonces. Los festivos se toman de los calendarios de las máquinas.</p>
+        </field>
+    </record>
+</odoo>

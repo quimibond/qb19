@@ -1,0 +1,10 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_tejido_descanso_user,qb.tejido.descanso user,model_qb_tejido_descanso,mrp.group_mrp_user,1,0,0,0
+access_qb_tejido_descanso_manager,qb.tejido.descanso manager,model_qb_tejido_descanso,mrp.group_mrp_manager,1,1,1,1
+access_qb_tejido_intervalo_user,qb.tejido.intervalo user,model_qb_tejido_intervalo,mrp.group_mrp_user,1,1,0,0
+access_qb_tejido_intervalo_manager,qb.tejido.intervalo manager,model_qb_tejido_intervalo,mrp.group_mrp_manager,1,1,1,1
+access_qb_tejido_paro_general_user,qb.tejido.paro.general user,model_qb_tejido_paro_general,mrp.group_mrp_user,1,1,0,0
+access_qb_tejido_paro_general_manager,qb.tejido.paro.general manager,model_qb_tejido_paro_general,mrp.group_mrp_manager,1,1,1,1
+access_qb_tejido_ritmo_user,qb.tejido.ritmo user,model_qb_tejido_ritmo,mrp.group_mrp_user,1,0,0,0
+access_qb_tejido_ritmo_manager,qb.tejido.ritmo manager,model_qb_tejido_ritmo,mrp.group_mrp_manager,1,1,1,1
+access_qb_tejido_ritmo_recalcular,qb.tejido.ritmo.recalcular,model_qb_tejido_ritmo_recalcular,mrp.group_mrp_manager,1,1,1,1
