@@ -123,6 +123,7 @@ class TestFlujo(CotizadorCase):
         self.assertEqual(cot.sale_order_id, order)
 
     def test_08_borradores_viejos_se_archivan(self):
+        self.env['ir.config_parameter'].sudo().set_param(PARAM_ARCHIVAR_DIAS, '30')  # 1.1.0: vacío = apagado
         cot = self._cot()
         self.env.cr.execute('UPDATE qb_cotizador_cotizacion SET write_date = %s WHERE id = %s',
                             (fields.Datetime.now() - timedelta(days=40), cot.id))
