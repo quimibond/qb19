@@ -54,7 +54,21 @@ class TestDevProcess(TransactionCase):
                       [{'role': 'ejecuta', 'job_id': cls.job_product.id},
                        {'role': 'escala', 'job_id': cls.job_director.id, 'after_days': 5}])
 
+    def _make_procedure_vigente(self):
+        """Como producción: el procedimiento de C1 está vigente, así que ninguna actividad nueva
+        puede quedar sin medición completa ni sin su único ejecutor (57.123.1)."""
+        Doc = self.env['documents.document']
+        doc = Doc.search([('sgi_process_id', '=', self.process.id), ('sgi_doc_type', '=', 'procedimiento')], limit=1)
+        if not doc:
+            doc = Doc.create({'name': 'Procedimiento C1 prueba', 'type': 'binary', 'sgi_is_controlled': True,
+                              'sgi_doc_type': 'procedimiento', 'sgi_code': 'P-A98',
+                              'sgi_process_id': self.process.id, 'sgi_state': 'borrador'})
+        if doc.sgi_state != 'vigente':
+            doc.write({'sgi_state': 'vigente'})
+        self.assertTrue(self.process._sgi_measure_strict())
+
     def test_01_split_c1_04_without_renumbering(self):
+        self._make_procedure_vigente()
         before = self.Activity.search_count([('process_id', '=', self.process.id)])
         new = self.Activity._sgi_dev_split_c1_04()
         self.assertEqual(new.number, 'C1.04b')

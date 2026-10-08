@@ -81,7 +81,6 @@ class SgiProcessActivityDev(models.Model):
     def _sgi_dev_split_c1_04(self):
         """Crea C1.04b (ruta y centros de trabajo, Diseño de Procesos) a partir de C1.04 y recorta
         de C1.04 lo que se va. Idempotente: si C1.04b ya existe no hace nada. Devuelve C1.04b."""
-        Role = self.env['sgi.activity.role'].sudo()
         existing = self._sgi_dev_c1_activity('C1.04b')
         if existing:
             return existing
@@ -89,25 +88,34 @@ class SgiProcessActivityDev(models.Model):
         if not base:
             return self.browse()
         design_product, design_process = (self._sgi_dev_jobs_named([n])[:1] for n in DESIGN_JOB_NAMES)
+        Project = self.env['project.project']
+        # 57.123.1: el entregable existe antes que la actividad; un procedimiento vigente no admite
+        # una actividad «por su entregable» sin entregable con modelo (producción, 2026-10-08).
+        route = Project._sgi_dev_ensure_c1_deliverable('C1-RUTA', base.company_id)
+        # Roles del sub-paso: ejecuta Diseño de Procesos, participa Diseño de Producto, escala como C1.04.
+        # Van en el alta para que se validen juntos (exactamente un ejecutor).
+        role_vals = []
+        if design_process:
+            role_vals.append({'role': 'ejecuta', 'target_type': 'job', 'job_id': design_process.id})
+        if design_product:
+            role_vals.append({'role': 'participa', 'target_type': 'job', 'job_id': design_product.id})
+        for esc in base.role_ids.filtered(lambda r: r.role == 'escala'):
+            role_vals.append({'role': 'escala', 'target_type': esc.target_type, 'job_id': esc.job_id.id,
+                              'family_id': esc.family_id.id, 'relative_role': esc.relative_role,
+                              'after_days': esc.after_days})
         # Alta explícita (no ``copy``: copiaría ejecuciones, ligas y roles).
         vals = dict(C1_04B_VALS, process_id=base.process_id.id, company_id=base.company_id.id,
+                    role_ids=[(0, 0, r) for r in role_vals],
                     stage_id=base.stage_id.id, block=base.block, value_class=base.value_class,
-                    sequence=base.sequence + 5, number_label='C1.04b', measure_method='entregable',
+                    sequence=base.sequence + 5, number_label='C1.04b',
+                    measure_method='entregable' if route else 'manual',
+                    output_deliverable_ids=[(6, 0, route.ids)], measure_deliverable_id=route.id or False,
                     automation_level_current=base.automation_level_current,
                     automation_level_target=base.automation_level_target, automation_method=base.automation_method,
                     instruction_id=base.instruction_id.id, related_procedure_id=base.related_procedure_id.id,
                     odoo_menu_id=base.odoo_menu_id.id, odoo_ref=base.odoo_ref,
                     format_document_ids=[(6, 0, base.format_document_ids.ids)])
         new = self.sudo().create(vals)
-        # Roles del sub-paso: ejecuta Diseño de Procesos, participa Diseño de Producto, escala como C1.04.
-        if design_process:
-            Role.create({'activity_id': new.id, 'role': 'ejecuta', 'target_type': 'job', 'job_id': design_process.id})
-        if design_product:
-            Role.create({'activity_id': new.id, 'role': 'participa', 'target_type': 'job', 'job_id': design_product.id})
-        for esc in base.role_ids.filtered(lambda r: r.role == 'escala'):
-            Role.create({'activity_id': new.id, 'role': 'escala', 'target_type': esc.target_type,
-                         'job_id': esc.job_id.id, 'family_id': esc.family_id.id, 'relative_role': esc.relative_role,
-                         'after_days': esc.after_days})
         # C1.04b recibe la lista de materiales de C1.04 (plazo sin definir: vacío).
         bom = base.output_deliverable_ids[:1]
         if bom:
@@ -120,11 +128,10 @@ class SgiProcessActivityDev(models.Model):
                 vals[field_name] = text.replace(old, replacement)
         if vals:
             base.sudo().write(vals)
-        # El entregable C1-RUTA (medición) lo crea y liga el catálogo de medición de C1.
-        report = self.env['project.project']._sgi_dev_apply_c1_measures()
+        # El catálogo de medición de C1 deja C1-RUTA con su filtro definitivo (idempotente).
+        report = Project._sgi_dev_apply_c1_measures()
         _logger.info("SGI C1.04b: entregables de medición %s", report)
         # Costear (C1.05) recibe también la ruta, con el mismo plazo que la lista de materiales.
-        route = new.output_deliverable_ids.filtered(lambda d: d.code == 'C1-RUTA')[:1]
         nxt = self._sgi_dev_c1_activity('C1.05')
         if route and nxt and route not in nxt.input_ids.deliverable_id:
             days = nxt.input_ids.filtered(lambda i: i.deliverable_id == bom)[:1].max_days
