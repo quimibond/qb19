@@ -1,5 +1,36 @@
 # Changelog — qb_costeo_sgi
 
+## 19.0.1.3.0 — 2026-10-08
+
+Jose 2026-10-08, 5.6: precio en tarifa automático al ganar la cotización y
+C1.17 medida con eso.
+
+- **Artículo del desarrollo en la cotización**: al «Generar artículos» el
+  acabado entra a las cotizaciones vivas del proyecto que no tenían artículo
+  (la cotización se hace antes de que exista); una ganada con el cliente
+  aprobando pone su precio en la tarifa ahí mismo. `_producto_para_tarifa`
+  toma el artículo del proyecto si la cotización no lo tiene.
+- **La aprobación de la muestra registrada en el envío (SGI) es la
+  aprobación del cliente en la cotización**: medio, fecha y evidencia se
+  copian a las cotizaciones vivas del proyecto. Ganada + aprobación ⇒ precio
+  en la tarifa del cliente, sin captura a mano (brief §6.8 y C1.17).
+- **C1.17 se mide con la tarifa**: el entregable C1-ARTICULO pasa de
+  «producto vendible por categoría» a la cotización del proyecto con precio
+  en tarifa (`tarifa_fecha` / `tarifa_user_id`); completo cuando el artículo
+  está liberado con lista de materiales.
+- **Al liberar sin precio en tarifa** el proyecto lo dice en el chatter con
+  el motivo (sin cotización ganada, sin aprobación del cliente, sin artículo).
+- **Pestaña «Cotización» del desarrollo** (Administración de Ventas 2026-10-08): las
+  cotizaciones del proyecto con estado, precio, revisión cotizada y estado de
+  la aprobación del puesto 183, y «Nueva cotización» que nace con lo que el
+  proyecto ya tiene (va en el `div` «sgi_dev_quotes» del SGI 57.136.0).
+- **Documentos del desarrollo** (SGI 57.137.0): la cotización ganada (o la
+  presentada) más reciente va en la «Aprobación para iniciar el proyecto»
+  (folio, precio, moneda, unidad, vigencia, revisión cotizada) y el
+  expediente 8.3 / APQP suma dos renglones: cotización aprobada y precio en
+  la tarifa del cliente (C1.17).
+- **Migración** `19.0.1.3.0`: vuelve a apuntar los entregables (C1-ARTICULO).
+
 ## 19.0.1.2.0 — 2026-10-08
 
 Jose 2026-10-08, puntos 1 y 3.

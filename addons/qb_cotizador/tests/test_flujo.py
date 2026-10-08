@@ -110,6 +110,8 @@ class TestFlujo(CotizadorCase):
         self.assertTrue(item.pricelist_id.name.startswith('TARIFA '))
         self.assertEqual(self.partner.property_product_pricelist, item.pricelist_id)
         self.assertEqual(item.date_end.date(), cot.validez_hasta)
+        self.assertTrue(cot.tarifa_fecha, '1.2.0: queda cuándo se puso el precio (medición de C1.17)')
+        self.assertEqual(cot.tarifa_user_id, self.vendedor, 'Quien ganó la cotización (su usuario) puso el precio')
         with self.assertRaises(UserError, msg='La aprobación del cliente lleva medio y fecha'):
             self._presentada().write({'cliente_aprobo': True})
 

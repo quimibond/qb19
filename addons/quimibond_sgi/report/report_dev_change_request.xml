@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.137.0 (C1, Jessica punto 9): solicitud de modificación del proyecto (sin clave de formato del
+         SGI: el formato 3966 «Modificación de proyectos» quedó sustituido por este registro). -->
+    <record id="action_report_dev_change_request" model="ir.actions.report">
+        <field name="name">Solicitud de modificación del proyecto</field>
+        <field name="model">sgi.dev.change.request</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_change_request_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_change_request_document</field>
+        <field name="print_report_name">'Solicitud de modificación - %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="model_sgi_dev_change_request"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dev_change_request_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
+                    <div class="page">
+                        <h2 class="text-center">Solicitud de modificación del proyecto</h2>
+                        <h4 class="text-center text-muted"><span t-out="doc.name"/></h4>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:22%"><strong>Desarrollo</strong></td><td><span t-out="doc.project_id.sgi_ft_folio or doc.project_id.name"/></td>
+                                <td style="width:18%"><strong>Fecha</strong></td><td><span t-field="doc.date"/></td></tr>
+                            <tr><td><strong>Cliente</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td>
+                                <td><strong>Revisión que abre</strong></td><td><span t-out="doc.revision or '—'"/></td></tr>
+                            <tr><td><strong>Motivo</strong></td><td><span t-out="dict(doc._fields['origin'].selection).get(doc.origin)"/></td>
+                                <td><strong>Fases afectadas</strong></td><td><span t-out="', '.join(doc.stage_ids.mapped('name')) or '—'"/></td></tr>
+                        </table>
+                        <h5>Qué se modifica</h5>
+                        <p style="white-space:pre-wrap; font-size:11px;"><span t-out="doc.description or '—'"/></p>
+                        <h5>Por qué no se obtuvo el resultado</h5>
+                        <p style="white-space:pre-wrap; font-size:11px;"><span t-out="doc.cause or '—'"/></p>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <tr t-foreach="enumerate(doc._whys())" t-as="w"><td style="width:15%"><strong>¿Por qué? <span t-out="w[0] + 1"/></strong></td><td><span t-out="w[1]"/></td></tr>
+                            <tr><td><strong>Causa raíz</strong></td><td><span t-out="doc.root_cause or '—'"/></td></tr>
+                        </table>
+                        <h5>Solución</h5>
+                        <p style="white-space:pre-wrap; font-size:11px;"><span t-out="doc.solution or '—'"/></p>
+                        <table class="table table-sm mt-5" style="font-size:10px;">
+                            <tr>
+                                <td class="text-center" style="border-top:1px solid #000; width:50%;">Elaboró · Diseño de Producto<br/><span t-out="doc.requested_by_id.name or ''"/><br/><span t-field="doc.date"/></td>
+                                <td class="text-center" style="border-top:1px solid #000; width:50%;">Aprobó · Dirección de Operaciones<br/><span t-out="doc.approved_by_id.name or ''"/><br/><span t-field="doc.approved_at"/></td>
+                            </tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>
