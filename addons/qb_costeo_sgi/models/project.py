@@ -86,4 +86,69 @@ class ProjectProjectCotizador(models.Model):
             if detenidos:
                 nota = detenidos[0].qb_costo_bloqueo_nota or 'la cotización revisada espera aprobación.'
                 raise UserError('%s está detenido por costo: %s' % (detenidos[0].display_name, nota))
-        return super().write(vals)
+        res = super().write(vals)
+        if 'stage_id' in vals and not self.env.context.get('sgi_dev_migration'):
+            self.filtered(lambda p: p.sgi_is_ft and p.sgi_dev_stage_key == 'liberado')._qb_sgi_avisar_sin_tarifa()
+        return res
+
+    # ------------------------------------------------------------------
+    # 1.3.0 (Jose 2026-10-08, 5.6): precio en tarifa automático al ganar
+    # ------------------------------------------------------------------
+    def action_sgi_dev_generate_products(self):
+        res = super().action_sgi_dev_generate_products()
+        self._qb_sgi_ligar_articulo()
+        return res
+
+    def _qb_sgi_ligar_articulo(self):
+        """El artículo acabado que generó el proyecto entra a sus cotizaciones vivas que no lo
+        tenían; si alguna ya estaba ganada con el cliente aprobando, su precio va a la tarifa."""
+        for project in self.filtered(lambda p: p.sgi_is_ft and p.sgi_dev_product_id):
+            cots = project.qb_cotizacion_ids._qb_sgi_vivas_para_tarifa().filtered(lambda c: not c.product_id)
+            if not cots:
+                continue
+            cots.write({'product_id': project.sgi_dev_product_id.id})
+            for cot in cots:
+                cot.message_post(body='Artículo %s ligado desde el desarrollo %s.' % (
+                    project.sgi_dev_product_id.display_name, project.sgi_ft_folio or project.name))
+            cots._sincronizar_tarifa()
+        return True
+
+    def _qb_sgi_cliente_aprobo(self, medium, date, contact=None, ref=None, evidence=None, filename=None):
+        """La aprobación de la muestra registrada en el envío (SGI) es la aprobación del cliente de
+        la cotización: se copia a las cotizaciones vivas del proyecto que no la tenían. Si alguna ya
+        está ganada, el precio va a la tarifa (qb_cotizador); si no, irá al ganarla."""
+        for project in self.filtered('sgi_is_ft'):
+            cots = project.qb_cotizacion_ids._qb_sgi_vivas_para_tarifa().filtered(lambda c: not c.cliente_aprobo)
+            if not cots:
+                continue
+            if not (medium and date):
+                project.message_post(body='La aprobación del cliente no se copió a la cotización: falta medio o fecha.')
+                continue
+            vals = {'cliente_aprobo': True, 'cliente_medio': medium, 'cliente_fecha': date}
+            if evidence:
+                vals.update({'cliente_evidencia': evidence, 'cliente_evidencia_nombre': filename or 'evidencia'})
+            cots.write(vals)
+            for cot in cots:
+                cot.message_post(body='El cliente aprobó la muestra del desarrollo %s (%s, %s%s%s).' % (
+                    project.sgi_ft_folio or project.name, medium or '—', date or '—',
+                    (', %s' % contact.name) if contact else '', (', ref. %s' % ref) if ref else ''))
+        return True
+
+    def _qb_sgi_avisar_sin_tarifa(self):
+        """Al liberar: si ninguna cotización ganada del desarrollo puso su precio en la tarifa,
+        queda dicho en el chatter (C1.17 no cierra sola)."""
+        for project in self:
+            cots = project.qb_cotizacion_ids
+            if cots.filtered('pricelist_item_id'):
+                continue
+            ganadas = cots.filtered(lambda c: c.state == 'ganada')
+            if ganadas:
+                motivo = ('falta la aprobación del cliente en la cotización' if not ganadas.filtered('cliente_aprobo')
+                          else 'la cotización ganada no tiene artículo')
+            elif cots.filtered(lambda c: c.state in ('presentada', 'vencida')):
+                motivo = 'ninguna cotización se ha marcado ganada'
+            else:
+                motivo = 'el desarrollo no tiene cotización'
+            project.message_post(body='Liberado sin precio en la tarifa del cliente: %s. C1.17 queda abierta hasta '
+                                      'que una cotización ganada ponga su precio en la tarifa.' % motivo)
+        return True

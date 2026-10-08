@@ -19,7 +19,7 @@ sin tocarlas.
     'author': 'Quimibond',
     'website': 'https://www.quimibond.com',
     'category': 'Sales',
-    'version': '19.0.1.1.1',
+    'version': '19.0.1.2.0',
     'license': 'LGPL-3',
     'application': False,
     'depends': ['qb_costeo', 'sale_management', 'hr', 'mail'],

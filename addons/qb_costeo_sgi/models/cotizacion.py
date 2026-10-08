@@ -36,6 +36,17 @@ C1_COT_DELIVERABLES = {
         'complete_domain': "[('validez_hasta', '!=', False)]",
         'complete_criteria': "Presentada al cliente con precio, vigencia, mínimo, tiempo de entrega y rollo.",
     },
+    # 1.3.0 (Jose 2026-10-08, 5.6): C1.17 se mide con el precio de la cotización ganada en la
+    # tarifa del cliente (antes: producto vendible por categoría), completo cuando el artículo ya
+    # está liberado con lista de materiales.
+    'C1-ARTICULO': {
+        'measure_domain': "[('project_id', '!=', False), ('pricelist_item_id', '!=', False)]",
+        'measure_date_field': 'tarifa_fecha', 'measure_user_field': 'tarifa_user_id',
+        'complete_domain': "[('product_id.product_tmpl_id.sgi_dev_state', '=', 'liberado'), "
+                           "('product_id.product_tmpl_id.bom_ids', '!=', False)]",
+        'complete_criteria': "Precio de la cotización ganada en la tarifa del cliente; artículo liberado con "
+                             "lista de materiales.",
+    },
 }
 # Modelo del cotizador anterior: las fichas que aún se medían con él pasan al entregable.
 LEGACY_MODEL = 'qb.cotizacion'
@@ -110,6 +121,22 @@ class QbCotizadorCotizacionSgi(models.Model):
         for rec in self.filtered('project_id'):
             rec.project_revision = rec.project_id.sgi_dev_revision
         return res
+
+    # ------------------------------------------------------------------
+    # 1.3.0 (Jose 2026-10-08, 5.6): precio en tarifa automático al ganar
+    # ------------------------------------------------------------------
+    def _producto_para_tarifa(self):
+        """La cotización de un desarrollo se hace antes de que exista el artículo: al ganar, el
+        precio va al artículo acabado que generó el proyecto."""
+        product = super()._producto_para_tarifa()
+        if not product and self.project_id.sgi_dev_product_id:
+            product = self.project_id.sgi_dev_product_id
+        return product
+
+    def _qb_sgi_vivas_para_tarifa(self):
+        """Cotizaciones del proyecto que pueden llevar su precio a la tarifa (no perdidas ni
+        reemplazadas)."""
+        return self.filtered(lambda c: c.state in ('presentada', 'vencida', 'ganada'))
 
     # ------------------------------------------------------------------
     # 1.1.0 (Jose 2026-10-08, punto 2): el candado es una aprobación de Odoo

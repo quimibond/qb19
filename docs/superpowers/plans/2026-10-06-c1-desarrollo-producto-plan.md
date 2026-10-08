@@ -324,3 +324,26 @@ venció el día», sin confirmar.
   `qb_costeo_sgi`; hook posible en `_sgi_dev_pending_step`), pilotaje sin
   sub-pasos.
 
+## 17. Bloque 5.6 — Precio en tarifa automático al ganar (2026-10-08)
+
+Jose: «precio en tarifa automático al ganar la cotización, con C1.17
+midiendo eso». Lo que ya existía en `qb_cotizador` (ganada + cliente aprobó
+⇒ renglón en la tarifa propia del cliente) dependía de dos capturas a mano:
+la aprobación del cliente en la cotización y el artículo. Las dos llegan
+solas ahora:
+
+- **Artículo**: al «Generar artículos» el acabado entra a las cotizaciones
+  vivas del proyecto sin artículo (`_qb_sgi_ligar_articulo`); el gancho
+  `_producto_para_tarifa` toma el del proyecto si la cotización no lo tiene.
+- **Aprobación del cliente**: la respuesta «aprueba» del envío de muestra se
+  copia a las cotizaciones vivas (medio, fecha, evidencia). Catálogo de
+  medios igualado (se agrega «Dirección»).
+- **Medición de C1.17**: entregable C1-ARTICULO sobre la cotización con
+  `pricelist_item_id`, fecha `tarifa_fecha`, usuario `tarifa_user_id`;
+  completo con artículo liberado y lista de materiales. Antes se medía con
+  «producto vendible por categoría» (cualquier producto de la empresa).
+- **Al liberar sin tarifa** el proyecto lo dice en el chatter con el motivo.
+- Datos por MCP pendientes: la ficha C1.17 (580) dice «poner el precio de la
+  cotización aceptada en la tarifa del cliente» como paso a mano; con 1.3.0
+  es automático (ajustar texto cuando Jose lo pida).
+
