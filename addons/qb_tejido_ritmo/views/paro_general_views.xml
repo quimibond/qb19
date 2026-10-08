@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_tejido_paro_general_list" model="ir.ui.view">
+        <field name="name">qb.tejido.paro.general.list</field>
+        <field name="model">qb.tejido.paro.general</field>
+        <field name="arch" type="xml">
+            <list create="false" editable="bottom" decoration-muted="not es_paro">
+                <field name="inicio_local" readonly="1"/>
+                <field name="fin_local" readonly="1"/>
+                <field name="horas" readonly="1" sum="Horas"/>
+                <field name="es_paro"/>
+                <field name="motivo"/>
+                <field name="calculado_el" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_qb_tejido_paro_general" model="ir.actions.act_window">
+        <field name="name">Paros generales de planta</field>
+        <field name="res_model">qb.tejido.paro.general</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Sin paros generales</p>
+            <p>Huecos de más de las horas del parámetro sin un solo pesaje en toda la planta. Si alguno no fue paro real, desmárquelo y recalcule.</p>
+        </field>
+    </record>
+</odoo>
