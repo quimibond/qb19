@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ventas → Cotizaciones de costo (spec §6). -->
+    <menuitem id="menu_qb_cotizador_root" name="Cotizaciones de costo" parent="sale.sale_menu_root" sequence="16"/>
+    <menuitem id="menu_qb_cotizador_cotizaciones" name="Cotizaciones" parent="menu_qb_cotizador_root" action="action_qb_cotizador_cotizacion" sequence="10"/>
+    <menuitem id="menu_qb_cotizador_motivos" name="Motivos de regreso y pérdida" parent="menu_qb_cotizador_root" action="action_qb_cotizador_motivo" sequence="90" groups="sales_team.group_sale_manager"/>
+</odoo>

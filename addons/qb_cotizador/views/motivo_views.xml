@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_cotizador_motivo_list" model="ir.ui.view">
+        <field name="name">qb.cotizador.motivo.list</field>
+        <field name="model">qb.cotizador.motivo</field>
+        <field name="arch" type="xml">
+            <list editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="tipo"/>
+                <field name="name"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+    <record id="action_qb_cotizador_motivo" model="ir.actions.act_window">
+        <field name="name">Motivos de regreso y pérdida</field>
+        <field name="res_model">qb.cotizador.motivo</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+</odoo>

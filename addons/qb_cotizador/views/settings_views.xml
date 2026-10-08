@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_qb_cotizador" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.qb_cotizador</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='sale_management']" position="inside">
+                <block title="Cotizador de costo" name="qb_cotizador">
+                    <setting string="Puesto que aprueba" help="Solo este puesto (o su suplente) pasa una cotización de «Por aprobar» a «Presentada».">
+                        <field name="qb_cotizador_aprobador_job_id"/>
+                    </setting>
+                    <setting string="Suplente para aprobar" help="Vacío: no está definido quién suple (brief C1).">
+                        <field name="qb_cotizador_suplente_job_id"/>
+                    </setting>
+                    <setting string="Puesto de Ventas que da seguimiento" help="Recibe la actividad de seguimiento y la de decidir al vencer.">
+                        <field name="qb_cotizador_ventas_job_id"/>
+                    </setting>
+                    <setting string="Margen neto mínimo (%)" help="Vacío o 0: sin aviso.">
+                        <field name="qb_cotizador_margen_minimo_pct"/>
+                    </setting>
+                    <setting string="Días de validez" help="«Válida hasta» = presentación + estos días.">
+                        <field name="qb_cotizador_validez_dias"/>
+                    </setting>
+                    <setting string="Días hábiles para el seguimiento">
+                        <field name="qb_cotizador_seguimiento_dias_habiles"/>
+                    </setting>
+                    <setting string="Días para archivar borradores sin movimiento">
+                        <field name="qb_cotizador_borrador_archivar_dias"/>
+                    </setting>
+                    <setting string="Descuento por duplicar volumen (%)" help="Vacío o 0: sin escalera de volumen.">
+                        <field name="qb_cotizador_escalera_descuento_pct"/>
+                    </setting>
+                    <setting string="Tolerancia del recálculo por revisión (%)" help="Cambio del piso lleno menor a este % cuenta como «no cambió».">
+                        <field name="qb_cotizador_revision_tolerancia_pct"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

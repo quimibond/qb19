@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="edit_project_qb_cotizador" model="ir.ui.view">
+        <field name="name">project.project.form.qb_cotizador</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_qb_cotizaciones" type="object" class="oe_stat_button" icon="fa-calculator"
+                        invisible="not sgi_is_ft or is_template">
+                    <div class="o_stat_info">
+                        <span class="o_stat_value"><field name="qb_cotizacion_count"/></span>
+                        <span class="o_stat_text">Cotizaciones</span>
+                    </div>
+                </button>
+            </xpath>
+            <xpath expr="//sheet" position="before">
+                <div class="alert alert-warning" role="alert" invisible="not qb_costo_bloqueado">
+                    <strong>Detenido por costo.</strong> <field name="qb_costo_bloqueo_nota" readonly="1" class="oe_inline"/>
+                    <field name="qb_costo_bloqueado" invisible="1"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>
