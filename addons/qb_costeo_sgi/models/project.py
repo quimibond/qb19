@@ -34,6 +34,16 @@ class ProjectProjectCotizador(models.Model):
                              'search_default_vivas': 1}
         return action
 
+    def action_qb_cotizacion_nueva(self):
+        """1.3.0: cotización nueva desde la pestaña «Cotización» del desarrollo; nace con lo que el
+        proyecto ya tiene (cliente, artículo o descripción, gramaje, ancho, galga, volumen, precio)."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window', 'name': 'Cotización del desarrollo',
+            'res_model': 'qb.cotizador.cotizacion', 'view_mode': 'form', 'target': 'current',
+            'context': {'default_project_id': self.id, 'default_partner_id': self.partner_id.id},
+        }
+
     def _qb_cotizaciones_vivas(self):
         return self.qb_cotizacion_ids.filtered(lambda c: c.state in ('borrador', 'por_aprobar', 'presentada'))
 

@@ -13,6 +13,42 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.136.0 — 2026-10-08
+
+Jessica 2026-10-08 (revisión de la ficha 57.135): las pestañas del desarrollo
+siguen el orden del proceso C1, una por etapa, y la firma de Dirección va
+después de la aprobación del cliente.
+
+- **Cambiado** pestañas de la ficha del desarrollo, en el orden en que se
+  trabaja: **Solicitud del cliente** (lo comercial, tipo, producto pedido,
+  origen y contacto, uso, especificación, muestra física y la tabla con lo
+  que pide el cliente; «Proponer características del tipo») · **Análisis y
+  factibilidad** (medición en la muestra, pruebas, parecidos, resultado,
+  línea, checklist, revisión de Ventas) · **Cotización** (código del artículo,
+  «Generar artículos», artículos y, con `qb_costeo_sgi`, las cotizaciones y
+  «Nueva cotización») · **Aprobación del cliente** · **Solicitud de
+  desarrollo** (control interno, muestra en m y kg, volumen, precio, normas,
+  empaque, firmas, «Imprimir solicitud», materia prima) · **Muestra**
+  (órdenes de muestra, lecturas de la corrida, promedio, resultado, dictamen,
+  «En certificado», envíos) · **Respuesta del cliente** (respuestas con su
+  evidencia, aprobado por el cliente, en especificación, bitácora de
+  revisiones) · **Pilotaje y liberación** (pilotajes, fichas, especificaciones,
+  certificados, diagrama de flujo, artículos) · **Tiempos**. Desaparecen como
+  pestañas «Comercial», «Producto y documentos» y «Revisiones»: su contenido
+  se reparte. Las pestañas de etapas pasadas quedan visibles para consulta.
+- **Cambiado** la tabla de características es una sola (`sgi_dev_line_ids`)
+  y cada pestaña la muestra con las columnas de su momento (cliente → muestra
+  → control interno → corrida → aprobación del cliente); Odoo 19 funde las
+  columnas de todas las apariciones en el mismo registro. Los renglones se
+  agregan y ordenan solo en «Solicitud del cliente».
+- **Cambiado** «Aprobar solicitud de desarrollo» (C1.07) aparece solo con la
+  aprobación del cliente registrada y folio FT, y no en Liberado ni Cerrado:
+  Selena llena la solicitud después de que el cliente aprueba y Dirección de
+  Operaciones la firma después. La corrida de muestra sigue exigiendo la
+  firma.
+- Sin campos ni datos nuevos; sin migración. Las listas de órdenes, envíos,
+  pilotajes, fichas, especificaciones y certificados son de solo lectura.
+
 ## 19.0.57.135.0 — 2026-10-08
 
 Jose 2026-10-08, 5.5: escalamiento por tiempo de los pasos del desarrollo (brief §6.13).

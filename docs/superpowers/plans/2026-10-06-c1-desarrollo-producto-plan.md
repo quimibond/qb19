@@ -347,3 +347,20 @@ solas ahora:
   cotización aceptada en la tarifa del cliente» como paso a mano; con 1.3.0
   es automático (ajustar texto cuando Jose lo pida).
 
+## 18. Revisión de Jessica — pestañas por etapa (2026-10-08, SGI 57.136.0)
+
+Una pestaña por etapa de C1 en el orden en que se trabaja (Solicitud del
+cliente · Análisis y factibilidad · Cotización · Aprobación del cliente ·
+Solicitud de desarrollo · Muestra · Respuesta del cliente · Pilotaje y
+liberación · Tiempos). La tabla de características va en cada pestaña con las
+columnas de su momento: se verificó en el código de Odoo 19
+(`web/static/src/model/relational_model/utils.js`, `patchActiveFields`) que
+el mismo x2many puede aparecer varias veces en un formulario y el cliente
+funde sus columnas; por eso no hizo falta la pestaña «Características»
+aparte. El código del artículo y «Generar artículos» pasan a «Cotización»
+(se crean antes de cotizar); las cotizaciones las agrega `qb_costeo_sgi` en
+el `div` «sgi_dev_quotes». «Aprobar solicitud de desarrollo» solo con la
+aprobación del cliente registrada y folio FT. El paso pendiente del
+escalamiento (5.5) no cambió: en «Muestra» sigue C1.07 → C1.04 → …; si Jose
+quiere que C1.04 se exija antes de cotizar, se ajusta el resolutor.
+
