@@ -591,7 +591,9 @@ class QbCotizacion(models.Model):
                 'periodo_id': factores.id if factores else False,
                 'con_escalera': rec.con_escalera,
             }
-            nuevas |= Wizard.create(vals)._save_cotizacion()
+            # 1.70.0: la revisión de una cotización vieja sigue en este modelo (histórico);
+            # lo nuevo se cotiza en qb_cotizador.
+            nuevas |= Wizard.with_context(qb_guardar_legado=True).create(vals)._save_cotizacion()
         return nuevas
 
     def action_recotizar_ahora(self):
