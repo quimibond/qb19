@@ -84,6 +84,8 @@ from . import sgi_dev_start
 from . import sgi_dev_sample
 # 57.126.0 (C1, bloque G): ruta y fichas de proceso de tintorería y acabado.
 from . import sgi_dev_process_sheet
+# 57.128.0 (Jose 3.1): aprobación del cliente para iniciar.
+from . import sgi_dev_customer
 from . import sgi_machine_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign

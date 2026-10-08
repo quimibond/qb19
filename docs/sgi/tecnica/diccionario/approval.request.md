@@ -20,7 +20,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibo
 | `sgi_change_kind` | Selection | Tipo de cambio | Alta de un documento nuevo, modificación de uno existente o baja. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:38` |
 | `sgi_changes` | Text | Descripción de cambios |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:61` |
 | `sgi_current_revision` | Integer | Revisión vigente | Revisión vigente del documento antes del cambio. |  |  | related `sgi_document_id.sgi_revision`, sin guardar |  | `addons/quimibond_sgi/models/sgi_doc_change.py:49` |
-| `sgi_dev_project_id` | Many2one | Proyecto de desarrollo | Desarrollo cuya muestra pide esta materia prima (C1.08). |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:333` |
+| `sgi_dev_project_id` | Many2one | Proyecto de desarrollo | Desarrollo cuya muestra pide esta materia prima (C1.08). |  | `project.project` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:326` |
 | `sgi_document_id` | Many2one | Documento afectado | Documento controlado que se modifica o se da de baja. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:36` |
 | `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) que pide esta compra (C1.08). |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:156` |
 | `sgi_has_subjects` | Boolean |  |  |  |  | compute `_compute_sgi_has_subjects`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_subject.py:47` |
@@ -51,13 +51,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibo
 | `sgi_subject_id` | Many2one | Asunto | Qué se pide. Define quién lo aprueba. |  | `sgi.approval.subject` |  |  | `addons/quimibond_sgi/models/sgi_approval_subject.py:43` |
 | `sgi_what_changes` | Selection | ¿Qué se modifica? | Si cambia solo el formato (presentación) o el contenido del documento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change.py:44` |
 
-## Métodos públicos (8)
+## Métodos públicos (10)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_approve` | Candados del MIID (Q16, Q17). Con el botón: error claro. Desde Sign (``sgi_sign_sync``; el cron diario no tiene savepoint por solicitud): no se levanta nada, la solicitud del MIID se salta, se anota … |
+| `action_cancel` | — |
 | `action_confirm` | — |
 | `action_create_purchase_orders` | approvals_purchase crea las órdenes desde las líneas; aquí se les deja escrita la requisición de la que salieron. |
+| `action_refuse` | — |
 | `action_sgi_create_document` | Alta documental aprobada: abre el formulario del documento nuevo con el contexto que lo liga de vuelta a esta solicitud (trazabilidad del alta — antes el documento se creaba suelto en la app Document… |
 | `action_sgi_mp_complete` | «Completar antes de aprobar» (Jefe MAST): abre la propuesta con todos los campos y lo que le falta. |
 | `action_sgi_send_to_sign` | «Reenviar a firma»: la firma anterior se canceló o venció. |

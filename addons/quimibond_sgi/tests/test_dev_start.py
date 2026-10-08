@@ -52,9 +52,6 @@ class TestDevStart(TransactionCase):
     def test_01_sin_aprobacion_no_hay_corrida(self):
         dev = self._dev()
         self.tela.product_tmpl_id.write({'sgi_dev_project_id': dev.id})
-        muestra = self.env.ref('quimibond_sgi.sgi_dev_stage_muestra')
-        with self.assertRaises(UserError, msg="Sin aprobación el proyecto no pasa a Muestra"):
-            dev.write({'stage_id': muestra.id})
         mo = self.env['mrp.production'].create({'product_id': self.tela.id, 'product_qty': 100,
                                                 'product_uom_id': self.tela.uom_id.id})
         with self.assertRaises(UserError, msg="Sin aprobación no se confirma la orden de muestra"):
@@ -63,12 +60,6 @@ class TestDevStart(TransactionCase):
         self.assertTrue(dev.sgi_dev_approved_by_id)
         mo.action_confirm()
         self.assertEqual(mo.state, 'confirmed')
-        dev.write({'stage_id': muestra.id})
-        self.assertEqual(dev.sgi_dev_stage_key, 'muestra')
-        cerrado = self.env.ref('quimibond_sgi.sgi_dev_stage_cerrado_sin_producto')
-        otro = self._dev()
-        otro.write({'stage_id': cerrado.id})
-        self.assertEqual(otro.sgi_dev_stage_key, 'cerrado_sin_producto', "Cerrar sin producto no pide aprobación.")
 
     def test_02_aprobar_avisa_y_revisa_existencias(self):
         dev = self._dev()
@@ -109,6 +100,12 @@ class TestDevStart(TransactionCase):
             dev.action_sgi_dev_mp_requisition()
         req.action_cancel()
         self.assertFalse(dev.sgi_dev_mp_pending, "Una requisición cancelada ya no detiene el desarrollo")
+        otra = self._dev()
+        otra.action_sgi_dev_mp_check()
+        req2 = self.env['approval.request'].browse(otra.action_sgi_dev_mp_requisition()['res_id'])
+        req2.action_confirm()
+        req2.action_refuse()
+        self.assertFalse(otra.sgi_dev_mp_pending, "Rechazar desde Aprobaciones también cierra la espera")
         dev.action_sgi_dev_mp_check()
         self.assertEqual(dev.sgi_dev_mp_line_ids.requisition_id, req, "La línea con requisición se conserva")
 

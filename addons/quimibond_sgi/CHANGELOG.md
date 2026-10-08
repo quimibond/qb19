@@ -13,6 +13,25 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.128.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.1: aprobación del cliente para iniciar.
+
+- **Registro de cómo aprobó el cliente** en la pestaña Desarrollo: medio de
+  lista (correo, orden de compra, WhatsApp, cotización firmada; «Dirección»
+  para los internos), fecha, quién aprobó (contacto del cliente), referencia
+  y **evidencia adjunta**. «Registrar aprobación del cliente» sella quién y
+  cuándo y pasa el proyecto a «Muestra», donde recibe su folio FT.
+- **Compuerta de la etapa «Muestra»:** sin ese registro el proyecto no entra
+  a «Muestra» ni más adelante (los 74 que ya están ahí no se tocan; cerrar
+  sin producto no la pide). La compuerta de Dirección de Operaciones del
+  bloque E deja de aplicar al cambio de etapa (el folio se asigna antes de
+  que Selena elabore la solicitud que Jorge aprueba) y se queda donde
+  corresponde: la corrida de muestra (asistente y orden de fabricación).
+- La requisición de materia prima también cierra la espera cuando se
+  aprueba o rechaza desde Aprobaciones (los botones, no solo cancelar).
+- Sin migración.
+
 ## 19.0.57.127.0 — 2026-10-08
 
 Correcciones de Jose a C1 tras revisar producción en 57.123.2 (punto 1).
