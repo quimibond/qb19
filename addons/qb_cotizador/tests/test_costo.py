@@ -36,11 +36,14 @@ class TestCosto(CotizadorCase):
             self._cot().action_calcular()
 
     def test_03_divisa(self):
-        usd = self.env.ref('base.USD')
-        usd.write({'active': True})
-        self.env['res.currency.rate'].create({'currency_id': usd.id, 'name': date(2026, 1, 1),
+        # En el CI la compañía está en USD; en producción en MXN. La divisa
+        # de la prueba es la que NO sea la de la compañía.
+        usd, eur = self.env.ref('base.USD'), self.env.ref('base.EUR')
+        divisa = eur if self.company.currency_id == usd else usd
+        divisa.write({'active': True})
+        self.env['res.currency.rate'].create({'currency_id': divisa.id, 'name': date(2026, 1, 1),
                                               'company_rate': 1 / 18.0, 'company_id': self.company.id})
-        cot = self._cot(currency_id=usd.id, precio_objetivo=1.0)
+        cot = self._cot(currency_id=divisa.id, precio_objetivo=1.0)
         cot.action_calcular()
         self.assertTrue(cot.es_divisa)
         self.assertAlmostEqual(cot.fx_rate, 18.0, places=2)
