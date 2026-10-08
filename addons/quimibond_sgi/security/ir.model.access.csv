@@ -380,3 +380,5 @@ access_sgi_dev_pilot_manager,sgi.dev.pilot.manager,model_sgi_dev_pilot,group_sgi
 access_sgi_dev_pilot_lot_user,sgi.dev.pilot.lot.user,model_sgi_dev_pilot_lot,base.group_user,1,1,1,1
 access_sgi_dev_pilot_reading_user,sgi.dev.pilot.reading.user,model_sgi_dev_pilot_reading,base.group_user,1,1,1,1
 access_sgi_dev_pilot_study_user,sgi.dev.pilot.study.user,model_sgi_dev_pilot_study,base.group_user,1,1,1,1
+access_sgi_dev_escalation_user,sgi.dev.escalation.user,model_sgi_dev_escalation,base.group_user,1,0,0,0
+access_sgi_dev_escalation_manager,sgi.dev.escalation.manager,model_sgi_dev_escalation,group_sgi_manager,1,1,1,1
