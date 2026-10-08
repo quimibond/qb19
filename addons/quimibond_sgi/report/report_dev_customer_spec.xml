@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.132.0 (C1, Jose 5.3): Especificaciones del producto para el cliente (F-P-D01-08), bilingüe,
+         solo con la tolerancia del cliente. -->
+    <record id="action_report_dev_customer_spec" model="ir.actions.report">
+        <field name="name">Especificaciones del producto</field>
+        <field name="model">sgi.dev.customer.spec</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_customer_spec_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_customer_spec_document</field>
+        <field name="print_report_name">'Especificaciones - %s' % (object.name or '')</field>
+        <field name="binding_model_id" ref="model_sgi_dev_customer_spec"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_dev_customer_spec_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_dev_customer_spec'"/>
+                    <div class="page">
+                        <h2 class="text-center">Especificaciones del producto</h2>
+                        <h4 class="text-center text-muted">Product specifications</h4>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:22%"><strong>Producto / Product</strong></td><td><span t-out="doc.product_id.display_name or doc.project_id.sgi_dev_product_name or '—'"/></td>
+                                <td style="width:18%"><strong>Fecha / Date</strong></td><td><span t-field="doc.date"/></td></tr>
+                            <tr><td><strong>Cliente / Customer</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td>
+                                <td><strong>Revisión / Revision</strong></td><td><span t-out="doc.revision"/></td></tr>
+                        </table>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr>
+                                <th>Característica / Characteristic</th><th>Dirección / Direction</th><th>Unidad / Units</th>
+                                <th>Especificación / Specification</th><th>Método / Method</th>
+                            </tr></thead>
+                            <tbody>
+                                <tr t-foreach="doc.line_ids" t-as="l">
+                                    <td><span t-out="l.name"/><t t-if="l.name_en and l.name_en != l.name"><br/><span class="text-muted" t-out="l.name_en"/></t></td>
+                                    <td><span t-out="dict(l._fields['direction'].selection).get(l.direction) if l.direction != 'na' else ''"/><t t-if="l.position != 'na'"> <span t-out="dict(l._fields['position'].selection).get(l.position)"/></t></td>
+                                    <td><span t-out="l.unit or ''"/></td>
+                                    <td><span t-out="l.spec_label or ''"/></td>
+                                    <td><span t-out="l.method or ''"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <h5>Uso principal / Main use</h5>
+                        <p style="white-space:pre-wrap; font-size:11px;"><span t-out="doc.main_use or '—'"/></p>
+                        <h5>Instrucciones de cuidado / Care instructions</h5>
+                        <ul style="font-size:11px;">
+                            <li t-foreach="doc.care_ids" t-as="c"><span t-out="c.name"/><t t-if="c.name_en and c.name_en != c.name"> / <span t-out="c.name_en"/></t></li>
+                        </ul>
+                        <p t-if="not doc.care_ids" class="text-muted" style="font-size:10px;">—</p>
+                        <table class="table table-sm mt-4" style="font-size:10px; width:50%;">
+                            <tr><td class="text-center" style="border-top:1px solid #000;">Emitió · Ventas / Issued by · Sales<br/><span t-out="doc.emitted_by_id.name or ''"/><br/><span t-field="doc.emitted_at"/></td></tr>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

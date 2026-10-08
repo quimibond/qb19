@@ -13,6 +13,30 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.132.0 — 2026-10-08
+
+Jose 2026-10-08, 5.3: ficha técnica interna y especificaciones del producto
+(brief §6.12), dos documentos distintos impresos desde la tabla.
+
+- **Agregado** `sgi.dev.tech.sheet` (Ficha técnica interna, F-P-D01-24):
+  toma la tabla del proyecto con los dos juegos de límites (especificación
+  del cliente y **control interno**), firmas de los seis puestos del brief
+  (parámetro «Puestos que firman la ficha técnica interna», llenado por
+  nombre) y «Aprobar ficha (C1.15)»: el botón al que apunta el rol 1928
+  (Administrador de Ventas) por la regla nativa de Studio. Aprobada queda
+  vigente con su PDF y sustituye a la anterior. Nunca se entrega al cliente.
+- **Agregado** `sgi.dev.customer.spec` (Especificaciones del producto,
+  F-P-D01-08): documento al cliente, bilingüe, solo con los renglones «En
+  especificación del cliente» y su tolerancia (el control interno no se
+  copia), uso principal del proyecto e instrucciones de cuidado de la lista
+  nueva «Instrucción de cuidado» (con nombre en inglés; nace vacía).
+- Ambos desde SGI → Sistema y desde la pestaña Desarrollo del proyecto
+  (etapas Respuesta del cliente, Pilotaje y Liberado); en borrador «Tomar la
+  tabla del proyecto» la vuelve a copiar; emitidos no cambian ni se borran.
+- **Migración** `19.0.57.132.0`: puestos que firman por nombre, rol de C1.15
+  al botón de la ficha, MCP. `quimibond_sgi_studio` 1.0.5 crea la regla
+  nativa al cargar.
+
 ## 19.0.57.131.1 — 2026-10-08
 
 - Corrección del build de `main` (07:17 UTC): el filtro «Con no conformes» de
