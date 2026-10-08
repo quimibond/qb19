@@ -375,3 +375,8 @@ access_sgi_dev_tech_sheet_line_user,sgi.dev.tech.sheet.line.user,model_sgi_dev_t
 access_sgi_dev_tech_sheet_sign_user,sgi.dev.tech.sheet.sign.user,model_sgi_dev_tech_sheet_sign,base.group_user,1,1,1,1
 access_sgi_dev_customer_spec_user,sgi.dev.customer.spec.user,model_sgi_dev_customer_spec,base.group_user,1,1,1,1
 access_sgi_dev_customer_spec_line_user,sgi.dev.customer.spec.line.user,model_sgi_dev_customer_spec_line,base.group_user,1,1,1,1
+access_sgi_dev_pilot_user,sgi.dev.pilot.user,model_sgi_dev_pilot,base.group_user,1,1,1,0
+access_sgi_dev_pilot_manager,sgi.dev.pilot.manager,model_sgi_dev_pilot,group_sgi_manager,1,1,1,1
+access_sgi_dev_pilot_lot_user,sgi.dev.pilot.lot.user,model_sgi_dev_pilot_lot,base.group_user,1,1,1,1
+access_sgi_dev_pilot_reading_user,sgi.dev.pilot.reading.user,model_sgi_dev_pilot_reading,base.group_user,1,1,1,1
+access_sgi_dev_pilot_study_user,sgi.dev.pilot.study.user,model_sgi_dev_pilot_study,base.group_user,1,1,1,1

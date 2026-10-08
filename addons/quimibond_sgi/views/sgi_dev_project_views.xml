@@ -58,6 +58,11 @@
                                 invisible="not sgi_dev_coa_count">
                             <field name="sgi_dev_coa_count" readonly="1" class="oe_inline"/> certificado(s)
                         </button>
+                        <!-- 57.133.0 (Jose 5.4): pilotaje (los lotes entran solos al terminar la orden). -->
+                        <button name="action_sgi_dev_pilots" type="object" class="btn-link" icon="fa-flask"
+                                invisible="not sgi_dev_pilot_count">
+                            <field name="sgi_dev_pilot_count" readonly="1" class="oe_inline"/> pilotaje(s)
+                        </button>
                         <!-- 57.132.0 (Jose 5.3): ficha técnica interna y especificaciones del producto. -->
                         <button name="action_sgi_dev_new_tech_sheet" type="object" string="Ficha técnica interna" class="btn-secondary" icon="fa-file-text-o"
                                 invisible="sgi_dev_stage_key not in ('respuesta_cliente', 'pilotaje', 'liberado')"/>

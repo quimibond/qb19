@@ -84,6 +84,19 @@ class ResConfigSettings(models.TransientModel):
         help="Tras el aviso al cliente, cada estos días sin respuesta se abre una actividad de seguimiento a quien "
              "mandó el aviso. Vacío o 0: sin seguimiento automático (el brief no define el plazo).")
 
+    # 57.133.0 (C1, Jose 5.4): pilotaje y estudio de habilidad; lo no definido, vacío.
+    sgi_dev_pilot_lots = fields.Integer(
+        string="Lotes del pilotaje", config_parameter='quimibond_sgi.dev_pilot_lots',
+        help="Primeros lotes de producción que forman el pilotaje. Vacío: tres (brief §6.12).")
+    sgi_dev_pilot_readings_per_lot = fields.Integer(
+        string="Lecturas por lote para el estudio de habilidad",
+        config_parameter='quimibond_sgi.dev_pilot_readings_per_lot',
+        help="Lecturas por característica crítica y lote que exige el cierre del pilotaje. Vacío o 0: no se "
+             "exige (Ingeniería de Calidad no lo ha definido).")
+    sgi_dev_pilot_cpk_min = fields.Float(
+        string="Cpk mínimo del estudio de habilidad", config_parameter='quimibond_sgi.dev_pilot_cpk_min',
+        help="Debajo de este Cpk la característica no cumple. Vacío o 0: el estudio informa y no dictamina.")
+
     # 57.132.0 (C1, Jose 5.3): puestos que firman la ficha técnica interna.
     sgi_dev_tech_sheet_sign_job_ids = fields.Many2many(
         'hr.job', 'sgi_settings_dev_tech_sheet_sign_job_rel', string="Puestos que firman la ficha técnica interna",

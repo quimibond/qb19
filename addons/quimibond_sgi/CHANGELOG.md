@@ -13,6 +13,28 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.133.0 — 2026-10-08
+
+Jose 2026-10-08, 5.4: pilotaje y estudio de habilidad (brief §6.12 y §8).
+
+- **Agregado** `sgi.dev.pilot` (SGI → Sistema → Pilotajes de desarrollos y
+  desde el proyecto): cuando el artículo está «En pilotaje», cada orden de
+  producción terminada (no las de muestra) suma su lote hasta completar los
+  del parámetro «Lotes del pilotaje» (vacío: tres). **Un lote no conforme no
+  cuenta**: libera su lugar.
+- **Lecturas por lote**: el laboratorio captura N lecturas por lote de cada
+  característica marcada **«Crítica (estudio de habilidad)»** en la tabla
+  del proyecto (marca nueva en el catálogo y en los renglones, apagada). El
+  dictamen del lote compara la media de cada crítica con la especificación
+  del cliente.
+- **Estudio de habilidad**: Cp y Cpk por característica crítica con las
+  lecturas de los lotes conformes, contra la especificación del cliente,
+  sigma muestral; PDF al cerrar el pilotaje.
+- **Parámetros vacíos** (el brief no los define): lecturas por lote (sin
+  valor no se exigen) y Cpk mínimo (sin valor el estudio informa y no
+  dictamina).
+- **Migración** `19.0.57.133.0`: solo MCP.
+
 ## 19.0.57.132.0 — 2026-10-08
 
 Jose 2026-10-08, 5.3: ficha técnica interna y especificaciones del producto
