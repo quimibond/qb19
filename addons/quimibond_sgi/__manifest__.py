@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.134.0',
+    'version': '19.0.57.135.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -102,6 +102,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_dev_project_data.xml',  # 57.118.0 (C1): secuencia FT y etapas de avance
         'data/sgi_dev_start_data.xml',  # 57.124.0 (C1): cron del reloj de materia prima
         'data/sgi_dev_shipment_data.xml',  # 57.129.0 (C1): correo del envío de muestra y cron de seguimiento
+        'data/sgi_dev_escalation_data.xml',  # 57.135.0 (C1): cron de avisos por tiempo del paso pendiente
         'data/sgi_sign_elearning_data.xml',
         'data/sgi_doc_change_sign_data.xml',
         'data/sgi_checklist_cron.xml',
@@ -187,6 +188,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_dev_coa_views.xml',  # 57.130.0: reporte de conformidad desde la tabla
         'views/sgi_dev_tech_sheet_views.xml',  # 57.132.0: ficha técnica interna y especificaciones del producto
         'views/sgi_dev_pilot_views.xml',  # 57.133.0: pilotaje y estudio de habilidad
+        'views/sgi_dev_escalation_views.xml',  # 57.135.0: avisos por tiempo de los desarrollos
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports

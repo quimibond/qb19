@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.135.0 (C1, Jose 5.5): avisos y escalamientos por tiempo de los desarrollos. -->
+    <record id="sgi_dev_escalation_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.escalation.list</field>
+        <field name="model">sgi.dev.escalation</field>
+        <field name="arch" type="xml">
+            <list string="Avisos por tiempo" create="0" edit="0" decoration-muted="state == 'cerrado'"
+                  decoration-danger="level == 'direccion' and state == 'abierto'"
+                  decoration-warning="level == 'dueno' and state == 'abierto'">
+                <field name="sent_at"/>
+                <field name="project_id"/>
+                <field name="step_code"/>
+                <field name="step_name"/>
+                <field name="since" optional="show"/>
+                <field name="hours"/>
+                <field name="level" widget="badge"/>
+                <field name="user_id" widget="many2one_avatar_user"/>
+                <field name="job_id" optional="hide"/>
+                <field name="state" widget="badge" decoration-success="state == 'cerrado'" decoration-info="state == 'abierto'"/>
+                <field name="closed_at" optional="hide"/>
+                <field name="close_reason" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_escalation_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.escalation.search</field>
+        <field name="model">sgi.dev.escalation</field>
+        <field name="arch" type="xml">
+            <search string="Avisos por tiempo">
+                <field name="project_id"/>
+                <field name="user_id"/>
+                <field name="step_code"/>
+                <filter name="open" string="Abiertos" domain="[('state', '=', 'abierto')]"/>
+                <filter name="escalated" string="Escalados (dueño o Dirección)" domain="[('level', '!=', 'ejecutor')]"/>
+                <group>
+                    <filter name="group_project" string="Desarrollo" context="{'group_by': 'project_id'}"/>
+                    <filter name="group_level" string="Nivel" context="{'group_by': 'level'}"/>
+                    <filter name="group_user" string="Avisado a" context="{'group_by': 'user_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_escalation_action" model="ir.actions.act_window">
+        <field name="name">Avisos por tiempo de desarrollos</field>
+        <field name="res_model">sgi.dev.escalation</field>
+        <field name="view_mode">list</field>
+        <field name="search_view_id" ref="sgi_dev_escalation_view_search"/>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ningún desarrollo ha necesitado un aviso</p>
+            <p>Cada hora se revisa el paso pendiente de cada desarrollo abierto. Con los parámetros de Ajustes → SGI
+               (horas al responsable, horas al dueño del proceso, días hábiles a Dirección de Operaciones) se avisa una
+               sola vez por paso y nivel; al avanzar el paso, el aviso se cierra solo. Sin parámetros no se avisa.</p>
+        </field>
+    </record>
+</odoo>

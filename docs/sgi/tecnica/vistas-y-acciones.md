@@ -63,6 +63,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
     - **Fichas técnicas internas de desarrollos** — `sgi.dev.tech.sheet`
     - **Especificaciones del producto (cliente)** — `sgi.dev.customer.spec`
     - **Pilotajes de desarrollos** — `sgi.dev.pilot`
+    - **Avisos por tiempo de desarrollos** — `sgi.dev.escalation`
     - **Documentos** — grupos: quimibond_sgi.group_sgi_auditor, quimibond_sgi.group_sgi_manager, quimibond_sgi.group_sgi_director
       - **Documentos** — `documents.document`
       - **Lista maestra** — `documents.document`
@@ -156,7 +157,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 - **SGI en planta** — `sgi_floor_kiosk_action`; grupos: quimibond_sgi.group_sgi_floor_tablet, quimibond_sgi.group_sgi_manager
 - **Valor del inventario por mes** — `sgi.inventory.value`; bajo `account.menu_finance_reports`
 
-## Acciones (135)
+## Acciones (136)
 
 | Acción | Tipo | Título | Modelo | Vistas | Ayuda de pantalla vacía | Archivo |
 |---|---|---|---|---|---|---|
@@ -193,6 +194,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi.sgi_dev_characteristic_template_action` | act_window | Características por tipo de desarrollo | `sgi.dev.characteristic.template` | list | sí | `addons/quimibond_sgi/views/sgi_dev_characteristic_views.xml` |
 | `quimibond_sgi.sgi_dev_coa_action` | act_window | Reportes de conformidad | `sgi.dev.coa` | list,form | sí | `addons/quimibond_sgi/views/sgi_dev_coa_views.xml` |
 | `quimibond_sgi.sgi_dev_customer_spec_action` | act_window | Especificaciones del producto | `sgi.dev.customer.spec` | list,form | sí | `addons/quimibond_sgi/views/sgi_dev_tech_sheet_views.xml` |
+| `quimibond_sgi.sgi_dev_escalation_action` | act_window | Avisos por tiempo de desarrollos | `sgi.dev.escalation` | list | sí | `addons/quimibond_sgi/views/sgi_dev_escalation_views.xml` |
 | `quimibond_sgi.sgi_dev_feasibility_item_action` | act_window | Recursos del checklist de factibilidad | `sgi.dev.feasibility.item` | list | sí | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
 | `quimibond_sgi.sgi_dev_lab_request_action` | act_window | Pruebas de laboratorio de desarrollos | `sgi.dev.lab.request` | list,form | sí | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
 | `quimibond_sgi.sgi_dev_mark_wizard_action` | act_window | Marcar desarrollos existentes | `sgi.dev.mark.wizard` | form |  | `addons/quimibond_sgi/views/sgi_dev_board_views.xml` |
@@ -296,7 +298,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (437; 82 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (439; 82 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -510,6 +512,8 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `sgi.dev.customer.spec` | `quimibond_sgi.sgi_dev_customer_spec_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_tech_sheet_views.xml` |
 | `sgi.dev.customer.spec` | `quimibond_sgi.sgi_dev_customer_spec_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_tech_sheet_views.xml` |
 | `sgi.dev.customer.spec` | `quimibond_sgi.sgi_dev_customer_spec_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_tech_sheet_views.xml` |
+| `sgi.dev.escalation` | `quimibond_sgi.sgi_dev_escalation_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_escalation_views.xml` |
+| `sgi.dev.escalation` | `quimibond_sgi.sgi_dev_escalation_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_escalation_views.xml` |
 | `sgi.dev.feasibility.item` | `quimibond_sgi.sgi_dev_feasibility_item_view_list` | list |  | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
 | `sgi.dev.feasibility.item` | `quimibond_sgi.sgi_dev_feasibility_item_view_search` | search |  | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |
 | `sgi.dev.lab.request` | `quimibond_sgi.sgi_dev_lab_request_view_form` | form |  | `addons/quimibond_sgi/views/sgi_dev_analysis_views.xml` |

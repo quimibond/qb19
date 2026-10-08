@@ -6,9 +6,9 @@ Modelo de otra app que el SGI extiende.
 
 Panel de Ajustes del SGI: la cara amigable de los parámetros.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_escalation.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_epp_sign.py`, `addons/quimibond_sgi/models/sgi_my_procedure_sign.py`, `addons/quimibond_sgi/models/sgi_settings.py`, `addons/quimibond_sgi_pesaje/models/res_config_settings.py`.
 
-## Campos (56)
+## Campos (58)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -19,6 +19,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sg
 | `sgi_dev_block_generic_sample_from` | Char | Bloquear «MUESTRA PILOTO» en órdenes nuevas desde (AAAA-MM-DD) | A partir de esta fecha no se crean ni confirman órdenes de fabricación con los artículos genéricos «MUESTRA PILOTO TEJIDO / TINTORERÍA»: las muestras de desarrollo se piden desde el proyecto con su artículo generado. Vacío: sin bloqueo (hay órdenes abiertas con ellos; la fecha la decide Dirección d… |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:15` |
 | `sgi_dev_escalation_director_days` | Integer | Días hábiles para escalar a Dirección de Operaciones (C1) | Segundo nivel de escalamiento de las actividades de C1 que ejecutan Diseño y Desarrollo de Producto o de Procesos. Vacío o 0: todavía no se crea el segundo nivel. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_process.py:246` |
 | `sgi_dev_lab_authorizer_job_id` | Many2one | Puesto que autoriza pruebas de laboratorio de desarrollos | Puesto cuyas personas autorizan las solicitudes de pruebas de los proyectos de desarrollo. Por omisión, el Coordinador de Laboratorio y MP (se busca por nombre si el parámetro está vacío). El Jefe MAST siempre puede. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_settings.py:23` |
+| `sgi_dev_notice_executor_hours` | Integer | Avisar al responsable del paso a las (horas) | Horas de desarrollo (sin materia prima pendiente) que un paso de C1 puede llevar pendiente antes de avisar a quien lo ejecuta. El brief propone 2; vacío o 0: no se avisa. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:361` |
+| `sgi_dev_notice_owner_hours` | Integer | Escalar al dueño del proceso a las (horas) | Primer nivel de escalamiento: horas de desarrollo tras las que el dueño del proceso C1 recibe el aviso. El brief propone 4; vacío o 0: no se escala. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_escalation.py:365` |
 | `sgi_dev_pilot_cpk_min` | Float | Cpk mínimo del estudio de habilidad | Debajo de este Cpk la característica no cumple. Vacío o 0: el estudio informa y no dictamina. |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:96` |
 | `sgi_dev_pilot_lots` | Integer | Lotes del pilotaje | Primeros lotes de producción que forman el pilotaje. Vacío: tres (brief §6.12). |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:88` |
 | `sgi_dev_pilot_readings_per_lot` | Integer | Lecturas por lote para el estudio de habilidad | Lecturas por característica crítica y lote que exige el cierre del pilotaje. Vacío o 0: no se exige (Ingeniería de Calidad no lo ha definido). |  |  |  |  | `addons/quimibond_sgi/models/sgi_settings.py:91` |
