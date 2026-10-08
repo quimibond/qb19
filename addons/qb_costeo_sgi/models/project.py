@@ -164,7 +164,7 @@ class ProjectProjectCotizador(models.Model):
         return True
 
     # ------------------------------------------------------------------
-    # 57.137.0 (SGI, Jessica 2026-10-08): la cotización en la aprobación para iniciar y en el expediente 8.3.
+    # 57.137.0 (SGI, Administración de Ventas 2026-10-08): la cotización en la aprobación para iniciar y en el expediente 8.3.
     # ------------------------------------------------------------------
     def _qb_sgi_cotizacion_para_documento(self):
         """La cotización que va a los documentos del desarrollo: la ganada más reciente; si no hay,

@@ -347,7 +347,7 @@ solas ahora:
   cotización aceptada en la tarifa del cliente» como paso a mano; con 1.3.0
   es automático (ajustar texto cuando Jose lo pida).
 
-## 18. Revisión de Jessica — pestañas por etapa (2026-10-08, SGI 57.136.0)
+## 18. Revisión de Administración de Ventas — pestañas por etapa (2026-10-08, SGI 57.136.0)
 
 Una pestaña por etapa de C1 en el orden en que se trabaja (Solicitud del
 cliente · Análisis y factibilidad · Cotización · Aprobación del cliente ·
@@ -364,29 +364,29 @@ aprobación del cliente registrada y folio FT. El paso pendiente del
 escalamiento (5.5) no cambió: en «Muestra» sigue C1.07 → C1.04 → …; si Jose
 quiere que C1.04 se exija antes de cotizar, se ajusta el resolutor.
 
-### 18.1 Descripción del proceso de Jessica (2026-10-08) y lo que queda por decidir
+### 18.1 Descripción del proceso según Administración de Ventas (2026-10-08) y lo que queda por decidir
 
 Nombres finales de las pestañas según su descripción: Análisis de mercado
 industrial · Análisis de proyecto · Cotización · Aprobación del cliente ·
 Solicitud de desarrollo · Muestra · Envío de muestra · Retroalimentación del
 cliente · Cambios al proyecto · Pilotaje y liberación · Tiempos. Lo que ya
 cubre el código: análisis de la muestra con pruebas al laboratorio (F-P-C05-02
-= `sgi.dev.lab.request`), revisión que firma Jessica (revisión de Ventas),
-código y artículos por Selena, ruta y centros de trabajo por Yet en la lista
+= `sgi.dev.lab.request`), revisión que firma Administración de Ventas (revisión de Ventas),
+código y artículos por Diseño de Producto, ruta y centros de trabajo por Diseño de Procesos en la lista
 de materiales (C1.04b) con «Diagrama de flujo», aprobación del cliente por
 correo, OC o WhatsApp con evidencia, solicitud de desarrollo firmada por
-Selena y Jorge con aviso por correo a las áreas, corrida, envío,
+Diseño de Producto y Dirección de Operaciones con aviso por correo a las áreas, corrida, envío,
 retroalimentación, revisiones, pilotajes con estudio de habilidad, fichas de
-proceso y producto. **Decisiones de Jose, no construidas:**
+proceso y producto. **Decisiones de Dirección General, no construidas:**
 
 1. **Aprobación para iniciar un proyecto** como documento generado desde el
-   proyecto (lo llena Selena, lo manda Jessica, el cliente firma o manda OC)
+   proyecto (lo llena Diseño de Producto, lo manda Administración de Ventas, el cliente firma o manda OC)
    y **folio FT antes de esa aprobación** (hoy el folio se asigna al pasar a
    «Muestra», después de registrarla). El brief §6.8 ya lo pedía como
    documento generado; cambiar el momento del folio es decisión de proceso.
 2. **Solicitud de modificación del proyecto** (causas, 5 porqués, fases
-   afectadas, firma de Jorge) en «Cambios al proyecto». El brief (C1.13)
-   la sustituyó por la bitácora de revisiones; Jessica la quiere formal.
+   afectadas, firma de Dirección de Operaciones) en «Cambios al proyecto». El brief (C1.13)
+   la sustituyó por la bitácora de revisiones; Administración de Ventas la quiere formal.
 3. **Ruta como selección de centros de trabajo con imagen** en lugar del
    diagrama de proceso en papel: hoy la ruta vive en la lista de materiales
    y el diagrama se imprime; falta la vista gráfica dentro del proyecto.

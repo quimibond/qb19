@@ -7,7 +7,7 @@ Registro propio ``sgi.dev.shipment`` por cada muestra que sale al cliente:
   paquetería (lista «Paquetería» de las listas del desarrollo) y guía, y los
   **rollos avisados** con sus dimensiones (lote, metros, ancho, kilos). Sin el
   dictamen de Diseño de Producto sobre la corrida (C1.11) no hay baja ni envío
-  («Selena valida la muestra; sin eso no hay baja»). La baja de almacén es un
+  («Diseño de Producto valida la muestra; sin eso no hay baja»). La baja de almacén es un
   ``stock.picking`` del tipo de operación del parámetro (producción: 267 «Baja
   de Muestras») creado desde aquí; al validarse, el envío queda registrado y
   el proyecto pasa a «Respuesta del cliente».
@@ -474,7 +474,7 @@ class StockPickingDevShipment(models.Model):
                                           index=True, ondelete='set null')
 
     def button_validate(self):
-        # «Selena valida la muestra; sin eso no hay baja»: la baja exige el dictamen de C1.11 y los
+        # «Diseño de Producto valida la muestra; sin eso no hay baja»: la baja exige el dictamen de C1.11 y los
         # datos del envío (medio, paquetería y guía, rollos con metros).
         self.sgi_dev_shipment_id.filtered(lambda s: s.state == 'borrador')._check_ready_to_ship()
         return super().button_validate()
