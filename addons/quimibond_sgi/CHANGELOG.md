@@ -59,8 +59,9 @@ Jessica 2026-10-08 (su descripción del proceso, puntos 3, 4, 9 e ISO 9001 8.3
   «Imprimir expediente» (`action_report_dev_dossier`, incluye la ruta).
   `_sgi_dev_dossier_extra` es el gancho con que `qb_costeo_sgi` agrega la
   cotización aprobada y el precio en tarifa (C1.17). Nada se captura ahí.
-- **Migración** `19.0.57.137.0`: solo expone `sgi.dev.change.request` al
-  MCP; no crea documentos ni toca proyectos.
+- **Migración** `19.0.57.137.0`: el rol «Aprueba» de C1.13 sin botón apunta
+  a «Firmar» de la solicitud de modificación y expone `sgi.dev.change.request`
+  al MCP; no crea documentos ni toca proyectos.
 - Pruebas: `tests/test_dev_change.py`.
 
 ## 19.0.57.136.0 — 2026-10-08
