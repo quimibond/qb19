@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_cotizador_decision_wizard_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.decision.wizard.form</field>
+        <field name="model">qb.cotizador.decision.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <field name="cotizacion_id" readonly="1"/>
+                    <field name="tipo" readonly="1"/>
+                    <field name="motivo_id"/>
+                    <field name="nota"/>
+                </group>
+                <footer>
+                    <button name="action_confirmar" type="object" string="Confirmar" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

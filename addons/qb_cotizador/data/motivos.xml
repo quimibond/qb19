@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Motivos de lista (brief C1 §6.8: sin texto libre para datos). -->
+    <record id="motivo_regreso_margen" model="qb.cotizador.motivo">
+        <field name="tipo">regreso</field><field name="sequence">10</field>
+        <field name="name">Margen bajo</field>
+    </record>
+    <record id="motivo_regreso_costo" model="qb.cotizador.motivo">
+        <field name="tipo">regreso</field><field name="sequence">20</field>
+        <field name="name">Costo mal calculado</field>
+    </record>
+    <record id="motivo_regreso_volumen" model="qb.cotizador.motivo">
+        <field name="tipo">regreso</field><field name="sequence">30</field>
+        <field name="name">Volumen dudoso</field>
+    </record>
+    <record id="motivo_regreso_otro" model="qb.cotizador.motivo">
+        <field name="tipo">regreso</field><field name="sequence">90</field>
+        <field name="name">Otro</field>
+    </record>
+
+    <record id="motivo_perdida_precio" model="qb.cotizador.motivo">
+        <field name="tipo">perdida</field><field name="sequence">10</field>
+        <field name="name">Precio</field>
+    </record>
+    <record id="motivo_perdida_entrega" model="qb.cotizador.motivo">
+        <field name="tipo">perdida</field><field name="sequence">20</field>
+        <field name="name">Tiempo de entrega</field>
+    </record>
+    <record id="motivo_perdida_especificacion" model="qb.cotizador.motivo">
+        <field name="tipo">perdida</field><field name="sequence">30</field>
+        <field name="name">Especificación</field>
+    </record>
+    <record id="motivo_perdida_cancelo" model="qb.cotizador.motivo">
+        <field name="tipo">perdida</field><field name="sequence">40</field>
+        <field name="name">El cliente canceló</field>
+    </record>
+    <record id="motivo_perdida_sin_respuesta" model="qb.cotizador.motivo">
+        <field name="tipo">perdida</field><field name="sequence">50</field>
+        <field name="name">Sin respuesta</field>
+    </record>
+</odoo>

@@ -20,6 +20,8 @@ class TestDevBoard(TransactionCase):
         dev = self._dev()
         plain = self.Project.create({'name': 'Proyecto normal prueba'})
         action = dev.action_view_tasks()
+        self.assertIn('context', action, "sale_project escribe action['context'] sobre lo que devuelve super().")
+        self.assertIn('domain', action)
         self.assertEqual((action['res_model'], action.get('res_id'), action['view_mode']),
                          ('project.project', dev.id, 'form'), "La tarjeta de un desarrollo abre su ficha.")
         tasks = dev.action_sgi_dev_view_tasks()
