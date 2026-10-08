@@ -15,15 +15,37 @@ Retirado, Seguridad, Migración, Datos de producción.
 
 ## 19.0.57.134.0 — 2026-10-08
 
-Jose 2026-10-08: las pestañas del desarrollo separadas de las nativas del proyecto.
+Jose 2026-10-08: la ficha del desarrollo con las pestañas separadas de las
+nativas, los botones en su lugar y el orden del proceso.
 
-- **Cambiado** ficha del proyecto de desarrollo: las pestañas «Solicitud de
-  desarrollo», «Desarrollo», «Comercial» y «Revisiones» van en un notebook
-  propio bajo el título «Desarrollo de producto», antes de las pestañas
-  nativas de Odoo («Descripción», «Ajustes»…), que quedan bajo el título
-  «Proyecto». En proyectos que no son desarrollo no cambia nada. La pestaña
-  «Solicitud de desarrollo» se movió de `sgi_dev_request_views.xml` a
-  `sgi_dev_project_views.xml` (una sola herencia arma la sección).
+- **Cambiado** ficha del proyecto de desarrollo: dos secciones de pestañas,
+  «Desarrollo de producto» (notebook propio) antes de «Proyecto» (las
+  nativas de Odoo: Descripción, Ajustes…). En proyectos que no son
+  desarrollo no cambia nada.
+- **Cambiado** pestañas del desarrollo en el orden del proceso: **Solicitud**
+  (datos, tabla, firmas, muestra física y su etiqueta), **Análisis y
+  factibilidad** (identidad, resultado, parecidos y pruebas, revisión de
+  Ventas, checklist), **Aprobación del cliente** (evidencia y registro),
+  **Muestra** (código del artículo y «Generar artículos», materia prima,
+  requisición y reloj de materia prima), **Producto y documentos** (ficha
+  interna, especificaciones, reporte de conformidad, diagrama de flujo,
+  artículos del desarrollo con su estado), Comercial, Revisiones y
+  **Tiempos** (horas, reloj por etapa, esperas de materia prima).
+- **Cambiado** botones: la acción que mueve la etapa va en el **encabezado**
+  junto a la barra de etapas y solo aparece en su etapa («Aprobar
+  solicitud», «Aprobar análisis y factibilidad», «Registrar aprobación del
+  cliente», «Asignar folio FT» si falta, «Pedir corrida de muestra»,
+  «Registrar envío de muestra», «Registrar respuesta del cliente», «Subir
+  revisión», «Cerrar: producto de línea», «Cerrar: no factible»). Los
+  contadores («N orden(es)…») pasan a **botones inteligentes** (laboratorio
+  abiertas/total, requisiciones, órdenes de muestra, envíos, certificados,
+  pilotajes, fichas internas, especificaciones). Lo contextual queda junto
+  a sus datos. Mismos campos y métodos: ningún botón se quitó ni se agregó
+  (`alias_id` sale de la pestaña: ya está en Ajustes).
+- **Cambiado** el aviso «falta el cliente» va arriba de la hoja, como el de
+  costo, no entre las dos secciones.
+- La pestaña «Solicitud de desarrollo» se movió de `sgi_dev_request_views.xml`
+  a `sgi_dev_project_views.xml` (una sola herencia arma la sección).
 - Sin migración.
 
 ## 19.0.57.133.0 — 2026-10-08
