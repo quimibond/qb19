@@ -13,6 +13,42 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.126.0 — 2026-10-08
+
+C1, bloque G (brief §6.7: Ruta y fichas de proceso).
+
+- **Diagrama de flujo de proceso (F-P-D01-32) impreso desde la ruta:** botón
+  en la pestaña Desarrollo; lista las operaciones de la lista de materiales
+  de crudo → teñido → acabado con su centro de trabajo y tiempo estándar. No
+  se dibuja.
+- **Fichas de proceso de tintorería (F-P-D01-33) y acabado (F-P-D01-05)**
+  (`sgi.dev.process.sheet`, menú SGI → Sistema → Fichas de proceso de
+  tintorería y acabado): misma estructura que la de tejido. Cada parámetro
+  (anexo B del brief) lleva **propuesto** (Diseño de Procesos) y **real**
+  (supervisor), número de ajuste y motivo de lista (catálogo «Motivo de
+  ajuste de parámetro» de `sgi.dev.option`, sin renglones hasta que Diseño de
+  Procesos los defina). Firmas iguales en las tres áreas: propone Diseño de
+  Procesos, valida el supervisor del área (parámetros sembrados por nombre:
+  Jefe de Manufactura, Supervisor Tintorería, Supervisor TAC), el laboratorio
+  mide. **Poner en vigor** convierte la ficha validada de la corrida en la
+  ficha vigente del artículo sin recaptura (una vigente por artículo y área).
+- **Tintorería:** tramos de gradiente / temperatura / sostenimiento generan
+  la **gráfica de proceso** (SVG en pantalla y en el PDF) y el tiempo total.
+  **Acabado:** ruta de hasta 10 pasos, teñido (máquina, marca, modelo), hasta
+  **tres pases de rama** (botón «Agregar pase»); al tercero sin cumplir,
+  actividad a Diseño de Producto.
+- **Químicos fuera (decisión de Jose 2026-10-06):** la ficha de tintorería y
+  la receta de rama llevan solo el número de fórmula; apuntarán al modelo de
+  fórmulas en g/L de Jose Sacramento cuando exista su rama.
+- **Ficha de tejido (`sgi.machine.sheet`):** firmas corregidas a puestos
+  vigentes (Propuso: Diseño y Desarrollo de Procesos; Validó: Jefe de
+  Manufactura; Midió: Laboratorio; el mecánico participa), botones
+  «Proponer» / «Validar», proyecto y orden de la corrida, y por parámetro el
+  valor real, número de ajuste y motivo. Las columnas no cambian de nombre
+  (producción tiene 0 fichas).
+- **Migración:** siembra los cuatro puestos por nombre si están vacíos y
+  expone los modelos al MCP.
+
 ## 19.0.57.125.0 — 2026-10-08
 
 C1, bloque F (brief §6.10: Orden de muestra).
