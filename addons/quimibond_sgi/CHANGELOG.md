@@ -13,6 +13,21 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.123.2 — 2026-10-08
+
+- Corrección de producción: la tarjeta de un desarrollo tronaba con
+  `KeyError: 'context'` al abrirla. `sale_project` extiende
+  `action_view_tasks`, carga después del SGI (no es dependencia) y escribe
+  `action['context'][...]` sobre la acción que devuelve `super()`: la ficha
+  que abre el SGI no traía `context`. Ahora la acción lleva `context` y
+  `domain`.
+- La herencia de la tarjeta ya no renombra los enlaces «Tareas»
+  (`a[@name='action_view_tasks']`): `industry_fsm` los apunta a su acción con
+  el mismo xpath y, según el orden de carga, fallaba su herencia o la nuestra
+  («no puede ser localizado en la vista padre», build de la rama de
+  producción 2026-10-08 03:57). La tarjeta sigue mostrando folio, etapa y
+  horas; las tareas se abren desde el botón de la ficha.
+
 ## 19.0.57.123.1 — 2026-10-08
 
 ### Corregido
