@@ -13,6 +13,25 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.130.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.4: reporte de conformidad impreso desde la tabla.
+
+- **Agregado** `sgi.dev.coa` (SGI → Sistema → Reportes de conformidad de
+  desarrollos; botón «Reporte de conformidad» en el proyecto y en el envío de
+  muestra): un certificado por lote con los renglones de la tabla marcados
+  **«En certificado»**, el valor obtenido en el lote (precargado con el
+  promedio de la corrida) y si cumple **la especificación del cliente**; el
+  control interno nunca se imprime (brief §5.1). PDF bilingüe con la clave
+  del formato del lote (F-P-C07-01).
+- **Emitir** sella quién y cuándo, genera el PDF y lo adjunta al certificado,
+  al envío (viaja en el correo al cliente) y, si el envío tiene baja de
+  almacén, como CoA de esa salida (circuito de CoA de las entregas). Sin valor
+  obtenido en algún renglón no se emite; emitido no se borra.
+- Desde el envío: un certificado por lote de los rollos avisados, con sus
+  metros y rollos; no se repite.
+- **Migración** `19.0.57.130.0`: solo expone los modelos nuevos al MCP.
+
 ## 19.0.57.129.0 — 2026-10-08
 
 Jose 2026-10-08, bloque 3.3: envío de la muestra y respuesta del cliente

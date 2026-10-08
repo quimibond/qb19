@@ -138,6 +138,8 @@
               parent="menu_sgi_processes" action="sgi_dev_project_board_action" sequence="52"/>
     <menuitem id="menu_sgi_dev_shipments" name="Envíos de muestra de desarrollos"
               parent="menu_sgi_processes" action="sgi_dev_shipment_action" sequence="54"/>
+    <menuitem id="menu_sgi_dev_coas" name="Reportes de conformidad de desarrollos"
+              parent="menu_sgi_processes" action="sgi_dev_coa_action" sequence="55"/>
     <menuitem id="menu_sgi_dev_mark" name="Marcar desarrollos existentes"
               parent="menu_sgi_processes" action="sgi_dev_mark_wizard_action" sequence="53"
               groups="project.group_project_manager"/>
