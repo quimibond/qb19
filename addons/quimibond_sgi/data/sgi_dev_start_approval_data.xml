@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.137.0 (C1, Jessica punto 4): correo al cliente con la aprobación para iniciar el proyecto. -->
+<odoo>
+    <data noupdate="1">
+        <record id="mail_template_sgi_dev_start_approval" model="mail.template">
+            <field name="name">SGI: Aprobación para iniciar el proyecto de desarrollo</field>
+            <field name="model_id" ref="project.model_project_project"/>
+            <field name="subject">Aprobación para iniciar el proyecto {{ object.sgi_ft_folio or object.name }}</field>
+            <field name="body_html" type="html">
+<div>
+    <p>Buen día,</p>
+    <p>Adjuntamos la <strong>aprobación para iniciar el proyecto</strong>
+        <strong t-out="object.sgi_ft_folio or object.name"/>
+        <t t-if="object.sgi_dev_product_name"> (<t t-out="object.sgi_dev_product_name"/>)</t>
+        con las características del producto que vamos a desarrollar y, en su caso, el precio cotizado.</p>
+    <p>Para iniciar necesitamos su aprobación: el documento firmado, su orden de compra o su confirmación por este medio.</p>
+    <p>Quedamos atentos.</p>
+    <p>Saludos,<br/><t t-out="user.name"/><br/><t t-out="object.company_id.name"/></p>
+</div>
+            </field>
+            <field name="auto_delete" eval="False"/>
+        </record>
+    </data>
+</odoo>

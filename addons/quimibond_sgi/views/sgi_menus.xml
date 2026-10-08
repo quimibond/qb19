@@ -149,6 +149,8 @@
     <!-- 57.135.0 (C1, Jose 5.5): avisos y escalamientos por tiempo. -->
     <menuitem id="menu_sgi_dev_escalations" name="Avisos por tiempo de desarrollos"
               parent="menu_sgi_processes" action="sgi_dev_escalation_action" sequence="59"/>
+    <menuitem id="menu_sgi_dev_change_requests" name="Solicitudes de modificación de desarrollos"
+              parent="menu_sgi_processes" action="sgi_dev_change_request_action" sequence="60"/>
     <menuitem id="menu_sgi_dev_mark" name="Marcar desarrollos existentes"
               parent="menu_sgi_processes" action="sgi_dev_mark_wizard_action" sequence="53"
               groups="project.group_project_manager"/>

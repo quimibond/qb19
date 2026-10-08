@@ -162,3 +162,48 @@ class ProjectProjectCotizador(models.Model):
             project.message_post(body='Liberado sin precio en la tarifa del cliente: %s. C1.17 queda abierta hasta '
                                       'que una cotización ganada ponga su precio en la tarifa.' % motivo)
         return True
+
+    # ------------------------------------------------------------------
+    # 57.137.0 (SGI, Jessica 2026-10-08): la cotización en la aprobación para iniciar y en el expediente 8.3.
+    # ------------------------------------------------------------------
+    def _qb_sgi_cotizacion_para_documento(self):
+        """La cotización que va a los documentos del desarrollo: la ganada más reciente; si no hay,
+        la presentada más reciente."""
+        self.ensure_one()
+        cots = self.qb_cotizacion_ids
+        for state in ('ganada', 'presentada'):
+            cot = cots.filtered(lambda c: c.state == state).sorted(lambda c: (c.id,), reverse=True)[:1]
+            if cot:
+                return cot
+        return cots.browse()
+
+    def _sgi_dev_start_approval_quote_vals(self):
+        vals = super()._sgi_dev_start_approval_quote_vals()
+        cot = self._qb_sgi_cotizacion_para_documento()
+        if not cot:
+            return vals
+        uom = dict(cot._fields['volumen_uom'].selection).get(cot.volumen_uom) or ''
+        vals.update({
+            'folio': cot.folio or cot.name or '',
+            'precio': ('%.4f' % cot.precio_objetivo) if cot.precio_objetivo else '',
+            'moneda': cot.currency_id.name or '',
+            'unidad': uom.split('/')[0].strip() if uom else '',
+            'vigencia': cot.validez_hasta.strftime('%d/%m/%Y') if cot.validez_hasta else '',
+            'condiciones': ('Revisión %d del desarrollo' % cot.project_revision) if cot.project_revision else '',
+        })
+        return vals
+
+    def _sgi_dev_dossier_extra(self):
+        rows = super()._sgi_dev_dossier_extra()
+        cots = self.qb_cotizacion_ids
+        ganadas = cots.filtered(lambda c: c.state == 'ganada')
+        con_tarifa = cots.filtered('pricelist_item_id')
+        rows += [
+            ('8.3.4', "Controles: cotización del desarrollo aprobada por el puesto que aprueba",
+             bool(cots.filtered(lambda c: c.state in ('presentada', 'vencida', 'ganada'))) if cots else None,
+             "%d cotización(es), %d ganada(s)" % (len(cots), len(ganadas))),
+            ('8.3.5', "Salidas: precio del desarrollo en la tarifa del cliente (C1.17)",
+             bool(con_tarifa) if (ganadas or self.sgi_dev_stage_key == 'liberado') else None,
+             (con_tarifa[:1].pricelist_item_id.display_name if con_tarifa else "sin precio en tarifa")),
+        ]
+        return rows

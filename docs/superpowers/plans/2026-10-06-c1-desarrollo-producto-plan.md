@@ -395,3 +395,18 @@ proceso y producto. **Decisiones de Jose, no construidas:**
    salidas, cambios) y decidir qué evidencia falta para armar el APQP por
    proyecto.
 
+### 18.2 Los cuatro puntos, construidos (2026-10-08, SGI 57.137.0; Jose: «Has todos»)
+
+| Punto | Cómo quedó | Dónde |
+|---|---|---|
+| 1. Aprobación para iniciar con folio antes | PDF generado desde el proyecto (cliente, contacto, producto, uso, características «en especificación del cliente», cotización vía `qb_costeo_sgi`). Al generarlo se asigna el folio FT si falta; «Asignar folio FT» aparece desde «Cotización». «Enviar al cliente» abre el correo con el PDF y registra quién y cuándo. La evidencia de la respuesta se sigue capturando en la misma pestaña y «Registrar aprobación del cliente» mueve a «Muestra». | `models/sgi_dev_start_approval.py`, `report/report_dev_start_approval.xml`, `data/sgi_dev_start_approval_data.xml` |
+| 2. Solicitud de modificación | `sgi.dev.change.request`: motivo, qué se modifica, por qué no se obtuvo el resultado, 5 porqués, causa raíz, solución, fases afectadas; elabora Diseño de Producto, firma Dirección de Operaciones (C1.13). Firmada: abre revisión (si la respuesta del cliente no la abrió), bitácora, vuelve a «Muestra», PDF. «Pide cambios» en el envío deja una en borrador. | `models/sgi_dev_change.py`, `views/sgi_dev_change_views.xml`, `report/report_dev_change_request.xml` |
+| 3. Ruta con imagen | Cadena de cajas artículo · operación · centro de trabajo dentro de «Cotización», «Editar ruta» abre la lista de materiales. **Sin imagen por centro de trabajo**: no existe catálogo de imágenes y no se inventa (si Jose la quiere, es un campo imagen en `mrp.workcenter` y una fila por centro). | `models/sgi_dev_dossier.py` |
+| 4. ISO 9001 8.3 / APQP | Pestaña «Expediente 8.3 / APQP»: 21 requisitos (8.3.2 a 8.3.6) + 2 de `qb_costeo_sgi` (cotización aprobada, precio en tarifa) con evidencia ✔/✘/n.a., fases del APQP ↔ pestañas, impresión. | `models/sgi_dev_dossier.py`, `report/report_dev_dossier.xml` |
+
+Lo que sigue siendo de Jose: los textos definitivos del documento de
+aprobación (hoy un párrafo genérico), si la aprobación para iniciar debe
+ser obligatoria antes de «Registrar aprobación del cliente» (hoy no lo es),
+y la imagen por centro de trabajo.
+
+
