@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_cotizador_cotizacion_form" model="ir.ui.view">
+        <field name="name">qb.cotizador.cotizacion.form</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="arch" type="xml">
+            <form string="Cotización de costo">
+                <header>
+                    <button name="action_calcular" type="object" string="Calcular costo" class="btn-primary"
+                            invisible="state not in ('borrador', 'por_aprobar', 'presentada') or costo_fuente == 'legado'"/>
+                    <button name="action_enviar_aprobacion" type="object" string="Enviar a aprobación" class="btn-primary"
+                            invisible="state != 'borrador'"/>
+                    <button name="action_aprobar" type="object" string="Aprobar y presentar" class="btn-primary"
+                            invisible="state != 'por_aprobar' or not puede_aprobar"/>
+                    <button name="action_regresar" type="object" string="Regresar a recotizar"
+                            invisible="state != 'por_aprobar' or not puede_aprobar"/>
+                    <button name="action_volver_a_borrador" type="object" string="Retirar"
+                            invisible="state != 'por_aprobar' or puede_aprobar"/>
+                    <button name="action_ganar" type="object" string="Ganada" class="btn-success"
+                            invisible="state not in ('presentada', 'vencida')"/>
+                    <button name="action_perder" type="object" string="Perdida"
+                            invisible="state not in ('presentada', 'vencida', 'por_aprobar')"/>
+                    <button name="action_renovar" type="object" string="Renovar (revisión nueva)"
+                            invisible="state not in ('presentada', 'vencida')"/>
+                    <button name="action_print_cliente" type="object" string="PDF para el cliente" icon="fa-print"
+                            invisible="state in ('borrador', 'por_aprobar', 'reemplazada')"/>
+                    <button name="action_print_interna" type="object" string="Hoja interna de costo" icon="fa-file-text-o"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,por_aprobar,presentada,ganada"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_ver_revisiones" type="object" class="oe_stat_button" icon="fa-history"
+                                invisible="not revision_anterior_id and not revision_siguiente_ids">
+                            <div class="o_stat_info"><span class="o_stat_value"><field name="revision"/></span><span class="o_stat_text">Revisión</span></div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="Vencida" bg_color="text-bg-warning" invisible="state != 'vencida'"/>
+                    <widget name="web_ribbon" title="Reemplazada" bg_color="text-bg-secondary" invisible="state != 'reemplazada'"/>
+                    <widget name="web_ribbon" title="Archivada" bg_color="text-bg-danger" invisible="active"/>
+                    <div class="alert alert-info" role="status" invisible="state != 'por_aprobar'">
+                        Esperando aprobación de <field name="aprobador_job_id" readonly="1" class="oe_inline fw-bold"/>.
+                        Sin aprobación no se imprime ni se envía el PDF comercial.
+                    </div>
+                    <div class="alert alert-warning" role="alert" invisible="not bajo_margen_minimo">
+                        Margen neto <field name="margen_neto_pct" readonly="1" class="oe_inline fw-bold"/> % debajo del mínimo
+                        <field name="margen_minimo_pct" readonly="1" class="oe_inline fw-bold"/> %.
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="semaforo != 'rojo'">
+                        Precio debajo del costo variable: solo «Autoriza precio bajo piso» la puede aprobar.
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="folio" readonly="1" placeholder="Nueva"/></h1>
+                        <h3><field name="name" readonly="1"/></h3>
+                    </div>
+                    <group>
+                        <group string="Cliente y producto">
+                            <field name="partner_id" readonly="state not in ('borrador',)"/>
+                            <field name="atencion_a"/>
+                            <field name="product_id" readonly="state not in ('borrador',)"/>
+                            <field name="spec_descripcion" readonly="state not in ('borrador',)"/>
+                            <label for="spec_gramaje" string="Gramaje · ancho · galga"/>
+                            <div class="d-flex gap-2">
+                                <field name="spec_gramaje" class="oe_inline" readonly="state not in ('borrador',)"/>
+                                <span>g/m² ×</span>
+                                <field name="spec_ancho" class="oe_inline" readonly="state not in ('borrador',)"/>
+                                <span>m · galga</span>
+                                <field name="spec_galga" class="oe_inline" readonly="state not in ('borrador',)"/>
+                            </div>
+                            <label for="volumen"/>
+                            <div class="d-flex gap-2">
+                                <field name="volumen" class="oe_inline" readonly="state not in ('borrador',)"/>
+                                <field name="volumen_uom" class="oe_inline" readonly="state not in ('borrador',)"/>
+                            </div>
+                            <field name="user_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active" invisible="1"/>
+                            <field name="puede_aprobar" invisible="1"/>
+                            <field name="es_divisa" invisible="1"/>
+                        </group>
+                        <group string="Precio">
+                            <field name="currency_id" readonly="state not in ('borrador',)"/>
+                            <field name="precio_objetivo" readonly="state not in ('borrador',)"/>
+                            <field name="fx_rate" readonly="1" invisible="not es_divisa"/>
+                            <field name="precio_mxn" readonly="1" invisible="not es_divisa"/>
+                            <field name="semaforo" readonly="1"/>
+                            <field name="margen_contribucion_pct" readonly="1"/>
+                            <field name="margen_bruto_pct" readonly="1"/>
+                            <field name="margen_neto_pct" readonly="1"/>
+                            <field name="precio_vs_piso_pct" readonly="1"/>
+                            <field name="validez_hasta" readonly="state in ('ganada', 'perdida', 'reemplazada')"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Costo" name="costo">
+                            <group>
+                                <group string="De dónde sale">
+                                    <field name="costo_fuente" readonly="state not in ('borrador',)"/>
+                                    <field name="hermano_product_id" invisible="costo_fuente != 'hermano'" required="costo_fuente == 'hermano'" readonly="state not in ('borrador',)"/>
+                                    <field name="periodo_id"/>
+                                    <field name="costo_id" invisible="not costo_id"/>
+                                    <field name="calculado_el"/>
+                                    <field name="calidad"/>
+                                    <field name="calidad_detalle"/>
+                                </group>
+                                <group string="Por unidad ($ MXN)">
+                                    <field name="mp_unit" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
+                                    <field name="energia_unit" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
+                                    <field name="fabricacion_unit" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
+                                    <field name="rendimiento" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
+                                    <field name="op_pct" readonly="costo_fuente != 'manual' or state != 'borrador'"/>
+                                    <field name="costo_variable" readonly="1"/>
+                                    <field name="costo_produccion" readonly="1"/>
+                                    <field name="costo_vendible" readonly="1"/>
+                                    <field name="piso_ocioso" readonly="1"/>
+                                    <field name="piso_lleno" readonly="1"/>
+                                    <field name="piso_lleno_divisa" readonly="1" invisible="not es_divisa"/>
+                                    <field name="precio_mercado" readonly="1"/>
+                                </group>
+                            </group>
+                            <group string="Muestra">
+                                <field name="costo_muestra" readonly="state not in ('borrador', 'por_aprobar')"/>
+                                <field name="costo_muestra_nota" readonly="state not in ('borrador', 'por_aprobar')"/>
+                            </group>
+                            <field name="supuestos" readonly="1" nolabel="1"/>
+                        </page>
+                        <page string="Escalera de volumen" name="escalera">
+                            <group><field name="con_escalera"/></group>
+                            <field name="tramo_ids" readonly="1">
+                                <list>
+                                    <field name="multiplo"/>
+                                    <field name="volumen"/>
+                                    <field name="es_base"/>
+                                    <field name="precio_mxn"/>
+                                    <field name="precio_divisa"/>
+                                    <field name="margen_neto_pct"/>
+                                    <field name="contrib_total_mes"/>
+                                    <field name="semaforo"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Condiciones" name="condiciones">
+                            <group>
+                                <group string="Condiciones de venta">
+                                    <field name="lote_minimo"/>
+                                    <field name="presentacion_rollos"/>
+                                    <field name="lugar_entrega"/>
+                                    <field name="tiempo_entrega"/>
+                                    <field name="muestra_leyenda"/>
+                                </group>
+                                <group string="Términos incluidos">
+                                    <field name="tc_coa"/>
+                                    <field name="tc_pruebas_lab"/>
+                                    <field name="tc_lta"/>
+                                    <field name="tc_ppap"/>
+                                    <field name="tc_inspeccion_total"/>
+                                    <field name="tc_cpk"/>
+                                    <field name="tc_apqp"/>
+                                    <field name="tc_pscr"/>
+                                    <field name="tc_ctpat"/>
+                                    <field name="tc_hoja_seguridad"/>
+                                    <field name="tc_imds"/>
+                                    <field name="tc_iso"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Aprobación y cliente" name="aprobacion">
+                            <group>
+                                <group string="Aprobación interna">
+                                    <field name="solicitada_por_id"/>
+                                    <field name="solicitada_el"/>
+                                    <field name="approved_by_id"/>
+                                    <field name="approved_date"/>
+                                    <field name="regreso_motivo_id"/>
+                                    <field name="regreso_count"/>
+                                </group>
+                                <group string="Presentación">
+                                    <field name="presented_by_id"/>
+                                    <field name="presented_date"/>
+                                    <field name="seguimiento_fecha"/>
+                                    <field name="seguimiento_hecho"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="Aprobación del cliente">
+                                    <field name="cliente_aprobo"/>
+                                    <field name="cliente_medio" required="cliente_aprobo"/>
+                                    <field name="cliente_fecha" required="cliente_aprobo"/>
+                                    <field name="cliente_evidencia" filename="cliente_evidencia_nombre"/>
+                                    <field name="cliente_evidencia_nombre" invisible="1"/>
+                                </group>
+                                <group string="Resultado">
+                                    <field name="ganada_date"/>
+                                    <field name="sale_order_id"/>
+                                    <field name="pricelist_item_id"/>
+                                    <field name="perdida_motivo_id"/>
+                                    <field name="perdida_nota"/>
+                                    <field name="revision_anterior_id"/>
+                                    <field name="legacy_id" invisible="not legacy_id"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_cotizacion_list" model="ir.ui.view">
+        <field name="name">qb.cotizador.cotizacion.list</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="arch" type="xml">
+            <list decoration-danger="semaforo == 'rojo'" decoration-warning="state == 'vencida' or semaforo == 'ambar'" decoration-muted="state in ('reemplazada', 'perdida')" decoration-success="state == 'ganada'">
+                <field name="folio"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="spec_descripcion" optional="hide"/>
+                <field name="volumen"/>
+                <field name="volumen_uom"/>
+                <field name="precio_objetivo"/>
+                <field name="currency_id"/>
+                <field name="piso_lleno" optional="hide"/>
+                <field name="margen_neto_pct"/>
+                <field name="semaforo"/>
+                <field name="calidad" optional="hide"/>
+                <field name="validez_hasta"/>
+                <field name="revision" optional="hide"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="state" widget="badge" decoration-info="state == 'por_aprobar'" decoration-success="state == 'ganada'" decoration-warning="state == 'vencida'"/>
+                <field name="activity_ids" widget="list_activity" optional="show"/>
+                <field name="company_id" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_cotizacion_search" model="ir.ui.view">
+        <field name="name">qb.cotizador.cotizacion.search</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="folio"/>
+                <field name="partner_id"/>
+                <field name="product_id"/>
+                <field name="spec_descripcion"/>
+                <field name="user_id"/>
+                <filter name="vivas" string="Vivas" domain="[('state', 'in', ('borrador', 'por_aprobar', 'presentada', 'vencida'))]"/>
+                <filter name="por_aprobar" string="Por aprobar" domain="[('state', '=', 'por_aprobar')]"/>
+                <filter name="presentadas" string="Presentadas" domain="[('state', '=', 'presentada')]"/>
+                <filter name="vencidas" string="Vencidas: decidir" domain="[('state', '=', 'vencida')]"/>
+                <filter name="ganadas" string="Ganadas" domain="[('state', '=', 'ganada')]"/>
+                <filter name="perdidas" string="Perdidas" domain="[('state', '=', 'perdida')]"/>
+                <separator/>
+                <filter name="rojo" string="Debajo del piso" domain="[('semaforo', '=', 'rojo')]"/>
+                <filter name="mias" string="Mías" domain="[('user_id', '=', uid)]"/>
+                <filter name="archivadas" string="Archivadas" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_partner" string="Cliente" context="{'group_by': 'partner_id'}"/>
+                    <filter name="group_semaforo" string="Semáforo" context="{'group_by': 'semaforo'}"/>
+                    <filter name="group_perdida" string="Motivo de pérdida" context="{'group_by': 'perdida_motivo_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_cotizador_cotizacion" model="ir.actions.act_window">
+        <field name="name">Cotizaciones de costo</field>
+        <field name="res_model">qb.cotizador.cotizacion</field>
+        <field name="view_mode">list,form,activity</field>
+        <field name="search_view_id" ref="view_qb_cotizador_cotizacion_search"/>
+        <field name="context">{'search_default_vivas': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Cotice un producto existente o una especificación nueva</p>
+            <p>El costo sale del último período cerrado; el precio se mide contra los pisos; la aprobación la da el puesto configurado en Ajustes → Ventas.</p>
+        </field>
+    </record>
+</odoo>

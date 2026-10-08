@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_qb_cotizador_cotizacion" model="ir.sequence">
+        <field name="name">Cotización de costo</field>
+        <field name="code">qb.cotizador.cotizacion</field>
+        <field name="prefix">COT-%(year)s-</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

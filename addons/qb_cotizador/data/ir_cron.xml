@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="cron_qb_cotizador_diario" model="ir.cron">
+        <field name="name">Cotizador: seguimiento, vencimiento y archivo de borradores</field>
+        <field name="model_id" ref="model_qb_cotizador_cotizacion"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_diario()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

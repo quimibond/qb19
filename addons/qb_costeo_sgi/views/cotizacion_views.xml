@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_cotizador_cotizacion_form_sgi" model="ir.ui.view">
+        <field name="name">qb.cotizador.cotizacion.form.sgi</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="inherit_id" ref="qb_cotizador.view_qb_cotizador_cotizacion_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="before">
+                <field name="project_id" readonly="state != 'borrador'"/>
+                <field name="project_revision" invisible="not project_id"/>
+            </xpath>
+            <xpath expr="//button[@name='action_calcular']" position="after">
+                <button name="action_tomar_del_proyecto" type="object" string="Tomar datos del proyecto"
+                        invisible="not project_id or state != 'borrador'"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_cotizacion_list_sgi" model="ir.ui.view">
+        <field name="name">qb.cotizador.cotizacion.list.sgi</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="inherit_id" ref="qb_cotizador.view_qb_cotizador_cotizacion_list"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="project_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_qb_cotizador_cotizacion_search_sgi" model="ir.ui.view">
+        <field name="name">qb.cotizador.cotizacion.search.sgi</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="inherit_id" ref="qb_cotizador.view_qb_cotizador_cotizacion_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="project_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- PDF comercial bilingüe (sustituye al Word F-P-A28-12). Sin binding al
+         modelo: solo sale por el botón, que exige la aprobación. Jose dijo que
+         él va a cambiar la plantilla; el contenido sigue al formato viejo. -->
+    <record id="action_report_cotizacion_cliente" model="ir.actions.report">
+        <field name="name">Cotización para el cliente</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_cotizador.report_cotizacion_cliente</field>
+        <field name="report_file">qb_cotizador.report_cotizacion_cliente</field>
+        <field name="print_report_name">'Cotizacion %s' % (object.folio or '')</field>
+    </record>
+
+    <record id="action_report_cotizacion_interna" model="ir.actions.report">
+        <field name="name">Hoja interna de costo</field>
+        <field name="model">qb.cotizador.cotizacion</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">qb_cotizador.report_cotizacion_interna</field>
+        <field name="report_file">qb_cotizador.report_cotizacion_interna</field>
+        <field name="print_report_name">'Costo %s' % (object.folio or '')</field>
+        <field name="binding_model_id" ref="model_qb_cotizador_cotizacion"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_cotizacion_cliente">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <div style="text-align:center; margin-bottom:6px;">
+                            <h3 style="margin-bottom:2px;">COTIZACIÓN DE PRODUCTO
+                                <span style="color:#888; font-weight:normal;">/ PRODUCT QUOTATION</span></h3>
+                        </div>
+                        <table class="table table-sm table-borderless" style="font-size:12px; margin-bottom:6px;">
+                            <tbody>
+                                <tr>
+                                    <td style="width:50%; padding:2px;">
+                                        <strong>Cotización / Quotation:</strong> <span t-out="o.folio"/>
+                                        <t t-if="o.revision &gt; 1"> · <strong>Rev. <span t-out="o.revision"/></strong></t><br/>
+                                        <strong>Emitida el / Issued on:</strong>
+                                        <span t-out="(o.presented_date or o.create_date) and (o.presented_date or o.create_date).date()"/>
+                                    </td>
+                                    <td style="padding:2px;">
+                                        <t t-if="o.validez_hasta">
+                                            <strong>Válida hasta / Valid until:</strong> <span t-field="o.validez_hasta"/><br/>
+                                        </t>
+                                        <strong>Moneda / Currency:</strong> <span t-out="o.currency_id.name"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="o.revision_anterior_id" style="font-size:11px; color:#888; margin-bottom:6px;">
+                            Esta revisión sustituye a la cotización <span t-out="o.revision_anterior_id.folio"/>.
+                            <span style="color:#aaa;">/ This revision supersedes the previous quotation.</span>
+                        </p>
+                        <p style="font-size:13px; margin-bottom:6px;">
+                            <strong>En atención a / Attention to:</strong> <span t-out="o.atencion_a or o.partner_id.name"/><br/>
+                            <t t-if="o.atencion_a"><strong>Empresa / Company:</strong> <span t-out="o.partner_id.name"/><br/></t>
+                            <t t-if="o.partner_id.contact_address">
+                                <strong>Dirección / Address:</strong> <span t-out="' '.join(o.partner_id.contact_address.split())"/><br/>
+                            </t>
+                        </p>
+                        <p style="font-size:12px;">Agradecemos su preferencia; a continuación presentamos nuestra cotización.
+                            <span style="color:#888;">/ Thank you for your preference; please find our quotation below.</span></p>
+                        <table class="table table-sm" style="font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th>Producto <span style="font-weight:normal; color:#888;">/ Item</span></th>
+                                    <th class="text-end">Volumen estimado<br/><span style="font-weight:normal; color:#888;">Estimated volume</span></th>
+                                    <th class="text-end">Precio unitario<br/><span style="font-weight:normal; color:#888;">Unit price</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <t t-if="o.product_id">
+                                            <t t-if="o.product_id.default_code"><b><span t-out="o.product_id.default_code"/></b><br/></t>
+                                            <span t-out="o.product_id.name"/>
+                                        </t>
+                                        <t t-if="o.spec_descripcion"><span t-out="o.spec_descripcion"/></t>
+                                        <t t-if="o.spec_gramaje or o.spec_ancho or o.spec_galga">
+                                            <br/><span style="color:#555;">
+                                            <t t-if="o.spec_gramaje"><span t-out="'%g' % o.spec_gramaje"/> g/m²</t>
+                                            <t t-if="o.spec_ancho"> × <span t-out="'%g' % o.spec_ancho"/> m</t>
+                                            <t t-if="o.spec_galga"> · galga <span t-out="o.spec_galga"/></t></span>
+                                        </t>
+                                    </td>
+                                    <td class="text-end"><span t-out="'{:,.0f} {}'.format(o.volumen, dict(o._fields['volumen_uom'].selection).get(o.volumen_uom) or '')"/></td>
+                                    <td class="text-end"><b><span t-out="'{:,.4f}'.format(o.precio_objetivo)"/> <span t-out="o.currency_id.name"/></b>
+                                        por / per <span t-out="(o.volumen_uom or 'm')"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <t t-set="tramos" t-value="o.tramo_ids if o.con_escalera else o.tramo_ids.browse()"/>
+                        <t t-if="len(tramos) &gt; 1">
+                            <h5>Precios por volumen <span style="font-size:12px; color:#888; font-weight:normal;">/ Volume pricing</span></h5>
+                            <table class="table table-sm" style="font-size:13px; width:60%;">
+                                <thead><tr><th class="text-end">Volumen mensual / Monthly volume</th><th class="text-end">Precio unitario / Unit price</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="tramos" t-as="t" t-att-style="'font-weight:bold;' if t.es_base else ''">
+                                        <td class="text-end"><span t-out="'{:,.0f}'.format(t.volumen)"/> <span t-out="o.volumen_uom or 'm'"/>/mes</td>
+                                        <td class="text-end"><span t-out="'{:,.4f}'.format(t.precio_divisa)"/> <span t-out="o.currency_id.name"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                        <h5>Condiciones <span style="font-size:12px; color:#888; font-weight:normal;">/ Conditions</span></h5>
+                        <ul style="font-size:12px;">
+                            <li>Precio unitario más IVA. <span style="color:#888;">/ Unit price plus VAT.</span></li>
+                            <li t-if="o.lote_minimo">Cantidad mínima por lote: <span t-out="o.lote_minimo"/>. <span style="color:#888;">/ Minimum lot quantity.</span></li>
+                            <li t-if="o.presentacion_rollos">Presentación en rollos de <span t-out="o.presentacion_rollos"/>. <span style="color:#888;">/ Roll presentation.</span></li>
+                            <li t-if="o.lugar_entrega">Lugar y condición de entrega: <span t-out="o.lugar_entrega"/>. <span style="color:#888;">/ Place and delivery condition.</span></li>
+                            <li t-if="o.tiempo_entrega">Tiempo de entrega: <span t-out="o.tiempo_entrega"/>.</li>
+                            <li t-if="o.validez_hasta">Cotización válida hasta el <span t-field="o.validez_hasta"/>; después está sujeta a reconfirmación.
+                                <span style="color:#888;">/ Valid until that date; subject to reconfirmation afterwards.</span></li>
+                            <li>Volumen mensual de referencia; ajustes importantes de volumen pueden requerir re-cotización.
+                                <span style="color:#888;">/ Reference monthly volume; major changes may require a new quotation.</span></li>
+                        </ul>
+                        <h5>Términos y condiciones incluidos <span style="font-size:12px; color:#888; font-weight:normal;">/ Included terms</span></h5>
+                        <table class="table table-sm table-bordered" style="font-size:11px; margin-bottom:4px;">
+                            <tbody>
+                                <tr>
+                                    <td style="width:34%;">CoA al 100 % / 100 % CoA <span t-out="'✓' if o.tc_coa else '✗'"/></td>
+                                    <td style="width:33%;">Pruebas especiales de laboratorio / Special lab tests <span t-out="'✓' if o.tc_pruebas_lab else '✗'"/></td>
+                                    <td>LTA <span t-out="'✓' if o.tc_lta else '✗'"/></td>
+                                </tr>
+                                <tr>
+                                    <td>PPAP <span t-out="'✓' if o.tc_ppap else '✗'"/></td>
+                                    <td>Inspección total / 100 % inspection <span t-out="'✓' if o.tc_inspeccion_total else '✗'"/></td>
+                                    <td>CPK 3 sigma <span t-out="'✓' if o.tc_cpk else '✗'"/></td>
+                                </tr>
+                                <tr>
+                                    <td>APQP <span t-out="'✓' if o.tc_apqp else '✗'"/></td>
+                                    <td>PSCR <span t-out="'✓' if o.tc_pscr else '✗'"/></td>
+                                    <td>Evidencia de carga C-TPAT / C-TPAT loading evidence <span t-out="'✓' if o.tc_ctpat else '✗'"/></td>
+                                </tr>
+                                <tr>
+                                    <td>Hoja de seguridad / Safety data sheet <span t-out="'✓' if o.tc_hoja_seguridad else '✗'"/></td>
+                                    <td>IMDS <span t-out="'✓' if o.tc_imds else '✗'"/></td>
+                                    <td>Certificación ISO / ISO certification <span t-out="'✓' if o.tc_iso else '✗'"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="o.muestra_leyenda" style="font-size:11px; color:#555;"><span t-out="o.muestra_leyenda"/></p>
+                        <p style="font-size:12px;">Quedamos atentos a sus comentarios. <span style="color:#888;">/ We remain attentive to your comments.</span></p>
+                        <table class="table table-borderless" style="font-size:11px; margin-top:28px; width:60%;">
+                            <tbody>
+                                <tr>
+                                    <td style="border-top:1px solid #000; text-align:center;">
+                                        <span t-out="o.user_id.name"/><br/>Ventas / Sales
+                                    </td>
+                                    <td style="border-top:1px solid #000; text-align:center;">
+                                        <span t-out="o.approved_by_id.name"/><br/>Aprobó / Approved by
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_cotizacion_interna">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h3>Hoja interna de costo · <span t-out="o.folio"/>
+                            <span class="badge text-bg-secondary" t-out="dict(o._fields['state'].selection).get(o.state)"/></h3>
+                        <p style="font-size:11px; color:#a00;">Uso interno: nunca se manda al cliente.</p>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:25%"><strong>Cliente</strong></td><td><span t-out="o.partner_id.display_name"/></td>
+                                <td style="width:20%"><strong>Vendedor</strong></td><td><span t-out="o.user_id.name"/></td></tr>
+                            <tr><td><strong>Producto</strong></td><td><span t-out="o.product_id.display_name or o.spec_descripcion"/></td>
+                                <td><strong>Especificación</strong></td><td><span t-out="'%g g/m² × %g m · galga %s' % (o.spec_gramaje, o.spec_ancho, o.spec_galga or '—')"/></td></tr>
+                            <tr><td><strong>Volumen</strong></td><td><span t-out="'{:,.0f} {}'.format(o.volumen, dict(o._fields['volumen_uom'].selection).get(o.volumen_uom) or '')"/></td>
+                                <td><strong>Moneda / TC</strong></td><td><span t-out="'%s · %.4f' % (o.currency_id.name, o.fx_rate)"/></td></tr>
+                            <tr><td><strong>Fuente del costo</strong></td><td><span t-out="dict(o._fields['costo_fuente'].selection).get(o.costo_fuente)"/></td>
+                                <td><strong>Período / calidad</strong></td><td><span t-out="'%s · %s' % (o.periodo_id.period or '—', dict(o._fields['calidad'].selection).get(o.calidad))"/></td></tr>
+                        </table>
+                        <h5>Del costo al precio ($/u MXN, por unidad vendible)</h5>
+                        <table class="table table-sm table-bordered" style="font-size:11px; width:70%;">
+                            <tr><td>Materia prima</td><td class="text-end"><span t-out="'%.4f' % o.mp_unit"/></td></tr>
+                            <tr><td>Energía (dentro de fabricación)</td><td class="text-end"><span t-out="'%.4f' % o.energia_unit"/></td></tr>
+                            <tr><td>Fabricación (horas × tarifa)</td><td class="text-end"><span t-out="'%.4f' % o.fabricacion_unit"/></td></tr>
+                            <tr><td>Rendimiento vendible</td><td class="text-end"><span t-out="'%.1f %%' % (100 * o.rendimiento)"/></td></tr>
+                            <tr><td><b>Piso con capacidad ociosa</b> (variable ÷ rendimiento)</td><td class="text-end"><b><span t-out="'%.4f' % o.piso_ocioso"/></b></td></tr>
+                            <tr><td>Costo vendible (producción ÷ rendimiento)</td><td class="text-end"><span t-out="'%.4f' % o.costo_vendible"/></td></tr>
+                            <tr><td>Operación (% de la venta)</td><td class="text-end"><span t-out="'%.2f %%' % (100 * o.op_pct)"/></td></tr>
+                            <tr><td><b>Piso a planta llena</b> (vendible ÷ (1 − op))</td><td class="text-end"><b><span t-out="'%.4f' % o.piso_lleno"/></b></td></tr>
+                            <tr><td>Precio de mercado (período)</td><td class="text-end"><span t-out="'%.4f' % o.precio_mercado"/></td></tr>
+                            <tr><td>Costo de la muestra</td><td class="text-end"><span t-out="'%.2f' % o.costo_muestra"/> <span t-out="o.costo_muestra_nota or ''"/></td></tr>
+                        </table>
+                        <h5>Qué deja el precio</h5>
+                        <table class="table table-sm table-bordered" style="font-size:11px; width:70%;">
+                            <tr><td>Precio al cliente</td><td class="text-end"><span t-out="'%.4f %s = %.4f MXN' % (o.precio_objetivo, o.currency_id.name, o.precio_mxn)"/></td></tr>
+                            <tr><td>Semáforo</td><td class="text-end"><span t-out="dict(o._fields['semaforo'].selection).get(o.semaforo) or 'sin precio'"/></td></tr>
+                            <tr><td>Contribución %</td><td class="text-end"><span t-out="'%.2f' % o.margen_contribucion_pct"/></td></tr>
+                            <tr><td>Margen bruto %</td><td class="text-end"><span t-out="'%.2f' % o.margen_bruto_pct"/></td></tr>
+                            <tr><td>Margen neto %</td><td class="text-end"><span t-out="'%.2f' % o.margen_neto_pct"/></td></tr>
+                            <tr><td>% sobre el piso lleno</td><td class="text-end"><span t-out="'%.2f' % o.precio_vs_piso_pct"/></td></tr>
+                        </table>
+                        <t t-if="o.tramo_ids">
+                            <h5>Escalera de volumen</h5>
+                            <table class="table table-sm table-bordered" style="font-size:11px; width:90%;">
+                                <thead><tr><th>×</th><th class="text-end">Volumen</th><th class="text-end">Precio MXN</th><th class="text-end">Precio divisa</th><th class="text-end">Margen neto %</th><th class="text-end">Contribución $/mes</th><th>Semáforo</th></tr></thead>
+                                <tbody>
+                                    <tr t-foreach="o.tramo_ids" t-as="t">
+                                        <td><span t-out="'%g' % t.multiplo"/></td>
+                                        <td class="text-end"><span t-out="'{:,.0f}'.format(t.volumen)"/></td>
+                                        <td class="text-end"><span t-out="'%.4f' % t.precio_mxn"/></td>
+                                        <td class="text-end"><span t-out="'%.4f' % t.precio_divisa"/></td>
+                                        <td class="text-end"><span t-out="'%.1f' % t.margen_neto_pct"/></td>
+                                        <td class="text-end"><span t-out="'{:,.0f}'.format(t.contrib_total_mes)"/></td>
+                                        <td><span t-out="t.semaforo or ''"/></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </t>
+                        <h5>Aprobación</h5>
+                        <p style="font-size:11px;">
+                            Solicitó: <span t-out="o.solicitada_por_id.name or '—'"/> (<span t-out="o.solicitada_el or '—'"/>) ·
+                            Aprobó: <span t-out="o.approved_by_id.name or '—'"/> (<span t-out="o.approved_date or '—'"/>) ·
+                            Regresos: <span t-out="o.regreso_count"/><t t-if="o.regreso_motivo_id"> (último: <span t-out="o.regreso_motivo_id.name"/>)</t>
+                        </p>
+                        <h5>Supuestos</h5>
+                        <p style="font-size:11px; white-space:pre-wrap;"><span t-out="o.supuestos or '—'"/></p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

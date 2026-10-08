@@ -137,3 +137,28 @@ conservación de muestras, destino de los 152 lotes de la ubicación 57.
 - Los filtros de medición de C1 excluyen plantillas (`is_template`).
 - Los modelos `sgi.dev.*` y `ficha.tecnica.*` quedan expuestos al MCP (la
   corrección final de datos de la sección 7 se hace por MCP).
+
+## 7. Bloque D — 6.8 Cotización (2026-10-08)
+
+Jose decidió («Hazlo tú») construir la cotización de C1 en el costeo v2 y no
+tocar `qb_capacidad_costeo`. Entregado en dos módulos nuevos:
+
+- `qb_cotizador` 19.0.1.0.0 (Community, corre en CI): `qb.cotizador.cotizacion`
+  con foto del costo de `qb_costeo` (período cerrado / hermano / manual),
+  estados Borrador → Por aprobar → Presentada → Ganada / Perdida / Vencida,
+  aprobación por **puesto** (183 por omisión, suplente vacío), motivos de
+  lista, PDF comercial bilingüe bloqueado hasta aprobar, seguimiento y
+  vencimiento por cron, aprobación del cliente con evidencia, precio en la
+  tarifa al ganar, ganada automática por pedido, archivo de borradores.
+  Importa las 75 cotizaciones de `qb.cotizacion` sin modificarlas (las 6
+  presentadas vencidas entran como «Vencida»).
+- `qb_costeo_sgi` 19.0.1.0.0 (`auto_install`, pruebas solo en Odoo.sh):
+  proyecto en la cotización con gramaje / ancho / galga de la tabla de
+  características y volumen / precio de la solicitud; recálculo por revisión
+  con detención del proyecto; fichas C1-COSTO y C1-COTIZACION medidas con la
+  cotización; liga de las importadas con su proyecto FT (121 → 491, galga 21).
+
+Parámetros que quedan **vacíos** porque el brief no los define: suplente,
+margen mínimo, descuento de la escalera. Pendiente de Jose: la plantilla del
+PDF comercial (dijo que él la cambia) y el documento «Aprobación para iniciar
+un proyecto» (anexo A), que no entra en este bloque.
