@@ -162,3 +162,19 @@ Parámetros que quedan **vacíos** porque el brief no los define: suplente,
 margen mínimo, descuento de la escalera. Pendiente de Jose: la plantilla del
 PDF comercial (dijo que él la cambia) y el documento «Aprobación para iniciar
 un proyecto» (anexo A), que no entra en este bloque.
+
+## 8. Bloque E — 6.9 Solicitud de desarrollos y arranque (2026-10-08)
+
+`quimibond_sgi` 57.124.0 (`models/sgi_dev_start.py`): compuerta de Dirección
+de Operaciones (sin solicitud aprobada no hay «Muestra» ni orden de
+fabricación del artículo en desarrollo), aviso con PDF a las partes
+interesadas (puestos por parámetro, sembrados por nombre; personas sin
+puesto en otro parámetro, vacío), existencias de la materia prima de la
+muestra (`sgi.dev.mp.line`, explosión de la lista de materiales hasta las
+hojas) y requisición a Compras ligada al proyecto (`approval.request`,
+`sgi_dev_project_id`) que mueve el reloj de materia prima. El PDF con clave
+nueva ya salía desde el bloque 1.
+
+Queda para Jose: a quién avisar por Inspección (José Luis Almazán no tiene
+puesto) y si la aprobación de la requisición la firma solo Dirección de
+Operaciones (hoy la categoría de Aprobaciones tiene su propio aprobador).
