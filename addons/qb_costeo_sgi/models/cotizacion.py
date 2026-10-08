@@ -11,6 +11,7 @@ importadas del cotizador anterior con su proyecto FT.
 import logging
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -99,7 +100,82 @@ class QbCotizadorCotizacionSgi(models.Model):
             rec.project_revision = rec.project_id.sgi_dev_revision
         return res
 
+    # ------------------------------------------------------------------
+    # 1.1.0 (Jose 2026-10-08, punto 2): el candado es una aprobación de Odoo
+    # (Aprobaciones), no un estado editable. La solicitud nace en la categoría
+    # y el asunto del rol «Aprueba» de C1.05 (puesto 183 por el SGI): quien
+    # aprueba ahí presenta la cotización; quien rechaza la regresa a borrador.
+    # ------------------------------------------------------------------
+    approval_request_id = fields.Many2one('approval.request', string="Solicitud de aprobación", readonly=True,
+                                          copy=False, ondelete='set null')
+    approval_request_status = fields.Selection(related='approval_request_id.request_status', string="Estado en Aprobaciones")
+
+    @api.model
+    def _qb_sgi_approval_role(self):
+        Role = self.env['sgi.activity.role'].sudo()
+        return Role.search([('role', '=', 'aprueba'), ('approval_kind', '=', 'solicitud'),
+                            ('activity_id.process_id.code', '=', 'C1'), ('activity_id.number', '=', 'C1.05'),
+                            ('approval_category_id', '!=', False)], limit=1)
+
+    @api.model
+    def _qb_sgi_approval_subject(self):
+        """(categoría, asunto) de Aprobaciones para la cotización; (vacío, vacío) si C1.05 no tiene
+        aprobación como solicitud (entonces aprueba el puesto desde la cotización)."""
+        role = self._qb_sgi_approval_role()
+        if not role:
+            return self.env['approval.category'], self.env['sgi.approval.subject']
+        Subject = self.env['sgi.approval.subject'].sudo()
+        subject = Subject.search([('role_id', '=', role.id), ('category_id', '=', role.approval_category_id.id)], limit=1)
+        if not subject:
+            subject = Subject.create({'name': 'Cotización de desarrollo (precio antes de cotizar)',
+                                      'category_id': role.approval_category_id.id, 'role_id': role.id})
+        return role.approval_category_id, subject
+
+    def _qb_sgi_approval_pending(self):
+        self.ensure_one()
+        return bool(self.approval_request_id) and self.approval_request_id.request_status in ('new', 'pending')
+
+    def action_enviar_aprobacion(self):
+        res = super().action_enviar_aprobacion()
+        for rec in self:
+            if rec._qb_sgi_approval_pending():
+                continue
+            category, subject = self._qb_sgi_approval_subject()
+            if not category:
+                rec.message_post(body="C1.05 no tiene aprobación como solicitud en el SGI: aprueba el puesto "
+                                      "configurado desde la cotización.")
+                continue
+            label = rec.folio or rec.name
+            request = self.env['approval.request'].create({
+                'name': "Cotización %s · %s" % (label, rec.partner_id.name or 'sin cliente'),
+                'category_id': category.id, 'sgi_subject_id': subject.id, 'request_owner_id': self.env.uid,
+                'reference': label, 'company_id': rec.company_id.id, 'qb_cotizacion_id': rec.id,
+                'reason': "<p>%s %s · precio %s %s (%.4f MXN) · piso lleno %.4f · piso ocioso %.4f · margen neto "
+                          "%.1f %% · semáforo %s · costo de la muestra %.2f MXN.%s</p>" % (
+                              rec.product_id.default_code or rec.spec_descripcion or '', label, rec.precio_objetivo,
+                              rec.currency_id.name, rec.precio_mxn, rec.piso_lleno, rec.piso_ocioso,
+                              rec.margen_neto_pct, rec.semaforo or 'sin precio', rec.costo_muestra,
+                              (" Proyecto %s." % rec.project_id.display_name) if rec.project_id else ''),
+            })
+            request.action_confirm()
+            rec.write({'approval_request_id': request.id})
+            rec.activity_unlink(['mail.mail_activity_data_todo'])
+            rec.message_post(body="Solicitud %s enviada a Aprobaciones (%s): la cotización se presenta cuando se "
+                                  "apruebe ahí." % (request.name, category.name))
+        return res
+
+    def _puede_aprobar(self, user):
+        if self.env.context.get('qb_from_approval'):
+            return True
+        if self._qb_sgi_approval_pending():
+            return False
+        return super()._puede_aprobar(user)
+
     def action_aprobar(self):
+        for rec in self:
+            if rec._qb_sgi_approval_pending() and not self.env.context.get('qb_from_approval'):
+                raise UserError("Esta cotización se aprueba en Aprobaciones (solicitud %s), no desde aquí."
+                                % rec.approval_request_id.name)
         res = super().action_aprobar()
         for rec in self.filtered(lambda r: r.project_id and r.project_id.qb_costo_bloqueado):
             rec.project_id.write({'qb_costo_bloqueado': False, 'qb_costo_bloqueo_nota': False})
@@ -171,3 +247,39 @@ class QbCotizadorCotizacionSgi(models.Model):
         if n:
             _logger.info('qb_costeo_sgi: %d cotizaciones ligadas a su proyecto FT', n)
         return n
+
+
+class ApprovalRequestCotizacion(models.Model):
+    _inherit = 'approval.request'
+
+    qb_cotizacion_id = fields.Many2one('qb.cotizador.cotizacion', string="Cotización", index=True,
+                                       ondelete='set null', copy=False)
+
+    def _qb_after_decision(self):
+        motivo = self.env.ref('qb_cotizador.motivo_regreso_otro', raise_if_not_found=False)
+        for request in self.filtered('qb_cotizacion_id'):
+            cot = request.qb_cotizacion_id
+            if cot.state != 'por_aprobar':
+                continue
+            if request.request_status == 'approved':
+                cot.with_context(qb_from_approval=True).action_aprobar()
+            elif request.request_status in ('refused', 'cancel') and motivo:
+                cot.with_context(qb_from_approval=True)._regresar(
+                    motivo, "%s en Aprobaciones (%s) por %s." % (
+                        'Rechazada' if request.request_status == 'refused' else 'Cancelada', request.name,
+                        self.env.user.name))
+
+    def action_approve(self, approver=None):
+        res = super().action_approve(approver=approver)
+        self._qb_after_decision()
+        return res
+
+    def action_refuse(self, approver=None):
+        res = super().action_refuse(approver=approver)
+        self._qb_after_decision()
+        return res
+
+    def action_cancel(self):
+        res = super().action_cancel()
+        self._qb_after_decision()
+        return res
