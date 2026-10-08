@@ -185,10 +185,10 @@
                             <tr><td>Materia prima</td><td class="text-end"><span t-out="'%.4f' % o.mp_unit"/></td></tr>
                             <tr><td>Energía (dentro de fabricación)</td><td class="text-end"><span t-out="'%.4f' % o.energia_unit"/></td></tr>
                             <tr><td>Fabricación (horas × tarifa)</td><td class="text-end"><span t-out="'%.4f' % o.fabricacion_unit"/></td></tr>
-                            <tr><td>Rendimiento vendible</td><td class="text-end"><span t-out="'%.1f %%' % (100 * o.rendimiento)"/></td></tr>
+                            <tr><td>Rendimiento vendible</td><td class="text-end"><span t-out="'%.1f' % (100 * o.rendimiento)"/> %</td></tr>
                             <tr><td><b>Piso con capacidad ociosa</b> (variable ÷ rendimiento)</td><td class="text-end"><b><span t-out="'%.4f' % o.piso_ocioso"/></b></td></tr>
                             <tr><td>Costo vendible (producción ÷ rendimiento)</td><td class="text-end"><span t-out="'%.4f' % o.costo_vendible"/></td></tr>
-                            <tr><td>Operación (% de la venta)</td><td class="text-end"><span t-out="'%.2f %%' % (100 * o.op_pct)"/></td></tr>
+                            <tr><td>Operación (% de la venta)</td><td class="text-end"><span t-out="'%.2f' % (100 * o.op_pct)"/> %</td></tr>
                             <tr><td><b>Piso a planta llena</b> (vendible ÷ (1 − op))</td><td class="text-end"><b><span t-out="'%.4f' % o.piso_lleno"/></b></td></tr>
                             <tr><td>Precio de mercado (período)</td><td class="text-end"><span t-out="'%.4f' % o.precio_mercado"/></td></tr>
                             <tr><td>Costo de la muestra</td><td class="text-end"><span t-out="'%.2f' % o.costo_muestra"/> <span t-out="o.costo_muestra_nota or ''"/></td></tr>

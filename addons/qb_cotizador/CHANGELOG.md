@@ -3,6 +3,14 @@
 Una sección por versión del manifest, la más nueva arriba. El PR que sube
 `version` en `__manifest__.py` agrega aquí su entrada.
 
+## 19.0.1.1.1 — 2026-10-08
+
+- **Corregido** la hoja interna de costo (PDF) tronaba con «incomplete
+  format»: el cargador de datos de Odoo guarda `%%` como `%` en el arch de la
+  plantilla, así que `'%.1f %%' % x` llegaba a la base como `'%.1f %'`. El
+  signo de porcentaje va ahora como texto fuera de la expresión (rendimiento
+  vendible y operación). Regla: en plantillas QWeb del repo no usar `%%`.
+
 ## 19.0.1.1.0 — 2026-10-08
 
 Jose 2026-10-08, puntos 2 y 3.
