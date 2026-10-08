@@ -4,9 +4,9 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_sgi/models/sgi_dev_board.py`, `addons/quimibond_sgi/models/sgi_dev_characteristic.py`, `addons/quimibond_sgi/models/sgi_dev_measure.py`, `addons/quimibond_sgi/models/sgi_dev_process.py`, `addons/quimibond_sgi/models/sgi_dev_product.py`, `addons/quimibond_sgi/models/sgi_dev_project.py`, `addons/quimibond_sgi/models/sgi_dev_request.py`, `addons/quimibond_sgi/models/sgi_dev_start.py`, `addons/quimibond_sgi/models/sgi_improvement.py`.
 
-## Campos (93)
+## Campos (97)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -59,6 +59,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_line_key` | Selection | Línea | Línea de producción del desarrollo; define el checklist de factibilidad. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:301` |
 | `sgi_dev_market_id` | Many2one | Mercado | Mercado al que va el producto (lista). |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:282` |
 | `sgi_dev_missing_partner` | Boolean | Falta el cliente | Desarrollo de origen cliente sin cliente capturado. |  |  | compute `_compute_sgi_dev_missing_partner`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_board.py:23` |
+| `sgi_dev_mp_line_ids` | One2many | Materia prima de la muestra |  |  | `sgi.dev.mp.line` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:81` |
+| `sgi_dev_mp_missing_count` | Integer | Materias primas que faltan |  |  |  | compute `_compute_sgi_dev_mp_missing_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:82` |
 | `sgi_dev_mp_pending` | Boolean | Materia prima pendiente | Hay una espera de materia prima abierta: el reloj de desarrollo está detenido. |  |  | compute `_compute_sgi_dev_clocks`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_project.py:310` |
 | `sgi_dev_mp_wait_ids` | One2many | Esperas de materia prima |  |  | `sgi.dev.mp.wait` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:309` |
 | `sgi_dev_norms` | Char | Norma(s) a cumplir |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:54` |
@@ -77,6 +79,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_dev_requester` | Char | Nombre del solicitante |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:38` |
 | `sgi_dev_requester_employee_id` | Many2one | Solicitante interno | Quien pide el desarrollo cuando es interno. |  | `hr.employee` |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:245` |
 | `sgi_dev_required_date` | Date | Fecha requerida | Fecha en que el cliente necesita el producto o la muestra. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_project.py:284` |
+| `sgi_dev_requisition_count` | Integer |  |  |  |  | compute `_compute_sgi_dev_requisition_count`, sin guardar |  | `addons/quimibond_sgi/models/sgi_dev_start.py:86` |
+| `sgi_dev_requisition_ids` | One2many | Requisiciones a Compras |  |  | `approval.request` |  |  | `addons/quimibond_sgi/models/sgi_dev_start.py:84` |
 | `sgi_dev_review_date` | Datetime | Revisado el |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:319` |
 | `sgi_dev_review_note` | Char | Motivo del regreso | Qué falta cuando Ventas regresa el análisis. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:320` |
 | `sgi_dev_review_state` | Selection | Revisión de Ventas | Ventas aprueba juntos el análisis de Diseño de Producto y la factibilidad de Diseño de Procesos. Sin aprobación no se cotiza. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_analysis.py:314` |
@@ -104,7 +108,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `sgi_is_ft` | Boolean | Desarrollo de producto | El proyecto es un desarrollo de producto (procedimiento C1): habilita las pestañas de desarrollo, el folio FT, las etapas de avance y las mediciones del SGI. Las plantillas de Diseño y Desarrollo ya lo traen marcado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_request.py:27` |
 | `sgi_is_improvement` | Boolean | Proyecto de mejora SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_improvement.py:9` |
 
-## Métodos públicos (23)
+## Métodos públicos (27)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -117,6 +121,8 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `action_sgi_dev_generate_products` | Crea (o liga, si el código ya existe) los artículos de la ruta: crudo, teñido y acabado. |
 | `action_sgi_dev_load_feasibility` | — |
 | `action_sgi_dev_load_lines` | Propone las características del tipo desde el catálogo (``sgi.dev.characteristic.template``); solo agrega las que faltan. |
+| `action_sgi_dev_mp_check` | — |
+| `action_sgi_dev_mp_requisition` | Requisición a Compras con la materia prima que falta (una por clic). |
 | `action_sgi_dev_mp_wait_start` | — |
 | `action_sgi_dev_mp_wait_stop` | — |
 | `action_sgi_dev_new_revision` | Sube la revisión del desarrollo (el cliente ajustó lo que pidió) y lo anota en la bitácora. |
@@ -126,8 +132,10 @@ Archivos: `addons/quimibond_sgi/models/sgi_dev_analysis.py`, `addons/quimibond_s
 | `action_sgi_dev_request_lab_tests` | — |
 | `action_sgi_dev_review_approve` | — |
 | `action_sgi_dev_review_return` | — |
+| `action_sgi_dev_view_requisitions` | — |
 | `action_sgi_dev_view_tasks` | — |
 | `action_view_tasks` | La tarjeta de un desarrollo abre su ficha. Con ``sgi_dev_force_tasks`` (botón de la ficha, enlaces «Tareas») se abren las tareas como siempre. |
 | `create` | — |
+| `cron_sgi_dev_mp_wait` | — |
 | `sgi_dev_format_info` | 'F-P-D01-18 · Rev. 02' para el pie del PDF (clave y revisión vivas del documento ligado al mapeo). |
 | `write` | — |

@@ -44,6 +44,19 @@
                                  help="Días hábiles de atraso tras los que, además del dueño del proceso, se avisa a Dirección de Operaciones en las actividades de C1 que ejecutan Diseño y Desarrollo de Producto o de Procesos. Vacío o 0: todavía no se escala al segundo nivel.">
                             <field name="sgi_dev_escalation_director_days"/>
                         </setting>
+                        <!-- 57.124.0 (C1, bloque E) -->
+                        <setting string="Partes interesadas de la Solicitud de desarrollo"
+                                 help="Puestos que reciben el aviso con el PDF cuando Dirección de Operaciones aprueba la solicitud (sección 4 del brief de C1).">
+                            <field name="sgi_dev_request_notify_job_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Personas sin puesto que también reciben la solicitud"
+                                 help="Inspección (José Luis Almazán) no tiene puesto en RH; mientras Jose decide, se puede poner aquí a la persona.">
+                            <field name="sgi_dev_request_notify_user_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Categoría de la requisición de materia prima"
+                                 help="Categoría de Aprobaciones con la que el desarrollo pide a Compras lo que falta para la muestra. Vacío: la de tipo compra.">
+                            <field name="sgi_dev_requisition_category_id"/>
+                        </setting>
                     </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"

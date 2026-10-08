@@ -13,6 +13,35 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.124.0 — 2026-10-08
+
+C1, bloque E (brief §6.9: Solicitud de desarrollos y arranque).
+
+- **Compuerta de Dirección de Operaciones.** Sin la aprobación de la
+  solicitud (botón de C1.07) el proyecto no pasa a «Muestra» ni se confirma
+  una orden de fabricación de un artículo en desarrollo. Los proyectos que
+  ya estaban en Muestra o después no se tocan.
+- **Aviso a las partes interesadas** al aprobar, con el PDF de la solicitud
+  adjunto (la clave nueva F-C1-01 / 11 / 15 / 16 ya salía por
+  `sgi.format.map`): puestos del parámetro
+  `quimibond_sgi.dev_request_notify_job_ids` (la migración siembra Diseño de
+  Procesos, Jefe de Manufactura, Coordinador de Laboratorio y MP, Jefe de
+  Inventarios y Almacenes e Ingeniero de Calidad por nombre) más las personas
+  de `dev_request_notify_user_ids` (vacío: Inspección no tiene puesto, lo
+  decide Jose). Ajustes → SGI → Desarrollo de producto.
+- **Existencias de la materia prima de la muestra** (`sgi.dev.mp.line`): al
+  aprobar, y con el botón «Revisar existencias», se explota la lista de
+  materiales del artículo hasta las hojas compradas con la cantidad de la
+  muestra (kg o m según el artículo) y se compara contra la existencia libre.
+- **Requisición a Compras ligada al proyecto** (`approval.request` de la
+  categoría de compras, `sgi_dev_project_id`; sustituye al Word F-P-D01-16)
+  con lo que falta; arranca el reloj de materia prima y lo detiene cuando las
+  compras se recibieron o la requisición se rechazó (al cambiar de estado y
+  cron diario `cron_sgi_dev_mp_wait`). La requisición cuenta en S1-NECESIDAD
+  como las demás.
+- Sin cambios en las fichas de C1 ni en los datos de Jose.
+- **Migración:** siembra el parámetro de puestos si está vacío.
+
 ## 19.0.57.123.2 — 2026-10-08
 
 - Corrección de producción: la tarjeta de un desarrollo tronaba con
