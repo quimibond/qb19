@@ -143,16 +143,40 @@ class SgiDiagnostic(models.TransientModel):
         return []
 
     @api.model
+    def _sgi_with_operating(self, lines, text):
+        """57.101.0: agrega la línea «… operando» si la sección no tiene
+        fallas ni avisos. Las líneas informativas de nivel ok (los reportes
+        «sin clave del SGI») no la quitan."""
+        if any(line['level'] != 'ok' for line in lines):
+            return lines
+        return [self._sgi_line('ok', text)] + lines
+
+    @api.model
     def _sgi_unmapped_report_lines(self):
         """57.98.0 (I-01): reportes del SGI que imprimen sin formato
-        controlado (sección Documental). En el papel no se avisa nada."""
+        controlado (sección Documental). En el papel no se avisa nada.
+
+        57.101.0: los que aún no tienen clave del SGI (su referencia no
+        existe en el código; hoy imprimen solo con la página, como se decidió)
+        van en una línea aparte, informativa: no se arreglan en «Formatos en
+        documentos de Odoo»."""
+        from .sgi_format_map import SGI_NO_KEY_SUFFIX
         unmapped = self.env['sgi.format.map']._sgi_unmapped_reports()
-        if not unmapped:
-            return []
-        return [self._sgi_line(
-            'warn', "%d reporte(s) del SGI imprimen sin formato controlado: %s."
-            % (len(unmapped), ", ".join(unmapped)),
-            sgi_menu_path('formatos_odoo'))]
+        no_key = [name for name in unmapped if name.endswith(SGI_NO_KEY_SUFFIX)]
+        missing = [name for name in unmapped if name not in no_key]
+        lines = []
+        if missing:
+            lines.append(self._sgi_line(
+                'warn', "%d reporte(s) del SGI imprimen sin formato controlado: %s."
+                % (len(missing), ", ".join(missing)),
+                sgi_menu_path('formatos_odoo')))
+        if no_key:
+            lines.append(self._sgi_line(
+                'ok', "%d reporte(s) del SGI imprimen el pie solo con la página porque su formato "
+                "aún no tiene clave del SGI: %s." % (
+                    len(no_key), ", ".join(name[:-len(SGI_NO_KEY_SUFFIX)] for name in no_key)),
+                "La clave se da de alta en el código del SGI cuando se decida el formato."))
+        return lines
 
     @api.model
     def _sgi_build_report(self):
@@ -250,9 +274,11 @@ class SgiDiagnostic(models.TransientModel):
             lines.append(self._sgi_line(
                 'warn', "Ninguna revisión documental ha pasado por el flujo de Aprobaciones (F-P-G01-06).",
                 sgi_menu_path('solicitudes_cambio')))
+        # 57.105.0: el MIID vigente contra el sistema y lo que impide aprobar
+        # la siguiente revisión.
+        lines += env['sgi.miid']._sgi_diagnostic_lines()
         lines += self._sgi_unmapped_report_lines()
-        if not lines:
-            lines.append(self._sgi_line('ok', "Difusión documental operando."))
+        lines = self._sgi_with_operating(lines, "Difusión documental operando.")
         section("Documental", lines)
 
         # ---- 4. Estrategia y planificación -------------------------------

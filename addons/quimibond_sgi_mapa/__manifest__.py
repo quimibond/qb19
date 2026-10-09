@@ -12,7 +12,7 @@ indicadores con 50 términos de fórmula, 10 objetivos y 10 planes de control
 (D-01).
 
 Instalarlo NO carga nada (decisión 13): la carga es manual desde SGI →
-Administración → Configuración → Cargar mapa de procesos, siempre con el
+Administración → Transición → Cargar mapa de procesos, siempre con el
 modo de prueba primero, y solo la puede hacer un Administrador SGI.
 
 Todo va por llave natural (clave de proceso, numeral, código de entregable
@@ -29,7 +29,7 @@ el que se armó el primero desde lecturas de producción por MCP.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.1.1.1',
+    'version': '19.0.1.2.0',
     'license': 'OPL-1',
     'depends': ['quimibond_sgi'],
     'data': [

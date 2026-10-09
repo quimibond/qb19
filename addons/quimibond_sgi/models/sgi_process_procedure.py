@@ -487,6 +487,12 @@ class SgiProcessActivity(models.Model):
     number = fields.Char(
         string="Numeral", compute='_compute_number', store=True, index=True,
         help="Clave del proceso + paso, ej. C6.22. Se calcula.")
+    # 57.123.0: un sub-paso (C1.04b) se intercala sin renumerar el proceso: el
+    # paso sigue siendo único y el numeral que se muestra es este.
+    number_label = fields.Char(
+        string="Numeral propio", copy=False,
+        help="Numeral que se muestra en lugar de clave + paso, para un sub-paso intercalado "
+             "(ej. C1.04b). Vacío: se calcula.")
     legacy_number = fields.Char(
         string="Numeral anterior", readonly=True, copy=False, index=True,
         help="Numeral en texto de la versión anterior del procedimiento.")
@@ -766,9 +772,12 @@ class SgiProcessActivity(models.Model):
         "El paso ya existe en el proceso: cada actividad tiene su propio número.",
     )
 
-    @api.depends('process_id.code', 'step')
+    @api.depends('process_id.code', 'step', 'number_label')
     def _compute_number(self):
         for activity in self:
+            if (activity.number_label or '').strip():
+                activity.number = activity.number_label.strip()
+                continue
             activity.number = "%s.%02d" % (activity.process_id.code, activity.step) \
                 if activity.process_id.code and activity.step else False
 
@@ -1207,6 +1216,24 @@ class SgiProcessActivity(models.Model):
         if rows:
             Stat.create([dict(r, activity_id=self.id) for r in rows])
 
+    def _sgi_executor_attributable(self, Model):
+        """Si la medición puede decir quién ejecutó: un campo de usuario
+        (res.users) almacenado. 57.111.0 agrega el historial de estado."""
+        self.ensure_one()
+        user_field = (self.measure_user_field or '').strip()
+        field = Model._fields.get(user_field) if user_field else None
+        return bool(field and field.type == 'many2one' and field.comodel_name == 'res.users'
+                    and field.store)
+
+    def _sgi_executor_groups(self, Model, domain, date_field, since):
+        """(usuario, día, cuántos) de las ejecuciones desde «since»."""
+        self.ensure_one()
+        # Por día y no por «:week»: la semana de read_group depende del idioma
+        # (es_MX y en_US empiezan en domingo). La semana del SGI es ISO: lunes.
+        return Model._read_group(
+            domain + [(date_field, '>=', since)],
+            [(self.measure_user_field or '').strip(), '%s:day' % date_field], ['__count'])
+
     def _sgi_measure_executors(self, Model, domain, date_field):
         """Quién ejecutó la actividad en las últimas 4 semanas: un read_group
         por campo de usuario y semana (sin recorrer registros) y, por usuario,
@@ -1220,19 +1247,12 @@ class SgiProcessActivity(models.Model):
         clase ni adherencia: solo el conteo."""
         self.ensure_one()
         start = self._sgi_exec_window_start()
-        user_field = (self.measure_user_field or '').strip()
-        field = Model._fields.get(user_field) if user_field else None
-        if not field or field.type != 'many2one' or field.comodel_name != 'res.users' \
-                or not field.store:
+        if not self._sgi_executor_attributable(Model):
             self._sgi_replace_exec_stats(start, [])
             return {}
         since = start if Model._fields[date_field].type == 'date' \
             else datetime.combine(start, datetime.min.time())
-        # Por día y no por «:week»: la semana de read_group depende del idioma
-        # (es_MX y en_US empiezan en domingo). La semana del SGI es ISO: lunes.
-        groups = Model._read_group(
-            domain + [(date_field, '>=', since)],
-            [user_field, '%s:day' % date_field], ['__count'])
+        groups = self._sgi_executor_groups(Model, domain, date_field, since)
         expected = self._sgi_executor_jobs()
         # 57.13.0: ejecutor relativo (solicitante, quien detecta…): lo hace
         # quien pide o detecta en cada registro, así que cualquier empleado
@@ -1435,6 +1455,7 @@ class SgiProcessActivity(models.Model):
         if not self.odoo_menu_id and self.odoo_ref:
             self._sgi_resolve_menu()
         action = self.odoo_menu_id.action if self.odoo_menu_id else False
+        action = action.exists() if action else action
         if action and action._name == 'ir.actions.act_window':
             return action.read()[0]
         if self.measure_model_id:

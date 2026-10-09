@@ -371,7 +371,9 @@ class QbClienteRentabilidad(models.Model):
                 SELECT q.partner_id, q.product_id, q.mes, q.qty, q.company_id,
                        q.ultima, r.rev,
                        cp.costo_variable,
-                       cp.fab_unit,
+                       -- fabricación + conversión absorbida: con el
+                       -- variable suma el costo de producción
+                       cp.costo_produccion - cp.costo_variable AS fab_unit,
                        -- Operacion del periodo (op_pct de qb_costo_factores):
                        -- el margen neto del cliente usa SU facturado
                        -- (rev x op_pct), no el op_unit del producto (que va

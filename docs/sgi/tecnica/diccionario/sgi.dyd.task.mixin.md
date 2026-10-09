@@ -12,5 +12,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_links.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) de la que sale este registro. Es la liga que mide las actividades C1. |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:25` |
+| `sgi_dyd_task_id` | Many2one | Tarea del desarrollo | Tarea del proyecto de Diseño y Desarrollo (FT-…) de la que sale este registro. Es la liga que mide las actividades C1. |  | `project.task` |  |  | `addons/quimibond_sgi/models/sgi_links.py:31` |
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Decisión 5 del CEO (spec §13): solo el CEO autoriza un precio debajo
+         del piso. Un solo miembro; se asigna en la base, no aquí. -->
+    <record id="group_autoriza_bajo_piso" model="res.groups">
+        <field name="name">Autoriza precio bajo piso</field>
+        <field name="comment">Puede aprobar una cotización con semáforo rojo (precio debajo del costo variable) y, cuando llegue el control en pedidos, confirmar una línea bajo piso. Decisión del CEO 2026-10-06: un solo miembro.</field>
+    </record>
+</odoo>

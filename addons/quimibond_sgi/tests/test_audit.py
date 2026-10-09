@@ -73,3 +73,30 @@ class TestAudit(TransactionCase):
         # Ahora la auditoría sí cierra
         audit.action_close()
         self.assertEqual(audit.state, 'cerrada')
+
+    def test_05_generate_nc_proposes_process_owner(self):
+        # 57.102.0: la NC del hallazgo la contesta el dueño del proceso; el
+        # auditor que pulsa el botón queda como solicitante.
+        auditor = self.env['res.users'].create({
+            'name': 'Auditor Dos', 'login': 'sgi_auditor_test2'})
+        audit = self.Audit.create({
+            'audit_type': 'interna',
+            'lead_auditor_id': auditor.id,
+            'process_ids': [(6, 0, self.process.ids)],
+            'state': 'informe',
+        })
+        finding = self.env['sgi.audit.finding'].create({
+            'audit_id': audit.id,
+            'finding_type': 'nc_menor',
+            'process_id': self.process.id,
+            'description': 'Registro sin firma',
+        })
+        finding.with_user(self.sgi_user).action_generate_nc()
+        alert = finding.alert_id
+        self.assertEqual(alert.sgi_responsible_ids, self.user)
+        self.assertEqual(alert.user_id, self.user)
+        self.assertEqual(alert.sgi_requester_id, self.sgi_user)
+        # «Míos» del dueño la encuentra.
+        mine = self.env['quality.alert'].search(
+            ['|', ('sgi_responsible_ids', 'in', self.user.id), ('user_id', '=', self.user.id)])
+        self.assertIn(alert, mine)

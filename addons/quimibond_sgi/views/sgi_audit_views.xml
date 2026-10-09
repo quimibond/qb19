@@ -20,6 +20,10 @@
                     <button name="action_draft" confirm="El programa de auditorías regresa a borrador y vuelve a editarse. ¿Desea continuar?" type="object" string="Regresar a borrador"
                             invisible="state == 'borrador'"
                             groups="quimibond_sgi.group_sgi_auditor,quimibond_sgi.group_sgi_manager"/>
+                    <!-- 57.101.0 (C5): PDF del programa contra lo realizado; también
+                         en borrador (los programas de producción lo están). -->
+                    <button name="action_print_execution" type="object"
+                            string="Programado contra realizado" icon="fa-file-pdf-o"/>
                     <field name="state" widget="statusbar"/>
                 </header>
                 <sheet>

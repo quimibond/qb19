@@ -7,7 +7,9 @@
          sin NC automática. Metas: las de las preguntas Q1 a Q10 del plan
          (objetivo = verde; aceptable = límite del amarillo). El proceso E2
          viene del mapa: lo liga la función de abajo al instalar y el
-         post-migrate de 19.0.57.99.0 en una base existente. -->
+         post-migrate de 19.0.57.99.0 en una base existente. 57.113.0: la
+         fuente de SG-01 dice la ruta del menú nuevo; en producción la cambia
+         la migración solo si sigue igual a la sembrada. -->
     <record id="sgi_ind_salud_procesos" model="sgi.indicator">
         <field name="code">SG-01</field>
         <field name="name">Procesos en vigor</field>
@@ -21,7 +23,7 @@
         <field name="target_objective">100</field>
         <field name="target_acceptable">20</field>
         <field name="formula">Procesos en «Vigente» ÷ procesos activos de la empresa del SGI × 100</field>
-        <field name="source">SGI → Procesos (estado del proceso)</field>
+        <field name="source">SGI → Sistema → Mapa de procesos (estado del proceso)</field>
     </record>
     <record id="sgi_ind_salud_personas" model="sgi.indicator">
         <field name="code">SG-02</field>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_centro_form_ritmo" model="ir.ui.view">
+        <field name="name">qb.centro.form.ritmo</field>
+        <field name="model">qb.centro</field>
+        <field name="inherit_id" ref="qb_costeo.view_qb_centro_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='horas_por_unidad']/.." position="after">
+                <group string="Medido desde el pesaje" invisible="driver != 'workorder'">
+                    <field name="capacidad_medida_h_mes"/>
+                    <field name="capacidad_medida_kg_mes"/>
+                    <field name="throughput_medido"/>
+                    <field name="kg_perdidos_mes"/>
+                    <field name="ritmo_calculado_el"/>
+                    <button name="action_aplicar_ritmo" type="object" string="Aplicar como capacidad normal"
+                            class="btn-secondary" invisible="not capacidad_medida_h_mes"
+                            confirm="Copia la capacidad medida a la capacidad normal del centro, con el motivo. ¿Continuar?"
+                            help="Lo aprueba Administración y Finanzas: la capacidad normal del centro pasa a ser la medida en el pesaje."/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

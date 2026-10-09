@@ -84,7 +84,7 @@
                     </div>
                     <!-- 57.96.0 (N-07): el aspecto ambiental vive en la matriz. -->
                     <div class="alert alert-info mb-2" role="status" invisible="instrument != 'ambiental'">
-                        La evaluación de este aspecto vive en SGI → Seguridad y ambiente → Aspectos
+                        La evaluación de este aspecto vive en SGI → Planeación → Aspectos
                         ambientales. Este riesgo guarda sus acciones de tratamiento. Los aspectos nuevos
                         se registran en la matriz, no aquí.
                     </div>
@@ -248,12 +248,16 @@
         </field>
     </record>
 
-    <!-- ================= RIESGO — PIVOT proceso × nivel ================= -->
+    <!-- ========= RIESGO — PIVOT instrumento → proceso × nivel ========= -->
     <record id="sgi_risk_view_pivot" model="ir.ui.view">
         <field name="name">sgi.risk.pivot</field>
         <field name="model">sgi.risk</field>
         <field name="arch" type="xml">
+            <!-- 57.101.0 (A2): cada instrumento en su bloque de filas; la escala
+                 de nivel es distinta por instrumento (R&amp;O y ambiental: baja a
+                 inmediata; IPER y patrimonial: bajo a alto). -->
             <pivot string="Mapa de calor">
+                <field name="instrument" type="row"/>
                 <field name="process_id" type="row"/>
                 <field name="attention_level" type="col"/>
             </pivot>

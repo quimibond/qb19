@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_tarifa_list" model="ir.ui.view">
+        <field name="name">qb.tarifa.list</field>
+        <field name="model">qb.tarifa</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" delete="false">
+                <field name="period"/>
+                <field name="centro_id"/>
+                <field name="pool_fijo" sum="Total"/>
+                <field name="pool_variable" sum="Total"/>
+                <field name="horas_normales"/>
+                <field name="horas_fuente"/>
+                <field name="horas_reales"/>
+                <field name="horas_reales_fuente"/>
+                <field name="utilizacion_pct"/>
+                <field name="tarifa_fija"/>
+                <field name="tarifa_variable"/>
+                <field name="tarifa"/>
+                <field name="ociosidad" sum="Total"/>
+                <field name="capacidad_superada"/>
+                <field name="publicada"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_tarifa_search" model="ir.ui.view">
+        <field name="name">qb.tarifa.search</field>
+        <field name="model">qb.tarifa</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="centro_id"/>
+                <filter name="cerrados" string="Períodos cerrados" domain="[('state', '=', 'cerrado')]"/>
+                <filter name="por_centro" string="Centro" context="{'group_by': 'centro_id'}"/>
+                <filter name="por_periodo" string="Período" context="{'group_by': 'period'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_qb_tarifa" model="ir.actions.act_window">
+        <field name="name">Tarifas por centro</field>
+        <field name="res_model">qb.tarifa</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_por_periodo': 1}</field>
+    </record>
+
+    <record id="view_qb_periodo_list" model="ir.ui.view">
+        <field name="name">qb.periodo.list</field>
+        <field name="model">qb.periodo</field>
+        <field name="arch" type="xml">
+            <list decoration-success="state == 'cerrado'">
+                <field name="period"/>
+                <field name="state"/>
+                <field name="calculado_el"/>
+                <field name="pool_fijo_total"/>
+                <field name="pool_variable_total"/>
+                <field name="ociosidad_total"/>
+                <field name="op_pct"/>
+                <field name="sin_clasificar"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_periodo_form" model="ir.ui.view">
+        <field name="name">qb.periodo.form</field>
+        <field name="model">qb.periodo</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_calcular" type="object" string="Calcular tarifas" class="btn-primary" invisible="state == 'cerrado'"/>
+                    <button name="action_calcular_costos" type="object" string="Calcular costos" class="btn-primary" invisible="state == 'cerrado' or not calculado_el"/>
+                    <button name="action_cerrar" type="object" string="Cerrar período" invisible="state == 'cerrado'" confirm="Al cerrar, las tarifas se congelan y se publican a los centros de trabajo de Odoo. ¿Continuar?"/>
+                    <button name="action_publicar_tarifas" type="object" string="Publicar tarifas a Odoo" invisible="state != 'cerrado'"/>
+                    <button name="action_reabrir" type="object" string="Reabrir" invisible="state != 'cerrado'"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="not bloqueos">
+                        <strong>No puede cerrar:</strong>
+                        <field name="bloqueos" nolabel="1"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="period"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="suavizado_fijo_meses"/>
+                            <field name="calculado_el"/>
+                        </group>
+                        <group>
+                            <field name="pool_fijo_total"/>
+                            <field name="pool_variable_total"/>
+                            <field name="ociosidad_total"/>
+                            <field name="sin_clasificar"/>
+                            <field name="ventas_month"/>
+                            <field name="operacion_month"/>
+                            <field name="op_pct"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Tarifas por centro">
+                            <field name="tarifa_ids">
+                                <list>
+                                    <field name="centro_id"/>
+                                    <field name="pool_fijo"/>
+                                    <field name="pool_variable"/>
+                                    <field name="horas_normales"/>
+                                    <field name="horas_fuente"/>
+                                    <field name="horas_reales"/>
+                                    <field name="horas_reales_fuente"/>
+                                    <field name="utilizacion_pct"/>
+                                    <field name="tarifa_fija"/>
+                                    <field name="tarifa_variable"/>
+                                    <field name="tarifa"/>
+                                    <field name="ociosidad"/>
+                                    <field name="capacidad_superada"/>
+                                    <field name="publicada"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Costo por producto">
+                            <group>
+                                <group>
+                                    <field name="costos_calculado_el"/>
+                                    <field name="costos_n"/>
+                                    <field name="costos_calidad_pct"/>
+                                </group>
+                                <group>
+                                    <field name="costos_ventas"/>
+                                    <field name="costos_total"/>
+                                    <field name="costos_margen_neto"/>
+                                    <field name="costos_margen_neto_pct"/>
+                                </group>
+                            </group>
+                            <field name="costo_ids" context="{'search_default_vendidos': 1}">
+                                <list decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar' or calidad == 'dudosa'" decoration-muted="semaforo == 'sin_precio'">
+                                    <field name="default_code"/>
+                                    <field name="product_id"/>
+                                    <field name="qty_vendida"/>
+                                    <field name="ventas_total" sum="Total"/>
+                                    <field name="precio_prom"/>
+                                    <field name="mp_unit"/>
+                                    <field name="fabricacion_unit"/>
+                                    <field name="costo_vendible"/>
+                                    <field name="costo_total"/>
+                                    <field name="piso_lleno"/>
+                                    <field name="margen_neto_pct"/>
+                                    <field name="margen_neto_total" sum="Total"/>
+                                    <field name="calidad"/>
+                                    <field name="semaforo"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Reapertura" invisible="state != 'cerrado' and not reaperturas">
+                            <group>
+                                <field name="cerrado_el"/>
+                                <field name="cerrado_por"/>
+                                <field name="reaperturas"/>
+                                <field name="motivo_reapertura"/>
+                            </group>
+                        </page>
+                        <page string="Notas">
+                            <field name="notas"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_periodo" model="ir.actions.act_window">
+        <field name="name">Períodos</field>
+        <field name="res_model">qb.periodo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

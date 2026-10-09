@@ -14,14 +14,16 @@ ser dueño de un proceso auditado.
 
 | Menú | Para qué |
 |---|---|
-| **SGI → Mejora → Auditorías → Programa** | El programa anual de auditorías |
-| **SGI → Mejora → Auditorías → Auditorías** | Cada auditoría con su checklist, hallazgos e informe |
-| **SGI → Mejora → No conformidades / Acciones correctivas** | Las NC y sus acciones, para seguir los hallazgos |
-| **SGI → Administración SGI → Documentos → Documentos / Lista maestra** | Documentos controlados con revisión, estado y difusión |
-| **SGI → Administración SGI → Firmas de lectura → Acuses de lectura** | Quién firmó cada documento |
-| **SGI → Administración SGI → Indicadores / Diagnóstico** | Mediciones, evidencia y salud del sistema |
-| **SGI → Procesos → Del Dropbox a Odoo** | La trazabilidad de cada procedimiento y formato anterior |
-| **SGI → Dirección** | Tablero, revisión por la dirección, riesgos, legal, partes interesadas |
+| **SGI → Sistema** | Mapa de procesos, actividades, catálogos y el Manual del SGI (MIID) (capítulo 4) |
+| **SGI → Sistema → Documentos → Documentos / Lista maestra** | Documentos controlados con revisión, estado y difusión (7.5) |
+| **SGI → Sistema → Documentos → Acuses de lectura** | Quién firmó cada documento |
+| **SGI → Sistema → Del Dropbox a Odoo** | La trazabilidad de cada procedimiento y formato anterior |
+| **SGI → Planeación** | Política, objetivos, partes interesadas, riesgos, aspectos ambientales y requisitos legales (5 y 6) |
+| **SGI → Desempeño → Auditorías → Programa** | El programa anual de auditorías |
+| **SGI → Desempeño → Auditorías → Auditorías** | Cada auditoría con su checklist, hallazgos e informe |
+| **SGI → Desempeño → Tablero / Indicadores / Revisión por la dirección** | Mediciones, evidencia y la revisión por la dirección (9) |
+| **SGI → Mejora → No conformidades / Acciones correctivas** | Las NC y sus acciones, para seguir los hallazgos (10) |
+| **SGI → Administración → Diagnóstico / Aprobaciones del SGI** | Salud del sistema (evidencia de 9.1) y quién aprueba cada actividad |
 
 ## 2. Su trabajo
 
@@ -35,6 +37,13 @@ ser dueño de un proceso auditado.
 2. El programa lo **aprueba** el Jefe MAST y SGI. Desde ahí, 15 días antes
    del mes de cada auditoría, le llega el aviso al auditor líder.
 3. Desde cada renglón, **Crear auditoría**.
+
+4. Desde 57.101.0, **Programado contra realizado** (en la cabecera del
+   programa, también en borrador) imprime cada proceso por mes: P pendiente,
+   P en rojo vencida, E ejecutada (auditoría en «Informe»), C cerrada y
+   «P→» si se hizo en otro mes; con el avance de las internas hasta el mes en
+   curso, los hallazgos por auditoría y las auditorías del año fuera del
+   programa.
 
 ### 2.2 Una auditoría
 
@@ -59,7 +68,8 @@ También puede registrar un hallazgo desde la ficha de un proceso con
 - **Documentos:** Lista maestra (clave, revisión, estado) y, por documento,
   sus acuses de lectura y el porcentaje de difusión.
 - **Actividades:** cada actividad dice cómo se mide y su cumplimiento;
-  **Diagnóstico → Cumplimiento de procedimientos** lo muestra por proceso.
+  **Administración → Diagnóstico → Cumplimiento de procedimientos** lo
+  muestra por proceso.
 - **Indicadores:** cada medición trae **Registros** con los documentos de
   Odoo que dieron el número.
 - **NC y acciones:** historial completo en el chatter de cada NC.
@@ -71,6 +81,13 @@ También puede registrar un hallazgo desde la ficha de un proceso con
   [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md)).
 - **Seguridad e higiene:** los hallazgos de la Comisión de Seguridad e
   Higiene se leen, sin editarlos.
+
+- **Manual del SGI (MIID):** **SGI → Sistema → Manual del SGI (MIID)**.
+  «PDF de la revisión vigente» es el documento controlado aprobado; la
+  pestaña «Vista del sistema» y «Vista en PDF (borrador)» son el manual con
+  los datos de hoy, marcados «Borrador — no vigente». «Diferencias» dice qué
+  cambió en el sistema desde la revisión vigente e «Historial de revisiones»
+  las lista todas con su solicitud.
 
 ## 3. Lo que no ve ni hace
 

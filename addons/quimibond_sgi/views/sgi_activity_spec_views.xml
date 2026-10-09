@@ -38,6 +38,10 @@
                 <field name="code"/>
                 <filter name="errors" string="Bloquean publicar" domain="[('severity', '=', 'error')]"/>
                 <filter name="warnings" string="Advertencias" domain="[('severity', '=', 'warning')]"/>
+                <!-- 57.113.0 (Q5): lo que era el menú «Medición por revisar»
+                     (mismo dominio que sgi_activity_menu_mismatch_action). -->
+                <filter name="por_revisar" string="Medición por revisar"
+                        domain="[('code', 'in', ('menu_model_mismatch', 'measure_never', 'weak_attribution', 'review_rejected'))]"/>
                 <group>
                     <filter name="group_process" string="Proceso" context="{'group_by': 'process_id'}"/>
                     <filter name="group_code" string="Faltante" context="{'group_by': 'code'}"/>

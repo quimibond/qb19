@@ -255,8 +255,12 @@ class SgiCshFinding(models.Model):
                 'sgi_deviation': "%s%s" % (finding.description or '',
                                            " (lugar: %s)" % finding.location if finding.location else ''),
             }
+            # 57.102.0: el responsable del hallazgo también contesta la NC (la
+            # ve en «Míos» y en Mis pendientes); quien la levanta es solicitante.
+            vals['sgi_requester_id'] = self.env.user.id
             if finding.responsible_id:
                 vals['user_id'] = finding.responsible_id.id
+                vals['sgi_responsible_ids'] = [(6, 0, finding.responsible_id.ids)]
             if team:
                 vals['team_id'] = team.id
             # sudo: quien captura el recorrido no siempre crea NC en Calidad.

@@ -19,7 +19,7 @@ class TestMyProcedureUi(TransactionCase):
                        'action_sign', 'action_propose_new_activity', 'action_print'):
             self.assertIn('name="%s"' % button, arch, button)
         # 56.3.0: un solo botón de pendientes; 56.7.0: publicar es de MAST y
-        # vive en Administración SGI, no en la pantalla del empleado.
+        # vive en Administración, no en la pantalla del empleado.
         for button in ('action_show_late', 'action_show_ok', 'action_show_unmeasured', 'action_focus_pending',
                        'action_show_nc', 'action_show_measures', 'action_show_legal', 'action_show_doc_reviews',
                        'action_publish', 'action_publish_all', 'action_precheck'):

@@ -36,9 +36,10 @@ class SgiIndicatorLevel(models.Model):
         for indicator in self:
             measures = indicator.measure_ids.filtered(
                 lambda m: m.state != 'pendiente').sorted('period_date', reverse=True)[:6]
+            # 57.104.0 (B1): una medición sin dato dice «sin dato», no «0.0 -».
             indicator.last_six = " · ".join(
-                "%s: %s %s" % (m.period_date.strftime('%m/%y'), round(m.value, 2),
-                               _SEM.get(m.semaphore, '-'))
+                "%s: %s" % (m.period_date.strftime('%m/%y'), "sin dato" if m.state == 'sin_dato'
+                            else "%s %s" % (round(m.value, 2), _SEM.get(m.semaphore, '-')))
                 for m in reversed(measures)) or False
 
     @api.model
@@ -161,7 +162,7 @@ class SgiDirectionBoard(models.TransientModel):
 
     @api.model
     def action_open(self):
-        """Menú Dirección → Tablero (el título es el nombre del menú, D-005)."""
+        """Menú Desempeño → Tablero (el título es el nombre del menú, D-005)."""
         board = self.create({})
         return {
             'type': 'ir.actions.act_window', 'name': "Tablero",

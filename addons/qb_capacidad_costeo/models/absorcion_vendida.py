@@ -34,6 +34,8 @@ from collections import defaultdict
 
 from odoo import api, models
 
+from .cuenta_map import mo_qty_sql
+
 _logger = logging.getLogger(__name__)
 
 # Etapas máximas de propagación (tejido → teñido → acabado → reproceso…).
@@ -61,9 +63,14 @@ class QbCostoAbsorcionTraza(models.AbstractModel):
                          se puede seguir y se reporta aparte
           bruta          Σ horas × tarifa de las órdenes consideradas
           ordenes, lotes conteos, para el panel
+          vendida_por_producto  {product_id: conversión vendida en el
+                         período}, por el producto del lote entregado. Es
+                         lo que cada fila de `qb.costo.producto` carga como
+                         conversión del período: suma exactamente `vendida`
         """
         res = {'vendida': 0.0, 'vendida_acum': 0.0, 'en_inventario': 0.0,
-               'sin_lote': 0.0, 'bruta': 0.0, 'ordenes': 0, 'lotes': 0}
+               'sin_lote': 0.0, 'bruta': 0.0, 'ordenes': 0, 'lotes': 0,
+               'vendida_por_producto': {}}
         wc_ids = centros.mapped('workcenter_ids').ids
         if not wc_ids or not desde:
             return res
@@ -163,6 +170,8 @@ class QbCostoAbsorcionTraza(models.AbstractModel):
         #    está en el costo de ventas. Lo demás sigue en inventario.
         entregas = self._entregas_por_lote(list(lotes), periodo_ini,
                                            periodo_fin)
+        producto_lote = self._producto_por_lote(list(lotes))
+        por_producto = defaultdict(float)
         vendida = vendida_acum = inventario = 0.0
         for lot, (conv, qty) in lotes.items():
             if qty <= 0:
@@ -170,7 +179,10 @@ class QbCostoAbsorcionTraza(models.AbstractModel):
                 continue
             unit = conv / qty
             ent_per, ent_acum = entregas.get(lot, (0.0, 0.0))
-            vendida += unit * min(max(ent_per, 0.0), qty)
+            parte = unit * min(max(ent_per, 0.0), qty)
+            vendida += parte
+            if parte:
+                por_producto[producto_lote.get(lot)] += parte
             vendida_acum += unit * min(max(ent_acum, 0.0), qty)
             fuera = consumido_qty.get(lot, 0.0) + max(ent_acum, 0.0)
             inventario += max(conv - unit * min(fuera, qty), 0.0)
@@ -180,8 +192,179 @@ class QbCostoAbsorcionTraza(models.AbstractModel):
             'en_inventario': inventario + sum(wip.values()),
             'sin_lote': sin_lote[0],
             'lotes': len(lotes),
+            'vendida_por_producto': dict(por_producto),
         })
         return res
+
+    # ------------------------------------------------------------------
+    # Tarifa de conversión por artículo
+    # ------------------------------------------------------------------
+    @api.model
+    def conversion_por_orden(self, centros, desde, hasta):
+        """{mo_id: (product_id, conversión, cantidad en la UdM del
+        producto)} de las órdenes terminadas en `[desde, hasta)` que
+        corrieron en los workcenters de `centros`.
+
+        La conversión es la misma que Odoo abona a la cuenta de costos
+        fabriles aplicados: duración real de cada orden de trabajo × tarifa
+        de su máquina. La cantidad es la de la orden COMPLETA (no la de la
+        orden de trabajo): el kilo tejido carga toda la conversión de su
+        orden."""
+        wc_ids = centros.mapped('workcenter_ids').ids
+        if not wc_ids:
+            return {}
+        cr = self.env.cr
+        self.env.flush_all()
+        cr.execute("""
+            SELECT mp.id, mp.product_id, mp.product_uom_id, %s,
+                   SUM(wo.duration / 60.0 * wc.costs_hour)
+            FROM mrp_workorder wo
+            JOIN mrp_workcenter wc ON wc.id = wo.workcenter_id
+            JOIN mrp_production mp ON mp.id = wo.production_id
+            WHERE wo.workcenter_id = ANY(%%s)
+              AND wc.costs_hour > 0 AND wo.duration > 0
+              AND mp.state = 'done' AND mp.company_id = %%s
+              AND mp.date_finished >= %%s AND mp.date_finished < %%s
+            GROUP BY mp.id
+        """ % mo_qty_sql(self.env, 'mp'),
+            (list(wc_ids), self.env.company.id, desde, hasta))
+        filas = cr.fetchall()
+        Product = self.env['product.product']
+        Uom = self.env['uom.uom']
+        out = {}
+        for mo_id, pid, uom_id, qty, conv in filas:
+            product = Product.browse(pid)
+            qty = float(qty or 0.0)
+            if uom_id and uom_id != product.uom_id.id:
+                qty = Uom.browse(uom_id)._compute_quantity(
+                    qty, product.uom_id, round=False,
+                    raise_if_failure=False)
+            out[mo_id] = (pid, float(conv or 0.0), qty)
+        return out
+
+    @api.model
+    def conversion_historica(self, centros, desde, hasta, rmin=0.0,
+                             rmax=0.0):
+        """{product_id: (conversión, cantidad, órdenes)} de las órdenes
+        terminadas en `[desde, hasta)` que corrieron en las máquinas de
+        `centros`, con las horas REALES de cada orden de trabajo a la tarifa
+        $/h ACTUAL de su máquina.
+
+        Antes del corte las circulares no tenían tarifa, pero la duración de
+        cada orden de trabajo sí se registraba: horas reales × tarifa de hoy
+        da lo que ese artículo absorbería hoy, con doce meses de órdenes en
+        vez de las de un solo mes (NN053Q66HNT098 se costeaba con una sola
+        OP de septiembre a 3.6 kg/h; sus 13 OPs del año dan 4.0).
+
+        Una máquina del centro sin tarifa toma la tarifa promedio del
+        centro. Una orden con rendimiento (cantidad ÷ horas) fuera de
+        `[rmin, rmax]` se descarta entera: es un cronómetro desbocado o sin
+        registrar, la misma banda de `qb.workorder.excepcion`."""
+        wcs = centros.mapped('workcenter_ids')
+        if not wcs:
+            return {}
+        con_tarifa = wcs.filtered(lambda w: w.costs_hour > 0)
+        tarifa_prom = (sum(con_tarifa.mapped('costs_hour')) / len(con_tarifa)
+                       if con_tarifa else 0.0)
+        cr = self.env.cr
+        self.env.flush_all()
+        cr.execute("""
+            SELECT mp.id, mp.product_id, mp.product_uom_id, %s,
+                   SUM(wo.duration / 60.0),
+                   SUM(wo.duration / 60.0
+                       * COALESCE(NULLIF(wc.costs_hour, 0), %%s))
+            FROM mrp_workorder wo
+            JOIN mrp_workcenter wc ON wc.id = wo.workcenter_id
+            JOIN mrp_production mp ON mp.id = wo.production_id
+            WHERE wo.workcenter_id = ANY(%%s)
+              AND wo.duration > 0
+              AND mp.state = 'done' AND mp.company_id = %%s
+              AND mp.date_finished >= %%s AND mp.date_finished < %%s
+            GROUP BY mp.id
+        """ % mo_qty_sql(self.env, 'mp'),
+            (tarifa_prom, list(wcs.ids), self.env.company.id, desde, hasta))
+        Product = self.env['product.product']
+        Uom = self.env['uom.uom']
+        out = {}
+        for _mo, pid, uom_id, qty, horas, conv in cr.fetchall():
+            product = Product.browse(pid)
+            qty = float(qty or 0.0)
+            if uom_id and uom_id != product.uom_id.id:
+                qty = Uom.browse(uom_id)._compute_quantity(
+                    qty, product.uom_id, round=False,
+                    raise_if_failure=False)
+            horas = float(horas or 0.0)
+            if qty <= 0 or horas <= 0:
+                continue
+            rend = qty / horas
+            if (rmin and rend < rmin) or (rmax and rend > rmax):
+                continue
+            c, q, n = out.get(pid, (0.0, 0.0, 0))
+            out[pid] = (c + float(conv or 0.0), q + qty, n + 1)
+        return out
+
+    @api.model
+    def productos_con_conversion(self, centros):
+        """Productos que SE FABRICAN en las máquinas de `centros` aunque no
+        tengan órdenes en el período: alguna vez corrieron ahí, su receta
+        trae una operación ahí o una familia de máquinas del centro los
+        declara. Son los que, sin historial reciente, toman la tarifa de su
+        familia o la del centro en vez de explotar su receta hasta el hilo
+        (y perder la conversión). También los que salieron de una orden
+        cuyo nombre sigue el patrón del centro (`mo_name_pattern`)."""
+        wc_ids = centros.mapped('workcenter_ids').ids
+        ids = set()
+        if wc_ids:
+            self.env.flush_all()
+            self.env.cr.execute("""
+                SELECT DISTINCT mp.product_id
+                FROM mrp_workorder wo
+                JOIN mrp_production mp ON mp.id = wo.production_id
+                WHERE wo.workcenter_id = ANY(%s)
+                  AND mp.company_id = %s
+                UNION
+                SELECT DISTINCT COALESCE(b.product_id, pp.id)
+                FROM mrp_routing_workcenter op
+                JOIN mrp_bom b ON b.id = op.bom_id AND b.active
+                JOIN product_product pp
+                  ON pp.product_tmpl_id = b.product_tmpl_id
+                WHERE op.workcenter_id = ANY(%s)
+                  AND (b.product_id IS NULL OR b.product_id = pp.id)
+            """, (list(wc_ids), self.env.company.id, list(wc_ids)))
+            ids.update(r[0] for r in self.env.cr.fetchall() if r[0])
+        # Los crudos tejidos ANTES de que las máquinas tuvieran tarifa (o en
+        # órdenes sin orden de trabajo) solo se reconocen por el nombre de su
+        # orden: el mismo patrón con el que el centro mide su producción.
+        # Sin esto, el crudo del WK135B66JNG165 (dos órdenes de 2025, sin
+        # workorder) explotaba hasta el hilo y la tela salía sin tejido.
+        patrones = [p.strip() for c in centros
+                    for p in (c.mo_name_pattern or '').split(',') if p.strip()]
+        if patrones:
+            self.env.flush_all()
+            self.env.cr.execute("""
+                SELECT DISTINCT product_id FROM mrp_production
+                WHERE state = 'done' AND company_id = %s
+                  AND name LIKE ANY(%s)
+            """, (self.env.company.id, patrones))
+            ids.update(r[0] for r in self.env.cr.fetchall() if r[0])
+        codigos = self.env['qb.familia.producto'].search([
+            ('familia_id.centro_id', 'in', centros.ids),
+            ('familia_id.active', '=', True),
+        ]).mapped('product_code')
+        if codigos:
+            ids.update(self.env['product.product'].search(
+                [('default_code', 'in', codigos)]).ids)
+        return ids
+
+    @api.model
+    def _producto_por_lote(self, lot_ids):
+        if not lot_ids:
+            return {}
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id, product_id FROM stock_lot WHERE id = ANY(%s)',
+            (list(lot_ids),))
+        return dict(self.env.cr.fetchall())
 
     # ------------------------------------------------------------------
     @api.model

@@ -85,12 +85,24 @@
                                     <td class="text-end"><span t-esc="'{:,.2f}'.format(o.energia_unit)"/></td>
                                     <td t-if="o.es_divisa"/>
                                     <td style="color:#888;">luz / gas / agua</td></tr>
+                                <tr t-if="o.conv_var_unit"><td>+ Energía de tejido</td>
+                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.conv_var_unit)"/></td>
+                                    <td t-if="o.es_divisa"/>
+                                    <td style="color:#888;">parte variable de la conversión absorbida</td></tr>
+                                <tr t-if="o.rendimiento and o.rendimiento &lt; 1"><td>÷ Rendimiento de primera</td>
+                                    <td class="text-end"><span t-esc="'{:.1f}'.format(100 * o.rendimiento)"/>%</td>
+                                    <td t-if="o.es_divisa"/>
+                                    <td style="color:#888;">el metro que se vende paga también la merma</td></tr>
                                 <tr style="background:#f8f9fa;"><td><b>= Costo variable</b></td>
                                     <td class="text-end"><b><span t-esc="'{:,.2f}'.format(o.costo_variable)"/></b></td>
                                     <td t-if="o.es_divisa" class="text-end"><span t-esc="'{:,.4f}'.format(o.piso_ocioso_divisa)"/></td>
                                     <td style="color:#888;">piso mínimo absoluto — nunca vender debajo</td></tr>
+                                <tr t-if="o.conv_unit"><td>+ Conversión absorbida (tejido)<span t-if="o.conv_fuente == 'centro'"> ⚠️</span></td>
+                                    <td class="text-end"><span t-esc="'{:,.2f}'.format((o.conv_unit - o.conv_var_unit) / (o.rendimiento or 1.0))"/></td>
+                                    <td t-if="o.es_divisa"/>
+                                    <td style="color:#888;">horas-máquina × tarifa, por la receta<span t-if="o.conv_fuente == 'centro'"> — ESTIMADO con el promedio del centro</span></td></tr>
                                 <tr><td>+ Fabricación</td>
-                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.fab_unit)"/></td>
+                                    <td class="text-end"><span t-esc="'{:,.2f}'.format(o.fab_unit / (o.rendimiento or 1.0))"/></td>
                                     <td t-if="o.es_divisa"/>
                                     <td style="color:#888;">gasto fijo de planta que absorbe esta unidad</td></tr>
                                 <tr><td>+ Operación</td>
@@ -173,6 +185,8 @@
                                 nunca baja del piso a planta llena y la contribución
                                 $/mes nunca baja al crecer el tramo. Al cliente solo se
                                 le ofrecen tramos que caben en capacidad.
+                                <t t-if="o.con_escalera"><b>El PDF al cliente SÍ lleva esta escalera.</b></t>
+                                <t t-else=""><b>El PDF al cliente NO lleva escalera: un solo precio al volumen cotizado.</b></t>
                             </p>
                         </t>
 
@@ -349,7 +363,7 @@
                             </tbody>
                         </table>
 
-                        <t t-set="tramos_ok" t-value="o.tramo_ids.filtered(lambda t: t.capacity_ok)"/>
+                        <t t-set="tramos_ok" t-value="o.tramo_ids.filtered(lambda t: t.capacity_ok) if o.con_escalera else o.tramo_ids.browse()"/>
                         <t t-if="len(tramos_ok) &gt; 1">
                             <h5>Precios por volumen <span style="font-size:12px; color:#888; font-weight:normal;">/ Volume pricing</span></h5>
                             <p style="font-size:12px;">A mayor volumen mensual

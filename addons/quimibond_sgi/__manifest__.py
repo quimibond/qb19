@@ -18,7 +18,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Services/SGI',
-    'version': '19.0.57.100.0',
+    'version': '19.0.57.138.0',
     'license': 'OPL-1',
     'application': True,
     # 57.9.0 (A-011, A-012, A-015, A-014, A-010): solo las dependencias
@@ -49,6 +49,7 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'hr_skills_survey',  # 57.100.0 (N-13): certificación aprobada → línea de currículum (instalado en producción)
         'hr_skills_slides',  # 57.100.0 (N-13): curso terminado → línea de currículum (instalado en producción)
         'spreadsheet_dashboard',  # Tablero SGI (se arma con los pivotes de Análisis)
+        'quimibond_ficha_tecnica_tela',  # 57.117.0 (C1): catálogo de características y límites de la ficha del artículo
     ],
     'data': [
         # security
@@ -97,6 +98,12 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_health_mail.xml',  # 57.99.0: correo semanal «Salud del SGI» y su cron
         'data/sgi_moc_data.xml',
         'data/sgi_dyd_data.xml',
+        'data/sgi_dev_characteristic_data.xml',  # 57.117.0 (C1): catálogos de características y codificación
+        'data/sgi_dev_project_data.xml',  # 57.118.0 (C1): secuencia FT y etapas de avance
+        'data/sgi_dev_start_data.xml',  # 57.124.0 (C1): cron del reloj de materia prima
+        'data/sgi_dev_shipment_data.xml',  # 57.129.0 (C1): correo del envío de muestra y cron de seguimiento
+        'data/sgi_dev_escalation_data.xml',  # 57.135.0 (C1): cron de avisos por tiempo del paso pendiente
+        'data/sgi_dev_start_approval_data.xml',  # 57.137.0 (C1): correo de la aprobación para iniciar el proyecto
         'data/sgi_sign_elearning_data.xml',
         'data/sgi_doc_change_sign_data.xml',
         'data/sgi_checklist_cron.xml',
@@ -113,6 +120,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'data/sgi_supplier_nc_data.xml',
         'data/sgi_offboarding_plan_data.xml',
         'data/sgi_sst_sequences.xml',
+        # 57.105.0: MIID, texto del borrador Rev. 03 (noupdate).
+        'data/sgi_miid_sections.xml',
         # views
         'views/sgi_area_views.xml',
         'report/report_compliance_matrix.xml',
@@ -169,7 +178,19 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_links_views.xml',
         'views/sgi_diagram_views.xml',
         'views/sgi_kpi_fields_views.xml',
+        'views/sgi_dev_characteristic_views.xml',  # 57.117.0: antes que la pestaña del proyecto que la usa
         'views/sgi_dev_request_views.xml',
+        'views/sgi_dev_project_views.xml',  # 57.118.0: ciclo de vida del desarrollo
+        'views/sgi_dev_product_views.xml',  # 57.119.0: estado del artículo en desarrollo
+        'views/sgi_dev_analysis_views.xml',  # 57.120.0: parecidos, laboratorio y factibilidad
+        'views/sgi_dev_board_views.xml',  # 57.122.0: tarjeta, lista de desarrollos y asistente para marcar
+        'views/sgi_dev_sample_views.xml',  # 57.125.0: orden de muestra desde el proyecto
+        'views/sgi_dev_shipment_views.xml',  # 57.129.0: envío de muestra y respuesta del cliente
+        'views/sgi_dev_coa_views.xml',  # 57.130.0: reporte de conformidad desde la tabla
+        'views/sgi_dev_tech_sheet_views.xml',  # 57.132.0: ficha técnica interna y especificaciones del producto
+        'views/sgi_dev_pilot_views.xml',  # 57.133.0: pilotaje y estudio de habilidad
+        'views/sgi_dev_escalation_views.xml',  # 57.135.0: avisos por tiempo de los desarrollos
+        'views/sgi_dev_change_views.xml',  # 57.137.0: solicitud de modificación del proyecto
         'views/sgi_machine_sheet_views.xml',
         'views/sgi_staff_efficiency_views.xml',
         # reports
@@ -189,8 +210,25 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'report/report_direction.xml',
         'report/report_retention.xml',
         'report/sgi_format_footer.xml',
+        # 57.101.0: reportes y diagramas (usan paperformat_sgi_carta y
+        # _carta_horizontal, definidos arriba).
+        'report/report_indicator_sheet.xml',
+        'report/report_sgi_diagram.xml',
+        'report/report_audit_program.xml',
+        'report/report_risk_heatmap.xml',
+        # 57.105.0: MIID desde Odoo (usa paperformat_sgi_carta y report_sgi_diagram_body).
+        'report/report_miid.xml',
         'report/report_dev_request.xml',
+        'report/report_dev_sample_label.xml',  # 57.118.0: etiqueta de la muestra física
         'report/report_machine_sheet.xml',
+        'report/report_dev_flow.xml',  # 57.126.0: diagrama de flujo desde la ruta
+        'report/report_dev_coa.xml',  # 57.130.0: reporte de conformidad (F-P-C07-01) desde la tabla
+        'report/report_dev_tech_sheet.xml',  # 57.132.0: ficha técnica interna (F-P-D01-24)
+        'report/report_dev_customer_spec.xml',  # 57.132.0: especificaciones del producto (F-P-D01-08)
+        'report/report_dev_pilot.xml',  # 57.133.0: estudio de habilidad del pilotaje
+        'report/report_dev_start_approval.xml',  # 57.137.0: aprobación para iniciar el proyecto (con folio FT)
+        'report/report_dev_change_request.xml',  # 57.137.0: solicitud de modificación del proyecto
+        'report/report_dev_dossier.xml',  # 57.137.0: expediente de diseño y desarrollo (ISO 9001 8.3 / APQP)
         'report/report_calibration_label.xml',
         'report/report_staff_efficiency.xml',
         'report/report_epp_delivery.xml',
@@ -204,6 +242,10 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         'views/sgi_external_doc_views.xml',
         'views/sgi_hse_views.xml',
         'views/sgi_activity_spec_views.xml',
+        'data/sgi_indicator_sources.xml',
+        'views/sgi_activity_execution_views.xml',
+        'views/sgi_indicator_wizard_views.xml',
+        'views/sgi_measure_review_views.xml',
         'views/sgi_current_documents_views.xml',
         # 57.0.0 (entrega 6): «Del Dropbox a Odoo» (rutinas, buscador, avance).
         'views/sgi_dropbox_views.xml',
@@ -226,6 +268,8 @@ mano. Documentación: docs/sgi/ del repositorio; cambios: CHANGELOG.md.
         # 57.94.0 «SGI en planta»: tabletas de planta.
         'views/sgi_floor_views.xml',
         'views/sgi_training_effectiveness_views.xml',  # 57.100.0 (N-13): eficacia y exámenes
+        # 57.105.0: pantalla del MIID (antes de los menús que la abren).
+        'views/sgi_miid_views.xml',
         'views/sgi_menus.xml',
     ],
     'demo': [

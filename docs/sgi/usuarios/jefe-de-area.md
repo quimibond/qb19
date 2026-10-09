@@ -15,9 +15,9 @@ Lo mismo que cualquier Usuario SGI, más:
 |---|---|
 | **SGI → Inicio → Mi equipo** | Su equipo en organigrama, con el estado SGI de cada persona (pendientes, atrasos, firma de su procedimiento) |
 | **SGI → Inicio → Eficiencias de mi área** | La hoja mensual de eficiencias (solo con el grupo Captura de eficiencias) |
-| **SGI → Procesos → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
-| **SGI → Procesos → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
-| **SGI → Dirección → Riesgos y oportunidades** | Los riesgos de sus procesos |
+| **SGI → Sistema → Entregables, Flujos entre procesos, Matriz de responsabilidades, Puestos y procesos, Fichas de proceso por máquina** | Los catálogos de los procesos (desde 57.98.0 solo para dueños de proceso, Jefe MAST, Dirección y Auditoría) |
+| **SGI → Sistema → Del Dropbox a Odoo** | Como dueño de proceso, además del buscador: Procedimientos anteriores, Rutina por rutina y Avance de la transición |
+| **SGI → Planeación → Riesgos y oportunidades** | Los riesgos de sus procesos |
 
 En las listas, el filtro **Míos** muestra lo suyo (acciones, NC, mediciones,
 actividades, procesos, permisos…) y, en AMEF y riesgos, **De mis procesos**
@@ -78,6 +78,20 @@ Mis pendientes abre con el filtro **Atrasadas o por vencer**. Las
 validaciones que vencen más adelante no se ven con ese filtro: quítelo en
 la barra de búsqueda para validarlas por adelantado.
 
+Desde 57.101.0, **Tendencia** promedia las mediciones del periodo (los
+indicadores semanales se ven por semana) y abre con el filtro «Con dato»:
+quítelo si quiere ver también los pendientes y los «sin dato». **Ficha en
+PDF** imprime la hoja del indicador con su gráfica, sus metas y la causa y
+acciones de los rojos.
+
+**«Sin dato» y el 0 (desde 57.104.0).** Si ninguna medición de un
+indicador tiene dato, su «Último valor» dice **Sin dato** (no 0). Para
+capturar un 0 real en un indicador de captura manual, escriba en la nota por
+qué es cero («0: sin caídas en el mes»): una medición manual en 0 sin nota,
+sin numerador ni denominador no se marca capturada ni se valida. Si corrige
+a mano el valor de un indicador automático, la medición queda «Valor
+corregido a mano» y el recálculo diario ya no la toca.
+
 ### 2.4 Aprobar propuestas de cambio de su proceso
 
 Las propuestas que hace su gente con **Proponer cambio** llegan a la app
@@ -100,7 +114,7 @@ el jefe directo de quien propone y el dueño del proceso.
 
 ### 2.6 Revisar los riesgos de su proceso
 
-1. **SGI → Dirección → Riesgos y oportunidades**, filtre por su proceso.
+1. **SGI → Planeación → Riesgos y oportunidades**, filtre por su proceso.
 2. Cuando llega el aviso de revisión (enero y julio), actualice probabilidad e
    impacto y pulse **Registrar evaluación**.
 3. Un riesgo alto sin acción abierta le llega como aviso: registre al menos
@@ -119,6 +133,18 @@ En **Del Dropbox a Odoo → Rutina por rutina**, filtre **Pendientes** de su
 proceso. Cada rutina que nadie cubre necesita su decisión: crear una
 actividad, volverla regla o automatización, o eliminarla con motivo. La fecha límite la fija el
 parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
+
+### 2.8 Instructivos en Conocimiento
+
+Los instructivos, controles operacionales y protocolos de su proceso se pasan
+a **Conocimiento → SGI → <su proceso>** como borradores que solo ven usted y
+el Jefe MAST.
+
+1. Abra **SGI → Sistema → Conocimiento del SGI** (filtro **Por publicar**).
+2. Abra el borrador, compare el texto con el PDF adjunto y corríjalo: el
+   texto se sacó del PDF y puede venir sin formato.
+3. Cuando esté listo, pulse **Pedir publicación**. El Jefe MAST lo revisa y lo
+   publica como revisión nueva del documento, con acuses para los puestos.
 
 ## 3. Lo que le llega solo
 
@@ -153,6 +179,14 @@ parámetro `quimibond_sgi.legacy_decision_deadline` (hoy 16-oct-2026).
 procedimiento del Dropbox de su proceso, qué proceso de Odoo lo sustituye,
 en qué estado va y cuántas de sus rutinas ya están resueltas. Ver
 [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo.md).
+
+## 5.1 El Manual del SGI (MIID)
+
+**SGI → Sistema → Manual del SGI (MIID)**: «PDF de la revisión vigente» es
+el manual aprobado (el que se firma de leído); la pestaña «Vista del sistema»
+es el manual con los datos de hoy y no está vigente. Si cambia el dueño, el
+estado o los flujos de su proceso, el Jefe MAST recibe el aviso para
+actualizar el MIID.
 
 ## 6. Preguntas frecuentes
 

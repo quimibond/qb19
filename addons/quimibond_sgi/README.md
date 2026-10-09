@@ -72,6 +72,130 @@ gris y, en «Rutina por rutina», el renglón pendiente sin decisión y su fecha
 límite siguen en rojo. Los estados intermedios propios de cada ficha
 (solicitado, capturado, adjunto…) van en azul.
 
+## Impresos
+
+Desde 57.98.0 los reportes propios del SGI llevan el pie del formato
+controlado en **cada hoja** (`quimibond_sgi.sgi_report_layout`: clave,
+revisión y emisión del documento vigente, y «Página x de y»); 57.101.0 lo
+agrega al 8D, la solicitud de desarrollo, la responsiva de EPP y las
+eficiencias, y a los PDF nuevos de esta tabla. Si el formato
+aún no tiene clave del SGI, el pie lleva solo la página y el Diagnóstico lo
+lista aparte, «sin clave del SGI» (la clave se da de alta en el código,
+`format_ref_*` en `data/sgi_format_map_data.xml`).
+
+| PDF | Dónde se imprime | Pie |
+|---|---|---|
+| Ficha del indicador (cómo se mide, metas, gráfica de los últimos 12 periodos con medición, causa y acciones de los rojos) | Indicador: «Ficha en PDF» o Imprimir; todas las del proceso: Imprimir → «Fichas de indicadores del proceso» | Página (sin clave) |
+| Diagrama en formato controlado: mapa de procesos, interacción (4.4), tortuga, roles (5.3), contexto (4.1/4.2); las flechas van como tabla «Conexiones» | Barra del diagrama, botón PDF (junto a la impresora). Carriles y PDCA siguen con la impresión de pantalla | Página (sin clave) |
+| Programa de auditorías: programado contra realizado | Programa: «Programado contra realizado» o Imprimir | Página (sin clave) |
+| Mapa de calor de riesgos (R&O, IPER, ambiental; cuadrícula inicial y residual) | Lista de riesgos: Imprimir; diagrama de riesgos: botón PDF | IPER: F-P-S01-01; R&O y ambiental: página |
+| Reporte 8D | NC: Imprimir | Página (no comparte la clave del reporte de NC) |
+| Solicitud de desarrollo, responsiva de EPP, eficiencias del personal | Su ficha: Imprimir | La clave de su tipo |
+| Acta de revisión por la dirección | Revisión: Imprimir | Por el modelo |
+
+- **Nombre del archivo:** NC, 8D, plan e informe de auditoría, acta,
+  investigación de incidente y AMEF salen con su folio («Reporte de NC -
+  NCI-2026-001»).
+- **Copia guardada del acta:** al imprimir un acta **cerrada**, Odoo guarda
+  el PDF como adjunto de la revisión y lo vuelve a entregar igual. Reabrirla
+  (solo el Jefe MAST) renombra esa copia («… (reabierta el dd-mm-aaaa).pdf»),
+  no la borra; al cerrarla otra vez se guarda la nueva. El informe de
+  auditoría no lleva copia por este camino: se archiva en Documentos al
+  cerrar la auditoría (AU-3). El acta cerrada imprime la copia guardada;
+  para corregirla, reábrala (la copia anterior se renombra).
+- **Tendencia del indicador:** la gráfica **promedia** las mediciones del
+  periodo (antes las sumaba: las semanales daban 218 % de OTIF en un mes),
+  los indicadores semanales abren por semana y la tendencia abre con el
+  filtro «Con dato» (un «sin dato» o un pendiente valen 0). El pivote de
+  riesgos «Mapa de calor» separa los instrumentos (cada uno con su escala).
+
+## Manual del SGI (MIID) desde Odoo (57.105.0)
+
+**SGI → Sistema → Manual del SGI (MIID)** (todo Usuario SGI y Auditor).
+El MIID se arma con **texto fijo** (`sgi.miid.section`: una sección por
+título y subtítulo, sembradas `noupdate` con el texto [FIJO] del borrador
+Rev. 03, `docs/sgi/transicion/miid-rev03-borrador.md`; las edita el Jefe
+MAST) y **datos vivos** (un bloque por sección: identificación, procesos con
+mapa e interacción 4.4, política, objetivos e indicadores, tipos de
+documento y su clave, controles operacionales, plazos de NC, correspondencia
+por cláusula, procedimientos anteriores, anexos con su «Situación» como nota
+por renglón, `sgi.miid.row.note`, y control de cambios). La marca `[[datos]]`
+en un párrafo decide dónde va el bloque; «Texto solo si no hay datos» deja
+el texto como respaldo. Un bloque que ninguna sección lleva sale al final
+(«Datos del sistema sin sección»).
+
+- **Vista del sistema** (pantalla y «Vista en PDF (borrador)»): siempre
+  «Borrador — no vigente». La revisión vigente es el documento controlado de
+  clave MIID.
+- **Huella** (`sgi.miid._sgi_hash`): textos de las secciones sin formato y
+  notas por renglón, procesos (nombre, tipo, dueño, estado, macroproceso),
+  flujos, política vigente, objetivos con sus indicadores, tipos de
+  documento y su patrón, controles operacionales y anexos vigentes,
+  procedimientos anteriores y su proceso, los seis plazos de NC y las normas
+  con sus numerales. No cubre qué procesos cumplen cada cláusula, la
+  revisión y emisión del propio MIID, el control de cambios ni «Por
+  confirmar».
+- **Candados:** ninguna revisión se envía ni se aprueba con secciones «Por
+  confirmar» o con procesos activos que no estén «Vigente». Por Sign la
+  aprobación espera (no se interrumpe la sincronización) y avisa al Jefe
+  MAST.
+- **Actualizar:** aviso diario «El MIID vigente ya no coincide con el
+  sistema» (paso «MIID al día» de «SGI: Vencimientos documentales», uno por
+  empresa, 3 días hábiles) → pantalla → **Solicitar cambio del MIID**
+  (solicitud de cambio documental de siempre con el PDF generado, la huella y
+  las diferencias) → Enviar (regenera el PDF si los datos cambiaron) →
+  firmas (Elaboró, Revisó el dueño de E2, Aprobó Dirección,
+  `quimibond_sgi.miid_approver_user_id`) → revisión nueva con la huella (DOC-1:
+  la anterior obsoleta con su archivo, acuses). Lo que se firma es lo que se
+  publica. Nada se aprueba solo.
+- **Sin línea base:** el MIID cargado del Dropbox (sin huella) no avisa; la
+  primera revisión desde Odoo es la 03.
+- **Una empresa:** la comparación diaria y el aviso son solo de la empresa
+  del SGI (`quimibond_sgi.sgi_company_id`, D-03).
+
+## Indicadores: sin dato y cálculos (57.104.0)
+
+- **«Sin dato» no es 0.** Un indicador sin ninguna medición con dato dice
+  «Sin dato» en la lista de indicadores, el Tablero, la pestaña Indicadores
+  del proceso, Mis indicadores (lista y celular), el texto de la revisión
+  por la dirección, los «Últimos 6 periodos» y el diagrama de indicadores
+  (campo `sgi_last_value_label`); un 0 real se muestra como 0. El valor de
+  una medición sin dato se sigue **guardando** en 0 (un `Float` no guarda
+  vacío): por eso las listas no lo muestran y «Mediciones» y «Tendencia»
+  abren con el filtro «Con dato».
+- **Capturar un 0 (manuales).** Una medición de indicador manual en 0, sin
+  numerador, sin denominador y **sin nota** no se marca capturada ni se
+  valida: si el valor de verdad es 0, el responsable lo dice en la nota
+  («0: sin caídas en el mes»). Solo aplica a personas (el sistema no se
+  revisa); «Validar mediciones» de la revisión (P-40) las salta y las lista.
+- **Recálculo diario.** El cron de indicadores re-mide las pendientes y,
+  desde 57.104.0, las «sin dato» y las capturadas no validadas de los
+  últimos `quimibond_sgi.indicator_recompute_months` meses (2 por omisión,
+  desde el día 1 del mes de hace 2 meses). Nunca toca validadas, indicadores
+  de foto ni de salud, mediciones con NC, con causa o acciones, ni las
+  **corregidas a mano** (quien cambia el valor de una medición automática la
+  marca «Valor corregido a mano»; «Recalcular valor» o «Recalcular ahora»
+  quitan la marca). Solo escribe si algo cambió y deja el antes y el después
+  en el chatter de la medición. El botón **Recalcular mediciones** de la
+  lista (Administrador SGI) con indicadores seleccionados re-mide todo lo no
+  validado de ellos, sin ventana de meses. La corrida del cron va después de
+  la medición mensual y tiene tiempo tope (240 s): lo que no alcanza sigue al
+  día siguiente. Una nota que escribió una persona no se borra al recalcular.
+- **«Medir desde».** Al cambiarla, las mediciones no validadas cuyo periodo
+  termina antes pasan a «Sin dato» con el valor anterior en la nota; las
+  validadas no se tocan y nada se borra.
+- **Registro vacío.** En una fórmula configurable «más bajo es mejor», un
+  numerador en 0 con algún término cuya fuente nunca ha tenido registros
+  (contar) o cuyo campo sumado nunca se ha capturado (sumar) da «Sin dato»
+  con la nota «Registro vacío…», no un verde falso (SST-01, C5-01). En «más
+  alto es mejor» el 0 rojo se deja.
+- **Fórmulas corregidas:** TR-01 = NC levantadas en el periodo (sin
+  canceladas) que ya están cerradas ÷ NC levantadas en el periodo; C5-02 =
+  reclamaciones cerradas en 30 días naturales ÷ reclamaciones del periodo;
+  C2-06 = salidas con sello de embarque ÷ salidas validadas de la semana (el
+  campo de Studio «Tipo de transporte» nunca se capturó); RH-02 = solo
+  empleados de la empresa del SGI, con numerador y denominador.
+
 ## Salud del SGI
 
 Desde 57.99.0 (auditoría 2026-10, sección 8 y hallazgo D-01) Dirección ve
@@ -92,7 +216,7 @@ prueba y sin NC automática (`data/sgi_health_indicators.xml`, `noupdate`):
 | SG-09 | Auditorías internas del programa del año hechas hasta el mes en curso |
 | SG-10 | Formatos «Migrado a Odoo» con destino activo y uso en 90 días |
 
-- **Dónde se ven:** SGI → Dirección → Tablero → página «Salud del SGI»: los
+- **Dónde se ven:** SGI → Desempeño → Tablero → página «Salud del SGI»: los
   diez con la medición de la semana pasada y, por el hallazgo D-01, una
   tabla por dueño de proceso (avisos vencidos, validaciones atrasadas y días
   sin movimiento en el SGI). No ocupan los 12 lugares de «Indicadores de
@@ -201,18 +325,125 @@ Desde 57.100.0 (sección 7 del reporte de auditoría, puerta Q16;
   aparece un aviso y nada cambia; en el log queda un `warning` sin el texto de
   la NC.
 
+## Desarrollo de producto: la tabla de características (57.117.0)
+
+Primer bloque de la migración del procedimiento **C1 Desarrollo y alta de
+producto** (brief `docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`,
+plan `docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). La
+pestaña «Solicitud de desarrollo» del proyecto FT lleva **una sola tabla de
+características** (`sgi.dev.characteristic`) que sustituye la misma tabla
+recapturada en siete Excel: un renglón por característica y una columna por
+momento del proceso.
+
+| Columna | Quién | Qué guarda |
+|---|---|---|
+| Especificación del cliente | Ventas | Nominal, límite (nominal ± tolerancia, máximo o mínimo), tolerancias − / + en unidades o en %; texto solo en las cualitativas |
+| Control interno | Diseño de Producto | Margen más cerrado que el del cliente, sobre el mismo nominal. **Nunca se imprime al cliente** |
+| Muestra del cliente | Laboratorio | Lo medido en la muestra que mandó el cliente, y si cae dentro de lo que pide |
+| Corrida | Laboratorio | Tres lecturas y promedio; resultado: cumple (dentro del control interno), fuera del control interno (se embarca con aviso), no conforme (fuera del cliente) |
+| Dictamen y cliente | Diseño de Producto / Ventas | Cumple, con desviación o no cumple; aprobado por el cliente; si va a la especificación del cliente y al certificado |
+
+El catálogo de características (unidad, método o norma, tipo de dato), las
+claves de la regla de codificación de artículos (DAT P-D02-01) y el mixin con
+los dos juegos de límites viven en **`quimibond_ficha_tecnica_tela`** (menú
+Fichas Técnicas de Tela → Configuración): la ficha del artículo y el proyecto
+comparten catálogo y límites, y el SGI depende de ese módulo desde 57.117.0.
+En el SGI queda qué renglones carga cada tipo de desarrollo (general,
+entretelas V10, carda, tramado, con dirección largo / ancho y posición
+izquierda / centro / derecha): **SGI → Administración → Configuración →
+Características por tipo de desarrollo**. El rendimiento (m/kg) se calcula
+solo: 1000 / (masa × ancho). Los bloques siguientes (proyecto único,
+generador de código, laboratorio, fichas de proceso, pilotaje y liberación)
+están en el plan; la cotización va al plan de costeo v2.
+
+**Proyecto único con ciclo de vida (57.118.0).** La bandera «Desarrollo de
+producto» (`sgi_is_ft`) la pone el tipo de proyecto, no el nombre; el folio FT
+es un campo aparte con secuencia anual (FT-001-2027) que se asigna al pasar a
+«Muestra»; las etapas del proyecto son de avance (Solicitud → Análisis →
+Cotización → Aprobación del cliente → Muestra → Respuesta del cliente →
+Pilotaje → Liberado / Cerrado sin producto) y el cliente vive solo en el
+campo Cliente. El nombre se arma solo (folio, código, revisión). Desde
+57.134.0 la ficha tiene dos secciones de pestañas: «Desarrollo de producto»
+(desde 57.136.0 una por etapa de C1 con los nombres del proceso que da Administración de Ventas: Análisis de
+mercado industrial, Análisis de proyecto, Cotización, Aprobación del
+cliente, Solicitud de desarrollo, Muestra, Envío de muestra,
+Retroalimentación del cliente, Cambios al proyecto, Pilotaje y liberación,
+Tiempos y, desde 57.137.0, Expediente 8.3 / APQP; la tabla de
+características aparece en cada una con las columnas de su momento) y
+«Proyecto» (las nativas de Odoo). La acción que mueve la etapa
+(aprobar solicitud, aprobar análisis, registrar aprobación del cliente, pedir
+corrida, registrar envío, respuesta del cliente, cerrar) está en el
+encabezado y solo aparece en su etapa; lo que cuelga del desarrollo
+(laboratorio, requisiciones, órdenes de muestra, envíos, certificados,
+pilotajes, fichas, especificaciones, cotizaciones) se abre en los botones
+inteligentes. Las mediciones del SGI filtran por la bandera, ya no por
+`FT-%` en el nombre. Desde 57.137.0 (Administración de Ventas): la **aprobación para iniciar
+el proyecto** es un PDF generado desde «Aprobación del cliente» que ya lleva
+el folio FT (se asigna al generarlo) y se manda por correo; la **solicitud
+de modificación** (`sgi.dev.change.request`: causa, 5 porqués, solución,
+fases afectadas, firma de Dirección de Operaciones) abre la revisión y
+regresa a «Muestra»; la **ruta** se ve en «Cotización» como cadena de
+operaciones con su centro de trabajo y se edita en la lista de materiales;
+el **expediente 8.3 / APQP** cruza cada requisito de ISO 9001:2015 8.3 con
+la evidencia del proyecto y se imprime.
+
+**Artículo en desarrollo y generador de código (57.119.0).** Desde la
+pestaña Cotización se eligen las claves (composición, dibujo, hilo, color,
+acabado), se toman peso, galga y ancho de la tabla y «Generar artículos»
+crea crudo (H), teñido (I, si lleva) y acabado (J) con el código del DAT
+P-D02-01 en estado «En desarrollo» (no se vende). Al entrar a Pilotaje el
+artículo se vende con aviso; en Liberado queda de línea; si el proyecto
+cierra sin producto, el artículo y sus listas de materiales se archivan. El
+artículo genérico «MUESTRA PILOTO» se bloquea en órdenes nuevas desde la
+fecha del parámetro `quimibond_sgi.dev_block_generic_sample_from` (vacío
+mientras Jose no la fije).
+
+**Análisis, laboratorio y factibilidad (57.120.0).** «Buscar parecidos»
+lista artículos de línea y desarrollos anteriores por cercanía y, con «Usar
+como base», propone producto de línea o nuevo. «Solicitar pruebas al
+laboratorio» crea la solicitud con los renglones marcados; la autoriza el
+puesto del parámetro `quimibond_sgi.dev_lab_authorizer_job_id` o el Jefe
+MAST, y el laboratorio captura el valor en el renglón (SGI → Sistema →
+Pruebas de laboratorio de desarrollos). El checklist de factibilidad se
+carga del catálogo por línea (Configuración → Recursos del checklist de
+factibilidad, vacío hasta que Diseño de Procesos lo defina); Odoo contesta
+la existencia de materia prima. Ventas aprueba análisis y factibilidad en
+una sola revisión; sin ella el proyecto no pasa a Cotización.
+
 ## Menú
 
-Siete entradas bajo **SGI** (57.98.0): Inicio (Mis pendientes, Mi
-procedimiento, Documentos vigentes, Mis indicadores, Mi equipo, Checklists de
-hoy), Reportar (no conformidad, casi accidente o incidente, queja o
-sugerencia: cada una abre la ficha nueva), Procesos (mapa y actividades para
-todos; entregables, flujos, matriz de responsabilidades, puestos y procesos y
-fichas por máquina solo para dueño de proceso, Jefe MAST, Dirección y Auditor;
-«Del Dropbox a Odoo»), Mejora (NC, reclamaciones, acciones, mejora continua,
-auditorías), Seguridad y ambiente, Dirección y Administración SGI. Al tocar la
-app, Dirección abre en el Tablero y los demás en Mis pendientes (acción del
-menú raíz, `sgi_home_action`). El árbol completo con grupos está en
+Ocho entradas bajo **SGI**, en el orden de los capítulos del MIID y de las
+normas (57.113.0):
+
+- **Inicio**: Mis pendientes, Mi procedimiento, Mis indicadores, Mi equipo,
+  Checklists de hoy, Documentos vigentes.
+- **Reportar**: no conformidad, casi accidente o incidente, queja o
+  sugerencia, riesgo u oportunidad (cada una abre la ficha nueva).
+- **Sistema** (4 y 7.5; antes «Procesos»): mapa y actividades para todos;
+  entregables, flujos, matriz de responsabilidades, puestos y procesos y
+  fichas por máquina solo para dueño de proceso, Jefe MAST, Dirección y
+  Auditor; Documentos (Auditor, Jefe MAST y Dirección), el Manual del SGI
+  (MIID) y «Del Dropbox a Odoo».
+- **Planeación** (5 y 6; antes «Dirección»): política, objetivos, partes
+  interesadas, riesgos y oportunidades, aspectos ambientales, requisitos
+  legales y sus evaluaciones.
+- **Seguridad y ambiente** (8): incidentes, permisos de alto riesgo,
+  bloqueo y etiquetado, EPP, checklists, recorridos CSH, emergencias y
+  simulacros, estudios de higiene.
+- **Desempeño** (9): Tablero, Indicadores (con mediciones y revisiones de
+  medición), satisfacción del cliente, auditorías y revisión por la
+  dirección.
+- **Mejora** (10): NC, acciones correctivas, reclamaciones, mejora continua,
+  lecciones aprendidas, quejas y sugerencias del personal.
+- **Administración** (antes «Administración SGI»; Auditor, Jefe MAST y
+  Dirección): Diagnóstico (cuatro entradas) y Aprobaciones del SGI;
+  Publicar Mi procedimiento, Transición y Configuración solo Jefe MAST.
+
+Los xmlids no cambiaron; lo que salió del menú (Firmas de lectura, Cobertura
+de medición, Cumplimiento semanal, Medición por revisar) está archivado en su
+lugar, con su acción viva (`SGI_MENU_ARCHIVED`). Al tocar la app, Dirección
+abre en el Tablero y los demás en Mis pendientes (acción del menú raíz,
+`sgi_home_action`). El árbol completo con grupos está en
 `tools/sgi_menu_tree.txt`, y `tests/test_menu_tree.py` lo compara con la base.
 
 ## Grupos

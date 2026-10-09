@@ -30,6 +30,100 @@
                             <field name="sgi_mast_user_id"/>
                         </setting>
                     </block>
+                    <!-- 57.119.0 (C1, bloque 3) -->
+                    <block title="Desarrollo de producto" name="sgi_dev_product">
+                        <setting string="Bloquear el artículo genérico de muestra"
+                                 help="Fecha (AAAA-MM-DD) desde la que las órdenes de fabricación de muestra deben llevar el artículo generado por el proyecto y no «MUESTRA PILOTO». Vacío: sin bloqueo.">
+                            <field name="sgi_dev_block_generic_sample_from"/>
+                        </setting>
+                        <setting string="Puesto que autoriza pruebas de laboratorio"
+                                 help="Las solicitudes de pruebas de los desarrollos las autorizan las personas de este puesto (Coordinador de Laboratorio y MP) o el Jefe MAST.">
+                            <field name="sgi_dev_lab_authorizer_job_id"/>
+                        </setting>
+                        <!-- 57.135.0 (Jose 5.5): avisos por tiempo del paso pendiente; los tres vacíos hasta que se definan. -->
+                        <setting string="Avisar al responsable del paso pendiente"
+                                 help="Horas de desarrollo (sin materia prima pendiente) que un paso de C1 puede llevar pendiente antes de avisar a quien lo ejecuta. El brief propone 2 horas, no confirmadas. Vacío o 0: no se avisa.">
+                            <field name="sgi_dev_notice_executor_hours"/>
+                        </setting>
+                        <setting string="Primer nivel: escalar al dueño del proceso"
+                                 help="Horas de desarrollo tras las que el dueño del proceso C1 recibe el aviso del paso pendiente. El brief propone 4 horas, no confirmadas. Vacío o 0: no se escala.">
+                            <field name="sgi_dev_notice_owner_hours"/>
+                        </setting>
+                        <setting string="Segundo nivel: escalar a Dirección de Operaciones"
+                                 help="Días hábiles (sin materia prima pendiente) tras los que Dirección de Operaciones recibe el aviso del paso pendiente; antes no recibe nada. También pone a Dirección como «Escala» de segundo nivel en las actividades de C1 que ejecutan Diseño y Desarrollo. Vacío o 0: todavía no se escala al segundo nivel.">
+                            <field name="sgi_dev_escalation_director_days"/>
+                        </setting>
+                        <!-- 57.124.0 (C1, bloque E) -->
+                        <setting string="Partes interesadas de la Solicitud de desarrollo"
+                                 help="Puestos que reciben el aviso con el PDF cuando Dirección de Operaciones aprueba la solicitud (sección 4 del brief de C1).">
+                            <field name="sgi_dev_request_notify_job_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Personas sin puesto que también reciben la solicitud"
+                                 help="Inspección (José Luis Almazán) no tiene puesto en RH; mientras Jose decide, se puede poner aquí a la persona.">
+                            <field name="sgi_dev_request_notify_user_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Categoría de la requisición de materia prima"
+                                 help="Categoría de Aprobaciones con la que el desarrollo pide a Compras lo que falta para la muestra. Vacío: la de tipo compra.">
+                            <field name="sgi_dev_requisition_category_id"/>
+                        </setting>
+                        <!-- 57.125.0 (C1, bloque F) -->
+                        <setting string="Tipo de operación de la orden de muestra"
+                                 help="Con el que nace la orden pedida desde el proyecto (producción: Tejido Desarrollo).">
+                            <field name="sgi_dev_sample_picking_type_id"/>
+                        </setting>
+                        <setting string="Ubicación del sobrante de la muestra"
+                                 help="A dónde entra lo fabricado en la corrida (producción: 31 Desarrollos Toluca).">
+                            <field name="sgi_dev_sample_location_id"/>
+                        </setting>
+                        <setting string="Puesto de Planeación que emite la orden"
+                                 help="Recibe la actividad «Emitir la orden de muestra».">
+                            <field name="sgi_dev_planning_job_id"/>
+                        </setting>
+                        <setting string="Metros PQ de la muestra"
+                                 help="La cantidad sugerida cubre al menos estos metros de primera (brief: 50 m).">
+                            <field name="sgi_dev_sample_pq_m"/>
+                        </setting>
+                        <setting string="Rendimiento de primera esperado en la muestra (%)"
+                                 help="Vacío: se asume 100 %. El brief no lo define.">
+                            <field name="sgi_dev_sample_expected_yield_pct"/>
+                        </setting>
+                        <setting string="Mínimo de baño de tintorería (kg)"
+                                 help="Solo si el artículo lleva teñido. Vacío: no entra al cálculo.">
+                            <field name="sgi_dev_sample_min_bath_kg"/>
+                        </setting>
+                        <!-- 57.126.0 (C1, bloque G) -->
+                        <setting string="Quién valida la ficha de proceso de tejido" help="Tejido no tiene supervisor: el Jefe de Manufactura.">
+                            <field name="sgi_dev_validator_job_tejido_id"/>
+                        </setting>
+                        <!-- 57.129.0 (C1, Jose 3.3) -->
+                        <setting string="Tipo de operación de la baja de muestras"
+                                 help="Con el que la muestra sale al cliente desde el envío registrado (producción: Baja de Muestras).">
+                            <field name="sgi_dev_sample_out_picking_type_id"/>
+                        </setting>
+                        <setting string="Puesto que avisa al cliente el envío"
+                                 help="Recibe la actividad con el correo listo (rollos, medio y guía). Por omisión, Administrador de Ventas.">
+                            <field name="sgi_dev_shipment_notify_job_id"/>
+                        </setting>
+                        <!-- 57.133.0 (C1, Jose 5.4) -->
+                        <setting string="Lotes del pilotaje" help="Primeros lotes de producción del artículo en pilotaje. Vacío: tres.">
+                            <field name="sgi_dev_pilot_lots"/>
+                        </setting>
+                        <setting string="Lecturas por lote (estudio de habilidad)" help="Vacío o 0: no se exige; Ingeniería de Calidad no lo ha definido.">
+                            <field name="sgi_dev_pilot_readings_per_lot"/>
+                        </setting>
+                        <setting string="Cpk mínimo" help="Vacío o 0: el estudio informa y no dictamina.">
+                            <field name="sgi_dev_pilot_cpk_min"/>
+                        </setting>
+                        <!-- 57.132.0 (C1, Jose 5.3) -->
+                        <setting string="Puestos que firman la ficha técnica interna"
+                                 help="Seis puestos del brief: Manufactura, Calidad, Inspección y empaque, Diseño de Producto, Dirección de Operaciones y Ventas. Vacío: la ficha nace sin renglones de firma.">
+                            <field name="sgi_dev_tech_sheet_sign_job_ids" widget="many2many_tags"/>
+                        </setting>
+                        <setting string="Seguimiento si el cliente no responde (días)"
+                                 help="Vacío o 0: sin seguimiento automático. El brief no define el plazo.">
+                            <field name="sgi_dev_shipment_followup_days"/>
+                        </setting>
+                    </block>
                     <block title="Indicadores automáticos" name="sgi_auto_kpis">
                         <setting string="Categoría de requisiciones de compra"
                                  help="Indicador Requisiciones (CO-02): categoría de aprobación que cuenta como requisición. Vacío = detecta las de tipo compra automáticamente; configúrelo solo si hay varias.">

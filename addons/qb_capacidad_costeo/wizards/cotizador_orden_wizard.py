@@ -45,8 +45,7 @@ class QbCotizadorOrdenWizard(models.TransientModel):
         if not order:
             raise UserError('Este cotizador se abre desde una orden de venta.')
         Costo = self.env['qb.costo.producto']
-        factores = self.env['qb.costo.factores'].search(
-            [], order='period DESC', limit=1)
+        factores = self.env['qb.costo.factores'].para_cotizar()[0]
         if not factores:
             raise UserError(
                 'Aún no hay factores calculados: corre "Recalcular costeo '
@@ -78,7 +77,9 @@ class QbCotizadorOrdenWizard(models.TransientModel):
                 'precio_actual': precio_actual,
                 'precio_actual_mxn': precio_mxn,
                 'costo_variable': q['variable'],
-                'fab_unit': q['fab'],
+                # Todo lo que no es variable: fabricación + conversión
+                # absorbida (sin su energía), por unidad vendible.
+                'fab_unit': q['produccion'] - q['variable'],
                 'piso_lleno': q['piso_lleno'],
                 'precio_mercado': q['precio_mercado'],
                 'precio_ref_divisa': ref_mxn / rate,
@@ -89,10 +90,10 @@ class QbCotizadorOrdenWizard(models.TransientModel):
                                  / q['hours_per_unit']
                                  if q['hours_per_unit'] else 0.0),
                 'margen_bruto_pct':
-                    100.0 * (precio_mxn - q['variable'] - q['fab'])
+                    100.0 * (precio_mxn - q['produccion'])
                     / precio_mxn if precio_mxn else 0.0,
                 'margen_neto_pct':
-                    100.0 * (precio_mxn - q['variable'] - q['fab']
+                    100.0 * (precio_mxn - q['produccion']
                              - q['op_pct'] * precio_mxn)
                     / precio_mxn if precio_mxn else 0.0,
                 # Pre-marcar solo lo que destruye valor: decisión obvia
@@ -195,7 +196,8 @@ class QbCotizadorOrdenLinea(models.TransientModel):
              'convertido a la moneda del pedido — el default de "Nuevo precio".')
     costo_variable = fields.Float(string='Costo variable MXN', readonly=True,
                                   digits=(16, 2))
-    fab_unit = fields.Float(string='Fabricación MXN', readonly=True, digits=(16, 2))
+    fab_unit = fields.Float(string='Fabricación + conversión MXN',
+                            readonly=True, digits=(16, 2))
     piso_lleno = fields.Float(string='Piso lleno MXN', readonly=True, digits=(16, 2))
     precio_mercado = fields.Float(
         string='Mercado 12m MXN', readonly=True, digits=(16, 2),

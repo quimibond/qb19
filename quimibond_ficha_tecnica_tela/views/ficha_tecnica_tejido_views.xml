@@ -241,6 +241,34 @@
                             </table>
                         </page>
 
+                        <page string="Características" name="caracteristicas">
+                            <p class="text-muted">Especificación del cliente y control interno por característica. El control interno nunca se imprime al cliente.</p>
+                            <field name="spec_line_ids" context="{'default_tejido_id': id}">
+                                <list editable="bottom" open_form_view="1">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="caracteristica_id" optional="hide"/>
+                                    <field name="kind" column_invisible="1"/>
+                                    <field name="name"/>
+                                    <field name="direction"/>
+                                    <field name="position" optional="show"/>
+                                    <field name="unit"/>
+                                    <field name="spec_limit" optional="show" readonly="kind != 'num'"/>
+                                    <field name="spec_nominal" readonly="kind != 'num'"/>
+                                    <field name="spec_tol_minus" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_tol_plus" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_tol_pct" optional="show" readonly="kind != 'num' or spec_limit != 'tol'"/>
+                                    <field name="spec_text" optional="show" readonly="kind != 'text'"/>
+                                    <field name="spec_bool" optional="hide" readonly="kind != 'bool'"/>
+                                    <field name="spec_label" optional="hide"/>
+                                    <field name="ctrl_tol_minus" optional="show" readonly="kind != 'num'"/>
+                                    <field name="ctrl_tol_plus" optional="show" readonly="kind != 'num'"/>
+                                    <field name="method" optional="hide"/>
+                                    <field name="in_customer_spec" optional="show"/>
+                                    <field name="in_coa" optional="show"/>
+                                    <field name="note" optional="show"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Notas">
                             <field name="notas"/>
                         </page>

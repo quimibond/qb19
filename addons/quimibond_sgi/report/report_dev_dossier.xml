@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.137.0 (C1, Jessica): expediente de diseño y desarrollo del proyecto, ISO 9001:2015 8.3 y fases
+         del APQP, con la evidencia que existe en el proyecto. -->
+    <record id="action_report_dev_dossier" model="ir.actions.report">
+        <field name="name">Expediente de diseño y desarrollo (8.3 / APQP)</field>
+        <field name="model">project.project</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_dev_dossier_document</field>
+        <field name="report_file">quimibond_sgi.report_dev_dossier_document</field>
+        <field name="print_report_name">'Expediente 8.3 - %s' % (object.sgi_ft_folio or object.name or '')</field>
+    </record>
+
+    <template id="report_dev_dossier_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="doc"/>
+                    <t t-set="sgi_fmt_ref" t-value="False"/>
+                    <t t-set="rows" t-value="doc._sgi_dev_dossier_rows()"/>
+                    <div class="page">
+                        <h2 class="text-center">Expediente de diseño y desarrollo</h2>
+                        <h4 class="text-center text-muted">ISO 9001:2015 8.3 · APQP</h4>
+                        <table class="table table-sm table-bordered" style="font-size:11px;">
+                            <tr><td style="width:22%"><strong>Desarrollo</strong></td><td><span t-out="doc.sgi_ft_folio or doc.name"/></td>
+                                <td style="width:18%"><strong>Etapa</strong></td><td><span t-out="doc.stage_id.name or ''"/></td></tr>
+                            <tr><td><strong>Cliente</strong></td><td><span t-out="doc.partner_id.commercial_partner_id.display_name or doc.partner_id.display_name or '—'"/></td>
+                                <td><strong>Requisitos cubiertos</strong></td><td><span t-out="doc.sgi_dev_dossier_done"/> de <span t-out="doc.sgi_dev_dossier_total"/></td></tr>
+                            <tr><td><strong>Producto</strong></td><td><span t-out="doc.sgi_dev_product_id.display_name or doc.sgi_dev_product_name or '—'"/></td>
+                                <td><strong>Revisión</strong></td><td><span t-out="doc.sgi_dev_revision"/></td></tr>
+                        </table>
+                        <h5>Requisitos del punto 8.3</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <thead><tr><th style="width:8%">8.3</th><th>Requisito</th><th>Evidencia</th><th style="width:8%" class="text-center">Cumple</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="rows" t-as="r">
+                                    <td><span t-out="r[0]"/></td>
+                                    <td><span t-out="r[1]"/></td>
+                                    <td><span t-out="r[3] or ''"/></td>
+                                    <td class="text-center"><span t-out="'Sí' if r[2] else ('No' if r[2] is False else 'n/a')"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <h5>Fases del APQP y dónde viven en el proyecto</h5>
+                        <table class="table table-sm table-bordered" style="font-size:10px;">
+                            <tr t-foreach="doc.APQP_PHASES" t-as="ph"><td style="width:30%"><strong t-out="ph[0]"/></td><td><span t-out="ph[1]"/></td></tr>
+                        </table>
+                        <h5>Ruta del producto</h5>
+                        <t t-set="ops" t-value="doc._sgi_dev_route_operations()"/>
+                        <table class="table table-sm table-bordered" style="font-size:10px;" t-if="ops">
+                            <thead><tr><th>#</th><th>Artículo</th><th>Operación</th><th>Centro de trabajo</th></tr></thead>
+                            <tbody>
+                                <tr t-foreach="ops" t-as="o">
+                                    <td><span t-out="o_index + 1"/></td>
+                                    <td><span t-out="o[0].default_code or o[0].display_name"/></td>
+                                    <td><span t-out="o[1].name or ''"/></td>
+                                    <td><span t-out="o[1].workcenter_id.name or '—'"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p t-if="not ops" class="text-muted" style="font-size:10px;">Sin ruta capturada.</p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

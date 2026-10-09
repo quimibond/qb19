@@ -210,6 +210,7 @@ class SgiDropboxKey(models.Model):
                                  or self.document_id.sgi_migration_point_id):
             return self.document_id.action_sgi_open_odoo_form()
         action = self.odoo_menu_id.sudo().action if self.odoo_menu_id else False
+        action = action.exists() if action else action
         if action and action._name == 'ir.actions.act_window':
             return action.read()[0]
         if self.point_id and self.document_id:

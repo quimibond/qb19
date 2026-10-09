@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_qb_cotizador_cotizacion_user,qb.cotizador.cotizacion vendedor,model_qb_cotizador_cotizacion,sales_team.group_sale_salesman,1,1,1,0
+access_qb_cotizador_cotizacion_manager,qb.cotizador.cotizacion gerente,model_qb_cotizador_cotizacion,sales_team.group_sale_manager,1,1,1,1
+access_qb_cotizador_cotizacion_mrp,qb.cotizador.cotizacion manufactura,model_qb_cotizador_cotizacion,mrp.group_mrp_user,1,0,0,0
+access_qb_cotizador_cotizacion_hr,qb.cotizador.cotizacion empleado,model_qb_cotizador_cotizacion,base.group_user,1,0,0,0
+access_qb_cotizador_tramo_user,qb.cotizador.tramo vendedor,model_qb_cotizador_tramo,sales_team.group_sale_salesman,1,1,1,1
+access_qb_cotizador_tramo_all,qb.cotizador.tramo lectura,model_qb_cotizador_tramo,base.group_user,1,0,0,0
+access_qb_cotizador_motivo_user,qb.cotizador.motivo lectura,model_qb_cotizador_motivo,base.group_user,1,0,0,0
+access_qb_cotizador_motivo_manager,qb.cotizador.motivo gerente,model_qb_cotizador_motivo,sales_team.group_sale_manager,1,1,1,1
+access_qb_cotizador_decision_wizard,qb.cotizador.decision.wizard,model_qb_cotizador_decision_wizard,base.group_user,1,1,1,1
+access_qb_periodo_cotizador,qb.periodo lectura para cotizar,qb_costeo.model_qb_periodo,sales_team.group_sale_salesman,1,0,0,0
+access_qb_costo_unitario_cotizador,qb.costo.unitario lectura para cotizar,qb_costeo.model_qb_costo_unitario,sales_team.group_sale_salesman,1,0,0,0
+access_qb_costo_unitario_centro_cotizador,qb.costo.unitario.centro lectura para cotizar,qb_costeo.model_qb_costo_unitario_centro,sales_team.group_sale_salesman,1,0,0,0

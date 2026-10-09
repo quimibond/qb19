@@ -273,6 +273,55 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(self.Costo._mp_cost_unit(semi), 100.0,
                                places=4)
 
+    def test_receta_vigente_es_la_de_mas_cantidad_en_90_dias(self):
+        """No la de la última OP: WJ060Q21JNT165 tiene dos recetas activas y
+        su última OP de sep-2026 quedó con la vieja, aunque en 90 días la
+        nueva hizo casi el doble. Y no la de más cantidad en el año: las
+        resinas FORM32 cambiaron de receta en junio y la vieja sigue ganando
+        en doce meses."""
+        uom_kg = self.env.ref('uom.product_uom_kgm')
+        Product = self.env['product.product']
+        vieja = Product.create({'name': 'HILO RECETA VIEJA', 'is_storable':
+                                True, 'uom_id': uom_kg.id,
+                                'standard_price': 30.0})
+        nueva = Product.create({'name': 'HILO RECETA NUEVA', 'is_storable':
+                                True, 'uom_id': uom_kg.id,
+                                'standard_price': 20.0})
+        semi = Product.create({'name': 'TELA DOS RECETAS TEST',
+                               'is_storable': True, 'uom_id': uom_kg.id})
+        boms = {}
+        for key, comp in (('vieja', vieja), ('nueva', nueva)):
+            boms[key] = self.env['mrp.bom'].create({
+                'product_tmpl_id': semi.product_tmpl_id.id,
+                'product_id': semi.id, 'product_qty': 1.0,
+                'product_uom_id': uom_kg.id,
+                'bom_line_ids': [(0, 0, {
+                    'product_id': comp.id, 'product_qty': 1.0,
+                    'product_uom_id': uom_kg.id})]})
+        hoy = datetime(2028, 6, 30, 12)
+
+        def op(bom, qty, fin):
+            mo = self.env['mrp.production'].create({
+                'product_id': semi.id, 'product_qty': qty,
+                'product_uom_id': uom_kg.id, 'bom_id': boms[bom].id})
+            self.env.flush_all()
+            self.env.cr.execute(
+                "UPDATE mrp_production SET state = 'done', "
+                "date_finished = %s, qty_producing = %s WHERE id = %s",
+                (fin, qty, mo.id))
+            self.env.invalidate_all()
+
+        # Antes de la ventana la vieja hizo mucho más (caso resinas)
+        op('vieja', 5000.0, datetime(2028, 1, 10))
+        # En 90 días la nueva hizo más, pero la última OP fue con la vieja
+        op('nueva', 600.0, datetime(2028, 6, 20))
+        op('vieja', 300.0, datetime(2028, 6, 25))
+        mapa = self.Costo._last_mo_bom_map([semi.id], hoy)
+        self.assertEqual(mapa[semi.id], boms['nueva'].id)
+        # Sin órdenes en la ventana manda la última, no la de más cantidad
+        mapa = self.Costo._last_mo_bom_map([semi.id], datetime(2028, 5, 15))
+        self.assertEqual(mapa[semi.id], boms['vieja'].id)
+
     def test_avco_negativo_no_da_mp_negativa(self):
         """Un AVCO negativo (herida de valuación de inventario, caso
         PESFCHMO1.5X2.0 en -0.30/kg) no es un costo: la hoja se acota a 0
@@ -465,7 +514,7 @@ class TestQbCosteo(TransactionCase):
             'period': date(2027, 2, 1), 'window_months': 12,
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18})
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
             'precio_objetivo': 100.0})
         cot = self.env['qb.cotizacion'].browse(
@@ -480,6 +529,45 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(cot.state, 'won')
         cot.action_reabrir()
         self.assertEqual(cot.state, 'draft')
+
+    def test_cotizacion_escalera_opcional(self):
+        """La escalera de volumen se calcula siempre, pero el cliente solo
+        la ve si la cotización lo pide (`con_escalera`); el flag se elige en
+        la calculadora, se puede cambiar en la cotización y se hereda al
+        recotizar."""
+        self.env['qb.costo.factores'].create({
+            'period': date(2027, 3, 1), 'window_months': 12,
+            'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
+            'energia_por_kg': 4.0, 'op_pct': 0.18})
+        Report = self.env['ir.actions.report']
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
+            'product_id': self.tela.id, 'volumen': 1000,
+            'precio_objetivo': 100.0, 'con_escalera': False})
+        cot = self.env['qb.cotizacion'].browse(
+            wiz.action_cotizar()['res_id'])
+        self.assertFalse(cot.con_escalera)
+        self.assertTrue(cot.tramo_ids, 'la escalera se calcula igual')
+        html = Report._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion_cliente', cot.ids)[0]
+        self.assertNotIn(b'Volume pricing', html)
+        # Se puede cambiar de opinión antes de imprimir.
+        cot.con_escalera = True
+        html = Report._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion_cliente', cot.ids)[0]
+        ofrecibles = cot.tramo_ids.filtered(lambda t: t.capacity_ok)
+        if len(ofrecibles) > 1:
+            self.assertIn(b'Volume pricing', html)
+        # La hoja interna siempre la muestra y dice qué recibe el cliente.
+        interna = Report._render_qweb_html(
+            'qb_capacidad_costeo.report_cotizacion', cot.ids)[0]
+        self.assertIn('SÍ lleva esta escalera'.encode(), interna)
+        # Recotizar hereda la decisión.
+        cot.con_escalera = False
+        nueva = cot.recotizar_ahora()
+        self.assertFalse(nueva.con_escalera)
+        # La calculadora arranca con el parámetro.
+        self.assertTrue(self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
+            'product_id': self.tela.id, 'volumen': 1000}).con_escalera)
 
     def test_subproducto_mp_cero(self):
         """SALDO*: MP $0 — su materia ya está en la receta del principal."""
@@ -658,7 +746,7 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18,
         })
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
         })
         # MP 3.6 + energía 4×0.072 = variable; fab por híbrida en metros
@@ -709,7 +797,7 @@ class TestQbCosteo(TransactionCase):
             })],
         })
         wiz = self.env['qb.cotizador.wizard'].with_context(
-            active_model='sale.order', active_id=order.id,
+            active_model='sale.order', active_id=order.id, qb_guardar_legado=True,
         ).create({})
         self.assertEqual(wiz.sale_order_id, order)
         self.assertEqual(wiz.product_id, self.tela)
@@ -842,7 +930,7 @@ class TestQbCosteo(TransactionCase):
         # Wizard individual: el precio objetivo se captura EN EUR y el
         # modelo lo convierte; los espejos en divisa cuadran con el TC
         wiz_ind = self.env['qb.cotizador.wizard'].with_context(
-            active_model='sale.order', active_id=order.id).create({})
+            active_model='sale.order', active_id=order.id, qb_guardar_legado=True).create({})
         self.assertEqual(wiz_ind.currency_id, eur)
         self.assertAlmostEqual(wiz_ind.fx_rate, 20.0, places=2)
         wiz_ind.precio_objetivo = 3.0  # EUR (= 60 MXN)
@@ -879,7 +967,7 @@ class TestQbCosteo(TransactionCase):
         # (< ¼ del piso ocioso) → alerta. El umbral se toma del piso que
         # calcula ESTE fixture en vez de una constante: el 1.68 de antes
         # venía del piso de producción (~$7.9) y aquí el piso es otro.
-        wiz_mxn = self.env['qb.cotizador.wizard'].create({
+        wiz_mxn = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'precio_objetivo': 1.0})
         wiz_mxn.precio_objetivo = round(wiz_mxn.piso_ocioso * 0.2, 4)
         self.assertTrue(wiz_mxn.moneda_alerta)
@@ -1020,7 +1108,7 @@ class TestQbCosteo(TransactionCase):
         self.assertIn('piso lleno', html,
                       'sin ventas la referencia mostrada es el piso lleno')
         # En el wizard se computa sola y se guarda como foto en la cotización
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
         })
         self.assertTrue(wiz.comparativa_html)
@@ -1051,7 +1139,7 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18,
         })
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
             'precio_objetivo': 100.0,
         })
@@ -1062,7 +1150,7 @@ class TestQbCosteo(TransactionCase):
         self.assertAlmostEqual(cot.precio_cliente_mxn, 100.0, places=2)
         self.assertEqual(cot.precio_cliente_divisa, 0.0)
         # Sin precio objetivo ni ventas → cae al piso a planta llena
-        wiz2 = self.env['qb.cotizador.wizard'].create({
+        wiz2 = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
         })
         cot2 = self.env['qb.cotizacion'].browse(
@@ -1083,7 +1171,7 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18,
         })
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
             'precio_objetivo': 100.0,
         })
@@ -1116,7 +1204,7 @@ class TestQbCosteo(TransactionCase):
         self.assertEqual(len(cot.tramo_ids), 4)
         self.assertEqual(cot.tramo_ids.filtered('es_base').volumen, 1000.0)
         # Piso duro: objetivo AL piso lleno → los tramos ≥1× no descuentan
-        wiz2 = self.env['qb.cotizador.wizard'].create({
+        wiz2 = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
         })  # sin objetivo ni ventas: base = piso lleno
         tramos2 = wiz2._escalera_tramos(wiz2._calc())
@@ -1202,7 +1290,7 @@ class TestQbCosteo(TransactionCase):
             'factor_fab_kg': 30.0, 'factor_fab_m': 3.0,
             'energia_por_kg': 4.0, 'op_pct': 0.18,
         })
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'product_id': self.tela.id, 'volumen': 1000,
             'margen_objetivo': 25.0,
         })
@@ -3571,7 +3659,7 @@ class TestQbCosteo(TransactionCase):
             'energia_por_kg': 4.0, 'op_pct': 0.18,
         })
         cliente = self.env['res.partner'].create({'name': 'TEST RECOTIZAR'})
-        wiz = self.env['qb.cotizador.wizard'].create({
+        wiz = self.env['qb.cotizador.wizard'].with_context(qb_guardar_legado=True).create({
             'partner_id': cliente.id, 'product_id': self.tela.id,
             'volumen': 1000, 'precio_objetivo': 100.0,
             'spec_gramaje': 38, 'spec_ancho': 1.6, 'spec_galga': '18',

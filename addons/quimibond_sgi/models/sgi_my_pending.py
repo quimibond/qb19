@@ -63,6 +63,7 @@ PENDING_KINDS = [
     ('acuse', "Acuse de lectura"),
     ('firma', "Firma"),
     ('aviso', "Aviso"),
+    ('revision', "Revisar medición"),
 ]
 # Los tipos que salen de la persona (hr.employee) y no del usuario: la gente
 # de planta sin usuario también los tiene.
@@ -82,7 +83,9 @@ NOTICE_MODELS = ('quality.alert', 'documents.document', 'maintenance.request',
                  # 57.94.0 (U-08): aviso semanal de RH por departamento.
                  'hr.department',
                  # 57.100.0 (N-14): salida validada sin CoA.
-                 'stock.picking')
+                 'stock.picking',
+                 # 57.105.0: aprobación del MIID retenida por candados.
+                 'approval.request')
 # Plazos en días hábiles (parámetros del sistema; default entre paréntesis).
 CAPTURE_DAYS_PARAM = 'quimibond_sgi.measure_capture_business_days'   # (5)
 VALIDATE_DAYS_PARAM = 'quimibond_sgi.measure_validate_business_days'  # (3)
@@ -214,11 +217,31 @@ class SgiMyPending(models.TransientModel):
     # renglones de quien abre la lista (no en los de Mi equipo).
     is_mine = fields.Boolean(compute='_compute_is_mine',
                              help="El renglón es de quien abre la lista.")
+    # 57.103.0: renglón del registro de cumplimiento (sgi.activity.execution).
+    exec_state = fields.Selection([
+        ('pendiente', "Pendiente"),
+        ('en_proceso', "En proceso"),
+    ], string="Avance", readonly=True,
+        help="Actividades del periodo: pendiente o en proceso (con nota de avance). «En proceso» "
+             "no quita el atraso.")
+    exec_note = fields.Char(string="Nota de avance", readonly=True)
+    exec_manual = fields.Boolean(readonly=True,
+                                 help="Actividad de registro manual: «Ir» abre su registro.")
+    can_mark_exec = fields.Boolean(compute='_compute_can_mark_exec',
+                                   help="Quien abre la lista puede marcar el avance.")
 
     @api.depends_context('uid')
     def _compute_is_mine(self):
         for row in self:
             row.is_mine = row.user_id == self.env.user
+
+    @api.depends_context('uid')
+    def _compute_can_mark_exec(self):
+        Exec = self.env['sgi.activity.execution'].sudo()
+        for row in self:
+            execution = Exec.browse(row.res_id).exists() \
+                if row.res_model == 'sgi.activity.execution' and row.res_id else Exec
+            row.can_mark_exec = bool(execution) and execution.with_env(self.env)._sgi_can_mark()
 
     # ------------------------------------------------------------------
     # Fuentes: una búsqueda por tipo para todos los usuarios a la vez.
@@ -274,6 +297,9 @@ class SgiMyPending(models.TransientModel):
             records['firma'] = env['sign.request.item'].sudo().search(
                 [('partner_id', 'in', users.partner_id.ids), ('state', '=', 'sent'),
                  ('sign_request_id.state', '=', 'sent')], order='create_date')
+        # 57.107.0: revisión mensual de la medición (dueño del proceso).
+        records['revision'] = env['sgi.measure.review'].sudo().search(
+            [('user_id', 'in', ids), ('state', '=', 'pendiente')], order='date_due, id')
         # 57.92.0 (U-03, D-04): avisos de los crons del SGI y actividades de
         # los modelos ``sgi.*``, vencidos o de los próximos 7 días. Las
         # actividades nativas siguen existiendo; aquí solo se muestran. De las
@@ -410,6 +436,8 @@ class SgiMyPending(models.TransientModel):
                 due = sgi_add_business_days(self.env, request.create_date, self._SGI_REQUEST_DAYS)
             return {'name': "Firmar %s" % (request.reference or request.display_name or ''),
                     'date_due': due, 'process_id': False}
+        if kind == 'revision':
+            return {'name': rec.name, 'date_due': rec.date_due, 'process_id': rec.process_id.id}
         if kind == 'aviso':
             # 57.92.0 (U-03): qué dice el aviso y sobre qué registro.
             what = rec.summary or rec.activity_type_id.name or "Aviso"
@@ -436,7 +464,7 @@ class SgiMyPending(models.TransientModel):
             return rec.user_id
         if kind == 'firma':
             return rec.partner_id.user_ids
-        if kind == 'aviso':
+        if kind in ('aviso', 'revision'):
             return rec.user_id
         return rec.sgi_owner_id
 
@@ -507,6 +535,9 @@ class SgiMyPending(models.TransientModel):
         status = env['hr.job']._sgi_mp_status_map(activities) if activities else {}
         late = activities.filtered(lambda a: status.get(a, ('',))[0] == 'atrasada')
         late_due = {act.id: self._sgi_activity_late_due(act, today) for act in late}
+        # 57.103.0: lo que tiene registro de cumplimiento sale de ahí (un
+        # renglón por periodo abierto, con su avance), no del semáforo.
+        executions, with_exec = self._sgi_execution_rows(employees, today)
 
         def label(activity):
             number = activity.number or activity.legacy_number or ''
@@ -519,7 +550,8 @@ class SgiMyPending(models.TransientModel):
             seen = set()
             for role in detail & all_roles:
                 activity = role.activity_id
-                if activity not in late or activity.id in seen:
+                if activity not in late or activity.id in seen \
+                        or (emp.id, activity.id) in with_exec:
                     continue
                 seen.add(activity.id)
                 detail_txt = status[activity][2]
@@ -548,6 +580,9 @@ class SgiMyPending(models.TransientModel):
                     'date_due': escalated, 'process_id': activity.process_id.id,
                     'res_model': 'sgi.process.activity', 'res_id': activity.id,
                     'state': 'atrasada'})
+            for execution in executions.get(emp.id, []):
+                seen.add(execution.activity_id.id)
+                rows.append(self._sgi_execution_row(execution))
         ack_days = _int_param(env, ACK_DAYS_PARAM, 5)
         acks = env['sgi.document.ack'].sudo().search(
             [('employee_id', 'in', employees.ids), ('state', '=', 'pendiente'),
@@ -568,6 +603,44 @@ class SgiMyPending(models.TransientModel):
                 'process_id': doc.sgi_process_id.id if 'sgi_process_id' in doc._fields else False,
                 'res_model': 'sgi.document.ack', 'res_id': ack.id})
         return result
+
+    @api.model
+    def _sgi_execution_rows(self, employees, today):
+        """57.103.0: ({empleado.id: [renglones abiertos del registro de
+        cumplimiento ya empezados]}, {(empleado.id, actividad.id) con algún
+        renglón}). Con registro, la actividad ya no sale por el semáforo."""
+        from .sgi_activity_execution import EXEC_OPEN
+        Exec = self.env['sgi.activity.execution'].sudo()
+        if not employees:
+            return {}, set()
+        with_exec = {(emp.id, act.id) for emp, act in Exec._read_group(
+            [('employee_id', 'in', employees.ids)], ['employee_id', 'activity_id'])}
+        result = {}
+        for execution in Exec.search([
+                ('employee_id', 'in', employees.ids), ('state', 'in', EXEC_OPEN),
+                ('period_start', '<=', today), ('activity_id.active', '=', True)],
+                order='date_due, id'):
+            result.setdefault(execution.employee_id.id, []).append(execution)
+        return result, with_exec
+
+    @api.model
+    def _sgi_execution_row(self, execution):
+        """Renglón de Mis pendientes de un periodo abierto de una actividad."""
+        name = "Hacer %s" % execution.name
+        note = False
+        if execution.state == 'en_proceso':
+            note = (execution.progress_note or '').strip()
+            name += " — En proceso%s%s" % (
+                (": %s" % note) if note else '',
+                (" (estimada %s)" % execution.date_estimated.strftime('%d/%m/%Y'))
+                if execution.date_estimated else '')
+        return {
+            'kind': 'actividad', 'name': name, 'date_due': execution.date_due,
+            'process_id': execution.process_id.id,
+            'res_model': 'sgi.activity.execution', 'res_id': execution.id,
+            'exec_state': execution.state, 'exec_note': note or False,
+            'exec_manual': execution.activity_id._sgi_exec_is_manual(),
+        }
 
     @api.model
     def _sgi_finish(self, row, today):
@@ -699,8 +772,8 @@ class SgiMyPending(models.TransientModel):
             # I-001: sin pendientes de verdad; las actividades sin medición
             # automática no pueden salir aquí, y se dice.
             'help': "<p class='o_view_nocontent_smiling_face'>Sin pendientes</p>"
-                    "<p>No tiene nada atrasado ni por vencer. Las actividades sin medición "
-                    "automática no salen aquí: revíselas en Mi procedimiento.</p>",
+                    "<p>No tiene nada atrasado ni por vencer. Las actividades «por evento» sin "
+                    "medición automática no salen aquí: revíselas en Mi procedimiento.</p>",
         }
 
     @api.model
@@ -804,6 +877,27 @@ class SgiMyPending(models.TransientModel):
                 # La firma se hace en la página de Firma electrónica.
                 return {'type': 'ir.actions.act_url', 'target': 'self',
                         'url': '/sign/document/%d/%s' % (item.sign_request_id.id, item.access_token)}
+        # 57.103.0: el periodo de una actividad. Las de registro manual abren
+        # su registro (criterio de terminado, instructivo, dónde adjuntar);
+        # las que se miden solas, la pantalla donde se hacen, como antes.
+        if self.kind == 'actividad' and self.res_model == 'sgi.activity.execution':
+            execution = self.env['sgi.activity.execution'].sudo().browse(self.res_id).exists()
+            if not execution:
+                raise UserError("El registro de esa actividad ya no existe.")
+            activity = execution.activity_id
+            if not execution.needs_evidence and (
+                    activity.odoo_menu_id or activity.odoo_action_id
+                    or activity.odoo_ref or activity.measure_model_id):
+                try:
+                    with self.env.cr.savepoint():
+                        return activity.action_open_odoo()
+                except UserError:
+                    pass
+            return {'type': 'ir.actions.act_window', 'res_model': 'sgi.activity.execution',
+                    'res_id': execution.id, 'view_mode': 'form',
+                    'views': [(self.env.ref('quimibond_sgi.sgi_activity_execution_view_form').id,
+                               'form')],
+                    'target': 'current'}
         # 57.92.0 (U-05): «Ir» lleva a la pantalla de Odoo donde se hace la
         # actividad (su menú o acción) o a su evidencia, como «Ir a hacerlo»
         # de Mi procedimiento (``mp_can_go``); no a la ficha del catálogo.
@@ -833,6 +927,29 @@ class SgiMyPending(models.TransientModel):
             'type': 'ir.actions.act_window', 'res_model': self.res_model, 'res_id': self.res_id,
             'view_mode': 'form', 'target': 'current',
         }
+
+    def _sgi_execution(self):
+        self.ensure_one()
+        if self.res_model != 'sgi.activity.execution':
+            raise UserError("Este renglón no es una actividad con registro de cumplimiento.")
+        execution = self.env['sgi.activity.execution'].browse(self.res_id).exists()
+        if not execution:
+            raise UserError("El registro de esa actividad ya no existe.")
+        return execution
+
+    def action_exec_progress(self):
+        """57.103.0: «En proceso» desde el renglón (nota de avance y fecha
+        estimada)."""
+        action = self._sgi_execution().action_mark_progress()
+        action['context'] = dict(action['context'], sgi_pending_row_id=self.id)
+        return action
+
+    def action_exec_done(self):
+        """57.103.0: «Hecho» desde el renglón (evidencia si es de registro
+        manual o si el sistema no vio el registro)."""
+        action = self._sgi_execution().action_mark_done()
+        action['context'] = dict(action['context'], sgi_pending_row_id=self.id)
+        return action
 
     def action_sign_ack(self):
         """57.92.0 (U-05): «Leído y entendido» desde el renglón. El candado de
@@ -895,16 +1012,27 @@ class SgiMyPending(models.TransientModel):
         if existing and not allowed:
             raise UserError("Solo el responsable del indicador o el Jefe MAST puede validar "
                             "estas mediciones.")
+        # 57.104.0 (B5): como P-40, las manuales en 0 sin nota no se validan
+        # (el write las rechazaría y todo el lote fallaba); se dejan y se avisan.
+        empty = allowed._sgi_without_value()
+        allowed -= empty
         allowed.action_validate()
-        rows.filtered(lambda r: r.res_id not in skipped.ids).unlink()
+        left = skipped | empty
+        rows.filtered(lambda r: r.res_id not in left.ids).unlink()
         reload = {'type': 'ir.actions.client', 'tag': 'soft_reload'}
-        if skipped:
+        if left:
+            parts = []
+            if skipped:
+                parts.append("%d no son de sus indicadores y se dejaron" % len(skipped))
+            if empty:
+                parts.append("%d manuales no tienen valor capturado y se dejaron (%s): "
+                             "capture el valor o, si es 0, escriba en la nota por qué"
+                             % (len(empty), ", ".join(empty.mapped('display_name'))))
             return {
                 'type': 'ir.actions.client', 'tag': 'display_notification',
                 'params': {
                     'type': 'warning',
-                    'message': "Se validaron %d mediciones; %d no son de sus indicadores "
-                               "y se dejaron." % (len(allowed), len(skipped)),
+                    'message': "Se validaron %d mediciones; %s." % (len(allowed), "; ".join(parts)),
                     'next': reload,
                 },
             }

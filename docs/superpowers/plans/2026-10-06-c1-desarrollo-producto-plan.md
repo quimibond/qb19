@@ -1,0 +1,412 @@
+# C1 Desarrollo y alta de producto — plan de implementación
+
+**Fecha:** 2026-10-06 · **Brief:** `docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`
+(copia del documento de Drive `C1_desarrollo_producto_brief_claude_code.md`) ·
+**Módulo:** `quimibond_sgi` (+ satélite para lo que toca al costeo) ·
+**Rama:** `claude/compassionate-dirac-9qstog` → `main` por bloques.
+
+## 1. Lo que cambia respecto al brief (leído el código) y lo que decidió Jose
+
+El brief se levantó por MCP, no leyendo el módulo. Al leer el código salieron
+cinco puntos; Jose los resolvió el mismo día (respuesta al PR #563).
+
+| # | Dice el brief | Lo que hay en el código | Decisión de Jose (2026-10-06) |
+|---|---|---|---|
+| 1 | «Mismo catálogo para `qb.producto.ficha.spec`, para que al liberar el artículo los renglones pasen a su ficha técnica» (5.1) | `qb.producto.ficha` vive en `qb_capacidad_costeo`, no en el SGI, y la spec de costeo v2 (aprobada el mismo día, §8.6 y decisión 3) la **retira**: la ficha del producto pasa a `quimibond_ficha_tecnica_tela` (Consolti, en la raíz del repo). | **La ficha y el catálogo de características viven en `quimibond_ficha_tecnica_tela`.** Hecho en el bloque 1: catálogo `ficha.tecnica.caracteristica`, claves `ficha.tecnica.clave.codigo`, mixin de límites y renglones `ficha.tecnica.spec` en las fichas de tejido y acabado con dos juegos de límites (cliente y control interno) y la marca «va a la especificación del cliente». El SGI depende de ese módulo. La derivación de fichas desde el código queda anotada en el plan de costeo v2 (§8.6). |
+| 2 | Cotización (`qb.cotizacion`) con proyecto, estado «Por aprobar», seguimiento, tarifa (6.8) | `qb.cotizacion` está en `qb_capacidad_costeo` y costeo v2 lo sustituye por `qb_cotizador` + puente `qb_costeo_sgi`. | **No tocar `qb_capacidad_costeo`.** Todo el 6.8 pasó como requisitos al plan de costeo v2 (spec §6.1), incluida la migración de las cotizaciones existentes. C1 sigue con 6.1, 6.6 y 6.3 a 6.5, que no dependen de costeo. |
+| 3 | La pestaña de desarrollo se ve solo si `sgi_is_ft` (3) | `sgi_is_ft` se calcula del nombre («FT-…») con `store=True, readonly=False`; los 77 proyectos viejos no se recalcularon. | **Bandera por tipo de proyecto** que signifique «desarrollo de producto», con el **folio FT como campo aparte**. La migración marca los 77 proyectos FT-, las plantillas 480 y 481 y el proyecto 490. En el mismo bloque se cambian los dominios de medición del SGI que filtran por `name =like 'FT-%'`. |
+| 4 | Tipo de desarrollo como catálogo (5.1 «por tipo de desarrollo») | `sgi_dev_type` es una `Selection` fija y `sgi.format.map` la usa para elegir el formato impreso (`format_ref_dev_<tipo>`). | Se conserva la selección (cuatro tipos estables) y los renglones por tipo son datos (`sgi.dev.characteristic.template`). Agregar un tipo sigue siendo cambio de código, igual que su formato impreso. |
+| 5 | «El módulo ya tiene» campos de muestra en m y kg, volumen, precio objetivo (3) | Correcto, pero `sgi_dev_requester` y `sgi_dev_norms` son texto y `sgi_dev_spec` es un texto largo para la especificación del cliente. | `sgi_dev_spec` queda como referencia a la hoja del cliente (el valor va en la tabla); el solicitante interno pasa a `hr.employee` y las normas a lista en el bloque 2. |
+
+Verificado contra el PDF del DAT P-D02-01 (rev. 05, mayo 2025): las tablas
+del brief son correctas; solo cambian dos etiquetas de acabado (DI es
+«Dryfit», RA es «Resina acrílica»). Los otros cuatro DAT (4695 a 4698) siguen
+sin revisar.
+
+## 2. Bloques y orden
+
+Cada bloque sube versión del SGI, agrega su entrada al CHANGELOG, trae sus
+pruebas y se prueba solo en el build de Odoo.sh de la rama con
+`--test-tags /quimibond_sgi`.
+
+| Bloque | Qué | Brief | Estado |
+|---|---|---|---|
+| 1 | Tabla numérica de características en el proyecto; catálogo, claves de codificación y límites en `quimibond_ficha_tecnica_tela` 2.1.0; renglones por tipo en el SGI | 6.2, 5.1, 5.2 (modelos) | **Hecho, 57.117.0** (PR #563) |
+| 2 | Proyecto único con ciclo de vida: bandera «desarrollo de producto» por tipo de proyecto con migración (77 FT-, plantillas 480 / 481, proyecto 490) y dominios de medición corregidos; folio FT aparte por secuencia anual; etapas de avance, origen, revisión y bitácora, alias de correo, pestaña comercial, muestra física, resultado del análisis, relojes por paso | 6.1, decisión 3 | **Hecho, 57.118.0** (mismo PR #563, commit aparte). Pendiente: dominio de alias en la base; limpieza de etapas por cliente (sección 7) |
+| 3 | Artículo en desarrollo y generador de código (crudo, teñido, acabado); bloqueo de 16292 / 16293 con fecha acordada con Jose | 6.6 | **Hecho, 57.119.0** (mismo PR #563). Pendiente: fecha del bloqueo del genérico (parámetro vacío) |
+| 4 | Búsqueda de parecidos, solicitud de pruebas a laboratorio, checklist de factibilidad (modelo y vista, catálogo vacío) | 6.3 a 6.5 | **Hecho, 57.120.0** (mismo PR #563). Pendientes de datos: puesto autorizador (188) en el parámetro; catálogo de recursos (Yet) |
+| 5 | Cotización | 6.8 | **Fuera de C1**: requisitos en el plan de costeo v2 (spec §6.1), sobre `qb_cotizador` / `qb_costeo_sgi` |
+| — | Duplicidad `ficha.tecnica.tejido` (parámetros de máquina) ↔ `sgi.machine.sheet` | 6.7 | **No se tocó** en el PR #563; decisión del siguiente PR (Jose, 2026-10-06) |
+| 6 | Solicitud de desarrollos (PDF con clave nueva, compuerta de Jorge, aviso a seis puestos, requisición ligada), orden de muestra, fichas de proceso de tintorería y acabado | 6.7, 6.9, 6.10 | Esperan a las sesiones con Planeación, Producción, Calidad y Compras |
+| 7a | Envío de muestra y respuesta del cliente | 6.11 | **PR nuevo** (siguiente) |
+| 7b | Pilotaje, habilidad, ficha interna, especificaciones al cliente, PPAP, liberación y cierre | 6.12 | Espera a las sesiones con Calidad |
+| 8 | Escalamiento configurable y correcciones de medición | 6.13, 7.2 | **PR nuevo** (con 6.11) |
+| 9 | Datos por MCP (fichas C1.01 a C1.19, plantillas 480 / 481, folios, partes interesadas, formatos obsoletos), primero en qbtesting | 7 | Al final |
+
+## 3. Decisiones de diseño del bloque 1
+
+- **Una tabla, columnas por momento.** `sgi.dev.characteristic` guarda por
+  renglón: especificación del cliente (`spec_nominal`, `spec_limit` nominal ±
+  / máximo / mínimo, `spec_tol_minus`, `spec_tol_plus`, `spec_tol_pct`),
+  control interno (`ctrl_tol_minus`, `ctrl_tol_plus`, sobre el mismo nominal
+  y nunca más abierto que el del cliente), medido en la muestra
+  (`sample_value`), corrida (`run_1..3`, `run_avg`), dictamen (`verdict`, lo
+  pone Diseño de Producto), aprobación del cliente y las marcas «va a la
+  especificación del cliente» / «va al certificado».
+- **Tres resultados** calculados contra límites: `cumple` (dentro del control
+  interno), `desviacion` (fuera del interno, dentro del cliente),
+  `no_conforme`. El certificado y el estudio de habilidad usan los límites del
+  cliente; el PDF de la solicitud no imprime el control interno.
+- **Cualitativas aparte.** `kind` del catálogo decide qué columnas aplican:
+  numérica, cualitativa (`spec_text`, `sample_text`, `run_text`) o sí / no
+  (`spec_bool`). Nada de valores en texto para lo que es número.
+- **Rendimiento calculado** 1000 / (masa × ancho) en todas las columnas, con
+  tolerancia a partir de los extremos de masa y ancho. En carda y tramado la
+  masa se mide en tres puntos y el rendimiento toma el centro.
+- **Posición** (izquierda / centro / derecha) además de dirección: solidez al
+  frote y masa / espesor por orillas.
+- **Catálogo con `code` estable** por característica
+  (`ficha.tecnica.caracteristica`, en `quimibond_ficha_tecnica_tela`): es la
+  llave con la que los bloques siguientes reconocen masa, ancho, galga,
+  composición al generar el código del artículo y al pasar renglones a la
+  ficha del producto (`_limit_vals()` del mixin).
+- **Claves de codificación como datos** (`ficha.tecnica.clave.codigo`,
+  `noupdate`), con `gauge_code()` / `gauge_from_code()` para la galga por
+  rango.
+- **Un mixin, dos documentos.** `ficha.tecnica.caracteristica.mixin` lleva
+  los dos juegos de límites y las marcas de documentos; `ficha.tecnica.spec`
+  (fichas de tejido y acabado) y `sgi.dev.characteristic` (proyecto) lo
+  heredan. El SGI agrega solo lo del desarrollo: muestra del cliente,
+  corrida, dictamen, aprobación.
+
+## 4. Pendientes que el brief deja sin definir (no se inventan)
+
+Ver sección 8 del brief. En el código quedan como parámetro vacío o catálogo
+sin renglones: margen mínimo, suplente de aprobación, recursos del checklist
+de factibilidad, lecturas por lote para Cpk, comité de pilotajes, tiempo de
+conservación de muestras, destino de los 152 lotes de la ubicación 57.
+
+## 5. Reglas de Jose del 2026-10-06 (tarde) para lo que sigue
+
+1. **Rama de Jose Sacramento.** Tiene trabajo local sin subir sobre
+   tintorería (fórmulas en g/L) y acabado (clasificación de calidad y
+   defectos). Cuando exista la rama, **revisarla antes de seguir**. Lo que
+   ya está subido en `consolti` (2026-10-01) para `quimibond_ficha_tecnica_tela`:
+   `rendimiento_tela_tejida`, `jefe_manufactura` / `auxiliar_procesos` a
+   `hr.employee`, `maquina_tejido` a `mrp.workcenter` con migraciones en
+   `19.0.2.1.0` y dependencia `hr`. **Choque de versión:** `main` ya usa
+   2.1.0 (PR #563, catálogo de características); al traer `consolti` su
+   versión y su carpeta de migración deben pasar a 2.2.0 para que la
+   migración corra en bases que ya estén en 2.1.0.
+2. **No eliminar ni renombrar columnas fijas** de `ficha.tecnica.tejido` ni
+   de `ficha.tecnica.acabado`: su código las lee. Los renglones de
+   características conviven con ellas (el PR #563 no las tocó).
+3. **Dos rendimientos, los dos como campo:** el de tejido alimenta el
+   cálculo de tintorería; el de acabado valida los metros finales. README
+   del módulo corregido en 2.1.1.
+4. **Bloque 6.7:** la ficha de proceso de tintorería y la receta de rama
+   **no capturan químicos**; apuntarán al modelo de fórmulas de Sacramento.
+   No se construye hasta ver su rama.
+5. `ficha.tecnica.tela` (modelo viejo) se borra del código: hecho en 2.1.1
+   (la tabla queda en la base).
+
+## 6. Incidente del despliegue a producción (2026-10-06 23:22 UTC) y reglas nuevas
+
+- Código 57.120.1 instalado, pero la migración de datos de 57.118.0 no quedó
+  en la base (bandera, folio, cliente y origen de los 77 FT-). 57.120.2
+  (desplegado 2026-10-07 00:08 UTC) tampoco los marcó. **Causa real
+  (57.120.3):** los nombres de proyecto, etapa y puesto son traducibles; la
+  migración corría sin idioma (en_US) y la gente escribió los «FT-…», las
+  etapas y el puesto en es_MX. En en_US los proyectos siguen llamándose
+  «Análisis de proyecto …» (así se crearon): por eso «aparecieron» nombres
+  «Análisis» y el 490 «no existía». La hipótesis del savepoint del alias
+  (57.120.2) no era la causa: todos los proyectos, FT o no, tienen
+  `write_date` 23:22:46 por el recálculo de campos nuevos. El cambio de
+  cliente de 465/466/489 a SHAWMUT LLC fue manual (Jessica, 19:54–20:02
+  UTC), no de la migración.
+- **Regla nueva (código):** toda búsqueda o comparación por nombre en una
+  migración se hace en todos los idiomas instalados
+  (`_sgi_dev_search_langs`, `_sgi_dev_lang_keys`) y el script corre con el
+  idioma de la compañía en el contexto. La primera línea del log de la
+  migración dice cuántos encontró; «0» significa que el problema es otro.
+- Un proyecto sin folio FT ni nombre FT- en una columna de cliente es un
+  análisis: va a «Análisis», no a «Muestra» (el 491 de producción).
+- **Regla (Jose):** nada sube a `quimibond` sin pasar antes por `qbtesting`
+  y sin su confirmación explícita. El build de `main` (staging) no corre
+  pruebas; las del SGI corren en el build de desarrollo de la rama.
+- Los filtros de medición de C1 excluyen plantillas (`is_template`).
+- Los modelos `sgi.dev.*` y `ficha.tecnica.*` quedan expuestos al MCP (la
+  corrección final de datos de la sección 7 se hace por MCP).
+
+## 7. Bloque D — 6.8 Cotización (2026-10-08)
+
+Jose decidió («Hazlo tú») construir la cotización de C1 en el costeo v2 y no
+tocar `qb_capacidad_costeo`. Entregado en dos módulos nuevos:
+
+- `qb_cotizador` 19.0.1.0.0 (Community, corre en CI): `qb.cotizador.cotizacion`
+  con foto del costo de `qb_costeo` (período cerrado / hermano / manual),
+  estados Borrador → Por aprobar → Presentada → Ganada / Perdida / Vencida,
+  aprobación por **puesto** (183 por omisión, suplente vacío), motivos de
+  lista, PDF comercial bilingüe bloqueado hasta aprobar, seguimiento y
+  vencimiento por cron, aprobación del cliente con evidencia, precio en la
+  tarifa al ganar, ganada automática por pedido, archivo de borradores.
+  Importa las 75 cotizaciones de `qb.cotizacion` sin modificarlas (las 6
+  presentadas vencidas entran como «Vencida»).
+- `qb_costeo_sgi` 19.0.1.0.0 (`auto_install`, pruebas solo en Odoo.sh):
+  proyecto en la cotización con gramaje / ancho / galga de la tabla de
+  características y volumen / precio de la solicitud; recálculo por revisión
+  con detención del proyecto; fichas C1-COSTO y C1-COTIZACION medidas con la
+  cotización; liga de las importadas con su proyecto FT (121 → 491, galga 21).
+
+Parámetros que quedan **vacíos** porque el brief no los define: suplente,
+margen mínimo, descuento de la escalera. Pendiente de Jose: la plantilla del
+PDF comercial (dijo que él la cambia) y el documento «Aprobación para iniciar
+un proyecto» (anexo A), que no entra en este bloque.
+
+## 8. Bloque E — 6.9 Solicitud de desarrollos y arranque (2026-10-08)
+
+`quimibond_sgi` 57.124.0 (`models/sgi_dev_start.py`): compuerta de Dirección
+de Operaciones (sin solicitud aprobada no hay «Muestra» ni orden de
+fabricación del artículo en desarrollo), aviso con PDF a las partes
+interesadas (puestos por parámetro, sembrados por nombre; personas sin
+puesto en otro parámetro, vacío), existencias de la materia prima de la
+muestra (`sgi.dev.mp.line`, explosión de la lista de materiales hasta las
+hojas) y requisición a Compras ligada al proyecto (`approval.request`,
+`sgi_dev_project_id`) que mueve el reloj de materia prima. El PDF con clave
+nueva ya salía desde el bloque 1.
+
+Queda para Jose: a quién avisar por Inspección (José Luis Almazán no tiene
+puesto) y si la aprobación de la requisición la firma solo Dirección de
+Operaciones (hoy la categoría de Aprobaciones tiene su propio aprobador).
+
+## 9. Bloque F — 6.10 Orden de muestra (2026-10-08)
+
+`quimibond_sgi` 57.125.0 (`models/sgi_dev_sample.py`): «Pedir corrida de
+muestra» desde el proyecto con cantidad sugerida y motivo (cliente / 50 m PQ
+entre rendimiento esperado / mínimo de baño), orden de fabricación armada
+para Planeación (artículo, folio en origen, Tejido Desarrollo, lista de
+materiales y ruta, sobrante a 31 Desarrollos, `sgi_dev_project_id`), tarea
+del proyecto con la fecha de máquina que sigue a `date_start`, actividad al
+Planeador. Parámetros vacíos a propósito: rendimiento de primera esperado y
+mínimo de baño (el brief los deja por definir con Yet y Tintorería).
+
+## 10. Bloque G — 6.7 Ruta y fichas de proceso (2026-10-08)
+
+`quimibond_sgi` 57.126.0 (`models/sgi_dev_process_sheet.py`): diagrama de
+flujo impreso desde las operaciones de la lista de materiales; ficha de
+tejido con firmas vigentes (propone Diseño de Procesos, valida el Jefe de
+Manufactura, mide Laboratorio) y real / ajuste / motivo por parámetro.
+**Las fichas de tintorería y acabado las construye Jose Sacramento en
+`quimibond_ficha_tecnica_tela`** (Jose, 2026-10-08): el SGI solo deja el
+enganche en la orden de muestra. Catálogo «Motivo de ajuste» sin renglones.
+
+## 11. Bloque 3.3 — 6.11 Envío de muestra y respuesta del cliente (2026-10-08)
+
+`quimibond_sgi` 57.129.0 (`models/sgi_dev_shipment.py`): registro propio
+`sgi.dev.shipment` por muestra enviada (fecha, medio, paquetería de lista,
+guía, rollos con lote / metros / ancho / kilos, documentos que acompañan),
+candado del dictamen de Diseño sobre la corrida (C1.11) antes de la baja,
+baja de almacén creada desde el envío (tipo de operación en parámetro;
+producción 267 «Baja de Muestras»), correo listo para Administración de
+Ventas (plantilla + actividad), respuesta del cliente (aprueba → Pilotaje y
+artículo «En pilotaje»; pide cambios → revisión y vuelve a Muestra; rechaza →
+motivo de lista y cierre sin producto) con evidencia obligatoria, y
+seguimiento por cron con días en parámetro vacío. C1.12 se mide por el envío
+(C1-ENVIO) y C1.13 por la respuesta (C1-RESPUESTA deja la etapa).
+Decisiones tomadas sin preguntar: (1) la respuesta vive en el envío (una
+respuesta por muestra enviada); (2) «pide cambios» regresa el proyecto a
+Muestra porque habrá otra corrida; (3) el CoA del lote se adjunta a mano al
+envío hasta que el bloque 3.4 lo imprima desde la tabla. Listas nuevas sin
+renglones: «Paquetería» y «Motivo de rechazo del cliente»; parámetro vacío:
+días de seguimiento.
+
+## 12. Bloque 3.4 — Reporte de conformidad desde la tabla (2026-10-08)
+
+`quimibond_sgi` 57.130.0 (`models/sgi_dev_coa.py`, `report/report_dev_coa.xml`):
+`sgi.dev.coa` por lote con los renglones «En certificado» de la tabla del
+proyecto, valor obtenido en el lote (precargado con el promedio de la
+corrida; en pilotaje lo captura el laboratorio por lote, bloque 3.6) y
+resultado contra la especificación del cliente; el control interno no se
+imprime. «Emitir» genera el PDF (F-P-C07-01, pie del mapeo del lote) y lo
+adjunta al envío de la muestra (3.3) y como CoA de la baja de almacén
+(`sgi_coa.py`). Decisiones tomadas sin preguntar: (1) el certificado es un
+registro propio con los valores congelados, no una impresión en vivo de la
+tabla, para que el lote conserve lo que se certificó; (2) las cualitativas
+imprimen el texto obtenido sin «cumple / no cumple» automático; (3) quien
+emite no se restringe por puesto: queda sellado quién lo hizo.
+
+## 13. Revisión de Jose del 2026-10-08 06:47 UTC: correcciones 1 a 4
+
+- **Datos de la migración (punto 1).** La única diferencia de origen fue la
+  galga de la cotización legado 121 (`18` → `21`, puesta por la liga a mano
+  del puente 1.0.0); se regresó a `18` por MCP y el puente 1.2.0 ya no escribe
+  galga. Lo demás que difiere entre `qb.cotizacion` y `qb.cotizador.cotizacion`
+  es conversión por diseño, reportada sin corregir: precio objetivo de MXN a
+  la moneda de la cotización (el viejo lo guardaba en MXN), `op_pct` de % a
+  fracción, precio de mercado a 4 decimales, moneda vacía → MXN en 4 legados
+  (1, 2, 3 y 6; en 3 y 6 el TC no era 1, así que su precio objetivo quedó
+  dividido en MXN: 1.68 → 0.10 y 10.02 → 0.58, pendiente de que Jose decida).
+- **Parámetros (punto 2).** `seguimiento_dias_habiles` y
+  `borrador_archivar_dias` vacíos (cotizador 1.1.0): sin seguimiento ni
+  archivo automático; `validez_dias` = 15 se queda.
+- **Un solo cotizador (punto 3).** Menús del cotizador viejo solo para
+  administradores (`qb_capacidad_costeo` 1.70.0); la calculadora viva guarda
+  en `qb.cotizador.cotizacion` (`crear_desde_calculadora`); C1.05 al menú
+  2684 (MCP); C1.06 medida con la cotización presentada (puente 1.2.0); las
+  entradas mrp.bom de C1.05 se ligan por
+  `project_id.sgi_dev_product_tmpl_ids.bom_ids` (SGI 57.131.0).
+- **Aprobaciones (punto 4).** Causa: las migraciones de `quimibond_sgi` corren
+  antes de que `quimibond_sgi_studio` entre al registro; sin el satélite todo
+  botón se lee «por sincronizar», así quedaron grabados los faltantes de
+  C1.02 y C1.11 y falló la sincronización de C1.10 en 57.127.0. Regla nueva:
+  **las aprobaciones por botón se sincronizan desde el satélite** (migración
+  1.0.4) y el núcleo no dictamina botones mientras el satélite esté instalado
+  sin cargar. Los roles 1202 y 1203 se sincronizaron por MCP (reglas 74 y 75).
+  C1.11 se atribuye a `verdict_by_id`.
+
+## 14. Bloque 5.3 — Ficha técnica interna y especificaciones del producto (2026-10-08)
+
+`quimibond_sgi` 57.132.0 (`models/sgi_dev_tech_sheet.py`, dos reportes): dos
+documentos distintos desde la tabla del proyecto, guardados con revisión.
+**Ficha técnica interna** (F-P-D01-24): los dos juegos de límites, firmas de
+los seis puestos del brief (parámetro por nombre; «Supervisor de inspección y
+empaque» no existe en RH, queda fuera hasta que Jose decida) y «Aprobar ficha
+(C1.15)», el botón al que apunta el rol 1928 (Ventas) vía la regla nativa de
+Studio (la crea el satélite 1.0.5). **Especificaciones del producto**
+(F-P-D01-08): al cliente, bilingüe, solo renglones «En especificación del
+cliente» con su tolerancia (el control interno no se copia), uso principal
+del proyecto e instrucciones de cuidado de la lista «Instrucción de cuidado»
+(vacía). Decisiones sin preguntar: (1) las firmas que falten se imprimen en
+blanco y la aprobación de Ventas no las exige (el brief no dice que la ficha
+espere a las seis); (2) la medición de C1.15 no se tocó (Jose pidió solo la
+aprobación); (3) emitido no cambia ni se borra: la revisión siguiente lo
+sustituye.
+
+## 15. Bloque 5.4 — Pilotaje y estudio de habilidad (2026-10-08)
+
+`quimibond_sgi` 57.133.0 (`models/sgi_dev_pilot.py`): los primeros lotes de
+producción del artículo «En pilotaje» entran solos al pilotaje al terminar su
+orden (las órdenes de muestra no cuentan); un lote no conforme libera su
+lugar. Lecturas por lote de las características marcadas «Crítica» (marca
+nueva, apagada en catálogo y renglones); dictamen del lote por la media
+contra la especificación del cliente; Cp y Cpk con sigma muestral contra la
+especificación del cliente; PDF al cerrar. Parámetros vacíos: lecturas por
+lote y Cpk mínimo; «Lotes del pilotaje» vacío = tres (sí lo define el brief).
+Decisiones sin preguntar: (1) la medición de C1.14 no se tocó; (2) cerrar el
+pilotaje no mueve el proyecto a Liberado (la liberación es 6.12 y queda para
+el bloque que la pida); (3) sin Cpk mínimo el estudio no dictamina.
+
+## 16. Bloque 5.5 — Escalamiento por tiempo (2026-10-08)
+
+Jose: «primer nivel dueño del proceso, segundo puesto 230, días vacíos». El
+brief (§6.13) propone 2 h al responsable, 4 h a Jessica y Jorge «solo si se
+venció el día», sin confirmar.
+
+- **Paso pendiente** (`project._sgi_dev_pending_step`): solo lectura, por
+  etapa de avance y datos capturados; devuelve numeral de C1, nombre (el de
+  la actividad del SGI si existe) y «desde cuándo». Fuera de «Muestra» el
+  paso sale de la etapa; dentro, de la cadena solicitud aprobada → artículo →
+  materia prima → orden → corrida validada → envío.
+- **Reloj sin materia prima**: horas calendario menos las esperas de
+  `sgi.dev.mp.wait` que caen en el paso; Dirección se mide en días hábiles
+  sobre el inicio corrido por esa espera.
+- **Niveles y destinatarios**: ejecutor = rol «Ejecuta» de la actividad de
+  C1 (puestos → empleados con usuario); dueño = `sgi.process.owner_id` de
+  C1; Dirección = puesto cuyo nombre contiene «director de operaciones» (230
+  en producción). Un nivel sin persona no avisa.
+- **Idempotencia**: una fila `sgi.dev.escalation` por (proyecto, paso,
+  desde, nivel, usuario); la actividad «Por hacer» va con clave
+  `dev_esc:…` del `sgi.cron`; al cambiar el paso se cierran con nota «el
+  paso avanzó». Nunca mueve etapa ni datos.
+- **Parámetros vacíos**; el de días ya existía y sigue creando el rol
+  «Escala» de segundo nivel en las fichas de C1 cuando tiene valor.
+- Fuera: C1.05/C1.06 no distinguen cotización presentada (eso vive en
+  `qb_costeo_sgi`; hook posible en `_sgi_dev_pending_step`), pilotaje sin
+  sub-pasos.
+
+## 17. Bloque 5.6 — Precio en tarifa automático al ganar (2026-10-08)
+
+Jose: «precio en tarifa automático al ganar la cotización, con C1.17
+midiendo eso». Lo que ya existía en `qb_cotizador` (ganada + cliente aprobó
+⇒ renglón en la tarifa propia del cliente) dependía de dos capturas a mano:
+la aprobación del cliente en la cotización y el artículo. Las dos llegan
+solas ahora:
+
+- **Artículo**: al «Generar artículos» el acabado entra a las cotizaciones
+  vivas del proyecto sin artículo (`_qb_sgi_ligar_articulo`); el gancho
+  `_producto_para_tarifa` toma el del proyecto si la cotización no lo tiene.
+- **Aprobación del cliente**: la respuesta «aprueba» del envío de muestra se
+  copia a las cotizaciones vivas (medio, fecha, evidencia). Catálogo de
+  medios igualado (se agrega «Dirección»).
+- **Medición de C1.17**: entregable C1-ARTICULO sobre la cotización con
+  `pricelist_item_id`, fecha `tarifa_fecha`, usuario `tarifa_user_id`;
+  completo con artículo liberado y lista de materiales. Antes se medía con
+  «producto vendible por categoría» (cualquier producto de la empresa).
+- **Al liberar sin tarifa** el proyecto lo dice en el chatter con el motivo.
+- Datos por MCP pendientes: la ficha C1.17 (580) dice «poner el precio de la
+  cotización aceptada en la tarifa del cliente» como paso a mano; con 1.3.0
+  es automático (ajustar texto cuando Jose lo pida).
+
+## 18. Revisión de Administración de Ventas — pestañas por etapa (2026-10-08, SGI 57.136.0)
+
+Una pestaña por etapa de C1 en el orden en que se trabaja (Solicitud del
+cliente · Análisis y factibilidad · Cotización · Aprobación del cliente ·
+Solicitud de desarrollo · Muestra · Respuesta del cliente · Pilotaje y
+liberación · Tiempos). La tabla de características va en cada pestaña con las
+columnas de su momento: se verificó en el código de Odoo 19
+(`web/static/src/model/relational_model/utils.js`, `patchActiveFields`) que
+el mismo x2many puede aparecer varias veces en un formulario y el cliente
+funde sus columnas; por eso no hizo falta la pestaña «Características»
+aparte. El código del artículo y «Generar artículos» pasan a «Cotización»
+(se crean antes de cotizar); las cotizaciones las agrega `qb_costeo_sgi` en
+el `div` «sgi_dev_quotes». «Aprobar solicitud de desarrollo» solo con la
+aprobación del cliente registrada y folio FT. El paso pendiente del
+escalamiento (5.5) no cambió: en «Muestra» sigue C1.07 → C1.04 → …; si Jose
+quiere que C1.04 se exija antes de cotizar, se ajusta el resolutor.
+
+### 18.1 Descripción del proceso según Administración de Ventas (2026-10-08) y lo que queda por decidir
+
+Nombres finales de las pestañas según su descripción: Análisis de mercado
+industrial · Análisis de proyecto · Cotización · Aprobación del cliente ·
+Solicitud de desarrollo · Muestra · Envío de muestra · Retroalimentación del
+cliente · Cambios al proyecto · Pilotaje y liberación · Tiempos. Lo que ya
+cubre el código: análisis de la muestra con pruebas al laboratorio (F-P-C05-02
+= `sgi.dev.lab.request`), revisión que firma Administración de Ventas (revisión de Ventas),
+código y artículos por Diseño de Producto, ruta y centros de trabajo por Diseño de Procesos en la lista
+de materiales (C1.04b) con «Diagrama de flujo», aprobación del cliente por
+correo, OC o WhatsApp con evidencia, solicitud de desarrollo firmada por
+Diseño de Producto y Dirección de Operaciones con aviso por correo a las áreas, corrida, envío,
+retroalimentación, revisiones, pilotajes con estudio de habilidad, fichas de
+proceso y producto. **Decisiones de Dirección General, no construidas:**
+
+1. **Aprobación para iniciar un proyecto** como documento generado desde el
+   proyecto (lo llena Diseño de Producto, lo manda Administración de Ventas, el cliente firma o manda OC)
+   y **folio FT antes de esa aprobación** (hoy el folio se asigna al pasar a
+   «Muestra», después de registrarla). El brief §6.8 ya lo pedía como
+   documento generado; cambiar el momento del folio es decisión de proceso.
+2. **Solicitud de modificación del proyecto** (causas, 5 porqués, fases
+   afectadas, firma de Dirección de Operaciones) en «Cambios al proyecto». El brief (C1.13)
+   la sustituyó por la bitácora de revisiones; Administración de Ventas la quiere formal.
+3. **Ruta como selección de centros de trabajo con imagen** en lugar del
+   diagrama de proceso en papel: hoy la ruta vive en la lista de materiales
+   y el diagrama se imprime; falta la vista gráfica dentro del proyecto.
+4. **Mapa ISO 9001:2015 8.3 y APQP**: cruzar cada pestaña con 8.3.2 a 8.3.6
+   (planificación, entradas, controles: revisión / verificación / validación,
+   salidas, cambios) y decidir qué evidencia falta para armar el APQP por
+   proyecto.
+
+### 18.2 Los cuatro puntos, construidos (2026-10-08, SGI 57.137.0; Jose: «Has todos»)
+
+| Punto | Cómo quedó | Dónde |
+|---|---|---|
+| 1. Aprobación para iniciar con folio antes | PDF generado desde el proyecto (cliente, contacto, producto, uso, características «en especificación del cliente», cotización vía `qb_costeo_sgi`). Al generarlo se asigna el folio FT si falta; «Asignar folio FT» aparece desde «Cotización». «Enviar al cliente» abre el correo con el PDF y registra quién y cuándo. La evidencia de la respuesta se sigue capturando en la misma pestaña y «Registrar aprobación del cliente» mueve a «Muestra». | `models/sgi_dev_start_approval.py`, `report/report_dev_start_approval.xml`, `data/sgi_dev_start_approval_data.xml` |
+| 2. Solicitud de modificación | `sgi.dev.change.request`: motivo, qué se modifica, por qué no se obtuvo el resultado, 5 porqués, causa raíz, solución, fases afectadas; elabora Diseño de Producto, firma Dirección de Operaciones (C1.13). Firmada: abre revisión (si la respuesta del cliente no la abrió), bitácora, vuelve a «Muestra», PDF. «Pide cambios» en el envío deja una en borrador. | `models/sgi_dev_change.py`, `views/sgi_dev_change_views.xml`, `report/report_dev_change_request.xml` |
+| 3. Ruta con imagen | Cadena de cajas artículo · operación · centro de trabajo dentro de «Cotización», «Editar ruta» abre la lista de materiales. **Sin imagen por centro de trabajo**: no existe catálogo de imágenes y no se inventa (si Jose la quiere, es un campo imagen en `mrp.workcenter` y una fila por centro). | `models/sgi_dev_dossier.py` |
+| 4. ISO 9001 8.3 / APQP | Pestaña «Expediente 8.3 / APQP»: 21 requisitos (8.3.2 a 8.3.6) + 2 de `qb_costeo_sgi` (cotización aprobada, precio en tarifa) con evidencia ✔/✘/n.a., fases del APQP ↔ pestañas, impresión. | `models/sgi_dev_dossier.py`, `report/report_dev_dossier.xml` |
+
+Lo que sigue siendo de Jose: los textos definitivos del documento de
+aprobación (hoy un párrafo genérico), si la aprobación para iniciar debe
+ser obligatoria antes de «Registrar aprobación del cliente» (hoy no lo es),
+y la imagen por centro de trabajo.
+
+

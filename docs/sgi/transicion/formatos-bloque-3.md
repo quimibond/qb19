@@ -35,7 +35,7 @@ llena es la pantalla) dos claves que citan las rutinas y no existían:
 | Clave | Qué es | Dónde vive | Actividad |
 |---|---|---|---|
 | F-P-A28-13 | Pronóstico de ventas (confección e industrial, una sola clave) | Ventas → Presupuesto y pronóstico → Pronósticos; el PDF del pronóstico ya imprimía esta clave (mapeo 9) | C2.40 |
-| F-P-A28-11 | Encuesta de satisfacción del cliente | SGI → Dirección → Satisfacción del cliente | E2.12 |
+| F-P-A28-11 | Encuesta de satisfacción del cliente | SGI → Desempeño → Satisfacción del cliente | E2.12 |
 
 ### Qué queda para MAST
 
@@ -79,7 +79,7 @@ llena es la pantalla) dos claves que citan las rutinas y no existían:
 
 El responsable SGI de cada formato vigente (formato, F-IT, DAT, anexo y
 formulario de Odoo) pasa de MAST al usuario del dueño de su proceso
-(SGI → Procesos → dueño del proceso). Solo se tocaron los que tenía MAST;
+(SGI → Sistema → Mapa de procesos → dueño del proceso). Solo se tocaron los que tenía MAST;
 lo que alguien ya había reasignado se respeta. MAST conserva la aprobación y
 la publicación (decisión del 2026-09-30).
 

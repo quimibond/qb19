@@ -8,13 +8,16 @@ Parámetro de proceso de una ficha por máquina (especificación, tolerancia y u
 
 Orden: `section, sequence, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_machine_sheet.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_machine_sheet.py`, `addons/quimibond_sgi/models/sgi_dev_process_sheet.py`.
 
-## Campos (7)
+## Campos (10)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
+| `adjustment` | Integer | Número de ajuste |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_process_sheet.py:149` |
 | `name` | Char | Condición |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:150` |
+| `real` | Char | Real (corrida) | Lo que se corrió de verdad; lo valida el supervisor. |  |  |  |  | `addons/quimibond_sgi/models/sgi_dev_process_sheet.py:148` |
+| `reason_id` | Many2one | Motivo del ajuste |  |  | `sgi.dev.option` |  |  | `addons/quimibond_sgi/models/sgi_dev_process_sheet.py:150` |
 | `section` | Selection | Sección |  | sí |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:149` |
 | `sequence` | Integer |  |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:148` |
 | `sheet_id` | Many2one |  |  | sí | `sgi.machine.sheet` |  |  | `addons/quimibond_sgi/models/sgi_machine_sheet.py:147` |

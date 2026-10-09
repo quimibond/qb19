@@ -54,7 +54,15 @@ class MrpProduction(models.Model):
 
         if finished_move:
             if finished_move.product_uom_qty != 0:
-                finished_move.write({'product_uom_qty': 0})
+                # do_not_unreserve: stock.move.write() del core (19.0) llama a
+                # _do_unreserve() cuando la demanda nueva es menor que la
+                # cantidad ya registrada, y eso BORRA las líneas de rollo que no
+                # están en picked. Pasaba cuando alguien editaba la Cantidad a
+                # producir de una OF en progreso (el core vuelve a poner la
+                # demanda = product_qty) y el siguiente pesaje la regresaba a 0:
+                # H13915, H13637 y H13669 perdieron sus rollos así (2026-10-06).
+                # El propio core escribe esta demanda con el mismo contexto.
+                finished_move.with_context(do_not_unreserve=True).write({'product_uom_qty': 0})
 
             current_wo = self.workorder_ids.filtered(lambda w: w.state in ('ready', 'progress'))[:1]
 
@@ -368,7 +376,10 @@ class MrpProduction(models.Model):
                         # acaba en 'cancel' cuando no hay subproducto que sobreviva).
                         # Con demanda = product_qty el unit_factor es 1 y el core escribe
                         # quantity = total_rollos, igual que antes del cambio del core.
-                        finished_move.write({'product_uom_qty': total_producido_real})
+                        # Mismo contexto que en action_register_roll_with_weight: aquí la
+                        # demanda nueva (rollos + subproducto) nunca es menor que la
+                        # cantidad de las líneas, pero no dependemos de ello.
+                        finished_move.with_context(do_not_unreserve=True).write({'product_uom_qty': total_producido_real})
 
                         # AJUSTE DE HILOS (Componentes): Evita residuos en el consumo
                         for raw_move in production.move_raw_ids:

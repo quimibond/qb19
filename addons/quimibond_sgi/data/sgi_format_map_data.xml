@@ -89,6 +89,12 @@
         <field name="note">Ficha de proceso por máquina</field>
     </record>
 
+    <!-- 57.126.0 (C1, bloque G): diagrama de flujo desde la ruta. -->
+    <record id="format_ref_dev_flow" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-32</field>
+        <field name="note">Diagrama de flujo de proceso</field>
+    </record>
+
     <record id="format_ref_dev_general" model="sgi.format.map">
         <field name="sgi_code">F-P-D01-02</field>
         <field name="note">Solicitud de desarrollo: general</field>
@@ -107,6 +113,16 @@
     <record id="format_ref_dev_tramado" model="sgi.format.map">
         <field name="sgi_code">F-P-D01-27</field>
         <field name="note">Solicitud de desarrollo: tramado</field>
+    </record>
+
+    <!-- 57.132.0 (C1, Jose 5.3): ficha técnica interna y especificaciones del producto. -->
+    <record id="format_ref_dev_tech_sheet" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-24</field>
+        <field name="note">Ficha técnica interna del desarrollo</field>
+    </record>
+    <record id="format_ref_dev_customer_spec" model="sgi.format.map">
+        <field name="sgi_code">F-P-D01-08</field>
+        <field name="note">Especificaciones del producto (cliente)</field>
     </record>
 
     <record id="format_ref_procedure_print" model="sgi.format.map">

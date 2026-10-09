@@ -61,16 +61,48 @@ python3 tools/check_addons.py --base-ref origin/quimibond
 
 PR **base `quimibond` ← compare `main`**.
 
-### 5. Actualizar lo que no se actualiza solo
+### 5. Revisar qué actualizó Odoo.sh y actualizar solo lo que falte
 
-No des por hecho qué módulos actualizó Odoo.sh: se ha visto un build de rama
-saltarse un módulo con la versión congelada, y un deploy a producción actualizar
-otro sin bump. Corre a mano lo que no estés seguro de que entró — es idempotente:
+**Al mergear a `quimibond`, Odoo.sh despliega y actualiza por su cuenta** los
+módulos cuya versión subió. Lo hace en los primeros minutos, antes de que uno
+llegue al shell. El 2026-10-05 la 57.109.1 del SGI quedó instalada a las
+23:03:21; el `odoo-update` manual de las 23:06 corrió con producción ya
+arriba y con usuarios. Chocó con ellos al alterar `res_company`
+(`deadlock detected`, `Failed to load registry`) y se deshizo completo. No
+dañó nada, pero parecía que el despliegue había fallado.
+
+Por eso, **primero se revisa la versión instalada**. Espera a que termine el
+despliegue de Odoo.sh (pestaña del build en verde) y compara la base contra
+el manifest:
+
+```sql
+SELECT name, latest_version, state FROM ir_module_module
+ WHERE name IN ('quimibond_sgi', 'quimibond_intelligence' /* , los que cambiaron */) ORDER BY 1;
+```
+
+Por MCP de Odoo (solo lectura) es lo mismo: `search_records` sobre
+`ir.module.module` con los campos `latest_version` (versión en la base) e
+`installed_version` (versión del código que corre).
+
+- **`latest_version` ya es la del manifest:** el módulo se actualizó solo. **No
+  corras `odoo-update`**: pasa a § Verificaciones y lee el `update.log` del
+  despliegue de Odoo.sh.
+- **Sigue en la versión anterior**, o el módulo está en
+  `tools/no_bump.txt` y cambió: entonces sí, a mano. Aun así no se ha
+  confirmado cuándo Odoo.sh corre `-u`: se ha visto un build de rama saltarse
+  un módulo con la versión congelada, y un deploy a producción actualizar otro
+  sin bump.
 
 ```bash
-odoo-update <cada modulo de tools/no_bump.txt que haya cambiado>
+odoo-update <solo los modulos que no quedaron en su version>
 odoosh-restart http && odoosh-restart cron
 ```
+
+`odoo-update` en producción corre **con usuarios conectados**. Si falla con
+`deadlock detected`, el update se deshizo entero y la base sigue como
+estaba. Vuelve a revisar la versión antes de reintentar, porque a veces otro
+proceso ya la actualizó. Si de verdad falta, reintenta una vez en horario de
+poco uso.
 
 ### 6. Verificar
 
@@ -156,6 +188,22 @@ timestamp y parte los tracebacks.
 
 `update.log` es el despliegue; `odoo.log` es lo que pasa después, ya corriendo.
 
+### Incidentes conocidos
+
+- **`deadlock detected` en `ALTER TABLE "res_company" ... DROP NOT NULL`**
+  durante un `odoo-update` manual: chocó con usuarios o con el despliegue
+  automático de Odoo.sh (2026-10-05). El update se deshace entero. Revisa
+  primero `latest_version` (§ 5 de Despliegue): ese día el módulo ya estaba
+  actualizado y no hacía falta repetir.
+- **`MissingError: Record does not exist or has been deleted` en una
+  migración** (2026-10-05, `ir.actions.server(2882,)`): un registro apunta a
+  otro que ya no existe. En ese caso era el menú 1471, «Entregas», con su
+  acción de servidor borrada; Odoo no limpia esas referencias. Toda la
+  actualización se deshace y la base queda en la versión anterior. Si se
+  reinicia `http` antes de corregir, el código nuevo corre sobre la base
+  vieja: **no reiniciar**. Se corrige en el código, como en la 57.109.1 con
+  `exists()` sobre la acción del menú, y se vuelve a desplegar.
+
 ### Ruido conocido, ignorable
 
 - `Two fields ... have the same label` sobre campos `x_studio_*`
@@ -195,7 +243,9 @@ odoo-bin -u quimibond_sgi --test-tags /quimibond_sgi,/quimibond_sgi_pesaje,/quim
 
 ### Actualizar
 
-`odoo-update` recibe los módulos **separados por comas, sin espacios** (igual
+Primero revisa la versión instalada (§ 5 de Despliegue). Si Odoo.sh ya
+actualizó el SGI al mergear, no repitas el `odoo-update`; solo verifica.
+Si hace falta a mano, `odoo-update` recibe los módulos **separados por comas, sin espacios** (igual
 que `-u` de Odoo):
 
 ```bash
@@ -217,8 +267,9 @@ SELECT name, latest_version, state FROM ir_module_module WHERE name LIKE 'quimib
 grep -E "quimibond_sgi" ~/logs/update.log | grep -E "WARNING|ERROR|migrat" | tail -40
 ```
 
-- **Menú:** SGI → las cinco entradas y «Procesos → Del Dropbox a Odoo»
-  visibles para Jefe MAST; el árbol esperado está en
+- **Menú:** SGI → las ocho entradas (Inicio, Reportar, Sistema, Planeación,
+  Seguridad y ambiente, Desempeño, Mejora, Administración; 57.113.0) y
+  «Sistema → Del Dropbox a Odoo» visibles para Jefe MAST; el árbol esperado está en
   `addons/quimibond_sgi/tools/sgi_menu_tree.txt` (`test_menu_tree` lo compara).
 - **Crons:** están en `noupdate`; un cambio de cron llega solo por migración.
   En Ajustes → Técnico → Acciones planificadas, los «SGI …» activos y sin

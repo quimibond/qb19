@@ -8,9 +8,9 @@ Papel de un puesto, una familia o un rol relativo en una actividad (ejecuta, apr
 
 Orden: `activity_id, sequence, id`.
 
-Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`, `addons/quimibond_sgi/models/sgi_relative_roles.py`, `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/models/sgi_activity_spec.py`, `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_wizard.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`, `addons/quimibond_sgi/models/sgi_relative_roles.py`, `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py`, `addons/quimibond_sgi_studio/models/sgi_approval_studio.py`.
 
-## Campos (47)
+## Campos (49)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -30,6 +30,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `approval_rule_id` | Many2one | Regla nativa | Regla de aprobación de Odoo que el SGI creó para este rol. |  | `studio.approval.rule` |  |  | `addons/quimibond_sgi_studio/models/sgi_approval_studio.py:81` |
 | `approval_sign_template_id` | Many2one | Plantilla de Sign | Plantilla de Sign que se firma para aprobar, cuando la aprobación es por firma. |  | `sign.template` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:173` |
 | `approval_state` | Selection | Aprobación en Odoo | Si la aprobación ya funciona en Odoo o qué le falta (configurarla, personas en el puesto, otra regla en el mismo botón). |  |  | compute `_compute_approval_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:198` |
+| `approval_suggestion` | Char | Sugerencia | Cómo se sugiere aprobar: con el botón del documento que materializa la actividad, si tiene uno conocido; si no, con una solicitud en Aprobaciones. |  |  | compute `_compute_approval_suggestion`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_wizard.py:51` |
 | `approval_user_ids` | Many2many | Personas que aprueban | Personas que hoy aprueban: las del puesto o la familia. |  | `res.users` | compute `_compute_approval_users`, sin guardar |  | `addons/quimibond_sgi/models/sgi_approval_native.py:195` |
 | `cadence` | Selection | Cadencia | Cada cuánto se espera la actividad. |  |  | related `activity_id.measure_cadence`, guardado |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:80` |
 | `company_id` | Many2one | Empresa |  |  |  | related `activity_id.company_id`, guardado |  | `addons/quimibond_sgi/models/sgi_catalog.py:179` |
@@ -39,6 +40,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `condition_value` | Char | Valor | Número, texto o True/False. |  |  |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:193` |
 | `family_id` | Many2one | Familia de puestos | Familia de puestos a la que se asigna el rol (cuando «Asignado a» es familia). |  | `sgi.job.family` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:153` |
 | `job_id` | Many2one | Puesto | Puesto al que se asigna el rol (cuando «Asignado a» es puesto). |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:150` |
+| `mp_article_id` | Many2one | Instructivo en Conocimiento | El instructivo de la actividad para leerlo en Conocimiento, cuando ya está publicado. |  | `knowledge.article` | compute `_compute_mp_article_id`, sin guardar |  | `addons/quimibond_sgi_knowledge/models/sgi_knowledge_process.py:31` |
 | `mp_can_go` | Boolean | Se puede ir a hacer | Indica si la actividad tiene un menú de Odoo al que se puede ir con «Ir a hacerlo». |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:366` |
 | `mp_check_against` | Char | Contra qué se revisa |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:354` |
 | `mp_done` | Text | Terminada cuando |  |  |  | compute `_compute_mp_pieces`, sin guardar |  | `addons/quimibond_sgi/models/sgi_my_procedure_screen.py:355` |
@@ -62,15 +64,18 @@ Archivos: `addons/quimibond_sgi/models/sgi_catalog.py`, `addons/quimibond_sgi/mo
 | `sequence` | Integer | Secuencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:174` |
 | `target_type` | Selection | Asignado a | A quién toca: un puesto, una familia de puestos o un rol relativo (el solicitante, quien detecta, el dueño del proceso…). | sí |  |  |  | `addons/quimibond_sgi/models/sgi_catalog.py:146` |
 
-## Métodos públicos (12)
+## Métodos públicos (15)
 
 | Método | Qué hace (docstring) |
 |---|---|
+| `action_mp_article` | «Leer en Conocimiento». |
 | `action_mp_go` | «Ir a hacerlo»: el menú real de Odoo donde se ejecuta el paso. |
 | `action_mp_instruction` | «Ver instructivo»: el archivo del IT de la actividad. |
 | `action_mp_propose_change` | — |
 | `action_open_activity` | — |
+| `action_sgi_activate_suggested` | «Activar las sugeridas como solicitud»: las aprobaciones sin configurar cuya sugerencia es una solicitud en Aprobaciones (no bloquean ningún botón) se activan de una vez. Las de botón quedan para el … |
 | `action_sgi_adopt_rule` | Adopta la regla manual que ya existe en el botón: la liga al rol y la deja con las personas del puesto y la condición del rol. |
+| `action_sgi_approval_wizard` | «Configurar»: el asistente de tres preguntas. |
 | `action_sgi_open_approval_entries` | — |
 | `action_sgi_sync_approval` | — |
 | `create` | — |

@@ -10,7 +10,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_links.py`.
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_picking_id` | Many2one | Entrega del acuse | Entrega a la que pertenece este acuse firmado (C2.34). |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_links.py:288` |
+| `sgi_picking_id` | Many2one | Entrega del acuse | Entrega a la que pertenece este acuse firmado (C2.34). |  | `stock.picking` |  |  | `addons/quimibond_sgi/models/sgi_links.py:315` |
 
 ## Métodos públicos (1)
 

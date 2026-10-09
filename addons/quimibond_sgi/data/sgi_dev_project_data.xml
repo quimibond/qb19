@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 57.118.0 (C1, bloque 2): secuencia anual del folio FT y etapas de avance
+     del proyecto de desarrollo de producto (en lugar de una etapa por
+     cliente). noupdate: nombres y orden se ajustan en la base. -->
+<odoo noupdate="1">
+    <record id="sgi_seq_dev_ft" model="ir.sequence">
+        <field name="name">Folio FT de desarrollo de producto (SGI)</field>
+        <field name="code">sgi.dev.ft</field>
+        <field name="prefix">FT-</field>
+        <field name="suffix">-%(range_year)s</field>
+        <field name="padding">3</field>
+        <field name="use_date_range" eval="True"/>
+        <field name="number_increment">1</field>
+    </record>
+
+    <record id="sgi_dev_stage_solicitud" model="project.project.stage">
+        <field name="name">Solicitud</field>
+        <field name="sequence">110</field>
+    </record>
+    <record id="sgi_dev_stage_analisis" model="project.project.stage">
+        <field name="name">Análisis</field>
+        <field name="sequence">120</field>
+    </record>
+    <record id="sgi_dev_stage_cotizacion" model="project.project.stage">
+        <field name="name">Cotización</field>
+        <field name="sequence">130</field>
+    </record>
+    <record id="sgi_dev_stage_aprobacion_cliente" model="project.project.stage">
+        <field name="name">Aprobación del cliente</field>
+        <field name="sequence">140</field>
+    </record>
+    <record id="sgi_dev_stage_muestra" model="project.project.stage">
+        <field name="name">Muestra</field>
+        <field name="sequence">150</field>
+    </record>
+    <record id="sgi_dev_stage_respuesta_cliente" model="project.project.stage">
+        <field name="name">Respuesta del cliente</field>
+        <field name="sequence">160</field>
+    </record>
+    <record id="sgi_dev_stage_pilotaje" model="project.project.stage">
+        <field name="name">Pilotaje</field>
+        <field name="sequence">170</field>
+    </record>
+    <record id="sgi_dev_stage_liberado" model="project.project.stage">
+        <field name="name">Liberado</field>
+        <field name="sequence">180</field>
+        <field name="fold" eval="True"/>
+    </record>
+    <record id="sgi_dev_stage_cerrado_sin_producto" model="project.project.stage">
+        <field name="name">Cerrado sin producto</field>
+        <field name="sequence">190</field>
+        <field name="fold" eval="True"/>
+    </record>
+</odoo>

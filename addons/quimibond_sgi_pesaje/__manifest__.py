@@ -21,7 +21,7 @@ Ajustes → SGI → Piso. Antes lo hacía el núcleo.
     'author': "Quimibond",
     'website': "https://www.quimibond.com",
     'category': 'Manufacturing/SGI',
-    'version': '19.0.5.2.1',
+    'version': '19.0.5.2.2',
     'license': 'OPL-1',
     'depends': [
         'quimibond_sgi',

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="cron_calcular_periodo" model="ir.cron">
+        <field name="name">Costeo: calcular mes anterior y mes en curso</field>
+        <field name="model_id" ref="model_qb_periodo"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_calcular_mes_en_curso()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_cuentas_nuevas" model="ir.cron">
+        <field name="name">Costeo: avisar cuentas sin clasificar</field>
+        <field name="model_id" ref="model_qb_cuenta_clase"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_cuentas_nuevas()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_validar_productos" model="ir.cron">
+        <field name="name">Costeo: validar recetas y precios</field>
+        <field name="model_id" ref="model_qb_producto_validacion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_revisar()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_horas_producto" model="ir.cron">
+        <field name="name">Costeo: recalcular horas por producto</field>
+        <field name="model_id" ref="model_qb_producto_horas"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_mp_producto" model="ir.cron">
+        <field name="name">Costeo: recalcular materia prima por producto</field>
+        <field name="model_id" ref="model_qb_producto_mp"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active">True</field>
+    </record>
+    <record id="cron_rendimiento_producto" model="ir.cron">
+        <field name="name">Costeo: recalcular rendimiento vendible</field>
+        <field name="model_id" ref="model_qb_producto_rendimiento"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">weeks</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

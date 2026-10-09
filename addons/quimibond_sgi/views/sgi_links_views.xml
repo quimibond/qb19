@@ -72,6 +72,11 @@
                                 <list><field name="display_name"/><field name="partner_id"/><field name="state" widget="badge"/></list>
                             </field>
                         </group>
+                        <group string="Envíos de muestra">
+                            <field name="sgi_dyd_picking_ids" nolabel="1" colspan="2" readonly="1">
+                                <list><field name="name"/><field name="partner_id"/><field name="state" widget="badge"/></list>
+                            </field>
+                        </group>
                     </group>
                 </page>
             </xpath>
@@ -104,6 +109,7 @@
                 <page string="SGI" name="sgi" invisible="move_type not in ('out_invoice', 'out_refund', 'in_invoice', 'in_refund')">
                     <group>
                         <field name="sgi_picking_ids" widget="many2many_tags"/>
+                        <field name="sgi_action_line_id" invisible="move_type != 'out_refund'"/>
                         <!-- 57.95.0 (K-05): lo propuesto, cuando hay ajuste a mano o
                              lo guardado difiere. -->
                         <field name="sgi_picking_manual" invisible="not sgi_picking_manual"/>
@@ -115,6 +121,77 @@
                             string="Volver a las entregas propuestas" class="btn-secondary"
                             invisible="not sgi_picking_manual and not sgi_picking_outdated"/>
                 </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 57.114.0: la solicitud de aprobación guarda su tarea del desarrollo
+         (C1.08), su NC (C5.22) y su solicitud de mantenimiento (S5.03). -->
+    <record id="sgi_approval_request_view_form_links" model="ir.ui.view">
+        <field name="name">approval.request.form.sgi.links</field>
+        <field name="model">approval.request</field>
+        <field name="inherit_id" ref="approvals.approval_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Liga con el SGI" name="sgi_links">
+                    <field name="sgi_dyd_task_id"/>
+                    <field name="sgi_alert_id"/>
+                    <field name="sgi_maintenance_request_id"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 57.114.0: el traslado guarda su tarea del desarrollo (C1.12) y su
+         solicitud de mantenimiento (S5.04). -->
+    <record id="sgi_stock_picking_view_form_links" model="ir.ui.view">
+        <field name="name">stock.picking.form.sgi.links</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/notebook" position="inside">
+                <page string="Liga con el SGI" name="sgi_links">
+                    <group>
+                        <field name="sgi_dyd_task_id"/>
+                        <field name="sgi_maintenance_request_id"/>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 57.116.0: categorías compartidas con asunto (sgi_approval_subject). -->
+    <record id="sgi_approval_request_view_form_subject" model="ir.ui.view">
+        <field name="name">approval.request.form.sgi.subject</field>
+        <field name="model">approval.request</field>
+        <field name="inherit_id" ref="approvals.approval_request_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <field name="sgi_has_subjects" invisible="1"/>
+                <group string="Asunto" name="sgi_subject" invisible="not sgi_has_subjects">
+                    <field name="sgi_subject_id" required="sgi_has_subjects"
+                           readonly="request_status != 'new'"
+                           options="{'no_create': True, 'no_open': True}"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="sgi_approval_category_view_form_subjects" model="ir.ui.view">
+        <field name="name">approval.category.form.sgi.subjects</field>
+        <field name="model">approval.category</field>
+        <field name="inherit_id" ref="approvals.approval_category_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet" position="inside">
+                <group string="Asuntos (quien pide elige uno; define quién aprueba)">
+                    <field name="sgi_subject_ids" nolabel="1" colspan="2">
+                        <list editable="bottom">
+                            <field name="sequence" widget="handle"/>
+                            <field name="name"/>
+                            <field name="role_id" options="{'no_create': True}"/>
+                            <field name="activity_id"/>
+                        </list>
+                    </field>
+                </group>
             </xpath>
         </field>
     </record>

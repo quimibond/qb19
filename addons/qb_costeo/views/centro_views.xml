@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_centro_list" model="ir.ui.view">
+        <field name="name">qb.centro.list</field>
+        <field name="model">qb.centro</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="nature"/>
+                <field name="driver"/>
+                <field name="publica_tarifa"/>
+                <field name="capacidad_h_mes"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_qb_centro_form" model="ir.ui.view">
+        <field name="name">qb.centro.form</field>
+        <field name="model">qb.centro</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="nature"/>
+                            <field name="driver" invisible="nature != 'directo'" required="nature == 'directo'"/>
+                            <field name="reparto_llave" invisible="nature != 'indirecto'"/>
+                            <field name="publica_tarifa" invisible="nature != 'directo'"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Capacidad">
+                            <field name="capacidad_h_mes"/>
+                            <field name="capacidad_motivo" required="capacidad_h_mes != 0"/>
+                            <field name="kg_por_carga" invisible="driver != 'kg_ciclo'"/>
+                            <field name="horas_por_carga" invisible="driver != 'kg_ciclo'"/>
+                            <field name="velocidad_m_h" invisible="driver != 'm_velocidad'"/>
+                            <field name="horas_por_unidad" invisible="driver != 'fijo_unidad'"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="workcenter_ids" widget="many2many_tags"/>
+                        <field name="department_ids" widget="many2many_tags"/>
+                        <field name="notas"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_qb_centro" model="ir.actions.act_window">
+        <field name="name">Centros</field>
+        <field name="res_model">qb.centro</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Dé de alta sus centros de costo</p>
+            <p>Un centro directo carga horas a los productos (tejido, tintorería, acabado). Un indirecto se reparte a los directos.</p>
+        </field>
+    </record>
+</odoo>

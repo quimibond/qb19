@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.120.0 (C1, bloque 4): parecidos, pruebas de laboratorio y factibilidad.
+         Vistas propias completas, sin herencias dentro del módulo. -->
+
+    <!-- ===== Artículos parecidos (asistente) ===== -->
+    <record id="sgi_dev_similar_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.similar.form</field>
+        <field name="model">sgi.dev.similar</field>
+        <field name="arch" type="xml">
+            <form string="Artículos parecidos">
+                <group>
+                    <field name="project_id" readonly="1"/>
+                    <field name="peso"/>
+                    <field name="ancho"/>
+                </group>
+                <p class="text-muted">Ordenados por cercanía en peso, ancho, composición, dibujo y galga (leídos del código). «Dentro de tolerancia» puede ser producto de línea; con una sola diferencia es producto nuevo. Diseño de Producto confirma con «Usar como base».</p>
+                <field name="line_ids">
+                    <list create="0" delete="0" decoration-success="within_tolerance">
+                        <field name="product_id"/>
+                        <field name="source"/>
+                        <field name="peso"/>
+                        <field name="ancho"/>
+                        <field name="galga"/>
+                        <field name="score"/>
+                        <field name="within_tolerance"/>
+                        <field name="note"/>
+                        <button name="action_use_as_base" type="object" string="Usar como base" class="btn-link" icon="fa-check"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_refresh" type="object" string="Volver a buscar" class="btn-secondary"/>
+                    <button special="cancel" string="Cerrar" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===== Solicitudes de pruebas a laboratorio ===== -->
+    <record id="sgi_dev_lab_request_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.lab.request.list</field>
+        <field name="model">sgi.dev.lab.request</field>
+        <field name="arch" type="xml">
+            <list string="Pruebas de laboratorio de desarrollos" decoration-muted="state in ('medida', 'cancelada')">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="kind"/>
+                <field name="requested_by_id"/>
+                <field name="date_requested"/>
+                <field name="pending_count"/>
+                <field name="hours_total"/>
+                <field name="state" widget="badge" decoration-info="state == 'solicitada'"
+                       decoration-warning="state == 'autorizada'" decoration-success="state == 'medida'"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_lab_request_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.lab.request.form</field>
+        <field name="model">sgi.dev.lab.request</field>
+        <field name="arch" type="xml">
+            <form string="Solicitud de pruebas a laboratorio">
+                <header>
+                    <button name="action_request" type="object" string="Solicitar" class="btn-primary" invisible="state != 'borrador'"/>
+                    <button name="action_authorize" type="object" string="Autorizar" class="btn-primary" invisible="state != 'solicitada'"/>
+                    <button name="action_verdict" type="object" string="Dictamen de Diseño" class="btn-primary"
+                            invisible="state != 'medida' or verdict_by_id"
+                            confirm="Diseño de Producto dictamina los resultados de laboratorio de esta solicitud. ¿Continuar?"/>
+                    <button name="action_cancel" type="object" string="Cancelar" invisible="state in ('medida', 'cancelada')"/>
+                    <field name="state" widget="statusbar" statusbar_visible="borrador,solicitada,autorizada,medida"/>
+                </header>
+                <sheet>
+                    <div class="oe_title"><h1><field name="name" readonly="1"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="project_id" readonly="state != 'borrador'"/>
+                            <field name="kind" readonly="state != 'borrador'"/>
+                            <field name="requested_by_id"/>
+                            <field name="date_requested"/>
+                        </group>
+                        <group>
+                            <field name="authorized_by_id"/>
+                            <field name="date_authorized"/>
+                            <field name="date_measured"/>
+                            <field name="verdict_by_id"/>
+                            <field name="date_verdict"/>
+                            <field name="pending_count"/>
+                            <field name="hours_total"/>
+                        </group>
+                    </group>
+                    <p class="text-muted">El laboratorio captura el valor en el renglón (abra la fila); el dictamen es de Diseño de Producto. La solicitud se cierra sola cuando todos los renglones tienen valor.</p>
+                    <field name="line_ids" readonly="state in ('medida', 'cancelada')" domain="[('project_id', '=', project_id)]">
+                        <list editable="bottom" create="0" open_form_view="1">
+                            <field name="kind" column_invisible="1"/>
+                            <field name="name" readonly="1"/>
+                            <field name="direction" readonly="1"/>
+                            <field name="position" readonly="1"/>
+                            <field name="unit" readonly="1"/>
+                            <field name="spec_label" readonly="1"/>
+                            <field name="method" readonly="1"/>
+                            <field name="sample_value" readonly="kind != 'num'"/>
+                            <field name="sample_text" readonly="kind == 'num'" optional="show"/>
+                            <field name="run_1" optional="hide" readonly="kind != 'num'"/>
+                            <field name="run_2" optional="hide" readonly="kind != 'num'"/>
+                            <field name="run_3" optional="hide" readonly="kind != 'num'"/>
+                            <field name="run_text" optional="hide" readonly="kind == 'num'"/>
+                            <field name="sample_result" widget="badge" optional="show"/>
+                        </list>
+                    </field>
+                    <group>
+                        <field name="note"/>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_lab_request_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.lab.request.search</field>
+        <field name="model">sgi.dev.lab.request</field>
+        <field name="arch" type="xml">
+            <search string="Pruebas de laboratorio">
+                <field name="project_id"/>
+                <filter name="open" string="En curso" domain="[('state', 'in', ('solicitada', 'autorizada'))]"/>
+                <filter name="to_authorize" string="Por autorizar" domain="[('state', '=', 'solicitada')]"/>
+                <group>
+                    <filter name="group_state" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="group_project" string="Proyecto" context="{'group_by': 'project_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_lab_request_action" model="ir.actions.act_window">
+        <field name="name">Pruebas de laboratorio de desarrollos</field>
+        <field name="res_model">sgi.dev.lab.request</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'search_default_open': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Solicitudes de pruebas de los desarrollos</p>
+            <p>Diseño de Producto las genera desde el proyecto; las autoriza el Coordinador de Laboratorio y MP; el laboratorio captura el resultado en el renglón.</p>
+        </field>
+    </record>
+
+    <!-- ===== Catálogo de recursos de factibilidad ===== -->
+    <record id="sgi_dev_feasibility_item_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.feasibility.item.list</field>
+        <field name="model">sgi.dev.feasibility.item</field>
+        <field name="arch" type="xml">
+            <list string="Recursos del checklist de factibilidad" editable="bottom" default_order="line, sequence">
+                <field name="sequence" widget="handle"/>
+                <field name="line"/>
+                <field name="name"/>
+                <field name="auto"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_feasibility_item_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.feasibility.item.search</field>
+        <field name="model">sgi.dev.feasibility.item</field>
+        <field name="arch" type="xml">
+            <search string="Recursos de factibilidad">
+                <field name="name"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_line" string="Línea" context="{'group_by': 'line'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_feasibility_item_action" model="ir.actions.act_window">
+        <field name="name">Recursos del checklist de factibilidad</field>
+        <field name="res_model">sgi.dev.feasibility.item</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_line': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Checklist de factibilidad por línea</p>
+            <p>La lista de recursos de tejido circular y de entretelas está por definir con Diseño de Procesos. Capture aquí cada recurso o pregunta; en cada proyecto aparecen y se marcan sí o no.</p>
+        </field>
+    </record>
+</odoo>

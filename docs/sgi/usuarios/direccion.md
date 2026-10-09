@@ -12,11 +12,12 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 
 | Menú | Para qué |
 |---|---|
-| **SGI → Dirección → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
-| **SGI → Dirección → Revisión por la dirección** | La reunión de revisión: entradas, acuerdos y seguimiento |
-| **SGI → Dirección → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
-| **SGI → Dirección → Riesgos y oportunidades / Requisitos legales / Partes interesadas / Satisfacción del cliente** | Contexto, riesgos y cumplimiento |
-| **SGI → Administración SGI** | Consulta de documentos, indicadores, aprobaciones y diagnóstico |
+| **SGI → Desempeño → Tablero** | Indicadores de dirección, salud del SGI (desde 57.99.0), rojos sin causa ni plan, procesos con más atrasos y acuerdos de la revisión vencidos |
+| **SGI → Desempeño → Revisión por la dirección / Satisfacción del cliente / Indicadores** | La reunión de revisión (entradas, acuerdos y seguimiento), la satisfacción del cliente y las mediciones |
+| **SGI → Planeación → Política integral / Objetivos integrales** | La política vigente y los objetivos del año con su semáforo |
+| **SGI → Planeación → Partes interesadas / Riesgos y oportunidades / Aspectos ambientales / Requisitos legales** | Contexto, riesgos y cumplimiento |
+| **SGI → Sistema** | Mapa de procesos, documentos y el Manual del SGI (MIID) |
+| **SGI → Administración** | Consulta del diagnóstico y de las aprobaciones |
 | **SGI → Inicio** | Sus propios pendientes y su procedimiento |
 | **SGI → Reportar** | Una no conformidad, un casi accidente o incidente, o una queja o sugerencia (abre la ficha nueva) |
 
@@ -24,7 +25,7 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
 
 ### 2.1 Revisar el tablero
 
-1. Toque la app **SGI** (o **SGI → Dirección → Tablero**). Se calcula al
+1. Toque la app **SGI** (o **SGI → Desempeño → Tablero**). Se calcula al
    abrirlo.
 2. Revise primero **Rojos sin causa ni plan** y **Acuerdos de la RxD
    vencidos**: son lo que está detenido.
@@ -34,6 +35,10 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
    semáforo y la semana anterior, y la tabla **Por dueño de proceso** (ver
    2.5).
 
+Desde 57.104.0, un indicador sin ninguna medición con dato dice **Sin dato**
+en el Tablero, en los «Últimos 6 periodos» y en el texto de la revisión por
+la dirección, en lugar de 0. Un 0 que sí se midió se muestra como 0.
+
 ### 2.2 La revisión por la dirección
 
 1. **Revisión por la dirección → Nuevo**, con el periodo (desde y hasta).
@@ -42,7 +47,10 @@ Sus propios pendientes siguen en **SGI → Inicio → Mis pendientes**.
    proveedores y, desde 57.97.0, incidentes y desempeño de SST, cambios en
    el contexto y las partes interesadas, aspectos ambientales significativos
    y oportunidades de mejora) con los datos reales del periodo, y trae los
-   **acuerdos abiertos de revisiones anteriores**. Se pueden ajustar.
+   **acuerdos abiertos de revisiones anteriores**. Se pueden ajustar. Desde
+   57.104.0, «Validar mediciones» no valida las mediciones manuales en 0 sin
+   nota: las lista en el chatter de la revisión para que su responsable las
+   capture.
 3. En la reunión, capture los **Acuerdos** con responsable y fecha.
 4. Escriba las **Conclusiones (9.3.3)**: conveniencia, adecuación, eficacia
    y mejora, cambios y recursos. Sin ellas no se marca realizada; si no hay
@@ -67,6 +75,33 @@ o dueño del proceso, y las actividades en las que su puesto «Aprueba».
 - **Riesgos y oportunidades**: un riesgo alto sin acción abierta queda
   marcado y le llega el aviso al dueño del proceso; en la revisión por la
   dirección aparecen los de atención inmediata o alta.
+
+### 2.4.1 Fichas de indicador y mapa de calor (desde 57.101.0)
+
+- **Ficha del indicador:** en el indicador, **Ficha en PDF** (o Imprimir)
+  da una hoja con cómo se mide, las metas, la gráfica de los últimos 12
+  periodos con medición (franjas verde, amarilla y roja con las metas de cada
+  periodo) y la causa y acciones de los rojos. Desde el proceso, Imprimir →
+  **Fichas de indicadores del proceso** da todas.
+- **Mapa de calor de riesgos:** en la lista de riesgos, Imprimir → **Mapa de
+  calor de riesgos**: una hoja por instrumento (R&O, IPER, ambiental) con la
+  cuadrícula probabilidad × impacto inicial y residual y los folios en cada
+  celda. El color de cada celda es el nivel real de la escala del
+  instrumento.
+- La **tendencia** de un indicador promedia las mediciones del periodo (antes
+  las sumaba) y abre con el filtro «Con dato».
+
+### 2.4.2 El Manual del SGI (MIID) (desde 57.105.0)
+
+**SGI → Sistema → Manual del SGI (MIID)** muestra el manual armado desde
+Odoo (texto fijo más los datos vivos), marcado «Borrador — no vigente»; la
+revisión vigente es «PDF de la revisión vigente». Usted firma **«Aprobó»**
+del MIID en Sign (si nadie se configuró en
+`quimibond_sgi.miid_approver_user_id`, el primer integrante de Dirección de
+Operaciones). Puede quitar «Por confirmar» de una sección cuando lo
+confirme (en «Textos del manual»); el texto lo edita el Jefe MAST. Ninguna
+revisión se aprueba con secciones por confirmar o con procesos que no estén
+vigentes.
 
 ### 2.5 El correo de los lunes (salud del SGI)
 

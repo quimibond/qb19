@@ -12,13 +12,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
-| `sgi_ack_count` | Integer | # Acuses |  |  |  | compute `_compute_sgi_ack_stats`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:467` |
-| `sgi_ack_ids` | One2many | Acuses de lectura |  |  | `sgi.document.ack` |  |  | `addons/quimibond_sgi/models/sgi_document.py:465` |
-| `sgi_ack_read_pct` | Float | % Difusión | Porcentaje de acuses de lectura ya firmados sobre los pedidos. Se calcula solo. |  |  | compute `_compute_sgi_ack_stats`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:468` |
+| `sgi_ack_count` | Integer | # Acuses |  |  |  | compute `_compute_sgi_ack_stats`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:468` |
+| `sgi_ack_ids` | One2many | Acuses de lectura |  |  | `sgi.document.ack` |  |  | `addons/quimibond_sgi/models/sgi_document.py:466` |
+| `sgi_ack_read_pct` | Float | % Difusión | Porcentaje de acuses de lectura ya firmados sobre los pedidos. Se calcula solo. |  |  | compute `_compute_sgi_ack_stats`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:469` |
 | `sgi_area_id` | Many2one | Área SGI | Área del SGI a la que pertenece el documento. |  | `sgi.area` |  |  | `addons/quimibond_sgi/models/sgi_document.py:125` |
-| `sgi_article_id` | Many2one | Artículo de Knowledge | Artículo del que se congeló esta revisión (DOC-5). |  | `knowledge.article` |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:55` |
+| `sgi_article_id` | Many2one | Artículo de Knowledge | Artículo de Conocimiento del documento: borrador importado de su PDF o artículo del que se congeló esta revisión. |  | `knowledge.article` |  |  | `addons/quimibond_sgi_knowledge/models/sgi_instruction_knowledge.py:88` |
 | `sgi_can_edit_transition` | Boolean |  |  |  |  | compute `_compute_sgi_can_edit_transition`, sin guardar |  | `addons/quimibond_sgi/models/sgi_document.py:263` |
-| `sgi_child_document_ids` | One2many | Documentos hijos |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:480` |
+| `sgi_child_document_ids` | One2many | Documentos hijos |  |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:481` |
 | `sgi_code` | Char | Clave SGI |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:69` |
 | `sgi_content_hash` | Char | Huella del contenido |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_my_procedure.py:72` |
 | `sgi_destination_label` | Char | Dónde vive en Odoo | Menú de Odoo ligado; si no hay, el worksheet de Calidad; si no, el texto «Destino en Odoo». Vacío = todavía sin destino. |  |  | compute `_compute_sgi_destination_label`, sin guardar |  | `addons/quimibond_sgi/models/sgi_document.py:249` |
@@ -32,7 +32,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_ext_issuer_revision` | Char | Revisión del emisor | Revisión o edición como la trae el emisor. |  |  |  |  | `addons/quimibond_sgi/models/sgi_external_doc.py:23` |
 | `sgi_ext_received_date` | Date | Fecha de recepción | Fecha en que se recibió el documento externo. |  |  |  |  | `addons/quimibond_sgi/models/sgi_external_doc.py:25` |
 | `sgi_ext_state` | Selection | Implantación | Por implantar, vencido (pasó el plazo) o implantado. Se calcula solo. |  |  | compute `_compute_sgi_ext_state`, guardado |  | `addons/quimibond_sgi/models/sgi_external_doc.py:33` |
-| `sgi_family_document_ids` | Many2many | Documentos de la familia | Hermanos (hijos del mismo padre) más los hijos propios. |  | `documents.document` | compute `_compute_sgi_family`, sin guardar |  | `addons/quimibond_sgi/models/sgi_document.py:482` |
+| `sgi_family_document_ids` | Many2many | Documentos de la familia | Hermanos (hijos del mismo padre) más los hijos propios. |  | `documents.document` | compute `_compute_sgi_family`, sin guardar |  | `addons/quimibond_sgi/models/sgi_document.py:483` |
 | `sgi_is_controlled` | Boolean | Documento controlado SGI | Marque si es un documento controlado del SGI: lleva clave, revisión, estado y acuses. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:66` |
 | `sgi_issue_date` | Date | Fecha de emisión | Fecha de emisión de esta revisión. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:144` |
 | `sgi_job_ids` | Many2many | Puestos a los que aplica | Puestos que deben conocer el documento. Al publicarlo, a sus personas les llega el acuse de lectura. |  | `hr.job` |  |  | `addons/quimibond_sgi/models/sgi_document.py:156` |
@@ -42,13 +42,13 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_migration_point_id` | Many2one | Worksheet destino | Punto de calidad (worksheet) que sustituye a este formato. El botón «Abrir worksheet» salta directo a él. |  | `quality.point` |  |  | `addons/quimibond_sgi/models/sgi_document.py:241` |
 | `sgi_migration_state` | Selection | Estado de migración | Avance del paso de este documento del Dropbox a Odoo: pendiente, en curso, migrado, baja tramitada o se queda. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:227` |
 | `sgi_migration_target` | Char | Destino en Odoo | Objeto/menú de Odoo que sustituye a este formato (p.ej. 'SGI > No Conformidades'). |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:236` |
-| `sgi_my_ack_state` | Selection | Mi acuse | Su acuse de lectura de este documento: «Por leer» si le toca firmarlo, «Leído» si ya lo firmó y «Sin acuse» si no aplica a su puesto. |  |  | compute `_compute_sgi_my_ack_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_current_documents.py:25` |
+| `sgi_my_ack_state` | Selection | Mi acuse | Su acuse de lectura de este documento: «Por leer» si le toca firmarlo, «Leído» si ya lo firmó y «Sin acuse» si no aplica a su puesto. |  |  | compute `_compute_sgi_my_ack_state`, sin guardar |  | `addons/quimibond_sgi/models/sgi_current_documents.py:26` |
 | `sgi_next_review_date` | Date | Próxima revisión | Fecha de la próxima revisión del documento. Antes de esa fecha llegan dos avisos al responsable. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:160` |
 | `sgi_obsolete_date` | Date | Obsoleto desde | Fecha en que el documento dejó de estar vigente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:164` |
 | `sgi_obsolete_reason` | Char | Motivo de obsolescencia |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:166` |
 | `sgi_odoo_menu_id` | Many2one | Menú de Odoo | Menú donde vive el formulario que sustituye a este documento. El botón «Abrir en Odoo» salta directo a él. |  | `ir.ui.menu` |  |  | `addons/quimibond_sgi/models/sgi_document.py:121` |
 | `sgi_owner_id` | Many2one | Responsable SGI | Persona responsable del documento: recibe los avisos de revisión y de acuses pendientes. |  | `res.users` |  |  | `addons/quimibond_sgi/models/sgi_document.py:153` |
-| `sgi_parent_document_id` | Many2one | Procedimiento padre | Procedimiento del que depende este documento (familia documental). |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:476` |
+| `sgi_parent_document_id` | Many2one | Procedimiento padre | Procedimiento del que depende este documento (familia documental). |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:477` |
 | `sgi_pilot_end_date` | Date | Fin de prueba piloto | Fecha en que termina la prueba piloto del documento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:179` |
 | `sgi_previous_code` | Char | Clave anterior | Clave con la que se conocía el documento antes de la clave nueva (la del Dropbox). Se busca siempre y no se sobrescribe. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:75` |
 | `sgi_previous_code_date` | Date | Cambio de clave | Cuándo se cambió la clave en Odoo. Vacío = clave anterior del Dropbox, copiada por la migración. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:79` |
@@ -57,7 +57,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_procedure_dirty_since` | Datetime | Divergencia desde | Desde cuándo las actividades del procedimiento no coinciden con la revisión vigente. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:209` |
 | `sgi_process_id` | Many2one | Proceso SGI | Proceso del SGI al que pertenece el documento. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_document.py:127` |
 | `sgi_publish_sign_request_id` | Many2one | Firma para entrar en vigor | Solicitud de Sign de la que depende que esta revisión entre en vigor. |  | `sign.request` |  |  | `addons/quimibond_sgi/models/sgi_my_procedure_sign.py:24` |
-| `sgi_reference_ids` | Many2many | Referencias cruzadas | Documentos de OTRAS familias que este documento menciona (ej. P-A28 referencia P-A22, P-C01, P-D01). Lo captura MAST. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:486` |
+| `sgi_reference_ids` | Many2many | Referencias cruzadas | Documentos de OTRAS familias que este documento menciona (ej. P-A28 referencia P-A22, P-C01, P-D01). Lo captura MAST. |  | `documents.document` |  |  | `addons/quimibond_sgi/models/sgi_document.py:487` |
 | `sgi_replaced_by_process_id` | Many2one | Lo sustituye el proceso | Proceso de Odoo que sustituye a este procedimiento del Dropbox. El procedimiento sigue vigente mientras el proceso esté en borrador o piloto; cuando el proceso entra en vigor pasa a obsoleto y a «Baja tramitada». Lo captura el Jefe MAST. |  | `sgi.process` |  |  | `addons/quimibond_sgi/models/sgi_document.py:171` |
 | `sgi_retention_years` | Integer | Retención (años) | Años que el registro/documento se conserva tras quedar obsoleto o cerrado. 0 = sin definir. Clientes automotrices suelen exigir vida del programa + años: captúrelo por documento o familia. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:186` |
 | `sgi_revision` | Integer | Revisión | Número de revisión del documento (00, 01…). Cada revisión aprobada lo sube en uno. |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:139` |
@@ -74,13 +74,15 @@ Archivos: `addons/quimibond_sgi/models/sgi_current_documents.py`, `addons/quimib
 | `sgi_state` | Selection | Estado SGI | Solo los documentos controlados del SGI llevan estado; los demás archivos de Documentos quedan sin él (2026-09-25). |  |  |  |  | `addons/quimibond_sgi/models/sgi_document.py:145` |
 | `sgi_title` | Char | Título | Nombre del documento sin la clave ni la extensión del archivo. El archivo conserva su nombre original. |  |  | compute `_compute_sgi_title`, guardado |  | `addons/quimibond_sgi/models/sgi_document.py:85` |
 
-## Métodos públicos (15)
+## Métodos públicos (17)
 
 | Método | Qué hace (docstring) |
 |---|---|
 | `action_generate_acks` | Crea acuses pendientes para los empleados de los puestos aplicables (idempotente). |
 | `action_open_acks` | — |
 | `action_sgi_assign_new_code` | Acción «Asignar clave nueva» (lista de documentos, Jefe MAST): a cada documento seleccionado le arma la siguiente clave del patrón de su tipo (D-02) con todas sus revisiones. Los que no aplican se re… |
+| `action_sgi_kb_open` | «Abrir en Conocimiento». |
+| `action_sgi_kb_publish` | «Publicar desde Conocimiento» (Jefe MAST). |
 | `action_sgi_mark_my_ack_read` | Firma MI acuse pendiente de este documento (Documentos vigentes). |
 | `action_sgi_open_in_documents` | Abre el documento en la app nativa de Documentos (visor completo con carpetas), para quien quiera el explorador en vez de la ficha SGI. |
 | `action_sgi_open_migration_point` | Del formato a su worksheet en un clic (y desde ahí, a sus checks). |

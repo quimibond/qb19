@@ -960,12 +960,19 @@ class SgiCron(models.AbstractModel):
     def cron_nightly_backup(self):
         """Cron diario (02:15 de México): recalcula las cuatro listas guardadas
         de Mi procedimiento y anota en el log cuántas personas cambiaron (si no
-        es 0, falta un disparo), y refresca el resumen de Mis pendientes que
-        leen los filtros de Mi equipo. Cada paso en su savepoint."""
+        es 0, falta un disparo), arma el registro de cumplimiento del periodo
+        en curso (57.103.0) y refresca el resumen de Mis pendientes que leen
+        los filtros de Mi equipo. Cada paso en su savepoint."""
         sgi_require_system(self.env)
         Employee = self.env['hr.employee']
         self._sgi_step("respaldo de las listas de Mi procedimiento",
                        Employee._sgi_mp_nightly_recompute)
+        # 57.103.0: el registro de cumplimiento del periodo en curso (y los
+        # que ya tienen su registro en Odoo, hechos) antes del resumen, que
+        # ya los cuenta.
+        Execution = self.env['sgi.activity.execution']
+        self._sgi_step("registro de cumplimiento: periodos en curso", Execution._sgi_generate)
+        self._sgi_step("registro de cumplimiento: hechas por su registro", Execution._sgi_auto_close)
         self._sgi_step("resumen de Mis pendientes por persona",
                        Employee._sgi_refresh_pending_summary)
         return True

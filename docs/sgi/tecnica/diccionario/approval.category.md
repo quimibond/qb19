@@ -4,9 +4,9 @@
 
 Modelo de otra app que el SGI extiende.
 
-Archivos: `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibond_sgi/models/sgi_approval_subject.py`, `addons/quimibond_sgi/models/sgi_doc_change.py`, `addons/quimibond_sgi/models/sgi_doc_change_sign.py`, `addons/quimibond_sgi/models/sgi_mp_change.py`.
 
-## Campos (5)
+## Campos (6)
 
 | Campo | Tipo | Etiqueta | Ayuda | Req. | Relación | Cálculo | Grupos | Dónde |
 |---|---|---|---|---|---|---|---|---|
@@ -15,4 +15,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_approval_native.py`, `addons/quimibon
 | `sgi_is_mp_change` | Boolean | Cambio a «Mi procedimiento» (SGI) | Categoría que usa el botón «Proponer cambio» de Mi procedimiento. |  |  |  |  | `addons/quimibond_sgi/models/sgi_mp_change.py:51` |
 | `sgi_role_id` | Many2one | Rol SGI que aprueba | Categoría creada para un renglón «Aprueba»: sus aprobadores siguen a las personas del puesto. |  | `sgi.activity.role` |  |  | `addons/quimibond_sgi/models/sgi_approval_native.py:158` |
 | `sgi_sign_required` | Boolean | Se aprueba firmando en Sign | Al enviar la solicitud se crea la firma en Sign (elaboró → revisó → aprobó) y cada firma aprueba su renglón. El botón Aprobar de Aprobaciones queda bloqueado. |  |  |  |  | `addons/quimibond_sgi/models/sgi_doc_change_sign.py:44` |
+| `sgi_subject_ids` | One2many | Asuntos |  |  | `sgi.approval.subject` |  |  | `addons/quimibond_sgi/models/sgi_approval_subject.py:37` |
 

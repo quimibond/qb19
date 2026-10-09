@@ -47,7 +47,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_management_review.py`, `addons/quimib
 | `state` | Selection | Estado | Borrador mientras se prepara; realizada al marcarla hecha (sus acuerdos pasan a acciones); cerrada por el Jefe MAST y SGI. | sí |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:43` |
 | `supplier_summary` | Text | 6. Proveedores |  |  |  |  |  | `addons/quimibond_sgi/models/sgi_management_review.py:68` |
 
-## Métodos públicos (5)
+## Métodos públicos (6)
 
 | Método | Qué hace (docstring) |
 |---|---|
@@ -56,3 +56,4 @@ Archivos: `addons/quimibond_sgi/models/sgi_management_review.py`, `addons/quimib
 | `action_load_inputs` | — |
 | `action_mark_done` | — |
 | `action_validate_measures` | P-40: valida las mediciones capturadas del periodo y abre los rojos que aún no tienen causa ni acción. |
+| `sgi_minutes_filename` | 57.101.0 (B3): nombre de la copia guardada del acta cerrada (la expresión ``attachment`` del reporte la llama). Es el mismo nombre que el de la descarga (``print_report_name``) más «.pdf». |

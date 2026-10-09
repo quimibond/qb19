@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="descanso_hasta_2026_09_24" model="qb.tejido.descanso">
+        <field name="name">Viernes 18:00 a sábado 19:00 (hasta el 24-sep-2026)</field>
+        <field name="vigente_hasta">2026-09-24</field>
+        <field name="dia_desde">4</field>
+        <field name="hora_desde">18</field>
+        <field name="dia_hasta">5</field>
+        <field name="hora_hasta">19</field>
+    </record>
+    <record id="descanso_desde_2026_09_25" model="qb.tejido.descanso">
+        <field name="name">Viernes 18:00 a domingo 19:00 (desde el 25-sep-2026)</field>
+        <field name="vigente_desde">2026-09-25</field>
+        <field name="dia_desde">4</field>
+        <field name="hora_desde">18</field>
+        <field name="dia_hasta">6</field>
+        <field name="hora_hasta">19</field>
+    </record>
+</odoo>

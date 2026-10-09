@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.101.0 (C1): ficha del indicador con su tendencia y metas. Una hoja
+         (artículo, con su pie) por indicador; la gráfica es SVG generado en
+         Python (models/sgi_indicator_sheet.py). Pie por la referencia
+         format_ref_indicator_sheet: hoy no existe y sale solo la página. -->
+    <record id="action_report_indicator_sheet" model="ir.actions.report">
+        <field name="name">Ficha del indicador</field>
+        <field name="model">sgi.indicator</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_indicator_sheet_document</field>
+        <field name="report_file">quimibond_sgi.report_indicator_sheet_document</field>
+        <field name="print_report_name">'Ficha de indicador - %s' % (object.code or object.name)</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta"/>
+        <field name="binding_model_id" ref="model_sgi_indicator"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <record id="action_report_indicator_sheet_process" model="ir.actions.report">
+        <field name="name">Fichas de indicadores del proceso</field>
+        <field name="model">sgi.process</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_indicator_sheet_process_document</field>
+        <field name="report_file">quimibond_sgi.report_indicator_sheet_process_document</field>
+        <field name="print_report_name">'Fichas de indicadores - %s' % (object.code or object.name)</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta"/>
+        <field name="binding_model_id" ref="model_sgi_process"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_indicator_sheet_page">
+        <t t-set="rows" t-value="ind._sgi_sheet_rows()"/>
+        <t t-set="num" t-value="ind.sgi_sheet_num"/>
+        <t t-set="colors" t-value="{'verde': '#d1e7dd', 'amarillo': '#fff3cd', 'rojo': '#f8d7da'}"/>
+        <div class="page" style="font-size:10px;">
+            <h2 class="text-center">Ficha del indicador</h2>
+            <h4 class="text-center"><span t-out="ind.code or ''"/> · <span t-out="ind.name"/></h4>
+            <table class="table table-sm table-bordered">
+                <tr><td><b>Proceso:</b> <span t-out="ind.process_id.display_name or '—'"/></td>
+                    <td><b>Responsable:</b> <span t-out="ind.responsible_id.name or '—'"/></td>
+                    <td><b>Objetivo integral:</b> <span t-out="ind.objective_id.display_name or '—'"/></td></tr>
+                <tr><td><b>Frecuencia:</b> <span t-field="ind.frequency"/></td>
+                    <td><b>Unidad:</b> <span t-out="ind.uom or '—'"/></td>
+                    <td><b>Sentido:</b> <span t-field="ind.direction"/></td></tr>
+                <tr><td><b>Estado:</b> <span t-field="ind.status"/></td>
+                    <td><b>NC automática:</b> <span t-out="'Sí' if ind.nc_on_red else 'No'"/></td>
+                    <td><b>Crítico:</b> <span t-out="'Sí' if ind.critical else 'No'"/></td></tr>
+            </table>
+            <h5>Cómo se mide</h5>
+            <p><b>Modo de cálculo:</b> <span t-field="ind.calc_mode"/>. <span t-out="ind.source_info or ''"/></p>
+            <p t-if="ind.formula" style="white-space:pre-line;"><b>Fórmula:</b> <span t-out="ind.formula"/></p>
+            <p t-if="ind.source" style="white-space:pre-line;"><b>De dónde sale el dato:</b> <span t-out="ind.source"/></p>
+            <p t-if="ind.window_label"><b>Ventana:</b> <span t-out="ind.window_label"/></p>
+            <h5>Metas</h5>
+            <p t-if="ind.direction == 'range'">Rango: <b t-out="num(ind.range_min)"/> a <b t-out="num(ind.range_max)"/>,
+                tolerancia <t t-out="num(ind.range_tolerance)"/>.</p>
+            <p t-else="">Objetivo (meta final): <b t-out="num(ind.target_objective)"/> · Aceptable: <b t-out="num(ind.target_acceptable)"/></p>
+            <table t-if="ind.step_ids" class="table table-sm table-bordered">
+                <thead><tr><th>Trimestre</th><th>Objetivo</th><th>Aceptable</th><th>Corregido a mano</th></tr></thead>
+                <tbody><tr t-foreach="ind.step_ids.sorted('date_from')" t-as="step">
+                    <td t-out="step.name"/><td t-out="num(step.objective)"/><td t-out="num(step.acceptable)"/>
+                    <td t-out="'Sí' if step.manual else ''"/></tr></tbody>
+            </table>
+            <h5>Tendencia (últimos <t t-out="len(rows)"/> periodos con medición)</h5>
+            <p t-if="not rows" class="text-muted">Sin mediciones todavía.</p>
+            <div t-if="rows" style="page-break-inside:avoid;" t-out="ind.sgi_sheet_svg(rows)"/>
+            <p t-if="rows" class="text-muted" style="font-size:8px;">Franjas: verde, amarilla y roja
+                según las metas de cada periodo · «s/d» = sin dato o pendiente · las mediciones
+                validadas se juzgan con las metas guardadas al validarlas.</p>
+            <table t-if="rows" class="table table-sm table-bordered">
+                <thead><tr><th>Periodo</th><th>Valor</th><th>Objetivo</th><th>Aceptable</th>
+                    <th>Semáforo</th><th>Estado</th><th>Metas</th></tr></thead>
+                <tbody>
+                    <tr t-foreach="rows" t-as="row">
+                        <td t-out="row['label']"/>
+                        <td t-out="'s/d' if row['value'] is None else num(row['value'])"/>
+                        <t t-if="row['direction'] == 'range'">
+                            <td colspan="2">Rango <t t-out="num(row['range'][0])"/> a <t t-out="num(row['range'][1])"/></td>
+                        </t>
+                        <t t-else="">
+                            <td t-out="num(row['objective'])"/><td t-out="num(row['acceptable'])"/>
+                        </t>
+                        <td t-att-style="'background:%s' % colors.get(row['semaphore'], '#fff')"
+                            t-out="row['semaphore_label']"/>
+                        <td t-out="row['state_label']"/>
+                        <td t-out="'Guardadas al validar' if row['frozen'] else 'Vigentes del periodo'"/>
+                    </tr>
+                </tbody>
+            </table>
+            <t t-set="reds" t-value="[r for r in rows if r['red']]"/>
+            <t t-if="reds">
+                <h5>Periodos en rojo: causa y acciones</h5>
+                <t t-foreach="reds" t-as="row">
+                    <p><b t-out="row['label']"/>: <span t-out="row['measure'].cause or 'Sin causa capturada.'"/></p>
+                    <table t-if="row['measure'].action_line_ids" class="table table-sm table-bordered">
+                        <thead><tr><th>Acción</th><th>Responsable</th><th>Compromiso</th><th>Terminada</th><th>Estado</th></tr></thead>
+                        <tbody><tr t-foreach="row['measure'].action_line_ids" t-as="line">
+                            <td t-out="line.name"/><td t-out="line.responsible_id.name or ''"/>
+                            <td><span t-field="line.date_commit"/></td><td><span t-field="line.date_done"/></td>
+                            <td><span t-field="line.state"/></td></tr></tbody>
+                    </table>
+                </t>
+            </t>
+        </div>
+    </template>
+
+    <template id="report_indicator_sheet_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="ind">
+                <t t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="ind"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_indicator_sheet'"/>
+                    <t t-call="quimibond_sgi.report_indicator_sheet_page"/>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <!-- Una hoja por indicador activo del proceso (por clave); sin
+         indicadores, una hoja que lo dice. -->
+    <template id="report_indicator_sheet_process_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="proc">
+                <t t-set="inds" t-value="proc._sgi_sheet_indicators()"/>
+                <t t-foreach="inds" t-as="ind">
+                    <t t-call="quimibond_sgi.sgi_report_layout">
+                        <t t-set="sgi_rec" t-value="ind"/>
+                        <t t-set="sgi_fmt_ref" t-value="'format_ref_indicator_sheet'"/>
+                        <t t-call="quimibond_sgi.report_indicator_sheet_page"/>
+                    </t>
+                </t>
+                <t t-if="not inds" t-call="quimibond_sgi.sgi_report_layout">
+                    <t t-set="sgi_rec" t-value="proc"/>
+                    <t t-set="sgi_fmt_ref" t-value="'format_ref_indicator_sheet'"/>
+                    <div class="page">
+                        <h2 class="text-center">Fichas de indicadores</h2>
+                        <p class="text-muted">Sin indicadores activos en el proceso
+                            <span t-out="proc.display_name"/>.</p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

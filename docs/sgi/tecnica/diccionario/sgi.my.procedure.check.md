@@ -22,5 +22,5 @@ Archivos: `addons/quimibond_sgi/models/sgi_my_procedure_screen.py`.
 
 | Método | Qué hace (docstring) |
 |---|---|
-| `action_open` | Administración SGI → Firmas de lectura → Publicar Mi procedimiento. |
+| `action_open` | SGI → Administración → Publicar Mi procedimiento. |
 | `action_publish_all` | — |

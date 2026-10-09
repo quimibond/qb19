@@ -170,8 +170,8 @@
                  actividades se ven al abrir, en la primera pestaña; los
                  botones inteligentes quedan para lo que vive en otra app
                  (pendientes, firmas, indicadores, obligaciones). Publicar y
-                 la revisión previa son de MAST: Administración SGI → Firmas
-                 de lectura → Publicar Mi procedimiento y la ficha del puesto. -->
+                 la revisión previa son de MAST: Administración → Publicar Mi
+                 procedimiento (57.113.0) y la ficha del puesto. -->
             <form string="Mi procedimiento" create="0" delete="0">
                 <header>
                     <button name="action_sign" type="object" string="Firmar leído y entendido"
@@ -266,8 +266,7 @@
                                            decoration-success="status == 'oficial'"/>
                                     <field name="frequency" optional="show"/>
                                     <field name="target_objective" string="Meta"/>
-                                    <field name="last_value"/>
-                                    <field name="uom" optional="show"/>
+                                    <field name="sgi_last_value_label" string="Último valor"/>
                                     <field name="last_semaphore" widget="badge"
                                            decoration-success="last_semaphore == 'verde'"
                                            decoration-warning="last_semaphore == 'amarillo'"
@@ -584,8 +583,9 @@
 
     <!-- 56.7.0: Inicio → Mis indicadores. Antes el Usuario SGI no tenía
          menú para ver ni capturar sus indicadores (Indicadores y Mediciones
-         viven en Administración SGI, solo MAST) y «Ir a hacerlo» de las
-         actividades de captura lo mandaba a un menú que no ve. -->
+         son de Auditor, MAST y Dirección; en Desempeño desde 57.113.0) y
+         «Ir a hacerlo» de las actividades de captura lo mandaba a un menú
+         que no ve. -->
     <!-- 57.43.0 (V-A07): lista propia de «Mis indicadores» (antes la de
          administración: metas, cálculo, fuente), con «Capturar» por renglón. -->
     <record id="sgi_indicator_view_list_mine" model="ir.ui.view">
@@ -597,8 +597,7 @@
                   decoration-danger="last_semaphore == 'rojo'">
                 <field name="code" string="Clave"/>
                 <field name="name"/>
-                <field name="uom" optional="show"/>
-                <field name="last_value"/>
+                <field name="sgi_last_value_label" string="Último valor"/>
                 <field name="last_semaphore" widget="badge"
                        decoration-success="last_semaphore == 'verde'"
                        decoration-warning="last_semaphore == 'amarillo'"
@@ -627,7 +626,7 @@
                 <templates>
                     <t t-name="card">
                         <div class="fs-5 fw-bold"><field name="code"/> · <field name="name"/></div>
-                        <div>Último valor: <field name="last_value"/> <field name="uom"/></div>
+                        <div>Último valor: <field name="sgi_last_value_label"/></div>
                         <div>Siguiente medición: <field name="sgi_next_pending_date" widget="remaining_days"/></div>
                         <footer class="d-flex flex-wrap gap-2 pt-2">
                             <field name="last_semaphore" widget="badge"

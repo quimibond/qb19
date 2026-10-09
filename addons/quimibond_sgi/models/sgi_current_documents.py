@@ -2,7 +2,8 @@
 """Inicio → Documentos vigentes (I-015 / D-21, entrega 4).
 
 El Usuario SGI no tenía dentro del SGI una lista de los documentos vigentes:
-Documentos, Lista maestra y Documentos externos viven en Administración SGI.
+Documentos, Lista maestra y Documentos externos viven en Sistema → Documentos
+(antes Administración SGI), solo para Auditor, Jefe MAST y Dirección.
 Esta entrada le muestra solo título y revisión de los documentos controlados
 vigentes (decisión 11 de la tanda 2: sin la clave del Dropbox) y, en el mismo
 renglón, su acuse de lectura pendiente para firmarlo ahí (agregado de Jose a

@@ -29,10 +29,10 @@ El módulo se instala **vacío**: trae estructura, no el mapa de procesos.
 
 1. Instalar `quimibond_sgi` (y sus satélites se instalan solos).
 2. En staging o en una recuperación, instalar `quimibond_sgi_mapa` y, en
-   **Administración SGI → Configuración → Cargar mapa de procesos**, primero
+   **SGI → Administración → Transición → Cargar mapa de procesos**, primero
    **Probar** (no escribe nada), leer el reporte y luego **Cargar**.
    **En producción no se instala `quimibond_sgi_mapa`.**
-3. Para cargas parciales, **Configuración → Cargar catálogo** (Administrador
+3. Para cargas parciales, **Administración → Transición → Cargar catálogo** (Administrador
    SGI) recibe el mismo formato JSON, también con prueba previa.
 
 ## 3. Personas y grupos
@@ -59,7 +59,7 @@ decide encenderlo, antes hay que contestar el límite de intentos del PIN
 
 1. Sistemas crea la cuenta compartida (por ejemplo supervisor@), **sin
    empleado ligado**, y le pone «SGI en planta» como acción de inicio.
-2. Usted la da de alta en **SGI → Administración SGI → Configuración →
+2. Usted la da de alta en **SGI → Administración → Configuración →
    Tabletas de planta**: nombre («Tableta Tejido»), cuenta, departamentos y
    los checklists que se llenan ahí. Al guardar, la cuenta recibe el grupo
    «Tableta de planta (SGI)».
@@ -74,7 +74,7 @@ decide encenderlo, antes hay que contestar el límite de intentos del PIN
 
 ## 4. Procesos y actividades
 
-- **Alta:** **Procesos → Mapa de procesos → Nuevo**: clave, nombre, tipo
+- **Alta:** **SGI → Sistema → Mapa de procesos → Nuevo**: clave, nombre, tipo
   (cadena de valor, estratégico, soporte), dueño, etapas. Las actividades se
   capturan desde el botón **Actividades** del proceso.
 - **Cada actividad** contesta siete preguntas: qué, quién, dónde, cómo,
@@ -109,7 +109,7 @@ desactualizado hasta la siguiente publicación.
 
 ## 6. Documentos
 
-- **Tipos de documento** (Configuración → Tipos de documento; los edita el
+- **Tipos de documento** (Administración → Configuración → Tipos de documento; los edita el
   Administrador SGI): cada tipo define el patrón de clave: `PR-{proceso}` para
   procedimientos, `F-{proceso}-{nn}`, `IT-{proceso}-{nn}`, `DA-{proceso}-{nn}`.
   La validación de clave está encendida. La clave anterior del Dropbox se
@@ -123,13 +123,14 @@ desactualizado hasta la siguiente publicación.
 - **Documentos externos:** normas, especificaciones de cliente, NOM,
   manuales de proveedor; hay 10 días hábiles desde la recepción para
   implantarlos y el dueño del proceso recibe el aviso.
-- **Lista maestra:** Administración SGI → Documentos → Lista maestra.
+- **Lista maestra:** SGI → Sistema → Documentos → Lista maestra.
+- **Acuses de lectura:** SGI → Sistema → Documentos → Acuses de lectura.
 - **Carpeta:** los documentos controlados viven en la carpeta «SGI» de
   Documentos.
 
 ### Empresa en documentos controlados (D-06 de datos)
 
-**Administración SGI → Configuración → Empresa en documentos controlados**
+**SGI → Administración → Transición → Empresa en documentos controlados**
 (solo el Jefe MAST). Pone la empresa del SGI en los documentos controlados
 que no tienen empresa (492 el 2026-10-02). Es un cambio de datos: **úselo
 solo después del visto bueno por escrito de Jose** (pregunta Q1 de la
@@ -162,7 +163,7 @@ SGI (o con la de su familia, si la clave ya existe). Dos casos raros:
 
 ## 7. Publicar Mi procedimiento
 
-**Firmas de lectura → Publicar Mi procedimiento**. Revise antes las pestañas
+**SGI → Administración → Publicar Mi procedimiento**. Revise antes las pestañas
 de pendientes (puestos duplicados, empleados sin puesto, puestos sin roles,
 puestos sin personas). Publicar crea la revisión del PDF del puesto y el
 acuse de cada persona; si Ajustes → SGI → «Mi procedimiento se firma en
@@ -202,8 +203,21 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
 - Si un automático no da un valor confiable, cambie su modo de cálculo a
   captura manual y anote el motivo en el indicador.
 - **NC en rojo** (`nc_on_red`): un rojo levanta NC; úselo en los críticos.
-- **Recalcular mediciones pendientes** (en la lista de indicadores) vuelve a
-  medir lo pendiente después de corregir una fórmula.
+- **Recalcular mediciones** (en la lista de indicadores, Administrador SGI)
+  vuelve a medir lo pendiente; con indicadores seleccionados (desde
+  57.104.0) re-mide todo lo no validado de ellos, sin dato y capturadas,
+  salvo lo corregido a mano, con NC o con causa o acciones. Úselo después de
+  corregir una fórmula.
+- **Recálculo diario (57.104.0):** el cron re-mide además las «sin dato» y
+  las capturadas no validadas de los últimos 2 meses
+  (`quimibond_sgi.indicator_recompute_months`). Nunca toca validadas, foto,
+  salud, con NC, con causa o acciones, ni las «Valor corregido a mano».
+- **«Sin dato» y el 0 (57.104.0):** sin ninguna medición con dato, el
+  indicador dice «Sin dato». Una medición manual en 0 sin nota, numerador ni
+  denominador no se captura ni se valida. Cambiar «Medir desde» pasa a «Sin
+  dato» las mediciones no validadas anteriores (el valor anterior queda en
+  la nota). Una fórmula «más bajo es mejor» con la fuente vacía da «Sin
+  dato» con la nota «Registro vacío».
 - **Salud del SGI (57.99.0):** SG-01 a SG-10, de nivel Dirección y del proceso
   E2, semanales. Nacen en prueba y sin NC automática; páselos a oficial
   después de revisar su primera medición contra la realidad. Sus mediciones
@@ -242,7 +256,7 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
 
 - Etapas: Abierta, Seguimiento, Cerrada, Cancelada. Plazos por etapa
   (contención, causa raíz, plan) en días hábiles desde que se abre (Ajustes →
-  SGI → No Conformidades y AMEF).
+  SGI → No conformidades y AMEF).
 - Candados de cierre: causa raíz, acciones terminadas (las correctivas, con
   evidencia: una nota o un archivo) y verificación de eficacia con resultado
   **Eficaz**, registrada en la fecha programada o después; en NC mayor,
@@ -293,7 +307,7 @@ cierra solo cuando ya no hay acuses pendientes en su grupo.
 
 ### Traspaso de riesgos ambientales (57.96.0)
 
-**Administración SGI → Configuración → Traspaso de riesgos ambientales**
+**SGI → Administración → Transición → Traspaso de riesgos ambientales**
 (solo el Jefe MAST). Los riesgos capturados con el instrumento «Aspecto
 ambiental» (5 el 2026-10-02) pasan a la matriz de aspectos, donde vive la
 evaluación (ISO 14001 6.1.2). Es un cambio de datos: **úselo solo después del
@@ -318,13 +332,13 @@ visto bueno por escrito de Dirección (Jose)**.
 
 Desde 57.96.0 un riesgo ya no se crea ni se reclasifica a mano como «Aspecto
 ambiental» (tampoco se duplica uno): el aspecto se registra en **SGI →
-Seguridad y ambiente → Aspectos ambientales** y, si necesita acciones, se
+Planeación → Aspectos ambientales** y, si necesita acciones, se
 usa **Tratar como riesgo**. Registrar la evaluación del aspecto pide la etapa
 del ciclo de vida.
 
 ### Competencias por tipo de permiso (57.96.0)
 
-**Administración SGI → Configuración → Competencias por tipo de permiso.**
+**SGI → Administración → Configuración → Competencias por tipo de permiso.**
 Sin filas no exige nada. Con filas, al solicitar y al autorizar un permiso de
 trabajo, cada persona que ejecuta debe tener cada competencia del tipo
 vigente hasta el fin del permiso (la vigencia sale de la competencia del
@@ -404,6 +418,10 @@ pendientes) y los plazos de Mis pendientes
 `quimibond_sgi.health_mail_user_ids` (destinatarios del correo de los lunes
 además de Dirección); ids de usuario separados por coma, vacíos de fábrica.
 
+Desde 57.104.0: `quimibond_sgi.indicator_recompute_months` (2, no se
+siembra): cuántos meses hacia atrás re-mide el cron diario las «sin dato» y
+las capturadas no validadas.
+
 Desde 57.100.0: `quimibond_sgi.training_effectiveness_days` (90),
 `quimibond_sgi.training_effectiveness_survey_id` (0 = sin encuesta al jefe),
 `quimibond_sgi.ppap_sales_window_months` (12) y los de la **IA en la NC**,
@@ -436,13 +454,18 @@ completa: [../transicion/del-dropbox-a-odoo.md](../transicion/del-dropbox-a-odoo
 
 ## 14. Diagnóstico
 
+**SGI → Administración → Diagnóstico** (cuatro entradas desde 57.113.0; lo
+que antes tenía menú propio ahora es un filtro, una agrupación o un botón):
+
 | Pantalla | Cómo se lee |
 |---|---|
 | Diagnóstico del SGI | Hallazgos de configuración y adopción (bien, aviso, mal) con cómo corregirlos |
-| Cobertura de medición | Cada actividad por su método de medición; «Sin medir» solo se permite en borrador |
-| Cumplimiento de procedimientos | Verde con evidencia en su periodo, rojo sin ella; agrupe por proceso o puesto |
-| Faltantes de especificación | Lo que le falta a cada actividad; los errores impiden publicar |
-| Cumplimiento semanal | Por actividad y semana: completas, a tiempo y vencidas abiertas |
+| Cumplimiento de procedimientos | Verde con evidencia en su periodo, rojo sin ella; agrupe por proceso o puesto. Quite el filtro «Medibles» y agrupe por **Método de medición** para la cobertura de medición («Sin medir» solo se permite en borrador) |
+| Registro de cumplimiento | Lo que se hizo y lo que falta por actividad, responsable y periodo. El botón **Por semana** abre el cumplimiento semanal: completas, a tiempo y vencidas abiertas |
+| Faltantes de especificación | Lo que le falta a cada actividad; los errores impiden publicar. El filtro **Medición por revisar** junta las mediciones que no cuentan lo que deben o no saben quién lo hizo |
+
+Las **Revisiones de medición** del dueño del proceso están en **SGI →
+Desempeño → Indicadores → Revisiones de medición**.
 
 ## 15. Qué no hacer
 

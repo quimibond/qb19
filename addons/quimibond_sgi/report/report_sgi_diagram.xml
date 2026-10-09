@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.101.0 (C3): diagramas del SGI en formato controlado. Se imprime con
+         data (kind, res_id, params) desde la barra del diagrama; los datos son
+         los de sgi.diagram.data. Las flechas van como tabla «Conexiones». Sin
+         binding: no aparece en Imprimir (no tiene registros que elegir). Pie por
+         la referencia format_ref_diagrams: hoy no existe, sale solo la página. -->
+    <record id="action_report_sgi_diagram" model="ir.actions.report">
+        <field name="name">Diagrama del SGI</field>
+        <field name="model">sgi.diagram</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">quimibond_sgi.report_sgi_diagram_document</field>
+        <field name="report_file">quimibond_sgi.report_sgi_diagram_document</field>
+        <field name="paperformat_id" ref="paperformat_sgi_carta_horizontal"/>
+    </record>
+
+    <template id="report_sgi_diagram_box">
+        <div t-attf-style="display:inline-block; vertical-align:top; width:150px; margin:2px; padding:2px 4px; border:1px solid #ccc; border-left:4px solid #{dg_colors.get(item.get('color'), '#adb5bd')}; page-break-inside:avoid; #{'opacity:.4;' if item.get('out') else ''}">
+            <b t-if="item.get('code')" t-out="item['code']"/> <span t-out="item.get('name') or ''"/>
+            <div t-if="item.get('subtitle')" class="text-muted" style="font-size:8px;" t-out="item['subtitle']"/>
+        </div>
+    </template>
+
+    <!-- 57.105.0: el cuerpo del diagrama (leyenda, carriles o matriz y
+         conexiones), aparte para reusarlo en el MIID. Usa dg, dg_edges,
+         dg_colors y dg_level_bg. El PDF de 57.101.0 no cambia. -->
+    <template id="report_sgi_diagram_body">
+        <p t-if="dg.get('legend')">
+            <t t-foreach="dg['legend']" t-as="leg">
+                <span t-attf-style="display:inline-block; width:8px; height:8px; background:#{dg_colors.get(leg['color'], '#adb5bd')};"/>
+                <span t-out="leg['label']"/>&#160;&#160;
+            </t>
+        </p>
+        <t t-if="dg['layout'] == 'bands'">
+            <table class="table table-sm table-bordered">
+                <tr t-foreach="dg['lanes']" t-as="lane">
+                    <th style="width:16%;" t-out="lane['label']"/>
+                    <td><t t-foreach="lane['items']" t-as="item"><t t-call="quimibond_sgi.report_sgi_diagram_box"/></t></td>
+                </tr>
+            </table>
+        </t>
+        <t t-elif="dg['layout'] == 'columns'">
+            <table class="table table-sm table-bordered">
+                <thead><tr><th t-foreach="dg['lanes']" t-as="lane" t-out="lane['label']"/></tr></thead>
+                <tbody><tr><td t-foreach="dg['lanes']" t-as="lane" style="vertical-align:top;">
+                    <t t-foreach="lane['items']" t-as="item"><t t-call="quimibond_sgi.report_sgi_diagram_box"/></t>
+                </td></tr></tbody>
+            </table>
+        </t>
+        <t t-elif="dg['layout'] == 'matrix'">
+            <t t-set="mx" t-value="dg['matrix']"/>
+            <table class="table table-sm table-bordered" style="font-size:8px;">
+                <thead><tr><th/><th t-foreach="mx['cols']" t-as="col" t-att-title="col.get('title')" t-out="col['label']"/></tr></thead>
+                <tbody>
+                    <tr t-foreach="mx['rows']" t-as="row">
+                        <th t-out="row['label']"/>
+                        <t t-foreach="mx['cols']" t-as="col">
+                            <t t-set="cell" t-value="mx['cells'].get(row['key'], {}).get(col['key'])"/>
+                            <td class="text-center" t-att-style="cell and 'background:%s' % dg_level_bg.get(min(cell['level'], 3), '#fff')"
+                                t-out="cell and cell['value'] or ''"/>
+                        </t>
+                    </tr>
+                </tbody>
+            </table>
+        </t>
+        <p t-if="not dg.get('lanes') and dg['layout'] != 'matrix'" class="text-muted">Sin nada que dibujar todavía.</p>
+        <t t-if="dg_edges">
+            <h5>Conexiones</h5>
+            <table class="table table-sm table-bordered" style="font-size:8px;">
+                <thead><tr><th>De</th><th>Qué</th><th>A</th></tr></thead>
+                <tbody><tr t-foreach="dg_edges" t-as="edge">
+                    <td t-out="edge[0]"/><td t-out="edge[1]"/><td t-out="edge[2]"/></tr></tbody>
+            </table>
+        </t>
+    </template>
+
+    <template id="report_sgi_diagram_document">
+        <t t-call="web.html_container">
+            <t t-call="quimibond_sgi.sgi_report_layout">
+                <t t-set="sgi_rec" t-value="dg_anchor"/>
+                <t t-set="sgi_fmt_ref" t-value="'format_ref_diagrams'"/>
+                <div class="page" style="font-size:9px;">
+                    <h3 t-out="dg['title']"/>
+                    <p t-if="dg_subtitle" class="text-muted" t-out="dg_subtitle"/>
+                    <t t-call="quimibond_sgi.report_sgi_diagram_body"/>
+                    <p class="text-muted" style="font-size:8px;">Impreso el <t t-out="dg_printed"/> desde Odoo; la versión vigente es la que muestra el SGI en pantalla.</p>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

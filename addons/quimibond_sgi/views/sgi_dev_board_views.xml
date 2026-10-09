@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.122.0 (C1, uso diario): tarjeta, ficha, lista de desarrollos y
+         asistente para marcar los proyectos viejos. Solo hereda vistas de
+         Odoo (project), nunca una vista propia. -->
+
+    <!-- Tarjeta del tablero: folio, cliente (ya estaba), etapa y horas en la etapa.
+         El clic en la tarjeta de un desarrollo abre la ficha (action_view_tasks en
+         Python). 57.123.2: ya no se renombran los enlaces «Tareas» de la tarjeta:
+         industry_fsm (instalado en producción) los apunta a su propia acción con
+         el mismo xpath, y según el orden de carga fallaba su herencia o la nuestra
+         («no puede ser localizado en la vista padre»). Las tareas de un desarrollo
+         se abren desde el botón de la ficha. -->
+    <record id="sgi_project_view_kanban_dev" model="ir.ui.view">
+        <field name="name">project.project.kanban.inherit.sgi.dev</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_template']" position="after">
+                <field name="sgi_is_ft"/>
+                <field name="sgi_ft_folio"/>
+                <field name="sgi_dev_missing_partner"/>
+            </xpath>
+            <xpath expr="//span[@name='partner_name']" position="after">
+                <div t-if="record.sgi_is_ft.raw_value and !record.is_template.raw_value" class="text-muted d-flex align-items-baseline">
+                    <span class="fa fa-flask me-2" aria-label="Desarrollo de producto" title="Desarrollo de producto"/>
+                    <field name="sgi_ft_folio" t-if="record.sgi_ft_folio.raw_value"/>
+                    <span t-else="" class="fst-italic">Sin folio FT</span>
+                </div>
+                <div t-if="record.sgi_is_ft.raw_value and !record.is_template.raw_value" class="text-muted d-flex align-items-baseline">
+                    <span class="fa fa-hourglass-half me-2" aria-label="Etapa" title="Etapa y horas en ella"/>
+                    <field name="stage_id"/>
+                    <span class="ms-1">· <field name="sgi_dev_hours_stage" widget="float" digits="[16, 1]"/> h</span>
+                </div>
+                <div t-if="record.sgi_dev_missing_partner.raw_value" class="text-danger d-flex align-items-baseline">
+                    <span class="fa fa-exclamation-triangle me-2" aria-label="Falta el cliente" title="Falta el cliente"/>
+                    <span>Falta el cliente</span>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Ficha: el botón de tareas sigue abriendo tareas; aviso cuando falta el cliente. -->
+    <record id="sgi_project_view_form_dev_board" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.sgi.dev.board</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//button[@name='action_view_tasks']" position="attributes">
+                <attribute name="name">action_sgi_dev_view_tasks</attribute>
+            </xpath>
+            <!-- 57.134.0: el aviso va arriba de la hoja (como el de costo), no entre las dos secciones de pestañas. -->
+            <xpath expr="//sheet" position="before">
+                <field name="sgi_dev_missing_partner" invisible="1"/>
+                <div class="alert alert-warning" role="alert" invisible="not sgi_dev_missing_partner">
+                    Este desarrollo es de origen cliente y no tiene cliente capturado. Elija el cliente en el campo «Cliente» antes de seguir.
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Lista de desarrollos: folio, cliente, etapa editable, horas, última actividad. -->
+    <record id="sgi_dev_project_view_list_board" model="ir.ui.view">
+        <field name="name">project.project.list.sgi.dev.board</field>
+        <field name="model">project.project</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list string="Desarrollos de producto" editable="bottom" create="0" default_order="sgi_dev_stage_seq, sgi_ft_folio desc, id desc"
+                  decoration-danger="sgi_dev_missing_partner">
+                <field name="sgi_ft_folio" readonly="1"/>
+                <field name="name" readonly="1"/>
+                <field name="partner_id" widget="res_partner_many2one" options="{'no_create': True}"/>
+                <field name="sgi_dev_origin" optional="show"/>
+                <field name="stage_id" options="{'no_create': True}" domain="[('company_id', 'in', (company_id, False))]"/>
+                <field name="sgi_dev_stage_seq" column_invisible="1"/>
+                <field name="company_id" column_invisible="1"/>
+                <field name="sgi_dev_missing_partner" column_invisible="1"/>
+                <field name="sgi_dev_hours_stage" readonly="1" sum="Horas"/>
+                <field name="sgi_dev_line_count" readonly="1" optional="show"/>
+                <field name="user_id" widget="many2one_avatar_user" optional="show"/>
+                <field name="activity_ids" widget="list_activity" optional="show"/>
+                <field name="write_date" string="Última modificación" readonly="1" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_project_board_action" model="ir.actions.act_window">
+        <field name="name">Desarrollos de producto</field>
+        <field name="res_model">project.project</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="domain">[('sgi_is_ft', '=', True), ('is_template', '=', False)]</field>
+        <field name="context">{'default_sgi_is_ft': True}</field>
+        <field name="view_ids" eval="[(5, 0, 0),
+            (0, 0, {'view_mode': 'list', 'view_id': ref('sgi_dev_project_view_list_board')}),
+            (0, 0, {'view_mode': 'kanban', 'view_id': ref('project.view_project_kanban')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('project.edit_project')})]"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todos los desarrollos de producto, con folio, cliente y etapa</p>
+            <p>Cambie la etapa y el cliente directo en la lista. Un renglón en rojo es un desarrollo de origen cliente sin cliente capturado.</p>
+        </field>
+    </record>
+
+    <!-- Asistente: marcar proyectos existentes como desarrollo. -->
+    <record id="sgi_dev_mark_wizard_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.mark.wizard.form</field>
+        <field name="model">sgi.dev.mark.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Marcar proyectos existentes como desarrollo de producto">
+                <p>Se proponen los proyectos activos con nombre de código de artículo y los de la columna «Por revisar». Quite los que no sean desarrollos y agregue los que falten; nada se marca sin esta confirmación y ninguno cambia de etapa.</p>
+                <group>
+                    <field name="candidate_count"/>
+                    <field name="load_lines"/>
+                </group>
+                <field name="project_ids">
+                    <list>
+                        <field name="name"/>
+                        <field name="stage_id"/>
+                        <field name="partner_id"/>
+                        <field name="user_id" widget="many2one_avatar_user"/>
+                        <field name="create_date"/>
+                    </list>
+                </field>
+                <footer>
+                    <button name="action_mark" type="object" string="Marcar como desarrollo" class="btn-primary"
+                            confirm="Los proyectos de la lista quedan marcados como desarrollo de producto. ¿Continuar?"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_dev_mark_wizard_action" model="ir.actions.act_window">
+        <field name="name">Marcar desarrollos existentes</field>
+        <field name="res_model">sgi.dev.mark.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

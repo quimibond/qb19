@@ -120,6 +120,17 @@ del cliente (`precio_cliente_*`: objetivo → mercado → piso lleno)
 y condiciones (IVA, vigencia). **Cero datos internos** — sin costos, sin
 márgenes, sin pisos.
 
+**Con o sin escalera de volumen (1.69.6).** La casilla «Ofrecer precios por
+volumen» de la calculadora (y de la cotización, editable hasta que se gana o
+pierde) decide si el PDF y el correo al cliente llevan la tabla «Precios por
+volumen» o un solo precio al volumen cotizado. La escalera se calcula de
+todos modos y se ve en la cotización y en la hoja interna, que dice qué
+recibe el cliente. El valor con el que arranca la calculadora es el
+parámetro `escalera_default` (1 = con escalera). «Recalcular ya» hereda la
+decisión de la revisión anterior. Para imprimir: menú Imprimir → «Cotización
+Quimibond» es la del cliente; «Hoja interna de costo y precio» nunca se
+envía.
+
 El botón **«✉ Enviar al cliente»** usa la plantilla
 `mail_template_cotizacion_cliente`, que adjunta SOLO el PDF comercial. La
 plantilla vieja (que adjuntaba la hoja interna) quedó marcada obsoleta y el
@@ -354,6 +365,62 @@ en producto terminado sin entregar $413,388; **entregado a cliente
 $344,667 (28.8%)**. Capa registrada: $2,189,225.84 (asiento 847086). El
 detalle, con la revisión de enero a septiembre y el barrido de promedios,
 está en `docs/COSTEO_REVISION.md`.
+
+### La conversión absorbida en el costo unitario (v1.69)
+
+Con TEJIDO fuera del pool, el costo unitario explotaba la receta hasta el
+hilo y perdía el tejido: una tela de 40 g cargaba la misma fabricación que
+una de 135 g ($3.39/m parejo en sep-2026) y el resultado del modelo no traía
+los $585,531 de tejido que sí llegaron a ventas. La capa `conv_unit` lo
+regresa, aparte de la MP (que sigue auditable contra compras):
+
+```
+tarifa del crudo = horas REALES de sus órdenes de 12 meses × tarifa $/h de
+                   hoy ÷ lo producido (sin órdenes fuera de la banda de
+                   rendimiento: cronómetros desbocados)
+     sin historia → la de sus hermanos: mismo código salvo color o ancho
+                    (primeros 9 caracteres, WJ047Q21H…)
+     sin hermanos → promedio del centro, misma base (marcado «estimado»)
+conv_unit        = la receta baja la tarifa del crudo al teñido y al acabado
+conv_var_unit    = conv_unit × energía del centro absorbido ÷ abono bruto
+costo_variable   = MP + energía + conv_var_unit
+costo_produccion = MP + energía + fabricación + conv_unit
+```
+
+Doce meses y no el mes: antes del corte las circulares no tenían tarifa,
+pero la duración de cada orden de trabajo sí se registraba, y con un solo
+mes un crudo sin órdenes caía al promedio (WJ047Q21HNT112: $11.54/kg del
+centro contra $7.12/kg de sus 419 órdenes) o una orden lenta mandaba
+(NN053Q66HNT098: 3.6 kg/h en septiembre, 4.0 en el año). El total del
+período no cambia: sigue siendo lo que la traza encontró en las entregas.
+La familia de máquinas solo se usa para una especificación nueva, que no
+tiene código ni órdenes.
+
+Un producto es «crudo» si sale de órdenes en las máquinas absorbidas, si su
+receta tiene una operación en ellas, si una familia del centro lo declara o
+si su orden sigue el `mo_name_pattern` del centro. La capa existe solo en
+períodos con centro absorbido: hasta agosto de 2026 el tejido ya iba en
+`fab_unit`.
+
+**Totales del período ≠ unitario × qty.** `conv_total` es lo que la traza
+por lotes encontró en las entregas del mes con ese producto, que es lo que
+está en el costo de ventas del mayor; suma exactamente
+`absorcion_vendida_month`. En el mes del corte, unitario × qty es mayor
+porque parte de lo vendido se tejió antes y su tejido ya se fue a gasto: esa
+diferencia queda en `conv_transicion_month` y tiende a cero. La
+conciliación muestra la capa (`modelo_conv`) dentro del costo del modelo.
+
+El ajuste de MP deja fuera del costo primo la conversión vendida de cada
+mes: desde el corte el AVCO la lleva dentro y no es materia prima.
+
+**Cotizador.** Usa el último período CERRADO (el mes en curso tiene el pool
+a medio llenar; con uno en borrador avisa) y se puede fijar otro en «Período
+de factores». La conversión entra al piso a planta llena completa y al piso
+con capacidad ociosa solo su parte de energía. Los dos pisos y los márgenes
+son por unidad **vendible** (÷ rendimiento de primera). Energía en $0/kg con
+pool de energía es un error, no se cotiza. Una especificación nueva elige su
+familia de máquinas para la tarifa. `qb.cotizacion.recotizar_ahora(factores)`
+recotiza contra un período dado.
 
 ## Períodos cerrables
 

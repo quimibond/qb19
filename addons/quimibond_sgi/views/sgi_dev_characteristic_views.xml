@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 57.117.0 (C1, bloque 1): renglones por tipo de desarrollo y ficha del
+         renglón del proyecto. El catálogo de características y las claves de
+         codificación viven en quimibond_ficha_tecnica_tela (sus menús también).
+         Vistas propias completas, sin herencias dentro del módulo. -->
+
+    <!-- ===== Renglones por tipo de desarrollo ===== -->
+    <record id="sgi_dev_characteristic_template_view_list" model="ir.ui.view">
+        <field name="name">sgi.dev.characteristic.template.list</field>
+        <field name="model">sgi.dev.characteristic.template</field>
+        <field name="arch" type="xml">
+            <list string="Características por tipo de desarrollo" editable="bottom" default_order="dev_type, sequence">
+                <field name="sequence" widget="handle"/>
+                <field name="dev_type"/>
+                <field name="caracteristica_id"/>
+                <field name="kind"/>
+                <field name="unit"/>
+                <field name="direction"/>
+                <field name="position"/>
+                <field name="lab_default"/>
+                <field name="in_customer_spec" optional="show"/>
+                <field name="in_coa" optional="show"/>
+                <field name="critical" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_dev_characteristic_template_view_search" model="ir.ui.view">
+        <field name="name">sgi.dev.characteristic.template.search</field>
+        <field name="model">sgi.dev.characteristic.template</field>
+        <field name="arch" type="xml">
+            <search string="Características por tipo de desarrollo">
+                <field name="caracteristica_id"/>
+                <filter name="general" string="General" domain="[('dev_type', '=', 'general')]"/>
+                <filter name="entretelas" string="Entretelas V10" domain="[('dev_type', '=', 'entretelas_v10')]"/>
+                <filter name="carda" string="Carda" domain="[('dev_type', '=', 'carda')]"/>
+                <filter name="tramado" string="Tramado" domain="[('dev_type', '=', 'tramado')]"/>
+                <filter name="inactive" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_dev_type" string="Tipo de desarrollo" context="{'group_by': 'dev_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_dev_characteristic_template_action" model="ir.actions.act_window">
+        <field name="name">Características por tipo de desarrollo</field>
+        <field name="res_model">sgi.dev.characteristic.template</field>
+        <field name="view_mode">list</field>
+        <field name="context">{'search_default_group_dev_type': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Qué renglones carga cada tipo de desarrollo</p>
+            <p>Al elegir el tipo de desarrollo en el proyecto y pulsar «Proponer características del tipo», se cargan estos renglones con su dirección y posición.</p>
+        </field>
+    </record>
+
+    <!-- ===== Ficha del renglón de características (se abre desde la tabla del proyecto) ===== -->
+    <record id="sgi_dev_characteristic_view_form" model="ir.ui.view">
+        <field name="name">sgi.dev.characteristic.form</field>
+        <field name="model">sgi.dev.characteristic</field>
+        <field name="arch" type="xml">
+            <form string="Característica del desarrollo">
+                <sheet>
+                    <group>
+                        <group string="Característica">
+                            <field name="caracteristica_id"/>
+                            <field name="name"/>
+                            <field name="kind"/>
+                            <field name="direction"/>
+                            <field name="position"/>
+                            <field name="unit"/>
+                            <field name="method"/>
+                        </group>
+                        <group string="Especificación del cliente">
+                            <field name="spec_text" invisible="kind != 'text'"/>
+                            <field name="spec_bool" invisible="kind != 'bool'"/>
+                            <field name="spec_limit" invisible="kind != 'num'"/>
+                            <field name="spec_nominal" invisible="kind != 'num'"/>
+                            <label for="spec_tol_minus" string="Tolerancia − / +" invisible="kind != 'num' or spec_limit != 'tol'"/>
+                            <div class="o_row" invisible="kind != 'num' or spec_limit != 'tol'">
+                                <field name="spec_tol_minus"/>
+                                <field name="spec_tol_plus"/>
+                                <field name="spec_tol_pct"/>
+                                <span>%</span>
+                            </div>
+                            <field name="spec_label" readonly="1"/>
+                            <field name="spec_min" invisible="kind != 'num' or spec_limit == 'max'"/>
+                            <field name="spec_max" invisible="kind != 'num' or spec_limit == 'min'"/>
+                        </group>
+                    </group>
+                    <group invisible="kind != 'num'">
+                        <group string="Control interno (no va al cliente)">
+                            <label for="ctrl_tol_minus" string="Margen − / +"/>
+                            <div class="o_row">
+                                <field name="ctrl_tol_minus"/>
+                                <field name="ctrl_tol_plus"/>
+                            </div>
+                            <field name="ctrl_label" readonly="1"/>
+                        </group>
+                        <group string="Muestra del cliente">
+                            <field name="lab_requested"/>
+                            <field name="sample_value"/>
+                            <field name="sample_result" widget="badge"
+                                   decoration-success="sample_result == 'cumple'"
+                                   decoration-warning="sample_result == 'desviacion'"
+                                   decoration-danger="sample_result == 'no_conforme'"/>
+                        </group>
+                    </group>
+                    <group invisible="kind == 'num'">
+                        <group string="Muestra del cliente">
+                            <field name="lab_requested"/>
+                            <field name="sample_text"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Corrida de la muestra">
+                            <label for="run_1" string="Lecturas" invisible="kind != 'num'"/>
+                            <div class="o_row" invisible="kind != 'num'">
+                                <field name="run_1"/>
+                                <field name="run_2"/>
+                                <field name="run_3"/>
+                            </div>
+                            <field name="run_avg" invisible="kind != 'num'"/>
+                            <field name="run_text" invisible="kind == 'num'"/>
+                            <field name="run_result" widget="badge" invisible="kind != 'num'"
+                                   decoration-success="run_result == 'cumple'"
+                                   decoration-warning="run_result == 'desviacion'"
+                                   decoration-danger="run_result == 'no_conforme'"/>
+                            <field name="verdict"/>
+                        </group>
+                        <group string="Cliente y documentos">
+                            <field name="customer_approved"/>
+                            <field name="in_customer_spec"/>
+                            <field name="in_coa"/>
+                            <field name="critical"/>
+                            <field name="note"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

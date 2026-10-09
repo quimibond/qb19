@@ -25,6 +25,8 @@
                         <field name="volumen"
                                help="Si el cliente compra este producto de forma regular, se precarga solo con su promedio mensual histórico."/>
                         <field name="regularidad_info" readonly="1" nolabel="0"/>
+                        <field name="con_escalera"
+                               help="Marcada: el cliente recibe la escalera de precios por volumen (½×, 1×, 2×, 4×). Desmarcada: un solo precio. Se puede cambiar después en la cotización, antes de imprimir o enviar."/>
                         <field name="currency_id" options="{'no_create': True}"
                                help="La moneda en la que capturas el precio objetivo y en la que se muestran los precios al cliente. Los COSTOS del modelo siempre se calculan en MXN."/>
                         <field name="precio_objetivo" widget="monetary"
@@ -59,6 +61,11 @@
                      invisible="not peso_alerta">
                     ⚖️⚠️ <b>Peso estimado:</b>
                     <field name="peso_alerta" readonly="1" class="oe_inline"/>
+                </div>
+                <!-- Período en borrador: sus pisos cambian según el día -->
+                <div class="alert alert-warning" role="alert"
+                     invisible="not factores_aviso">
+                    📅⚠️ <field name="factores_aviso" readonly="1" class="oe_inline"/>
                 </div>
                 <!-- Semáforo: el criterio de decisión en un color -->
                 <field name="semaforo" invisible="1"/>
@@ -100,6 +107,9 @@
                         <field name="spec_bucket"/>
                         <field name="spec_mp_unit"/>
                         <field name="spec_centro_ids" widget="many2many_tags"/>
+                        <field name="spec_familia_id"
+                               invisible="spec_bucket not in ('tela', 'entretela_tejida')"
+                               options="{'no_create': True}"/>
                     </group>
                 </group>
                 <!-- TITULAR: lo único que necesitas para cotizar.
@@ -141,14 +151,23 @@
                                widget="monetary"
                                options="{'currency_field': 'company_currency_id'}"
                                help="Luz/gas/agua variables: $/kg × peso."/>
-                        <field name="costo_variable" string="= Costo variable / u"
-                               class="fw-bold" widget="monetary"
-                               options="{'currency_field': 'company_currency_id'}"
-                               help="MP + energía: lo que sale de la bolsa por cada unidad extra. Piso absoluto."/>
                         <field name="fab_unit" string="+ Fabricación / u"
                                widget="monetary"
                                options="{'currency_field': 'company_currency_id'}"
                                help="Parte del gasto fijo de fábrica (sueldos, renta, depreciación, arrendamiento de maquinaria) que le toca a esta unidad."/>
+                        <field name="conv_unit" string="+ Conversión absorbida / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
+                               invisible="not conv_unit"/>
+                        <field name="conv_info" invisible="not conv_unit"/>
+                        <field name="rendimiento" string="÷ Rendimiento de primera"/>
+                        <field name="costo_variable" string="= Costo variable vendible / u"
+                               class="fw-bold" widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"
+                               help="(MP + energía + energía de la conversión) ÷ rendimiento: lo que sale de la bolsa por cada unidad vendible extra. Piso absoluto."/>
+                        <field name="costo_produccion" string="= Costo de producción vendible / u"
+                               widget="monetary"
+                               options="{'currency_field': 'company_currency_id'}"/>
                         <field name="op_pct_display"
                                string="+ Operación % s/venta"
                                help="Gastos de admin y ventas (6xx) como % del precio de venta."/>
@@ -209,6 +228,10 @@
                 <div class="text-muted" invisible="not factores_info">
                     <field name="factores_info" readonly="1" nolabel="1"/>
                 </div>
+                <group invisible="not ver_detalle">
+                    <field name="periodo_id" options="{'no_create': True}"
+                           placeholder="Último período cerrado"/>
+                </group>
                 <footer>
                     <button name="action_aplicar_precio"
                             string="Guardar y aplicar al pedido" type="object"
@@ -349,6 +372,7 @@
                 <field name="partner_id"/>
                 <field name="sale_order_id" optional="show"/>
                 <field name="volumen"/>
+                <field name="con_escalera" optional="hide"/>
                 <field name="costo_variable"/>
                 <field name="precio_evaluado"/>
                 <field name="precio_mercado" optional="show"/>
@@ -442,23 +466,35 @@
                         <group string="Qué se cotizó">
                             <field name="partner_id"/>
                             <field name="sale_order_id" invisible="not sale_order_id"/>
-                            <field name="product_id"/>
-                            <field name="spec_descripcion"/>
-                            <field name="spec_gramaje"/>
-                            <field name="spec_ancho"/>
-                            <field name="spec_galga"/>
+                            <field name="product_id" invisible="not product_id"/>
+                            <field name="spec_descripcion" invisible="product_id"/>
+                            <field name="spec_gramaje" invisible="product_id"/>
+                            <field name="spec_ancho" invisible="product_id"/>
+                            <field name="spec_galga" invisible="product_id"/>
                             <field name="volumen"/>
                             <field name="uom_name"/>
                             <field name="currency_id"/>
                             <field name="fx_rate"/>
+                            <field name="con_escalera"
+                                   readonly="state not in ('draft', 'done')"/>
                         </group>
                         <group string="1 · Costo de producirlo ($/u, todo MXN)">
                             <field name="mp_unit" string="Materia prima $/u MXN"/>
                             <field name="energia_unit" string="+ Energía $/u MXN"/>
+                            <field name="conv_var_unit"
+                                   string="+ Energía de tejido $/u MXN"
+                                   invisible="not conv_var_unit"/>
+                            <field name="rendimiento"
+                                   string="÷ Rendimiento de primera"
+                                   invisible="not rendimiento"/>
                             <field name="costo_variable"
                                    string="= Costo variable $/u MXN"
                                    class="fw-bold"/>
-                            <field name="fab_unit" string="+ Fabricación $/u MXN"/>
+                            <field name="conv_unit"
+                                   string="Conversión absorbida (tejido) $/u MXN"
+                                   invisible="not conv_unit"/>
+                            <field name="conv_fuente" invisible="not conv_unit"/>
+                            <field name="fab_unit" string="Fabricación $/u MXN"/>
                             <field name="costo_absorbido_sin_op"
                                    string="= Costo de producción $/u MXN"/>
                             <field name="op_pct"/>
@@ -491,6 +527,13 @@
                     </group>
                     <group string="📶 Escalera de volumen (foto al cotizar)"
                            invisible="not tramo_ids">
+                        <div class="alert alert-info" role="status" colspan="2"
+                             invisible="con_escalera" style="font-size:12px;">
+                            Esta cotización se presenta con <b>un solo precio</b>: la
+                            escalera es solo para uso interno y no sale en el PDF ni
+                            en el correo al cliente. Marque «Ofrecer precios por
+                            volumen al cliente» para incluirla.
+                        </div>
                         <field name="tramo_ids" nolabel="1" readonly="1" colspan="2">
                             <list decoration-success="es_base"
                                   decoration-muted="not capacity_ok">

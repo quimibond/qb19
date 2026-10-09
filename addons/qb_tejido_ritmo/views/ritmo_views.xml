@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_qb_tejido_ritmo_list" model="ir.ui.view">
+        <field name="name">qb.tejido.ritmo.list</field>
+        <field name="model">qb.tejido.ritmo</field>
+        <field name="arch" type="xml">
+            <list create="false" edit="false" decoration-muted="not suficiente" decoration-bf="es_total">
+                <field name="tipo" optional="hide"/>
+                <field name="periodo"/>
+                <field name="workcenter_id"/>
+                <field name="default_code"/>
+                <field name="rollos"/>
+                <field name="rollos_corrida" optional="hide"/>
+                <field name="kg" sum="kg"/>
+                <field name="horas_corrida" sum="Corrida"/>
+                <field name="horas_paro" sum="Paro"/>
+                <field name="horas_cambio" sum="Cambio"/>
+                <field name="horas_sin_medir" optional="hide"/>
+                <field name="horas_programadas" optional="hide"/>
+                <field name="horas_sin_explicar" optional="hide"/>
+                <field name="pct_corrida"/>
+                <field name="kg_h_corrida"/>
+                <field name="kg_h_tecnica" optional="show"/>
+                <field name="kg_h_tipica" optional="hide"/>
+                <field name="kg_h_lenta" optional="hide"/>
+                <field name="kg_h_efectiva"/>
+                <field name="kg_h_p5" optional="hide"/>
+                <field name="kg_h_p95" optional="hide"/>
+                <field name="kg_h_estandar" optional="show"/>
+                <field name="n_paros" optional="show"/>
+                <field name="kg_perdidos" optional="hide"/>
+                <field name="ciclo_min" optional="hide"/>
+                <field name="peso_tipico" optional="hide"/>
+                <field name="suficiente" optional="hide"/>
+                <field name="es_total" column_invisible="1"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_qb_tejido_ritmo_pivot" model="ir.ui.view">
+        <field name="name">qb.tejido.ritmo.pivot</field>
+        <field name="model">qb.tejido.ritmo</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="workcenter_id" type="row"/>
+                <field name="periodo" type="col"/>
+                <field name="kg_corrida" type="measure"/>
+                <field name="horas_corrida" type="measure"/>
+                <field name="horas_paro" type="measure"/>
+                <field name="horas_cambio" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_qb_tejido_ritmo_search" model="ir.ui.view">
+        <field name="name">qb.tejido.ritmo.search</field>
+        <field name="model">qb.tejido.ritmo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="workcenter_id"/>
+                <field name="default_code"/>
+                <filter name="semana" string="Por semana" domain="[('tipo', '=', 'semana')]"/>
+                <filter name="mes" string="Por mes" domain="[('tipo', '=', 'mes')]"/>
+                <filter name="articulos" string="Por artículo" domain="[('es_total', '=', False)]"/>
+                <filter name="totales" string="Totales por máquina" domain="[('es_total', '=', True)]"/>
+                <filter name="suficiente" string="Dato suficiente" domain="[('suficiente', '=', True)]"/>
+                <group>
+                    <filter name="por_maquina" string="Máquina" context="{'group_by': 'workcenter_id'}"/>
+                    <filter name="por_periodo" string="Periodo" context="{'group_by': 'periodo'}"/>
+                    <filter name="por_articulo" string="Artículo" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_qb_tejido_ritmo" model="ir.actions.act_window">
+        <field name="name">Ritmo por máquina y artículo</field>
+        <field name="res_model">qb.tejido.ritmo</field>
+        <field name="view_mode">list,pivot</field>
+        <field name="context">{'search_default_mes': 1, 'search_default_articulos': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay ritmos calculados</p>
+            <p>Use «Recalcular ritmo de tejido» con el rango de fechas, o espere a la acción nocturna.</p>
+        </field>
+    </record>
+</odoo>

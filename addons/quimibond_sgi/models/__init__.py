@@ -70,8 +70,32 @@ from . import sgi_kpi_quality
 from . import sgi_kpi_account
 from . import sgi_kpi_review
 from . import sgi_kpi_hr
+from . import sgi_dev_characteristic
 from . import sgi_dev_request
+from . import sgi_dev_project
+from . import sgi_dev_product
+from . import sgi_dev_analysis
+from . import sgi_dev_measure
+from . import sgi_dev_board
+from . import sgi_dev_process
+# 57.124.0 (C1, bloque E): arranque del desarrollo (compuerta, aviso, existencias, requisición).
+from . import sgi_dev_start
+# 57.125.0 (C1, bloque F): orden de muestra desde el proyecto.
+from . import sgi_dev_sample
+# 57.128.0 (Jose 3.1): aprobación del cliente para iniciar.
+from . import sgi_dev_customer
+from . import sgi_dev_shipment  # 57.129.0 (Jose 3.3): envío de muestra y respuesta del cliente
+from . import sgi_dev_coa  # 57.130.0 (Jose 3.4): reporte de conformidad desde la tabla (hereda sgi.dev.shipment)
+from . import sgi_dev_tech_sheet  # 57.132.0 (Jose 5.3): ficha técnica interna y especificaciones del producto
+from . import sgi_dev_pilot  # 57.133.0 (Jose 5.4): pilotaje y estudio de habilidad
+from . import sgi_dev_escalation  # 57.135.0 (Jose 5.5): escalamiento por tiempo del paso pendiente
+from . import sgi_dev_start_approval  # 57.137.0 (Jessica 4): aprobación para iniciar el proyecto con folio FT
+from . import sgi_dev_change  # 57.137.0 (Jessica 9): solicitud de modificación del proyecto (5 porqués)
+from . import sgi_dev_dossier  # 57.137.0 (Jessica 3 y 8.3): ruta a la vista y expediente ISO 9001 8.3 / APQP
 from . import sgi_machine_sheet
+# 57.126.0 (C1, bloque G): ruta y ficha de tejido. Hereda sgi.machine.sheet: va después de él
+# (57.128.1: el build de main cayó con «Model 'sgi.machine.sheet' does not exist in registry»).
+from . import sgi_dev_process_sheet
 from . import sgi_staff_efficiency
 from . import sgi_epp_sign
 from . import sgi_mp_change
@@ -116,3 +140,36 @@ from . import sgi_indicator_health
 from . import sgi_indicator_integrity
 from . import sgi_competence_grant
 from . import sgi_ai
+# 57.101.0: reportes y diagramas (heredan indicador, medición, proceso,
+# sgi.diagram, programa de auditorías y riesgo, todos definidos antes).
+from . import sgi_indicator_sheet
+from . import sgi_report_print
+# 57.103.0: registro de cumplimiento por actividad, responsable y periodo
+# (hereda la actividad y lo lee Mis pendientes, ambos definidos antes).
+from . import sgi_activity_execution
+# 57.105.0: MIID desde Odoo (hereda approval.request —su extensión de Sign ya
+# cargó— y sgi.cron; usa sgi_report_print).
+from . import sgi_miid
+# 57.107.0: revisión mensual de la medición por el dueño del proceso (hereda
+# la actividad y la lee Mis pendientes, ambos definidos antes).
+from . import sgi_measure_review
+# 57.108.0: proponer una actividad en lenguaje normal (hereda la propuesta y
+# approval.request, definidos antes en sgi_mp_change).
+from . import sgi_mp_change_simple
+# 57.109.0: asistente de aprobaciones (hereda el rol con su aprobación nativa
+# y la actividad, definidos antes).
+from . import sgi_approval_wizard
+# 57.109.0: asistente «Nuevo indicador» y medición de la actividad sin nombres
+# técnicos (heredan indicador, término y actividad, definidos antes).
+from . import sgi_indicator_wizard
+# 57.109.0: reportar un riesgo u oportunidad en lenguaje normal (crea sgi.risk).
+from . import sgi_risk_report
+# 57.111.0: quién hizo la actividad según el historial de su estado (hereda
+# entregable y actividad, y usa los ganchos de sgi_process_procedure).
+from . import sgi_measure_history
+# 57.112.0: medición manual a propósito (hereda la actividad y extiende los
+# campos de medición de sgi_measure_history).
+from . import sgi_measure_manual_reason
+# 57.116.0: asuntos de las categorías de Aprobaciones compartidas (hereda
+# approval.request y approval.category, y usa el rol «Aprueba»).
+from . import sgi_approval_subject

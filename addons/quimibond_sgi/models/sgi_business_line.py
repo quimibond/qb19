@@ -342,7 +342,8 @@ class SgiIndicatorLine(models.Model):
         por mercado."""
         vals = super()._sgi_measure_vals(date_from, date_to)
         if self.measure_split == 'none' or self.calc_mode != 'configurable' \
-                or self._sgi_snapshot_blocked(date_from) or self._sgi_split_problem():
+                or self._sgi_snapshot_blocked(date_from) or self._sgi_split_problem() \
+                or not self._sgi_measurable_on(date_to):
             return vals
         rows = [(5, 0, 0)]
         for row_vals, key in self._sgi_split_keys():
@@ -440,7 +441,10 @@ class SgiIndicatorMeasureSplit(models.Model):
     market = fields.Selection(_MARKETS, string="Mercado",
                               help="Mercado del desglose: nacional, exportación o cliente sin país.")
     label = fields.Char(string="Renglón", compute='_compute_label', store=True)
-    value = fields.Float(string="Valor", digits=(16, 2), help="Valor del desglose.")
+    # 57.101.0: promedio al agrupar (pivote y gráfica), como el valor de la
+    # medición; sumar valores de un indicador no tiene sentido.
+    value = fields.Float(string="Valor", digits=(16, 2), aggregator='avg',
+                         help="Valor del desglose.")
     numerator = fields.Float(string="Numerador", digits=(16, 2), help="Numerador del desglose.")
     denominator = fields.Float(string="Denominador", digits=(16, 2), help="Denominador del desglose.")
     sample_size = fields.Integer(string="Casos", help="Número de casos del desglose.")

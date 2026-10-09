@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============ 1.2.0: el SGI en Conocimiento ============
+         Vistas propias completas en su record (lista y búsqueda de
+         knowledge.article con prioridad alta para no ser las de
+         Conocimiento, asistente de importación) y herencias de vistas de
+         OTRO módulo (quimibond_sgi) solo para botones, ancladas en campos o
+         botones que aparecen una sola vez en su vista. -->
+
+    <record id="sgi_kb_article_view_list" model="ir.ui.view">
+        <field name="name">knowledge.article.list.sgi</field>
+        <field name="model">knowledge.article</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <list string="Conocimiento del SGI" create="0" delete="0" edit="0"
+                  default_order="sgi_process_id, sgi_document_code">
+                <field name="sgi_process_id"/>
+                <field name="sgi_document_code"/>
+                <field name="sgi_doc_type"/>
+                <field name="name"/>
+                <field name="sgi_publish_state" widget="badge"
+                       decoration-muted="sgi_publish_state == 'borrador'"
+                       decoration-warning="sgi_publish_state in ('pdf', 'cambio')"
+                       decoration-success="sgi_publish_state == 'publicado'"/>
+                <field name="last_edition_date" optional="show"/>
+                <field name="last_edition_uid" optional="show"/>
+                <field name="sgi_activity_label" optional="show"/>
+                <field name="sgi_import_note" optional="hide"/>
+                <button name="action_sgi_open" type="object" string="Abrir" icon="fa-book" class="btn-link"/>
+                <button name="action_sgi_request_publish" type="object" string="Pedir publicación"
+                        icon="fa-paper-plane" class="btn-link"
+                        invisible="sgi_publish_state == 'publicado'"/>
+                <button name="action_sgi_publish" type="object" string="Publicar" icon="fa-upload"
+                        class="btn-link" invisible="sgi_publish_state == 'publicado'"
+                        groups="quimibond_sgi.group_sgi_manager"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="sgi_kb_article_view_search" model="ir.ui.view">
+        <field name="name">knowledge.article.search.sgi</field>
+        <field name="model">knowledge.article</field>
+        <field name="priority">50</field>
+        <field name="arch" type="xml">
+            <search string="Conocimiento del SGI">
+                <field name="name"/>
+                <field name="sgi_document_code"/>
+                <field name="sgi_process_id"/>
+                <filter name="por_publicar" string="Por publicar"
+                        domain="[('sgi_publish_state', 'in', ['borrador', 'pdf'])]"/>
+                <filter name="cambio" string="Cambió desde la publicación"
+                        domain="[('sgi_publish_state', '=', 'cambio')]"/>
+                <filter name="publicados" string="Publicados"
+                        domain="[('sgi_publish_state', '=', 'publicado')]"/>
+                <separator/>
+                <filter name="controles" string="Controles operacionales"
+                        domain="[('sgi_doc_type', '=', 'control_operacional')]"/>
+                <filter name="instructivos_c4" string="Instructivos de C4"
+                        domain="[('sgi_doc_type', '=', 'instructivo'), ('sgi_process_id.code', '=', 'C4')]"/>
+                <filter name="primero" string="Primero"
+                        domain="['|', ('sgi_doc_type', '=', 'control_operacional'), '&amp;', ('sgi_doc_type', '=', 'instructivo'), ('sgi_process_id.code', '=', 'C4')]"/>
+                <separator/>
+                <filter name="archivados" string="Archivados" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter name="group_process" string="Proceso" context="{'group_by': 'sgi_process_id'}"/>
+                    <filter name="group_type" string="Tipo" context="{'group_by': 'sgi_doc_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="sgi_kb_article_action" model="ir.actions.act_window">
+        <field name="name">Conocimiento del SGI</field>
+        <field name="res_model">knowledge.article</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="sgi_kb_article_view_list"/>
+        <field name="search_view_id" ref="sgi_kb_article_view_search"/>
+        <field name="domain">[('sgi_kind', '=', 'documento')]</field>
+        <field name="context">{'search_default_primero': 1, 'search_default_por_publicar': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay documentos del SGI en Conocimiento</p>
+            <p>
+                Los dueños de proceso corrigen el borrador en Conocimiento, comparándolo con el PDF adjunto,
+                y piden la publicación. El Jefe MAST revisa y publica: el artículo se congela como revisión
+                nueva del documento con su PDF y los acuses de lectura. Empiece por los cinco controles
+                operacionales y los instructivos de C4.
+            </p>
+            <p>
+                El Jefe MAST los trae con SGI → Administración → Transición → Importar documentos a
+                Conocimiento.
+            </p>
+        </field>
+    </record>
+
+    <!-- ============ Importador ============ -->
+    <record id="sgi_knowledge_import_view_form" model="ir.ui.view">
+        <field name="name">sgi.knowledge.import.form</field>
+        <field name="model">sgi.knowledge.import</field>
+        <field name="arch" type="xml">
+            <form string="Importar documentos a Conocimiento">
+                <p class="text-muted">
+                    Cada instructivo, control operacional, protocolo o reglamento vigente queda como borrador
+                    bajo su proceso en Conocimiento → SGI, con el PDF vigente adjunto. Solo lo ven el dueño
+                    del proceso y el Jefe MAST hasta que se publique. El documento controlado no cambia: ni su
+                    revisión, ni su estado, ni su archivo. Lo que ya se importó se salta, y la familia P-I01
+                    nunca se importa (L-001).
+                </p>
+                <group>
+                    <field name="preset" widget="radio"/>
+                    <field name="document_ids" widget="many2many_tags" invisible="preset != 'manual'"
+                           options="{'no_create': True}"/>
+                    <field name="batch_size"/>
+                </group>
+                <group invisible="not summary">
+                    <field name="summary" nolabel="1" colspan="2"/>
+                </group>
+                <footer>
+                    <button name="action_import" type="object" string="Importar" class="btn-primary"/>
+                    <button string="Descartar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="sgi_knowledge_import_action" model="ir.actions.act_window">
+        <field name="name">Importar documentos a Conocimiento</field>
+        <field name="res_model">sgi.knowledge.import</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Desde la lista de Documentos del SGI: importar la selección. -->
+    <record id="sgi_knowledge_import_documents_action" model="ir.actions.server">
+        <field name="name">Importar a Conocimiento (SGI)</field>
+        <field name="model_id" ref="documents.model_documents_document"/>
+        <field name="binding_model_id" ref="documents.model_documents_document"/>
+        <field name="binding_view_types">list</field>
+        <field name="group_ids" eval="[(6, 0, [ref('quimibond_sgi.group_sgi_manager')])]"/>
+        <field name="state">code</field>
+        <field name="code">action = {
+    'type': 'ir.actions.act_window', 'name': 'Importar documentos a Conocimiento',
+    'res_model': 'sgi.knowledge.import', 'view_mode': 'form', 'target': 'new',
+    'context': {'active_model': 'documents.document', 'active_ids': records.ids},
+}</field>
+    </record>
+
+    <!-- ============ Herencias de vistas de quimibond_sgi (solo botones) ============ -->
+    <record id="sgi_document_view_form_knowledge" model="ir.ui.view">
+        <field name="name">sgi.documents.document.form.knowledge</field>
+        <field name="model">documents.document</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_document_view_form"/>
+        <field name="arch" type="xml">
+            <field name="sgi_owner_id" position="after">
+                <field name="sgi_article_id" invisible="not sgi_article_id"/>
+                <button name="action_sgi_kb_open" type="object" string="Abrir en Conocimiento"
+                        icon="fa-book" class="btn-link" invisible="not sgi_article_id" colspan="2"/>
+                <button name="action_sgi_kb_publish" type="object" string="Publicar desde Conocimiento"
+                        icon="fa-upload" class="btn-link" colspan="2"
+                        invisible="not sgi_article_id or sgi_doc_type not in ('instructivo', 'control_operacional', 'protocolo', 'reglamento')"
+                        groups="quimibond_sgi.group_sgi_manager"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="sgi_process_view_form_knowledge" model="ir.ui.view">
+        <field name="name">sgi.process.form.knowledge</field>
+        <field name="model">sgi.process</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_process_view_form"/>
+        <field name="arch" type="xml">
+            <button name="action_sgi_register_finding" position="after">
+                <field name="sgi_article_id" invisible="1"/>
+                <button name="action_sgi_open_article" type="object" string="Artículo en Conocimiento"
+                        icon="fa-book" invisible="not sgi_article_id"/>
+            </button>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_kanban_mp_knowledge" model="ir.ui.view">
+        <field name="name">sgi.activity.role.kanban.mp.knowledge</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_activity_role_view_kanban_mp"/>
+        <field name="arch" type="xml">
+            <field name="mp_instruction_id" position="after">
+                <field name="mp_article_id"/>
+            </field>
+            <button name="action_mp_instruction" position="after">
+                <button t-if="record.mp_article_id.raw_value" type="object" name="action_mp_article"
+                        class="btn btn-outline-secondary btn-sm" title="Leer en Conocimiento">
+                    <i class="fa fa-book me-1" title="Conocimiento"/>Leer en Conocimiento
+                </button>
+            </button>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_list_mp_embedded_knowledge" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.mp.embedded.knowledge</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_activity_role_view_list_mp_embedded"/>
+        <field name="arch" type="xml">
+            <button name="action_mp_instruction" position="after">
+                <field name="mp_article_id" column_invisible="1"/>
+                <button name="action_mp_article" type="object" string="Leer en Conocimiento"
+                        icon="fa-book" class="btn-link" invisible="not mp_article_id"/>
+            </button>
+        </field>
+    </record>
+
+    <record id="sgi_activity_role_view_list_my_procedure_knowledge" model="ir.ui.view">
+        <field name="name">sgi.activity.role.list.my.procedure.knowledge</field>
+        <field name="model">sgi.activity.role</field>
+        <field name="inherit_id" ref="quimibond_sgi.sgi_activity_role_view_list_my_procedure"/>
+        <field name="arch" type="xml">
+            <button name="action_mp_instruction" position="after">
+                <field name="mp_article_id" column_invisible="1"/>
+                <button name="action_mp_article" type="object" string="Leer en Conocimiento"
+                        icon="fa-book" class="btn-link" invisible="not mp_article_id"/>
+            </button>
+        </field>
+    </record>
+</odoo>

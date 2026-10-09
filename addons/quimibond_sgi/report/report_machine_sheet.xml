@@ -15,7 +15,8 @@
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="doc">
                 <t t-call="quimibond_sgi.sgi_report_layout">
-                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja. -->
+                    <!-- 57.98.0 (I-01): layout propio, pie controlado en cada hoja.
+                         57.101.0: sin el pie escrito a mano al final (salía doble). -->
                     <t t-set="sgi_rec" t-value="doc"/>
                     <t t-set="sgi_fmt_ref" t-value="'format_ref_machine_sheet'"/>
                     <div class="page">
@@ -45,11 +46,12 @@
                         <t t-foreach="[('maquina', 'Datos de máquina', doc.machine_note), ('tela', 'Datos de tela acondicionada', doc.fabric_note)]" t-as="section">
                             <h5><span t-out="section[1]"/></h5>
                             <table class="table table-sm table-bordered" style="font-size:10px;">
-                                <thead><tr><th>Condición</th><th>Especificación</th><th>Tolerancia (±)</th><th>Unidad</th></tr></thead>
+                                <thead><tr><th>Condición</th><th>Especificación</th><th>Tolerancia (±)</th><th>Unidad</th><th>Real</th><th>Ajustes</th><th>Motivo</th></tr></thead>
                                 <tbody>
                                     <tr t-foreach="doc.param_line_ids.filtered(lambda p: p.section == section[0])" t-as="p">
                                         <td><span t-out="p.name"/></td><td><span t-out="p.spec or ''"/></td>
                                         <td><span t-out="p.tolerance or ''"/></td><td><span t-out="p.unit or ''"/></td>
+                                        <td><span t-out="p.real or ''"/></td><td class="text-center"><span t-out="p.adjustment or ''"/></td><td><span t-out="p.reason_id.name or ''"/></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -57,15 +59,13 @@
                         </t>
                         <table class="table table-sm mt-4" style="font-size:10px;">
                             <tr>
-                                <td class="text-center" style="border-top:1px solid #000;">Laboratorista de tejido<br/><span t-out="doc.lab_user_id.name or ''"/></td>
+                                <!-- 57.126.0: firmas por puestos vigentes (brief C1 §6.7). -->
+                                <td class="text-center" style="border-top:1px solid #000;">Propuso (Diseño y Desarrollo de Procesos)<br/><span t-out="doc.engineering_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Validó (Jefe de Manufactura)<br/><span t-out="doc.approved_by_id.name or ''"/></td>
+                                <td class="text-center" style="border-top:1px solid #000;">Midió (Laboratorio)<br/><span t-out="doc.lab_user_id.name or ''"/></td>
                                 <td class="text-center" style="border-top:1px solid #000;">Mecánico de tejido<br/><span t-out="doc.mechanic_user_id.name or ''"/></td>
-                                <td class="text-center" style="border-top:1px solid #000;">Jefe técnico de tejido y acabado<br/><span t-out="doc.approved_by_id.name or ''"/></td>
-                                <td class="text-center" style="border-top:1px solid #000;">Jefe de ingeniería de procesos<br/><span t-out="doc.engineering_by_id.name or ''"/></td>
                             </tr>
                         </table>
-                        <div class="text-muted mt-3" style="font-size:9px; border-top:1px solid #ddd; padding-top:2px;">
-                            Formato controlado del SGI: <span class="fw-bold" t-out="doc.sgi_format_info()"/> · PNTQ
-                        </div>
                     </div>
                 </t>
             </t>

@@ -39,3 +39,9 @@ def post_init_hook(env):
             _logger.warning(
                 "SGI F4: la retro-vinculación de «%s» falló y se omitió: %s",
                 team_name, exc)
+    # 57.120.2: los modelos del desarrollo de producto y de las fichas quedan
+    # expuestos al MCP también en una instalación limpia (si mcp_server está).
+    try:
+        env['project.project']._sgi_dev_enable_mcp_models()
+    except Exception as exc:  # noqa: BLE001 - nunca detiene la instalación
+        _logger.warning("SGI C1: no se pudieron exponer los modelos al MCP: %s", exc)

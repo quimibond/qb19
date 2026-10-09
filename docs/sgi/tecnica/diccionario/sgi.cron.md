@@ -6,7 +6,7 @@
 
 Tareas programadas del SGI. Cada método ``cron_*`` es una acción planificada (ver ``docs/sgi/tecnica/crons.md``); agendan actividades con ``_sgi_schedule`` (idempotente por clave) y cada paso corre en su savepoint.
 
-Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
+Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/models/sgi_customer_reply.py`, `addons/quimibond_sgi/models/sgi_deploy_change.py`, `addons/quimibond_sgi/models/sgi_external_doc.py`, `addons/quimibond_sgi/models/sgi_floor_kiosk.py`, `addons/quimibond_sgi/models/sgi_hse_records.py`, `addons/quimibond_sgi/models/sgi_indicator_health.py`, `addons/quimibond_sgi/models/sgi_indicator_plan.py`, `addons/quimibond_sgi/models/sgi_miid.py`, `addons/quimibond_sgi/models/sgi_my_procedure.py`, `addons/quimibond_sgi/models/sgi_weekly_overdue.py`.
 
 ## Métodos públicos (25)
 
@@ -26,7 +26,7 @@ Archivos: `addons/quimibond_sgi/models/sgi_cron.py`, `addons/quimibond_sgi/model
 | `cron_legal_requirements` | Cron diario: evaluaciones de cumplimiento vencidas y permisos por vencer (≤60 días) o vencidos. Idempotente por resumen. |
 | `cron_my_procedure_stale` | Semanal: avisa al Jefe MAST qué puestos con personas tienen «Mi procedimiento» sin publicar o desactualizado. Una sola actividad, sobre la revisión vigente del primer puesto desactualizado (documents… |
 | `cron_news` | Cron mensual: si el mes anterior hubo cambios documentales aplicados, agenda al Jefe MAST el boletín NEWS. |
-| `cron_nightly_backup` | Cron diario (02:15 de México): recalcula las cuatro listas guardadas de Mi procedimiento y anota en el log cuántas personas cambiaron (si no es 0, falta un disparo), y refresca el resumen de Mis pend… |
+| `cron_nightly_backup` | Cron diario (02:15 de México): recalcula las cuatro listas guardadas de Mi procedimiento y anota en el log cuántas personas cambiaron (si no es 0, falta un disparo), arma el registro de cumplimiento … |
 | `cron_nonconformities` | Cron diario de NC: cierra actividades ya resueltas, recalcula acciones vencidas, avisa y escala los plazos por etapa, escala NC sin acción y pide la verificación de eficacia. |
 | `cron_operational_signals` | Cron diario. (a) Falla repetitiva: ≥3 correctivas del mismo equipo en 90 días → actividad al Jefe MAST sugiriendo levantar NC y revisar el plan de mantenimiento. (b) Reclamación abierta con SLA venci… |
 | `cron_overdue_actions` | Escalamiento en 3 niveles de acciones vencidas: - nivel 1 (responsable): ya lo recuerda la actividad espejo (Ola 0); - > N días: además su jefe directo (employee_id.parent_id.user_id, fallback Jefe M… |

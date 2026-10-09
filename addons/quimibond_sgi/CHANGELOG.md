@@ -13,6 +13,2004 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.138.0 — 2026-10-09
+
+Corrección urgente: el build de producción (`quimibond`, PR 605) cayó al cargar
+`sgi_dev_project_views.xml` con «El campo "lot_producing_id" no existe en el
+modelo "mrp.production"». En Odoo 19 la orden de producción lleva
+`lot_producing_ids` (varios lotes); el campo en singular era de Odoo 17/18.
+
+- **Corregido** pestaña «Muestra»: la columna de lote de las órdenes de
+  muestra es `lot_producing_ids` (etiquetas).
+- **Corregido** pilotaje (57.133.0): al terminar una orden del artículo en
+  pilotaje tomaba `mo.lot_producing_id`; ahora el primer lote de
+  `lot_producing_ids` y nombra todos en el chatter. Prueba ajustada.
+- Lección: el CI no instala el SGI y las vistas `form`/`list` solo se validan
+  en el build de Odoo.sh; una columna de un modelo de Odoo en una lista
+  incrustada se comprueba contra los campos reales (MCP `get_fields`) antes
+  de empujar. Sin migración.
+
+## 19.0.57.137.0 — 2026-10-08
+
+Revisión de Administración de Ventas, 2026-10-08 (su descripción del proceso, puntos 3, 4, 9 e ISO 9001 8.3
+/ APQP), construido por orden de Jose («Has todos»).
+
+- **Agregado** **aprobación para iniciar el proyecto** (brief §6.8) como
+  documento generado, nunca a mano: pestaña «Aprobación del cliente» →
+  «Generar aprobación para iniciar» arma el PDF con el cliente, el contacto,
+  el producto, el uso, las características marcadas «En especificación del
+  cliente» y, con `qb_costeo_sgi`, la cotización (folio, precio, moneda,
+  vigencia). **El documento lleva el folio FT**: al generarlo se asigna si
+  falta (la asignación al pasar a «Muestra» sigue como respaldo, y «Asignar
+  folio FT» aparece desde «Cotización»). «Enviar al cliente» abre el correo
+  con el PDF (plantilla `mail_template_sgi_dev_start_approval`) y deja
+  quién y cuándo lo mandó; la respuesta del cliente se sigue registrando
+  abajo con su evidencia. Campos `sgi_dev_start_approval_*`; reporte
+  `action_report_dev_start_approval`.
+- **Agregado** modelo `sgi.dev.change.request`, **solicitud de modificación
+  del proyecto**: qué se modifica, motivo (cambio que pide el cliente / no se
+  obtuvo el resultado / mejora interna), por qué no se obtuvo el resultado,
+  **5 porqués** y causa raíz, solución y **fases afectadas** (etapas del
+  desarrollo); la elabora Diseño de Producto y la **firma Dirección de
+  Operaciones** (C1.13 en `C1_APPROVAL_BUTTONS`). Firmada abre la revisión
+  siguiente (si la respuesta del cliente no la abrió ya), lo anota en la
+  bitácora, regresa el proyecto a «Muestra» y guarda el PDF; después se marca
+  «aplicada». Sin descripción, causa y al menos un porqué (salvo cambio del
+  cliente), solución y fases no se firma; firmada no se borra. La respuesta
+  «pide cambios» del envío deja una en borrador. Pestaña «Cambios al
+  proyecto» (lista + «Nueva solicitud de modificación»), botón inteligente
+  «Modificaciones», menú SGI → Sistema → Solicitudes de modificación de
+  desarrollos, reporte `action_report_dev_change_request`, MCP.
+- **Agregado** **la ruta a la vista** en «Cotización»: cadena de cajas
+  artículo · operación · centro de trabajo (`sgi_dev_route_html`, de las
+  operaciones de las listas de materiales crudo → teñido → acabado), «Editar
+  ruta» abre la lista de materiales del artículo (o una nueva) y «Diagrama de
+  flujo» se imprime de ahí. La ruta sigue viviendo en la lista de materiales
+  (C1.04b, Diseño de Procesos); sin imagen por centro de trabajo (no hay catálogo de
+  imágenes: va vacío, no se inventa).
+- **Agregado** pestaña **«Expediente 8.3 / APQP»**: un renglón por requisito
+  de ISO 9001:2015 8.3.2 a 8.3.6 (planificación, entradas, controles de
+  revisión / verificación / validación, salidas, cambios) con la evidencia
+  que el proyecto ya tiene (✔ / ✘ / no aplica todavía), «Requisitos
+  cubiertos N de M», las cinco fases del APQP y en qué pestaña viven, y
+  «Imprimir expediente» (`action_report_dev_dossier`, incluye la ruta).
+  `_sgi_dev_dossier_extra` es el gancho con que `qb_costeo_sgi` agrega la
+  cotización aprobada y el precio en tarifa (C1.17). Nada se captura ahí.
+- **Migración** `19.0.57.137.0`: el rol «Aprueba» de C1.13 sin botón apunta
+  a «Firmar» de la solicitud de modificación y expone `sgi.dev.change.request`
+  al MCP; no crea documentos ni toca proyectos.
+- Pruebas: `tests/test_dev_change.py`.
+
+## 19.0.57.136.0 — 2026-10-08
+
+Revisión de Administración de Ventas, 2026-10-08 (revisión de la ficha 57.135 y su descripción del proceso):
+las pestañas del desarrollo siguen el orden del proceso C1, una por etapa con
+el nombre con que lo trabaja Administración de Ventas, y la firma de Dirección va después de la
+aprobación del cliente.
+
+- **Cambiado** pestañas de la ficha del desarrollo, en el orden en que se
+  trabaja: **Análisis de mercado industrial** (Administración de Ventas: lo comercial, tipo,
+  producto pedido, origen y contacto, uso, especificación, muestra física y
+  la tabla con lo que pide el cliente; «Proponer características del tipo») ·
+  **Análisis de proyecto** (Diseño de Producto: análisis de la muestra del cliente y
+  pruebas al laboratorio; Diseño de Procesos: diagrama de proceso, que vive en la ruta del
+  artículo; resultado, línea, checklist y la revisión que firma Administración de Ventas) ·
+  **Cotización** (código del artículo, «Generar artículos», ruta y «Diagrama
+  de flujo», y con `qb_costeo_sgi` las cotizaciones y «Nueva cotización») ·
+  **Aprobación del cliente** · **Solicitud de desarrollo** (control interno,
+  muestra en m y kg, volumen, precio, normas, empaque, firmas, «Imprimir
+  solicitud», materia prima) · **Muestra** (órdenes de muestra, lecturas de la
+  corrida, promedio, resultado, dictamen, «En certificado») · **Envío de
+  muestra** (envíos y reportes de conformidad) · **Retroalimentación del
+  cliente** (respuestas con su evidencia, aprobado por el cliente, en
+  especificación) · **Cambios al proyecto** (revisión vigente y bitácora de
+  revisiones) · **Pilotaje y liberación** (pilotajes, fichas,
+  especificaciones, diagrama de flujo, artículos) · **Tiempos**. Desaparecen
+  como pestañas «Comercial», «Producto y documentos» y «Revisiones»: su
+  contenido se reparte. Las pestañas de etapas pasadas quedan visibles.
+- **Cambiado** la tabla de características es una sola (`sgi_dev_line_ids`)
+  y cada pestaña la muestra con las columnas de su momento (cliente → muestra
+  → control interno → corrida → aprobación del cliente); Odoo 19 funde las
+  columnas de todas las apariciones en el mismo registro. Los renglones se
+  agregan y ordenan solo en «Análisis de mercado industrial».
+- **Cambiado** «Aprobar solicitud de desarrollo» (C1.07) aparece solo con la
+  aprobación del cliente registrada y folio FT, y no en Liberado ni Cerrado:
+  Diseño de Producto llena la solicitud después de que el cliente aprueba y Dirección de
+  Operaciones la firma después. La corrida de muestra sigue exigiendo la
+  firma.
+- Sin campos ni datos nuevos; sin migración. Las listas de órdenes, envíos,
+  pilotajes, fichas, especificaciones y certificados son de solo lectura.
+  Lo que Administración de Ventas describe y todavía no existe (aprobación para iniciar el
+  proyecto como documento con folio antes de la aprobación, solicitud de
+  modificación con 5 porqués, ruta como selección de centros de trabajo con
+  imagen, mapa ISO 9001 8.3 / APQP) queda como decisión de Jose en el plan.
+
+## 19.0.57.135.0 — 2026-10-08
+
+Jose 2026-10-08, 5.5: escalamiento por tiempo de los pasos del desarrollo (brief §6.13).
+
+- **Agregado** paso pendiente del desarrollo (`_sgi_dev_pending_step`, pestaña
+  Tiempos → «Paso pendiente» y «Horas de desarrollo en el paso»): sale de la
+  etapa de avance y de lo capturado (C1.02 sin resultado del análisis, C1.03
+  sin revisión de Ventas, C1.05, C1.06, y en «Muestra» C1.07 → C1.04 → C1.08 →
+  C1.09 → C1.10 → C1.11 → C1.12; «Respuesta del cliente» C1.12; «Pilotaje»
+  C1.14), con la fecha desde la que está pendiente. Las horas se cuentan **sin
+  la espera de materia prima**.
+- **Agregado** `sgi.dev.escalation` y cron cada hora «Desarrollo, avisos por
+  tiempo del paso pendiente»: un aviso («Por hacer» sobre el proyecto, clave
+  del SGI, sin repetir) por paso, nivel y persona; al avanzar el paso los
+  avisos se cierran solos con nota. Tres niveles: **responsable del paso**
+  (quien ejecuta la actividad de C1), **dueño del proceso** (primer nivel) y
+  **Dirección de Operaciones** (segundo nivel, puesto por nombre; en
+  producción el 230), que no recibe nada antes de su plazo. SGI → Sistema →
+  Avisos por tiempo de desarrollos; botón inteligente «Avisos por tiempo» en
+  el proyecto.
+- **Parámetros vacíos** (el brief propone 2 h, 4 h y «si se venció el día»,
+  sin confirmar): `dev_notice_executor_hours`, `dev_notice_owner_hours` y el
+  existente `dev_escalation_director_days` (días hábiles; también crea el rol
+  «Escala» de segundo nivel en las fichas de C1). Sin parámetros el cron no
+  avisa.
+- **Migración** `19.0.57.135.0`: solo MCP.
+
+## 19.0.57.134.0 — 2026-10-08
+
+Jose 2026-10-08: la ficha del desarrollo con las pestañas separadas de las
+nativas, los botones en su lugar y el orden del proceso.
+
+- **Cambiado** ficha del proyecto de desarrollo: dos secciones de pestañas,
+  «Desarrollo de producto» (notebook propio) antes de «Proyecto» (las
+  nativas de Odoo: Descripción, Ajustes…). En proyectos que no son
+  desarrollo no cambia nada.
+- **Cambiado** pestañas del desarrollo en el orden del proceso: **Solicitud**
+  (datos, tabla, firmas, muestra física y su etiqueta), **Análisis y
+  factibilidad** (identidad, resultado, parecidos y pruebas, revisión de
+  Ventas, checklist), **Aprobación del cliente** (evidencia y registro),
+  **Muestra** (código del artículo y «Generar artículos», materia prima,
+  requisición y reloj de materia prima), **Producto y documentos** (ficha
+  interna, especificaciones, reporte de conformidad, diagrama de flujo,
+  artículos del desarrollo con su estado), Comercial, Revisiones y
+  **Tiempos** (horas, reloj por etapa, esperas de materia prima).
+- **Cambiado** botones: la acción que mueve la etapa va en el **encabezado**
+  junto a la barra de etapas y solo aparece en su etapa («Aprobar
+  solicitud», «Aprobar análisis y factibilidad», «Registrar aprobación del
+  cliente», «Asignar folio FT» si falta, «Pedir corrida de muestra»,
+  «Registrar envío de muestra», «Registrar respuesta del cliente», «Subir
+  revisión», «Cerrar: producto de línea», «Cerrar: no factible»). Los
+  contadores («N orden(es)…») pasan a **botones inteligentes** (laboratorio
+  abiertas/total, requisiciones, órdenes de muestra, envíos, certificados,
+  pilotajes, fichas internas, especificaciones). Lo contextual queda junto
+  a sus datos. Mismos campos y métodos: ningún botón se quitó ni se agregó
+  (`alias_id` sale de la pestaña: ya está en Ajustes).
+- **Cambiado** el aviso «falta el cliente» va arriba de la hoja, como el de
+  costo, no entre las dos secciones.
+- La pestaña «Solicitud de desarrollo» se movió de `sgi_dev_request_views.xml`
+  a `sgi_dev_project_views.xml` (una sola herencia arma la sección).
+- Sin migración.
+
+## 19.0.57.133.0 — 2026-10-08
+
+Jose 2026-10-08, 5.4: pilotaje y estudio de habilidad (brief §6.12 y §8).
+
+- **Agregado** `sgi.dev.pilot` (SGI → Sistema → Pilotajes de desarrollos y
+  desde el proyecto): cuando el artículo está «En pilotaje», cada orden de
+  producción terminada (no las de muestra) suma su lote hasta completar los
+  del parámetro «Lotes del pilotaje» (vacío: tres). **Un lote no conforme no
+  cuenta**: libera su lugar.
+- **Lecturas por lote**: el laboratorio captura N lecturas por lote de cada
+  característica marcada **«Crítica (estudio de habilidad)»** en la tabla
+  del proyecto (marca nueva en el catálogo y en los renglones, apagada). El
+  dictamen del lote compara la media de cada crítica con la especificación
+  del cliente.
+- **Estudio de habilidad**: Cp y Cpk por característica crítica con las
+  lecturas de los lotes conformes, contra la especificación del cliente,
+  sigma muestral; PDF al cerrar el pilotaje.
+- **Parámetros vacíos** (el brief no los define): lecturas por lote (sin
+  valor no se exigen) y Cpk mínimo (sin valor el estudio informa y no
+  dictamina).
+- **Migración** `19.0.57.133.0`: solo MCP.
+
+## 19.0.57.132.0 — 2026-10-08
+
+Jose 2026-10-08, 5.3: ficha técnica interna y especificaciones del producto
+(brief §6.12), dos documentos distintos impresos desde la tabla.
+
+- **Agregado** `sgi.dev.tech.sheet` (Ficha técnica interna, F-P-D01-24):
+  toma la tabla del proyecto con los dos juegos de límites (especificación
+  del cliente y **control interno**), firmas de los seis puestos del brief
+  (parámetro «Puestos que firman la ficha técnica interna», llenado por
+  nombre) y «Aprobar ficha (C1.15)»: el botón al que apunta el rol 1928
+  (Administrador de Ventas) por la regla nativa de Studio. Aprobada queda
+  vigente con su PDF y sustituye a la anterior. Nunca se entrega al cliente.
+- **Agregado** `sgi.dev.customer.spec` (Especificaciones del producto,
+  F-P-D01-08): documento al cliente, bilingüe, solo con los renglones «En
+  especificación del cliente» y su tolerancia (el control interno no se
+  copia), uso principal del proyecto e instrucciones de cuidado de la lista
+  nueva «Instrucción de cuidado» (con nombre en inglés; nace vacía).
+- Ambos desde SGI → Sistema y desde la pestaña Desarrollo del proyecto
+  (etapas Respuesta del cliente, Pilotaje y Liberado); en borrador «Tomar la
+  tabla del proyecto» la vuelve a copiar; emitidos no cambian ni se borran.
+- **Migración** `19.0.57.132.0`: puestos que firman por nombre, rol de C1.15
+  al botón de la ficha, MCP. `quimibond_sgi_studio` 1.0.5 crea la regla
+  nativa al cargar.
+
+## 19.0.57.131.1 — 2026-10-08
+
+- Corrección del build de `main` (07:17 UTC): el filtro «Con no conformes» de
+  los reportes de conformidad buscaba por `nonconforming_count`, un cálculo
+  no almacenado. Los contadores del certificado (renglones, sin resultado,
+  no conformes) pasan a almacenados. Sin migración.
+
+## 19.0.57.131.0 — 2026-10-08
+
+Correcciones de Jose (2026-10-08, puntos 3, 4 y 5.1).
+
+- **C1.11** se atribuye a quien dio el dictamen (`verdict_by_id`,
+  `date_verdict`), no a `write_uid`.
+- **Aprobaciones que «se caían» al actualizar**: las migraciones del SGI
+  corren antes de que `quimibond_sgi_studio` entre al registro; sin el
+  satélite todo botón se lee «por sincronizar» y así quedaban grabados los
+  faltantes de C1.02 y C1.11 (06:31 UTC) y fallaba el intento de sincronizar
+  C1.10 en 57.127.0. Con el satélite instalado pero sin cargar, los faltantes
+  de aprobación por botón no se dictaminan; el satélite (1.0.4) sincroniza y
+  refresca al cargar. Los roles 1202 y 1203 de C1.10 se sincronizaron por MCP
+  el mismo día (reglas 74 y 75).
+- **C1.05**: las entradas «Lista de materiales» y «Ruta preliminar»
+  (mrp.bom) se ligan con la cotización por el artículo del proyecto
+  (`sgi_dev_product_tmpl_ids` nuevo en el proyecto).
+- **Envío de muestra**: cuando el cliente aprueba, las características que
+  van a su especificación quedan marcadas «Aprobado por el cliente».
+- **Migración** `19.0.57.131.0`: mediciones y «match» de las entradas de C1.05.
+
+## 19.0.57.130.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.4: reporte de conformidad impreso desde la tabla.
+
+- **Agregado** `sgi.dev.coa` (SGI → Sistema → Reportes de conformidad de
+  desarrollos; botón «Reporte de conformidad» en el proyecto y en el envío de
+  muestra): un certificado por lote con los renglones de la tabla marcados
+  **«En certificado»**, el valor obtenido en el lote (precargado con el
+  promedio de la corrida) y si cumple **la especificación del cliente**; el
+  control interno nunca se imprime (brief §5.1). PDF bilingüe con la clave
+  del formato del lote (F-P-C07-01).
+- **Emitir** sella quién y cuándo, genera el PDF y lo adjunta al certificado,
+  al envío (viaja en el correo al cliente) y, si el envío tiene baja de
+  almacén, como CoA de esa salida (circuito de CoA de las entregas). Sin valor
+  obtenido en algún renglón no se emite; emitido no se borra.
+- Desde el envío: un certificado por lote de los rollos avisados, con sus
+  metros y rollos; no se repite.
+- **Migración** `19.0.57.130.0`: solo expone los modelos nuevos al MCP.
+
+## 19.0.57.129.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.3: envío de la muestra y respuesta del cliente
+como registro propio (brief §6.11).
+
+- **Agregado** `sgi.dev.shipment` (SGI → Sistema → Envíos de muestra de
+  desarrollos; también desde la pestaña Desarrollo del proyecto, en las
+  etapas Muestra y Respuesta del cliente): fecha, medio de entrega
+  (paquetería, recoge el cliente, entrega directa), paquetería de la lista
+  «Paquetería» y guía, **rollos avisados** con lote, metros, ancho y kilos,
+  documentos que acompañan (CoA del lote cuando el bloque 3.4 lo imprima).
+- **Candado**: sin el dictamen de Diseño de Producto sobre la corrida (C1.11)
+  no hay baja ni envío. «Crear baja de muestras» hace la salida con el tipo
+  de operación del parámetro (producción: 267 «Baja de Muestras»), el
+  artículo y los metros de los rollos; al validarse la baja el envío queda
+  registrado y el proyecto pasa a «Respuesta del cliente». Sin baja en Odoo,
+  «Registrar envío» exige lo mismo.
+- **Correo listo** para Administración de Ventas (plantilla con rollos,
+  medio y guía; actividad al puesto del parámetro): al mandarlo quedan fecha
+  y quién.
+- **Respuesta del cliente** como selección con medio, fecha, quién, referencia
+  y **evidencia adjunta obligatoria**: aprueba (proyecto a Pilotaje, artículo
+  «En pilotaje»), pide cambios (sube revisión con lo que pide y vuelve a
+  Muestra) o rechaza (motivo de la lista «Motivo de rechazo del cliente» y
+  cierre sin producto).
+- **Seguimiento** si el cliente no contesta: cron diario, días en parámetro
+  (vacío: apagado, el brief no lo define).
+- **Medición**: C1.12 por el envío registrado (entregable nuevo C1-ENVIO);
+  C1.13 por la respuesta registrada (C1-RESPUESTA deja el paso por la etapa).
+- Listas nuevas sin renglones: «Paquetería» y «Motivo de rechazo del cliente».
+- **Migración** `19.0.57.129.0`: parámetros por nombre (baja «Baja de
+  Muestras», aviso «Administrador de Ventas») si están vacíos; mediciones;
+  MCP.
+
+## 19.0.57.128.2 — 2026-10-08
+
+- Corrección del build de `main` (06:08 UTC): en la vista heredada de la
+  orden de fabricación (57.125.0) el ancla `//field[@name='origin']` caía
+  dentro de la sub-vista de `stock.move` («El campo sgi_dev_project_id no
+  existe en el modelo stock.move»). Los campos del desarrollo van ahora en una
+  pestaña «Desarrollo» del cuaderno de la orden. Sin migración.
+
+## 19.0.57.128.1 — 2026-10-08
+
+- Corrección del build de `main` (05:56 UTC): `sgi_dev_process_sheet` hereda
+  `sgi.machine.sheet` y se importaba antes que él en `models/__init__.py`
+  («Model 'sgi.machine.sheet' does not exist in registry»). El import va
+  después. Sin migración.
+
+## 19.0.57.128.0 — 2026-10-08
+
+Jose 2026-10-08, bloque 3.1: aprobación del cliente para iniciar.
+
+- **Registro de cómo aprobó el cliente** en la pestaña Desarrollo: medio de
+  lista (correo, orden de compra, WhatsApp, cotización firmada; «Dirección»
+  para los internos), fecha, quién aprobó (contacto del cliente), referencia
+  y **evidencia adjunta**. «Registrar aprobación del cliente» sella quién y
+  cuándo y pasa el proyecto a «Muestra», donde recibe su folio FT.
+- **Compuerta de la etapa «Muestra»:** sin ese registro el proyecto no entra
+  a «Muestra» ni más adelante (los 74 que ya están ahí no se tocan; cerrar
+  sin producto no la pide). La compuerta de Dirección de Operaciones del
+  bloque E deja de aplicar al cambio de etapa (el folio se asigna antes de
+  que Selena elabore la solicitud que Jorge aprueba) y se queda donde
+  corresponde: la corrida de muestra (asistente y orden de fabricación).
+- La requisición de materia prima también cierra la espera cuando se
+  aprueba o rechaza desde Aprobaciones (los botones, no solo cancelar).
+- Sin migración.
+
+## 19.0.57.127.0 — 2026-10-08
+
+Correcciones de Jose a C1 tras revisar producción en 57.123.2 (punto 1).
+
+- **C1.04b:** canal «Odoo»; la ruta se atribuye a quien la asigna: la lista
+  de materiales gana «Ruta asignada por» y «Ruta asignada el», que se sellan
+  al guardar las operaciones, y C1-RUTA mide con ellos (ya no `write_uid`).
+  El plazo se queda vacío a propósito.
+- **C1.13 y C1.14:** el reloj por etapa (`sgi.dev.stage.log`) guarda quién
+  movió el proyecto a la etapa (`user_id`); C1-RESPUESTA y C1-APROBADO miden
+  con ese campo y se apaga «quién lo pasó a su estado (historial)».
+- **C1.09 y C1.10 por proyecto:** C1-OP-MUESTRA cuenta las órdenes de
+  muestra nacidas del proyecto y emitidas (confirmadas) por Planeación
+  (`sgi_dev_issued_by_id`); C1-MUESTRA, las corridas validadas con el botón
+  nuevo **«Validar corrida»** de la orden terminada (`sgi_dev_run_validated_by_id`).
+  Las órdenes de julio del tipo 86 sin proyecto dejan de contar.
+- **Aprobaciones de C1.10** (supervisores de producción y Jefe de
+  Manufactura) apuntan al botón «Validar corrida»; la migración intenta
+  sincronizarlas y anota el estado. Ese botón es también el enganche de las
+  fichas de proceso de tintorería y acabado que construye Jose Sacramento.
+- **Migración:** lo anterior; no toca nombres, pasos, roles ni el menú de
+  C1.08 que Jose cambió a mano.
+
+## 19.0.57.126.0 — 2026-10-08
+
+C1, bloque G (brief §6.7: Ruta y fichas de proceso), acotado a lo que es del
+SGI. **Las fichas de tintorería y acabado no van aquí:** las construye Jose
+Sacramento en `quimibond_ficha_tecnica_tela` (decisión de Jose 2026-10-08);
+el punto de enganche es la orden de muestra (`mrp.production.sgi_dev_project_id`,
+sus órdenes de trabajo y el botón «Validar corrida» de 57.127.0).
+
+- **Diagrama de flujo de proceso (F-P-D01-32) impreso desde la ruta:** botón
+  en la pestaña Desarrollo; lista las operaciones de la lista de materiales
+  de crudo → teñido → acabado con su centro de trabajo y tiempo estándar. No
+  se dibuja.
+- **Ficha de tejido (`sgi.machine.sheet`):** firmas corregidas a puestos
+  vigentes (Propuso: Diseño y Desarrollo de Procesos; Validó: Jefe de
+  Manufactura, parámetro sembrado por nombre; Midió: Laboratorio; el
+  mecánico participa), botones «Proponer» / «Validar», proyecto y orden de
+  la corrida, y por parámetro el valor real, número de ajuste y motivo de
+  lista (catálogo «Motivo de ajuste de parámetro» de `sgi.dev.option`, sin
+  renglones hasta que Diseño de Procesos los defina). Las columnas no
+  cambian de nombre (producción tiene 0 fichas).
+- **Migración:** siembra el puesto que valida la ficha de tejido si está
+  vacío y expone la ficha al MCP.
+
+## 19.0.57.125.0 — 2026-10-08
+
+C1, bloque F (brief §6.10: Orden de muestra).
+
+- **«Pedir corrida de muestra»** en la pestaña Desarrollo del proyecto
+  (`sgi.dev.sample.wizard`): artículo del proyecto (crudo por omisión, o
+  teñido / acabado), cantidad, fecha deseada de máquina, tipo de operación y
+  ubicación del sobrante. Exige la Solicitud de desarrollo aprobada (bloque
+  E) y la lista de materiales del artículo.
+- **Cantidad sugerida con motivo:** la mayor entre lo que pide el cliente
+  (cantidad de la muestra de la solicitud), los metros PQ del parámetro
+  (50 m) entre el rendimiento de primera esperado (parámetro vacío: 100 %) y
+  el mínimo de baño de tintorería si lleva teñido (parámetro vacío: no
+  entra). Se pasa a kg con el rendimiento m/kg de la tabla de
+  características (1000 / (masa × ancho)). Diseño de Procesos la puede
+  ajustar.
+- **La orden le llega armada a Planeación:** artículo, folio FT en origen,
+  tipo de operación «Tejido Desarrollo» (parámetro, sembrado por nombre),
+  lista de materiales y ruta, sobrante a 31 Desarrollos (parámetro,
+  sembrado por nombre), `sgi_dev_project_id` en la orden; actividad al
+  Planeador de Producción (parámetro, sembrado por nombre).
+- **Fecha de máquina en el proyecto:** una tarea «Corrida de muestra …» con
+  la fecha deseada; al cambiar `date_start` de la orden, la tarea se mueve
+  sola. Al terminar la orden, el proyecto lo anota.
+- Botón «n orden(es) de muestra» en el proyecto; campos en la orden de
+  fabricación. Ajustes → SGI → Desarrollo de producto: seis parámetros.
+- **Migración:** siembra tipo de operación, ubicación y puesto de Planeación
+  por nombre y los 50 m PQ si están vacíos.
+
+## 19.0.57.124.0 — 2026-10-08
+
+C1, bloque E (brief §6.9: Solicitud de desarrollos y arranque).
+
+- **Compuerta de Dirección de Operaciones.** Sin la aprobación de la
+  solicitud (botón de C1.07) el proyecto no pasa a «Muestra» ni se confirma
+  una orden de fabricación de un artículo en desarrollo. Los proyectos que
+  ya estaban en Muestra o después no se tocan.
+- **Aviso a las partes interesadas** al aprobar, con el PDF de la solicitud
+  adjunto (la clave nueva F-C1-01 / 11 / 15 / 16 ya salía por
+  `sgi.format.map`): puestos del parámetro
+  `quimibond_sgi.dev_request_notify_job_ids` (la migración siembra Diseño de
+  Procesos, Jefe de Manufactura, Coordinador de Laboratorio y MP, Jefe de
+  Inventarios y Almacenes e Ingeniero de Calidad por nombre) más las personas
+  de `dev_request_notify_user_ids` (vacío: Inspección no tiene puesto, lo
+  decide Jose). Ajustes → SGI → Desarrollo de producto.
+- **Existencias de la materia prima de la muestra** (`sgi.dev.mp.line`): al
+  aprobar, y con el botón «Revisar existencias», se explota la lista de
+  materiales del artículo hasta las hojas compradas con la cantidad de la
+  muestra (kg o m según el artículo) y se compara contra la existencia libre.
+- **Requisición a Compras ligada al proyecto** (`approval.request` de la
+  categoría de compras, `sgi_dev_project_id`; sustituye al Word F-P-D01-16)
+  con lo que falta; arranca el reloj de materia prima y lo detiene cuando las
+  compras se recibieron o la requisición se rechazó (al cambiar de estado y
+  cron diario `cron_sgi_dev_mp_wait`). La requisición cuenta en S1-NECESIDAD
+  como las demás.
+- Sin cambios en las fichas de C1 ni en los datos de Jose.
+- **Migración:** siembra el parámetro de puestos si está vacío.
+
+## 19.0.57.123.2 — 2026-10-08
+
+- Corrección de producción: la tarjeta de un desarrollo tronaba con
+  `KeyError: 'context'` al abrirla. `sale_project` extiende
+  `action_view_tasks`, carga después del SGI (no es dependencia) y escribe
+  `action['context'][...]` sobre la acción que devuelve `super()`: la ficha
+  que abre el SGI no traía `context`. Ahora la acción lleva `context` y
+  `domain`.
+- La herencia de la tarjeta ya no renombra los enlaces «Tareas»
+  (`a[@name='action_view_tasks']`): `industry_fsm` los apunta a su acción con
+  el mismo xpath y, según el orden de carga, fallaba su herencia o la nuestra
+  («no puede ser localizado en la vista padre», build de la rama de
+  producción 2026-10-08 03:57). La tarjeta sigue mostrando folio, etapa y
+  horas; las tareas se abren desde el botón de la ficha.
+
+## 19.0.57.123.1 — 2026-10-08
+
+### Corregido
+
+- **El build de producción de 57.123.0 falló** (2026-10-08 03:21 UTC) en la
+  migración que crea C1.04b: la actividad nacía «por su entregable» sin
+  entregable y, como el procedimiento C1 está vigente, la validación estricta
+  la rechazó (`_sgi_check_measure_strict`) y el update se revirtió completo;
+  producción siguió en 57.120.3. Ahora `C1-RUTA` se crea antes
+  (`_sgi_dev_ensure_c1_deliverable`) y C1.04b nace ya ligada a él; si el
+  modelo del entregable no existiera, la actividad nace «manual». Sin cambios
+  de datos nuevos: las migraciones 57.121.0 a 57.123.0 vuelven a correr
+  completas en el siguiente build.
+
+## 19.0.57.123.0 — 2026-10-07
+
+**Ajustes al modelo del SGI para C1** (contexto de Jose tras el despliegue,
+punto 3).
+
+### Agregado
+
+- `sgi.process.activity.number_label`: numeral propio para intercalar un
+  sub-paso (C1.04b) sin renumerar el proceso; el paso sigue siendo único y
+  el orden lo da la secuencia.
+- **C1.04 partida en dos.** C1.04 «Dar de alta el artículo de desarrollo con
+  su lista de materiales» (ejecuta Diseño y Desarrollo de Producto) y C1.04b
+  «Asignar la ruta preliminar y los centros de trabajo» (ejecuta Diseño y
+  Desarrollo de Procesos, participa Producto, escala como C1.04). C1.04b
+  recibe la lista de materiales (plazo vacío), entrega y se mide con el
+  entregable nuevo `C1-RUTA` (`mrp.bom` con operaciones de artículos en
+  desarrollo); C1.05 recibe también la ruta con el plazo de la lista de
+  materiales. De C1.04 solo se recorta el texto que se va a C1.04b; `on_fail`
+  y «contra qué» de C1.04b quedan vacíos (los define Jose).
+- **Aprobaciones ligadas a su botón real:** C1.02 y C1.03 → «Aprobar análisis
+  y factibilidad» del proyecto; C1.07 → botón nuevo «Aprobar solicitud
+  (Dirección de Operaciones)», que firma «Aprobó» (el campo ya no se captura a
+  mano) y sella `sgi_dev_approved_date`; C1.11 → botón nuevo «Dictamen de
+  Diseño» en la solicitud de laboratorio (`verdict_by_id`, `date_verdict`,
+  solo con la solicitud medida y sin renglones pendientes). Se sincronizan con
+  el satélite de Studio si está; si no, quedan «Por sincronizar». C1.10 (Jefe
+  de Manufactura) y C1.15 no se tocan.
+- **Escalamiento de segundo nivel:** Ajustes → SGI → «Días hábiles para
+  escalar a Dirección de Operaciones (C1)» (`quimibond_sgi.dev_escalation_director_days`).
+  Vacío o 0: no se crea nada. Con días, en las actividades de C1 que ejecuta
+  Diseño y Desarrollo de Producto o de Procesos se crea o actualiza el renglón
+  «Escala» a Dirección de Operaciones; el primer nivel (dueño del proceso) se
+  conserva. Guardar Ajustes vuelve a sincronizar.
+
+### Migración
+
+`migrations/19.0.57.123.0/post-migrate.py`: parte C1.04, liga las
+aprobaciones y sincroniza el escalamiento (hoy sin días: no crea nada).
+Prefijo `SGI 57.123.0` en el log con el paso y secuencia de C1.04b, cada
+aprobación ligada con su estado y los escalamientos tocados.
+
+### Pruebas
+
+`tests/test_dev_process.py`: partición idempotente sin renumerar, ligas de
+aprobación, escalamiento según parámetro y desde Ajustes, botones de firma y
+dictamen.
+
+## 19.0.57.122.0 — 2026-10-07
+
+**Uso diario del proyecto de desarrollo** (contexto de Jose tras el
+despliegue, punto 4).
+
+### Agregado
+
+- **La tarjeta de un desarrollo abre su ficha.** `action_view_tasks` devuelve
+  el formulario cuando el proyecto es desarrollo (no plantilla); el botón de
+  tareas de la ficha y los enlaces «Tareas» de la tarjeta pasan por
+  `action_sgi_dev_view_tasks` y siguen abriendo las tareas. Nadie encontraba
+  «⋮ → Ajustes».
+- **Tarjeta del tablero:** folio FT (o «Sin folio FT»), etapa con horas en la
+  etapa actual y aviso «Falta el cliente». El cliente ya se mostraba.
+- **Características del tipo, solas:** al crear un desarrollo y al elegir el
+  tipo con la tabla vacía se proponen las del catálogo
+  (`_sgi_dev_autoload_lines`). Con la tabla llena, cambiar el tipo no agrega
+  nada; `sgi_dev_no_autoload` en el contexto lo apaga. El 491 llevaba un día
+  en Análisis con 0 renglones.
+- **Lista «Desarrollos de producto»** (SGI → Sistema): folio, nombre,
+  cliente y etapa editables en la lista, origen, horas en la etapa,
+  características, responsable, actividades y última modificación; renglón
+  rojo cuando falta el cliente. Para que Jessica ubique los 74 que la
+  migración dejó en Muestra. Nada se mueve por código.
+- **Asistente «Marcar desarrollos existentes»** (SGI → Sistema, jefes de
+  proyecto): propone los proyectos activos con nombre de código de artículo
+  en cualquier idioma o en la columna «Por revisar» (39 + 14 en producción);
+  la persona quita los que no sean y marca varios a la vez. No mueve de
+  etapa; casilla opcional para proponer las características del tipo general.
+- **Aviso en la ficha** cuando el origen es cliente y falta el cliente
+  (`sgi_dev_missing_partner`, también en la tarjeta y la lista).
+- MCP: `sgi.dev.similar` y sus renglones, lectura. Los demás modelos nuevos
+  ya estaban expuestos desde 57.120.2.
+
+### Migración
+
+`migrations/19.0.57.122.0/post-migrate.py`: solo expone los dos modelos al
+MCP. Sin cambios de datos.
+
+### Pruebas
+
+`tests/test_dev_board.py`: tarjeta → ficha y tareas alcanzables, carga de
+características al crear y al elegir tipo, candidatos y marcado del
+asistente, bandera de cliente faltante y carga de las vistas.
+
+## 19.0.57.121.0 — 2026-10-07
+
+**Las fichas de C1 se miden con el proyecto de desarrollo** (contexto de Jose
+tras el despliegue, punto 2). Varias actividades seguían midiéndose con las
+tareas de la plantilla vieja o con el AMEF: salían en verde sin medir el
+proceso nuevo. La medición cuelga del entregable (`measure_method =
+entregable`), así que se re-apuntan los entregables por código y las
+actividades vuelven a copiar modelo, filtro, fecha y usuario.
+
+### Agregado
+
+- `project.project.sgi_dev_analysis_date` y `sgi_dev_analysis_by_id` (se
+  sellan al capturar el resultado del análisis) y `sgi_dev_approved_date` (al
+  firmar «Aprobó» en la solicitud). Con el contexto `sgi_dev_migration` no se
+  sella nada.
+- `sgi.dev.stage.log.stage_key`: clave de la etapa de avance guardada en el
+  reloj (filtrar «pasó por Respuesta del cliente» sin ids).
+- Entregable nuevo `C1-MP-ESPERA` (`sgi.dev.mp.wait`), que C1.08 entrega y
+  con el que se mide; `S1-NECESIDAD` sigue como lo que recibe Compras.
+- `_sgi_dev_apply_c1_measures()` (idempotente) y `_sgi_dev_backfill_measure_dates()`.
+
+### Cambiado
+
+| Ficha | Antes | Ahora |
+|---|---|---|
+| C1.02 | `project.task` en etapa «ELEMENTOS DE ENTRADA» | proyectos con `sgi_dev_analysis_result`; fecha y usuario de captura |
+| C1.03 | `sgi.fmea` | proyectos con `sgi_dev_review_state = aprobado`; `sgi_dev_review_date` / `sgi_dev_reviewed_by_id` |
+| C1.07 | cualquier tarea de cualquier desarrollo | proyectos con folio FT y `sgi_dev_approved_by_id`; `sgi_dev_approved_date` |
+| C1.08 | `approval.request` de dos categorías de toda la empresa | esperas de materia prima del desarrollo (`sgi.dev.mp.wait`) |
+| C1.11 | `project.task` en etapa «VERIFICACI» | `sgi.dev.lab.request` en estado «medida»; `date_measured` |
+| C1.13 | `project.task` en etapa «RETROALIMENTACI» | paso del proyecto por «Respuesta del cliente» (`sgi.dev.stage.log`) |
+| C1.14 | `project.task` en etapa «APROBACI» | paso del proyecto por «Pilotaje» (`sgi.dev.stage.log`) |
+
+C1.05 sigue manual hasta que exista la aprobación de la cotización (costeo
+v2). Los nombres de los entregables describen la fuente nueva; nombre, pasos,
+criterios, menú, formatos y roles de las fichas no se tocan (son los que Jose
+capturó en la base). `quimibond_sgi_mapa` 1.2.0 trae los mismos entregables.
+
+### Migración
+
+`migrations/19.0.57.121.0/post-migrate.py`: fechas de análisis y aprobación
+desde el seguimiento del chatter (sin rastro queda vacío, no se inventa);
+entregables re-apuntados y `C1-MP-ESPERA` creado y ligado a C1.08. Prefijo
+`SGI 57.121.0` en el log, con el modelo y filtro final de cada entregable.
+
+### Pruebas
+
+`tests/test_dev_measure.py`: sellos de fecha y usuario, clave de etapa en el
+reloj, re-apuntado idempotente de los entregables y que lo medido existe.
+
+## 19.0.57.120.3 — 2026-10-07
+
+**La migración de C1 por fin encuentra los proyectos: busca en todos los
+idiomas.** 57.120.2 sí corrió en producción (2026-10-07 00:08 UTC: movió a
+Muestra los 3 proyectos que ya tenían bandera y abrió sus relojes), pero
+marcó 0 proyectos FT-, no escribió el puesto de laboratorio y dejó activas
+las etapas viejas. La causa real no era el savepoint del alias (esa
+corrección se queda, pero no explicaba el síntoma): los 75 proyectos y todos
+los demás tenían `write_date` 23:22:46 por el recálculo de campos nuevos,
+no por escrituras perdidas.
+
+### Corregido
+
+- **Causa:** `project.name`, `project.project.stage.name` y `hr.job.name`
+  son traducibles y la migración corría sin idioma en el contexto, es decir,
+  sobre en_US. Los proyectos se crearon como «Análisis de proyecto …» y se
+  renombraron «FT-…» en es_MX, el idioma de los usuarios; en en_US conservan
+  el nombre original. `search([('name', '=ilike', 'FT-%')])` encontraba 0;
+  «Cancelada» y «ANALISIS DE PROYECTOS» no coincidían con el mapa de etapas;
+  «COORDINADOR DE LABORATORIO Y MP» no coincidía con el puesto por defecto.
+- Helpers `_sgi_dev_lang_names` / `_sgi_dev_lang_keys` (valores de un campo
+  traducible en todos los idiomas instalados, el de la compañía primero) y
+  `_sgi_dev_search_langs` (búsqueda unida por idioma). Los usan la
+  migración de datos, la tabla etapa → cliente, el mapa de etapas viejas, el
+  archivado de etapas y el puesto autorizador de laboratorio.
+- `_sgi_dev_legacy_stage_target(stage, project)`: un proyecto **sin folio
+  FT ni nombre FT-** en una etapa de cliente va a «Análisis», no a «Muestra»
+  (el folio nace al llegar a Muestra). Repara el 491 («Análisis de proyecto
+  MENCHACA INNOVACIÓN», que Jessica había arrastrado a una columna nueva
+  «MENCHACA INNOVACIÓN» y 57.120.2 dejó en Muestra sin folio): lo que esté en
+  Muestra sin folio, sin nombre FT- y sin resultado de análisis «línea» o
+  «no factible» regresa a Análisis y su reloj de etapa se corrige.
+
+### Migración
+
+`migrations/19.0.57.120.3/post-migrate.py`: corre con el idioma de la
+compañía en el contexto y repite los seis pasos de 57.120.2 (ahora con las
+búsquedas por idioma). Primera línea del log: idioma, idiomas instalados y
+cuántos proyectos FT- encontró; si dice 0, el problema sigue siendo otro.
+Prefijo `SGI 57.120.3`. Idempotente.
+
+### Pruebas
+
+`test_06`: el proyecto FT- se crea con nombre «Análisis de proyecto …» en
+en_US y «FT-050/2025 …» en es_MX, como producción; la etapa «Cancelada» se
+llama «Cancelled» en en_US; un análisis arrastrado a la columna de un
+cliente va a Análisis; lo que quedó en Muestra sin folio regresa a Análisis.
+`test_dev_analysis.test_02`: el puesto se encuentra aunque solo en es_MX
+contenga «Coordinador de Laboratorio».
+
+## 19.0.57.120.2 — 2026-10-07
+
+**Corrección urgente del despliegue de C1 en producción (2026-10-06 23:22
+UTC).** El código subió de 57.116.0 a 57.120.1 pero la migración de datos de
+57.118.0 no quedó en la base: los 77 proyectos FT- siguieron sin bandera,
+folio, cliente ni origen; las plantillas 480 y 481 y el proyecto 490 quedaron
+renombrados «Análisis» en en_US (los usuarios en es_MX siguieron viendo el
+nombre viejo, por eso «desaparecieron» del filtro y del buscador).
+
+### Corregido
+
+- **Causa:** el gancho de `write` que nombra el alias de correo envolvía la
+  escritura en `cr.savepoint()` con flush previo y un `except` mudo; cuando el
+  flush de los proyectos falló dentro de ese bloque, las escrituras pendientes
+  se perdieron sin aviso. Las plantillas (sin folio) sí pasaron. Además el
+  nombre es traducible: un `write` sin idioma solo cambia en_US.
+- Los ganchos de `write`/`create` del desarrollo no hacen nada con el
+  contexto `sgi_dev_migration`; la migración escribe los datos y los nombres
+  en **todos los idiomas** y hace `flush` al final de cada paso para que un
+  error detenga el update y se vea.
+- El alias se escribe en un savepoint sin flush, solo si la base tiene dominio
+  de alias, y un fallo deja aviso en el log en vez de tragarse datos.
+- El nombre lo arma Odoo solo en desarrollos con folio o producto; las
+  plantillas y los análisis sin producto conservan el nombre capturado.
+- Filtros de medición de C1: además de la bandera, **excluyen plantillas**
+  (`is_template = False`), en la base y en `quimibond_sgi_mapa` 1.1.5.
+
+### Migración
+
+- `migrations/19.0.57.120.2/post-migrate.py` (idempotente; log con prefijo
+  «SGI 57.120.2»): tabla etapa → cliente → etapa destino; marca los FT-,
+  plantillas y análisis con folio, producto, revisión, cliente por «uso» o
+  «nombre», origen interno para QUIMIBOND; restaura los nombres de plantillas
+  y análisis y unifica los demás en todos los idiomas; reescribe los filtros
+  de medición; **pasa los desarrollos a las etapas de avance** (Cancelada →
+  Cerrado sin producto, Hecha → Liberado, ANALISIS DE PROYECTOS → Análisis, lo
+  demás → Muestra, porque un folio FT implica aprobación del cliente) y
+  archiva las etapas viejas que quedan sin proyectos; puesto autorizador de
+  laboratorio; y **expone al MCP** los modelos `sgi.dev.*` y
+  `ficha.tecnica.*` (lectura, y escritura en catálogos y renglones; sin
+  borrado) también en la instalación limpia (`post_init_hook`).
+
+### Verificado
+
+- El cambio de cliente SHAWMUT CORPORATION → SHAWMUT LLC en los proyectos
+  465, 466 y 489 lo hizo Jessica Francisco a mano el 2026-10-06 entre 19:54 y
+  20:02 UTC, antes del despliegue; la migración nunca cambia un cliente ya
+  capturado.
+
+## 19.0.57.120.1 — 2026-10-06
+
+### Corregido
+
+- Aviso del build de `main` (Odoo.sh): dos campos de `project.project` con la
+  misma etiqueta «Solicitudes de laboratorio» (`sgi_dev_lab_request_ids` y
+  `sgi_dev_lab_request_count`). El contador pasa a «Número de solicitudes de
+  laboratorio».
+
+## 19.0.57.120.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 4: parecidos, laboratorio y
+factibilidad** (brief 6.3 a 6.5). Sustituye a Experiencias previas, a la
+Solicitud de pruebas para laboratorio y al Checklist de factibilidad.
+
+### Agregado
+
+- **Artículos parecidos** («Buscar parecidos» en la pestaña Desarrollo):
+  asistente con los artículos de línea y de desarrollos anteriores
+  ordenados por cercanía en peso, ancho, composición, dibujo y galga (leídos
+  del código según el DAT P-D02-01; más de 60 % de diferencia no se
+  propone). «Dentro de tolerancia» = peso y ancho dentro de lo que pide el
+  cliente con la misma composición, dibujo y galga. «Usar como base» liga el
+  artículo al proyecto y propone producto de línea o producto nuevo; Diseño
+  de Producto confirma.
+- **Solicitud de pruebas a laboratorio** (`sgi.dev.lab.request`, menú SGI →
+  Sistema → Pruebas de laboratorio de desarrollos): «Solicitar pruebas al
+  laboratorio» toma los renglones marcados «Medir en la muestra» sin
+  resultado (muestra del cliente antes de la etapa Muestra; corrida después)
+  y crea la solicitud; la autoriza el **Coordinador de Laboratorio y MP**
+  (puesto del parámetro `quimibond_sgi.dev_lab_authorizer_job_id`, Ajustes →
+  SGI → Desarrollo de producto; la migración lo llena con el puesto de ese
+  nombre, hr.job 188 en producción, y si está vacío se busca por nombre) o
+  el Jefe MAST, con actividad automática; el laboratorista captura el valor **en el mismo renglón** y la
+  solicitud se cierra sola cuando todos tienen valor, con las horas que
+  tardó. El laboratorio solo mide; el dictamen sigue siendo de Diseño.
+- **Checklist de factibilidad**: catálogo `sgi.dev.feasibility.item` por
+  línea (tejido circular, entretelas) en Configuración → Recursos del
+  checklist de factibilidad, **vacío** (la lista de recursos no está
+  definida, sección 8 del brief). «Cargar checklist de factibilidad» pone
+  los renglones de la línea del proyecto; Odoo contesta solo la existencia
+  de materia prima (lista de materiales del artículo del proyecto o del
+  artículo base contra existencias); la capacidad de máquina queda
+  pendiente hasta el cotizador nuevo.
+- **Una sola revisión de Ventas**: «Aprobar análisis y factibilidad» exige
+  el resultado del análisis y el checklist contestado; «Regresar» pide
+  motivo. Sin aprobación el proyecto no pasa de Análisis a Cotización.
+- Pruebas `tests/test_dev_analysis.py`; las de los bloques 2 y 3 aprueban la
+  revisión antes de avanzar de etapa.
+
+### Migración
+
+- `migrations/19.0.57.120.0/post-migrate.py`: escribe el puesto autorizador
+  por omisión en el parámetro si está vacío. La fecha de bloqueo del
+  artículo genérico se queda vacía (decisión de Jose).
+
+### Fuera de este PR (decisión de Jose, 2026-10-06)
+
+- La duplicidad entre `ficha.tecnica.tejido` (parámetros de máquina en
+  `quimibond_ficha_tecnica_tela`) y `sgi.machine.sheet` **no se tocó**: es
+  decisión del siguiente PR.
+- Los bloques 6.11 y 6.13 van en un PR nuevo; 6.7, 6.9, 6.10 y 6.12 esperan
+  a las sesiones con Planeación, Producción, Calidad y Compras.
+
+## 19.0.57.119.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 3: artículo en desarrollo y
+generador de código** (brief 6.6). Ningún código se arma a mano y lo no
+ganado desaparece de vista solo.
+
+### Agregado
+
+- **Estado de desarrollo del artículo** (`product.template.sgi_dev_state`):
+  en desarrollo (no se vende; confirmar un pedido con él da error) → en
+  pilotaje (se vende; el pedido recibe el aviso de que los tres primeros
+  lotes son el pilotaje) → liberado → archivado (artículo y listas de
+  materiales archivados). El proyecto lo mueve al entrar a Pilotaje,
+  Liberado o Cerrado sin producto; solo toca artículos nacidos de ese
+  proyecto. La ficha del producto lo muestra; filtros «En desarrollo»
+  y «En pilotaje».
+- **Generador de código** en la pestaña Desarrollo del proyecto: claves de
+  composición, dibujo, tipo de hilo, color y acabado del catálogo
+  (`ficha.tecnica.clave.codigo`), peso, galga y ancho tomados de la tabla
+  de características («Tomar peso, galga y ancho de la tabla»; el ancho
+  pasa de m a cm), ancho crudo y «lleva teñido» (propuesto cuando el color
+  no es natural). Vista previa de los tres códigos y botón **Generar
+  artículos**: crudo H (kg, Producto en Proceso / Tejido Circular), teñido I
+  (kg, Producto en Proceso / Teñido) y acabado J (m, Producto Terminado /
+  Tejido Circular / Industrial o Confección según el equipo de ventas),
+  almacenables, con nombre «DIBUJO DE nnn G/M2». El crudo y el teñido
+  llevan el ancho crudo; el crudo va en natural salvo hilo preteñido o
+  reciclado. Un código que ya existe se liga sin duplicar ni cambiar su
+  estado. El acabado queda como artículo del proyecto y entra al nombre.
+- **Bloqueo del artículo genérico «MUESTRA PILOTO»** en órdenes de
+  fabricación nuevas (crear y confirmar) a partir de la fecha del
+  parámetro `quimibond_sgi.dev_block_generic_sample_from` (Ajustes → SGI →
+  Desarrollo de producto). **Vacío por omisión**: hay órdenes abiertas con
+  esos artículos y la fecha la decide Jose.
+- Pruebas `tests/test_dev_product.py`.
+
+## 19.0.57.118.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 2: proyecto único con ciclo de
+vida** (brief 6.1 y decisión 3 de Jose del 2026-10-06; plan en
+`docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). Un solo
+proyecto nace como análisis y recibe folio FT cuando el cliente aprueba el
+inicio; nadie edita el título ni escribe el folio a mano.
+
+### Agregado
+
+- **Bandera «Desarrollo de producto»** (`sgi_is_ft`) que pone el tipo de
+  proyecto (plantilla o captura), ya no el nombre. Es el filtro de las
+  mediciones del SGI: los entregables C1 del mapa de procesos y de la base
+  dejan `name =like 'FT-%'` por `sgi_is_ft = True` (`quimibond_sgi_mapa`
+  1.1.4 y la migración).
+- **Folio FT aparte** (`sgi_ft_folio`): secuencia anual `sgi.dev.ft`
+  (FT-001-2027), asignada al pasar a «Muestra» o con el botón; admite folio
+  histórico a mano. El **nombre** se arma solo: folio (o «Análisis»), código
+  del artículo o producto pedido y «rev. N»; en la ficha queda en solo
+  lectura.
+- **Etapas de avance** (`project.project.stage`, datos): Solicitud, Análisis,
+  Cotización, Aprobación del cliente, Muestra, Respuesta del cliente,
+  Pilotaje, Liberado, Cerrado sin producto. El cliente vive solo en
+  `partner_id`.
+- **Origen** cliente (contacto del cliente) o interno (solicitante de
+  `hr.employee`).
+- **Revisión** entera con **bitácora** (`sgi.dev.revision`): desde la etapa
+  Cotización, cada cambio a la especificación de un renglón deja fecha,
+  quién, característica, valor anterior y nuevo; «Subir revisión» abre la
+  siguiente. La liga a la cotización es una referencia hasta el cotizador
+  nuevo.
+- **Correo propio por proyecto**: el alias nativo de Proyectos se nombra
+  `desarrollo-<id>` al crear y `ft-039-2026` al asignar el folio (sin dominio
+  de alias configurado queda inactivo, sin error).
+- **Pestaña Comercial** (sustituye al Análisis de mercado Industrial): equipo
+  de ventas, vendedor, cliente actual o prospecto (calculado de los pedidos
+  confirmados), programa, aplicación, tiempo de programa, consumo anual y
+  mensual con conversión yardas ↔ metros, tipo de laminado, requisitos
+  legales y reglamentarios, mercado, fecha requerida, número de
+  especificación. Las listas viven en `sgi.dev.option` (SGI → Administración
+  → Configuración → Listas del desarrollo de producto), **vacías**: nadie ha
+  definido sus renglones.
+- **Muestra física**: fecha de recepción, entrega a Diseño, ubicación en
+  carpeta y etiqueta imprimible (cliente, proyecto, folio, fechas).
+- **Resultado del análisis**: producto de línea (liga el artículo y cierra
+  en «Cerrado sin producto», sin folio), producto nuevo, no factible con
+  motivo de lista.
+- **Relojes en horas calendario**: `sgi.dev.stage.log` por etapa (se abre y
+  cierra solo al cambiar de etapa) y `sgi.dev.mp.wait` de materia prima
+  (botones «Materia prima pendiente» / «Llegó la materia prima»); las horas
+  de desarrollo de cada etapa descuentan la espera de materia prima.
+- Filtro «Desarrollo de producto» y columna Folio FT en la lista de
+  proyectos. Pruebas `tests/test_dev_project.py`.
+
+### Migración
+
+- `migrations/19.0.57.118.0/post-migrate.py`: marca los proyectos FT- (77 en
+  producción), las plantillas «PLANTILLA - Diseño y Desarrollo …» (480 y
+  481) y el proyecto «ANALISIS DE PROYECTO …» (490); separa folio (unificado
+  a guiones), producto pedido y revisión («REV3») del nombre viejo y vuelve
+  a armar el nombre; cuando faltaba el cliente lo toma de la etapa: el
+  cliente que más proyectos de esa etapa ya tienen («uso»: SHAWMUT →
+  SHAWMUT LLC, LA DIFERENCE → LA DIFFERENCE) o, si ninguno lo tiene, la
+  única empresa con ese nombre («nombre»: ENTEX → ENTEX DE MEXICO CR); la
+  etapa QUIMIBOND marca **origen interno**; Hecha, Cancelada y las demás que
+  no son clientes no se tocan (NENUCO y Avances modernos no existen como
+  clientes y quedan sin cliente). La tabla etapa → cliente se escribe en el
+  log del update (`_sgi_dev_migration_preview`); reescribe los filtros de
+  medición con `FT-%`. Idempotente. No borra las etapas por cliente (dato de
+  producción, sección 7 del brief).
+
+### Cambiado
+
+- `sgi_is_ft` deja de calcularse del nombre; `test_excel_migration` crea el
+  proyecto con la bandera.
+
+### Pendiente
+
+- Dirección de correo: el alias necesita un dominio de alias configurado en
+  la base. Las etapas de los proyectos FT- existentes siguen siendo las de
+  cliente hasta la limpieza de datos (sección 7).
+
+## 19.0.57.117.0 — 2026-10-06
+
+**C1 Desarrollo y alta de producto, bloque 1: la tabla de características.**
+Primera entrega del levantamiento del 2026-10-06 con Jessica Francisco y Jose
+(`docs/superpowers/specs/2026-10-06-c1-desarrollo-producto-brief.md`, plan en
+`docs/superpowers/plans/2026-10-06-c1-desarrollo-producto-plan.md`). La misma
+tabla de características se recapturaba en siete formatos de Excel; ahora es
+una sola tabla por proyecto FT con una columna por momento del proceso y con
+**números**, no texto: lo que pide el cliente (nominal, tolerancia o máximo /
+mínimo, en unidades o en %), lo medido en su muestra, el límite de control
+interno (más cerrado; nunca se imprime al cliente), las tres lecturas de la
+corrida con su promedio, el dictamen de Diseño de Producto y la aprobación del
+cliente. Odoo marca cada renglón con tres resultados: cumple (dentro del
+control interno), fuera del control interno (se embarca con aviso) o no
+conforme (fuera del cliente). El rendimiento (m/kg) se calcula solo:
+1000 / (masa × ancho), con su tolerancia a partir de los extremos de masa y
+ancho.
+
+**Dónde vive cada cosa (decisión de Jose, 2026-10-06):** la ficha técnica del
+artículo y el catálogo de características viven en
+`quimibond_ficha_tecnica_tela` (2.1.0, mismo PR), y el SGI pasa a depender de
+ese módulo. El proyecto de desarrollo y la ficha del artículo comparten el
+catálogo y el mixin de límites, así los renglones pasan del proyecto a la
+ficha sin recaptura (ese paso llega con la liberación del artículo, bloque 7).
+
+### Agregado
+
+- Dependencia nueva: `quimibond_ficha_tecnica_tela` (catálogo
+  `ficha.tecnica.caracteristica`, claves de codificación
+  `ficha.tecnica.clave.codigo`, mixin `ficha.tecnica.caracteristica.mixin`).
+- `sgi.dev.characteristic.template`: qué renglones carga cada tipo de
+  desarrollo (general 26, entretelas V10 23, carda 15, tramado 15), con
+  dirección (largo / ancho), **posición** (izquierda / centro / derecha: la
+  solidez al frote y la masa por orillas) y si se mide en la muestra del
+  cliente, va a la especificación del cliente o al certificado. Sustituye a
+  `DEV_DEFAULT_LINES` del código. Menú SGI → Administración → Configuración →
+  **Características por tipo de desarrollo**; el catálogo de características
+  y las claves de codificación se editan en Fichas Técnicas de Tela →
+  Configuración.
+- Ficha del renglón (se abre desde la tabla del proyecto) y contadores en la
+  pestaña Solicitud de desarrollo: características, pendientes de
+  laboratorio, fuera del control interno, no conformes.
+- Pruebas `tests/test_dev_characteristics.py`.
+
+### Cambiado
+
+- `sgi.dev.characteristic` hereda el mixin de límites: `value` y `tolerance`
+  (texto) se retiran; entran `caracteristica_id`, `kind`, `position`,
+  `spec_*`, `ctrl_*`, `in_customer_spec`, `in_coa` (del mixin) y, propios del
+  desarrollo, `lab_requested`, `sample_*`, `run_*`, `verdict`,
+  `customer_approved`. En producción no había ningún renglón, así que no hay
+  migración de datos.
+- El PDF de la Solicitud de desarrollo imprime la especificación como una sola
+  expresión («53 g/m² ± 3 g/m²», «≤ 1 %») y lo medido en la muestra.
+
+### Pendiente (bloques siguientes del plan)
+
+- Proyecto único con ciclo de vida, folio FT aparte y bandera por tipo de
+  proyecto con migración (6.1), generador de código (6.6), laboratorio y
+  factibilidad (6.3 a 6.5), fichas de proceso (6.7), orden de muestra
+  (6.10), pilotaje y liberación (6.12). La cotización (6.8) pasa como
+  requisitos al plan de costeo v2 (`qb_cotizador` / `qb_costeo_sgi`).
+
+## 19.0.57.116.0 — 2026-10-06
+
+**Menos categorías en Aprobaciones.** Cada aprobación del SGI como solicitud
+creaba su propia categoría: había 24 activas en producción (18 del SGI, sin
+solicitudes todavía). Jose pidió menos. Ahora varias aprobaciones comparten
+una categoría por área y quien pide elige el **asunto**.
+
+### Agregado
+
+- `sgi.approval.subject` (`models/sgi_approval_subject.py`): asunto de una
+  categoría de Aprobaciones, con su rol «Aprueba» del SGI.
+- En la solicitud, campo **Asunto**: aparece y es obligatorio cuando la
+  categoría tiene asuntos. Sin asunto no se envía. El asunto pone como
+  aprobadores a las personas del puesto de su rol, así una categoría
+  compartida manda cada asunto a quien le toca, y la medición de cada
+  actividad cuenta las solicitudes de su asunto.
+- En la categoría, lista editable de **Asuntos** (asunto, aprobación del SGI,
+  actividad).
+- Permisos: lectura para todos los usuarios; edición para gerentes del SGI y
+  de Aprobaciones.
+
+### Datos de producción (MCP, 2026-10-06)
+
+- Nombres cortos en las 18 categorías del SGI («Propuesta de pago semanal»,
+  «Finiquito», «Alta de proveedor»…).
+- Después del despliegue, por MCP:
+  - las aprobaciones se juntan en categorías por área, con un asunto cada una;
+  - las categorías que quedan vacías se archivan;
+  - cuatro pasan al botón de su documento: ajuste de inventario, anticipo a
+    proveedor, nómina y compras de TI.
+
+## 19.0.57.115.0 — 2026-10-06
+
+**La pantalla que produce la evidencia no es un error.** De los 25 avisos
+«Pantalla que no va con su medición» que quedaban en producción, 22 eran
+pantallas correctas. En ellas se trabaja en un registro y la evidencia es
+otro que nace de él:
+- la NC y sus acciones;
+- la revisión por la dirección y sus acuerdos;
+- el indicador y sus mediciones;
+- «Órdenes a facturar» y las facturas;
+- la conciliación y las líneas del banco;
+- el inventario físico y sus movimientos.
+
+Cambiar el menú habría empeorado el uso. Pedido de Jose.
+
+### Cambiado
+
+- `_sgi_menu_model_mismatch` no avisa cuando la pantalla alimenta la evidencia
+  (`_sgi_screen_feeds_evidence`). Basta con que un campo relacional de uno de
+  los dos modelos apunte al otro (sin `create_uid`/`write_uid`), o que el par
+  esté en `_SGI_SCREEN_PRODUCES`. Ese segundo caso es para las pantallas que
+  crean la evidencia sin campo que las ligue:
+  - inventario físico → movimientos;
+  - fechas de bloqueo → bitácora y excepciones;
+  - recalcular costeo → asiento;
+  - usuarios → chatter.
+
+### Migración
+
+- `migrations/19.0.57.115.0/post-migrate.py` recalcula las actividades que
+  tenían el aviso y deja en el log cuáles quedan. Deben quedar C1.06, C1.11,
+  C4.13 y S4.25, que esperan decisión.
+
+## 19.0.57.114.0 — 2026-10-06
+
+**Campos de liga entrada ↔ salida que faltaban.** Una actividad que se mide
+por su entrada y su salida necesita un campo real en la salida que apunte a
+la entrada (`match_path`). En producción quedaban 23 avisos «Entrada que no se
+liga con la salida». 14 se ligaron por MCP con campos que ya existían. Para 7
+faltaba el campo. Tanda 5 de «Medición por revisar», pedido de Jose.
+
+### Agregado
+
+- `approval.request`:
+  - `sgi_dyd_task_id`, la tarea del desarrollo (C1.08);
+  - `sgi_alert_id`, la NC del lote en desviación (C5.22);
+  - `sgi_maintenance_request_id`, la solicitud de mantenimiento que pide la
+    refacción (S5.03).
+  - En la solicitud, grupo «Liga con el SGI».
+- `stock.picking`:
+  - `sgi_dyd_task_id`, el envío de la muestra (C1.12);
+  - `sgi_maintenance_request_id`, la descarga de refacciones (S5.04).
+  - En el traslado, pestaña «Liga con el SGI».
+- `project.task`: `sgi_dyd_picking_ids`, los envíos de muestra (C1.13), en la
+  pestaña SGI de la tarea.
+- `account.move`: `sgi_action_line_id`, la acción de la reclamación que pidió
+  la nota de crédito (C5.14), en la pestaña SGI de la nota de crédito.
+- El historial de estado (57.111.0) también lee `quality_state`: los controles
+  de calidad se atribuyen a quien los pasó o reprobó.
+
+### Migración
+
+- `migrations/19.0.57.114.0/post-migrate.py` escribe la liga en las 7
+  entradas que la esperaban (C1.08, C1.12, C1.13, C5.14, C5.22, S5.03, S5.04),
+  solo donde está vacía, y recalcula sus faltantes.
+
+### Datos de producción (MCP, 2026-10-06, antes de esta versión)
+
+- 52 entregables nuevos de salida final para las actividades «Sin salida»
+  (52 → 0).
+- 14 ligas con campos existentes: «Entrada que no se liga con la salida» bajó
+  de 23 a 9.
+- Aprobaciones:
+  - 20 solicitudes activas en Aprobaciones;
+  - 29 roles «Aprueba» pasaron a «Participa» o «Se entera»;
+  - E2.01 ligada a «Modificación de documento SGI».
+- 40 actividades con «Por qué se mide a mano».
+
+## 19.0.57.113.0 — 2026-10-06
+
+**Menús por capítulos del MIID.** El menú del SGI sigue el orden de la
+norma: Inicio, Reportar, Sistema (4 y 7.5), Planeación (5 y 6), Seguridad
+y ambiente (8), Desempeño (9), Mejora (10) y Administración. Pedido del
+CEO del 2026-10-06; plan docs/superpowers/plans/2026-10-06-sgi-57-111-0-menus.md.
+Sin modelos, campos ni permisos nuevos; ningún xmlid cambia ni se borra.
+
+### Cambiado
+
+- **Carpetas** (`views/sgi_menus.xml`, árbol en `tools/sgi_menu_tree.txt`):
+  Procesos → **Sistema**, Dirección → **Planeación** (secuencia 25) y
+  Administración SGI → **Administración**, con los mismos xmlids.
+  **Desempeño** (`menu_sgi_performance`, sin grupos propios) y
+  **Transición** (`menu_sgi_transition`, Jefe MAST) son nuevas.
+- **15 menús cambian de carpeta:** Documentos (con los grupos que heredaba
+  de Administración SGI: Auditor, Jefe MAST, Dirección) y el MIID a Sistema;
+  Acuses de lectura a Sistema → Documentos; Aspectos ambientales a
+  Planeación; Tablero, Indicadores (con sus grupos heredados), Satisfacción
+  del cliente, Auditorías y Revisión por la dirección a Desempeño;
+  Revisiones de medición a Desempeño → Indicadores; Publicar Mi
+  procedimiento directo en Administración; Cargar catálogo, Empresa en
+  documentos controlados y Traspaso de riesgos ambientales a Transición;
+  Tipos de documento a Configuración. Nadie gana ni pierde una pantalla.
+- **Diagnóstico de 8 a 4 entradas:** Cumplimiento de procedimientos sin
+  dominio fijo y con el filtro «Medibles» por omisión (sin él y agrupado
+  por método de medición es la cobertura de medición); botón **Por semana**
+  en la lista de Registro de cumplimiento; filtro **Medición por revisar** en
+  Faltantes de especificación.
+- **Rutas que se le dicen al usuario:** `sgi_menu_paths.py` (15 rutas y la
+  clave nueva `aprobaciones`, que usan los avisos del asistente de
+  aprobaciones), el aviso de indicadores de salud, «Dónde se ejecuta» de las
+  ligas SST, F-P-A28-11, la ayuda de Revisiones de medición, el aviso del
+  riesgo ambiental, el pie de «Mi procedimiento», la fuente de SG-01, 24
+  rutas en 13 secciones del MIID (y `docs/sgi/transicion/miid-rev03-borrador.md`),
+  manuales por rol, README y runbook.
+- `quimibond_sgi_mapa` 19.0.1.1.3: «Cargar mapa de procesos» pasa a
+  Administración → Transición.
+
+### Corregido
+
+- El mensaje de la siembra del MIID (57.110.0) decía «nota de «Por
+  confirmar» actualizado»: ahora «texto actualizado», «nota … actualizada» o
+  «texto y nota … actualizados», y el aviso de lo no aplicado igual.
+  `_sgi_seed_update` recibe el motivo (`reason`).
+
+### Retirado
+
+- Del menú (archivados en su lugar, con su acción viva; `SGI_MENU_ARCHIVED`):
+  Firmas de lectura, Cobertura de medición, Cumplimiento semanal y Medición
+  por revisar.
+
+### Migración
+
+- `migrations/19.0.57.111.0/post-migrate.py`: 13 secciones del MIID con las
+  rutas nuevas, solo las que nadie editó (`_sgi_seed_update`); fuente de
+  SG-01 si sigue como se sembró; «Dónde se ejecuta» de E2.23, E2.30, E2.34 y
+  E2.37 solo si sigue idéntico al de 57.54.0 (nota en la actividad);
+  re-sello de «Mi procedimiento» (`hr.job._sgi_mp_reseal_menu_moves`): un
+  documento vigente o en firma recibe la huella nueva solo si, con las rutas
+  viejas, la huella de hoy es exactamente la guardada (nota en su chatter;
+  el PDF conserva la ruta anterior); un aviso al Jefe MAST para difundir el
+  menú nuevo (`menus_capitulos_57111`). Ningún menú se toca en la migración.
+
+### Decisiones por omisión (preguntas del plan, aprobadas por el CEO)
+
+- Q1: se reusan los xmlids; solo Desempeño y Transición son nuevas; lo que
+  sale del menú se archiva.
+- Q2: «Del Dropbox a Odoo» se queda en Sistema (lo ve todo el personal).
+- Q3: Publicar Mi procedimiento directo en Administración; Acuses de lectura
+  en Sistema → Documentos; Firmas de lectura archivada.
+- Q4: Tipos de documento en Configuración.
+- Q5: Diagnóstico con cuatro entradas; Revisiones de medición y Mediciones
+  por equipo o mercado en Desempeño → Indicadores.
+- Q6: Auditor y Dirección siguen viendo Administración (Diagnóstico y
+  Aprobaciones).
+- Q7: los dueños de proceso no ganan Indicadores ni Documentos.
+- Q8: re-sello en la migración solo cuando lo único que cambió es la ruta.
+
+### Pruebas
+
+- `tests/test_menus_capitulos.py` (nueva): orden de las ocho entradas,
+  padres, archivados que siguen archivados tras recargar el XML, quién ve
+  qué por perfil, Diagnóstico, rutas viejas en vistas y datos, re-sello,
+  migración idempotente, rutas que se le dicen al usuario y el mensaje de la
+  siembra. Ajustadas: `test_menu_tree`, `test_miid`, `test_cleanup_45`.
+
+## 19.0.57.112.0 — 2026-10-06
+
+**Medición manual a propósito.** De las 84 actividades con «Se hace en Odoo,
+se mide a mano» (producción, 2026-10-06), unas 45 son revisiones, reportes o
+juntas: lo que se revisa vive en Odoo pero la evidencia es la revisión hecha,
+y se mide bien con el registro de cumplimiento (57.103.0). El aviso pedía un
+entregable que no existe. Tanda 3 de «Medición por revisar», pedido de Jose.
+
+### Agregado
+
+- **«Por qué se mide a mano»** (`manual_reason`, `models/sgi_measure_manual_reason.py`)
+  en la pestaña de medición de la actividad, visible con «Registro manual» o
+  «Por correo». Escrito, el aviso «Se hace en Odoo, se mide a mano» no sale.
+  No cambia el procedimiento (campo de medición).
+
+### Datos de producción (MCP, 2026-10-06)
+
+- Canal corregido en 6 actividades que no se hacen en Odoo: C2.37, C2.38,
+  C4.02 y C6.28 a «Trabajo físico»; C5.20 y S1.17 a «Correo». Se les quitó
+  el aviso «Se hace en Odoo, se mide a mano».
+- Después del despliegue se llena «Por qué se mide a mano» en las revisiones
+  y reportes por MCP.
+- Quedan para los dueños de proceso las que dicen Odoo y no dejan registro:
+  - faltan puntos de control de laboratorio, tono, auditoría por turno y
+    liberación de tejedora;
+  - faltan las categorías de aprobación de anticipo, propuesta de pago y
+    compras de TI;
+  - no hay permisos ni vacaciones en Odoo;
+  - ninguna orden de compra sale del reabastecimiento.
+
+## 19.0.57.111.0 — 2026-10-06
+
+**Quién hizo la actividad, según el historial de su estado.** «write_uid» dice
+quién editó el registro al último, no quién lo hizo: en las transferencias de
+producción de 4 semanas OdooBot es el último que edita 598 de 874 y el campo
+«Responsable» está vacío en 556; las transferencias y las órdenes de
+fabricación no tienen campo de «quién lo validó». El historial de Odoo sí lo
+guarda: el paso a «Hecho» es de Ana Silvia Colín, Cynthia Santana, José
+Gómez, José Luis Almazán, Carlos Vargas… y nunca de OdooBot. Pedido de Jose
+del 2026-10-06 (tanda 2 de «Medición por revisar», 109 avisos de atribución
+débil en 63 actividades).
+
+### Agregado
+
+- **«Quién lo hizo: quien lo pasó a su estado (historial)»** en el entregable
+  y en la actividad (`measure_user_history`, `models/sgi_measure_history.py`).
+  La medición atribuye cada registro a quien hizo el último cambio de su campo
+  de estado con seguimiento (`state`, `stage_id`, `request_status`,
+  `sgi_state`…); si un registro no tiene ese cambio, cuenta el campo de
+  usuario como antes. Clases, adherencia y avisos no cambian.
+- La casilla solo se ve cuando el modelo guarda historial de su estado; si se
+  marca en un modelo que no lo guarda, la actividad lo dice en «Atribución
+  débil».
+- La vista previa de la medición (57.109.0) dice a quién atribuye según el
+  historial.
+
+### Cambiado
+
+- `sgi_process_procedure`: el cálculo de quién ejecutó sale de dos ganchos
+  (`_sgi_executor_attributable`, `_sgi_executor_groups`); el read_group por
+  campo de usuario es el de siempre.
+- El aviso «Se atribuye con write_uid» no sale cuando la actividad usa el
+  historial (write_uid queda solo de respaldo).
+
+### Migración
+
+- `migrations/19.0.57.111.0/post-migrate.py`: los entregables y actividades
+  con «write_uid» cuyo modelo guarda historial de su estado pasan al
+  historial y recalculan sus faltantes. Los que no lo guardan (reglas de
+  inventario, listas de precios, contactos, líneas de banco…) siguen con su
+  aviso.
+
+### Datos de producción (MCP, 2026-10-06, antes de esta versión)
+
+- 15 actividades con la pantalla equivocada pasaron a la que abre su modelo
+  de medición (Proyecto/Tareas, PPAP, Aprobaciones/Mis solicitudes,
+  Flotilla/Servicios): «Pantalla que no va con su medición» bajó de 40 a 25.
+- 15 entregables con su «Está completo» (responsiva firmada, 8D con causa y
+  acción, incidente con causas, recorrido con acta…; «Parte interesada
+  revisada» cuenta por «Última revisión»): «Entregable sin criterio de
+  completo» bajó de 21 a 6.
+
+## 19.0.57.110.0 — 2026-10-05
+
+**MIID: lo que traía la revisión 02 y le faltaba a la Rev. 03.** Se leyó
+completo el MIID Rev. 02 (junio 2026, documento 3495) y se comparó con las
+46 secciones sembradas en 57.105.0. Pedido de Jose del 2026-10-05.
+
+### Cambiado
+
+- **Secciones completadas** (`data/sgi_miid_sections.xml`):
+  - 4.1: cuestiones de seguridad y salud;
+  - 4.2: necesidades del personal en seguridad y salud;
+  - 6.1: para qué se abordan los riesgos y con qué entradas;
+  - 6.3: cuándo se termina un cambio y cómo se evalúa;
+  - 7.1: personas, infraestructura con S6, factores psicosociales, y qué hacer con lo ya liberado cuando un equipo sale fuera de calibración;
+  - 7.3: inducción al SGI con sus temas y plazo de tres meses;
+  - 7.4: tabla de qué, a quién, cómo, cuándo y quién comunica; coherencia de la información ambiental; consulta y participación completa;
+  - 8.1: errores humanos, contingencia por bienes del cliente, factores posteriores a la entrega y Anexo 13;
+  - 8.3: escenarios, recursos, prueba periódica, revisión y formación;
+  - 9.1: desempeño de seguridad y salud, y análisis y evaluación (9.1.3);
+  - 10.2: reacción y mitigación de impactos ambientales.
+- **Notas de «Por confirmar» corregidas:**
+  - 1.2: las dos redacciones de alcance de la revisión 02 y la de ISO 45001;
+  - 1.3: la revisión 02 sí justifica 8.4.1 b) y 8.5.1 f), con el mismo sentido;
+  - 12.1: Anexo 13, «Plan integral» en la revisión 02.
+  Ningún «Por confirmar» se quita: eso lo decide Dirección.
+- `docs/sgi/transicion/miid-rev03-borrador.md` al día con lo anterior.
+
+### Agregado
+
+- `sgi.miid.section._sgi_seed_update`: lleva el texto nuevo de la siembra a
+  una base existente sin pisar lo que corrigió el Jefe MAST. El texto se
+  cambia solo si la sección nunca se editó: no tiene el mensaje «Texto de la
+  sección editado.». La nota se cambia solo si sigue idéntica a la sembrada.
+  Lo que no se aplica queda avisado en el chatter de la sección y en el log.
+- Pruebas `test_miid.test_21` y `test_22`.
+
+### Migración
+
+- `post-migrate`: aplica lo anterior a 11 textos y 3 notas, y registra el
+  resultado por sección («actualizada», «sin cambio» o «editada a mano»).
+  No crea revisión del MIID ni toca el documento 3495.
+
+## 19.0.57.109.1 — 2026-10-05
+
+**Corrección urgente: el `odoo-update` de producción de 57.101.0 a
+57.109.0 falló** en el post-migrate de 57.104.0 (P-c, entregable de C2-06).
+Al guardar el entregable se recalculan los faltantes de sus actividades, y
+una de ellas tiene la pantalla «Inventario/Operaciones/Traslados/Entregas»
+(menú 1471), cuyo menú apunta a una acción de servidor que ya no existe
+(`ir.actions.server` 2882). Leer esa acción lanzaba `MissingError` y
+deshacía toda la actualización; la base quedó en 57.101.0, sin cambios.
+
+### Corregido
+
+- Toda lectura de la acción de un menú pasa por `exists()`. Una acción
+  borrada se trata como un menú sin acción: la pantalla no se compara con la
+  medición y no se abre. Aplica a `_sgi_screen_model` y al cálculo de
+  `odoo_action_id` de la actividad, a «Abrir en Odoo» del documento y del
+  Dropbox, y a la pantalla de la actividad.
+- Prueba `test_medicion_por_revisar.test_04_menu_con_accion_borrada`.
+
+### Datos de producción
+
+- El menú 1471 sigue apuntando a la acción borrada; Odoo no limpia esa
+  referencia. El módulo ya no se cae por eso. Reparar el menú es decisión
+  aparte, y no se toca desde el módulo.
+
+## 19.0.57.109.0 — 2026-10-05
+
+**Asistentes en lenguaje normal: aprobaciones, indicadores, medición y
+riesgos** (pedido de Jose del 2026-10-05, «haz todo lo que propones»).
+Modelos nuevos `sgi.indicator.source` y los asistentes
+`sgi.approval.wizard`, `sgi.approval.wizard.button`,
+`sgi.indicator.wizard` y `sgi.risk.report`; tres menús; migración
+`post-migrate`.
+
+### Agregado
+
+- **Configurar aprobación** (Aprobaciones del SGI → «Configurar» en cada
+  renglón; Jefe MAST): tres preguntas. ¿Qué se aprueba? (un documento de
+  Odoo y qué acción, elegida por su etiqueta del formulario; una decisión
+  sin documento, que se pide en Aprobaciones; o algo que se firma en papel),
+  ¿siempre o solo a veces? (campo, operador y valor) y una vista previa
+  («Cuando Planeador pulse «Confirmar» en Orden de compra con total mayor
+  que 50000, Odoo le pedirá la aprobación a …»). «Activar» la escribe en el
+  rol y la sincroniza.
+- **Sugerencia por rol** (columna «Sugerencia»): botón conocido del
+  documento que materializa la actividad, o solicitud en Aprobaciones.
+  **«Activar las sugeridas como solicitud»** en lote (solo las que no
+  bloquean botones; las de botón, una por una).
+- Faltante **«Aprobación sin activar»** (`approval_missing`, advertencia) y
+  un aviso al Jefe MAST por proceso en Mis pendientes, que se cierra solo
+  al activarlas; los recalcula el cron nocturno de aprobaciones.
+- **Nuevo indicador** (Administración SGI → Indicadores; Jefe MAST): ¿qué
+  quiere saber? (qué porcentaje cumple, cuántos hay, cuánto suman), ¿de qué
+  registros? (fuente con nombre de negocio), ¿cuáles cuentan? (filtro visual
+  de Odoo), meta, sentido y frecuencia. La vista previa calcula los últimos
+  tres periodos con el mismo motor de la fórmula, sin guardar nada, y «Ver lo
+  que cuenta el último periodo» abre los registros. Crea el indicador en
+  «prueba» con sus términos.
+- **Fuentes de indicadores** (Configuración): doce fuentes de inicio
+  (facturas de cliente y de proveedor, notas de crédito, pedidos de venta,
+  órdenes de compra, entregas, recepciones, órdenes de producción, controles
+  de calidad, NC, mantenimiento, soporte); las de un modelo no instalado no
+  se ofrecen.
+- **Reportar → Riesgo u oportunidad** (cualquier usuario del SGI): qué puede
+  pasar, qué pasaría, en qué proceso, qué tan seguido y qué tan grave (o qué
+  tanto ganaríamos) en palabras, y qué se hace hoy. Las respuestas proponen
+  probabilidad e impacto de la matriz de riesgos y oportunidades; el Jefe
+  MAST recibe «Evaluar riesgo reportado».
+
+### Cambiado
+
+- **Medición de la actividad:** el filtro de evidencia es el filtro visual
+  de Odoo; «Fecha que cuenta» y «Quién la hizo» se eligen por su etiqueta
+  (antes, `create_date` y `write_uid` escritos a mano), y «Lo que cuenta
+  hoy» dice cuántos registros hubo en 30 días y a quién se le atribuyen.
+
+### Datos de producción
+
+- 2026-10-05, por MCP con el visto bueno de Jose: S6.03 («Dar usuario,
+  correo y equipo al nuevo ingreso…», aprueba el Director de Finanzas y
+  Administración) pasó de «Botón de Odoo» sin configurar a «Solicitud en
+  Aprobaciones»; categoría 22 activa con su aprobador.
+
+### Migración
+
+- `post-migrate`: faltantes de las actividades con rol «Aprueba» y avisos
+  al Jefe MAST. Esperado: unos 64 roles sin activar de 82.
+
+## 19.0.57.108.0 — 2026-10-05
+
+**Proponer una actividad en lenguaje normal** (pedido de Jose del
+2026-10-05: «hay muchos campos técnicos que un usuario común no
+entendería»). En producción había tres propuestas, las tres en borrador y
+dos vacías. Sin campos guardados nuevos salvo `trigger_note`; sin migración.
+
+### Cambiado
+
+- **La propuesta (`sgi.activity.change`) es una pantalla de seis
+  preguntas:** ¿qué se hace?, ¿cada cuándo? (cada vez que pasa algo y qué
+  la dispara, diario, cada semana y qué día, cada mes y a más tardar qué
+  día hábil, cada año y qué día, u otra), ¿quién la hace? (yo, otro puesto o
+  como está hoy), ¿dónde se hace? (Odoo y la pantalla si la sabe, papel,
+  otro sistema, correo o teléfono, trabajo físico), ¿cómo sabe que quedó
+  bien? y ¿por qué? Las preguntas 2 a 4 son campos calculados con inverso
+  sobre la cadencia, el vencimiento, el canal y el rol «Ejecuta»: la ficha
+  técnica y la pantalla sencilla leen y escriben lo mismo.
+- Abajo, en vivo, **cómo quedará en su procedimiento** («Cada lunes,
+  Planeador: publicar el programa semanal en Odoo. Terminada cuando…») y
+  avisos en lenguaje normal (verbo vago, sin criterio de terminado, sin qué
+  la dispara, sin motivo).
+- Cambiar la cadencia limpia el vencimiento que ya no aplica.
+
+### Agregado
+
+- **«Qué la dispara»** (`trigger_note`): en las «por evento», al aprobarse
+  queda al inicio de la descripción («Se hace cuando…») y sale en el antes
+  → después.
+- **Completar antes de aprobar** (Jefe MAST): botón en la solicitud de
+  Aprobaciones que abre la propuesta con todos los campos y **lo que falta
+  para publicarla**; «Guardar y actualizar la solicitud» lleva lo completado
+  al antes → después de la solicitud. «Ver todos los campos» en la pantalla
+  sencilla, solo para el Jefe MAST.
+- Manuales: operador o supervisor (2.6) y Jefe MAST.
+
+## 19.0.57.107.0 — 2026-10-05
+
+**Revisión mensual de la medición por el dueño del proceso** (punto 4 de
+«Medición por revisar», aprobado por Jose el 2026-10-05). Modelos nuevos
+`sgi.measure.review`, `sgi.measure.review.line` y el asistente
+`sgi.measure.review.reject`; un menú en Diagnóstico. Sin migración: el cron
+de medición crea las del mes en su siguiente corrida.
+
+### Agregado
+
+- **Revisión mensual:** cada mes, por cada actividad que se mide sola
+  (Registro en Odoo o Por su entregable) y tuvo evidencia en los últimos 60
+  días, el dueño del proceso (sin usuario activo, el Jefe MAST) recibe en
+  **Mis pendientes** «Revisar medición de …» con tres registros al azar de
+  la evidencia (nombre, fecha que cuenta la medición y a quién se le
+  atribuye, con botón para abrirlos). Vence en 5 días hábiles (parámetro
+  `quimibond_sgi.measure_review_business_days`).
+- Contesta **«Sí, esto es lo que hago»** o **«No corresponde»** con nota
+  obligatoria (qué está mal). Contestan quien revisa o el Jefe MAST.
+- Faltante **«Revisión del dueño: no corresponde»** (`review_rejected`,
+  advertencia) mientras la última revisión contestada diga «No
+  corresponde»; entra en Diagnóstico → Medición por revisar.
+- **Diagnóstico → Revisiones de medición** (lista por estado).
+- Paso nuevo en el cron de medición (diario, idempotente: una por actividad
+  y mes). Al crear las del mes, las pendientes de meses anteriores quedan
+  «Sin respuesta».
+
+## 19.0.57.106.0 — 2026-10-05
+
+**Medición por revisar** (pedido de Jose del 2026-10-05: asegurar que cada
+actividad apunte al menú correcto y que la medición capture bien). Sin
+modelos ni campos guardados nuevos; migración `post-migrate` que recalcula
+faltantes.
+
+### Agregado
+
+- Faltante **«Evidencia que no aparece»** (`measure_never`, advertencia):
+  la actividad se mide sola y su medición no encuentra registros, o el
+  último tiene más de 60 días (o la ventana de su cadencia si es más larga,
+  380 días la anual). Las recién creadas esperan el mismo plazo. Dice si el
+  filtro de evidencia es inválido.
+- Faltante **«Atribución débil»** (`weak_attribution`, advertencia): se
+  atribuye con `write_uid` (el último que editó, no quien hizo la
+  actividad) o, en 4 semanas, hay ejecuciones de otro puesto o de cuentas
+  compartidas y la adherencia es menor a 50 %.
+- El cron de medición recalcula los faltantes de las actividades con modelo
+  de medición después de medir (solo escribe los que cambian).
+
+### Cambiado
+
+- **«Pantalla que no va con su medición»** también compara los menús que
+  lanzan una acción de servidor (Traslados, No conformidades,
+  Reclamaciones…): usa el modelo sobre el que corre la acción. Las acciones
+  de cliente (reportes, tableros) siguen sin compararse.
+- Diagnóstico → «Pantallas que no van con su medición» pasa a **«Medición
+  por revisar»**: los tres faltantes, agrupados por faltante.
+
+### Migración
+
+- `post-migrate`: recalcula los faltantes de las actividades con pantalla o
+  con modelo de medición y anota cuántos salen de cada uno. Esperado (MCP,
+  2026-10-05): unas 39 sin un solo registro, todas «por evento».
+## 19.0.57.105.0 — 2026-10-05
+
+**MIID desde Odoo** (especificación y borrador Rev. 03 de Jose del
+2026-10-05; tercera entrega después del mapa de la auditoría). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-105-0-miid.md` (escrito como
+57.103.0; sus «Correcciones de la revisión del plan» prevalecen). Tres
+modelos nuevos (`sgi.miid.section`, `sgi.miid.row.note`, `sgi.miid`), cuatro
+campos guardados nuevos en `approval.request` (`sgi_miid_hash`,
+`sgi_miid_snapshot`, `sgi_miid_generated`, `sgi_miid_blocked_note`), un
+menú, sin herencias de vista propias, sin migración. **No congela ni aprueba
+la Rev. 03.**
+
+### Agregado
+
+- **Manual del SGI (MIID)** en SGI → Dirección (entre «Revisión por la
+  dirección» y «Política integral»; todo Usuario SGI y Auditor): vista del
+  sistema (texto fijo + datos vivos) marcada «Borrador — no vigente», lo que
+  impide aprobar, situación «Al día / Desactualizado / Sin línea base / Sin
+  MIID vigente», diferencias, historial de revisiones, «Vista en PDF
+  (borrador)», «PDF de la revisión vigente» y «Textos del manual».
+- **Secciones del MIID** (`sgi.miid.section`): una por título y subtítulo
+  del borrador Rev. 03; numeral, nivel, texto, el bloque de datos que llevan
+  (la marca `[[datos]]` decide dónde), «Texto solo si no hay datos», **«Por
+  confirmar»** con nota y notas por renglón (la «Situación» de los anexos,
+  `sgi.miid.row.note`). Las edita el Jefe MAST; «Por confirmar» lo quitan el
+  Jefe MAST, Dirección o el Administrador SGI, con rastro (seguimiento y
+  nota en el chatter). Se archivan, no se borran.
+- **Bloques vivos:** identificación, procesos (con mapa e interacción 4.4 en
+  el PDF, solo los de la empresa), política, objetivos e indicadores, tipos
+  de documento y su clave, controles operacionales, plazos de NC
+  (`quality.alert._sgi_deadline_days()` y los parámetros de escalamiento y
+  eficacia), correspondencia por cláusula (de la matriz de cumplimiento; la
+  tabla escrita es el respaldo), procedimientos anteriores por proceso (sin
+  P-I01 ni su familia, L-001), anexos y control de cambios. Un bloque sin
+  sección sale en «Datos del sistema sin sección»; sin datos, cada bloque
+  dice su estado vacío.
+- **Candados:** ninguna revisión del MIID se envía, se reenvía a firma ni se
+  aprueba mientras haya secciones «Por confirmar» o procesos activos que no
+  estén «Vigente» (piloto no cuenta). Por Sign no se interrumpe la
+  sincronización: la solicitud espera, se anota una vez y el Jefe MAST
+  recibe un aviso (clave `miid_retenido:<solicitud>`); al levantarse los
+  candados, la sincronización diaria la aprueba y cierra el aviso.
+- **«Solicitar cambio del MIID»** (Jefe MAST): arma o abre la solicitud de
+  cambio documental de siempre (categoría «Modificación de documento SGI»,
+  referencia MIID) con el PDF generado, la huella, la foto de los datos y las
+  diferencias; la primera revisión desde Odoo es la 03. Nunca se envía ni se
+  aprueba sola. Al enviar, si los datos cambiaron o el PDF se generó con
+  candados, se genera otra vez y el anterior se renombra «(sustituido el
+  …)». Lo que se manda a firmar es lo que se publica: al aprobarse se
+  publica como «MIID Rev. NN.pdf» (DOC-1: documento nuevo, la anterior
+  obsoleta con su archivo, aviso de difusión y acuses) y la revisión nueva
+  lleva la huella; el PDF firmado de Sign se archiva en la revisión nueva.
+- **Aviso diario** al Jefe MAST (paso «MIID al día» de «SGI: Vencimientos
+  documentales»): «El MIID vigente ya no coincide con el sistema», uno por
+  empresa (`miid_desactualizado:<empresa>`), con las diferencias, vence a 3
+  días hábiles y se cierra solo. Sin línea base no avisa.
+- **Diagnóstico → Documental:** «MIID al día», «MIID desactualizado desde
+  …», «El MIID vigente no se generó desde Odoo», «No hay MIID vigente» y, si
+  hay candados, «La siguiente revisión del MIID no se puede aprobar».
+- Parámetro `quimibond_sgi.miid_approver_user_id` (no se siembra): quién
+  firma «Aprobó» el MIID; vacío = primer integrante activo de Dirección de
+  Operaciones (SGI).
+- `docs/sgi/transicion/miid-rev03-borrador.md`: el borrador de Jose (fuente
+  de la semilla).
+
+### Cambiado
+
+- `sgi_format_page_footer` acepta un pie ya armado (`sgi_fmt_info`; con
+  `plain` sale sin «Formato controlado del SGI:»). Los demás reportes no
+  cambian.
+- `report_sgi_diagram_body`: el cuerpo del PDF de diagramas (57.101.0) se
+  separó para reusarlo en el MIID; el PDF no cambia.
+
+### Datos de producción
+
+- En el despliegue se crean las **46 secciones** del MIID (empresa del SGI,
+  `noupdate`) con el texto [FIJO] del borrador Rev. 03 y **15 notas** de la
+  columna «Situación» de los anexos. Quedan **por confirmar**: 1.2 (alcance
+  de ISO 45001), 1.3 (justificación de las no aplicabilidades), 11.2 (P-A13,
+  P-A22 y P-A30 no registrados en Odoo) y 12.1 (situación de cada anexo).
+  No se cargan la portada ni 12.3 («Pendiente antes de aprobar»).
+- Nada más cambia: **no** se crea solicitud de cambio ni se aprueba la Rev.
+  03; el documento 3495 sigue vigente sin tocar (revisión 0 en Odoo; 02 en
+  el borrador), igual la categoría de cambio documental, los parámetros y
+  las actividades. La primera corrida diaria (o la primera apertura) crea
+  el registro `sgi.miid` de la empresa del SGI, sin aviso (sin línea base).
+- **En el Diagnóstico** las líneas del MIID salen como aviso (sin línea base
+  y los candados: 4 secciones por confirmar, 14 procesos sin publicar), así
+  que «Difusión documental operando» deja de verse hasta que se aprueba la
+  primera revisión desde Odoo.
+- **Para el Jefe MAST** (la lista 12.3 del borrador, que no se carga):
+  publicar los 14 procesos (hoy 13 en borrador y C2 en piloto); confirmar el
+  alcance de ISO 45001; confirmar la justificación de 1.3; confirmar la
+  situación de cada anexo; registrar P-A13, P-A22 y P-A30; capturar los
+  puestos del MIID (3495); decidir si corrige la revisión de 3495 a 02
+  (hasta entonces el control de cambios imprime «00»); después «Solicitar
+  cambio del MIID», revisión del Jefe MAST y aprobación del Director de
+  Operaciones en Sign.
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó Q1–Q17 por omisión el 2026-10-05, con dos ajustes (Q7 y quién
+quita «Por confirmar»): (Q1) Al cargar el borrador se quitan las cifras y
+fechas del 5-oct que ahora son vivas (identificación sin «Clave» ni
+«Revisión»; 4.4 «mediante los procesos de la tabla siguiente»; 10.2
+«Abierta» remite a la tabla de plazos; 11.2 sin «Según el registro de Odoo
+al 5 de octubre»), las frases «por confirmar» pasan a la nota y «Jefe de
+MAST» se escribe «Jefe MAST» (glosario); «Qué cambia» (tabla) y 3 (término
+«Proceso») dicen «los procesos del SGI» en vez de «14 procesos»; 7.5 y 8.2 imprimen los nombres de
+tipos y controles de producción («Procedimiento (P)», no «Procedimiento de
+proceso»). (Q2) La huella cubre textos, notas, procesos, flujos, política,
+objetivos e indicadores, tipos y patrones, controles, anexos,
+procedimientos anteriores, plazos de NC y normas con numerales; no los
+procesos por cláusula ni la revisión, emisión o control de cambios del
+MIID. (Q3) Comparación diaria y aviso a 3 días hábiles. (Q4) «Aprobó» lo
+firma Dirección; hoy la categoría la firma solo Areli (Elaboró y Revisó en
+una firma) y Dirección (usuario 35) firma «Aprobó» y tiene correo. (Q5) La
+solicitud propone la Rev. 03; el 3495 no se toca y se recomienda corregirlo a
+mano a 02. (Q6) Sin línea base, sin aviso. (Q7, ajustado) Se publica el PDF
+que se firmó (no se regenera un PDF final); el que completa Sign queda como
+evidencia. (Q8) Acuses por la regla de siempre; el Jefe MAST captura antes
+los puestos del 3495. (Q9) 11.1 sale de la matriz; la tabla escrita es el
+respaldo. (Q10) Procedimientos anteriores por «Lo sustituye el proceso» o,
+si falta, el proceso del documento. (Q11) Seis plazos de NC con su unidad.
+(Q12) Pantalla para todo Usuario SGI y Auditor; textos y solicitud, Jefe MAST
+y Administrador; «Por confirmar» también lo quita Dirección. (Q13) Marca
+«Borrador — no vigente» en la vista (franja, marca de agua y pie) y en el
+PDF de una solicitud generada con candados. (Q14) Mapa de procesos e
+interacción 4.4 en el bloque de procesos (solo en el PDF). (Q15) P-I01 no se
+lista. (Q16) Solo «Vigente» cuenta como publicado. (Q17) Sale como
+57.105.0, tercera entrega después del mapa.
+
+**Desviaciones del plan:** el PDF de la solicitud solo lleva la marca de
+borrador si se generó con candados (al enviar se regenera sin ellos), porque
+con Q7 ajustado ese PDF es el que se publica; el historial de la pantalla es
+un Html calculado con sudo (`history_html`, 1.12-4) y `revision_ids` queda
+para el código; la tabla de procedimientos anteriores toma solo claves del
+Dropbox (`sgi_legacy_family`), no los procedimientos de proceso nuevos;
+controles, anexos y procedimientos se leen de la empresa del MIID (no los
+que no tienen empresa); el menú y la ruta entraron con la pantalla.
+
+**Revisión final:** la nota y el aviso de una aprobación retenida dicen
+«Firmas completas» solo si la firma de Sign terminó (si no, «Firma en curso
+(N de M)»; el aviso de la solicitud es neutro); el PDF firmado de una
+solicitud rechazada o cancelada sí se archiva (deja de reintentarse); el
+orden de las secciones entra a la huella («Sección movida de lugar»);
+`approval.request` entra a `NOTICE_MODELS`, así que el aviso «MIID
+retenido» (con clave) sale en Mis pendientes; crear el registro `sgi.miid`
+de la empresa tolera que otra transacción lo cree al mismo tiempo (sin
+ERROR en el log); la comparación diaria es solo de la empresa del SGI.
+
+**Pruebas:** `test_miid` (21 casos).
+
+### Solo se verifica en el build de Odoo.sh
+
+- `test_miid` 21/21 y el suite `--test-tags /quimibond_sgi` sin fallos
+  nuevos ni `ERROR` en el log (en especial `test_doc_change`,
+  `test_doc_change_sign`, `test_interfaz`, `test_reportes_diagramas`,
+  `test_menu_tree`, `test_bandeja`, `test_rendimiento_robustez`,
+  `test_usted`); ningún WARNING nuevo de etiquetas o roles.
+- QWeb: `sgi_fmt_info` sin definir vale `None` en `sgi_format_page_footer`
+  (el pie de los demás reportes no cambia).
+- `html_to_inner_content` existe en `odoo.tools.mail` (si no, la huella usa
+  el respaldo por expresión regular).
+- La semilla: 46 secciones con sus tablas (`table table-sm table-bordered`
+  se conserva al sanear), negritas, `[[datos]]` en 4.4, 5.2, 7.5, 8.2 y 10.2.
+- «Vista en PDF (borrador)»: la marca de agua sale en **cada** hoja con
+  wkhtmltopdf, recuadros «POR CONFIRMAR», portada e índice, pie en cada hoja;
+  la tabla de procesos, la interacción 4.4 (14 × 14) y la correspondencia
+  caben en carta vertical.
+- La pestaña «Vista del sistema» (Html calculado, `sanitize=False`) se ve
+  completa en solo lectura, como Usuario SGI y como Auditor.
+- Como Jefe MAST, «Solicitar cambio del MIID» crea la solicitud Rev. 03 y
+  «Enviar» se detiene con el mensaje de candados (procesos en borrador en la
+  copia de producción).
+- El PDF a firmar en Sign (F-P-G01-06 + MIID + hoja de firmas) se arma con un
+  MIID de 30 a 50 hojas; tiempo de `_sgi_snapshot()` en el shell (meta:
+  menos de 1 s) y de abrir la pantalla.
+
+## 19.0.57.104.0 — 2026-10-05
+
+**Indicadores: sin dato y cálculos** (diagnóstico de producción del
+2026-10-05: 35 de 106 indicadores activos con «Último valor 0»; segunda
+entrega después del mapa de la auditoría). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-104-0-indicadores.md`. Un campo
+guardado nuevo (`sgi.indicator.measure.sgi_value_by_hand`, nace en False sin
+respaldo) y uno calculado sin guardar (`sgi.indicator.sgi_last_value_label`);
+sin modelos, menús, ACL ni herencias de vista. Nada se borra; ninguna
+medición validada cambia.
+
+### Agregado
+
+- **«Valor corregido a mano»** (`sgi_value_by_hand`): una persona que cambia
+  el valor de una medición automática la marca; el recálculo diario ya no la
+  toca. «Recalcular valor» y «Recalcular ahora» quitan la marca. El sistema
+  (sudo) y las rutas de cálculo (contexto `sgi_calc_write`) no marcan.
+- Parámetro `quimibond_sgi.indicator_recompute_months` (2, no se siembra):
+  meses hacia atrás del recálculo diario.
+- `_sgi_formula_fixes_57104` y `_sgi_deliverable_fix_57104`: correcciones de
+  TR-01, C5-02 y C2-06 con candado (solo si siguen exactamente como el
+  2026-10-05; si no, «distinto» en el log y no se tocan).
+
+### Corregido
+
+- **«Sin dato» no es 0:** la lista de indicadores, el Tablero, la pestaña
+  Indicadores del proceso, Mis indicadores (lista y celular), el texto de la
+  revisión por la dirección, los «Últimos 6 periodos» y el diagrama de
+  indicadores dicen «Sin dato» cuando ninguna medición tiene dato (16
+  indicadores en producción); un 0 real se muestra (el diagrama pintaba
+  «—»). Las mediciones sin dato (y pendientes en la lista) no muestran el 0
+  guardado. CA-02 en la revisión solo toma mediciones con dato.
+- **Gráficas:** «Mediciones» (Mis indicadores, proceso, celular) y el menú
+  Administración → Indicadores → Mediciones abren con «Con dato» y «Míos»;
+  el menú ya no abre con «Pendientes» (juntos daban vacío).
+- **Recálculo:** el cron diario re-mide también las «sin dato» y las
+  capturadas no validadas de los últimos 2 meses (E1-01 se quedaba en 0/80
+  porque las validaciones llegan después del cálculo; C2-05 y E2-02 nunca
+  volvían a medir). Nunca toca validadas, indicadores de foto ni de salud,
+  mediciones con NC, con causa o acciones, ni las corregidas a mano. Solo
+  escribe si algo cambió (antes y después en el chatter de la medición, un
+  solo rastro); una capturada nunca regresa a pendiente.
+- **Medir desde:** al cambiarla, las mediciones no validadas anteriores
+  pasan a «Sin dato» con el valor anterior en la nota; el cálculo de un
+  periodo anterior da «Sin dato» (último cálculo «Antes de medir desde»),
+  también en el desglose por línea de negocio.
+- **Manual sin valor:** una medición manual en 0 sin numerador, denominador
+  ni nota ya no se marca capturada ni se valida (TI-01 jun–ago se validó
+  así); para un 0 real, el responsable lo explica en la nota. Solo aplica a
+  personas; «Validar mediciones» de la revisión (P-40) las salta y las lista.
+- **Registro vacío:** una fórmula «más bajo es mejor» con el numerador en 0 y
+  un término cuya fuente nunca ha tenido registros (SST-01: `sgi.incident`
+  vacío) o cuyo campo sumado nunca se ha capturado (C5-01: metros
+  reclamados) da «Sin dato» con nota, no un verde falso.
+- **TR-01:** numerador y denominador son las mismas NC (levantadas en el
+  periodo, sin canceladas); el numerador, las que ya están cerradas. También
+  para instalaciones nuevas (`_CIERRE_NC_TERMS`).
+- **C5-02:** cuenta las reclamaciones cerradas en 30 días naturales desde su
+  alta, no las que tienen verificación de eficacia.
+- **C2-06:** el entregable «Salida validada» deja el campo de Studio «Tipo de
+  transporte» (0 de 729 salidas) y cuenta la salida con sello de embarque;
+  fórmula y fuente reescritas. Seguirá en 0 % rojo hasta que Logística
+  capture sellos: es el dato real.
+- **RH-02:** solo empleados de la empresa del SGI (D-03); la medición guarda
+  numerador (competencias vigentes) y denominador (requeridas), y la
+  evidencia lista las brechas de esos mismos empleados.
+
+### Cambiado
+
+- Botón «Recalcular mediciones pendientes» → **«Recalcular mediciones»**:
+  sin selección, las pendientes (como antes); con indicadores seleccionados,
+  todo lo no validado de ellos, sin ventana de meses.
+- Los errores del recálculo por medición quedan como aviso (WARNING) en el
+  log, no como error.
+- Al pasar de «sin dato» a capturada por el recálculo, la fecha de captura
+  (plazo de validación y del plan) es la del recálculo. **Al día siguiente
+  del despliegue, los meses viejos que el cron vuelva a medir (E1-01, E2-02,
+  C2-05, …) aparecerán en Mis pendientes de sus responsables como «Validar
+  medición»**, con plazo contado desde ese día.
+- El recálculo diario corre **después** de la medición mensual del cron y
+  tiene tiempo tope (240 s): lo que no alcanza queda para el día siguiente,
+  que sigue desde donde se quedó (`quimibond_sgi.indicator_recompute_cursor`,
+  lo escribe el cron); el log dice cuántas faltan.
+- El recálculo conserva la nota que escribió una persona (la detecta por el
+  seguimiento de la nota): agrega la nota nueva del cálculo y deja la suya.
+- «Validar seleccionadas» de Mis pendientes salta, como P-40, las manuales
+  sin valor capturado y las dice en el aviso, en vez de fallar todo el lote.
+- «Registro vacío» no se presume cuando el campo sumado no está guardado en
+  la base (no se puede buscar por él).
+- `quimibond_sgi_mapa` 19.0.1.1.2: el mapa trae las mismas fórmulas de
+  TR-01, C5-02 y C2-06 y el filtro nuevo del entregable C2-SALIDA. Queda pendiente la
+  entrada «aplica» del mapa que usa el mismo campo de Studio
+  (`x_studio_tipo_de_transporte = 'Transporte Interno'`): no se tocó.
+
+### Migración
+
+- `migrations/19.0.57.104.0/post-migrate.py`, idempotente, con conteos en el
+  log: P-a indicadores con «Medir desde» → mediciones no validadas
+  anteriores a «Sin dato» con nota (esperado: 9, todas de S6-02); P-b
+  términos de TR-01 (51) y C5-02 (42) con candado, más su fórmula y fuente
+  (esperado: «corregido» los dos); P-c entregable de C2-06 (165) con candado
+  (esperado: «corregido»). No recalcula nada.
+
+### Datos de producción
+
+- S6-02: mediciones 714, 642, 570, 498, 426, 358, 305, 165 y 249 (ene–sep,
+  capturadas en 0) a «Sin dato», con el valor anterior en la nota y un
+  mensaje en el chatter del indicador.
+- Términos 51 (TR-01) y 42 (C5-02), fórmula y fuente de los dos; entregable
+  165 (`complete_domain` y `complete_criteria`) y fórmula y fuente de C2-06.
+  El antes y el después quedan en el chatter de cada indicador; los tres ya
+  estaban en prueba.
+- Desde el día siguiente, el cron diario recalcula las sin dato y capturadas
+  de agosto, septiembre y octubre (y semanales de esas semanas): E1-01,
+  SST-01, C5-01, C5-02, TR-01 cambian de valor; el antes y el después quedan
+  en cada medición.
+- TI-01 no se toca.
+- **Para el Jefe MAST, a mano:** TI-01 junio, julio y agosto (ids 19, 49 y
+  95) están validadas en 0 sin dato real: regresarlas a pendiente, capturar
+  la disponibilidad del reporte de Odoo.sh y validar (las metas se vuelven a
+  guardar, K-04). Para que SST-01, C5-01 y E1-01 se recalculen en todos sus
+  meses: Indicadores → seleccionarlos → «Recalcular mediciones».
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó Q1–Q14 por omisión el 2026-10-05: (Q1) «Sin dato» en la columna
+«Último valor». (Q2) El menú Mediciones abre con «Con dato» y «Míos». (Q3)
+Recálculo diario de sin dato y capturadas de 2 meses. (Q4) S6-02 se marca en
+el despliegue. (Q5) TI-01 no se reabre en el despliegue. (Q6) El despliegue
+no recalcula. (Q7) Registro vacío solo en configurables «más bajo es mejor».
+(Q8) SST-01, C5-01 y E1-01 completos se recalculan a mano. (Q9) TR-01 y C5-02
+se corrigen con candado. (Q10) C2-06 mide el sello de embarque. (Q11) RH-02
+con la empresa del SGI. (Q12) Un 0 manual pide nota, numerador o
+denominador. (Q13) La corrección a mano se respeta. (Q14) Sale como
+57.104.0.
+
+### Solo se verifica en el build de Odoo.sh
+
+- `test_indicadores_sin_dato` (19 casos) y el suite `--test-tags
+  /quimibond_sgi` sin fallos nuevos ni `ERROR` en el log.
+- Cerrar una NC con folio y leer `date_close` (TR-01 y C5-02 dependen de
+  que la etapa de cierre la llene).
+- En una lista no editable, `invisible` en el valor deja la celda vacía por
+  renglón.
+- «Recalcular ahora» en SST-01 y C5-01 (Sin dato, «Registro vacío»), E2-01 y
+  C5-04 (siguen en 0 verde), TR-01, C5-02, C2-06 y RH-02.
+- Conteo del universo del recálculo y tiempo de
+  `recompute_pending_measures(recent=True)` en el shell (meta: menos de 5
+  minutos).
+- Mis indicadores en el celular dice «Sin dato»; P-40 con una manual
+  pendiente en 0 la salta.
+
+## 19.0.57.103.0 — 2026-10-05
+
+**Registro de cumplimiento por actividad y periodo** (pedido de Jose del
+2026-10-05). Modelo nuevo `sgi.activity.execution` (y el asistente
+`sgi.activity.execution.mark`), dos menús en Administración SGI →
+Diagnóstico y migración `post-migrate` que arma el periodo en curso.
+
+### Agregado
+
+- **Registro de cumplimiento** (`sgi.activity.execution`): un renglón por
+  actividad, responsable y periodo de su cadencia, con el vencimiento de la
+  actividad (el capturado; sin él, el último día hábil del periodo). Lo crea
+  el respaldo nocturno (`cron_nightly_backup`, el que guarda el resumen de
+  Mis pendientes) para el periodo en curso; quita los «Pendiente» sin tocar
+  de quien ya no la ejecuta. Responsables: los de «Mis actividades» de Mi
+  procedimiento con rol «Ejecuta». Las «por evento» no llevan renglones.
+- **Estados:** Pendiente → En proceso (nota de avance obligatoria y fecha
+  estimada opcional; no quita el atraso) → Hecha, o «No aplica este
+  periodo» con motivo. Marca la persona, cualquiera de sus jefes o el Jefe
+  MAST; solo el Jefe MAST reabre.
+- **Evidencia:** las de registro manual (también correo y muestreo) piden
+  una nota o un archivo para «Hecha». Las que se miden solas (Registro en
+  Odoo, Por su entregable, Por consecuencia) se marcan hechas solas cuando
+  aparece su registro de evidencia dentro del periodo (mismo modelo,
+  filtro, fecha y empresa que la medición); cerrarlas a mano también pide
+  evidencia.
+- **Mis pendientes:** las actividades con registro salen por periodo
+  abierto (atrasadas, por vencer o al día, con su avance), con los botones
+  **En proceso** y **Hecho** junto a «Ir»; columna y filtro «En proceso».
+  Para las de registro manual, «Ir» abre su registro (criterio de
+  terminado, pasos, instructivo y dónde adjuntar) y el menú de Odoo queda
+  como «Abrir pantalla relacionada», solo si está capturado. Mi equipo ve
+  los mismos renglones.
+- **Diagnóstico → Registro de cumplimiento** (lista y pivote) y
+  **Diagnóstico → Pantallas que no van con su medición**: faltante nuevo
+  `menu_model_mismatch` (advertencia) cuando la actividad se mide sola con
+  un modelo y su pantalla abre otro.
+
+### Cambiado
+
+- **Medición de las de registro manual** con cadencia: sale del registro.
+  Verde si los renglones del periodo en curso están hechos o no aplican;
+  vencido el periodo sin eso, rojo; antes de vencer, manda el periodo
+  anterior; sin renglones, «pendiente» como antes. Se recalcula al marcar.
+  Las 63 «por evento» siguen «pendiente».
+
+### Migración
+
+- `post-migrate`: recalcula los faltantes de las actividades con modelo y
+  pantalla, arma el periodo en curso, cierra los que ya tienen registro y
+  mide las de registro manual. Esperado (MCP, 2026-10-05): 80 manuales y 40
+  que se miden solas con cadencia periódica.
+
+## 19.0.57.102.0 — 2026-10-05
+
+**NC de auditoría: a quién le sale.** Sin campos nuevos, sin ACL, sin menús
+y sin migración; las NC que ya existen no cambian.
+
+### Corregido
+
+- **Filtro «Míos» de No conformidades:** también incluye las NC donde usted
+  es el responsable de la alerta (`user_id`), no solo los «Responsables a
+  contestar». Las NC de **Generar NC** no le salían a nadie.
+- **Generar NC (hallazgo de auditoría):** propone como responsable a
+  contestar (y responsable de la alerta) al usuario activo del dueño del
+  proceso del hallazgo; quien pulsa el botón queda como solicitante. Sin
+  dueño con usuario activo, se comporta como antes.
+- **Generar NC (hallazgo del recorrido de la Comisión de Seguridad e
+  Higiene):** el «Responsable» del hallazgo, que ya quedaba como responsable
+  de la alerta, ahora también queda como responsable a contestar (lo ve en
+  Mis pendientes); quien pulsa queda como solicitante.
+- **Tablero de NC (kanban):** cada columna ordena por fecha de creación
+  descendente; la recién creada queda arriba.
+
+## 19.0.57.101.0 — 2026-10-05
+
+**Reportes y diagramas** (primera entrega después del plan de la auditoría
+2026-10; alcance aprobado por Jose el 2026-10-05). Plan:
+`docs/superpowers/plans/2026-10-05-sgi-57-101-0-reportes.md`.
+**Ningún dato de negocio cambia en el despliegue.** Sin campos guardados
+nuevos, sin ACL, sin menús y sin migración; dos modelos abstractos de reporte
+(`report.quimibond_sgi.report_sgi_diagram_document`,
+`report.quimibond_sgi.report_risk_heatmap_document`).
+
+### Corregido
+
+- **Tendencia del indicador:** la gráfica sumaba las mediciones del mes (las
+  semanales: LO-01 marcaba 218 % de OTIF en julio). La medición promedia al
+  agrupar (`value`, `aggregator='avg'`, también en pivote y lista agrupada);
+  los semanales abren por semana (`sgi_measure_view_graph_weekly`); la
+  tendencia abre con el filtro nuevo «Con dato» (los «sin dato» y
+  pendientes valían 0; el filtro va aparte y se combina con Y). La lista de
+  mediciones muestra también el aceptable.
+- **Mapa de calor (pivote) de riesgos:** filas por instrumento y proceso; ya
+  no mezcla la escala de R&O y ambiental (baja a inmediata) con la de IPER y
+  patrimonial (bajo a alto) en las mismas filas.
+- **Desglose de la medición** (`sgi.indicator.measure.split`, pivote y
+  gráfica): `value` también promedia al agrupar (`aggregator='avg'`); sumaba
+  como la medición. Ningún cálculo dependía de esa suma.
+- **Diagnóstico → Documental:** la línea informativa «sin clave del SGI» no
+  quita «Difusión documental operando.» (`_sgi_with_operating`: solo cuentan
+  fallas y avisos).
+- **Ficha de proceso por máquina:** ya usaba el layout del SGI y además
+  pintaba el pie escrito a mano al final (doble pie); se quita el escrito a
+  mano.
+
+### Agregado
+
+- **Ficha del indicador en PDF** (`models/sgi_indicator_sheet.py`,
+  `report/report_indicator_sheet.xml`; Imprimir o «Ficha en PDF»; todas las
+  del proceso desde Imprimir del proceso, una hoja por indicador activo):
+  cómo se mide, metas y escalones, gráfica SVG (generada en el servidor) de
+  los últimos 12 periodos con medición con las franjas de las metas de cada
+  periodo (las guardadas al validar, K-04, o las vigentes del periodo),
+  semáforo guardado por periodo («—» en pendientes y sin dato; la línea se
+  corta y marca «s/d»), tabla por periodo y causa y acciones de los rojos. El
+  eje de los semanales dice dd/mm. `sgi_sheet_svg_b64` queda listo por si
+  wkhtmltopdf no pinta el SVG en línea.
+- **Diagramas en formato controlado** (`models/sgi_report_print.py`,
+  `report/report_sgi_diagram.xml`): botón PDF en la barra del diagrama para
+  mapa de procesos, interacción (4.4), tortuga, roles (5.3) y contexto
+  (4.1/4.2); reporte con `data` (kind, res_id, params) sobre los mismos datos
+  de `sgi.diagram.data`; las flechas van como tabla «Conexiones»; el
+  subtítulo sin las instrucciones de pantalla. En riesgos el botón imprime el
+  mapa de calor del instrumento y proceso elegidos (no en patrimonial).
+  Carriles y PDCA siguen con la impresión de pantalla.
+- **Programa de auditorías: programado contra realizado**
+  (`report/report_audit_program.xml`; botón del programa, también en
+  borrador, y menú Imprimir): proceso × mes con todas las marcas de cada
+  celda (pendiente, vencida, ejecutada en «Informe», cerrada y «P→» si se hizo
+  en otro mes, con folio), totales por mes, avance de las internas hasta el
+  mes en curso con la regla de SG-09 (renglón cerrado o auditoría en
+  «Informe» o «Cerrada»), hallazgos por auditoría y auditorías del año fuera
+  del programa.
+- **Mapa de calor de riesgos por instrumento** (R&O, IPER, ambiental;
+  `report/report_risk_heatmap.xml`): cuadrícula P×I inicial y residual con
+  folios por celda y el color del nivel de la escala de cada instrumento;
+  tabla de riesgos y los que no tienen evaluación; IPER con su formato
+  F-P-S01-01.
+- Copia guardada del **acta de revisión por la dirección cerrada**
+  (`attachment` + `attachment_use`, mismo nombre que la descarga); reabrirla
+  renombra la copia («… (reabierta el dd-mm-aaaa).pdf») con nota en el
+  chatter, no la borra.
+
+### Cambiado
+
+- Nombre de archivo con folio: NC, 8D, plan e informe de auditoría, acta,
+  investigación de incidente y AMEF.
+- **8D, solicitud de desarrollo, responsiva de EPP y eficiencias** usan el
+  layout del SGI (pie en cada hoja con página; 57.98.0 Q3 revertida con el
+  alcance aprobado) y pierden el pie escrito a mano. El 8D sigue sin la clave
+  de la NC (57.44.0): pie solo con la página.
+- `SGI_FORMAT_REPORTS` suma 9 reportes. Diagnóstico → Documental: los
+  reportes cuya referencia de formato no existe en el código salen en una
+  línea aparte, informativa (nivel «Bien»: imprimen como se decidió),
+  «sin clave del SGI»; la existencia se comprueba con `env.ref` (una
+  referencia archivada sigue en el aviso de siempre). `test_interfaz.test_06`
+  cuenta solo la línea de aviso.
+- `sgi_risk.sgi_attention_color` es la regla única del semáforo de riesgo
+  (`_compute_semaphore` la usa; mismo resultado).
+
+### Pendiente
+
+- El diagrama de pantalla «Riesgos (6.1)» colorea por fracción del puntaje
+  máximo, no por la escala del instrumento (el PDF sí usa la escala).
+- Claves de formato para la ficha, los diagramas, el programa contra
+  realizado, el mapa de calor de R&O y ambiental y el 8D (Q1–Q3).
+
+### Decisiones por omisión (preguntas del plan)
+
+Jose aceptó las opciones por omisión de Q1 a Q17 (2026-10-05):
+
+- (Q1) Sin claves nuevas: ficha, diagramas, programa contra realizado y mapa
+  de calor de R&O llevan solo la página y el Diagnóstico los lista «sin clave
+  del SGI»; el mapa de calor IPER usa F-P-S01-01. (Q2) Mapa de calor
+  ambiental: solo la página. (Q3) 8D sin clave propia.
+- (Q4) La gráfica lleva los últimos 12 periodos con medición. (Q5) La
+  tendencia promedia, los semanales por semana, y abre con «Con dato».
+  (Q6) Objetivo y aceptable no se dibujan en la gráfica de pantalla (van en
+  la lista y como franjas en la ficha).
+- (Q7) Diagramas en formato controlado: mapa de procesos, 4.4, tortuga, 5.3,
+  4.1/4.2 y, en riesgos, el mapa de calor. (Q8) Carriles y PDCA fuera.
+- (Q9) Copia guardada solo del acta cerrada; el informe de auditoría no (AU-3
+  ya lo archiva). (Q10) El mapa de calor no incluye patrimonial. (Q11)
+  Inicial y residual lado a lado, folios por celda, solo no cerrados, tabla
+  debajo. (Q12) Una auditoría cuenta como realizada en «Informe» o «Cerrada»
+  (o con el renglón cerrado), en el mes de su fecha de fin.
+- (Q13) Menú Imprimir de cada modelo más botones en el indicador, el programa
+  y la barra del diagrama; sin menús nuevos. **Ajuste de la revisión:** el
+  botón «Programado contra realizado» se ve también en borrador (los dos
+  programas de producción lo están).
+- (Q14) La ficha lleva la tabla por periodo. (Q15) Solicitud de desarrollo,
+  responsiva y eficiencias al layout del SGI con su clave de siempre (la
+  plantilla de firma manual de EPP no cambia). (Q16) Nombres de archivo con
+  folio. (Q17) Sale como 57.101.0, anotada en «Seguimiento» del plan general.
+
+**Pruebas:** `test_reportes_diagramas` (16 casos).
+
+**Verificación pendiente en Odoo.sh (solo se ve en el build):** que
+wkhtmltopdf pinte el SVG de la ficha en línea (si no, `<img>` con
+`sgi_sheet_svg_b64`); que el cliente web descargue los reportes con `data` y
+sin registros (diagrama y mapa de calor desde el diagrama) y el nombre del
+archivo; `aggregator='avg'` en la gráfica de línea y en el pivote de
+mediciones; márgenes del pie en 8D, solicitud de desarrollo, responsiva y
+eficiencias con el papel de la empresa; la copia guardada del acta al
+imprimir un acta cerrada dos veces (un solo adjunto).
+
 ## 19.0.57.100.0 — 2026-10-05
 
 **Integridad, competencias, PPAP e IA** (auditoría 2026-10: K-04, N-13, N-14 y

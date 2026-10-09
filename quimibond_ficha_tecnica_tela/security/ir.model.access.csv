@@ -7,3 +7,9 @@ access_ficha_tecnica_acabado_user,ficha.tecnica.acabado.user,model_ficha_tecnica
 access_ficha_tecnica_acabado_manager,ficha.tecnica.acabado.manager,model_ficha_tecnica_acabado,mrp.group_mrp_manager,1,1,1,1
 access_ficha_tecnica_tejido_import_wizard,ficha.tecnica.tejido.import.wizard,model_ficha_tecnica_tejido_import_wizard,base.group_user,1,1,1,1
 access_ficha_tecnica_acabado_import_wizard,ficha.tecnica.acabado.import.wizard,model_ficha_tecnica_acabado_import_wizard,base.group_user,1,1,1,1
+access_ficha_tecnica_caracteristica_user,ficha.tecnica.caracteristica.user,model_ficha_tecnica_caracteristica,base.group_user,1,0,0,0
+access_ficha_tecnica_caracteristica_manager,ficha.tecnica.caracteristica.manager,model_ficha_tecnica_caracteristica,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_clave_codigo_user,ficha.tecnica.clave.codigo.user,model_ficha_tecnica_clave_codigo,base.group_user,1,0,0,0
+access_ficha_tecnica_clave_codigo_manager,ficha.tecnica.clave.codigo.manager,model_ficha_tecnica_clave_codigo,mrp.group_mrp_manager,1,1,1,1
+access_ficha_tecnica_spec_user,ficha.tecnica.spec.user,model_ficha_tecnica_spec,base.group_user,1,1,1,0
+access_ficha_tecnica_spec_manager,ficha.tecnica.spec.manager,model_ficha_tecnica_spec,mrp.group_mrp_manager,1,1,1,1
