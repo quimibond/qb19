@@ -137,3 +137,18 @@ class TestDevAnalysis(TransactionCase):
         self.assertEqual((self.dev.sgi_dev_review_state, self.dev.sgi_dev_reviewed_by_id), ('aprobado', self.env.user))
         self.dev.write({'stage_id': self.env.ref('quimibond_sgi.sgi_dev_stage_cotizacion').id})
         self.assertEqual(self.dev.sgi_dev_stage_key, 'cotizacion')
+        # 57.140.0: con catálogo para la línea, un producto nuevo no se aprueba sin cargar el checklist;
+        # uno de línea sí (el checklist no le aplica).
+        otro = self.env['project.project'].create({'name': 'y', 'sgi_is_ft': True, 'sgi_dev_product_name': 'Entretela',
+                                                   'sgi_dev_line_key': 'entretelas', 'sgi_dev_analysis_result': 'nuevo'})
+        with self.assertRaises(UserError, msg="Sin checklist cargado no se aprueba"):
+            otro.action_sgi_dev_review_approve()
+        otro.action_sgi_dev_load_feasibility()
+        self.assertEqual(len(otro.sgi_dev_feasibility_ids), 1)
+        otro.sgi_dev_feasibility_ids.write({'answer': 'si'})
+        otro.action_sgi_dev_review_approve()
+        self.assertEqual(otro.sgi_dev_review_state, 'aprobado')
+        linea = self.env['project.project'].create({'name': 'z', 'sgi_is_ft': True, 'sgi_dev_product_name': 'Línea',
+                                                    'sgi_dev_line_key': 'entretelas', 'sgi_dev_analysis_result': 'linea'})
+        linea.action_sgi_dev_review_approve()
+        self.assertEqual(linea.sgi_dev_review_state, 'aprobado', "Producto de línea: sin checklist")

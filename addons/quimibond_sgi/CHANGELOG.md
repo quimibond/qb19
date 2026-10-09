@@ -13,6 +13,27 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.140.0 — 2026-10-09
+
+Dirección General 2026-10-09: «no quiero que se vea el botón de aprobar hasta
+que esté completo el checklist; si no hay muestra física no me muestres campos
+cuando no aplica».
+
+- **Cambiado** «Aprobar análisis y factibilidad» aparece solo con resultado
+  del análisis y, si es producto nuevo, con el checklist de factibilidad
+  cargado y sin renglones pendientes. En el modelo: con catálogo para la
+  línea, un producto nuevo no se aprueba sin su checklist (un producto de
+  línea o no factible no lo lleva; con catálogo vacío no cambia nada).
+- **Cambiado** el checklist se oculta cuando el resultado es producto de
+  línea o no factible; junto al botón «Cargar checklist» se avisa «Sin
+  checklist no se puede aprobar».
+- **Cambiado** muestra física: cuando la propiedad del cliente es
+  «Especificación» o «Ninguna» se ocultan las fechas de recibida y entregada,
+  la ubicación en carpeta y la etiqueta; en «Análisis de proyecto» se ocultan
+  el análisis de la muestra, el botón de pruebas al laboratorio y el contador
+  de pendientes, con una nota en su lugar.
+- Sin campos nuevos, sin migración. Prueba en `test_dev_analysis.py` test_03.
+
 ## 19.0.57.139.0 — 2026-10-09
 
 Dirección General 2026-10-09: Administración de Ventas necesita depurar los
