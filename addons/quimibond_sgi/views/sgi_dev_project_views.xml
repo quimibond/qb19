@@ -193,7 +193,13 @@
                                 <span class="o_horizontal_separator text-uppercase fw-bolder small">Características que pide el cliente</span>
                                 <div>
                                     <span class="text-muted me-2" invisible="not sgi_dev_line_count"><field name="sgi_dev_line_count" readonly="1" class="oe_inline fw-bold"/> características</span>
-                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"/>
+                                    <!-- 57.139.0: con la tabla vacía propone sin preguntar; con renglones pregunta, porque
+                                         agrega lo que falte (lo borrado a propósito no se vuelve a proponer). -->
+                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"
+                                            invisible="sgi_dev_line_count"/>
+                                    <button name="action_sgi_dev_load_lines" type="object" string="Proponer características del tipo" class="btn-secondary" icon="fa-list"
+                                            invisible="not sgi_dev_line_count"
+                                            confirm="La tabla ya tiene renglones: se agregan los del tipo que falten (los que usted borró a propósito no se vuelven a proponer). ¿Continuar?"/>
                                 </div>
                             </div>
                             <field name="sgi_dev_line_ids" context="{'default_project_id': id}">
