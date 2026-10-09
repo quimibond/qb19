@@ -13,6 +13,42 @@ entrada, con el mismo número. `tools/check_addons.py --base-ref` lo exige.
 Secciones posibles dentro de una entrada: Agregado, Cambiado, Corregido,
 Retirado, Seguridad, Migración, Datos de producción.
 
+## 19.0.57.141.0 — 2026-10-09
+
+Dirección General 2026-10-09: «Generar artículos» parte del artículo base.
+Armaba crudo, teñido y acabado con las claves del producto terminado, y peso y
+ancho cambian en el proceso (el acabado WJ053Q22JNT160 consume el teñido
+WJ044Q22INT235, que consume el crudo WJ044Q22HNT235). En el proyecto 499 generó
+un crudo que no existe y Administración de Ventas armó a mano el teñido y las
+listas.
+
+- **Cambiado** con `sgi_dev_base_product_id` (`models/sgi_dev_product_base.py`):
+  se recorre la cadena del base por sus listas de materiales (acabado → teñido
+  → crudo); en cada nivel se decide si cambia con las claves del proyecto
+  (color: teñido y acabado; ancho acabado: acabado; ancho crudo: crudo y
+  teñido; composición, dibujo, peso, hilo y galga: todos; acabado especial:
+  acabado). Nivel que no cambia: se liga el artículo del base. Nivel que
+  cambia: artículo nuevo con el código del nivel del base sustituyendo solo lo
+  que cambió (WJ044Q22INT235 → WJ044Q22ICO235), unidad y categoría del base,
+  lista de materiales copiada con cantidades, operaciones y subproductos, y el
+  insumo del nivel inferior reemplazado por el nuevo. Si cambia el peso, el de
+  crudo y teñido se estima en proporción al base y el chatter lo dice.
+- **Agregado** `mrp.bom.line.sgi_dev_pending` «Por capturar» (columna en la
+  lista de materiales): los componentes que dependen de la clave que cambió
+  (fórmula de color en el teñido; hilo en el crudo si cambió composición,
+  dibujo, peso, hilo, galga o ancho crudo; la cantidad del insumo si cambió
+  peso o ancho). El proyecto los cuenta (`sgi_dev_bom_pending_count`, aviso y
+  «Ver listas» en «Cotización») y `qb_costeo_sgi` 1.4.0 no deja mandar la
+  cotización a aprobar mientras haya.
+- **Cambiado** con resultado «Producto de línea» el botón no aparece y la
+  acción se detiene: se cotiza el artículo de línea.
+- Sin base, el generador por claves sigue igual. Si el base no sigue la regla
+  de codificación, se avisa y se usa el generador por claves. Todo queda en el
+  chatter: qué se ligó, qué se creó, de qué lista y qué falta capturar.
+- Los artículos y listas del proyecto 499 no se tocan (están ligados; el
+  botón no vuelve a correr sobre ellos).
+- Sin migración. Pruebas `test_dev_product.py` test_05 a test_07.
+
 ## 19.0.57.140.0 — 2026-10-09
 
 Dirección General 2026-10-09: «no quiero que se vea el botón de aprobar hasta

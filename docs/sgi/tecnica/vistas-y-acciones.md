@@ -300,7 +300,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `quimibond_sgi_mapa.sgi_mapa_load_wizard_action` | act_window | Cargar mapa de procesos | `sgi.mapa.load.wizard` | form |  | `addons/quimibond_sgi_mapa/views/sgi_mapa_views.xml` |
 | `quimibond_sgi_revisado.mrp_revision_log_action_pareto` | act_window | Pareto de defectos de revisado | `mrp.revision.log` | pivot,graph,list | sí | `addons/quimibond_sgi_revisado/views/mrp_revision_log_views.xml` |
 
-## Vistas por modelo (442; 82 heredan de otra vista, 0 de su propio módulo)
+## Vistas por modelo (443; 83 heredan de otra vista, 0 de su propio módulo)
 
 | Modelo | Vista | Tipo | Hereda de | Archivo |
 |---|---|---|---|---|
@@ -369,6 +369,7 @@ Sacado de los `<menuitem>` del núcleo y los satélites, ordenado por secuencia 
 | `maintenance.request` | `quimibond_sgi.sgi_format_banner_maintenance_request` | herencia | `maintenance.hr_equipment_request_view_form` | `addons/quimibond_sgi/views/sgi_format_map_views.xml` |
 | `maintenance.request` | `quimibond_sgi.sgi_maintenance_request_form` | herencia | `maintenance.hr_equipment_request_view_form` | `addons/quimibond_sgi/views/sgi_map_hooks_views.xml` |
 | `maintenance.request` | `quimibond_sgi.sgi_maintenance_request_view_form_checklist` | herencia | `maintenance.hr_equipment_request_view_form` | `addons/quimibond_sgi/views/sgi_hse_views.xml` |
+| `mrp.bom` | `quimibond_sgi.sgi_mrp_bom_form_view_dev_pending` | herencia | `mrp.mrp_bom_form_view` | `addons/quimibond_sgi/views/sgi_dev_product_views.xml` |
 | `mrp.bom` | `quimibond_sgi.sgi_mrp_bom_view_form_links` | herencia | `mrp.mrp_bom_form_view` | `addons/quimibond_sgi/views/sgi_links_views.xml` |
 | `mrp.eco` | `quimibond_sgi_plm.sgi_mrp_eco_view_form` | herencia | `mrp_plm.mrp_eco_view_form` | `addons/quimibond_sgi_plm/views/mrp_eco_views.xml` |
 | `mrp.production` | `quimibond_sgi.mrp_production_form_view_sgi_dev` | herencia | `mrp.mrp_production_form_view` | `addons/quimibond_sgi/views/sgi_dev_sample_views.xml` |

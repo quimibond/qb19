@@ -39,6 +39,28 @@ class TestBridge(CotizadorCase):
         self.assertEqual(self.project.qb_cotizacion_count, 1)
         self.assertEqual(self.project.action_qb_cotizaciones()['domain'], [('project_id', '=', self.project.id)])
 
+    def test_01b_articulo_base_es_el_hermano(self):
+        # 1.4.0: el artículo base pasa como producto hermano; sin artículo generado, fuente «hermano».
+        self.project.write({'sgi_dev_base_product_id': self.hermana.id})
+        cot = self.env['qb.cotizador.cotizacion'].with_user(self.vendedor).create({'project_id': self.project.id})
+        self.assertEqual(cot.hermano_product_id, self.hermana)
+        self.assertEqual(cot.costo_fuente, 'hermano')
+        cot.action_calcular()
+        self.assertEqual(cot.costo_id.product_id, self.hermana)
+        # Renglones «Por capturar» en una lista del desarrollo: no se manda a aprobar.
+        self.tela.product_tmpl_id.write({'sgi_dev_project_id': self.project.id})
+        bom = self.env['mrp.bom'].create({'product_tmpl_id': self.tela.product_tmpl_id.id, 'product_qty': 1,
+                                          'bom_line_ids': [(0, 0, {'product_id': self.hermana.id, 'product_qty': 1,
+                                                                   'sgi_dev_pending': True})]})
+        self.assertEqual(self.project.sgi_dev_bom_pending_count, 1)
+        cot.write({'precio_objetivo': 20.0, 'volumen': 1000})
+        with self.assertRaises(UserError, msg="Con renglones por capturar no se aprueba"):
+            cot.action_enviar_aprobacion()
+        bom.bom_line_ids.write({'sgi_dev_pending': False})
+        self.project.invalidate_recordset(['sgi_dev_bom_pending_count'])
+        cot.action_enviar_aprobacion()
+        self.assertEqual(cot.state, 'por_aprobar')
+
     def test_02_revision_recalcula_y_detiene(self):
         cot = self._presentada(project_id=self.project.id, product_id=self.tela.id)
         self.assertEqual(cot.project_revision, 0)

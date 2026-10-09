@@ -329,10 +329,18 @@
                                     <group>
                                         <div class="mb-2 d-flex flex-wrap gap-1" colspan="2">
                                             <button name="action_sgi_dev_code_from_table" type="object" string="Tomar peso, galga y ancho de la tabla" class="btn-secondary" icon="fa-table"/>
+                                            <!-- 57.141.0: con artículo base se parte de su cadena (acabado → teñido → crudo); sin base, por claves.
+                                                 Un producto de línea no genera artículos. -->
                                             <button name="action_sgi_dev_generate_products" type="object" string="Generar artículos" class="btn-primary" icon="fa-cubes"
-                                                    invisible="sgi_dev_product_id"
-                                                    confirm="Se crean los artículos crudo, teñido (si lleva) y acabado con el código propuesto, en estado «En desarrollo». ¿Continuar?"/>
+                                                    invisible="sgi_dev_product_id or sgi_dev_analysis_result == 'linea'"
+                                                    confirm="Con artículo base: se recorre su cadena (acabado, teñido, crudo), se ligan los niveles que no cambian y se crean los que cambian copiando su lista de materiales; los componentes que dependen de la clave que cambió quedan «Por capturar». Sin base: se crean crudo, teñido (si lleva) y acabado con el código propuesto. ¿Continuar?"/>
                                         </div>
+                                        <field name="sgi_dev_base_product_id" readonly="1" string="Artículo base" invisible="not sgi_dev_base_product_id"/>
+                                        <div colspan="2" class="alert alert-warning py-1 mb-2" role="alert" invisible="not sgi_dev_bom_pending_count">
+                                            <field name="sgi_dev_bom_pending_count" readonly="1" class="oe_inline fw-bold"/> renglón(es) de lista de materiales por capturar: la cotización no se manda a aprobar hasta capturarlos.
+                                            <button name="action_sgi_dev_bom_pending" type="object" string="Ver listas" class="btn-link p-0 ms-1"/>
+                                        </div>
+                                        <field name="sgi_dev_bom_pending_count" invisible="1"/>
                                         <field name="sgi_dev_code_crudo"/>
                                         <field name="sgi_dev_code_tenido_code" invisible="not sgi_dev_code_tenido"/>
                                         <field name="sgi_dev_code_acabado_code"/>
